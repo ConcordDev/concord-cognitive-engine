@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-06T17:37:07.511Z",
+  "generatedAt": "2026-10-26T14:48:25.087Z",
   "totals": {
     "critical": 0,
-    "high": 25,
-    "medium": 87,
-    "low": 36,
-    "info": 61,
-    "total": 209
+    "high": 71,
+    "medium": 122,
+    "low": 54,
+    "info": 292,
+    "total": 539
   },
   "detectorCount": 52,
   "fingerprints": {
@@ -27,20 +27,60 @@
       "location": "server/lib/adaptive-brain-router.js",
       "message": "Module is never imported"
     },
-    "4220454f7a84cfbf": {
-      "detector": "stale-code",
-      "id": "module_orphan",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/lib/agent-runtime.js",
-      "message": "Module is never imported"
-    },
     "c573a2d23a983a21": {
       "detector": "stale-code",
       "id": "module_orphan",
       "severity": "low",
       "kind": "static",
       "location": "server/lib/cerebras-provider.js",
+      "message": "Module is never imported"
+    },
+    "52dc3db6ebb9021f": {
+      "detector": "stale-code",
+      "id": "module_orphan",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/lib/conkay/knowledge/connectors/recordings.js",
+      "message": "Module is never imported"
+    },
+    "685764ee913d0f0e": {
+      "detector": "stale-code",
+      "id": "module_orphan",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/lib/conkay/knowledge/formulation-report.js",
+      "message": "Module is never imported"
+    },
+    "1db5878a1c4ca407": {
+      "detector": "stale-code",
+      "id": "module_orphan",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/lib/conkay/knowledge/lab-plan.js",
+      "message": "Module is never imported"
+    },
+    "ad4b64d7d708cf32": {
+      "detector": "stale-code",
+      "id": "module_orphan",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/lib/conkay/safety-case/facility-drawing.js",
+      "message": "Module is never imported"
+    },
+    "f332915dc5df8e8c": {
+      "detector": "stale-code",
+      "id": "module_orphan",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/lib/conkay/safety-case/facility-nuscale-us600.js",
+      "message": "Module is never imported"
+    },
+    "775f85f147b760bd": {
+      "detector": "stale-code",
+      "id": "module_orphan",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/lib/conkay/safety-case/report.js",
       "message": "Module is never imported"
     },
     "8ba90a79115b14bc": {
@@ -107,6 +147,14 @@
       "location": "server/lib/stale-wiring.js",
       "message": "Module is never imported"
     },
+    "26e0972f3d69c281": {
+      "detector": "stale-code",
+      "id": "module_orphan",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/lib/strip-object-object-dtu-tags.js",
+      "message": "Module is never imported"
+    },
     "6eec22aa651487e2": {
       "detector": "stale-code",
       "id": "module_orphan",
@@ -137,7 +185,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "593 route(s) declared but not statically referenced from frontend/mobile/server. May include mobile-template URLs, federation peer endpoints, or true orphans — manual triage required for retirement."
+      "message": "608 route(s) declared but not statically referenced from frontend/mobile/server. May include mobile-template URLs, federation peer endpoints, or true orphans — manual triage required for retirement."
     },
     "4b6fa63de2d5c544": {
       "detector": "macro-usage",
@@ -145,15 +193,1815 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "926 macros · 0 dead · 382 single-caller · 2 popular · 415 dispatcher-reach (0 runtime-live, 415 retirement-candidates)"
+      "message": "931 macros · 0 dead · 379 single-caller · 3 popular · 417 dispatcher-reach (225 runtime-live, 192 retirement-candidates)"
     },
-    "9c6176383f6bf175": {
+    "ee2f3791f548fb75": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:16133",
+      "message": "Macro chicken3.status fired 2 time(s) at runtime — live"
+    },
+    "618355866360bd18": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:16138",
+      "message": "Macro chicken3.session_optin fired 2 time(s) at runtime — live"
+    },
+    "0b1276e5d5a5ba66": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:17592",
+      "message": "Macro hypothesis.status fired 2 time(s) at runtime — live"
+    },
+    "6e5d1251424de2c0": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:17613",
+      "message": "Macro hypothesis.design_experiment fired 2 time(s) at runtime — live"
+    },
+    "5a05a26ea9f5e725": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:17620",
+      "message": "Macro hypothesis.record_evidence fired 2 time(s) at runtime — live"
+    },
+    "87cf8dedeb41b9ee": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:17682",
+      "message": "Macro hypothesis.add_test fired 2 time(s) at runtime — live"
+    },
+    "d351ed8e2cfaa4e5": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:17683",
+      "message": "Macro hypothesis.add_evidence fired 2 time(s) at runtime — live"
+    },
+    "fcafb5e972684e55": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:21304",
+      "message": "Macro agents.create fired 2 time(s) at runtime — live"
+    },
+    "2c52ee1d6a44d297": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:21312",
+      "message": "Macro agents.get fired 2 time(s) at runtime — live"
+    },
+    "1d374512b24c8852": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:21313",
+      "message": "Macro agents.list fired 2 time(s) at runtime — live"
+    },
+    "db229a90ca3ecfce": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:21371",
+      "message": "Macro hypothesis.archive fired 2 time(s) at runtime — live"
+    },
+    "aa05f9bf652b0ad4": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:21390",
+      "message": "Macro ingest.status fired 2 time(s) at runtime — live"
+    },
+    "5c149aa10b62e2ca": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:21413",
+      "message": "Macro research.get fired 2 time(s) at runtime — live"
+    },
+    "e5ac06bbf926cee9": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:21414",
+      "message": "Macro research.list fired 2 time(s) at runtime — live"
+    },
+    "1d37c074c931e1a3": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:21416",
+      "message": "Macro research.results fired 2 time(s) at runtime — live"
+    },
+    "604937bda63e3bbe": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:21417",
+      "message": "Macro research.report fired 2 time(s) at runtime — live"
+    },
+    "df93d0d0f307b688": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:21420",
+      "message": "Macro research.metrics fired 2 time(s) at runtime — live"
+    },
+    "75ae9b9899e3ee3e": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:21558",
+      "message": "Macro creative.create_work fired 2 time(s) at runtime — live"
+    },
+    "5f4b4137427f3aa1": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:21565",
+      "message": "Macro creative.profile fired 2 time(s) at runtime — live"
+    },
+    "499a2fdd6fd41c98": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:21566",
+      "message": "Macro creative.masterworks fired 2 time(s) at runtime — live"
+    },
+    "6530720dec0536db": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:21567",
+      "message": "Macro creative.metrics fired 2 time(s) at runtime — live"
+    },
+    "151a1f6b078f4be0": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:21680",
+      "message": "Macro cri.status fired 2 time(s) at runtime — live"
+    },
+    "14dd44c2b57d741f": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:21704",
+      "message": "Macro culture.values fired 2 time(s) at runtime — live"
+    },
+    "509ccfe3b0cad680": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:21705",
+      "message": "Macro culture.identity fired 2 time(s) at runtime — live"
+    },
+    "d1b8f4c541be8c63": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:21707",
+      "message": "Macro culture.stories fired 2 time(s) at runtime — live"
+    },
+    "7d30d65df406ca81": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:21710",
+      "message": "Macro culture.metrics fired 2 time(s) at runtime — live"
+    },
+    "2e6be8e2f58484e6": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:21923",
+      "message": "Macro dream.history fired 2 time(s) at runtime — live"
+    },
+    "06db1d19fb661f47": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:26987",
+      "message": "Macro dtu.search fired 2 time(s) at runtime — live"
+    },
+    "d44c65726dcc0030": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:27033",
+      "message": "Macro dtu.count fired 2 time(s) at runtime — live"
+    },
+    "f33a68f7edf1eb67": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:27044",
+      "message": "Macro dtu.export fired 2 time(s) at runtime — live"
+    },
+    "6dc02f34a7397ce5": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:27059",
+      "message": "Macro dtu.paginated fired 2 time(s) at runtime — live"
+    },
+    "548d5f5031685c64": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:27090",
+      "message": "Macro dtu.tier_change fired 2 time(s) at runtime — live"
+    },
+    "7caf8109cacc2461": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:27116",
+      "message": "Macro dtu.shadow_access fired 2 time(s) at runtime — live"
+    },
+    "63d69692cec60cce": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:30763",
+      "message": "Macro shield.metrics fired 2 time(s) at runtime — live"
+    },
+    "ddf14d200c9ca048": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:30767",
+      "message": "Macro shield.prophet fired 2 time(s) at runtime — live"
+    },
+    "8582c639f37df23f": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:30773",
+      "message": "Macro shield.surgeon fired 2 time(s) at runtime — live"
+    },
+    "746beb96f886ee4f": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:30782",
+      "message": "Macro shield.guardian fired 2 time(s) at runtime — live"
+    },
+    "409897b97a6a2954": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:30881",
+      "message": "Macro mesh.sync fired 2 time(s) at runtime — live"
+    },
+    "8471e91d8e137de1": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:30972",
+      "message": "Macro foundation.emergency.resolve fired 2 time(s) at runtime — live"
+    },
+    "8764ddc440488e41": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:31175",
+      "message": "Macro atlas.metrics fired 4 time(s) at runtime — live"
+    },
+    "8a686ff6f1fb0668": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:31235",
+      "message": "Macro cortex.metrics fired 2 time(s) at runtime — live"
+    },
+    "bf211b35ea117dbb": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:33102",
+      "message": "Macro spreadsheet.eval fired 2 time(s) at runtime — live"
+    },
+    "130ea3d3905d85ac": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:33187",
+      "message": "Macro slides.compile fired 2 time(s) at runtime — live"
+    },
+    "7a1af8b6a4cc0c4f": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:33218",
+      "message": "Macro compile.transpile fired 2 time(s) at runtime — live"
+    },
+    "209f02ac4fff0455": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:33248",
+      "message": "Macro legal.sign fired 2 time(s) at runtime — live"
+    },
+    "0be14497c59a905f": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34054",
+      "message": "Macro dtu.protocol_validate fired 2 time(s) at runtime — live"
+    },
+    "121b13263cc297c4": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34074",
+      "message": "Macro dtu.causal-link fired 2 time(s) at runtime — live"
+    },
+    "d4ffdd7893a5cbf4": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34093",
+      "message": "Macro dtu.causal-trace fired 2 time(s) at runtime — live"
+    },
+    "2ddbd21c98d61a69": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34123",
+      "message": "Macro dtu.confidence fired 2 time(s) at runtime — live"
+    },
+    "a223b25bb7851d10": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34560",
+      "message": "Macro settings.status fired 2 time(s) at runtime — live"
+    },
+    "d63ddce6fc2a9b6a": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34600",
+      "message": "Macro system.getStatus fired 2 time(s) at runtime — live"
+    },
+    "3eb91c6849024609": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34606",
+      "message": "Macro graph.visual fired 2 time(s) at runtime — live"
+    },
+    "1ad60f30c2912409": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34617",
+      "message": "Macro graph.stats fired 2 time(s) at runtime — live"
+    },
+    "7cf5f61d0e35881a": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34681",
+      "message": "Macro analytics.dashboard fired 2 time(s) at runtime — live"
+    },
+    "9494272877184b8d": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34690",
+      "message": "Macro analytics.growth fired 2 time(s) at runtime — live"
+    },
+    "13aa3c0e6e3f6771": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34699",
+      "message": "Macro analytics.density fired 2 time(s) at runtime — live"
+    },
+    "57bbed78d4bff618": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34708",
+      "message": "Macro analytics.citations fired 2 time(s) at runtime — live"
+    },
+    "0758d996c0b8910e": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34717",
+      "message": "Macro analytics.marketplace fired 2 time(s) at runtime — live"
+    },
+    "bbee001e9ca2c2cf": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34726",
+      "message": "Macro analytics.personal fired 2 time(s) at runtime — live"
+    },
+    "9e9abeebbd4b84e9": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34737",
+      "message": "Macro atlas.search fired 2 time(s) at runtime — live"
+    },
+    "7e37679aa13456bd": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34755",
+      "message": "Macro atlas.status fired 2 time(s) at runtime — live"
+    },
+    "0dac6c4dbf788ad3": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34791",
+      "message": "Macro events.list fired 4 time(s) at runtime — live"
+    },
+    "d9d7cb741c2c1c15": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34806",
+      "message": "Macro events.recent fired 2 time(s) at runtime — live"
+    },
+    "7bcad9a6cc48e885": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34810",
+      "message": "Macro events.log fired 2 time(s) at runtime — live"
+    },
+    "576525f37db745a8": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34825",
+      "message": "Macro events.paginated fired 2 time(s) at runtime — live"
+    },
+    "95d5bf5317c6c32c": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34842",
+      "message": "Macro daily.list fired 2 time(s) at runtime — live"
+    },
+    "a33cc7f2ed915f28": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34848",
+      "message": "Macro daily.get fired 2 time(s) at runtime — live"
+    },
+    "cff9241b1d0d1baf": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34859",
+      "message": "Macro reflection.list fired 2 time(s) at runtime — live"
+    },
+    "6d54fc4ed76bbef9": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34904",
+      "message": "Macro lattice.status fired 2 time(s) at runtime — live"
+    },
+    "04d261a5a1340fc5": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34910",
+      "message": "Macro lattice.stats fired 2 time(s) at runtime — live"
+    },
+    "3e97319421b8cfc7": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34916",
+      "message": "Macro scope.status fired 2 time(s) at runtime — live"
+    },
+    "b1e3b75f272cc950": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34930",
+      "message": "Macro scope.metrics fired 2 time(s) at runtime — live"
+    },
+    "8755a3b0af574a1f": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34941",
+      "message": "Macro scope.dtus fired 2 time(s) at runtime — live"
+    },
+    "cd2f93f360879f00": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34968",
+      "message": "Macro scope.overrides fired 2 time(s) at runtime — live"
+    },
+    "c4f68e56a40a534a": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34972",
+      "message": "Macro guidance.status fired 2 time(s) at runtime — live"
+    },
+    "d5083d5c07c9a6e7": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34976",
+      "message": "Macro guidance.suggestions fired 2 time(s) at runtime — live"
+    },
+    "38c67bea0094f239": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:35058",
+      "message": "Macro atlas.get fired 2 time(s) at runtime — live"
+    },
+    "332c45d4d530c561": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:35069",
+      "message": "Macro atlas.list fired 2 time(s) at runtime — live"
+    },
+    "24c2aa0638d7bc3b": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:35083",
+      "message": "Macro atlas.contradictions fired 2 time(s) at runtime — live"
+    },
+    "da2566c942b6f36d": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:35094",
+      "message": "Macro atlas.score-explain fired 2 time(s) at runtime — live"
+    },
+    "2c1b65c0a5dfbc17": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:35117",
+      "message": "Macro physics.models fired 2 time(s) at runtime — live"
+    },
+    "f2ab2f4d76eb7727": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:35126",
+      "message": "Macro agent.config fired 2 time(s) at runtime — live"
+    },
+    "e79c3017a782ba0c": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:35285",
+      "message": "Macro ai.embeddings fired 2 time(s) at runtime — live"
+    },
+    "856223470f1ac794": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:35296",
+      "message": "Macro ai.search fired 2 time(s) at runtime — live"
+    },
+    "729320b482abdb71": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:35311",
+      "message": "Macro ai.gaps fired 2 time(s) at runtime — live"
+    },
+    "a5a1ec904f0e2994": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:35324",
+      "message": "Macro brain.status fired 2 time(s) at runtime — live"
+    },
+    "3d49c54b763d2674": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:35337",
+      "message": "Macro brain.health fired 2 time(s) at runtime — live"
+    },
+    "d8c498df93361fae": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:35355",
+      "message": "Macro messaging.status fired 2 time(s) at runtime — live"
+    },
+    "4966aee0c4ac1337": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:35378",
+      "message": "Macro messaging.messages fired 2 time(s) at runtime — live"
+    },
+    "2ecb2e35910fa095": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:35400",
+      "message": "Macro messaging.connect fired 2 time(s) at runtime — live"
+    },
+    "9e922ef62299188d": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:35408",
+      "message": "Macro messaging.verify fired 2 time(s) at runtime — live"
+    },
+    "737388b6f0c07ff3": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:35418",
+      "message": "Macro heartbeat.status fired 2 time(s) at runtime — live"
+    },
+    "d3f0164c99382a1e": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:35478",
+      "message": "Macro social.profile fired 2 time(s) at runtime — live"
+    },
+    "125916c591ce9974": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:35488",
+      "message": "Macro social.discover fired 2 time(s) at runtime — live"
+    },
+    "b69bc22bc09d5b0d": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:35498",
+      "message": "Macro social.cited-by fired 2 time(s) at runtime — live"
+    },
+    "a1d3d90e32b92154": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:35509",
+      "message": "Macro social.share fired 2 time(s) at runtime — live"
+    },
+    "5e8aa9086f749c95": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:36598",
+      "message": "Macro auth.whoami fired 2 time(s) at runtime — live"
+    },
+    "ad67168546dbd464": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:36632",
+      "message": "Macro jobs.enqueue fired 2 time(s) at runtime — live"
+    },
+    "9ac6c3d70f625641": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:36640",
+      "message": "Macro jobs.get fired 2 time(s) at runtime — live"
+    },
+    "9d34ac669cd47fb4": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:36759",
+      "message": "Macro agent.list fired 6 time(s) at runtime — live"
+    },
+    "9737bb4266386f26": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:36829",
+      "message": "Macro source.list fired 2 time(s) at runtime — live"
+    },
+    "e990a9b200d23643": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:36835",
+      "message": "Macro source.get fired 2 time(s) at runtime — live"
+    },
+    "0e25b45175aae2cb": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:36915",
+      "message": "Macro global.queue fired 2 time(s) at runtime — live"
+    },
+    "0e0805f82660e8ba": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:36929",
+      "message": "Macro global.contributions fired 2 time(s) at runtime — live"
+    },
+    "65507560052f0ff4": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:40709",
+      "message": "Macro forge.sections fired 2 time(s) at runtime — live"
+    },
+    "1b6c56deebe900b5": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:40715",
+      "message": "Macro forge.validate fired 2 time(s) at runtime — live"
+    },
+    "0bded7ddf30042c0": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:42576",
+      "message": "Macro city.followStream fired 2 time(s) at runtime — live"
+    },
+    "c9d7cc6449bf2732": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:42582",
+      "message": "Macro city.unfollowStream fired 2 time(s) at runtime — live"
+    },
+    "924ec67685900e61": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:42593",
+      "message": "Macro city.getStream fired 2 time(s) at runtime — live"
+    },
+    "3fa5646456041a6f": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:44860",
+      "message": "Macro plugin.enable fired 2 time(s) at runtime — live"
+    },
+    "6b65d35eddeef034": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:44868",
+      "message": "Macro plugin.disable fired 2 time(s) at runtime — live"
+    },
+    "e097cd813768aa85": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:44967",
+      "message": "Macro council.list fired 2 time(s) at runtime — live"
+    },
+    "70b400a12a6055d0": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:44994",
+      "message": "Macro council.status fired 2 time(s) at runtime — live"
+    },
+    "5737271e6b3c0e54": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:45009",
+      "message": "Macro council.proposePromotion fired 2 time(s) at runtime — live"
+    },
+    "1b57eadbbb6c9ec6": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:45124",
+      "message": "Macro personas.get fired 2 time(s) at runtime — live"
+    },
+    "772023fbf4f67f67": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:45132",
+      "message": "Macro personas.stats fired 2 time(s) at runtime — live"
+    },
+    "f7ec991956fb4ca5": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:45846",
+      "message": "Macro marketplace.listings fired 2 time(s) at runtime — live"
+    },
+    "805040cc41598ac9": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:45865",
+      "message": "Macro marketplace.get fired 2 time(s) at runtime — live"
+    },
+    "35dd64e44b8070e1": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:57621",
+      "message": "Macro governor.increment fired 2 time(s) at runtime — live"
+    },
+    "cca6ca18e01525e7": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:59221",
+      "message": "Macro db.query fired 2 time(s) at runtime — live"
+    },
+    "9a84eaa540fbf28c": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:59267",
+      "message": "Macro redis.get fired 2 time(s) at runtime — live"
+    },
+    "e1edcb7585809024": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:59274",
+      "message": "Macro redis.set fired 2 time(s) at runtime — live"
+    },
+    "6e30359ba96b1c5c": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:59281",
+      "message": "Macro redis.del fired 2 time(s) at runtime — live"
+    },
+    "4b69c29f99efadda": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:87770",
+      "message": "Macro autotag.retro fired 2 time(s) at runtime — live"
+    },
+    "e91d74d246b3812c": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:87774",
+      "message": "Macro autotag.sync_lenses fired 2 time(s) at runtime — live"
+    },
+    "408eedd9f6c5a5da": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:87778",
+      "message": "Macro autotag.classify fired 2 time(s) at runtime — live"
+    },
+    "0009608ef25d2ab5": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:88780",
+      "message": "Macro admin.backup fired 2 time(s) at runtime — live"
+    },
+    "7f1f3bfd76e3f32e": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89025",
+      "message": "Macro refusal.strength fired 2 time(s) at runtime — live"
+    },
+    "cc98e0a8dcbb7d3f": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89033",
+      "message": "Macro refusal.composition fired 2 time(s) at runtime — live"
+    },
+    "ae28f3be1f037362": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89041",
+      "message": "Macro refusal.fields_for_world fired 2 time(s) at runtime — live"
+    },
+    "564dfec750ce889b": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89049",
+      "message": "Macro refusal.is_compound fired 2 time(s) at runtime — live"
+    },
+    "535e9913ce26f0b1": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89090",
+      "message": "Macro npc.schedule fired 2 time(s) at runtime — live"
+    },
+    "aaec47f53f059c6b": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89125",
+      "message": "Macro forward_sim.predictions_for_subject fired 2 time(s) at runtime — live"
+    },
+    "0ac53e3f043ed3dd": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89141",
+      "message": "Macro forward_sim.active fired 2 time(s) at runtime — live"
+    },
+    "65047e2c9bcad6ec": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89155",
+      "message": "Macro dream.recent_for_player fired 2 time(s) at runtime — live"
+    },
+    "e0d9babc1efff5e3": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89173",
+      "message": "Macro dream.list_for_player fired 2 time(s) at runtime — live"
+    },
+    "442ff22e7b02ffda": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89193",
+      "message": "Macro lattice.drift_alert fired 2 time(s) at runtime — live"
+    },
+    "b98cc52002c20af5": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89227",
+      "message": "Macro embodied.signals_for_world fired 2 time(s) at runtime — live"
+    },
+    "800ec84a265e2963": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89252",
+      "message": "Macro scars.list fired 2 time(s) at runtime — live"
+    },
+    "5685dffa93157079": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89266",
+      "message": "Macro scars.record fired 2 time(s) at runtime — live"
+    },
+    "577f977854819847": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89286",
+      "message": "Macro mount.bond_event fired 2 time(s) at runtime — live"
+    },
+    "265bf0048c76af92": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89314",
+      "message": "Macro mount.bond_state fired 2 time(s) at runtime — live"
+    },
+    "c699b67cf135a1b5": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89338",
+      "message": "Macro fidelity.drift fired 2 time(s) at runtime — live"
+    },
+    "031467ebc77e3eef": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89369",
+      "message": "Macro fidelity.summary fired 2 time(s) at runtime — live"
+    },
+    "4e37fcb094aa34b7": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89463",
+      "message": "Macro kingdom.publish_decree_recipe fired 2 time(s) at runtime — live"
+    },
+    "a5c098ef03ad7f05": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89562",
+      "message": "Macro reflex.status fired 2 time(s) at runtime — live"
+    },
+    "083c47487e84b7f4": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89569",
+      "message": "Macro reflex.recent_proposals fired 2 time(s) at runtime — live"
+    },
+    "59afafdd9fbda696": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89597",
+      "message": "Macro semantic.search_thoughts fired 2 time(s) at runtime — live"
+    },
+    "cf7ad709f187f11a": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89626",
+      "message": "Macro agent.persist fired 2 time(s) at runtime — live"
+    },
+    "38a6a274b2555376": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89653",
+      "message": "Macro agent.list_persistent fired 2 time(s) at runtime — live"
+    },
+    "c6b89a9288ae9362": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89674",
+      "message": "Macro lens.spatial_at fired 2 time(s) at runtime — live"
+    },
+    "6be9476c2bf3085a": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89702",
+      "message": "Macro lens.set_spatial_anchor fired 2 time(s) at runtime — live"
+    },
+    "a9f0e81bc305e753": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89763",
+      "message": "Macro federation.commune_join fired 2 time(s) at runtime — live"
+    },
+    "eed9459259e10d79": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89847",
+      "message": "Macro macro_dag.validate fired 2 time(s) at runtime — live"
+    },
+    "088d614bfb9239c8": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89854",
+      "message": "Macro macro_dag.describe fired 2 time(s) at runtime — live"
+    },
+    "c0f1f40f42da6b36": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89861",
+      "message": "Macro macro_dag.run fired 2 time(s) at runtime — live"
+    },
+    "7d4728d9783bd3a4": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89914",
+      "message": "Macro npc.lie_probability fired 2 time(s) at runtime — live"
+    },
+    "e771f4c55fce4ff9": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89956",
+      "message": "Macro deity.compose fired 2 time(s) at runtime — live"
+    },
+    "c892169e02d68de7": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:89983",
+      "message": "Macro deity.list fired 2 time(s) at runtime — live"
+    },
+    "429a553c1fb6f5f2": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90008",
+      "message": "Macro deity.tone_vector fired 2 time(s) at runtime — live"
+    },
+    "b6ba41c7c5044f70": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90084",
+      "message": "Macro federation.inbox_receive fired 2 time(s) at runtime — live"
+    },
+    "9177d63fbc459fec": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90213",
+      "message": "Macro reflex.propose_fix fired 2 time(s) at runtime — live"
+    },
+    "e5a20d576ad5359d": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90275",
+      "message": "Macro reflex.autofix_queue fired 2 time(s) at runtime — live"
+    },
+    "01ffeae0a0dc85a8": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90313",
+      "message": "Macro dream.publish fired 2 time(s) at runtime — live"
+    },
+    "6da0d76dc8f2d162": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90351",
+      "message": "Macro npc_autobiography.compose fired 2 time(s) at runtime — live"
+    },
+    "6530f0a60fa626d1": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90361",
+      "message": "Macro npc_autobiography.list_for_npc fired 2 time(s) at runtime — live"
+    },
+    "506a6116c7e295cf": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90372",
+      "message": "Macro npc_persona.package fired 2 time(s) at runtime — live"
+    },
+    "f386cf6cd579fbf7": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90384",
+      "message": "Macro npc_persona.install fired 2 time(s) at runtime — live"
+    },
+    "c82cb15c59694537": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90396",
+      "message": "Macro npc_persona.list_for_user fired 2 time(s) at runtime — live"
+    },
+    "b82424206ad99774": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90411",
+      "message": "Macro inheritance.open_listing fired 2 time(s) at runtime — live"
+    },
+    "73316c139d2b5054": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90434",
+      "message": "Macro inheritance.claim_slot fired 2 time(s) at runtime — live"
+    },
+    "d82cb690aa9b2fd7": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90454",
+      "message": "Macro inheritance.list_open fired 2 time(s) at runtime — live"
+    },
+    "45619ce58fa9f3dd": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90471",
+      "message": "Macro compression_art.shape_for fired 2 time(s) at runtime — live"
+    },
+    "3b2b04cc78f221f0": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90493",
+      "message": "Macro compression_art.list_for_user fired 2 time(s) at runtime — live"
+    },
+    "43a99b151fc86ace": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90534",
+      "message": "Macro spectator.heartbeat fired 2 time(s) at runtime — live"
+    },
+    "a37b451a79fa930a": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90557",
+      "message": "Macro replay.recording_for_world fired 2 time(s) at runtime — live"
+    },
+    "09300e021ebfcd71": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90644",
+      "message": "Macro firm.post fired 2 time(s) at runtime — live"
+    },
+    "9b72d132f17aa8d9": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90664",
+      "message": "Macro goddess.compose_now fired 2 time(s) at runtime — live"
+    },
+    "2079703b4a5420c0": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90673",
+      "message": "Macro goddess.recent fired 2 time(s) at runtime — live"
+    },
+    "118e0093e2cfef3d": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90683",
+      "message": "Macro betting.open_market fired 2 time(s) at runtime — live"
+    },
+    "e496b2a3464810cb": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90693",
+      "message": "Macro betting.place_bet fired 2 time(s) at runtime — live"
+    },
+    "5c2e264ca2ffc528": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90705",
+      "message": "Macro betting.resolve_market fired 2 time(s) at runtime — live"
+    },
+    "5b4bedfd59b81ec6": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90715",
+      "message": "Macro betting.list_open fired 2 time(s) at runtime — live"
+    },
+    "35051027dd7d023c": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90724",
+      "message": "Macro betting.my_positions fired 2 time(s) at runtime — live"
+    },
+    "2ec2ff1525841059": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90737",
+      "message": "Macro observer.compose_report fired 2 time(s) at runtime — live"
+    },
+    "2cf097710e4c51d2": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90773",
+      "message": "Macro forecast.compose fired 2 time(s) at runtime — live"
+    },
+    "3a93feeea52e19f8": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90784",
+      "message": "Macro forecast.recent fired 2 time(s) at runtime — live"
+    },
+    "ff64ee0465ab0341": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90795",
+      "message": "Macro forecast.multiDay fired 2 time(s) at runtime — live"
+    },
+    "184b58715e75c20f": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90805",
+      "message": "Macro forecast.hourly fired 2 time(s) at runtime — live"
+    },
+    "301d1247164c67c3": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90815",
+      "message": "Macro forecast.regional fired 2 time(s) at runtime — live"
+    },
+    "5900c2c9fe74e4cf": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90825",
+      "message": "Macro forecast.accuracy fired 2 time(s) at runtime — live"
+    },
+    "380d1c73c08b043e": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90835",
+      "message": "Macro forecast.archive fired 2 time(s) at runtime — live"
+    },
+    "74555b2a0cd72a01": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90845",
+      "message": "Macro forecast.subscribeAlert fired 2 time(s) at runtime — live"
+    },
+    "63121d7215f104fc": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90855",
+      "message": "Macro forecast.listAlerts fired 2 time(s) at runtime — live"
+    },
+    "db829f0b91b611d0": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90866",
+      "message": "Macro forecast.unsubscribeAlert fired 2 time(s) at runtime — live"
+    },
+    "e336ccd4476c4e2c": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90876",
+      "message": "Macro forecast.checkAlerts fired 2 time(s) at runtime — live"
+    },
+    "3dca3c627318a7a2": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90967",
+      "message": "Macro sponsorship.create fired 2 time(s) at runtime — live"
+    },
+    "48c7844bbae455ca": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:90991",
+      "message": "Macro sponsorship.cancel fired 2 time(s) at runtime — live"
+    },
+    "4f72129e9c018952": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91006",
+      "message": "Macro sponsorship.list_for_user fired 2 time(s) at runtime — live"
+    },
+    "782cceed79cf6a74": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91026",
+      "message": "Macro staking.stake fired 2 time(s) at runtime — live"
+    },
+    "d4a0f59774ba284d": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91047",
+      "message": "Macro staking.redeem fired 2 time(s) at runtime — live"
+    },
+    "cf22b22d22eec717": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91067",
+      "message": "Macro staking.list_for_user fired 2 time(s) at runtime — live"
+    },
+    "503e136320932feb": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91084",
+      "message": "Macro insurance.write_contract fired 2 time(s) at runtime — live"
+    },
+    "a0ece97c1e6c6b08": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91102",
+      "message": "Macro insurance.revoke fired 2 time(s) at runtime — live"
+    },
+    "ed1e9907b006a491": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91117",
+      "message": "Macro insurance.list_for_user fired 2 time(s) at runtime — live"
+    },
+    "d34b244e9e0a4884": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91141",
+      "message": "Macro bounty.stake fired 2 time(s) at runtime — live"
+    },
+    "ae4f13cdefe43877": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91156",
+      "message": "Macro bounty.list_open fired 2 time(s) at runtime — live"
+    },
+    "d9f83ca8174e0915": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91171",
+      "message": "Macro bounty.resolve fired 2 time(s) at runtime — live"
+    },
+    "3e45658e14336ef8": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91217",
+      "message": "Macro psyops.scan_skill_divergence fired 2 time(s) at runtime — live"
+    },
+    "f83490520bf945bd": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91262",
+      "message": "Macro psyops.list_alerts fired 2 time(s) at runtime — live"
+    },
+    "cec6c77b3fbe65bc": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91278",
+      "message": "Macro psyops.quarantine fired 2 time(s) at runtime — live"
+    },
+    "c39ece35a7be365f": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91292",
+      "message": "Macro sandbox.provision fired 2 time(s) at runtime — live"
+    },
+    "c761d4f7a10efa07": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91310",
+      "message": "Macro sandbox.kill fired 2 time(s) at runtime — live"
+    },
+    "4d79c11bba2a01eb": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91320",
+      "message": "Macro sandbox.list fired 2 time(s) at runtime — live"
+    },
+    "f7d5c3e43e37babc": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91338",
+      "message": "Macro dtu_sync.register_device fired 2 time(s) at runtime — live"
+    },
+    "352e5db2e3252a6e": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91354",
+      "message": "Macro dtu_sync.list_devices fired 2 time(s) at runtime — live"
+    },
+    "990f3a2aed8be001": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91368",
+      "message": "Macro dtu_sync.force_sync fired 2 time(s) at runtime — live"
+    },
+    "d63241ef957b1331": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91507",
+      "message": "Macro classroom.submit_homework fired 2 time(s) at runtime — live"
+    },
+    "cc3b75b97e68b9e0": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91602",
+      "message": "Macro classroom.leave_cohort fired 2 time(s) at runtime — live"
+    },
+    "982484e005d4f87a": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91661",
+      "message": "Macro sub_world.list fired 2 time(s) at runtime — live"
+    },
+    "bcbd608b194c1321": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91674",
+      "message": "Macro therapy.compose_field fired 2 time(s) at runtime — live"
+    },
+    "b6e4bc19e8038d0c": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91697",
+      "message": "Macro therapy.active_fields fired 2 time(s) at runtime — live"
+    },
+    "5102296f9d48b0f0": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91712",
+      "message": "Macro therapy.deactivate fired 2 time(s) at runtime — live"
+    },
+    "9e8bc6b32141e12d": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91730",
+      "message": "Macro deity.pilgrimage fired 2 time(s) at runtime — live"
+    },
+    "4ebe5145bb99ea06": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:91749",
+      "message": "Macro deity.pilgrim_log fired 2 time(s) at runtime — live"
+    },
+    "66750f9fb17d5385": {
       "detector": "macro-usage",
       "id": "dispatcher_reach",
       "severity": "info",
       "kind": "static",
-      "location": "server/routes/domain.js:225",
-      "message": "Open dispatcher detected — all macros reachable via server/routes/domain.js:225"
+      "location": "server/routes/domain.js:227",
+      "message": "Open dispatcher detected — all macros reachable via server/routes/domain.js:227"
     },
     "6b733168ae73bfa4": {
       "detector": "macro-usage",
@@ -193,7 +2041,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 266 lenses · 0 issues found"
+      "message": "Scanned 267 lenses · 0 issues found"
     },
     "2f600c033f853e95": {
       "detector": "lens-decorative-state",
@@ -201,7 +2049,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 266 lenses · 0 decorative-state issues found"
+      "message": "Scanned 267 lenses · 0 decorative-state issues found"
     },
     "bc7153daf3c21158": {
       "detector": "dtu-lineage",
@@ -217,7 +2065,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "133 heartbeats registered (static)"
+      "message": "132 heartbeats registered (static)"
     },
     "f388b3d47e28227e": {
       "detector": "secret-leak",
@@ -225,7 +2073,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 10921 files; flagged 0"
+      "message": "Scanned 11996 files; flagged 0"
     },
     "6954d635fa3b8074": {
       "detector": "performance-hotspot",
@@ -233,30 +2081,86 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 5107 server files"
+      "message": "Scanned 5979 server files"
     },
-    "ee9eb15cff6c4bab": {
+    "64663e20fddb38b9": {
+      "detector": "performance-hotspot",
+      "id": "perf_uncaught_sql_loop",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/fork.js:1141",
+      "message": "Likely N+1 — db.prepare(...).get/all inside a for/while loop"
+    },
+    "23961cd17d0cb6d4": {
       "detector": "performance-hotspot",
       "id": "perf_select_star_hot",
       "severity": "low",
       "kind": "static",
-      "location": "server/domains/vault.js:659",
+      "location": "server/domains/vault.js:662",
       "message": "SELECT * full-scan or JOIN — project explicit columns"
     },
-    "e6f23e982bbfc502": {
+    "7c9e542d892c207e": {
       "detector": "performance-hotspot",
       "id": "perf_unbounded_cache_growth",
       "severity": "low",
       "kind": "static",
-      "location": "server/emergent/idle-behavior.js:45",
+      "location": "server/emergent/idle-behavior.js:47",
       "message": "Module-level Map / Set with no eviction path (architectural review)"
     },
-    "b4a134592e3552b0": {
+    "e149cfc00ea99426": {
+      "detector": "performance-hotspot",
+      "id": "perf_uncaught_sql_loop",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/social-layer.js:1006",
+      "message": "Likely N+1 — db.prepare(...).get/all inside a for/while loop"
+    },
+    "9175f1788581465c": {
+      "detector": "performance-hotspot",
+      "id": "perf_uncaught_sql_loop",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/social-layer.js:1912",
+      "message": "Likely N+1 — db.prepare(...).get/all inside a for/while loop"
+    },
+    "f94d5d009297eadc": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/background-governor.js:147",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "46ad7a34f183d938": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/background-governor.js:202",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "c78135614e8da955": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/background-governor.js:576",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "5a7af29c57297091": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/background-governor.js:598",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "2a750bbc468763a0": {
       "detector": "performance-hotspot",
       "id": "perf_console_log_production",
       "severity": "low",
       "kind": "static",
-      "location": "server/lib/chat-agent.js:1015",
+      "location": "server/lib/chat-agent.js:2378",
       "message": "console.log left in production code — drop or replace with logger"
     },
     "d6c211622a635350": {
@@ -283,20 +2187,180 @@
       "location": "server/lib/concordia-world-field.js:114",
       "message": "Module-level Map / Set with no eviction path (architectural review)"
     },
-    "d91fd4599d48b029": {
+    "08dc1cd446805172": {
       "detector": "performance-hotspot",
       "id": "perf_sync_fs_in_handler",
       "severity": "high",
       "kind": "static",
-      "location": "server/lib/conkay/occ-bridge.js:26",
+      "location": "server/lib/conkay/assembly/cad-skin.js:38",
       "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
     },
-    "7f5c23ace13bb502": {
+    "0f97610e4af83c58": {
       "detector": "performance-hotspot",
       "id": "perf_sync_fs_in_handler",
       "severity": "high",
       "kind": "static",
-      "location": "server/lib/conkay/occ-bridge.js:29",
+      "location": "server/lib/conkay/cfd/run-store.js:29",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "193575fb2ed4b595": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/cfd/run-store.js:51",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "5928bb06e54c8988": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/cfd/run-store.js:66",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "c7d3fb5b1b793db7": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/cfd/run-store.js:68",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "1739ce5a83787dc2": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/cfd/run-store.js:73",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "eb335284a43af917": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/cfd/run-store.js:82",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "c7141857c509b87d": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/cfd/run-store.js:86",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "4d4e4aa70c7051ca": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/cfd/run-store.js:100",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "650f5c85007ee614": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/cfd/run-store.js:106",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "2f7fd1273ac99aca": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/cfd/run-store.js:109",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "8c729b63222cf666": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/cfd/run-store.js:122",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "30d31b8c67e6f333": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/chat/live.js:27",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "7763e4f37a15d161": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/chat/live.js:33",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "42c7748ec3a142c6": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/chat/live.js:51",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "a6eeb4d592bc962c": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/chat/live.js:62",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "b6d984c0d8ef6624": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/chat/live.js:63",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "aef6a6a66a58edb0": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/chat/live.js:75",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "e8deb36fa8458338": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/chat/live.js:76",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "eb319326705ca697": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/fea/calculix.js:57",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "6c7885ea5f2a696b": {
+      "detector": "performance-hotspot",
+      "id": "perf_unbounded_cache_growth",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/lib/conkay/knowledge/extensions/index.js:13",
+      "message": "Module-level Map / Set with no eviction path (architectural review)"
+    },
+    "600920ce3f9af3c3": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/occ-bridge.js:27",
       "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
     },
     "005198882c94eea0": {
@@ -307,29 +2371,69 @@
       "location": "server/lib/conkay/occ-bridge.js:30",
       "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
     },
-    "3e9f536aa9e22cdf": {
+    "76e706f641da2331": {
       "detector": "performance-hotspot",
       "id": "perf_sync_fs_in_handler",
       "severity": "high",
       "kind": "static",
-      "location": "server/lib/conkay/occ-bridge.js:66",
+      "location": "server/lib/conkay/occ-bridge.js:31",
       "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
     },
-    "5157f9d5232ae22e": {
+    "fd3211851eedf4c6": {
       "detector": "performance-hotspot",
       "id": "perf_sync_fs_in_handler",
       "severity": "high",
       "kind": "static",
-      "location": "server/lib/conkay/occ-bridge.js:74",
+      "location": "server/lib/conkay/occ-bridge.js:85",
       "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
     },
-    "d686417fe87e53ec": {
+    "b885ae105694326b": {
       "detector": "performance-hotspot",
       "id": "perf_sync_fs_in_handler",
       "severity": "high",
       "kind": "static",
-      "location": "server/lib/conkay/occ-bridge.js:317",
+      "location": "server/lib/conkay/occ-bridge.js:93",
       "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "3d96e735848dc6aa": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/occ-bridge.js:338",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "9b28e58148b456ae": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/physics/solvers/aero-cfd.js:82",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "714e7857fa04ee2c": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/physics/solvers/fea-bone-stance-stress.js:272",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "c420bf4a66905942": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/physics/solvers/fea-bone-stance-stress.js:276",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "a0ee4a8545f90265": {
+      "detector": "performance-hotspot",
+      "id": "perf_unbounded_cache_growth",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/lib/conkay/showcase/index.js:403",
+      "message": "Module-level Map / Set with no eviction path (architectural review)"
     },
     "eb59e6a9c41294c4": {
       "detector": "performance-hotspot",
@@ -363,12 +2467,12 @@
       "location": "server/lib/conkay/verticals/prosthetics.js:228",
       "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
     },
-    "3b41241e039fc818": {
+    "2fb574c4cb5f719b": {
       "detector": "performance-hotspot",
       "id": "perf_unbounded_cache_growth",
       "severity": "low",
       "kind": "static",
-      "location": "server/lib/esign-links.js:21",
+      "location": "server/lib/esign-links.js:22",
       "message": "Module-level Map / Set with no eviction path (architectural review)"
     },
     "0aa83a9c3da861d3": {
@@ -409,6 +2513,46 @@
       "severity": "high",
       "kind": "static",
       "location": "server/lib/lease-system.js:41",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "3209165a32f7b1f6": {
+      "detector": "performance-hotspot",
+      "id": "perf_uncaught_sql_loop",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/long-task.js:435",
+      "message": "Likely N+1 — db.prepare(...).get/all inside a for/while loop"
+    },
+    "2d071f83c950d997": {
+      "detector": "performance-hotspot",
+      "id": "perf_select_star_hot",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/lib/media-index-store.js:64",
+      "message": "SELECT * full-scan or JOIN — project explicit columns"
+    },
+    "b9c953af93dc5259": {
+      "detector": "performance-hotspot",
+      "id": "perf_uncaught_sql_loop",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/npc-life.js:116",
+      "message": "Likely N+1 — db.prepare(...).get/all inside a for/while loop"
+    },
+    "01faf9fb9c9199e1": {
+      "detector": "performance-hotspot",
+      "id": "perf_unbounded_cache_growth",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/lib/npc-simulator.js:1342",
+      "message": "Module-level Map / Set with no eviction path (architectural review)"
+    },
+    "400bc2b64f1fd76a": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/openstax-lookup.js:140",
       "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
     },
     "08aa79c78022e156": {
@@ -491,6 +2635,62 @@
       "location": "server/lib/runtime/supervisor-tree.js:68",
       "message": "SELECT * full-scan or JOIN — project explicit columns"
     },
+    "eec82ece0050515f": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/silver/registry.js:181",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "2a485ba3b19bad04": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/silver/registry.js:193",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "6050cd2603bf2344": {
+      "detector": "performance-hotspot",
+      "id": "perf_select_star_hot",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/lib/social-persist.js:308",
+      "message": "SELECT * full-scan or JOIN — project explicit columns"
+    },
+    "50d5fb6056d713b7": {
+      "detector": "performance-hotspot",
+      "id": "perf_select_star_hot",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/lib/social-persist.js:340",
+      "message": "SELECT * full-scan or JOIN — project explicit columns"
+    },
+    "db5dcb4ebcd89e15": {
+      "detector": "performance-hotspot",
+      "id": "perf_select_star_hot",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/lib/social-persist.js:357",
+      "message": "SELECT * full-scan or JOIN — project explicit columns"
+    },
+    "5c6d64570902ceba": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/state-file-write.js:42",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "149fde70858e332c": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/wasm-code-exec.js:87",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
     "8fd10beee4224a3d": {
       "detector": "performance-hotspot",
       "id": "perf_unbounded_cache_growth",
@@ -515,13 +2715,101 @@
       "location": "server/lib/world-lore-present.js:29",
       "message": "Module-level Map / Set with no eviction path (architectural review)"
     },
+    "d4e155ced2ebe8c0": {
+      "detector": "performance-hotspot",
+      "id": "perf_console_log_production",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/routes/chat-agent-stream.js:93",
+      "message": "console.log left in production code — drop or replace with logger"
+    },
+    "e5473cbfdc1ef8a7": {
+      "detector": "performance-hotspot",
+      "id": "perf_console_log_production",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/routes/chat-agent-stream.js:105",
+      "message": "console.log left in production code — drop or replace with logger"
+    },
+    "1e2984e27eaf90be": {
+      "detector": "performance-hotspot",
+      "id": "perf_console_log_production",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/routes/chat-agent-stream.js:157",
+      "message": "console.log left in production code — drop or replace with logger"
+    },
+    "e17401490a19202f": {
+      "detector": "performance-hotspot",
+      "id": "perf_unbounded_cache_growth",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/routes/conkay-demo.js:22",
+      "message": "Module-level Map / Set with no eviction path (architectural review)"
+    },
+    "dab80ac919181bef": {
+      "detector": "performance-hotspot",
+      "id": "perf_unbounded_cache_growth",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/routes/conkay-demo.js:24",
+      "message": "Module-level Map / Set with no eviction path (architectural review)"
+    },
+    "839ecd73c2417573": {
+      "detector": "performance-hotspot",
+      "id": "perf_uncaught_sql_loop",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/routes/social-groups.js:543",
+      "message": "Likely N+1 — db.prepare(...).get/all inside a for/while loop"
+    },
+    "ab0577af0091c631": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/routes/studio.js:417",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "75aaf0c9432089cb": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/routes/studio.js:462",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "6107c85cff800bd7": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/routes/studio.js:497",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "3d7d366955be7b57": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/routes/studio.js:510",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
+    "f2f887ae0cd709e7": {
+      "detector": "performance-hotspot",
+      "id": "perf_sync_fs_in_handler",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/routes/studio.js:530",
+      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
+    },
     "3b5cf89535467e0d": {
       "detector": "historical-trend",
       "id": "historical_trend_summary",
       "severity": "info",
       "kind": "historical",
       "location": null,
-      "message": "Only 3 history rows — need ≥5 for slope analysis"
+      "message": "Only 0 history rows — need ≥5 for slope analysis"
     },
     "121dff869de3b46a": {
       "detector": "predictive-growth",
@@ -529,7 +2817,7 @@
       "severity": "info",
       "kind": "predictive",
       "location": null,
-      "message": "Only 2 runtime samples — need ≥5 for projection"
+      "message": "Only 1 runtime samples — need ≥5 for projection"
     },
     "7d25275889c77630": {
       "detector": "architectural-hub",
@@ -537,7 +2825,15 @@
       "severity": "info",
       "kind": "architectural",
       "location": null,
-      "message": "Scanned 5107 server modules · 0 hubs · 0 hub-of-hubs · 0 cycles"
+      "message": "Scanned 5979 server modules · 0 hubs · 0 hub-of-hubs · 0 cycles"
+    },
+    "8513a51e29356d61": {
+      "detector": "architectural-hub",
+      "id": "architectural_leaf_utility",
+      "severity": "info",
+      "kind": "architectural",
+      "location": "server/lib/conkay/physics/registry.js",
+      "message": "Module server/lib/conkay/physics/registry.js fan-in=84 fan-out=0 (leaf utility — wide use is by design)"
     },
     "e9e6b86b11f791e2": {
       "detector": "architectural-hub",
@@ -553,7 +2849,7 @@
       "severity": "info",
       "kind": "architectural",
       "location": "server/lib/lru-map.js",
-      "message": "Module server/lib/lru-map.js fan-in=102 fan-out=0 (leaf utility — wide use is by design)"
+      "message": "Module server/lib/lru-map.js fan-in=103 fan-out=0 (leaf utility — wide use is by design)"
     },
     "7d45f7641b3fc7f5": {
       "detector": "architectural-hub",
@@ -561,7 +2857,15 @@
       "severity": "info",
       "kind": "architectural",
       "location": "server/logger.js",
-      "message": "Module server/logger.js fan-in=337 fan-out=0 (leaf utility — wide use is by design)"
+      "message": "Module server/logger.js fan-in=350 fan-out=0 (leaf utility — wide use is by design)"
+    },
+    "43d0fcb840e383e7": {
+      "detector": "fake-data",
+      "id": "fake_ident_in_production",
+      "severity": "info",
+      "kind": "static",
+      "location": "concord-frontend/components/platform/ScopeControls.tsx:170",
+      "message": "Production reference to identifier suggesting fake data: placeholderData"
     },
     "e8ca0dab4cb5f073": {
       "detector": "fake-data",
@@ -569,7 +2873,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "1271 unit test(s) mock production modules — candidates for fixture-loader migration. Per-mock findings suppressed (each is a legitimate test isolation; migration is a test-PR concern)."
+      "message": "1129 unit test(s) mock production modules — candidates for fixture-loader migration. Per-mock findings suppressed (each is a legitimate test isolation; migration is a test-PR concern)."
     },
     "efc9d1d4b9d4111b": {
       "detector": "frontend-fake-data",
@@ -577,46 +2881,46 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3618 frontend file(s) under app/lenses + components; flagged 5"
+      "message": "Scanned 3707 frontend file(s) under app/lenses + components; flagged 5"
     },
-    "5eb4026d2319bef2": {
+    "25c84f89fd673426": {
       "detector": "frontend-fake-data",
       "id": "placeholder_content_weak",
       "severity": "info",
       "kind": "static",
-      "location": "concord-frontend/app/lenses/dtus/page.tsx:67",
+      "location": "concord-frontend/app/lenses/dtus/page.tsx:65",
       "message": "Placeholder-sounding content rendered as real: \"placeholder\" in const el = document.querySelector<HTMLInputElement>('input[placeholder^=\"Search DTUs\"]');"
     },
-    "6290446176172202": {
+    "55aa9aaf7a1a82c6": {
       "detector": "frontend-fake-data",
       "id": "placeholder_content_weak",
       "severity": "info",
       "kind": "static",
-      "location": "concord-frontend/app/lenses/hypothesis/page.tsx:47",
+      "location": "concord-frontend/app/lenses/hypothesis/page.tsx:42",
       "message": "Placeholder-sounding content rendered as real: \"placeholder\" in const el = document.querySelector<HTMLTextAreaElement>('textarea[placeholder^=\"A falsifiable claim\"]');"
     },
-    "f8d0c117941dbb4a": {
+    "e09d7190a1fd0207": {
       "detector": "frontend-fake-data",
       "id": "placeholder_content_weak",
       "severity": "info",
       "kind": "static",
-      "location": "concord-frontend/app/lenses/literary/page.tsx:46",
+      "location": "concord-frontend/app/lenses/literary/page.tsx:43",
       "message": "Placeholder-sounding content rendered as real: \"placeholder\" in const el = document.querySelector<HTMLInputElement>('input[placeholder^=\"Search themes\"]');"
     },
-    "30b2f45d2de2fe45": {
+    "e97fad097377926c": {
       "detector": "frontend-fake-data",
       "id": "placeholder_content_weak",
       "severity": "info",
       "kind": "static",
-      "location": "concord-frontend/app/lenses/productivity/page.tsx:76",
+      "location": "concord-frontend/app/lenses/productivity/page.tsx:71",
       "message": "Placeholder-sounding content rendered as real: \"placeholder\" in const el = document.querySelector<HTMLInputElement>('input[placeholder^=\"submit report\"]');"
     },
-    "d9ae05ed72a750c1": {
+    "f03cb1b306fbe36a": {
       "detector": "frontend-fake-data",
       "id": "placeholder_content_strong",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/app/lenses/ux-suite/page.tsx:95",
+      "location": "concord-frontend/app/lenses/ux-suite/page.tsx:93",
       "message": "Placeholder-sounding content rendered as real: \"mock data\" in subtitle={`${COMPONENTS.length} absorbed UX components, each wired to where it runs. No mock data.`}"
     },
     "2d470ae36f577f2e": {
@@ -625,7 +2929,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3618 frontend file(s) under app/lenses + components; flagged 0"
+      "message": "Scanned 3707 frontend file(s) under app/lenses + components; flagged 0"
     },
     "5fc62141c912ecc8": {
       "detector": "unused-destructured-param",
@@ -633,7 +2937,71 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 6983 file(s); 6783 had analyzable function signatures; flagged 24"
+      "message": "Scanned 7673 file(s); 7458 had analyzable function signatures; flagged 35"
+    },
+    "4bcc58b0ececb4aa": {
+      "detector": "unused-destructured-param",
+      "id": "unused_destructured_param",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/chat/socket-session.js:55",
+      "message": "`persistSocketChatTurn` destructures `model` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the pre"
+    },
+    "4d1b74116677e13b": {
+      "detector": "unused-destructured-param",
+      "id": "unused_destructured_param",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/conkay/compiler/car-from-library.js:500",
+      "message": "`placeElectric` destructures `byId` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the pre-fix anal"
+    },
+    "9c4bc98d307a4568": {
+      "detector": "unused-destructured-param",
+      "id": "unused_destructured_param",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/conkay/physics/solvers/actuation-thermal-budget.js:107",
+      "message": "`thermalBudgetSingle` destructures `initialTempK` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as th"
+    },
+    "7557ca3fca987f5d": {
+      "detector": "unused-destructured-param",
+      "id": "unused_destructured_param",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/conkay/physics/solvers/gait-capture-point-reachability.js:36",
+      "message": "`capturePointReachability` destructures `icpVel` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the"
+    },
+    "fa11ec1f1d28e7f9": {
+      "detector": "unused-destructured-param",
+      "id": "unused_destructured_param",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/conkay/physics/solvers/gait-capture-point-reachability.js:80",
+      "message": "`capturePointReachabilityMultiStep` destructures `stepLength` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same"
+    },
+    "0485ec4fedf26391": {
+      "detector": "unused-destructured-param",
+      "id": "unused_destructured_param",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/conkay/physics/solvers/gait-footstep-plan.js:56",
+      "message": "`gaitFootstepPlan` destructures `supportFoot` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the pr"
+    },
+    "912d3001f084422c": {
+      "detector": "unused-destructured-param",
+      "id": "unused_destructured_param",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/conkay/physics/solvers/stability-dynamic.js:201",
+      "message": "`stabilityDynamic` destructures `mass` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the pre-fix a"
+    },
+    "23ac41e89373c7d2": {
+      "detector": "unused-destructured-param",
+      "id": "unused_destructured_param",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/emergents/quality/creation-gate.js:177",
+      "message": "`maybeCritique` destructures `kind` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the pre-fix anal"
     },
     "09c91017cad5e3f0": {
       "detector": "unused-destructured-param",
@@ -779,6 +3147,14 @@
       "location": "server/lib/runtime/supervisor-tree.js:121",
       "message": "`collectHierarchicalSupervisor` destructures `dispatchMCP` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same sh"
     },
+    "40fd5d50a7022a94": {
+      "detector": "unused-destructured-param",
+      "id": "unused_destructured_param",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/silver/report.js:12",
+      "message": "`renderGapReport` destructures `precisionSample` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the"
+    },
     "4a77db05f745d7f5": {
       "detector": "unused-destructured-param",
       "id": "unused_destructured_param",
@@ -809,15 +3185,23 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 4206 frontend file(s); 1475 called lensRun(); flagged 0; 43 candidate read(s) suppressed because the backend macro's return shape is flat or unknown (not provably dead)"
+      "message": "Scanned 4455 frontend file(s); 1508 called lensRun(); flagged 0; 43 candidate read(s) suppressed because the backend macro's return shape is flat or unknown (not provably dead)"
     },
-    "ebf73f3859bedcdd": {
+    "ce5742f32d9948e6": {
       "detector": "resource-leak",
-      "id": "high_settimeout_density",
-      "severity": "info",
+      "id": "listener_without_remove",
+      "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/chat/ChatWorkspacePanel.tsx:1",
-      "message": "9 setTimeout calls in this file — sanity-check for runaway recursion / unbounded reschedule."
+      "location": "concord-frontend/components/studio/daw/AudioClipPane.tsx:111",
+      "message": "addEventListener('pointerup', ...) has no matching removeEventListener in this file."
+    },
+    "064e9da453c43c17": {
+      "detector": "resource-leak",
+      "id": "listener_without_remove",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/studio/daw/TakesLanes.tsx:125",
+      "message": "addEventListener('pointerup', ...) has no matching removeEventListener in this file."
     },
     "c246d7d009f247d8": {
       "detector": "resource-leak",
@@ -827,6 +3211,22 @@
       "location": "concord-frontend/components/world/WorldOsSurface.tsx:1",
       "message": "11 setTimeout calls in this file — sanity-check for runaway recursion / unbounded reschedule."
     },
+    "53fad8935cefde20": {
+      "detector": "resource-leak",
+      "id": "listener_without_remove",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/lib/daw/input-devices.ts:112",
+      "message": "addEventListener('devicechange', ...) has no matching removeEventListener in this file."
+    },
+    "316b29b521f46f37": {
+      "detector": "resource-leak",
+      "id": "listener_without_remove",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/lib/daw/input-recorder.ts:174",
+      "message": "addEventListener('ended', ...) has no matching removeEventListener in this file."
+    },
     "9bc02647264d8db7": {
       "detector": "resource-leak",
       "id": "unbounded_array_growth",
@@ -835,13 +3235,21 @@
       "location": "server/lib/concordia-organism.js:37",
       "message": "Module-scope array '_species' is pushed to but never shifted/spliced/cleared/reassigned — unbounded growth risk."
     },
-    "e2c0bc10db519b11": {
-      "detector": "resource-leak",
-      "id": "setinterval_without_clear",
-      "severity": "medium",
+    "6646cbdf42d0fe85": {
+      "detector": "env-config-drift",
+      "id": "magic_timeout",
+      "severity": "info",
       "kind": "static",
-      "location": "server/lib/dtu-archive.js:252",
-      "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
+      "location": "concord-frontend/components/studio/daw/Dialogs.tsx:209",
+      "message": "Magic timeout 300000ms — consider env-driven"
+    },
+    "66dfeae6ff5ead4f": {
+      "detector": "env-config-drift",
+      "id": "magic_timeout",
+      "severity": "info",
+      "kind": "static",
+      "location": "concord-frontend/components/studio/daw/PublishDialog.tsx:59",
+      "message": "Magic timeout 300000ms — consider env-driven"
     },
     "b1efdffd9b989bb1": {
       "detector": "env-config-drift",
@@ -851,164 +3259,164 @@
       "location": "concord-frontend/lib/conkay/evo-glb-to-world.ts:54",
       "message": "Hardcoded localhost URL with no env-var fallback in this file: http://127.0.0.1:3000${url.startsWith("
     },
-    "7f50d00f575c72f8": {
+    "4fba080f4fbe40c1": {
       "detector": "env-config-drift",
-      "id": "hardcoded_localhost",
-      "severity": "medium",
+      "id": "magic_timeout",
+      "severity": "info",
       "kind": "static",
-      "location": "server/lib/conkay/verticals/hospital-ops.js:278",
-      "message": "Hardcoded localhost URL with no env-var fallback in this file: http://127.0.0.1:5050/health"
+      "location": "concord-frontend/lib/daw/studio-api.ts:60",
+      "message": "Magic timeout 120000ms — consider env-driven"
     },
-    "71cf2ae934e2af67": {
+    "bba8c19c0d71594f": {
       "detector": "env-config-drift",
-      "id": "hardcoded_localhost",
-      "severity": "medium",
+      "id": "magic_timeout",
+      "severity": "info",
       "kind": "static",
-      "location": "server/lib/conkay/verticals/studio.js:80",
-      "message": "Hardcoded localhost URL with no env-var fallback in this file: http://127.0.0.1:5050"
+      "location": "concord-frontend/lib/daw/studio-api.ts:68",
+      "message": "Magic timeout 120000ms — consider env-driven"
     },
-    "c5aa9748a81e662c": {
+    "176054566d3ee87b": {
       "detector": "env-config-drift",
-      "id": "hardcoded_localhost",
-      "severity": "medium",
+      "id": "magic_timeout",
+      "severity": "info",
       "kind": "static",
-      "location": "server/lib/conkay/verticals/studio.js:93",
-      "message": "Hardcoded localhost URL with no env-var fallback in this file: http://127.0.0.1:3000"
+      "location": "server/lib/brain/entity-explore.js:54",
+      "message": "Magic timeout 30000ms — consider env-driven"
     },
-    "4b21f3db38857f53": {
+    "cf6b3fcbdb84dede": {
       "detector": "observability-gap",
       "id": "route_without_try_catch",
       "severity": "medium",
       "kind": "static",
-      "location": "server/routes/conkay-assembly.js:458",
+      "location": "server/routes/conkay-assembly.js:459",
       "message": "Route GET handler has no try/catch — uncaught throws return 500 with no log."
     },
-    "89e020a5e32cb1d5": {
+    "a88557dcb6f2cd20": {
       "detector": "observability-gap",
       "id": "route_without_try_catch",
       "severity": "medium",
       "kind": "static",
-      "location": "server/routes/conkay-assembly.js:486",
+      "location": "server/routes/conkay-assembly.js:487",
       "message": "Route GET handler has no try/catch — uncaught throws return 500 with no log."
     },
-    "1da7b363c97244e8": {
+    "001246fda0cd700b": {
       "detector": "observability-gap",
       "id": "route_without_try_catch",
       "severity": "medium",
       "kind": "static",
-      "location": "server/routes/conkay-assembly.js:626",
+      "location": "server/routes/conkay-assembly.js:627",
       "message": "Route GET handler has no try/catch — uncaught throws return 500 with no log."
     },
-    "83178eb008fabe38": {
+    "7350d4f36fdff0b2": {
       "detector": "observability-gap",
       "id": "route_without_try_catch",
       "severity": "medium",
       "kind": "static",
-      "location": "server/routes/conkay-assembly.js:922",
+      "location": "server/routes/conkay-assembly.js:923",
       "message": "Route POST handler has no try/catch — uncaught throws return 500 with no log."
     },
-    "c940811e43dc4f0b": {
+    "f005a75d4611580c": {
       "detector": "observability-gap",
       "id": "route_without_try_catch",
       "severity": "medium",
       "kind": "static",
-      "location": "server/routes/conkay-assembly.js:927",
+      "location": "server/routes/conkay-assembly.js:928",
       "message": "Route POST handler has no try/catch — uncaught throws return 500 with no log."
     },
-    "9b5e38cc7c3c320f": {
+    "1059c1fc1ae111f8": {
       "detector": "observability-gap",
       "id": "route_without_try_catch",
       "severity": "medium",
       "kind": "static",
-      "location": "server/routes/conkay-assembly.js:932",
+      "location": "server/routes/conkay-assembly.js:933",
       "message": "Route POST handler has no try/catch — uncaught throws return 500 with no log."
     },
-    "a6ce27f2c6c89c3c": {
+    "38e086a954799314": {
       "detector": "observability-gap",
       "id": "route_without_try_catch",
       "severity": "medium",
       "kind": "static",
-      "location": "server/routes/conkay-assembly.js:937",
+      "location": "server/routes/conkay-assembly.js:938",
       "message": "Route GET handler has no try/catch — uncaught throws return 500 with no log."
     },
-    "59b2c667386fd44e": {
+    "ab87f354d906ca27": {
       "detector": "observability-gap",
       "id": "route_without_try_catch",
       "severity": "medium",
       "kind": "static",
-      "location": "server/routes/conkay-assembly.js:942",
+      "location": "server/routes/conkay-assembly.js:943",
       "message": "Route POST handler has no try/catch — uncaught throws return 500 with no log."
     },
-    "6240979b81fe77b4": {
+    "a1ada7791e27bd1a": {
       "detector": "observability-gap",
       "id": "route_without_try_catch",
       "severity": "medium",
       "kind": "static",
-      "location": "server/routes/conkay-assembly.js:947",
+      "location": "server/routes/conkay-assembly.js:948",
       "message": "Route POST handler has no try/catch — uncaught throws return 500 with no log."
     },
-    "e622b1f3306506e4": {
+    "ede01e1a6d3dcf40": {
       "detector": "observability-gap",
       "id": "route_without_try_catch",
       "severity": "medium",
       "kind": "static",
-      "location": "server/routes/conkay-assembly.js:952",
+      "location": "server/routes/conkay-assembly.js:953",
       "message": "Route POST handler has no try/catch — uncaught throws return 500 with no log."
     },
-    "eaff4eeaba07ba00": {
+    "1f8f289233b24fff": {
       "detector": "observability-gap",
       "id": "route_without_try_catch",
       "severity": "medium",
       "kind": "static",
-      "location": "server/routes/conkay-assembly.js:957",
+      "location": "server/routes/conkay-assembly.js:958",
       "message": "Route POST handler has no try/catch — uncaught throws return 500 with no log."
     },
-    "5140bd0f0cf2fd39": {
+    "2d4f392856b74b65": {
       "detector": "observability-gap",
       "id": "route_without_try_catch",
       "severity": "medium",
       "kind": "static",
-      "location": "server/routes/conkay-assembly.js:963",
+      "location": "server/routes/conkay-assembly.js:964",
       "message": "Route POST handler has no try/catch — uncaught throws return 500 with no log."
     },
-    "2c35f77045536dc8": {
+    "6002edfc2f110a36": {
       "detector": "observability-gap",
       "id": "route_without_try_catch",
       "severity": "medium",
       "kind": "static",
-      "location": "server/routes/conkay-assembly.js:969",
+      "location": "server/routes/conkay-assembly.js:970",
       "message": "Route POST handler has no try/catch — uncaught throws return 500 with no log."
     },
-    "63a7f766cbfff582": {
+    "15e85e29a3c7b016": {
       "detector": "observability-gap",
       "id": "route_without_try_catch",
       "severity": "medium",
       "kind": "static",
-      "location": "server/routes/conkay-assembly.js:975",
+      "location": "server/routes/conkay-assembly.js:976",
       "message": "Route POST handler has no try/catch — uncaught throws return 500 with no log."
     },
-    "d5346401fe597700": {
+    "6d794c6abc7aa6b7": {
       "detector": "observability-gap",
       "id": "route_without_try_catch",
       "severity": "medium",
       "kind": "static",
-      "location": "server/routes/conkay-assembly.js:981",
+      "location": "server/routes/conkay-assembly.js:982",
       "message": "Route POST handler has no try/catch — uncaught throws return 500 with no log."
     },
-    "427e5bb5a69222bd": {
+    "696b747991b1f442": {
       "detector": "observability-gap",
       "id": "route_without_try_catch",
       "severity": "medium",
       "kind": "static",
-      "location": "server/routes/conkay-assembly.js:987",
+      "location": "server/routes/conkay-assembly.js:988",
       "message": "Route POST handler has no try/catch — uncaught throws return 500 with no log."
     },
-    "7e603d70e3d04fa0": {
+    "53fb4a2ca1d527b1": {
       "detector": "observability-gap",
       "id": "route_without_try_catch",
       "severity": "medium",
       "kind": "static",
-      "location": "server/routes/conkay-assembly.js:994",
+      "location": "server/routes/conkay-assembly.js:995",
       "message": "Route POST handler has no try/catch — uncaught throws return 500 with no log."
     },
     "9fd1c1cf7deb5290": {
@@ -1035,13 +3443,85 @@
       "location": "server/routes/conkay-verticals.js:149",
       "message": "Route reads req.body.mesh without prior validation (Zod / Joi / explicit guard / defensive coalesce) — malformed bodies surface as 400 or 500."
     },
-    "36d42736005d9a84": {
+    "fb61a19426b6d883": {
       "detector": "http-error",
       "id": "external_call_without_timeout",
       "severity": "medium",
       "kind": "static",
-      "location": "server/server.js:1873",
+      "location": "server/server.js:1955",
       "message": "fetch(sidecar…) has no timeout / AbortSignal — a hung upstream surfaces as a 504 (or worse, ties up an event-loop slot)."
+    },
+    "aea52f9144dcca95": {
+      "detector": "frontend-ghost-click",
+      "id": "loading_state_no_finally",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/carpentry/JobOps.tsx:730",
+      "message": "onClick starts a loading state (setLoading/setRunning/setBusy/setSubmitting/setPending) before async work without a `finally` block resetting it — stuck spinner if the request throws."
+    },
+    "b18e7ac9614f76aa": {
+      "detector": "frontend-ghost-click",
+      "id": "loading_state_no_finally",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/social/OwnPostDelete.tsx:17",
+      "message": "onClick starts a loading state (setLoading/setRunning/setBusy/setSubmitting/setPending) before async work without a `finally` block resetting it — stuck spinner if the request throws."
+    },
+    "7c6e545cd65c04b3": {
+      "detector": "frontend-ghost-click",
+      "id": "click_handler_no_error_path",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/social/feed/DMInbox.tsx:122",
+      "message": "Async onClick issues a request without try/catch or .catch() — a server error is silently swallowed; the button looks dead."
+    },
+    "0f6ae6e04af98aae": {
+      "detector": "frontend-ghost-click",
+      "id": "click_handler_no_error_path",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/social/feed/DMInbox.tsx:126",
+      "message": "Async onClick issues a request without try/catch or .catch() — a server error is silently swallowed; the button looks dead."
+    },
+    "db1bf8d58a8e1eaa": {
+      "detector": "frontend-ghost-click",
+      "id": "click_handler_no_error_path",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/social/feed/DMInbox.tsx:256",
+      "message": "Async onClick issues a request without try/catch or .catch() — a server error is silently swallowed; the button looks dead."
+    },
+    "e30e6c49cafb7cb0": {
+      "detector": "frontend-ghost-click",
+      "id": "click_handler_no_error_path",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/social/feed/DMInbox.tsx:262",
+      "message": "Async onClick issues a request without try/catch or .catch() — a server error is silently swallowed; the button looks dead."
+    },
+    "6c424b149e84b0da": {
+      "detector": "frontend-ghost-click",
+      "id": "form_submit_no_preventDefault",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/whiteboard/BoardOwnerMenu.tsx:69",
+      "message": "<form onSubmit={...}> handler does not call e.preventDefault() — the page reloads on submit, looking like the click did nothing."
+    },
+    "4a73249911140005": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/code/CodeEditorWorkspacePanel.tsx:1028",
+      "message": "addEventListener / useEventListener subscribes to 'concord:code-run' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "86798700a9fceef4": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:926",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:daw-playback' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
     },
     "c0e6cb4c4ae9c2df": {
       "detector": "dead-event-listener",
@@ -1115,20 +3595,44 @@
       "location": "server/lib/skills/skill-engine.js",
       "message": "Server broadcasts socket event 'system:level-up' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
     },
-    "50bf3d140e6f6e79": {
+    "6d5d5d608cbb5fe4": {
+      "detector": "ux-form-error-display",
+      "id": "form_error_display_missing",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/dtu/DTUDetailView.tsx:480",
+      "message": "<form onSubmit> has a catch block that doesn't surface the error (no addToast / setError / throw) — failed submissions look silent to the user."
+    },
+    "94615de41eb643a4": {
       "detector": "ux-route-empty-render",
       "id": "route_empty_render",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/app/lenses/materials/page.tsx:70",
+      "location": "concord-frontend/app/lenses/home-improvement/page.tsx:77",
       "message": "Lens page returns null with no <EmptyState> / <Skeleton> / <ErrorBoundary> / loading guard — user lands on a blank screen."
     },
-    "6824f7006ab7802c": {
+    "a141ba54a5aa539e": {
       "detector": "ux-route-empty-render",
       "id": "route_empty_render",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/app/lenses/root/page.tsx:151",
+      "location": "concord-frontend/app/lenses/materials/page.tsx:67",
+      "message": "Lens page returns null with no <EmptyState> / <Skeleton> / <ErrorBoundary> / loading guard — user lands on a blank screen."
+    },
+    "0b0a06ae4c33629f": {
+      "detector": "ux-route-empty-render",
+      "id": "route_empty_render",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/app/lenses/root/page.tsx:146",
+      "message": "Lens page returns null with no <EmptyState> / <Skeleton> / <ErrorBoundary> / loading guard — user lands on a blank screen."
+    },
+    "3c446fffed7a651a": {
+      "detector": "ux-route-empty-render",
+      "id": "route_empty_render",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/app/lenses/root/page.tsx:147",
       "message": "Lens page returns null with no <EmptyState> / <Skeleton> / <ErrorBoundary> / loading guard — user lands on a blank screen."
     },
     "628a02b88451b31e": {
@@ -1139,36 +3643,36 @@
       "location": "concord-frontend/app/lenses/root/page.tsx:152",
       "message": "Lens page returns null with no <EmptyState> / <Skeleton> / <ErrorBoundary> / loading guard — user lands on a blank screen."
     },
-    "9951024c4eae3213": {
+    "b064f0b20957fcdb": {
       "detector": "ux-route-empty-render",
       "id": "route_empty_render",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/app/lenses/root/page.tsx:157",
+      "location": "concord-frontend/app/lenses/root/page.tsx:154",
       "message": "Lens page returns null with no <EmptyState> / <Skeleton> / <ErrorBoundary> / loading guard — user lands on a blank screen."
     },
-    "b3559c5eafef0030": {
+    "2f1bcb915f1f883e": {
       "detector": "ux-route-empty-render",
       "id": "route_empty_render",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/app/lenses/root/page.tsx:159",
+      "location": "concord-frontend/app/lenses/root/page.tsx:166",
       "message": "Lens page returns null with no <EmptyState> / <Skeleton> / <ErrorBoundary> / loading guard — user lands on a blank screen."
     },
-    "4265ea2462503795": {
+    "b4866ce3f521ad2e": {
       "detector": "ux-route-empty-render",
       "id": "route_empty_render",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/app/lenses/root/page.tsx:171",
+      "location": "concord-frontend/app/lenses/services/page.tsx:47",
       "message": "Lens page returns null with no <EmptyState> / <Skeleton> / <ErrorBoundary> / loading guard — user lands on a blank screen."
     },
-    "e2e654def58e0c01": {
+    "4f88257010336a22": {
       "detector": "ux-modal-no-escape",
       "id": "modal_no_escape",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/app/lenses/codex/page.tsx:82",
+      "location": "concord-frontend/app/lenses/codex/page.tsx:76",
       "message": "<DeepLinkModal> has no onClose / onOpenChange / onDismiss / Esc-handler — opening it traps the user."
     },
     "54bf106d12062895": {
@@ -1177,7 +3681,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 84 child_process-importing file(s) of 11068; flagged 0"
+      "message": "Scanned 102 child_process-importing file(s) of 12188; flagged 0"
     },
     "4baf9918ecae7d2c": {
       "detector": "authz-coverage",
@@ -1187,12 +3691,12 @@
       "location": null,
       "message": "Authz-gate integrity check on the server.js global write-auth middleware"
     },
-    "8ea6a54d98dad824": {
+    "582eac06ca3f5d93": {
       "detector": "authz-coverage",
       "id": "authz_write_auth_bypass",
       "severity": "high",
       "kind": "static",
-      "location": "server/server.js:8086",
+      "location": "server/server.js:8471",
       "message": "\"/api/esign/\" is in WRITE_AUTH_PUBLIC_PATHS — unauthenticated writes to this prefix bypass the global gate (intentional bypasses are baselined; a NEW one needs review)"
     },
     "e121a6cd28c4c7a7": {
@@ -1201,7 +3705,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "server/server.js: global write-auth gate present (mount line 8394); 667 mutating route(s) behind it; 12 bypass path(s)"
+      "message": "server/server.js: global write-auth gate present (mount line 8789); 670 mutating route(s) behind it; 12 bypass path(s)"
     },
     "23522addb854db0a": {
       "detector": "frontend-unsafe-chain",
@@ -1209,7 +3713,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 4206 frontend file(s); 1643 had fetch/macro-sourced data; flagged 0"
+      "message": "Scanned 4455 frontend file(s); 1628 had fetch/macro-sourced data; flagged 0"
     },
     "c4a010146d380e31": {
       "detector": "duplicate-handler-race",
@@ -1217,7 +3721,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 4326 frontend file(s) + 2782 server file(s); flagged 0."
+      "message": "Scanned 4579 frontend file(s) + 3239 server file(s); flagged 0."
     },
     "d462654fb51261ca": {
       "detector": "fabrication-mechanism",
@@ -1225,7 +3729,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 7470 file(s); flagged 0"
+      "message": "Scanned 8008 file(s); flagged 0"
     },
     "d0df7c8fcaee4508": {
       "detector": "workflow-gate-integrity",
@@ -1233,7 +3737,119 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 25 workflow file(s); flagged 0 finding(s) (manifest present, 15 exemption(s))."
+      "message": "Scanned 25 workflow file(s); flagged 14 finding(s) (manifest absent — no exemptions)."
+    },
+    "cfaac1cedfdd44b2": {
+      "detector": "workflow-gate-integrity",
+      "id": "workflow_continue_on_error_unexempted",
+      "severity": "medium",
+      "kind": "static",
+      "location": ".github/workflows/ci.yml:234",
+      "message": "Step \"Run server tests with coverage\" in job \"lint-and-test\" sets continue-on-error: true with no exemption in audit/detectors/gate-monitors.json — a failing step here is silently green."
+    },
+    "f8fcbeceec3792e2": {
+      "detector": "workflow-gate-integrity",
+      "id": "workflow_continue_on_error_unexempted",
+      "severity": "medium",
+      "kind": "static",
+      "location": ".github/workflows/ci.yml:778",
+      "message": "Job \"e2e-core\" sets continue-on-error: true with no exemption in audit/detectors/gate-monitors.json — a failing job here is silently green."
+    },
+    "0c3e131054ba8625": {
+      "detector": "workflow-gate-integrity",
+      "id": "workflow_continue_on_error_unexempted",
+      "severity": "medium",
+      "kind": "static",
+      "location": ".github/workflows/ci.yml:1058",
+      "message": "Job \"e2e-infra\" sets continue-on-error: true with no exemption in audit/detectors/gate-monitors.json — a failing job here is silently green."
+    },
+    "24e896529be2a4cc": {
+      "detector": "workflow-gate-integrity",
+      "id": "workflow_continue_on_error_unexempted",
+      "severity": "medium",
+      "kind": "static",
+      "location": ".github/workflows/ci.yml:1095",
+      "message": "Step \"Pull tiny Ollama model for chat specs\" in job \"e2e-infra\" sets continue-on-error: true with no exemption in audit/detectors/gate-monitors.json — a failing step here is silently green."
+    },
+    "0da58c9dbeedae6a": {
+      "detector": "workflow-gate-integrity",
+      "id": "workflow_continue_on_error_unexempted",
+      "severity": "medium",
+      "kind": "static",
+      "location": ".github/workflows/codeql.yml:37",
+      "message": "Job \"analyze\" sets continue-on-error: true with no exemption in audit/detectors/gate-monitors.json — a failing job here is silently green."
+    },
+    "8ebc6771961ea68e": {
+      "detector": "workflow-gate-integrity",
+      "id": "workflow_continue_on_error_unexempted",
+      "severity": "medium",
+      "kind": "static",
+      "location": ".github/workflows/detectors-cartography.yml:148",
+      "message": "Job \"cartograph\" sets continue-on-error: true with no exemption in audit/detectors/gate-monitors.json — a failing job here is silently green."
+    },
+    "033ffc9fcac3b453": {
+      "detector": "workflow-gate-integrity",
+      "id": "workflow_continue_on_error_unexempted",
+      "severity": "medium",
+      "kind": "static",
+      "location": ".github/workflows/lighthouse.yml:122",
+      "message": "Step \"Run Lighthouse CI\" in job \"lighthouse\" sets continue-on-error: true with no exemption in audit/detectors/gate-monitors.json — a failing step here is silently green."
+    },
+    "2313141dbda02543": {
+      "detector": "workflow-gate-integrity",
+      "id": "workflow_continue_on_error_unexempted",
+      "severity": "medium",
+      "kind": "static",
+      "location": ".github/workflows/platinum-performance.yml:211",
+      "message": "Job \"k6-smoke\" sets continue-on-error: true with no exemption in audit/detectors/gate-monitors.json — a failing job here is silently green."
+    },
+    "909394069245b82b": {
+      "detector": "workflow-gate-integrity",
+      "id": "workflow_continue_on_error_unexempted",
+      "severity": "medium",
+      "kind": "static",
+      "location": ".github/workflows/platinum-security.yml:321",
+      "message": "Step \"Trivy scan\" in job \"container-scan\" sets continue-on-error: true with no exemption in audit/detectors/gate-monitors.json — a failing step here is silently green."
+    },
+    "d9060762a7564df8": {
+      "detector": "workflow-gate-integrity",
+      "id": "workflow_continue_on_error_unexempted",
+      "severity": "medium",
+      "kind": "static",
+      "location": ".github/workflows/platinum-security.yml:370",
+      "message": "Step \"Upload Trivy SARIF\" in job \"container-scan\" sets continue-on-error: true with no exemption in audit/detectors/gate-monitors.json — a failing step here is silently green."
+    },
+    "e68884954fcc01e6": {
+      "detector": "workflow-gate-integrity",
+      "id": "workflow_continue_on_error_unexempted",
+      "severity": "medium",
+      "kind": "static",
+      "location": ".github/workflows/platinum-zap-dast.yml:92",
+      "message": "Step \"ZAP Baseline Scan\" in job \"zap-baseline\" sets continue-on-error: true with no exemption in audit/detectors/gate-monitors.json — a failing step here is silently green."
+    },
+    "24592f8dfa1bc47d": {
+      "detector": "workflow-gate-integrity",
+      "id": "workflow_continue_on_error_unexempted",
+      "severity": "medium",
+      "kind": "static",
+      "location": ".github/workflows/repair-cortex.yml:65",
+      "message": "Job \"repair-cortex\" sets continue-on-error: true with no exemption in audit/detectors/gate-monitors.json — a failing job here is silently green."
+    },
+    "caa5b5a5ffd0af15": {
+      "detector": "workflow-gate-integrity",
+      "id": "workflow_gate_not_visible_on_pr",
+      "severity": "high",
+      "kind": "static",
+      "location": ".github/workflows/synthetic-journey.yml:16",
+      "message": "Workflow triggers on push (push, schedule, workflow_dispatch) but has no pull_request trigger, yet runs test commands — a regression here reaches the trigger branch without ever failing a PR check (th"
+    },
+    "daf14618ec2e14dc": {
+      "detector": "workflow-gate-integrity",
+      "id": "workflow_gate_not_visible_on_pr",
+      "severity": "high",
+      "kind": "static",
+      "location": ".github/workflows/synthetic-playtest.yml:10",
+      "message": "Workflow triggers on push (push, schedule, workflow_dispatch) but has no pull_request trigger, yet runs test commands — a regression here reaches the trigger branch without ever failing a PR check (th"
     },
     "baa6a3adbd8b86e4": {
       "detector": "money-txn-hygiene",
@@ -1241,7 +3857,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 256 money-shaped file(s) of 5140 under server/; flagged 6"
+      "message": "Scanned 264 money-shaped file(s) of 6029 under server/; flagged 6"
     },
     "28713dd4b913d372": {
       "detector": "money-txn-hygiene",
@@ -1251,21 +3867,21 @@
       "location": "server/economy/ledger.js:51",
       "message": "recordTransaction() performs 2 money-table write(s) (2 direct + 0 delegated, tables: economy_ledger) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
-    "8892229ebb3d2437": {
+    "da4e05d1cfc0b735": {
       "detector": "money-txn-hygiene",
       "id": "money_txn_untransacted_writes",
       "severity": "high",
       "kind": "static",
-      "location": "server/economy/stripe.js:188",
-      "message": "handleWebhook() performs 2 money-table write(s) (1 direct + 1 delegated, tables: economy_withdrawals) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
+      "location": "server/economy/marketplace-service.js:55",
+      "message": "createListing() performs 2 money-table write(s) (2 direct + 0 delegated, tables: royalty_chain_json) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
-    "245a829c5113076b": {
+    "273a64a41d12c78b": {
       "detector": "money-txn-hygiene",
       "id": "money_txn_untransacted_writes",
       "severity": "high",
       "kind": "static",
-      "location": "server/lib/account-lifecycle.js:43",
-      "message": "requestAccountDeletion() performs 2 money-table write(s) (1 direct + 1 delegated, tables: balance_at_request) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of "
+      "location": "server/economy/stripe.js:191",
+      "message": "handleWebhook() performs 2 money-table write(s) (1 direct + 1 delegated, tables: economy_withdrawals) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
     "ca5409e0d1cd7cdc": {
       "detector": "money-txn-hygiene",
@@ -1275,20 +3891,20 @@
       "location": "server/routes/wagers.js:12",
       "message": "createWagersRouter() performs 5 money-table write(s) (0 direct + 5 delegated) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
-    "3cfafe6d6246c5c6": {
+    "be320f84c32522fe": {
       "detector": "money-txn-hygiene",
       "id": "money_txn_untransacted_writes",
       "severity": "high",
       "kind": "static",
-      "location": "server/server.js:81380",
+      "location": "server/server.js:84255",
       "message": "creditWallet() performs 2 money-table write(s) (2 direct + 0 delegated, tables: economy_ledger) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
-    "0dba890ff97d4b32": {
+    "58de7e8e881d938e": {
       "detector": "money-txn-hygiene",
       "id": "money_txn_untransacted_writes",
       "severity": "high",
       "kind": "static",
-      "location": "server/server.js:81440",
+      "location": "server/server.js:84315",
       "message": "debitWallet() performs 2 money-table write(s) (2 direct + 0 delegated, tables: economy_ledger) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
     "577671649c5313ca": {
@@ -1297,7 +3913,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 107 realtimeEmit-mentioning file(s) of 11068; 227 call site(s); flagged 0"
+      "message": "Scanned 109 realtimeEmit-mentioning file(s) of 12188; 227 call site(s); flagged 0"
     },
     "da8b979a5bb58c77": {
       "detector": "stale-lying-test",
@@ -1305,7 +3921,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 105 readFileSync-using test file(s) of 1113 test file(s); flagged 5"
+      "message": "Scanned 122 readFileSync-using test file(s) of 1341 test file(s); flagged 5"
     },
     "5b71666730cec7fa": {
       "detector": "stale-lying-test",
@@ -1353,7 +3969,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "10955 registered (domain, macro) pairs; scanned 1694 frontend file(s) with macro-run call sites, checked 6988 literal call site(s), flagged 0"
+      "message": "11111 registered (domain, macro) pairs; scanned 1718 frontend file(s) with macro-run call sites, checked 7067 literal call site(s), flagged 0"
     },
     "530980b85ed3c04b": {
       "detector": "macro-stub",
@@ -1361,7 +3977,7 @@
       "severity": "info",
       "kind": "semantic",
       "location": null,
-      "message": "10223 handler bodies analysed · 0 high · 0 medium · 0 low · 10 honest roadmap stubs · 41 unresolved refs"
+      "message": "10350 handler bodies analysed · 0 high · 0 medium · 0 low · 10 honest roadmap stubs · 72 unresolved refs"
     },
     "41f52ddb12fbf0ad": {
       "detector": "macro-stub",
@@ -1449,7 +4065,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3732 JSX file(s) of 4493; flagged 0"
+      "message": "Scanned 3795 JSX file(s) of 4709; flagged 0"
     },
     "3a206e9b65e3bf45": {
       "detector": "domain-reachability",
@@ -1457,7 +4073,15 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 440 server/domains/*.js file(s): 437 registrar(s) (0 unreachable), 3 helper module(s) (0 unreachable)"
+      "message": "Scanned 448 server/domains/*.js file(s): 445 registrar(s) (1 unreachable), 3 helper module(s) (0 unreachable)"
+    },
+    "be736327fff230c8": {
+      "detector": "domain-reachability",
+      "id": "domain_registrar_unreachable",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/video.js",
+      "message": "server/domains/video.js exports a default registrar function but is imported by NEITHER server.js NOR domains/index.js — every macro it registers is unreachable at runtime (caller-with-no-receiver dea"
     },
     "43ee1a756747d978": {
       "detector": "lens-manifest-capability",
@@ -1473,7 +4097,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 2807 of 5141 candidate file(s) under server/; flagged 0 secret-dependent-flow pattern(s). See this detector's module header for the honest scope boundary — a clean file means \"no pattern match"
+      "message": "Scanned 3265 of 6030 candidate file(s) under server/; flagged 0 secret-dependent-flow pattern(s). See this detector's module header for the honest scope boundary — a clean file means \"no pattern match"
     },
     "c72d3dbe6c669c25": {
       "detector": "public-read-write-verb",
@@ -1489,7 +4113,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 136 route file(s) + 60/87 resolvable global-scope heartbeat handler(s) against 56 per-world write-owned table(s); 4 write(s) already reviewed+allowlisted"
+      "message": "Scanned 144 route file(s) + 60/87 resolvable global-scope heartbeat handler(s) against 56 per-world write-owned table(s); 4 write(s) already reviewed+allowlisted"
     },
     "4827126825e14750": {
       "detector": "world-shard-write-boundary",
@@ -1531,13 +4155,13 @@
       "location": "server/routes/world-creature.js:196",
       "message": "server/routes/world-creature.js:196 writes to per-world table \"creature_corpses\" from a route (parent-process-only) — will race the world-shard writer once CONCORD_SHARD_WORLDS=true. No route-to-shard"
     },
-    "087af726c7a11bd4": {
+    "21f241128f25e44c": {
       "detector": "world-shard-write-boundary",
       "id": "world_shard_write_from_route",
       "severity": "medium",
       "kind": "static",
-      "location": "server/routes/worlds.js:1981",
-      "message": "server/routes/worlds.js:1981 writes to per-world table \"world_buildings\" from a route (parent-process-only) — will race the world-shard writer once CONCORD_SHARD_WORLDS=true. No route-to-shard write f"
+      "location": "server/routes/worlds.js:1897",
+      "message": "server/routes/worlds.js:1897 writes to per-world table \"world_buildings\" from a route (parent-process-only) — will race the world-shard writer once CONCORD_SHARD_WORLDS=true. No route-to-shard write f"
     },
     "53aa34cd6eaea1c9": {
       "detector": "world-shard-write-boundary",
@@ -1577,7 +4201,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 1871 file(s) for internal:true stamps built from a non-literal source; 0 require review, 2 already reviewed+allowlisted"
+      "message": "Scanned 2270 file(s) for internal:true stamps built from a non-literal source; 0 require review, 2 already reviewed+allowlisted"
     },
     "8fb06d6f053ab061": {
       "detector": "checker-self-coverage",
@@ -1585,7 +4209,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "54 detector(s) + 25 gate script(s) checked against 3312 test file(s): 0 detector(s) and 2 script(s) have no referencing test"
+      "message": "54 detector(s) + 25 gate script(s) checked against 3956 test file(s): 0 detector(s) and 2 script(s) have no referencing test"
     },
     "c53d3d0fd202e764": {
       "detector": "checker-self-coverage",
@@ -1609,7 +4233,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Checked 489 \"fixed/closed\"-adjacent file reference(s) across 742 doc file(s); 0 no longer resolve"
+      "message": "Checked 27 \"fixed/closed\"-adjacent file reference(s) across 1 doc file(s); 0 no longer resolve"
     }
   }
 }

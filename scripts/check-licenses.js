@@ -17,6 +17,10 @@ if (!allowlistPath || !fs.existsSync(allowlistPath)) {
 const allowlist = JSON.parse(fs.readFileSync(allowlistPath, 'utf8'));
 const allowed = new Set(allowlist.allowed);
 const denied = new Set(allowlist.denied);
+// Reviewed per-package exceptions: { "<name>": "<reason>" }. Matched on the
+// package name (license-checker keys are "<name>@<version>").
+const exceptions = allowlist.exceptions || {};
+const pkgName = (key) => key.slice(0, key.lastIndexOf('@') > 0 ? key.lastIndexOf('@') : key.length);
 
 let input = '';
 process.stdin.on('data', (c) => input += c);
@@ -35,7 +39,9 @@ process.stdin.on('end', () => {
     for (const lic of licenses) {
       const norm = String(lic).trim();
       if (!norm) continue;
-      if (denied.has(norm)) {
+      if (denied.has(norm) && exceptions[pkgName(pkg)]) {
+        continue;
+      } else if (denied.has(norm)) {
         violations.push({ pkg, license: norm });
       } else if (!allowed.has(norm)) {
         warnings.push({ pkg, license: norm });

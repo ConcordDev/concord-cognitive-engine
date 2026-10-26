@@ -46,6 +46,7 @@ const COPYLEFT_GPL = ["GPL-3.0", "GPL-2.0", "GPL", "LGPL-3.0", "LGPL-2.1", "LGPL
 // Deliberately-accepted exceptions (package name → reason). See docs/LICENSING.md.
 const EXCEPTIONS = {
   "ffmpeg-static": "GPL-3.0 — invoked as a separate subprocess, not linked, not distributed (SaaS).",
+  "@breezystack/lamejs": "LGPL-3.0 — unmodified, dynamically imported for DAW MP3 export, attributed in UI.",
   "sharp": "LGPL via @img/sharp-libvips — dynamically-loaded native lib, unmodified.",
   "caniuse-lite": "CC-BY-4.0 — build-time tooling, not shipped as content.",
   // Non-SPDX / undeclared-but-known-permissive (effectively MIT/Apache upstream):
