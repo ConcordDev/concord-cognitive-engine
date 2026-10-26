@@ -38,6 +38,7 @@ const LIMITS = {
   'write.media.upload': { max: 30,  windowMs: 60000 },   // bandwidth/disk, not tokens
   'write.mail':         { max: 30,  windowMs: 60000 },   // REAL outbound email — anti-spam
   'write.esign':        { max: 30,  windowMs: 60000 },   // anonymous signing-link submits
+  'write.ingest-webhook': { max: 60, windowMs: 60000 },  // INC-72 token-scoped inbound ingest webhook
   'write.proof-comment': { max: 5,  windowMs: 60000 },   // anonymous proof-link reviewer comments
   'write.client-error': { max: 200, windowMs: 60000 },   // anon telemetry; an error storm must not self-DoS
   'write.frontend-error': { max: 60, windowMs: 60000 }, // route-boundary crashes; a render loop must not flood observe()

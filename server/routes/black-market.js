@@ -20,7 +20,8 @@ import {
 export default function createBlackMarketRouter({ requireAuth, db }) {
   const router = Router();
   const auth = typeof requireAuth === "function" && requireAuth.length === 0 ? requireAuth() : requireAuth;
-  const _userId = (req) => req.user?.id || req.headers["x-user-id"] || null;
+  // Identity comes only from the authenticated session — never a client header.
+  const _userId = (req) => req.user?.id || null;
 
   // GET /api/black-market — public browse (no sender/receiver visible)
   router.get("/", (req, res) => {

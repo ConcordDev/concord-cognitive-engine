@@ -159,9 +159,48 @@ export function purchaseListing(db, { listingId, buyerId }) {
   return {
     ok: true,
     sparksSpent: price,
-    listing: db.prepare(`SELECT * FROM black_market_listings WHERE id=?`).get(listingId),
-    message: revealed,
+    listing: projectSoldListing(db.prepare(`SELECT * FROM black_market_listings WHERE id=?`).get(listingId)),
+    message: projectRevealedMessage(revealed),
     buyerRep: repRow?.buyer_rep ?? 0,
+  };
+}
+
+// Listing as the buyer sees it after the sale: browse columns + sale facts.
+// Never the buyer id (or any other account id).
+function projectSoldListing(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    message_id: row.message_id,
+    fence_npc_id: row.fence_npc_id,
+    price_sparks: row.price_sparks,
+    encryption_level: row.encryption_level,
+    redacted_preview: row.redacted_preview,
+    status: row.status,
+    created_at: row.created_at,
+    expires_at: row.expires_at,
+    sold_at: row.sold_at ?? null,
+    sale_price: row.sale_price ?? null,
+  };
+}
+
+// The decrypted message the buyer paid for. Sender and receiver stay
+// anonymous: a player sender is shown only as a traveller from their world.
+function projectRevealedMessage(msg) {
+  if (!msg) return null;
+  const kind = String(msg.sender_kind || "");
+  const senderLabel = kind === "user"
+    ? `a traveller from ${msg.source_world || "an unknown world"}`
+    : `${kind === "npc" ? "a local" : kind === "emergent" ? "an emergent" : "a system"} voice from ${msg.source_world || "an unknown world"}`;
+  return {
+    id: msg.id,
+    payload: msg.payload,
+    message_type: msg.message_type,
+    encryption_level: msg.encryption_level,
+    source_world: msg.source_world,
+    dest_world: msg.dest_world,
+    sent_at: msg.sent_at,
+    senderLabel,
   };
 }
 

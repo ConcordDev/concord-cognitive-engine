@@ -44,6 +44,38 @@ const uid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
 export const now = () => Date.now();
 export const newId = (p) => `${p}_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+// INC-72 — inbound webhook receiver for POST /api/ingest/webhook/:token.
+// Resolves the token across users' endpoints (each stores its owner) and
+// appends to that owner's inbox, exactly like the in-lens pushRecord path.
+export const WEBHOOK_MAX_RECORDS = 100;
+export const WEBHOOK_MAX_BYTES = 256 * 1024;
+export function receiveIngestWebhook(token, body) {
+  const s = getIngestState();
+  let endpoint = null, ownerId = null;
+  for (const [userId, hooks] of s.webhooks) {
+    const ep = hooks instanceof Map ? hooks.get(token) : null;
+    if (ep) { endpoint = ep; ownerId = ep.userId || userId; break; }
+  }
+  if (!endpoint || !ownerId || ownerId === "anon") return { ok: false, status: 404, error: "webhook_not_found" };
+  let size = 0;
+  try { size = Buffer.byteLength(JSON.stringify(body ?? null)); } catch { return { ok: false, status: 400, error: "invalid_body" }; }
+  if (size > WEBHOOK_MAX_BYTES) return { ok: false, status: 413, error: "payload_too_large" };
+  const incoming = Array.isArray(body?.records)
+    ? body.records
+    : (body?.record && typeof body.record === "object" ? [body.record] : []);
+  if (!incoming.length) return { ok: false, status: 400, error: "records_required" };
+  if (incoming.length > WEBHOOK_MAX_RECORDS) return { ok: false, status: 413, error: "too_many_records" };
+  const records = userArr(s.webhookRecords, ownerId);
+  const t = now();
+  for (const rec of incoming) {
+    records.unshift({ id: newId("whrec"), receivedAt: t, source: "webhook", payload: rec });
+  }
+  if (records.length > 500) records.length = 500;
+  endpoint.recordsReceived = (endpoint.recordsReceived || 0) + incoming.length;
+  endpoint.lastReceivedAt = t;
+  saveIngestState();
+  return { ok: true, accepted: incoming.length, totalReceived: endpoint.recordsReceived };
+}
 export function userMap(map, userId) {
   if (!map.has(userId)) map.set(userId, new Map());
   return map.get(userId);
