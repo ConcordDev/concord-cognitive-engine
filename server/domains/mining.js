@@ -343,6 +343,8 @@ export default function registerMiningActions(registerLensAction) {
       const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const name = mnClean(params.name, 80);
       if (!name) return { ok: false, error: "drill-hole name required" };
+      const _siteId = mnClean(params.siteId, 60);
+      if (_siteId && !mnSites(s, mnActor(ctx)).some((x) => x.id === _siteId)) return { ok: false, error: "site not found" };
       const hole = {
         id: mnId("dh"), name, siteId: mnClean(params.siteId, 60) || null,
         collarX: mnNum(params.collarX), collarY: mnNum(params.collarY), collarZ: mnNum(params.collarZ),
