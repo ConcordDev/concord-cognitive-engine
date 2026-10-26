@@ -92,6 +92,14 @@ const LIGHT_OVERRIDES = new Set([
   "hypothesis.metrics",
   "hypothesis.add_test",
   "hypothesis.add_evidence",
+  // search.query (GET /api/search/dsl) must run on the main thread: the
+  // worker's isolated search scans a periodically-synced snapshot with no
+  // viewer visibility filter and a different result shape, so owners got 0
+  // hits for their own DTUs. The main-thread macro applies userVisibleDTUs +
+  // filterVisibleSearchHits (owner's own + public, never another account's
+  // private DTUs). search.semantic is the same isolated path.
+  "search.query",
+  "search.semantic",
 ]);
 
 const workers = [];

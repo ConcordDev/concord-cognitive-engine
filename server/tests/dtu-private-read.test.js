@@ -291,7 +291,9 @@ describe("private DTU by-id reads", () => {
 
   it("HTTP GET /api/dtus/:id and sibling by-id routes", async () => {
     const anonPriv = await http.get(`/api/dtus/${ids.private}`);
-    assert.equal(anonPriv.status, 404);
+    // The global auth gate answers anonymous by-id reads with 401 before the
+    // DTU is looked up — correct, and it reveals nothing about existence.
+    assert.equal(anonPriv.status, 401);
     assert.equal(anonPriv.body.ok, false);
     assert.equal(JSON.stringify(anonPriv.body).includes(SECRET), false);
 

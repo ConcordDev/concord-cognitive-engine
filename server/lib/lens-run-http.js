@@ -107,7 +107,17 @@ export function shapeLensRunHttp(raw) {
       ? raw.result
       : raw;
   if (isFailure(unwrapped)) return failureResponse(unwrapped);
-  return { status: 200, body: { ok: true, result: unwrapped === undefined ? null : unwrapped } };
+  const body = { ok: true, result: unwrapped === undefined ? null : unwrapped };
+  // An idempotent repeat (e.g. paying an already-paid bill) answers
+  // `{ ok:true, unchanged:true, result }`. Peeling the envelope used to drop
+  // that flag, so the client could not tell "done now" from "already done".
+  if (unwrapped !== raw && raw.unchanged === true) {
+    body.unchanged = true;
+    if (body.result && typeof body.result === "object" && !Array.isArray(body.result) && body.result.unchanged === undefined) {
+      body.result = { ...body.result, unchanged: true };
+    }
+  }
+  return { status: 200, body };
 }
 
 function failureResponse(raw) {
