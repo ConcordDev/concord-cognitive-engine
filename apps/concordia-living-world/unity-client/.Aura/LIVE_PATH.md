@@ -51,7 +51,9 @@ Skipped on purpose, with the reason logged at runtime:
 | Skipped | Log line | Line |
 |---|---|---|
 | Persistence restore | `LeanPlay: skip persistence Restore/ReceiveHere (post-Expand stability)` | L320–322 |
-| WS connect + soul restore | `LeanPlay: skip EnsureConnected/RestoreAgentSoul (post-Expand stability)` | L328–335 |
+| Soul restore | `LeanPlay: skip RestoreAgentSoul (post-Expand stability)` (since B-09 the socket opens later, in `StagedConnect`) | L376–378 |
+
+The persistence row is narrower than it looks: the full restore never runs in **any** mode. See §7.
 
 Consequence for testing: **the client is offline by design in LeanPlay**, so `ConcordClient.Live`
 has no gateway and `{ok:false, reason:'no_gateway'}` is the honest answer for server-backed reads.
@@ -164,3 +166,85 @@ add a third one — `GameplayCoreBridge.cs:479` and `CombatContracts.cs:154` bot
 | live MonoBehaviours | 946 |
 | hero | present, `heroMeshes=1`, `pos=(11.2, 0.1, -12.0)` |
 | console | `errors=0`; the only warnings are pre-existing CS0618 obsolete-API warnings in `Editor/LookCapture.cs`, `Scripts/ContinentStream.cs`, `Scripts/GameplayCore/Persistence/ConcordiaPersistenceService.cs` |
+
+## 7. Persistence (A-33 audit, 2026-10-25)
+
+Read from source at `aura/gameplay` 38ae3a78d. `ConcordiaPersistenceTests` (EditMode): **8/8 pass**.
+
+### 7.1 The file
+
+`ConcordiaPersistenceService` (`Scripts/GameplayCore/Persistence/ConcordiaPersistenceService.cs`) owns one
+versioned JSON envelope, `Application.persistentDataPath/concordia-unified-v1.json` (schema 1). In the web
+build `persistentDataPath` is browser IndexedDB, so the save is per browser, not per account.
+
+### 7.2 What `Restore(envelope)` (L176) would restore, in order
+
+| # | Section | Target | Notes |
+|---|---|---|---|
+| 1 | world | `WorldClock` (world, hour, day, weather, ecology, prices, faction heat), `WorldMemory` slices + CSVs, `WorldEventLog`, `FactionStandingBook` | |
+| 2 | player | `ConcordiaPlayer` hp/stamina/poise/hostility, position, rotation, talk log; `KitBag` items, art, equipped, held weapon; `LivingBody` hunger/fatigue | hp is a **local** number; online, the server owns hp (`combat-hp-authority.js`) |
+| 3 | quests | `QuestLog.Active` (with objective flags) and `QuestLog.Done` | wipes both first; quests not found in `WorldBook` are dropped |
+| 4 | skills | `SkillLattice` group/active/counts, `SkillLedger.LastArt` | counts only, no per-skill progress |
+| 5 | npcs | `NpcLife` position, home/work/post, job, activity, pinned; `GuestNpc.hailed`; `Bonds` | matched by actor id or object name; NPCs not spawned yet are skipped silently |
+| 6 | worldSystems | `WorldSystemsHost.Active` buildings + storefront | |
+| 7 | worldSimulation | `WorldSimulationHost.Active` | |
+| 8 | economy | `GameplayCoreBridge.Live.Economy` inventories, gathering, recipes, consequences | |
+| 9 | worldFabric | `WorldFabricRuntime.Active` | |
+| 10–13 | fabrication, gunsmithing, spellcrafting, containers | through `GameplayCoreBridge.Live` | no-op when the bridge is absent |
+| 14 | vehicles | `VehicleEntity` state, motion, autopilot, storage, equipment, relationships, seats | |
+| 15 | consequences | `RecordedEvents` (non-combat), world feed | |
+
+Each step returns quietly when its target does not exist yet, so call order against boot matters.
+
+### 7.3 What actually runs today
+
+**Nothing calls `Restore` or `LoadAndRestore`, in LeanPlay or in Full Play / player builds.** The service
+landed in `07a8154db` (2026-09-22) with the call already left out. `ConcordiaGame.Start` loads the
+envelope (L51), and the Full-mode branch at L137–140 is an empty block that reads "stash for then"; there
+is no "then". The LeanPlay branch (L366–368) only logs the skip.
+
+What does round-trip, through separate hooks:
+
+| Section | Restored by | When |
+|---|---|---|
+| world memory (slices, CSVs, event log, faction standing) | `TryLoad` → `WorldMemory.ApplyPersistence` | `ConcordiaGame.Start`, L51 |
+| active world | `ConcordiaGame.Start` reads `world.activeWorld` | L52–56 (LeanPlay then forces Hub) |
+| worldFabric | `GameplayCoreBridge` L224 | first fabric bind |
+| worldSystems | `GameplayCoreBridge` L511 | host creation |
+| economy | `GameplayCoreBridge` L673 | first economy bind |
+| worldSimulation | `WorldSimulationHost.Awake` → `TryRestoreWorldSimulation` | when `loadOnAwake` |
+
+**Never restored:** player, quests, skills, npcs, fabrication, gunsmithing, spellcrafting, containers,
+vehicles, consequences. (`GameplayCoreBridge.RestoreContainers` exists, but its only caller is
+`Restore`.)
+
+### 7.4 Why that matters: saves overwrite progress
+
+Saves still run, and `Capture()` writes **every** section from live state:
+
+- `GameplayCoreBridge.Save` from `OnDisable`. Player builds always; the editor skips it during Play stop.
+- `ConcordiaGame.OnApplicationQuit`. Player builds only.
+- `WorldBook.Leave` and `WorldBook.Dump`, plus `WorldSimulationHost.Save`.
+
+So in a player build each session boots fresh and then saves that fresh state over the last one. Quests,
+skills, kit and the rest are lost on the next quit, not merely left unrestored. World memory and the
+systems listed in 7.3 survive because they were restored before the save.
+
+### 7.5 Why LeanPlay skips it
+
+The skip arrived with the service in `07a8154db` (2026-09-22), commented as part of the "post-Expand
+melt": the work right after `ExpandSystemsStaged` stalled the editor. The same commit noted that the socket
+connect and `RestoreAgentSoul` "both sat on the ~28–29s post-Expand melt"; no timing was recorded for
+`Restore` itself. `Restore` is synchronous and touches `FindObjectsByType<NpcLife>` (84+ live),
+every vehicle, and the WorldBook quest lookup in one frame. That is the cost A-34/A-35 must stage.
+
+### 7.6 For A-34 / A-35
+
+- Restore after boot idle, one section per frame, as the roadmap says. Suggested order: quests → skills →
+  player kit → npcs last (they must be spawned). World and faction standing already come back via `TryLoad`.
+- Online, skip `player.hp/stamina/poise` from the local file; the server owns hp.
+- Until restore ships, the overwrite in 7.4 continues in the web build. A cheap guard is to skip capture of
+  any section that was loaded but never restored this session, so the file keeps the last real value. That
+  is a change to `ConcordiaPersistenceService` and belongs with A-34.
+- Test gap: no EditMode test covers player, quest or skill round trips. The 8 tests cover world simulation,
+  world memory and faction standing only.

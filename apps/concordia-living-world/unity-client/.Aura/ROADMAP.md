@@ -1338,13 +1338,14 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Result: —
 
 ### Epic A7 · Save/restore, re-enabled safely
-- [ ] **A-33 · Persistence audit** (deps: B-08)
+- [x] **A-33 · Persistence audit** (deps: B-08)
+  - Claimed: Claude (2026-10-25, assigned by Dutch). Aura: skip.
   - Goal: Document in `.Aura/LIVE_PATH.md` what `ConcordiaPersistenceService.Restore` (line ~176) restores (world, player, quests, skills, npcs, systems, economy, fabric, fabrication, gunsmithing, spellcrafting) and why LeanPlay skips it (post-Expand melt). Run `ConcordiaPersistenceTests`.
   - Touch: doc
   - Reuse: `ConcordiaPersistenceService.cs`
   - Verify: tests green; the doc is updated.
   - Server: —
-  - Result: —
+  - Result: PASS 2026-10-25 by Claude. ConcordiaPersistenceTests 8/8 (EditMode). Audit in `.Aura/LIVE_PATH.md` §7. Finding: `Restore` has no caller in any mode, not just LeanPlay (left out since 07a8154db). Only world memory, fabric, world systems, economy and world simulation round-trip via separate hooks. Saves still capture every section, so player builds overwrite quests/skills/kit/npcs with fresh-boot state on each quit. A-34 should fix that along with the staged restore.
 - [ ] **A-34 · Staged restore 1: quests/skills/factions** (deps: A-33, A-05)
   - Goal: Behind `ConcordiaSettings.RestoreInLeanPlay`, restore only quests, skills and faction standing, after boot idle + 30 s, one subsystem per frame.
   - Touch: `ConcordiaGame.cs` (LeanPlay branch), `ConcordiaPersistenceService.cs` (subset API)
