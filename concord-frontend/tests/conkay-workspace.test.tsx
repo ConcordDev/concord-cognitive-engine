@@ -513,7 +513,8 @@ describe('ConKay workspace — new designs from the box', () => {
     await waitFor(() => expect(screen.getByText('What do you want to build?')).toBeTruthy());
     send('design me a pedestrian bridge 30 m span 5 kN steel');
     await waitFor(() => expect(within(convo()).getByText(/Solved the truss: 4 joints, 4 bars\. Max tension 12\.50 kN, max compression 25\.50 kN/)).toBeTruthy());
-    expect(apiPost).toHaveBeenCalledWith('/api/conkay/workbench', { prompt: 'design me a pedestrian bridge 30 m span 5 kN steel' });
+    // Third arg: validateStatus so a 400 body reaches the agent fallback (bdc4bf75b).
+    expect(apiPost).toHaveBeenCalledWith('/api/conkay/workbench', { prompt: 'design me a pedestrian bridge 30 m span 5 kN steel' }, expect.objectContaining({ validateStatus: expect.any(Function) }));
     expect(lensRun.mock.calls.some((c) => c[1] === 'beamStudy')).toBe(false);
     expect(within(convo()).getByText(/truss type = pratt \(default/)).toBeTruthy();
     expect(screen.getByRole('img', { name: 'Truss elevation with bar forces' })).toBeTruthy();

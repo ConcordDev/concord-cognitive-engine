@@ -51,7 +51,8 @@ describe('save → reload → load round-trip', () => {
       const rec = await srv.t.create(p);
       const loaded = await loadProject(rec.id, srv.t, memLocal());
       expect(loaded).not.toBeNull();
-      expect(snapshotForSave({ ...loaded!.project, id: p.id })).toEqual(snapshotForSave(p));
+      // load() normalizes (fills takes/comp defaults), so compare against the normalized original.
+      expect(snapshotForSave({ ...loaded!.project, id: p.id })).toEqual(snapshotForSave(normalizeProject(p)));
     }
   });
 
@@ -93,7 +94,7 @@ describe('save → reload → load round-trip', () => {
     // "Another device": empty local store.
     const other = memLocal();
     const loaded = await loadProject(project.id, srv.t, other);
-    expect(snapshotForSave(loaded!.project)).toEqual(snapshotForSave(project));
+    expect(snapshotForSave(loaded!.project)).toEqual(snapshotForSave(normalizeProject(project)));
     const { audio, missing } = await resolveAudio(loaded!.project, srv.t, other);
     expect(missing).toEqual([]);
     const got = audio.get('take_1')!;

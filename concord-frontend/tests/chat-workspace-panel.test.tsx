@@ -29,6 +29,7 @@ if (!Element.prototype.scrollIntoView) {
 const apiGet = vi.fn();
 const apiPost = vi.fn();
 const apiPut = vi.fn();
+const apiDelete = vi.fn();
 const feedbackFn = vi.fn();
 const forgeFn = vi.fn();
 const lensDeleteFn = vi.fn();
@@ -44,6 +45,7 @@ vi.mock('@/lib/api/client', () => ({
     get: (...a: unknown[]) => apiGet(...a),
     post: (...a: unknown[]) => apiPost(...a),
     put: (...a: unknown[]) => apiPut(...a),
+    delete: (...a: unknown[]) => apiDelete(...a),
   },
   apiHelpers: {
     cognitive: { status: () => cogStatusFn() },
@@ -529,6 +531,7 @@ beforeEach(() => {
   forgeFn.mockReset().mockResolvedValue({ data: { dtu: { id: 'dtu-9', title: 'Forged insight' } } });
   vi.mocked(lensRun).mockReset().mockResolvedValue({ data: { ok: true, result: {} } });
   lensDeleteFn.mockReset().mockResolvedValue({ data: {} });
+  apiDelete.mockReset().mockResolvedValue({ data: {} });
   cogStatusFn.mockReset().mockResolvedValue({ data: { llm: { enabled: true } } });
   runArtifactMutateAsync.mockReset();
   oracleMutate.mockReset();
@@ -781,9 +784,19 @@ describe('ChatWorkspacePanel — sending', () => {
       if (url === '/api/chat') throw new Error('Network Error');
       return { data: {} };
     });
-    renderPanel();
-    send('are you there');
-    expect(await screen.findByText(/Failed to send message: Network Error/)).toBeInTheDocument();
+    // After the POST fails the panel polls the saved thread (up to 180s) in
+    // case the stream finished the turn server-side; skip that wait.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      renderPanel();
+      send('are you there');
+      await vi.advanceTimersByTimeAsync(181_000);
+      expect(await screen.findByText(/Failed to send message: Network Error/)).toBeInTheDocument();
+    } finally {
+      cleanup();
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
   });
 
   it('Enter sends, Shift+Enter does not', async () => {
@@ -998,12 +1011,12 @@ describe('ChatWorkspacePanel — conversation drawer', () => {
 
   it('deletes a conversation (server best-effort) and clears the open thread if it was selected', async () => {
     window.localStorage.setItem(SESSION_KEY, 'conv-a');
-    lensDeleteFn.mockRejectedValue(new Error('404'));
+    apiDelete.mockRejectedValue(new Error('404'));
     renderPanel();
     expect(await screen.findByText('alpha message body')).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('Delete conversation: Alpha plans'));
     await waitFor(() => expect(screen.queryByText('Alpha plans')).not.toBeInTheDocument());
-    expect(lensDeleteFn).toHaveBeenCalledWith('chat', 'conv-a');
+    expect(apiDelete).toHaveBeenCalledWith('/api/chat/sessions/conv-a');
     expect(window.localStorage.getItem(MSGS_PREFIX + 'conv-a')).toBeNull();
     expect(screen.queryByText('alpha message body')).not.toBeInTheDocument();
     expect(screen.getByText('How can I help you think today?')).toBeInTheDocument();
@@ -1626,7 +1639,7 @@ describe('ChatWorkspacePanel — chat options menu (export / transcript / handof
     openOptions();
     fireEvent.click(screen.getByRole('button', { name: /Delete Conversation/ }));
     await waitFor(() => expect(screen.queryByText('exported answer')).not.toBeInTheDocument());
-    expect(lensDeleteFn).toHaveBeenCalledWith('chat', 'conv-a');
+    expect(apiDelete).toHaveBeenCalledWith('/api/chat/sessions/conv-a');
 
     openOptions();
     fireEvent.click(screen.getByRole('button', { name: /New Conversation/ }));
