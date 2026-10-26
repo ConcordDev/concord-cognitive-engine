@@ -79,6 +79,8 @@ import { PostMediaCard } from '@/components/social/PostMediaCard';
 import { PublicFallbackFeed } from '@/components/social/PublicFallbackFeed';
 
 import { parseSocialPlace, type SocialPlaceId } from '@/lib/social-places';
+import { useOpenPostInPlace } from '@/hooks/use-open-post-in-place';
+import { PostDetailInPlace, socialPostViewTransitionName } from '@/components/social/PostDetailInPlace';
 
 type PlaceId = SocialPlaceId;
 type HomeFeed = 'following' | 'forYou';
@@ -119,9 +121,15 @@ export default function SocialHubPage() {
     const sp = new URLSearchParams(searchParams?.toString() || '');
     if (next === 'home') sp.delete('view');
     else sp.set('view', next);
+    // A place switch replaces the URL, which closes any open in-place
+    // post (useOpenPostInPlace syncs with the router's searchParams).
+    sp.delete('post');
     const q = sp.toString();
     router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
+  // JOB 7: posts open in place. The `post` URL param is the shareable
+  // shallow-routed state; a reload at ?post=<id> re-opens the post here.
+  const { openPostId, openPost, closePost } = useOpenPostInPlace();
   const [homeFeed, setHomeFeed] = useState<HomeFeed>('following');
   const [inboxTab, setInboxTab] = useState<InboxTab>('notifications');
   const [youTab, setYouTab] = useState<YouTab>('posts');
@@ -361,6 +369,23 @@ export default function SocialHubPage() {
 
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,640px)_320px]">
               <main id="social-main" className="min-w-0 max-w-[640px] space-y-4">
+                {/* JOB 7: the tapped post's detail view, opened IN PLACE.
+                    The feed below stays mounted but hidden — Back/Escape/
+                    close returns to the exact scroll position without a
+                    refetch or reset (react-query cache + list state are
+                    untouched by the round trip). */}
+                {openPostId ? (
+                  <PostDetailInPlace
+                    postId={openPostId}
+                    username={me?.user?.username || me?.user?.displayName || currentUserId || 'current-user'}
+                    currentUserId={currentUserId || undefined}
+                    onClose={closePost}
+                    onOpenPost={openPost}
+                    onOpenHashtag={(tag) => router.push(`/lenses/social?tag=${encodeURIComponent(tag)}`)}
+                    onQuote={closePost}
+                  />
+                ) : null}
+                <div hidden={openPostId ? true : undefined} className="space-y-4">
                 {view === 'home' && (
                   <>
                     <div className="inline-flex rounded-full border border-white/10 bg-white/[0.03] p-1" role="tablist" aria-label="Home feed">
@@ -401,9 +426,10 @@ export default function SocialHubPage() {
                       <FollowingTimeline
                         currentUserId={currentUserId}
                         onFindPeople={() => setView('explore')}
+                        onOpenPost={openPost}
                       />
                     ) : (
-                      currentUserId ? <RankedFeed currentUserId={currentUserId} /> : null
+                      currentUserId ? <RankedFeed currentUserId={currentUserId} onOpenPost={openPost} /> : null
                     )}
                   </>
                 )}
@@ -411,7 +437,7 @@ export default function SocialHubPage() {
                 {view === 'explore' && (
                   <>
                     {currentUserId ? <FindPeople /> : null}
-                    <Discovery currentUserId={currentUserId || ''} />
+                    <Discovery currentUserId={currentUserId || ''} onOpenPost={openPost} />
                     <SocialLists />
                     <SocialGroups currentUserId={currentUserId} />
                     <div className="rounded-2xl border border-white/10 bg-[#111] p-3">
@@ -462,7 +488,7 @@ export default function SocialHubPage() {
                     </div>
                     {youTab === 'posts' && railUserId ? (
                       <>
-                        <UserProfile userId={railUserId} currentUserId={currentUserId} />
+                        <UserProfile userId={railUserId} currentUserId={currentUserId} onOpenPost={openPost} />
                         <SocialPresenceRail />
                       </>
                     ) : null}
@@ -477,6 +503,7 @@ export default function SocialHubPage() {
                     ) : null}
                   </>
                 )}
+                </div>
               </main>
 
               <aside className="hidden lg:block space-y-4 lg:sticky lg:top-6 lg:self-start">
@@ -521,7 +548,7 @@ export default function SocialHubPage() {
  * accounts the user follows.  Pulls from /api/social/following-activity
  * (no fake data — empty state when the user follows nobody yet).
  * ───────────────────────────────────────────────────────────────────── */
-function FollowingTimeline({ currentUserId, onFindPeople }: { currentUserId: string; onFindPeople?: () => void }) {
+function FollowingTimeline({ currentUserId, onFindPeople, onOpenPost }: { currentUserId: string; onFindPeople?: () => void; onOpenPost?: (postId: string) => void }) {
   const queryClient = useQueryClient();
   const [removed, setRemoved] = useState<Set<string>>(new Set());
   const [seenHead, setSeenHead] = useState<string | null>(() => {
@@ -610,13 +637,22 @@ function FollowingTimeline({ currentUserId, onFindPeople }: { currentUserId: str
           Show {newer} new {newer === 1 ? 'post' : 'posts'}
         </button>
       )}
-    <ul className="space-y-2">
+    <ul className="social-reveal-items space-y-2">
       {visible.map(item => (
         <li
           key={item.id}
-          className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 hover:border-indigo-500/30 transition-colors"
+          className="relative rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 hover:border-indigo-500/30 transition-colors"
+          style={{ viewTransitionName: socialPostViewTransitionName(item.id) }}
         >
-          <div className="flex items-baseline gap-2 mb-1">
+          {onOpenPost && (
+            <button
+              type="button"
+              className="absolute inset-0 rounded-lg"
+              aria-label={`Open post${item.content ? ` — ${item.content.slice(0, 80)}` : ''}`}
+              onClick={() => onOpenPost(item.id)}
+            />
+          )}
+          <div className="relative flex items-baseline gap-2 mb-1">
             <UserLink
               username={item.username}
               userId={item.userId}
@@ -646,8 +682,9 @@ function FollowingTimeline({ currentUserId, onFindPeople }: { currentUserId: str
           <p className="text-sm text-zinc-300 leading-snug">{item.content}</p>
           {item.sensitiveHidden && <p className="mt-1 text-xs text-zinc-500">Sensitive media hidden</p>}
           {/* Attached Studio track or Marketplace item → real media card
-              (play button, never autoplay) instead of a bare text line. */}
-          <PostMediaCard mediaType={item.mediaType} mediaUrl={item.mediaUrl} listing={item.listing} />
+              (play button, never autoplay) instead of a bare text line.
+              `relative` keeps its controls above the open-post overlay. */}
+          <PostMediaCard className="relative" mediaType={item.mediaType} mediaUrl={item.mediaUrl} listing={item.listing} />
         </li>
       ))}
     </ul>

@@ -29,6 +29,7 @@ import {
 import { cn, formatNumber, formatRelativeTime, debounce } from '@/lib/utils';
 import { api, createSharedSession, activeSharedSessions } from '@/lib/api/client';
 import { FollowButton } from './FollowButton';
+import { socialPostViewTransitionName } from './PostDetailInPlace';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -84,6 +85,8 @@ interface DiscoveryProps {
   currentUserId?: string;
   onNavigateToUser?: (userId: string) => void;
   onNavigateToContent?: (contentId: string) => void;
+  /** JOB 7: open a trending social post's detail in place (Social hub). */
+  onOpenPost?: (postId: string) => void;
   className?: string;
 }
 
@@ -174,20 +177,41 @@ function TrendingCard({
   item,
   rank,
   onNavigate,
+  onOpenPost,
 }: {
   item: TrendingDTU;
   rank: number;
   onNavigate?: (id: string) => void;
+  /** JOB 7: open this (real social post) in place on the Social hub. */
+  onOpenPost?: (postId: string) => void;
 }) {
   const MediaIcon = item.mediaType ? MEDIA_TYPE_ICONS[item.mediaType] || BookOpen : BookOpen;
+  const open = () => {
+    if (onOpenPost) onOpenPost(item.dtuId);
+    else onNavigate?.(item.dtuId);
+  };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: rank * 0.05 }}
-      onClick={() => onNavigate?.(item.dtuId)}
-      className="group p-4 rounded-xl bg-lattice-deep border border-lattice-border hover:border-neon-cyan/30 transition-all cursor-pointer"
+      // JOB 7: the whole card is the open-post target. role+tabIndex+Enter/
+      // Space handling make it keyboard-reachable (real browsers don't
+      // activate div[role=button] natively); the shared view-transition
+      // name lets the open-in-place morph pair it with the detail panel.
+      role="button"
+      tabIndex={0}
+      aria-label={`Open post${item.title ? ` — ${item.title.slice(0, 80)}` : ''}`}
+      onClick={open}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          open();
+        }
+      }}
+      style={{ viewTransitionName: onOpenPost ? socialPostViewTransitionName(item.dtuId) : undefined }}
+      className="group p-4 rounded-xl bg-lattice-deep border border-lattice-border hover:border-neon-cyan/30 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-neon-cyan/40"
     >
       <div className="flex items-start gap-3">
         {/* Rank */}
@@ -375,6 +399,7 @@ function Discovery({
   currentUserId,
   onNavigateToUser,
   onNavigateToContent,
+  onOpenPost,
   className,
 }: DiscoveryProps) {
   const [activeTab, setActiveTab] = useState<DiscoveryTab>('trending');
@@ -708,7 +733,7 @@ function Discovery({
       )}
 
       {/* Content area */}
-      <div className="space-y-3">
+      <div className="social-reveal-items space-y-3">
         {/* Trending social posts */}
         {activeTab === 'trending' && (
           <>
@@ -723,6 +748,7 @@ function Discovery({
                   item={item}
                   rank={idx + 1}
                   onNavigate={onNavigateToContent}
+                  onOpenPost={onOpenPost}
                 />
               ))
             ) : (

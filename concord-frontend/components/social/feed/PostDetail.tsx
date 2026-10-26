@@ -20,12 +20,15 @@ interface PostDetailProps {
   username: string;
   currentUserId?: string;
   onBack: () => void;
+  /** Accessible label for the back/close control ("Close post" in the
+   *  in-place panel, "Back to feed" on the permalink page). */
+  backLabel?: string;
   onOpenHashtag: (tag: string) => void;
   onOpenDetail: (postId: string) => void;
   onQuote: (post: SocialPost) => void;
 }
 
-export function PostDetail({ postId, username, currentUserId, onBack, onOpenHashtag, onOpenDetail, onQuote }: PostDetailProps) {
+export function PostDetail({ postId, username, currentUserId, onBack, backLabel = 'Back to feed', onOpenHashtag, onOpenDetail, onQuote }: PostDetailProps) {
   const [post, setPost] = useState<SocialPost | null>(null);
   const [quoted, setQuoted] = useState<SocialPost | null>(null);
   const [permalink, setPermalink] = useState('');
@@ -79,11 +82,12 @@ export function PostDetail({ postId, username, currentUserId, onBack, onOpenHash
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/60 p-2.5">
+        {/* ≥44px tap target (a11y) — the icon stays visually identical. */}
         <button
           type="button"
           onClick={onBack}
-          className="rounded p-1 text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
-          aria-label="Back to feed"
+          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+          aria-label={backLabel}
         >
           <ArrowLeft className="w-4 h-4" />
         </button>

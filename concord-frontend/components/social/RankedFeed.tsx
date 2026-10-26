@@ -6,6 +6,7 @@ import { api } from '@/lib/api/client';
 import { OwnPostDelete } from './OwnPostDelete';
 import { invalidatePostSurfaces } from './invalidate-post-surfaces';
 import { PostMediaCard, type PostListingAttachment } from './PostMediaCard';
+import { socialPostViewTransitionName } from './PostDetailInPlace';
 
 interface RankedPost {
   id: string;
@@ -19,7 +20,7 @@ interface RankedPost {
   listing?: PostListingAttachment | null;
 }
 
-export function RankedFeed({ currentUserId }: { currentUserId: string }) {
+export function RankedFeed({ currentUserId, onOpenPost }: { currentUserId: string; onOpenPost?: (postId: string) => void }) {
   const queryClient = useQueryClient();
   const [removed, setRemoved] = useState<Set<string>>(new Set());
   const query = useQuery({
@@ -44,18 +45,33 @@ export function RankedFeed({ currentUserId }: { currentUserId: string }) {
   if (posts.length === 0) return <p className="text-sm text-zinc-400">No ranked posts yet.</p>;
 
   return (
-    <ul className="space-y-2">
+    <ul className="social-reveal-items space-y-2">
       {posts.map((post) => (
-        <li key={post.id} className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
-          <p className="text-sm text-zinc-200">{post.content}</p>
-          {post.sensitiveHidden && <p className="mt-1 text-xs text-zinc-500">Sensitive media hidden</p>}
-          {/* Attached Studio track or Marketplace item → real media card
-              (play button, never autoplay). */}
-          <PostMediaCard mediaType={post.mediaType} mediaUrl={post.mediaUrl} listing={post.listing} />
-          {post.why && post.why.length > 0 && (
-            <p className="mt-1 text-[11px] text-zinc-500">Why this is here: {post.why.join(' · ')}</p>
+        <li
+          key={post.id}
+          className="relative rounded-lg border border-zinc-800 bg-zinc-950/60 p-3"
+          style={{ viewTransitionName: socialPostViewTransitionName(post.id) }}
+        >
+          {onOpenPost && (
+            <button
+              type="button"
+              className="absolute inset-0 rounded-lg"
+              aria-label={`Open post${post.content ? ` — ${post.content.slice(0, 80)}` : ''}`}
+              onClick={() => onOpenPost(post.id)}
+            />
           )}
-          <div className="mt-2 flex gap-2">
+          <div className="relative">
+            <p className="text-sm text-zinc-200">{post.content}</p>
+            {post.sensitiveHidden && <p className="mt-1 text-xs text-zinc-500">Sensitive media hidden</p>}
+            {/* Attached Studio track or Marketplace item → real media card
+                (play button, never autoplay). `relative` keeps its controls
+                above the open-post overlay. */}
+            <PostMediaCard className="relative" mediaType={post.mediaType} mediaUrl={post.mediaUrl} listing={post.listing} />
+            {post.why && post.why.length > 0 && (
+              <p className="mt-1 text-[11px] text-zinc-500">Why this is here: {post.why.join(' · ')}</p>
+            )}
+          </div>
+          <div className="relative mt-2 flex gap-2">
             <button type="button" className="text-[11px] text-zinc-300 underline" onClick={() => void feedback(post.id, 'less')}>Show less like this</button>
             <button type="button" className="text-[11px] text-zinc-300 underline" onClick={() => void feedback(post.id, 'not-interested')}>Not interested</button>
             {post.userId === currentUserId && (

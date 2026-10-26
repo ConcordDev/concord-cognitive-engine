@@ -1,14 +1,17 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { UserProfile } from '@/components/social/UserProfile';
+import { PostDetailInPlace } from '@/components/social/PostDetailInPlace';
+import { useOpenPostInPlace } from '@/hooks/use-open-post-in-place';
 import { LensShell } from '@/components/lens/LensShell';
 
 interface MeResponse {
-  user?: { id?: string };
+  ok?: boolean;
+  user?: { id?: string; username?: string; displayName?: string };
 }
 
 interface ByUsername {
@@ -19,13 +22,18 @@ interface ByUsername {
 
 export default function SocialProfilePage() {
   const params = useParams<{ username: string }>();
+  const router = useRouter();
   const username = decodeURIComponent(params?.username || '');
+  // JOB 7: profile posts open in place (?post=<id> shallow-routed, same
+  // machinery as the Social hub — Back/Escape/close return here with the
+  // exact scroll position).
+  const { openPostId, openPost, closePost } = useOpenPostInPlace();
 
   const me = useQuery({
     queryKey: ['auth-me'],
     queryFn: async () => {
       const res = await api.get<MeResponse>('/api/auth/me');
-      return res.data?.user?.id || '';
+      return res.data?.user || null;
     },
   });
 
@@ -51,11 +59,29 @@ export default function SocialProfilePage() {
   } else {
     body = (
       <div className="mx-auto max-w-2xl p-6">
-        <UserProfile userId={person.data.id} currentUserId={me.data || undefined} />
+        {openPostId ? (
+          <PostDetailInPlace
+            postId={openPostId}
+            username={me.data?.username || me.data?.displayName || me.data?.id || 'current-user'}
+            currentUserId={me.data?.id || undefined}
+            onClose={closePost}
+            onOpenPost={openPost}
+            onOpenHashtag={(tag) => router.push(`/lenses/social?tag=${encodeURIComponent(tag)}`)}
+            onQuote={closePost}
+          />
+        ) : null}
+        {/* The profile stays mounted but hidden while a post is open —
+            closing restores it without a refetch. */}
+        <div hidden={openPostId ? true : undefined}>
+          <UserProfile
+            userId={person.data.id}
+            currentUserId={me.data?.id || undefined}
+            onOpenPost={openPost}
+          />
+        </div>
       </div>
     );
   }
 
   return <LensShell lensId="social">{body}</LensShell>;
-
 }

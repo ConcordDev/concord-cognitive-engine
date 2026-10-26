@@ -19,6 +19,10 @@ vi.mock('next/link', () => ({
 vi.mock('next/navigation', () => ({
   useParams: () => ({ username: 'bea' }),
   useRouter: () => ({ push: vi.fn() }),
+  // The profile page's open-in-place plumbing (JOB 7) reads the router's
+  // URL state; derive it from window.location like the real contract.
+  usePathname: () => '/lenses/social/u/bea',
+  useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 vi.mock('next/image', () => ({
   default: (props: { alt?: string }) => React.createElement('img', { alt: props.alt || '' }),
