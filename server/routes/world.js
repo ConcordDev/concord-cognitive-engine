@@ -80,6 +80,7 @@
  *   GET    /api/world/config/rules-schema   — get rules schema
  */
 
+import crypto from "node:crypto";
 import { Router } from "express";
 import logger from "../logger.js";
 
@@ -1182,9 +1183,10 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
         ).run(quantity, userId, itemId);
         return { quantity: existing.quantity + quantity };
       }
+      // `id` is what player_equipment points at (lib/combat/loadout.js).
       db.prepare(
-        "INSERT INTO player_inventory (user_id, item_id, quantity, slot, metadata) VALUES (?, ?, ?, ?, ?)"
-      ).run(userId, itemId, quantity, slot || null, JSON.stringify(metadata || {}));
+        "INSERT INTO player_inventory (id, user_id, item_id, item_name, quantity, slot, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)"
+      ).run(crypto.randomUUID(), userId, itemId, String(metadata?.name || ""), quantity, slot || null, JSON.stringify(metadata || {}));
       return { quantity };
     } catch (err) {
       logger.warn?.("world-inventory", `db add failed: ${err.message}`);
@@ -1192,9 +1194,9 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     }
   }
 
-  router.get("/sim/inventory/:userId", wrap((req, res) => {
+  router.get("/sim/inventory/:userId", wrap(async (req, res) => {
     const userId = req.params.userId;
-    const dbInv = getInventoryFromDb(userId);
+    const dbInv = await getInventoryWithLoadout(userId);
     if (dbInv) return res.json({ ok: true, inventory: dbInv });
     // Legacy in-memory fallback
     const inv = simInventories.get(userId) || { items: [], maxSlots: MAX_SLOTS, equipped: {} };
@@ -1239,55 +1241,65 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     res.json({ ok: true, item });
   }));
 
-  // Equipment slots are a closed set. Reject anything else outright so a
-  // crafted slot key like "__proto__" cannot reach the dynamic assignment
-  // on inv.equipped (prototype-pollution vector caught by CodeQL).
-  const VALID_EQUIP_SLOTS = new Set([
-    "head", "chest", "legs", "feet", "hands",
-    "main_hand", "off_hand", "ranged", "ammo",
-    "neck", "ring_left", "ring_right", "belt", "cloak", "trinket",
+  // Equipment slots this route accepts, mapped onto the canonical store
+  // (player_equipment via lib/combat/loadout.js#equipItem, which combat,
+  // durability and death decay read). Slots with no column there are refused
+  // rather than recorded somewhere nothing reads. A closed map also keeps a
+  // crafted key like "__proto__" from reaching any dynamic assignment.
+  const EQUIP_SLOT_TO_LOADOUT = new Map([
+    ["head", "head"], ["chest", "body"],
+    ["main_hand", "right_hand"], ["off_hand", "left_hand"],
+    ["neck", "accessory"], ["ring_left", "accessory"], ["ring_right", "accessory"], ["trinket", "accessory"],
   ]);
+  const LOADOUT_TO_EQUIP_SLOT = { head: "head", body: "chest", rightHand: "main_hand", leftHand: "off_hand", accessory: "trinket" };
 
-  router.post("/sim/inventory/:userId/equip", auth, wrap((req, res) => {
+  router.post("/sim/inventory/:userId/equip", auth, wrap(async (req, res) => {
     const userId = req.params.userId;
     if (req.user?.id && req.user.id !== userId && req.user.role !== "admin") {
       return res.status(403).json({ ok: false, error: "cannot_modify_other_inventory" });
     }
     const { slot, itemId } = req.body;
     if (!slot || !itemId) return res.status(400).json({ ok: false, error: "slot and itemId required" });
-    if (typeof slot !== "string" || !VALID_EQUIP_SLOTS.has(slot)) {
-      return res.status(400).json({ ok: false, error: "invalid slot" });
+    if (typeof slot !== "string" || !EQUIP_SLOT_TO_LOADOUT.has(slot)) {
+      return res.status(400).json({ ok: false, error: "invalid slot", slots: [...EQUIP_SLOT_TO_LOADOUT.keys()] });
     }
     if (typeof itemId !== "string" || itemId.length > 64) {
       return res.status(400).json({ ok: false, error: "invalid itemId" });
     }
+    if (!db) return res.status(503).json({ ok: false, error: "no_db" });
 
-    if (db) {
-      try {
-        // Clear any existing equip for this slot
-        db.prepare(
-          "DELETE FROM player_inventory WHERE user_id = ? AND slot = ?"
-        ).run(userId, `equipped:${slot}`);
-        // Write the new equip marker
-        db.prepare(
-          "INSERT INTO player_inventory (user_id, item_id, quantity, slot, metadata) VALUES (?, ?, 1, ?, '{}')"
-        ).run(userId, itemId, `equipped:${slot}`);
-        const dbInv = getInventoryFromDb(userId);
-        return res.json({ ok: true, equipped: dbInv?.equipped || {} });
-      } catch (err) {
-        logger.warn?.("world-inventory", `equip failed: ${err.message}`);
-      }
+    // The item must be a real row the caller holds (not a legacy equip marker).
+    const row = db.prepare(
+      "SELECT id, quantity FROM player_inventory WHERE user_id = ? AND item_id = ? AND (slot IS NULL OR slot NOT LIKE 'equipped:%')"
+    ).get(userId, itemId);
+    if (!row || !(row.quantity > 0)) return res.status(404).json({ ok: false, error: "item_not_owned" });
+    let invId = row.id;
+    if (!invId) {
+      invId = crypto.randomUUID();
+      db.prepare("UPDATE player_inventory SET id = ? WHERE user_id = ? AND item_id = ? AND id IS NULL").run(invId, userId, itemId);
     }
-
-    // Legacy fallback
-    const inv = simInventories.get(userId);
-    if (!inv) return res.status(404).json({ ok: false, error: "Inventory not found" });
-    // VALID_EQUIP_SLOTS.has(slot) guard above guarantees slot is a known
-    // literal key — Object.prototype is unreachable.
-    if (!inv.equipped || typeof inv.equipped !== "object") inv.equipped = Object.create(null);
-    inv.equipped[slot] = itemId;
-    res.json({ ok: true, equipped: inv.equipped });
+    const { equipItem } = await import("../lib/combat/loadout.js");
+    const r = equipItem(db, userId, EQUIP_SLOT_TO_LOADOUT.get(slot), invId);
+    if (!r.ok) return res.status(400).json(r);
+    const dbInv = await getInventoryWithLoadout(userId);
+    return res.json({ ok: true, slot: r.slot, equipped: dbInv?.equipped || {} });
   }));
+
+  // getInventoryFromDb plus the canonical loadout, reported by item_id under
+  // this route's slot names. Legacy `equipped:<slot>` marker rows still show
+  // where the loadout has nothing for that slot.
+  async function getInventoryWithLoadout(userId) {
+    const inv = getInventoryFromDb(userId);
+    if (!inv || !db) return inv;
+    try {
+      const { getLoadout } = await import("../lib/combat/loadout.js");
+      const lo = getLoadout(db, userId);
+      for (const [key, name] of Object.entries(LOADOUT_TO_EQUIP_SLOT)) {
+        if (lo?.[key]?.item_id) inv.equipped[name] = lo[key].item_id;
+      }
+    } catch { /* player_equipment optional on minimal builds */ }
+    return inv;
+  }
 
   router.delete("/sim/inventory/:userId/item/:itemId", auth, wrap((req, res) => {
     const userId = req.params.userId;
@@ -1334,19 +1346,17 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     res.json({ ok: true, station });
   }));
 
-  router.post("/sim/crafting/craft", auth, wrap((req, res) => {
-    const { recipeId, stationId } = req.body;
-    const recipe = simCraftingRecipes.find(r => r.id === recipeId);
-    if (!recipe) return res.status(404).json({ ok: false, error: 'Recipe not found' });
-    const station = simCraftingStations.get(stationId);
-    if (station && station.currentJob) return res.status(400).json({ ok: false, error: 'Station busy' });
-    const result = {
-      success: true,
-      outputItem: { id: `crafted-${Date.now()}`, ...recipe.output, craftedAt: new Date().toISOString(), craftedBy: req.user.id },
-      qualityBonus: Math.random() > 0.7 ? Math.floor(Math.random() * 15) + 5 : 0,
-      byproducts: [],
-    };
-    res.json({ ok: true, result });
+  // Crafting happens at POST /api/crafting/execute (routes/crafting.js →
+  // lib/crafting/craft-engine.js), which consumes real inventory and awards
+  // craft XP. This route used to return an invented output item with a
+  // random quality bonus, consuming and persisting nothing; it now says where
+  // the real path is.
+  router.post("/sim/crafting/craft", auth, wrap((_req, res) => {
+    res.status(410).json({
+      ok: false,
+      error: "use_crafting_execute",
+      detail: "POST /api/crafting/execute {recipeId, worldId} crafts from real inventory; recipes come from GET /api/crafting/recipes.",
+    });
   }));
 
   // ── Quest & Mission API ──────────────────────────────────────────

@@ -37,7 +37,8 @@
 //   lib/world-snapshot.js          iterates the PER_WORLD_WRITE_TABLES constant.
 //   domains/ar.js#dbStore          `table` is a parameter, but all four callers
 //                                  pass string literals (ar_scenes, ...).
-//   lib/combat/loadout.js          `col` is a ternary over two literals.
+//   lib/combat/loadout.js          `col` is a ternary over two literals; `wornCol`
+//                                  (2026-10-26) a ternary over three literals.
 //   lib/npc-persona.js             table/cols come from a hardcoded `installs`
 //                                  array; the user-supplied package supplies
 //                                  only VALUES, which are bound with `?`.
@@ -164,7 +165,7 @@ const REVIEWED = {
   "lib/combat/damage-calculator.js": 1,
   "lib/combat/faction-war.js": 1,
   "lib/combat/flow-recorder.js": 2,
-  "lib/combat/loadout.js": 3,
+  "lib/combat/loadout.js": 4,
   "lib/companions-mount-evo.js": 1,
   "lib/creator-dashboard.js": 1,
   "lib/cross-lens-discovery.js": 2,
