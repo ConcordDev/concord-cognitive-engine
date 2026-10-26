@@ -75,6 +75,33 @@ namespace Concordia
             new System.Collections.Concurrent.ConcurrentQueue<System.Action>();
 
         public string WorldId => worldId;
+
+        string _activeUrl;
+
+        /// <summary>
+        /// HTTP origin of the gateway this session is connected to, for ConcordRest.
+        /// Null while offline, so REST can never reach a server the socket did not.
+        /// </summary>
+        public string RestOrigin => Connected ? HttpOrigin(_activeUrl) : null;
+
+        /// <summary>
+        /// The session's bearer for REST, read in place and never copied or logged.
+        /// Null when there is none: the web build's login is the site cookie, which the
+        /// browser attaches to same-origin requests itself.
+        /// </summary>
+        internal string RestBearer => string.IsNullOrEmpty(bearerToken) ? null : bearerToken;
+
+        /// <summary>ws://host:port/path → http://host:port, wss → https. Null for anything else.</summary>
+        public static string HttpOrigin(string wsUrl)
+        {
+            if (string.IsNullOrWhiteSpace(wsUrl)) return null;
+            if (!Uri.TryCreate(wsUrl.Trim(), UriKind.Absolute, out var u)) return null;
+            string scheme;
+            if (u.Scheme == "ws") scheme = "http";
+            else if (u.Scheme == "wss") scheme = "https";
+            else return null;
+            return scheme + "://" + u.Authority;
+        }
         /// <summary>The authenticated account id ("" until the gateway says hello).</summary>
         public string UserId => _userId;
 
@@ -201,6 +228,7 @@ namespace Concordia
                 MarkDisconnected();
                 return;
             }
+            _activeUrl = gatewayUrl;
             ConcordWsConnect(gatewayUrl);
 #else
 #if UNITY_EDITOR
@@ -220,6 +248,7 @@ namespace Concordia
                     lock (_preAuth) _preAuth.Clear();
                     _ws = new ClientWebSocket();
                     await _ws.ConnectAsync(new Uri(url), _cts.Token);
+                    _activeUrl = url;
                     last = null;
                     break;
                 }
@@ -266,6 +295,7 @@ namespace Concordia
                     lock (_preAuth) _preAuth.Clear();
                     _ws = new ClientWebSocket();
                     await _ws.ConnectAsync(new Uri(url), _cts.Token);
+                    _activeUrl = url;
                     await AfterOpen();
                     return Connected;
                 }

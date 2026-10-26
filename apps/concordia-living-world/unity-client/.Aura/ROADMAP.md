@@ -707,12 +707,13 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Server: —
   - Result: —
 - [ ] **G-05 · REST helper (auth-safe)** (deps: B-09)
+  - Claimed: Claude (2026-10-25, assigned by Dutch). Aura: skip.
   - Goal: `ConcordRest` uses UnityWebRequest with the **same** token source `ConcordClient` uses. Never log or print the token. Base URL comes from the ConcordClient config. Missing token or server means `{ok:false, reason:'no_gateway'}`.
   - Touch: new `Scripts/Aura/Net/ConcordRest.cs`
   - Reuse: `ConcordClient` config/auth fields (read, don't duplicate secrets)
   - Verify: `GET /api/worlds/concordia-hub/quests` returns ok online / honest offline; the log has no token.
   - Server: `routes/worlds.js`
-  - Result: —
+  - Result: PASS(offline) 2026-10-25 by Claude. ConcordRestTests 3/3 (EditMode); with no session `ConcordRest.Get` returns `fail 0 no_gateway` and sends nothing. Online re-check pending: any Play session on the live Mac starves the production backend (watchdog stopped it at 2m45s), so the `/api/worlds/concordia-hub/quests` round trip waits for a quieter box or the pod.
 - [ ] **G-06 · Server inventory sync** (deps: G-05, G-03)
   - Goal: Online, load `GET /api/world/sim/inventory/:userId` and equip through `POST /api/world/sim/inventory/:userId/equip`. Offline, the local KitBag is labeled "local".
   - Touch: `Inventory.cs`
