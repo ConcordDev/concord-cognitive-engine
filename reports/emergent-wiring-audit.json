@@ -264,12 +264,6 @@
       ]
     },
     {
-      "file": "entity-growth.js",
-      "handlers": [
-        "runGrowthAutonomyTick"
-      ]
-    },
-    {
       "file": "entity-teaching.js",
       "handlers": [
         "advanceStep"
@@ -980,6 +974,10 @@
       "handlers": []
     },
     {
+      "file": "entity-growth.js",
+      "handlers": []
+    },
+    {
       "file": "entity-hive.js",
       "handlers": []
     },
@@ -1233,5 +1231,5 @@
     }
   ],
   "orphan": [],
-  "scannedAt": "2026-10-26T15:09:42.181Z"
+  "scannedAt": "2026-09-30T05:57:09.454Z"
 }
