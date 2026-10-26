@@ -23,14 +23,13 @@ name: Adversarial Audit — composite gate
 # No structural counts are hardcoded anywhere — every verdict comes from the
 # verifier itself, so the gate never falsely fails as the codebase grows.
 
+# 2026-10-26 CI smoothing: heavy audit, moved off PRs/pushes to a nightly run
+# plus manual dispatch. A failed scheduled/dispatched run opens or updates a
+# tracking issue (nightly-failure-issue.yml) instead of blocking PRs.
 on:
-  pull_request:
-    branches: [main, develop]
-  push:
-    branches:
-      - main
-      - develop
-      - "claude/**"
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: read

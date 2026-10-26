@@ -32,17 +32,12 @@ name: Platinum Performance (Lighthouse + bundle size + load)
 #                         per matrix entry. Net win is still huge given
 #                         the ~5 min savings per skipped build.
 
+# 2026-10-26 CI smoothing: heavy audit, moved off PRs/pushes to a nightly run
+# plus manual dispatch. A failed scheduled/dispatched run opens or updates a
+# tracking issue (nightly-failure-issue.yml) instead of blocking PRs.
 on:
-  pull_request:
-    paths:
-      - 'concord-frontend/**'
-      - 'server/**'
-      - '.github/workflows/platinum-performance.yml'
   schedule:
-    - cron: '0 6 * * *'  # nightly 06:00 UTC
-  # Manual trigger so the k6 smoke can still be invoked from the
-  # Actions UI on demand. The frontend-perf-scan matrix runs on every
-  # PR; only k6 has the schedule-only `if:` guard.
+    - cron: '15 6 * * *'
   workflow_dispatch:
 
 # Least-privilege token scope. Without this the workflow inherits the

@@ -15,15 +15,13 @@
 
 name: audits
 
+# 2026-10-26 CI smoothing: heavy audit, moved off PRs/pushes to a nightly run
+# plus manual dispatch. A failed scheduled/dispatched run opens or updates a
+# tracking issue (nightly-failure-issue.yml) instead of blocking PRs.
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
   schedule:
-    # Weekly drift detection: re-run on Sunday 04:00 UTC so a quiet
-    # main branch still surfaces breakage when external deps update.
-    - cron: '0 4 * * 0'
+    - cron: '15 5 * * *'
+  workflow_dispatch:
 
 # Least-privilege token scope. Without this the workflow inherits the
 # repository default, which is broader than anything here needs: these

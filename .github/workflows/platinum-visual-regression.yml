@@ -16,16 +16,12 @@ name: Platinum Visual Regression
 # ~3-5 minutes per PR. Cheap relative to chasing a visual regression
 # in production after a CSS refactor.
 
+# 2026-10-26 CI smoothing: heavy audit, moved off PRs/pushes to a nightly run
+# plus manual dispatch. A failed scheduled/dispatched run opens or updates a
+# tracking issue (nightly-failure-issue.yml) instead of blocking PRs.
 on:
-  # The baseline_check guard inside the job makes this safe to run on
-  # PRs and main pushes — if baselines aren't seeded yet, the job
-  # short-circuits and exits success. Once baselines land via a
-  # follow-on `chore(visual): seed baselines` commit, the gate begins
-  # actually catching regressions automatically.
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  schedule:
+    - cron: '30 6 * * *'
   workflow_dispatch:
 
 permissions:

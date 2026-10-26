@@ -21,17 +21,12 @@ name: Detectors + Cartography — Perception Layer
 # Cadence: every push (cheap), every PR (annotation), nightly (full
 # refresh + open issues for any new findings).
 
+# 2026-10-26 CI smoothing: heavy audit, moved off PRs/pushes to a nightly run
+# plus manual dispatch. A failed scheduled/dispatched run opens or updates a
+# tracking issue (nightly-failure-issue.yml) instead of blocking PRs.
 on:
-  # The detector suite is now a real PR ratchet gate (see the `detectors` job):
-  # it diffs against the committed BASELINE.json and FAILS only on a NEW
-  # high/critical finding, so existing debt is grandfathered and a PR can't
-  # introduce a new one. The cartograph job stays a non-blocking monitor.
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
   schedule:
-    - cron: '0 6 * * *'  # 06:00 UTC — runs after repair-cortex (05:00)
+    - cron: '0 6 * * *'
   workflow_dispatch:
 
 permissions:
