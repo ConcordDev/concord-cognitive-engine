@@ -455,7 +455,13 @@ describe("agriculture — rotation + telemetry + maps (wave 12 top-up · exact c
 
   it("scout-add → scout-list → scout-delete: round-trips; bad category coerced; missing note rejected", async () => {
     const ctx = await depthCtx(`agri-scout-${randomUUID()}`);
-    const fieldId = `fS-${randomUUID()}`;
+    // scout pins must reference one of the caller's own fields
+    const fc = await lensRun("agriculture", "field-create", { params: { name: "North 40", acreage: 40, lat: 41.5, lng: -93.6 } }, ctx);
+    const fieldId = fc.result.field?.id ?? fc.result.result?.field?.id;
+    assert.ok(fieldId, "field-create returned an id");
+    const foreign = await lensRun("agriculture", "scout-add", { params: { fieldId: `fS-${randomUUID()}`, note: "x" } }, ctx);
+    assert.equal(foreign.result.ok, false);
+    assert.match(foreign.result.error, /field not found/);
     const add = await lensRun("agriculture", "scout-add", {
       params: { fieldId, note: "aphids on edge rows", category: "pest", severity: "high", lat: 41.5, lng: -93.6 },
     }, ctx);

@@ -770,6 +770,7 @@ export default function registerTravelActions(registerLensAction) {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const title = tvclean(params.title, 120);
     if (!title) return { ok: false, error: "title required" };
+    if (params.tripId && !(s.trips.get(tvaid(ctx)) || []).some((t) => t.id === String(params.tripId))) return { ok: false, error: "trip not found" };
     const doc = {
       id: tvid("doc"), title,
       kind: ["passport", "visa", "insurance", "ticket", "reservation", "vaccination", "other"]

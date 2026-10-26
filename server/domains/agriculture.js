@@ -876,6 +876,8 @@ export default function registerAgricultureActions(registerLensAction) {
     const userId = agriActor(ctx);
     const fieldId = String(params.fieldId || "");
     if (!fieldId) return { ok: false, error: "fieldId required" };
+    // Parent must be one of the caller's own fields (no dangling/foreign refs).
+    if (!(s.fields?.get(userId) instanceof Map) || !s.fields.get(userId).has(fieldId)) return { ok: false, error: "field not found" };
     const note = String(params.note || "").trim();
     if (!note) return { ok: false, error: "note required" };
     if (note.length > 1000) return { ok: false, error: "note too long (max 1000)" };

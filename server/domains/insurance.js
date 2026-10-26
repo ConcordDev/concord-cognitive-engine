@@ -976,6 +976,7 @@ export default function registerInsuranceActions(register) {
     const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const title = insClean(params.title, 120);
     if (!title) return { ok: false, error: "title required" };
+    if (params.policyId && !findPolicy(s, insAid(ctx), String(params.policyId))) return { ok: false, error: "policy not found" };
     const rem = {
       id: insId("rem"), title,
       kind: ["renewal", "payment", "inspection", "review", "general"].includes(params.kind)
