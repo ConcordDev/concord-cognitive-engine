@@ -1939,7 +1939,7 @@ import {
 import { serverError, configureHttpErrorLogger } from "./lib/http-errors.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
 import configureMiddleware from "./middleware/index.js";
-import { createCsrfMiddleware, PUBLIC_PROOF_COMMENT_RE } from "./middleware/csrf.js";
+import { createCsrfMiddleware, PUBLIC_PROOF_COMMENT_RE, INGEST_WEBHOOK_RE } from "./middleware/csrf.js";
 import { readReplicaGate } from "./lib/read-replica-allowlist.js";
 import { createLLMQueue } from "./lib/llm-queue.js";
 import { bindNpcCoalescerQueue } from "./lib/npc-prompt-coalescer.js";
@@ -8529,6 +8529,10 @@ function authMiddleware(req, res, next) {
   // widened to any other action or envelope.
   if (req.method === "GET" && /^\/api\/esign\/[^/]+$/.test(req.path)) return next();
   if (req.method === "POST" && /^\/api\/esign\/[^/]+\/sign$/.test(req.path)) return next();
+  // INC-72: inbound ingest webhook. The 32-hex token in the path is the only
+  // credential; the handler resolves it to exactly one user's endpoint and can
+  // only append records to that user's webhook inbox.
+  if (req.method === "POST" && INGEST_WEBHOOK_RE.test(req.path)) return next();
 
   // Animation public share viewer (Wave 4 gap closure,
   // `docs/lens-specs/animation-capability-map.md` checklist item 17) — an
@@ -8764,6 +8768,8 @@ function productionWriteAuthMiddleware(req, res, next) {
   // rate-limited (write.proof-comment). Deliberately not a prefix entry above,
   // so no other write under /api/public-share/ is ever opened by it.
   if (method === "POST" && PUBLIC_PROOF_COMMENT_RE.test(req.path)) return next();
+  // INC-72: token-scoped inbound ingest webhook (exact route, not a prefix).
+  if (method === "POST" && INGEST_WEBHOOK_RE.test(req.path)) return next();
   // POST /api/receipts/verify checks an Ed25519 signature and writes nothing.
   // Exact path, not a prefix, so no other route under /api/receipts/ is opened.
   // Rate limit: write.receipt-verify. See routes/receipts.js.
@@ -59896,6 +59902,24 @@ app.post("/api/welding/portal/:token/pay", async (req, res) => {
     });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// ── INC-72: inbound ingest webhook ────────────────────────────────────
+// ingest.getWebhookEndpoint advertises POST /api/ingest/webhook/:token for
+// external systems ("no auth header needed"). The token is the credential:
+// it resolves server-side to one user's endpoint and records land only in
+// that user's webhook inbox. Bounded: <=100 records, <=256 KB per request.
+app.post("/api/ingest/webhook/:token", perEndpointRateLimit("write.ingest-webhook"), async (req, res) => {
+  try {
+    const token = String(req.params.token || "");
+    if (!/^[a-f0-9]{32}$/.test(token)) return res.status(404).json({ ok: false, error: "webhook_not_found" });
+    const { receiveIngestWebhook } = await import("./domains/ingest.js");
+    const r = receiveIngestWebhook(token, req.body);
+    if (!r.ok) return res.status(r.status || 400).json({ ok: false, error: r.error });
+    res.status(202).json({ ok: true, accepted: r.accepted, totalReceived: r.totalReceived });
+  } catch (_e) {
+    res.status(500).json({ ok: false, error: "webhook_failed" });
   }
 });
 

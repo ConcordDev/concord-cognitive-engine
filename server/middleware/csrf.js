@@ -13,6 +13,9 @@ import crypto from "node:crypto";
 // proof link (POST /api/public-share/proof/:token/comment). Every gate that
 // lets it through matches this exact route, never a prefix.
 export const PUBLIC_PROOF_COMMENT_RE = /^\/api\/public-share\/proof\/[^/]+\/comment$/;
+// INC-72: inbound ingest webhook — POST only, token in the path is the credential
+// (crypto.randomBytes(16) hex, resolved server-side to one user's endpoint).
+export const INGEST_WEBHOOK_RE = /^\/api\/ingest\/webhook\/[a-f0-9]{32}$/;
 
 // Public receipt check. Exact path only — a prefix would also open
 // /api/receipts/verify/x and /api/receipts/verify-extra.
@@ -66,6 +69,7 @@ export function createCsrfMiddleware({ nodeEnv, authMode, auditLog, jwtSecret } 
     // The anonymous proof-link reviewer comment: exactly this one POST route,
     // not the /api/public-share/ prefix. No session cookie exists to forge.
     if (req.method === "POST" && PUBLIC_PROOF_COMMENT_RE.test(req.path)) return next();
+    if (req.method === "POST" && INGEST_WEBHOOK_RE.test(req.path)) return next();
     // POST /api/receipts/verify checks an Ed25519 signature and writes nothing.
     // Exact path, not a prefix, so no other route under /api/receipts/ is opened.
     // The /verify page and third-party verifiers POST JSON with no CSRF header
