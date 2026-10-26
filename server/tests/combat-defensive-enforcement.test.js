@@ -7,7 +7,7 @@
  *   - active dodge i-frames whiff the hit (damageMul 0, iframed) WITHOUT
  *     depleting poise (early-return before poise damage)
  *   - a held block halves damage (damageMul 0.5, blocked)
- *   - the npc-attack route consults applyHitToState + returns evaded on iframe
+ *   - the npc-attack path (lib/npc-attack.js) consults applyHitToState + returns evaded on iframe
  *   - the combat:block socket handler engages the server block window
  *
  * Before D2, dodge/parry/block were cosmetic on the NPC→player path — the
@@ -68,13 +68,16 @@ describe("D2 — combat-state defensive enforcement", () => {
 
 describe("D2 — wiring", () => {
   it("the npc-attack route consults applyHitToState and evades on i-frames", () => {
-    const src = fs.readFileSync(
+    // The route and the /unity-ws npc:attack event share lib/npc-attack.js.
+    const routes = fs.readFileSync(
       path.resolve(__dirname, "..", "routes/worlds.js"), "utf8",
     );
-    // Scope to the npc-attack handler so we don't match an unrelated import.
-    const idx = src.indexOf("/combat/npc-attack");
+    const idx = routes.indexOf("/combat/npc-attack");
     assert.ok(idx > 0, "npc-attack route present");
-    const seg = src.slice(idx, idx + 5500);
+    assert.match(routes.slice(idx, idx + 1500), /resolveNpcAttackOnPlayer/, "route delegates to lib/npc-attack.js");
+    const seg = fs.readFileSync(
+      path.resolve(__dirname, "..", "lib/npc-attack.js"), "utf8",
+    );
     assert.match(seg, /applyHitToState/);
     assert.match(seg, /defMod\.iframed/);
     assert.match(seg, /defMod\.damageMul/);

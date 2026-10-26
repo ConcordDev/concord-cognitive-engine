@@ -26,7 +26,6 @@ import { issueDirective, voteOnDirective, getActiveDirectives, getDirectiveHisto
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 import { getRoomsForBuilding, addRoom, updateRoomFurniture, seedRoomsForBuilding } from "../lib/building-interiors.js";
 import { recordCombatReject } from "../lib/desync-metrics.js";
-import { mirrorToGateways } from "../lib/gateway-fanout.js";
 import { worldDensityEnabled, ensureInterior, recordInteriorActivity } from "../lib/world-density.js";
 import { checkRoomAccess, attemptLockpick, forceEntry, recordTheft, getOpenCrimes, getActiveWarrants } from "../lib/world-crime.js";
 import { broadcastOpinionEvent, getWorldReputation, willNPCInteract } from "../lib/npc-relations.js";
@@ -985,77 +984,12 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
       const { worldId, npcId } = req.params;
       const killerId = req.user?.id || req.body?.killerId;
       const combatLog = req.body?.combatLog || null;
-
-      // Temperament P4 — a target that has surrendered / been downed or arrested
-      // is hors de combat and cannot be executed. Gated by CONCORD_TEMPERAMENT
-      // (off → never spares; binary combat preserved). Records the lethal attempt
-      // as an excessive-force legitimacy event for the P6 rubric.
-      try {
-        const { shouldSpareExecution } = await import("../lib/combat-restraint.js");
-        const spare = shouldSpareExecution(db, npcId);
-        if (spare.spare) {
-          try {
-            const { recordLegitimacyEvent } = await import("../lib/legitimacy.js");
-            recordLegitimacyEvent(db, { worldId, actorId: killerId, npcId, kind: "execute_hors_de_combat", combatState: spare.combatState });
-          } catch { /* legitimacy ledger optional until P6 */ }
-          req.app.locals.io?.to(`world:${worldId}`).emit("world:npc-spared", { npcId, worldId, reason: spare.reason, combatState: spare.combatState });
-          return res.json({ ok: true, died: false, spared: true, reason: spare.reason, combatState: spare.combatState });
-        }
-      } catch { /* restraint gate best-effort — never blocks a normal kill */ }
-
-      // Import consequence handler lazily
-      const { triggerNPCDeath } = await import("../lib/npc-consequences.js");
-      const { onNPCKilledPlayer, onPlayerKilledNemesis, recordCombatMemory } = await import("../lib/nemesis.js");
-
-      const result = await triggerNPCDeath(db, npcId, killerId, (event, data) => {
-        req.app.locals.io?.emit(event, data);
-      });
-
+      // lib/npc-kill.js is shared with the /unity-ws creature kill.
+      const { resolveNpcKill } = await import("../lib/npc-kill.js");
+      const result = await resolveNpcKill(db, { worldId, npcId, killerId, combatLog, io: req.app.locals.io });
       if (!result.died && result.reason === 'immortal') {
         return res.status(403).json({ ok: false, error: 'immortal_npc', message: 'This being cannot be harmed.' });
       }
-
-      // Record combat memory in nemesis if applicable
-      if (result.died && combatLog && killerId) {
-        recordCombatMemory(db, npcId, killerId, combatLog);
-
-        // Check if player killed their nemesis
-        const nemesisKilled = await onPlayerKilledNemesis(db, killerId, npcId, (event, data) => {
-          req.app.locals.io?.emit(event, data);
-        });
-        result.nemesisDefeated = !!nemesisKilled;
-      }
-
-      // Award sparks for the kill
-      if (result.died && killerId) {
-        try {
-          const { awardSparks } = await import("../lib/currency.js");
-          const npc = db.prepare("SELECT * FROM world_npcs WHERE id = ?").get(npcId);
-          const sparks = (npc?.level || 1) * 5;
-          awardSparks(db, killerId, sparks, 'npc_kill', worldId);
-          result.sparksAwarded = sparks;
-
-          // Generate a loot bag at NPC's last position
-          try {
-            const { generateNPCLoot, createLootBag } = await import("../lib/loot-generator.js");
-            const { getNPCGear } = await import("../lib/npc-gear.js");
-            const gear  = getNPCGear(db, npcId);
-            const items = generateNPCLoot(npc, gear);
-            const pos   = _tryParseJSON(npc.current_location, { x: 0, y: 0, z: 0 });
-            const bagId = createLootBag(db, worldId, pos, 'npc', npcId, 'player', killerId, items);
-            result.lootBagId = bagId;
-            result.lootItems = items;
-            // Game clients (Unity/Godot) in this world see the bag drop.
-            try {
-              const { lootDroppedPayload } = await import("../lib/loot-generator.js");
-              mirrorToGateways("loot:dropped", lootDroppedPayload(bagId, worldId, pos, items), { worldId });
-            } catch { /* fan-out best-effort */ }
-          } catch (lootErr) {
-            logger.debug('worlds', 'loot_bag_skip', { reason: lootErr?.message });
-          }
-        } catch { /* non-fatal */ }
-      }
-
       res.json({ ok: true, ...result });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
@@ -3216,208 +3150,10 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
 
       if (!npcId) return res.status(400).json({ ok: false, error: "npcId required" });
 
-      // Concordant Law: NPCs cannot harm players inside the hub. Mirror the
-      // player→NPC gate above.
-      if (worldId === "concordia-hub" || worldId === "concordia") {
-        return res.status(403).json({
-          ok: false,
-          error: "concordant_law_refusal",
-          reason: "The Three Above All refuse violence within Concordia.",
-        });
-      }
-
-      const {
-        computeDamage,
-        applyDamageToPlayer,
-        getOrCreateNPCResistances,
-      } = await import("../lib/combat/damage-calculator.js");
-
-      const npc = db.prepare(`
-        SELECT id, archetype, criminal_rep, fire_resistance, ice_resistance,
-               physical_resistance, current_hp, max_hp, npc_type, is_conscious,
-               x, z
-        FROM world_npcs WHERE id = ?
-      `).get(npcId);
-      if (!npc) return res.status(404).json({ ok: false, error: "NPC not found" });
-
-      // WS1: NPC attack power derives from its GROWN combat level (skill +
-      // evolution), so a leveled frontier hostile genuinely threatens a player
-      // while a level-1 hub NPC stays harmless. Gated behind CONCORD_ABSOLUTE_POWER
-      // — with the flag off, npcAttackStats returns the legacy
-      // `5 + criminal_rep*10` shape so behaviour is unchanged.
-      const { getEntityCombatLevel, npcAttackStats, capNpcDamage,
-              getPlayerCombatLevel, relativeScaledLevel } =
-        await import("../lib/entity-power.js");
-      const element = npc.archetype === 'mage' ? 'energy' : 'physical';
-      // E1 (Phase E §0) — RELATIVE scaling (no-op unless CONCORD_RELATIVE_SCALING
-      // is on): named/authored NPCs + bosses are floored to ~player tier so they
-      // stay a credible threat; common NPCs are capped below the player so a
-      // leveled player genuinely outgrows trash (the power fantasy). "Named" =
-      // boss type, an authored/conscious NPC, or a title-bearing archetype.
-      const isNamedNpc = npc.npc_type === 'boss' || !!npc.is_conscious
-        || /boss|warlord|champion|overlord|queen|king|captain|lord|elder|matriarch/i.test(npc.archetype || '');
-      const combatLevel = relativeScaledLevel(
-        getEntityCombatLevel(db, npc.id),
-        getPlayerCombatLevel(db, userId),
-        { named: isNamedNpc },
-      );
-      const attackerStats = npcAttackStats(combatLevel, element, { criminalRep: npc.criminal_rep || 0 });
-
-      // Fetch player resistances from equipped armor DTUs
-      const armorDtu = db.prepare(`
-        SELECT data FROM dtus WHERE creator_id = ? AND type = 'item'
-        ORDER BY created_at DESC LIMIT 1
-      `).get(userId);
-      let armorData = {};
-      if (armorDtu) {
-        try { armorData = JSON.parse(armorDtu.data); } catch { /* ignore */ }
-      }
-      const defenderStats = {
-        physical_resistance: armorData.defense ? Math.min(0.5, armorData.defense / 200) : 0,
-        fire_resistance: armorData.fire_resistance || 0,
-        ice_resistance: armorData.ice_resistance || 0,
-        status_effects: '[]',
-      };
-
-      const damageResult = computeDamage(attackerStats, defenderStats, {});
-      // WS1 anti-cheat / anti-misconfig: cap NPC outgoing damage (mirrors the
-      // player-side _validateDamageCap). No-op when the flag is off.
-      damageResult.finalDamage = capNpcDamage(damageResult.finalDamage, attackerStats);
-
-      // D2 (depth plan) — honor the player's server-tracked defensive state so
-      // a well-timed dodge (i-frames) or a held block actually matters against
-      // an NPC attack. Before this, the NPC→player path applied damage with no
-      // defensive check, so dodge/parry/block were cosmetic here while the
-      // socket handlers dutifully recorded i-frames/block windows that nothing
-      // ever consulted. combat-state.js is a single shared module instance
-      // (ESM path-cached), so the dodge i-frames granted on the socket path are
-      // visible here. applyHitToState early-returns on i-frames before poise
-      // depletion, so a whiffed hit costs the player no poise.
-      try {
-        const { applyHitToState } = await import("../lib/combat-state.js");
-        const defMod = applyHitToState(userId, {
-          damage: damageResult.finalDamage,
-          isCrit: !!damageResult.isCrit,
-        });
-        if (defMod.iframed) {
-          try {
-            req.app.locals.io?.to(`world:${worldId}`).emit("combat:npc-attack-evaded", {
-              worldId, npcId, userId, reason: "iframe", t: Date.now(),
-            });
-          } catch { /* evade emit best-effort */ }
-          return res.json({ ok: true, evaded: true, reason: "iframe", finalDamage: 0, eventId: null });
-        }
-        if (defMod.damageMul !== 1 && Number.isFinite(damageResult.finalDamage)) {
-          damageResult.finalDamage = Math.round(damageResult.finalDamage * defMod.damageMul);
-          if (defMod.blocked) damageResult.blocked = true;
-        }
-      } catch { /* combat-state optional — fall through to undefended damage */ }
-
-      const { eventId, kill: killRaw } = applyDamageToPlayer(db, worldId, npcId, 'npc', userId, damageResult, {
-        element, bar_used: 'hp', bar_cost: damageResult.finalDamage,
-        // Hit position → the attacking NPC's live world_npcs position (already
-        // SELECTed above for this route). The footprint overlay draws CREATURE
-        // tracks, so the NPC combatant's position is the correct one on both
-        // directions of the exchange. Null-safe: NULL beats a guessed coordinate.
-        x: npc?.x, z: npc?.z,
-      });
-      let kill = killRaw;
-
-      // Wave 4 (Gap C) — roguelite death handling. A hit that WOULD kill the
-      // player is intercepted here, before any downstream kill-consequence
-      // logic (near-death awakening, pvp-loot) runs, so a consumed revive
-      // reads as "survived" everywhere below, not as a death that got
-      // undone after the fact.
-      let revived = null;
-      if (kill) {
-        try {
-          const { maybeReviveRoguelitePlayer } = await import("../lib/roguelite.js");
-          const rev = maybeReviveRoguelitePlayer(db, userId, worldId);
-          if (rev.revived) {
-            kill = false;
-            revived = rev;
-            req.app.locals.io?.to(`user:${userId}`)?.emit?.("roguelite:revived", {
-              worldId, revivesRemaining: rev.revivesRemaining, reviveHp: rev.reviveHp,
-            });
-          }
-        } catch { /* roguelite substrate optional — a kill without an active run is unaffected */ }
-      }
-
-      // ── Layer 8: record pain signal ────────────────────────────────────────
-      // Players' bodies remember. The repair-cycle heartbeat will turn this
-      // into endurance / strength / agility / vitality / focus XP plus a
-      // `damage_resist` buff at the next 20-tick boundary.
-      try {
-        const { recordPain, regionForElement } = await import("../lib/embodied/pain.js");
-        const intensity = Math.max(0.05, Math.min(1, (damageResult.finalDamage || 0) / 100));
-        recordPain(db, userId, {
-          worldId, region: regionForElement(element),
-          intensity, source: 'combat', sourceId: eventId, element,
-        });
-      } catch { /* Layer 8 disabled — combat still works */ }
-
-      // WS4(b) — near-death awakening trigger. If the player SURVIVED a hit that
-      // dropped them to a sliver of HP, surface an awakening opportunity (a
-      // stress-triggered power spike, MHA-style). Advisory event; the client
-      // confirms which skill to awaken via the skill-awakening.awaken macro.
-      if (!kill) {
-        try {
-          const { isNearDeath } = await import("../lib/skill-awakening.js");
-          const bars = db.prepare(
-            `SELECT hp, max_hp FROM player_resource_bars WHERE user_id = ? AND world_id = ?`
-          ).get(userId, worldId);
-          if (bars && isNearDeath(bars.hp, bars.max_hp)) {
-            req.app.locals.io?.to(`user:${userId}`)?.emit?.("player:awakening-available", {
-              worldId, hp: bars.hp, maxHp: bars.max_hp, source: 'near_death_survived',
-            });
-          }
-          // Low-health signal for the screen-reader / a11y bridge. The world page
-          // subscribes to `player:low-health` (SR_BRIDGE_EVENTS) but until now
-          // nothing emitted it — a receiver with no caller. Fire it whenever the
-          // player drops below LOW_HEALTH_FRACTION so the announce / HUD cue is a
-          // pure function of a real backend event.
-          const LOW_HEALTH_FRACTION = 0.3;
-          if (bars && bars.max_hp > 0 && bars.hp / bars.max_hp <= LOW_HEALTH_FRACTION) {
-            req.app.locals.io?.to(`user:${userId}`)?.emit?.("player:low-health", {
-              worldId, hp: bars.hp, maxHp: bars.max_hp,
-              fraction: Math.max(0, bars.hp / bars.max_hp),
-              source: 'npc_attack',
-            });
-          }
-        } catch { /* awakening + low-health surfacing is best-effort */ }
-      }
-
-      // ── Layer 2 (loop honesty): the kill consequence must LAND ──────────────
-      // When an NPC defeats a player, the player really loses sparks + 1–3 items
-      // into a loot bag the NPC claims. handleNPCKilledPlayer (lib/pvp-loot.js)
-      // does all of this — but it had ZERO callers, so for months "You have been
-      // defeated" fired while the player's wallet/inventory stayed untouched (a
-      // toast-without-grant, like the fixed world-event endEvent bug). Wire it
-      // here, on the real kill, so the consequence is asserted-true not pretended.
-      let lootDrop = null;
-      if (kill) {
-        try {
-          const { handleNPCKilledPlayer } = await import("../lib/pvp-loot.js");
-          lootDrop = handleNPCKilledPlayer(db, {
-            npcId, playerId: userId, worldId,
-            x: Number(npc.x) || 0, y: 0, z: Number(npc.z) || 0,
-          });
-          // Truthful feedback travels in the response `lootDrop` below — the
-          // caller IS the victim (requireAuth → req.user.id), so no extra socket
-          // emit is needed (and a world-room emit with no listener would be an
-          // orphan). The grant itself is the source of truth.
-        } catch (lootErr) {
-          // Loot is best-effort — a drop failure must never wedge the combat
-          // response. But it is a real grant, not a notification, so we log it.
-          logger.warn?.("pvp-loot", "npc_kill_loot_failed", { worldId, npcId, userId, error: String(lootErr?.message || lootErr) });
-        }
-      }
-
-      res.json({
-        ok: true, damageResult, eventId, kill, lootDrop: lootDrop || undefined,
-        revived: revived || undefined,
-        message: kill ? 'You have been defeated' : (revived ? 'A second chance — you live on' : undefined),
-      });
+      // lib/npc-attack.js is shared with the /unity-ws npc:attack event.
+      const { resolveNpcAttackOnPlayer } = await import("../lib/npc-attack.js");
+      const r = await resolveNpcAttackOnPlayer(db, { worldId, userId, npcId, io: req.app.locals.io });
+      res.status(r.status).json(r.body);
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

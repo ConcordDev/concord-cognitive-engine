@@ -55,21 +55,22 @@ describe("Concordant Law gate in routes/worlds.js", () => {
   const routes = fs.readFileSync(path.join(REPO_ROOT, "server/routes/worlds.js"), "utf8");
 
   it("the routes file refuses combat at the hub with concordant_law_refusal", () => {
-    // Both player→NPC and NPC→player attack handlers must short-circuit
-    // with concordant_law_refusal when worldId is the hub. Pin both via
-    // string occurrence count.
-    const refusals = routes.match(/concordant_law_refusal/g) ?? [];
-    assert.ok(
-      refusals.length >= 2,
-      `expected ≥2 concordant_law_refusal sites (player→NPC + NPC→player), got ${refusals.length}`,
-    );
-    assert.ok(
-      /worldId === ['"]concordia-hub['"]/.test(routes),
-      "the handler must check worldId === 'concordia-hub'",
-    );
-    assert.ok(
-      /worldId === ['"]concordia['"]/.test(routes),
-      "the handler must also accept the legacy 'concordia' alias",
-    );
+    // Both player→NPC and NPC→player attack paths must short-circuit with
+    // concordant_law_refusal when worldId is the hub. The NPC→player body
+    // lives in lib/npc-attack.js (shared with /unity-ws npc:attack); the
+    // route must delegate to it.
+    const npcAttack = fs.readFileSync(path.join(REPO_ROOT, "server/lib/npc-attack.js"), "utf8");
+    assert.match(routes, /resolveNpcAttackOnPlayer/, "the npc-attack route delegates to lib/npc-attack.js");
+    for (const [name, src] of [["routes/worlds.js (player→NPC)", routes], ["lib/npc-attack.js (NPC→player)", npcAttack]]) {
+      assert.match(src, /concordant_law_refusal/, `${name} must refuse with concordant_law_refusal`);
+      assert.ok(
+        /worldId === ['"]concordia-hub['"]/.test(src),
+        `${name} must check worldId === 'concordia-hub'`,
+      );
+      assert.ok(
+        /worldId === ['"]concordia['"]/.test(src),
+        `${name} must also accept the legacy 'concordia' alias`,
+      );
+    }
   });
 });
