@@ -319,3 +319,34 @@ describe("quests.recordProgress — client reports, server checks", () => {
   });
 });
 
+
+describe("quests macros act as the caller", () => {
+  const QUEST = "q_actor";
+  let macros, db;
+
+  beforeEach(async () => {
+    macros = buildMacros();
+    db = await freshDb();
+    db.prepare(`INSERT INTO world_quests (id, world_id, title, description, status) VALUES (?, ?, 'Actor quest', '', 'available')`).run(QUEST, WORLD);
+  });
+
+  it("a player naming another userId still acts on their own account", async () => {
+    const r = await macros.get("quests.accept")(makeCtx(db, "u_attacker"), { questId: QUEST, userId: "u_victim" });
+    assert.equal(r.ok, true, JSON.stringify(r));
+    const rows = db.prepare("SELECT user_id FROM player_quests WHERE quest_id = ?").all(QUEST).map((x) => x.user_id);
+    assert.deepEqual(rows, ["u_attacker"], "nothing was written to the named account");
+  });
+
+  it("an admin or internal caller may act for a named account", async () => {
+    await macros.get("quests.accept")({ db, actor: { userId: "u_admin", role: "admin" }, worldId: WORLD }, { questId: QUEST, userId: "u_member" });
+    await macros.get("quests.accept")({ db, actor: { userId: "system", role: "owner", internal: true }, worldId: WORLD, internal: true }, { questId: QUEST, userId: "u_member2" });
+    const rows = db.prepare("SELECT user_id FROM player_quests WHERE quest_id = ? ORDER BY user_id").all(QUEST).map((x) => x.user_id);
+    assert.deepEqual(rows, ["u_member", "u_member2"]);
+  });
+
+  it("no actor and no privilege means no user", async () => {
+    const r = await macros.get("quests.active")({ db, worldId: WORLD }, { userId: "u_victim" });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "no_user");
+  });
+});
