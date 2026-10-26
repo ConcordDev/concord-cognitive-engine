@@ -2,9 +2,10 @@
  * Welcome-pass helpers for the social lens (job oc-social-3b).
  *
  * Every value here is computed from the canonical social store and the real
- * studio tables — no fabricated suggestions, no invented activity:
- *   - peopleToFollow: creators with recent PUBLIC posts and/or recent
- *     finished Studio projects. Excludes the viewer, accounts the viewer
+ * user records — no fabricated suggestions, no invented activity:
+ *   - peopleToFollow: creators with recent PUBLIC posts. Studio projects
+ *     have no public/private flag, so they never qualify a creator or
+ *     show a count (that would leak private work). Excludes the viewer, accounts the viewer
  *     already follows, blocked users (either direction) and muted users.
  *     An empty result stays empty — callers hide the row rather than
  *     fake it.
@@ -42,56 +43,18 @@ function isMutedBy(STATE, viewerId, authorId) {
   return viewerMutedIds(STATE, viewerId).has(authorId);
 }
 
-/** datetime('now') format ('YYYY-MM-DD HH:MM:SS') for SQL comparisons. */
-function sqlNowMinusDays(days) {
-  return new Date(Date.now() - days * 86400000).toISOString().slice(0, 19).replace("T", " ");
-}
-
 function audienceOf(post) {
   return (post && post.privacy) || "public";
 }
 
 /**
- * Recent finished Studio work per creator over the activity window. Reads
- * the tables the studio router owns (route_studio_projects) and degrades
- * to "none" when they are absent — a missing table is no reason to invent
- * releases. Only status 'complete' projects count as finished work;
- * drafts and works-in-progress are not releases.
- */
-function studioActivityByCreator(db, cutoffSql) {
-  const out = new Map();
-  if (!db || typeof db.prepare !== "function") return out;
-  try {
-    const rows = db
-      .prepare(
-        `SELECT created_by AS creator, COUNT(*) AS releases, MAX(updated_at) AS lastAt
-         FROM route_studio_projects
-         WHERE updated_at >= ? AND status = 'complete'
-         GROUP BY created_by`,
-      )
-      .all(cutoffSql);
-    for (const row of rows || []) {
-      if (!row?.creator) continue;
-      out.set(String(row.creator), {
-        studioReleaseCount: Number(row.releases) || 0,
-        lastActiveAt: row.lastAt || null,
-      });
-    }
-  } catch {
-    /* studio tables not present on this deployment */
-  }
-  return out;
-}
-
-/**
  * Real active creators for the "People to follow" row.
  *
- * A candidate qualifies only with recent activity: at least one PUBLIC post
- * inside the window (followers-only/private posts never qualify a creator —
- * the same bar Explore is held to) and/or at least one finished studio
- * project updated inside the window. Excluded: the viewer, people the viewer
- * follows, blocked users (either direction), muted users, and accounts
- * with no resolvable name (a social profile or a users row).
+ * A candidate qualifies only with at least one PUBLIC post inside the
+ * activity window (followers-only/private posts never qualify — the same
+ * bar Explore is held to). Excluded: the viewer, people the viewer follows,
+ * blocked users (either direction), muted users, and accounts with no
+ * resolvable name.
  */
 export function peopleToFollow(STATE, { viewerId, limit = 8 } = {}) {
   if (!viewerId) return { ok: false, status: 401, error: "auth required" };
@@ -116,21 +79,7 @@ export function peopleToFollow(STATE, { viewerId, limit = 8 } = {}) {
     postsByAuthor.set(post.userId, bucket);
   }
 
-  const studioByCreator = studioActivityByCreator(STATE?.db, sqlNowMinusDays(ACTIVITY_WINDOW_DAYS));
-
-  const candidates = new Map();
-  for (const [authorId, activity] of postsByAuthor) {
-    candidates.set(authorId, { ...activity, studioReleaseCount: 0 });
-  }
-  for (const [creatorId, studio] of studioByCreator) {
-    if (creatorId === viewerId) continue;
-    const merged = candidates.get(creatorId) || { recentPostCount: 0, lastActiveAt: null };
-    merged.studioReleaseCount = studio.studioReleaseCount;
-    if (!merged.lastActiveAt || String(studio.lastActiveAt) > merged.lastActiveAt) {
-      merged.lastActiveAt = studio.lastActiveAt;
-    }
-    candidates.set(creatorId, merged);
-  }
+  const candidates = postsByAuthor;
 
   const ranked = [];
   for (const [authorId, activity] of candidates) {
@@ -152,15 +101,12 @@ export function peopleToFollow(STATE, { viewerId, limit = 8 } = {}) {
       bio: profile?.bio || null,
       followerCount: profile?.stats?.followerCount || 0,
       recentPostCount: activity.recentPostCount,
-      studioReleaseCount: activity.studioReleaseCount,
       lastActiveAt: activity.lastActiveAt,
     });
   }
 
   ranked.sort((a, b) => {
-    const activityA = a.recentPostCount * 2 + a.studioReleaseCount;
-    const activityB = b.recentPostCount * 2 + b.studioReleaseCount;
-    if (activityB !== activityA) return activityB - activityA;
+    if (b.recentPostCount !== a.recentPostCount) return b.recentPostCount - a.recentPostCount;
     if (b.followerCount !== a.followerCount) return b.followerCount - a.followerCount;
     return String(b.lastActiveAt || "").localeCompare(String(a.lastActiveAt || ""));
   });
@@ -240,7 +186,6 @@ export function discoverForViewer(STATE, viewerId, { limit = 10 } = {}) {
       matchScore: 0,
       sharedInterests: [],
       recentPostCount: p.recentPostCount,
-      studioReleaseCount: p.studioReleaseCount,
     })),
   };
 }

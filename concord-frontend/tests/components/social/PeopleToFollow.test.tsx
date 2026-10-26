@@ -2,7 +2,7 @@
  * PeopleToFollow — real "People to follow" row (oc-social-3b item b).
  *
  * The row is built from GET /api/social/people-to-follow (real active
- * creators — recent public posts and/or studio releases — excluding the
+ * creators — recent public posts — excluding the
  * viewer, already-followed accounts and blocked users). This test proves:
  * candidates render from the server's answer only, the Follow button hits
  * the real POST /api/social/follow, a successful follow refetches the row
@@ -32,7 +32,6 @@ const PEOPLE = [
     bio: null,
     followerCount: 12,
     recentPostCount: 3,
-    studioReleaseCount: 1,
     lastActiveAt: '2026-10-02T00:00:00.000Z',
   },
   {
@@ -43,7 +42,6 @@ const PEOPLE = [
     bio: null,
     followerCount: 4,
     recentPostCount: 1,
-    studioReleaseCount: 0,
     lastActiveAt: '2026-10-01T00:00:00.000Z',
   },
 ];
@@ -119,10 +117,9 @@ describe('PeopleToFollow', () => {
     expect(onOpenProfile).toHaveBeenCalledWith('bea');
   });
 
-  it('shows real activity facts (studio releases and recent posts) from the payload', async () => {
+  it('shows real activity facts (recent posts) from the payload', async () => {
     renderRow();
-    expect(await screen.findByText(/1 studio release/)).toBeTruthy();
-    expect(screen.getByText(/3 recent posts/)).toBeTruthy();
+    expect(await screen.findByText(/3 recent posts/)).toBeTruthy();
     expect(screen.getByText(/1 recent post/)).toBeTruthy();
   });
 });

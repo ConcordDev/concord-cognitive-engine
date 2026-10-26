@@ -217,22 +217,15 @@ describe("social welcome privacy", { concurrency: 1 }, () => {
     STATE.socialLens.moderation = new Map();
   });
 
-  it("counts only finished (status='complete') Studio projects as releases", async () => {
+  it("private Studio projects never qualify a creator or show a count", async () => {
     db.prepare(
       `INSERT INTO route_studio_projects (id, name, type, description, status, created_by, created_at, updated_at)
        VALUES ('sp_dave', 'Done track', 'track', '', 'complete', 'dave', datetime('now'), datetime('now'))`
     ).run();
-    db.prepare(
-      `INSERT INTO route_studio_projects (id, name, type, description, status, created_by, created_at, updated_at)
-       VALUES ('sp_eve', 'Draft track', 'track', '', 'draft', 'eve', datetime('now'), datetime('now'))`
-    ).run();
-
     const res = await hit("GET", "/api/social/people-to-follow?limit=12", { user: "alice" });
     const ids = res.json.people.map((p) => p.userId);
-    const dave = res.json.people.find((p) => p.userId === "dave");
-    assert.ok(dave, "finished studio work qualifies a creator with no posts at all");
-    assert.equal(dave.studioReleaseCount, 1);
-    assert.ok(!ids.includes("eve"), "a draft is not a release");
+    assert.ok(!ids.includes("dave"), "studio work alone (no public posts) does not qualify");
+    for (const p of res.json.people) assert.equal(p.studioReleaseCount, undefined);
   });
 
   it("welcome-state reflects only the session user's real profile and posts", async () => {

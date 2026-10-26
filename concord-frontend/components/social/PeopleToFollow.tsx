@@ -13,7 +13,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2, Music, UserPlus, Users } from 'lucide-react';
+import { Loader2, UserPlus, Users } from 'lucide-react';
 import { cn, formatNumber } from '@/lib/utils';
 import { api } from '@/lib/api/client';
 
@@ -25,7 +25,6 @@ export interface PersonToFollow {
   bio?: string | null;
   followerCount: number;
   recentPostCount: number;
-  studioReleaseCount: number;
   lastActiveAt?: string | null;
 }
 
@@ -112,13 +111,6 @@ export function PeopleToFollow({ currentUserId, onOpenProfile, className }: Peop
               </span>
             </button>
             <p className="flex items-center gap-1 text-[11px] text-zinc-400">
-              {person.studioReleaseCount > 0 && (
-                <>
-                  <Music className="h-3 w-3" aria-hidden="true" />
-                  {person.studioReleaseCount} studio {person.studioReleaseCount === 1 ? 'release' : 'releases'}
-                </>
-              )}
-              {person.studioReleaseCount > 0 && person.recentPostCount > 0 && ' · '}
               {person.recentPostCount > 0 && `${person.recentPostCount} recent ${person.recentPostCount === 1 ? 'post' : 'posts'}`}
             </p>
             <button
