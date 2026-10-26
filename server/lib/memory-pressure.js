@@ -12,19 +12,26 @@
  */
 
 import logger from "../logger.js";
+import { getHeapLimitMB, getMemorySnapshot } from "./heap-limit.js";
 
 const POLL_INTERVAL_MS = 15_000;
-// G2.3 fix — default aligned to the documented 32GB deploy (CLAUDE.md: "start
-// node with --max-old-space-size=32768 ... the watchdog reads the env var").
-// The prior 3584 default meant that on the 32GB box, if the env var was unset,
-// the watchdog shed at 80% of 3.5GB — premature shedding. Explicit env wins.
-const HEAP_LIMIT_MB = Number(process.env.MAX_OLD_SPACE_SIZE || 32768);
+// G2.3 / INC-149 — the ceiling is V8's real heap_size_limit (which reflects
+// --max-old-space-size). The old env-var default (32 GB when unset) made the
+// watchdog believe a 3 GB process had 32 GB, so it never shed before the OOM.
+// MAX_OLD_SPACE_SIZE can only LOWER the limit (see lib/heap-limit.js).
+const HEAP_LIMIT_MB = getHeapLimitMB();
 const WARN_RATIO = 0.70;
 const SHED_RATIO = 0.80;
 const CRITICAL_RATIO = 0.90;
 
 // Session age threshold for eviction under pressure (1 hour)
 const SESSION_EVICT_AGE_MS = 60 * 60 * 1000;
+
+const RESTART_RATIO = 0.95;
+const RESTART_AFTER_TICKS = 8; // 8 × 15 s ≈ 2 min
+const AUTO_RESTART = process.env.CONCORD_MEM_AUTORESTART !== "0";
+let _restartStreak = 0;
+let _restartRequested = false;
 
 let _level = "normal";
 let _timer = null;
@@ -65,7 +72,41 @@ export function initMemoryWatchdog(STATE) {
   };
 }
 
+// INC-149: a census line every ~10 min (40 watchdog ticks) so heap growth is
+// visible in backend.log with the sizes of the biggest STATE collections —
+// enough to see WHICH store grows between restarts without a heap snapshot.
+const CENSUS_EVERY_TICKS = Number(process.env.CONCORD_MEM_CENSUS_TICKS) || 40;
+let _censusTick = 0;
+function _sizeOf(v) {
+  if (!v || typeof v !== "object") return 0;
+  if (v instanceof Map || v instanceof Set) return v.size;
+  if (Array.isArray(v)) return v.length;
+  return 0;
+}
+export function memoryCensus(STATE, top = 10) {
+  const sizes = [];
+  if (STATE && typeof STATE === "object") {
+    for (const k of Object.keys(STATE)) {
+      let v; try { v = STATE[k]; } catch { continue; }
+      const n = _sizeOf(v);
+      if (n > 0) sizes.push([k, n]);
+      if (v && typeof v === "object" && !(v instanceof Map) && !(v instanceof Set) && !Array.isArray(v)) {
+        let keys; try { keys = Object.keys(v); } catch { keys = []; }
+        if (keys.length <= 64) {
+          for (const k2 of keys) { const n2 = _sizeOf(v[k2]); if (n2 > 0) sizes.push([`${k}.${k2}`, n2]); }
+        }
+      }
+    }
+  }
+  sizes.sort((a, b) => b[1] - a[1]);
+  return { ...getMemorySnapshot(), top: Object.fromEntries(sizes.slice(0, top)) };
+}
+
 function _tick(STATE) {
+  if (++_censusTick >= CENSUS_EVERY_TICKS) {
+    _censusTick = 0;
+    try { logger.log("info", "lib", "memory_census", memoryCensus(STATE)); } catch { /* diagnostic only */ }
+  }
   const mem = process.memoryUsage();
   const heapUsedMB = mem.heapUsed / (1024 * 1024);
   const ratio = heapUsedMB / HEAP_LIMIT_MB;
@@ -104,6 +145,21 @@ function _tick(STATE) {
 
   if (_level === "critical") {
     _aggressiveEviction(STATE);
+  }
+
+  // INC-149: if eviction + GC can't pull the heap back and it sits at >=95% of
+  // the real limit for ~2 min, restart cleanly (SIGTERM → the normal graceful
+  // shutdown that saves state; launchd KeepAlive brings it back) instead of a
+  // V8 "heap out of memory" abort that loses in-flight writes.
+  if (ratio >= RESTART_RATIO) {
+    _restartStreak++;
+    if (_restartStreak >= RESTART_AFTER_TICKS && AUTO_RESTART && !_restartRequested) {
+      _restartRequested = true;
+      logger.log("error", "lib", "memory_critical_restart", { heapUsedMB: Math.round(heapUsedMB), heapLimitMB: HEAP_LIMIT_MB, ratio: Math.round(ratio * 100) });
+      try { process.kill(process.pid, "SIGTERM"); } catch { /* best effort */ }
+    }
+  } else {
+    _restartStreak = 0;
   }
 
   // Unpause background work when pressure drops

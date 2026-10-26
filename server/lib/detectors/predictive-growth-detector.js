@@ -14,6 +14,7 @@
 // Linear regression on slope; tolerates short history (<5 samples = info-only).
 
 import path from "node:path";
+import { getHeapLimitMB } from "../heap-limit.js";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { makeReport, makeError } from "./_framework.js";
 
@@ -87,8 +88,7 @@ export async function runPredictiveGrowthDetector({ root, db, state, opts = {} }
     try {
       const mu = process.memoryUsage?.();
       if (mu) heapMb = Math.round(mu.heapUsed / 1024 / 1024);
-      const maxOldMb = parseInt(process.env.MAX_OLD_SPACE_SIZE || "0", 10);
-      heapLimitMb = maxOldMb || null;
+      heapLimitMb = getHeapLimitMB() || null; // INC-149: real V8 ceiling, not the env guess
     } catch { /* node-restricted env */ }
 
     // 3. Append to runtime-history.jsonl.

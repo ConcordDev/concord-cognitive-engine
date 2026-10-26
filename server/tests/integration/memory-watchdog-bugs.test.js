@@ -40,12 +40,13 @@ describe("G2.2 — shadowDtus is LRU-trimmed by the watchdog", () => {
   });
 });
 
-describe("G2.3 — heap-limit default", () => {
-  it("defaults to 32768 (the documented deploy), not 3584", async () => {
+describe("G2.3 / INC-149 — heap-limit source", () => {
+  it("uses V8's real heap_size_limit, not an env-var guess (no 32768/3584 literal default)", async () => {
     const src = await import("node:fs").then((m) =>
       m.readFileSync(new URL("../../lib/memory-pressure.js", import.meta.url), "utf8"));
-    assert.match(src, /MAX_OLD_SPACE_SIZE \|\| 32768/);
+    assert.match(src, /getHeapLimitMB\(\)/);
     assert.doesNotMatch(src, /MAX_OLD_SPACE_SIZE \|\| 3584/);
+    assert.doesNotMatch(src, /MAX_OLD_SPACE_SIZE \|\| 32768/);
   });
 });
 
