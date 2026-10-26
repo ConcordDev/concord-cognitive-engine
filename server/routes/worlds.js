@@ -21,7 +21,7 @@ import { spawnWorldNativeEmergent, getWorldEmergents, getCrossWorldEmergents, gr
 import { seedWorldContent } from "../lib/world-seeder.js";
 import { getNearbyNodes, getUndergroundNodes, gatherFromNode, updateSwimState, checkSwimState, respawnExpiredNodes } from "../lib/world-gathering.js";
 import { withEntityLock } from "../lib/entity-lock.js";
-import { getWorldMarket, getResourcePrice, recordTransaction } from "../lib/world-economy.js";
+import { getWorldMarket, getResourcePrice, recordTransaction, initWorldMarket } from "../lib/world-economy.js";
 import { issueDirective, voteOnDirective, getActiveDirectives, getDirectiveHistory } from "../lib/world-governance.js";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 import { getRoomsForBuilding, addRoom, updateRoomFurniture, seedRoomsForBuilding } from "../lib/building-interiors.js";
@@ -350,38 +350,38 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
   });
 
   // POST /api/worlds/:worldId/quests/:questId/accept
-  router.post("/:worldId/quests/:questId/accept", requireAuth, (req, res) => {
+  // Accepts into the caller's player_quests only (quest-engine#acceptQuest).
+  // The world_quests catalog row stays as it is, so every other player can
+  // still see and accept it; this route used to flip it to 'active', which
+  // hid the quest from everyone else's list.
+  router.post("/:worldId/quests/:questId/accept", requireAuth, async (req, res) => {
     const { worldId, questId } = req.params;
-    const userId = req.user.id;
     try {
-      // Mark quest as accepted, assign to player
+      const { acceptQuest } = await import("../lib/quests/quest-engine.js");
+      const r = acceptQuest(db, req.user.id, worldId, questId);
+      if (!r.ok) {
+        const status = r.reason === "quest_not_found" ? 404 : 500;
+        return res.status(status).json({ ok: false, error: r.reason === "quest_not_found" ? "quest not found" : r.reason });
+      }
       const quest = db.prepare("SELECT * FROM world_quests WHERE id = ? AND world_id = ?").get(questId, worldId);
-      if (!quest) return res.status(404).json({ ok: false, error: 'quest not found' });
-      db.prepare("UPDATE world_quests SET status = 'active', accepted_by = ? WHERE id = ?")
-        .run(userId, questId);
-      // Add to player's active quest tracking
-      const id = crypto.randomUUID();
-      // Try to insert into player_quests if it exists
-      try {
-        db.prepare("INSERT OR IGNORE INTO player_quests (id, user_id, quest_id, world_id, status) VALUES (?,?,?,?,'active')")
-          .run(id, userId, questId, worldId);
-      } catch { /* table may not exist */ }
-      res.json({ ok: true, quest });
+      res.json({ ok: true, already: r.already, status: r.status, quest });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
   });
 
-  // POST /api/worlds/:worldId/quests/:questId/event — dispatch progress event
+  // POST /api/worlds/:worldId/quests/:questId/event
+  // Records nothing, and says so. Objective progress is written by the server
+  // action that earns it (gather, kill, talk, ...) through
+  // quest-engine#recordObjectiveProgress, never from a client-declared event.
+  // This route used to answer ok:true and drop the event.
   router.post("/:worldId/quests/:questId/event", requireAuth, (req, res) => {
-    try {
-      const quest = db.prepare("SELECT * FROM world_quests WHERE id = ?").get(req.params.questId);
-      if (!quest) return res.status(404).json({ error: "Quest not found" });
-      // Progress update is handled by quest-emergence.js; acknowledge receipt here
-      res.json({ ok: true, questId: req.params.questId, event: req.body });
-    } catch (e) {
-      serverError(res, e);
-    }
+    res.status(409).json({
+      ok: false,
+      error: "progress_recorded_by_server",
+      detail: "Quest progress is recorded by the server action itself; read it from GET /api/worlds/:worldId/quests/active.",
+      questId: req.params.questId,
+    });
   });
 
   // GET /api/worlds/:worldId/quests/active — player's active quests with objective progress
@@ -1957,10 +1957,23 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
   // GET /api/worlds/:worldId/market — get current market prices
   router.get("/:worldId/market", (req, res) => {
     try {
-      const market = getWorldMarket(db, req.params.worldId);
+      const market = _ensureWorldMarket(req.params.worldId);
       res.json({ ok: true, market });
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
   });
+
+  // A world's market is the resources world-economy.js#initWorldMarket seeds
+  // for its universe type. Nothing called that seeder, so every market read
+  // empty and every trade priced off a fallback. Seed on first read; an
+  // unknown world stays empty.
+  function _ensureWorldMarket(worldId) {
+    let market = getWorldMarket(db, worldId);
+    if (market.length > 0) return market;
+    const world = db.prepare("SELECT universe_type FROM worlds WHERE id = ?").get(worldId);
+    if (!world) return market;
+    initWorldMarket(db, worldId, world.universe_type || "standard");
+    return getWorldMarket(db, worldId);
+  }
 
   // POST /api/worlds/:worldId/market/trade — execute a trade (buy/sell resource)
   // Body: { resource_id, quantity, type: 'buy'|'sell' }
@@ -1977,6 +1990,12 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
       }
 
       const quantity = Math.max(1, parseInt(rawQty));
+      // Only what this world's market lists can be traded. Pricing any other
+      // id off the fallback let a buy put an arbitrary item id into the
+      // player's inventory for 10 credits.
+      if (!_ensureWorldMarket(worldId).some((m) => m.resource_id === resource_id)) {
+        return res.status(404).json({ ok: false, error: 'not_sold_here', resource_id });
+      }
       const price    = getResourcePrice(db, worldId, resource_id);
       const totalCost = price * quantity;
 

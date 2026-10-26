@@ -113,6 +113,18 @@ export function equipItem(db, userId, slot, itemId) {
 
   db.prepare(`INSERT OR IGNORE INTO player_equipment (user_id) VALUES (?)`).run(userId);
 
+  // Armour and trinkets go straight into their own slot; handedness only
+  // governs the hands. Before this every non-hand slot answered
+  // non_hand_slot_for_weapon, so nothing could be worn.
+  const wornCol = slot === "head" ? "head_id"
+                : slot === "body" ? "body_id"
+                : slot === "accessory" ? "accessory_id"
+                : null;
+  if (wornCol) {
+    db.prepare(`UPDATE player_equipment SET ${wornCol} = ?, updated_at = unixepoch() WHERE user_id = ?`).run(item.id, userId);
+    return { ok: true, slot, itemId: item.id };
+  }
+
   // Two-handed weapon: occupies both right and left, displaces anything else
   if (item.handedness === 'two') {
     db.prepare(`
