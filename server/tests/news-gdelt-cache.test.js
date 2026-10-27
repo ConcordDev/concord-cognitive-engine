@@ -237,3 +237,60 @@ describe("GDELT backoff with a queue", () => {
     assert.equal(during.result.degraded, true);
   });
 });
+
+describe("daily-briefing total deadline", () => {
+  it("slow GDELT and a slow LLM still return inside the total deadline", async () => {
+    __configureGdeltForTests({ briefingBudgetMs: 60, briefingTotalMs: 200, llmClosingMs: 1000, llmMinMs: 20, timeoutMs: 2000 });
+    // The first GDELT section answers in time so there is something to summarise;
+    // the rest are slow and miss the 60 ms section budget.
+    let fetches = 0;
+    globalThis.fetch = async () => {
+      const delay = ++fetches === 1 ? 10 : 80;
+      await new Promise((r) => setTimeout(r, delay));
+      return okResponse(["Story"]);
+    };
+    let llmCalls = 0;
+    const ctx = {
+      ...ctxA,
+      llm: { chat: () => { llmCalls++; return new Promise((r) => setTimeout(() => r({ text: "Too late" }), 1000)); } },
+    };
+    const started = Date.now();
+    const r = await ACTIONS.get("news.daily-briefing")(ctx, { id: null, data: {}, meta: {} }, {});
+    const elapsed = Date.now() - started;
+    assert.equal(r.ok, true);
+    // Uncapped, this would take the 60 ms GDELT budget plus the full 1000 ms LLM cap.
+    assert.ok(elapsed < 500, `briefing took ${elapsed} ms`);
+    assert.equal(llmCalls, 1, "the LLM was attempted with the time that was left");
+    assert.equal(r.result.closing, "That's the briefing. Read any story in full from the Headlines tab.");
+    // Let the queued background fetches finish so they do not leak into the next test.
+    await new Promise((r) => setTimeout(r, 400));
+  });
+
+  it("makes no LLM call when every section is empty", async () => {
+    globalThis.fetch = async () => okResponse([]);
+    let llmCalls = 0;
+    const ctx = { ...ctxA, llm: { chat: async () => { llmCalls++; return { text: "Should not run" }; } } };
+    const r = await ACTIONS.get("news.daily-briefing")(ctx, { id: null, data: {}, meta: {} }, {});
+    assert.equal(r.ok, true);
+    assert.equal(llmCalls, 0);
+    assert.equal(r.result.closing, "That's the briefing. Read any story in full from the Headlines tab.");
+  });
+
+  it("during GDELT backoff with no cached copy, returns at once with no new fetch", async () => {
+    let calls = 0;
+    __configureGdeltForTests({ now: () => 7_000_000 }); // frozen clock keeps the 60 s window open
+    globalThis.fetch = async () => { calls++; return errResponse(429); };
+    await call("headlines", { category: "world" }); // sets the backoff window
+    assert.equal(calls, 1);
+    const started = Date.now();
+    const r = await call("daily-briefing");
+    const elapsed = Date.now() - started;
+    assert.equal(calls, 1, "no GDELT request while backing off");
+    assert.ok(elapsed < 1000, `briefing took ${elapsed} ms during backoff`);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.degraded, true);
+    assert.equal(r.result.degradedReason, "rate_limited");
+    assert.deepEqual(r.result.topStories.bullets, []);
+    assert.equal(r.result.topStories.unavailableReason, "rate_limited");
+  });
+});
