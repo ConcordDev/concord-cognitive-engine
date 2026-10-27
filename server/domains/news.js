@@ -4,6 +4,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { requireList } from "../lib/lens-inputs.js";
 export default function registerNewsActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -14,7 +15,8 @@ export default function registerNewsActions(registerLensAction) {
    */
   registerLensAction("news", "biasDetection", (ctx, artifact, params) => {
   try {
-    const articles = artifact.data?.articles || [];
+    const articles = requireList(artifact.data?.articles, "articles");
+    if (!Array.isArray(articles)) return articles;
     if (articles.length === 0) {
       return { ok: true, result: { message: "No articles to analyze." } };
     }

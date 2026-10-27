@@ -45,7 +45,8 @@ describe("wave1 broken actions — honest invalid_input", () => {
     assert.equal(empty.reason, "no_menu_items");
     const bad = call("food.costPlate", { menuItems: 5 });
     assert.equal(bad.error, "invalid_input");
-    assert.equal(bad.reason, "not_a_function");
+    assert.equal(bad.field, "menuItems");
+    assert.equal(bad.reason, "expected_array");
   });
 
   it("engineering.unitConvert refuses an unsupported pair and a non-string unit", () => {
@@ -73,7 +74,8 @@ describe("wave1 broken actions — honest invalid_input", () => {
     const r = call("electrical.conduitFill", { conductors: 10 });
     assert.equal(r.ok, false);
     assert.equal(r.error, "invalid_input");
-    assert.equal(r.reason, "not_a_function");
+    assert.equal(r.field, "conductors");
+    assert.equal(r.reason, "expected_array");
   });
 
   it("createThreatDTU accepts a non-array behavior without throwing", () => {

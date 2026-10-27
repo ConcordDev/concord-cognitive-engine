@@ -26,6 +26,7 @@ import { retrieveRelevantFiles, candidatesFromLocalFiles, candidatesFromGitHubTr
 // macro wrappers only.
 import codePushGovernance from "../lib/code-push-governance.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { requireList } from "../lib/lens-inputs.js";
 
 // github.repo-tree / github.file-get and code.files-write are lens actions.
 // runMacro throws "macro not found" before its own catch, which the harness
@@ -226,7 +227,8 @@ export default function registerCodeActions(registerLensAction) {
    */
   registerLensAction("code", "dependencyAudit", (ctx, artifact, _params) => {
   try {
-    const deps = artifact.data?.dependencies || [];
+    const deps = requireList(artifact.data?.dependencies, "dependencies");
+    if (!Array.isArray(deps)) return deps;
     if (deps.length === 0) {
       return { ok: true, result: { dependencies: [], message: "No dependencies to audit." } };
     }

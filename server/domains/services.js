@@ -1,5 +1,6 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { requireList } from "../lib/lens-inputs.js";
 export default function registerServicesActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("services", "scheduleOptimize", (ctx, artifact, _params) => {
@@ -117,7 +118,8 @@ export default function registerServicesActions(registerLensAction) {
 
   registerLensAction("services", "commissionCalc", (ctx, artifact, params) => {
   try {
-    const sales = artifact.data?.sales || [];
+    const sales = requireList(artifact.data?.sales, "sales");
+    if (!Array.isArray(sales)) return sales;
     const tiers = params.tiers || [
       { min: 0, max: 5000, rate: 0.05 },
       { min: 5000, max: 15000, rate: 0.08 },

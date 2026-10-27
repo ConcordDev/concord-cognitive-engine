@@ -17,7 +17,7 @@ import {
 } from "../lib/asset-gen/degradation-constants.js";
 import { checkDurabilityGate } from "../lib/asset-gen/durability-gate.js";
 import { HONEST_BOUNDARY as DEGRADATION_HONEST_BOUNDARY } from "../lib/simulation/degradation-kinetics.js";
-import { needNums, notComputed } from "../lib/lens-inputs.js";
+import { needNums, notComputed, requireList } from "../lib/lens-inputs.js";
 
 const MP_BASE = "https://api.materialsproject.org";
 
@@ -102,7 +102,8 @@ export default function registerMaterialsActions(registerLensAction) {
   try {
     const data = artifact.data || {};
     const requirements = data.requirements || {};
-    const candidates = data.candidates || [];
+    const candidates = requireList(data.candidates, "candidates");
+    if (!Array.isArray(candidates)) return candidates;
 
     if (candidates.length === 0) {
       return { ok: true, result: { message: "Add candidate materials with properties to get selection recommendations." } };

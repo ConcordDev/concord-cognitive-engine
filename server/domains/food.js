@@ -7,6 +7,7 @@ import { fetchPublicUrl } from "../lib/public-fetch.js";
 import { presentOwnedId } from "../lib/public-actor.js";
 import { boundedNum, moneyOrNull, badNumber } from "../lib/finite-input.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { requireList } from "../lib/lens-inputs.js";
 
 export default function registerFoodActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -77,7 +78,8 @@ export default function registerFoodActions(registerLensAction) {
    */
   registerLensAction("food", "costPlate", (ctx, artifact, params) => {
   try {
-    const menuItems = artifact.data.menuItems || [];
+    const menuItems = requireList(artifact.data.menuItems, "menuItems");
+    if (!Array.isArray(menuItems)) return menuItems;
     const targetName = params.itemName || null;
 
     const items = targetName
@@ -503,7 +505,8 @@ export default function registerFoodActions(registerLensAction) {
    */
   registerLensAction("food", "pourCost", (ctx, artifact, params) => {
   try {
-    const beverages = artifact.data.beverages || [];
+    const beverages = requireList(artifact.data.beverages, "beverages");
+    if (!Array.isArray(beverages)) return beverages;
     const targetName = params.itemName || null;
 
     const items = targetName

@@ -9,6 +9,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { requireList } from "../lib/lens-inputs.js";
 
 export default function registerQuestmarketActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -330,7 +331,8 @@ export default function registerQuestmarketActions(registerLensAction) {
   registerLensAction("questmarket", "guildScore", (ctx, artifact, _params) => {
   try {
     const data = artifact.data || {};
-    const members = data.members || [];
+    const members = requireList(data.members, "members");
+    if (!Array.isArray(members)) return members;
     const guildQuests = parseInt(data.guildQuests) || 0;
 
     if (members.length === 0) {
