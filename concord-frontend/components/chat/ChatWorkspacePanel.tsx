@@ -795,8 +795,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             sources: Array.isArray(meta.sources) ? (meta.sources as Message['sources']) : undefined,
             artifacts: Array.isArray(meta.artifacts) ? (meta.artifacts as ChatArtifact[]) : undefined,
             webAugmented: !!meta.webAugmented,
-            confidence: meta.confidence === 'low' ? 'low' : undefined,
-            confidenceReason: typeof meta.confidenceReason === 'string' ? meta.confidenceReason : undefined,
+            confidence: meta.answerConfidence === 'low' ? 'low' : undefined,
+            confidenceReason: typeof meta.answerConfidenceReason === 'string' ? meta.answerConfidenceReason : undefined,
           };
         });
         setLocalMessages(hydrated);
@@ -1278,8 +1278,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             computed: meta.computed,
             dtuRefs: meta.dtuRefs,
             artifacts: meta.artifacts,
-            confidence: meta.confidence,
-            confidenceReason: meta.confidenceReason,
+            answerConfidence: meta.answerConfidence,
+            answerConfidenceReason: meta.answerConfidenceReason,
             recovered: true,
           };
         } finally {
@@ -1379,8 +1379,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             computed: (finalOut as Record<string, unknown>)?.computed,
             dtuRefs: (finalOut as Record<string, unknown>)?.dtuRefs,
             artifacts: (finalOut as Record<string, unknown>)?.artifacts,
-            confidence: (finalOut as Record<string, unknown>)?.confidence,
-            confidenceReason: (finalOut as Record<string, unknown>)?.confidenceReason,
+            answerConfidence: (finalOut as Record<string, unknown>)?.answerConfidence,
+            answerConfidenceReason: (finalOut as Record<string, unknown>)?.answerConfidenceReason,
             streamed: true,
           };
         }
@@ -1499,9 +1499,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         reasoningSessionId:
           typeof data.reasoningSessionId === 'string' ? data.reasoningSessionId : undefined,
         // Stream path: top-level on the final out; JSON path: on meta (toUI envelope).
-        confidence: (data.confidence ?? data.meta?.confidence) === 'low' ? 'low' : undefined,
-        confidenceReason: typeof (data.confidenceReason ?? data.meta?.confidenceReason) === 'string'
-          ? String(data.confidenceReason ?? data.meta?.confidenceReason)
+        confidence: (data.answerConfidence ?? data.meta?.answerConfidence) === 'low' ? 'low' : undefined,
+        confidenceReason: typeof (data.answerConfidenceReason ?? data.meta?.answerConfidenceReason) === 'string'
+          ? String(data.answerConfidenceReason ?? data.meta?.answerConfidenceReason)
           : undefined,
         wasSynthesized: !!data.wasSynthesized,
         shadowsUsed: typeof data.shadowsUsed === 'number' ? data.shadowsUsed : undefined,

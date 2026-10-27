@@ -103,8 +103,8 @@ export async function streamConKayAgent(args: {
           error: data.error ? String(data.error) : undefined,
           provider: data.provider ? String(data.provider) : undefined,
           model: data.model ? String(data.model) : undefined,
-          confidence: data.confidence === 'low' ? 'low' : undefined,
-          confidenceReason: data.confidenceReason ? String(data.confidenceReason) : undefined,
+          confidence: data.answerConfidence === 'low' ? 'low' : undefined,
+          confidenceReason: data.answerConfidenceReason ? String(data.answerConfidenceReason) : undefined,
         };
       }
     }

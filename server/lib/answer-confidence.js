@@ -26,7 +26,9 @@ function _normalizeModelTag(name) {
 
 /**
  * @param {{ source?: string|null, provider?: string|null, model?: string|null }} answer
- * @returns {{ confidence: "low", confidenceReason: string } | null}
+ * @returns {{ answerConfidence: "low", answerConfidenceReason: string } | null}
+ * Keys are answerConfidence*, not `confidence`: lib/confidence-attacher.js
+ * already owns `confidence` (a {score, level, factors} object) on chat responses.
  */
 export function answerConfidence({ source, provider, model } = {}) {
   const local = LOCAL_SOURCES.has(source) || LOCAL_PROVIDERS.has(provider);
@@ -36,5 +38,5 @@ export function answerConfidence({ source, provider, model } = {}) {
   const small = getLocalUnifiedModel();
   if (!small) return null;
   if (_normalizeModelTag(answered) !== _normalizeModelTag(small)) return null;
-  return { confidence: "low", confidenceReason: LOW_CONFIDENCE_REASON };
+  return { answerConfidence: "low", answerConfidenceReason: LOW_CONFIDENCE_REASON };
 }

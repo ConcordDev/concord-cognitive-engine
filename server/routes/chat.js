@@ -171,8 +171,8 @@ export default function registerChatRoutes(app, {
       }
       // toUI() rebuilds meta from scratch, so the backup-model label
       // (lib/answer-confidence.js) rides in extraMeta to reach JSON clients.
-      const _confMeta = out?.confidence === "low"
-        ? { confidence: out.confidence, confidenceReason: out.confidenceReason }
+      const _confMeta = out?.answerConfidence === "low"
+        ? { answerConfidence: out.answerConfidence, answerConfidenceReason: out.answerConfidenceReason }
         : {};
       return uiJson(
         res,
