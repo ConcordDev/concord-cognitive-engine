@@ -33,6 +33,7 @@
 // tool exec → brain reply). Default is 8 via CONCORD_AGENT_MAX_TURNS;
 // the live value comes from resolveAgentMaxTurns.
 
+import { sanitizeAgentHistory } from "./chat/agent-history-sanitize.js";
 import { brainChat, provenanceFrom } from "./byo-router.js";
 import {
   resolveAgentMaxTokens,
@@ -2279,7 +2280,8 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
 
   const messages = [
     { role: "system", content: TASK_PROMPTS.agentMode({ toolSchemaBlock: TOOL_SCHEMA_BLOCK, shadowContextBlock: shadowContextBlock + memoryBlock + actionRecallBlock + _agentTodayBlock(opts) + extraSystemBlock }) },
-    ...history,
+    // Client history: user/assistant only, capped; server notes keep "system".
+    ...sanitizeAgentHistory(history),
     { role: "user", content: message },
   ];
   if (_selfCont) {
