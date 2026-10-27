@@ -15,6 +15,14 @@ function tableExists(db, name) {
   }
 }
 
+function columnExists(db, table, column) {
+  try {
+    return db.prepare(`PRAGMA table_info(${table})`).all().some((row) => row.name === column);
+  } catch {
+    return false;
+  }
+}
+
 function creatorRows(db, userId) {
   if (!tableExists(db, "dtus")) return { ok: false, reason: "dtu_tables_missing" };
   const citations = tableExists(db, "dtu_citations");
@@ -45,6 +53,34 @@ function royaltyTotal(db, userId) {
     return { total: Math.round((Number(row?.total) || 0) * 100) / 100, reason: null };
   } catch {
     return { total: null, reason: "no_ledger" };
+  }
+}
+
+function buildCountFor(db, userId) {
+  if (!tableExists(db, "world_buildings")) {
+    return { count: null, reason: "no_building_table" };
+  }
+  const spawned = columnExists(db, "world_buildings", "spawned_by_user_id");
+  const owner = columnExists(db, "world_buildings", "owner_id");
+  const ownerType = columnExists(db, "world_buildings", "owner_type");
+  if (!spawned && !owner) return { count: null, reason: "buildings_not_attributed" };
+  const clauses = [];
+  const params = [];
+  if (spawned) {
+    clauses.push("spawned_by_user_id = ?");
+    params.push(userId);
+  }
+  if (owner) {
+    clauses.push(ownerType ? "(owner_type = 'player' AND owner_id = ?)" : "owner_id = ?");
+    params.push(userId);
+  }
+  try {
+    const row = db.prepare(
+      `SELECT COUNT(DISTINCT id) AS n FROM world_buildings WHERE ${clauses.join(" OR ")}`,
+    ).get(...params);
+    return { count: Number(row?.n) || 0, reason: null };
+  } catch {
+    return { count: null, reason: "buildings_unreadable" };
   }
 }
 
@@ -95,6 +131,7 @@ export function readCreatorSimStats(db, userId) {
 export function readPersonalAnalytics(db, userId) {
   const base = readCreatorSimStats(db, userId);
   if (!base.ok) return base;
+  const builds = buildCountFor(db, userId);
   return {
     ok: true,
     status: 200,
@@ -107,7 +144,9 @@ export function readPersonalAnalytics(db, userId) {
       mostUsedMaterial: null,
       mostUsedMaterialReason: "not_recorded",
       reputationByDomain: base.reputationByDomain,
-      buildCount: base.dtuCount,
+      dtuCount: base.dtuCount,
+      buildCount: builds.count,
+      buildCountReason: builds.reason,
       playtime: null,
       playtimeReason: "not_recorded",
       loginStreak: null,
