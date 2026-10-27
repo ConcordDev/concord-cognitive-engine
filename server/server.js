@@ -32159,8 +32159,13 @@ register("ingest", "url", async (ctx, input) => {
   });
 
   const dtu = await ctx.macro.run("dtu","create",{ title, creti, tags, tier:"regular", source:"ingest.url", meta:{ url } });
-  ctx.log("ingest.url", "Ingested url", { url, id: dtu.dtu.id });
-  return { ok:true, url, dtu: dtu.dtu, fetchedBytes: raw.length };
+  const created = dtu?.dtu || dtu?.result || null;
+  const createdId = created?.id || dtu?.id;
+  if (!dtu || dtu.ok === false || !createdId) {
+    return { ok: false, error: "invalid_input", reason: "dtu_create_failed" };
+  }
+  ctx.log("ingest.url", "Ingested url", { url, id: createdId });
+  return { ok:true, url, dtu: created?.id ? created : dtu, fetchedBytes: raw.length };
 });
 
 // CANONICAL ingest.queue — shadows the earlier Ghost Fleet stub that
@@ -45099,7 +45104,8 @@ register("llm", "embed", (ctx, input) => {
 
 // ---- Export/Import System ----
 register("export", "markdown", (ctx, input) => {
-  const dtus = input.ids ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray();
+  if (input.ids != null && !Array.isArray(input.ids)) return { ok: false, error: "invalid_input", reason: "not_a_function" };
+  const dtus = Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray();
   const lines = ["# Concord DTU Export", `Exported: ${nowISO()}`, `Count: ${dtus.length}`, ""];
 
   for (const dtu of dtus) {
@@ -45129,7 +45135,8 @@ register("export", "markdown", (ctx, input) => {
 });
 
 register("export", "obsidian", (ctx, input) => {
-  const dtus = input.ids ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray();
+  if (input.ids != null && !Array.isArray(input.ids)) return { ok: false, error: "invalid_input", reason: "not_a_function" };
+  const dtus = Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray();
   const files = [];
 
   for (const dtu of dtus) {
@@ -45168,7 +45175,8 @@ register("export", "obsidian", (ctx, input) => {
 });
 
 register("export", "json", (ctx, input) => {
-  const dtus = input.ids ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray();
+  if (input.ids != null && !Array.isArray(input.ids)) return { ok: false, error: "invalid_input", reason: "not_a_function" };
+  const dtus = Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray();
   return { ok: true, format: "json", dtus, count: dtus.length };
 });
 
@@ -47962,11 +47970,13 @@ const SCHEMA_REGISTRY = new Map();
 register("schema", "create", (ctx, input) => {
   const { name, kind, fields, validation, evolves } = input;
   if (!name || !kind) return { ok: false, error: "Name and kind required" };
+  if (fields != null && !Array.isArray(fields)) return { ok: false, error: "invalid_input", reason: "not_a_function" };
+  const schemaFields = Array.isArray(fields) ? fields : [];
   const schema = {
     id: uid("schema"),
     name: normalizeText(name),
     kind,
-    fields: (fields || []).map(f => ({ name: f.name, type: f.type || "string", required: f.required || false, default: f.default, validation: f.validation || null, description: f.description || "" })),
+    fields: schemaFields.map(f => ({ name: f.name, type: f.type || "string", required: f.required || false, default: f.default, validation: f.validation || null, description: f.description || "" })),
     validation: validation || {},
     evolves: evolves !== false,
     version: 1,
@@ -58420,6 +58430,7 @@ register("webhook", "toggle", (ctx, input) => {
 register("automation", "create", (ctx, input) => {
   const { name, trigger, conditions, actions } = input;
   if (!name || !trigger || !actions) return { ok: false, error: "Name, trigger, and actions required" };
+  if (!Array.isArray(actions)) return { ok: false, error: "invalid_input", reason: "not_a_function" };
   const automation = {
     id: uid("auto"),
     name: normalizeText(name),
@@ -58524,7 +58535,8 @@ register("vscode", "search", (ctx, input) => {
 // Obsidian export/import
 register("obsidian", "export", (ctx, input) => {
   const { dtuIds, includeLineage, vaultPath } = input;
-  const dtus = dtuIds ? dtuIds.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray();
+  if (dtuIds != null && !Array.isArray(dtuIds)) return { ok: false, error: "invalid_input", reason: "not_a_function" };
+  const dtus = Array.isArray(dtuIds) ? dtuIds.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray();
   const files = [];
   for (const dtu of dtus) {
     let content = `# ${dtu.title}\n\n`;
@@ -58542,13 +58554,15 @@ register("obsidian", "export", (ctx, input) => {
 
 register("obsidian", "import", (ctx, input) => {
   const { files } = input;
+  if (files != null && !Array.isArray(files)) return { ok: false, error: "invalid_input", reason: "not_a_function" };
   const imported = [];
-  for (const file of (files || [])) {
-    const lines = (file.content || "").split("\n");
+  for (const file of (Array.isArray(files) ? files : [])) {
+    const content = String(file?.content || "");
+    const lines = content.split("\n");
     const title = lines[0]?.replace(/^#\s*/, "") || file.filename?.replace(/\.md$/, "") || "Untitled";
-    const tagMatch = file.content.match(/\*\*Tags:\*\*\s*(.+)/);
+    const tagMatch = content.match(/\*\*Tags:\*\*\s*(.+)/);
     const tags = tagMatch ? tagMatch[1].split(/\s+/).map(t => t.replace(/^#/, "")).filter(Boolean) : ["obsidian-import"];
-    const summaryMatch = file.content.match(/^>\s*(.+)/m);
+    const summaryMatch = content.match(/^>\s*(.+)/m);
     const dtu = {
       id: uid("dtu"),
       title: normalizeText(title),

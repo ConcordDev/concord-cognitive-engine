@@ -467,25 +467,25 @@ describe("accounting — estimates / recurring / 1099 (wave 8 top-up)", () => {
     assert.equal(run.result.created[0].recurringId, r.result.recurring.id);
   });
 
-  it("summary-1099: only paid bills to 1099 vendors count; threshold flag at $600", async () => {
-    // 1099 vendor with two paid bills totalling 700 → reportable; non-1099 vendor excluded.
+  it("summary-1099: only paid bills to 1099 vendors count; 2026 threshold is $2,000", async () => {
+    // 1099 vendor with two paid bills totalling 2200 → reportable; non-1099 vendor excluded.
     const v1099 = await lensRun("accounting", "vendors-create", { params: { name: "Contractor", is1099: true, taxId: "12-3456789" } }, ctx);
     const v1099Id = v1099.result.vendor.id;
     const vReg = await lensRun("accounting", "vendors-create", { params: { name: "Regular Vendor", is1099: false } }, ctx);
-    const b1 = await lensRun("accounting", "bills-create", { params: { vendorId: v1099Id, total: 400, expenseAccountId: "acct_6000", issuedAt: "2026-01-01" } }, ctx);
+    const b1 = await lensRun("accounting", "bills-create", { params: { vendorId: v1099Id, total: 1500, expenseAccountId: "acct_6000", issuedAt: "2026-01-01" } }, ctx);
     await lensRun("accounting", "bills-pay", { params: { id: b1.result.bill.id, paidAt: "2026-02-01" } }, ctx);
-    const b2 = await lensRun("accounting", "bills-create", { params: { vendorId: v1099Id, total: 300, expenseAccountId: "acct_6000", issuedAt: "2026-01-05" } }, ctx);
+    const b2 = await lensRun("accounting", "bills-create", { params: { vendorId: v1099Id, total: 700, expenseAccountId: "acct_6000", issuedAt: "2026-01-05" } }, ctx);
     await lensRun("accounting", "bills-pay", { params: { id: b2.result.bill.id, paidAt: "2026-03-01" } }, ctx);
     // Non-1099 paid bill — must NOT appear.
     const b3 = await lensRun("accounting", "bills-create", { params: { vendorId: vReg.result.vendor.id, total: 999, expenseAccountId: "acct_6000", issuedAt: "2026-01-01" } }, ctx);
     await lensRun("accounting", "bills-pay", { params: { id: b3.result.bill.id, paidAt: "2026-02-01" } }, ctx);
     const r = await lensRun("accounting", "summary-1099", { params: { year: 2026 } }, ctx);
     assert.equal(r.ok, true);
-    assert.equal(r.result.threshold, 600);
+    assert.equal(r.result.threshold, 2000);
     const row = r.result.vendors.find((x) => x.vendorId === v1099Id);
-    assert.equal(row.total, 700);              // 400 + 300
+    assert.equal(row.total, 2200);             // 1500 + 700
     assert.equal(row.billCount, 2);
-    assert.equal(row.reportable, true);        // 700 >= 600
+    assert.equal(row.reportable, true);        // 2200 >= 2000
     assert.ok(!r.result.vendors.some((x) => x.vendorId === vReg.result.vendor.id), "non-1099 vendor excluded");
   });
 });
@@ -1204,20 +1204,20 @@ describe("accounting — audit log + payroll ACH + IRS filings (wave 10 top-up)"
     assert.match(String(bad.result.error), /pay run not found/i);
   });
 
-  it("efile-1099-fire: only 1099 vendors paid ≥ $600 export; cents + record count exact", async () => {
+  it("efile-1099-fire: only 1099 vendors paid at or above the year threshold export; cents + record count exact", async () => {
     const fc = await depthCtx("accounting-fire10");
-    // 1099 vendor paid 700 (reportable); a 1099 vendor paid 400 (under threshold).
+    // 2026 threshold is $2,000. Vendor paid 2000 is reportable; vendor paid 400 is not.
     const big = await lensRun("accounting", "vendors-create", { params: { name: "Big Contractor", is1099: true, taxId: "11-1111111" } }, fc);
     const small = await lensRun("accounting", "vendors-create", { params: { name: "Small Contractor", is1099: true, taxId: "22-2222222" } }, fc);
-    const b1 = await lensRun("accounting", "bills-create", { params: { vendorId: big.result.vendor.id, total: 700, expenseAccountId: "acct_6000", issuedAt: "2026-01-01" } }, fc);
+    const b1 = await lensRun("accounting", "bills-create", { params: { vendorId: big.result.vendor.id, total: 2000, expenseAccountId: "acct_6000", issuedAt: "2026-01-01" } }, fc);
     await lensRun("accounting", "bills-pay", { params: { id: b1.result.bill.id, paidAt: "2026-02-01" } }, fc);
     const b2 = await lensRun("accounting", "bills-create", { params: { vendorId: small.result.vendor.id, total: 400, expenseAccountId: "acct_6000", issuedAt: "2026-01-01" } }, fc);
     await lensRun("accounting", "bills-pay", { params: { id: b2.result.bill.id, paidAt: "2026-02-01" } }, fc);
     const r = await lensRun("accounting", "efile-1099-fire", { params: { year: 2026, payer: { name: "My LLC", tin: "99-9999999" } } }, fc);
     assert.equal(r.ok, true);
     assert.equal(r.result.form, "1099-NEC");
-    assert.equal(r.result.payeeCount, 1);                     // only the $700 vendor
-    assert.equal(r.result.totalReported, 700);
+    assert.equal(r.result.payeeCount, 1);                     // only the $2,000 vendor
+    assert.equal(r.result.totalReported, 2000);
     // T + A + (1 × B) + C + F = 5 records.
     assert.equal(r.result.recordCount, 5);
     const lines = r.result.fireFile.split("\n");
@@ -1225,7 +1225,7 @@ describe("accounting — audit log + payroll ACH + IRS filings (wave 10 top-up)"
     assert.ok(lines[0].startsWith("T"), "transmitter record first");
     // Payee "B" record carries the amount in cents zero-filled (70000) in its 12-wide tail.
     const bRec = lines.find((l) => l.startsWith("B"));
-    assert.ok(bRec.endsWith("000000070000"), "amount 700.00 → 70000 cents, 12-wide");
+    assert.ok(bRec.endsWith("000000200000"), "amount 2000.00 → 200000 cents, 12-wide");
     assert.ok(lines[lines.length - 1].startsWith("F"), "end-of-transmission record last");
   });
 

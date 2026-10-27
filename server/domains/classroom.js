@@ -284,6 +284,8 @@ export default function registerClassroomActions(registerLensAction) {
       const userId = uid(ctx);
       const assignmentId = String(params.assignmentId || "");
       if (!assignmentId) return { ok: false, error: "assignmentId required" };
+      const assignments = state.assignments.get(userId) || [];
+      if (!assignments.some((a) => a.id === assignmentId)) return { ok: false, error: "assignment not found" };
       const studentId = String(params.studentId || userId);
       const submission = {
         id: rid("sub"),

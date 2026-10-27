@@ -49,6 +49,12 @@ describe("daily.entry CRUD", () => {
     const e = call("entry-create", ctxA, { body: "x", mood: 99 });
     assert.equal(e.result.entry.mood, 5);
   });
+  it("refuses an entry for a journal that does not exist", () => {
+    const missing = call("entry-create", ctxA, { body: "orphan", journalId: "jr_missing" });
+    assert.equal(missing.ok, false);
+    assert.equal(missing.error, "journal not found");
+    assert.equal(call("entry-list", ctxA, {}).result.count, 0);
+  });
   it("updates and deletes an entry", () => {
     const e = call("entry-create", ctxA, { body: "draft" }).result.entry;
     call("entry-update", ctxA, { id: e.id, body: "revised", mood: 2 });

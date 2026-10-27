@@ -4,6 +4,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { assertPayable } from "../lib/money-guards.js";
 import { finiteOrNull, boundedNum, moneyOrNull, badNumber } from "../lib/finite-input.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 
 export default function registerTradesActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -71,7 +72,7 @@ export default function registerTradesActions(registerLensAction) {
     artifact.data.currentEstimate = estimate;
 
     return { ok: true, result: estimate };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -169,7 +170,7 @@ export default function registerTradesActions(registerLensAction) {
         status: allClear ? 'approved' : 'action_required',
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -241,7 +242,7 @@ export default function registerTradesActions(registerLensAction) {
         total,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -300,7 +301,7 @@ export default function registerTradesActions(registerLensAction) {
         vendorCount: vendorSummary.length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -366,7 +367,7 @@ export default function registerTradesActions(registerLensAction) {
     stage.inspectionId = inspection.inspectionId;
 
     return { ok: true, result: inspection };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -437,7 +438,7 @@ export default function registerTradesActions(registerLensAction) {
     artifact.data.materialsCostReport = report;
 
     return { ok: true, result: report };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── 2026 parity — ServiceTitan/Jobber/Houzz Pro/BuilderTrend ──
@@ -734,7 +735,7 @@ export default function registerTradesActions(registerLensAction) {
       }),
     }));
     return { ok: true, result: { date, rows, unassigned, totalJobs: todaysJobs.length, totalTechs: technicians.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Route optimization (nearest-neighbour heuristic) ──────────
@@ -825,7 +826,7 @@ export default function registerTradesActions(registerLensAction) {
     ensureTrBucket(s, "quotes", userId).push(quote);
     saveTradesState();
     return { ok: true, result: { quote } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("trades", "quotes-send", (ctx, _a, params = {}) => {
@@ -1143,7 +1144,7 @@ export default function registerTradesActions(registerLensAction) {
         bookingsPending: ensureTrBucket(s, "bookings", userId).filter(b => b.status === "pending").length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── Backlog: scheduling calendar / payments / portal / recurring /
@@ -1197,7 +1198,7 @@ export default function registerTradesActions(registerLensAction) {
       .filter(j => !j.scheduledFor && j.status !== "completed" && j.status !== "cancelled" && j.status !== "invoiced")
       .map(j => ({ id: j.id, number: j.number, customerName: j.customerName, description: j.description, priority: j.priority }));
     return { ok: true, result: { weekStart: startStr, days, unscheduled, totalScheduled: days.reduce((n, d) => n + d.jobs.length, 0) } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── [M] Payment processing — invoices with payment status tracking ──
@@ -1256,7 +1257,7 @@ export default function registerTradesActions(registerLensAction) {
     ensureTrBucket(s, "invoices", userId).push(invoice);
     saveTradesState();
     return { ok: true, result: { invoice } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("trades", "invoices-record-payment", (ctx, _a, params = {}) => {
@@ -1310,7 +1311,7 @@ export default function registerTradesActions(registerLensAction) {
         balanceDue: Math.round(balanceDue * 100) / 100,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("trades", "portal-quote-respond", (ctx, _a, params = {}) => {
@@ -1372,7 +1373,7 @@ export default function registerTradesActions(registerLensAction) {
     plan.totalRevenue = Math.round(((plan.totalRevenue || 0) + plan.priceEach) * 100) / 100;
     saveTradesState();
     return { ok: true, result: { job, plan } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── [M] GPS technician tracking + live job-status from the field ────
@@ -1494,7 +1495,7 @@ export default function registerTradesActions(registerLensAction) {
     else { entry.createdAt = nowIsoTrades(); list.push(entry); }
     saveTradesState();
     return { ok: true, result: { item: existing || entry } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("trades", "pricebook-delete", (ctx, _a, params = {}) => {
@@ -1570,6 +1571,6 @@ export default function registerTradesActions(registerLensAction) {
         satisfaction: { reviewCount: reviews.length, avgRating },
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 };

@@ -7,6 +7,7 @@
 // All handlers return { ok: boolean, result?, error? } and never throw.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { runFEA } from '../lib/simulation/fea-solver.js';
 import { buildBeamStudy, summarizeBeamStudy } from '../lib/conkay/beam-study.js';
 import { parseSafetyFactor, safetyCheck } from '../lib/conkay/nlp-design-intent.js';
@@ -595,8 +596,13 @@ export default function registerEngineeringActions(registerLensAction) {
     try {
       const data = { ...(artifact?.data || {}), ...(params || {}) };
       const value = parseFloat(data.value) || 0;
-      const from = (data.from || 'mm').toLowerCase();
-      const to = (data.to || 'in').toLowerCase();
+      const fromRaw = data.from == null || data.from === '' ? 'mm' : data.from;
+      const toRaw = data.to == null || data.to === '' ? 'in' : data.to;
+      if (typeof fromRaw !== 'string' || typeof toRaw !== 'string') {
+        return { ok: false, error: 'invalid_input', reason: 'type_error' };
+      }
+      const from = fromRaw.toLowerCase();
+      const to = toRaw.toLowerCase();
       const conversions = {
         'mm-in': (v) => v / 25.4, 'in-mm': (v) => v * 25.4,
         'm-ft': (v) => v * 3.28084, 'ft-m': (v) => v / 3.28084,
@@ -611,11 +617,11 @@ export default function registerEngineeringActions(registerLensAction) {
       const converter = conversions[key];
       if (!converter) {
         return {
-          ok: true,
-          result: {
-            error: `Conversion ${from} → ${to} not supported`,
-            supported: Object.keys(conversions).map((k) => k.replace('-', ' → ')),
-          },
+          ok: false,
+          error: 'invalid_input',
+          reason: 'unsupported_conversion',
+          from,
+          to,
         };
       }
       const result = converter(value);
@@ -628,7 +634,7 @@ export default function registerEngineeringActions(registerLensAction) {
         },
       };
     } catch (e) {
-      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+      return handlerFailure(e);
     }
   });
 

@@ -54,7 +54,9 @@ export default function registerCityMacros(register) {
   try {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    return snapshotHappiness(db, String(input?.worldId || ""));
+    const worldId = String(input?.worldId || "").trim();
+    if (!worldId) return { ok: false, error: "invalid_input", reason: "world_id_required" };
+    return snapshotHappiness(db, worldId);
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 

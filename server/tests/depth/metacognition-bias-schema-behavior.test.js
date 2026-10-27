@@ -184,7 +184,9 @@ describe("metacognition — journalLog rich option validation (honest rejection)
       params: { title: "Bad anchor", initialAnchor: "who knows" },
     }, ctx);
     assert.equal(bad.result.ok, false);
-    assert.match(bad.result.error, /initialAnchor must be a finite number/);
+    // input-validation wave: refused at the gate naming the field
+    assert.equal(bad.result.error, "invalid_input");
+    assert.equal(bad.result.field, "initialAnchor");
   });
 
   it("rejects a non-numeric investedCost", async () => {
@@ -192,7 +194,8 @@ describe("metacognition — journalLog rich option validation (honest rejection)
       params: { title: "Bad cost", investedCost: {} },
     }, ctx);
     assert.equal(bad.result.ok, false);
-    assert.match(bad.result.error, /investedCost must be a finite number/);
+    assert.equal(bad.result.error, "invalid_input");
+    assert.equal(bad.result.field, "investedCost");
   });
 
   it("evidence must be an array, not a bare object", async () => {

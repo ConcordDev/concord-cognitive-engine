@@ -18,6 +18,7 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import {
   createNotification, getNotifications, markNotificationRead, markAllNotificationsRead,
 } from "../emergent/social-layer.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { presentOwnedId } from "../lib/public-actor.js";
 
 export default function registerArtistryActions(registerLensAction) {
@@ -154,7 +155,7 @@ export default function registerArtistryActions(registerLensAction) {
 
     artifact.data.colorAnalysis = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -253,7 +254,7 @@ export default function registerArtistryActions(registerLensAction) {
 
     artifact.data.compositionScore = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -339,7 +340,7 @@ export default function registerArtistryActions(registerLensAction) {
 
     artifact.data.styleClassification = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -433,7 +434,7 @@ export default function registerArtistryActions(registerLensAction) {
 
     artifact.data.mediaInventory = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── Behance / ArtStation parity — social-portfolio core ────────────
@@ -657,7 +658,7 @@ export default function registerArtistryActions(registerLensAction) {
       if (!s) return { ok: false, error: "state_unavailable" };
       const uid = artAid(ctx);
       const list = artList(s.projects, uid);
-      const projectId = (params || {}).projectId;
+      const projectId = (params || {}).projectId || (params || {}).id;
       const idx = list.findIndex((x) => x.id === projectId);
       if (idx === -1) return { ok: false, error: "project_not_found" };
       try {

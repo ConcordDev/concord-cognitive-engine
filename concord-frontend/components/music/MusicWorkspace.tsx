@@ -69,6 +69,7 @@ import type {
   SamplePackListing,
   StemPackListing,
 } from '@/lib/music/types';
+import { asBeatListings, asSampleListings, asStemListings } from '@/lib/music/marketplace-rows';
 
 /** One nav machine for the whole music app — catalog views + previously
  *  welded MusicBrainz / workbench accordions. */
@@ -507,13 +508,13 @@ export function MusicWorkspace() {
 
       if (marketplaceTab === 'beats') {
         const res = await apiClient.get(`/api/artistry/marketplace/beats?${params}`);
-        setMarketplaceBeats(res.data?.listings || res.data || []);
+        setMarketplaceBeats(asBeatListings(res.data));
       } else if (marketplaceTab === 'samples') {
         const res = await apiClient.get('/api/artistry/marketplace/samples');
-        setMarketplaceSamples(res.data?.listings || res.data || []);
+        setMarketplaceSamples(asSampleListings(res.data));
       } else {
         const res = await apiClient.get('/api/artistry/marketplace/stems');
-        setMarketplaceStems(res.data?.listings || res.data || []);
+        setMarketplaceStems(asStemListings(res.data));
       }
     } catch (err) {
       console.error('Marketplace fetch failed:', err instanceof Error ? err.message : err);

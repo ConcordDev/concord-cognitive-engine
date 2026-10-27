@@ -730,13 +730,17 @@ export default function registerCreatorActions(registerLensAction) {
     if (!Number.isFinite(releaseTime)) {
       return { ok: false, error: "releaseAt must be a valid ISO timestamp" };
     }
+    const contentId = crtClean(params.contentId, 60) || null;
+    if (contentId && !(s.content.get(crtAid(ctx)) || []).some((c) => c.id === contentId)) {
+      return { ok: false, error: "content not found" };
+    }
     const queued = {
       id: crtId("pub"), title,
       format: crtPick(params.format, CRT_FORMATS, "post"),
       platform: crtClean(params.platform, 60) || null,
       body: crtClean(params.body, 4000) || null,
       releaseAt: new Date(releaseTime).toISOString(),
-      contentId: crtClean(params.contentId, 60) || null,
+      contentId,
       status: "scheduled",
       createdAt: crtNow(), publishedAt: null,
     };
@@ -805,9 +809,13 @@ export default function registerCreatorActions(registerLensAction) {
     if (!author) return { ok: false, error: "author required" };
     const body = crtClean(params.body, 2000);
     if (!body) return { ok: false, error: "comment body required" };
+    const contentId = crtClean(params.contentId, 60) || null;
+    if (contentId && !(s.content.get(crtAid(ctx)) || []).some((c) => c.id === contentId)) {
+      return { ok: false, error: "content not found" };
+    }
     const comment = {
       id: crtId("cmt"),
-      contentId: crtClean(params.contentId, 60) || null,
+      contentId,
       author, body,
       status: "open",      // open | replied | hidden | resolved
       pinned: false,
