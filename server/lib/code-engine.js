@@ -1047,6 +1047,9 @@ export function createCodeEngine(db) {
       ...row,
       architecture: _parseJsonField(row.architecture, {}),
       patterns_used: _parseJsonField(row.patterns_used, []),
+      // No test runner and no deploy are attached to this generator.
+      testCountReason: row.test_count == null ? "tests_not_run" : null,
+      deployTimeReason: row.deploy_time == null ? "not_deployed" : null,
     };
   }
 
@@ -1438,7 +1441,7 @@ export function createCodeEngine(db) {
       lens_name: null,
       architecture: "{}",
       patterns_used: "[]",
-      test_count: 0,
+      test_count: null,
       deploy_time: null,
       error: null,
       created_at: now,
@@ -1453,7 +1456,7 @@ export function createCodeEngine(db) {
         lens_name: null,
         architecture: "{}",
         patterns_used: "[]",
-        test_count: 0,
+        test_count: null,
         deploy_time: null,
         error: null,
         completed_at: null,
@@ -1472,7 +1475,7 @@ export function createCodeEngine(db) {
           lens_name: null,
           architecture: "{}",
           patterns_used: "[]",
-          test_count: 0,
+          test_count: null,
           deploy_time: null,
           error: "No matching patterns found for the request",
           completed_at: new Date().toISOString(),
@@ -1481,16 +1484,9 @@ export function createCodeEngine(db) {
         return _deserializeGeneration(stmts().getGenerationById.get(genId));
       }
 
-      // Build architecture
+      // Build architecture. Nothing here runs the patterns or deploys a lens.
       const architecture = _buildArchitecture(matched, request);
       const lensName = architecture.name;
-
-      // Simulate testing phase
-      const testCount = Math.min(matched.length * 2, 50);
-
-      // Calculate deployment time (simulated)
-      const startTime = Date.now();
-      const deployTime = (Date.now() - startTime + Math.random() * 100) / 1000;
 
       // Store the patterns used (IDs only for storage)
       const patternsUsed = matched.map((p) => ({
@@ -1507,8 +1503,8 @@ export function createCodeEngine(db) {
         lens_name: lensName,
         architecture: _serializeJson(architecture),
         patterns_used: _serializeJson(patternsUsed),
-        test_count: testCount,
-        deploy_time: Math.round(deployTime * 1000) / 1000,
+        test_count: null,
+        deploy_time: null,
         error: null,
         completed_at: new Date().toISOString(),
       });
@@ -1519,7 +1515,7 @@ export function createCodeEngine(db) {
         lens_name: null,
         architecture: "{}",
         patterns_used: "[]",
-        test_count: 0,
+        test_count: null,
         deploy_time: null,
         error: String(err.message || err),
         completed_at: new Date().toISOString(),

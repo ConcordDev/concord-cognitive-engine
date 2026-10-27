@@ -145,6 +145,35 @@ describe("code-engine", () => {
         (err) => err.message.toLowerCase().includes("request") || err.message.toLowerCase().includes("required")
       );
     });
+
+    it("does not invent a test count or a deploy time", async () => {
+      const writes = [];
+      const pattern = {
+        id: "pat1",
+        name: "router middleware",
+        description: "http router",
+        category: "web",
+        subcategory: "middleware",
+        language: "javascript",
+      };
+      const capturing = {
+        exec: () => {},
+        prepare: (sql) => ({
+          run: (row) => { writes.push(row); return { changes: 1 }; },
+          get: () => null,
+          all: () => (sql.includes("FROM code_patterns") && !sql.includes("COUNT") ? [pattern] : []),
+        }),
+      };
+      const { createCodeEngine } = await import("../lib/code-engine.js");
+      const local = createCodeEngine(capturing);
+      const generation = local.generateLens("router middleware for http");
+      assert.equal(generation, null);
+      const completed = writes.filter((row) => row && row.status === "completed");
+      assert.equal(completed.length, 1);
+      assert.equal(completed[0].test_count, null);
+      assert.equal(completed[0].deploy_time, null);
+      assert.equal(completed[0].lens_name, "router-middleware-for-http-lens");
+    });
   });
 
   describe("recordError", () => {
