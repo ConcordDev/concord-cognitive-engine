@@ -46,7 +46,9 @@ export default function registerNewsActions(registerLensAction) {
       const words = text.split(/\s+/).filter(w => w.length > 2);
       const wordCount = words.length;
 
-      if (wordCount === 0) return { index: idx, source: article.source, biasScore: 0 };
+      if (wordCount === 0) {
+        return { index: idx, source: article.source || "unknown", wordCount: 0, biasScore: null, sentimentBalance: null, biasDirection: null, biasReason: "no_text" };
+      }
 
       // Count loaded language
       let positiveCount = 0;
@@ -71,6 +73,22 @@ export default function registerNewsActions(registerLensAction) {
 
       // Hedge word ratio (higher = more tentative/balanced reporting)
       const hedgeRatio = hedgeCount / wordCount;
+
+      // No loaded or hedge terms is not a neutral score. The old floor
+      // treated that silence as 0.2 bias.
+      if (positiveCount + negativeCount + hedgeCount === 0) {
+        return {
+          index: idx,
+          source: article.source || "unknown",
+          wordCount,
+          loadedLanguage: { positive: 0, negative: 0, density: 0, examples: [] },
+          sentimentBalance: null,
+          hedgeRatio: 0,
+          biasScore: null,
+          biasDirection: null,
+          biasReason: "no_bias_terms",
+        };
+      }
 
       // Framing detection: passive voice as proxy for agency framing
       const passivePattern = /\b(was|were|been|being|is|are)\s+\w+ed\b/g;
@@ -122,29 +140,35 @@ export default function registerNewsActions(registerLensAction) {
     const sourceBias = {};
     for (const analysis of articleAnalyses) {
       const src = analysis.source;
-      if (!sourceBias[src]) sourceBias[src] = { scores: [], sentiments: [] };
-      sourceBias[src].scores.push(analysis.biasScore);
-      sourceBias[src].sentiments.push(analysis.sentimentBalance);
+      if (!sourceBias[src]) sourceBias[src] = { scores: [], sentiments: [], articleCount: 0 };
+      sourceBias[src].articleCount++;
+      if (Number.isFinite(analysis.biasScore)) sourceBias[src].scores.push(analysis.biasScore);
+      if (Number.isFinite(analysis.sentimentBalance)) sourceBias[src].sentiments.push(analysis.sentimentBalance);
     }
+    const avgOf = (vals) => vals.length ? r(vals.reduce((s, v) => s + v, 0) / vals.length) : null;
     const sourceBiasProfiles = Object.entries(sourceBias).map(([source, data]) => ({
       source,
-      articleCount: data.scores.length,
-      avgBiasScore: r(data.scores.reduce((s, v) => s + v, 0) / data.scores.length),
-      avgSentiment: r(data.sentiments.reduce((s, v) => s + v, 0) / data.sentiments.length),
-      consistency: r(1 - (data.scores.length > 1
-        ? Math.sqrt(data.scores.reduce((s, v) => s + Math.pow(v - data.scores.reduce((a, b) => a + b, 0) / data.scores.length, 2), 0) / data.scores.length)
-        : 0)),
-    })).sort((a, b) => b.avgBiasScore - a.avgBiasScore);
+      articleCount: data.articleCount,
+      avgBiasScore: avgOf(data.scores),
+      avgSentiment: avgOf(data.sentiments),
+      consistency: data.scores.length > 1
+        ? r(1 - Math.sqrt(data.scores.reduce((s, v) => s + Math.pow(v - data.scores.reduce((a, b) => a + b, 0) / data.scores.length, 2), 0) / data.scores.length))
+        : null,
+    })).sort((a, b) => (b.avgBiasScore ?? -1) - (a.avgBiasScore ?? -1));
 
     // --- Overall assessment ---
-    const overallBias = articleAnalyses.reduce((s, a) => s + a.biasScore, 0) / articleAnalyses.length;
+    const scoredAnalyses = articleAnalyses.filter((a) => Number.isFinite(a.biasScore));
+    const overallBias = scoredAnalyses.length
+      ? scoredAnalyses.reduce((s, a) => s + a.biasScore, 0) / scoredAnalyses.length
+      : null;
 
     return {
       ok: true,
       result: {
         articlesAnalyzed: articles.length,
-        overallBiasScore: r(overallBias),
-        biasLevel: overallBias > 0.6 ? "high" : overallBias > 0.3 ? "moderate" : "low",
+        overallBiasScore: overallBias == null ? null : r(overallBias),
+        overallBiasReason: overallBias == null ? "no_bias_terms" : null,
+        biasLevel: overallBias == null ? null : overallBias > 0.6 ? "high" : overallBias > 0.3 ? "moderate" : "low",
         sourceDiversity: {
           uniqueSources: sources.length,
           entropy: r(sourceEntropy),
@@ -1003,7 +1027,7 @@ export default function registerNewsActions(registerLensAction) {
     let l = 0, rt = 0;
     for (const w of words) { if (NW_LEFT_WORDS.has(w)) l++; if (NW_RIGHT_WORDS.has(w)) rt++; }
     const total = l + rt;
-    if (total === 0) return { lean: "center", score: 0, left: l, right: rt };
+    if (total === 0) return { lean: null, score: null, left: l, right: rt, reason: "no_bias_terms" };
     const score = (rt - l) / total; // -1 left .. +1 right
     return {
       lean: score < -0.25 ? "left" : score > 0.25 ? "right" : "center",
@@ -1027,30 +1051,36 @@ export default function registerNewsActions(registerLensAction) {
     if (arts.length === 0) {
       return { ok: true, result: { columns: { left: [], center: [], right: [], count: 0 } } };
     }
-    const cols = { left: [], center: [], right: [] };
+    const cols = { left: [], center: [], right: [], unscored: [] };
     for (const a of arts) {
       const b = nwBiasLean(`${a.title} ${a.summary || ""}`);
-      cols[b.lean].push({ ...articleView(s, userId, a), biasLean: b.lean, biasScore: b.score });
+      const row = { ...articleView(s, userId, a), biasLean: b.lean, biasScore: b.score, biasReason: b.reason || null };
+      (b.lean ? cols[b.lean] : cols.unscored).push(row);
     }
-    for (const k of ["left", "center", "right"]) {
+    for (const k of ["left", "center", "right", "unscored"]) {
       cols[k].sort((x, y) => String(y.publishedAt).localeCompare(String(x.publishedAt)));
     }
-    const total = arts.length;
+    const scored = cols.left.length + cols.center.length + cols.right.length;
+    const coverage = scored === 0
+      ? { left: null, center: null, right: null, reason: "no_bias_terms" }
+      : {
+          left: Math.round((cols.left.length / scored) * 100),
+          center: Math.round((cols.center.length / scored) * 100),
+          right: Math.round((cols.right.length / scored) * 100),
+        };
     return {
       ok: true,
       result: {
         topic: topic || q || "all",
         columns: cols,
-        count: total,
-        coverage: {
-          left: Math.round((cols.left.length / total) * 100),
-          center: Math.round((cols.center.length / total) * 100),
-          right: Math.round((cols.right.length / total) * 100),
-        },
-        blindspot:
-          cols.left.length === 0 ? "left" :
-          cols.right.length === 0 ? "right" :
-          cols.center.length === 0 ? "center" : null,
+        count: arts.length,
+        unscored: cols.unscored.length,
+        coverage,
+        blindspot: scored === 0 ? null
+          : cols.left.length === 0 ? "left"
+          : cols.right.length === 0 ? "right"
+          : cols.center.length === 0 ? "center"
+          : null,
       },
     };
     } catch (e) { return handlerFailure(e); }
@@ -1101,6 +1131,7 @@ export default function registerNewsActions(registerLensAction) {
           left: leans.filter((l) => l === "left").length,
           center: leans.filter((l) => l === "center").length,
           right: leans.filter((l) => l === "right").length,
+          unscored: leans.filter((l) => l == null).length,
         },
         articles: memArts.map((m) => articleView(s, userId, m)),
       });
@@ -1257,7 +1288,10 @@ export default function registerNewsActions(registerLensAction) {
     const arts = [...s.articles.values()].filter((a) => a.source === source);
     if (arts.length === 0) return { ok: false, error: "no articles from this source" };
     const leans = arts.map((a) => nwBiasLean(`${a.title} ${a.summary || ""}`));
-    const avgScore = leans.reduce((acc, l) => acc + l.score, 0) / leans.length;
+    const scoredLeans = leans.filter((l) => Number.isFinite(l.score));
+    const avgScore = scoredLeans.length
+      ? scoredLeans.reduce((acc, l) => acc + l.score, 0) / scoredLeans.length
+      : null;
     // Factuality proxy: hedge-word presence + summary completeness.
     const hedge = /\b(allegedly|reportedly|claimed|unverified|disputed|sources say)\b/i;
     let withSummary = 0, hedged = 0;
@@ -1278,8 +1312,9 @@ export default function registerNewsActions(registerLensAction) {
         source,
         articleCount: arts.length,
         contributors: [...new Set(arts.map((a) => a.addedBy))].length,
-        biasLean: avgScore < -0.25 ? "left" : avgScore > 0.25 ? "right" : "center",
-        biasScore: Math.round(avgScore * 1000) / 1000,
+        biasLean: avgScore == null ? null : avgScore < -0.25 ? "left" : avgScore > 0.25 ? "right" : "center",
+        biasScore: avgScore == null ? null : Math.round(avgScore * 1000) / 1000,
+        biasReason: avgScore == null ? "no_bias_terms" : null,
         factualityRating: factuality,
         factualityLabel: factuality >= 75 ? "high" : factuality >= 50 ? "mixed" : "low",
         transparency: {

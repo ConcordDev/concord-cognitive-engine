@@ -88,7 +88,7 @@ function addArt(over = {}) {
 }
 
 describe("news.bias-spectrum", () => {
-  it("places articles into left/center/right columns with coverage", () => {
+  it("places scored articles and leaves a term-free article unscored", () => {
     addArt({ title: "Progressive equity reform passes", summary: "marginalized rights expanded" });
     addArt({ title: "Patriot liberty border enforcement bill", summary: "taxpayer freedom values" });
     addArt({ title: "Quarterly earnings report released", summary: "company posted figures" });
@@ -97,9 +97,23 @@ describe("news.bias-spectrum", () => {
     assert.equal(r.result.count, 3);
     assert.equal(r.result.columns.left.length, 1);
     assert.equal(r.result.columns.right.length, 1);
-    assert.equal(r.result.columns.center.length, 1);
-    const totalCoverage = r.result.coverage.left + r.result.coverage.center + r.result.coverage.right;
-    assert.ok(totalCoverage >= 99 && totalCoverage <= 100, "coverage should sum to ~100% (allowing integer rounding)");
+    assert.equal(r.result.columns.center.length, 0);
+    assert.equal(r.result.columns.unscored.length, 1);
+    assert.equal(r.result.columns.unscored[0].biasLean, null);
+    assert.equal(r.result.columns.unscored[0].biasReason, "no_bias_terms");
+    assert.equal(r.result.coverage.left, 50);
+    assert.equal(r.result.coverage.right, 50);
+    assert.equal(r.result.coverage.center, 0);
+  });
+
+  it("does not invent a center lean when no article has bias terms", () => {
+    addArt({ title: "Quarterly earnings report released", summary: "company posted figures" });
+    const r = call("bias-spectrum", ctxA, {});
+    assert.equal(r.result.columns.center.length, 0);
+    assert.equal(r.result.columns.unscored.length, 1);
+    assert.equal(r.result.coverage.left, null);
+    assert.equal(r.result.coverage.reason, "no_bias_terms");
+    assert.equal(r.result.blindspot, null);
   });
 
   it("flags a blindspot when one lean has no coverage", () => {
@@ -112,6 +126,29 @@ describe("news.bias-spectrum", () => {
     const r = call("bias-spectrum", ctxA, {});
     assert.equal(r.ok, true);
     assert.equal(r.result.columns.count, 0);
+  });
+});
+
+describe("news.biasDetection", () => {
+  it("does not turn missing text or missing bias terms into a score", () => {
+    const fn = ACTIONS.get("news.biasDetection");
+    const empty = fn(ctxA, { data: { articles: [{ title: "", body: "", source: "Wire" }] } }, {});
+    assert.equal(empty.ok, true);
+    assert.equal(empty.result.articleAnalyses[0].biasScore, null);
+    assert.equal(empty.result.articleAnalyses[0].biasReason, "no_text");
+    assert.equal(empty.result.overallBiasScore, null);
+    assert.equal(empty.result.overallBiasReason, "no_bias_terms");
+
+    const plain = fn(ctxA, { data: { articles: [{ title: "Quarterly earnings", body: "The company posted figures today.", source: "Wire" }] } }, {});
+    assert.equal(plain.result.articleAnalyses[0].biasScore, null);
+    assert.equal(plain.result.articleAnalyses[0].biasReason, "no_bias_terms");
+    assert.equal(plain.result.biasLevel, null);
+
+    const loaded = fn(ctxA, { data: { articles: [{ title: "A hero emerges", body: "The brave champion fought for freedom and justice.", source: "GoodPress" }] } }, {});
+    assert.equal(loaded.result.articleAnalyses[0].loadedLanguage.positive, 5);
+    assert.equal(loaded.result.articleAnalyses[0].sentimentBalance, 1);
+    assert.equal(loaded.result.articleAnalyses[0].biasDirection, "positive");
+    assert.ok(loaded.result.overallBiasScore > 0);
   });
 });
 
@@ -133,6 +170,9 @@ describe("news.story-clusters", () => {
     addArt({ title: "Totally different beta plugh report" });
     const r = call("story-clusters", ctxA, {});
     assert.equal(r.result.storyCount, 2);
+    assert.equal(r.result.clusters[0].spread.center, 0);
+    assert.equal(r.result.clusters[0].spread.unscored, 1);
+    assert.equal(r.result.clusters[1].spread.unscored, 1);
   });
 });
 
@@ -205,9 +245,20 @@ describe("news.source-profile", () => {
     assert.equal(r.ok, true);
     assert.equal(r.result.source, "Reuters");
     assert.equal(r.result.articleCount, 2);
-    assert.ok(["left", "center", "right"].includes(r.result.biasLean));
+    assert.equal(r.result.biasLean, null);
+    assert.equal(r.result.biasScore, null);
+    assert.equal(r.result.biasReason, "no_bias_terms");
     assert.ok(r.result.factualityRating >= 0 && r.result.factualityRating <= 100);
     assert.equal(r.result.topicSpread.length, 2);
+  });
+
+  it("leans a source from the bias terms it actually used", () => {
+    addArt({ source: "LeftWire", title: "Progressive equity reform", summary: "marginalized rights and inclusive welfare" });
+    const r = call("source-profile", ctxA, { source: "LeftWire" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.biasLean, "left");
+    assert.ok(r.result.biasScore < -0.25);
+    assert.equal(r.result.biasReason, null);
   });
 
   it("errors when no articles exist for the source", () => {
