@@ -156,6 +156,7 @@ import { HUB_WORLD_ID, canonicalWorldId } from "./lib/world-ids.js";
 import { uniqueTmpPath, writeFileAtomicSync, createSnapshotOrdering, sweepStaleStateTmps } from "./lib/state-file-write.js";
 import { runConsolidationCycle } from "./lib/consolidation-cycle.js";
 import { consolidatedTitle, stripTierPrefix, screenClusterMembers, memberSetKey, createRejectionCache, bump as _consoBump } from "./lib/consolidation-dedupe.js";
+import { budgetDemotions, synthesizeConsolidatedBody, absorbTarget as _consoAbsorbTarget, growConsolidatedNode } from "./lib/consolidation-synthesis.js";
 // Clusters the quality gates rejected: not rebuilt for 24h (lib/consolidation-dedupe.js).
 const _consoRejected = createRejectionCache();
 import { createSessionActivityBridge, createMacroRateBridge, createApiRateBridge, createChatSessionBridge, createStyleVectorBridge, createSocketRoomBridge, installMapWriteThrough } from "./lib/concurrency/shared-state.js";
@@ -22945,7 +22946,8 @@ function _dtuHitBody(d, maxChars) {
   // state it plainly rather than leave it inside boilerplate.
   const _n = (d?.tier === "mega" || d?.tier === "hyper") ? _dtuMemberCount(d) : 0;
   const _lead = _n ? `Members: ${_n} ${d.tier === "hyper" ? "mega" : "regular"} DTUs. ` : "";
-  return _lead + _sanitizeDtuText(String(d.cretiHuman || d.human?.summary || (Array.isArray(d.core?.claims) ? d.core.claims.join("; ") : "") || "").slice(0, maxChars));
+  const _body = String(d.cretiHuman || "");
+  return (/^Members: \d+ /.test(_body) ? "" : _lead) + _sanitizeDtuText(String(d.cretiHuman || d.human?.summary || (Array.isArray(d.core?.claims) ? d.core.claims.join("; ") : "") || "").slice(0, maxChars));
 }
 // Megas/hypers are the compressed knowledge: give them a longer body.
 function _dtuHitChars(d, maxChars) {
@@ -25482,17 +25484,19 @@ function enforceTierBudgets() {
     return bu - au;
   };
 
+  // Consolidated megas/hypers (built from members that were archived into
+  // them) are never demoted by the budget; only usage-placed ones are
+  // (lib/consolidation-synthesis.js). Demoting them kept every new mega
+  // regular in memory and blocked its cluster forever.
   if (hypers.length > maxHypers) {
-    hypers.sort(byUtility);
-    for (const d of hypers.slice(maxHypers)) {
+    for (const d of budgetDemotions(hypers, maxHypers, byUtility)) {
       d.tier = 'mega';
       d.updatedAt = nowISO();
       STATE.abstraction.ledger.collapsed += 1; // treat demotion as "collapse" of excessive abstraction
     }
   }
   if (megas.length > maxMegas) {
-    megas.sort(byUtility);
-    for (const d of megas.slice(maxMegas)) {
+    for (const d of budgetDemotions(megas, maxMegas, byUtility)) {
       d.tier = 'regular';
       d.updatedAt = nowISO();
       STATE.abstraction.ledger.collapsed += 0.5;
@@ -27681,8 +27685,25 @@ register("dtu", "gapPromote", async (ctx, input) => {
 
   const promoted = [];
   const created = [];
+  // Clusters that already have a live consolidated node: its new members
+  // are absorbed into that node instead of being skipped.
+  const absorbedInto = [];
   // Why clusters were not promoted (logged by _promoteClusterBatch).
   const skipped = {};
+  const _growExisting = (node, members, titleSeed) => {
+    const tgt = _consoAbsorbTarget(node, { targetTier, members, scopeKey: _dtuScopeKey });
+    if (!tgt) return false;
+    if (!tgt.members.length) { _consoBump(skipped, "already_absorbed"); return true; }
+    if (dryRun) { absorbedInto.push({ megaId: node.id, memberIds: tgt.members.map(m => m.id), existing: true, dryRun: true }); return true; }
+    const undo = growConsolidatedNode(node, tgt.members, { childTier, titleSeed: titleSeed || stripTierPrefix(node.title || "") });
+    const q = validateConsolidationQuality(node, tgt.members.map(m => m.id));
+    if (!q.ok) { undo(); _consoBump(skipped, `absorb_gate:${q.reason}`); return true; }
+    STATE.dtus.set(node.id, node);
+    for (const m of tgt.members) { m.meta = m.meta || {}; if (!m.meta.megaParent) m.meta.megaParent = node.id; }
+    saveStateDebounced();
+    absorbedInto.push({ megaId: node.id, memberIds: tgt.members.map(m => m.id), existing: true });
+    return true;
+  };
   const _isLiveConsolidated = (id) => {
     const p = STATE.dtus.get(id);
     return !!p && (p.tier === "mega" || p.tier === "hyper");
@@ -27708,16 +27729,22 @@ register("dtu", "gapPromote", async (ctx, input) => {
     // clusterKey must block a rebuild, or the same megas are minted every
     // tick and then re-clustered into "MEGA — MEGA …".
     const existing = Array.from(STATE.dtus.values()).find(d => d?.meta?.clusterKey === clusterKey);
-    if (existing) { _consoBump(skipped, "cluster_exists"); continue; }
+    if (existing) {
+      if (!_growExisting(existing, members, null)) _consoBump(skipped, "cluster_exists");
+      continue;
+    }
 
     // Build a deterministic mega summary (no LLM dependency). One tier
     // prefix only: a seed that already reads "MEGA — …" would nest.
     const titleSeed = stripTierPrefix(c.label || members[0]?.title || "Cluster").slice(0, 80) || "Cluster";
+    // Same title as a live consolidated node of this tier: the same topic
+    // grew; absorb into it (the commit would fail duplicate_blocked).
+    const _sameTitle = Array.from(STATE.dtus.values()).find(d => d?.title === consolidatedTitle(targetTier, titleSeed));
+    if (_sameTitle) {
+      if (!_growExisting(_sameTitle, members, titleSeed)) _consoBump(skipped, "title_exists");
+      continue;
+    }
     const tags = Array.from(new Set(members.flatMap(d => Array.isArray(d.tags)?d.tags:[]))).slice(0, 24);
-    const excerpts = members
-      .map(d => (d.cretiHuman || d.creti || "").toString().trim())
-      .filter(Boolean)
-      .slice(0, 8);
 
     // Inherit the members' scope envelope (uniform within a partition post-_dtuScopeKey)
     // so a MEGA is the SAME class of adaptability as a regular DTU — it carries scope,
@@ -27760,13 +27787,10 @@ register("dtu", "gapPromote", async (ctx, input) => {
           "If stable, consider elevating to Hyper only with citations + verification."
         ]
       },
-      cretiHuman: [
-        `**What this ${targetTier.toUpperCase()} represents**: ${members.length} related ${childTier} DTUs clustered around **${titleSeed}**.`,
-        `Cluster representative for ids ${memberIds.join(", ")}. The synthesis adds the cluster key, the promotion lineage, and a review checklist that no single member states on its own. It is the stable node for this cluster, not a copy of any one member.`,
-        tags.length ? `**Tag hints**: ${tags.join(", ")}` : "",
-        excerpts.length ? `**Representative excerpts**:\n- ${excerpts.map(e=>e.replace(/\n+/g," ").slice(0,180)).join("\n- ")}` : "",
-        "**Lineage**: promoted from the member DTUs. Consolidation archives those members into this node."
-      ].filter(Boolean).join("\n\n"),
+      // A synthesis of what the members say (count, shared themes, one gist
+      // per distinct member), not boilerplate (lib/consolidation-synthesis.js).
+      cretiHuman: synthesizeConsolidatedBody({ tier: targetTier, childTier, titleSeed, members, tags }).text,
+      human: { summary: synthesizeConsolidatedBody({ tier: targetTier, childTier, titleSeed, members }).summary },
       meta: { clusterKey, promotedFrom: members.length, promotionAt: nowISO(), createdBy: _megaCreator || undefined }
     };
 
@@ -27843,9 +27867,10 @@ register("dtu", "gapPromote", async (ctx, input) => {
 
   return {
     ok: true,
-    did: promoted.length ? "promoted" : "none",
+    did: promoted.length ? "promoted" : (absorbedInto.length ? "absorbed" : "none"),
     skipped,
     promoted,
+    absorbedInto,
     dtus: created,
     dtu: created[0] || null,
     dryRun,
@@ -44600,6 +44625,11 @@ async function absorbConsolidatedPromotion(promotionResult, cluster) {
       ? rec.memberIds
       : _clusterMemberIds(cluster);
     const quality = validateConsolidationQuality(live, memberIds);
+    if (!quality.ok && rec.existing) {
+      // Growing an existing node: never delete it; its members stay hot.
+      failures.push({ megaId: live.id, reason: quality.reason });
+      continue;
+    }
     if (!quality.ok) {
       try { STATE.dtus.delete(live.id); } catch { /* best-effort */ }
       // Members must not keep pointing at the deleted node, and the same
@@ -44650,8 +44680,15 @@ async function _promoteClusterBatch(ctx, clusters, { tier, minCluster, budgetMs,
   let absorbedTotal = 0;
   const skips = {};
   const megaIds = [];
-  const batch = (clusters || []).slice(0, tier === "hyper" ? CONSOLIDATION.HYPER_MAX_PER_CYCLE : CONSOLIDATION.MEGA_MAX_PER_CYCLE);
+  let grown = 0;
+  let absorbedExisting = 0;
+  const grownIds = [];
+  // Scan past clusters that are already consolidated (the same top clusters
+  // came back every cycle and used the whole batch); stop at the per-cycle cap.
+  const _max = tier === "hyper" ? CONSOLIDATION.HYPER_MAX_PER_CYCLE : CONSOLIDATION.MEGA_MAX_PER_CYCLE;
+  const batch = (clusters || []).slice(0, _max * 4);
   for (const cluster of batch) {
+    if (promotedCount + grown >= _max) break;
     await new Promise((r) => { setImmediate(r); });
     if (Date.now() - startedAt > budgetMs) {
       structuredLog("info", "consolidation_defer_remaining", {
@@ -44673,6 +44710,17 @@ async function _promoteClusterBatch(ctx, clusters, { tier, minCluster, budgetMs,
         dryRun: false,
       }, ctx);
       if (!promoted?.ok) { _consoBump(skips, promoted?.error || "promote_failed"); continue; }
+      if (Array.isArray(promoted.absorbedInto) && promoted.absorbedInto.length) {
+        const grew = await absorbConsolidatedPromotion({ ok: true, promoted: promoted.absorbedInto }, { ids });
+        if ((grew?.absorbed || 0) + (grew?.linked || 0) > 0) {
+          grown++;
+          absorbedExisting += grew.absorbed || 0;
+          for (const a of promoted.absorbedInto) grownIds.push(a.megaId);
+        } else {
+          _consoBump(skips, `grow:${grew?.failures?.[0]?.reason || grew?.reason || "none"}`);
+        }
+        continue;
+      }
       if (!Array.isArray(promoted.promoted) || promoted.promoted.length === 0) {
         const reasons = Object.keys(promoted.skipped || {});
         _consoBump(skips, reasons[0] || promoted.reason || "not_promoted");
@@ -44692,7 +44740,8 @@ async function _promoteClusterBatch(ctx, clusters, { tier, minCluster, budgetMs,
     }
   }
   structuredLog("info", "consolidation_promote_batch", {
-    tier, candidates: batch.length, attempted, promoted: promotedCount, absorbed: absorbedTotal, skips, megaIds: megaIds.slice(0, 8),
+    tier, candidates: batch.length, attempted, promoted: promotedCount, absorbed: absorbedTotal,
+    grown, absorbedIntoExisting: absorbedExisting, skips, megaIds: megaIds.slice(0, 8), grownIds: grownIds.slice(0, 8),
   });
   return promotedCount;
 }
