@@ -20,7 +20,7 @@ export const PHASES = Object.freeze([
 
 // v2: the v1 cursor (#1548) skipped legacy rows whose id lived only in the
 // table column; restart from the top.
-const PROGRESS_TABLE = "archive_embed_progress_v2";
+const PROGRESS_TABLE = "archive_embed_progress_v3"; // v3: legacy markdown bodies (#1551)
 
 export function ensureProgressTable(db) {
   db.exec(`CREATE TABLE IF NOT EXISTS ${PROGRESS_TABLE} (
