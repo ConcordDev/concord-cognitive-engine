@@ -1128,7 +1128,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Timeline / History API ────────────────────────────────────────
 
   router.get("/sim/timeline/:districtId", wrap((req, res) => {
-    sendSim(res, readDistrictTimeline(req.params.districtId));
+    sendSim(res, readDistrictTimeline(req.params.districtId, { limit: req.query?.limit }));
   }));
 
   // ══════════════════════════════════════════════════════════════════

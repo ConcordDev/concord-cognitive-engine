@@ -4,6 +4,7 @@
 // A zero from a real query is a real zero.
 
 import { runDistrictStressTest, loadStandingBuildings } from "../domains/world.js";
+import { listDistrictSnapshots } from "../domains/district.js";
 import { listGallery } from "./plugin-gallery.js";
 import { readOwnBuildings, readOwnCitations } from "./sim-stats.js";
 import { recentEvents, unregisteredEventStats } from "./runtime/event-bus.js";
@@ -339,15 +340,37 @@ export function readDistrictLeaderboard(db, districtId) {
   return body;
 }
 
-export function readDistrictTimeline(districtId) {
+const TIMELINE_MAX = 500;
+
+// Real recorded snapshots (domains/district.js store, written by the
+// district-snapshot heartbeat and the district.snapshot-record action),
+// oldest -> newest. power / water / environmentalScore are not recorded
+// anywhere, so they stay null with a reason. activeUsers is null on
+// heartbeat snapshots (not measured there).
+export function readDistrictTimeline(districtId, { limit } = {}) {
   const id = String(districtId || "").slice(0, 80);
   if (!id) return { ok: false, status: 400, error: "district_required" };
-  return {
+  const lim = Number(limit);
+  const cap = Number.isFinite(lim) && lim > 0 ? Math.min(Math.floor(lim), TIMELINE_MAX) : TIMELINE_MAX;
+  const listed = listDistrictSnapshots(id, { limit: cap });
+  if (!listed.ok) {
+    return { ok: false, status: 500, error: "unavailable", reason: "snapshot_store_error" };
+  }
+  const snapshots = listed.result.snapshots;
+  const body = {
     ok: true,
     districtId: id,
-    snapshots: [],
-    reason: "no_snapshot_store",
+    snapshots,
+    count: snapshots.length,
+    power: null,
+    powerReason: "not_recorded: no power telemetry is stored per district snapshot",
+    water: null,
+    waterReason: "not_recorded: no water telemetry is stored per district snapshot",
+    environmentalScore: null,
+    environmentalScoreReason: "not_recorded: no environmental score is stored per district snapshot",
   };
+  if (!snapshots.length) body.reason = "no_snapshots_recorded_yet";
+  return body;
 }
 
 export function readStressTest(db, body = {}) {

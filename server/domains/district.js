@@ -4,102 +4,123 @@
 // DistrictTimeline panel with REAL point-in-time snapshots a caller records,
 // and growth analysis computed strictly from recorded data.
 //
-// In-memory, STATE-backed (no migrations). STATE.districtSnapshots is a
+// STATE-backed (no migrations). STATE.districtSnapshots is a
 // Map<districtId, Array<Snapshot>>. Empty by construction — a district shows
 // nothing until a snapshot is recorded; growth curves are NEVER fabricated.
 //
+// The Map lives in memory, but "districtSnapshots" is listed in
+// LENS_STATE_KEYS (lib/lens-state-persistence.js: idArray, tail 500, mapMax
+// 1000), so saveState serialises it and loadState hydrates it; history
+// survives a restart as long as a state save ran after the last record.
+//
+// Named exports recordDistrictSnapshot / listDistrictSnapshots are shared by
+// the lens actions, the world sim timeline route (lib/sim-infra.js) and the
+// district-snapshot heartbeat (lib/district-snapshot-heartbeat.js).
+//
 // Macros: snapshot-record, timeline-list, growth-analysis, districts-list.
 
+const MAX_SNAPSHOTS_PER_DISTRICT = 500;
+
+function store() {
+  if (!globalThis._concordSTATE) globalThis._concordSTATE = {};
+  const STATE = globalThis._concordSTATE;
+  STATE.districtSnapshots ??= new Map(); // districtId -> Array<Snapshot>
+  if (!(STATE.districtSnapshots instanceof Map)) {
+    STATE.districtSnapshots = new Map();
+  }
+  return STATE.districtSnapshots;
+}
+function save() {
+  if (typeof globalThis._concordSaveStateDebounced === "function") {
+    try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best-effort */ }
+  }
+}
+const sid = (prefix) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+
+function snapshotsFor(m, districtId) {
+  if (!m.has(districtId)) m.set(districtId, []);
+  return m.get(districtId);
+}
+// chronological order by recorded timestamp
+function ordered(list) {
+  return [...list].sort((a, b) => a.ts - b.ts);
+}
+
+// Records a real point-in-time district snapshot. Numeric fields are
+// validated; nothing is invented. activeUsers: undefined stores 0 (legacy
+// lens-action behaviour); an explicit null stores null = "not recorded".
+export function recordDistrictSnapshot(params = {}) {
+  try {
+    const m = store();
+    const p = params || {};
+    const districtId = String(p.districtId || "").trim();
+    if (!districtId) return { ok: false, error: "districtId required" };
+
+    const numField = (name) => {
+      const v = Number(p[name]);
+      if (!Number.isFinite(v) || v < 0) return null;
+      return v;
+    };
+    const buildingCount = numField("buildingCount");
+    if (buildingCount === null) return { ok: false, error: "numeric buildingCount required" };
+    const population = numField("population");
+    if (population === null) return { ok: false, error: "numeric population required" };
+    // activeUsers is optional but, if supplied, must be a valid non-negative number.
+    let activeUsers = 0;
+    if (p.activeUsers === null) {
+      activeUsers = null;
+    } else if (p.activeUsers !== undefined) {
+      const v = Number(p.activeUsers);
+      if (!Number.isFinite(v) || v < 0) return { ok: false, error: "numeric activeUsers required" };
+      activeUsers = v;
+    }
+    const at = p.at ? new Date(p.at) : new Date();
+    if (Number.isNaN(at.getTime())) return { ok: false, error: "invalid timestamp" };
+
+    const snapshot = {
+      id: sid("snap"),
+      districtId,
+      buildingCount,
+      population,
+      activeUsers,
+      at: at.toISOString(),
+      ts: at.getTime(),
+    };
+    const list = snapshotsFor(m, districtId);
+    list.push(snapshot);
+    // bound in-memory growth
+    if (list.length > MAX_SNAPSHOTS_PER_DISTRICT) list.splice(0, list.length - MAX_SNAPSHOTS_PER_DISTRICT);
+    save();
+    return { ok: true, result: { snapshot, snapshotCount: list.length } };
+  } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+}
+
+// Ordered (oldest → newest) snapshot history. `limit` keeps the most recent N.
+export function listDistrictSnapshots(districtId, { limit } = {}) {
+  try {
+    const m = store();
+    const id = String(districtId || "").trim();
+    if (!id) return { ok: false, error: "districtId required" };
+    // Read-only: never create a Map entry just because an id was queried.
+    let list = ordered(m.get(id) || []);
+    if (limit !== undefined) {
+      const lim = Number(limit);
+      if (Number.isFinite(lim) && lim > 0) list = list.slice(-Math.floor(lim));
+    }
+    return { ok: true, result: { districtId: id, snapshots: list, count: list.length } };
+  } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+}
+
 export default function registerDistrictActions(registerLensAction) {
-  // ── STATE plumbing ───────────────────────────────────────────────
-  function store() {
-    if (!globalThis._concordSTATE) globalThis._concordSTATE = {};
-    const STATE = globalThis._concordSTATE;
-    STATE.districtSnapshots ??= new Map(); // districtId -> Array<Snapshot>
-    if (!(STATE.districtSnapshots instanceof Map)) {
-      STATE.districtSnapshots = new Map();
-    }
-    return STATE.districtSnapshots;
-  }
-  function save() {
-    if (typeof globalThis._concordSaveStateDebounced === "function") {
-      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best-effort */ }
-    }
-  }
-  const sid = (prefix) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-
-  function snapshotsFor(m, districtId) {
-    if (!m.has(districtId)) m.set(districtId, []);
-    return m.get(districtId);
-  }
-  // chronological order by recorded timestamp
-  function ordered(list) {
-    return [...list].sort((a, b) => a.ts - b.ts);
-  }
-
   // ── snapshot-record ──────────────────────────────────────────────
-  // Records a real point-in-time district snapshot. Numeric fields are
-  // validated; nothing is invented.
-  registerLensAction("district", "snapshot-record", (ctx, _artifact, params = {}) => {
-    try {
-      const m = store();
-      const p = params || {};
-      const districtId = String(p.districtId || "").trim();
-      if (!districtId) return { ok: false, error: "districtId required" };
-
-      const numField = (name) => {
-        const v = Number(p[name]);
-        if (!Number.isFinite(v) || v < 0) return null;
-        return v;
-      };
-      const buildingCount = numField("buildingCount");
-      if (buildingCount === null) return { ok: false, error: "numeric buildingCount required" };
-      const population = numField("population");
-      if (population === null) return { ok: false, error: "numeric population required" };
-      // activeUsers is optional but, if supplied, must be a valid non-negative number.
-      let activeUsers = 0;
-      if (p.activeUsers !== undefined) {
-        const v = Number(p.activeUsers);
-        if (!Number.isFinite(v) || v < 0) return { ok: false, error: "numeric activeUsers required" };
-        activeUsers = v;
-      }
-      const at = p.at ? new Date(p.at) : new Date();
-      if (Number.isNaN(at.getTime())) return { ok: false, error: "invalid timestamp" };
-
-      const snapshot = {
-        id: sid("snap"),
-        districtId,
-        buildingCount,
-        population,
-        activeUsers,
-        at: at.toISOString(),
-        ts: at.getTime(),
-      };
-      const list = snapshotsFor(m, districtId);
-      list.push(snapshot);
-      // bound in-memory growth
-      if (list.length > 500) list.splice(0, list.length - 500);
-      save();
-      return { ok: true, result: { snapshot, snapshotCount: list.length } };
-    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
-  });
+  registerLensAction("district", "snapshot-record", (ctx, _artifact, params = {}) =>
+    recordDistrictSnapshot(params));
 
   // ── timeline-list ────────────────────────────────────────────────
-  // Per-district ordered (oldest → newest) snapshot history. Empty until
-  // something is recorded. Supports `limit` (most-recent N, returned in order).
+  // Empty until something is recorded. Supports `limit` (most-recent N, in order).
   registerLensAction("district", "timeline-list", (ctx, _artifact, params = {}) => {
-    try {
-      const m = store();
-      const p = params || {};
-      const districtId = String(p.districtId || "").trim();
-      if (!districtId) return { ok: false, error: "districtId required" };
-      let list = ordered(snapshotsFor(m, districtId));
-      if (p.limit !== undefined) {
-        const lim = Number(p.limit);
-        if (Number.isFinite(lim) && lim > 0) list = list.slice(-Math.floor(lim));
-      }
-      return { ok: true, result: { districtId, snapshots: list, count: list.length } };
-    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+    const p = params || {};
+    return listDistrictSnapshots(p.districtId, { limit: p.limit });
   });
 
   // ── growth-analysis ──────────────────────────────────────────────
@@ -129,7 +150,10 @@ export default function registerDistrictActions(registerLensAction) {
 
       const buildingDelta = last.buildingCount - first.buildingCount;
       const populationDelta = last.population - first.population;
-      const activeUsersDelta = last.activeUsers - first.activeUsers;
+      // activeUsers is null when the recorder did not measure it (heartbeat).
+      const activeUsersDelta = first.activeUsers == null || last.activeUsers == null
+        ? null
+        : last.activeUsers - first.activeUsers;
 
       // Per-period compound growth rate (geometric, "CAGR-ish" over snapshot
       // intervals). Only defined when the starting value is > 0.
