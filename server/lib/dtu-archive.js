@@ -53,6 +53,7 @@
 //   CONCORD_DTU_ARCHIVE_BOOT_AT_START default 1 (boot sweep runs at boot)
 
 import logger from "../logger.js";
+import * as loopJobs from "./loop-job-tracker.js";
 import { isDtuProtected } from "./dtu-protection.js";
 import { packDtuData, unpackDtuData } from "./dtu-at-rest.js";
 
@@ -277,7 +278,7 @@ export function installRollingArchiveSweep({ db, STATE }) {
         && globalThis.__memoryPaused()) {
       return;
     }
-    archiveOldDtuStore(db).catch((e) =>
+    loopJobs.withJob("dtu_archive_rolling_sweep", () => archiveOldDtuStore(db)).catch((e) =>
       logger.debug("lib:dtu-archive", "rolling_sweep_failed", { error: e?.message })
     );
   }, intervalMs);
