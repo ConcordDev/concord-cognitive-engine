@@ -3,6 +3,7 @@
 // and narrative tracking across articles.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 export default function registerNewsActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -152,7 +153,7 @@ export default function registerNewsActions(registerLensAction) {
         articleAnalyses: articleAnalyses.slice(0, 20),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -321,7 +322,7 @@ export default function registerNewsActions(registerLensAction) {
         })(),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -502,7 +503,7 @@ export default function registerNewsActions(registerLensAction) {
         shiftCount: shifts.length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── Parity-sprint ──
@@ -817,7 +818,7 @@ export default function registerNewsActions(registerLensAction) {
         unread: view.filter((a) => !a.read).length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("news", "today-digest", (ctx, _a, _params = {}) => {
@@ -1050,7 +1051,7 @@ export default function registerNewsActions(registerLensAction) {
           cols.center.length === 0 ? "center" : null,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Story clustering ────────────────────────────────────────────────
@@ -1112,7 +1113,7 @@ export default function registerNewsActions(registerLensAction) {
         multiSource: clusters.filter((c) => c.sourceCount > 1).length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Audio / read-aloud mode ─────────────────────────────────────────
@@ -1205,7 +1206,7 @@ export default function registerNewsActions(registerLensAction) {
       ok: true,
       result: { alerts: sorted, count: sorted.length, unread: sorted.filter((a) => !a.read).length },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Offline reading / save-for-later sync ───────────────────────────
@@ -1288,7 +1289,7 @@ export default function registerNewsActions(registerLensAction) {
           .sort((a, b) => b.count - a.count),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Personalized digest scheduling ──────────────────────────────────

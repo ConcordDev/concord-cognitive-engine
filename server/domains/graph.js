@@ -2,6 +2,7 @@
 // Domain actions for graph: node analysis, path finding, cluster detection, graph metrics.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 export default function registerGraphActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -186,7 +187,7 @@ export default function registerGraphActions(registerLensAction) {
 
     artifact.data.nodeAnalysis = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -304,7 +305,7 @@ export default function registerGraphActions(registerLensAction) {
 
     artifact.data.pathResult = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -429,7 +430,7 @@ export default function registerGraphActions(registerLensAction) {
 
     artifact.data.clusters = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -596,7 +597,7 @@ export default function registerGraphActions(registerLensAction) {
 
     artifact.data.graphMetrics = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── Mind-map / concept-graph builder (XMind / MindMeister shape) ────
@@ -886,7 +887,7 @@ export default function registerGraphActions(registerLensAction) {
         totalEdges: maps.reduce((n, m) => n + m.edges.length, 0),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─────────────────────────────────────────────────────────────────
@@ -949,7 +950,7 @@ export default function registerGraphActions(registerLensAction) {
         edges,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -1047,7 +1048,7 @@ export default function registerGraphActions(registerLensAction) {
         query,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -1147,7 +1148,7 @@ export default function registerGraphActions(registerLensAction) {
         edges,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -1232,7 +1233,7 @@ export default function registerGraphActions(registerLensAction) {
       ok: true,
       result: { mapId: m.id, algorithm, width, height, positions, nodeCount: m.nodes.length },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -1396,6 +1397,6 @@ export default function registerGraphActions(registerLensAction) {
         svg,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 }

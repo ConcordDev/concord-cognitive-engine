@@ -6,6 +6,7 @@ import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-
 import { fetchPublicUrl } from "../lib/public-fetch.js";
 import { presentOwnedId } from "../lib/public-actor.js";
 import { boundedNum, moneyOrNull, badNumber } from "../lib/finite-input.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 
 export default function registerFoodActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -65,7 +66,7 @@ export default function registerFoodActions(registerLensAction) {
     artifact.data.lastScaled = result;
 
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -84,7 +85,7 @@ export default function registerFoodActions(registerLensAction) {
       : menuItems;
 
     if (items.length === 0) {
-      return { ok: true, result: { error: "No matching menu items found." } };
+      return { ok: false, error: "invalid_input", reason: "no_menu_items" };
     }
 
     const targetPct = params.targetFoodCostPct || 30;
@@ -127,7 +128,7 @@ export default function registerFoodActions(registerLensAction) {
     artifact.data.plateCostReport = { generatedAt: new Date().toISOString(), items: costed, avgFoodCostPct: avgFoodCost };
 
     return { ok: true, result: { items: costed, avgFoodCostPct: avgFoodCost } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -181,7 +182,7 @@ export default function registerFoodActions(registerLensAction) {
     artifact.data.lastPurchaseOrder = result;
 
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -233,7 +234,7 @@ export default function registerFoodActions(registerLensAction) {
     artifact.data.prepList = result;
 
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -292,7 +293,7 @@ export default function registerFoodActions(registerLensAction) {
     };
 
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -356,7 +357,7 @@ export default function registerFoodActions(registerLensAction) {
         dietaryRestrictions: restrictions,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -431,7 +432,7 @@ export default function registerFoodActions(registerLensAction) {
     artifact.data.wasteReport = result;
 
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -491,7 +492,7 @@ export default function registerFoodActions(registerLensAction) {
     artifact.data.spoilageReport = report;
 
     return { ok: true, result: report };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -546,7 +547,7 @@ export default function registerFoodActions(registerLensAction) {
     artifact.data.pourCostReport = { generatedAt: new Date().toISOString(), items: costed, avgPourCostPct: avgPourCost };
 
     return { ok: true, result: { items: costed, avgPourCostPct: avgPourCost } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── Parity-sprint macros: Paprika/Mealime/Tasty/Lose It! ────────────
@@ -1042,7 +1043,7 @@ export default function registerFoodActions(registerLensAction) {
       items: items.slice(0, Math.min(items.length, Math.ceil(meals.length / 2))).map(name => ({ name, qty: 1, unit: "item" })),
     }));
     return { ok: true, result: { byAisle, meals: meals.length, days } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("food", "recipe-import-url", async (ctx, _artifact, params = {}) => {
@@ -1184,7 +1185,7 @@ export default function registerFoodActions(registerLensAction) {
     s.businesses.set(biz.id, biz);
     saveStateIfAvailable();
     return { ok: true, result: { business: presentBiz(ctx, s, biz) } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("food", "biz-list", (ctx, _a, _params = {}) => {
@@ -1213,7 +1214,7 @@ export default function registerFoodActions(registerLensAction) {
       : sort === "reviews" ? b.reviewCount - a.reviewCount
       : (b.rating - a.rating) || (b.reviewCount - a.reviewCount));
     return { ok: true, result: { businesses: rows, count: rows.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("food", "biz-detail", (ctx, _a, params = {}) => {
@@ -1527,7 +1528,7 @@ export default function registerFoodActions(registerLensAction) {
       .slice(0, yclamp(Math.round(ynum(params.limit, 25)), 1, 100))
       .map((b, i) => ({ ...b, rank: i + 1 }));
     return { ok: true, result: { restaurants: ranked, count: ranked.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("food", "cuisine-facets", (ctx, _a, _params = {}) => {
@@ -1672,7 +1673,7 @@ export default function registerFoodActions(registerLensAction) {
     s.recipes.get(userId).push(recipe);
     saveStateIfAvailable();
     return { ok: true, result: { recipe } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("food", "recipe-list", (ctx, _a, _params = {}) => {
@@ -1987,7 +1988,7 @@ export default function registerFoodActions(registerLensAction) {
         ingredientsToBuy: [...pantryGaps].sort(),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -2097,7 +2098,7 @@ export default function registerFoodActions(registerLensAction) {
         storeName: storeName || null, days,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -2152,7 +2153,7 @@ export default function registerFoodActions(registerLensAction) {
       rows.sort((a, b) => b.rating - a.rating);
     }
     return { ok: true, result: { markers: rows, count: rows.length, withoutGeo } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // feed — ingest real food products from the Open Food Facts open

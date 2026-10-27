@@ -15,7 +15,7 @@ import {
   validateLensActionInput,
   isRealCalendarDate,
 } from "../lib/macro-param-schema.js";
-import { invokeLensHandler, invalidInputFromThrow } from "../lib/lens-action-dispatch.js";
+import { invokeLensHandler, invalidInputFromThrow, handlerFailure } from "../lib/lens-action-dispatch.js";
 import { httpStatusForLensFailure } from "../lib/lens-run-http.js";
 import { bindWave1 } from "../lib/lens-input-schemas-wave1.js";
 import registerAccountingActions from "../domains/accounting.js";
@@ -149,6 +149,17 @@ describe("dispatch", () => {
     assert.equal(out.stack, undefined);
     assert.equal(out.message, undefined);
     assert.equal(invalidInputFromThrow(new Error("nope")), null);
+    const sliceMap = handlerFailure(new TypeError("(opts.behavior || []).slice.map is not a function or its return value is not iterable"));
+    assert.equal(sliceMap.error, "invalid_input");
+    assert.equal(sliceMap.reason, "not_a_function");
+    assert.equal(sliceMap.message, undefined);
+    const time = handlerFailure(new RangeError("Invalid time value"));
+    assert.equal(time.error, "invalid_input");
+    assert.equal(time.reason, "invalid_time");
+    assert.equal(time.message, undefined);
+    const other = handlerFailure(new Error("disk full"));
+    assert.equal(other.error, "handler_error");
+    assert.match(other.message, /disk full/);
     assert.equal(httpStatusForLensFailure("invalid_input"), 400);
     assert.equal(httpStatusForLensFailure("invalid_status"), 422);
     assert.equal(httpStatusForLensFailure("invalid_transition"), 422);

@@ -2,6 +2,7 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import { fredLatest } from "../lib/sourced-inputs.js";
 import { notComputed } from "../lib/lens-inputs.js";
 import { finiteOrNull, boundedNum, badNumber, MAX_MONEY } from "../lib/finite-input.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 export default function registerRealEstateActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("realestate", "capRate", (ctx, artifact, params) => {
@@ -100,7 +101,7 @@ export default function registerRealEstateActions(registerLensAction) {
         recommendations,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("realestate", "vacancyRate", (ctx, artifact, _params) => {
@@ -179,7 +180,7 @@ export default function registerRealEstateActions(registerLensAction) {
         assumptions: ltv > 80 && params.pmiRatePct == null ? ["PMI 0.5 %/yr of loan (typical; override with pmiRatePct)"] : [],
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
   };
   // rate / taxRate / insurance used to default to 7 % / 1.1 % / $1,200.
   // Now required; opt in with rateSource:"fred" to use the latest Freddie Mac
@@ -291,7 +292,7 @@ export default function registerRealEstateActions(registerLensAction) {
           : `Renting wins over the ${horizonYears}-year horizon.`,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Saved searches ──
@@ -513,7 +514,7 @@ export default function registerRealEstateActions(registerLensAction) {
     ensureREBucket(s, "listings", userId).push(listing);
     saveREState();
     return { ok: true, result: { listing } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("realestate", "listings-get", (ctx, _a, params = {}) => {
@@ -563,7 +564,7 @@ export default function registerRealEstateActions(registerLensAction) {
       return true;
     });
     return { ok: true, result: { matches, total: matches.length, filters: f } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Favourites ─────────────────────────────────────────────────
@@ -800,7 +801,7 @@ export default function registerRealEstateActions(registerLensAction) {
         methodology: `Based on ${comps.length} comparable listing${comps.length === 1 ? "" : "s"} you're tracking in ${subject.city}, matched on kind=${subject.kind}, beds within ±${CMA_BEDS_TOLERANCE}, sqft within ±${Math.round(CMA_SQFT_TOLERANCE_PCT * 100)}%. This reflects only properties you've personally added to your tracked listings — it is NOT an MLS-wide professional CMA.`,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
   });
 
   // ── School / walk / commute: real providers, or an honest miss ──
@@ -973,7 +974,7 @@ export default function registerRealEstateActions(registerLensAction) {
     score = Math.max(0, Math.min(100, score));
     const tag = score >= 80 ? "🔥 Very hot" : score >= 65 ? "🔥 Hot" : score >= 45 ? "Warm" : "Cooling";
     return { ok: true, result: { listingId: id, score, tag, daysOnMarket: listing.daysOnMarket, tourCount: tours.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── AI conversational search parser ────────────────────────────
@@ -1118,7 +1119,7 @@ export default function registerRealEstateActions(registerLensAction) {
     events.sort((a, b) => a.date.localeCompare(b.date));
     const unavailable = events.length === 0 && undated > 0 ? "no open-house dates on file" : null;
     return { ok: true, result: { events, days, unavailable } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Per-listing private notes ──────────────────────────────────
@@ -1186,7 +1187,7 @@ export default function registerRealEstateActions(registerLensAction) {
         medianListPrice: medianPrice,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── 2026 Zillow-parity backlog ──────────────────────────────────
@@ -1237,7 +1238,7 @@ export default function registerRealEstateActions(registerLensAction) {
         bounds: { north, south, east, west },
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Per-listing photo gallery + virtual tour ──────────────────────
@@ -1361,7 +1362,7 @@ export default function registerRealEstateActions(registerLensAction) {
         pricePerSqft: listing.sqft > 0 ? Math.round(lastPrice / listing.sqft) : null,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Mortgage pre-approval / lender connect flow ───────────────────
@@ -1441,7 +1442,7 @@ export default function registerRealEstateActions(registerLensAction) {
     ensureREBucket(s, "preapprovals", userId).push(preapproval);
     saveREState();
     return { ok: true, result: { preapproval } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("realestate", "preapprovals-list", (ctx, _a, _p = {}) => {
@@ -1572,7 +1573,7 @@ export default function registerRealEstateActions(registerLensAction) {
         photoCount: Array.isArray(listing.photos) ? listing.photos.length : 0,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Contact-agent lead form with scheduling ───────────────────────

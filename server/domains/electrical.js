@@ -264,6 +264,9 @@ export default function registerElectricalActions(registerLensAction) {
   registerLensAction('electrical', 'conduitFill', (ctx, artifact, params) => {
     try {
       const data = { ...(artifact?.data || {}), ...(params || {}) };
+      if (data.conductors != null && !Array.isArray(data.conductors)) {
+        return { ok: false, error: "invalid_input", reason: "not_a_function" };
+      }
       const conductors = data.conductors || [];
       if (conductors.length === 0) {
         return { ok: true, result: { message: 'Add conductors (AWG + count) to size the conduit.' } };

@@ -8,6 +8,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { writeGoogleCalendarEvent, readGoogleCalendarEvents } from "../lib/connector-client.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 
 export default function registerCalendarActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -155,7 +156,7 @@ export default function registerCalendarActions(registerLensAction) {
         spec: "RFC 5545",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -211,7 +212,7 @@ export default function registerCalendarActions(registerLensAction) {
         spec: "RFC 5545",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -507,7 +508,7 @@ export default function registerCalendarActions(registerLensAction) {
     }
     occurrences.sort((a, b) => a.occurrenceStart.localeCompare(b.occurrenceStart));
     return { ok: true, result: { events: occurrences, count: occurrences.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("calendar", "events-create", (ctx, _a, params = {}) => {
@@ -544,7 +545,7 @@ export default function registerCalendarActions(registerLensAction) {
     listCal(s.events, userId).push(event);
     saveCal();
     return { ok: true, result: { event } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // Recurring edits take a scope, like Google Calendar:
@@ -675,7 +676,7 @@ export default function registerCalendarActions(registerLensAction) {
       }
     }
     return { ok: true, result: { hasConflict: conflicts.length > 0, conflicts } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Availability / free slots ─────────────────────────────────
@@ -710,7 +711,7 @@ export default function registerCalendarActions(registerLensAction) {
     }
     if (winEnd.getTime() - cursor >= durMs) slots.push({ start: new Date(cursor).toISOString(), end: winEnd.toISOString() });
     return { ok: true, result: { day, durationMin, freeSlots: slots, busyBlockCount: busy.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Tasks + time blocking ─────────────────────────────────────
@@ -800,7 +801,7 @@ export default function registerCalendarActions(registerLensAction) {
     task.blockedEventId = event.id;
     saveCal();
     return { ok: true, result: { event, task } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Natural-language event create (Fantastical parity) ────────
@@ -873,7 +874,7 @@ export default function registerCalendarActions(registerLensAction) {
         sourceText: text,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── AI scheduling (Reclaim.ai parity — auto-place tasks in free slots) ─
@@ -939,7 +940,7 @@ export default function registerCalendarActions(registerLensAction) {
         note: "Proposals only — call tasks-time-block to commit each one.",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Dashboard summary ────────────────────────────────────────
@@ -973,7 +974,7 @@ export default function registerCalendarActions(registerLensAction) {
         unblockedTasks: tasks.filter(t => t.status === 'todo' && !t.blockedEventId).length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── Appointment schedules (Google Calendar 2026 booking pages) ───────
@@ -1005,7 +1006,7 @@ export default function registerCalendarActions(registerLensAction) {
     listCal(s.appointmentSchedules, aidCal(ctx)).push(schedule);
     saveCal();
     return { ok: true, result: { schedule } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("calendar", "appointment-schedule-list", (ctx, _a, _p = {}) => {
@@ -1054,7 +1055,7 @@ export default function registerCalendarActions(registerLensAction) {
       });
     }
     return { ok: true, result: { date: dateStr, weekday: WEEKDAY_NAMES[weekday], durationMin: schedule.durationMin, slots } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("calendar", "appointment-book", (ctx, _a, params = {}) => {
@@ -1078,7 +1079,7 @@ export default function registerCalendarActions(registerLensAction) {
     schedule.bookings.sort((a, b) => a.slotStart.localeCompare(b.slotStart));
     saveCal();
     return { ok: true, result: { booking } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("calendar", "appointment-bookings", (ctx, _a, params = {}) => {
@@ -1143,7 +1144,7 @@ export default function registerCalendarActions(registerLensAction) {
     listCal(s.connectedAccounts, userId).push(account);
     saveCal();
     return { ok: true, result: { account } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("calendar", "accounts-list", (ctx, _a, _p = {}) => {
@@ -1195,7 +1196,7 @@ export default function registerCalendarActions(registerLensAction) {
       saveCal();
       return { ok: true, result: { pushed: true, providerEventId: res.data?.id || null } };
     } catch (e) {
-      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+      return handlerFailure(e);
     }
   });
 
@@ -1216,6 +1217,12 @@ export default function registerCalendarActions(registerLensAction) {
         if (!acct) return { ok: false, error: "account not found" };
         if (acct.provider !== "google") return { ok: false, reason: "pull_unsupported_provider", error: "pull_unsupported_provider", provider: acct.provider };
       }
+      for (const key of ["timeMin", "timeMax"]) {
+        const v = params[key];
+        if (v != null && String(v).trim() !== "" && !Number.isFinite(new Date(v).getTime())) {
+          return { ok: false, error: "invalid_input", reason: "invalid_time" };
+        }
+      }
       const res = await readGoogleCalendarEvents(ctx.db, userId, {
         calendarId: params.calendarId || "primary",
         timeMin: params.timeMin,
@@ -1228,7 +1235,7 @@ export default function registerCalendarActions(registerLensAction) {
       if (!res.ok) return { ok: false, reason: res.reason || "pull_failed", error: res.reason || "pull_failed", detail: res };
       return { ok: true, result: { events: res.events, nextPageToken: res.nextPageToken, source: "google" } };
     } catch (e) {
-      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+      return handlerFailure(e);
     }
   });
 
@@ -1438,7 +1445,7 @@ export default function registerCalendarActions(registerLensAction) {
     if (firedNow > 0) saveCal();
     const pending = queue.filter(n => !n.acknowledged).sort((a, b) => a.occurrenceStart.localeCompare(b.occurrenceStart));
     return { ok: true, result: { firedNow, pending, pendingCount: pending.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("calendar", "reminders-acknowledge", (ctx, _a, params = {}) => {
@@ -1503,7 +1510,7 @@ export default function registerCalendarActions(registerLensAction) {
     listCal(s.events, userId).push(event);
     saveCal();
     return { ok: true, result: { event } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("calendar", "status-events-list", (ctx, _a, params = {}) => {
@@ -1588,7 +1595,7 @@ export default function registerCalendarActions(registerLensAction) {
     event.attendees = [...new Set([...(event.attendees || []), ...guests])];
     saveCal();
     return { ok: true, result: { eventId: event.id, sent: created.length, invites: created, attendees: event.attendees } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("calendar", "invites-list", (ctx, _a, params = {}) => {

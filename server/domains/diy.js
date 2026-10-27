@@ -1,5 +1,6 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { needNums, notComputed } from "../lib/lens-inputs.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 // server/domains/diy.js
 // Domain actions for DIY/maker: project cost estimation, material calculation,
 // tool inventory management, build time estimation, safety assessment.
@@ -62,7 +63,7 @@ export default function registerDIYActions(registerLensAction) {
         budgetTip: totalEstimate > 500 ? "Consider phasing the project — buy materials in stages" : "Project is within a reasonable single-purchase budget",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -141,7 +142,7 @@ export default function registerDIYActions(registerLensAction) {
         wasteTip: efficiency < 70 ? "Low efficiency — try adjusting cut sizes or using different stock lengths" : "Good material utilization",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -211,7 +212,7 @@ export default function registerDIYActions(registerLensAction) {
         recommendation: missing.length > 3 ? "Consider renting — multiple tools needed" : missing.length > 0 ? "Buy if you'll reuse, rent for one-time projects" : "All tools available — ready to build",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -281,7 +282,7 @@ export default function registerDIYActions(registerLensAction) {
         clearToStart: riskLevel !== "high" || experience === "advanced" || experience === "expert",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -349,7 +350,7 @@ export default function registerDIYActions(registerLensAction) {
         tip: grandTotal > 480 ? "Multi-day project — plan stopping points between steps" : "Should be completable in a single session",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── Project workshop substrate (per-user, STATE-backed) ────────────
@@ -643,7 +644,7 @@ export default function registerDIYActions(registerLensAction) {
           : "Material spend is reasonable for the project size",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // Feature: Tool-availability check against inventory ─────────────────
@@ -766,7 +767,7 @@ export default function registerDIYActions(registerLensAction) {
       };
     });
     return { ok: true, result: { catalog, count: catalog.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // project-fork — clone a published project into the caller's workshop

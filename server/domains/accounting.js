@@ -5,6 +5,7 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import { requireOwner } from "../lib/lens-authz.js";
 import { assertPayable } from "../lib/money-guards.js";
 import { bindWave1 } from "../lib/lens-input-schemas-wave1.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 
 export default function registerAccountingActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -67,7 +68,7 @@ export default function registerAccountingActions(registerLensAction) {
     artifact.data.trialBalance = result;
 
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -150,7 +151,7 @@ export default function registerAccountingActions(registerLensAction) {
     artifact.data.profitLoss = result;
 
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -224,7 +225,7 @@ export default function registerAccountingActions(registerLensAction) {
     artifact.data.invoiceAging = result;
 
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -285,7 +286,7 @@ export default function registerAccountingActions(registerLensAction) {
     artifact.data.budgetVariance = result;
 
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -383,7 +384,7 @@ export default function registerAccountingActions(registerLensAction) {
     artifact.data.rentRoll = result;
 
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -446,7 +447,7 @@ export default function registerAccountingActions(registerLensAction) {
 
     artifact.data.validationResult = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -506,7 +507,7 @@ export default function registerAccountingActions(registerLensAction) {
 
     artifact.data.lastGeneratedInvoice = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -571,7 +572,7 @@ export default function registerAccountingActions(registerLensAction) {
     };
     artifact.data.reconciliation = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -652,7 +653,7 @@ export default function registerAccountingActions(registerLensAction) {
     };
     artifact.data.statements = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -716,7 +717,7 @@ export default function registerAccountingActions(registerLensAction) {
     };
     artifact.data.auditTrail = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── 2026 parity — real Chart of Accounts + Journal + Ledger substrate ──
@@ -898,7 +899,7 @@ export default function registerAccountingActions(registerLensAction) {
     const accounts = Array.from(s.coa.get(userId).values())
       .sort((a, b) => a.code.localeCompare(b.code));
     return { ok: true, result: { accounts, categories: COA_CATEGORIES } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "coa-create", (ctx, _artifact, params = {}) => {
@@ -1050,7 +1051,7 @@ export default function registerAccountingActions(registerLensAction) {
     });
     saveAccountingState();
     return { ok: true, result: { entry } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Ledger (paginated transaction list with filtering) ──
@@ -1091,7 +1092,7 @@ export default function registerAccountingActions(registerLensAction) {
     rows.sort((a, b) => (b.date.localeCompare(a.date)) || b.number.localeCompare(a.number));
     const total = rows.length;
     return { ok: true, result: { rows: rows.slice(offset, offset + limit), total, offset, limit } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Balance Sheet (computed from journal) ──
@@ -1139,7 +1140,7 @@ export default function registerAccountingActions(registerLensAction) {
     out.balanced = Math.abs(out.totals.assets - (out.totals.liabilities + out.totals.equity)) < 0.01;
     out.imbalance = out.totals.assets - (out.totals.liabilities + out.totals.equity);
     return { ok: true, result: out };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── AR Aging Report (buckets from invoices) ──
@@ -1172,7 +1173,7 @@ export default function registerAccountingActions(registerLensAction) {
     s.invoices.get(userId).push(invoice);
     saveAccountingState();
     return { ok: true, result: { invoice } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "invoice-mark-paid", (ctx, _artifact, params = {}) => {
@@ -1208,7 +1209,7 @@ export default function registerAccountingActions(registerLensAction) {
         invoices: filtered.slice().sort((a, b) => (b.issuedAt || "").localeCompare(a.issuedAt || "")),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -1388,7 +1389,7 @@ export default function registerAccountingActions(registerLensAction) {
       totalOpen += inv.total;
     }
     return { ok: true, result: { asOf, buckets: Object.values(buckets).map((b, i) => ({ ...b, key: Object.keys(buckets)[i] })), totalOpen } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Customers (CRM-lite for invoicing) ─────────────────────────
@@ -1398,7 +1399,7 @@ export default function registerAccountingActions(registerLensAction) {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = ensureList(s.customers, actId(ctx));
     return { ok: true, result: { customers: list.slice().sort((a, b) => a.name.localeCompare(b.name)) } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "customers-create", (ctx, _a, params = {}) => {
@@ -1455,7 +1456,7 @@ export default function registerAccountingActions(registerLensAction) {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = ensureList(s.vendors, actId(ctx));
     return { ok: true, result: { vendors: list.slice().sort((a, b) => a.name.localeCompare(b.name)) } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "vendors-create", (ctx, _a, params = {}) => {
@@ -1516,7 +1517,7 @@ export default function registerAccountingActions(registerLensAction) {
     const list = ensureList(s.bills, actId(ctx));
     const filtered = status === "all" ? list : list.filter(b => b.status === status);
     return { ok: true, result: { bills: filtered.slice().sort((a, b) => (b.issuedAt || "").localeCompare(a.issuedAt || "")) } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "bills-create", (ctx, _a, params = {}) => {
@@ -1577,7 +1578,7 @@ export default function registerAccountingActions(registerLensAction) {
 
     saveAccountingState();
     return { ok: true, result: { bill } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "bills-pay", (ctx, _a, params = {}) => {
@@ -1622,7 +1623,7 @@ export default function registerAccountingActions(registerLensAction) {
     bill.payJeEntryId = entry.id;
     saveAccountingState();
     return { ok: true, result: { bill, paymentEntry: entry } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "bills-delete", (ctx, _a, params = {}) => {
@@ -1668,7 +1669,7 @@ export default function registerAccountingActions(registerLensAction) {
       totalOpen += bill.total;
     }
     return { ok: true, result: { asOf, buckets: Object.entries(buckets).map(([k, b]) => ({ key: k, ...b })), totalOpen } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── P&L from journal (real, not artifact-driven) ──────────────
@@ -1717,7 +1718,7 @@ export default function registerAccountingActions(registerLensAction) {
         netMarginPct: totalRev > 0 ? (netIncome / totalRev) * 100 : 0,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Cash flow (direct method, from cash-account journal activity) ─
@@ -1762,7 +1763,7 @@ export default function registerAccountingActions(registerLensAction) {
         netCashFlow: totalIn - totalOut,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Runway forecast (cash + AR − AP, projected months) ────────
@@ -1831,7 +1832,7 @@ export default function registerAccountingActions(registerLensAction) {
         forecast,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Recurring invoices ────────────────────────────────────────
@@ -1840,7 +1841,7 @@ export default function registerAccountingActions(registerLensAction) {
   try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     return { ok: true, result: { recurring: ensureList(s.recurring, actId(ctx)) } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "recurring-invoices-create", (ctx, _a, params = {}) => {
@@ -1872,7 +1873,7 @@ export default function registerAccountingActions(registerLensAction) {
     ensureList(s.recurring, userId).push(r);
     saveAccountingState();
     return { ok: true, result: { recurring: r } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "recurring-invoices-toggle", (ctx, _a, params = {}) => {
@@ -1923,7 +1924,7 @@ export default function registerAccountingActions(registerLensAction) {
   try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     return { ok: true, result: { estimates: ensureList(s.estimates, actId(ctx)) } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "estimates-create", (ctx, _a, params = {}) => {
@@ -1950,7 +1951,7 @@ export default function registerAccountingActions(registerLensAction) {
     ensureList(s.estimates, userId).push(e);
     saveAccountingState();
     return { ok: true, result: { estimate: e } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "estimates-convert", (ctx, _a, params = {}) => {
@@ -1980,7 +1981,7 @@ export default function registerAccountingActions(registerLensAction) {
     e.convertedInvoiceId = inv.id;
     saveAccountingState();
     return { ok: true, result: { estimate: e, invoice: inv } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Bank feeds (transaction inbox) ─────────────────────────────
@@ -1992,7 +1993,7 @@ export default function registerAccountingActions(registerLensAction) {
     const list = ensureList(s.bankTxns, actId(ctx));
     const filtered = status === "all" ? list : list.filter(t => (status === "uncategorized") ? !t.accountId : !!t.accountId);
     return { ok: true, result: { txns: filtered.slice().sort((a, b) => b.date.localeCompare(a.date)) } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "bank-feeds-import", (ctx, _a, params = {}) => {
@@ -2029,7 +2030,7 @@ export default function registerAccountingActions(registerLensAction) {
     }
     saveAccountingState();
     return { ok: true, result: { imported, count: imported.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "bank-feeds-categorize", (ctx, _a, params = {}) => {
@@ -2075,7 +2076,7 @@ export default function registerAccountingActions(registerLensAction) {
     txn.jeEntryId = entry.id;
     saveAccountingState();
     return { ok: true, result: { txn, entry } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "bank-feeds-uncategorize", (ctx, _a, params = {}) => {
@@ -2278,7 +2279,7 @@ Output the single best account code:`;
     }
     saveAccountingState();
     return { ok: true, result: { accepted: accepted.length, errors, total: picks.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── AI suggest vendor for a bank txn description ──────────────
@@ -2311,7 +2312,7 @@ Output the single best account code:`;
       .slice(0, 2)
       .join(" ");
     return { ok: true, result: { matched: false, suggestedNewVendor: newName || description.slice(0, 30) } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Natural-language Q&A ("JAX"-style: Show me overdue invoices) ─
@@ -2422,7 +2423,7 @@ Output the single best account code:`;
   try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     return { ok: true, result: { rules: ensureList(s.catRules, actId(ctx)) } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "category-rules-create", (ctx, _a, params = {}) => {
@@ -2446,7 +2447,7 @@ Output the single best account code:`;
     ensureList(s.catRules, userId).push(rule);
     saveAccountingState();
     return { ok: true, result: { rule } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "category-rules-delete", (ctx, _a, params = {}) => {
@@ -2466,7 +2467,7 @@ Output the single best account code:`;
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = ensureList(s.expenses, actId(ctx));
     return { ok: true, result: { expenses: list.slice().sort((a, b) => (b.date || "").localeCompare(a.date || "")) } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "expenses-create", (ctx, _a, params = {}) => {
@@ -2517,7 +2518,7 @@ Output the single best account code:`;
     exp.jeEntryId = entry.id;
     saveAccountingState();
     return { ok: true, result: { expense: exp, entry } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // 1099-NEC reporting floor. Payments through 2025: $600. Payments in 2026: $2,000
@@ -2567,7 +2568,7 @@ Output the single best account code:`;
         vendors: rows.sort((a, b) => b.total - a.total),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Dashboard summary (KPI strip) ──────────────────────────────
@@ -2613,7 +2614,7 @@ Output the single best account code:`;
         vendorCount: ensureList(s.vendors, userId).length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── QuickBooks parity — payroll, budgets, inventory, sales tax, ────
@@ -2687,7 +2688,7 @@ Output the single best account code:`;
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const employees = ensureList(s.employees, actId(ctx));
     return { ok: true, result: { employees, count: employees.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "employee-update", (ctx, _a, params = {}) => {
@@ -2763,7 +2764,7 @@ Output the single best account code:`;
     ensureList(s.payRuns, userId).push(run);
     saveAccountingState();
     return { ok: true, result: { run } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "payrun-list", (ctx, _a, _p = {}) => {
@@ -2776,7 +2777,7 @@ Output the single best account code:`;
       }))
       .sort((a, b) => b.payDate.localeCompare(a.payDate));
     return { ok: true, result: { runs, count: runs.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "payrun-detail", (ctx, _a, params = {}) => {
@@ -2785,7 +2786,7 @@ Output the single best account code:`;
     const run = ensureList(s.payRuns, actId(ctx)).find((r) => r.id === params.id);
     if (!run) return { ok: false, error: "pay run not found" };
     return { ok: true, result: { run } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "payroll-summary", (ctx, _a, _p = {}) => {
@@ -2804,7 +2805,7 @@ Output the single best account code:`;
         ytdWithholding: acN(ytdRuns.reduce((a, r) => a + r.totalWithholding, 0)),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Budgets ─────────────────────────────────────────────────────────
@@ -2828,7 +2829,7 @@ Output the single best account code:`;
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const budgets = ensureList(s.budgets, actId(ctx));
     return { ok: true, result: { budgets, count: budgets.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "budget-set-line", (ctx, _a, params = {}) => {
@@ -2878,7 +2879,7 @@ Output the single best account code:`;
         totalActual: acN(rows.reduce((a, r) => a + r.actual, 0)),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "budget-delete", (ctx, _a, params = {}) => {
@@ -2916,7 +2917,7 @@ Output the single best account code:`;
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const items = ensureList(s.items, actId(ctx));
     return { ok: true, result: { items, count: items.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "item-update", (ctx, _a, params = {}) => {
@@ -2969,7 +2970,7 @@ Output the single best account code:`;
           .filter((x) => x.type === "inventory").reduce((a, x) => a + (x.qtyOnHand || 0) * x.cost, 0)),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Sales tax ───────────────────────────────────────────────────────
@@ -2992,7 +2993,7 @@ Output the single best account code:`;
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const taxCodes = ensureList(s.taxCodes, actId(ctx));
     return { ok: true, result: { taxCodes, count: taxCodes.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "tax-code-delete", (ctx, _a, params = {}) => {
@@ -3019,7 +3020,7 @@ Output the single best account code:`;
       }
     }
     return { ok: true, result: { salesTaxPayable: acN(owed) } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "tax-payment-record", (ctx, _a, params = {}) => {
@@ -3081,7 +3082,7 @@ Output the single best account code:`;
     ensureList(s.purchaseOrders, userId).push(po);
     saveAccountingState();
     return { ok: true, result: { purchaseOrder: po } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "po-list", (ctx, _a, _p = {}) => {
@@ -3090,7 +3091,7 @@ Output the single best account code:`;
     const purchaseOrders = ensureList(s.purchaseOrders, actId(ctx))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return { ok: true, result: { purchaseOrders, count: purchaseOrders.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "po-receive", (ctx, _a, params = {}) => {
@@ -3183,7 +3184,7 @@ Output the single best account code:`;
         note: "Current vs. long-term split approximated by account code (<1500 assets, <2500 liabilities).",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ════════════════════════════════════════════════════════════════════
@@ -3236,7 +3237,7 @@ Output the single best account code:`;
     const list = ensureList(s.institutions, actId(ctx));
     const configured = Boolean(process.env.CONCORD_BANK_AGGREGATOR_URL && process.env.CONCORD_BANK_AGGREGATOR_TOKEN);
     return { ok: true, result: { institutions: list.slice().sort((a, b) => (b.linkedAt || "").localeCompare(a.linkedAt || "")), aggregatorConfigured: configured } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "bank-feeds-unlink-institution", (ctx, _a, params = {}) => {
@@ -3338,7 +3339,7 @@ Output the single best account code:`;
         rates: Object.entries(cs.rates).map(([code, v]) => ({ code, rate: v.rate, updatedAt: v.updatedAt })),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "currency-set-base", (ctx, _a, params = {}) => {
@@ -3435,7 +3436,7 @@ Output the single best account code:`;
         direction: totalGainLoss > 0 ? "gain" : totalGainLoss < 0 ? "loss" : "flat",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── [M] Class / location / project dimensional tagging ─────────────
@@ -3471,7 +3472,7 @@ Output the single best account code:`;
     const kind = DIMENSION_KINDS.includes(params.kind) ? params.kind : null;
     const filtered = (kind ? list.filter(d => d.kind === kind) : list).filter(d => !d.archived);
     return { ok: true, result: { dimensions: filtered.slice().sort((a, b) => a.name.localeCompare(b.name)), kinds: DIMENSION_KINDS } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "dimension-delete", (ctx, _a, params = {}) => {
@@ -3552,7 +3553,7 @@ Output the single best account code:`;
       netIncome: Math.round((t.netIncome + r.netIncome) * 100) / 100,
     }), { revenue: 0, cogs: 0, grossProfit: 0, expense: 0, netIncome: 0 });
     return { ok: true, result: { kind, period: { start, end }, segments: rows, totals } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── [L] Payroll tax e-filing + ACH deposits ────────────────────────
@@ -3615,7 +3616,7 @@ Output the single best account code:`;
       summary: `Prepared Form 941 ${year} Q${quarter} — tax liability ${totalTaxLiability.toFixed(2)}`,
     });
     return { ok: true, result: { filing } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "payroll-ach-batch", (ctx, _a, params = {}) => {
@@ -3666,7 +3667,7 @@ Output the single best account code:`;
       summary: `Prepared ACH batch for run ${runId} — ${entries.length} deposits, ${batch.totalNet.toFixed(2)}`,
     });
     return { ok: true, result: { batch } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── [S] Recurring bill / expense scheduling ────────────────────────
@@ -3700,14 +3701,14 @@ Output the single best account code:`;
     ensureList(s.recurringBills, userId).push(rb);
     saveAccountingState();
     return { ok: true, result: { recurringBill: rb } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "recurring-bills-list", (ctx, _a, _p = {}) => {
   try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     return { ok: true, result: { recurringBills: ensureList(s.recurringBills, actId(ctx)) } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "recurring-bills-toggle", (ctx, _a, params = {}) => {
@@ -3791,7 +3792,7 @@ Output the single best account code:`;
     });
     saveAccountingState();
     return { ok: true, result: { created, count: created.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── [M] Mobile receipt-capture OCR → expense ───────────────────────
@@ -3874,7 +3875,7 @@ Output the single best account code:`;
     if (!text.trim()) return { ok: false, error: "ocrText required (raw text from the mobile receipt scan)" };
     const parsed = parseReceiptText(text);
     return { ok: true, result: { parsed } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "receipt-ocr-to-expense", (ctx, _a, params = {}) => {
@@ -3933,7 +3934,7 @@ Output the single best account code:`;
     });
     saveAccountingState();
     return { ok: true, result: { expense: exp, entry, parsed } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── [S] Per-transaction edit audit log ─────────────────────────────
@@ -3952,7 +3953,7 @@ Output the single best account code:`;
     log.sort((a, b) => (b.at || "").localeCompare(a.at || ""));
     const limit = Math.max(1, Math.min(500, Number(params.limit) || 100));
     return { ok: true, result: { entries: log.slice(0, limit), total: log.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── [M] 1099 / W-2 e-filing export to IRS FIRE format ──────────────
@@ -4049,7 +4050,7 @@ Output the single best account code:`;
         note: "FIRE-format file generated. Upload at fire.irs.gov with your TCC account — Concord does not transmit on your behalf.",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("accounting", "efile-w2-export", (ctx, _a, params = {}) => {
@@ -4129,6 +4130,6 @@ Output the single best account code:`;
         note: "EFW2-format file generated. Upload at the SSA Business Services Online portal — Concord does not transmit on your behalf.",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 };

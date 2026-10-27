@@ -405,6 +405,15 @@ export default function registerAppmakerActions(registerLensAction) {
   const amId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const amNow = () => new Date().toISOString();
   const amActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  // Create returns `{ project: { id } }` / `{ graph: { id } }`. Get and delete
+  // used to read only projectId/graphId, so a caller holding that id got
+  // project_not_found / graph_not_found for a record that was still in the list.
+  function amRecordId(params, key) {
+    const named = params?.[key];
+    if (named != null && String(named).trim()) return String(named);
+    if (params?.id != null && String(params.id).trim()) return String(params.id);
+    return "";
+  }
   const amClean = (v, max = 160) => String(v == null ? "" : v).trim().slice(0, max);
   const amList = (m, k) => { if (!m.has(k)) m.set(k, []); return m.get(k); };
 
@@ -485,7 +494,7 @@ export default function registerAppmakerActions(registerLensAction) {
     try {
       const s = getAppState();
       if (!s) return { ok: false, error: "state_unavailable" };
-      const proj = findProject(s, amActor(ctx), params?.projectId);
+      const proj = findProject(s, amActor(ctx), amRecordId(params, "projectId"));
       if (!proj) return { ok: false, error: "project_not_found" };
       return { ok: true, result: { project: proj } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -523,11 +532,12 @@ export default function registerAppmakerActions(registerLensAction) {
       if (!s) return { ok: false, error: "state_unavailable" };
       const userId = amActor(ctx);
       const arr = s.projects.get(userId) || [];
-      const idx = arr.findIndex((p) => p.id === params?.projectId);
+      const projectId = amRecordId(params, "projectId");
+      const idx = arr.findIndex((p) => p.id === projectId);
       if (idx < 0) return { ok: false, error: "project_not_found" };
       arr.splice(idx, 1);
       saveAppState();
-      return { ok: true, result: { deleted: params.projectId } };
+      return { ok: true, result: { deleted: projectId } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -1366,7 +1376,7 @@ export default function registerAppmakerActions(registerLensAction) {
    */
   registerLensAction("app-maker", "questGraphGet", (ctx, artifact, params) => {
     try {
-      const g = findGraph(amActor(ctx), params?.graphId);
+      const g = findGraph(amActor(ctx), amRecordId(params, "graphId"));
       if (!g) return { ok: false, error: "graph_not_found" };
       return { ok: true, result: { graph: g } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -1379,11 +1389,12 @@ export default function registerAppmakerActions(registerLensAction) {
     try {
       const userId = amActor(ctx);
       const arr = getQuestGraphs().get(userId) || [];
-      const idx = arr.findIndex((g) => g.id === params?.graphId);
+      const graphId = amRecordId(params, "graphId");
+      const idx = arr.findIndex((g) => g.id === graphId);
       if (idx < 0) return { ok: false, error: "graph_not_found" };
       arr.splice(idx, 1);
       saveAppState();
-      return { ok: true, result: { deleted: params.graphId } };
+      return { ok: true, result: { deleted: graphId } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 

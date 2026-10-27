@@ -28,6 +28,8 @@
 
 import { trustedNote } from "../lib/chat/agent-history-sanitize.js";
 import { runAgentLoop } from "../lib/chat-agent.js";
+import { brainChat } from "../lib/byo-router.js";
+import { notesDirectEligible, answerFromNotes } from "../lib/conkay/notes-answer.js";
 import { startSSE } from "../lib/sse.js";
 import { conkayTurnPlan, conkayToolPolicy } from "../lib/conkay/agent-turn.js";
 import { sourcesFromToolCalls, withSourceLinks, writeReceipt, answerLongTaskRoute } from "../lib/chat/agent-route.js";
@@ -48,7 +50,7 @@ export function conkayDtuBlock(lines, { strong = false } = {}) {
     + text.slice(0, 6000);
 }
 
-export function mountChatAgentStream({ app, auth, runMacro, lensActions, retrieveDtuContext = null }) {
+export function mountChatAgentStream({ app, auth, runMacro, lensActions, retrieveDtuContext = null, brain = brainChat }) {
   app.post("/api/chat-agent/stream", auth, async (req, res) => {
     // `persona` — an OPTIONAL client-supplied system-prompt addendum. Added
     // for ConKay: its free-form chat path (ConKayOverlay.tsx#chatWithBrain)
@@ -135,6 +137,20 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions, retriev
         // the tool-heavy system prompt, where the model skipped it for web_search.
         if (block) dtuNote = trustedNote(block);
         console.log(`[chat-agent-stream] dtu_context surface=${surface} hits=${got?.count ?? 0} consolidated=${got?.consolidated ?? 0} archived=${got?.archived ?? 0} strong=${!!got?.strong}`);
+        // Named DTU / strong match on a no-tool question: answer from the notes
+        // with no tools; when they lack it, the agent loop below runs as before.
+        if (block && notesDirectEligible({ plan, got, message })) {
+          const direct = await answerFromNotes({ brain, db, userId, slot, block, message, history });
+          console.log(`[chat-agent-stream] notes_direct surface=${surface} answered=${!!direct}`);
+          if (direct) {
+            const answer = withNotices(direct.answer);
+            for (let i = 0; i < answer.length; i += 80) send("token", { chunk: answer.slice(i, i + 80) });
+            console.log(`[chat-agent-stream] done surface=${surface} ok=true turns=1 route=notes error=""`);
+            send("done", { ok: true, provider: direct.provider || null, model: direct.model || null, turns: 1, route: "notes" });
+            try { res.end(); } catch { /* noop */ }
+            return;
+          }
+        }
       } catch { /* retrieval is additive */ }
     }
 
