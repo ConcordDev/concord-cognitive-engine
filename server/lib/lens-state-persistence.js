@@ -168,6 +168,14 @@ export const LENS_STATE_KEYS = Object.freeze([
   // 53 -> 54: "conLens" so RFIs, submittals, daily logs, punch items,
   // change orders, drawings, and budgets survive a hard backend restart.
   "conLens",
+  // 54 -> 55: "syncLens" so a user's sync history log, conflict queue, device
+  // annotations, and id counters survive a restart. server/domains/sync.js
+  // keeps them on globalThis._concordSTATE.syncLens (the same object as STATE);
+  // without this key a restart wiped the history and pending conflicts while
+  // the Sync lens still referenced them. Shape: { devices: Map<userId, Map>,
+  // logs: Map<userId, Array>, conflicts: Map<userId, Array>, seq: Map }. Logs
+  // and conflicts are already capped in the domain (200 / 100 per user).
+  "syncLens",
   // Persistence audit (2026-10): every STATE.<x>Lens store a domain file
   // assigns but that was missing above, so its per-user data survives a restart.
   "adminLens", "agentsLens", "allianceLens", "allLens", "animationLens", "anonLens",
