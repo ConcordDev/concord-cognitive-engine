@@ -595,7 +595,8 @@ describe("accounting — expenses + 1099 summary", () => {
     const exp = call("coa-list", ctxA).result.accounts.find(a => a.code === "6000");
     const year = new Date().getFullYear();
     const today = nowIsoUtility();
-    const b1 = call("bills-create", ctxA, { vendorId: v1.id, total: 700, expenseAccountId: exp.id, issuedAt: today, dueAt: today }).result.bill;
+    const total = year <= 2025 ? 700 : 2000;
+    const b1 = call("bills-create", ctxA, { vendorId: v1.id, total, expenseAccountId: exp.id, issuedAt: today, dueAt: today }).result.bill;
     call("bills-pay", ctxA, { id: b1.id, paidAt: today });
     const b2 = call("bills-create", ctxA, { vendorId: v2.id, total: 5000, expenseAccountId: exp.id }).result.bill;
     call("bills-pay", ctxA, { id: b2.id, paidAt: today });
@@ -603,7 +604,14 @@ describe("accounting — expenses + 1099 summary", () => {
     assert.equal(r.ok, true);
     assert.equal(r.result.vendors.length, 1);
     assert.equal(r.result.vendors[0].vendorName, "Contractor");
-    assert.equal(r.result.vendors[0].reportable, true);
+    if (year > 2026) {
+      assert.equal(r.result.threshold, null);
+      assert.equal(r.result.vendors[0].reportable, null);
+      assert.ok(r.result.unavailable);
+    } else {
+      assert.equal(r.result.threshold, year === 2026 ? 2000 : 600);
+      assert.equal(r.result.vendors[0].reportable, true);
+    }
   });
 });
 
