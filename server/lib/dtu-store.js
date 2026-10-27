@@ -460,7 +460,18 @@ export function createDTUStore(db, memoryMap, opts = {}) {
     /**
      * Bulk persist all in-memory DTUs to SQLite (migration / sync).
      * Uses a transaction for performance.
-     * @returns {{ migrated: number, errors: number }}
+     *
+     * The memory map holds whatever was loaded BEFORE the store attached
+     * (state snapshot, early boot writes). `dtu_store` is the source of truth,
+     * so a pre-attach copy only overwrites an existing row when it is strictly
+     * newer by updatedAt. Without this, the same stale pre-attach copies
+     * (no ownerId, old visibility) replaced their stamped rows on every boot,
+     * and the boot ownership pass re-internalized them each restart (the
+     * recurring ~35-40 `dtu_ownership_migration.internalized`), also undoing
+     * any visibility backfill on those rows. Rows missing from the store are
+     * still migrated, so nothing that exists only in memory is lost.
+     *
+     * @returns {{ migrated: number, errors: number, skippedStale: number, staleSample: string[] }}
      */
     migrateMemoryToSQLite() {
       if (_migrated) return { migrated: 0, errors: 0, skipped: true };
@@ -469,10 +480,26 @@ export function createDTUStore(db, memoryMap, opts = {}) {
 
       let migrated = 0;
       let errors = 0;
+      let skippedStale = 0;
+      const staleSample = [];
+      let storedAt = null;
+      try { storedAt = db.prepare("SELECT updated_at FROM dtu_store WHERE id = ?"); } catch { storedAt = null; }
+      const ts = (v) => { const n = Date.parse(String(v ?? "")); return Number.isFinite(n) ? n : null; };
 
       const insertMany = db.transaction((dtus) => {
         for (const dtu of dtus) {
           try {
+            const row = storedAt && dtu?.id != null ? storedAt.get(String(dtu.id)) : undefined;
+            if (row) {
+              const mem = ts(dtu.updatedAt ?? dtu.updated_at);
+              const disk = ts(row.updated_at);
+              // Strictly newer only; an unparsable memory timestamp is not newer.
+              if (mem === null || (disk !== null && mem <= disk)) {
+                skippedStale++;
+                if (staleSample.length < 50) staleSample.push(String(dtu.id));
+                continue;
+              }
+            }
             persistToSQLite(dtu);
             migrated++;
           } catch {
@@ -484,8 +511,8 @@ export function createDTUStore(db, memoryMap, opts = {}) {
       insertMany(Array.from(memoryMap.values()));
       _migrated = true;
       if (migrated > 0) _version++;
-      log("info", "dtu_store_migration_complete", { migrated, errors, total: memoryMap.size });
-      return { migrated, errors };
+      log("info", "dtu_store_migration_complete", { migrated, errors, skippedStale, total: memoryMap.size });
+      return { migrated, errors, skippedStale, staleSample };
     },
 
     /**
