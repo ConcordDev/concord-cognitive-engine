@@ -4,6 +4,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { requireList } from "../lib/lens-inputs.js";
 
 export default function registerAllianceActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -133,8 +134,10 @@ export default function registerAllianceActions(registerLensAction) {
    */
   registerLensAction("alliance", "networkAnalysis", (ctx, artifact, params) => {
   try {
-    const nodes = artifact.data.nodes || [];
-    const edges = artifact.data.edges || [];
+    const nodes = requireList(artifact.data.nodes, "nodes");
+    if (!Array.isArray(nodes)) return nodes;
+    const edges = requireList(artifact.data.edges, "edges");
+    if (!Array.isArray(edges)) return edges;
 
     if (nodes.length === 0) {
       return { ok: true, result: { message: "No nodes provided for network analysis." } };
@@ -313,7 +316,8 @@ export default function registerAllianceActions(registerLensAction) {
    */
   registerLensAction("alliance", "riskAssessment", (ctx, artifact, params) => {
   try {
-    const alliances = artifact.data.alliances || [];
+    const alliances = requireList(artifact.data.alliances, "alliances");
+    if (!Array.isArray(alliances)) return alliances;
     if (alliances.length === 0) {
       return { ok: true, result: { message: "No alliances provided for risk assessment." } };
     }

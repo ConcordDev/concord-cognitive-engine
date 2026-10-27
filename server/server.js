@@ -50616,7 +50616,13 @@ registerLensAction("agents", "arbitrate", (ctx, artifact, params) => {
 // === Sim (Simulation) ===
 registerLensAction("sim", "simulate", (ctx, artifact, params) => {
   try {
-  const assumptions = artifact.data?.assumptions || params.assumptions || [];
+  const assumptionsSource = (artifact.data?.assumptions == null || artifact.data?.assumptions === "")
+    ? params.assumptions
+    : artifact.data.assumptions;
+  if (assumptionsSource != null && assumptionsSource !== "" && !Array.isArray(assumptionsSource)) {
+    return { ok: false, error: "invalid_input", field: "assumptions", reason: "expected_array" };
+  }
+  const assumptions = Array.isArray(assumptionsSource) ? assumptionsSource : [];
   const _variables = artifact.data?.variables || {};
   let seed = 0;
   { const _gid = String(artifact.id ?? artifact.domain ?? "game"); for (let i = 0; i < _gid.length; i++) seed = ((seed << 5) - seed) + _gid.charCodeAt(i); }

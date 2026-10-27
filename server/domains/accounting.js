@@ -6,6 +6,7 @@ import { requireOwner } from "../lib/lens-authz.js";
 import { assertPayable } from "../lib/money-guards.js";
 import { bindWave1 } from "../lib/lens-input-schemas-wave1.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { requireList } from "../lib/lens-inputs.js";
 
 export default function registerAccountingActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -79,7 +80,8 @@ export default function registerAccountingActions(registerLensAction) {
    */
   registerLensAction("accounting", "profitLoss", (ctx, artifact, params) => {
   try {
-    const accounts = artifact.data.accounts || [];
+    const accounts = requireList(artifact.data.accounts, "accounts");
+    if (!Array.isArray(accounts)) return accounts;
     const startDate = params.startDate ? new Date(params.startDate) : new Date(new Date().getFullYear(), 0, 1);
     const endDate = params.endDate ? new Date(params.endDate) : new Date();
 
@@ -161,7 +163,8 @@ export default function registerAccountingActions(registerLensAction) {
    */
   registerLensAction("accounting", "invoiceAging", (ctx, artifact, params) => {
   try {
-    const invoices = artifact.data.invoices || [];
+    const invoices = requireList(artifact.data.invoices, "invoices");
+    if (!Array.isArray(invoices)) return invoices;
     const now = params.asOfDate ? new Date(params.asOfDate) : new Date();
 
     const unpaid = invoices.filter((inv) => !inv.paidDate);
@@ -236,7 +239,8 @@ export default function registerAccountingActions(registerLensAction) {
    */
   registerLensAction("accounting", "budgetVariance", (ctx, artifact, params) => {
   try {
-    const budget = artifact.data.budget || [];
+    const budget = requireList(artifact.data.budget, "budget");
+    if (!Array.isArray(budget)) return budget;
     const period = params.period || "current";
 
     let totalPlanned = 0;
@@ -297,7 +301,8 @@ export default function registerAccountingActions(registerLensAction) {
    */
   registerLensAction("accounting", "rentRoll", (ctx, artifact, params) => {
   try {
-    const properties = artifact.data.properties || [];
+    const properties = requireList(artifact.data.properties, "properties");
+    if (!Array.isArray(properties)) return properties;
     const now = new Date();
     const asOfMonth = params.asOfMonth || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     const [year, month] = asOfMonth.split("-").map(Number);
