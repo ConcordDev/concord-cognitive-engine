@@ -235,7 +235,7 @@ import {
  * @param {Function} [opts.requireAuth] - Auth middleware
  * @returns {Router}
  */
-export default function createWorldRoutes({ requireAuth, db = null, emitToUser = null, dtuStore = null, getRealtimeClients = null } = {}) {
+export default function createWorldRoutes({ requireAuth, db = null, emitToUser = null, dtuStore = null, getRealtimeClients = null, installGalleryPlugin = null } = {}) {
   const router = Router();
 
   function _userId(req) {
@@ -2077,8 +2077,24 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     sendSim(res, readInstalledPlugins());
   }));
 
-  router.post("/sim/plugins/install", auth, wrap((_req, res) => {
-    sendSim(res, readPluginInstallWrite());
+  // Real install through the hardened gallery path. Only a gallery id is
+  // accepted — never a source/manifest from the request body.
+  router.post("/sim/plugins/install", auth, wrap(async (req, res) => {
+    const userId = _userId(req);
+    if (!userId) return res.status(401).json({ ok: false, error: "sign_in_required" });
+    const raw = req.body?.pluginId ?? req.body?.id;
+    const pluginId = typeof raw === "string" ? raw.trim() : "";
+    if (!pluginId) return res.status(400).json({ ok: false, error: "plugin_id_required" });
+    if (typeof installGalleryPlugin !== "function") return sendSim(res, readPluginInstallWrite());
+    const result = await installGalleryPlugin(pluginId, userId);
+    if (!result?.ok) {
+      const status = result?.error === "plugin_not_found" ? 404
+        : result?.error === "user_required" ? 401
+        : result?.error === "plugin_delisted" ? 410
+        : 400;
+      return res.status(status).json(result || { ok: false, error: "install_failed" });
+    }
+    res.json(result);
   }));
 
   router.post("/sim/plugins/uninstall", auth, wrap((_req, res) => {

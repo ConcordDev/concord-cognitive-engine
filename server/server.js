@@ -41216,7 +41216,14 @@ app.use("/api/lens-features", createLensFeatureRouter(db, LENS_FEATURES));
 
 // ===== WORLD ENGINE (districts, jobs, businesses, events, progression) =====
 import createWorldRoutes from "./routes/world.js";
-app.use("/api/world", createWorldRoutes({ requireAuth, db, emitToUser, getRealtimeClients: () => REALTIME?.io?.engine?.clientsCount ?? null }));
+// Single source of the gallery-install opts, shared by POST /api/plugins/gallery/:id/install
+// and the sim install route so the two can never drift. Resolved lazily (call-time).
+const installGalleryPlugin = (pluginId, userId) => _pluginGallery.installFromGallery(STATE, pluginId, userId, {
+  register,
+  helpers: { uid, nowISO, log, upsertDTU, realtimeEmit, saveStateDebounced },
+  runMacro,
+});
+app.use("/api/world", createWorldRoutes({ requireAuth, db, emitToUser, getRealtimeClients: () => REALTIME?.io?.engine?.clientsCount ?? null, installGalleryPlugin }));
 
 // ── Competitive Parity: External Messaging ──────────────────────────────────
 import { createMessagingRouter } from "./routes/messaging.js";
@@ -41695,11 +41702,7 @@ app.post("/api/plugins/gallery/publish", requireAuth(), express.json({ limit: "1
 // "installed" success. See plugin-gallery.js#installFromGallery.
 app.post("/api/plugins/gallery/:id/install", requireAuth(), asyncHandler(async (req, res) => {
   const userId = req.user?.id;
-  const result = await _pluginGallery.installFromGallery(STATE, req.params.id, userId, {
-    register,
-    helpers: { uid, nowISO, log, upsertDTU, realtimeEmit, saveStateDebounced },
-    runMacro,
-  });
+  const result = await installGalleryPlugin(req.params.id, userId);
   if (!result.ok) {
     const status = result.error === "plugin_not_found" ? 404
       : result.error === "user_required" ? 401
