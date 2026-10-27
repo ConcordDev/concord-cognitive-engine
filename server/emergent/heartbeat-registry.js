@@ -47,6 +47,7 @@
 import logger from "../logger.js";
 import { isUnderPressure } from "../lib/event-loop-pressure.js";
 import { noteHeartbeatStart, noteHeartbeatEnd } from "../lib/presence-idle.js";
+import * as loopJobs from "../lib/loop-job-tracker.js";
 // Phase G — per-world flavor lookup. Used by the dispatcher to skip
 // modules that loops.json has disabled for the current world (only
 // meaningful when ctx.worldId is set, i.e. inside a world shard).
@@ -246,6 +247,10 @@ async function _runOne(entry, moduleCtx) {
   // the heartbeat that was running when the loop stalled.
   const _onMain = !(entry.worker && _heartbeatPool && typeof _heartbeatPool.exec === "function");
   if (_onMain) { try { noteHeartbeatStart(entry.id); } catch { /* attribution best-effort */ } }
+  // INC-150: also open a loop job so event_loop_block (which reads only the
+  // loop-job tracker) names the registry heartbeat instead of logging jobs:[].
+  let _loopJobToken = null;
+  if (_onMain) { try { _loopJobToken = loopJobs.beginJob(`heartbeat:${entry.id}`); } catch { /* attribution best-effort */ } }
   let timedOut = false;
   let timeoutHandle = null;
   try {
@@ -283,6 +288,7 @@ async function _runOne(entry, moduleCtx) {
   } finally {
     if (timeoutHandle) clearTimeout(timeoutHandle);
     if (_onMain) { try { noteHeartbeatEnd(entry.id); } catch { /* attribution best-effort */ } }
+    if (_loopJobToken) { try { loopJobs.endJob(_loopJobToken); } catch { /* attribution best-effort */ } }
     const elapsedMs = Number(process.hrtime.bigint() - startNs) / 1e6;
     try { globalThis._concordPromMetrics?.heartbeatBlockMs?.observe({ module: entry.id }, elapsedMs); } catch { /* prom best-effort */ }
     try { _recordTiming(entry.id, elapsedMs); } catch { /* timing best-effort */ }

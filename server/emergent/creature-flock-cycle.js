@@ -20,6 +20,16 @@ import { recordEncounter } from "../lib/creature-crossbreeding.js";
 const MAX_WORLDS_PER_PASS = 8;
 const ENCOUNTER_RADIUS_M = 12;
 const MAX_PAIRS_PER_WORLD = 6;
+// INC-150: a pass used to tick up to 8 worlds back-to-back in one synchronous
+// stretch (cold-cache passes measured 3.8 s on a prod DB clone, 4-5.5 s in
+// prod logs). Now: yield to the event loop between worlds and stop once the
+// pass has used FLOCK_BUDGET_MS of wall time; a rotating cursor makes the
+// worlds that were skipped go first next pass, so every world still ticks.
+const FLOCK_BUDGET_MS = Math.max(50, Number(process.env.CONCORD_FLOCK_BUDGET_MS) || 1500);
+let _worldCursor = 0;
+function _yieldLoop() { return new Promise((resolve) => { setImmediate(resolve); }); }
+/** Test hook: reset the rotation cursor. */
+export function _resetFlockCursorForTest() { _worldCursor = 0; }
 
 /**
  * Sample up to MAX_PAIRS_PER_WORLD distinct-species creature pairs within
@@ -74,7 +84,7 @@ function sampleEncountersForWorld(db, worldId) {
   return { pairs: recorded };
 }
 
-export async function runCreatureFlockCycle({ db, state, io, tickCount: _t } = {}) {
+export async function runCreatureFlockCycle({ db, state, io, tickCount: _t, budgetMs = FLOCK_BUDGET_MS } = {}) {
   if (process.env.CONCORD_CREATURE_FLOCK === "0") {
     return { ok: false, reason: "disabled" };
   }
@@ -104,7 +114,19 @@ export async function runCreatureFlockCycle({ db, state, io, tickCount: _t } = {
   }
   if (worlds.length === 0) return { ok: true, worldsTouched: 0 };
 
-  for (const worldId of worlds) {
+  // Stable order, then start at the cursor and wrap.
+  worlds.sort();
+  const start = _worldCursor % worlds.length;
+  const ordered = worlds.slice(start).concat(worlds.slice(0, start));
+  const passStart = Date.now();
+  let processed = 0;
+  for (const worldId of ordered) {
+    if (processed > 0) {
+      if (Date.now() - passStart >= budgetMs) { stats.truncated = true; break; }
+      await _yieldLoop();
+    }
+    processed++;
+    (stats.worldIds ||= []).push(worldId);
     try {
       const r = tickFlock(db, state ?? {}, worldId);
       if (r?.ok) {
@@ -140,5 +162,8 @@ export async function runCreatureFlockCycle({ db, state, io, tickCount: _t } = {
     }
   }
 
+  _worldCursor = (start + Math.max(1, processed)) % worlds.length;
+  stats.worldsProcessed = processed;
+  stats.worldsTotal = worlds.length;
   return stats;
 }
