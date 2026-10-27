@@ -138,3 +138,19 @@ export function growConsolidatedNode(node, fresh, { childTier = "regular", title
     node.cretiHuman = before.cretiHuman;
   };
 }
+
+const GENERIC_SEED_RE = /^(cluster|untitled|dtu|none|null|undefined)$/i;
+
+/**
+ * Title seed for a new consolidated node: the cluster label, else the first
+ * member with a real title, else the members' shared themes ("beacon · mesh
+ * · context"). `generic` is true when no real title was found.
+ */
+export function clusterTitleSeed(label, members = [], strip = (t) => t) {
+  const real = [label, ...(members || []).map((m) => m?.title)]
+    .map((x) => String(strip(String(x || "")) || "").replace(/\s+/g, " ").trim())
+    .find((x) => x && !GENERIC_SEED_RE.test(x));
+  if (real) return { seed: real.slice(0, 80), generic: false };
+  const themes = sharedThemes(members, 3);
+  return { seed: (themes.length ? themes.join(" · ") : "Untitled cluster").slice(0, 80), generic: true };
+}
