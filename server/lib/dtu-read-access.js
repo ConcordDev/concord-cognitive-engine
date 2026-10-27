@@ -17,10 +17,15 @@
  * Server-internal callers (ctx.internal / actor.internal, the makeInternalCtx
  * stamp) bypass this gate. An HTTP request never carries that stamp.
  */
+import { isQuarantined } from "./dtu-quarantine.js";
 
 export function privateDtuHiddenFrom(d, viewerId) {
   if (!d || typeof d !== "object") return true;
   const isPrivate =
+    // quarantine:* rows are never public or listed (owner-only).
+    isQuarantined(d) ||
+    // A user-sourced row with no visibility set is private.
+    ((d.visibility == null || d.visibility === "") && typeof d.source === "string" && (d.source === "user" || d.source.startsWith("user:"))) ||
     d.privacy === "private" ||
     d.privacy === "followers-only" ||
     d.scope === "user" ||

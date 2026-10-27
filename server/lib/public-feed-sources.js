@@ -11,7 +11,13 @@
  * readings such as manufacturing's "wired-feed") is not listed and stays
  * private. tests/public-feed-sources.test.js fails when a new `*-feed`
  * source appears in server/domains without being classified here.
+ *
+ * Provenance (security follow-up): source + "feed" tag are caller-controlled,
+ * so the backfill and the consolidation member rule also require the
+ * server-only meta.feedIngest marker (lib/feed-ingest-provenance.js) and
+ * never open a quarantine:* row.
  */
+import { isQuarantined } from "./dtu-quarantine.js";
 
 export const PUBLIC_FEED_SOURCES = Object.freeze(new Set([
   "apple-music-rss-feed",   // rss.applemarketing.com charts
@@ -74,8 +80,20 @@ export const PUBLIC_FEED_DTU_FIELDS = Object.freeze({ visibility: "public", visi
 const CLOSED_PRIVACY = new Set(["private", "followers-only", "followers_only"]);
 
 /**
+ * meta.feedIngest set by dtu.create inside a lens feed action for this
+ * row's own source. Same check as hasFeedIngestProvenance in
+ * lib/feed-ingest-provenance.js (kept here to avoid an import cycle).
+ */
+export function hasIngestMarker(d) {
+  const fi = d?.meta?.feedIngest;
+  return !!fi && typeof fi === "object" && fi.action === "feed" && !!fi.domain
+    && isPublicFeedSource(d.source) && fi.source === d.source;
+}
+
+/**
  * A stored row that a public feed imported and that is still closed:
- * allowlisted source, the "feed" tag every feed action sets, a regular DTU,
+ * allowlisted source, the "feed" tag every feed action sets, the server-only
+ * meta.feedIngest marker, not quarantined, a regular DTU,
  * visibility private (internal is a system decision and is left alone), and
  * nothing that marks it personal (privacy private/followers-only, scope
  * user/personal/private).
@@ -84,6 +102,8 @@ export function isClosedPublicFeedItem(d) {
   if (!d || typeof d !== "object") return false;
   if (!isPublicFeedSource(d.source)) return false;
   if (!Array.isArray(d.tags) || !d.tags.includes("feed")) return false;
+  if (isQuarantined(d)) return false;
+  if (!hasIngestMarker(d)) return false;
   if ((d.tier || "regular") !== "regular") return false;
   if (d.visibility !== "private") return false;
   if (CLOSED_PRIVACY.has(String(d.privacy || "").toLowerCase())) return false;
