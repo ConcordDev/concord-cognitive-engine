@@ -624,12 +624,18 @@ describe("legal — matter/contact lifecycle (wave 10 top-up)", () => {
   it("case-add stamps a 'filed' event + defaults to civil; case-list reads it back", async () => {
     const caseCtx = await depthCtx(`legal-case-${randomUUID().slice(0, 8)}`);
     const caption = `Doe v. Roe ${randomUUID().slice(0, 6)}`;
+    // input-validation wave: an unknown matterType is refused, not silently made civil
+    const bogus = await lensRun("legal", "case-add", {
+      params: { caption, caseNumber: "CV-2026-998", court: "N.D. Cal.", matterType: "bogus" },
+    }, caseCtx);
+    assert.equal(bogus.result.error, "invalid_input");
+    assert.equal(bogus.result.field, "matterType");
     const added = await lensRun("legal", "case-add", {
-      params: { caption, caseNumber: "CV-2026-999", court: "N.D. Cal.", matterType: "bogus" },
+      params: { caption, caseNumber: "CV-2026-999", court: "N.D. Cal." },
     }, caseCtx);
     assert.equal(added.result.case.caption, caption);
     assert.equal(added.result.case.status, "active");
-    assert.equal(added.result.case.matterType, "civil"); // invalid type falls back to civil
+    assert.equal(added.result.case.matterType, "civil"); // omitted type defaults to civil
     assert.ok(added.result.case.events.some((e) => e.kind === "filed"));
 
     const list = await lensRun("legal", "case-list", {}, caseCtx);
