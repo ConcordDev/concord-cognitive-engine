@@ -657,7 +657,7 @@ export default function registerArtistryActions(registerLensAction) {
       if (!s) return { ok: false, error: "state_unavailable" };
       const uid = artAid(ctx);
       const list = artList(s.projects, uid);
-      const projectId = (params || {}).projectId;
+      const projectId = (params || {}).projectId || (params || {}).id;
       const idx = list.findIndex((x) => x.id === projectId);
       if (idx === -1) return { ok: false, error: "project_not_found" };
       try {
