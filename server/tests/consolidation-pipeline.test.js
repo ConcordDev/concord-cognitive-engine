@@ -195,6 +195,41 @@ describe("gap_promotion keeps mega tier, honors ids, and absorbs members", () =>
     for (const id of distractors) assert.equal(STATE.dtus.has(id), true);
   });
 
+  it("does not re-promote failed-promotion artifacts or nest tier prefixes", async () => {
+    const ids = ["art-m1", "art-m2", "art-m3", "art-m4", "art-m5"];
+    for (const id of ids) {
+      seed(id, `MEGA — Harbor ledger ${id}`);
+      STATE.dtus.get(id).meta.clusterKey = `old-${id}`;
+    }
+    const ctx = makeInternalCtx("governor");
+    const r = await runMacro("dtu", "gapPromote", { ids, minCluster: 5, maxPromotions: 1 }, ctx);
+    assert.equal(r.did, "none", JSON.stringify(r));
+    assert.equal(r.skipped?.members_are_promotion_artifacts, 1, JSON.stringify(r.skipped));
+
+    const ok = ["lab-m1", "lab-m2", "lab-m3", "lab-m4", "lab-m5"];
+    for (const id of ok) seed(id, `Pier ledger ${id}`);
+    const p = await runMacro("dtu", "gapPromote", { ids: ok, minCluster: 5, maxPromotions: 1, label: "MEGA — HYPER — Pier ledgers" }, ctx);
+    assert.equal(p.did, "promoted", JSON.stringify(p));
+    assert.equal(p.dtu.title, "MEGA — Pier ledgers");
+  });
+
+  it("_promoteClusterBatch counts only real promotions", async () => {
+    _serverMod.__TEST__._consoRejected.clear();
+    const good = ["cnt-m1", "cnt-m2", "cnt-m3", "cnt-m4", "cnt-m5"];
+    for (const id of good) seed(id, `Quay tally ${id}`);
+    const art = ["cnt-a1", "cnt-a2", "cnt-a3", "cnt-a4", "cnt-a5"];
+    for (const id of art) seed(id, `MEGA — Quay tally ${id}`);
+    const ctx = makeInternalCtx("governor");
+    const n = await _serverMod.__TEST__._promoteClusterBatch(ctx, [{ ids: art }, { ids: good }, { ids: ["missing-1", "missing-2", "missing-3", "missing-4", "missing-5"] }], {
+      tier: "mega", minCluster: 5, budgetMs: 60_000, startedAt: Date.now(),
+    });
+    assert.equal(n, 1);
+    for (const id of good) assert.equal(STATE.dtus.has(id), false, `${id} absorbed`);
+    const megas = [...STATE.dtus.values()].filter(d => d.tier === "mega");
+    assert.equal(megas.length, 1);
+    assert.equal(megas[0].title.startsWith("MEGA — MEGA"), false);
+  });
+
   it("a user ctx calling gap_promotion is still downgraded and writes no pass audit", async () => {
     const ids = ["user-m1", "user-m2", "user-m3", "user-m4", "user-m5"];
     for (const id of ids) seed(id, `User harbor ledger ${id}`);
