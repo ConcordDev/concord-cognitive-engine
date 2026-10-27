@@ -245,6 +245,11 @@ export function createMediaDTU(STATE, params) {
     waveform: mediaType === "audio" ? generateWaveform() : null,
   };
 
+  // The uploader owns the DTU-index copy. Without ownerId the boot
+  // ownership pass (lib/dtu-ownership.js) treated every upload as ownerless
+  // system content and stamped it ownerId "system" / visibility "internal".
+  ensureMediaOwner(mediaDTU);
+
   // Store in media state
   media.mediaDTUs.set(mediaId, mediaDTU);
   media.views.set(mediaId, new Set());
@@ -291,6 +296,7 @@ function recallMedia(STATE, mediaId) {
     return null;
   }
   if (!dtu) return null;
+  ensureMediaOwner(dtu);
   const media = getMediaState(STATE);
   media.mediaDTUs.set(dtu.id, dtu);
   if (!media.views.has(dtu.id)) media.views.set(dtu.id, new Set());
@@ -313,18 +319,52 @@ export function hydrateMediaIndex(STATE) {
   } catch {
     return { ok: false, loaded: 0 };
   }
+  // Media the cold-age archive already moved out of dtu_store stays out of
+  // it. Boot runs this BEFORE the DTU store attaches, so re-adding them made
+  // migrateMemoryToSQLite re-insert the same rows every boot, the ownership
+  // pass re-stamp them, and dtu_archive_boot_sweep archive them again
+  // (35 rows each restart). The media map still holds them, so streaming and
+  // the media routes are unchanged.
+  let archived = null;
+  try { archived = db.prepare("SELECT 1 FROM dtu_store_archive WHERE id = ?"); } catch { archived = null; }
   const media = getMediaState(STATE);
   let loaded = 0;
+  let skippedArchived = 0;
   for (const dtu of rows) {
     if (!dtu?.id || media.mediaDTUs.has(dtu.id)) continue;
+    ensureMediaOwner(dtu);
     media.mediaDTUs.set(dtu.id, dtu);
     if (!media.views.has(dtu.id)) media.views.set(dtu.id, new Set());
     if (!media.likes.has(dtu.id)) media.likes.set(dtu.id, new Set());
     if (!media.comments.has(dtu.id)) media.comments.set(dtu.id, []);
-    if (STATE.dtus && !STATE.dtus.has(dtu.id)) STATE.dtus.set(dtu.id, dtu);
+    if (STATE.dtus && !STATE.dtus.has(dtu.id)) {
+      let isArchived = false;
+      try { isArchived = !!(archived && archived.get(dtu.id)); } catch { isArchived = false; }
+      if (isArchived) skippedArchived++;
+      else STATE.dtus.set(dtu.id, dtu);
+    }
     loaded++;
   }
-  return { ok: true, loaded };
+  return { ok: true, loaded, skippedArchived };
+}
+
+/**
+ * Media rows carry the uploader as `author`. Give the DTU-index copy the
+ * matching ownerId (and a closed visibility when none was set) so ownership
+ * normalization does not take it for ownerless system content. Visibility is
+ * only ever closed here, never opened: media access is decided by `privacy`
+ * in the media routes, which do not read `visibility`, and private or
+ * user-scoped media stay owner-only (lib/dtu-read-access.js).
+ */
+export function ensureMediaOwner(dtu) {
+  if (!dtu || typeof dtu !== "object") return dtu;
+  const author = typeof dtu.author === "string" ? dtu.author : "";
+  if (!author) return dtu;
+  if (!dtu.ownerId || (dtu.ownerId === "system" && dtu.visibility === "internal")) {
+    dtu.ownerId = author;
+    if (!dtu.visibility || dtu.visibility === "internal") dtu.visibility = "private";
+  }
+  return dtu;
 }
 
 /**

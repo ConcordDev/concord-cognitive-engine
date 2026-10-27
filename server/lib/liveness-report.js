@@ -38,7 +38,8 @@ function starterExclusion(db) {
 }
 
 // created_at is a datetime string. Some writers bind unix seconds, and a JS
-// number above 2^31 lands in a TEXT column as "1760000000.0".
+// number above 2^31 lands in a TEXT column as "1760000000.0". A 13-digit value
+// (>= 1e11) is unix MILLISECONDS and is divided down to seconds before comparing.
 function createdSince(column, cutoffEpochS) {
   return {
     sql: `(
@@ -46,7 +47,9 @@ function createdSince(column, cutoffEpochS) {
       OR (
         ${column} GLOB '[0-9]*'
         AND (${column} NOT GLOB '*[^0-9]*' OR ${column} GLOB '[0-9]*.0')
-        AND CAST(${column} AS INTEGER) >= ?
+        AND (CASE WHEN CAST(${column} AS INTEGER) >= 100000000000
+                  THEN CAST(${column} AS INTEGER) / 1000
+                  ELSE CAST(${column} AS INTEGER) END) >= ?
       )
     )`,
     params: [cutoffEpochS, cutoffEpochS],

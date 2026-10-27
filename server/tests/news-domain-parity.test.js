@@ -1,6 +1,6 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import registerNewsActions from "../domains/news.js";
+import registerNewsActions, { __resetGdeltCacheForTests, __configureGdeltForTests } from "../domains/news.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -11,15 +11,21 @@ beforeEach(() => {
   globalThis._concordSTATE = { dtus: new Map() };
   globalThis._concordSaveStateDebounced = () => {};
   globalThis.fetch = async () => { throw new Error("network disabled"); };
+  // Fresh GDELT cache/queue per test; no 5 s spacing or budget race in the parity assertions.
+  __resetGdeltCacheForTests();
+  __configureGdeltForTests({ spacingMs: 0 });
 });
 
 const ctxA = { actor: { userId: "u" }, userId: "u" };
 
 describe("news parity macros (real GDELT)", () => {
-  it("headlines returns error when network is disabled (hermetic test)", async () => {
+  it("headlines degrades honestly (ok:true, empty list) when network is disabled", async () => {
     const r = await call("headlines", ctxA, { category: "tech", limit: 10 });
-    assert.equal(r.ok, false);
-    assert.match(r.error, /failed|network/);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.count, 0);
+    assert.deepEqual(r.result.headlines, []);
+    assert.equal(r.result.degraded, true);
+    assert.match(r.result.degradedReason, /network disabled/);
   });
 
   it("headlines parses GDELT response shape", async () => {

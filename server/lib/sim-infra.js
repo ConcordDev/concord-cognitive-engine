@@ -3,6 +3,9 @@
 // A missing table or an unmeasured counter stays null with a reason.
 // A zero from a real query is a real zero.
 
+import { listGallery } from "./plugin-gallery.js";
+import { readOwnBuildings, readOwnCitations } from "./sim-stats.js";
+
 const TABLES = new Set(["worlds", "world_buildings", "dtus", "dtu_citations", "economy_ledger"]);
 const OWNER_COLS = new Set(["creator_id", "owner_user_id"]);
 const NOTIF_ACTIONS = new Set(["opened", "dismissed", "snoozed"]);
@@ -40,13 +43,17 @@ function count(db, sql, ...params) {
 // created_at is a datetime string in the schema. Some writers bind unix seconds.
 // A JS number above 2^31 lands in a TEXT column as "1760000000.0", so the
 // unix branch accepts that trailing ".0". An ISO date stays on the datetime clock.
+// A 13-digit value (>= 1e11) is unix MILLISECONDS and is divided down to seconds;
+// left as-is it would compare as far in the future and count as "recent" forever.
 function createdWithin24h(column = "created_at") {
   return `(
     (${column} GLOB '????-??-??*' AND ${column} >= datetime('now', '-1 day'))
     OR (
       ${column} GLOB '[0-9]*'
       AND (${column} NOT GLOB '*[^0-9]*' OR ${column} GLOB '[0-9]*.0')
-      AND CAST(${column} AS INTEGER) >= unixepoch('now', '-1 day')
+      AND (CASE WHEN CAST(${column} AS INTEGER) >= 100000000000
+                THEN CAST(${column} AS INTEGER) / 1000
+                ELSE CAST(${column} AS INTEGER) END) >= unixepoch('now', '-1 day')
     )
   )`;
 }
@@ -279,13 +286,75 @@ export function readScene(districtId, district) {
   };
 }
 
-export function readPluginSurface() {
+function publicPlugin(p) {
+  return {
+    pluginId: p.pluginId,
+    name: p.name,
+    description: p.description ?? "",
+    version: p.version,
+    authorId: p.authorId,
+    trusted: !!p.trusted,
+    trustDescription: p.trustDescription ?? null,
+    installs: Number(p.installs) || 0,
+    rating: p.rating ?? { up: 0, down: 0 },
+    publishedAt: p.publishedAt ?? null,
+    declaredCapabilities: p.declaredCapabilities ?? [],
+  };
+}
+
+// Catalog = plugin_gallery rows (migration 085/393) that are not delisted,
+// overlaid by the live in-memory gallery. Source code, signature and hash
+// are never returned.
+export function readPluginCatalog(db) {
+  const byId = new Map();
+  let dbReason = null;
+  if (db) {
+    try {
+      const cols = new Set(db.prepare("PRAGMA table_info(plugin_gallery)").all().map((c) => c.name));
+      if (!cols.size) {
+        dbReason = "no_plugin_gallery_table";
+      } else {
+        const where = cols.has("delisted_at") ? "WHERE delisted_at IS NULL" : "";
+        const rows = db.prepare(`SELECT plugin_id, author_id, name, description, version, trusted, installs, upvotes, downvotes, published_at FROM plugin_gallery ${where} ORDER BY installs DESC LIMIT 200`).all();
+        for (const r of rows) {
+          byId.set(r.plugin_id, {
+            pluginId: r.plugin_id, authorId: r.author_id, name: r.name, description: r.description,
+            version: r.version, trusted: !!r.trusted, installs: Number(r.installs) || 0,
+            rating: { up: Number(r.upvotes) || 0, down: Number(r.downvotes) || 0 },
+            publishedAt: r.published_at,
+          });
+        }
+      }
+    } catch {
+      dbReason = "plugin_gallery_read_failed";
+    }
+  } else {
+    dbReason = "no_database";
+  }
+  for (const p of listGallery({ limit: 200 }).plugins) byId.set(p.pluginId, p);
+  const plugins = [...byId.values()].map(publicPlugin).sort((a, b) => b.installs - a.installs);
+  const body = { ok: true, plugins, total: plugins.length, source: "plugin_gallery" };
+  if (dbReason) body.unavailable = { databaseRows: dbReason };
+  return body;
+}
+
+export function readInstalledPlugins() {
   return {
     ok: false,
     status: 501,
     error: "not_wired",
-    reason: "no_plugin_registry",
-    missing: "There is no plugin registry. Install counts and ratings are not measured.",
+    reason: "no_per_user_install_record",
+    missing: "Per-user installs are held only in the plugin gallery's in-memory roster, which has no read API. The plugin_installs table is not written by any code path.",
+  };
+}
+
+export function readPluginInstallWrite() {
+  return {
+    ok: false,
+    status: 501,
+    error: "not_wired",
+    reason: "install_needs_sandbox_runtime",
+    missing: "Installing runs the plugin through the sandboxed loader (installFromGallery), which needs the server's STATE and macro registry. Those are not available to the world routes, so no install is recorded.",
   };
 }
 
@@ -408,12 +477,51 @@ export function readMobileDashboard(db, userId) {
   };
 }
 
-export function rejectQuickAction() {
-  return {
-    ok: false,
-    status: 501,
-    error: "not_wired",
-    reason: "action_not_wired",
-    missing: "This route does not run check-builds, view-citations, manage-inventory, quick-chat, or toggle-notifications.",
-  };
+const READ_ACTIONS = new Set(["check-builds", "view-citations"]);
+const UNWIRED_ACTIONS = {
+  "manage-inventory": "No inventory read is wired to this route; inventory changes are not run from here.",
+  "quick-chat": "Sending a chat message is a write and no chat send is wired to this route.",
+  "toggle-notifications": "Notification settings are only held in memory per process; this route does not change them.",
+};
+
+// Answers read-only quick actions for the signed-in caller from stored rows.
+// Anything that would write, or has no backing read, stays an honest 501.
+export function runQuickAction(db, userId, body) {
+  if (!userId) return { ok: false, status: 401, error: "sign_in_required" };
+  const action = typeof body?.action === "string" ? body.action : "";
+  if (!READ_ACTIONS.has(action) && !(action in UNWIRED_ACTIONS)) {
+    return {
+      ok: false,
+      status: 400,
+      error: "unknown_action",
+      action: action.slice(0, 40),
+      allowed: [...READ_ACTIONS, ...Object.keys(UNWIRED_ACTIONS)],
+    };
+  }
+  if (!READ_ACTIONS.has(action)) {
+    return {
+      ok: false,
+      status: 501,
+      error: "not_wired",
+      reason: "action_not_wired",
+      action,
+      missing: UNWIRED_ACTIONS[action],
+    };
+  }
+  const read = action === "check-builds" ? readOwnBuildings(db, userId) : readOwnCitations(db, userId);
+  if (!read.ok) {
+    if (read.status) return read;
+    return {
+      ok: false,
+      status: 501,
+      error: "not_wired",
+      reason: read.reason,
+      action,
+      missing: action === "check-builds"
+        ? "Buildings cannot be attributed to a user from the world_buildings table as stored."
+        : "DTU or citation tables are missing or unreadable.",
+    };
+  }
+  const { ok, ...rest } = read;
+  return { ok, status: 200, action, ...rest };
 }

@@ -52,6 +52,28 @@ describe("veterinary — clinical calculators", () => {
     const r = call("costEstimate", ctxA, { data: { procedures: [{ type: "dental" }, { type: "xray" }] } }, {});
     assert.equal(r.ok, true);
     assert.equal(r.result.totalEstimate, 550);
+    assert.equal(r.result.reason, null);
+  });
+
+  it("costEstimate does not invent an exam or a $100 unknown procedure", () => {
+    const blank = call("costEstimate", ctxA, { data: { procedures: [{}] } }, {});
+    assert.equal(blank.ok, true);
+    assert.equal(blank.result.totalEstimate, null);
+    assert.equal(blank.result.reason, "not_recorded");
+    assert.equal(blank.result.procedures[0].procedure, null);
+    assert.equal(blank.result.procedures[0].estimatedCost, null);
+    assert.deepEqual(blank.result.unavailable, ["procedures[0]"]);
+
+    const unknown = call("costEstimate", ctxA, { data: { procedures: [{ type: "acupuncture" }] } }, {});
+    assert.equal(unknown.result.totalEstimate, null);
+    assert.equal(unknown.result.procedures[0].estimatedCost, null);
+    assert.notEqual(unknown.result.procedures[0].estimatedCost, 100);
+    assert.deepEqual(unknown.result.unavailable, ["acupuncture"]);
+
+    const quoted = call("costEstimate", ctxA, { data: { procedures: [{ type: "boarding", cost: 0 }, { name: "dental" }] } }, {});
+    assert.equal(quoted.result.procedures[0].estimatedCost, 0);
+    assert.equal(quoted.result.procedures[1].estimatedCost, 400);
+    assert.equal(quoted.result.totalEstimate, 400);
   });
 });
 

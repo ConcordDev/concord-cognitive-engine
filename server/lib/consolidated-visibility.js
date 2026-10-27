@@ -18,6 +18,7 @@
  * so no user sees another user's private content through a summary.
  */
 import { concreteUserOwner } from "./dtu-ownership.js";
+import { isQuarantined } from "./dtu-quarantine.js";
 
 const PUBLIC = new Set(["public", "published", "marketplace"]);
 const INTERNAL = new Set(["internal", "system"]);
@@ -34,6 +35,8 @@ export function memberVisibilityClass(m) {
   const scope = str(m.scope);
   if (INTERNAL.has(vis) || scope === "system") return "internal";
   if (!PUBLIC.has(vis)) return "private";
+  // quarantine:* content is never public, so it never opens a summary.
+  if (isQuarantined(m)) return "private";
   if (CLOSED_PRIVACY.has(str(m.privacy)) || CLOSED_SCOPES.has(scope)) return "private";
   return "public";
 }
@@ -104,6 +107,7 @@ export function backfillConsolidatedVisibility({ nodes, loadMember, since, persi
   for (const n of nodes || []) {
     if (!n || (n.tier !== "mega" && n.tier !== "hyper")) continue;
     if (!["internal", "private"].includes(str(n.visibility))) continue;
+    if (isQuarantined(n)) continue; // quarantine:* is never opened
     // A user-owned node is only considered when consolidation minted it
     // (it inherited the owner from its members). Chat/user megas stay put.
     if (concreteUserOwner(n) && n.lineage?.kind !== "gap_promotion") continue;

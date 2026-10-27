@@ -27,7 +27,11 @@ test("the stream route puts no client text in the system block and says don't in
   const block = src.slice(src.indexOf("const extraSystemBlock = ["), src.indexOf("].filter(Boolean)", src.indexOf("const extraSystemBlock = [")));
   assert.ok(block.length > 0);
   assert.doesNotMatch(block, /persona|req\.body|message/);
-  assert.match(block, /DONT_INVENT_LINE/);
   assert.match(DONT_INVENT_LINE, /say you don't know/);
   assert.match(src, /personaNote \? \[personaNote\]/);
+});
+
+test("every agent-loop system prompt (stream, chat_agent.do, marathon) says don't invent", () => {
+  const src = fs.readFileSync(new URL("../lib/chat-agent.js", import.meta.url), "utf8");
+  assert.match(src, /_agentTodayBlock\(opts\) \+ `\\n\\n\$\{DONT_INVENT_LINE\}` \+ extraSystemBlock/);
 });

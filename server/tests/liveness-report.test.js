@@ -67,6 +67,18 @@ test("substrate gravity: last7dRecords honors the injected nowMs clock, not the 
   assert.equal(gReal.last7dRecords, 1);
 });
 
+test("substrate gravity: 13-digit unix-millisecond rows are divided to seconds before the window check", () => {
+  const db = new Database(":memory:");
+  db.exec(`CREATE TABLE dtus (id TEXT PRIMARY KEY, owner_user_id TEXT, type TEXT, title TEXT, created_at TEXT)`);
+  const ins = db.prepare(`INSERT INTO dtus (id, owner_user_id, type, title, created_at) VALUES (?,?,?,?,?)`);
+  ins.run("ms-new", "u1", "note", "t", Date.now());
+  ins.run("ms-old", "u1", "note", "t", Date.now() - 10 * 24 * 3600 * 1000);
+  const g = computeSubstrateGravity(db);
+  assert.equal(g.totalRecords, 2);
+  // Only the just-created row is in the 7-day window; the 10-day-old ms row must not count.
+  assert.equal(g.last7dRecords, 1);
+});
+
 test("gravity is graceful when the dtus table is absent", () => {
   const g = computeSubstrateGravity(new Database(":memory:"));
   assert.equal(g.ok, false);

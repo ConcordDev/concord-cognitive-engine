@@ -17,7 +17,36 @@ export default function registerVeterinaryActions(registerLensAction) {
   registerLensAction("veterinary", "triageAssess", advisory("keyword triage heuristic; not a veterinary assessment — call a vet or emergency clinic if in doubt", (ctx, artifact, _params) => { const data = artifact.data || {}; const symptoms = data.symptoms || []; const species = (data.species || "dog").toLowerCase(); const age = parseFloat(data.age) || 3; const emergency = symptoms.some(s => ["not-breathing","seizure","bleeding","unconscious","poisoning","bloat","hit-by-car"].includes((s.name || s).toLowerCase())); const urgent = symptoms.some(s => ["vomiting","diarrhea","limping","not-eating","lethargy","swelling"].includes((s.name || s).toLowerCase())); return { ok: true, result: { species, age, symptoms: symptoms.map(s => s.name || s), triageLevel: emergency ? "EMERGENCY" : urgent ? "urgent" : "routine", responseTime: emergency ? "Immediate — go to emergency vet NOW" : urgent ? "See vet within 24 hours" : "Schedule routine appointment", firstAid: emergency ? ["Keep animal calm", "Do not move if spinal injury suspected", "Apply pressure to bleeding", "Call emergency vet en route"] : [] } }; }));
   registerLensAction("veterinary", "weightCheck", (ctx, artifact, _params) => { const data = artifact.data || {}; const _req = needNums(data, ["weight>0"]); const _miss = [...(data.species ? [] : ["species"]), ..._req.missing]; if (_miss.length) return notComputed(_miss, "Weight check needs species and current weight (lbs)."); const species = String(data.species).toLowerCase(); const breed = (data.breed || "").toLowerCase(); const weight = _req.values.weight; const idealRanges = { dog: { small: [5,20], medium: [20,55], large: [55,100] }, cat: { all: [6,14] } }; const range = species === "cat" ? idealRanges.cat.all : weight < 25 ? idealRanges.dog.small : weight < 60 ? idealRanges.dog.medium : idealRanges.dog.large; const inRange = weight >= range[0] && weight <= range[1]; return { ok: true, result: { species, breed: breed || "mixed", currentWeight: weight, idealRange: `${range[0]}-${range[1]} lbs`, status: inRange ? "healthy-weight" : weight < range[0] ? "underweight" : "overweight", recommendation: !inRange ? "Discuss weight management with your vet" : "Weight is in healthy range" } }; });
   registerLensAction("veterinary", "vaccineSchedule", advisory("generic core-vaccine table; not AAHA/AVMA or WSAVA guidance for this animal — confirm with a veterinarian", (ctx, artifact, _params) => { const data = artifact.data || {}; const species = (data.species || "dog").toLowerCase(); const age = parseFloat(data.age) || 1; const schedules = { dog: [{ vaccine: "Rabies", ageMonths: 3, booster: "1-3 years" }, { vaccine: "DHPP", ageMonths: 2, booster: "annually" }, { vaccine: "Bordetella", ageMonths: 2, booster: "6-12 months" }], cat: [{ vaccine: "Rabies", ageMonths: 3, booster: "1-3 years" }, { vaccine: "FVRCP", ageMonths: 2, booster: "annually" }, { vaccine: "FeLV", ageMonths: 2, booster: "annually" }] }; const schedule = schedules[species] || schedules.dog; const ageMonths = age * 12; return { ok: true, result: { species, ageMonths: Math.round(ageMonths), vaccines: schedule.map(v => ({ ...v, due: ageMonths >= v.ageMonths ? "due-or-overdue" : `at ${v.ageMonths} months` })), overdueCount: schedule.filter(v => ageMonths >= v.ageMonths).length } }; }));
-  registerLensAction("veterinary", "costEstimate", (ctx, artifact, _params) => { const procedures = artifact.data?.procedures || []; if (procedures.length === 0) return { ok: true, result: { message: "Add procedures to estimate costs." } }; const costs = { exam: 55, vaccination: 25, spay: 300, neuter: 200, dental: 400, xray: 150, bloodwork: 120, surgery: 1500, emergency: 800, microchip: 45 }; const estimated = procedures.map(p => { const type = (p.type || p.name || "exam").toLowerCase(); const cost = costs[type] || parseFloat(p.cost) || 100; return { procedure: type, estimatedCost: cost }; }); const total = estimated.reduce((s,e) => s + e.estimatedCost, 0); return { ok: true, result: { procedures: estimated, totalEstimate: total, tip: total > 500 ? "Ask about payment plans or pet insurance" : "Routine care is an investment in your pet health" } }; });
+  registerLensAction("veterinary", "costEstimate", (ctx, artifact, _params) => {
+    const procedures = artifact.data?.procedures;
+    if (!Array.isArray(procedures) || procedures.length === 0) {
+      return { ok: true, result: { message: "Add procedures to estimate costs." } };
+    }
+    // Published rate card. An unknown procedure is not an exam and not $100.
+    const costs = { exam: 55, vaccination: 25, spay: 300, neuter: 200, dental: 400, xray: 150, bloodwork: 120, surgery: 1500, emergency: 800, microchip: 45 };
+    const unavailable = [];
+    const estimated = procedures.map((p, i) => {
+      const raw = p && (p.type || p.name);
+      const type = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+      const quoted = p && p.cost != null && p.cost !== "" ? Number(p.cost) : null;
+      const quotedOk = quoted != null && Number.isFinite(quoted) && quoted >= 0;
+      const catalog = type && Object.prototype.hasOwnProperty.call(costs, type) ? costs[type] : null;
+      const cost = catalog != null ? catalog : (quotedOk ? quoted : null);
+      if (cost == null) unavailable.push(type || `procedures[${i}]`);
+      return { procedure: type || null, estimatedCost: cost, reason: cost == null ? "not_recorded" : null };
+    });
+    const total = unavailable.length ? null : estimated.reduce((s, e) => s + e.estimatedCost, 0);
+    return {
+      ok: true,
+      result: {
+        procedures: estimated,
+        totalEstimate: total,
+        reason: total == null ? "not_recorded" : null,
+        unavailable: total == null ? unavailable : [],
+        tip: total == null ? null : total > 500 ? "Ask about payment plans or pet insurance" : "Routine care is an investment in your pet health",
+      },
+    };
+  });
 
   // ─── Patient-records substrate (per-user, STATE-backed) ─────────────
   function getVetState() {
