@@ -61,6 +61,10 @@ describe("migrateMemoryToSQLite stale-copy guard", () => {
     assert.equal(r.skippedStale, 0);
     assert.equal(stored(db, "older").title, "newer-mem");
     assert.equal(stored(db, "fresh").title, "only in memory");
+    assert.equal(r.inserted, 1);
+    assert.equal(r.replaced, 1);
+    assert.deepEqual(r.insertedSample, ["fresh"]);
+    assert.deepEqual(r.replacedSample, ["older"]);
   });
 
   it("after migrate + rehydrate, the cache holds the stored (stamped) row, not the stale copy", () => {
