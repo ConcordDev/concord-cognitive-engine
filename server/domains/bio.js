@@ -3,6 +3,7 @@
 // gene expression analysis, phylogenetic distance, and motif detection.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 export default function registerBioActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -91,7 +92,7 @@ export default function registerBioActions(registerLensAction) {
         parameters: { match, mismatch, gap },
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -197,7 +198,7 @@ export default function registerBioActions(registerLensAction) {
         },
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -301,7 +302,7 @@ export default function registerBioActions(registerLensAction) {
         averageDistances: avgDistance,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -372,7 +373,7 @@ export default function registerBioActions(registerLensAction) {
         sequencesAnalyzed: sequences.length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -729,7 +730,7 @@ export default function registerBioActions(registerLensAction) {
       result.molecularWeight = Math.round(seq.length * 110); // average aa MW
     }
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Primer design (forward + reverse, length 18-24, Tm 55-65°C, GC 40-60%) ──
@@ -770,7 +771,7 @@ export default function registerBioActions(registerLensAction) {
           : "Use default primer pair.",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Pairwise alignment (Needleman-Wunsch global) ──
@@ -846,7 +847,7 @@ export default function registerBioActions(registerLensAction) {
         alignmentLength: alignA.length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── FASTA parser ──

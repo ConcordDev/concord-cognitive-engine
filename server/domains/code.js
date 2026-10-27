@@ -25,6 +25,29 @@ import { retrieveRelevantFiles, candidatesFromLocalFiles, candidatesFromGitHubTr
 // lives in the lib (mirrors repair-remediation.js's shape); these are thin
 // macro wrappers only.
 import codePushGovernance from "../lib/code-push-governance.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
+
+// github.repo-tree / github.file-get and code.files-write are lens actions.
+// runMacro throws "macro not found" before its own catch, which the harness
+// records as a 500. Try the macro first (tests inject one), then the lens action.
+async function runLensOrMacro(ctx, domain, name, input) {
+  const runMacro = ctx?.runMacro || globalThis.__concordRunMacro;
+  if (typeof runMacro === "function") {
+    try {
+      return await runMacro(domain, name, input, ctx);
+    } catch (e) {
+      const msg = String(e?.message || e);
+      if (!/macro (domain )?not found/.test(msg)) throw e;
+    }
+  }
+  const fn = globalThis.__concordLensActions?.get?.(`${domain}.${name}`);
+  if (typeof fn !== "function") return { ok: false, error: "invalid_input", reason: "action_unavailable" };
+  try {
+    return await fn(ctx, { id: null, domain, title: "", data: {}, meta: {} }, input || {});
+  } catch (e) {
+    return handlerFailure(e);
+  }
+}
 
 const SNIPPET_KIND = "code_snippet";
 const SNAPSHOT_KIND = "code_snapshot_bundle";
@@ -195,7 +218,7 @@ export default function registerCodeActions(registerLensAction) {
         hotspots: hotspots.slice(0, 10),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -277,7 +300,7 @@ export default function registerCodeActions(registerLensAction) {
         },
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -324,7 +347,7 @@ export default function registerCodeActions(registerLensAction) {
         meetsThreshold80: overallStatement >= 80,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -383,7 +406,7 @@ export default function registerCodeActions(registerLensAction) {
         ],
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── IDE-grade macros (parity sprint) ──────────────────────────────────
@@ -708,13 +731,11 @@ export default function registerCodeActions(registerLensAction) {
         candidates = candidatesFromLocalFiles(projectFiles);
         source = "local-project";
       } else if (params.repo) {
-        const runMacro = ctx?.runMacro || globalThis.__concordRunMacro;
-        if (typeof runMacro !== "function") return { ok: false, error: "runMacro unavailable for github retrieval" };
-        const treeRes = await runMacro("github", "repo-tree", { repo: params.repo, ref: params.ref }, ctx);
-        if (!treeRes?.ok) return { ok: false, error: "github repo-tree failed", detail: treeRes };
+        const treeRes = await runLensOrMacro(ctx, "github", "repo-tree", { repo: params.repo, ref: params.ref });
+        if (!treeRes?.ok) return { ok: false, error: "invalid_input", reason: "github_repo_tree_failed", detail: treeRes };
         const tree = treeRes.result?.tree || [];
         const fetchFile = async (path) => {
-          const fileRes = await runMacro("github", "file-get", { repo: params.repo, path, ref: params.ref }, ctx);
+          const fileRes = await runLensOrMacro(ctx, "github", "file-get", { repo: params.repo, path, ref: params.ref });
           return fileRes?.ok ? (fileRes.result?.content || "") : "";
         };
         candidates = candidatesFromGitHubTree(tree, fetchFile);
@@ -1344,7 +1365,7 @@ Rules:
     }
     saveWS();
     return { ok: true, result: { project: proj } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("code", "projects-delete", (ctx, _a, params = {}) => {
@@ -1377,7 +1398,7 @@ Rules:
       tree.push({ path: p, language: langFromPath(p), size: files.get(p).content.length, modifiedAt: files.get(p).modifiedAt });
     }
     return { ok: true, result: { tree, count: tree.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("code", "files-read", (ctx, _a, params = {}) => {
@@ -1391,7 +1412,7 @@ Rules:
     if (!files.has(path)) return { ok: false, error: "file not found" };
     const file = files.get(path);
     return { ok: true, result: { path, content: file.content, language: langFromPath(path), modifiedAt: file.modifiedAt } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("code", "files-write", (ctx, _a, params = {}) => {
@@ -1466,7 +1487,7 @@ Rules:
         clean: git.modified.size === 0 && git.staged.size === 0,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("code", "git-stage", (ctx, _a, params = {}) => {
@@ -1524,7 +1545,7 @@ Rules:
     git.staged.clear();
     saveWS();
     return { ok: true, result: { commit: { ...commit, tree: undefined } } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("code", "git-log", (ctx, _a, params = {}) => {
@@ -1632,7 +1653,7 @@ Rules:
     git.branchHeads[git.branch] = commit.id;
     saveWS();
     return { ok: true, result: { merged: true, commit: { ...commit, tree: undefined }, filesChanged: Object.keys(merged).length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── File diff vs HEAD ─────────────────────────────────────────
@@ -1658,7 +1679,7 @@ Rules:
         status: !files.has(path) ? 'deleted' : committed === '' ? 'added' : added + removed > 0 ? 'modified' : 'unchanged',
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Blame (per-line commit attribution) ───────────────────────
@@ -1686,7 +1707,7 @@ Rules:
         : { lineNo: idx + 1, text: line, commitId: null, message: 'Uncommitted (working tree)', author: userId, committedAt: null };
     });
     return { ok: true, result: { path, blame, lineCount: lines.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Discard working changes to a file ─────────────────────────
@@ -1738,7 +1759,7 @@ Rules:
     git.staged.clear();
     saveWS();
     return { ok: true, result: { stashId: entry.id, stashedFiles: Object.keys(entry.files).length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("code", "git-stash-list", (ctx, _a, params = {}) => {
@@ -1751,7 +1772,7 @@ Rules:
         stashes: git.stashes.map((e) => ({ id: e.id, message: e.message, branch: e.branch, createdAt: e.createdAt, fileCount: Object.keys(e.files).length })),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("code", "git-stash-pop", (ctx, _a, params = {}) => {
@@ -2094,7 +2115,7 @@ Rules:
       });
     }
     return { ok: true, result: { symbol, references: refs.slice(0, 200), count: refs.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Symbol outline (Outline view / breadcrumbs) ───────────────
@@ -2115,7 +2136,7 @@ Rules:
     }
     const symbols = extractSymbols(files.get(path).content, lang);
     return { ok: true, result: { path, language: lang, symbols, count: symbols.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Diagnostics (Problems panel — heuristic static analysis) ──
@@ -2155,7 +2176,7 @@ Rules:
     const bySeverity = { error: 0, warning: 0, info: 0 };
     for (const p of problems) bySeverity[p.severity] = (bySeverity[p.severity] || 0) + 1;
     return { ok: true, result: { problems, total: problems.length, bySeverity, filesScanned: targets.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── TODO / FIXME tracker ──────────────────────────────────────
@@ -2178,7 +2199,7 @@ Rules:
     const byTag = {};
     for (const t of todos) byTag[t.tag] = (byTag[t.tag] || 0) + 1;
     return { ok: true, result: { todos, total: todos.length, byTag } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Search & replace across the project ───────────────────────
@@ -2246,7 +2267,7 @@ Rules:
     }
     if (changed.length > 0) saveWS();
     return { ok: true, result: { from, to, changed, filesChanged: changed.length, totalOccurrences } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ═══════════════════════════════════════════════════════════════
@@ -2380,7 +2401,7 @@ Rules:
     }
     const completions = Array.from(seen.values()).slice(0, 100);
     return { ok: true, result: { completions, count: completions.length, prefix } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Remote GitHub repo (push / pull) ──────────────────────────
@@ -2480,7 +2501,7 @@ Rules:
         note: "Push staged locally. Connect a GitHub OAuth token in BYO keys to deliver.",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("code", "github-remote-status", (ctx, _a, params = {}) => {
@@ -2495,7 +2516,7 @@ Rules:
         hasRemote: !!git.remote?.provider,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Step debugger (breakpoints / watch / call stack) ──────────
@@ -2516,8 +2537,10 @@ Rules:
   // lint/type-check is clean, and verification passed; otherwise unverified/unrun.
   registerLensAction("code", "build", async (ctx, _a, params = {}) => {
     try {
-      const runMacro = ctx?.runMacro || globalThis.__concordRunMacro;
-      if (typeof runMacro !== "function") return { ok: false, error: "runMacro unavailable" };
+      const rawRun = ctx?.runMacro || globalThis.__concordRunMacro;
+      const lensGet = globalThis.__concordLensActions?.get;
+      if (typeof rawRun !== "function" && typeof lensGet !== "function") return { ok: false, error: "runMacro unavailable" };
+      const runMacro = (domain, name, input, callCtx) => runLensOrMacro(callCtx || ctx, domain, name, input);
       const request = String(params.request || params.prompt || "").trim();
       if (!request) return { ok: false, error: "request required" };
       const userId = aidC(ctx);
@@ -2561,7 +2584,7 @@ Rules:
       } catch { /* memory must not break the build */ }
       return { ok: result.ok, result };
     } catch (e) {
-      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+      return handlerFailure(e);
     }
   });
 
@@ -2583,7 +2606,7 @@ Rules:
       const out = await runDsl(program, { runMacro: confined.runMacro });
       return { ok: out.ok, result: out };
     } catch (e) {
-      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+      return handlerFailure(e);
     }
   });
 
@@ -2890,7 +2913,7 @@ Rules:
         nextSince: session.ops.length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("code", "liveshare-end", (ctx, _a, params = {}) => {
@@ -2937,7 +2960,7 @@ Rules:
         dirtyProjects,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 }
 

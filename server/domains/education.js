@@ -3,6 +3,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 
 export default function registerEducationActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -127,7 +128,7 @@ export default function registerEducationActions(registerLensAction) {
     artifact.data.gradeReport = report;
 
     return { ok: true, result: report };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -212,7 +213,7 @@ export default function registerEducationActions(registerLensAction) {
     artifact.data.attendanceReport = report;
 
     return { ok: true, result: report };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -282,7 +283,7 @@ export default function registerEducationActions(registerLensAction) {
     artifact.data.progressReport = result;
 
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -370,7 +371,7 @@ export default function registerEducationActions(registerLensAction) {
     artifact.data.reportCard = result;
 
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -450,7 +451,7 @@ export default function registerEducationActions(registerLensAction) {
     artifact.data.scheduleConflicts = result;
 
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── Parity-sprint macros: Anki SM-2 / Khanmigo Socratic / Quizlet Magic Notes ───
@@ -960,7 +961,7 @@ Constraints:
     }
     saveStateIfAvailable();
     return { ok: true, result: { deck, added: cardsIn.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -1153,7 +1154,7 @@ Constraints:
       c.institution.toLowerCase().includes(query)
     );
     return { ok: true, result: { matches: matches.map(c => viewCourse(ctx, userId, c)), total: matches.length, query } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Lessons within a course ───────────────────────────────────
@@ -1190,7 +1191,7 @@ Constraints:
     store.put(course);
     saveStateIfAvailable();
     return { ok: true, result: { lesson } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // Author-only lesson maintenance: edit in place, delete (renumbering), reorder.
@@ -1222,7 +1223,7 @@ Constraints:
       a.store.put(a.course);
       saveStateIfAvailable();
       return { ok: true, result: { lesson } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
   });
 
   registerLensAction("education", "lessons-delete", (ctx, _a, params = {}) => {
@@ -1235,7 +1236,7 @@ Constraints:
       a.store.put(a.course);
       saveStateIfAvailable();
       return { ok: true, result: { deleted: params.lessonId, lessons: a.course.lessons } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
   });
 
   registerLensAction("education", "lessons-move", (ctx, _a, params = {}) => {
@@ -1251,7 +1252,7 @@ Constraints:
       a.store.put(a.course);
       saveStateIfAvailable();
       return { ok: true, result: { lessons: a.course.lessons } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
   });
 
   registerLensAction("education", "lessons-complete", (ctx, _a, params = {}) => {
@@ -1295,7 +1296,7 @@ Constraints:
       };
     });
     return { ok: true, result: { enrollments: enriched } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("education", "enrollments-enroll", (ctx, _a, params = {}) => {
@@ -1432,7 +1433,7 @@ Constraints:
         recentPoints: points.slice(-10).reverse(),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("education", "points-award", (ctx, _a, params = {}) => {
@@ -1478,7 +1479,7 @@ Constraints:
     ensureEduBucket(s, "certificates", userId).push(cert);
     saveStateIfAvailable();
     return { ok: true, result: { certificate: cert } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Assignments + peer review (Coursera-style) ─────────────────
@@ -1762,7 +1763,7 @@ Constraints:
         level: Math.floor(proficientSkills / 5) + 1,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ════════════════════════════════════════════════════════════════
@@ -1824,7 +1825,7 @@ Constraints:
         watchedPct: rec.durationSec > 0 ? Math.round((rec.watchedSec / rec.durationSec) * 100) : 0,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("education", "video-transcript-save", (ctx, _a, params = {}) => {
@@ -1845,7 +1846,7 @@ Constraints:
     else transcripts.push({ lessonId, cues, updatedAt: new Date().toISOString() });
     saveStateIfAvailable();
     return { ok: true, result: { lessonId, cueCount: cues.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("education", "video-transcript-get", (ctx, _a, params = {}) => {
@@ -1919,7 +1920,7 @@ Constraints:
     ensureEduBucket(s, "exercises", userId).push(exercise);
     saveStateIfAvailable();
     return { ok: true, result: { exercise: { id: exercise.id, title, skillId: exercise.skillId, stepCount: steps.length } } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // exercises-hint — return the next hint for a step (1-indexed escalation),
@@ -1944,7 +1945,7 @@ Constraints:
         totalHints: step.hints.length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // exercises-submit — auto-grade a step answer. Maintains a per-user
@@ -2049,7 +2050,7 @@ Constraints:
       };
     });
     return { ok: true, result: { paths: enriched } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("education", "paths-create", (ctx, _a, params = {}) => {
@@ -2299,7 +2300,7 @@ Constraints:
         activity,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── 6. Lesson-timestamped Q&A threads ─────────────────────────────

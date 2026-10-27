@@ -3,6 +3,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 
 export default function registerAllianceActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -120,7 +121,7 @@ export default function registerAllianceActions(registerLensAction) {
 
     artifact.data.compatibilityScore = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -300,7 +301,7 @@ export default function registerAllianceActions(registerLensAction) {
 
     artifact.data.networkAnalysis = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -438,7 +439,7 @@ export default function registerAllianceActions(registerLensAction) {
 
     artifact.data.riskAssessment = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ═══════════════════════════════════════════════════════════════
