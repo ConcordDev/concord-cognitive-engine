@@ -770,6 +770,11 @@ export default function registerReposActions(registerLensAction) {
     if (parts.length > 0 && parts[parts.length - 1] === "") parts.pop();
     return parts.length;
   }
+  // File size is UTF-8 bytes. String.length counts UTF-16 code units, so a
+  // non-ASCII name or description would under-count the README.
+  function rpByteSize(text) {
+    return Buffer.byteLength(String(text ?? ""), "utf8");
+  }
 
   function rpFindRepo(s, uid, repoId) {
     return (s.repos.get(uid) || []).find((r) => r.id === repoId) || null;
@@ -785,7 +790,7 @@ export default function registerReposActions(registerLensAction) {
       { path: "package.json", type: "file", content: `{\n  "name": "${title}",\n  "version": "0.1.0"\n}\n` },
       { path: "src/index.ts", type: "file", content: "export function main(): void {\n  console.log('hello');\n}\n" },
       { path: "src/util.ts", type: "file", content: "export const noop = (): void => {};\n" },
-    ].map((f) => ({ ...f, size: f.content.length }));
+    ].map((f) => ({ ...f, size: rpByteSize(f.content) }));
     const c0 = {
       sha: rpSha(), message: "Initial commit", author: "you", branch: "main", parents: [], date: ts,
       additions: files.reduce((n, f) => n + rpTextLines(f.content), 0), deletions: 0,
@@ -914,7 +919,7 @@ export default function registerReposActions(registerLensAction) {
         ok: true,
         result: {
           path: file.path, content, language: rpLangOf(file.path),
-          lineCount: rpTextLines(content), size: file.size || content.length,
+          lineCount: rpTextLines(content), size: rpByteSize(content),
         },
       };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
@@ -930,8 +935,9 @@ export default function registerReposActions(registerLensAction) {
       const content = String(params.content == null ? "" : params.content).slice(0, 200000);
       let file = repo.files.find((f) => f.path === path);
       const oldContent = file ? file.content || "" : "";
-      if (file) { file.content = content; file.size = content.length; }
-      else { file = { path, type: "file", content, size: content.length }; repo.files.push(file); }
+      const size = rpByteSize(content);
+      if (file) { file.content = content; file.size = size; }
+      else { file = { path, type: "file", content, size }; repo.files.push(file); }
       const diff = rpDiff(oldContent, content);
       const branch = repo.branches.find((b) => b.name === (rpClean(params.branch, 80) || repo.defaultBranch));
       const commit = {
@@ -1467,7 +1473,7 @@ export default function registerReposActions(registerLensAction) {
       const langBytes = {};
       for (const f of repo.files) {
         const lang = rpLangOf(f.path);
-        langBytes[lang] = (langBytes[lang] || 0) + (f.size || (f.content || "").length);
+        langBytes[lang] = (langBytes[lang] || 0) + (Number.isFinite(f.size) ? f.size : rpByteSize(f.content));
       }
       const totalBytes = Object.values(langBytes).reduce((n, v) => n + v, 0) || 1;
       const languages = Object.entries(langBytes)

@@ -68,9 +68,9 @@ describe("repos — repo lifecycle", () => {
         ? content.split("\n").length - 1
         : content.split("\n").length;
       assert.equal(file.result.lineCount, expectedLines);
-      assert.equal(file.result.size, content.length);
+      assert.equal(file.result.size, Buffer.byteLength(content, "utf8"));
       lines += expectedLines;
-      bytes += content.length;
+      bytes += Buffer.byteLength(content, "utf8");
     }
     // "# alpha", blank, "hello" + 4 package lines + 3 index lines + 1 util line.
     assert.equal(lines, 11);
@@ -83,6 +83,46 @@ describe("repos — repo lifecycle", () => {
     assert.equal(insights.result.totals.additions, lines);
     const langBytes = insights.result.languages.reduce((n, row) => n + row.bytes, 0);
     assert.equal(langBytes, bytes);
+  });
+
+  it("counts a non-ASCII seed and a saved file in UTF-8 bytes", () => {
+    const r = call("repo-create", ctxA, { name: "café", description: "東京" });
+    const id = r.result.repo.id;
+    const readme = call("file-read", ctxA, { repoId: id, path: "README.md" });
+    assert.equal(readme.ok, true);
+    const content = readme.result.content;
+    assert.ok(Buffer.byteLength(content, "utf8") > content.length);
+    assert.equal(readme.result.size, Buffer.byteLength(content, "utf8"));
+
+    const saved = "résumé — notes\n";
+    const write = call("file-save", ctxA, { repoId: id, path: "docs/notes.md", content: saved });
+    assert.equal(write.ok, true);
+    const notes = call("file-read", ctxA, { repoId: id, path: "docs/notes.md" });
+    assert.equal(notes.result.size, Buffer.byteLength(saved, "utf8"));
+
+    function find(nodes, path) {
+      for (const node of nodes) {
+        if (node.path === path) return node;
+        if (node.children) {
+          const hit = find(node.children, path);
+          if (hit) return hit;
+        }
+      }
+      return null;
+    }
+    const tree = call("file-tree", ctxA, { repoId: id });
+    assert.equal(find(tree.result.tree, "docs/notes.md").size, Buffer.byteLength(saved, "utf8"));
+    assert.equal(find(tree.result.tree, "README.md").size, Buffer.byteLength(content, "utf8"));
+
+    const insights = call("repo-insights", ctxA, { repoId: id });
+    const langBytes = insights.result.languages.reduce((n, row) => n + row.bytes, 0);
+    const paths = ["README.md", "package.json", "src/index.ts", "src/util.ts", "docs/notes.md"];
+    let expected = 0;
+    for (const path of paths) {
+      const file = call("file-read", ctxA, { repoId: id, path });
+      expected += Buffer.byteLength(file.result.content, "utf8");
+    }
+    assert.equal(langBytes, expected);
   });
 
   it("rejects repo-create without a name", () => {
