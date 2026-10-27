@@ -106,6 +106,7 @@ export interface BiasResult {
   overallBiasScore: number | null;
   /** Set when overallBiasScore is null. `no_bias_terms` means the lexicon matched nothing. */
   overallBiasReason?: string | null;
+  /** Level is null whenever overallBiasScore is null. */
   biasLevel: 'low' | 'moderate' | 'high' | null;
   sourceDiversity: {
     uniqueSources: number;
@@ -119,6 +120,8 @@ export interface BiasResult {
     avgBiasScore: number | null;
     avgSentiment: number | null;
     consistency: number | null;
+    /** Not sent by the server today. Consumers default a null avgBiasScore to `no_bias_terms`. */
+    biasReason?: string | null;
   }>;
   articleAnalyses: Array<Record<string, unknown>>;
   message?: string;

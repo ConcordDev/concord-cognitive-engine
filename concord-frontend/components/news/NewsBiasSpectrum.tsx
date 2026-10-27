@@ -11,6 +11,7 @@ import { Loader2, Scale, AlertTriangle, Search } from 'lucide-react';
 
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { NOT_AVAILABLE, biasUnavailableText, finiteOrNull } from './bias-unavailable';
 
 interface SpectrumArticle {
   id: string;
@@ -47,8 +48,14 @@ const COLUMN_STYLE: Record<ColumnKey, { label: string; bar: string; chip: string
   unscored: { label: 'Unscored', bar: 'bg-zinc-600', chip: 'text-zinc-400 border-zinc-600/40 bg-zinc-600/10' },
 };
 
-function pctLabel(v: number | null | undefined): string {
-  return typeof v === 'number' && Number.isFinite(v) ? `${v}%` : '—';
+function pctLabel(v: number | null | undefined, name: string): string {
+  const pct = finiteOrNull(v);
+  return pct == null ? `${NOT_AVAILABLE} ${name}` : `${pct}% ${name}`;
+}
+
+function articleChip(a: SpectrumArticle): string {
+  const score = finiteOrNull(a.biasScore);
+  return score == null ? biasUnavailableText(a.biasReason) : `lean ${score > 0 ? '+' : ''}${score}`;
 }
 
 export function NewsBiasSpectrum() {
@@ -121,12 +128,12 @@ export function NewsBiasSpectrum() {
               })}
             </div>
             <div className="flex justify-between text-[10px] text-zinc-400 mt-1">
-              <span>{pctLabel(result.coverage?.left)} Left</span>
-              <span>{pctLabel(result.coverage?.center)} Center</span>
-              <span>{pctLabel(result.coverage?.right)} Right</span>
+              <span>{pctLabel(result.coverage?.left, 'Left')}</span>
+              <span>{pctLabel(result.coverage?.center, 'Center')}</span>
+              <span>{pctLabel(result.coverage?.right, 'Right')}</span>
             </div>
             {result.coverage?.reason && (
-              <p className="text-[10px] text-zinc-500 mt-1">{result.coverage.reason}</p>
+              <p className="text-[10px] text-zinc-500 mt-1">{biasUnavailableText(result.coverage.reason)}</p>
             )}
           </div>
 
@@ -168,9 +175,7 @@ export function NewsBiasSpectrum() {
                             <p className="text-[10px] text-zinc-400 mt-1 line-clamp-2">{a.summary}</p>
                           )}
                           <span className={cn('inline-block mt-1.5 text-[9px] px-1.5 py-0.5 rounded border', style.chip)}>
-                            {typeof a.biasScore === 'number' && Number.isFinite(a.biasScore)
-                              ? `lean ${a.biasScore > 0 ? '+' : ''}${a.biasScore}`
-                              : `unscored${a.biasReason ? ` · ${a.biasReason}` : ''}`}
+                            {articleChip(a)}
                           </span>
                         </li>
                       ))}

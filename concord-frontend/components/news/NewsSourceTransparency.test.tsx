@@ -1,6 +1,7 @@
 /**
- * source-profile with no bias terms returns null lean/score.
- * The chip must not read "null lean (null)".
+ * source-profile with no bias terms returns null lean/score and a reason.
+ * The chip must say "Not available" with the plain reason, never
+ * "null lean (null)" or the raw code.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
@@ -40,10 +41,12 @@ vi.mock('@/lib/api/client', () => ({
 import { NewsSourceTransparency } from './NewsSourceTransparency';
 
 describe('NewsSourceTransparency', () => {
-  it('says the lean is not measurable when bias terms are absent', async () => {
-    render(<NewsSourceTransparency />);
+  it('says Not available with the plain reason when bias terms are absent', async () => {
+    const { container } = render(<NewsSourceTransparency />);
     fireEvent.click(await screen.findByRole('button', { name: /Wire/ }));
-    expect(await screen.findByText('lean not measurable (no bias terms)')).toBeInTheDocument();
-    expect(screen.queryByText(/null lean/)).not.toBeInTheDocument();
+    expect(
+      await screen.findByText('Not available: no loaded or hedge words found in the text'),
+    ).toBeInTheDocument();
+    expect(container.textContent ?? '').not.toMatch(/\bnull\b|undefined|NaN|no_bias_terms/);
   });
 });
