@@ -11,6 +11,7 @@
  * All state in module-level structures. Silent failure. Additive only.
  */
 
+import * as loopJobs from "../lib/loop-job-tracker.js";
 import crypto from "crypto";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -341,8 +342,17 @@ export function handleAttentionCommand(parts) {
 export function init({ STATE } = {}) {
   if (STATE) globalThis._concordSTATE = STATE;
 
+  // INC-150: a read replica (CONCORD_READ_REPLICA=1) serves reads only and does
+  // no autonomous work, but this boot-phased 15-min cycle walked STATE.dtus once
+  // per discovered domain — the replica's exact 15-min multi-second stalls.
+  const rr = process.env.CONCORD_READ_REPLICA;
+  if (rr === "1" || rr === "true") {
+    return { ok: true, skipped: "read_replica", interval: ATTENTION_INTERVAL_MS };
+  }
+
   _timer = setInterval(() => {
-    runAttentionCycle().catch(e => console.warn('[attention-allocator] async op failed:', e?.message));
+    loopJobs.withJob("attention_allocation_cycle", () => runAttentionCycle())
+      .catch(e => console.warn('[attention-allocator] async op failed:', e?.message));
   }, ATTENTION_INTERVAL_MS);
   if (_timer.unref) _timer.unref();
 
