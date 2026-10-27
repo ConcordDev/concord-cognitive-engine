@@ -5,6 +5,158 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
+
+// ── Real headlines via GDELT Project (free, no key) ──
+//
+// GDELT 2.0 doc API returns real news articles indexed every 15 minutes
+// from sources worldwide. No API key. The doc API allows roughly one request
+// per 5 seconds per IP, so every GDELT call goes through this module's single
+// queue (one in flight, >= 5 s between starts), is cached per category for
+// 15 minutes, and backs off after failures. Callers never see a thrown error:
+// they get the cached list (marked degraded/stale) or an honest empty list.
+// Endpoint: api.gdeltproject.org/api/v2/doc/doc
+
+const CATEGORY_QUERIES = {
+  top:        "(world OR breaking) sourcelang:eng",
+  world:      "(world OR international OR foreign) sourcelang:eng",
+  business:   "(business OR economy OR markets OR earnings) sourcelang:eng",
+  tech:       "(technology OR AI OR software OR startup) sourcelang:eng",
+  science:    "(science OR research OR climate OR space) sourcelang:eng",
+  politics:   "(politics OR congress OR election OR policy) sourcelang:eng",
+  sports:     "(sports OR olympics OR football OR basketball) sourcelang:eng",
+  health:     "(health OR medicine OR vaccine OR pandemic) sourcelang:eng",
+  entertainment: "(entertainment OR film OR music OR celebrity) sourcelang:eng",
+};
+
+const GDELT_DEFAULTS = {
+  spacingMs: 5000,            // min gap between request starts
+  timeoutMs: 8000,            // per-request ceiling
+  cacheTtlMs: 15 * 60 * 1000, // per-category cache lifetime
+  backoffStartMs: 60 * 1000,  // first backoff window after a failure
+  backoffMaxMs: 10 * 60 * 1000,
+  briefingBudgetMs: 8500,     // daily-briefing total budget
+  llmClosingMs: 2500,         // cap on the optional LLM closing sentence
+  now: () => Date.now(),
+};
+const gdelt = { ...GDELT_DEFAULTS };
+
+const gdeltCache = new Map();    // category -> { articles, fetchedAt }
+const gdeltInflight = new Map(); // category -> shared promise
+const gdeltBackoff = { until: 0, ms: 0, reason: null };
+let gdeltLastStart = -Infinity;
+let gdeltTail = Promise.resolve();
+
+// Test hooks. Defaults are restored by __resetGdeltCacheForTests.
+export function __configureGdeltForTests(overrides = {}) {
+  Object.assign(gdelt, overrides);
+}
+export function __resetGdeltCacheForTests() {
+  gdeltCache.clear();
+  gdeltInflight.clear();
+  gdeltBackoff.until = 0;
+  gdeltBackoff.ms = 0;
+  gdeltBackoff.reason = null;
+  gdeltLastStart = -Infinity;
+  gdeltTail = Promise.resolve();
+  Object.assign(gdelt, GDELT_DEFAULTS);
+}
+
+// Resolves to `fallback` if `promise` does not settle within `ms`.
+function raceTimeout(promise, ms, fallback) {
+  let timer;
+  const expired = new Promise((resolve) => { timer = setTimeout(() => resolve(fallback), ms); });
+  return Promise.race([promise, expired]).finally(() => clearTimeout(timer));
+}
+
+class GdeltError extends Error {
+  constructor(reason, message) {
+    super(message || reason);
+    this.reason = reason;
+  }
+}
+
+async function gdeltRequest(query) {
+  const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(query)}&mode=ArtList&maxrecords=50&format=json&sort=DateDesc`;
+  const controller = new AbortController();
+  let timer;
+  const timedOut = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new GdeltError("timeout", `GDELT request exceeded ${gdelt.timeoutMs} ms`));
+    }, gdelt.timeoutMs);
+  });
+  try {
+    const r = await Promise.race([globalThis.fetch(url, { signal: controller.signal }), timedOut]);
+    if (!r.ok) {
+      if (r.status === 429) throw new GdeltError("rate_limited", "GDELT 429");
+      throw new GdeltError(`upstream_error: GDELT ${r.status}`);
+    }
+    const data = await Promise.race([r.json(), timedOut]);
+    return Array.isArray(data?.articles) ? data.articles : [];
+  } catch (e) {
+    if (e instanceof GdeltError) throw e;
+    throw new GdeltError(`upstream_error: ${e?.message || "network"}`);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Every GDELT request starts here. Runs strictly one at a time, and starts
+// at least `spacingMs` after the previous start.
+function enqueueGdelt(task) {
+  const run = gdeltTail.then(async () => {
+    const wait = gdeltLastStart + gdelt.spacingMs - gdelt.now();
+    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+    gdeltLastStart = gdelt.now();
+    return task();
+  });
+  gdeltTail = run.catch(() => {});
+  return run;
+}
+
+// Fetches one category through the queue. Concurrent callers for the same
+// category share one promise. Rejects with GdeltError.
+function fetchGdeltCategory(category) {
+  if (gdeltInflight.has(category)) return gdeltInflight.get(category);
+  const promise = enqueueGdelt(() => gdeltRequest(CATEGORY_QUERIES[category]))
+    .then((articles) => {
+      gdeltCache.set(category, { articles, fetchedAt: gdelt.now() });
+      gdeltBackoff.until = 0;
+      gdeltBackoff.ms = 0;
+      gdeltBackoff.reason = null;
+      return articles;
+    }, (err) => {
+      const reason = err instanceof GdeltError ? err.reason : `upstream_error: ${err?.message || "network"}`;
+      gdeltBackoff.ms = gdeltBackoff.ms ? Math.min(gdeltBackoff.ms * 2, gdelt.backoffMaxMs) : gdelt.backoffStartMs;
+      gdeltBackoff.until = gdelt.now() + gdeltBackoff.ms;
+      gdeltBackoff.reason = reason;
+      throw err;
+    })
+    .finally(() => gdeltInflight.delete(category));
+  gdeltInflight.set(category, promise);
+  return promise;
+}
+
+// Never rejects. Returns the articles to use plus honesty metadata:
+//   { articles, cachedAt (ISO|null), stale, degradedReason (string|null) }
+async function getGdeltArticles(category) {
+  const entry = gdeltCache.get(category);
+  const cachedAt = entry ? new Date(entry.fetchedAt).toISOString() : null;
+  if (entry && gdelt.now() - entry.fetchedAt < gdelt.cacheTtlMs) {
+    return { articles: entry.articles, cachedAt, stale: false, degradedReason: null };
+  }
+  const fallback = (reason) => entry
+    ? { articles: entry.articles, cachedAt, stale: true, degradedReason: reason }
+    : { articles: [], cachedAt: null, stale: false, degradedReason: reason };
+  if (gdelt.now() < gdeltBackoff.until) return fallback(gdeltBackoff.reason);
+  try {
+    const articles = await fetchGdeltCategory(category);
+    return { articles, cachedAt: null, stale: false, degradedReason: null };
+  } catch (e) {
+    return fallback(e instanceof GdeltError ? e.reason : `upstream_error: ${e?.message || "network"}`);
+  }
+}
+
 export default function registerNewsActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -509,32 +661,6 @@ export default function registerNewsActions(registerLensAction) {
 });
 
   // ─── Parity-sprint ──
-  // ── Real headlines via GDELT Project (free, no key) ──
-  //
-  // GDELT 2.0 doc API returns real news articles indexed every 15 minutes
-  // from sources worldwide. No API key, no rate limit for reasonable use.
-  // Endpoint: api.gdeltproject.org/api/v2/doc/doc
-
-  const CATEGORY_QUERIES = {
-    top:        "(world OR breaking) sourcelang:eng",
-    world:      "(world OR international OR foreign) sourcelang:eng",
-    business:   "(business OR economy OR markets OR earnings) sourcelang:eng",
-    tech:       "(technology OR AI OR software OR startup) sourcelang:eng",
-    science:    "(science OR research OR climate OR space) sourcelang:eng",
-    politics:   "(politics OR congress OR election OR policy) sourcelang:eng",
-    sports:     "(sports OR olympics OR football OR basketball) sourcelang:eng",
-    health:     "(health OR medicine OR vaccine OR pandemic) sourcelang:eng",
-    entertainment: "(entertainment OR film OR music OR celebrity) sourcelang:eng",
-  };
-
-  async function fetchGdeltArticles(query, limit) {
-    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(query)}&mode=ArtList&maxrecords=${limit}&format=json&sort=DateDesc`;
-    const r = await globalThis.fetch(url);
-    if (!r.ok) throw new Error(`GDELT ${r.status}`);
-    const data = await r.json();
-    return Array.isArray(data?.articles) ? data.articles : [];
-  }
-
   function mapGdeltArticle(a, idx, category) {
     return {
       id: `hl_${category}_${idx}`,
@@ -552,59 +678,72 @@ export default function registerNewsActions(registerLensAction) {
   registerLensAction("news", "headlines", async (_ctx, _artifact, params = {}) => {
     const category = String(params.category || "top");
     const limit = Math.min(50, Math.max(5, Number(params.limit) || 30));
-    const query = CATEGORY_QUERIES[category] || CATEGORY_QUERIES.top;
-    try {
-      const articles = await fetchGdeltArticles(query, limit);
-      const headlines = articles.map((a, i) => mapGdeltArticle(a, i, category));
-      return {
-        ok: true,
-        result: {
-          headlines,
-          category,
-          count: headlines.length,
-          source: "GDELT Project (real-time global news, no key required)",
-        },
-      };
-    } catch (e) {
-      return { ok: false, error: `headlines fetch failed: ${e?.message || "network"}` };
+    const key = CATEGORY_QUERIES[category] ? category : "top";
+    const { articles, cachedAt, stale, degradedReason } = await getGdeltArticles(key);
+    const headlines = articles.slice(0, limit).map((a, i) => mapGdeltArticle(a, i, category));
+    const result = {
+      headlines,
+      category,
+      count: headlines.length,
+      source: "GDELT Project (real-time global news, no key required)",
+    };
+    if (degradedReason) {
+      result.degraded = true;
+      result.degradedReason = degradedReason;
+      if (stale) { result.cachedAt = cachedAt; result.stale = true; }
     }
+    return { ok: true, result };
   });
 
   registerLensAction("news", "daily-briefing", async (ctx, _artifact, _params = {}) => {
     const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
     const greeting = `Good ${new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'} — here's what's happening today.`;
-    let tops = [], biz = [], tech = [], sci = [];
-    try {
-      [tops, biz, tech, sci] = await Promise.all([
-        fetchGdeltArticles(CATEGORY_QUERIES.world, 5),
-        fetchGdeltArticles(CATEGORY_QUERIES.business, 4),
-        fetchGdeltArticles(CATEGORY_QUERIES.tech, 4),
-        fetchGdeltArticles(CATEGORY_QUERIES.science, 3),
-      ]);
-    } catch (e) {
-      return { ok: false, error: `briefing fetch failed: ${e?.message || "network"}` };
+    // Each section starts its fetch now. Fetches that miss the budget keep
+    // running through the queue and fill the cache for the next call.
+    const sections = [
+      { key: "topStories", heading: "Top stories", category: "world", limit: 5 },
+      { key: "business", heading: "Business & markets", category: "business", limit: 4 },
+      { key: "tech", heading: "Technology", category: "tech", limit: 4 },
+      { key: "science", heading: "Science & health", category: "science", limit: 3 },
+    ];
+    const pending = sections.map((s) => getGdeltArticles(s.category));
+    const settled = await Promise.all(pending.map((p) => raceTimeout(p, gdelt.briefingBudgetMs, null)));
+    const briefing = { greeting, date: today };
+    const reasons = [];
+    let tallied = 0;
+    sections.forEach((s, i) => {
+      const got = settled[i];
+      const bullets = got ? got.articles.slice(0, s.limit).map(a => a.title).filter(Boolean) : [];
+      tallied += bullets.length;
+      const out = { heading: s.heading, bullets };
+      if (!got) {
+        out.unavailableReason = "budget_exceeded";
+        reasons.push("budget_exceeded");
+      } else if (got.degradedReason) {
+        out.degradedReason = got.degradedReason;
+        if (got.stale) { out.cachedAt = got.cachedAt; out.stale = true; }
+        if (!bullets.length) out.unavailableReason = got.degradedReason;
+        reasons.push(got.degradedReason);
+      }
+      briefing[s.key] = out;
+    });
+    briefing.closing = "That's the briefing. Read any story in full from the Headlines tab.";
+    briefing.source = "GDELT Project";
+    if (reasons.length) {
+      briefing.degraded = true;
+      briefing.degradedReason = reasons[0];
     }
-    const summarise = arr => arr.map(a => a.title).filter(Boolean);
-    let briefing = {
-      greeting, date: today,
-      topStories: { heading: "Top stories", bullets: summarise(tops) },
-      business: { heading: "Business & markets", bullets: summarise(biz) },
-      tech: { heading: "Technology", bullets: summarise(tech) },
-      science: { heading: "Science & health", bullets: summarise(sci) },
-      closing: "That's the briefing. Read any story in full from the Headlines tab.",
-      source: "GDELT Project",
-    };
     if (ctx?.llm?.chat) {
       try {
-        const llmRes = await ctx.llm.chat({
+        const llmRes = await raceTimeout(ctx.llm.chat({
           messages: [
             { role: "system", content: `Write a 1-sentence punchy closing for a news briefing. Output ONLY the sentence, no quotes.` },
-            { role: "user", content: `Briefing covered ${tops.length + biz.length + tech.length + sci.length} stories across world, business, tech, science.` },
+            { role: "user", content: `Briefing covered ${tallied} stories across world, business, tech, science.` },
           ],
           temperature: 0.7, maxTokens: 60, slot: "utility",
-        });
+        }), gdelt.llmClosingMs, null);
         const t = String(llmRes?.text || llmRes?.content || "").trim();
-        if (t && t.length < 200) briefing = { ...briefing, closing: t };
+        if (t && t.length < 200) briefing.closing = t;
       } catch (_e) { /* keep default */ }
     }
     return { ok: true, result: briefing };
