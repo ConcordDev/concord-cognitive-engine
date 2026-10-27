@@ -517,7 +517,7 @@ export function answerLongTaskRoute({ runMacro, ctx, prompt, route, lensActions 
   return { ...base, reply: longTaskStartedReply(r, prompt), toolCalls: [{ tool: "start_long_task", ok: !!r.ok, jobId: r.jobId || null, mode: r.mode || null, ...(r.ok ? {} : { error: r.reason }) }] };
 }
 
-export async function answerViaAgent({ runMacro, ctx, history = [], prompt, route, lensActions = null, memoryBlock = "", formulaDtus = [], recallDtus = [], knowledgeDtus = [], sessionId = null, selfContinue = undefined, deadlineMs = 0, chatTransport = null }) {
+export async function answerViaAgent({ runMacro, ctx, history = [], prompt, route, lensActions = null, memoryBlock = "", formulaDtus = [], recallDtus = [], knowledgeDtus = [], knowledgeStrong = false, sessionId = null, selfContinue = undefined, deadlineMs = 0, chatTransport = null }) {
   if (typeof runMacro !== "function" || !ctx?.db || !ctx?.actor?.userId || !route) return null;
   // Non-streaming chat: one deadline for every agent call below (gen-budget.js).
   // Design turns on the stream path pass a deadline too, plus the real transport,
@@ -537,7 +537,7 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
   if (status) return { reply: status, toolCalls: [], artifacts: [], sources: [], provider: null, model: null, linksRemoved: [], dtuRefsRemoved: [] };
   const fixed = deterministicRouteReply(route, prompt, history, memoryBlock);
   if (fixed) return { reply: fixed, toolCalls: [], artifacts: [], sources: [], provider: null, model: null, linksRemoved: [], dtuRefsRemoved: [] };
-  const agentHistory = agentHistoryWithNotes(history, { memoryBlock, formulaDtus, recallDtus, knowledgeDtus });
+  const agentHistory = agentHistoryWithNotes(history, { memoryBlock, formulaDtus, recallDtus, knowledgeDtus, knowledgeStrong });
   let r = null;
   try {
     r = await runMacro("chat_agent", "do", {
@@ -875,7 +875,7 @@ export function historyItemTitles(history = []) {
 }
 
 /** Chat memory first, then replayed turns, then this turn's DTU notes (formula / recall). */
-export function agentHistoryWithNotes(history, { memoryBlock = "", formulaDtus = [], recallDtus = [], knowledgeDtus = [] } = {}) {
+export function agentHistoryWithNotes(history, { memoryBlock = "", formulaDtus = [], recallDtus = [], knowledgeDtus = [], knowledgeStrong = false } = {}) {
   const out = [];
   if (memoryBlock) out.push(trustedNote(String(memoryBlock)));
   out.push(...(history || []).slice(-CHAT_HISTORY_TURNS));
@@ -886,7 +886,7 @@ export function agentHistoryWithNotes(history, { memoryBlock = "", formulaDtus =
     notes.push(`The user's own DTUs that may answer this (from their account; cite ids):\n${recallDtus.slice(0, 8)
       .map((d) => `- ${d.id} — ${String(d.title || "").slice(0, 120)}${d.summary ? `: ${String(d.summary).slice(0, 200)}` : ""}${d.createdAt ? ` (saved ${String(d.createdAt).slice(0, 10)})` : ""}`).join("\n")}`);
   }
-  const kb = knowledgeNote(knowledgeDtus);
+  const kb = knowledgeNote(knowledgeDtus, { strong: knowledgeStrong });
   if (kb) notes.push(kb);
   if (notes.length) out.push(trustedNote(notes.join("\n\n")));
   return out;
@@ -897,11 +897,14 @@ export function agentHistoryWithNotes(history, { memoryBlock = "", formulaDtus =
  * first). Chat's tool route used to get none, so DTU questions went to
  * web_search. Items: { id, title, tier, archived, body }.
  */
-export function knowledgeNote(dtus = []) {
+export const STRONG_NOTES_LINE = "These notes strongly match the question. Answer from these notes first; only search the web if they don't contain it.";
+
+export function knowledgeNote(dtus = [], { strong = false } = {}) {
   const list = (Array.isArray(dtus) ? dtus : []).filter((d) => d && d.id).slice(0, 8);
   if (!list.length) return "";
   const lines = list.map((d) => `- [${String(d.tier || "regular").toUpperCase()}${d.archived ? ", archived" : ""}] ${d.id} — ${String(d.title || "").slice(0, 120)}${d.body ? `: ${String(d.body).slice(0, 1200)}` : ""}`);
   return "CONCORD KNOWLEDGE (retrieved DTUs; MEGA and HYPER entries are consolidated syntheses of many DTUs and are listed first). "
     + "When the question is about Concord's DTUs or one of these answers it, answer from it without web_search and name the DTU title you used. Do not invent DTUs.\n"
+    + (strong ? `${STRONG_NOTES_LINE}\n` : "")
     + lines.join("\n");
 }

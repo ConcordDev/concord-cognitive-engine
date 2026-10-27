@@ -2406,7 +2406,7 @@ import {
   trimEmbeddingCache, getEmbeddingCacheSize, setLocalEmbedder, reprobeEmbeddings,
   embeddingEntries,
 } from "./embeddings.js";
-import { searchArchiveByVector, loadArchivedDtu, tierBoost as _dtuTierBoost, orderConsolidatedFirst } from "./lib/archive-retrieval.js";
+import { searchArchiveByVector, loadArchivedDtu, tierBoost as _dtuTierBoost, orderConsolidatedFirst, memberCount as _dtuMemberCount, strongDtuMatch } from "./lib/archive-retrieval.js";
 
 // One backfill at a time. Started at boot, when the CPU embedder is
 // registered as the fallback, and when a re-probe switches models.
@@ -22936,12 +22936,16 @@ async function retrieveDtuHits(query, { viewerId = null, topK = 8, timeoutMs = 3
   }
   for (const h of searchArchivedDtus(qv, { viewerId, topK })) hits.push({ ...h, archived: true });
   hits.sort((a, b) => b.score - a.score);
-  return orderConsolidatedFirst(hits.slice(0, topK * 2)).slice(0, topK);
+  return orderConsolidatedFirst(hits.slice(0, topK * 2), q).slice(0, topK);
 }
 
 /** Prompt block for an agent: one line per DTU, megas/hypers first. */
 function _dtuHitBody(d, maxChars) {
-  return _sanitizeDtuText(String(d.cretiHuman || d.human?.summary || (Array.isArray(d.core?.claims) ? d.core.claims.join("; ") : "") || "").slice(0, maxChars));
+  // The member count is the answer to "how many DTUs does this mega cluster";
+  // state it plainly rather than leave it inside boilerplate.
+  const _n = (d?.tier === "mega" || d?.tier === "hyper") ? _dtuMemberCount(d) : 0;
+  const _lead = _n ? `Members: ${_n} ${d.tier === "hyper" ? "mega" : "regular"} DTUs. ` : "";
+  return _lead + _sanitizeDtuText(String(d.cretiHuman || d.human?.summary || (Array.isArray(d.core?.claims) ? d.core.claims.join("; ") : "") || "").slice(0, maxChars));
 }
 // Megas/hypers are the compressed knowledge: give them a longer body.
 function _dtuHitChars(d, maxChars) {
@@ -28398,11 +28402,13 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
         } catch (_e) { logger.debug('server', 'chat dtu notes failed', { error: _e?.message }); }
         // Same DTU retrieval as ConKay (hot + archived, megas/hypers first).
         let _knowledgeDtus = [];
+        let _knowledgeStrong = false;
         if (_agentRouteKind === "lookup" || _agentRouteKind === "web" || _agentRouteKind === "dtu") {
           try {
             const _hits = await retrieveDtuHits(prompt, { viewerId: _agentCtx.actor.userId, topK: 6, timeoutMs: 1500 });
+            _knowledgeStrong = strongDtuMatch(_hits, prompt);
             _knowledgeDtus = _hits.map((h) => ({ id: h.dtu.id, title: h.dtu.title || "", tier: h.dtu.tier || "regular", archived: !!h.archived, body: _dtuHitBody(h.dtu, _dtuHitChars(h.dtu, 360)) }));
-            structuredLog("info", "chat_agent_dtu_context", { sessionId, route: _agentRouteKind, hits: _knowledgeDtus.length, consolidated: _knowledgeDtus.filter((k) => k.tier === "mega" || k.tier === "hyper").length, archived: _knowledgeDtus.filter((k) => k.archived).length, top: _knowledgeDtus[0]?.id || null });
+            structuredLog("info", "chat_agent_dtu_context", { sessionId, route: _agentRouteKind, hits: _knowledgeDtus.length, strong: _knowledgeStrong, consolidated: _knowledgeDtus.filter((k) => k.tier === "mega" || k.tier === "hyper").length, archived: _knowledgeDtus.filter((k) => k.archived).length, top: _knowledgeDtus[0]?.id || null });
           } catch (_e) { logger.debug('server', 'chat agent dtu context failed', { error: _e?.message }); }
         }
         // POST /api/chat (JSON) has one ~85s wall-clock budget (gen-budget.js)
@@ -28414,7 +28420,7 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
           : (_agentRouteKind === "design"
               ? { deadlineMs: _agentBudget.deadlineMs, chatTransport: _agentBudget.transport }
               : {});
-        const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind, lensActions: LENS_ACTIONS, memoryBlock: _chatMemory.text, formulaDtus: _formulaDtus, recallDtus: _recallDtus, knowledgeDtus: _knowledgeDtus, sessionId, ...(typeof input?.selfContinue === "boolean" ? { selfContinue: input.selfContinue } : {}), ..._agentDeadline });
+        const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind, lensActions: LENS_ACTIONS, memoryBlock: _chatMemory.text, formulaDtus: _formulaDtus, recallDtus: _recallDtus, knowledgeDtus: _knowledgeDtus, knowledgeStrong: _knowledgeStrong, sessionId, ...(typeof input?.selfContinue === "boolean" ? { selfContinue: input.selfContinue } : {}), ..._agentDeadline });
         if (_agentOut) {
           let _agentReply = visibleChatReply(_agentOut.reply, prompt);
           if (process.env.CONCORD_CHAT_HUMANIZE !== "0") {
@@ -49756,6 +49762,7 @@ try {
         count: hits.length,
         consolidated: hits.filter(h => h.dtu.tier === "mega" || h.dtu.tier === "hyper").length,
         archived: hits.filter(h => h.archived).length,
+        strong: strongDtuMatch(hits, message),
       };
     },
   });

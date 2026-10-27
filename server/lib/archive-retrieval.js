@@ -107,7 +107,38 @@ export function searchArchiveByVector({ queryVec, entries, isHot, load, allow = 
  * Order retrieval hits for an agent prompt: megas/hypers first, then by score.
  * @param {{ dtu: object, score: number }[]} hits
  */
-export function orderConsolidatedFirst(hits) {
+export function orderConsolidatedFirst(hits, query = "") {
   const rank = (d) => (d?.tier === "hyper" ? 0 : d?.tier === "mega" ? 1 : 2);
-  return [...(hits || [])].sort((a, b) => rank(a.dtu) - rank(b.dtu) || b.score - a.score);
+  // A DTU the question names by title goes first: otherwise every hyper
+  // outranked the mega the user asked about (cluster boilerplate embeds alike).
+  const named = (h) => (query && titleNamedIn(query, h.dtu) ? 0 : 1);
+  return [...(hits || [])].sort((a, b) => named(a) - named(b) || rank(a.dtu) - rank(b.dtu) || b.score - a.score);
+}
+
+const _norm = (t) => String(t || "").toLowerCase().replace(/[\u2018\u2019\u201c\u201d"'`]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+
+/** Title without the "MEGA — " / "HYPER — " / "Analogy:" prefixes, normalized. */
+export function coreTitle(d) {
+  let t = String(d?.title || "");
+  for (let i = 0; i < 4; i++) t = t.replace(/^\s*(?:MEGA|HYPER)\s*[—–-]\s*|^\s*Analogy:\s*/i, "");
+  return _norm(t);
+}
+
+/** True when the query contains the DTU's (core) title, at least 12 chars. */
+export function titleNamedIn(query, d) {
+  const t = coreTitle(d);
+  return t.length >= 12 && ` ${_norm(query)} `.includes(` ${t} `);
+}
+
+/** Member count of a mega/hyper (lineage parents, else promotedFrom). */
+export function memberCount(d) {
+  const p = d?.lineage?.parents;
+  if (Array.isArray(p) && p.length) return p.length;
+  const n = Number(d?.meta?.promotedFrom);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/** Retrieved DTUs answer the question when one is named or matches strongly. */
+export function strongDtuMatch(hits, query = "", minSim = 0.5) {
+  return (hits || []).some((h) => (Number(h?.sim) || 0) >= minSim || (query && titleNamedIn(query, h?.dtu)));
 }
