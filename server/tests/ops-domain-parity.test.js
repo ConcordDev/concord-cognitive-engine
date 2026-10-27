@@ -47,6 +47,15 @@ describe("ops legacy artifact macros", () => {
     const r = call("postmortemDraft", ctxA, { title: "API outage", severity: "sev2" });
     assert.equal(r.ok, true);
     assert.equal(r.result.sections.length, 5);
+    assert.equal(r.result.severity, "sev2");
+  });
+  it("postmortemDraft refuses a severity outside the allowlist", () => {
+    const bad = call("postmortemDraft", ctxA, { title: "API outage", severity: "critical" });
+    assert.equal(bad.ok, false);
+    assert.equal(bad.error, "invalid severity");
+    const omitted = call("postmortemDraft", ctxA, { title: "API outage" });
+    assert.equal(omitted.ok, true);
+    assert.equal(omitted.result.severity, "sev3");
   });
   it("escalationCheck flags a breach", () => {
     const r = call("escalationCheck", ctxA, { severity: "sev1", minutesOpen: 30 });

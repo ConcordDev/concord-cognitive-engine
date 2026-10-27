@@ -1075,11 +1075,13 @@ export default function registerInsuranceActions(register) {
       "other",
     );
     if (kind === undefined) return { ok: false, error: "invalid kind" };
+    const policyId = params.policyId ? String(params.policyId) : null;
+    if (policyId && !findPolicy(s, insAid(ctx), policyId)) return { ok: false, error: "policy not found" };
     const asset = {
       id: insId("ast"), name,
       kind,
       value: Math.max(0, insNum(params.value)),
-      policyId: params.policyId ? String(params.policyId) : null,
+      policyId,
       serialNumber: insClean(params.serialNumber, 60) || null,
       createdAt: insNow(),
     };

@@ -179,6 +179,24 @@ describe("insurance.beneficiaries + assets", () => {
     call("asset-add", ctxA, { name: "Engagement ring", kind: "jewelry", value: 8000 });
     assert.equal(call("asset-list", ctxA, {}).result.totalValue, 30000);
   });
+
+  it("asset-add refuses a policy the caller does not own", () => {
+    const missing = call("asset-add", ctxA, { name: "Ring", policyId: "pol_missing" });
+    assert.equal(missing.ok, false);
+    assert.equal(missing.error, "policy not found");
+    assert.equal(call("asset-list", ctxA, {}).result.assets.length, 0);
+    const theirs = newPolicy(ctxB);
+    const foreign = call("asset-add", ctxA, { name: "Ring", policyId: theirs.id });
+    assert.equal(foreign.ok, false);
+    assert.equal(foreign.error, "policy not found");
+    const mine = newPolicy(ctxA);
+    const ok = call("asset-add", ctxA, { name: "Ring", policyId: mine.id });
+    assert.equal(ok.ok, true);
+    assert.equal(ok.result.asset.policyId, mine.id);
+    const loose = call("asset-add", ctxA, { name: "Watch" });
+    assert.equal(loose.ok, true);
+    assert.equal(loose.result.asset.policyId, null);
+  });
 });
 
 describe("insurance.id-card + summaries", () => {
