@@ -1115,10 +1115,25 @@ export default function registerCouncilActions(registerLensAction) {
     const p = findProposal(s, params.id);
     if (!p) return { ok: false, error: "proposal not found" };
     const budget = (params.budget && typeof params.budget === "object") ? params.budget : (p.budget || { total: 0, items: [] });
+    if (budget.items != null && budget.items !== "" && !Array.isArray(budget.items)) {
+      return { ok: false, error: "invalid_input", field: "items", reason: "expected_array" };
+    }
     const items = Array.isArray(budget.items) ? budget.items : [];
+    if (items.length === 0) {
+      return {
+        ok: false,
+        error: "unavailable",
+        reason: "no_line_items",
+        message: "No budget line items to simulate. No projection was invented.",
+      };
+    }
     const itemBreakdown = items.map((item) => {
       const amount = Number(item.amount || item.cost || 0) || 0;
-      const variance = Number(item.variance || item.uncertainty || 0.15) || 0.15;
+      const givenVariance = item.variance != null && item.variance !== ""
+        ? Number(item.variance)
+        : (item.uncertainty != null && item.uncertainty !== "" ? Number(item.uncertainty) : null);
+      const varianceAssumed = givenVariance == null || !Number.isFinite(givenVariance);
+      const variance = varianceAssumed ? 0.15 : givenVariance;
       const low = amount * (1 - variance);
       const high = amount * (1 + variance);
       const expected = amount * (1 + variance * 0.1);
@@ -1129,6 +1144,7 @@ export default function registerCouncilActions(registerLensAction) {
         high: Math.round(high),
         expected: Math.round(expected),
         variance,
+        varianceAssumed,
       };
     });
     const totalBudgeted = items.reduce((sum, i) => sum + (Number(i.amount || i.cost || 0) || 0), 0) || Number(budget.total) || 0;
@@ -1139,15 +1155,12 @@ export default function registerCouncilActions(registerLensAction) {
     const risks = [];
     if (overBudgetRisk > 0.2) risks.push("high_cost_overrun_risk");
     if (items.some((i) => (Number(i.variance) || 0.15) > 0.3)) risks.push("high_variance_items_present");
-    if (items.length === 0) risks.push("no_line_items_for_analysis");
     const voters = p.voters && typeof p.voters === "object" ? p.voters : {};
     const voteValues = Object.values(voters);
     const approvalRate = voteValues.length > 0
       ? voteValues.filter((v) => C_VOTE_FOR.has(String(v))).length / voteValues.length
       : null;
-    const confidence = items.length > 0
-      ? Math.round(Math.max(0.3, 1 - items.reduce((sum, i) => sum + (Number(i.variance || i.uncertainty) || 0.15), 0) / items.length) * 100) / 100
-      : 0.5;
+    const confidence = Math.round(Math.max(0.3, 1 - items.reduce((sum, i) => sum + (Number(i.variance || i.uncertainty) || 0.15), 0) / items.length) * 100) / 100;
     const simulation = {
       projected: totalExpected,
       totalBudgeted,
