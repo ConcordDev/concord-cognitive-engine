@@ -13,7 +13,13 @@ import {
 const MAX_TICK_PER_PASS = Number(process.env.CONCORD_MISSION_MAX_TICK_PER_PASS) || 3;
 const SLOW_STEP_MS = 250;
 
+// Yield between steps so the cycle's ~3s of wall time is many short turns
+// of the event loop, not one long one (same pattern as creature-flock-cycle).
+const MISSION_BUDGET_MS = Number(process.env.CONCORD_MISSION_BUDGET_MS) || 1500;
+const yieldLoop = () => new Promise((r) => { setImmediate(r); });
+
 async function timedStep(name, fn) {
+  await yieldLoop();
   const start = performance.now();
   try {
     return await fn();
@@ -82,9 +88,13 @@ export async function runMissionRuntimeCycle({ db } = {}) {
     );
   } catch { /* optional */ }
 
+  const cycleStart = performance.now();
   const due = await timedStep("find_due_missions", () => findDueMissions(database, MAX_TICK_PER_PASS));
   const tickResults = [];
+  let deferred = 0;
   for (const mission of due) {
+    // Leave the rest for the next pass once this one has used its budget.
+    if (tickResults.length > 0 && performance.now() - cycleStart > MISSION_BUDGET_MS) { deferred++; continue; }
     try {
       const r = await timedStep(`tick_mission:${mission.id}`, () =>
         tickMission({
@@ -109,6 +119,7 @@ export async function runMissionRuntimeCycle({ db } = {}) {
     repoGraph,
     selfImprove,
     ticked: tickResults.length,
+    deferred,
     tickResults,
   };
 }

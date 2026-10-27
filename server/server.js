@@ -2417,7 +2417,57 @@ function _isReadReplicaEnv() {
   const v = String(process.env.CONCORD_READ_REPLICA || "").toLowerCase();
   return v === "1" || v === "true";
 }
+// Archive embedding backfill (lib/archive-embed-backfill.js): one small,
+// time-budgeted slice every CONCORD_ARCHIVE_EMBED_EVERY_MS (default 10s),
+// persisted cursor, runs under lowMemory, pauses when swap free < 500 MB.
+let _archiveEmbedTimer = null;
+let _archiveEmbedBusy = false;
+let _archiveEmbedStats = { slices: 0, embedded: 0, paused: 0, lastLogAt: 0, startedAt: 0 };
+function installArchiveEmbedBackfill() {
+  if (_archiveEmbedTimer || _isReadReplicaEnv() || process.env.CONCORD_ARCHIVE_EMBED === "0" || process.env.NODE_ENV === "test") return false;
+  const everyMs = Math.max(2000, Number(process.env.CONCORD_ARCHIVE_EMBED_EVERY_MS) || 10_000);
+  _archiveEmbedStats.startedAt = Date.now();
+  _archiveEmbedTimer = setInterval(async () => {
+    if (_archiveEmbedBusy || !db || !isEmbeddingAvailable()) return;
+    _archiveEmbedBusy = true;
+    try {
+      const mod = await import("./lib/archive-embed-backfill.js");
+      const r = await loopJobs.withJob("archive_embed_backfill", () => mod.runArchiveEmbedSlice({
+        db,
+        embedDTU,
+        // Live cache first (#1534), then the stored row: a memory trim can
+        // evict vectors from the cache that are still on disk.
+        hasEmbedding: (id) => {
+          if (getEmbedding(id)) return true;
+          try { return !!db.prepare(`SELECT 1 FROM ${getEmbeddingStatus(0).table || "embedding_cache"} WHERE dtu_id = ?`).get(id); } catch { return false; }
+        },
+        batch: Math.max(1, Number(process.env.CONCORD_ARCHIVE_EMBED_BATCH) || 12),
+        budgetMs: Math.max(200, Number(process.env.CONCORD_ARCHIVE_EMBED_BUDGET_MS) || 1500),
+        minSwapFreeMb: Number(process.env.CONCORD_ARCHIVE_EMBED_MIN_SWAP_MB) || 500,
+      }));
+      _archiveEmbedStats.slices++;
+      _archiveEmbedStats.embedded += r.embedded || 0;
+      if (r.paused) _archiveEmbedStats.paused++;
+      const now = Date.now();
+      if ((r.paused || now - _archiveEmbedStats.lastLogAt > 5 * 60_000) && !(r.done && _archiveEmbedStats.doneLogged)) {
+        _archiveEmbedStats.lastLogAt = now;
+        structuredLog("info", "archive_embed_progress", { ...r, totals: { ..._archiveEmbedStats } });
+      }
+      // Keep ticking when done: the slice is a no-op until its periodic
+      // rescan picks up rows archived since.
+      if (r.done && !_archiveEmbedStats.doneLogged) { _archiveEmbedStats.doneLogged = true; structuredLog("info", "archive_embed_done", { ..._archiveEmbedStats }); }
+      if (!r.done) _archiveEmbedStats.doneLogged = false;
+    } catch (e) {
+      structuredLog("warn", "archive_embed_error", { error: String(e?.message || e) });
+    } finally { _archiveEmbedBusy = false; }
+  }, everyMs);
+  _archiveEmbedTimer.unref?.();
+  structuredLog("info", "archive_embed_installed", { everyMs });
+  return true;
+}
+
 function startSemanticBackfill(trigger) {
+  try { installArchiveEmbedBackfill(); } catch { /* additive */ }
   if (_semanticBackfillRunning || !isEmbeddingAvailable() || !(STATE.dtus?.size > 0)) return false;
   if (_isReadReplicaEnv()) {
     structuredLog("info", "backfill_skipped", { trigger, reason: "read_replica" });
@@ -69082,7 +69132,13 @@ structuredLog("info", "module_loaded", { detail: "Atlas v2 Default-On: Write Gua
 
 // Embedding status
 app.get("/api/embeddings/status", asyncHandler(async (_req, res) => {
-  res.json({ ok: true, ...getEmbeddingStatus(STATE.dtus.size) });
+  let archive = null;
+  try {
+    const mod = await import("./lib/archive-embed-backfill.js");
+    const st = getEmbeddingStatus(STATE.dtus.size);
+    archive = { progress: mod.readProgress(db), coverage: mod.archiveCoverage(db, st.table || "embedding_cache"), run: { ..._archiveEmbedStats } };
+  } catch { archive = null; }
+  res.json({ ok: true, ...getEmbeddingStatus(STATE.dtus.size), archive });
 }));
 
 // Semantic search
