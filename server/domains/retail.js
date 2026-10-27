@@ -1970,6 +1970,7 @@ export default function registerRetailActions(registerLensAction) {
           creti: `${title}\n\nBrand: ${p.brands || "?"}\nCategory: ${(p.categories || "?").slice(0, 200)}\nBarcode: ${p.code}\nSource: Open Beauty Facts`,
           tags: ["retail", "feed", "product", "openbeautyfacts"],
           source: "openbeautyfacts-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { code: p.code, name: p.product_name, brands: p.brands },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }

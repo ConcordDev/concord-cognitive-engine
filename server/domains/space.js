@@ -233,6 +233,7 @@ export default function registerSpaceActions(registerLensAction) {
           creti: `${title}\n\nProvider: ${provider}\nNET: ${l.net || "TBD"}\nStatus: ${l.status?.name || "?"}\nPad: ${l.pad?.name || "?"}`,
           tags: ["space", "feed", "launch"],
           source: "launch-library-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { launchId: l.id, name: l.name, net: l.net, provider, status: l.status?.name },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(l.id); }

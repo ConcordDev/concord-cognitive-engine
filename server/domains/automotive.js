@@ -1610,6 +1610,7 @@ export default function registerAutomotiveActions(registerLensAction) {
           creti: `${rc.Component || "Recall"} - ${make} ${model} ${year}\nCampaign: ${id}\n\nSummary: ${String(rc.Summary || "").slice(0, 600)}\n\nRemedy: ${String(rc.Remedy || "").slice(0, 400)}`,
           tags: ["automotive", "feed", "recall", "nhtsa"],
           source: "nhtsa-recalls-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { campaign: id, make, model, year, component: rc.Component },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); seen.add(id); }

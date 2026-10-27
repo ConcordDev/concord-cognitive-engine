@@ -735,6 +735,7 @@ export default function registerCookingActions(registerLensAction) {
           creti: `${title}\n\nCuisine: ${m.strArea || "?"} · Category: ${m.strCategory || "?"}\n\nIngredients:\n${ings.map((x) => `- ${x}`).join("\n")}\n\n${m.strInstructions || ""}`.slice(0, 4000),
           tags: ["cooking", "feed", "recipe", "themealdb"],
           source: "themealdb-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { mealId: m.idMeal, name: m.strMeal, area: m.strArea, category: m.strCategory },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }

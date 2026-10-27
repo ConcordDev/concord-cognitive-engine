@@ -455,6 +455,7 @@ export default function registerAnswersActions(registerLensAction) {
           creti: `${title}\n\nScore: ${q.score} · Answers: ${q.answer_count}${q.is_answered ? " (answered)" : ""}\nTags: ${(q.tags || []).join(", ")}\n${q.link || ""}`,
           tags: ["answers", "feed", "stackoverflow", ...(q.tags || []).slice(0, 4)],
           source: "stack-exchange-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { questionId: q.question_id, score: q.score, answerCount: q.answer_count, isAnswered: q.is_answered, link: q.link, site },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(String(q.question_id)); }

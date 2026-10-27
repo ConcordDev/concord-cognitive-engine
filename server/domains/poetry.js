@@ -398,6 +398,7 @@ export default function registerPoetryActions(registerLensAction) {
           creti: `${p.title}\nby ${p.author}\n\n${body}`,
           tags: ["poetry", "feed", "public-domain"],
           source: "poetrydb-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { poemTitle: p.title, author: p.author, lineCount: Array.isArray(p.lines) ? p.lines.length : 0 },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(key); }

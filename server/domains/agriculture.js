@@ -2171,6 +2171,7 @@ export default function registerAgricultureActions(registerLensAction) {
           core: { claims: coreClaims },
           tags: ["agriculture", "feed", "crop-yield", "worldbank"],
           source: "worldbank-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { country, year: row.date, yieldKgHa: row.value },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }

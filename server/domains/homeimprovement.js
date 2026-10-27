@@ -738,6 +738,7 @@ export default function registerHomeImprovementActions(registerLensAction) {
           creti: `${title}\n\nHazard: ${hazard}\nRemedy: ${remedy}\nRecall date: ${rec.RecallDate || "?"}\nDescription: ${(rec.Description || "").replace(/<[^>]+>/g, "").slice(0, 600)}\nSource: U.S. Consumer Product Safety Commission`,
           tags: ["home-improvement", "feed", "product-recall", "cpsc"],
           source: "cpsc-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { recallId: rec.RecallID, product, hazard, recallDate: rec.RecallDate },
         });
         if (res?.ok && res.dtu) {

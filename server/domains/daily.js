@@ -642,6 +642,7 @@ export default function registerDailyActions(registerLensAction) {
           creti: `"${q.q || ""}"\n\n— ${q.a || "Unknown"}`,
           tags: ["daily", "feed", "inspiration", "quote"],
           source: "zenquotes-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { author: q.a, quote: q.q },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(key); }

@@ -1179,6 +1179,7 @@ export default function registerAstronomyActions(registerLensAction) {
           creti: `${a.title} (${a.date})\n\n${(a.explanation || "").slice(0, 1000)}\n\n${a.url || ""}`,
           tags: ["astronomy", "feed", "apod", "nasa"],
           source: "nasa-apod-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { date: a.date, mediaType: a.media_type, url: a.url },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); seen.add(id); }

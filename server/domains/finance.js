@@ -2122,6 +2122,7 @@ Generate the summary.`;
           creti: `${title}\n\n1 USD = ${rate} ${code}\nAs of: ${data.date}\nSource: European Central Bank reference rates (Frankfurter API)`,
           tags: ["finance", "feed", "forex", "ecb"],
           source: "frankfurter-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { base: "USD", quote: code, rate, date: data.date },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }

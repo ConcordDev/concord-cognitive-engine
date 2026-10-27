@@ -1424,6 +1424,7 @@ export default function registerFashionActions(registerLensAction) {
           creti: `${title}\n\nArtist/Maker: ${o.artistDisplayName || "Unknown"}\nDate: ${o.objectDate || "?"}\nMedium: ${o.medium || "?"}\nDepartment: ${o.department || "?"}\nCulture: ${o.culture || "?"}`,
           tags: ["fashion", "feed", "costume", "metmuseum"],
           source: "metmuseum-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { objectId: oid, title: o.title, medium: o.medium, imageUrl: o.primaryImageSmall || null },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }

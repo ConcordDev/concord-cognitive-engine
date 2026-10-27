@@ -1783,6 +1783,7 @@ export default function registerPharmacyActions(registerLensAction) {
           creti: `${title}\n\nClassification: ${rec.classification || "?"}\nStatus: ${rec.status || "?"}\nReason: ${rec.reason_for_recall || "?"}\nRecalling firm: ${rec.recalling_firm || "?"}\nDistribution: ${rec.distribution_pattern || "?"}\nReport date: ${rec.report_date || "?"}`.slice(0, 3500),
           tags: ["pharmacy", "feed", "drug-recall", "openfda", rec.classification].filter(Boolean),
           source: "openfda-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { recallNumber: rec.recall_number, classification: rec.classification, firm: rec.recalling_firm },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }

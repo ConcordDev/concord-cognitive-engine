@@ -893,6 +893,7 @@ export default function registerForestryActions(registerLensAction) {
           creti: `${title}\n\nType: ${inc.type || "?"}\nState: ${inc.state || inc.location || "?"}\nSize: ${inc.size || inc.acres || "?"} acres\nUpdated: ${inc.updated || inc.last_updated || "?"}`,
           tags: ["forestry", "feed", "wildfire", "inciweb"],
           source: "inciweb-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { incidentId: id, name, type: inc.type, state: inc.state, size: inc.size || inc.acres },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }

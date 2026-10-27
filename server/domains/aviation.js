@@ -1402,6 +1402,7 @@ export default function registerAviationActions(registerLensAction) {
           creti: `${title}\nICAO24: ${st[0]}\nAltitude: ${st[7] != null ? Math.round(st[7]) + " m" : "?"}\nVelocity: ${st[9] != null ? Math.round(st[9]) + " m/s" : "?"}\nPosition: ${st[6]}, ${st[5]}`,
           tags: ["aviation", "feed", "flight", "opensky"],
           source: "opensky-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { icao24: st[0], callsign, originCountry: st[2], lat: st[6], lon: st[5], altitude: st[7] },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); seen.add(key); }

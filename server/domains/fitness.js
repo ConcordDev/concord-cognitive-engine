@@ -2309,6 +2309,7 @@ Generate the plan.`;
           creti: `${title}\n\n${desc || "An exercise from the wger open workout database."}`.slice(0, 3000),
           tags: ["fitness", "feed", "exercise", "wger"],
           source: "wger-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { exerciseId: ex.id, uuid: ex.uuid, name },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }

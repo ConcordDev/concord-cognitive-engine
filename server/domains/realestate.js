@@ -1656,6 +1656,7 @@ export default function registerRealEstateActions(registerLensAction) {
           creti: `${title}\n\nMedian owner-occupied home value: $${median.toLocaleString()}\nSource: US Census Bureau American Community Survey 1-Year (B25077_001E)`,
           tags: ["realestate", "feed", "home-value", "census"],
           source: "census-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { state: name, fips: stateFips, medianValue: median, year: 2023 },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }

@@ -903,6 +903,7 @@ export default function registerEmergencyServicesActions(registerLensAction) {
           creti: `${title}\n\nMagnitude: ${p.mag}\nLocation: ${p.place || "?"}\nTime: ${p.time ? new Date(p.time).toISOString() : "?"}\nTsunami flag: ${p.tsunami ? "YES" : "no"}\nSource: USGS Earthquake Hazards Program`,
           tags: ["emergency-services", "feed", "earthquake", "usgs"],
           source: "usgs-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { quakeId: q.id, magnitude: p.mag, place: p.place, time: p.time, tsunami: p.tsunami },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
