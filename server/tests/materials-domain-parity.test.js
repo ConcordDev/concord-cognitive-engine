@@ -36,6 +36,35 @@ function seedShortlist(ctx) {
   });
 }
 
+describe("materials.corrosionRisk", () => {
+  function run(data) {
+    const fn = ACTIONS.get("materials.corrosionRisk");
+    return fn(ctxA, { id: null, data, meta: {} }, {});
+  }
+
+  it("keeps the metal rate card when the service is named", () => {
+    // metal 40 + titanium 35 − marine 25 = 50
+    const r = run({ material: "titanium", category: "metal", environment: "marine", temperature: 25, humidity: 50 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.corrosionResistance, 50);
+    assert.equal(r.result.riskLevel, "moderate");
+    assert.equal(r.result.reason, undefined);
+  });
+
+  it("does not score an unknown category as 50 or assume indoor metal", () => {
+    const unknown = run({ material: "unobtainium", category: "aerogel", environment: "marine", temperature: 25, humidity: 50 });
+    assert.equal(unknown.ok, true);
+    assert.equal(unknown.result.corrosionResistance, null);
+    assert.equal(unknown.result.riskLevel, null);
+    assert.equal(unknown.result.reason, "not_recorded");
+    assert.deepEqual(unknown.result.unavailable, ["category"]);
+
+    const omitted = run({ material: "titanium", temperature: 25, humidity: 50 });
+    assert.equal(omitted.result.corrosionResistance, null);
+    assert.deepEqual(omitted.result.unavailable, ["category", "environment"]);
+  });
+});
+
 describe("materials.ashby-plot", () => {
   it("builds a 2D selection scatter with a material index", () => {
     seedShortlist(ctxA);

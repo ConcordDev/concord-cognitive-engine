@@ -54,8 +54,24 @@ describe("energy — pure-compute calc contracts (exact computed values)", () =>
     assert.ok(r.result.message.includes("Add energy readings"));
   });
 
-  it("solarEstimate: panel/system sizing + payback (defaults)", async () => {
+  it("solarEstimate: empty site is not a canned house", async () => {
     const r = await lensRun("energy", "solarEstimate", { data: {} });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.maxPanels, null);
+    assert.equal(r.result.systemSizeKW, null);
+    assert.equal(r.result.monthlyProductionKWh, null);
+    assert.equal(r.result.coveragePercent, null);
+    assert.equal(r.result.estimatedCost, null);
+    assert.equal(r.result.afterTaxCredit, null);
+    assert.equal(r.result.annualSavings, null);
+    assert.equal(r.result.paybackYears, null);
+    assert.equal(r.result.recommendation, null);
+    assert.equal(r.result.reason, "not_recorded");
+    assert.deepEqual(r.result.unavailable, ["roofAreaSqFt", "peakSunHours", "monthlyUsageKWh"]);
+  });
+
+  it("solarEstimate: panel/system sizing + payback for a recorded site", async () => {
+    const r = await lensRun("energy", "solarEstimate", { data: { roofAreaSqFt: 1000, peakSunHours: 5, monthlyUsageKWh: 900 } });
     assert.equal(r.ok, true);
     assert.equal(r.result.maxPanels, 38);             // floor(1000*0.7/18)
     assert.equal(r.result.systemSizeKW, 15.2);        // 38*400/1000

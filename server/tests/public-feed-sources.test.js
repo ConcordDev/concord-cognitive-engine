@@ -8,13 +8,16 @@ import {
   backfillPublicFeedItems, asPublicFeedMember,
 } from "../lib/public-feed-sources.js";
 import { consolidatedVisibility, backfillConsolidatedVisibility } from "../lib/consolidated-visibility.js";
+import { runAsFeedIngest } from "../lib/feed-ingest-provenance.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, "..");
 
 const feedRow = (id, extra = {}) => ({
   id, tier: "regular", source: "crossref-feed", tags: ["paper", "feed", "crossref"],
-  visibility: "private", scope: "local", federation_tier: "local", ownerId: "user_feed", ...extra,
+  visibility: "private", scope: "local", federation_tier: "local", ownerId: "user_feed",
+  meta: { feedIngest: { domain: "paper", action: "feed", source: extra.source || "crossref-feed", at: "2026-10-27T20:00:00.000Z" } },
+  ...extra,
 });
 
 test("every *-feed dtu.create source in server/domains is classified, and public ones are saved public", () => {
@@ -104,7 +107,7 @@ test("consolidated backfill opens a gap-promotion mega that inherited a user own
 
 test("server.js gives public feed items the personal-save bar at both council gates and runs the backfill with an off switch", () => {
   const src = fs.readFileSync(path.join(root, "server.js"), "utf8");
-  assert.ok(src.includes('const _publicFeedItem = isPublicFeedSource(source) && dtu.visibility === "public";'));
+  assert.ok(src.includes('const _publicFeedItem = isPublicFeedSource(source) && dtu.visibility === "public" && !!currentFeedIngest();'));
   assert.equal(src.split("...(_publicFeedItem ? { minScore: 1 } : {})").length - 1, 2, "dtu.create gate and pipelineCommitDTU");
   assert.ok(src.includes('process.env.PUBLIC_FEED_BACKFILL'));
   assert.ok(src.includes('structuredLog("info", "public_feed_backfill", fb);'));
@@ -121,14 +124,14 @@ describe("dtu.create through the macro runtime", () => {
   });
 
   it("a public feed item is saved public/global and another user can read and list it", async () => {
-    const r = await runMacro("dtu", "create", {
+    const r = await runAsFeedIngest({ domain: "paper", action: "feed" }, () => runMacro("dtu", "create", {
       title: "A public Crossref work for the feed rule test",
       creti: "A public Crossref work\n\nAuthors: A. Author\nVenue: Journal\nDOI: 10.0000/feedrule",
       tags: ["paper", "feed", "crossref"],
       source: "crossref-feed",
       visibility: "public", visibilityScope: "global",
       meta: { doi: "10.0000/feedrule" },
-    }, userCtx("user_feed_runner"));
+    }, userCtx("user_feed_runner")));
     assert.equal(r.ok, true, JSON.stringify(r).slice(0, 300));
     const d = STATE.dtus.get(r.dtu.id);
     assert.equal(d.visibility, "public");

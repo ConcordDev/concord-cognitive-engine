@@ -13,9 +13,15 @@ import { useState } from 'react';
 import { Sun, Leaf, Zap } from 'lucide-react';
 import { CalcPanel } from '@/components/lens-primitives/CalcPanel';
 
-interface SolarInput { roofAreaSqFt: number; peakSunHours: number; monthlyUsageKWh: number }
+interface SolarInput { roofAreaSqFt: number | ''; peakSunHours: number | ''; monthlyUsageKWh: number | '' }
 interface CarbonInput { electricityKWh: number; naturalGasTherms: number; gasolineGallons: number; flightMiles: number }
-interface SolarResult { roofArea?: number; maxPanels?: number; systemSizeKW?: number; monthlyProductionKWh?: number; coveragePercent?: number; estimatedCost?: number; afterTaxCredit?: number; annualSavings?: number; paybackYears?: number; recommendation?: string }
+interface SolarResult {
+  roofArea?: number | null; maxPanels?: number | null; systemSizeKW?: number | null;
+  monthlyProductionKWh?: number | null; coveragePercent?: number | null;
+  estimatedCost?: number | null; afterTaxCredit?: number | null; annualSavings?: number | null;
+  paybackYears?: number | null; recommendation?: string | null;
+  reason?: string | null; unavailable?: string[];
+}
 interface CarbonResult { breakdown?: Record<string, number>; totalMetricTons?: number; annualEstimate?: number; vsUSAverage?: string; topSource?: string; reductionTips?: string[] }
 
 const coverageColour = (pct?: number) => {
@@ -26,7 +32,7 @@ const coverageColour = (pct?: number) => {
 };
 
 export function SolarCarbonPanel() {
-  const [solar, setSolar] = useState<SolarInput>({ roofAreaSqFt: 0, peakSunHours: 0, monthlyUsageKWh: 0 });
+  const [solar, setSolar] = useState<SolarInput>({ roofAreaSqFt: '', peakSunHours: '', monthlyUsageKWh: '' });
   const [carbon, setCarbon] = useState<CarbonInput>({ electricityKWh: 0, naturalGasTherms: 0, gasolineGallons: 0, flightMiles: 0 });
 
   return (
@@ -44,11 +50,11 @@ export function SolarCarbonPanel() {
             <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Sun className="h-3 w-3" />Solar inputs</div>
             <div className="grid grid-cols-1 gap-2">
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Roof area (sq ft)</span>
-                <input type="number" min={100} max={10000} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={solar.roofAreaSqFt} onChange={(e) => setSolar({ ...solar, roofAreaSqFt: Math.max(100, Math.min(10000, Number(e.target.value) || 1000)) })} /></label>
+                <input type="number" min={100} max={10000} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={solar.roofAreaSqFt} onChange={(e) => setSolar({ ...solar, roofAreaSqFt: e.target.value === '' ? '' : Number(e.target.value) })} /></label>
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Peak sun hours (avg/day)</span>
-                <input type="number" min={1} max={10} step={0.1} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={solar.peakSunHours} onChange={(e) => setSolar({ ...solar, peakSunHours: Math.max(1, Math.min(10, Number(e.target.value) || 5)) })} /></label>
+                <input type="number" min={1} max={10} step={0.1} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={solar.peakSunHours} onChange={(e) => setSolar({ ...solar, peakSunHours: e.target.value === '' ? '' : Number(e.target.value) })} /></label>
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Monthly usage (kWh)</span>
-                <input type="number" min={100} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={solar.monthlyUsageKWh} onChange={(e) => setSolar({ ...solar, monthlyUsageKWh: Math.max(100, Number(e.target.value) || 900) })} /></label>
+                <input type="number" min={100} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={solar.monthlyUsageKWh} onChange={(e) => setSolar({ ...solar, monthlyUsageKWh: e.target.value === '' ? '' : Number(e.target.value) })} /></label>
             </div>
           </div>
         ),
@@ -79,20 +85,23 @@ export function SolarCarbonPanel() {
             {!solarResult && <div className="text-[11px] text-zinc-400">Analyze to estimate.</div>}
             {solarResult && (
               <div className="space-y-2 text-[11px]">
+                {solarResult.reason === 'not_recorded' && (
+                  <div className="text-zinc-400">Site not recorded{solarResult.unavailable?.length ? `: ${solarResult.unavailable.join(', ')}` : ''}.</div>
+                )}
                 <div className="flex items-baseline gap-2">
-                  <span className={`font-mono text-2xl ${coverageColour(solarResult.coveragePercent)}`}>{solarResult.coveragePercent}%</span>
+                  <span className={`font-mono text-2xl ${coverageColour(solarResult.coveragePercent ?? undefined)}`}>{typeof solarResult.coveragePercent === 'number' ? `${solarResult.coveragePercent}%` : '—'}</span>
                   <span className="text-zinc-400">of usage covered</span>
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
-                  <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">System</div><div className="font-mono text-yellow-200">{solarResult.systemSizeKW} kW</div></div>
-                  <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Panels</div><div className="font-mono text-yellow-200">{solarResult.maxPanels}</div></div>
-                  <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Production</div><div className="font-mono text-yellow-200">{solarResult.monthlyProductionKWh} kWh/mo</div></div>
-                  <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Savings</div><div className="font-mono text-emerald-200">${solarResult.annualSavings}/yr</div></div>
+                  <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">System</div><div className="font-mono text-yellow-200">{typeof solarResult.systemSizeKW === 'number' ? `${solarResult.systemSizeKW} kW` : '—'}</div></div>
+                  <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Panels</div><div className="font-mono text-yellow-200">{typeof solarResult.maxPanels === 'number' ? solarResult.maxPanels : '—'}</div></div>
+                  <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Production</div><div className="font-mono text-yellow-200">{typeof solarResult.monthlyProductionKWh === 'number' ? `${solarResult.monthlyProductionKWh} kWh/mo` : '—'}</div></div>
+                  <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Savings</div><div className="font-mono text-emerald-200">{typeof solarResult.annualSavings === 'number' ? `$${solarResult.annualSavings}/yr` : '—'}</div></div>
                 </div>
                 <div className="rounded border border-yellow-500/20 bg-zinc-950/40 px-2 py-1">
                   <div className="text-[9px] text-zinc-400">Cost</div>
-                  <div className="font-mono text-yellow-200">${solarResult.estimatedCost?.toLocaleString()} <span className="text-[9px] text-zinc-400">(after 30% credit: ${solarResult.afterTaxCredit?.toLocaleString()})</span></div>
-                  <div className="text-[10px] text-zinc-400">Payback: ~{solarResult.paybackYears} years</div>
+                  <div className="font-mono text-yellow-200">{typeof solarResult.estimatedCost === 'number' ? `$${solarResult.estimatedCost.toLocaleString()}` : '—'} <span className="text-[9px] text-zinc-400">(after 30% credit: {typeof solarResult.afterTaxCredit === 'number' ? `$${solarResult.afterTaxCredit.toLocaleString()}` : '—'})</span></div>
+                  <div className="text-[10px] text-zinc-400">Payback: {typeof solarResult.paybackYears === 'number' ? `~${solarResult.paybackYears} years` : '—'}</div>
                 </div>
               </div>
             )}

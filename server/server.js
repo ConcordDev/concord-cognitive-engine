@@ -2411,6 +2411,7 @@ import {
 } from "./embeddings.js";
 import { consolidatedVisibility, applyConsolidatedVisibility, absorbVisibility, backfillConsolidatedVisibility } from "./lib/consolidated-visibility.js";
 import { isPublicFeedSource, backfillPublicFeedItems, asPublicFeedMember } from "./lib/public-feed-sources.js";
+import { wrapFeedIngestHandler, currentFeedIngest, stripFeedIngestMarker, feedIngestMarkerFor, isQuarantined, isOpenVisibility, quarantineVisibility, revertUnprovenPublicFeedItems, hideQuarantinedRows, privatizeUserSourcedRows, recloseConsolidatedNodes } from "./lib/feed-ingest-provenance.js";
 import { searchArchiveByVector, loadArchivedDtu, tierBoost as _dtuTierBoost, orderConsolidatedFirst, memberCount as _dtuMemberCount, strongDtuMatch } from "./lib/archive-retrieval.js";
 
 // One backfill at a time. Started at boot, when the CPU embedder is
@@ -3426,6 +3427,7 @@ import {
 async function gracefulShutdown(signal) {
   if (isShuttingDown) return;
   isShuttingDown = true;
+  const _shutdownT0 = Date.now();
   // Before server.close and before db.close. A request that still reaches
   // the app from here on is 503 shutting_down; one already past the
   // middleware keeps running until the inflight window below.
@@ -3630,6 +3632,14 @@ async function gracefulShutdown(signal) {
   // with drained=false, the pending count, and elapsed ms — not a clean
   // drain. ms is subtracted from SHUTDOWN_TIMEOUT_MS below so the wait
   // stays inside the kill_timeout budget.
+  // launchd SIGKILLs ~5-7 s after SIGTERM (deploy logs: "primary gone after
+  // 6s"/"7s"). At 15:14 and 15:25 ET the state save took 3.2 s, then the
+  // 2 s feed flush waited on 1 pending job and the process was killed
+  // before db.close ever ran. Both waits below are capped so db.close
+  // starts by SHUTDOWN_CLOSE_DEADLINE_MS (4000) after the signal; a write
+  // that lands after the close spills and replays instead.
+  const _closeDeadline = Number(process.env.SHUTDOWN_CLOSE_DEADLINE_MS ?? 4000);
+  const _closeLeftMs = () => Math.max(0, (Number.isFinite(_closeDeadline) ? _closeDeadline : 4000) - (Date.now() - _shutdownT0));
   // Background work already in flight (a heartbeat tick, a late LLM reply)
   // can still write a DTU and its lens artifacts. Wait, bounded, until the
   // stores have been quiet briefly before the DB closes; a write that still
@@ -3638,8 +3648,10 @@ async function gracefulShutdown(signal) {
   try {
     const quietMs = Number(process.env.SHUTDOWN_WRITE_QUIET_MS ?? 400);
     const budgetMs = Number(process.env.SHUTDOWN_WRITE_QUIET_BUDGET_MS ?? 1500);
-    const q = await waitForWriteQuiet({ quietMs: Number.isFinite(quietMs) ? quietMs : 400, budgetMs: Number.isFinite(budgetMs) ? budgetMs : 1500 });
-    structuredLog(q.quiet ? "info" : "warn", "shutdown_writes_quiet", { waited_ms: q.waitedMs, quiet: q.quiet });
+    // Keep 1 s of the close deadline for the feed flush below.
+    const budget = Math.min(Number.isFinite(budgetMs) ? budgetMs : 1500, Math.max(0, _closeLeftMs() - 1000));
+    const q = await waitForWriteQuiet({ quietMs: Number.isFinite(quietMs) ? quietMs : 400, budgetMs: budget });
+    structuredLog(q.quiet ? "info" : "warn", "shutdown_writes_quiet", { waited_ms: q.waitedMs, quiet: q.quiet, budget_ms: budget, since_signal_ms: Date.now() - _shutdownT0 });
   } catch (e) {
     structuredLog("warn", "shutdown_writes_quiet_failed", { error: e?.message });
   }
@@ -3656,7 +3668,7 @@ async function gracefulShutdown(signal) {
         structuredLog("warn", "shutdown_repair_observations_flush_failed", { error: e?.message });
       }
       const flushBudget = Number(process.env.FEED_SHUTDOWN_FLUSH_MS ?? 2000);
-      const timeoutMs = Number.isFinite(flushBudget) ? Math.max(0, flushBudget) : 2000;
+      const timeoutMs = Math.min(Number.isFinite(flushBudget) ? Math.max(0, flushBudget) : 2000, _closeLeftMs());
       const flushStart = _feedClock();
       structuredLog("info", "shutdown_feed_flushing", {
         timeoutMs,
@@ -6289,6 +6301,34 @@ function reconcileIndices() {
 // Run index reconciliation every 4 hours
 throttledInterval(() => reconcileIndices(), 4 * 60 * 60 * 1000, "index_reconciliation");
 _unrefInTest(setTimeout(() => reconcileIndices(), 120000)); // 2 min after startup
+// One-time consolidated-title cleanup (2026-10-27): nested "MEGA — MEGA —",
+// "MEGA:" prefixes, regulars titled "MEGA —"/"HYPER —", duplicate titles.
+// Applied through STATE.dtus.set (the app's write-through path), logged to
+// ~/concord/run/mega-title-cleanup-20261027.json first; skipped if that log
+// exists. CONCORD_TITLE_CLEANUP_UNDO=1 restores from the log;
+// CONCORD_TITLE_CLEANUP_20261027=0 disables.
+_unrefInTest(setTimeout(async () => {
+  if (process.env.CONCORD_TITLE_CLEANUP_20261027 === "0" || process.env.NODE_ENV === "test") return;
+  try {
+    const { runTitleCleanup, runNarrowRepair } = await import("./lib/consolidation-title-cleanup.js");
+    const _fs = await import("node:fs");
+    const _os = await import("node:os");
+    const logPath = process.env.CONCORD_TITLE_CLEANUP_LOG || path.join(_os.homedir(), "concord", "run", "mega-title-cleanup-20261027.json");
+    const _fsm = _fs.default || _fs;
+    const _undo = process.env.CONCORD_TITLE_CLEANUP_UNDO === "1";
+    // Rule narrowed to system-made rows: first undo what the earlier run did
+    // to anything else (its own log, once), then the normal run/undo.
+    if (!_undo) {
+      const repairPath = logPath.replace(/\.json$/, "") + "-narrow-repair.json";
+      const rr = runNarrowRepair({ store: STATE.dtus, logPath, repairPath, fs: _fsm, log: structuredLog });
+      structuredLog("info", "mega_title_cleanup_narrow_repair_result", rr);
+    }
+    const r = runTitleCleanup({ store: STATE.dtus, logPath, undo: _undo, fs: _fsm, log: structuredLog });
+    structuredLog("info", "mega_title_cleanup_result", r);
+  } catch (e) {
+    structuredLog("error", "mega_title_cleanup_failed", { error: String(e?.message || e) });
+  }
+}, 150000));
 
 // ---- End semantic query expansion ----
 
@@ -13927,6 +13967,35 @@ try {
 // whose source is an allowlisted public feed and that carry the "feed" tag
 // (lib/public-feed-sources.js). Off switch: PUBLIC_FEED_BACKFILL=off.
 const _publicFeedBackfillOn = String(process.env.PUBLIC_FEED_BACKFILL || "on").toLowerCase() !== "off";
+// Security follow-up (2026-10-27): source + "feed" tag are caller-controlled.
+// Rows the backfill above opened without the server-only meta.feedIngest
+// marker go back to private; quarantine:* rows are closed; user-sourced rows
+// with no visibility become private; megas/hypers opened by the member rule
+// are re-checked (tighten only). Always runs, through STATE.dtus.set.
+{
+  try {
+    const _nodes = () => Array.from(STATE.dtus.values());
+    const _persist = (d) => STATE.dtus.set(d.id, d);
+    const rv = revertUnprovenPublicFeedItems({ nodes: _nodes(), persist: _persist });
+    structuredLog("info", "public_feed_provenance_revert", { ...rv, revertedIds: rv.revertedIds.slice(0, 20) });
+    const qh = hideQuarantinedRows({ nodes: _nodes(), persist: _persist });
+    structuredLog("info", "quarantine_visibility_hide", qh);
+    const us = privatizeUserSourcedRows({ nodes: _nodes(), persist: _persist });
+    structuredLog("info", "user_sourced_visibility_default", us);
+    const rc = recloseConsolidatedNodes({
+      nodes: _nodes(),
+      loadMember: (id) => {
+        const m = STATE.dtus.get(id) || loadArchivedDtu(db, id);
+        return m && _publicFeedBackfillOn ? asPublicFeedMember(m) : m;
+      },
+      persist: _persist,
+    });
+    structuredLog("info", "consolidated_visibility_reclose", { ...rc, closedIds: rc.closedIds.slice(0, 50) });
+    if (rv.reverted + qh.hidden + us.privatized + rc.closed > 0) saveStateDebounced();
+  } catch (e) {
+    structuredLog("warn", "public_feed_provenance_failed", { error: String(e?.message || e) });
+  }
+}
 if (_publicFeedBackfillOn) {
   try {
     const fb = backfillPublicFeedItems({ nodes: Array.from(STATE.dtus.values()), persist: (d) => STATE.dtus.set(d.id, d) });
@@ -25076,6 +25145,7 @@ const PUBLIC_LATTICE = {
 function publishDTU(dtuId) {
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "DTU not found" };
+  if (isQuarantined(dtu)) return { ok: false, error: "quarantined", message: "Quarantined DTUs cannot be published." };
 
   PUBLIC_LATTICE.publishedDTUs.add(dtuId);
   PUBLIC_LATTICE.enabled = true;
@@ -25098,7 +25168,7 @@ function getPublicDTU(dtuId) {
   }
 
   const dtu = STATE.dtus.get(dtuId);
-  if (!dtu) return { ok: false, error: "DTU not found" };
+  if (!dtu || isQuarantined(dtu)) return { ok: false, error: "DTU not found" };
 
   // Return sanitized public view
   return {
@@ -25118,7 +25188,7 @@ function getPublicDTU(dtuId) {
 function listPublicDTUs() {
   const dtus = Array.from(PUBLIC_LATTICE.publishedDTUs)
     .map(id => STATE.dtus.get(id))
-    .filter(Boolean)
+    .filter(d => d && !isQuarantined(d))
     .map(d => ({ id: d.id, title: d.title, tier: d.tier, updatedAt: d.updatedAt }));
 
   return { ok: true, dtus, count: dtus.length };
@@ -25128,7 +25198,7 @@ function generatePublicFeed() {
   // Generate RSS/Atom feed for public lattice
   const dtus = Array.from(PUBLIC_LATTICE.publishedDTUs)
     .map(id => STATE.dtus.get(id))
-    .filter(Boolean)
+    .filter(d => d && !isQuarantined(d))
     .sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""))
     .slice(0, 20);
 
@@ -26335,7 +26405,13 @@ register("dtu", "create", async (ctx, input) => {
   const tier = input.tier && ["regular","mega","hyper"].includes(input.tier) ? input.tier : "regular";
   const lineage = Array.isArray(input.lineage) ? input.lineage : [];
   const source = input.source || "local";
-  const meta = input.meta && typeof input.meta === "object" ? input.meta : {};
+  // meta.feedIngest is server-only: a caller-supplied one is always dropped,
+  // and it is stamped only while a lens feed action is running.
+  const meta = stripFeedIngestMarker(input.meta && typeof input.meta === "object" ? input.meta : {});
+  {
+    const _fiMarker = feedIngestMarkerFor(source);
+    if (_fiMarker) meta.feedIngest = _fiMarker;
+  }
   const allowRewrite = input.allowRewrite !== false;
 
   // ── Usage Rights Enforcement: check parent DTU consent OR license ──
@@ -26614,6 +26690,9 @@ register("dtu", "create", async (ctx, input) => {
     domain: input.domain || input.lens || meta?.lens || null,
   };
 
+  // quarantine:* (e.g. the injection scan above) is never public.
+  if (isQuarantined(dtu) && isOpenVisibility(dtu.visibility)) dtu.visibility = quarantineVisibility(dtu);
+
   // ── Content class + purchase-scoped license (dtu-content-classes / dtu-licenses) ──
   // Infer industry class so council admission is class-aware (media need not
   // carry academic core). Stamp license scopes the creator declared.
@@ -26707,7 +26786,7 @@ register("dtu", "create", async (ctx, input) => {
   // but is a reference record (title + source fields), not authored
   // knowledge: it keeps the personal-save bar instead of the public-promotion
   // bar, which every feed item (academic score 0) would fail.
-  const _publicFeedItem = isPublicFeedSource(source) && dtu.visibility === "public";
+  const _publicFeedItem = isPublicFeedSource(source) && dtu.visibility === "public" && !!currentFeedIngest();
   const gate = councilGate(dtu, {
     allowRewrite,
     userInitiated: isUserInitiated,
@@ -26970,6 +27049,11 @@ register("dtu", "update", async (ctx, input) => {
   }
   if (input.creti !== undefined) updated.creti = String(input.creti);
   if (input.tags !== undefined) updated.tags = Array.isArray(input.tags) ? input.tags.slice(0, 40) : existing.tags;
+  // A user edit cannot lift a quarantine: quarantine:* tags survive the edit.
+  if (input.tags !== undefined && !["owner", "admin", "founder"].includes(ctx?.actor?.role || "")) {
+    const _q = (Array.isArray(existing.tags) ? existing.tags : []).filter((t) => typeof t === "string" && t.toLowerCase().startsWith("quarantine:"));
+    for (const t of _q) if (!updated.tags.includes(t)) updated.tags.push(t);
+  }
   // Tier changes require admin role - prevent gaming via direct update
   if (input.tier !== undefined && ["regular", "mega", "hyper"].includes(input.tier)) {
     const role = ctx?.actor?.role || "guest";
@@ -27191,7 +27275,9 @@ register("dtu", "list", async (ctx, input) => {
         const postFilter = Boolean(domainWant || kindWant);
         const pageComplete = sidecarCandidatePageIsComplete(r, offset);
         if (!fallback && r && r.ok && Array.isArray(r.dtus) && (!postFilter || pageComplete)) {
-          const narrowed = narrowListedDtus(r.dtus);
+          // quarantine:* rows are never listed to anyone but their owner
+          // (lib/dtu-read-access.js); the sidecar filter predates that rule.
+          const narrowed = narrowListedDtus(r.dtus.filter((d) => !(isQuarantined(d) && privateDtuHiddenFrom(d, userId))));
           const items = narrowed.slice(0, limit);
           if (typeof calculateFreshness === "function") {
             for (const d of items) {
@@ -27867,6 +27953,10 @@ register("dtu", "gapPromote", async (ctx, input) => {
     // otherwise the most restrictive member visibility. Replaces copying the
     // first member's visibility (lib/consolidated-visibility.js).
     const _vis = consolidatedVisibility(members, { scope: _megaScope });
+    // A quarantine:* tag carried up from a member never makes a public node.
+    if (_vis.visibility === "public" && tags.some((t) => typeof t === "string" && t.toLowerCase().startsWith("quarantine:"))) {
+      _vis.visibility = "internal"; _vis.reason = "quarantined";
+    }
     const memberIds = members.map(d => d.id);
     const memberClaims = members.flatMap(d => Array.isArray(d.core?.claims) ? d.core.claims : []).slice(0, 24);
     const mega = {
@@ -42963,7 +43053,7 @@ import createFrontierRoutesPart4 from "./routes/frontier-part4.js";
 try {
   app.use("/api", createFrontierRoutesPart1({ requireAuth }));
   app.use("/api", createFrontierRoutesPart2({ requireAuth, db }));
-  app.use("/api", createFrontierRoutesPart4({ requireAuth }));
+  app.use("/api", createFrontierRoutesPart4({ requireAuth, db }));
 } catch (e) { structuredLog("warn", "frontier_routes_skip", { error: e.message }); }
 
 import registerHelpersExtendedRoutes from "./routes/helpers-extended.js";
@@ -49912,6 +50002,9 @@ globalThis.__concordLensActions = LENS_ACTIONS;
 const BRAIN_BACKED_LENS_ACTIONS = new Set();
 globalThis.__concordBrainBackedLensActions = BRAIN_BACKED_LENS_ACTIONS;
 function registerLensAction(domain, action, handler, spec) {
+  // Feed actions run as a feed ingest: dtu.create inside them stamps the
+  // server-only meta.feedIngest provenance marker (lib/feed-ingest-provenance.js).
+  if (action === "feed") handler = wrapFeedIngestHandler(domain, action, handler);
   LENS_ACTIONS.set(`${domain}.${action}`, handler);
   rememberLensActionSpec(`${domain}.${action}`, spec);
 }
@@ -60339,7 +60432,7 @@ app.post("/api/dtus/:id/fork", requireAuth(), (req, res) => {
       source: `fork:${sourceDtu.id}`,
       lineage: [...(sourceDtu.lineage || []), sourceDtu.id],
       meta: {
-        ...(sourceDtu.meta || {}),
+        ...stripFeedIngestMarker(sourceDtu.meta || {}),
         forkedFrom: sourceDtu.id,
         forkedAt: nowISO(),
         originalSource: sourceDtu.source,

@@ -22,7 +22,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 const logger = console;
 
-export default function createFrontierRoutesPart4({ requireAuth } = {}) {
+export default function createFrontierRoutesPart4({ requireAuth, db = null } = {}) {
   const router = Router();
 
   function _userId(req) {
@@ -265,32 +265,164 @@ export default function createFrontierRoutesPart4({ requireAuth } = {}) {
   // 15. DTU Diffing
   // ═══════════════════════════════════════════════════════════════════════════
 
+  // Diffs this process computed, keyed `${callerId}::${dtuId}` so a caller only
+  // reads back their own comparisons. Bounded per key; not persisted.
   const diffHistory = new Map();
+  const HISTORY_PER_KEY = 50;
+  const MAX_VALUE_CHARS = 2000;
+  // Bookkeeping columns, not DTU content.
+  // Internal provenance columns are not DTU content and are never diffed.
+  const SKIP_COLUMNS = new Set([
+    "id", "embedding", "created_at", "updated_at", "content_hash",
+    "production_brain_interaction_id", "minted_by_model", "minted_by_provider",
+    "origin_peer_id", "ongoing_reasoning_session", "reasoning_continues", "shadow_generation",
+  ]);
+  const JSON_COLUMNS = new Set(["data", "body_json", "tags_json", "content_json", "meta_json"]);
 
-  // POST /dtu/diff — compare two DTUs
+  function _callerId(req) {
+    return req.user?.id ?? req.user?.userId ?? req.actor?.userId ?? null;
+  }
+
+  // Same gate as searchDtus / sim-live dtuHidden: the owner always sees; others
+  // are blocked from personal-scope bodies and private/internal visibility.
   //
-  // Honesty note (fabrication-mechanism audit): this handler used to
-  // synthesize an entirely fake diff (Math.random()-picked field changes from
-  // a hardcoded list unrelated to dtuIdA/dtuIdB, a Math.random()-derived
-  // similarity score) with no lookup of the real DTUs. This route factory
-  // only receives `{ requireAuth }` (see server.js, frontier.js) — no DTU
-  // store is threaded in here, and every other piece of state in this file
-  // is a request-scoped in-memory Map unrelated to the real `dtus` table.
-  // Rather than keep presenting fabricated data as a real diff, this is an
-  // honest failure. Follow-up (out of this file's scope): thread a real
-  // DTU-fetch dependency into createFrontierRoutesPart4() from server.js so
-  // this can compute a genuine field-level diff.
+  // This route returns full field content, so the non-owner rule is stricter
+  // than a title-only read: only visibility "public" (or "published") rows,
+  // never marketplace (paid content), shadow-tier, quarantined, or
+  // personal-scope rows.
+  function _hidden(row, callerId) {
+    const owners = [row.creator_id, row.owner_user_id].filter(Boolean);
+    if (callerId && owners.includes(callerId)) return false;
+    for (const col of ["data", "body_json", "content"]) {
+      if (typeof row[col] === "string" && row[col].includes('"scope":"personal"')) return true;
+    }
+    if (row.tier === "shadow") return true;
+    if (typeof row.status === "string" && row.status.startsWith("quarantine")) return true;
+    return !(row.visibility === "public" || row.visibility === "published");
+  }
+
+  function _loadDtu(id) {
+    return db.prepare("SELECT * FROM dtus WHERE id = ?").get(id) || null;
+  }
+
+  function _tryParse(v) {
+    if (typeof v !== "string") return v;
+    const t = v.trim();
+    if (!(t.startsWith("{") || t.startsWith("["))) return v;
+    try { return JSON.parse(t); } catch { return v; }
+  }
+
+  // Flatten a row to { "column" | "column.path": value }; JSON columns expand.
+  function _flatten(row) {
+    const out = {};
+    const walk = (prefix, val) => {
+      if (val && typeof val === "object" && !Array.isArray(val)) {
+        const keys = Object.keys(val);
+        if (keys.length === 0) { out[prefix] = {}; return; }
+        for (const k of keys) walk(`${prefix}.${k}`, val[k]);
+      } else {
+        out[prefix] = val;
+      }
+    };
+    for (const [col, raw] of Object.entries(row)) {
+      if (SKIP_COLUMNS.has(col) || Buffer.isBuffer(raw)) continue;
+      walk(col, JSON_COLUMNS.has(col) ? _tryParse(raw) : raw);
+    }
+    return out;
+  }
+
+  function _clip(v) {
+    if (typeof v === "string" && v.length > MAX_VALUE_CHARS) {
+      return { value: v.slice(0, MAX_VALUE_CHARS), truncated: true };
+    }
+    return { value: v === undefined ? null : v, truncated: false };
+  }
+
+  function _computeDiff(rowA, rowB) {
+    const a = _flatten(rowA);
+    const b = _flatten(rowB);
+    const fields = [...new Set([...Object.keys(a), ...Object.keys(b)])].sort();
+    const changes = [];
+    let unchanged = 0;
+    for (const f of fields) {
+      const inA = f in a;
+      const inB = f in b;
+      if (inA && inB && JSON.stringify(a[f]) === JSON.stringify(b[f])) { unchanged += 1; continue; }
+      const ca = _clip(a[f]);
+      const cb = _clip(b[f]);
+      changes.push({
+        field: f,
+        change: !inA ? "added" : !inB ? "removed" : "modified",
+        a: ca.value,
+        b: cb.value,
+        ...(ca.truncated || cb.truncated ? { truncated: true } : {}),
+      });
+    }
+    return {
+      fieldsCompared: fields.length,
+      fieldsUnchanged: unchanged,
+      fieldsChanged: changes.length,
+      // similarity = unchanged fields / all compared fields, where fields are
+      // the union of column names and JSON-column paths of both DTUs.
+      similarity: fields.length ? Math.round((unchanged / fields.length) * 1000) / 1000 : null,
+      changes,
+    };
+  }
+
+  // POST /dtu/diff — field-level diff of two stored DTUs the caller may see.
+  // The `db` dependency is read-only here; without it the route is an honest 501.
   router.post("/dtu/diff", auth, wrap((req, res) => {
-    const { dtuIdA, dtuIdB } = req.body;
+    const { dtuIdA, dtuIdB } = req.body || {};
     if (!dtuIdA || !dtuIdB) {
       throw new Error("dtuIdA and dtuIdB are required");
     }
 
-    res.status(501).json({
-      ok: false,
-      reason: 'not_yet_wired',
-      error: 'DTU diffing has no real DTU store wired into this route yet — refusing to fabricate a diff.',
-    });
+    if (!db) {
+      return res.status(501).json({
+        ok: false,
+        error: "unavailable",
+        reason: "not_wired",
+        missing: "DTU store (dtus table) not passed to this route factory",
+        message: "DTU diffing needs a read-only DTU store; none is wired here.",
+      });
+    }
+
+    const callerId = _callerId(req);
+    const ids = [String(dtuIdA), String(dtuIdB)];
+    const rows = {};
+    for (const id of ids) {
+      let row;
+      try {
+        row = _loadDtu(id);
+      } catch (e) {
+        return res.status(503).json({ ok: false, error: "unavailable", reason: "dtu_store_unreadable", message: e.message });
+      }
+      // A hidden DTU is indistinguishable from a missing one: no existence leak.
+      if (!row || _hidden(row, callerId)) {
+        return res.status(404).json({ ok: false, error: "dtu_not_found", dtuId: id });
+      }
+      rows[id] = row;
+    }
+
+    const diff = _computeDiff(rows[ids[0]], rows[ids[1]]);
+    const entry = {
+      id: crypto.randomUUID(),
+      dtuIdA: ids[0],
+      dtuIdB: ids[1],
+      computedAt: new Date().toISOString(),
+      fieldsChanged: diff.fieldsChanged,
+      similarity: diff.similarity,
+    };
+    if (callerId) {
+      for (const id of new Set(ids)) {
+        const key = `${callerId}::${id}`;
+        const list = diffHistory.get(key) || [];
+        list.push(entry);
+        if (list.length > HISTORY_PER_KEY) list.shift();
+        diffHistory.set(key, list);
+      }
+    }
+    res.json({ ok: true, dtuIdA: ids[0], dtuIdB: ids[1], identical: diff.fieldsChanged === 0, ...diff });
   }));
 
   // GET /dtu/diff-history/:dtuId — get diff history for a DTU
@@ -300,7 +432,9 @@ export default function createFrontierRoutesPart4({ requireAuth } = {}) {
   // history.
   router.get("/dtu/diff-history/:dtuId", auth, wrap((req, res) => {
     const { dtuId } = req.params;
-    const history = diffHistory.get(dtuId) || [];
+    // Per-caller: only diffs this caller ran in this process. Not persisted.
+    const callerId = _callerId(req);
+    const history = callerId ? (diffHistory.get(`${callerId}::${dtuId}`) || []) : [];
     res.json({ ok: true, dtuId, history, count: history.length });
   }));
 
