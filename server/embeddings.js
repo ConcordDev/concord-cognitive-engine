@@ -666,7 +666,14 @@ export async function backfillEmbeddings(dtusMap, { onProgress = null, governed 
   // 5 seconds per group while still making progress.
   const YIELD_EVERY = 10;
 
+  let alreadyCached = 0;
   for (let i = 0; i < unembedded.length; i++) {
+    // The list above is a snapshot. At boot the local embedder can start this
+    // backfill before initEmbeddings() loads the stored vectors (it clears the
+    // cache and reloads it from SQLite ~1s later), so the snapshot held every
+    // DTU and each restart re-embedded all ~2,000 of them on both backends.
+    // Re-check the live cache so vectors that are already stored are skipped.
+    if (embeddingCache.has(unembedded[i].id)) { alreadyCached++; continue; }
     let gate = null;
     if (governed) {
       const pauseStart = Date.now();
@@ -730,10 +737,10 @@ export async function backfillEmbeddings(dtusMap, { onProgress = null, governed 
   embeddingState.stats.backfillEmpty = empty;
 
   if (_log) {
-    _log("info", "backfill_complete", { embedded, errors, empty, total: unembedded.length, governed: !!governed, pauses: embeddingState.stats.backfillPauses, failures });
+    _log("info", "backfill_complete", { embedded, errors, empty, alreadyCached, total: unembedded.length, governed: !!governed, pauses: embeddingState.stats.backfillPauses, failures });
   }
 
-  return { embedded, skipped: allDTUs.length - unembedded.length, errors, empty, failures };
+  return { embedded, skipped: allDTUs.length - unembedded.length + alreadyCached, errors, empty, alreadyCached, failures };
 }
 
 // ── Status & Monitoring ────────────────────────────────────────────────────
