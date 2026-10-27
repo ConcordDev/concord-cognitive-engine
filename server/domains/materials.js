@@ -233,18 +233,38 @@ export default function registerMaterialsActions(registerLensAction) {
   try {
     const data = artifact.data || {};
     const material = (data.name || data.material || "").toLowerCase();
-    const category = (data.category || "metal").toLowerCase();
-    const environment = (data.environment || "indoor").toLowerCase();
-    // Service conditions are inputs, not assumed 25 °C / 50 % RH.
+    // Service conditions are inputs, not assumed 25 °C / 50 % RH, indoor, or a metal.
     const { values: _v, missing: _m } = needNums(data, ["temperature", "humidity>=0"]);
     if (_m.length) return notComputed(_m, "Corrosion risk needs the service temperature and humidity.");
     const temperature = _v.temperature, humidity = _v.humidity;
+    const category = typeof data.category === "string" ? data.category.trim().toLowerCase() : "";
+    const environment = typeof data.environment === "string" ? data.environment.trim().toLowerCase() : "";
 
-    // Base corrosion resistance by material category
+    // Base corrosion resistance by material category. Unknown is not 50.
     const baseResistance = {
       metal: 40, polymer: 85, ceramic: 90, composite: 70, semiconductor: 80, biomaterial: 30,
     };
-    let resistance = baseResistance[category] || 50;
+    const unavailable = [];
+    if (!Object.prototype.hasOwnProperty.call(baseResistance, category)) unavailable.push("category");
+    if (!environment) unavailable.push("environment");
+    if (unavailable.length) {
+      return {
+        ok: true,
+        result: {
+          material: data.name || material,
+          category: category || null,
+          environment: environment || null,
+          conditions: { temperature: `${temperature}\u00B0C`, humidity: `${humidity}%` },
+          corrosionResistance: null,
+          riskLevel: null,
+          protectionMethods: [],
+          estimatedLifespan: null,
+          reason: "not_recorded",
+          unavailable,
+        },
+      };
+    }
+    let resistance = baseResistance[category];
 
     // Material-specific adjustments
     if (material.includes("stainless") || material.includes("316") || material.includes("304")) resistance += 30;
