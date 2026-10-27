@@ -227,9 +227,10 @@ describe("legal — deadline/compliance/conflict calc (wave 7 top-up)", () => {
     assert.equal(r.result.rating, "fair");       // 50..69
   });
 
-  it("complianceScore: empty requirement set is a perfect score with no items", async () => {
+  it("complianceScore: empty requirement set is unmeasured, not a perfect score", async () => {
     const r = await lensRun("legal", "complianceScore", { data: { requirements: [] } });
-    assert.equal(r.result.score, 100);
+    assert.equal(r.result.score, null);
+    assert.equal(r.result.reason, "no_sample");
     assert.equal(r.result.total, 0);
     assert.equal(r.result.overdue, 0);
   });

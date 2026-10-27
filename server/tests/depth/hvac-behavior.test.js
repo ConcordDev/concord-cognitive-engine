@@ -232,43 +232,43 @@ describe("hvac — asset service history (wave 11 top-up)", () => {
   });
 });
 
-describe("hvac — payment processing (wave 11 top-up — exact fee math)", () => {
+describe("hvac — payment processing (recorded cash, no card charge)", () => {
   let ctx;
   before(async () => { ctx = await depthCtx("hvac-t11-pay"); });
 
-  it("card charge: fee = 2.9% + $0.30, net = amount − fee", async () => {
+  it("card is not charged when no processor is connected", async () => {
     const r = await lensRun("hvac", "payment-charge", { params: { invoiceId: "INV-1", amount: 100, method: "card" } }, ctx);
-    assert.equal(r.ok, true);
-    assert.equal(r.result.payment.processingFee, 3.20);   // 2.90 + 0.30
-    assert.equal(r.result.payment.net, 96.80);
-    assert.equal(r.result.payment.status, "paid");
-    assert.match(r.result.payment.reference, /^TXN-/);
+    assert.equal(r.result.ok, false);
+    assert.equal(r.result.error, "no_card_processor");
+    assert.equal(r.result.payment, undefined);
   });
 
-  it("ach charge: fee = 0.8%, no flat fee", async () => {
+  it("ach is not charged when no processor is connected", async () => {
     const r = await lensRun("hvac", "payment-charge", { params: { invoiceId: "INV-2", amount: 100, method: "ach" } }, ctx);
-    assert.equal(r.result.payment.processingFee, 0.80);
-    assert.equal(r.result.payment.net, 99.20);
+    assert.equal(r.result.ok, false);
+    assert.equal(r.result.error, "no_card_processor");
   });
 
-  it("cash charge: zero fee", async () => {
+  it("cash records the receipt with no fee and no processor reference", async () => {
     const r = await lensRun("hvac", "payment-charge", { params: { invoiceId: "INV-3", amount: 50, method: "cash" } }, ctx);
+    assert.equal(r.ok, true);
     assert.equal(r.result.payment.processingFee, 0);
     assert.equal(r.result.payment.net, 50);
+    assert.equal(r.result.payment.status, "recorded");
+    assert.equal(r.result.payment.charged, false);
+    assert.equal(r.result.payment.reference, null);
   });
 
-  it("payment-list summary sums collected & fees across the three charges, then refund flips status", async () => {
+  it("payment-list sums only the recorded cash receipt, then refund flips status", async () => {
     const list = await lensRun("hvac", "payment-list", { params: {} }, ctx);
-    // 100 + 100 + 50 collected
-    assert.equal(list.result.summary.count, 3);
-    assert.equal(list.result.summary.collected, 250);
-    assert.equal(list.result.summary.fees, 4.00);          // 3.20 + 0.80 + 0
-    assert.equal(list.result.summary.net, 246.00);
+    assert.equal(list.result.summary.count, 1);
+    assert.equal(list.result.summary.collected, 50);
+    assert.equal(list.result.summary.fees, 0);
+    assert.equal(list.result.summary.net, 50);
 
-    const target = list.result.payments.find((p) => p.invoiceId === "INV-1");
+    const target = list.result.payments.find((p) => p.invoiceId === "INV-3");
     const ref = await lensRun("hvac", "payment-refund", { params: { id: target.id } }, ctx);
     assert.equal(ref.result.payment.status, "refunded");
-    // double-refund rejected
     const ref2 = await lensRun("hvac", "payment-refund", { params: { id: target.id } }, ctx);
     assert.equal(ref2.result.ok, false);
     assert.match(ref2.result.error, /already refunded/);

@@ -755,24 +755,33 @@ export default function registerHVACActions(registerLensAction) {
     if (amount <= 0) return { ok: false, error: "payment amount must be positive" };
     const methods = ["card", "ach", "cash", "check"];
     const method = methods.includes(params.method) ? params.method : "card";
-    const fee = method === "card" ? Math.round(amount * 0.029 * 100) / 100 + 0.30
-      : method === "ach" ? Math.round(amount * 0.008 * 100) / 100 : 0;
+    // Card and ACH need a processor. This handler has none, so it must not
+    // mint a TXN reference or say the payment was processed.
+    if (method === "card" || method === "ach") {
+      return {
+        ok: false,
+        error: "no_card_processor",
+        message: "Card and ACH are not charged here. No processor is connected, so nothing was paid.",
+      };
+    }
+    const amountRounded = Math.round(amount * 100) / 100;
     const rec = {
       id: hvId("pay"), kind: "payment",
       invoiceId,
       client: hvClean(params.client, 120),
-      amount: Math.round(amount * 100) / 100,
+      amount: amountRounded,
       method,
-      processingFee: Math.round(fee * 100) / 100,
-      net: Math.round((amount - fee) * 100) / 100,
-      status: "paid",
-      reference: "TXN-" + Math.random().toString(36).slice(2, 12).toUpperCase(),
+      processingFee: 0,
+      net: amountRounded,
+      status: "recorded",
+      reference: null,
+      charged: false,
       paidAt: hvNow(),
       createdAt: hvNow(),
     };
     hvList(s.payments, hvAid(ctx)).push(rec);
     saveHvacState();
-    return { ok: true, result: { payment: rec, message: `Payment of $${rec.amount} processed (${method}).` } };
+    return { ok: true, result: { payment: rec, message: `Recorded $${rec.amount} received by ${method}. This is not a card charge.` } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
   registerLensAction("hvac", "payment-list", (ctx, _a, _params = {}) => {
@@ -799,6 +808,9 @@ export default function registerHVACActions(registerLensAction) {
     const rec = list.find((r) => r.kind === "payment" && r.id === params.id);
     if (!rec) return { ok: false, error: "payment not found" };
     if (rec.status === "refunded") return { ok: false, error: "already refunded" };
+    if (rec.status !== "recorded" && rec.status !== "paid") {
+      return { ok: false, error: "not_a_recorded_receipt" };
+    }
     rec.status = "refunded";
     rec.refundedAt = hvNow();
     saveHvacState();

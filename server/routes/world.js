@@ -190,6 +190,24 @@ import {
 import { handlePlayerDeath, claimLootBag, handleRobbery, reclaimExpiredBags } from "../lib/pvp-loot.js";
 import { HUB_WORLD_ID } from "../lib/world-ids.js";
 import {
+  readDailyDigest,
+  readPersonalAnalytics,
+  readWorldAnalytics,
+  readGlobalAnalytics,
+} from "../lib/sim-stats.js";
+import {
+  readSeasonalCurrent,
+  readSimFlags,
+  readBrainStatus,
+  isSimAdmin,
+  publicBrainStatus,
+  searchSimSemantic,
+  querySimKnowledge,
+  readSimAudit,
+  readSimPrefs,
+  writeSimPrefs,
+} from "../lib/sim-live.js";
+import {
   readSimHealth,
   readSimMetrics,
   readEventBusStatus,
@@ -797,8 +815,6 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   const simPresence = new Map();
   const simSnapTemplates = new Map();
   const simVisitorLogs = [];
-  const simDailyDigests = new Map();
-  const simAnalytics = new Map();
   const simCraftingRecipes = [
     { id: 'recipe-usb-beam', name: 'USB Composite Beam', inputs: [{ itemId: 'mat-usb-a', quantity: 3 }], output: { itemId: 'comp-usb-beam', quantity: 1 }, stationType: 'forge', duration: 30, skillRequired: 'novice' },
     { id: 'recipe-steel-column', name: 'Steel Column', inputs: [{ itemId: 'mat-steel-a36', quantity: 5 }], output: { itemId: 'comp-steel-column', quantity: 1 }, stationType: 'forge', duration: 45, skillRequired: 'apprentice' },
@@ -1461,15 +1477,13 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Daily Digest API ─────────────────────────────────────────────
 
   router.get("/sim/digest/:userId", wrap((req, res) => {
-    const digest = simDailyDigests.get(req.params.userId) || {
-      date: new Date().toISOString().split('T')[0],
-      newCitations: Math.floor(Math.random() * 12),
-      royaltiesEarned: +(Math.random() * 5).toFixed(2),
-      worldEvents: ['New building validated in District 3', 'Weather: light snow expected tonight'],
-      topCreation: { name: 'USB-A Foundation Slab', citations: 7 },
-      npcSummary: 'The blacksmith at The Forge completed 3 commissions while you were away.',
-    };
-    res.json({ ok: true, digest });
+    const viewer = req.user?.id || req.user?.userId || null;
+    if (!viewer || viewer !== req.params.userId) {
+      return res.status(403).json({ ok: false, error: "not_your_stats" });
+    }
+    const result = readDailyDigest(db, viewer);
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, digest: result.digest });
   }));
 
   // ── Moderation / Anti-Grief API ──────────────────────────────────
@@ -1624,25 +1638,30 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Collaboration / Project Board API ────────────────────────────
 
   router.get("/sim/projects/:boardId", wrap((req, res) => {
-    const seed = {
-      id: req.params.boardId, name: 'District 3 Development',
-      tasks: [
-        { id: 'task-1', title: 'Design water treatment plant', status: 'open', payment: 50 },
-        { id: 'task-2', title: 'Build Main Street facades', status: 'claimed', claimedBy: '@builder_bob', payment: 30 },
-        { id: 'task-3', title: 'Wire power grid section B', status: 'in-progress', claimedBy: '@power_mike', payment: 40 },
-        { id: 'task-4', title: 'Validate all residential structures', status: 'complete', claimedBy: '@architect_alex', payment: 25 },
-      ],
-    };
-    res.json({ ok: true, board: seed });
+    res.status(501).json({
+      ok: false,
+      error: "unavailable",
+      reason: "no_project_board",
+      message: "No project board is stored for this id. Tasks and payments were not invented.",
+    });
   }));
 
-  router.post("/sim/projects/:boardId/tasks", auth, wrap((req, res) => {
-    const task = { id: `task-${Date.now()}`, ...req.body, status: 'open', createdAt: new Date().toISOString() };
-    res.json({ ok: true, task });
+  router.post("/sim/projects/:boardId/tasks", auth, wrap((_req, res) => {
+    res.status(501).json({
+      ok: false,
+      error: "unavailable",
+      reason: "no_project_board",
+      message: "Project tasks are not stored. Nothing was created.",
+    });
   }));
 
-  router.post("/sim/projects/:boardId/tasks/:taskId/claim", auth, wrap((req, res) => {
-    res.json({ ok: true, taskId: req.params.taskId, claimedBy: req.user.id, status: 'claimed' });
+  router.post("/sim/projects/:boardId/tasks/:taskId/claim", auth, wrap((_req, res) => {
+    res.status(501).json({
+      ok: false,
+      error: "unavailable",
+      reason: "no_project_board",
+      message: "Project tasks are not stored. Nothing was claimed.",
+    });
   }));
 
   // ── Design Review API ────────────────────────────────────────────
@@ -1672,63 +1691,32 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Analytics API ────────────────────────────────────────────────
 
   router.get("/sim/analytics/personal/:userId", wrap((req, res) => {
-    const stats = simAnalytics.get(req.params.userId) || {
-      totalCitations: Math.floor(Math.random() * 500),
-      totalRoyalties: +(Math.random() * 100).toFixed(2),
-      mostCitedDTU: { name: 'USB-A Reinforced Beam', citations: 47 },
-      mostUsedMaterial: { name: 'USB Composite A', uses: 89 },
-      reputationByDomain: { structural: 340, materials: 120, infrastructure: 85, energy: 45, architecture: 200, mentorship: 30, governance: 15, exploration: 60 },
-      buildCount: Math.floor(Math.random() * 50) + 5,
-      playtime: Math.floor(Math.random() * 200) + 10,
-      loginStreak: Math.floor(Math.random() * 30) + 1,
-    };
-    res.json({ ok: true, stats });
+    const viewer = req.user?.id || req.user?.userId || null;
+    if (!viewer || viewer !== req.params.userId) {
+      return res.status(403).json({ ok: false, error: "not_your_stats" });
+    }
+    const result = readPersonalAnalytics(db, viewer);
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, stats: result.stats });
   }));
 
   router.get("/sim/analytics/world/:worldId", wrap((req, res) => {
-    res.json({
-      ok: true, stats: {
-        population: 2400, buildingCount: 47, infraCoverage: 72,
-        envScore: 68, economicActivity: 14500, visitorCount: 890,
-        timeseries: [
-          { date: '2025-10-01', visitors: 12, buildings: 2 },
-          { date: '2025-10-15', visitors: 45, buildings: 8 },
-          { date: '2025-11-01', visitors: 120, buildings: 23 },
-          { date: '2025-11-15', visitors: 230, buildings: 47 },
-        ],
-      },
-    });
+    const result = readWorldAnalytics(db, req.params.worldId);
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, stats: result.stats });
   }));
 
   router.get("/sim/analytics/global", wrap((_req, res) => {
-    res.json({
-      ok: true, stats: {
-        activeDistricts: 10, totalBuildings: 1250, totalCitations: 45000,
-        activeUsers: 890, totalWorlds: 67,
-        trendingComponents: [
-          { name: 'USB-B I-Beam 30cm', creator: '@struct_team', citationsThisWeek: 89 },
-          { name: 'Solar Mount v3', creator: '@green_firm', citationsThisWeek: 67 },
-          { name: 'Concrete Foundation Slab', creator: '@builder_bob', citationsThisWeek: 52 },
-        ],
-        topCreators: [
-          { userId: 'user-001', name: '@engineer_jane', citations: 2100, rank: 1 },
-          { userId: 'user-002', name: '@architect_alex', citations: 1800, rank: 2 },
-          { userId: 'user-003', name: '@materials_lab', citations: 1200, rank: 3 },
-        ],
-      },
-    });
+    const result = readGlobalAnalytics(db);
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, stats: result.stats });
   }));
 
   // ── Seasonal / Events Calendar API ───────────────────────────────
 
-  router.get("/sim/seasonal/current", wrap((_req, res) => {
-    const month = new Date().getMonth();
-    const seasons = ['winter', 'winter', 'spring', 'spring', 'spring', 'summer', 'summer', 'summer', 'fall', 'fall', 'fall', 'winter'];
-    res.json({
-      ok: true, season: seasons[month],
-      activeEvent: { name: 'Spring Engineering Festival', endsAt: new Date(Date.now() + 7 * 86400000).toISOString() },
-      monthlyChallenge: { title: 'Bridge Builder Challenge', description: 'Design a pedestrian bridge rated for 200 occupants', objective: 'Build and validate a pedestrian bridge', progress: 0, reward: { type: 'title', value: 'Bridge Master' } },
-    });
+  router.get("/sim/seasonal/current", wrap((req, res) => {
+    const worldId = typeof req.query.worldId === "string" ? req.query.worldId : "";
+    res.json(readSeasonalCurrent(db, { worldId }));
   }));
 
   // ── Replay / Spectator API ───────────────────────────────────────
@@ -1798,35 +1786,43 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   // ── Accessibility Preferences API ────────────────────────────────
 
+  function simViewerId(req) {
+    return req.user?.id || req.user?.userId || null;
+  }
+  function ownSimPrefs(req, kind, write) {
+    const viewer = simViewerId(req);
+    if (!viewer || viewer !== req.params.userId) {
+      return { ok: false, status: 403, error: "not_your_settings" };
+    }
+    return write
+      ? writeSimPrefs(db, viewer, kind, req.body)
+      : readSimPrefs(db, viewer, kind);
+  }
+
   router.get("/sim/accessibility/:userId", wrap((req, res) => {
-    res.json({
-      ok: true, settings: {
-        colorblindMode: 'none', textScale: 1.0, screenReaderEnabled: false,
-        keyboardNavEnabled: false, reducedMotion: false, subtitlesEnabled: true,
-        oneHandedMode: false, gameSpeed: 1.0, highContrast: false,
-      },
-    });
+    const result = ownSimPrefs(req, "accessibility", false);
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, settings: result.settings });
   }));
 
   router.post("/sim/accessibility/:userId", auth, wrap((req, res) => {
-    res.json({ ok: true, settings: req.body });
+    const result = ownSimPrefs(req, "accessibility", true);
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, settings: result.settings });
   }));
 
   // ── Settings API ─────────────────────────────────────────────────
 
   router.get("/sim/settings/:userId", wrap((req, res) => {
-    res.json({
-      ok: true, settings: {
-        graphics: 'medium', audio: { master: 0.8, music: 0.6, ambient: 0.7, sfx: 0.8, dialogue: 0.9 },
-        notifications: { citation: true, royalty: true, event: true, social: true, system: true, dailyDigest: true },
-        privacy: { profileVisibility: 'public', worldVisibility: 'public', activityStatus: true, allowDMs: true },
-        controls: {}, locale: 'en', measurementUnit: 'metric',
-      },
-    });
+    const result = ownSimPrefs(req, "settings", false);
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, settings: result.settings });
   }));
 
   router.post("/sim/settings/:userId", auth, wrap((req, res) => {
-    res.json({ ok: true, settings: req.body });
+    const result = ownSimPrefs(req, "settings", true);
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, settings: result.settings });
   }));
 
   // ── Voice Interface API ──────────────────────────────────────────
@@ -1844,9 +1840,10 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
       transcript,
       engine: engine || 'whisper',
       intent: detectedIntent,
-      confidence: 0.85 + Math.random() * 0.15,
+      match: detectedIntent === 'unknown' ? 'none' : 'keyword',
+      confidence: null,
       parsedAt: new Date().toISOString(),
-      executed: detectedIntent !== 'unknown',
+      executed: false,
     };
     if (!voiceHistory.has(userId)) voiceHistory.set(userId, []);
     voiceHistory.get(userId).push(result);
@@ -1930,17 +1927,15 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Export & Embed API ──────────────────────────────────────────
 
   router.post("/sim/export", auth, wrap((req, res) => {
-    const { dtuId, format, options } = req.body;
-    const exportResult = {
-      id: `export-${Date.now()}`,
-      dtuId,
-      format: format || 'json',
-      status: 'complete',
-      url: `/api/exports/export-${Date.now()}.${format || 'json'}`,
-      size: Math.floor(Math.random() * 5000000) + 100000,
-      createdAt: new Date().toISOString(),
-    };
-    res.json({ ok: true, export: exportResult });
+    const { dtuId, format } = req.body || {};
+    if (!dtuId) return res.status(400).json({ ok: false, error: "dtuId required" });
+    res.status(501).json({
+      ok: false,
+      error: "unavailable",
+      reason: "export_not_wired",
+      format: format || null,
+      message: "Export does not write a file. No size or download URL was invented.",
+    });
   }));
 
   router.post("/sim/embed", auth, wrap((req, res) => {
@@ -2086,81 +2081,57 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Feature Flags API ───────────────────────────────────────────
 
   router.get("/sim/feature-flags", wrap((_req, res) => {
-    res.json({
-      ok: true,
-      flags: {
-        snap_build_v2: { enabled: true, rollout: 100 },
-        voice_interface: { enabled: true, rollout: 50 },
-        ar_preview: { enabled: false, rollout: 0 },
-        multiplayer_256: { enabled: false, rollout: 10 },
-        webgpu_renderer: { enabled: true, rollout: 75 },
-        live_collaboration: { enabled: true, rollout: 80 },
-        smart_notifications: { enabled: true, rollout: 60 },
-        command_palette: { enabled: true, rollout: 100 },
-      },
-    });
+    const flags = readSimFlags();
+    res.json(flags);
   }));
 
   // ── ML Ops / AI Brain Status API ────────────────────────────────
 
-  router.get("/sim/ai/status", wrap((_req, res) => {
-    res.json({
-      ok: true,
-      brains: {
-        conscious: { model: 'qwen2.5:7b', status: 'running', memoryGB: 5.2, inferenceMs: 340, requestsPerMin: 15 },
-        subconscious: { model: 'qwen2.5:1.5b', status: 'running', memoryGB: 1.1, inferenceMs: 85, requestsPerMin: 42 },
-        utility: { model: 'qwen2.5:3b', status: 'running', memoryGB: 2.3, inferenceMs: 150, requestsPerMin: 28 },
-        repair: { model: 'qwen2.5:0.5b', status: 'running', memoryGB: 0.4, inferenceMs: 45, requestsPerMin: 60 },
-      },
-      promptTemplates: 12,
-      totalInferences24h: 18420,
-      avgLatencyMs: 155,
-    });
+  router.get("/sim/ai/status", wrap(async (req, res) => {
+    const admin = isSimAdmin(req.user);
+    const probe = admin && req.query.probe !== "0";
+    const full = await readBrainStatus({ probe });
+    res.json(admin ? full : publicBrainStatus(full));
   }));
 
   // ── Semantic Search API ─────────────────────────────────────────
 
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
-  router.post("/sim/search/semantic", wrap((req, res) => {
-    const { query, limit, filters } = req.body;
-    // Simulated semantic search results
-    const results = [
-      { id: 'dtu-4281', type: 'building', title: 'Riverside Library', score: 0.94, district: 'academy' },
-      { id: 'dtu-1092', type: 'building', title: 'River Walk Pavilion', score: 0.87, district: 'docks' },
-      { id: 'dtu-7723', type: 'template', title: 'Modern Reading Room', score: 0.82, district: null },
-    ].slice(0, limit || 10);
-    res.json({ ok: true, query, results, model: 'all-MiniLM-L6-v2', dimensions: 384 });
+  router.post("/sim/search/semantic", wrap(async (req, res) => {
+    const result = await searchSimSemantic(db, {
+      query: req.body?.query,
+      limit: req.body?.limit,
+      requesterId: req.user?.id || req.user?.userId || null,
+    });
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({
+      ok: true,
+      query: result.query,
+      semantic: result.semantic,
+      results: result.results,
+    });
   }));
 
   // ── STAXX Knowledge Graph API ───────────────────────────────────
 
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/sim/knowledge/query", wrap((req, res) => {
-    const { nodeType, edgeType, startId, depth } = req.body;
-    // Simulated graph traversal
-    const nodes = [
-      { id: startId || 'dtu-4281', type: nodeType || 'DTU', label: 'Riverside Library', properties: { district: 'academy', citations: 47 } },
-      { id: 'user-1042', type: 'User', label: 'ArchitectX', properties: { reputation: 8200 } },
-      { id: 'mat-usb-a', type: 'Material', label: 'USB-A Composite', properties: { tensileStrength: 450 } },
-    ];
-    const edges = [
-      { from: startId || 'dtu-4281', to: 'user-1042', type: 'created_by', weight: 1.0 },
-      { from: startId || 'dtu-4281', to: 'mat-usb-a', type: 'made_of', weight: 0.8 },
-    ];
-    res.json({ ok: true, graph: { nodes, edges }, depth: depth || 1 });
+    const result = querySimKnowledge(db, {
+      startId: req.body?.startId,
+      edgeType: req.body?.edgeType,
+      depth: req.body?.depth,
+      requesterId: req.user?.id || req.user?.userId || null,
+    });
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, graph: result.graph, depth: result.depth, reason: result.reason });
   }));
 
   // ── Audit Log API ───────────────────────────────────────────────
 
   router.get("/sim/audit-log", auth, wrap((req, res) => {
-    const logs = [
-      { id: 'audit-1', event: 'dtu.created', actor: 'user-1042', target: 'dtu-4281', timestamp: new Date(Date.now() - 3600000).toISOString() },
-      { id: 'audit-2', event: 'dtu.cited', actor: 'user-2087', target: 'dtu-4281', timestamp: new Date(Date.now() - 1800000).toISOString() },
-      { id: 'audit-3', event: 'user.login', actor: 'user-1042', target: null, timestamp: new Date(Date.now() - 900000).toISOString() },
-      { id: 'audit-4', event: 'moderation.report', actor: 'user-3012', target: 'dtu-9921', timestamp: new Date(Date.now() - 600000).toISOString() },
-      { id: 'audit-5', event: 'physics.validation', actor: 'system', target: 'dtu-4281', timestamp: new Date(Date.now() - 300000).toISOString() },
-    ];
-    res.json({ ok: true, logs, total: logs.length });
+    const result = readSimAudit(db, { userId: simViewerId(req), limit: req.query.limit });
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, logs: result.logs, total: result.total });
   }));
 
   // ── Developer API / SDK Endpoints ───────────────────────────────

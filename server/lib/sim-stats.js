@@ -1,0 +1,236 @@
+// Reads for the world-sim digest and analytics routes.
+// Counts come from the tables those routes used to ignore. A missing table
+// leaves the field null. Playtime and NPC chatter are not recorded here.
+
+import { getCreatorProgression } from "./creator-progression.js";
+import { getTrending } from "./cross-lens-discovery.js";
+
+function tableExists(db, name) {
+  try {
+    return !!db.prepare(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+    ).get(name);
+  } catch {
+    return false;
+  }
+}
+
+function creatorRows(db, userId) {
+  if (!tableExists(db, "dtus")) return { ok: false, reason: "dtu_tables_missing" };
+  const citations = tableExists(db, "dtu_citations");
+  try {
+    const rows = citations
+      ? db.prepare(`
+          SELECT d.id AS id, d.title AS title, COALESCE(c.citation_count, 0) AS citations
+            FROM dtus d
+            LEFT JOIN dtu_citations c ON c.dtu_id = d.id
+           WHERE d.creator_id = ?
+        `).all(userId)
+      : db.prepare(`
+          SELECT id, title, 0 AS citations FROM dtus WHERE creator_id = ?
+        `).all(userId);
+    return { ok: true, rows, citationsRecorded: citations };
+  } catch {
+    return { ok: false, reason: "dtu_tables_missing" };
+  }
+}
+
+function royaltyTotal(db, userId) {
+  if (!tableExists(db, "economy_ledger")) return { total: null, reason: "no_ledger" };
+  try {
+    const row = db.prepare(`
+      SELECT COALESCE(SUM(net), 0) AS total FROM economy_ledger
+       WHERE to_user_id = ? AND type = 'ROYALTY_PAYOUT' AND status = 'complete'
+    `).get(userId);
+    return { total: Math.round((Number(row?.total) || 0) * 100) / 100, reason: null };
+  } catch {
+    return { total: null, reason: "no_ledger" };
+  }
+}
+
+function topCited(rows) {
+  let top = null;
+  let total = 0;
+  for (const row of rows) {
+    const n = Number(row.citations) || 0;
+    total += n;
+    if (n > 0 && (!top || n > top.citations)) {
+      top = { id: row.id, name: row.title || null, citations: n };
+    }
+  }
+  return { total, top };
+}
+
+export function readCreatorSimStats(db, userId) {
+  if (!userId) return { ok: false, status: 401, error: "Authentication required" };
+  if (!db) return { ok: false, status: 503, error: "no_db" };
+  const loaded = creatorRows(db, userId);
+  if (!loaded.ok) {
+    return { ok: false, status: 503, error: "stats_unavailable", reason: loaded.reason };
+  }
+  const { total, top } = topCited(loaded.rows);
+  const royalties = royaltyTotal(db, userId);
+  let reputationByDomain = null;
+  try {
+    const prog = getCreatorProgression(db, userId);
+    reputationByDomain = Object.fromEntries(
+      (prog.profile?.domains || []).map((d) => [d.domain, d.citations]),
+    );
+  } catch {
+    reputationByDomain = null;
+  }
+  return {
+    ok: true,
+    status: 200,
+    citations: total,
+    citationsRecorded: loaded.citationsRecorded,
+    royalties: royalties.total,
+    royaltyReason: royalties.reason,
+    top,
+    dtuCount: loaded.rows.length,
+    reputationByDomain,
+  };
+}
+
+export function readPersonalAnalytics(db, userId) {
+  const base = readCreatorSimStats(db, userId);
+  if (!base.ok) return base;
+  return {
+    ok: true,
+    status: 200,
+    stats: {
+      totalCitations: base.citationsRecorded ? base.citations : null,
+      totalCitationsReason: base.citationsRecorded ? null : "no_citation_table",
+      totalRoyalties: base.royalties,
+      royaltyReason: base.royaltyReason,
+      mostCitedDTU: base.top,
+      mostUsedMaterial: null,
+      mostUsedMaterialReason: "not_recorded",
+      reputationByDomain: base.reputationByDomain,
+      buildCount: base.dtuCount,
+      playtime: null,
+      playtimeReason: "not_recorded",
+      loginStreak: null,
+      loginStreakReason: "not_recorded",
+    },
+  };
+}
+
+export function readDailyDigest(db, userId) {
+  const base = readCreatorSimStats(db, userId);
+  if (!base.ok) return base;
+  return {
+    ok: true,
+    status: 200,
+    digest: {
+      date: new Date().toISOString().slice(0, 10),
+      newCitations: null,
+      newCitationsReason: "not_windowed",
+      citations: base.citationsRecorded ? base.citations : null,
+      royaltiesEarned: base.royalties,
+      royaltyReason: base.royaltyReason,
+      worldEvents: [],
+      worldEventsReason: "no_event_feed",
+      topCreation: base.top,
+      npcSummary: null,
+      npcSummaryReason: "not_recorded",
+    },
+  };
+}
+
+function scalar(db, sql, params = []) {
+  try {
+    const row = db.prepare(sql).get(...params);
+    return row ? row.n : null;
+  } catch {
+    return null;
+  }
+}
+
+export function readWorldAnalytics(db, worldId) {
+  if (!db) return { ok: false, status: 503, error: "no_db" };
+  if (!worldId) return { ok: false, status: 400, error: "worldId required" };
+  if (!tableExists(db, "worlds")) {
+    return { ok: false, status: 503, error: "stats_unavailable", reason: "no_worlds_table" };
+  }
+  let world = null;
+  try {
+    world = db.prepare(
+      "SELECT population, total_visits FROM worlds WHERE id = ?",
+    ).get(worldId);
+  } catch {
+    return { ok: false, status: 503, error: "stats_unavailable", reason: "worlds_unreadable" };
+  }
+  if (!world) return { ok: false, status: 404, error: "world not found" };
+  const buildings = tableExists(db, "world_buildings")
+    ? scalar(db, "SELECT COUNT(*) AS n FROM world_buildings WHERE world_id = ?", [worldId])
+    : null;
+  return {
+    ok: true,
+    status: 200,
+    stats: {
+      population: Number(world.population) || 0,
+      buildingCount: buildings,
+      buildingReason: buildings == null ? "no_building_table" : null,
+      visitorCount: Number(world.total_visits) || 0,
+      infraCoverage: null,
+      envScore: null,
+      economicActivity: null,
+      timeseries: null,
+      unmeasured: ["infraCoverage", "envScore", "economicActivity", "timeseries"],
+    },
+  };
+}
+
+export function readGlobalAnalytics(db) {
+  if (!db) return { ok: false, status: 503, error: "no_db" };
+  const worlds = tableExists(db, "worlds")
+    ? scalar(db, "SELECT COUNT(*) AS n FROM worlds")
+    : null;
+  const buildings = tableExists(db, "world_buildings")
+    ? scalar(db, "SELECT COUNT(*) AS n FROM world_buildings")
+    : null;
+  const citations = tableExists(db, "dtu_citations")
+    ? scalar(db, "SELECT COALESCE(SUM(citation_count), 0) AS n FROM dtu_citations")
+    : null;
+  let topCreators = [];
+  if (tableExists(db, "dtus") && tableExists(db, "dtu_citations")) {
+    try {
+      topCreators = db.prepare(`
+        SELECT d.creator_id AS userId, SUM(c.citation_count) AS citations
+          FROM dtus d
+          JOIN dtu_citations c ON c.dtu_id = d.id
+         WHERE d.creator_id IS NOT NULL
+         GROUP BY d.creator_id
+         ORDER BY citations DESC
+         LIMIT 5
+      `).all().map((row, i) => ({
+        userId: row.userId,
+        name: null,
+        citations: Number(row.citations) || 0,
+        rank: i + 1,
+      }));
+    } catch {
+      topCreators = [];
+    }
+  }
+  const trending = getTrending(db, { limit: 5 }).map((row) => ({
+    id: row.id,
+    name: row.title || null,
+    creatorId: row.creator_id || null,
+    citations: Number(row.citations) || 0,
+  }));
+  return {
+    ok: true,
+    status: 200,
+    stats: {
+      totalWorlds: worlds,
+      totalBuildings: buildings,
+      totalCitations: citations,
+      activeUsers: null,
+      activeUsersReason: "not_recorded",
+      trendingComponents: trending,
+      topCreators,
+    },
+  };
+}

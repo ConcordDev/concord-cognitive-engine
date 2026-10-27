@@ -252,11 +252,12 @@ describe("retail — support-ticket queue (tickets-*)", () => {
       assert.equal(r.result.rollup.byPriority.critical.breached, 1);
     });
 
-    it("complianceRate defaults to 100 when nothing has been resolved yet (no false 0%)", () => {
+    it("complianceRate is unmeasured when nothing has been resolved yet", () => {
       call("tickets-upsert", ctxA, { subject: "brand new" });
       const r = call("tickets-list", ctxA);
       assert.equal(r.result.rollup.resolvedCount, 0);
-      assert.equal(r.result.rollup.complianceRate, 100);
+      assert.equal(r.result.rollup.complianceRate, null);
+      assert.equal(r.result.rollup.reason, "no_sample");
     });
 
     it("filters by status and priority without changing the (full-book) rollup numbers", () => {
