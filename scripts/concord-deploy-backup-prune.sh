@@ -9,8 +9,12 @@
 # Each contains a full copy of the live DB (9 GB+) plus plist + git refs.
 # Without pruning, this dir grows ~9 GB per deploy.
 #
-# Policy: keep the KEEP_N (default 2) most recent *-deploy* dirs. Delete older
-# matching deploy snapshots only. Never touch non-deploy dirs.
+# Policy: keep the KEEP_N (default 3) most recent *-deploy* dirs. Delete older
+# matching deploy snapshots only. Never touch non-deploy dirs, and never touch
+# anything named pinned-* (or containing -pinned) — rename a snapshot to
+# pinned-<name> to keep it as a rollback point. KEEP_N was 2, which pruned the
+# rollback snapshot of the previous deploy as soon as two more deploys landed
+# (2026-10-27: 0803/0812 snapshots gone within 40 min).
 #
 # macOS /bin/bash is 3.2. This script must stay 3.2-safe under `set -u`
 # (empty arrays + "${arr[@]}" used to unbound-variable-spam after the dir
@@ -26,7 +30,7 @@
 set -u
 
 BACKUP_DIR="${BACKUP_DIR:-/Users/dutch/concord/backups}"
-KEEP_N="${KEEP_N:-2}"
+KEEP_N="${KEEP_N:-3}"
 DRY_RUN="${DRY_RUN:-0}"
 LOG_PREFIX="[concord-deploy-backup-prune]"
 # Default log path; override in tests so we do not spam the real log.
@@ -48,6 +52,8 @@ log() {
 # Reject other *-deploy* names (e.g. pre-sweep-deploy-*.next).
 is_deploy_snap_name() {
   case "$1" in
+    # Pinned snapshots are never prune candidates (checked first).
+    pinned-*|*-pinned|*-pinned-*) return 1 ;;
     [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-deploy) return 0 ;;
     [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]-deploy) return 0 ;;
     [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]-deploy-*) return 0 ;;
