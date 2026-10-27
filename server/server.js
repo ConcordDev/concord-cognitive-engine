@@ -3425,6 +3425,7 @@ import {
 async function gracefulShutdown(signal) {
   if (isShuttingDown) return;
   isShuttingDown = true;
+  const _shutdownT0 = Date.now();
   // Before server.close and before db.close. A request that still reaches
   // the app from here on is 503 shutting_down; one already past the
   // middleware keeps running until the inflight window below.
@@ -3637,8 +3638,14 @@ async function gracefulShutdown(signal) {
   try {
     const quietMs = Number(process.env.SHUTDOWN_WRITE_QUIET_MS ?? 400);
     const budgetMs = Number(process.env.SHUTDOWN_WRITE_QUIET_BUDGET_MS ?? 1500);
-    const q = await waitForWriteQuiet({ quietMs: Number.isFinite(quietMs) ? quietMs : 400, budgetMs: Number.isFinite(budgetMs) ? budgetMs : 1500 });
-    structuredLog(q.quiet ? "info" : "warn", "shutdown_writes_quiet", { waited_ms: q.waitedMs, quiet: q.quiet });
+    // launchd SIGKILLs ~5 s after SIGTERM (deploy logs: "primary gone after
+    // 6s"). Never let this wait push db.close past ~3.5 s from the signal:
+    // a clean close matters more than a fuller drain (stragglers spill).
+    const closeBy = Number(process.env.SHUTDOWN_CLOSE_DEADLINE_MS ?? 3500);
+    const left = Math.max(0, (Number.isFinite(closeBy) ? closeBy : 3500) - (Date.now() - _shutdownT0));
+    const budget = Math.min(Number.isFinite(budgetMs) ? budgetMs : 1500, left);
+    const q = await waitForWriteQuiet({ quietMs: Number.isFinite(quietMs) ? quietMs : 400, budgetMs: budget });
+    structuredLog(q.quiet ? "info" : "warn", "shutdown_writes_quiet", { waited_ms: q.waitedMs, quiet: q.quiet, budget_ms: budget, since_signal_ms: Date.now() - _shutdownT0 });
   } catch (e) {
     structuredLog("warn", "shutdown_writes_quiet_failed", { error: e?.message });
   }

@@ -122,4 +122,9 @@ describe("waitForWriteQuiet (bounded drain before close)", () => {
     const b = await waitForWriteQuiet({ quietMs: 400, budgetMs: 1500, now, sleep: busySleep });
     assert.equal(b.quiet, false); assert.ok(b.waitedMs >= 1500 && b.waitedMs < 1600);
   });
+  it("a zero budget (close deadline already reached) never waits", async () => {
+    let t = 500000; const now = () => t; const sleep = async (ms) => { t += ms; };
+    noteDbWrite(t);
+    assert.deepEqual(await waitForWriteQuiet({ quietMs: 400, budgetMs: 0, now, sleep }), { waitedMs: 0, quiet: false });
+  });
 });
