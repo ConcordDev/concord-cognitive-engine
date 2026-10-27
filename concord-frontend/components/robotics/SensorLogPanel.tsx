@@ -15,13 +15,13 @@ interface PlaybackResult {
 
 /**
  * SensorLogPanel — sensor data logging + playback. Wires
- * robotics.sensorLog / sensorPlayback / sensorClear. Log a synthetic
- * channel sample, then play back logged channels as a chart.
+ * robotics.sensorLog / sensorPlayback / sensorClear. Log a real reading
+ * for a channel, then play back logged channels as a chart.
  */
 export function SensorLogPanel({ robot }: { robot: RobotRow | null }) {
   const [playback, setPlayback] = useState<PlaybackResult | null>(null);
   const [channel, setChannel] = useState('imu_roll');
-  const [value, setValue] = useState('0');
+  const [value, setValue] = useState('');
   const [filterCh, setFilterCh] = useState<string>('');
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -39,29 +39,15 @@ export function SensorLogPanel({ robot }: { robot: RobotRow | null }) {
 
   const logSample = async () => {
     if (!robot) return;
+    const parsed = parseFloat(value);
+    if (!Number.isFinite(parsed)) { setErr('Enter a numeric reading to log.'); return; }
     setBusy('log'); setErr(null);
     const r = await lensRun('robotics', 'sensorLog', {
       robotId: robot.id, channel: channel.trim() || 'default',
-      value: parseFloat(value) || 0,
+      value: parsed,
     });
     if (r.data?.ok) await refresh(robot.id, filterCh);
     else setErr(r.data?.error || 'Log failed');
-    setBusy(null);
-  };
-
-  // Log a burst of synthetic samples so playback has a meaningful trace.
-  const logBurst = async () => {
-    if (!robot) return;
-    setBusy('burst'); setErr(null);
-    for (let i = 0; i < 20; i++) {
-      const v = Math.sin(i * 0.5) * 45 + (Math.random() - 0.5) * 8;
-      const r = await lensRun('robotics', 'sensorLog', {
-        robotId: robot.id, channel: channel.trim() || 'default',
-        value: Math.round(v * 100) / 100, tick: i,
-      });
-      if (!r.data?.ok) { setErr(r.data?.error || 'Burst log failed'); break; }
-    }
-    await refresh(robot.id, filterCh);
     setBusy(null);
   };
 
@@ -86,7 +72,7 @@ export function SensorLogPanel({ robot }: { robot: RobotRow | null }) {
         <Database className="w-4 h-4 text-neon-cyan" /> Sensor Log · {robot.name}
       </h3>
 
-      <div className="panel p-3 grid grid-cols-1 md:grid-cols-4 gap-2">
+      <div className="panel p-3 grid grid-cols-1 md:grid-cols-3 gap-2">
         <input value={channel} onChange={e => setChannel(e.target.value)} placeholder="Channel name"
           className="bg-black/30 border border-white/10 rounded px-2 py-1.5 text-sm" />
         <input value={value} onChange={e => setValue(e.target.value)} placeholder="Value" type="number"
@@ -94,10 +80,6 @@ export function SensorLogPanel({ robot }: { robot: RobotRow | null }) {
         <button onClick={logSample} disabled={!!busy}
           className="px-3 py-1.5 bg-neon-cyan/20 text-neon-cyan rounded text-sm hover:bg-neon-cyan/30 disabled:opacity-50 flex items-center justify-center gap-1">
           {busy === 'log' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Radio className="w-4 h-4" />} Log sample
-        </button>
-        <button onClick={logBurst} disabled={!!busy}
-          className="px-3 py-1.5 bg-purple-400/20 text-purple-400 rounded text-sm hover:bg-purple-400/30 disabled:opacity-50 flex items-center justify-center gap-1">
-          {busy === 'burst' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Radio className="w-4 h-4" />} Log 20-sample burst
         </button>
       </div>
 
@@ -139,7 +121,7 @@ export function SensorLogPanel({ robot }: { robot: RobotRow | null }) {
           </div>
         </>
       ) : (
-        <p className="text-gray-400 text-sm text-center py-4">No samples logged yet. Log a sample or a burst.</p>
+        <p className="text-gray-400 text-sm text-center py-4">Not available — no sensor readings recorded for this robot.</p>
       )}
     </div>
   );

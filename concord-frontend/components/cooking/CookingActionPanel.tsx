@@ -40,19 +40,19 @@ function pickMessage(e: unknown): string { const ax = e as { response?: { data?:
 
 interface Food { fdcId: number; description: string; dataType?: string; brandOwner?: string; servingSize?: number; servingSizeUnit?: string }
 interface UsdaResult { foods: Food[]; count: number; totalHits?: number }
-interface ScaledIng { name: string; original: string; scaled: string }
-interface ScaleResult { recipe: string; baseServings: number; targetServings: number; scaleFactor: number; ingredients: ScaledIng[] }
-interface NutrResult { totalCalories: number; perServing: number; macros: { protein: string; carbs: string; fat: string }; servings: number; note?: string }
+interface ScaledIng { name: string; original: string; scaled: string | null }
+interface ScaleResult { recipe: string; baseServings: number | null; targetServings: number | null; scaleFactor: number | null; ingredients: ScaledIng[] | null; reason?: string | null; unavailable?: string[] }
+interface NutrResult { totalCalories: number | null; perServing: number | null; macros: { protein: string; carbs: string; fat: string } | null; servings: number | null; note?: string; reason?: string | null; unavailable?: string[]; missingGrams?: string[] }
 interface Sub { sub: string; ratio: string; note?: string }
 interface SubResult { ingredient: string; substitutions: Sub[]; found: boolean }
 
-interface IngRow { name: string; quantity: string; unit: string; grams: number }
+interface IngRow { name: string; quantity: string; unit: string; grams: number | '' }
 interface RecipeDtu { id: string; title?: string; tags?: string[]; meta?: { recipe?: { name?: string; servings?: number; ingredients?: IngRow[] } } }
 const ING_COLS: ColumnSpec<IngRow>[] = [
   { key: 'name', label: 'Ingredient', type: 'text', flex: 2 },
   { key: 'quantity', label: 'Qty', type: 'text', width: '4rem' },
   { key: 'unit', label: 'Unit', type: 'text', width: '5rem', defaultValue: 'g' },
-  { key: 'grams', label: 'Grams', type: 'number', width: '5rem', step: 1, min: 0, defaultValue: 100 },
+  { key: 'grams', label: 'Grams', type: 'number', width: '5rem', step: 1, min: 0 },
 ];
 
 export function CookingActionPanel() {
@@ -118,7 +118,10 @@ export function CookingActionPanel() {
     setBusy('scale'); setFeedback(null);
     try {
       const r = await callMacro<ScaleResult>('scaleRecipe', { artifact: { data: recipeFor() } });
-      if (r.ok && r.result) {
+      if (r.ok && r.result?.reason === 'not_recorded') {
+        setScaleResult(null);
+        err(`Not recorded: ${(r.result.unavailable || []).join(', ')}`);
+      } else if (r.ok && r.result) {
         setScaleResult(r.result);
         pipe.publish('cooking.scale', r.result, { label: `Scaled ${r.result.scaleFactor}×` });
         ok(`Scaled ${r.result.scaleFactor}× to ${r.result.targetServings}.`);
@@ -130,10 +133,13 @@ export function CookingActionPanel() {
     setBusy('nutr'); setFeedback(null);
     try {
       const r = await callMacro<NutrResult>('nutritionEstimate', { artifact: { data: recipeFor() } });
-      if (r.ok && r.result) {
+      if (r.ok && r.result?.reason === 'not_recorded') {
+        setNutrResult(null);
+        err(`Not recorded: ${(r.result.unavailable || []).join(', ')}`);
+      } else if (r.ok && r.result) {
         setNutrResult(r.result);
-        pipe.publish('cooking.nutr', r.result, { label: `${r.result.perServing} cal/serving` });
-        ok(`${r.result.perServing} cal/serving.`);
+        pipe.publish('cooking.nutr', r.result, { label: `${r.result.perServing ?? '—'} cal/serving` });
+        ok(r.result.perServing == null ? 'Calories estimated. Servings not recorded.' : `${r.result.perServing} cal/serving.`);
       } else err(r.error ?? 'nutr failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -165,8 +171,8 @@ export function CookingActionPanel() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`👨‍🍳 Recipe brief`, '',
-      scaleResult ? `${scaleResult.recipe}: scaled ${scaleResult.baseServings}→${scaleResult.targetServings} (${scaleResult.scaleFactor}×)` : '',
-      nutrResult ? `Nutrition: ${nutrResult.perServing} cal/serving · ${nutrResult.macros.protein} P / ${nutrResult.macros.carbs} C / ${nutrResult.macros.fat} F` : '',
+      scaleResult ? `${scaleResult.recipe}: scaled ${scaleResult.baseServings ?? '—'}→${scaleResult.targetServings ?? '—'} (${scaleResult.scaleFactor ?? '—'}×)` : '',
+      nutrResult ? `Nutrition: ${nutrResult.perServing ?? '—'} cal/serving${nutrResult.macros ? ` · ${nutrResult.macros.protein} P / ${nutrResult.macros.carbs} C / ${nutrResult.macros.fat} F` : ''}` : '',
       subResult?.substitutions[0] ? `${subResult.ingredient} sub: ${subResult.substitutions[0].sub} (${subResult.substitutions[0].ratio})` : '',
       usdaResult?.foods[0] ? `USDA: ${usdaResult.foods[0].description}` : '',
       mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
@@ -204,7 +210,7 @@ export function CookingActionPanel() {
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
-      const task = `Home cook advisor. ${scaleResult ? `Making ${scaleResult.recipe}, ${scaleResult.targetServings} servings.` : ''} ${nutrResult ? `Per serving: ${nutrResult.perServing} cal, ${nutrResult.macros.protein} protein.` : ''} ${subResult?.substitutions[0] ? `Substituting ${subResult.ingredient} with ${subResult.substitutions[0].sub}.` : ''} Suggest one technique tip + one flavor enhancement. Plain text, 3 sentences max.`;
+      const task = `Home cook advisor. ${scaleResult ? `Making ${scaleResult.recipe}, ${scaleResult.targetServings ?? '—'} servings.` : ''} ${nutrResult && nutrResult.perServing != null ? `Per serving: ${nutrResult.perServing} cal${nutrResult.macros ? `, ${nutrResult.macros.protein} protein` : ''}.` : ''} ${subResult?.substitutions[0] ? `Substituting ${subResult.ingredient} with ${subResult.substitutions[0].sub}.` : ''} Suggest one technique tip + one flavor enhancement. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) {
@@ -217,10 +223,10 @@ export function CookingActionPanel() {
   }
 
   function addFoodAsIngredient(f: Food) {
-    const grams = f.servingSize && f.servingSizeUnit?.toLowerCase() === 'g' ? f.servingSize : 100;
+    const grams = f.servingSize && f.servingSizeUnit?.toLowerCase() === 'g' ? f.servingSize : '';
     const name = f.description.split(',')[0].toLowerCase();
     setIngredients((prev) => [...prev, { name, quantity: '1', unit: 'serving', grams }]);
-    ok(`Added ${name} (${grams} g).`);
+    ok(grams === '' ? `Added ${name}. Weight not on the USDA serving.` : `Added ${name} (${grams} g).`);
   }
 
   const actions = [
@@ -290,7 +296,7 @@ export function CookingActionPanel() {
                   if (r.name) setRecipeName(r.name);
                   if (typeof r.servings === 'number' && r.servings > 0) { setBaseServings(r.servings); setTargetServings(r.servings); }
                   setIngredients((r.ingredients ?? []).map((i) => ({
-                    name: i.name ?? '', quantity: i.quantity ?? '', unit: i.unit ?? 'g', grams: i.grams ?? 0,
+                    name: i.name ?? '', quantity: i.quantity ?? '', unit: i.unit ?? 'g', grams: i.grams ?? '',
                   })));
                   ok(`Loaded recipe "${r.name ?? d.id.slice(0, 8)}" (${r.ingredients?.length ?? 0} ingredients).`);
                 }}
@@ -298,7 +304,7 @@ export function CookingActionPanel() {
               <PipeImporter<IngRow[]> accept={['cooking.ingredientsImport']} onImport={(rows) => Array.isArray(rows) && setIngredients(rows)} compact />
             </div>
           </div>
-          <StructuredArrayEditor<IngRow> value={ingredients} onChange={setIngredients} template={{ name: '', quantity: '1', unit: 'g', grams: 100 }} columns={ING_COLS} accent="amber" maxRows={80} />
+          <StructuredArrayEditor<IngRow> value={ingredients} onChange={setIngredients} template={{ name: '', quantity: '1', unit: 'g', grams: '' }} columns={ING_COLS} accent="amber" maxRows={80} />
         </div>
       </div>
 
@@ -340,16 +346,18 @@ export function CookingActionPanel() {
         {scaleResult && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 max-h-60 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">{scaleResult.recipe}</div>
-            <div className="text-[11px] text-zinc-300">scaled <span className="text-amber-200 font-mono">{scaleResult.scaleFactor}×</span> · {scaleResult.baseServings} → {scaleResult.targetServings}</div>
-            {scaleResult.ingredients.map((i, idx) => <div key={idx} className="text-[10px] text-zinc-300 mt-0.5"><strong>{i.name}:</strong> <span className="text-zinc-400 line-through">{i.original}</span> → <span className="text-amber-200 font-mono">{i.scaled}</span></div>)}
+            <div className="text-[11px] text-zinc-300">scaled <span className="text-amber-200 font-mono">{scaleResult.scaleFactor ?? '—'}×</span> · {scaleResult.baseServings ?? '—'} → {scaleResult.targetServings ?? '—'}</div>
+            {(scaleResult.ingredients ?? []).map((i, idx) => <div key={idx} className="text-[10px] text-zinc-300 mt-0.5"><strong>{i.name}:</strong> <span className="text-zinc-400 line-through">{i.original}</span> → {i.scaled == null ? <span className="text-zinc-400 italic">quantity not recorded</span> : <span className="text-amber-200 font-mono">{i.scaled}</span>}</div>)}
           </div>
         )}
         {nutrResult && (
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Nutrition · {nutrResult.servings} servings</div>
-            <div className="text-2xl font-bold text-blue-300">{nutrResult.perServing}<span className="text-xs text-zinc-400"> cal/serving</span></div>
-            <div className="text-[10px] text-zinc-400">total {nutrResult.totalCalories} cal</div>
-            <div className="text-[10px] text-blue-200">P {nutrResult.macros.protein} · C {nutrResult.macros.carbs} · F {nutrResult.macros.fat}</div>
+            <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Nutrition · {nutrResult.servings ?? '—'} servings</div>
+            <div className="text-2xl font-bold text-blue-300">{nutrResult.perServing ?? '—'}<span className="text-xs text-zinc-400"> cal/serving</span></div>
+            <div className="text-[10px] text-zinc-400">total {nutrResult.totalCalories ?? '—'} cal</div>
+            {nutrResult.macros && <div className="text-[10px] text-blue-200">P {nutrResult.macros.protein} · C {nutrResult.macros.carbs} · F {nutrResult.macros.fat}</div>}
+            {nutrResult.missingGrams && nutrResult.missingGrams.length > 0 && <div className="text-[10px] text-amber-300">Weight not recorded: {nutrResult.missingGrams.join(', ')}</div>}
+            {nutrResult.servings == null && <div className="text-[10px] text-amber-300">Servings not recorded</div>}
             {nutrResult.note && <div className="text-[10px] text-zinc-400 italic">{nutrResult.note}</div>}
           </div>
         )}
