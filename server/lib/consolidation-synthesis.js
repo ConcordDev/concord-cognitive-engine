@@ -40,9 +40,21 @@ const _text = (d) => [
 ].filter((x) => typeof x === "string").join(" ");
 
 /** First real sentence of a member: its gist. */
+// Boilerplate a consolidated member carries that says nothing about its topic.
+const BOILER_RE = /^\s*(Members: \d+ |A compressed synthesis of \d+ |\*\*What this (MEGA|HYPER) represents\*\*)/i;
+
 export function memberGist(d, max = 160) {
+  // A mega/hyper member: its synthesis line ("Together they cover: …") is the
+  // gist a hyper needs, not "Members: N regular DTUs." or the old template.
+  if (d?.tier === "mega" || d?.tier === "hyper") {
+    const cover = String(d?.cretiHuman || "").match(/Together they cover: ([^\n]+)/);
+    if (cover) {
+      const c = cover[1].replace(/[#*_`>]+/g, "").replace(/\s+/g, " ").trim();
+      return c.length > max ? `${c.slice(0, max - 1).trimEnd()}…` : c;
+    }
+  }
   const raw = [d?.human?.summary, d?.summary, ...(Array.isArray(d?.core?.definitions) ? d.core.definitions : []), ...(Array.isArray(d?.core?.claims) ? d.core.claims : []), d?.cretiHuman]
-    .find((x) => typeof x === "string" && x.replace(/[*#_`>\-\s]/g, "").length >= 20) || "";
+    .find((x) => typeof x === "string" && !BOILER_RE.test(x) && x.replace(/[*#_`>\-\s]/g, "").length >= 20) || "";
   const clean = String(raw).replace(/\*\*[^*]+\*\*:\s*/g, "").replace(/[#*_`>]+/g, "").replace(/\s+/g, " ").trim();
   const sentence = (clean.match(/^.{20,}?[.!?](?=\s|$)/) || [clean])[0];
   return sentence.length > max ? `${sentence.slice(0, max - 1).trimEnd()}…` : sentence;

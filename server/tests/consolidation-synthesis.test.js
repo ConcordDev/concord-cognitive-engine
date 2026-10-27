@@ -50,3 +50,14 @@ test("a cluster with a live mega is absorbed into it: only new members, same env
   assert.deepEqual(node.lineage.parents, ["r0", "r1"]);
   assert.equal(node.meta.promotedFrom, 2);
 });
+
+test("a hyper's member gists come from each mega's synthesis, not its boilerplate", () => {
+  const oldMega = { id: "m1", tier: "mega", title: "MEGA — Old one", core: { definitions: ["A compressed synthesis of 9 regular DTUs around: Old one."], claims: ["Vision agents refuse less under tool pressure."] }, cretiHuman: "**What this MEGA represents**: 9 related regular DTUs clustered around **Old one**." };
+  const newMega = { id: "m2", tier: "mega", title: "MEGA — New one", human: { summary: "4 regular DTUs on New one." }, cretiHuman: "Members: 4 regular DTUs.\n\n**Summary**: 4 regular DTUs on New one. Together they cover: agents skip refusals; benchmarks undercount harm.\n\n**Members**:\n- a: b" };
+  assert.equal(memberGist(oldMega), "Vision agents refuse less under tool pressure.");
+  assert.equal(memberGist(newMega), "agents skip refusals; benchmarks undercount harm.");
+  const { text } = synthesizeConsolidatedBody({ tier: "hyper", childTier: "mega", titleSeed: "Agent safety", members: [oldMega, newMega] });
+  assert.match(text, /^Members: 2 mega DTUs\./);
+  assert.doesNotMatch(text, /- [^\n]*: Members: \d+/);
+  assert.doesNotMatch(text, /A compressed synthesis of/);
+});
