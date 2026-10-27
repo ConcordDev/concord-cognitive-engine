@@ -199,11 +199,14 @@ describe("observe — monitors CRUD + validation (shared ctx)", () => {
     assert.ok(String(saved.result.error).toLowerCase().includes("metric required"));
   });
 
-  it("monitorSave → monitorList: a valid monitor is saved with clamped defaults and listed", async () => {
-    const saved = await lensRun("observe", "monitorSave", { params: { metric: "cpu", op: "bogus", threshold: 90, type: "weird" } }, ctx);
+  it("monitorSave → monitorList: unknown op/type are refused (no silent clamp); a valid monitor is saved with defaults and listed", async () => {
+    const bad = await lensRun("observe", "monitorSave", { params: { metric: "cpu", op: "bogus", threshold: 90, type: "weird" } }, ctx);
+    assert.equal(bad.ok, false);
+    assert.equal(bad.error, "invalid_input");
+    const saved = await lensRun("observe", "monitorSave", { params: { metric: "cpu", threshold: 90 } }, ctx);
     assert.equal(saved.ok, true);
-    assert.equal(saved.result.monitor.op, ">");          // invalid op clamps to ">"
-    assert.equal(saved.result.monitor.type, "threshold"); // invalid type clamps
+    assert.equal(saved.result.monitor.op, ">");          // omitted op defaults to ">"
+    assert.equal(saved.result.monitor.type, "threshold"); // omitted type defaults
     const list = await lensRun("observe", "monitorList", {}, ctx);
     assert.equal(list.ok, true);
     assert.ok(Array.isArray(list.result.monitors));

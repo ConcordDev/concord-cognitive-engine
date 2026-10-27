@@ -550,13 +550,15 @@ describe("agriculture — fleet / zone / prescription CRUD (wave 13 · round-tri
   before(async () => { ctx = await depthCtx(`agri-w13-${randomUUID()}`); });
 
   it("equipment-add: defaults applied (kind tractor, fuel/def 100, status idle); bad kind coerced; hoursEngine clamped to >= 0", async () => {
+    assert.equal((await lensRun("agriculture", "equipment-add", { params: { name: "T", kind: "spaceship" } }, ctx)).error, "invalid_input"); // no silent clamp (validation wave 2)
+    assert.equal((await lensRun("agriculture", "equipment-add", { params: { name: "T", hoursEngine: -50 } }, ctx)).error, "invalid_input"); // no silent clamp (validation wave 2)
     const add = await lensRun("agriculture", "equipment-add",
-      { params: { name: `Tractor-${randomUUID()}`, kind: "spaceship", hoursEngine: -50 } }, ctx);
-    assert.equal(add.result.equipment.kind, "tractor");        // invalid kind → default tractor
+      { params: { name: `Tractor-${randomUUID()}` } }, ctx);
+    assert.equal(add.result.equipment.kind, "tractor");        // omitted kind → default tractor
     assert.equal(add.result.equipment.fuelLevelPct, 100);
     assert.equal(add.result.equipment.defLevelPct, 100);
     assert.equal(add.result.equipment.status, "idle");
-    assert.equal(add.result.equipment.hoursEngine, 0);         // Math.max(0, -50)
+    assert.equal(add.result.equipment.hoursEngine, 0);         // omitted → 0
     assert.equal(add.result.equipment.speedMph, 0);
 
     const valid = await lensRun("agriculture", "equipment-add",

@@ -167,12 +167,13 @@ describe("travel — itinerary CRUD + agenda + map (shared ctx)", () => {
     tripId = add.result.trip.id;
   });
 
-  it("itinerary-add normalizes an unknown category to 'activity' and reads back", async () => {
+  it("itinerary-add refuses an unknown category; omitted category defaults to 'activity' and reads back", async () => {
+    assert.equal((await lensRun("travel", "itinerary-add", { params: { tripId, title: "Colosseum", category: "bogus" } }, ctx)).error, "invalid_input"); // no silent clamp (validation wave 2)
     const a = await lensRun("travel", "itinerary-add", {
-      params: { tripId, title: "Colosseum", day: "2026-06-01", time: "10:00", category: "bogus", location: "Rome" },
+      params: { tripId, title: "Colosseum", day: "2026-06-01", time: "10:00", location: "Rome" },
     }, ctx);
     assert.equal(a.ok, true);
-    assert.equal(a.result.item.category, "activity"); // bogus → default
+    assert.equal(a.result.item.category, "activity"); // omitted → default
     const list = await lensRun("travel", "itinerary-list", { params: { tripId } }, ctx);
     assert.ok(list.result.items.some((x) => x.id === a.result.item.id));
     assert.ok(Array.isArray(list.result.byDay["2026-06-01"]));

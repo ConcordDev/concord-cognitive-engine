@@ -183,7 +183,9 @@ describe("law — clause library + contract CRUD round-trips (shared ctx)", () =
     assert.equal(bad.result.ok, false);
     assert.match(bad.result.error, /contract title required/);
     const oddType = await lensRun("law", "contract-create", { params: { title: "Weird", type: "spaceship" } }, ctx);
-    assert.equal(oddType.result.contract.type, "other");
+    assert.equal(oddType.error, "invalid_input"); // no silent fallback (validation wave 2)
+    const noType = await lensRun("law", "contract-create", { params: { title: "Weird" } }, ctx);
+    assert.equal(noType.result.contract.type, "other");
   });
 
   it("clause-add → clause-remove updates the contract clause count", async () => {

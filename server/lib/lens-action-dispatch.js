@@ -11,6 +11,7 @@
 
 import { validateLensActionInput } from "./macro-param-schema.js";
 import { rejectNonFiniteInput } from "./finite-input.js";
+import { lensInputSpec } from "./lens-input-schemas.js";
 
 const SPECS = new Map();
 
@@ -21,7 +22,16 @@ export function rememberLensActionSpec(key, spec) {
 }
 
 export function lensActionSpec(domain, action) {
-  return SPECS.get(`${domain}.${action}`) || null;
+  // A spec passed at registration wins field-by-field; the shared schema
+  // table (lens-input-schemas.js) fills in fields it doesn't cover.
+  const own = SPECS.get(`${domain}.${action}`) || null;
+  const shared = lensInputSpec(domain, action);
+  if (!own || !shared || own === shared) return own || shared;
+  return {
+    ...own,
+    paramSchema: { ...(shared.paramSchema || {}), ...(own.paramSchema || {}) },
+    ...(own.nonEmptyCreate || shared.nonEmptyCreate ? { nonEmptyCreate: true } : {}),
+  };
 }
 
 export function rejectInvalidLensInput(spec, input, ctx) {

@@ -90,8 +90,9 @@ describe("law.search-alert-add / -list / -remove — CRUD round-trip", () => {
     assert.equal(r.result.alert.checkCount, 0);
   });
 
-  it("search-alert-add: unrecognized alertType falls back to case_law (same convention as contract type)", async () => {
-    const r = await lensRun("law", "search-alert-add", { params: { query: "x", alertType: "citation" } }, ctx);
+  it("search-alert-add: unrecognized alertType is refused; omitted defaults to case_law", async () => {
+    assert.equal((await lensRun("law", "search-alert-add", { params: { query: "x", alertType: "citation" } }, ctx)).error, "invalid_input"); // no silent clamp (validation wave 2)
+    const r = await lensRun("law", "search-alert-add", { params: { query: "x" } }, ctx);
     assert.equal(r.result.alert.alertType, "case_law");
   });
 

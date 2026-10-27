@@ -30,6 +30,12 @@
 //     patientId:  { type: "string", fk: { store: "veterinaryLens.patients", owned: true } },
 //   }
 // spec.nonEmptyCreate refuses {} (and blank-only bodies) before field checks.
+//
+// Form-friendly flags (used by the compact schemas in lens-input-schemas.js):
+//   numericString: true  — "12" / " 3.5 " count as numbers (an <input> value);
+//                          "abc" is still expected_number.
+//   blankOk: true        — "" counts as "not sent" (an untouched optional field).
+//   epochOk: true        — an isoDate field also takes epoch milliseconds.
 
 import { actorId, isAdmin, requireOwner } from "./lens-authz.js";
 import { ownValue } from "./own-lookup.js";
@@ -68,6 +74,8 @@ export function isHttpUrl(value) {
     return false;
   }
 }
+
+const NUMERIC_STRING = /^\s*[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?\s*$/;
 
 function dig(root, storePath) {
   if (root == null || typeof storePath !== "string" || !storePath) return undefined;
@@ -176,14 +184,22 @@ export function validateParamSchema(schema, input, ctx) {
       continue;
     }
 
-    const val = obj[field];
-    if ((rule.type === "isoDate" || rule.type === "url") && typeof val === "string" && val.trim() === "") {
+    let val = obj[field];
+    if ((rule.type === "isoDate" || rule.type === "url" || rule.blankOk) && typeof val === "string" && val.trim() === "") {
       if (rule.required) errors.push({ field, reason: "required" });
+      continue;
+    }
+    if (rule.numericString && (rule.type === "number" || rule.type === "int") && typeof val === "string" && NUMERIC_STRING.test(val)) {
+      val = Number(val);
+    }
+    if (rule.epochOk && rule.type === "isoDate" && typeof val === "number" && Number.isFinite(val) && val > 0) {
       continue;
     }
 
     if (rule.type === "enum") {
-      if (!Array.isArray(rule.enum) || !rule.enum.includes(val)) {
+      const hit = Array.isArray(rule.enum) && (rule.enum.includes(val) ||
+        (rule.ci && typeof val === "string" && rule.enum.includes(val.trim().toLowerCase())));
+      if (!hit) {
         errors.push({ field, reason: "unknown_enum" });
       }
       continue;
@@ -205,6 +221,10 @@ export function validateParamSchema(schema, input, ctx) {
 
     if (rule.type !== "enum" && Array.isArray(rule.enum) && !rule.enum.includes(val)) {
       errors.push({ field, reason: `enum:${rule.enum.join("|")}` });
+    }
+    if (rule.type === "string" && rule.nonBlank && val.trim() === "") {
+      errors.push({ field, reason: "required" });
+      continue;
     }
     if (rule.type === "string" && typeof rule.maxLength === "number" && val.length > rule.maxLength) {
       errors.push({ field, reason: `maxLength_${rule.maxLength}` });

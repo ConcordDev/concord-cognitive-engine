@@ -56,11 +56,11 @@ describe("desert — wildlife sighting CRUD + validation (shared ctx)", () => {
     const badCoords = await lensRun("desert", "sightingSave", {
       params: { species: "Roadrunner", lat: "x", lng: 1 },
     }, ctx);
-    assert.equal(badCoords.result.ok, false);
-    assert.ok(String(badCoords.result.error).includes("lat/lng required"));
+    assert.equal(badCoords.ok, false);
+    assert.equal(badCoords.error, "invalid_input");
   });
 
-  it("sightingSave: valid count is respected; invalid/zero/negative count defaults to 1", async () => {
+  it("sightingSave: valid count is respected; zero defaults to 1; negative/non-numeric refused", async () => {
     const good = await lensRun("desert", "sightingSave", {
       params: { species: "Javelina", lat: 1, lng: 1, count: 6 },
     }, ctx);
@@ -74,15 +74,15 @@ describe("desert — wildlife sighting CRUD + validation (shared ctx)", () => {
     const negative = await lensRun("desert", "sightingSave", {
       params: { species: "Javelina", lat: 1, lng: 1, count: -3 },
     }, ctx);
-    assert.equal(negative.result.count, 1);
+    assert.equal(negative.error, "invalid_input");
 
     const notANumber = await lensRun("desert", "sightingSave", {
       params: { species: "Javelina", lat: 1, lng: 1, count: "many" },
     }, ctx);
-    assert.equal(notANumber.result.count, 1);
+    assert.equal(notANumber.error, "invalid_input");
   });
 
-  it("sightingSave: confidence enum accepted verbatim; invalid value soft-falls-back to probable (never rejected)", async () => {
+  it("sightingSave: confidence enum accepted verbatim; an unknown value is refused", async () => {
     const certain = await lensRun("desert", "sightingSave", {
       params: { species: "Gila monster", lat: 1, lng: 1, confidence: "certain" },
     }, ctx);
@@ -96,8 +96,8 @@ describe("desert — wildlife sighting CRUD + validation (shared ctx)", () => {
     const bogus = await lensRun("desert", "sightingSave", {
       params: { species: "Gila monster", lat: 1, lng: 1, confidence: "very-sure-probably" },
     }, ctx);
-    assert.equal(bogus.ok, true); // NOT rejected, unlike incident category/severity
-    assert.equal(bogus.result.confidence, "probable");
+    assert.equal(bogus.ok, false);
+    assert.equal(bogus.error, "invalid_input");
   });
 
   it("sightingSave: optional fields (commonOrScientific, behavior, notes, photoUrl) round-trip", async () => {

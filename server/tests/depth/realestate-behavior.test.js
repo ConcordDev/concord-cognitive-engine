@@ -686,10 +686,11 @@ describe("realestate — uncovered macros + compute branches (wave 10 top-up)", 
 
   it("lenders-add: unknown loanType falls back to 'conventional'; rate clamps to 30", async () => {
     const localCtx = await depthCtx("realestate-t10b-lender2");
+    assert.equal((await lensRun("realestate", "lenders-add", { params: { name: "Edge Bank", loanType: "bogus" } }, localCtx)).error, "invalid_input");
     const add = await lensRun("realestate", "lenders-add", {
-      params: { name: "Edge Bank", loanType: "bogus", quotedRate: 99 },
+      params: { name: "Edge Bank", quotedRate: 99 },
     }, localCtx);
-    assert.equal(add.result.lender.loanType, "conventional");
+    assert.equal(add.result.lender.loanType, "conventional"); // omitted → default
     assert.equal(add.result.lender.quotedRate, 30); // clamped to max
   });
 

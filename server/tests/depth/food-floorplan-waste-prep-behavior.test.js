@@ -45,7 +45,8 @@ describe("food.waste-log-add/list/delete — round-trip + aggregate + rejections
   });
 
   it("defaults qty to 1, unit to item, reason to other on an unrecognized value (tolerant fallback, mirrors pantry-add's location default)", async () => {
-    const add = await lensRun("food", "waste-log-add", { params: { itemName: "Mystery Item", reason: "aliens" } }, ctx);
+    assert.equal((await lensRun("food", "waste-log-add", { params: { itemName: "Mystery Item", reason: "aliens" } }, ctx)).error, "invalid_input"); // no silent clamp (validation wave 2)
+    const add = await lensRun("food", "waste-log-add", { params: { itemName: "Mystery Item" } }, ctx);
     assert.equal(add.result.entry.qty, 1);
     assert.equal(add.result.entry.unit, "item");
     assert.equal(add.result.entry.reason, "other");
@@ -57,9 +58,8 @@ describe("food.waste-log-add/list/delete — round-trip + aggregate + rejections
     assert.match(bad.result.error, /itemName required/);
   });
 
-  it("clamps a negative estimatedCostImpact to 0", async () => {
-    const add = await lensRun("food", "waste-log-add", { params: { itemName: "Neg Cost", estimatedCostImpact: -5 } }, ctx);
-    assert.equal(add.result.entry.estimatedCostImpact, 0);
+  it("refuses a negative estimatedCostImpact (invalid_input, no silent clamp)", async () => {
+    assert.equal((await lensRun("food", "waste-log-add", { params: { itemName: "Neg Cost", estimatedCostImpact: -5 } }, ctx)).error, "invalid_input"); // no silent clamp (validation wave 2)
   });
 
   it("waste-log-list totalEstimatedCost sums across all entries exactly", async () => {

@@ -523,7 +523,7 @@ export default function registerObserveActions(registerLensAction) {
       if (!metric) return { ok: false, error: "metric required" };
       const op = [">", ">=", "<", "<=", "=="].includes(params.op) ? params.op : ">";
       const type = ["threshold", "anomaly"].includes(params.type) ? params.type : "threshold";
-      const agg = ["avg", "sum", "min", "max", "last"].includes(params.agg) ? params.agg : "avg";
+      const agg = ["avg", "sum", "min", "max", "count", "last"].includes(params.agg) ? params.agg : "avg";
       let mon = params.id ? list.find((m) => m.id === params.id) : null;
       const fields = {
         name: clean(params.name || `${metric} ${op} ${params.threshold}`, 120),
@@ -595,6 +595,7 @@ export default function registerObserveActions(registerLensAction) {
           else if (mon.agg === "min") value = Math.min(...vals);
           else if (mon.agg === "max") value = Math.max(...vals);
           else if (mon.agg === "last") value = vals[vals.length - 1];
+          else if (mon.agg === "count") value = vals.length;
           else value = vals.reduce((a, b) => a + b, 0) / vals.length;
           value = Math.round(value * 1000) / 1000;
           if (mon.type === "anomaly") {
