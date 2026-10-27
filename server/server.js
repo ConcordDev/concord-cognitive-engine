@@ -18741,9 +18741,13 @@ const _SYSTEM_DTU_SOURCES = new Set([
  */
 function _isHiddenSystemDtu(d) {
   if (!d) return true;
+  // visibility "internal" is the ownership boundary (lib/dtu-ownership.js:
+  // ownerless system rows that are not public). It applies to every tier;
+  // ctxMayReadDtu enforces the same rule on by-id reads.
+  if (d.scope === "system" || d.visibility === "internal") return true;
+  // Megas/hypers are exempt only from the system-source filter.
   if (d.tier === "mega" || d.tier === "hyper") return false;
-  return _SYSTEM_DTU_SOURCES.has(d.source) || _SYSTEM_DTU_SOURCES.has(d.creatorType)
-    || d.scope === "system" || d.visibility === "internal";
+  return _SYSTEM_DTU_SOURCES.has(d.source) || _SYSTEM_DTU_SOURCES.has(d.creatorType);
 }
 
 /** All DTUs (including system/internal). Use for admin endpoints only. */

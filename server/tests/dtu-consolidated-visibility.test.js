@@ -1,6 +1,6 @@
-// Megas/hypers inherit source "system" / visibility "internal" from the
-// lattice members they absorb; they must stay visible to retrieval while
-// system bookkeeping DTUs stay hidden and private DTUs stay private.
+// Megas/hypers carry source "system"; that alone must not hide them. The
+// visibility "internal" ownership boundary still applies to every tier,
+// and private DTUs stay private.
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { registerServerCleanExit } from "./lib/server-clean-exit.js";
@@ -19,9 +19,10 @@ describe("consolidated DTUs are retrievable", () => {
   });
   after(() => { T.STATE.dtus = saved; });
 
-  it("system/internal mega and hyper are visible, a system regular is hidden, private stays private", () => {
+  it("system-source public mega and hyper are visible; internal mega, system regular and private stay hidden", () => {
     const put = (d) => T.STATE.dtus.set(d.id, { status: "active", tags: [], ...d });
-    put({ id: "v-mega", tier: "mega", title: "MEGA — Pier", source: "system", creatorType: "system", visibility: "internal", scope: "internal" });
+    put({ id: "v-mega", tier: "mega", title: "MEGA — Pier", source: "system", creatorType: "system", visibility: "public", scope: "global" });
+    put({ id: "v-int-mega", tier: "mega", title: "MEGA — Internal", source: "system", creatorType: "system", visibility: "internal", scope: "local" });
     put({ id: "v-hyper", tier: "hyper", title: "HYPER — Pier", source: "system", visibility: "public", scope: "global" });
     put({ id: "v-sys", tier: "regular", title: "lattice audit", source: "lattice_audit", visibility: "internal" });
     put({ id: "v-priv-mega", tier: "mega", title: "MEGA — mine", visibility: "private", scope: "personal", ownerId: "owner-a", creator_id: "owner-a" });
@@ -32,6 +33,8 @@ describe("consolidated DTUs are retrievable", () => {
     assert.equal(ids.has("v-hyper"), true);
     assert.equal(ids.has("v-sys"), false);
     assert.equal(ids.has("v-priv-mega"), false);
+    assert.equal(ids.has("v-int-mega"), false);
+    assert.equal(T._isHiddenSystemDtu(T.STATE.dtus.get("v-int-mega")), true);
   });
 
   it("formats archived hits with tier and archive marker", () => {
