@@ -36,6 +36,14 @@ function uid(prefix = "atlas") {
 function nowISO() { return new Date().toISOString(); }
 function clamp(v, min, max) { return Math.max(min, Math.min(max, Number(v) || 0)); }
 
+// A missing reading is not a measurement. 0 is a real value; "" and
+// non-finite numbers are not.
+function measuredNumber(v) {
+  if (v == null || v === "") return null;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 // ── Constants ───────────────────────────────────────────────────────────────
 
 export const LAYERS = Object.freeze({
@@ -172,12 +180,16 @@ export function collectSignal(observation) {
     destNode,
     frequency: Number(frequency),
     band: freqBand.name,
-    signalStrength: Number(signalStrength) || -70,
-    phase: Number(phase) || 0,
-    arrivalTime: arrivalTime || nowISO(),
-    noiseFloor: Number(noiseFloor) || -100,
-    multipath: multipath || [],
-    doppler: Number(doppler) || 0,
+    signalStrength: measuredNumber(signalStrength),
+    signalStrengthReason: measuredNumber(signalStrength) == null ? "not_measured" : null,
+    phase: measuredNumber(phase),
+    phaseReason: measuredNumber(phase) == null ? "not_measured" : null,
+    arrivalTime: arrivalTime || null,
+    noiseFloor: measuredNumber(noiseFloor),
+    noiseFloorReason: measuredNumber(noiseFloor) == null ? "not_measured" : null,
+    multipath: Array.isArray(multipath) ? multipath : [],
+    doppler: measuredNumber(doppler),
+    dopplerReason: measuredNumber(doppler) == null ? "not_measured" : null,
     polarization: polarization || "unknown",
     position: position || null,
     recorded: nowISO(),
@@ -224,18 +236,25 @@ export function modelPath(sourcePos, destPos, observation) {
   const distance = haversineDistance(sourcePos, destPos);
   if (distance <= 0) return null;
 
-  const freqMhz = Number(observation.frequency) || 2400;
-  const freeSpaceLoss = 20 * Math.log10(distance) + 20 * Math.log10(freqMhz) + 32.44;
+  const freqMhz = measuredNumber(observation.frequency);
+  const strength = measuredNumber(observation.signalStrength);
+  const phase = measuredNumber(observation.phase);
+  const freeSpaceLoss = freqMhz == null
+    ? null
+    : 20 * Math.log10(distance) + 20 * Math.log10(freqMhz) + 32.44;
+  const actualLoss = strength == null ? null : Math.abs(strength);
+  const excessLoss = freeSpaceLoss == null || actualLoss == null ? null : actualLoss - freeSpaceLoss;
 
-  const actualLoss = Math.abs(Number(observation.signalStrength) || -70);
-  const excessLoss = actualLoss - freeSpaceLoss;
-
-  // Phase deviation from expected (indicates material interaction)
-  const expectedPhase = (distance / (300 / freqMhz)) * 360 % 360;
-  const phaseDeviation = Math.abs((Number(observation.phase) || 0) - expectedPhase) % 360;
+  // Phase deviation from expected (indicates material interaction).
+  // A missing phase is not 0 degrees.
+  const expectedPhase = freqMhz == null ? null : (distance / (300 / freqMhz)) * 360 % 360;
+  const phaseDeviation = phase == null || expectedPhase == null
+    ? null
+    : Math.abs(phase - expectedPhase) % 360;
 
   // Multipath count indicates reflections (buildings, terrain)
   const multipathCount = Array.isArray(observation.multipath) ? observation.multipath.length : 0;
+  const unmeasured = freqMhz == null ? "frequency_not_measured" : (strength == null ? "signal_not_measured" : null);
 
   const pathModel = {
     id: uid("path"),
@@ -243,13 +262,14 @@ export function modelPath(sourcePos, destPos, observation) {
     destPos,
     distance_m: distance,
     frequency: freqMhz,
-    band: identifyFrequencyBand(freqMhz).name,
+    band: freqMhz == null ? null : identifyFrequencyBand(freqMhz).name,
     freeSpaceLoss_dB: freeSpaceLoss,
     actualLoss_dB: actualLoss,
     excessLoss_dB: excessLoss,
     phaseDeviation_deg: phaseDeviation,
     multipathCount,
-    environmentalImpact: clamp(excessLoss / 30, 0, 1), // Normalized 0-1
+    environmentalImpact: excessLoss == null ? null : clamp(excessLoss / 30, 0, 1),
+    reason: unmeasured,
     timestamp: nowISO(),
   };
 
@@ -302,8 +322,14 @@ export function reconstructTile(coordinates, pathModels, options = {}) {
   const uniqueAngles = new Set(angles.map(a => Math.round(a / 10) * 10));
   const angularDiversity = uniqueAngles.size;
 
-  // Calculate average environmental impact across paths
-  const avgImpact = pathModels.reduce((sum, p) => sum + (p.environmentalImpact || 0), 0) / pathModels.length;
+  // Average only paths that actually measured an impact. A missing
+  // impact is not zero, and must not pull the tile toward "air".
+  const impacts = pathModels
+    .map((p) => measuredNumber(p.environmentalImpact))
+    .filter((n) => n != null);
+  const avgImpact = impacts.length
+    ? impacts.reduce((sum, n) => sum + n, 0) / impacts.length
+    : null;
 
   // Confidence based on path count, angular diversity, and signal freshness
   const pathConfidence = Math.min(pathModels.length / 50, 1);
@@ -328,7 +354,7 @@ export function reconstructTile(coordinates, pathModels, options = {}) {
       populated: pathModels.length >= TOMO_CONSTANTS.MIN_PATHS_FOR_RECONSTRUCTION,
       pathCount: pathModels.length,
       angularDiversity,
-      avgImpact: Number(avgImpact.toFixed(4)),
+      avgImpact: avgImpact == null ? null : Number(avgImpact.toFixed(4)),
       dominantMaterial: classifyDominantMaterial(pathModels, layer),
     };
   }
@@ -392,8 +418,17 @@ export const MATERIAL_EM_PROFILES = Object.freeze({
 });
 
 export function classifyMaterial(excessLoss, phaseDeviation) {
-  const loss = Number(excessLoss) || 0;
-  const phase = Number(phaseDeviation) || 0;
+  const loss = measuredNumber(excessLoss);
+  const phase = measuredNumber(phaseDeviation);
+  if (loss == null || phase == null) {
+    return {
+      material: MATERIAL_TYPES.UNKNOWN,
+      confidence: null,
+      excessLoss: loss,
+      phaseDeviation: phase,
+      reason: "not_measured",
+    };
+  }
 
   let bestMatch = MATERIAL_TYPES.UNKNOWN;
   let bestScore = Infinity;
@@ -430,10 +465,11 @@ function classifyDominantMaterial(pathModels, layer) {
     return true;
   });
 
-  if (filtered.length === 0) return MATERIAL_TYPES.UNKNOWN;
+  const measured = filtered.filter((p) => measuredNumber(p.excessLoss_dB) != null && measuredNumber(p.phaseDeviation_deg) != null);
+  if (measured.length === 0) return MATERIAL_TYPES.UNKNOWN;
 
-  const avgLoss = filtered.reduce((s, p) => s + (p.excessLoss_dB || 0), 0) / filtered.length;
-  const avgPhase = filtered.reduce((s, p) => s + (p.phaseDeviation_deg || 0), 0) / filtered.length;
+  const avgLoss = measured.reduce((s, p) => s + p.excessLoss_dB, 0) / measured.length;
+  const avgPhase = measured.reduce((s, p) => s + p.phaseDeviation_deg, 0) / measured.length;
 
   return classifyMaterial(avgLoss, avgPhase).material;
 }
@@ -458,11 +494,13 @@ export function detectChanges(tileKey) {
     const cur = tile.layers?.[layer];
     const prev = prior[layer];
     if (!cur || !prev) continue;
-    const impactDelta = Math.abs((Number(cur.avgImpact) || 0) - (Number(prev.avgImpact) || 0));
+    const curImpact = measuredNumber(cur.avgImpact);
+    const prevImpact = measuredNumber(prev.avgImpact);
+    const impactDelta = curImpact == null || prevImpact == null ? null : Math.abs(curImpact - prevImpact);
     const materialChanged = cur.dominantMaterial !== prev.dominantMaterial;
-    if (!materialChanged && impactDelta < TOMO_CONSTANTS.CHANGE_DETECTION_THRESHOLD) continue;
+    if (!materialChanged && (impactDelta == null || impactDelta < TOMO_CONSTANTS.CHANGE_DETECTION_THRESHOLD)) continue;
     layers_affected.push(layer);
-    impactSum += impactDelta;
+    if (impactDelta != null) impactSum += impactDelta;
   }
   if (layers_affected.length === 0) return null;
 
