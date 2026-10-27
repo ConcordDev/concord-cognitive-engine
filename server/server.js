@@ -43,6 +43,7 @@ import {
   actorFromReq,
 } from "./lib/log-access.js";
 import { dtuSkipsAutoTag } from "./lib/dtu-auto-tag.js";
+import { hasUsableBrainInput, needsInputError } from "./lib/brain-action-input.js";
 import { aggregateTopicCounts } from "./lib/trending-topics.js";
 import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-tags.js";
 import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
@@ -48926,6 +48927,7 @@ register("lens", "run", async (ctx, input={}) => {
     // AI fallback (last resort): unregistered actions route to utility brain.
     // This should fire rarely now that aliases + common actions cover most cases.
     structuredLog("debug", "lens_action_ai_fallback", { domain: artifact.domain, action, note: "Register a real handler to avoid utility brain load" });
+    if (!hasUsableBrainInput(artifact?.data, params, artifact?.id ? artifact?.title : undefined)) return needsInputError(artifact.domain, action);
     try {
       const aiResult = await utilityCall(action, artifact.domain, {
         artifactTitle: artifact?.title,
@@ -48934,8 +48936,11 @@ register("lens", "run", async (ctx, input={}) => {
         artifactMeta: artifact?.meta,
         ...params,
       });
+      if (!aiResult?.ok) {
+        return { ok: false, error: aiResult?.error || "brain_unavailable", domain: artifact.domain, action };
+      }
       _lensEmitDTU(ctx, artifact.domain, action, artifact.type, artifact, { actionResult: aiResult, source: "ai-catchall" });
-      return { ok: true, result: { ok: aiResult.ok, output: aiResult.content || aiResult.error, source: "utility-brain", model: aiResult.model, action, domain: artifact.domain } };
+      return { ok: true, result: { ok: true, generated: true, output: aiResult.content, source: "utility-brain", model: aiResult.model, action, domain: artifact.domain } };
     } catch (e) {
       logger.debug("server", "ai-catchall-error", { domain: artifact.domain, action, error: String(e?.message || e) });
       return { ok: false, error: `${artifact.domain}.${action} encountered an error`, domain: artifact.domain, action };
@@ -50364,6 +50369,11 @@ app.post("/api/lens/run", async (req, res) => {
     // Explicit freeform-AI path (opt-in only): route to the utility brain, bounded
     // by a hard timeout so a dead/slow brain can't hang the worker ~96s on backoff
     // (#27, the slow_request / quality-pipeline hang #T3).
+    const { __ai: _aiFlag, ...catchallInput } = rest || {};
+    if (!hasUsableBrainInput(null, catchallInput)) {
+      emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: "needs_artifact_input" });
+      return res.status(200).json(needsInputError(domain, action));
+    }
     const CATCHALL_TIMEOUT_MS = Number(process.env.CONCORD_LENS_CATCHALL_TIMEOUT_MS) || 20000;
     let aiResult, _catchallTimer;
     try {
@@ -50389,7 +50399,7 @@ app.post("/api/lens/run", async (req, res) => {
       return res.status(200).json({ ok: false, error: "unknown_macro", reason: "macro_unavailable", domain, action, detail: aiResult?.error || "no registered macro; brain unavailable" });
     }
     emitMacroLife("macro:completed", { ok: true, ms: Date.now() - _lifeStartedAt });
-    return res.json({ ok: true, result: { ok: true, output: aiResult.content || aiResult.error, source: "utility-brain", model: aiResult.model, action, domain } });
+    return res.json({ ok: true, result: { ok: true, generated: true, output: aiResult.content || aiResult.error, source: "utility-brain", model: aiResult.model, action, domain } });
   } catch (e) {
     const msg = String(e?.message || e);
     // Lens-action throws used to become a 500 body with nothing written to
@@ -54179,6 +54189,8 @@ function registerDomainSpecificActions() {
       const dispatcher = BRAIN_DISPATCHERS[brain] || utilityCall;
       BRAIN_BACKED_LENS_ACTIONS.add(key); // brain-dispatch → static-contract-only
       LENS_ACTIONS.set(key, async (ctx, artifact, params) => {
+        // No input -> the brain can only answer with a refusal; don't call it.
+        if (!hasUsableBrainInput(artifact?.data, params, artifact?.id ? artifact?.title : undefined)) return needsInputError(domain, action);
         const result = await dispatcher(action, domain, {
           artifactTitle: artifact?.title,
           artifactData: artifact?.data,
@@ -54186,8 +54198,20 @@ function registerDomainSpecificActions() {
           description: desc,
           ...params,
         });
+        if (!result?.ok) {
+          return {
+            ok: false,
+            error: result?.error || "brain_unavailable",
+            output: result?.content || result?.error,
+            source: `${brain.toLowerCase()}-brain`,
+            action,
+            domain,
+            brain,
+          };
+        }
         return {
-          ok: result.ok,
+          ok: true,
+          generated: true,
           output: result.content || result.error,
           source: `${brain.toLowerCase()}-brain`,
           model: result.model,
