@@ -1092,6 +1092,7 @@ export default function registerArtistryActions(registerLensAction) {
       const body = artClean(p.body, 1200);
       if (!projectId) return { ok: false, error: "projectId_required" };
       if (!body) return { ok: false, error: "body_required" };
+      if (!findProjectOwner(s, projectId)) return { ok: false, error: "project not found" };
       const uid = artAid(ctx);
       const comment = {
         id: artId("cmt"),

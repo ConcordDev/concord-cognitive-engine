@@ -228,9 +228,14 @@ export default function registerProductivityActions(registerLensAction) {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const content = pdClean(params.content, 500);
     if (!content) return { ok: false, error: "task content required" };
+    const userId = pdAid(ctx);
+    const projectId = params.projectId ? String(params.projectId) : null;
+    if (projectId && !(s.projects.get(userId) || []).some((p) => p.id === projectId)) {
+      return { ok: false, error: "project not found" };
+    }
     const task = {
       id: pdId("tsk"), content,
-      projectId: params.projectId ? String(params.projectId) : null,
+      projectId,
       priority: Math.max(1, Math.min(4, Math.round(pdNum(params.priority, 4)))),
       dueDate: pdDay(params.dueDate) || null,
       labels: Array.isArray(params.labels)
@@ -241,7 +246,7 @@ export default function registerProductivityActions(registerLensAction) {
       comments: [],
       done: false, completedAt: null, createdAt: pdNow(),
     };
-    pdListB(s.tasks, pdAid(ctx)).push(task);
+    pdListB(s.tasks, userId).push(task);
     saveProdState();
     return { ok: true, result: { task } };
   });
@@ -551,10 +556,12 @@ export default function registerProductivityActions(registerLensAction) {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pdAid(ctx);
     const durationMin = Math.max(1, Math.round(pdNum(params.durationMin, 25)));
+    const taskId = params.taskId ? String(params.taskId) : null;
+    if (taskId && !findTask(s, userId, taskId)) return { ok: false, error: "task not found" };
     const session = {
       id: pdId("foc"), durationMin,
-      taskId: params.taskId ? String(params.taskId) : null,
-      taskContent: params.taskId ? (findTask(s, userId, params.taskId)?.content || null) : null,
+      taskId,
+      taskContent: taskId ? findTask(s, userId, taskId).content : null,
       date: new Date().toISOString().slice(0, 10),
       at: pdNow(),
     };

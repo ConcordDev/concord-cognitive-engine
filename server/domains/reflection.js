@@ -711,7 +711,7 @@ export default function registerReflectionActions(registerLensAction) {
     const userId = rfAid(ctx);
     let journalId = params.journalId ? String(params.journalId) : null;
     if (journalId && !(s.journals.get(userId) || []).some((j) => j.id === journalId)) {
-      journalId = null;
+      return { ok: false, error: "journal not found" };
     }
     const entry = {
       id: rfId("ent"), journalId, text,
@@ -893,7 +893,7 @@ export default function registerReflectionActions(registerLensAction) {
     const userId = rfAid(ctx);
     let journalId = params.journalId ? String(params.journalId) : null;
     if (journalId && !(s.journals.get(userId) || []).some((j) => j.id === journalId)) {
-      journalId = null;
+      return { ok: false, error: "journal not found" };
     }
     const entry = {
       id: rfId("ent"), journalId, text: tpl.body, title: tpl.name,
@@ -1386,7 +1386,7 @@ export default function registerReflectionActions(registerLensAction) {
     }
     let journalId = params.journalId ? String(params.journalId) : null;
     if (journalId && !(s.journals.get(userId) || []).some((j) => j.id === journalId)) {
-      journalId = null;
+      return { ok: false, error: "journal not found" };
     }
     const entry = {
       id: rfId("ent"), journalId,

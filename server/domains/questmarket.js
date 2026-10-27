@@ -462,6 +462,12 @@ export default function registerQuestmarketActions(registerLensAction) {
     const userId = qmActor(ctx);
     const title = String(params.title || "").trim();
     if (!title) return { ok: false, error: "title required" };
+    const guildId = params.guildId ? String(params.guildId) : null;
+    if (guildId) {
+      const guild = s.guilds.get(guildId);
+      const members = guild ? s.guildMembers.get(guild.id) : null;
+      if (!guild || !members || !members.has(userId)) return { ok: false, error: "guild not found" };
+    }
     if (title.length > 140) return { ok: false, error: "title too long" };
     const kind = params.kind === "bounty" ? "bounty" : "quest";
     const reward = Math.max(0, Math.round(Number(params.reward) || 0));
@@ -485,7 +491,7 @@ export default function registerQuestmarketActions(registerLensAction) {
       escrowReleased: false,
       claims: [],              // claimIds
       createdAt: qmNow(),
-      guildId: params.guildId ? String(params.guildId) : null,
+      guildId,
     };
     s.quests.set(id, quest);
     const rep = qmRep(s, userId);

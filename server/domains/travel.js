@@ -832,6 +832,9 @@ export default function registerTravelActions(registerLensAction) {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const program = tvclean(params.program, 120);
     if (!program) return { ok: false, error: "program required (e.g. 'United MileagePlus')" };
+    if (params.tripId && !(s.trips.get(tvaid(ctx)) || []).some((t) => t.id === String(params.tripId))) {
+      return { ok: false, error: "trip not found" };
+    }
     const tier = LOYALTY_TIERS.includes(String(params.tier || "").toLowerCase())
       ? String(params.tier).toLowerCase() : "none";
     const account = {
