@@ -189,6 +189,12 @@ import {
 } from "../lib/city-manager.js";
 import { handlePlayerDeath, claimLootBag, handleRobbery, reclaimExpiredBags } from "../lib/pvp-loot.js";
 import { HUB_WORLD_ID } from "../lib/world-ids.js";
+import {
+  readDailyDigest,
+  readPersonalAnalytics,
+  readWorldAnalytics,
+  readGlobalAnalytics,
+} from "../lib/sim-stats.js";
 
 /**
  * @param {object} [opts]
@@ -763,8 +769,6 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   const simPresence = new Map();
   const simSnapTemplates = new Map();
   const simVisitorLogs = [];
-  const simDailyDigests = new Map();
-  const simAnalytics = new Map();
   const simCraftingRecipes = [
     { id: 'recipe-usb-beam', name: 'USB Composite Beam', inputs: [{ itemId: 'mat-usb-a', quantity: 3 }], output: { itemId: 'comp-usb-beam', quantity: 1 }, stationType: 'forge', duration: 30, skillRequired: 'novice' },
     { id: 'recipe-steel-column', name: 'Steel Column', inputs: [{ itemId: 'mat-steel-a36', quantity: 5 }], output: { itemId: 'comp-steel-column', quantity: 1 }, stationType: 'forge', duration: 45, skillRequired: 'apprentice' },
@@ -1474,16 +1478,13 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Daily Digest API ─────────────────────────────────────────────
 
   router.get("/sim/digest/:userId", wrap((req, res) => {
-    const digest = simDailyDigests.get(req.params.userId);
-    if (!digest) {
-      return res.status(501).json({
-        ok: false,
-        error: "unavailable",
-        reason: "no_recorded_digest",
-        message: "No daily digest is recorded for this user. Citations and royalties were not invented.",
-      });
+    const viewer = req.user?.id || req.user?.userId || null;
+    if (!viewer || viewer !== req.params.userId) {
+      return res.status(403).json({ ok: false, error: "not_your_stats" });
     }
-    res.json({ ok: true, digest });
+    const result = readDailyDigest(db, viewer);
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, digest: result.digest });
   }));
 
   // ── Moderation / Anti-Grief API ──────────────────────────────────
@@ -1691,34 +1692,25 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Analytics API ────────────────────────────────────────────────
 
   router.get("/sim/analytics/personal/:userId", wrap((req, res) => {
-    const stats = simAnalytics.get(req.params.userId);
-    if (!stats) {
-      return res.status(501).json({
-        ok: false,
-        error: "unavailable",
-        reason: "no_recorded_stats",
-        message: "No personal stats are recorded for this user. Citations, royalties, and playtime were not invented.",
-      });
+    const viewer = req.user?.id || req.user?.userId || null;
+    if (!viewer || viewer !== req.params.userId) {
+      return res.status(403).json({ ok: false, error: "not_your_stats" });
     }
-    res.json({ ok: true, stats });
+    const result = readPersonalAnalytics(db, viewer);
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, stats: result.stats });
   }));
 
-  router.get("/sim/analytics/world/:worldId", wrap((_req, res) => {
-    res.status(501).json({
-      ok: false,
-      error: "unavailable",
-      reason: "no_world_telemetry",
-      message: "World analytics has no live counter. Population and visitor series were not invented.",
-    });
+  router.get("/sim/analytics/world/:worldId", wrap((req, res) => {
+    const result = readWorldAnalytics(db, req.params.worldId);
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, stats: result.stats });
   }));
 
   router.get("/sim/analytics/global", wrap((_req, res) => {
-    res.status(501).json({
-      ok: false,
-      error: "unavailable",
-      reason: "no_global_telemetry",
-      message: "Global analytics has no live counter. Citation and creator ranks were not invented.",
-    });
+    const result = readGlobalAnalytics(db);
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, stats: result.stats });
   }));
 
   // ── Seasonal / Events Calendar API ───────────────────────────────

@@ -51,30 +51,7 @@ describe("world sim routes do not invent metrics", () => {
     return { status: res.status, body: await res.json() };
   }
 
-  it("digest refuses instead of minting citations and royalties", async () => {
-    const { status, body } = await get("/api/world/sim/digest/user-wave11");
-    assert.equal(status, 501);
-    assert.equal(body.ok, false);
-    assert.equal(body.reason, "no_recorded_digest");
-    assert.equal(body.digest, undefined);
-    assert.equal(JSON.stringify(body).includes("USB-A"), false);
-  });
-
-  it("personal, world, and global analytics refuse invented counters", async () => {
-    const personal = await get("/api/world/sim/analytics/personal/user-wave11");
-    assert.equal(personal.status, 501);
-    assert.equal(personal.body.reason, "no_recorded_stats");
-    assert.equal(personal.body.stats, undefined);
-
-    const world = await get("/api/world/sim/analytics/world/anywhere");
-    assert.equal(world.status, 501);
-    assert.equal(world.body.reason, "no_world_telemetry");
-
-    const global = await get("/api/world/sim/analytics/global");
-    assert.equal(global.status, 501);
-    assert.equal(global.body.reason, "no_global_telemetry");
-    assert.equal(JSON.stringify(global.body).includes("45000"), false);
-  });
+  // Digest and analytics read stored counts since #1586 (tests/wave15-sim-stats.test.js).
 
   it("project board does not seed paid tasks", async () => {
     const board = await get("/api/world/sim/projects/board-1");
