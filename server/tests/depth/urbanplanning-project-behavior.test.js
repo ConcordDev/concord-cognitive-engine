@@ -98,12 +98,12 @@ describe("urban-planning.project-add/list — add/list round-trip", () => {
     assert.equal(r.result.project.targetCompletionDate, "");
   });
 
-  it("clamps a negative budget to 0", async () => {
+  it("refuses a negative budget (invalid_input, no silent clamp)", async () => {
     const r = await lensRun("urban-planning", "project-add", {
       params: { name: "Negative Budget Project", budget: -500 },
     }, ctx);
-    assert.equal(r.ok, true);
-    assert.equal(r.result.project.budget, 0);
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "invalid_input");
   });
 });
 

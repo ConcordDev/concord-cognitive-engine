@@ -164,12 +164,13 @@ describe("mining — sites + incidents + dashboard CRUD round-trip (shared ctx)"
   before(async () => { ctx = await depthCtx("mining-sites"); });
 
   it("site-add → site-list → incident-log → mining-dashboard reflect the writes", async () => {
+    assert.equal((await lensRun("mining", "site-add", { params: { name: "North Pit", kind: "open-cut-bogus" } }, ctx)).error, "invalid_input"); // no silent clamp (validation wave 2)
     const add = await lensRun("mining", "site-add", {
-      params: { name: "North Pit", kind: "open-cut-bogus", commodity: "gold", productionTonnes: 1200 },
+      params: { name: "North Pit", commodity: "gold", productionTonnes: 1200 },
     }, ctx);
     assert.equal(add.ok, true);
     assert.equal(add.result.site.name, "North Pit");
-    assert.equal(add.result.site.kind, "surface");   // invalid kind clamps to default
+    assert.equal(add.result.site.kind, "surface");   // omitted kind → default
     assert.equal(add.result.site.commodity, "gold");
     assert.equal(add.result.site.status, "active");
     assert.equal(add.result.site.productionTonnes, 1200);
@@ -212,12 +213,14 @@ describe("mining — drill-holes + intervals round-trip + interval validation (s
   before(async () => { ctx = await depthCtx("mining-holes"); });
 
   it("drillhole-add clamps azimuth/dip, log-interval sorts + computes loggedDepth", async () => {
+    assert.equal((await lensRun("mining", "drillhole-add", { params: { name: "DH-001", azimuth: 400 } }, ctx)).error, "invalid_input"); // no silent clamp (validation wave 2)
+    assert.equal((await lensRun("mining", "drillhole-add", { params: { name: "DH-001", dip: -120 } }, ctx)).error, "invalid_input"); // no silent clamp (validation wave 2)
     const add = await lensRun("mining", "drillhole-add", {
-      params: { name: "DH-001", azimuth: 400, dip: -120, totalDepth: 200 },
+      params: { name: "DH-001", azimuth: 360, dip: -90, totalDepth: 200 },
     }, ctx);
     assert.equal(add.ok, true);
-    assert.equal(add.result.hole.azimuth, 360);      // clamped to <= 360
-    assert.equal(add.result.hole.dip, -90);          // clamped to >= -90
+    assert.equal(add.result.hole.azimuth, 360);
+    assert.equal(add.result.hole.dip, -90);
     const holeId = add.result.hole.id;
 
     // log the deeper interval first; handler sorts ascending by 'from'

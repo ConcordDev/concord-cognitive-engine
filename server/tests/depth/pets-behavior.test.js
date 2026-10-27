@@ -197,13 +197,14 @@ describe("pets — pet lifecycle CRUD round-trip (shared ctx)", () => {
     assert.ok(String(bad.result.error).includes("name required"));
 
     const add = await lensRun("pets", "pet-add", {
-      params: { name: "Rex", species: "DOG", sex: "Male", weightKg: -3, birthdate: "2020-01-01" },
+      params: { name: "Rex", species: "DOG", sex: "Male", birthdate: "2020-01-01" },
     }, ctx);
+    assert.equal((await lensRun("pets", "pet-add", { params: { name: "Rex", weightKg: -3 } }, ctx)).error, "invalid_input"); // no silent clamp (validation wave 2)
     assert.equal(add.ok, true);
     assert.equal(add.result.pet.name, "Rex");
     assert.equal(add.result.pet.species, "dog");   // lowercased
     assert.equal(add.result.pet.sex, "male");      // lowercased + validated
-    assert.equal(add.result.pet.weightKg, 0);      // clamped to >= 0
+    assert.equal(add.result.pet.weightKg, 0);      // omitted → 0
   });
 
   it("pet-list → pet-detail → pet-update → pet-delete is a full round-trip", async () => {

@@ -168,10 +168,11 @@ describe("forestry — stand + activity CRUD round-trip (shared ctx)", () => {
 
   it("stand-add (invalid species clamps to mixed) → stand-list aggregates acres + estimatedTrees", async () => {
     const add = await lensRun("forestry", "stand-add", {
-      params: { name: "North 40", species: "not_a_species", acres: 40, ageYears: 25, treesPerAcre: 200 },
+      params: { name: "North 40", acres: 40, ageYears: 25, treesPerAcre: 200 },
     }, ctx);
     assert.equal(add.ok, true);
-    assert.equal(add.result.stand.species, "mixed");   // invalid clamps
+    assert.equal(add.result.stand.species, "mixed");   // omitted → default
+    assert.equal((await lensRun("forestry", "stand-add", { params: { name: "North 40", species: "not_a_species" } }, ctx)).error, "invalid_input"); // no silent clamp (validation wave 2)
     assert.equal(add.result.stand.acres, 40);
     const standId = add.result.stand.id;
 

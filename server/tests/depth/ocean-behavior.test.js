@@ -118,13 +118,14 @@ describe("ocean — spot/session CRUD round-trips + validation (shared ctx)", ()
   let ctx;
   before(async () => { ctx = await depthCtx("ocean-crud"); });
 
-  it("spot-add → spot-list: spot reads back; unknown kind defaults to 'surf'", async () => {
+  it("spot-add → spot-list: spot reads back; unknown kind refused, omitted kind defaults to 'surf'", async () => {
+    assert.equal((await lensRun("ocean", "spot-add", { params: { name: "Mavericks", kind: "bodysurf" } }, ctx)).error, "invalid_input"); // no silent clamp (validation wave 2)
     const add = await lensRun("ocean", "spot-add", {
-      params: { name: "Mavericks", kind: "bodysurf", lat: 37.49, lon: -122.5, stationId: "9414290", notes: "big" },
+      params: { name: "Mavericks", lat: 37.49, lon: -122.5, stationId: "9414290", notes: "big" },
     }, ctx);
     assert.equal(add.ok, true);
     assert.equal(add.result.spot.name, "Mavericks");
-    assert.equal(add.result.spot.kind, "surf"); // "bodysurf" not in SPOT_KINDS → default
+    assert.equal(add.result.spot.kind, "surf"); // omitted → default
     assert.equal(add.result.spot.lat, 37.49);
     assert.equal(add.result.spot.stationId, "9414290");
     const list = await lensRun("ocean", "spot-list", {}, ctx);

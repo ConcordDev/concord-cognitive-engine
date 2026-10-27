@@ -192,13 +192,14 @@ describe("astronomy — observing-target + log + session CRUD round-trips", () =
     assert.equal(obs.result.observation.rating, 5); // Math.min(5, round(9))
   });
 
-  it("session-create clamps bortle to 1..9 and defaults seeing to a valid enum", async () => {
+  it("session-create refuses bortle outside 1..9 and defaults seeing to a valid enum", async () => {
+    assert.equal((await lensRun("astronomy", "session-create", { params: { location: "Backyard", bortle: 42 } }, ctx)).error, "invalid_input"); // no silent clamp (validation wave 2)
     const s = await lensRun("astronomy", "session-create", {
-      params: { location: "Backyard", bortle: 42, seeing: "nonsense" },
+      params: { location: "Backyard", bortle: 9, seeing: "nonsense" },
     }, ctx);
     assert.equal(s.ok, true);
-    assert.equal(s.result.session.bortle, 9);       // clamped from 42
-    assert.equal(s.result.session.seeing, "average"); // invalid → default
+    assert.equal(s.result.session.bortle, 9);
+    assert.equal(s.result.session.seeing, "average"); // invalid → default (seeing not in the wave-2 schema)
   });
 });
 
@@ -231,10 +232,11 @@ describe("astronomy — target/observation/session/equipment/wishlist/event extr
 
   it("target-update edits fields; unknown id rejected; bad type → 'other'", async () => {
     const added = await lensRun("astronomy", "target-add", {
-      params: { name: "Edit Me", type: "not_a_type", magnitude: 5 },
+      params: { name: "Edit Me", magnitude: 5 },
     }, ctx);
     assert.equal(added.ok, true);
-    assert.equal(added.result.target.type, "other"); // unknown type falls back
+    assert.equal(added.result.target.type, "other"); // omitted type → default
+    assert.equal((await lensRun("astronomy", "target-add", { params: { name: "Edit Me", type: "not_a_type" } }, ctx)).error, "invalid_input"); // no silent clamp (validation wave 2)
 
     const id = added.result.target.id;
     const upd = await lensRun("astronomy", "target-update", {
@@ -328,10 +330,11 @@ describe("astronomy — target/observation/session/equipment/wishlist/event extr
     assert.match(noName.result.error, /equipment name required/);
 
     const eq = await lensRun("astronomy", "equipment-add", {
-      params: { name: "8in Dob", kind: "bogus", aperture: 203, focalLength: 1200 },
+      params: { name: "8in Dob", aperture: 203, focalLength: 1200 },
     }, ctx);
     assert.equal(eq.ok, true);
-    assert.equal(eq.result.equipment.kind, "telescope"); // bad kind falls back
+    assert.equal(eq.result.equipment.kind, "telescope"); // omitted kind → default
+    assert.equal((await lensRun("astronomy", "equipment-add", { params: { name: "8in Dob", kind: "bogus" } }, ctx)).error, "invalid_input"); // no silent clamp (validation wave 2)
     assert.equal(eq.result.equipment.aperture, 203);
 
     const list = await lensRun("astronomy", "equipment-list", {}, ctx);
@@ -386,10 +389,11 @@ describe("astronomy — target/observation/session/equipment/wishlist/event extr
 
     // A far-future event is always 'upcoming'; bad kind falls back to 'other'.
     const future = await lensRun("astronomy", "event-add", {
-      params: { name: "Total Eclipse", date: "2099-08-12", kind: "bogus" },
+      params: { name: "Total Eclipse", date: "2099-08-12" },
     }, ctx);
     assert.equal(future.ok, true);
     assert.equal(future.result.event.kind, "other");
+    assert.equal((await lensRun("astronomy", "event-add", { params: { name: "Total Eclipse", date: "2099-08-12", kind: "bogus" } }, ctx)).error, "invalid_input"); // no silent clamp (validation wave 2)
     // A long-past event is not upcoming.
     await lensRun("astronomy", "event-add", {
       params: { name: "Old Meteor Shower", date: "2000-01-01", kind: "meteor_shower" },

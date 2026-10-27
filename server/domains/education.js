@@ -1071,7 +1071,7 @@ Constraints:
       description: String(params.description || ""),
       category: String(params.category || "general"),
       level: ["beginner", "intermediate", "advanced"].includes(params.level) ? params.level : "beginner",
-      durationHours: Math.max(0, Number(params.durationHours) || 0),
+      durationHours: eduFiniteHours(params.durationHours),
       instructor: String(params.instructor || ""),
       institution: String(params.institution || ""),
       kind: ["course", "specialization", "certificate", "guided_project"].includes(params.kind) ? params.kind : "course",
@@ -1105,7 +1105,7 @@ Constraints:
     if (params.description != null) course.description = String(params.description);
     if (params.category != null) course.category = String(params.category);
     if (params.level != null) course.level = ["beginner", "intermediate", "advanced"].includes(params.level) ? params.level : course.level;
-    if (params.durationHours != null) course.durationHours = Math.max(0, Number(params.durationHours) || 0);
+    if (params.durationHours != null) course.durationHours = eduFiniteHours(params.durationHours);
     if (params.instructor != null) course.instructor = String(params.instructor);
     if (params.institution != null) course.institution = String(params.institution);
     if (params.kind != null) course.kind = ["course", "specialization", "certificate", "guided_project"].includes(params.kind) ? params.kind : course.kind;
@@ -2442,4 +2442,11 @@ function extractJsonForQuiz(text) {
   const last = body.lastIndexOf("}");
   if (first < 0 || last <= first) return null;
   try { return JSON.parse(body.slice(first, last + 1)); } catch { return null; }
+}
+
+// Course length in hours: finite and non-negative. "Infinity" / 1e999 used to
+// slip through Math.max(0, Number(x)) and be stored as Infinity (→ null in JSON).
+function eduFiniteHours(v) {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : 0;
 }

@@ -194,8 +194,9 @@ describe("food — CRUD round-trips + validation (shared ctx)", () => {
   before(async () => { ctx = await depthCtx("food-crud"); });
 
   it("pantry-add → pantry-list: item reads back; default location normalised to pantry", async () => {
-    const add = await lensRun("food", "pantry-add", { params: { itemName: "Tomatoes", qty: 4, unit: "ea", location: "bogus" } }, ctx);
-    assert.equal(add.result.item.location, "pantry");    // invalid location → default
+    assert.equal((await lensRun("food", "pantry-add", { params: { itemName: "Tomatoes", location: "bogus" } }, ctx)).error, "invalid_input"); // no silent clamp (validation wave 2)
+    const add = await lensRun("food", "pantry-add", { params: { itemName: "Tomatoes", qty: 4, unit: "ea" } }, ctx);
+    assert.equal(add.result.item.location, "pantry");    // omitted location → default
     const list = await lensRun("food", "pantry-list", {}, ctx);
     assert.ok(list.result.items.some((i) => i.id === add.result.item.id && i.itemName === "Tomatoes"));
   });

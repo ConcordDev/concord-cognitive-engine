@@ -174,8 +174,9 @@ describe("parenting — child CRUD + validation (shared ctx)", () => {
     assert.ok(bad.result.error.includes("child name required"));
   });
 
-  it("child-add: an unknown sex defaults to boy", async () => {
-    const add = await lensRun("parenting", "child-add", { params: { name: "Neutral", birthDate: "2024-01-01", sex: "alien" } }, ctx);
+  it("child-add: an unknown sex is refused; omitted sex defaults to boy", async () => {
+    assert.equal((await lensRun("parenting", "child-add", { params: { name: "Neutral", birthDate: "2024-01-01", sex: "alien" } }, ctx)).error, "invalid_input"); // no silent clamp (validation wave 2)
+    const add = await lensRun("parenting", "child-add", { params: { name: "Neutral", birthDate: "2024-01-01" } }, ctx);
     assert.equal(add.result.child.sex, "boy");
   });
 
