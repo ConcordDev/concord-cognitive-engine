@@ -118,6 +118,15 @@ describe("cooking — scaleRecipe (pure-compute)", () => {
     assert.equal(r.result.recipe, "Pancakes");
   });
 
+  it("does not invent a 4-to-8 scale when servings are omitted", () => {
+    const r = call("scaleRecipe", ctxA, { name: "Pancakes", ingredients: [{ name: "flour", quantity: "200", unit: "g" }] });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.scaleFactor, null);
+    assert.equal(r.result.ingredients, null);
+    assert.equal(r.result.reason, "not_recorded");
+    assert.deepEqual(r.result.unavailable, ["servings", "targetServings"]);
+  });
+
   it("targetServings can come from the 3rd-arg params override", () => {
     // baseServings 4, no targetServings on data, 12 in params → factor 3
     const data = { name: "Soup", servings: 4, ingredients: [{ name: "stock", quantity: "1000", unit: "ml" }] };
@@ -164,6 +173,36 @@ describe("cooking — nutritionEstimate (pure-compute)", () => {
     const r = call("nutritionEstimate", ctxA, { servings: 1, ingredients: [{ name: "moon dust", grams: 500 }] });
     assert.equal(r.ok, true);
     assert.equal(r.result.totalCalories, 0);
+  });
+
+  it("does not treat a missing weight as 100 g", () => {
+    const r = call("nutritionEstimate", ctxA, { servings: 1, ingredients: [{ name: "flour" }] });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.totalCalories, null);
+    assert.equal(r.result.perServing, null);
+    assert.equal(r.result.reason, "not_recorded");
+    assert.deepEqual(r.result.unavailable, ["flour"]);
+  });
+});
+
+describe("cooking — mealPlan budget", () => {
+  it("does not invent a $15 daily budget", () => {
+    const r = call("mealPlan", ctxA, { days: 3 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.dailyBudget, null);
+    assert.equal(r.result.weeklyBudget, null);
+    assert.equal(r.result.plan[0].meals[0].estimatedCost, null);
+    assert.equal(r.result.reason, "not_recorded");
+    assert.deepEqual(r.result.unavailable, ["budgetPerDay"]);
+  });
+
+  it("keeps an explicit daily budget", () => {
+    const r = call("mealPlan", ctxA, { days: 3, budgetPerDay: 15 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.weeklyBudget, 45);
+    assert.equal(r.result.dailyBudget, 15);
+    assert.equal(r.result.plan[0].meals[0].estimatedCost, 5);
+    assert.equal(r.result.reason, null);
   });
 });
 
