@@ -15,7 +15,7 @@ function fixture() {
   ins.run("m1", "mega", packDtuData(JSON.stringify({ id: "m1", tier: "mega", title: "m1" })));
   ins.run("r2", "regular", JSON.stringify({ id: "r2", tier: "regular", title: "r2" }));
   // Older cold rows keep id/tier only in the columns.
-  ins.run("m0", "mega", packDtuData(JSON.stringify({ human: { summary: "old mega body" } })));
+  ins.run("m0", "mega", packDtuData(JSON.stringify("# Old mega\n\n## Summary\nold mega body")));
   ins.run("s1", "shadow", JSON.stringify({ id: "s1", tier: "shadow" }));
   db.prepare("INSERT INTO archived_dtus VALUES (?, ?)").run("c1", JSON.stringify({ id: "c1", tier: "regular", title: "c1" }));
   return db;
@@ -26,7 +26,7 @@ describe("archive embed backfill", () => {
     const db = fixture();
     const have = new Set(["r2"]);
     const order = [];
-    const embedDTU = async (d) => { order.push(d.id); have.add(d.id); db.prepare("INSERT INTO emb VALUES (?, x'00')").run(d.id); };
+    const embedDTU = async (d) => { if (d.id === "m0") assert.match(d.content, /old mega body/); order.push(d.id); have.add(d.id); db.prepare("INSERT INTO emb VALUES (?, x'00')").run(d.id); };
     const opts = { db, embedDTU, hasEmbedding: (id) => have.has(id), batch: 1, budgetMs: 10_000, swapFreeMb: async () => 4000 };
     for (let i = 0; i < 12; i++) {
       const r = await runArchiveEmbedSlice(opts);

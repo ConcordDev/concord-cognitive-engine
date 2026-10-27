@@ -32,6 +32,13 @@ export function archiveRowToDtu(row) {
   if (!row || row.data == null) return null;
   let d = null;
   try { d = JSON.parse(unpackDtuData(row.data)); } catch { return null; }
+  // Legacy cold rows store the body as a JSON string (markdown, or rarely
+  // JSON text); the DTU fields live in the table columns.
+  if (typeof d === "string") {
+    const text = d;
+    try { d = JSON.parse(text); } catch { d = null; }
+    if (!d || typeof d !== "object") d = { content: text, cretiHuman: text.slice(0, 4000) };
+  }
   if (!d || typeof d !== "object") return null;
   let tags = d.tags;
   if (!Array.isArray(tags) && typeof row.tags === "string") { try { tags = JSON.parse(row.tags); } catch { tags = undefined; } }
