@@ -195,6 +195,18 @@ import {
   readWorldAnalytics,
   readGlobalAnalytics,
 } from "../lib/sim-stats.js";
+import {
+  readSeasonalCurrent,
+  readSimFlags,
+  readBrainStatus,
+  isSimAdmin,
+  publicBrainStatus,
+  searchSimSemantic,
+  querySimKnowledge,
+  readSimAudit,
+  readSimPrefs,
+  writeSimPrefs,
+} from "../lib/sim-live.js";
 
 /**
  * @param {object} [opts]
@@ -1715,14 +1727,9 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   // ── Seasonal / Events Calendar API ───────────────────────────────
 
-  router.get("/sim/seasonal/current", wrap((_req, res) => {
-    const month = new Date().getMonth();
-    const seasons = ['winter', 'winter', 'spring', 'spring', 'spring', 'summer', 'summer', 'summer', 'fall', 'fall', 'fall', 'winter'];
-    res.json({
-      ok: true, season: seasons[month],
-      activeEvent: { name: 'Spring Engineering Festival', endsAt: new Date(Date.now() + 7 * 86400000).toISOString() },
-      monthlyChallenge: { title: 'Bridge Builder Challenge', description: 'Design a pedestrian bridge rated for 200 occupants', objective: 'Build and validate a pedestrian bridge', progress: 0, reward: { type: 'title', value: 'Bridge Master' } },
-    });
+  router.get("/sim/seasonal/current", wrap((req, res) => {
+    const worldId = typeof req.query.worldId === "string" ? req.query.worldId : "";
+    res.json(readSeasonalCurrent(db, { worldId }));
   }));
 
   // ── Replay / Spectator API ───────────────────────────────────────
@@ -1804,35 +1811,43 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   // ── Accessibility Preferences API ────────────────────────────────
 
+  function simViewerId(req) {
+    return req.user?.id || req.user?.userId || null;
+  }
+  function ownSimPrefs(req, kind, write) {
+    const viewer = simViewerId(req);
+    if (!viewer || viewer !== req.params.userId) {
+      return { ok: false, status: 403, error: "not_your_settings" };
+    }
+    return write
+      ? writeSimPrefs(db, viewer, kind, req.body)
+      : readSimPrefs(db, viewer, kind);
+  }
+
   router.get("/sim/accessibility/:userId", wrap((req, res) => {
-    res.json({
-      ok: true, settings: {
-        colorblindMode: 'none', textScale: 1.0, screenReaderEnabled: false,
-        keyboardNavEnabled: false, reducedMotion: false, subtitlesEnabled: true,
-        oneHandedMode: false, gameSpeed: 1.0, highContrast: false,
-      },
-    });
+    const result = ownSimPrefs(req, "accessibility", false);
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, settings: result.settings });
   }));
 
   router.post("/sim/accessibility/:userId", auth, wrap((req, res) => {
-    res.json({ ok: true, settings: req.body });
+    const result = ownSimPrefs(req, "accessibility", true);
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, settings: result.settings });
   }));
 
   // ── Settings API ─────────────────────────────────────────────────
 
   router.get("/sim/settings/:userId", wrap((req, res) => {
-    res.json({
-      ok: true, settings: {
-        graphics: 'medium', audio: { master: 0.8, music: 0.6, ambient: 0.7, sfx: 0.8, dialogue: 0.9 },
-        notifications: { citation: true, royalty: true, event: true, social: true, system: true, dailyDigest: true },
-        privacy: { profileVisibility: 'public', worldVisibility: 'public', activityStatus: true, allowDMs: true },
-        controls: {}, locale: 'en', measurementUnit: 'metric',
-      },
-    });
+    const result = ownSimPrefs(req, "settings", false);
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, settings: result.settings });
   }));
 
   router.post("/sim/settings/:userId", auth, wrap((req, res) => {
-    res.json({ ok: true, settings: req.body });
+    const result = ownSimPrefs(req, "settings", true);
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, settings: result.settings });
   }));
 
   // ── Voice Interface API ──────────────────────────────────────────
@@ -2209,81 +2224,57 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Feature Flags API ───────────────────────────────────────────
 
   router.get("/sim/feature-flags", wrap((_req, res) => {
-    res.json({
-      ok: true,
-      flags: {
-        snap_build_v2: { enabled: true, rollout: 100 },
-        voice_interface: { enabled: true, rollout: 50 },
-        ar_preview: { enabled: false, rollout: 0 },
-        multiplayer_256: { enabled: false, rollout: 10 },
-        webgpu_renderer: { enabled: true, rollout: 75 },
-        live_collaboration: { enabled: true, rollout: 80 },
-        smart_notifications: { enabled: true, rollout: 60 },
-        command_palette: { enabled: true, rollout: 100 },
-      },
-    });
+    const flags = readSimFlags();
+    res.json(flags);
   }));
 
   // ── ML Ops / AI Brain Status API ────────────────────────────────
 
-  router.get("/sim/ai/status", wrap((_req, res) => {
-    res.json({
-      ok: true,
-      brains: {
-        conscious: { model: 'qwen2.5:7b', status: 'running', memoryGB: 5.2, inferenceMs: 340, requestsPerMin: 15 },
-        subconscious: { model: 'qwen2.5:1.5b', status: 'running', memoryGB: 1.1, inferenceMs: 85, requestsPerMin: 42 },
-        utility: { model: 'qwen2.5:3b', status: 'running', memoryGB: 2.3, inferenceMs: 150, requestsPerMin: 28 },
-        repair: { model: 'qwen2.5:0.5b', status: 'running', memoryGB: 0.4, inferenceMs: 45, requestsPerMin: 60 },
-      },
-      promptTemplates: 12,
-      totalInferences24h: 18420,
-      avgLatencyMs: 155,
-    });
+  router.get("/sim/ai/status", wrap(async (req, res) => {
+    const admin = isSimAdmin(req.user);
+    const probe = admin && req.query.probe !== "0";
+    const full = await readBrainStatus({ probe });
+    res.json(admin ? full : publicBrainStatus(full));
   }));
 
   // ── Semantic Search API ─────────────────────────────────────────
 
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
-  router.post("/sim/search/semantic", wrap((req, res) => {
-    const { query, limit, filters } = req.body;
-    // Simulated semantic search results
-    const results = [
-      { id: 'dtu-4281', type: 'building', title: 'Riverside Library', score: 0.94, district: 'academy' },
-      { id: 'dtu-1092', type: 'building', title: 'River Walk Pavilion', score: 0.87, district: 'docks' },
-      { id: 'dtu-7723', type: 'template', title: 'Modern Reading Room', score: 0.82, district: null },
-    ].slice(0, limit || 10);
-    res.json({ ok: true, query, results, model: 'all-MiniLM-L6-v2', dimensions: 384 });
+  router.post("/sim/search/semantic", wrap(async (req, res) => {
+    const result = await searchSimSemantic(db, {
+      query: req.body?.query,
+      limit: req.body?.limit,
+      requesterId: req.user?.id || req.user?.userId || null,
+    });
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({
+      ok: true,
+      query: result.query,
+      semantic: result.semantic,
+      results: result.results,
+    });
   }));
 
   // ── STAXX Knowledge Graph API ───────────────────────────────────
 
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/sim/knowledge/query", wrap((req, res) => {
-    const { nodeType, edgeType, startId, depth } = req.body;
-    // Simulated graph traversal
-    const nodes = [
-      { id: startId || 'dtu-4281', type: nodeType || 'DTU', label: 'Riverside Library', properties: { district: 'academy', citations: 47 } },
-      { id: 'user-1042', type: 'User', label: 'ArchitectX', properties: { reputation: 8200 } },
-      { id: 'mat-usb-a', type: 'Material', label: 'USB-A Composite', properties: { tensileStrength: 450 } },
-    ];
-    const edges = [
-      { from: startId || 'dtu-4281', to: 'user-1042', type: 'created_by', weight: 1.0 },
-      { from: startId || 'dtu-4281', to: 'mat-usb-a', type: 'made_of', weight: 0.8 },
-    ];
-    res.json({ ok: true, graph: { nodes, edges }, depth: depth || 1 });
+    const result = querySimKnowledge(db, {
+      startId: req.body?.startId,
+      edgeType: req.body?.edgeType,
+      depth: req.body?.depth,
+      requesterId: req.user?.id || req.user?.userId || null,
+    });
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, graph: result.graph, depth: result.depth, reason: result.reason });
   }));
 
   // ── Audit Log API ───────────────────────────────────────────────
 
   router.get("/sim/audit-log", auth, wrap((req, res) => {
-    const logs = [
-      { id: 'audit-1', event: 'dtu.created', actor: 'user-1042', target: 'dtu-4281', timestamp: new Date(Date.now() - 3600000).toISOString() },
-      { id: 'audit-2', event: 'dtu.cited', actor: 'user-2087', target: 'dtu-4281', timestamp: new Date(Date.now() - 1800000).toISOString() },
-      { id: 'audit-3', event: 'user.login', actor: 'user-1042', target: null, timestamp: new Date(Date.now() - 900000).toISOString() },
-      { id: 'audit-4', event: 'moderation.report', actor: 'user-3012', target: 'dtu-9921', timestamp: new Date(Date.now() - 600000).toISOString() },
-      { id: 'audit-5', event: 'physics.validation', actor: 'system', target: 'dtu-4281', timestamp: new Date(Date.now() - 300000).toISOString() },
-    ];
-    res.json({ ok: true, logs, total: logs.length });
+    const result = readSimAudit(db, { userId: simViewerId(req), limit: req.query.limit });
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, logs: result.logs, total: result.total });
   }));
 
   // ── Developer API / SDK Endpoints ───────────────────────────────
