@@ -21,7 +21,7 @@
  */
 
 import { useCallback, useEffect, useState, useRef } from 'react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 export interface ListMineItem {
   id?: string | number;
@@ -86,12 +86,8 @@ export function useListMine<T extends ListMineItem = ListMineItem>(
     setError(null);
     try {
       const macroName = macro || 'recent_mine';
-      const res = await api.post('/api/lens/run', {
-        domain,
-        name: macroName,
-        input: { ...(input ?? {}), limit },
-      });
-      const data = res?.data as MacroResponse<T>;
+      const res = await lensRun<MacroResponse<T>>(domain, macroName, { ...(input ?? {}), limit });
+      const data = res?.data?.result;
       if (!mountedRef.current) return;
       if (data?.ok) {
         setItems(Array.isArray(data.items) ? data.items : []);
@@ -99,13 +95,15 @@ export function useListMine<T extends ListMineItem = ListMineItem>(
       } else {
         setItems([]);
         setTotal(0);
-        if (data?.reason) setError(new Error(data.reason));
+        const reason = data?.reason || res?.data?.error;
+        if (reason) setError(new Error(reason));
       }
     } catch (e) {
       if (!mountedRef.current) return;
       setItems([]);
       setTotal(0);
-      setError(e instanceof Error ? e : new Error(String(e)));
+      const message = e instanceof Error ? e.message : String(e);
+      setError(new Error(message));
     } finally {
       if (mountedRef.current) setLoading(false);
     }

@@ -11,7 +11,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { GitBranch, RefreshCw, AlertTriangle, Play, Pause, CheckCircle2, XCircle, Clock } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface SessionRow {
@@ -26,16 +26,12 @@ interface SessionRow {
   closedAt: number | null;
 }
 
-// POST /api/lens/run ALWAYS wraps a dispatched macro's own return value as
-// { ok: true, result: <macro's own return> }. Reading fields off the outer
-// envelope instead of `.result` silently discards every real response —
-// the fabricated-success envelope bug (see docs/lens-specs/sessions-capability-map.md).
-async function runMacro<T>(name: string, input: Record<string, unknown>): Promise<T | null> {
+// Use lensRun so this panel shares the canonical envelope unwrapping,
+// auth, and correlation path instead of a duplicated raw POST that can drift.
+async function runMacro<T>(action: string, input: Record<string, unknown>): Promise<T | null> {
   try {
-    const r = await api.post('/api/lens/run', { domain: 'sessions', name, input });
-    const body = r?.data as { ok?: boolean; result?: T } | undefined;
-    if (body && typeof body === 'object' && 'result' in body) return body.result ?? null;
-    return (body as unknown as T) ?? null;
+    const r = await lensRun('sessions', action, input);
+    return (r.data.result ?? null) as T | null;
   } catch {
     return null;
   }
@@ -88,14 +84,26 @@ export function SessionRail({ lensId, status, limit = 12, hideWhenEmpty = true, 
       if (r?.ok) setRows(r.sessions || []);
       else setError(r?.reason || 'fetch_failed');
     } else {
-      // Default: fetch open AND paused, merge.
+      // Default: fetch open AND paused, merge. Use distinct keys so identical
+      // session ids from the two status calls do not collide (one session is
+      // shown under its actual status, not duplicated).
       const [openR, pausedR] = await Promise.all([
         runMacro<{ ok: boolean; sessions?: SessionRow[]; reason?: string }>('list_mine', { ...(lensId ? { lensId } : {}), status: 'open', limit }),
         runMacro<{ ok: boolean; sessions?: SessionRow[]; reason?: string }>('list_mine', { ...(lensId ? { lensId } : {}), status: 'paused', limit }),
       ]);
-      if (openR?.ok) setRows(openR.sessions || []);
-      else if (openR && !openR.ok) setError(openR.reason || 'fetch_failed');
-      if (pausedR?.ok) setPausedRows(pausedR.sessions || []);
+      const dedupedOpen = Array.isArray(openR?.sessions)
+        ? openR.sessions.filter((s) => s.status === 'open')
+        : [];
+      const dedupedPaused = Array.isArray(pausedR?.sessions)
+        ? pausedR.sessions.filter((s) => s.status === 'paused')
+        : [];
+      setRows(dedupedOpen);
+      setPausedRows(dedupedPaused);
+      const openErr = openR && !openR.ok ? openR.reason || 'fetch_failed' : null;
+      const pausedErr = pausedR && !pausedR.ok ? pausedR.reason || 'fetch_failed' : null;
+      if (dedupedOpen.length === 0 && dedupedPaused.length === 0) {
+        setError(openErr || pausedErr || null);
+      }
     }
     setLoading(false);
   }, [lensId, status, limit]);

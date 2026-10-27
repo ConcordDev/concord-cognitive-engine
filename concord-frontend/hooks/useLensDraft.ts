@@ -36,7 +36,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 export type DraftStatus = 'idle' | 'loading' | 'dirty' | 'saving' | 'saved' | 'error';
 
@@ -121,10 +121,10 @@ function clearLocal(lensId: string, draftKey: string) {
   try { window.localStorage.removeItem(localKey(lensId, draftKey)); } catch { /* ignore */ }
 }
 
-async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
+async function runMacro<T>(domain: string, action: string, input: Record<string, unknown>): Promise<T | null> {
   try {
-    const r = await api.post('/api/lens/run', { domain, name, input });
-    return r?.data as T;
+    const r = await lensRun(domain, action, input);
+    return (r.data.result ?? null) as T;
   } catch {
     return null;
   }

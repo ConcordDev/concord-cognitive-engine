@@ -14,6 +14,11 @@ import {
 import { motion } from 'framer-motion';
 import { FocusToolkit } from '@/components/attention/FocusToolkit';
 
+/** Defensive coercion for macro outputs that may return a non-array shape. */
+function toArr<T>(v: unknown): T[] {
+  return Array.isArray(v) ? (v as T[]) : [];
+}
+
 export function FocusDeskPanel() {
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
@@ -178,7 +183,9 @@ export function FocusDeskPanel() {
                   <p className="text-[10px] text-gray-400">Longest Streak</p>
                 </div>
               </div>
-              {(actionResult.componentScores as Record<string, number>) && (
+              {typeof actionResult.componentScores === 'object' &&
+                actionResult.componentScores !== null &&
+                !Array.isArray(actionResult.componentScores) && (
                 <div className="pt-2 border-t border-lattice-border">
                   <p className="text-xs text-gray-400 mb-2">Component Scores</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -217,23 +224,25 @@ export function FocusDeskPanel() {
                   };
                   return (
                     <div key={q} className={`p-2 rounded-lg border ${colors[q]}`}>
-                      <p className="text-xs font-medium text-gray-300 mb-1">{labels[q]} <span className="text-gray-400">({quad.count})</span></p>
-                      {quad.tasks.slice(0, 2).map((t) => (
+                      <p className="text-xs font-medium text-gray-300 mb-1">{labels[q]} <span className="text-gray-400">({quad?.count ?? 0})</span></p>
+                      {toArr<{ name: string; priorityScore: number }>(quad?.tasks).slice(0, 2).map((t) => (
                         <div key={t.name} className="flex justify-between text-[10px] text-gray-400">
                           <span className="truncate max-w-[80px]">{t.name}</span>
                           <span className="text-neon-cyan">{t.priorityScore}</span>
                         </div>
                       ))}
-                      {quad.count > 2 && <p className="text-[10px] text-gray-400 mt-0.5">+{quad.count - 2} more</p>}
+                      {(quad?.count ?? 0) > 2 && <p className="text-[10px] text-gray-400 mt-0.5">+{(quad?.count ?? 0) - 2} more</p>}
                     </div>
                   );
                 })}
               </div>
-              {(actionResult.optimalOrder as Array<{ name: string; priorityScore: number }>)?.slice(0, 5).length > 0 && (
-                <div className="pt-2 border-t border-lattice-border">
-                  <p className="text-xs text-gray-400 mb-2">Optimal Order (top 5)</p>
-                  <div className="space-y-1">
-                    {(actionResult.optimalOrder as Array<{ name: string; priorityScore: number }>).slice(0, 5).map((t, i) => (
+              {(() => {
+                const optimalOrder = toArr<{ name: string; priorityScore: number }>(actionResult.optimalOrder);
+                return optimalOrder.length > 0 ? (
+                  <div className="pt-2 border-t border-lattice-border">
+                    <p className="text-xs text-gray-400 mb-2">Optimal Order (top 5)</p>
+                    <div className="space-y-1">
+                      {optimalOrder.slice(0, 5).map((t, i) => (
                       <div key={i} className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2">
                           <span className="text-gray-600 w-4">{i + 1}.</span>
@@ -244,7 +253,8 @@ export function FocusDeskPanel() {
                     ))}
                   </div>
                 </div>
-              )}
+              ) : null;
+            })()}
             </div>
           )}
 
@@ -271,26 +281,29 @@ export function FocusDeskPanel() {
                   <p className="text-[10px] text-gray-400">Avg Cog Load</p>
                 </div>
               </div>
-              {(actionResult.schedule as Array<{ name: string; startMinute: number; allocatedMinutes: number; cognitiveLoad: number; partial?: boolean }>).slice(0, 4).length > 0 && (
-                <div className="pt-2 border-t border-lattice-border">
-                  <p className="text-xs text-gray-400 mb-2">Schedule Preview</p>
-                  <div className="space-y-1">
-                    {(actionResult.schedule as Array<{ name: string; startMinute: number; allocatedMinutes: number; cognitiveLoad: number; partial?: boolean }>).slice(0, 4).map((s, i) => (
-                      <div key={i} className="flex items-center justify-between p-2 bg-lattice-bg rounded text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-400 font-mono w-12">{Math.floor(s.startMinute / 60)}h{s.startMinute % 60}m</span>
-                          <span className="text-gray-300">{s.name}</span>
-                          {s.partial && <span className="text-yellow-400 text-[10px]">partial</span>}
+              {(() => {
+                const schedule = toArr<{ name: string; startMinute: number; allocatedMinutes: number; cognitiveLoad: number; partial?: boolean }>(actionResult.schedule);
+                return schedule.length > 0 ? (
+                  <div className="pt-2 border-t border-lattice-border">
+                    <p className="text-xs text-gray-400 mb-2">Schedule Preview</p>
+                    <div className="space-y-1">
+                      {schedule.slice(0, 4).map((s, i) => (
+                        <div key={i} className="flex items-center justify-between p-2 bg-lattice-bg rounded text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-400 font-mono w-12">{Math.floor(s.startMinute / 60)}h{s.startMinute % 60}m</span>
+                            <span className="text-gray-300">{s.name}</span>
+                            {s.partial && <span className="text-yellow-400 text-[10px]">partial</span>}
+                          </div>
+                          <div className="flex items-center gap-3 text-gray-400">
+                            <span>Load: {s.cognitiveLoad}</span>
+                            <span className="text-neon-green">{s.allocatedMinutes}m</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3 text-gray-400">
-                          <span>Load: {s.cognitiveLoad}</span>
-                          <span className="text-neon-green">{s.allocatedMinutes}m</span>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                ) : null;
+              })()}
               {(actionResult.unscheduledTasks as unknown[])?.length > 0 && (
                 <div className="flex items-center gap-2 p-2 rounded-lg bg-yellow-400/5 border border-yellow-400/20">
                   <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0" />

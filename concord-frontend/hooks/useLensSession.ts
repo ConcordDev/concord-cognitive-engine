@@ -23,7 +23,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 export type SessionStatus = 'open' | 'paused' | 'completed' | 'abandoned';
 
@@ -73,18 +73,14 @@ export interface UseLensSessionReturn<T = Record<string, unknown>> {
   refresh: () => Promise<void>;
 }
 
-// POST /api/lens/run ALWAYS wraps a dispatched macro's own return value as
-// { ok: true, result: <macro's own return> } — even when the macro itself
-// reports failure (e.g. { ok: false, reason: 'not_found' }). Reading fields
-// off the outer envelope (e.g. `r.data.session`) instead of `r.data.result`
-// silently discards every real response, success AND failure alike — the
-// fabricated-success envelope bug (see docs/lens-specs/sessions-capability-map.md).
-async function runMacro<R = unknown>(name: string, input: Record<string, unknown>): Promise<R | null> {
+// Use the canonical lensRun wrapper so the request goes through the same
+// envelope unwrapping, auth, and ConKay correlation path as every other
+// lens call. This removes the duplicated raw `api.post('/api/lens/run')`
+// that drifted out of sync with the server's envelope shape.
+async function runMacro<R = unknown>(action: string, input: Record<string, unknown>): Promise<R | null> {
   try {
-    const r = await api.post('/api/lens/run', { domain: 'sessions', name, input });
-    const body = r?.data as { ok?: boolean; result?: R } | undefined;
-    if (body && typeof body === 'object' && 'result' in body) return body.result ?? null;
-    return (body as unknown as R) ?? null;
+    const r = await lensRun('sessions', action, input);
+    return (r.data.result ?? null) as R | null;
   } catch {
     return null;
   }

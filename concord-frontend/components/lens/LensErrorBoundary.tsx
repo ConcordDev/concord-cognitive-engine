@@ -44,25 +44,25 @@ export class LensErrorBoundary extends React.Component<Props, State> {
     // Best-effort logging — never throw from here.
     try {
       console.error(`[LensErrorBoundary:${this.props.lensId}]`, error, errorInfo);
-      // Post to backend observability if available.
-      fetch('/api/lens/run', {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          domain: 'observability', name: 'log_error',
-          input: {
-            lensId: this.props.lensId,
-            message: error.message,
-            stack: (error.stack || '').slice(0, 4000),
-            componentStack: (errorInfo.componentStack || '').slice(0, 4000),
-          },
-        }),
-      }).catch(() => { /* observability is best-effort */ });
+      // NOTE: previously this POSTed to /api/lens/run with a non-existent
+      // observability.log_error macro and the wrong field (`name` instead of
+      // `action`), producing a 422/400 on every lens crash. Errors are already
+      // logged to the console and surfaced in the fallback UI; a real
+      // backend sink should be added as a proper registered macro + route.
     } catch { /* never block recovery */ }
   }
 
   reset = () => {
     this.setState({ error: null, errorInfo: null });
+  };
+
+  retry = () => {
+    // eslint-disable-next-line no-console
+    console.error(`[LensErrorBoundary:${this.props.lensId}] retry requested`);
+    this.reset();
+    // Do not reload the page; let React re-render the children so callers
+    // that re-render with non-throwing props can recover (matches the test
+    // contract and avoids a full location.reload round-trip).
   };
 
   render() {
@@ -93,7 +93,7 @@ export class LensErrorBoundary extends React.Component<Props, State> {
           </details>
           <div className="flex items-center justify-center gap-3 pt-2">
             <button
-              onClick={this.reset}
+              onClick={this.retry}
               className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-amber-50 text-sm font-medium"
             >
               Try again

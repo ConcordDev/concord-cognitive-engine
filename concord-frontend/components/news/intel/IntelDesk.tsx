@@ -67,12 +67,14 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
     queryFn: () => fetchHeadlines(category, 40),
     staleTime: 60_000,
     refetchInterval: 5 * 60_000, // GDELT re-indexes ~every 15m; poll gently
+    retry: false,
   });
 
   const briefing = useQuery({
     queryKey: ['intel-briefing'],
     queryFn: fetchDailyBriefing,
     staleTime: 30 * 60_000,
+    retry: false,
   });
 
   const headlines: Headline[] = useMemo(

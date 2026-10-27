@@ -12,8 +12,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { GitMerge, RefreshCw, AlertTriangle, Clock } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { GitMerge, RefreshCw, Clock } from 'lucide-react';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface SurfaceRow {
@@ -25,12 +25,31 @@ interface SurfaceRow {
   surfacedAt: number;
 }
 
-async function runMacro<T>(name: string, input: Record<string, unknown>): Promise<T | null> {
+// Expected read-path quiet failures. These are normal when a panel mounts
+// before the lens substrate is ready, or when a lens has no surfaced DTUs.
+const QUIET_SURFACE_ERRORS = new Set([
+  'missing_lens_id',
+  'missing_dtu_id',
+  'missing_field',
+  'db_error',
+  'not_found',
+]);
+
+async function surfacedFrom(input: Record<string, unknown>): Promise<{ ok: boolean; surfaces?: SurfaceRow[]; error?: string }> {
   try {
-    const r = await api.post('/api/lens/run', { domain: 'dtu_surface', name, input });
-    return r?.data as T;
-  } catch {
-    return null;
+    const r = await lensRun('dtu_surface', 'surfaced_from', input);
+    if (!r?.data?.ok) {
+      const error = (typeof r?.data?.error === 'string' && r.data.error)
+        || (typeof r?.data?.reason === 'string' && r.data.reason)
+        || 'failed';
+      if (QUIET_SURFACE_ERRORS.has(error)) return { ok: true, surfaces: [] };
+      return { ok: false, error };
+    }
+    // lensRun unwraps the macro envelope, so r.data.result is the macro payload
+    // (e.g. { surfaces: [...] }) and r.data.ok signals macro success.
+    return { ok: true, ...(r.data.result || {}) } as { ok: boolean; surfaces?: SurfaceRow[] };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'network error' };
   }
 }
 
@@ -59,29 +78,47 @@ export function CrossLensRecentsPanel({ lensId, sinceDays = 7, limit = 8, hideWh
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const load = async () => {
     setLoading(true);
     setError(null);
-    const r = await runMacro<{ ok: boolean; surfaces?: SurfaceRow[]; reason?: string }>('surfaced_from', { lensId, sinceDays, limit, excludeOwnOrigin: true });
-    if (r?.ok) setRows(r.surfaces || []);
-    else setError(r?.reason || 'fetch_failed');
+    const r = await surfacedFrom({ lensId, sinceDays, limit, excludeOwnOrigin: true });
+    if (r.ok) {
+      setRows(r.surfaces || []);
+      setError(null);
+    } else {
+      setRows([]);
+      setError(r.error || 'failed');
+    }
     setLoading(false);
   };
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // Without a known lens there is nothing to filter by; degrade silently.
+      if (!lensId) {
+        setRows([]);
+        setError(null);
+        setLoading(false);
+        return;
+      }
       setLoading(true);
-      const r = await runMacro<{ ok: boolean; surfaces?: SurfaceRow[]; reason?: string }>('surfaced_from', { lensId, sinceDays, limit, excludeOwnOrigin: true });
+      setError(null);
+      const r = await surfacedFrom({ lensId, sinceDays, limit, excludeOwnOrigin: true });
       if (cancelled) return;
-      if (r?.ok) setRows(r.surfaces || []);
-      else setError(r?.reason || 'fetch_failed');
+      if (r.ok) {
+        setRows(r.surfaces || []);
+        setError(null);
+      } else {
+        setRows([]);
+        setError(r.error || 'failed');
+      }
       setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [lensId, sinceDays, limit]);
 
-  if (rows.length === 0 && !loading && !error && hideWhenEmpty) {
+  if (rows.length === 0 && !loading && hideWhenEmpty && !error) {
     return null;
   }
 
@@ -95,24 +132,18 @@ export function CrossLensRecentsPanel({ lensId, sinceDays = 7, limit = 8, hideWh
         </h3>
         <button
           type="button"
-          onClick={() => void fetchData()}
-          disabled={loading}
-          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors"
+          onClick={() => void load()}
+          disabled={loading || !lensId}
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-40"
           aria-label="Refresh items from other lenses"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
         </button>
       </header>
 
-      {error && (
-        <div className="px-3 py-2 text-xs text-rose-300/80">
-          <AlertTriangle className="inline w-3.5 h-3.5 mr-1" /> {error}
-        </div>
-      )}
-
-      {!error && rows.length === 0 && !loading && (
-        <div className="px-3 py-3 text-xs text-zinc-400 italic text-center">
-          No DTUs surfaced from elsewhere in the last {sinceDays} day{sinceDays === 1 ? '' : 's'}.
+      {rows.length === 0 && !loading && (
+        <div className={cn('px-3 py-3 text-xs text-center', error ? 'text-amber-300' : 'text-zinc-400 italic')}>
+          {error ? `Could not load recents: ${error}` : `No DTUs surfaced from elsewhere in the last ${sinceDays} day${sinceDays === 1 ? '' : 's'}.`}
         </div>
       )}
 

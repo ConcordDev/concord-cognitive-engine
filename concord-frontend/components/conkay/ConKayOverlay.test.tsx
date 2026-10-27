@@ -29,6 +29,7 @@ if (!Element.prototype.scrollIntoView) {
 }
 
 const routerPush = vi.fn();
+const speakMock = vi.fn();
 vi.mock('next/navigation', () => ({
   usePathname: () => '/lenses/creatures',
   useRouter: () => ({ push: routerPush, replace: vi.fn() }),
@@ -51,7 +52,7 @@ vi.mock('./useConKayVoice', () => ({
     usingServerStt: false,
     voiceUnavailable: false,
     ttsAmplitudeRef: { current: 0 },
-    speak: vi.fn(),
+    speak: speakMock,
   }),
 }));
 
@@ -109,6 +110,7 @@ function callsFor(domain: string, macro: string) {
 describe('ConKayOverlay — Unit A2 pre-execution confirm (client-initiated macro path)', () => {
   beforeEach(() => {
     lensRunMock.mockClear();
+    speakMock.mockClear();
   });
   afterEach(() => cleanup());
 
@@ -159,6 +161,12 @@ describe('ConKayOverlay — Unit A2 pre-execution confirm (client-initiated macr
     // nothing happened.
     expect(await screen.findByText(/Cancelled — I didn't run creatures\.create/)).toBeInTheDocument();
   });
+
+  it('does not fire a TTS request on summon while voice is disabled by default', async () => {
+    await openConKay();
+    // The greeting is text-only until the user explicitly enables voice.
+    expect(speakMock).not.toHaveBeenCalled();
+  });
 });
 
 // ── Grounded research mode (V1.1 R3) ────────────────────────────────────────
@@ -183,6 +191,7 @@ function messageBadgeMatches(pattern: RegExp) {
 describe('ConKayOverlay — grounded research mode (reason.evaluate_answer)', () => {
   beforeEach(() => {
     lensRunMock.mockClear();
+    speakMock.mockClear();
   });
   afterEach(() => {
     cleanup();

@@ -19,7 +19,7 @@
  */
 
 import { useCallback } from 'react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 export type SurfaceKind = 'feed' | 'citation_chip' | 'quote_block' | 'recent_card' | 'downstream_panel' | 'search_result' | 'inline_link' | 'export';
 
@@ -34,11 +34,7 @@ export function useDtuSurface() {
   const record = useCallback(async (input: RecordInput): Promise<void> => {
     if (!input.dtuId || !input.lensId || !input.surfaceKind) return;
     try {
-      await api.post('/api/lens/run', {
-        domain: 'dtu_surface',
-        name: 'record',
-        input,
-      });
+      await lensRun('dtu_surface', 'record', { ...input });
     } catch {
       // Fire and forget — surface logging is not user-critical.
     }

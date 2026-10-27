@@ -17,6 +17,7 @@ function FeedBanner({ domain }: FeedBannerProps) {
     queryKey: ['feed-sources'],
     queryFn: () => api.get('/api/feeds/sources').then((r) => r.data),
     staleTime: 300_000, // 5 min cache
+    retry: false,
   });
 
   const feeds = (data?.feeds || []).filter(

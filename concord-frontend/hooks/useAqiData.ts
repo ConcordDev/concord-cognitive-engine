@@ -9,7 +9,7 @@
 // the real macro.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 export interface AqiData {
   aqi: number;
@@ -68,17 +68,13 @@ export function useAqiData({ lat, lng }: UseAqiDataOptions = {}): UseAqiDataResu
     setError(null);
     (async () => {
       try {
-        const res = await api.post('/api/lens/run', {
-          domain: 'eco', action: 'aqi-current',
-          input: { lat: coords.lat, lng: coords.lng },
-        });
+        const res = await lensRun<AqiData>('eco', 'aqi-current', { lat: coords.lat, lng: coords.lng });
         if (cancelled) return;
-        const node = res.data?.result as (AqiData & { ok?: boolean; error?: string }) | null;
-        if (node && node.ok === false) {
-          setError(node.error || 'Air-quality source unavailable.');
+        if (!res.data.ok) {
+          setError(res.data.error || 'Air-quality source unavailable.');
           setData(null);
         } else {
-          setData((node as AqiData) || null);
+          setData(res.data.result || null);
           setLastFetchedAt(Date.now());
         }
       } catch (e) {

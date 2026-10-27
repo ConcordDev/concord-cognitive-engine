@@ -207,7 +207,7 @@ function ReleaseCard({ release }: { release: ReleaseAttachment }) {
             {release.artist} &middot; {release.trackCount} tracks
           </p>
           <div className="mt-2 flex flex-wrap gap-1">
-            {release.tracks.slice(0, 3).map((t, i) => (
+            {(release.tracks || []).slice(0, 3).map((t, i) => (
               <span key={i} className="text-[11px] text-gray-400">
                 {i + 1}. {t}
                 {i < 2 ? ',' : ''}
@@ -224,27 +224,28 @@ function ReleaseCard({ release }: { release: ReleaseAttachment }) {
 }
 
 function ArtGallery({ images }: { images: ArtAttachment['images'] }) {
+  const safeImages = images || [];
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
         'mt-3 grid gap-1 rounded-xl overflow-hidden border border-lattice-border',
-        images.length === 1 && 'grid-cols-1',
-        images.length === 2 && 'grid-cols-2',
-        images.length === 3 && 'grid-cols-2',
-        images.length >= 4 && 'grid-cols-2'
+        safeImages.length === 1 && 'grid-cols-1',
+        safeImages.length === 2 && 'grid-cols-2',
+        safeImages.length === 3 && 'grid-cols-2',
+        safeImages.length >= 4 && 'grid-cols-2'
       )}
     >
-      {images.map((img, i) => (
-        <div
+      {safeImages.map((img, i) => (
+          <div
           key={i}
           className={cn(
             'bg-gradient-to-br flex items-center justify-center relative group',
             img.gradient,
-            images.length === 1
+            safeImages.length === 1
               ? 'h-64'
-              : images.length === 3 && i === 0
+              : safeImages.length === 3 && i === 0
                 ? 'row-span-2 h-full min-h-[200px]'
                 : 'h-32'
           )}
