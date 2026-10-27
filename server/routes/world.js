@@ -191,6 +191,7 @@ import { handlePlayerDeath, claimLootBag, handleRobbery, reclaimExpiredBags } fr
 import { HUB_WORLD_ID } from "../lib/world-ids.js";
 import { renderDtuAsFile, DOCUMENT_EXPORT_FORMATS } from "../lib/dtu-document-export.js";
 import { ctxMayReadDtu } from "../lib/dtu-read-access.js";
+import { readAndHydrateDtu } from "../lib/dtu-shadow-hydrate.js";
 import {
   readDailyDigest,
   readPersonalAnalytics,
@@ -1965,13 +1966,18 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
       return res.status(400).json({ ok: false, error: "unsupported_format", supportedFormats: DOCUMENT_EXPORT_FORMATS });
     }
     const store = _simExportStore();
-    if (!store || typeof store.get !== "function") {
+    const hasStore = !!store && typeof store.get === "function";
+    if (!hasStore && !db) {
       return res.status(501).json({
         ok: false, error: "unavailable", reason: "not_wired",
         missing: "DTU store (STATE.dtus) is not available in this process",
       });
     }
-    const dtu = store.get(dtuId);
+    // DTUs written straight to SQL (e.g. grounding_*) are not in STATE.dtus.
+    // Read them through the shared shadow hydrator (read-only, nothing is
+    // inserted into STATE) and apply the same visibility gate below.
+    let dtu = hasStore ? store.get(dtuId) : null;
+    if (!dtu && db) dtu = readAndHydrateDtu(db, dtuId);
     if (!dtu || _simExportHidden(dtu, _userId(req))) {
       return res.status(404).json({ ok: false, error: "dtu_not_found" });
     }
