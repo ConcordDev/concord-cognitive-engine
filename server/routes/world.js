@@ -189,6 +189,7 @@ import {
 } from "../lib/city-manager.js";
 import { handlePlayerDeath, claimLootBag, handleRobbery, reclaimExpiredBags } from "../lib/pvp-loot.js";
 import { HUB_WORLD_ID } from "../lib/world-ids.js";
+import { listActiveFestivals } from "../lib/festivals.js";
 
 /**
  * @param {object} [opts]
@@ -765,6 +766,8 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   const simVisitorLogs = [];
   const simDailyDigests = new Map();
   const simAnalytics = new Map();
+  const simAccessibility = new Map();
+  const simUserSettings = new Map();
   const simCraftingRecipes = [
     { id: 'recipe-usb-beam', name: 'USB Composite Beam', inputs: [{ itemId: 'mat-usb-a', quantity: 3 }], output: { itemId: 'comp-usb-beam', quantity: 1 }, stationType: 'forge', duration: 30, skillRequired: 'novice' },
     { id: 'recipe-steel-column', name: 'Steel Column', inputs: [{ itemId: 'mat-steel-a36', quantity: 5 }], output: { itemId: 'comp-steel-column', quantity: 1 }, stationType: 'forge', duration: 45, skillRequired: 'apprentice' },
@@ -1734,13 +1737,30 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   // ── Seasonal / Events Calendar API ───────────────────────────────
 
-  router.get("/sim/seasonal/current", wrap((_req, res) => {
-    const month = new Date().getMonth();
-    const seasons = ['winter', 'winter', 'spring', 'spring', 'spring', 'summer', 'summer', 'summer', 'fall', 'fall', 'fall', 'winter'];
+  router.get("/sim/seasonal/current", wrap((req, res) => {
+    const live = getCurrentSeason();
+    const worldId = typeof req.query.worldId === "string" ? req.query.worldId : "";
+    const activeFestivals = listActiveFestivals(db, worldId);
+    const festival = activeFestivals[0] || null;
+    const challenge = live?.challenges?.[0] || null;
     res.json({
-      ok: true, season: seasons[month],
-      activeEvent: { name: 'Spring Engineering Festival', endsAt: new Date(Date.now() + 7 * 86400000).toISOString() },
-      monthlyChallenge: { title: 'Bridge Builder Challenge', description: 'Design a pedestrian bridge rated for 200 occupants', objective: 'Build and validate a pedestrian bridge', progress: 0, reward: { type: 'title', value: 'Bridge Master' } },
+      ok: true,
+      season: live,
+      activeFestivals,
+      activeEvent: live
+        ? { id: live.id, name: live.name, endsAt: live.endDate, source: "season" }
+        : festival
+          ? {
+              id: festival.festival_id,
+              name: festival.name,
+              endsAt: new Date(festival.ends_at * 1000).toISOString(),
+              source: "festival",
+            }
+          : null,
+      monthlyChallenge: challenge
+        ? { id: challenge.id, title: challenge.name, description: challenge.description || "", source: "season" }
+        : null,
+      reason: live || festival ? null : "no_active_season",
     });
   }));
 
@@ -1821,37 +1841,91 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     }
   }));
 
+  // Saved prefs only. A missing row is unavailable, not a canned default.
+  function simViewerId(req) {
+    return req.user?.id || req.user?.userId || null;
+  }
+  function copySimPrefValue(value) {
+    if (value == null || typeof value === "number" || typeof value === "boolean") return value;
+    if (typeof value === "string") return value.slice(0, 200);
+    return undefined;
+  }
+  function copySimPrefs(body) {
+    if (!body || typeof body !== "object" || Array.isArray(body)) return null;
+    const out = {};
+    for (const [key, value] of Object.entries(body)) {
+      if (typeof key !== "string" || key.length > 64 || key === "__proto__" || key === "constructor") continue;
+      if (value != null && typeof value === "object" && !Array.isArray(value)) {
+        const nested = {};
+        for (const [nk, nv] of Object.entries(value)) {
+          if (typeof nk !== "string" || nk.length > 64) continue;
+          const copied = copySimPrefValue(nv);
+          if (copied !== undefined) nested[nk] = copied;
+        }
+        out[key] = nested;
+      } else {
+        const copied = copySimPrefValue(value);
+        if (copied !== undefined) out[key] = copied;
+      }
+    }
+    return Object.keys(out).length ? out : null;
+  }
+  function readOwnSimPrefs(req, store) {
+    const viewer = simViewerId(req);
+    if (!viewer || viewer !== req.params.userId) {
+      return { error: true, status: 403, body: { ok: false, error: "not_your_settings" } };
+    }
+    if (!store.has(viewer)) {
+      return {
+        error: true,
+        status: 501,
+        body: {
+          ok: false,
+          error: "unavailable",
+          reason: "no_saved_settings",
+          message: "No settings are saved for this user. Defaults were not presented as theirs.",
+        },
+      };
+    }
+    return { value: store.get(viewer) };
+  }
+  function writeOwnSimPrefs(req, store) {
+    const viewer = simViewerId(req);
+    if (!viewer || viewer !== req.params.userId) {
+      return { error: true, status: 403, body: { ok: false, error: "not_your_settings" } };
+    }
+    const value = copySimPrefs(req.body);
+    if (!value) return { error: true, status: 400, body: { ok: false, error: "settings required" } };
+    store.set(viewer, value);
+    return { value };
+  }
+
   // ── Accessibility Preferences API ────────────────────────────────
 
   router.get("/sim/accessibility/:userId", wrap((req, res) => {
-    res.json({
-      ok: true, settings: {
-        colorblindMode: 'none', textScale: 1.0, screenReaderEnabled: false,
-        keyboardNavEnabled: false, reducedMotion: false, subtitlesEnabled: true,
-        oneHandedMode: false, gameSpeed: 1.0, highContrast: false,
-      },
-    });
+    const settings = readOwnSimPrefs(req, simAccessibility);
+    if (settings.error) return res.status(settings.status).json(settings.body);
+    res.json({ ok: true, settings: settings.value });
   }));
 
   router.post("/sim/accessibility/:userId", auth, wrap((req, res) => {
-    res.json({ ok: true, settings: req.body });
+    const saved = writeOwnSimPrefs(req, simAccessibility);
+    if (saved.error) return res.status(saved.status).json(saved.body);
+    res.json({ ok: true, settings: saved.value });
   }));
 
   // ── Settings API ─────────────────────────────────────────────────
 
   router.get("/sim/settings/:userId", wrap((req, res) => {
-    res.json({
-      ok: true, settings: {
-        graphics: 'medium', audio: { master: 0.8, music: 0.6, ambient: 0.7, sfx: 0.8, dialogue: 0.9 },
-        notifications: { citation: true, royalty: true, event: true, social: true, system: true, dailyDigest: true },
-        privacy: { profileVisibility: 'public', worldVisibility: 'public', activityStatus: true, allowDMs: true },
-        controls: {}, locale: 'en', measurementUnit: 'metric',
-      },
-    });
+    const settings = readOwnSimPrefs(req, simUserSettings);
+    if (settings.error) return res.status(settings.status).json(settings.body);
+    res.json({ ok: true, settings: settings.value });
   }));
 
   router.post("/sim/settings/:userId", auth, wrap((req, res) => {
-    res.json({ ok: true, settings: req.body });
+    const saved = writeOwnSimPrefs(req, simUserSettings);
+    if (saved.error) return res.status(saved.status).json(saved.body);
+    res.json({ ok: true, settings: saved.value });
   }));
 
   // ── Voice Interface API ──────────────────────────────────────────
@@ -2229,35 +2303,22 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Feature Flags API ───────────────────────────────────────────
 
   router.get("/sim/feature-flags", wrap((_req, res) => {
-    res.json({
-      ok: true,
-      flags: {
-        snap_build_v2: { enabled: true, rollout: 100 },
-        voice_interface: { enabled: true, rollout: 50 },
-        ar_preview: { enabled: false, rollout: 0 },
-        multiplayer_256: { enabled: false, rollout: 10 },
-        webgpu_renderer: { enabled: true, rollout: 75 },
-        live_collaboration: { enabled: true, rollout: 80 },
-        smart_notifications: { enabled: true, rollout: 60 },
-        command_palette: { enabled: true, rollout: 100 },
-      },
+    res.status(501).json({
+      ok: false,
+      error: "unavailable",
+      reason: "flags_not_wired",
+      message: "This route is not the feature-flag store. Rollout percents were not invented.",
     });
   }));
 
   // ── ML Ops / AI Brain Status API ────────────────────────────────
 
   router.get("/sim/ai/status", wrap((_req, res) => {
-    res.json({
-      ok: true,
-      brains: {
-        conscious: { model: 'qwen2.5:7b', status: 'running', memoryGB: 5.2, inferenceMs: 340, requestsPerMin: 15 },
-        subconscious: { model: 'qwen2.5:1.5b', status: 'running', memoryGB: 1.1, inferenceMs: 85, requestsPerMin: 42 },
-        utility: { model: 'qwen2.5:3b', status: 'running', memoryGB: 2.3, inferenceMs: 150, requestsPerMin: 28 },
-        repair: { model: 'qwen2.5:0.5b', status: 'running', memoryGB: 0.4, inferenceMs: 45, requestsPerMin: 60 },
-      },
-      promptTemplates: 12,
-      totalInferences24h: 18420,
-      avgLatencyMs: 155,
+    res.status(501).json({
+      ok: false,
+      error: "unavailable",
+      reason: "no_brain_telemetry",
+      message: "Brain status is not measured here. Model names, memory, and request rates were not invented.",
     });
   }));
 
@@ -2265,45 +2326,39 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/sim/search/semantic", wrap((req, res) => {
-    const { query, limit, filters } = req.body;
-    // Simulated semantic search results
-    const results = [
-      { id: 'dtu-4281', type: 'building', title: 'Riverside Library', score: 0.94, district: 'academy' },
-      { id: 'dtu-1092', type: 'building', title: 'River Walk Pavilion', score: 0.87, district: 'docks' },
-      { id: 'dtu-7723', type: 'template', title: 'Modern Reading Room', score: 0.82, district: null },
-    ].slice(0, limit || 10);
-    res.json({ ok: true, query, results, model: 'all-MiniLM-L6-v2', dimensions: 384 });
+    const query = req.body?.query;
+    if (query == null || String(query).trim() === "") {
+      return res.status(400).json({ ok: false, error: "query required" });
+    }
+    res.status(501).json({
+      ok: false,
+      error: "unavailable",
+      reason: "search_not_wired",
+      message: "Semantic search has no index on this route. No hits were invented.",
+    });
   }));
 
   // ── STAXX Knowledge Graph API ───────────────────────────────────
 
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
-  router.post("/sim/knowledge/query", wrap((req, res) => {
-    const { nodeType, edgeType, startId, depth } = req.body;
-    // Simulated graph traversal
-    const nodes = [
-      { id: startId || 'dtu-4281', type: nodeType || 'DTU', label: 'Riverside Library', properties: { district: 'academy', citations: 47 } },
-      { id: 'user-1042', type: 'User', label: 'ArchitectX', properties: { reputation: 8200 } },
-      { id: 'mat-usb-a', type: 'Material', label: 'USB-A Composite', properties: { tensileStrength: 450 } },
-    ];
-    const edges = [
-      { from: startId || 'dtu-4281', to: 'user-1042', type: 'created_by', weight: 1.0 },
-      { from: startId || 'dtu-4281', to: 'mat-usb-a', type: 'made_of', weight: 0.8 },
-    ];
-    res.json({ ok: true, graph: { nodes, edges }, depth: depth || 1 });
+  router.post("/sim/knowledge/query", wrap((_req, res) => {
+    res.status(501).json({
+      ok: false,
+      error: "unavailable",
+      reason: "graph_not_wired",
+      message: "This route has no knowledge graph. Nodes and citation counts were not invented.",
+    });
   }));
 
   // ── Audit Log API ───────────────────────────────────────────────
 
-  router.get("/sim/audit-log", auth, wrap((req, res) => {
-    const logs = [
-      { id: 'audit-1', event: 'dtu.created', actor: 'user-1042', target: 'dtu-4281', timestamp: new Date(Date.now() - 3600000).toISOString() },
-      { id: 'audit-2', event: 'dtu.cited', actor: 'user-2087', target: 'dtu-4281', timestamp: new Date(Date.now() - 1800000).toISOString() },
-      { id: 'audit-3', event: 'user.login', actor: 'user-1042', target: null, timestamp: new Date(Date.now() - 900000).toISOString() },
-      { id: 'audit-4', event: 'moderation.report', actor: 'user-3012', target: 'dtu-9921', timestamp: new Date(Date.now() - 600000).toISOString() },
-      { id: 'audit-5', event: 'physics.validation', actor: 'system', target: 'dtu-4281', timestamp: new Date(Date.now() - 300000).toISOString() },
-    ];
-    res.json({ ok: true, logs, total: logs.length });
+  router.get("/sim/audit-log", auth, wrap((_req, res) => {
+    res.status(501).json({
+      ok: false,
+      error: "unavailable",
+      reason: "no_audit_log",
+      message: "No audit log is recorded on this route. Events were not invented.",
+    });
   }));
 
   // ── Developer API / SDK Endpoints ───────────────────────────────
