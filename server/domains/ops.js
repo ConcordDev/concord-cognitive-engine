@@ -196,6 +196,8 @@ export default function registerOpsActions(register) {
     }
     const title = params.title || (inc?.title ? `Post-mortem: ${inc.title}` : "Incident post-mortem");
     const incidentId = params.incidentId || `inc-${Date.now()}`;
+    const severity = pickEnum(params.severity, SEVERITIES, "sev3");
+    if (severity === undefined) return { ok: false, error: "invalid severity" };
     const startedAt = params.startedAt || new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const resolvedAt = params.resolvedAt || new Date().toISOString();
     const durationMin = Math.round((new Date(resolvedAt).getTime() - new Date(startedAt).getTime()) / 60000);
@@ -203,7 +205,7 @@ export default function registerOpsActions(register) {
       ok: true,
       result: {
         title, incidentId,
-        severity: params.severity || "sev3",
+        severity,
         affected: params.affected || "unspecified",
         startedAt, resolvedAt, durationMin,
         sections: [
