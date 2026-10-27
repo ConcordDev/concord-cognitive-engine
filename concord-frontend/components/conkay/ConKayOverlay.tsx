@@ -204,7 +204,10 @@ export function ConKayOverlay() {
   const [messages, setMessages] = useState<OverlayMsg[]>([]);
   const [input, setInput] = useState('');
   const [running, setRunning] = useState(false);
-  const [muted, setMuted] = useState(false);
+  // Voice starts disabled: ConKay should not fire a server TTS request until
+  // the user explicitly enables voice (the session-level voice opt-in gate in
+  // server.js must stay respected). This is the explicit user voice setting.
+  const [muted, setMuted] = useState(true);
   // Claude-clean default: transcript + composer only. CAD cockpit / 3D backdrop /
   // Unity toolbar stay behind an explicit Studio expand control.
   const [studioOpen, setStudioOpen] = useState(false);

@@ -4,7 +4,7 @@
  * Pins the real micro-interactions added in this pass:
  *   1. The AQI dial renders the exact value returned by the real
  *      `eco.aqi-current` macro (via useAqiData) — not a placeholder.
- *   2. The refresh control re-issues a real fetch (a second `api.post` call)
+ *   2. The refresh control re-issues a real fetch (a second `lensRun` call)
  *      and shows a distinct pending state on that control while in flight.
  *   3. The pollutant-breakdown disclosure toggles real fetched pollutant
  *      fields into view (progressive disclosure over real data, not a
@@ -16,9 +16,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, waitFor, act, fireEvent } from '@testing-library/react';
 import React from 'react';
 
-const apiPostMock = vi.fn();
+const lensRun = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/api/client', () => ({
-  api: { post: (...args: unknown[]) => apiPostMock(...args) },
+  lensRun: (...args: unknown[]) => lensRun(...args),
 }));
 
 import { EcoOverviewHero, type EcoOverviewTab } from '@/components/eco/EcoOverviewHero';
@@ -31,7 +31,7 @@ const AQI_READING = {
 };
 
 function okAqi(payload: unknown) {
-  return Promise.resolve({ data: { result: payload } });
+  return Promise.resolve({ data: { ok: true, result: payload } });
 }
 
 const TABS: EcoOverviewTab[] = [
@@ -41,7 +41,7 @@ const TABS: EcoOverviewTab[] = [
 const ORG_TAB: EcoOverviewTab = { id: 'org-esg', label: 'Org ESG', icon: Wind, blurb: 'Not personal.' };
 
 beforeEach(() => {
-  apiPostMock.mockReset();
+  lensRun.mockReset();
   Object.defineProperty(globalThis.navigator, 'geolocation', {
     value: {
       getCurrentPosition: (success: PositionCallback) => {
@@ -55,7 +55,7 @@ afterEach(() => { vi.clearAllMocks(); });
 
 describe('EcoOverviewHero — AQI dial reflects real fetched data', () => {
   it('renders the exact AQI value + category from eco.aqi-current, not a placeholder', async () => {
-    apiPostMock.mockImplementation(() => okAqi(AQI_READING));
+    lensRun.mockImplementation(() => okAqi(AQI_READING));
     const onSelectTab = vi.fn();
     let view: ReturnType<typeof render>;
     await act(async () => { view = render(<EcoOverviewHero tabs={TABS} orgTab={ORG_TAB} onSelectTab={onSelectTab} />); });
@@ -63,31 +63,32 @@ describe('EcoOverviewHero — AQI dial reflects real fetched data', () => {
     await waitFor(() => expect(view!.getByText('42')).toBeInTheDocument());
     expect(view!.getByText(/Good \(0-50\)/i)).toBeInTheDocument();
 
-    const [url, body] = apiPostMock.mock.calls[0];
-    expect(url).toBe('/api/lens/run');
-    expect(body.domain).toBe('eco');
-    expect(body.action).toBe('aqi-current');
+    const [domain, action, body] = lensRun.mock.calls[0];
+    expect(domain).toBe('eco');
+    expect(action).toBe('aqi-current');
+    expect(body.lat).toBe(37.77);
+    expect(body.lng).toBe(-122.42);
   });
 });
 
 describe('EcoOverviewHero — refresh control re-fetches (real macro-dispatch feedback)', () => {
-  it('clicking Refresh issues a second real api.post call', async () => {
-    apiPostMock.mockImplementation(() => okAqi(AQI_READING));
+  it('clicking Refresh issues a second real lensRun call', async () => {
+    lensRun.mockImplementation(() => okAqi(AQI_READING));
     let view: ReturnType<typeof render>;
     await act(async () => { view = render(<EcoOverviewHero tabs={TABS} orgTab={ORG_TAB} onSelectTab={vi.fn()} />); });
     await waitFor(() => expect(view!.getByText('42')).toBeInTheDocument());
 
-    const callsBefore = apiPostMock.mock.calls.length;
+    const callsBefore = lensRun.mock.calls.length;
     const refreshBtn = view!.getByRole('button', { name: /Refresh air quality reading/i });
     await act(async () => { fireEvent.click(refreshBtn); });
 
-    await waitFor(() => expect(apiPostMock.mock.calls.length).toBeGreaterThan(callsBefore));
+    await waitFor(() => expect(lensRun.mock.calls.length).toBeGreaterThan(callsBefore));
   });
 });
 
 describe('EcoOverviewHero — pollutant breakdown is a real disclosure over real data', () => {
   it('toggling "Pollutant breakdown" reveals the fetched PM2.5/PM10/etc fields', async () => {
-    apiPostMock.mockImplementation(() => okAqi(AQI_READING));
+    lensRun.mockImplementation(() => okAqi(AQI_READING));
     let view: ReturnType<typeof render>;
     await act(async () => { view = render(<EcoOverviewHero tabs={TABS} orgTab={ORG_TAB} onSelectTab={vi.fn()} />); });
     await waitFor(() => expect(view!.getByText('42')).toBeInTheDocument());
@@ -106,7 +107,7 @@ describe('EcoOverviewHero — pollutant breakdown is a real disclosure over real
 
 describe('EcoOverviewHero — quick-access rows navigate real tab state', () => {
   it('clicking a quick-access row calls onSelectTab with the real tab id', async () => {
-    apiPostMock.mockImplementation(() => okAqi(AQI_READING));
+    lensRun.mockImplementation(() => okAqi(AQI_READING));
     const onSelectTab = vi.fn();
     let view: ReturnType<typeof render>;
     await act(async () => { view = render(<EcoOverviewHero tabs={TABS} orgTab={ORG_TAB} onSelectTab={onSelectTab} />); });

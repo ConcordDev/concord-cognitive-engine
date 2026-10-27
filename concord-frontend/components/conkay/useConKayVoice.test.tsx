@@ -163,3 +163,45 @@ describe('useConKayVoice — voice identity pin + own-speech amplitude (K6-voice
     expect(result.current.ttsAmplitudeRef.current).toBe(0);
   });
 });
+
+describe('useConKayVoice — explicit voice-enable gate (no TTS before opt-in)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedSpeak.mockResolvedValue({
+      cancel: vi.fn(),
+      ended: Promise.resolve(),
+      getEnvelopeAt: () => 0,
+      source: 'piper' as const,
+    });
+  });
+
+  it('does not request TTS when muted (voice off)', async () => {
+    const { result } = renderHook(() =>
+      useConKayVoice({ enabled: true, muted: true, onFinalTranscript: () => {} }),
+    );
+
+    await act(async () => {
+      result.current.speak('this should stay silent');
+      await flushMicrotasks();
+    });
+
+    expect(mockedSpeak).not.toHaveBeenCalled();
+    expect(result.current.speaking).toBe(false);
+  });
+
+  it('requests TTS when unmuted (voice on)', async () => {
+    const { result } = renderHook(() =>
+      useConKayVoice({ enabled: true, muted: false, onFinalTranscript: () => {} }),
+    );
+
+    await act(async () => {
+      result.current.speak('this should reach Piper');
+      await flushMicrotasks();
+    });
+
+    expect(mockedSpeak).toHaveBeenCalledTimes(1);
+    const [text, profile] = mockedSpeak.mock.calls[0];
+    expect(text).toContain('this should reach Piper');
+    expect(profile).toMatchObject({ voice: CONKAY_VOICE_ID });
+  });
+});

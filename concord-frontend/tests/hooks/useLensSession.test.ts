@@ -1,34 +1,28 @@
-// Pins the fabricated-success-envelope fix for useLensSession's local
-// runMacro helper. POST /api/lens/run ALWAYS wraps a dispatched macro's own
-// return value as { ok: true, result: <macro's own return> } — even when the
-// macro itself reports { ok: false, reason: '...' }. Before this fix,
-// runMacro cast the OUTER envelope directly as the macro's result, so every
-// caller (start/advance/update/close/refresh) read `r.session` off an object
-// that never had one — genuine backend successes were silently treated as
-// failures. Real-world impact: WarCampaignSession (kingdoms lens) could never
-// actually start, advance, or resolve a war campaign.
+// Pins useLensSession's canonical lensRun path. The local runMacro helper now
+// routes through lensRun, which already unwraps the POST /api/lens/run envelope
+// into { data: { ok, result, error } }. The hook reads the macro's own fields
+// from result, so genuine backend successes surface and macro-level failures
+// propagate their reason.
 //
-// These tests drive the hook against a mocked `api.post` returning the REAL
-// /api/lens/run envelope shape and assert the hook surfaces the macro's own
-// fields correctly on both success and failure.
+// Real-world impact: WarCampaignSession (kingdoms lens) can start, advance, and
+// resolve a war campaign without the old fabricated-success envelope bug.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { useLensSession } from '@/hooks/useLensSession';
 
-const post = vi.fn();
+const lensRun = vi.fn();
 vi.mock('@/lib/api/client', () => ({
-  api: { post: (...a: unknown[]) => post(...a) },
+  lensRun: (...a: unknown[]) => lensRun(...a),
 }));
 
-describe('useLensSession — envelope unwrap', () => {
+describe('useLensSession — lensRun envelope', () => {
   beforeEach(() => {
-    post.mockReset();
+    lensRun.mockReset();
   });
 
-  it('start() reads the session from the nested result, not the outer envelope', async () => {
-    // The exact shape POST /api/lens/run returns for sessions.start.
-    post.mockResolvedValueOnce({
+  it('start() reads the session from the unwrapped result', async () => {
+    lensRun.mockResolvedValueOnce({
       data: {
         ok: true,
         result: {
@@ -57,7 +51,7 @@ describe('useLensSession — envelope unwrap', () => {
   });
 
   it('start() surfaces the macro-level failure reason, not a swallowed generic', async () => {
-    post.mockResolvedValueOnce({
+    lensRun.mockResolvedValueOnce({
       data: { ok: true, result: { ok: false, reason: 'missing_lens_id' } },
     });
 
@@ -73,8 +67,8 @@ describe('useLensSession — envelope unwrap', () => {
     });
   });
 
-  it('advance() applies the real next step from the nested result', async () => {
-    post.mockResolvedValueOnce({
+  it('advance() applies the real next step from the unwrapped result', async () => {
+    lensRun.mockResolvedValueOnce({
       data: {
         ok: true,
         result: {
@@ -90,7 +84,7 @@ describe('useLensSession — envelope unwrap', () => {
     const { result } = renderHook(() => useLensSession({ lensId: 'kingdoms' }));
     await act(async () => { await result.current.start({ initialStep: 'declare' }); });
 
-    post.mockResolvedValueOnce({
+    lensRun.mockResolvedValueOnce({
       data: {
         ok: true,
         result: {

@@ -199,6 +199,32 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
     res.json({ ok: true, results, total: results.length });
   }));
 
+  // Literal segment: must precede /api/dtus/:id so "mine" is not parsed as a DTU id.
+  app.get("/api/dtus/mine", asyncHandler(async (req, res) => {
+    try {
+      const ctx = makeCtx(req);
+      const { limit, offset } = parsePagination(req.query, 50, 200);
+      const out = await runMacro("dtu", "list", {
+        mine: true,
+        limit,
+        offset,
+        q: req.query.q || "",
+        tag: req.query.tag || "",
+        tier: req.query.tier || "any",
+        scope: req.query.scope || null,
+        domain: req.query.domain || null,
+        kind: req.query.kind || null,
+      }, ctx);
+      if (out && Array.isArray(out.dtus)) {
+        return res.json({ ...out, dtus: out.dtus.map(withPublicArtifact) });
+      }
+      res.json(out);
+    } catch (e) {
+      const { status, clientMsg } = sanitizeMacroError(e, "dtu.list");
+      res.status(status).json({ ok: false, error: clientMsg });
+    }
+  }));
+
   app.get("/api/dtus/:id", asyncHandler(async (req, res) => {
     try {
       const ctx = makeCtx(req);
