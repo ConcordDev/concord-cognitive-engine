@@ -48,15 +48,28 @@ export default function registerCookingActions(registerLensAction) {
   registerLensAction("cooking", "scaleRecipe", (ctx, artifact, _params) => {
     const data = recipeData(artifact, _params) || {};
     const finNum = (v, d = 0) => { const n = typeof v === "number" ? v : parseFloat(v); return Number.isFinite(n) ? n : d; };
-    // Clamp servings to a finite, sane value so the scale factor never goes NaN/Infinity.
-    let baseServings = finNum(data.servings ?? data.baseYield, 4);
-    if (!(baseServings > 0)) baseServings = 4;
-    let targetServings = finNum(data.targetServings ?? _params?.targetServings, 8);
-    if (!(targetServings > 0)) targetServings = 8;
+    // Missing yield is not a 4-serving recipe scaled to 8.
+    const positive = (v) => {
+      if (v == null || v === "") return null;
+      const n = typeof v === "number" ? v : parseFloat(v);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    };
+    const baseServings = positive(data.servings ?? data.baseYield);
+    const targetServings = positive(data.targetServings ?? _params?.targetServings);
+    const unavailable = [];
+    if (baseServings == null) unavailable.push("servings");
+    if (targetServings == null) unavailable.push("targetServings");
+    if (unavailable.length) {
+      return { ok: true, result: { recipe: data.name || artifact?.title || null, baseServings: null, targetServings: null, scaleFactor: null, ingredients: null, reason: "not_recorded", unavailable } };
+    }
     const ingredients = Array.isArray(data.ingredients) ? data.ingredients : [];
-    const factor = baseServings > 0 ? targetServings / baseServings : 1;
-    const scaled = ingredients.map(i => ({ name: i.name, original: `${i.quantity} ${i.unit || ""}`, scaled: `${Math.round(finNum(i.quantity, 0) * factor * 100) / 100} ${i.unit || ""}` }));
-    return { ok: true, result: { recipe: data.name || artifact?.title, baseServings, targetServings, scaleFactor: Math.round(factor * 100) / 100, ingredients: scaled } };
+    const factor = targetServings / baseServings;
+    const scaled = ingredients.map(i => {
+      const qty = i?.quantity == null || i.quantity === "" ? null : finNum(i.quantity, NaN);
+      const amount = Number.isFinite(qty) ? Math.round(qty * factor * 100) / 100 : null;
+      return { name: i.name, original: `${i.quantity ?? ""} ${i.unit || ""}`.trim(), scaled: amount == null ? null : `${amount} ${i.unit || ""}`.trim() };
+    });
+    return { ok: true, result: { recipe: data.name || artifact?.title, baseServings, targetServings, scaleFactor: Math.round(factor * 100) / 100, ingredients: scaled, reason: null } };
   });
   registerLensAction("cooking", "nutritionEstimate", (ctx, artifact, _params) => {
   try {
@@ -65,27 +78,38 @@ export default function registerCookingActions(registerLensAction) {
     // Rough per-100g estimates
     const db = { flour: { cal: 364, protein: 10, carbs: 76, fat: 1 }, sugar: { cal: 387, protein: 0, carbs: 100, fat: 0 }, butter: { cal: 717, protein: 1, carbs: 0, fat: 81 }, egg: { cal: 155, protein: 13, carbs: 1, fat: 11 }, milk: { cal: 42, protein: 3, carbs: 5, fat: 1 }, chicken: { cal: 239, protein: 27, carbs: 0, fat: 14 }, rice: { cal: 130, protein: 3, carbs: 28, fat: 0 }, oil: { cal: 884, protein: 0, carbs: 0, fat: 100 }, cheese: { cal: 402, protein: 25, carbs: 1, fat: 33 }, potato: { cal: 77, protein: 2, carbs: 17, fat: 0 } };
     let totalCal = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0;
+    let weighed = 0;
+    const missingGrams = [];
     for (const ing of ingredients) {
       const name = (ing.name || "").toLowerCase();
       const match = Object.keys(db).find(k => name.includes(k));
-      if (match) {
-        const grams = parseFloat(ing.grams || ing.quantity) || 100;
-        const factor = grams / 100;
-        totalCal += db[match].cal * factor; totalProtein += db[match].protein * factor;
-        totalCarbs += db[match].carbs * factor; totalFat += db[match].fat * factor;
-      }
+      if (!match) continue;
+      const raw = ing.grams ?? ing.quantity;
+      const grams = raw == null || raw === "" ? NaN : parseFloat(raw);
+      if (!Number.isFinite(grams) || grams < 0) { missingGrams.push(ing.name || match); continue; }
+      weighed += 1;
+      const factor = grams / 100;
+      totalCal += db[match].cal * factor; totalProtein += db[match].protein * factor;
+      totalCarbs += db[match].carbs * factor; totalFat += db[match].fat * factor;
     }
-    const servings = parseFloat(ndata.servings) || 1;
-    return { ok: true, result: { totalCalories: Math.round(totalCal), perServing: Math.round(totalCal / servings), macros: { protein: `${Math.round(totalProtein)}g`, carbs: `${Math.round(totalCarbs)}g`, fat: `${Math.round(totalFat)}g` }, servings, note: "Estimates based on common ingredient averages" } };
+    if (weighed === 0 && (ingredients.length === 0 || missingGrams.length > 0)) {
+      return { ok: true, result: { totalCalories: null, perServing: null, macros: null, servings: null, reason: "not_recorded", unavailable: missingGrams.length ? missingGrams : ["ingredients"], note: "No weighed ingredient to estimate" } };
+    }
+    const servingsRaw = ndata.servings;
+    const servings = servingsRaw == null || servingsRaw === "" ? null : parseFloat(servingsRaw);
+    const servingsOk = Number.isFinite(servings) && servings > 0;
+    return { ok: true, result: { totalCalories: Math.round(totalCal), perServing: servingsOk ? Math.round(totalCal / servings) : null, macros: { protein: `${Math.round(totalProtein)}g`, carbs: `${Math.round(totalCarbs)}g`, fat: `${Math.round(totalFat)}g` }, servings: servingsOk ? servings : null, missingGrams, reason: missingGrams.length || !servingsOk ? "partial" : null, note: "Estimates based on common ingredient averages" } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
   registerLensAction("cooking", "mealPlan", (ctx, artifact, _params) => {
     const days = parseInt(artifact.data?.days) || 7;
     const preferences = artifact.data?.preferences || {};
-    const budget = parseFloat(artifact.data?.budgetPerDay) || 15;
+    const rawBudget = artifact.data?.budgetPerDay;
+    const parsedBudget = rawBudget == null || rawBudget === "" ? NaN : parseFloat(rawBudget);
+    const budget = Number.isFinite(parsedBudget) && parsedBudget >= 0 ? parsedBudget : null;
     const meals = ["breakfast", "lunch", "dinner"];
-    const plan = Array.from({ length: days }, (_, i) => ({ day: i + 1, dayName: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i % 7], meals: meals.map(m => ({ meal: m, planned: false, estimatedCost: Math.round(budget / 3 * 100) / 100 })) }));
-    return { ok: true, result: { days, weeklyBudget: Math.round(budget * days * 100) / 100, dailyBudget: budget, plan, dietaryNotes: preferences.dietary || "none specified", mealsToFill: days * 3 } };
+    const plan = Array.from({ length: days }, (_, i) => ({ day: i + 1, dayName: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i % 7], meals: meals.map(m => ({ meal: m, planned: false, estimatedCost: budget == null ? null : Math.round(budget / 3 * 100) / 100 })) }));
+    return { ok: true, result: { days, weeklyBudget: budget == null ? null : Math.round(budget * days * 100) / 100, dailyBudget: budget, plan, dietaryNotes: preferences.dietary || "none specified", mealsToFill: days * 3, reason: budget == null ? "not_recorded" : null, unavailable: budget == null ? ["budgetPerDay"] : [] } };
   });
   registerLensAction("cooking", "substitution", (ctx, artifact, _params) => {
     const sdata = recipeData(artifact, _params) || {};
