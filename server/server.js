@@ -29144,7 +29144,12 @@ let localReply = formatCrispResponse({
     const { filterCarryOverDtus } = await import("./lib/chat/turn-context.js");
     _extraUnifiedDtus = filterCarryOverDtus(_extraUnifiedDtus, prompt);
   } catch { /* keep the unfiltered set */ }
-  const _enrichedFocus = [...focus, ..._extraUnifiedDtus];
+  // selectWorkingSet orders by crispness first, and the harvest keeps only
+  // the head of this list, so the best-scoring DTUs (megas/hypers carry a
+  // tier boost) could fall off the prompt. Put the top-scored ones first.
+  const _topScored = relevant.filter(d => _focusIds.has(d.id));
+  const _topIds = new Set(_topScored.map(d => d.id));
+  const _enrichedFocus = [..._topScored, ...focus.filter(d => !_topIds.has(d.id)), ..._extraUnifiedDtus];
   // ===== END UNIFIED CONTEXT ENGINE =====
   // ===== END CONSCIOUS BRAIN ROUTING =====
 
