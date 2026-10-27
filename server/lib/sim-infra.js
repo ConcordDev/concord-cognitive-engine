@@ -3,6 +3,8 @@
 // A missing table or an unmeasured counter stays null with a reason.
 // A zero from a real query is a real zero.
 
+import { readOwnBuildings, readOwnCitations } from "./sim-stats.js";
+
 const TABLES = new Set(["worlds", "world_buildings", "dtus", "dtu_citations", "economy_ledger"]);
 const OWNER_COLS = new Set(["creator_id", "owner_user_id"]);
 const NOTIF_ACTIONS = new Set(["opened", "dismissed", "snoozed"]);
@@ -412,12 +414,51 @@ export function readMobileDashboard(db, userId) {
   };
 }
 
-export function rejectQuickAction() {
-  return {
-    ok: false,
-    status: 501,
-    error: "not_wired",
-    reason: "action_not_wired",
-    missing: "This route does not run check-builds, view-citations, manage-inventory, quick-chat, or toggle-notifications.",
-  };
+const READ_ACTIONS = new Set(["check-builds", "view-citations"]);
+const UNWIRED_ACTIONS = {
+  "manage-inventory": "No inventory read is wired to this route; inventory changes are not run from here.",
+  "quick-chat": "Sending a chat message is a write and no chat send is wired to this route.",
+  "toggle-notifications": "Notification settings are only held in memory per process; this route does not change them.",
+};
+
+// Answers read-only quick actions for the signed-in caller from stored rows.
+// Anything that would write, or has no backing read, stays an honest 501.
+export function runQuickAction(db, userId, body) {
+  if (!userId) return { ok: false, status: 401, error: "sign_in_required" };
+  const action = typeof body?.action === "string" ? body.action : "";
+  if (!READ_ACTIONS.has(action) && !(action in UNWIRED_ACTIONS)) {
+    return {
+      ok: false,
+      status: 400,
+      error: "unknown_action",
+      action: action.slice(0, 40),
+      allowed: [...READ_ACTIONS, ...Object.keys(UNWIRED_ACTIONS)],
+    };
+  }
+  if (!READ_ACTIONS.has(action)) {
+    return {
+      ok: false,
+      status: 501,
+      error: "not_wired",
+      reason: "action_not_wired",
+      action,
+      missing: UNWIRED_ACTIONS[action],
+    };
+  }
+  const read = action === "check-builds" ? readOwnBuildings(db, userId) : readOwnCitations(db, userId);
+  if (!read.ok) {
+    if (read.status) return read;
+    return {
+      ok: false,
+      status: 501,
+      error: "not_wired",
+      reason: read.reason,
+      action,
+      missing: action === "check-builds"
+        ? "Buildings cannot be attributed to a user from the world_buildings table as stored."
+        : "DTU or citation tables are missing or unreadable.",
+    };
+  }
+  const { ok, ...rest } = read;
+  return { ok, status: 200, action, ...rest };
 }

@@ -43053,7 +43053,7 @@ import createFrontierRoutesPart4 from "./routes/frontier-part4.js";
 try {
   app.use("/api", createFrontierRoutesPart1({ requireAuth }));
   app.use("/api", createFrontierRoutesPart2({ requireAuth, db }));
-  app.use("/api", createFrontierRoutesPart4({ requireAuth }));
+  app.use("/api", createFrontierRoutesPart4({ requireAuth, db }));
 } catch (e) { structuredLog("warn", "frontier_routes_skip", { error: e.message }); }
 
 import registerHelpersExtendedRoutes from "./routes/helpers-extended.js";

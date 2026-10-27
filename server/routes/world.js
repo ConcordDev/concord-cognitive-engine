@@ -223,7 +223,7 @@ import {
   writeNotifProfile,
   recordNotifSignal,
   readMobileDashboard,
-  rejectQuickAction,
+  runQuickAction,
 } from "../lib/sim-infra.js";
 
 /**
@@ -2052,8 +2052,8 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     sendSim(res, readMobileDashboard(db, viewer));
   }));
 
-  router.post("/sim/mobile/quick-action", auth, wrap((_req, res) => {
-    sendSim(res, rejectQuickAction());
+  router.post("/sim/mobile/quick-action", auth, wrap((req, res) => {
+    sendSim(res, runQuickAction(db, _userId(req), req.body));
   }));
 
   // ── Infrastructure Health API ───────────────────────────────────
