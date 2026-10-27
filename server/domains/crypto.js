@@ -10,6 +10,7 @@
 // boundary (additive-only PHE, not FHE; encryption ≠ differential privacy).
 
 import crypto from "node:crypto";
+import { moneyOrNull, badNumber } from "../lib/finite-input.js";
 import {
   generateKeypair as paillierGenerateKeypair,
   encrypt as paillierEncrypt,
@@ -1280,6 +1281,8 @@ export default function registerCryptoActions(registerLensAction) {
     const userId = aidCr(ctx);
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "name required" };
+    if (moneyOrNull(params.costBasisUsd, 0) === null) return badNumber("costBasisUsd", "must be a finite amount >= 0");
+    if (moneyOrNull(params.floorPriceUsd, 0) === null) return badNumber("floorPriceUsd", "must be a finite amount >= 0");
     const seq = ensureSeqCr(s, userId);
     const nft = {
       id: uidCr('nft'),

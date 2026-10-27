@@ -1,5 +1,6 @@
 import { fredLatest } from "../lib/sourced-inputs.js";
 import { notComputed } from "../lib/lens-inputs.js";
+import { finiteOrNull, boundedNum, badNumber, MAX_MONEY } from "../lib/finite-input.js";
 export default function registerRealEstateActions(registerLensAction) {
   registerLensAction("realestate", "capRate", (ctx, artifact, params) => {
     const noi = artifact.data?.netOperatingIncome || params.noi || 0;
@@ -203,6 +204,12 @@ export default function registerRealEstateActions(registerLensAction) {
     const rate = Number(params.rate ?? 7);
     const termYears = Number(params.termYears ?? 30);
     if (!Number.isFinite(grossIncome) || grossIncome <= 0) return { ok: false, error: "grossIncome must be > 0" };
+    // Every input must be a real number in range; NaN / Infinity / "abc" / -1 used to return ok:true garbage.
+    if (!(grossIncome <= MAX_MONEY)) return badNumber("grossIncome", "must be a finite amount");
+    if (!Number.isFinite(monthlyDebts) || monthlyDebts < 0 || monthlyDebts > MAX_MONEY) return badNumber("monthlyDebts", "must be a finite amount >= 0");
+    if (!Number.isFinite(downPayment) || downPayment < 0 || downPayment > MAX_MONEY) return badNumber("downPayment", "must be a finite amount >= 0");
+    if (!Number.isFinite(rate) || rate < 0 || rate > 50) return badNumber("rate", "must be an annual percent between 0 and 50");
+    if (!Number.isFinite(termYears) || termYears < 1 || termYears > 50) return badNumber("termYears", "must be between 1 and 50 years");
     const monthlyGross = grossIncome / 12;
     const maxFrontEnd = monthlyGross * 0.28; // 28% housing rule
     const maxBackEnd = monthlyGross * 0.36 - monthlyDebts; // 36% DTI minus debts
@@ -476,10 +483,10 @@ export default function registerRealEstateActions(registerLensAction) {
       yearBuilt: Number(params.yearBuilt) || null,
       kind: ["single_family", "condo", "townhouse", "multi_family", "land"].includes(params.kind) ? params.kind : "single_family",
       status: ["for_sale", "pending", "sold", "off_market"].includes(params.status) ? params.status : "for_sale",
-      daysOnMarket: Math.max(0, Number(params.daysOnMarket) || 0),
+      daysOnMarket: Math.max(0, Math.floor(finiteOrNull(params.daysOnMarket) ?? 0)),
       description: String(params.description || ""),
-      lat: params.lat != null ? Number(params.lat) : null,
-      lng: params.lng != null ? Number(params.lng) : null,
+      lat: boundedNum(params.lat, { min: -90, max: 90 }, null),
+      lng: boundedNum(params.lng, { min: -180, max: 180 }, null),
       imageUrl: String(params.imageUrl || ""),
       priceHistory: Array.isArray(params.priceHistory) ? params.priceHistory : [{ date: new Date().toISOString().slice(0, 10), price, kind: "listed" }],
       createdAt: new Date().toISOString(),
@@ -1029,7 +1036,7 @@ export default function registerRealEstateActions(registerLensAction) {
       phone: String(params.phone || ""),
       email: String(params.email || ""),
       rating: Math.max(0, Math.min(5, Number(params.rating) || 5)),
-      reviewCount: Math.max(0, Number(params.reviewCount) || 0),
+      reviewCount: Math.max(0, Math.floor(finiteOrNull(params.reviewCount) ?? 0)),
       addedAt: new Date().toISOString(),
     };
     ensureREBucket(s, "agents", userId).push(agent);

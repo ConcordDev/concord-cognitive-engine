@@ -1,5 +1,9 @@
 // server/domains/retail.js
 // Domain actions for retail/CRM: reorder, pipeline, LTV, SLA checks.
+import { finiteOrNull, badNumber } from "../lib/finite-input.js";
+
+// Cap on a single gift card's face value (USD).
+const GIFT_CARD_MAX = 10000;
 
 export default function registerRetailActions(registerLensAction) {
   // Shared SLA-target-by-priority table (minutes). This is the SINGLE source
@@ -1312,8 +1316,8 @@ export default function registerRetailActions(registerLensAction) {
       phone: String(params.phone || ""),
       city: String(params.city || ""),
       state: String(params.state || ""),
-      totalSpent: Math.max(0, Number(params.totalSpent) || 0),
-      orderCount: Math.max(0, Number(params.orderCount) || 0),
+      totalSpent: Math.max(0, finiteOrNull(params.totalSpent) ?? 0),
+      orderCount: Math.max(0, Math.floor(finiteOrNull(params.orderCount) ?? 0)),
       lastOrderAt: params.lastOrderAt || null,
       acceptsMarketing: params.acceptsMarketing !== false,
       tags: Array.isArray(params.tags) ? params.tags : [],
@@ -1608,8 +1612,11 @@ export default function registerRetailActions(registerLensAction) {
   registerLensAction("retail", "gift-cards-create", (ctx, _a, params = {}) => {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);
-    const initialValue = Math.max(1, Number(params.initialValue) || 0);
-    if (initialValue <= 0) return { ok: false, error: "initialValue must be > 0" };
+    // Probe 2026-10-27: Number("1e999") is Infinity, which made an unlimited card.
+    const initialValue = finiteOrNull(params.initialValue);
+    if (initialValue === null || initialValue <= 0 || initialValue > GIFT_CARD_MAX) {
+      return badNumber("initialValue", `must be a finite amount > 0 and <= ${GIFT_CARD_MAX}`);
+    }
     const code = `GC-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
     const card = {
       id: nextRetailId("gc"), code, initialValue,
@@ -1639,11 +1646,13 @@ export default function registerRetailActions(registerLensAction) {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);
     const code = String(params.code || "").trim().toUpperCase();
-    const amount = Math.max(0, Number(params.amount) || 0);
-    if (amount <= 0) return { ok: false, error: "amount must be > 0" };
+    const amount = finiteOrNull(params.amount);
+    if (amount === null || amount <= 0 || amount > GIFT_CARD_MAX) return badNumber("amount", "must be a finite amount > 0");
     const card = ensureRetailBucket(s, "giftCards", userId).find(c => c.code === code);
     if (!card) return { ok: false, error: "gift card not found" };
     if (card.status !== "active") return { ok: false, error: `gift card ${card.status}` };
+    // A card minted before the fix may hold a non-finite balance; never honor it.
+    if (!Number.isFinite(card.balance) || card.balance > GIFT_CARD_MAX) return { ok: false, error: "gift card invalid" };
     if (card.balance < amount) return { ok: false, error: `insufficient balance ($${card.balance.toFixed(2)})` };
     card.balance = Math.round((card.balance - amount) * 100) / 100;
     if (card.balance === 0) card.status = "redeemed";

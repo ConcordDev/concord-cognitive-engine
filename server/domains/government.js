@@ -1,6 +1,7 @@
 import { fetchPublicUrl } from "../lib/public-fetch.js";
 import { nwsHeaders } from "../lib/keyless-atmosphere.js";
 import { stampIngestedRecord } from "../lib/provenance-ingest.js";
+import { moneyOrNull, badNumber } from "../lib/finite-input.js";
 import { createPaymentIntent, isStripeSecretConfigured, retrievePaymentIntent } from "../lib/stripe.js";
 
 // api.congress.gov member-list `state` is the full name (swagger example
@@ -714,6 +715,7 @@ export default function registerGovernmentActions(registerLensAction) {
     const kind = String(params.kind || "").trim();
     const description = String(params.description || "").trim();
     if (!applicantName || !applicantEmail || !kind) return { ok: false, error: "applicantName, applicantEmail, kind required" };
+    if (moneyOrNull(params.feeUsd, 0) === null) return badNumber("feeUsd", "must be a finite amount >= 0");
     const all = ensureGovBucket(s, "permits", userId);
     const seqNum = (all.length + 1).toString().padStart(6, "0");
     const permit = {
@@ -1054,6 +1056,7 @@ export default function registerGovernmentActions(registerLensAction) {
     const amountUsd = Math.round((Number(params.amountUsd) || 0) * 100) / 100;
     if (!payerName || !reason) return { ok: false, error: "payerName and reason required" };
     if (!(amountUsd > 0)) return { ok: false, error: "amountUsd must be positive" };
+    if (moneyOrNull(amountUsd, null) === null) return badNumber("amountUsd", "must be a finite amount > 0");
     const fine = {
       id: uidGov("fine"),
       payerName, reason, amountUsd,

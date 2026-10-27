@@ -8,6 +8,7 @@
 
 import { executeTransfer } from "../economy/transfer.js";
 import { calculateFee } from "../economy/fees.js";
+import { moneyOrNull, badNumber } from "../lib/finite-input.js";
 import { registerHeartbeat } from "../emergent/heartbeat-registry.js";
 
 export default function registerWalletActions(registerLensAction) {
@@ -452,6 +453,7 @@ export default function registerWalletActions(registerLensAction) {
     const amount = Number(params.amount) || 0;
     if (!payerId) return { ok: false, error: "payerId required" };
     if (amount <= 0) return { ok: false, error: "amount must be positive" };
+    if (moneyOrNull(amount, null) === null) return badNumber("amount", "must be a finite amount > 0");
     const lineItems = Array.isArray(params.lineItems)
       ? params.lineItems
           .map(li => ({
@@ -660,6 +662,9 @@ export default function registerWalletActions(registerLensAction) {
     const note = String(params.note || "").trim();
     if (!counterparty) return { ok: false, error: "counterparty required" };
     if (!note) return { ok: false, error: "note required" };
+    if (params.amount !== undefined && params.amount !== null && params.amount !== "" && moneyOrNull(params.amount, null) === null) {
+      return badNumber("amount", "must be a finite amount >= 0");
+    }
     const entry = {
       id: genId("feed"),
       actorId: userId,

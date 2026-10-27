@@ -1,6 +1,7 @@
 // server/domains/marketplace.js
 import { executeMarketplacePurchase } from "../economy/transfer.js";
 import { calculateFee } from "../economy/fees.js";
+import { moneyOrNull, badNumber } from "../lib/finite-input.js";
 
 export default function registerMarketplaceActions(registerLensAction) {
   registerLensAction("marketplace", "listingScore", (ctx, artifact, _params) => {
@@ -184,6 +185,7 @@ export default function registerMarketplaceActions(registerLensAction) {
     const title = String(params.title || "").trim();
     const priceUsd = Number(params.priceUsd);
     if (!title || !Number.isFinite(priceUsd) || priceUsd < 0) return { ok: false, error: "title + non-negative priceUsd required" };
+    if (moneyOrNull(params.shippingCostUsd, 0) === null) return badNumber("shippingCostUsd", "must be a finite amount >= 0");
     const seq = ensureSeqS(s, userId);
     const listing = {
       id: uidS("lst"),
@@ -217,7 +219,7 @@ export default function registerMarketplaceActions(registerLensAction) {
     if (!l) return { ok: false, error: "listing not found" };
     for (const k of ['title','description','currency']) if (typeof params[k] === 'string') l[k] = params[k];
     if (Number.isFinite(Number(params.priceUsd))) l.priceUsd = Number(params.priceUsd);
-    if (Number.isFinite(Number(params.shippingCostUsd))) l.shippingCostUsd = Number(params.shippingCostUsd);
+    if (Number.isFinite(Number(params.shippingCostUsd)) && Number(params.shippingCostUsd) >= 0) l.shippingCostUsd = Number(params.shippingCostUsd);
     if (params.stockQty === null || Number.isFinite(Number(params.stockQty))) l.stockQty = params.stockQty === null ? null : Number(params.stockQty);
     if (Array.isArray(params.tags)) l.tags = params.tags.map(String).slice(0, 13);
     if (Array.isArray(params.images)) l.images = params.images.map(String).slice(0, 10);

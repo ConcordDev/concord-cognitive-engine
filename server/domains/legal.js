@@ -11,6 +11,7 @@
 // is real public-domain legal text, just not aggregated behind a free API.
 import { getProcedureForState, listProcedureStateSummaries } from "../lib/court-procedure-reference.js";
 import { createHash } from "node:crypto";
+import { moneyOrNull, badNumber } from "../lib/finite-input.js";
 import { registerEsignProvider, issueSigningLinks, deliverSigningLinks, revokeSigningLinks } from "../lib/esign-links.js";
 
 export default function registerLegalActions(registerLensAction) {
@@ -410,6 +411,8 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     const userId = aid(ctx);
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "name required" };
+    if (moneyOrNull(params.hourlyRate, 0) === null) return badNumber("hourlyRate", "must be a finite amount >= 0");
+    if (moneyOrNull(params.flatFee, 0) === null) return badNumber("flatFee", "must be a finite amount >= 0");
     const seq = ensureSeqLegal(s, userId);
     const matter = {
       id: uid("matter"),
