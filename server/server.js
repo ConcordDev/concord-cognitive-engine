@@ -2031,6 +2031,7 @@ import {
   hotReload as loaderHotReload, buildSandboxedContext,
 } from "./plugins/loader.js";
 import { initDTUStore, createDTUStore } from "./lib/dtu-store.js";
+import { configureWriteSpill, waitForWriteQuiet, replaySpill, spilledIsNewer, spillStats } from "./lib/shutdown-write-gate.js";
 import { assignDtuCustody, dtuMutationDenial, normalizeOwnerlessDtus } from "./lib/dtu-ownership.js";
 import { renderAndAttach, hasRenderer as _hasRenderer } from "./lib/render-engine.js";
 import { registerAllRenderers } from "./lib/render-registry.js";
@@ -3628,6 +3629,19 @@ async function gracefulShutdown(signal) {
   // with drained=false, the pending count, and elapsed ms — not a clean
   // drain. ms is subtracted from SHUTDOWN_TIMEOUT_MS below so the wait
   // stays inside the kill_timeout budget.
+  // Background work already in flight (a heartbeat tick, a late LLM reply)
+  // can still write a DTU and its lens artifacts. Wait, bounded, until the
+  // stores have been quiet briefly before the DB closes; a write that still
+  // lands after the close is spilled to disk and replayed on the next boot
+  // (lib/shutdown-write-gate.js), never lost.
+  try {
+    const quietMs = Number(process.env.SHUTDOWN_WRITE_QUIET_MS ?? 400);
+    const budgetMs = Number(process.env.SHUTDOWN_WRITE_QUIET_BUDGET_MS ?? 1500);
+    const q = await waitForWriteQuiet({ quietMs: Number.isFinite(quietMs) ? quietMs : 400, budgetMs: Number.isFinite(budgetMs) ? budgetMs : 1500 });
+    structuredLog(q.quiet ? "info" : "warn", "shutdown_writes_quiet", { waited_ms: q.waitedMs, quiet: q.quiet });
+  } catch (e) {
+    structuredLog("warn", "shutdown_writes_quiet_failed", { error: e?.message });
+  }
   let feedFlushMs = 0;
   await runShutdownDurability({
     async flushFeed() {
@@ -3699,6 +3713,10 @@ async function gracefulShutdown(signal) {
     structuredLog("info", "shutdown_backup_still_running", { pid: _shutdownBackupChild.pid });
   }
 
+  try {
+    const sp = spillStats();
+    structuredLog(sp.dropped ? "error" : "info", "shutdown_write_spill_summary", { spilled: sp.spilled, dropped: sp.dropped });
+  } catch { /* logging only */ }
   structuredLog("info", "shutdown_complete", {});
   process.exit(0);
 }
@@ -13599,6 +13617,34 @@ if (db) {
     // exactly today's behaviour, rather than taking down boot.
     structuredLog("error", "lens_artifact_store_init_failed", { error: String(e?.message || e) });
   }
+}
+
+// ── Shutdown write spill (lib/shutdown-write-gate.js) ─────────────────────
+// Writes that arrived after the last shutdown closed the DB were appended
+// here; apply them through the stores' own set() (newer rows win), once.
+try {
+  const _spillPath = process.env.CONCORD_SHUTDOWN_SPILL_PATH
+    || (typeof DB_PATH === "string" && DB_PATH ? path.join(path.dirname(DB_PATH), "shutdown-write-spill.jsonl") : null);
+  configureWriteSpill({ spillPath: _spillPath, log: structuredLog });
+  if (_spillPath && db) {
+    let _lensApplied = 0;
+    replaySpill({
+      spillPath: _spillPath,
+      apply(kind, id, payload) {
+        if (!id || !payload) return "skipped";
+        const map = kind === "dtu" ? STATE.dtus : kind === "lens_artifact" ? STATE.lensArtifacts : null;
+        if (!map || typeof map.set !== "function") return "skipped";
+        if (!spilledIsNewer(map.get(id), payload)) return "skipped";
+        map.set(id, payload);
+        if (kind === "lens_artifact") _lensApplied++;
+        return "applied";
+      },
+      log: structuredLog,
+    });
+    if (_lensApplied > 0 && typeof _rebuildLensDomainIndex === "function") _rebuildLensDomainIndex();
+  }
+} catch (e) {
+  structuredLog("error", "shutdown_spill_replay_init_failed", { error: String(e?.message || e) });
 }
 
 // ── Post-load memory optimization ────────────────────────────────────────

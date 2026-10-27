@@ -12,6 +12,7 @@
  *   - Transparent: callers use the same Map-like API
  */
 
+import { dbIsClosed, isClosedDbError, noteDbWrite, spillWrite } from "./shutdown-write-gate.js";
 import logger from '../logger.js';
 import crypto from 'node:crypto';
 import { compressedByteLength } from './dtu-at-rest.js';
@@ -203,8 +204,12 @@ export function createDTUStore(db, memoryMap, opts = {}) {
   }
 
   function persistToSQLite(dtu) {
+    // DB already closed by shutdown: keep the write in the spill file
+    // (replayed on next boot) instead of losing it (lib/shutdown-write-gate.js).
+    if (dbIsClosed(db)) { spillWrite("dtu", dtu?.id, dtu); return; }
     const s = stmts();
     if (!s) return;
+    noteDbWrite();
     try {
       if (dtu && Array.isArray(dtu.tags)) dtu.tags = scrubStoredTags(dtu.tags);
       const now = new Date().toISOString();
@@ -279,6 +284,7 @@ export function createDTUStore(db, memoryMap, opts = {}) {
         enrichDtuOnWrite(db, dtu);
       } catch { /* cognitive enrichment is best-effort */ }
     } catch (e) {
+      if (isClosedDbError(e)) { spillWrite("dtu", dtu?.id, dtu); return; }
       log("error", "dtu_store_persist_failed", { id: dtu.id, error: e.message });
     }
   }
