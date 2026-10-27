@@ -145,8 +145,11 @@ export default function registerMasonryActions(registerLensAction) {
       const userId = maid(ctx);
       const name = mclean(params.name, 120) || "Untitled takeoff";
       const material = MATERIAL_RATES[params.material] ? params.material : "brick";
-      if ((params.segments != null && !Array.isArray(params.segments)) || (params.openings != null && !Array.isArray(params.openings))) {
-        return { ok: false, error: "invalid_input", reason: "not_a_function" };
+      if (params.segments != null && !Array.isArray(params.segments)) {
+        return { ok: false, error: "invalid_input", field: "segments", reason: "expected_array" };
+      }
+      if (params.openings != null && !Array.isArray(params.openings)) {
+        return { ok: false, error: "invalid_input", field: "openings", reason: "expected_array" };
       }
       const calc = computeTakeoff(params.segments, material, params.wastePct, params.openings);
       const list = mlist(s.takeoffs, userId);

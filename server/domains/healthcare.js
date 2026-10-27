@@ -5,6 +5,7 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { listProtocols, listSpecialties } from "../lib/healthcare-protocols.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { requireList } from "../lib/lens-inputs.js";
 
 export default function registerHealthcareActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -24,8 +25,10 @@ export default function registerHealthcareActions(registerLensAction) {
    */
   registerLensAction("healthcare", "checkInteractions", (ctx, artifact, params) => {
   try {
-    const prescriptions = artifact.data.prescriptions || [];
-    const knownInteractions = params.knownInteractions || artifact.data.knownInteractions || [];
+    const prescriptions = requireList(artifact.data.prescriptions, "prescriptions");
+    if (!Array.isArray(prescriptions)) return prescriptions;
+    const knownInteractions = requireList(params.knownInteractions || artifact.data.knownInteractions, "knownInteractions");
+    if (!Array.isArray(knownInteractions)) return knownInteractions;
 
     if (prescriptions.length < 2) {
       return { ok: true, result: { interactions: [], message: "Fewer than 2 active prescriptions; no interactions possible." } };
@@ -85,10 +88,16 @@ export default function registerHealthcareActions(registerLensAction) {
    */
   registerLensAction("healthcare", "protocolMatch", (ctx, artifact, params) => {
   try {
-    const conditions = (artifact.data.conditions || []).map((c) =>
+    const conditionList = requireList(artifact.data?.conditions, "conditions");
+    if (!Array.isArray(conditionList)) return conditionList;
+    const conditions = conditionList.map((c) =>
       typeof c === "string" ? c : c.icd10 || c.code
     );
-    const protocols = params.protocols || artifact.data.protocols || listProtocols();
+    const suppliedProtocols = params?.protocols || artifact.data?.protocols;
+    const protocols = (suppliedProtocols == null || suppliedProtocols === "")
+      ? listProtocols()
+      : requireList(suppliedProtocols, "protocols");
+    if (!Array.isArray(protocols)) return protocols;
 
     if (conditions.length === 0) {
       return { ok: true, result: { matched: [], message: "No active conditions on record." } };

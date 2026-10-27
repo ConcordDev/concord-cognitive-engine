@@ -287,7 +287,8 @@ describe("education lens — degrade-graceful (never throws)", () => {
     assert.doesNotThrow(() => { r = call("gradeCalculation", ctxA, wrap({ students: 123 })); });
     assert.equal(r.ok, false);
     assert.equal(r.error, "invalid_input");
-    assert.match(String(r.reason), /not_a_function|type_error/);
+    assert.equal(r.field, "students");
+    assert.equal(r.reason, "expected_array");
     assert.equal(r.message, undefined);
   });
 
@@ -296,7 +297,8 @@ describe("education lens — degrade-graceful (never throws)", () => {
     assert.doesNotThrow(() => { r = call("progressTrack", ctxA, wrap({ requirements: "nope", completions: 7 })); });
     assert.equal(r.ok, false);
     assert.equal(r.error, "invalid_input");
-    assert.match(String(r.reason), /not_a_function|type_error/);
+    assert.equal(r.field, "requirements");
+    assert.equal(r.reason, "expected_array");
     assert.equal(r.message, undefined);
   });
 
@@ -305,7 +307,8 @@ describe("education lens — degrade-graceful (never throws)", () => {
     assert.doesNotThrow(() => { r = call("scheduleConflict", ctxA, wrap({ schedules: 42 })); });
     assert.equal(r.ok, false);
     assert.equal(r.error, "invalid_input");
-    assert.match(String(r.reason), /not_a_function|type_error/);
+    assert.equal(r.field, "schedules");
+    assert.equal(r.reason, "expected_array");
     assert.equal(r.message, undefined);
   });
 });
