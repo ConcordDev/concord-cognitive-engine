@@ -168,6 +168,22 @@ export const LENS_STATE_KEYS = Object.freeze([
   // 53 -> 54: "conLens" so RFIs, submittals, daily logs, punch items,
   // change orders, drawings, and budgets survive a hard backend restart.
   "conLens",
+  // 54 -> 55: "syncLens" so a user's sync history log, conflict queue, device
+  // annotations, and id counters survive a restart. server/domains/sync.js
+  // keeps them on globalThis._concordSTATE.syncLens (the same object as STATE);
+  // without this key a restart wiped the history and pending conflicts while
+  // the Sync lens still referenced them. Shape: { devices: Map<userId, Map>,
+  // logs: Map<userId, Array>, conflicts: Map<userId, Array>, seq: Map }. Logs
+  // and conflicts are already capped in the domain (200 / 100 per user).
+  "syncLens",
+  // 55 -> 60: the five per-user Crafting stores. server/domains/crafting.js
+  // hangs them directly off STATE (bucket(name) -> Map<userId, ...>) and its
+  // header promises they persist, but none were here, so a restart wiped
+  // saved grids, the craft queue, craft history, discovered combos, and
+  // favorites. Root Map envelopes: grids/queue/history are Map<userId, Array>,
+  // discoveries/favorites are Map<userId, Map>.
+  "craftingGrids", "craftingQueue", "craftingHistory",
+  "craftingDiscoveries", "craftingFavorites",
   // Persistence audit (2026-10): every STATE.<x>Lens store a domain file
   // assigns but that was missing above, so its per-user data survives a restart.
   "adminLens", "agentsLens", "allianceLens", "allLens", "animationLens", "anonLens",
@@ -291,6 +307,10 @@ export const SNAPSHOT_STORE_CAPS = Object.freeze({
   // Per district. The district id map itself is capped so one caller
   // cannot fill the snapshot with empty district keys.
   districtSnapshots: { shape: "idArray", max: 500, keep: "tail", mapMax: 1000 },
+  // Crafting: grids and the queue are append lists with no domain-side cap.
+  // History is already capped at 200 (newest-first) in crafting.js.
+  craftingGrids: { shape: "userArray", max: 200, keep: "tail" },
+  craftingQueue: { shape: "userArray", max: 200, keep: "tail" },
   filmLensX: {
     revisions: { shape: "userArray", max: 200, keep: "tail" },
     media: { shape: "userArray", max: 400, keep: "tail" },
