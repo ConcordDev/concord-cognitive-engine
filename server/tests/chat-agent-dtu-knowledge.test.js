@@ -23,3 +23,10 @@ test("a cited knowledge DTU counts as retrieved for the citation guard", () => {
   const acc = collectRetrievedDtus([], [hyper]);
   assert.ok(acc.ids.has(hyper.id));
 });
+
+test("ConKay's tool policy puts the retrieved DTU block before web_search", async () => {
+  const { conkayToolPolicy } = await import("../lib/conkay/agent-turn.js");
+  const pol = conkayToolPolicy();
+  const text = Array.isArray(pol) ? pol.join("\n") : String(pol);
+  assert.ok(text.indexOf("CONCORD KNOWLEDGE") > -1 && text.indexOf("CONCORD KNOWLEDGE") < text.indexOf("web_search first"));
+});
