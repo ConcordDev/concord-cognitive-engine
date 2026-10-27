@@ -189,6 +189,8 @@ import {
 } from "../lib/city-manager.js";
 import { handlePlayerDeath, claimLootBag, handleRobbery, reclaimExpiredBags } from "../lib/pvp-loot.js";
 import { HUB_WORLD_ID } from "../lib/world-ids.js";
+import { renderDtuAsFile, DOCUMENT_EXPORT_FORMATS } from "../lib/dtu-document-export.js";
+import { ctxMayReadDtu } from "../lib/dtu-read-access.js";
 import {
   readDailyDigest,
   readPersonalAnalytics,
@@ -233,7 +235,7 @@ import {
  * @param {Function} [opts.requireAuth] - Auth middleware
  * @returns {Router}
  */
-export default function createWorldRoutes({ requireAuth, db = null, emitToUser = null } = {}) {
+export default function createWorldRoutes({ requireAuth, db = null, emitToUser = null, dtuStore = null } = {}) {
   const router = Router();
 
   function _userId(req) {
@@ -1928,15 +1930,71 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   // ── Export & Embed API ──────────────────────────────────────────
 
-  router.post("/sim/export", auth, wrap((req, res) => {
+  // Rendered through lib/dtu-document-export.js (the exporter behind
+  // document.export_dtu), from the in-memory DTU store that macro reads.
+  // Owner always; anyone else only visibility public/published rows that are
+  // not shadow, quarantined, personal/user-scoped or marked private.
+  const SIM_EXPORT_MAX_BYTES = 10 * 1024 * 1024;
+
+  function _simExportStore() {
+    return dtuStore || globalThis._concordSTATE?.dtus || null;
+  }
+
+  function _simExportHidden(dtu, callerId) {
+    // The app-wide by-id read gate first (private, followers-only, user scope,
+    // quarantine, internal, ownerless user-sourced rows).
+    if (!ctxMayReadDtu({ actor: { id: callerId || null } }, dtu)) return true;
+    const owners = [dtu.ownerId, dtu.author, dtu.userId, dtu.createdBy, dtu.creatorId, dtu.creator_id].filter(Boolean);
+    if (callerId && owners.includes(callerId)) return false;
+    // Non-owners get full content, so also refuse marketplace (paid), shadow,
+    // and personal-scope rows.
+    if (dtu.meta?.scope === "personal" || dtu.data?.scope === "personal") return true;
+    if (dtu.visibility !== "public" && dtu.visibility !== "published") return true;
+    if (dtu.tier === "shadow") return true;
+    if (typeof dtu.status === "string" && dtu.status.startsWith("quarantine")) return true;
+    if (dtu.scope === "personal" || dtu.scope === "user") return true;
+    if (dtu.privacy === "private" || dtu.privacy === "followers-only") return true;
+    return false;
+  }
+
+  router.post("/sim/export", auth, wrap(async (req, res) => {
     const { dtuId, format } = req.body || {};
-    if (!dtuId) return res.status(400).json({ ok: false, error: "dtuId required" });
-    res.status(501).json({
-      ok: false,
-      error: "unavailable",
-      reason: "export_not_wired",
-      format: format || null,
-      message: "Export does not write a file. No size or download URL was invented.",
+    if (!dtuId || typeof dtuId !== "string") return res.status(400).json({ ok: false, error: "dtuId required" });
+    const fmt = String(format || "pdf").toLowerCase();
+    if (!DOCUMENT_EXPORT_FORMATS.includes(fmt)) {
+      return res.status(400).json({ ok: false, error: "unsupported_format", supportedFormats: DOCUMENT_EXPORT_FORMATS });
+    }
+    const store = _simExportStore();
+    if (!store || typeof store.get !== "function") {
+      return res.status(501).json({
+        ok: false, error: "unavailable", reason: "not_wired",
+        missing: "DTU store (STATE.dtus) is not available in this process",
+      });
+    }
+    const dtu = store.get(dtuId);
+    if (!dtu || _simExportHidden(dtu, _userId(req))) {
+      return res.status(404).json({ ok: false, error: "dtu_not_found" });
+    }
+    let rendered;
+    try {
+      rendered = await renderDtuAsFile(dtu, fmt);
+    } catch {
+      return res.status(501).json({
+        ok: false, error: "unavailable", reason: "render_failed", format: fmt,
+        message: `The ${fmt} renderer failed on this DTU. Nothing was exported.`,
+      });
+    }
+    if (!rendered.ok) {
+      return res.status(400).json({ ok: false, error: rendered.error, supportedFormats: rendered.supportedFormats || DOCUMENT_EXPORT_FORMATS });
+    }
+    if (rendered.buffer.length > SIM_EXPORT_MAX_BYTES) {
+      return res.status(413).json({ ok: false, error: "export_too_large", bytes: rendered.buffer.length, maxBytes: SIM_EXPORT_MAX_BYTES });
+    }
+    res.json({
+      ok: true, dtuId, format: fmt,
+      filename: rendered.filename, mimeType: rendered.mimeType,
+      bytes: rendered.buffer.length, encoding: "base64",
+      content: rendered.buffer.toString("base64"),
     });
   }));
 
