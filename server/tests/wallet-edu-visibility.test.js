@@ -97,4 +97,15 @@ describe("education cohort/discussion lists follow course visibility", () => {
     assert.deepEqual(call("education", "discussions-list", B, { courseId: course.id }).result.discussions.map(d => d.text), ["lesson 1"]);
     assert.deepEqual(call("education", "discussions-list", ctxOf("user_c"), { courseId: course.id }).result.discussions, []);
   });
+
+  it("deleting a draft course doesn't expose its cohorts or posts", () => {
+    const A = ctxOf("user_a"), B = ctxOf("user_b");
+    const draft = call("education", "courses-create", A, { title: "Gone", status: "draft" }).result.course;
+    call("education", "cohorts-create", A, { title: "orphan", instructor: "A", courseId: draft.id });
+    call("education", "discussions-post", A, { courseId: draft.id, text: "orphan post" });
+    assert.equal(call("education", "courses-delete", A, { id: draft.id }).ok, true);
+    assert.deepEqual(call("education", "cohorts-list", B, {}).result.cohorts, []);
+    assert.deepEqual(call("education", "discussions-list", B, {}).result.discussions, []);
+    assert.equal(call("education", "cohorts-list", A, {}).result.cohorts.length, 1);
+  });
 });
