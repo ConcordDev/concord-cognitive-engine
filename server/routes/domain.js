@@ -14,6 +14,11 @@ import { asyncHandler } from "../lib/async-handler.js";
 import { assertSessionAccessible } from "../lib/session-access.js";
 import { gateLogRead, gateLogAdmin, sendGate, httpStatusForLogMacro } from "../lib/log-access.js";
 import { readHypothesisStatus, callHypothesisEngine } from "../lib/hypothesis-rest.js";
+import {
+  enforcePlatformInternalLensRole,
+  isPlatformInternalLensDomain,
+  PLATFORM_INTERNAL_LENS_ROLES,
+} from "../lib/platform-internal-lens-gate.js";
 export default function registerDomainRoutes(app, {
   STATE,
   makeCtx,
@@ -34,7 +39,8 @@ export default function registerDomainRoutes(app, {
   ensureAttentionManager,
   ensureReflectionEngine,
   validate,
-  requireOwner
+  requireOwner,
+  requireRole,
 }) {
 
   // ---- Cognitive Status ----
@@ -223,6 +229,16 @@ export default function registerDomainRoutes(app, {
     }
 
     if (!domain || !name) return res.status(400).json({ ok:false, error:"domain and name required" });
+    if (isPlatformInternalLensDomain(domain)) {
+      if (typeof requireRole !== "function") {
+        return res.status(403).json({
+          ok: false,
+          error: "Insufficient permissions",
+          requiredRoles: [...PLATFORM_INTERNAL_LENS_ROLES],
+        });
+      }
+      if (enforcePlatformInternalLensRole(req, res, domain, requireRole)) return;
+    }
     try {
       const out = await runMacro(domain, name, input, ctx);
       kernelTick({ type: "MACRO_RUN", meta: { path: req.path, domain, name }, signals: { benefit: out?.ok?0.1:0, error: out?.ok?0:0.2 } });

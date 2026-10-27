@@ -161,6 +161,18 @@ describe("sentinel — per-user isolation", () => {
     assert.equal(call("triage.list", ctxA, {}).result.total, 1);
     assert.equal(call("triage.list", ctxB, {}).result.total, 0);
   });
+
+  it("ignores a caller-supplied userId and refuses an unauthenticated caller", () => {
+    call("monitor.create", ctxA, { name: "a-watch" });
+    call("query.save", ctxA, { query: "lateral movement" });
+    assert.equal(call("monitor.list", ctxB, { userId: "user_a" }).result.monitors.length, 0);
+    assert.equal(call("query.list", ctxB, { userId: "user_a" }).result.queries.length, 0);
+    assert.equal(call("monitor.list", ctxA, {}).result.monitors.length, 1);
+    assert.equal(call("query.list", ctxA, {}).result.queries.length, 1);
+    assert.equal(call("monitor.list", {}, {}).error, "Authentication required");
+    assert.equal(call("query.export", { actor: { userId: "anon" } }, { results: [], format: "json" }).error, "Authentication required");
+    assert.equal(call("alerts.list", { actor: { userId: "anonymous" } }, {}).error, "Authentication required");
+  });
 });
 
 describe("sentinel — fail-CLOSED numeric guards (assassin V2 vectors)", () => {
