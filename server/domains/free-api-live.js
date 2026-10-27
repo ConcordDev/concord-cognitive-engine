@@ -21,11 +21,53 @@ async function fetchJsonWithTimeout(url, opts = {}, timeoutMs = FETCH_TIMEOUT_MS
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const r = await fetch(url, { ...opts, signal: ctrl.signal });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    if (!r.ok) {
+      const err = new Error(`HTTP ${r.status}`);
+      err.status = r.status;
+      try { err.bodyText = (await r.text()).slice(0, 500); } catch { err.bodyText = ""; }
+      throw err;
+    }
     return await r.json();
   } finally {
     clearTimeout(t);
   }
+}
+
+// USDA FoodData Central search request.
+// Root cause of the food lens's HTTP 400 (measured 2026-10-27 against the
+// live API with the same key): GET /foods/search with a dataType filter that
+// includes "Survey (FNDDS)" is rejected by USDA's nginx with an HTML 400 on a
+// large share of calls (8/20 OK for GET vs 20/20 OK for POST, same params),
+// independent of how the query string is encoded. A single direct call often
+// returns 200, which is why the URL looked fine by hand. USDA documents POST
+// with a JSON body for this endpoint, and that path is reliable, so send the
+// criteria as JSON. The key stays a query param (USDA requires it there) and
+// must never appear in an error message.
+export const USDA_FOOD_SEARCH_DATA_TYPES = ["Survey (FNDDS)", "SR Legacy"];
+export function usdaFoodSearchRequest({ apiKey, query, limit }) {
+  return {
+    url: `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${encodeURIComponent(apiKey)}`,
+    init: {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ query, pageSize: limit, dataType: [...USDA_FOOD_SEARCH_DATA_TYPES] }),
+    },
+  };
+}
+
+// USDA's own error text (JSON {error:{message}} / {message}), or null when the
+// body is not a USDA message (e.g. nginx's HTML 400 page). Any occurrence of
+// the key is scrubbed defensively.
+export function usdaErrorMessage(bodyText, apiKey) {
+  if (!bodyText) return null;
+  let msg = null;
+  try {
+    const j = JSON.parse(bodyText);
+    msg = j?.error?.message || j?.message || (typeof j?.error === "string" ? j.error : null);
+  } catch { msg = null; }
+  if (!msg || typeof msg !== "string") return null;
+  if (apiKey && apiKey !== "DEMO_KEY") msg = msg.split(apiKey).join("[redacted]");
+  return msg.slice(0, 200);
 }
 
 export default function registerFreeApiLiveMacros(register) {
@@ -144,9 +186,9 @@ export default function registerFreeApiLiveMacros(register) {
     if (q.length > 100) return { ok: false, reason: "query_too_long" };
     const limit = Math.min(Math.max(Number(input.limit) || 10, 1), 25);
     const apiKey = process.env.USDA_API_KEY || "DEMO_KEY";
-    const url = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${encodeURIComponent(apiKey)}&query=${encodeURIComponent(q)}&pageSize=${limit}&dataType=Survey%20%28FNDDS%29,SR%20Legacy`;
+    const { url, init } = usdaFoodSearchRequest({ apiKey, query: q, limit });
     try {
-      const data = await fetchJsonWithTimeout(url);
+      const data = await fetchJsonWithTimeout(url, init);
       const foods = (data.foods || []).map(f => {
         const nutrients = (f.foodNutrients || []).reduce((acc, n) => {
           // Common nutrient names. KCal=Energy, g for macros.
@@ -179,6 +221,19 @@ export default function registerFreeApiLiveMacros(register) {
         usingDemoKey: apiKey === "DEMO_KEY",
       };
     } catch (e) {
+      // USDA answered with an error status: say so (never echo the URL — it carries the key).
+      if (e?.status) {
+        return {
+          ok: false,
+          reason: e.status === 429 ? "usda_rate_limited" : "usda_http_error",
+          status: e.status,
+          error: `USDA FoodData Central returned HTTP ${e.status}`,
+          usdaMessage: usdaErrorMessage(e.bodyText, apiKey),
+        };
+      }
+      if (e?.name === "AbortError") {
+        return { ok: false, reason: "usda_timeout", error: `USDA FoodData Central did not answer within ${FETCH_TIMEOUT_MS / 1000}s` };
+      }
       return { ok: false, reason: "usda_unreachable", error: String(e?.message || e) };
     }
   };
