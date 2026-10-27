@@ -30,6 +30,7 @@ import { up as migrateCreatorId } from "../migrations/087_dtus_type_creator_data
 import { up as migrateDtuCitations } from "../migrations/010_learning_verification.js";
 import { up as migrateAchievements } from "../migrations/047_game_mode_tables.js";
 import { up as migrateAchievementCatalog } from "../migrations/216_achievement_catalog.js";
+import { up as migrateEconomy } from "../migrations/002_economy_tables.js";
 
 import register from "../domains/profile.js";
 
@@ -126,6 +127,8 @@ describe("profile targetUserId — self view is fully backward compatible", () =
     assert.equal(rep.result.dtuCount, 1); // self sees the PRIVATE dtu too
     assert.equal(rep.result.totalCitations, 4);
     assert.equal(rep.result.isSelf, true);
+    assert.equal(rep.result.totalRoyalties, null);
+    assert.equal(rep.result.royaltyReason, "no_ledger_table");
 
     const port = run("portfolio-list", "u1");
     assert.equal(port.result.count, 1); // self sees the PRIVATE dtu too
@@ -147,6 +150,31 @@ describe("profile targetUserId — peer view surfaces REAL data for another real
     assert.equal(r.result.dtuCount, 1);
     assert.equal(r.result.totalCitations, 9);
     assert.equal(r.result.reputation.length, 8);
+    assert.equal(r.result.totalRoyalties, null);
+    assert.equal(r.result.royaltyReason, "not_shared");
+  });
+
+  it("reputation-summary sums the caller's completed royalty credits", () => {
+    migrateEconomy(DB);
+    ensureUser(DB, "buyer");
+    const insert = DB.prepare(`
+      INSERT INTO economy_ledger (id, type, from_user_id, to_user_id, amount, fee, net, status)
+      VALUES (?, 'ROYALTY_PAYOUT', 'buyer', ?, ?, 0, ?, ?)
+    `);
+    insert.run("e1", "u1", 7, 7, "complete");
+    insert.run("e2", "u1", 2.5, 2.5, "complete");
+    insert.run("e3", "u1", 4, 4, "reversed");
+    insert.run("e4", "u2", 99, 99, "complete");
+
+    const self = run("reputation-summary", "u1");
+    assert.equal(self.result.dtuCount, 0);
+    assert.equal(self.result.totalRoyalties, 9.5);
+    assert.equal(self.result.royaltyReason, null);
+    assert.deepEqual(self.result.reputation, []);
+
+    const peer = run("reputation-summary", "u2", { targetUserId: "u1" });
+    assert.equal(peer.result.totalRoyalties, null);
+    assert.equal(peer.result.royaltyReason, "not_shared");
   });
 
   it("badges-list(targetUserId=u2) returns u2's real earned badges", () => {

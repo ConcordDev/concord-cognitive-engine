@@ -69,6 +69,29 @@ export default function registerProfileActions(registerLensAction) {
     } catch (_e) { return false; }
   }
 
+  // Completed royalty credits paid TO this user. A missing ledger is not a
+  // balance of 0. Peer view does not receive another user's earnings.
+  function readRoyalties(db, userId, isSelf) {
+    if (!isSelf) return { totalRoyalties: null, royaltyReason: "not_shared" };
+    if (!tableExists(db, "economy_ledger")) {
+      return { totalRoyalties: null, royaltyReason: "no_ledger_table" };
+    }
+    try {
+      const row = db.prepare(`
+        SELECT COALESCE(SUM(net), 0) AS total
+        FROM economy_ledger
+        WHERE to_user_id = ?
+          AND status = 'complete'
+          AND type IN ('ROYALTY_PAYOUT', 'citation_royalty', 'royalty')
+      `).get(userId);
+      const total = Number(row?.total);
+      if (!Number.isFinite(total)) return { totalRoyalties: null, royaltyReason: "ledger_unreadable" };
+      return { totalRoyalties: Math.round(total * 100) / 100, royaltyReason: null };
+    } catch (_e) {
+      return { totalRoyalties: null, royaltyReason: "ledger_unreadable" };
+    }
+  }
+
   // The reputation domains the PlayerProfile radar renders.
   const REPUTATION_DOMAINS = [
     "structural", "materials", "infrastructure", "energy",
@@ -251,6 +274,8 @@ export default function registerProfileActions(registerLensAction) {
   // ── reputation-summary ───────────────────────────────────────────
   // Derive reputation + headline stats from REAL sources:
   //   - totalCitations: summed dtu_citations over this user's authored DTUs;
+  //   - totalRoyalties: completed economy_ledger royalty credits to the caller
+  //     (null when the ledger is absent; peers get null, not a fake 0);
   //   - worldsOwned / metrics: player_world_metrics (four-axis) where present;
   //   - reputation[]: per-domain 0..100 scores derived deterministically from
   //     the user's real authored-DTU + citation activity (NOT random). Returns
@@ -313,11 +338,14 @@ export default function registerProfileActions(registerLensAction) {
         } catch (_e) { /* leave 0 */ }
       }
 
-      // No activity → honest zeros, no reputation polygon.
+      const royalties = readRoyalties(db, userId, isSelf);
+
+      // No authored activity → no reputation polygon. Royalties still come
+      // from the ledger, including a real 0.
       if (agg.dtuCount === 0 && agg.totalCitations === 0) {
         return {
           ok: true,
-          result: { ...empty, worldsOwned, isSelf },
+          result: { ...empty, ...royalties, worldsOwned, isSelf },
         };
       }
 
@@ -336,7 +364,7 @@ export default function registerProfileActions(registerLensAction) {
         ok: true,
         result: {
           totalCitations: agg.totalCitations,
-          totalRoyalties: 0, // not yet wired to a real royalty ledger read; honest zero
+          ...royalties,
           worldsOwned,
           dtuCount: agg.dtuCount,
           reputation,
