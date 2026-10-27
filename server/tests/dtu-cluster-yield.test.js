@@ -128,11 +128,43 @@ test("large pass yields to the event loop before resolving", async () => {
 
 test("maxItems caps the input set without changing small-fixture output", async () => {
   const W = "maxitems-test-world";
-  seed("m_a", "a topic", ["a"], W);
-  seed("m_b", "a topic b", ["a"], W);
-  const r = await runMacro("dtu", "cluster", { maxItems: 2000 }, ctx);
+  // Own tier so the 1k+ DTUs seeded by earlier tests don't crowd these out of the result.
+  seed("m_a", "a topic", ["a"], W, { tier: "maxitems" });
+  seed("m_b", "a topic b", ["a"], W, { tier: "maxitems" });
+  const r = await runMacro("dtu", "cluster", { fromTier: "maxitems", maxItems: 2000 }, ctx);
   assert.equal(r.ok, true);
   assert.equal(r.truncated, false);
   const ids = r.clusters.flatMap((c) => c.ids).filter((id) => id.startsWith("m_")).sort();
   assert.deepEqual(ids, ["m_a", "m_b"]);
+});
+
+test("bounded calls rotate oldest-first so older DTUs are not starved", async () => {
+  const tier = "rotfair";
+  const base = Date.parse("2020-01-01T00:00:00Z");
+  for (let i = 0; i < 9; i++) {
+    seed(`rot_${i}`, `unique${i} words${i}`, [`t${i}`], "rot-world", {
+      tier, createdAt: new Date(base + i * 1000).toISOString(),
+    });
+  }
+  const seen = [];
+  for (let k = 0; k < 3; k++) {
+    const r = await runMacro("dtu", "cluster", { fromTier: tier, maxItems: 3 }, ctx);
+    assert.equal(r.ok, true);
+    seen.push(r.clusters.flatMap((c) => c.ids).sort());
+  }
+  assert.deepEqual(seen[0], ["rot_0", "rot_1", "rot_2"], "first window is the oldest");
+  assert.deepEqual(seen[1], ["rot_3", "rot_4", "rot_5"]);
+  assert.deepEqual(seen[2], ["rot_6", "rot_7", "rot_8"]);
+  const wrap = await runMacro("dtu", "cluster", { fromTier: tier, maxItems: 3 }, ctx);
+  assert.deepEqual(wrap.clusters.flatMap((c) => c.ids).sort(), ["rot_0", "rot_1", "rot_2"], "wraps to oldest");
+});
+
+test("missing / non-string timestamps never throw in bounded mode", async () => {
+  const tier = "badts";
+  seed("bts_a", "alpha one", ["x"], "bts-world", { tier, createdAt: undefined, updatedAt: undefined });
+  seed("bts_b", "alpha two", ["x"], "bts-world", { tier, createdAt: 12345, updatedAt: null });
+  seed("bts_c", "alpha three", ["x"], "bts-world", { tier, createdAt: { bogus: true } });
+  const r = await runMacro("dtu", "cluster", { fromTier: tier, maxItems: 2 }, ctx);
+  assert.equal(r.ok, true, JSON.stringify(r));
+  assert.equal(r.clusters.flatMap((c) => c.ids).length, 2);
 });

@@ -403,9 +403,22 @@ export async function persistEmergentStateAsync(STATE, opts = {}) {
 /**
  * Start periodic auto-persistence.
  */
+function _isReadReplica() {
+  const v = process.env.CONCORD_READ_REPLICA;
+  return v === "1" || v === "true";
+}
+
 export function startAutoPersist(STATE, opts = {}) {
   const interval = opts.intervalMs || PERSIST_INTERVAL_MS;
   if (opts.dataDir) _dataDir = opts.dataDir;
+
+  // A read replica (CONCORD_READ_REPLICA=1) shares DATA_DIR with the primary.
+  // Its 15-min persist re-serialized the whole emergent state synchronously
+  // (the replica's exact 15-min 3.5-7 s event-loop stalls) and overwrote the
+  // primary's emergent-state.json with the replica's copy. The primary owns it.
+  if (_isReadReplica()) {
+    return { ok: true, skipped: "read_replica", intervalMs: interval };
+  }
 
   if (_persistTimer) {
     clearInterval(_persistTimer);
@@ -429,6 +442,7 @@ export function stopAutoPersist(STATE) {
     clearInterval(_persistTimer);
     _persistTimer = null;
   }
+  if (_isReadReplica()) return { ok: true, skipped: "read_replica" };
   return persistEmergentState(STATE, { dataDir: _dataDir });
 }
 

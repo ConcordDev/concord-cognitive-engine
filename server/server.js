@@ -27283,6 +27283,23 @@ function _dtuScopeKey(d) {
   return `${scope}|${world}`;
 }
 
+// INC-150 fairness: the consolidation cycle bounds dtu.cluster by maxItems and a
+// wall-clock budget. To stop the same (newest) slice winning every cycle and older
+// DTUs starving, bounded calls walk the tier oldest-first and resume where the
+// previous cycle stopped (a rotating cursor keyed per fromTier, wrapping at the end).
+const _dtuClusterCursor = new Map(); // fromTier -> { ts, id } of the first DTU to start at
+function _dtuClusterTs(d) {
+  const v = d?.createdAt ?? d?.updatedAt;
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  if (typeof v === "string") { const t = Date.parse(v); return Number.isFinite(t) ? t : 0; }
+  return 0;
+}
+function _dtuClusterKeyCmp(aTs, aId, bTs, bId) {
+  if (aTs !== bTs) return aTs - bTs;
+  const x = String(aId ?? ""), y = String(bId ?? "");
+  return x < y ? -1 : (x > y ? 1 : 0);
+}
+
 register("dtu", "cluster", async (ctx, input) => {
   try {
   // group DTUs by similarity (simple jaccard on title+tags) — BUT only ever WITHIN a
@@ -27296,23 +27313,39 @@ register("dtu", "cluster", async (ctx, input) => {
   let items = dtusArray().filter(d => (d.tier || "regular") === _fromTier);
   const threshold = Number(input.threshold ?? 0.38);
 
-  // INC-150: when called from the consolidation cycle, bound the input set so a
-  // huge regular pool cannot produce an unbounded O(n²) pass. Explicit macro/API
-  // callers that do not pass maxItems keep the previous "consider everything" behavior.
-  const maxItems = Number(input.maxItems);
-  if (Number.isFinite(maxItems) && maxItems > 0 && items.length > maxItems) {
-    items = items
-      .slice()
-      .sort((a, b) => (b.updatedAt || b.createdAt || "").localeCompare(a.updatedAt || a.createdAt || ""))
-      .slice(0, maxItems);
-  }
-
   // Optional wall-clock budget/deadline. Exceeding it stops early and returns
   // partial clusters with truncated:true. Used by the consolidation heartbeat.
   const budgetMs = Number(input.budgetMs);
   const explicitDeadline = Number(input.deadline);
   const deadline = Number.isFinite(explicitDeadline) ? explicitDeadline
     : (Number.isFinite(budgetMs) && budgetMs > 0 ? Date.now() + budgetMs : Infinity);
+
+  // INC-150: when called from the consolidation cycle, bound the input set so a
+  // huge pool cannot produce an unbounded O(n²) pass, and rotate fairly across
+  // cycles (oldest-first, resume at the cursor). Explicit macro/API callers that
+  // pass neither maxItems nor a budget keep the previous "consider everything" order.
+  const maxItems = Number(input.maxItems);
+  const _bounded = (Number.isFinite(maxItems) && maxItems > 0) || deadline !== Infinity;
+  const _rotate = _bounded && input.rotate !== false;
+  let _ordered = null; // sorted tier list when rotating
+  if (_rotate && items.length) {
+    _ordered = items
+      .map((d) => ({ d, ts: _dtuClusterTs(d) }))
+      .sort((a, b) => _dtuClusterKeyCmp(a.ts, a.d.id, b.ts, b.d.id));
+    const cur = _dtuClusterCursor.get(_fromTier);
+    let start = 0;
+    if (cur) {
+      start = _ordered.findIndex((e) => _dtuClusterKeyCmp(e.ts, e.d.id, cur.ts, cur.id) >= 0);
+      if (start < 0) start = 0; // ran off the end → wrap to the oldest
+    }
+    const cap = (Number.isFinite(maxItems) && maxItems > 0) ? Math.min(maxItems, _ordered.length) : _ordered.length;
+    const win = [];
+    for (let k = 0; k < cap; k++) win.push(_ordered[(start + k) % _ordered.length]);
+    items = win.map((e) => e.d);
+    _ordered = { win, start, all: _ordered };
+  } else if (Number.isFinite(maxItems) && maxItems > 0 && items.length > maxItems) {
+    items = items.slice(0, maxItems);
+  }
 
   const clusters = [];
   const used = new Set();
@@ -27347,22 +27380,26 @@ register("dtu", "cluster", async (ctx, input) => {
     return true;
   }
 
-  partitionLoop:
+  const visited = new Set(); // seeds whose full compare row finished (fairness cursor)
+  const seeds = new Set();
   for (const [, partItems] of partitions) {
+    if (truncated) break;
     const toks = [];
     for (let k = 0; k < partItems.length; k += TOKENIZE_CHUNK) {
       for (let idx = k; idx < Math.min(k + TOKENIZE_CHUNK, partItems.length); idx++) {
         toks[idx] = new Set(simpleTokens(partItems[idx].title + " " + (partItems[idx].tags || []).join(" ")));
       }
-      if (!(await _clusterYield())) break partitionLoop;
+      if (!(await _clusterYield())) break;
     }
+    if (truncated) break;
 
     for (let i = 0; i < partItems.length; i++) {
-      if (truncated) break partitionLoop;
+      if (truncated) break;
       const a = partItems[i];
       if (used.has(a.id)) continue;
       const A = toks[i];
       const cluster = [a];
+      seeds.add(a.id);
       used.add(a.id);
       let comparisons = 0;
       for (let j = i + 1; j < partItems.length; j++) {
@@ -27383,8 +27420,25 @@ register("dtu", "cluster", async (ctx, input) => {
         }
       }
       clusters.push(cluster);
-      if (!(await _clusterYield())) break partitionLoop;
+      if (!truncated) visited.add(a.id);
+      if (!(await _clusterYield())) break;
     }
+  }
+
+  if (_ordered && _ordered.all.length) {
+    // Resume at the first window entry that never got a full pass (truncated), or
+    // just past the window (complete). Anything clustered as a member counts as done.
+    const { win, start, all } = _ordered;
+    let next = win.length;
+    if (truncated) {
+      // done = finished seeds, or members absorbed into another seed's cluster
+      next = win.findIndex((e) => !visited.has(e.d.id) && !(used.has(e.d.id) && !seeds.has(e.d.id)));
+      if (next < 0) next = win.length;
+      if (next === 0 && win.length) next = 1; // always make progress
+    }
+    const e = all[(start + next) % all.length];
+    if (next >= all.length) _dtuClusterCursor.delete(_fromTier);
+    else _dtuClusterCursor.set(_fromTier, { ts: e.ts, id: e.d.id });
   }
 
   clusters.sort((c1, c2) => c2.length - c1.length);
@@ -76184,7 +76238,7 @@ if (process.env.CONCORD_LOOP_BLOCK_ALERT !== "0") {
     const _DRIFT_RATE_LIMIT_MS = 5000;
     let _driftExpected = Date.now() + _DRIFT_INTERVAL_MS;
     let _lastDriftAlertAt = 0;
-    setInterval(() => {
+    const _driftTimer = setInterval(() => {
       try {
         const now = Date.now();
         const blockedMs = now - _driftExpected;
@@ -76204,7 +76258,10 @@ if (process.env.CONCORD_LOOP_BLOCK_ALERT !== "0") {
           heapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
         });
       } catch { /* probe must never throw */ }
-    }, _DRIFT_INTERVAL_MS).unref();
+    }, _DRIFT_INTERVAL_MS);
+    // Tracked so shutdown's _activeTimers sweep clears it; unref so it never holds the process open.
+    _driftTimer.unref?.();
+    _activeTimers.add(_driftTimer);
   } catch (e) {
     structuredLog("info", "event_loop_block_probe_unavailable", { error: String(e?.message || e) });
   }
