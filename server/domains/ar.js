@@ -3,6 +3,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { requireList } from "../lib/lens-inputs.js";
 export default function registerArActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -15,7 +16,8 @@ export default function registerArActions(registerLensAction) {
    */
   registerLensAction("ar", "spatialMapping", (ctx, artifact, params) => {
   try {
-    const anchors = artifact.data.anchors || [];
+    const anchors = requireList(artifact.data.anchors, "anchors");
+    if (!Array.isArray(anchors)) return anchors;
     if (anchors.length === 0) {
       return { ok: true, result: { message: "No spatial anchors provided." } };
     }
@@ -202,7 +204,8 @@ export default function registerArActions(registerLensAction) {
    */
   registerLensAction("ar", "markerDetection", (ctx, artifact, params) => {
   try {
-    const markers = artifact.data.markers || [];
+    const markers = requireList(artifact.data.markers, "markers");
+    if (!Array.isArray(markers)) return markers;
     if (markers.length === 0) {
       return { ok: true, result: { message: "No markers provided for analysis." } };
     }
@@ -375,7 +378,8 @@ export default function registerArActions(registerLensAction) {
    */
   registerLensAction("ar", "sceneGraph", (ctx, artifact, params) => {
   try {
-    const nodes = artifact.data.nodes || [];
+    const nodes = requireList(artifact.data.nodes, "nodes");
+    if (!Array.isArray(nodes)) return nodes;
     if (nodes.length === 0) {
       return { ok: true, result: { message: "No scene graph nodes provided." } };
     }
