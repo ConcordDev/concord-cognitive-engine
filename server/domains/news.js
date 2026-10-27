@@ -34,8 +34,10 @@ const GDELT_DEFAULTS = {
   cacheTtlMs: 15 * 60 * 1000, // per-category cache lifetime
   backoffStartMs: 60 * 1000,  // first backoff window after a failure
   backoffMaxMs: 10 * 60 * 1000,
-  briefingBudgetMs: 8500,     // daily-briefing total budget
+  briefingBudgetMs: 8500,     // daily-briefing budget for the GDELT sections
+  briefingTotalMs: 9000,      // daily-briefing hard ceiling for the whole handler
   llmClosingMs: 2500,         // cap on the optional LLM closing sentence
+  llmMinMs: 300,              // skip the LLM closing if less time than this is left
   now: () => Date.now(),
 };
 const gdelt = { ...GDELT_DEFAULTS };
@@ -732,6 +734,7 @@ export default function registerNewsActions(registerLensAction) {
   });
 
   registerLensAction("news", "daily-briefing", async (ctx, _artifact, _params = {}) => {
+    const deadline = Date.now() + gdelt.briefingTotalMs;
     const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
     const greeting = `Good ${new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'} — here's what's happening today.`;
     // Each section starts its fetch now. Fetches that miss the budget keep
@@ -769,7 +772,10 @@ export default function registerNewsActions(registerLensAction) {
       briefing.degraded = true;
       briefing.degradedReason = reasons[0];
     }
-    if (ctx?.llm?.chat) {
+    // The closing sentence is optional. It only runs when there is something
+    // to summarise, and only within the time left before the total deadline.
+    const llmBudget = Math.min(gdelt.llmClosingMs, deadline - Date.now());
+    if (ctx?.llm?.chat && tallied > 0 && llmBudget >= gdelt.llmMinMs) {
       try {
         const llmRes = await raceTimeout(ctx.llm.chat({
           messages: [
@@ -777,7 +783,7 @@ export default function registerNewsActions(registerLensAction) {
             { role: "user", content: `Briefing covered ${tallied} stories across world, business, tech, science.` },
           ],
           temperature: 0.7, maxTokens: 60, slot: "utility",
-        }), gdelt.llmClosingMs, null);
+        }), llmBudget, null);
         const t = String(llmRes?.text || llmRes?.content || "").trim();
         if (t && t.length < 200) briefing.closing = t;
       } catch (_e) { /* keep default */ }

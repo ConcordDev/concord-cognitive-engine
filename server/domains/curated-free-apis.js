@@ -13,6 +13,7 @@
 //   poetry.live_poetrydb              PoetryDB (titles, authors, lines)
 //   game.live_trivia                  Open Trivia DB
 //   daily.live_quote                  Quotable → ZenQuotes → DummyJSON → local list
+//                                     (per-source 4 s timeout, 30 min breaker, 10 min cache)
 //   reflection.live_quote             Quotable chain (shared)
 //   pets.live_catfact                 Cat Facts API (real cat facts)
 //
@@ -77,6 +78,26 @@ function takeWrapped(list, start, n) {
 const ZENQUOTES_OPTS = { headers: { "User-Agent": USER_AGENT } };
 const DUMMYJSON_OPTS = { headers: { "User-Agent": USER_AGENT } };
 
+// Quote chain tuning. A source that failed is skipped for the cooldown rather
+// than re-tried on every open; a successful answer is reused for the TTL.
+const QUOTE_TIMEOUT_MS = 4000;
+const QUOTE_BREAKER_COOLDOWN_MS = 30 * 60 * 1000;
+const QUOTE_CACHE_TTL_MS = 10 * 60 * 1000;
+const quoteBreaker = new Map(); // source name -> { until, reason }
+const quoteCache = new Map();   // limit|author|tag -> { expiresAt, value }
+
+// Test hook: forget breaker and cache state between cases.
+export function __resetQuoteStateForTests() {
+  quoteBreaker.clear();
+  quoteCache.clear();
+}
+
+// Returns a skip note while `name` is cooling down, otherwise null.
+function quoteSkipNote(name, now) {
+  const b = quoteBreaker.get(name);
+  return b && b.until > now ? `skipped: cooling down after ${b.reason}` : null;
+}
+
 // Fallback sources, tried in order after Quotable. Each returns normalised
 // quotes (possibly empty) or throws. Free, no key. Both ignore author/tag
 // filters, which the caller reports via `filtersIgnored`.
@@ -87,10 +108,10 @@ const QUOTE_FALLBACK_SOURCES = [
     // which a day-of-year window is taken so the daily pick is stable.
     async fetch(limit, now) {
       if (limit === 1) {
-        const data = await fetchJsonWithTimeout("https://zenquotes.io/api/random", ZENQUOTES_OPTS);
+        const data = await fetchJsonWithTimeout("https://zenquotes.io/api/random", ZENQUOTES_OPTS, QUOTE_TIMEOUT_MS);
         return asList(data).map(q => toQuote({ content: q.q, author: q.a })).filter(Boolean);
       }
-      const data = await fetchJsonWithTimeout("https://zenquotes.io/api/quotes", ZENQUOTES_OPTS);
+      const data = await fetchJsonWithTimeout("https://zenquotes.io/api/quotes", ZENQUOTES_OPTS, QUOTE_TIMEOUT_MS);
       const all = asList(data).map(q => toQuote({ content: q.q, author: q.a })).filter(Boolean);
       return takeWrapped(all, dayOfYear(now), limit);
     },
@@ -99,12 +120,12 @@ const QUOTE_FALLBACK_SOURCES = [
     name: "DummyJSON",
     async fetch(limit, now) {
       if (limit === 1) {
-        const q = await fetchJsonWithTimeout("https://dummyjson.com/quotes/random", DUMMYJSON_OPTS);
+        const q = await fetchJsonWithTimeout("https://dummyjson.com/quotes/random", DUMMYJSON_OPTS, QUOTE_TIMEOUT_MS);
         const quote = toQuote({ id: `dummyjson:${q?.id}`, content: q?.quote, author: q?.author });
         return quote ? [quote] : [];
       }
       const skip = dayOfYear(now) % 90;
-      const data = await fetchJsonWithTimeout(`https://dummyjson.com/quotes?limit=${limit}&skip=${skip}`, DUMMYJSON_OPTS);
+      const data = await fetchJsonWithTimeout(`https://dummyjson.com/quotes?limit=${limit}&skip=${skip}`, DUMMYJSON_OPTS, QUOTE_TIMEOUT_MS);
       return asList(data?.quotes)
         .map(q => toQuote({ id: `dummyjson:${q.id}`, content: q.quote, author: q.author }))
         .filter(Boolean);
@@ -303,40 +324,66 @@ export default function registerCuratedFreeApiMacros(register) {
     const author = input.author ? String(input.author).slice(0, 60) : null;
     const tag = input.tag ? String(input.tag).slice(0, 40) : null;
     const requestedFilters = [author && "author", tag && "tag"].filter(Boolean);
-    const fetchedAt = Math.floor(Date.now() / 1000);
+    const now = Date.now();
+    const fetchedAt = Math.floor(now / 1000);
+    const cacheKey = `${limit}|${author || ""}|${tag || ""}`;
+    const hit = quoteCache.get(cacheKey);
+    if (hit && hit.expiresAt > now) return { ...hit.value, cached: true };
+    quoteCache.delete(cacheKey);
+    // Only network answers are remembered. The local list is the last resort
+    // and must not hide a source that recovers.
+    const remember = (value) => {
+      quoteCache.set(cacheKey, { expiresAt: now + QUOTE_CACHE_TTL_MS, value });
+      return value;
+    };
     const url = `https://api.quotable.io/quotes/random?limit=${limit}` +
       (author ? `&author=${encodeURIComponent(author)}` : "") +
       (tag ? `&tags=${encodeURIComponent(tag)}` : "");
     const failures = [];
-    try {
-      const data = await fetchJsonWithTimeout(url);
-      const quotes = (Array.isArray(data) ? data : [data]).filter(Boolean).map(q => ({
-        id: q._id,
-        content: q.content,
-        author: q.author,
-        tags: q.tags || [],
-        length: q.length || null,
-        authorSlug: q.authorSlug || null,
-      }));
-      return {
-        ok: true,
-        source: "Quotable",
-        fetchedAt,
-        total: quotes.length,
-        quotes,
-        degraded: false,
-        degradedReason: null,
-        filtersIgnored: [],
-      };
-    } catch (e) {
-      failures.push(`Quotable: ${describeFetchError(e)}`);
+    const skipQuotable = quoteSkipNote("Quotable", now);
+    if (skipQuotable) {
+      failures.push(`Quotable: ${skipQuotable}`);
+    } else {
+      try {
+        const data = await fetchJsonWithTimeout(url, {}, QUOTE_TIMEOUT_MS);
+        const quotes = (Array.isArray(data) ? data : [data]).filter(Boolean).map(q => ({
+          id: q._id,
+          content: q.content,
+          author: q.author,
+          tags: q.tags || [],
+          length: q.length || null,
+          authorSlug: q.authorSlug || null,
+        }));
+        quoteBreaker.delete("Quotable");
+        return remember({
+          ok: true,
+          source: "Quotable",
+          fetchedAt,
+          total: quotes.length,
+          quotes,
+          degraded: false,
+          degradedReason: null,
+          filtersIgnored: [],
+        });
+      } catch (e) {
+        const reason = describeFetchError(e);
+        quoteBreaker.set("Quotable", { until: now + QUOTE_BREAKER_COOLDOWN_MS, reason });
+        failures.push(`Quotable: ${reason}`);
+      }
     }
 
     for (const src of QUOTE_FALLBACK_SOURCES) {
+      const skip = quoteSkipNote(src.name, now);
+      if (skip) {
+        failures.push(`${src.name}: ${skip}`);
+        continue;
+      }
+      let reason;
       try {
-        const quotes = await src.fetch(limit, new Date());
+        const quotes = await src.fetch(limit, new Date(now));
         if (quotes.length) {
-          return {
+          quoteBreaker.delete(src.name);
+          return remember({
             ok: true,
             source: src.name,
             fetchedAt,
@@ -345,15 +392,17 @@ export default function registerCuratedFreeApiMacros(register) {
             degraded: true,
             degradedReason: failures.join("; "),
             filtersIgnored: requestedFilters,
-          };
+          });
         }
-        failures.push(`${src.name}: empty response`);
+        reason = "empty response";
       } catch (e) {
-        failures.push(`${src.name}: ${describeFetchError(e)}`);
+        reason = describeFetchError(e);
       }
+      quoteBreaker.set(src.name, { until: now + QUOTE_BREAKER_COOLDOWN_MS, reason });
+      failures.push(`${src.name}: ${reason}`);
     }
 
-    const quotes = takeWrapped(LOCAL_QUOTES, dayOfYear(new Date()), limit);
+    const quotes = takeWrapped(LOCAL_QUOTES, dayOfYear(new Date(now)), limit);
     return {
       ok: true,
       source: "local",
