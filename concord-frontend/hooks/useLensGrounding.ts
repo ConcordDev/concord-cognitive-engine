@@ -10,7 +10,7 @@
 // the render).
 
 import { useEffect, useState, useCallback } from 'react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 export interface GroundingDTU {
   id: string;
@@ -31,13 +31,15 @@ export function useLensGrounding(lens: string | undefined, query = '', limit = 1
       // discovery.search requires a query ≥2 chars; default to the lens name so a
       // bare "show me this lens's grounding" call still returns its routed corpus.
       const q = (query && query.length >= 2) ? query : lens;
-      const { data } = await api.post('/api/lens/run', {
-        domain: 'discovery',
-        name: 'search',
-        input: { query: q, lens, limit },
-      });
-      const results = data?.results ?? data?.result?.results ?? [];
-      setItems(Array.isArray(results) ? results : []);
+      const res = await lensRun<{ results?: GroundingDTU[] } & { ok?: boolean; reason?: string }>('discovery', 'search', { query: q, lens, limit });
+      const data = res?.data?.result;
+      if (data && 'ok' in data && !data.ok) {
+        setItems([]);
+        setError(data.reason || 'discovery search failed');
+      } else {
+        const results = data?.results ?? [];
+        setItems(Array.isArray(results) ? results : []);
+      }
     } catch (e) {
       setError(String((e as Error)?.message || e));
       setItems([]);

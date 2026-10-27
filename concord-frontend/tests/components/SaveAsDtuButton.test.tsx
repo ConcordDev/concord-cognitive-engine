@@ -208,4 +208,15 @@ describe('SaveAsDtuButton', () => {
     expect(snap.length).toBeLessThanOrEqual(8100);
     expect(snap.endsWith('…[truncated]')).toBe(true);
   });
+
+  it('toasts an error when the server returns an ok:false envelope (dead-button regression)', async () => {
+    create.mockResolvedValue({ data: { ok: false, error: 'council_rejected', reason: 'low_value' } });
+    renderWithQuery(
+      <SaveAsDtuButton apiSource="foo" title="T" content="C" confirm={false} />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Save as DTU/i }));
+    await waitFor(() =>
+      expect(addToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', message: 'council_rejected' }))
+    );
+  });
 });

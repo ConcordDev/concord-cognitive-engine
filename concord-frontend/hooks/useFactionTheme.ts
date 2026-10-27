@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { lensRun } from '@/lib/api/client';
 
 interface FactionVisual {
   primary_color: string;   // hex
@@ -62,14 +63,8 @@ export function useFactionTheme(factionId: string | null | undefined): FactionTh
     let cancelled = false;
     (async () => {
       try {
-        const r = await fetch('/api/lens/run', {
-          method: 'POST', credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ domain: 'factions', name: 'visual', input: { factionId } }),
-        });
-        if (!r.ok) { cache.set(factionId, null); return; }
-        const j = await r.json();
-        const v = (j?.visual as FactionVisual | undefined) ?? null;
+        const r = await lensRun<{ visual?: FactionVisual }>('factions', 'visual', { factionId });
+        const v = r?.data?.result?.visual ?? null;
         cache.set(factionId, v);
         if (!cancelled) setVisual(v);
       } catch { cache.set(factionId, null); }

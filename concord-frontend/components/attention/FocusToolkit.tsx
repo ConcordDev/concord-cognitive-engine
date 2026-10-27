@@ -334,7 +334,7 @@ export function FocusToolkit() {
           </div>
         )}
         {/* energy tagging of recent untagged sessions */}
-        {pomStats && pomStats.recentSessions.filter((s) => !s.energy).length > 0 && (
+        {pomStats && Array.isArray(pomStats.recentSessions) && pomStats.recentSessions.filter((s) => !s.energy).length > 0 && (
           <div className="mt-3 border-t border-zinc-800 pt-3">
             <p className="mb-2 text-xs text-gray-400">Tag energy on recent sessions (find your peak hours)</p>
             <div className="space-y-1">

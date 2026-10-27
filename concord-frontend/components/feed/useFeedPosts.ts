@@ -82,6 +82,7 @@ export function useFeedPosts(tab: FeedTab, _fallbackItems: FeedPost[] = []) {
   const query = useInfiniteQuery<FeedPost[]>({
     queryKey: ['feed-posts', tab],
     initialPageParam: 0,
+    retry: false,
     queryFn: async ({ pageParam }) => {
       const offset = pageParam as number;
       try {

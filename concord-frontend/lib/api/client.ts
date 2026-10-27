@@ -208,6 +208,15 @@ const QUIET_LENS_ERRORS = new Set([
   'no_db',
   'not_found',
   'staking_unavailable',
+  // Cross-lens recents and provenance panels poll read-only macros; a missing
+  // lens id or db/table gap is not a user-visible failure.
+  'missing_lens_id',
+  'missing_dtu_id',
+  'missing_field',
+  'db_error',
+  // Voice TTS is gated behind an explicit session opt-in. A 422 here just means
+  // the user has not turned voice on; it is not an action failure to toast.
+  'session voice opt-in required',
 ]);
 
 /** True when the server is shedding/warming (not a permission gate). */

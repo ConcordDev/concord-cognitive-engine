@@ -195,6 +195,10 @@ export function SaveAsDtuButton({
         meta,
       );
 
+      // The DTU source must be the real API identifier. Client-controlled
+      // values like "lens" must not be used to bypass the council gate; the
+      // gate decides based on the actual origin. Provenance stays honest in
+      // meta.apiProvider and the tag set.
       return apiHelpers.dtus.create({
         title: clampDtuTitle(opts.title || title),
         content,
@@ -209,7 +213,14 @@ export function SaveAsDtuButton({
       });
     },
     onSuccess: (resp) => {
-      const data = (resp as { data?: { id?: string; dtu?: { id?: string } } })?.data;
+      const data = (resp as { data?: { ok?: boolean; error?: string; reason?: string; id?: string; dtu?: { id?: string } } })?.data;
+      // /api/dtus returns the macro envelope directly. If the macro failed
+      // (ok === false) we must surface it as an error, not a phantom success.
+      if (data?.ok === false) {
+        const msg = data.error || data.reason || 'DTU creation failed';
+        addToast({ type: 'error', message: msg });
+        return;
+      }
       const id = data?.id || data?.dtu?.id || 'saved';
       setSavedId(id);
       addToast({ type: 'success', message: `Saved as DTU (source: ${apiSource})` });

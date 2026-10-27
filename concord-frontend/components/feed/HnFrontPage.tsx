@@ -27,6 +27,7 @@ export function HnFrontPage() {
     },
     staleTime: 5 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
+    retry: false,
   });
 
   const list = hits.data || [];

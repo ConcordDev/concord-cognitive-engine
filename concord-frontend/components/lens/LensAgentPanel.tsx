@@ -39,6 +39,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { lensRun } from '@/lib/api/client';
 import {
   Bot, Send, X, Loader2, ExternalLink, Mic, MicOff, Cpu,
   Search, Calculator, Globe, Layers, FileText, Sparkles,
@@ -308,16 +309,8 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
           }
         }
       } else {
-        const r = await fetch('/api/lens/run', {
-          method: 'POST', credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            domain: 'chat_agent', name: 'do',
-            input: { message: fullMessage, history, slot },
-          }),
-        });
-        const j = await r.json();
-        const payload = (j.result || j) as AgentResponse;
+        const res = await lensRun<AgentResponse>('chat_agent', 'do', { message: fullMessage, history, slot });
+        const payload = res?.data?.result || ({ ok: false, error: 'No response' } as AgentResponse);
         setConversation(c => {
           const next = c.slice();
           next[next.length - 1] = { user: userMsg, agent: payload };

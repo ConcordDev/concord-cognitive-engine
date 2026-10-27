@@ -34,15 +34,20 @@ export function PlatformGrowth() {
       if (cancelled || !hostRef.current) return;
       hostRef.current.innerHTML = '';
       const c = lib.createChart(hostRef.current, {
-        height: 220, layout: { background: { color: '#09090b' } as never, textColor: '#a1a1aa' },
+        height: 220,
+        layout: { background: { color: '#09090b' } as never, textColor: '#a1a1aa' },
         grid: { vertLines: { color: '#1f1f23' }, horzLines: { color: '#1f1f23' } },
-        rightPriceScale: { borderColor: '#27272a' }, timeScale: { borderColor: '#27272a' },
+        rightPriceScale: { borderColor: '#27272a' },
+        timeScale: { borderColor: '#27272a' },
+        autoSize: true,
       });
-      const s1 = (c as unknown as { addLineSeries: (o?: unknown) => { setData: (d: unknown[]) => void } }).addLineSeries({ color: '#22d3ee', lineWidth: 2 });
-      const s2 = (c as unknown as { addLineSeries: (o?: unknown) => { setData: (d: unknown[]) => void } }).addLineSeries({ color: '#f97316', lineWidth: 2 });
+      // lightweight-charts v5 API: series constructors are passed to addSeries().
+      const s1 = c.addSeries(lib.LineSeries, { color: '#22d3ee', lineWidth: 2 });
+      const s2 = c.addSeries(lib.LineSeries, { color: '#f97316', lineWidth: 2 });
       const sorted = [...series].sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
       s1.setData(sorted.map((p) => ({ time: p.ts.slice(0, 10), value: p.users ?? p.activeUsers ?? 0 })));
       s2.setData(sorted.map((p) => ({ time: p.ts.slice(0, 10), value: p.dtus ?? 0 })));
+      c.timeScale().fitContent();
       chart = c as unknown as { remove: () => void };
     })();
     return () => { cancelled = true; chart?.remove(); };
