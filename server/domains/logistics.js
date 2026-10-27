@@ -3,6 +3,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { measuredPercent } from "../lib/measured-rate.js";
 export default function registerLogisticsActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -311,6 +312,10 @@ export default function registerLogisticsActions(registerLensAction) {
       results.push({ shipmentId: shipment.shipmentId || shipment.id, status: allPassed ? 'compliant' : 'non-compliant', checks });
     }
 
+    const complianceMeasured = measuredPercent(
+      results.length,
+      results.length > 0 ? Math.round((passCount / results.length) * 100) : null,
+    );
     return {
       ok: true,
       result: {
@@ -318,7 +323,8 @@ export default function registerLogisticsActions(registerLensAction) {
         shipmentsAudited: results.length,
         compliant: passCount,
         nonCompliant: failCount,
-        complianceRate: results.length > 0 ? Math.round((passCount / results.length) * 100) : 100,
+        complianceRate: complianceMeasured.value,
+        reason: complianceMeasured.reason,
         shipments: results,
       },
     };
@@ -485,9 +491,11 @@ export default function registerLogisticsActions(registerLensAction) {
     discrepancies.sort((a, b) => Math.abs(b.valueDifference) - Math.abs(a.valueDifference));
 
     const totalValueDiscrepancy = discrepancies.reduce((s, d) => s + d.valueDifference, 0);
-    const accuracyRate = records.length > 0
-      ? Math.round((withinTolerance.length / records.length) * 10000) / 100
-      : 100;
+    const accuracyMeasured = measuredPercent(
+      records.length,
+      records.length > 0 ? Math.round((withinTolerance.length / records.length) * 10000) / 100 : null,
+    );
+    const accuracyRate = accuracyMeasured.value;
 
     const report = {
       auditedAt: new Date().toISOString(),
@@ -496,6 +504,7 @@ export default function registerLogisticsActions(registerLensAction) {
       discrepancyCount: discrepancies.length,
       withinToleranceCount: withinTolerance.length,
       accuracyRate,
+      reason: accuracyMeasured.reason,
       totalSystemValue: Math.round(totalSystemValue * 100) / 100,
       totalPhysicalValue: Math.round(totalPhysicalValue * 100) / 100,
       totalValueDiscrepancy: Math.round(totalValueDiscrepancy * 100) / 100,
@@ -1454,7 +1463,7 @@ export default function registerLogisticsActions(registerLensAction) {
     const exceptions = shipments.filter(s => s.status === "exception").length;
     const onTimePct = (() => {
       const completed = shipments.filter(s => s.status === "delivered" && s.estimatedDelivery);
-      if (completed.length === 0) return 100;
+      if (completed.length === 0) return null;
       const onTime = completed.filter(s => new Date(s.actualDelivery).getTime() <= new Date(s.estimatedDelivery).getTime() + 12 * 3600_000);
       return Math.round((onTime.length / completed.length) * 100);
     })();
@@ -1466,6 +1475,7 @@ export default function registerLogisticsActions(registerLensAction) {
         deliveredToday,
         exceptions,
         onTimePct,
+        onTimeReason: onTimePct == null ? "no_sample" : null,
         carrierCount: carriers.length,
         vehicles: vehicles.length,
         vehiclesInUse: vehicles.filter(v => v.status === "in_use").length,

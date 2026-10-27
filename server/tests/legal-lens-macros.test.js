@@ -171,11 +171,13 @@ describe("legal.complianceAudit (LegalActionPanel)", () => {
     assert.equal(r.result.findings[0].severity, "high"); // overdue
   });
 
-  it("degrades graceful on empty requirements (perfect score)", () => {
+  it("does not call an empty requirement list excellent", () => {
     const r = callLens("complianceAudit", { requirements: [] });
     assert.equal(r.ok, true);
-    assert.equal(r.result.score, 100);
-    assert.equal(r.result.rating, "excellent");
+    assert.equal(r.result.totalRequirements, 0);
+    assert.equal(r.result.score, null);
+    assert.equal(r.result.rating, null);
+    assert.equal(r.result.reason, "no_sample");
   });
 });
 
@@ -198,10 +200,11 @@ describe("legal.complianceScore (page inline panel)", () => {
     assert.equal(r.result.rating, "fair");
   });
 
-  it("degrades graceful on empty (total 0, score 100)", () => {
+  it("does not score an empty requirement list as perfect", () => {
     const r = callLens("complianceScore", { requirements: [] });
     assert.equal(r.result.total, 0);
-    assert.equal(r.result.score, 100);
+    assert.equal(r.result.score, null);
+    assert.equal(r.result.reason, "no_sample");
   });
 });
 

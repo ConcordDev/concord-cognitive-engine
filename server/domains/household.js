@@ -26,6 +26,7 @@ function finiteDate(v) {
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { measuredPercent } from "../lib/measured-rate.js";
 export default function registerHouseholdActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -781,14 +782,17 @@ export default function registerHouseholdActions(registerLensAction) {
     const nowMs = effectiveNow(s, userId);
     const tasks = hmList(s.tasks, userId);
     const conditions = tasks.map((t) => taskCondition(t, nowMs));
-    const cleanPct = tasks.length > 0
-      ? Math.round((conditions.filter((c) => c.state === "clean").length / tasks.length) * 100) : 100;
+    const cleanMeasured = measuredPercent(
+      tasks.length,
+      tasks.length > 0 ? Math.round((conditions.filter((c) => c.state === "clean").length / tasks.length) * 100) : null,
+    );
     return {
       ok: true,
       result: {
         rooms: hmList(s.rooms, userId).length,
         tasks: tasks.length,
-        cleanlinessPct: cleanPct,
+        cleanlinessPct: cleanMeasured.value,
+        cleanlinessReason: cleanMeasured.reason,
         needsAttention: conditions.filter((c) => c.state === "needs_attention").length,
         choresLoggedAllTime: hmList(s.choreLog, userId).length,
         paused: !!s.vacation.get(userId),
