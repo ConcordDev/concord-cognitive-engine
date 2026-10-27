@@ -169,11 +169,16 @@ export default function registerChatRoutes(app, {
       if (out && typeof out === "object" && Array.isArray(out.toolCalls) && out.toolCalls.length) {
         out.meta = { ...(out.meta || {}), toolCalls: out.toolCalls, toolCallCount: out.toolCalls.length, llmUsed: out.llmUsed };
       }
+      // toUI() rebuilds meta from scratch, so the backup-model label
+      // (lib/answer-confidence.js) rides in extraMeta to reach JSON clients.
+      const _confMeta = out?.confidence === "low"
+        ? { confidence: out.confidence, confidenceReason: out.confidenceReason }
+        : {};
       return uiJson(
         res,
         _withAck(out, req, ["state","logs","shadow"], ["/api/state/latest","/api/logs"], null, { panel: "chat" }),
         req,
-        { panel: "chat" }
+        { panel: "chat", ..._confMeta }
       );
     } catch (e) {
       const msg = String(e?.message || e || "Unknown error");
