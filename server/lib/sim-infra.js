@@ -463,7 +463,7 @@ export function readPluginInstallWrite() {
     status: 501,
     error: "not_wired",
     reason: "install_needs_sandbox_runtime",
-    missing: "Installing runs the plugin through the sandboxed loader (installFromGallery), which needs the server's STATE and macro registry. Those are not available to the world routes, so no install is recorded.",
+    missing: "The sandboxed plugin installer (installFromGallery, needing the server's STATE and macro registry) was not provided to the world routes, so no install is recorded.",
   };
 }
 
