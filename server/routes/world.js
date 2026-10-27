@@ -189,6 +189,24 @@ import {
 } from "../lib/city-manager.js";
 import { handlePlayerDeath, claimLootBag, handleRobbery, reclaimExpiredBags } from "../lib/pvp-loot.js";
 import { HUB_WORLD_ID } from "../lib/world-ids.js";
+import {
+  readSimHealth,
+  readSimMetrics,
+  readEventBusStatus,
+  readJobQueueStatus,
+  readCacheStatus,
+  readConcordiaHub,
+  readDistrictLeaderboard,
+  readDistrictTimeline,
+  readStressTest,
+  readScene,
+  readPluginSurface,
+  readNotifProfile,
+  writeNotifProfile,
+  recordNotifSignal,
+  readMobileDashboard,
+  rejectQuickAction,
+} from "../lib/sim-infra.js";
 
 /**
  * @param {object} [opts]
@@ -233,6 +251,22 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     if (requireAuth) return requireAuth(req, res, next);
     next();
   };
+
+  function sendSim(res, result) {
+    const http = Number.isInteger(result.status) ? result.status : (result.ok ? 200 : 500);
+    const body = { ...result };
+    if (Number.isInteger(result.status)) delete body.status;
+    res.status(http).json(body);
+  }
+
+  function ownSimUser(req, res) {
+    const viewer = _userId(req);
+    if (!viewer || viewer !== req.params.userId) {
+      res.status(403).json({ ok: false, error: "not_your_stats" });
+      return null;
+    }
+    return viewer;
+  }
 
   const wrap = (fn) => async (req, res) => {
     try {
@@ -928,16 +962,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Concordia Hub API ─────────────────────────────────────────────
 
   router.get("/sim/concordia", wrap((_req, res) => {
-    res.json({
-      ok: true,
-      concordia: {
-        name: 'Concordia',
-        districts: ['exchange', 'academy', 'forge', 'nexus', 'commons', 'observatory', 'grid', 'frontier', 'docks', 'arena'],
-        totalPopulation: 8200,
-        totalBuildings: 125,
-        activeUsers: 230,
-      },
-    });
+    sendSim(res, readConcordiaHub(db));
   }));
 
   // ── Avatar API ────────────────────────────────────────────────────
@@ -1070,58 +1095,20 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   // ── Disaster Stress Test API ──────────────────────────────────────
 
-  router.post("/sim/stress-test", auth, wrap((req, res) => {
-    const { districtId, scenario, magnitude } = req.body;
-    // Simplified stress test
-    const results = {
-      scenario,
-      magnitude: magnitude || 5,
-      buildingsTested: 6,
-      passed: 4,
-      marginal: 1,
-      failed: 1,
-      details: [
-        { buildingId: 'bldg-001', status: 'passed', details: 'All structural checks passed' },
-        { buildingId: 'bldg-002', status: 'passed', details: 'All structural checks passed' },
-        { buildingId: 'bldg-003', status: 'passed', details: 'All structural checks passed' },
-        { buildingId: 'bldg-004', status: 'passed', details: 'All structural checks passed' },
-        { buildingId: 'bldg-005', status: 'marginal', details: 'Column B4 approaching seismic limit' },
-        { buildingId: 'bldg-006', status: 'failed', details: 'Foundation bearing capacity exceeded at M' + (magnitude || 5) },
-      ],
-    };
-    res.json({ ok: true, results });
+  router.post("/sim/stress-test", auth, wrap((_req, res) => {
+    sendSim(res, readStressTest());
   }));
 
   // ── Leaderboards API ──────────────────────────────────────────────
 
   router.get("/sim/leaderboards/:districtId", wrap((req, res) => {
-    res.json({
-      ok: true,
-      leaderboards: {
-        mostCitedCreator: [
-          { userId: 'user-001', displayName: '@engineer_jane', score: 521, metric: 'citations', rank: 1 },
-          { userId: 'user-002', displayName: '@materials_lab', score: 342, metric: 'citations', rank: 2 },
-          { userId: 'user-003', displayName: '@power_mike', score: 204, metric: 'citations', rank: 3 },
-        ],
-        highestHabitability: [
-          { userId: 'user-001', displayName: '@architect_alex', score: 94, metric: 'habitability', rank: 1 },
-        ],
-      },
-    });
+    sendSim(res, readDistrictLeaderboard(db, req.params.districtId));
   }));
 
   // ── Timeline / History API ────────────────────────────────────────
 
   router.get("/sim/timeline/:districtId", wrap((req, res) => {
-    res.json({
-      ok: true,
-      snapshots: [
-        { timestamp: '2025-10-01', buildingCount: 0, populationCapacity: 0, powerCapacity: 0, waterCapacity: 0, environmentalScore: 100 },
-        { timestamp: '2025-10-15', buildingCount: 2, populationCapacity: 400, powerCapacity: 1000, waterCapacity: 20000, environmentalScore: 85 },
-        { timestamp: '2025-11-01', buildingCount: 4, populationCapacity: 1200, powerCapacity: 3000, waterCapacity: 50000, environmentalScore: 78 },
-        { timestamp: '2025-11-15', buildingCount: 6, populationCapacity: 2400, powerCapacity: 5000, waterCapacity: 90000, environmentalScore: 72 },
-      ],
-    });
+    sendSim(res, readDistrictTimeline(req.params.districtId));
   }));
 
   // ══════════════════════════════════════════════════════════════════
@@ -1769,19 +1756,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   router.get("/sim/scene/:districtId", wrap((req, res) => {
     const district = simDistricts.get(req.params.districtId);
-    res.json({
-      ok: true,
-      scene: {
-        districtId: req.params.districtId,
-        terrain: { type: 'heightmap', resolution: 2048, minElevation: 0, maxElevation: 80 },
-        buildings: district?.buildings || [],
-        infrastructure: district?.infrastructure || {},
-        npcs: [], // populated by NPC system
-        weather: district?.weather || { type: 'clear', windSpeed: 8, windDirection: 270, temperature: 15 },
-        timeOfDay: ((Date.now() / 60000) % 24).toFixed(1), // cycles
-        quality: req.query.quality || 'medium',
-      },
-    });
+    sendSim(res, readScene(req.params.districtId, district));
   }));
 
   router.post("/sim/scene/player-update", auth, wrap(async (req, res) => {
@@ -2037,193 +2012,75 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   // ── Lens Plugin System API ──────────────────────────────────────
 
-  const installedPlugins = new Map(); // userId -> pluginId[]
-
-  const pluginCatalog = [
-    { id: 'wind-analyzer', name: 'Wind Analyzer', author: 'AeroSim Labs', category: 'analytics', version: '2.1.0', installs: 12400, rating: 4.7, description: 'Visualize wind patterns and aerodynamic loads on structures' },
-    { id: 'material-inspector', name: 'Material Inspector', author: 'CoreMaterials', category: 'building', version: '1.8.3', installs: 28900, rating: 4.9, description: 'Deep-dive material properties, stress curves, and fatigue analysis' },
-    { id: 'social-heatmap', name: 'Social Heatmap', author: 'CrowdViz', category: 'social', version: '3.0.1', installs: 9200, rating: 4.4, description: 'Overlay showing player density, foot traffic, and gathering patterns' },
-    { id: 'energy-monitor', name: 'Energy Monitor', author: 'GreenGrid', category: 'environmental', version: '1.5.0', installs: 7100, rating: 4.6, description: 'Track energy consumption, solar potential, and carbon footprint' },
-    { id: 'custom-overlay-sdk', name: 'Custom Overlay SDK', author: 'Concord Team', category: 'developer', version: '1.0.0', installs: 3400, rating: 4.2, description: 'Build and deploy your own lens overlays with the Plugin API' },
-    { id: 'seismic-sim', name: 'Seismic Simulator', author: 'QuakeTest', category: 'analytics', version: '1.2.0', installs: 5600, rating: 4.8, description: 'Simulate earthquake loads and visualize structural response' },
-  ];
-
   router.get("/sim/plugins/catalog", wrap((_req, res) => {
-    res.json({ ok: true, plugins: pluginCatalog });
+    sendSim(res, readPluginSurface());
   }));
 
   router.get("/sim/plugins/installed/:userId", wrap((req, res) => {
-    const ids = installedPlugins.get(req.params.userId) || [];
-    const plugins = ids.map(id => pluginCatalog.find(p => p.id === id)).filter(Boolean);
-    res.json({ ok: true, plugins });
+    if (!ownSimUser(req, res)) return;
+    sendSim(res, readPluginSurface());
   }));
 
-  router.post("/sim/plugins/install", auth, wrap((req, res) => {
-    const userId = req.user.id;
-    const { pluginId } = req.body;
-    if (!pluginCatalog.find(p => p.id === pluginId)) return res.status(404).json({ ok: false, error: "Plugin not found" });
-    if (!installedPlugins.has(userId)) installedPlugins.set(userId, []);
-    if (!installedPlugins.get(userId).includes(pluginId)) installedPlugins.get(userId).push(pluginId);
-    res.json({ ok: true, installed: pluginId });
+  router.post("/sim/plugins/install", auth, wrap((_req, res) => {
+    sendSim(res, readPluginSurface());
   }));
 
-  router.post("/sim/plugins/uninstall", auth, wrap((req, res) => {
-    const userId = req.user.id;
-    const { pluginId } = req.body;
-    if (installedPlugins.has(userId)) {
-      installedPlugins.set(userId, installedPlugins.get(userId).filter(id => id !== pluginId));
-    }
-    res.json({ ok: true, uninstalled: pluginId });
+  router.post("/sim/plugins/uninstall", auth, wrap((_req, res) => {
+    sendSim(res, readPluginSurface());
   }));
 
   // ── Smart Notifications API ─────────────────────────────────────
 
-  const notifProfiles = new Map();
-
   router.get("/sim/smart-notifications/:userId", wrap((req, res) => {
-    const profile = notifProfiles.get(req.params.userId) || {
-      quietHoursStart: '22:00',
-      quietHoursEnd: '08:00',
-      batchingEnabled: true,
-      batchInterval: 300000,
-      priorities: { citation: 'high', royalty: 'medium', social: 'low', system: 'high', event: 'medium' },
-      learningEnabled: true,
-      dismissPatterns: [],
-    };
-    res.json({ ok: true, profile });
+    const viewer = ownSimUser(req, res);
+    if (!viewer) return;
+    sendSim(res, readNotifProfile(viewer));
   }));
 
   router.post("/sim/smart-notifications/:userId", auth, wrap((req, res) => {
-    notifProfiles.set(req.params.userId, { ...req.body, updatedAt: new Date().toISOString() });
-    res.json({ ok: true, profile: notifProfiles.get(req.params.userId) });
+    const viewer = ownSimUser(req, res);
+    if (!viewer) return;
+    sendSim(res, writeNotifProfile(viewer, req.body));
   }));
 
   router.post("/sim/smart-notifications/:userId/learn", auth, wrap((req, res) => {
-    // Record a user interaction with a notification for ML learning
-    const signal = {
-      notificationType: req.body.type,
-      action: req.body.action, // 'opened', 'dismissed', 'snoozed'
-      timeToAction: req.body.timeToAction,
-      timestamp: new Date().toISOString(),
-    };
-    res.json({ ok: true, signal, message: 'Learning signal recorded' });
+    const viewer = ownSimUser(req, res);
+    if (!viewer) return;
+    sendSim(res, recordNotifSignal(viewer, req.body));
   }));
 
   // ── Mobile Companion API ────────────────────────────────────────
 
   router.get("/sim/mobile/dashboard/:userId", wrap((req, res) => {
-    res.json({
-      ok: true,
-      dashboard: {
-        overnightChanges: [
-          { type: 'citation', message: 'Your riverside tower received 3 new citations', time: '3h ago' },
-          { type: 'weather', message: 'Heavy rain in Concordia — check your structures', time: '1h ago' },
-          { type: 'social', message: '2 friends are currently online', time: 'now' },
-        ],
-        quickStats: {
-          totalBuildings: 14,
-          activeCitations: 47,
-          pendingRoyalties: 2.35,
-          friendsOnline: 2,
-        },
-        remoteViewAvailable: true,
-      },
-    });
+    const viewer = ownSimUser(req, res);
+    if (!viewer) return;
+    sendSim(res, readMobileDashboard(db, viewer));
   }));
 
-  router.post("/sim/mobile/quick-action", auth, wrap((req, res) => {
-    const { action, params } = req.body;
-    const actions = ['check-builds', 'view-citations', 'manage-inventory', 'quick-chat', 'toggle-notifications'];
-    if (!actions.includes(action)) return res.status(400).json({ ok: false, error: `Unknown action. Valid: ${actions.join(', ')}` });
-    res.json({ ok: true, action, executed: true, timestamp: new Date().toISOString() });
+  router.post("/sim/mobile/quick-action", auth, wrap((_req, res) => {
+    sendSim(res, rejectQuickAction());
   }));
 
   // ── Infrastructure Health API ───────────────────────────────────
 
   router.get("/sim/health", wrap((_req, res) => {
-    const services = [
-      { name: 'api-gateway', status: 'healthy', uptime: '99.97%', latencyMs: 12 },
-      { name: 'world-sim', status: 'healthy', uptime: '99.94%', latencyMs: 45 },
-      { name: 'physics-engine', status: 'healthy', uptime: '99.91%', latencyMs: 78 },
-      { name: 'ai-brain', status: 'healthy', uptime: '99.88%', latencyMs: 120 },
-      { name: 'marketplace', status: 'healthy', uptime: '99.95%', latencyMs: 23 },
-      { name: 'social-hub', status: 'healthy', uptime: '99.93%', latencyMs: 18 },
-    ];
-    const overall = services.every(s => s.status === 'healthy') ? 'healthy' : 'degraded';
-    res.json({ ok: true, status: overall, services, checkedAt: new Date().toISOString() });
+    sendSim(res, readSimHealth());
   }));
 
   router.get("/sim/metrics", wrap((_req, res) => {
-    res.json({
-      ok: true,
-      metrics: {
-        activePlayers: 234,
-        activeWorlds: 12,
-        dtusCreated24h: 1847,
-        citationsIssued24h: 523,
-        physicsValidations24h: 3291,
-        avgValidationMs: 67,
-        cacheHitRate: 0.94,
-        eventBusMessages24h: 148920,
-        errorRate: 0.002,
-        p99LatencyMs: 180,
-      },
-      timestamp: new Date().toISOString(),
-    });
+    sendSim(res, readSimMetrics(db));
   }));
-
-  // ── Event Bus Status API ────────────────────────────────────────
 
   router.get("/sim/eventbus/status", wrap((_req, res) => {
-    res.json({
-      ok: true,
-      provider: 'nats',
-      channels: [
-        { name: 'world.updates', messagesPerSec: 42, consumers: 8, lagMs: 3 },
-        { name: 'physics.results', messagesPerSec: 28, consumers: 4, lagMs: 12 },
-        { name: 'ai.responses', messagesPerSec: 15, consumers: 6, lagMs: 8 },
-        { name: 'market.transactions', messagesPerSec: 7, consumers: 3, lagMs: 2 },
-        { name: 'social.events', messagesPerSec: 35, consumers: 5, lagMs: 5 },
-        { name: 'moderation.flags', messagesPerSec: 1, consumers: 2, lagMs: 1 },
-      ],
-      deadLetterQueue: { size: 3, oldestAge: '2h' },
-    });
+    sendSim(res, readEventBusStatus());
   }));
-
-  // ── Job Queue Status API ────────────────────────────────────────
 
   router.get("/sim/jobs/queue-status", wrap((_req, res) => {
-    res.json({
-      ok: true,
-      provider: 'bull',
-      queues: [
-        { name: 'physics-validation', waiting: 12, active: 4, completed24h: 3291, failed24h: 7, avgDurationMs: 67 },
-        { name: 'ai-inference', waiting: 3, active: 2, completed24h: 1204, failed24h: 2, avgDurationMs: 340 },
-        { name: 'dtu-indexing', waiting: 45, active: 8, completed24h: 8742, failed24h: 0, avgDurationMs: 15 },
-        { name: 'notification-dispatch', waiting: 0, active: 1, completed24h: 4521, failed24h: 3, avgDurationMs: 8 },
-        { name: 'backup-snapshot', waiting: 0, active: 0, completed24h: 24, failed24h: 0, avgDurationMs: 12000 },
-        { name: 'analytics-etl', waiting: 2, active: 1, completed24h: 288, failed24h: 1, avgDurationMs: 5200 },
-      ],
-    });
+    sendSim(res, readJobQueueStatus());
   }));
 
-  // ── Cache Status API ────────────────────────────────────────────
-
   router.get("/sim/cache/status", wrap((_req, res) => {
-    res.json({
-      ok: true,
-      provider: 'redis',
-      memoryUsedMB: 312,
-      maxMemoryMB: 512,
-      hitRate: 0.94,
-      missRate: 0.06,
-      evictions24h: 1240,
-      keysTotal: 84200,
-      keysByPrefix: {
-        'dtu:': 42100, 'user:': 12300, 'world:': 8400,
-        'session:': 5200, 'cache:': 16200,
-      },
-    });
+    sendSim(res, readCacheStatus());
   }));
 
   // ── Feature Flags API ───────────────────────────────────────────
