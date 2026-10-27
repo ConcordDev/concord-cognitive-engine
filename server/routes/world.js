@@ -235,7 +235,7 @@ import {
  * @param {Function} [opts.requireAuth] - Auth middleware
  * @returns {Router}
  */
-export default function createWorldRoutes({ requireAuth, db = null, emitToUser = null, dtuStore = null } = {}) {
+export default function createWorldRoutes({ requireAuth, db = null, emitToUser = null, dtuStore = null, getRealtimeClients = null } = {}) {
   const router = Router();
 
   function _userId(req) {
@@ -2127,11 +2127,19 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     sendSim(res, readSimMetrics(db));
   }));
 
-  router.get("/sim/eventbus/status", wrap((_req, res) => {
-    sendSim(res, readEventBusStatus());
+  // Admin-only, same role set as /api/admin/worker-stats (owner/admin/
+  // sovereign/founder). Signed out 401, signed in non-admin 403.
+  function simAdminOnly(req, res, next) {
+    if (!req.user) return res.status(401).json({ ok: false, error: "auth_required" });
+    if (!isSimAdmin(req.user)) return res.status(403).json({ ok: false, error: "forbidden" });
+    next();
+  }
+
+  router.get("/sim/eventbus/status", simAdminOnly, wrap((_req, res) => {
+    sendSim(res, readEventBusStatus({ db, getRealtimeClients }));
   }));
 
-  router.get("/sim/jobs/queue-status", wrap((_req, res) => {
+  router.get("/sim/jobs/queue-status", simAdminOnly, wrap((_req, res) => {
     sendSim(res, readJobQueueStatus());
   }));
 
