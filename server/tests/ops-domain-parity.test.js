@@ -252,4 +252,16 @@ describe("ops status page [M]", () => {
     assert.equal(r.result.components[0].status, "major_outage");
     assert.equal(r.result.activeIncidentCount, 1);
   });
+  it("refuses an incident or service edge that names a missing parent", () => {
+    const inc = call("incidentCreate", ctxA, { title: "Ghost", serviceId: "svc_missing" });
+    assert.equal(inc.ok, false);
+    assert.equal(inc.error, "service not found");
+    const edge = call("serviceCreate", ctxA, { name: "api", dependsOn: ["svc_missing"] });
+    assert.equal(edge.ok, false);
+    assert.equal(edge.error, "service not found");
+    const pol = call("serviceCreate", ctxA, { name: "api", policyId: "pol_missing" });
+    assert.equal(pol.ok, false);
+    assert.equal(pol.error, "policy not found");
+    assert.equal(call("serviceList", ctxA, {}).result.total, 0);
+  });
 });

@@ -266,6 +266,10 @@ describe("creator [S] scheduled publishing", () => {
     const q = call("publish-queue-add", ctxA, { title: "Cancelme", releaseAt }).result.queued;
     assert.equal(call("publish-queue-cancel", ctxA, { id: q.id }).ok, true);
     assert.equal(call("publish-queue-add", ctxA, { title: "Bad", releaseAt: "not-a-date" }).ok, false);
+    const releaseSoon = new Date(Date.now() + 86400000).toISOString();
+    const orphan = call("publish-queue-add", ctxA, { title: "Orphan", releaseAt: releaseSoon, contentId: "con_missing" });
+    assert.equal(orphan.ok, false);
+    assert.equal(orphan.error, "content not found");
   });
 });
 
@@ -295,5 +299,15 @@ describe("creator [S] comment / community management", () => {
 
   it("rejects a comment with no body", () => {
     assert.equal(call("comment-add", ctxA, { author: "x", body: "" }).ok, false);
+  });
+
+  it("refuses a comment linked to content the caller does not own", () => {
+    const missing = call("comment-add", ctxA, { author: "viewer", body: "hi", contentId: "con_missing" });
+    assert.equal(missing.ok, false);
+    assert.equal(missing.error, "content not found");
+    const item = call("content-add", ctxA, { title: "Real" }).result.item;
+    const linked = call("comment-add", ctxA, { author: "viewer", body: "hi", contentId: item.id });
+    assert.equal(linked.ok, true);
+    assert.equal(linked.result.comment.contentId, item.id);
   });
 });

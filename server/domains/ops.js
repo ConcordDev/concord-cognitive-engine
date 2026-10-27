@@ -247,6 +247,10 @@ export default function registerOpsActions(register) {
       const userId = actId(ctx);
       const title = String(params.title || "").trim();
       if (!title) return { ok: false, error: "title required" };
+      const serviceId = params.serviceId ? String(params.serviceId) : null;
+      if (serviceId && !ensureList(s.services, userId).some((svc) => svc.id === serviceId)) {
+        return { ok: false, error: "service not found" };
+      }
       const severity = SEVERITIES.includes(params.severity) ? params.severity : "sev3";
       const seq = ensureSeq(s, userId);
       const list = ensureList(s.incidents, userId);
@@ -256,7 +260,7 @@ export default function registerOpsActions(register) {
         title,
         severity,
         status: "triggered",
-        serviceId: params.serviceId || null,
+        serviceId,
         source: params.source || "manual",
         summary: params.summary || "",
         createdAt: nowIso(),
@@ -676,14 +680,21 @@ export default function registerOpsActions(register) {
       const userId = actId(ctx);
       const name = String(params.name || "").trim();
       if (!name) return { ok: false, error: "name required" };
+      const dependsOn = Array.isArray(params.dependsOn) ? params.dependsOn.filter(Boolean).map(String) : [];
+      const knownServices = new Set(ensureList(s.services, userId).map((svc) => svc.id));
+      if (dependsOn.some((id) => !knownServices.has(id))) return { ok: false, error: "service not found" };
+      const policyId = params.policyId ? String(params.policyId) : null;
+      if (policyId && !ensureList(s.policies, userId).some((p) => p.id === policyId)) {
+        return { ok: false, error: "policy not found" };
+      }
       const seq = ensureSeq(s, userId);
       const service = {
         id: nextId("svc"), number: seq.svc++, name,
         owner: params.owner || null,
-        dependsOn: Array.isArray(params.dependsOn) ? params.dependsOn.filter(Boolean) : [],
+        dependsOn,
         alertKeys: Array.isArray(params.alertKeys) ? params.alertKeys.filter(Boolean) : [],
         tier: ["critical", "high", "standard"].includes(params.tier) ? params.tier : "standard",
-        policyId: params.policyId || null,
+        policyId,
         createdAt: nowIso(),
       };
       ensureList(s.services, userId).push(service);

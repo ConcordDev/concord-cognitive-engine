@@ -57,6 +57,16 @@ describe("astronomy.observation-*", () => {
   it("rejects observation on a missing target", () => {
     assert.equal(call("observation-log", ctxA, { targetId: "nope" }).ok, false);
   });
+
+  it("rejects an observation whose sessionId is not this user's session", () => {
+    const t = newTarget();
+    const missing = call("observation-log", ctxA, { targetId: t.id, sessionId: "ses_missing" });
+    assert.equal(missing.ok, false);
+    assert.match(missing.error, /session not found/);
+    const other = call("session-create", ctxB, { location: "Their yard" }).result.session;
+    const cross = call("observation-log", ctxA, { targetId: t.id, sessionId: other.id });
+    assert.equal(cross.ok, false);
+  });
 });
 
 describe("astronomy.sessions", () => {

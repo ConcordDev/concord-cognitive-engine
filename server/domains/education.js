@@ -764,6 +764,8 @@ export default function registerEducationActions(registerLensAction) {
     const front = String(params.front || "").trim();
     const back = String(params.back || "").trim();
     if (!deckId || !front || !back) return { ok: false, error: "deckId, front, back required" };
+    const decks = state.decks.get(userId) || [];
+    if (!decks.some((d) => d.id === deckId)) return { ok: false, error: "deck not found" };
     if (!state.cards.has(userId)) state.cards.set(userId, []);
     const card = {
       id: `card_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
