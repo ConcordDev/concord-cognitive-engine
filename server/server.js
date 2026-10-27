@@ -22939,10 +22939,17 @@ async function retrieveDtuHits(query, { viewerId = null, topK = 8, timeoutMs = 3
 }
 
 /** Prompt block for an agent: one line per DTU, megas/hypers first. */
+function _dtuHitBody(d, maxChars) {
+  return _sanitizeDtuText(String(d.cretiHuman || d.human?.summary || (Array.isArray(d.core?.claims) ? d.core.claims.join("; ") : "") || "").slice(0, maxChars));
+}
+// Megas/hypers are the compressed knowledge: give them a longer body.
+function _dtuHitChars(d, maxChars) {
+  return d?.tier === "mega" || d?.tier === "hyper" ? Math.max(maxChars, 1200) : maxChars;
+}
 function formatDtuHitsForPrompt(hits, { maxChars = 360 } = {}) {
   return (hits || []).map(({ dtu: d, archived }) => {
     const title = _sanitizeDtuText(d.title || "");
-    const body = _sanitizeDtuText(String(d.cretiHuman || d.human?.summary || (Array.isArray(d.core?.claims) ? d.core.claims.join("; ") : "") || "").slice(0, maxChars));
+    const body = _dtuHitBody(d, _dtuHitChars(d, maxChars));
     return `[${(d.tier || "regular").toUpperCase()}${archived ? ", archived" : ""}] ${title}: ${body}`;
   }).join("\n");
 }
@@ -28388,6 +28395,15 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
             _recallDtus = _chatMemoryLib.rankRecallDtus(_mine, prompt).map((d) => ({ id: d.id, title: d.title, summary: d.human?.summary || d.cretiHuman || "", createdAt: d.createdAt }));
           }
         } catch (_e) { logger.debug('server', 'chat dtu notes failed', { error: _e?.message }); }
+        // Same DTU retrieval as ConKay (hot + archived, megas/hypers first).
+        let _knowledgeDtus = [];
+        if (_agentRouteKind === "lookup" || _agentRouteKind === "web" || _agentRouteKind === "dtu") {
+          try {
+            const _hits = await retrieveDtuHits(prompt, { viewerId: _agentCtx.actor.userId, topK: 6, timeoutMs: 1500 });
+            _knowledgeDtus = _hits.map((h) => ({ id: h.dtu.id, title: h.dtu.title || "", tier: h.dtu.tier || "regular", archived: !!h.archived, body: _dtuHitBody(h.dtu, _dtuHitChars(h.dtu, 360)) }));
+            structuredLog("info", "chat_agent_dtu_context", { sessionId, route: _agentRouteKind, hits: _knowledgeDtus.length, consolidated: _knowledgeDtus.filter((k) => k.tier === "mega" || k.tier === "hyper").length, archived: _knowledgeDtus.filter((k) => k.archived).length, top: _knowledgeDtus[0]?.id || null });
+          } catch (_e) { logger.debug('server', 'chat agent dtu context failed', { error: _e?.message }); }
+        }
         // POST /api/chat (JSON) has one ~85s wall-clock budget (gen-budget.js)
         // for brain rounds, tools, and generate_3d. A design turn on stream
         // or socket gets the 120s keepalive budget too, so the conkay reserve
@@ -28397,7 +28413,7 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
           : (_agentRouteKind === "design"
               ? { deadlineMs: _agentBudget.deadlineMs, chatTransport: _agentBudget.transport }
               : {});
-        const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind, lensActions: LENS_ACTIONS, memoryBlock: _chatMemory.text, formulaDtus: _formulaDtus, recallDtus: _recallDtus, sessionId, ...(typeof input?.selfContinue === "boolean" ? { selfContinue: input.selfContinue } : {}), ..._agentDeadline });
+        const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind, lensActions: LENS_ACTIONS, memoryBlock: _chatMemory.text, formulaDtus: _formulaDtus, recallDtus: _recallDtus, knowledgeDtus: _knowledgeDtus, sessionId, ...(typeof input?.selfContinue === "boolean" ? { selfContinue: input.selfContinue } : {}), ..._agentDeadline });
         if (_agentOut) {
           let _agentReply = visibleChatReply(_agentOut.reply, prompt);
           if (process.env.CONCORD_CHAT_HUMANIZE !== "0") {

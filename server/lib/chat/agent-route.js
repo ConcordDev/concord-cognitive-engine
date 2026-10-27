@@ -325,7 +325,7 @@ export function isCodeAsk(text) {
 const ROUTE_HINT = {
   long: "This is a big multi-step job. Call start_long_task with the user's goal in their own words (mode research, plan, code or general). Then tell the user the job id, that it keeps working in the background, and that the result will be posted here. Don't try to do the whole job in this reply.",
   jobs: "The user is asking about their background jobs. Call check_long_task (with the job id if they gave one) and report only what it returned: status, tool steps, latest notes, and the result if it finished.",
-  lookup: "Answer this with a tool, not from memory. Facts, current events, prices, scores, products, how-to steps, recipes, places: call web_search first with a short query in the user's own words (no year unless they gave one; add news or latest for anything recent), then answer from its results with each item's link (you may explain the results in your own words). For news, lead with the newest dated items and name each outlet and date. For the game last night with no team named, report the ESPN finals the search returns across the major US leagues instead of asking which game. Textbook, science and engineering facts (material constants, physical laws, definitions, derivations), or any ask for a textbook or OpenStax source: call textbook_lookup first and answer from its passages with the book, section and link. The user's own Concord data, or making/doing something in Concord (tasks, calendar, notes, recipes, budgets, plans, music, designs): call find_lens_actions with the intent, then run_lens_action with the best match, as this user. If the tools return nothing useful, say so plainly before giving any general answer. When the question has several parts or the first results are thin, run two or three searches from different angles in the same turn, and browse_url the best source when its snippet does not answer the question.",
+  lookup: "If a CONCORD KNOWLEDGE note above answers it (or the user asks about a Concord DTU), answer from that note and name the DTU; no web_search needed. Otherwise answer this with a tool, not from memory. Facts, current events, prices, scores, products, how-to steps, recipes, places: call web_search first with a short query in the user's own words (no year unless they gave one; add news or latest for anything recent), then answer from its results with each item's link (you may explain the results in your own words). For news, lead with the newest dated items and name each outlet and date. For the game last night with no team named, report the ESPN finals the search returns across the major US leagues instead of asking which game. Textbook, science and engineering facts (material constants, physical laws, definitions, derivations), or any ask for a textbook or OpenStax source: call textbook_lookup first and answer from its passages with the book, section and link. The user's own Concord data, or making/doing something in Concord (tasks, calendar, notes, recipes, budgets, plans, music, designs): call find_lens_actions with the intent, then run_lens_action with the best match, as this user. If the tools return nothing useful, say so plainly before giving any general answer. When the question has several parts or the first results are thin, run two or three searches from different angles in the same turn, and browse_url the best source when its snippet does not answer the question.",
   web: "This request needs live web information: call web_search first and answer only from its results, with each item's link. For what a person or group is doing lately, put news in the query. Lead with the newest dated items and name each outlet and date; scores and prices come from the live feed rows (ESPN, Coinbase) when present. For a follow-up about a story already listed in this conversation, answer from that list (title, outlet, URL) and search again only if it is not there. When the question has several parts or the first results are thin, run two or three searches from different angles in the same turn, and browse_url the best source when its snippet does not answer the question.",
   recall: "If the user asked you to remember a value earlier in this chat (a codeword, name, number), give that exact value. The user is asking about something they said, saved or made earlier. Answer from the chat memory note and the earlier messages above, and from the user's own DTUs listed in the system notes (cite their ids). If the notes do not cover it, call run_lens_action dtu.search with the key words before answering. Only if none of these has it, say plainly that you don't see it; never say they did not mention something that appears above.",
   dtu: "This request is about the user's DTUs: look them up with run_lens_action dtu.search (or expert_mode) and cite only DTUs the tool returned. If none match, say so.",
@@ -516,7 +516,7 @@ export function answerLongTaskRoute({ runMacro, ctx, prompt, route, lensActions 
   return { ...base, reply: longTaskStartedReply(r, prompt), toolCalls: [{ tool: "start_long_task", ok: !!r.ok, jobId: r.jobId || null, mode: r.mode || null, ...(r.ok ? {} : { error: r.reason }) }] };
 }
 
-export async function answerViaAgent({ runMacro, ctx, history = [], prompt, route, lensActions = null, memoryBlock = "", formulaDtus = [], recallDtus = [], sessionId = null, selfContinue = undefined, deadlineMs = 0, chatTransport = null }) {
+export async function answerViaAgent({ runMacro, ctx, history = [], prompt, route, lensActions = null, memoryBlock = "", formulaDtus = [], recallDtus = [], knowledgeDtus = [], sessionId = null, selfContinue = undefined, deadlineMs = 0, chatTransport = null }) {
   if (typeof runMacro !== "function" || !ctx?.db || !ctx?.actor?.userId || !route) return null;
   // Non-streaming chat: one deadline for every agent call below (gen-budget.js).
   // Design turns on the stream path pass a deadline too, plus the real transport,
@@ -536,7 +536,7 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
   if (status) return { reply: status, toolCalls: [], artifacts: [], sources: [], provider: null, model: null, linksRemoved: [], dtuRefsRemoved: [] };
   const fixed = deterministicRouteReply(route, prompt, history, memoryBlock);
   if (fixed) return { reply: fixed, toolCalls: [], artifacts: [], sources: [], provider: null, model: null, linksRemoved: [], dtuRefsRemoved: [] };
-  const agentHistory = agentHistoryWithNotes(history, { memoryBlock, formulaDtus, recallDtus });
+  const agentHistory = agentHistoryWithNotes(history, { memoryBlock, formulaDtus, recallDtus, knowledgeDtus });
   let r = null;
   try {
     r = await runMacro("chat_agent", "do", {
@@ -687,7 +687,7 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
   // DTUs named in the chat memory note or the recall list are real and may be cited.
   answer = stripInventedToolErrors(answer, toolCalls);
   answer = songRecallFix(answer, history, memoryBlock);
-  const g = guardDtuCitations(answer, collectRetrievedDtus(r?.contextDtus || [], toolCalls, recallDtus || [], memoryDtuRefs(memoryBlock), formulaDtus || [], historyItemTitles(history)), { prompt });
+  const g = guardDtuCitations(answer, collectRetrievedDtus(r?.contextDtus || [], toolCalls, recallDtus || [], knowledgeDtus || [], memoryDtuRefs(memoryBlock), formulaDtus || [], historyItemTitles(history)), { prompt });
   const sources = sourcesFromToolCalls(toolCalls);
   let replyText = g.text;
   // Math/physics: cite the formula DTU when a solver actually produced the numbers.
@@ -874,7 +874,7 @@ export function historyItemTitles(history = []) {
 }
 
 /** Chat memory first, then replayed turns, then this turn's DTU notes (formula / recall). */
-export function agentHistoryWithNotes(history, { memoryBlock = "", formulaDtus = [], recallDtus = [] } = {}) {
+export function agentHistoryWithNotes(history, { memoryBlock = "", formulaDtus = [], recallDtus = [], knowledgeDtus = [] } = {}) {
   const out = [];
   if (memoryBlock) out.push({ role: "system", content: String(memoryBlock) });
   out.push(...(history || []).slice(-CHAT_HISTORY_TURNS));
@@ -885,6 +885,22 @@ export function agentHistoryWithNotes(history, { memoryBlock = "", formulaDtus =
     notes.push(`The user's own DTUs that may answer this (from their account; cite ids):\n${recallDtus.slice(0, 8)
       .map((d) => `- ${d.id} — ${String(d.title || "").slice(0, 120)}${d.summary ? `: ${String(d.summary).slice(0, 200)}` : ""}${d.createdAt ? ` (saved ${String(d.createdAt).slice(0, 10)})` : ""}`).join("\n")}`);
   }
+  const kb = knowledgeNote(knowledgeDtus);
+  if (kb) notes.push(kb);
   if (notes.length) out.push({ role: "system", content: notes.join("\n\n") });
   return out;
+}
+
+/**
+ * Concord's own DTUs retrieved for this ask (hot + archived, megas/hypers
+ * first). Chat's tool route used to get none, so DTU questions went to
+ * web_search. Items: { id, title, tier, archived, body }.
+ */
+export function knowledgeNote(dtus = []) {
+  const list = (Array.isArray(dtus) ? dtus : []).filter((d) => d && d.id).slice(0, 8);
+  if (!list.length) return "";
+  const lines = list.map((d) => `- [${String(d.tier || "regular").toUpperCase()}${d.archived ? ", archived" : ""}] ${d.id} — ${String(d.title || "").slice(0, 120)}${d.body ? `: ${String(d.body).slice(0, 1200)}` : ""}`);
+  return "CONCORD KNOWLEDGE (retrieved DTUs; MEGA and HYPER entries are consolidated syntheses of many DTUs and are listed first). "
+    + "When the question is about Concord's DTUs or one of these answers it, answer from it without web_search and name the DTU title you used. Do not invent DTUs.\n"
+    + lines.join("\n");
 }
