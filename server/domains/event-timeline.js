@@ -132,7 +132,9 @@ function dtuPreview(row) {
   }
 }
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerEventTimelineMacros(register, deps) {
+  register = guardAnonWrites(register); // anonymous callers can read, not write (lib/lens-authz.js)
   const { listRecent, stats } = deps;
 
   // ── recent ──────────────────────────────────────────────────────────

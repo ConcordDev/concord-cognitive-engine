@@ -571,7 +571,9 @@ function evaluateGate(gate, { totals, metrics, newCriticalCount }) {
 // Domain registration
 // ---------------------------------------------------------------------------
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerCodeQualityActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // NOTE: code-quality.* is registered into the canonical MACROS registry by
   // server/domains/detectors.js (the `codeQualityAdapter` there bridges the
   // legacy 3-arg (ctx, artifact, params) handlers onto register(ctx, input)).

@@ -1,7 +1,9 @@
 // server/domains/paper.js
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 
 export default function registerPaperActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Shared line/word/char diff computation. Extracted so the pure-compute
   // `revisionDiff` macro (caller-supplied text) and `paper-version-diff`
   // (real stored version snapshots, see the "Version history" section

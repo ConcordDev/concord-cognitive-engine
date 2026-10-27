@@ -1,7 +1,9 @@
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { fredLatest } from "../lib/sourced-inputs.js";
 import { notComputed } from "../lib/lens-inputs.js";
 import { finiteOrNull, boundedNum, badNumber, MAX_MONEY } from "../lib/finite-input.js";
 export default function registerRealEstateActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("realestate", "capRate", (ctx, artifact, params) => {
     const noi = artifact.data?.netOperatingIncome || params.noi || 0;
     const purchasePrice = artifact.data?.purchasePrice || params.purchasePrice || 0;

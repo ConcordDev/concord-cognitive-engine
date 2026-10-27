@@ -4,6 +4,7 @@
 // real GitHub API lookups (commits, issues, language breakdown).
 // Free at 60 req/hr; GITHUB_TOKEN env raises to 5000/hr.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import vm from "node:vm";
 import { cachedFetchJson, fetchJsonWithTimeout } from "../lib/external-fetch.js";
 import { analyzeSourceComplexity } from "../lib/code-ast-complexity.js";
@@ -127,6 +128,7 @@ async function osvScanDependencies(depVersions) {
 }
 
 export default function registerReposActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * codeComplexity
    * Compute code complexity metrics — cyclomatic complexity, cognitive complexity,

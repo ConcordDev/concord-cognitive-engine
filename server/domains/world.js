@@ -1,4 +1,5 @@
 // server/domains/world.js
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { stressResponse, MATERIALS } from "../lib/materials/stress.js";
 
 // District stress test load model (game units, same scale as the materials
@@ -40,6 +41,7 @@ export function runDistrictStressTest(buildings, scenario, magnitude) {
 }
 
 export default function registerWorldActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("world", "countryCompare", (ctx, artifact, _params) => {
     const countries = artifact.data?.countries || [];
     if (countries.length < 2) return { ok: true, result: { message: "Provide 2+ countries with metrics to compare." } };

@@ -2,10 +2,12 @@
 // Domain actions for system integrations: API health checking, data flow
 // mapping, and version compatibility analysis.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import crypto from "node:crypto";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
 
 export default function registerIntegrationsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * apiHealthCheck
    * Check integration health: endpoint latency percentiles, error rates,

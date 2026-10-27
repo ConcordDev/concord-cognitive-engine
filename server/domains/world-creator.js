@@ -13,7 +13,9 @@
 // iterate before committing to a real world record. Nothing here throws;
 // every handler returns { ok, result?, error? }.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerWorldCreatorActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ---- state helpers -------------------------------------------------
   function getState() {
     const STATE = globalThis._concordSTATE;

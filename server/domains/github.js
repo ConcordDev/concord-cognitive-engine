@@ -6,6 +6,7 @@
 // (issue create). Honest reason codes when no token / not configured — never
 // faked data.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import {
   listGitHubRepos,
   readGitHubIssues,
@@ -19,6 +20,7 @@ import {
 const GITHUB_ENABLED = process.env.CONCORD_GITHUB_ENABLED !== "0";
 
 export default function registerGithubActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   const uid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const fail = (res, fallback) => {
     const reason = res?.reason || fallback;

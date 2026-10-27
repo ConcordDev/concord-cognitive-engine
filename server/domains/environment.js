@@ -4,12 +4,14 @@
 // trail condition, diversion rate) plus real EPA Envirofacts,
 // USGS Water Services, and Open-Meteo air quality (no key).
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { loadAirQuality, nwsHeaders } from "../lib/keyless-atmosphere.js";
 
 const EPA_ENVIROFACTS = "https://data.epa.gov/efservice";
 const USGS_WATER = "https://waterservices.usgs.gov/nwis";
 
 export default function registerEnvironmentActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("environment", "populationTrend", (_ctx, artifact, _params) => {
     const surveys = artifact.data?.surveyData || [];
     if (surveys.length < 2) return { ok: true, result: { trend: 'insufficient_data', surveys: surveys.length } };

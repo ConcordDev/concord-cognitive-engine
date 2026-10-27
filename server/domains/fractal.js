@@ -2,7 +2,9 @@
 // Domain actions for fractal/self-similar pattern analysis: fractal dimension
 // computation, self-similarity detection, and structural complexity measurement.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerFractalActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * fractalDimension
    * Compute fractal dimension using box-counting method for 2D point sets

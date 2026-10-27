@@ -1,12 +1,14 @@
 // server/domains/food.js
 // Domain actions for food service: recipe scaling, plate costing, spoilage, pour cost.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
 import { presentOwnedId } from "../lib/public-actor.js";
 import { boundedNum, moneyOrNull, badNumber } from "../lib/finite-input.js";
 
 export default function registerFoodActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("food", "vision", async (ctx, artifact, _params) => {
     const { imageB64, imageUrl } = artifact.data || {};
     if (!imageB64 && !imageUrl) return { ok: false, error: "imageB64 or imageUrl required" };

@@ -4,6 +4,7 @@
 // word frequency) plus real PoetryDB integration (~3000 classical
 // poems by 100+ authors). Free, no API key.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 
 const POETRYDB_BASE = "https://poetrydb.org";
@@ -12,6 +13,7 @@ const DATAMUSE_BASE = "https://api.datamuse.com";
 import { notComputed, advisory } from "../lib/lens-inputs.js";
 
 export default function registerPoetryActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   const meterAnalysisHeuristic = (ctx, artifact, _params) => { const text = artifact.data?.text || artifact.data?.poem || ""; if (!text) return { ok: true, result: { message: "Add poem text to analyze meter." } }; const lines = text.split("\n").filter(l => l.trim()); const syllableCounts = lines.map(l => { const words = l.trim().split(/\s+/); return words.reduce((s, w) => s + Math.max(1, (w.match(/[aeiouy]+/gi) || []).length), 0); }); const avgSyllables = syllableCounts.length > 0 ? Math.round(syllableCounts.reduce((s,v)=>s+v,0)/syllableCounts.length * 10) / 10 : 0; const consistent = syllableCounts.length > 1 && Math.max(...syllableCounts) - Math.min(...syllableCounts) <= 2; return { ok: true, result: { lines: lines.length, syllablesPerLine: syllableCounts, avgSyllables, meterConsistency: consistent ? "regular" : "irregular", possibleForm: syllableCounts.length === 14 ? "sonnet" : syllableCounts.join(",").includes("5,7,5") ? "haiku" : lines.length === 3 && syllableCounts[0] === syllableCounts[2] ? "tercet" : "free-verse" } }; };
   // Datamuse (api.datamuse.com, keyless): rel_rhy for perfect rhymes, md=s
   // for dictionary syllable counts. Opt in with datamuse:true; otherwise the

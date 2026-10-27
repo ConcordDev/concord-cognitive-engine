@@ -2,9 +2,11 @@
 // Domain actions for voice: transcript analysis, speaker diarization,
 // sentiment scoring, and keyword spotting.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 
 export default function registerVoiceActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("voice", "transcriptAnalyze", (ctx, artifact, _params) => {
   try {
     const text = artifact.data?.transcript || artifact.data?.text || "";

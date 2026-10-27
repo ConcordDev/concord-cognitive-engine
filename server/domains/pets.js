@@ -2,7 +2,9 @@
 // Domain actions for pet management: vaccination schedules, weight tracking,
 // feeding plans, vet cost analysis, medication reminders, activity scoring.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerPetsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * vaccinationSchedule
    * Calculate upcoming vaccinations based on species, age, and vaccination history.

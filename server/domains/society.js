@@ -12,6 +12,7 @@
 // CSV export + shareable permalinks, region/income aggregates +
 // rankings, and per-capita / inflation-adjusted transforms.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 
 const WB_BASE = "https://api.worldbank.org/v2";
@@ -119,6 +120,7 @@ function validIndicatorCode(raw) {
 }
 
 export default function registerSocietyActions(register) {
+  register = guardAnonWrites(register); // anonymous callers can read, not write (lib/lens-authz.js)
   // Legacy-convention shim: adapt the canonical register(ctx, input) the MACROS
   // registry (and runMacro / the contract engine / macro-assassin) drive → the
   // verified (ctx, artifact, params) handler bodies below, unchanged. The same

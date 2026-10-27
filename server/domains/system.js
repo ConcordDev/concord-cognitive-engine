@@ -14,6 +14,7 @@
 // Every handler is wrapped so it returns { ok, result?, error? } and
 // never throws — heartbeat/test-safety invariant.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import logger from "../logger.js";
 import { listHeartbeatModules } from "../emergent/heartbeat-registry.js";
 import { readFile } from "node:fs/promises";
@@ -289,6 +290,7 @@ async function loadCartographStats() {
 
 // ──────────────────────────────────────────────────────────────────────────
 export default function registerSystemActions(register) {
+  register = guardAnonWrites(register); // anonymous callers can read, not write (lib/lens-authz.js)
   // Legacy-convention shim: adapt the canonical `register(domain, name,
   // (ctx, input) => ...)` registry call onto the verified `(ctx, artifact,
   // params)` handler bodies below, unchanged. `params` (and `artifact.data`)

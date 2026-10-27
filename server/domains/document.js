@@ -24,6 +24,7 @@
 // numpy/pandas/matplotlib/scipy/sympy work added — not yet added to that
 // whitelist. Both are named, scoped follow-ups, not omissions.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { renderDtuAsFile, DOCUMENT_EXPORT_FORMATS } from "../lib/dtu-document-export.js";
 import { listZipEntries, readZipEntryText } from "../lib/renderers/zip-renderer.js";
 import { storeArtifact, retrieveArtifact } from "../lib/artifact-store.js";
@@ -42,6 +43,7 @@ function canReadDtu(dtu, userId, ctx = null) {
 }
 
 export default function registerDocumentActions(register) {
+  register = guardAnonWrites(register); // anonymous callers can read, not write (lib/lens-authz.js)
   register("document", "export_dtu", async (ctx, input = {}) => {
     const STATE = globalThis._concordSTATE;
     if (!STATE?.dtus) return { ok: false, error: "no_dtu_store" };

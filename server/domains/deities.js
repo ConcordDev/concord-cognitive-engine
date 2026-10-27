@@ -11,7 +11,9 @@
 // debounced state saver). Every handler is try/catch wrapped and returns
 // { ok: boolean, result?, error? } — never throws.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerDeitiesActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── Shared state helpers ─────────────────────────────────────────────
   function getDeitiesState() {
     const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});

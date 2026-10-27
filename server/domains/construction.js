@@ -2,7 +2,9 @@
 // Domain actions for construction: takeoff estimation, schedule critical path,
 // safety compliance, change order tracking, progress reporting.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerConstructionActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Calculator inputs arrive as `artifact.data`. Some callers (the GC bench
   // panel) post `{ input: { artifact: { data } } }`, which the /api/lens/run
   // dispatcher unwraps to virtualArtifact.data = { artifact: { data } } — a

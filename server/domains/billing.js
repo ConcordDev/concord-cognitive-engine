@@ -1,7 +1,9 @@
 // server/domains/billing.js
 // Domain actions for billing and invoicing: invoice calculation, revenue recognition, churn prediction.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerBillingActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Finite-coercion guard for money compute. parseFloat("Infinity")||0 === Infinity
   // and parseFloat("1e999")||0 === Infinity — both are TRUTHY so the `||0` fallback
   // never fires, letting a non-finite value poison a subtotal/total. finNum collapses

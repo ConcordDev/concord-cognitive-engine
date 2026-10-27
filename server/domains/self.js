@@ -31,7 +31,9 @@ const METRIC_KEYS = Object.keys(METRICS);
 const TILE_KEYS = ["steps", "sleep_hours", "workout_min", "mood", "weight_kg", "resting_hr", "water_ml", "meditation_min"];
 const DEFAULT_LAYOUT = ["steps", "sleep_hours", "workout_min", "mood"];
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerSelfActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   function getState() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;

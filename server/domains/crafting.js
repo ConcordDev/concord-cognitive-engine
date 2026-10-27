@@ -65,7 +65,9 @@ function tierForRoll(roll) {
   return chosen;
 }
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerCraftingActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * list — return the caller's personal recipe DTUs (fighting_style /
    * spell / blueprint / food). The lens UI fetches via personal-locker

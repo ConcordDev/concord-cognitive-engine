@@ -8,7 +8,9 @@
 // lens domains) — questions, answers, votes and reputation are all
 // scoped to the acting user.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerAnswersActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   function getAnswersState() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;

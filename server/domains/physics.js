@@ -2,7 +2,9 @@
 // Domain actions for physics: kinematics simulation, orbital mechanics,
 // wave interference, and thermodynamic state computation.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerPhysicsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * kinematicsSim
    * Simulate projectile / multi-body kinematics with drag and gravity.

@@ -1,8 +1,10 @@
 // server/domains/gamedesign.js
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { registerCitation } from "../economy/royalty-cascade.js";
 import { ctxMayReadDtu } from "../lib/dtu-read-access.js";
 
 export default function registerGameDesignActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("game-design", "mechanicsAnalysis", (ctx, artifact, _params) => {
     const mechanics = artifact.data?.mechanics || [];
     if (mechanics.length === 0) return { ok: true, result: { message: "Add game mechanics to analyze design." } };

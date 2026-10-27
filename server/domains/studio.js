@@ -7,6 +7,7 @@
 // a per-region adaptive-music DTU. Per CLAUDE.md "music DTU → soundscape"
 // pattern, but for a richer manifest than a single stem.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import * as fsp from "node:fs/promises";
@@ -107,6 +108,7 @@ async function persistStudioRenderArtifact(db, { decoded, userId, fileName, desc
 }
 
 export default function registerStudioActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("studio", "projectTimeline", (ctx, artifact, _params) => {
     const tasks = artifact.data?.tasks || [];
     if (tasks.length === 0) return { ok: true, result: { message: "Add tasks with start/end dates and dependencies to build a timeline." } };

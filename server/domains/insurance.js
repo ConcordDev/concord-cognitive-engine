@@ -58,7 +58,9 @@ export const AMS_LIST_CAP = 200;
 export const STATEMENT_LINE_CAP = 200;
 export const FNOL_TIMELINE_CAP = 200;
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerInsuranceActions(register) {
+  register = guardAnonWrites(register); // anonymous callers can read, not write (lib/lens-authz.js)
   // Legacy-convention shim: adapt canonical register(ctx, input) → the
   // verified (ctx, artifact, params) handler bodies below, unchanged.
   const registerLensAction = (domain, action, handler, ...extra) =>

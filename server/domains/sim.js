@@ -16,6 +16,7 @@
 // from a JSON spec, run it, optionally learn via STDP + dynamic topology.
 // See HONEST_BOUNDARY in the result payload for the honest scope.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { SpikingNetwork, HONEST_BOUNDARY } from "../lib/simulation/spiking-network.js";
 import { applySTDP, pruneSynapses, growSynapses } from "../lib/simulation/stdp.js";
 
@@ -335,6 +336,7 @@ function integrateSystemDynamics(model, opts) {
 }
 
 export default function registerSimActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ════════════════════════════════════════════════════════════════════════
   // ── Existing pure-compute macros (unchanged) ───────────────────────────
   // ════════════════════════════════════════════════════════════════════════

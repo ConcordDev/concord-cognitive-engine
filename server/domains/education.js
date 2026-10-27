@@ -1,9 +1,11 @@
 // server/domains/education.js
 // Domain actions for education: grading, attendance, progress tracking, schedule conflicts.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 
 export default function registerEducationActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // FAIL-CLOSED numeric coercion: any NaN/Infinity/garbage → a finite fallback,
   // so a poisoned score/maxScore/unit can never leak Infinity/NaN into a
   // computed grade %, completion %, or GPA. The calculator never lies.

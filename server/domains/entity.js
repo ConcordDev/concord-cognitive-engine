@@ -2,7 +2,9 @@
 // Domain actions for entity/identity management: entity resolution,
 // relationship graph analysis, and attribute validation.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerEntityActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * entityResolution
    * Merge/deduplicate entity records using Jaro-Winkler string similarity,

@@ -2,7 +2,9 @@
 // Domain actions for time-series and temporal reasoning: decomposition,
 // anomaly detection, and forecasting with exponential smoothing.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerTemporalActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── Persistent per-user dataset store ──────────────────────────────
   // Time series the user imported (CSV) or pasted, keyed by userId so the
   // analysis macros below can run against a stored dataset by id.

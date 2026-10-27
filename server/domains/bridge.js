@@ -9,7 +9,9 @@
 // Persistent per-user state lives in globalThis._concordSTATE.bridgeLens.
 // Every handler is try/catch wrapped and returns { ok, result?, error? }.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerBridgeActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("bridge", "connectionHealth", (ctx, artifact, _params) => {
     const connections = artifact.data?.connections || [];
     if (connections.length === 0) return { ok: true, result: { message: "Add bridge connections to monitor health." } };

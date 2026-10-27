@@ -11,6 +11,7 @@
 //     live catalog of tracked satellites (TLE-derived orbital elements).
 //     Free, no key. Cached aggressively (≥6h TTL) via cachedFetchJson.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 
 const SPACEX_BASE = "https://api.spacexdata.com/v4";
@@ -27,6 +28,7 @@ const CELESTRAK_BASE = "https://celestrak.org/NORAD/elements/gp.php";
 const CELESTRAK_CATALOG_TTL_MS = 6 * 60 * 60 * 1000; // ≥6h per spec — this catalog changes slowly
 
 export default function registerSpaceActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Shared orbital-mechanics helper (extracted from the original inline
   // `orbitCalc` formula below, byte-for-byte the same math — Kepler's third
   // law, T = 2π√(r³ / GM), converted from seconds to minutes). Both

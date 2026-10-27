@@ -29,7 +29,9 @@
 // `announcements.post` is (see server/domains/announcements.js:70-90):
 // admin-gated in-handler off `ctx.actor.role`, honest `admin_only` failure
 // for everyone else, never a silent hide or a fabricated success.
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerSponsorshipActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   function getState() {
     const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});
     if (!STATE.sponsorshipLens) {

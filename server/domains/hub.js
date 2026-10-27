@@ -17,7 +17,9 @@
 //
 // Macros: activity-feed, activity-record, district-stats, hub-totals.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerHubActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── STATE plumbing ───────────────────────────────────────────────
   function store() {
     if (!globalThis._concordSTATE) globalThis._concordSTATE = {};

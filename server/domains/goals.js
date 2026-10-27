@@ -2,7 +2,9 @@
 // Domain actions for goal tracking and OKR management: OKR scoring,
 // goal decomposition, and progress forecasting.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerGoalsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * okrScoring
    * Score OKR progress with weighted key result completion, confidence-adjusted

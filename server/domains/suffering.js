@@ -2,7 +2,9 @@
 // Domain actions for pain point / issue analysis: pain point mapping,
 // root cause analysis, and intervention design.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerSufferingActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * painPointMapping
    * Map pain points from feedback data. Clusters complaints, computes

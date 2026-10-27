@@ -14,7 +14,9 @@
 //   const STATE = globalThis._concordSTATE; STATE.digitalTwins ??= new Map()
 // keyed by userId → Map(twinId → twin). Empty until the user creates twins.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerDigitalTwinActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── helpers ──────────────────────────────────────────────────────────────
   const TWIN_CAP = 500;
 

@@ -15,9 +15,11 @@
 // surfaced cross-user by the discovery gallery; private worlds never are.
 // Handlers never throw — they return { ok, result?, error? }.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { seedSubWorldStarterContent } from "../lib/sub-world-starter-content.js";
 
 export default function registerSubWorldsActions(registerLensActionRaw) {
+  registerLensActionRaw = guardAnonWrites(registerLensActionRaw); // anonymous callers can read, not write (lib/lens-authz.js)
   // Dual-bus registration. The frontend reaches these handlers through
   // /api/lens/run → LENS_ACTIONS (the registerLensAction registry). But the
   // MACROS bus (runMacro / MCP host / the contract-derivation + macro-assassin

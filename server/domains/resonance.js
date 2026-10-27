@@ -11,7 +11,9 @@
 //  - resonanceToInsight : signal -> citable hypothesis DTU
 //  - pairTrend          : historical resonance trend series per pair
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerResonanceActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── Per-user persistent store ──────────────────────────────────────
   function getResonanceState() {
     const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});

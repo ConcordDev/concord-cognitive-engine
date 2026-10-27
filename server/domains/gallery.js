@@ -11,7 +11,9 @@
 const CMA_BASE = "https://openaccess-api.clevelandart.org/api";
 const SI_BASE = "https://api.si.edu/openaccess/api/v1.0";
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerGalleryActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * cma-search — Search Cleveland Museum of Art Open Access collection.
    * params: { query?: string, department?: string, type?: string,

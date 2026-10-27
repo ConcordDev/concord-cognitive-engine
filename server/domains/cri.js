@@ -2,7 +2,9 @@
 // Domain actions for crisis management: severity assessment, response
 // timeline generation, and stakeholder impact mapping.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerCriActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * severityAssessment
    * Assess crisis severity using multi-factor scoring: scope, impact,

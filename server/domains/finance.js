@@ -11,6 +11,7 @@
 //
 // All write-side state lives under STATE.financeLens.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { runPython } from "../lib/python-sandbox.js";
 import { pythonExecEnabled } from "./code.js";
 
@@ -20,6 +21,7 @@ import { finiteOrNull, boundedNum, moneyOrNull, badNumber, MAX_MONEY } from "../
 import { bindWave1 } from "../lib/lens-input-schemas-wave1.js";
 
 export default function registerFinanceActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction = bindWave1(registerLensAction);
   // ─── Pre-existing analytical macros ─────────────────────────────────
 

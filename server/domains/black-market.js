@@ -9,7 +9,9 @@
 // per-user state in `globalThis._concordSTATE.blackMarketLens` — every
 // value is real user input or computed from real input. No seed/demo data.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerBlackMarketActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * listings — return rare/legendary-quality artifacts, optionally
    * filtered by type.

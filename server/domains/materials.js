@@ -5,6 +5,7 @@
 // crystalline materials. Free with API key from materialsproject.org
 // (set MATERIALS_PROJECT_API_KEY env).
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { nullDict, ownArray, ownValue } from "../lib/own-lookup.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { ELEMENTS, getElement, categoryGroup } from "../lib/periodic-table-data.js";
@@ -20,6 +21,7 @@ import { needNums, notComputed } from "../lib/lens-inputs.js";
 const MP_BASE = "https://api.materialsproject.org";
 
 export default function registerMaterialsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * compareProperties
    * Side-by-side comparison of material properties with scoring.

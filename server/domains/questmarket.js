@@ -6,9 +6,11 @@
 // quest accept → submit → verify, bounty escrow + payout, guild membership +
 // shared quests, reputation/rank progression, achievement showcase.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 
 export default function registerQuestmarketActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── persistent state ──
   function qmState() {
     const STATE = globalThis._concordSTATE;

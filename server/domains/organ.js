@@ -2,7 +2,9 @@
 // Domain actions for organization/team management: org chart analysis,
 // team composition evaluation, and communication flow modeling.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerOrganActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Canonical Belbin team-role set (lowercase, hyphenated) — shared by the
   // roster normalizer (normEmployee) and teamComposition's role-balance
   // scoring so a role stored on an employee always matches a bucket the

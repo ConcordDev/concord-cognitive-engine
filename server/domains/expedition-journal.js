@@ -103,7 +103,9 @@ const BADGES = {
   "grand-explorer": { title: "Grand Explorer of Concord", icon: "globe", desc: "Completed every canon-world expedition." },
 };
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerExpeditionJournalActions(register) {
+  register = guardAnonWrites(register); // anonymous callers can read, not write (lib/lens-authz.js)
   // Legacy-convention shim: adapt the canonical register(ctx, input) signature
   // → the verified (ctx, artifact, params) handler bodies below, unchanged.
   // `params` (and `artifact.data`) carry the input the dispatcher built.

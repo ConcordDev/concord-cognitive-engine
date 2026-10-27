@@ -6,12 +6,14 @@
 // economy/transfer.js#executeTransfer — the same ledger path as /api/economy/transfer.
 // A status flip without a ledger row is a fake success and is refused.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { executeTransfer } from "../economy/transfer.js";
 import { calculateFee } from "../economy/fees.js";
 import { moneyOrNull, badNumber } from "../lib/finite-input.js";
 import { registerHeartbeat } from "../emergent/heartbeat-registry.js";
 
 export default function registerWalletActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("wallet", "portfolioBalance", (ctx, artifact, _params) => {
   try {
     const assets = artifact.data?.assets || artifact.data?.holdings || [];

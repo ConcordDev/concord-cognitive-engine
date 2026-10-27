@@ -2,7 +2,9 @@
 // Domain actions for animation: keyframe interpolation, timing analysis,
 // frame rate optimization, storyboard sequencing, easing calculation.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerAnimationActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("animation", "interpolateKeyframes", (ctx, artifact, _params) => {
     const keyframes = artifact.data?.keyframes || [];
     if (keyframes.length < 2) return { ok: true, result: { message: "Add at least 2 keyframes with time and value." } };

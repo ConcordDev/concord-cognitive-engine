@@ -6,9 +6,11 @@
 // Google Calendar via the SSRF-guarded connector client (honoring the account's
 // pull/push/two-way direction). The legacy ICS pull (`accounts-sync`) stays.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { writeGoogleCalendarEvent, readGoogleCalendarEvents } from "../lib/connector-client.js";
 
 export default function registerCalendarActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("calendar", "detectConflicts", (ctx, artifact, _params) => {
     const events = artifact.data?.events || [];
     if (events.length < 2) return { ok: true, result: { message: "Add at least 2 events to check for conflicts." } };

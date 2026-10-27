@@ -13,6 +13,7 @@
 // previously hardcoded 5 interactions; now hits the real FDA label
 // database (50,000+ drug labels with full DRUG_INTERACTIONS sections).
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 
 const OPENFDA_BASE = "https://api.fda.gov/drug";
@@ -35,6 +36,7 @@ import { needNums, optNum, notComputed } from "../lib/lens-inputs.js";
 import { bindWave1 } from "../lib/lens-input-schemas-wave1.js";
 
 export default function registerPharmacyActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction = bindWave1(registerLensAction);
   /**
    * drugInteractionCheck — Real drug-interaction lookup via OpenFDA SPL.

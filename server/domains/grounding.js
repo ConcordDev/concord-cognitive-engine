@@ -2,6 +2,7 @@
 // Domain actions for knowledge grounding and fact-checking: claim verification,
 // source credibility scoring, and compound claim decomposition.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { ingestProtocol } from "../lib/provenance-ingest.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 
@@ -45,6 +46,7 @@ function checkSourceProvenance(provenance) {
 }
 
 export default function registerGroundingActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * factCheck
    * Check claims against evidence: compute support/contradict/neutral scores

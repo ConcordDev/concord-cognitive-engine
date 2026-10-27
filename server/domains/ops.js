@@ -53,7 +53,9 @@ function badNumericField(input, keys) {
   return null;
 }
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerOpsActions(register) {
+  register = guardAnonWrites(register); // anonymous callers can read, not write (lib/lens-authz.js)
   // Legacy-convention shim: adapt canonical register(ctx, input) → the verified
   // (ctx, artifact, params) handler bodies below, unchanged. `params` carries
   // the input; `artifact.data` mirrors it for the two macros that read it.

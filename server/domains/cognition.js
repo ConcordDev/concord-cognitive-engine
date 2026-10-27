@@ -76,7 +76,9 @@ const MODE_GUIDE = {
 
 const ALL_SEVERITIES = ["info", "warning", "alert", "critical"];
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerCognitionMacros(_register) {
+  _register = guardAnonWrites(_register); // anonymous callers can read, not write (lib/lens-authz.js)
   // Canonical (ctx, input) handlers read a FLAT body. This module is registered
   // on BOTH the MACROS path (runMacro → handler(ctx, body)) AND the LENS_ACTIONS
   // path (domains/index.js → /api/lens/run → handler(ctx, virtualArtifact,

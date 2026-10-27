@@ -20,10 +20,12 @@
 // Every interactive macro returns { ok, result } / { ok:false, error }
 // and never throws.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { computeEnvelope } from "../lib/simulation/safety-envelope.js";
 import { buildArtifact, emitTable } from "../lib/simulation/envelope-artifact.js";
 
 export default function registerRoboticsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Fail-CLOSED numeric coercion: parseFloat lets the strings "Infinity"/"-Infinity"
   // through and `NaN || d` masks them inconsistently, so a poisoned input could leak
   // a non-finite value into a computed result. `fnum` returns the default unless the

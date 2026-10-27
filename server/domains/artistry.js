@@ -14,12 +14,14 @@
 // _fireNotificationSocket, wired at boot via setSocialEmitter) which
 // concord-frontend/hooks/useSocialNotificationToast.ts (mounted once, globally,
 // in AppShell) already renders as a toast with zero new frontend plumbing.
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import {
   createNotification, getNotifications, markNotificationRead, markAllNotificationsRead,
 } from "../emergent/social-layer.js";
 import { presentOwnedId } from "../lib/public-actor.js";
 
 export default function registerArtistryActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Fail-CLOSED numeric coercion for the pure-compute analysis macros.
   // `parseFloat("Infinity")` → Infinity and `Number("1e999")` → Infinity, and
   // `Infinity || fallback` is Infinity — so the naive `parseFloat(x) || d`

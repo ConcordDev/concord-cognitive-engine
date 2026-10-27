@@ -2,7 +2,9 @@
 // Domain actions for import: validate imports, map fields, detect duplicates, transform preview.
 // File named importdomain.js to avoid JS keyword conflict; domain registered as "import".
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerImportActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * validateImport
    * Check required fields, data types, and detect malformed rows.

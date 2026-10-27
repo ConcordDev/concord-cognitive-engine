@@ -125,7 +125,9 @@ function buildPhysicsModelsCatalog() {
  * @param {Function} [deps.recordChatExchange]
  * @param {Function} [deps.MACROS]
  */
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerSubstrateFinishMacros(register, deps = {}) {
+  register = guardAnonWrites(register); // anonymous callers can read, not write (lib/lens-authz.js)
   if (typeof register !== "function") return { ok: false, error: "register_required" };
 
   const lazy = (p) => import(p);

@@ -2,7 +2,9 @@
 // Domain actions for queue/job management: queueing theory analytics,
 // priority scheduling, and backpressure computation.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerQueueActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * queueAnalytics
    * Analyze queue performance using queueing theory: arrival rate (λ),

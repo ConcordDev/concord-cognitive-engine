@@ -6,6 +6,7 @@
 // Branded Foods + FNDDS). Free; NASA_FDC_API_KEY env optional
 // (falls back to DEMO_KEY rate-limited 1000/hr per IP).
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { fetchJsonWithTimeout } from "../lib/external-fetch.js";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
 import { callVision, callVisionUrl } from "../lib/vision-inference.js";
@@ -13,6 +14,7 @@ import { callVision, callVisionUrl } from "../lib/vision-inference.js";
 const FDC_BASE = "https://api.nal.usda.gov/fdc/v1";
 
 export default function registerCookingActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // The CookingActionPanel client wraps its payload as { artifact: { data } }
   // and posts it as the lens-run body (no `input` key), so the live dispatch
   // sets virtualArtifact.data = { artifact: { data } } — one extra layer.

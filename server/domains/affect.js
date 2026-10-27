@@ -1,7 +1,9 @@
 // server/domains/affect.js
 // Domain actions for emotional/sentiment analysis: sentiment scoring, emotion timelines, empathy mapping.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerAffectActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * sentimentAnalysis
    * Multi-dimensional sentiment scoring — valence, arousal, dominance (VAD) model,

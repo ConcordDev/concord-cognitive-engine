@@ -70,7 +70,9 @@ function num(v, fallback = 0, { min = 0, allowZero = true } = {}) {
   return n;
 }
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerElectricalActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── persistent per-user state ───────────────────────────────────────
   function getState() {
     const STATE = globalThis._concordSTATE;

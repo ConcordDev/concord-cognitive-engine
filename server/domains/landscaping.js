@@ -6,6 +6,7 @@
 // growth rate, hardiness zones). Free with API key from
 // trefle.io/users/sign_up.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { callVision, callVisionUrl } from "../lib/vision-inference.js";
 import {
   listPermitReferences, listPermitReferenceJurisdictions, listPermitReferenceCategories,
@@ -17,6 +18,7 @@ const TREFLE_BASE = "https://trefle.io/api/v1";
 import { needNums, notComputed, advisory } from "../lib/lens-inputs.js";
 
 export default function registerLandscapingActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("landscaping", "plantSelection", (ctx, artifact, _params) => {
     const data = artifact.data || {};
     const zone = parseInt(data.hardnessZone) || 7;

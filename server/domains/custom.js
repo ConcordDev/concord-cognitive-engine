@@ -7,6 +7,7 @@
 // event/action wiring. Persistent per-user state lives on
 // globalThis._concordSTATE keyed by userId.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 
 // ── Component palette — prebuilt widget types with prop schemas ──────────────
@@ -136,6 +137,7 @@ function defaultPropsFor(type) {
 }
 
 export default function registerCustomActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ════════════════════════════════════════════════════════════════════════
   // Pure-compute macros (operate on the artifact) — preserved from v1.
   // ════════════════════════════════════════════════════════════════════════

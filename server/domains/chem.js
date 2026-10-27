@@ -2,9 +2,11 @@
 // Domain actions for chemistry: molecular formula parsing, reaction balancing,
 // solution chemistry, and thermochemistry.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 
 export default function registerChemActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   const CHEM_STRUCTURE_CAP = 400;
 
   // ── Per-user persistent state (structures, lab notebook) ──

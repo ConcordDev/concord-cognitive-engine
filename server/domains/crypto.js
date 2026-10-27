@@ -9,6 +9,7 @@
 // for the actual cryptography and their doc comments for the honest
 // boundary (additive-only PHE, not FHE; encryption ≠ differential privacy).
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import crypto from "node:crypto";
 import { moneyOrNull, badNumber } from "../lib/finite-input.js";
 import {
@@ -25,6 +26,7 @@ import {
 import { aggregate as paillierAggregateCiphertexts } from "../lib/crypto/encrypted-aggregate.js";
 
 export default function registerCryptoActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * portfolioAnalysis
    * Compute portfolio metrics from artifact.data.holdings:

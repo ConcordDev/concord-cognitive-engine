@@ -9,7 +9,9 @@
 
 const OL_BASE = "https://openlibrary.org";
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerClassroomActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * ol-search — Open Library book/work search (~30M records).
    * params: { query?: string, author?: string, title?: string,

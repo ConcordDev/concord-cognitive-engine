@@ -11,7 +11,9 @@
 // Macros: device-add, device-list, device-update, device-delete,
 //         reading-record, anomaly-list, dashboard-summary.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerSensorActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── STATE plumbing ───────────────────────────────────────────────
   function sensorStore() {
     if (!globalThis._concordSTATE) globalThis._concordSTATE = {};

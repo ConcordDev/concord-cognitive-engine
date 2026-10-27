@@ -1,5 +1,7 @@
 // server/domains/consulting.js
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerConsultingActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Fail-CLOSED numeric coercion for the pure-compute money macros below.
   // `parseFloat("1e999")`/`parseFloat("Infinity")` both yield Infinity, and
   // `Infinity || fallback` is Infinity — so the old `parseFloat(x) || d` pattern

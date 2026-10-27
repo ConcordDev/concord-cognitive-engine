@@ -21,6 +21,7 @@
 // prize_pool_cc/payoutSplit) — studied for its bracket SHAPE (single-elim +
 // byes + round advancement), shares none of its money surface.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import {
   createArena,
   loadArena,
@@ -82,6 +83,7 @@ function renderResultCreti(arena, ranking) {
 }
 
 export default function registerCreationSingularityActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * arena_create — seed a bracket of >=2 fork objects you own.
    * params: { title?, forkObjectIds: string[] }

@@ -5,7 +5,9 @@
 // substrate (projects / tasks / expenses) + a real CPSC product-recall
 // feed. Free public source, no API key.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerHomeImprovementActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── Planning calculators ───────────────────────────────────────────
   registerLensAction("home-improvement", "projectEstimate", (ctx, artifact, _params) => {
     const data = artifact.data || {};

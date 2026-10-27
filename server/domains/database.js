@@ -1,5 +1,7 @@
 // server/domains/database.js
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerDatabaseActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("database", "schemaAnalysis", (ctx, artifact, _params) => {
     const tables = artifact.data?.tables || [];
     if (tables.length === 0) return { ok: true, result: { message: "Add tables with columns to analyze schema." } };

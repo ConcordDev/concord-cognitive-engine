@@ -1,6 +1,8 @@
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { needNums, notComputed } from "../lib/lens-inputs.js";
 
 export default function registerAviationActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── Weight & Balance shape normalizer ────────────────────────────
   //
   // The W&B editor (components/aviation/aviation-editors.tsx WeightBalanceEditor) persists a

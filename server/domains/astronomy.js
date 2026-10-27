@@ -8,6 +8,7 @@
 //   • Where Is The ISS At: api.wheretheiss.at/v1/satellites/25544 — no key needed.
 //   • NASA NeoWs (Near Earth Objects): api.nasa.gov/neo/rest/v1/feed — uses NASA_API_KEY.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 
 const NASA_API_BASE = "https://api.nasa.gov";
@@ -259,6 +260,7 @@ function riseSetTimes(raFn, latDeg, lonDeg, baseDate, horizonDeg = 0) {
 }
 
 export default function registerAstronomyActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // celestialPosition — "where is this object in my sky right now?"
   //
   // TWO input shapes, both real:

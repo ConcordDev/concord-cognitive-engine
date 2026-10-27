@@ -258,7 +258,9 @@ const BREAKPOINTS = [
   { id: "desktop", label: "Desktop", widthPx: 1440 },
 ];
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerUxSuiteActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── Per-user persistent state ──────────────────────────────────────
   function getState() {
     const STATE = globalThis._concordSTATE;

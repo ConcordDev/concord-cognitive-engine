@@ -1,6 +1,7 @@
 // server/domains/agriculture.js
 // Domain actions for agriculture: crop rotation, yield analysis, equipment, irrigation.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
 
@@ -8,6 +9,7 @@ import { optNum, notComputed } from "../lib/lens-inputs.js";
 
 import { openMeteoDailyForecast } from "../lib/sourced-inputs.js";
 export default function registerAgricultureActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * rotationPlan
    * Suggest the next crop based on rotation history and agronomic compatibility.

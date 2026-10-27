@@ -7,6 +7,7 @@
 // same voices → same score (no flakiness). Real LLM-scored deliberation
 // is the council brain's job (see lib/council-world-bridge.js); this
 // macro is the lightweight analytical lens that doesn't pay LLM cost.
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { isAdmin } from "../lib/lens-authz.js";
 function _voiceScoreFromLens(proposalText, lens) {
   const text = String(proposalText || "").toLowerCase();
@@ -18,6 +19,7 @@ function _voiceScoreFromLens(proposalText, lens) {
 }
 
 export default function registerCouncilActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("council", "deliberate", (ctx, artifact, _params) => {
     // String()-coerce at the read site: a poisoned non-string proposal (number,
     // Infinity-ish) must not reach proposal.slice(...) and throw uncaught.

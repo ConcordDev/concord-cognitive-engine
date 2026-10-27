@@ -1,10 +1,12 @@
 // server/domains/trades.js
 // Domain actions for trades/contracting: estimates, inspections, materials costs.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { assertPayable } from "../lib/money-guards.js";
 import { finiteOrNull, boundedNum, moneyOrNull, badNumber } from "../lib/finite-input.js";
 
 export default function registerTradesActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * calculateEstimate
    * Sum line items with markup and tax to produce a customer-facing estimate.

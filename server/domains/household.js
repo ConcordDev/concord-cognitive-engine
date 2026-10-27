@@ -24,7 +24,9 @@ function finiteDate(v) {
   return Number.isFinite(t) ? new Date(t) : null;
 }
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerHouseholdActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * generateGroceryList
    * Aggregate ingredients from a meal plan into a consolidated grocery list,

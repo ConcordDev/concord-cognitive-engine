@@ -1,4 +1,5 @@
 // server/domains/masonry.js
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { assertPayable, assertTransition } from "../lib/money-guards.js";
 
 const CHANGE_ORDER_STATUS = {
@@ -8,6 +9,7 @@ const CHANGE_ORDER_STATUS = {
 };
 
 export default function registerMasonryActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("masonry", "materialEstimate", (ctx, artifact, _params) => {
     const data = artifact.data || {};
     // Fail-closed: a non-finite (NaN/Infinity/"abc") squareFootage floors to 0

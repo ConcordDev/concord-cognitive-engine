@@ -12,7 +12,9 @@ function osmUserAgent() {
   return `Concord-OS/1.0 (${contact})`;
 }
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerAtlasActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * geocode
    * Resolve place names to coordinates with distance calculations.

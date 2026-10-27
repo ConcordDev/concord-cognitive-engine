@@ -1,9 +1,11 @@
 // server/domains/ml.js
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { readHfToken } from "../lib/asset-gen/organic/providers.js";
 import { buildFeatureMatrix, trainLogisticRegression, trainKMeans } from "../lib/ml-trainer.js";
 
 export default function registerMlActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("ml", "modelEvaluate", (ctx, artifact, _params) => {
   try {
     const predictions = artifact.data?.predictions || [];

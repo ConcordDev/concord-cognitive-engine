@@ -759,7 +759,9 @@ function parseNaturalQuery(query) {
   return { op: "evaluate", expression: q };
 }
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerMathActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * statisticalAnalysis
    * Compute descriptive statistics, distribution shape, and outlier detection

@@ -6,6 +6,7 @@
 // inbound read/modify (list, get, mark-read, star, archive, trash, labels).
 // Honest reason codes when no token / not configured — never faked data.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import {
   writeGmailMessage,
   readGmailMessages,
@@ -34,6 +35,7 @@ import {
 const GMAIL_ENABLED = process.env.CONCORD_GMAIL_ENABLED !== "0";
 
 export default function registerGmailActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   const uid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   // Mirror the connector reason into `error` too: the frontend lensRun()
   // normalizer surfaces `error` (not `reason`), so the inbox UI can switch on

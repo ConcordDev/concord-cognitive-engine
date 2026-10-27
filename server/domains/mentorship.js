@@ -8,10 +8,12 @@
 //
 // Persistent per-user data lives in globalThis._concordSTATE Maps.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 import { presentOwnedId } from "../lib/public-actor.js";
 
 export default function registerMentorshipActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── Pure-compute analytics ──────────────────────────────────────────
   //
   // These four calculators are driven from BOTH frontend surfaces:

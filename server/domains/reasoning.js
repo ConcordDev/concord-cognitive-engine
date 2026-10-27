@@ -110,9 +110,11 @@ function premiseExtractCore(text) {
   return { totalSentences: sentences.length, premises: premises.length, conclusions: conclusions.length, statements: classified.filter(c => c.role === "statement").length, classified, premiseTypes: { factual: premises.filter(p => p.type === "factual").length, normative: premises.filter(p => p.type === "normative").length, definitional: premises.filter(p => p.type === "definitional").length } };
 }
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { advisory } from "../lib/lens-inputs.js";
 
 export default function registerReasoningActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /* ================================================================ */
   /*  Stateless analysis engines — thin registerLensAction wrappers    */
   /*  Read from artifact.data first, falling back to params — the      */

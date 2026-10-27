@@ -2,7 +2,9 @@
 // Domain actions for resource locking: deadlock detection via wait-for graphs,
 // lock contention analysis, and fairness scoring.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerLockActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * deadlockDetect
    * Build a wait-for graph from artifact.data.locks [{holder, waiting}],

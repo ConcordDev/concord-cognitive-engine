@@ -26,7 +26,9 @@
 // All handlers return { ok, result?, error? } and never throw (try/catch on
 // every macro).
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerTournamentsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── in-memory fallback state ──────────────────────────────────────
   function getMemState() {
     const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});

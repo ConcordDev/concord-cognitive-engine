@@ -59,7 +59,9 @@ function badRangedField(input, key, { min = -1e6, max = 1e6 } = {}) {
   return null;
 }
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerWellnessMacros(_register) {
+  _register = guardAnonWrites(_register); // anonymous callers can read, not write (lib/lens-authz.js)
   // Canonical (ctx, input) handlers below read a FLAT body (`input.minutesAsleep`,
   // …). This module is registered on BOTH the MACROS path (runMacro →
   // handler(ctx, body)) AND the LENS_ACTIONS path (domains/index.js →

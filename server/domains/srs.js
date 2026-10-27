@@ -6,7 +6,9 @@
 // add cards, run study sessions with modern SM-2 scheduling, and track
 // review history.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerSrsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("srs", "spacedRepetitionSchedule", (ctx, artifact, _params) => {
     const cards = artifact.data?.cards || [];
     if (cards.length === 0) return { ok: true, result: { message: "Add flashcards with review history to schedule." } };

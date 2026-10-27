@@ -30,7 +30,9 @@ const VOLUME_SPECIES_FACTOR = {
   oak: 0.85, maple: 0.8, aspen: 0.7, mixed: 1.0, other: 0.9,
 };
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerForestryActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // timberVolume — the ForestryActionPanel sends { species, acres, avgAgeYears,
   // treeCount } (NOT a `trees` array). Estimate per-tree board feet from a
   // species×age yield model, scale by tree count, and return the fields the

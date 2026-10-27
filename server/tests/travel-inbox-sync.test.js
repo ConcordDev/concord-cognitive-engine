@@ -174,7 +174,8 @@ describe("travel.inbox-sync — Gmail auto-sync (mocked egress)", () => {
     const tripId = newTrip(db).id;
     const r = await call("inbox-sync", { actor: { userId: "anon" }, db }, { tripId });
     assert.equal(r.ok, false);
-    assert.equal(r.reason, "no_user");
+    // The shared anon-write gate refuses before the handler's own no_user check.
+    assert.ok(["no_user", "auth_required"].includes(r.reason));
   });
 
   it("imports a real matched booking email and mirrors an itinerary item", async () => {

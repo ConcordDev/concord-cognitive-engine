@@ -1,6 +1,8 @@
 // server/domains/welding.js
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import crypto from "node:crypto";
 export default function registerWeldingActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Fail-closed numeric coercion for the pure calculators: a non-finite input
   // (NaN / Infinity / "abc") falls back to `dflt` so a poisoned field can never
   // leak NaN/Infinity into a computed result. parseFloat alone passes Infinity

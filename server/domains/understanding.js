@@ -34,7 +34,9 @@
 // this lens's job is proving notes are reviewable in place, in the
 // knowledge tool, without leaving to build a separate deck.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerUnderstandingActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── State plumbing ────────────────────────────────────────────────
 
   function getState() {

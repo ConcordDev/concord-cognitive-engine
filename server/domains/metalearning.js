@@ -2,7 +2,9 @@
 // Domain actions for learning-to-learn: strategy selection via meta-learning,
 // transfer analysis between domains, and learner performance profiling.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerMetalearningActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * strategySelection
    * Select optimal learning strategy based on task features using feature-based

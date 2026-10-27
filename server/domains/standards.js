@@ -13,7 +13,9 @@
 // State-backed macros (saved-list / save) round-trip per user via
 // STATE.standardsSaved (a Map<userId, Map<savedId, entry>>).
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerStandardsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── Per-user persistent state ──
   function _state() {
     const g = globalThis._concordSTATE || (globalThis._concordSTATE = {});

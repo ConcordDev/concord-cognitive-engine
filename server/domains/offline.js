@@ -2,7 +2,9 @@
 // Domain actions for offline/sync management: conflict detection and resolution,
 // cache strategy optimization, and minimal delta computation.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerOfflineActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * syncConflict
    * Detect and resolve sync conflicts using CRDT-style merge strategies,

@@ -8,6 +8,7 @@
 // Persistence lives in globalThis._concordSTATE, keyed per user. Pure-math
 // macros (eval / bitwise / glyphLookup / tutorial) hold no state.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { GLYPHS, GLYPH_TO_DIGIT, GLYPH_NAMES, RADIX_SEPARATOR, NEG_MARKER }
   from "../lib/refusal-algebra/glyphs.js";
 import { decimalToRefusalGlyphs, refusalGlyphsToDecimal }
@@ -15,6 +16,7 @@ import { decimalToRefusalGlyphs, refusalGlyphsToDecimal }
 import { add, subtract, multiply, divide } from "../lib/refusal-algebra/operations.js";
 
 export default function registerRootActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // NOTE (2026-06-27): root.js uses the legacy 3-arg registerLensAction(domain,
   // action, (ctx, artifact, params)) convention and is loaded by
   // server/domains/index.js (rootLens in the domainModules array → server.js

@@ -25,7 +25,9 @@ async function wikiFetch(url) {
   return r.json();
 }
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerHistoryActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("history", "timelineBuild", (ctx, artifact, _params) => {
     const events = artifact.data?.events || [];
     if (events.length === 0) return { ok: true, result: { message: "Add historical events with dates to build timeline." } };

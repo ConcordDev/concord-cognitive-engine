@@ -2,12 +2,14 @@
 // Domain actions for metacognitive monitoring: confidence calibration,
 // learning curve modeling, and cognitive bias detection.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import {
   computeBrierScore, computeBrierSkillScore, computeLogLoss,
   computeReliabilityBins, computeECE, computeMCE, calibrationQualityLabel,
 } from "../lib/calibration-math.js";
 
 export default function registerMetacognitionActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * confidenceCalibration
    * Calibrate prediction confidence — compare predicted vs actual outcomes,

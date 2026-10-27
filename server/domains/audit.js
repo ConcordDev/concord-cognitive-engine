@@ -1,6 +1,7 @@
 // server/domains/audit.js
 // Domain actions for auditing and compliance: compliance checks, trail analysis, risk scoring, sampling plans.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { checkModel, replayTrace } from "../lib/verification/model-checker.js";
 import {
   buildLedgerConservationModel,
@@ -11,6 +12,7 @@ import {
 } from "../lib/verification/invariant-specs.js";
 
 export default function registerAuditActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * complianceCheck
    * Check data records against compliance rules — pattern matching, field validation,

@@ -4,7 +4,9 @@
 // Adds saved (starred) messages, full-text search across DM history snapshots,
 // reactions store, and voice-note metadata registry — all per-user scoped.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerMessageActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   function getMessageState() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;

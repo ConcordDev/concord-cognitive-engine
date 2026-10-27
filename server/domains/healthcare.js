@@ -1,10 +1,12 @@
 // server/domains/healthcare.js
 // Domain actions for healthcare: drug interaction checks, protocol matching, patient summaries.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { listProtocols, listSpecialties } from "../lib/healthcare-protocols.js";
 
 export default function registerHealthcareActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("healthcare", "vision", async (ctx, artifact, _params) => {
     const { imageB64, imageUrl } = artifact.data || {};
     if (!imageB64 && !imageUrl) return { ok: false, error: "imageB64 or imageUrl required" };

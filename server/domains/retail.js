@@ -1,11 +1,13 @@
 // server/domains/retail.js
 // Domain actions for retail/CRM: reorder, pipeline, LTV, SLA checks.
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { finiteOrNull, badNumber } from "../lib/finite-input.js";
 
 // Cap on a single gift card's face value (USD).
 const GIFT_CARD_MAX = 10000;
 
 export default function registerRetailActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Shared SLA-target-by-priority table (minutes). This is the SINGLE source
   // of truth for "how fast must priority X be handled" across the whole
   // retail domain — the live `slaStatus` incidents branch (below) and the

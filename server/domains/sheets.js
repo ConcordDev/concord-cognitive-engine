@@ -6,11 +6,13 @@
 // (values.get) + outbound write (values.append). Honest reason codes when no
 // token / not configured — never faked data.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { readGoogleSheet, appendGoogleSheetRow } from "../lib/connector-client.js";
 
 const SHEETS_ENABLED = process.env.CONCORD_SHEETS_ENABLED !== "0";
 
 export default function registerSheetsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   const uid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const fail = (res, fallback) => {
     const reason = res?.reason || fallback;

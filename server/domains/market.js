@@ -1,7 +1,9 @@
 // server/domains/market.js
 // Domain actions for market analysis: trend analysis, competitor matrix, price elasticity.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerMarketActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * trendAnalysis
    * Detect market trends using moving averages, MACD crossovers, and RSI signals.

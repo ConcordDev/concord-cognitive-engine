@@ -5,9 +5,11 @@
 // environment/config management, domain routing, alerting, cost/usage, and an
 // audit log.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import dns from "node:dns/promises";
 
 export default function registerPlatformActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── Per-user persistent platform state ─────────────────────────────
   function getPlatformState() {
     const STATE = globalThis._concordSTATE;
