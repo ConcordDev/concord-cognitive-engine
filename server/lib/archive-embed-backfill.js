@@ -10,7 +10,7 @@
 // It runs under lowMemory on purpose (the local embedder is a worker thread;
 // each slice is a few rows), and pauses itself when swap is nearly full.
 import { execFile } from "node:child_process";
-import { unpackDtuData } from "./dtu-at-rest.js";
+import { archiveRowToDtu } from "./archive-retrieval.js";
 
 export const PHASES = Object.freeze([
   { name: "archive_consolidated", table: "dtu_store_archive", where: "tier IN ('mega','hyper')" },
@@ -18,7 +18,9 @@ export const PHASES = Object.freeze([
   { name: "archive_rest", table: "dtu_store_archive", where: "tier NOT IN ('mega','hyper','shadow') OR tier IS NULL" },
 ]);
 
-const PROGRESS_TABLE = "archive_embed_progress";
+// v2: the v1 cursor (#1548) skipped legacy rows whose id lived only in the
+// table column; restart from the top.
+const PROGRESS_TABLE = "archive_embed_progress_v2";
 
 export function ensureProgressTable(db) {
   db.exec(`CREATE TABLE IF NOT EXISTS ${PROGRESS_TABLE} (
@@ -97,16 +99,14 @@ export async function runArchiveEmbedSlice({
     const rows = db.prepare(`SELECT rowid AS rid, id FROM ${phase.table} WHERE rowid > ? AND (${phase.where}) ORDER BY rowid LIMIT ?`)
       .all(p.last_rowid, batch * scanFactor);
     if (rows.length === 0) { p.phase += 1; p.last_rowid = 0; continue; }
-    const getData = db.prepare(`SELECT data FROM ${phase.table} WHERE rowid = ?`);
+    const getRow = db.prepare(`SELECT * FROM ${phase.table} WHERE rowid = ?`);
     let tried = 0;
     for (const r of rows) {
       if (tried >= batch) break;
       p.last_rowid = r.rid;
       if (!r.id || hasEmbedding(r.id)) { skipped++; continue; }
       tried++;
-      r.data = getData.get(r.rid)?.data;
-      let dtu = null;
-      try { dtu = JSON.parse(unpackDtuData(r.data)); } catch { dtu = null; }
+      const dtu = archiveRowToDtu(getRow.get(r.rid));
       if (!dtu || !dtu.id || dtu.tier === "shadow") { skipped++; continue; }
       try {
         const st = await embedDTU(dtu);
