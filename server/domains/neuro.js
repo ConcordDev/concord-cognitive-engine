@@ -4,6 +4,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { requireList } from "../lib/lens-inputs.js";
 export default function registerNeuroActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -15,8 +16,19 @@ export default function registerNeuroActions(registerLensAction) {
    */
   registerLensAction("neuro", "frequencyAnalysis", (ctx, artifact, _params) => {
   try {
-    const channels = artifact.data?.channels ||
-      (artifact.data?.signal ? [{ name: artifact.data.signal.channel || "CH1", ...artifact.data.signal }] : []);
+    let channels;
+    if (artifact.data?.channels != null && artifact.data.channels !== "") {
+      channels = requireList(artifact.data.channels, "channels");
+      if (!Array.isArray(channels)) return channels;
+    } else if (artifact.data?.signal != null && artifact.data.signal !== "") {
+      const signal = artifact.data.signal;
+      if (typeof signal !== "object" || Array.isArray(signal)) {
+        return { ok: false, error: "invalid_input", field: "signal", reason: "expected_object" };
+      }
+      channels = [{ name: signal.channel || "CH1", ...signal }];
+    } else {
+      channels = [];
+    }
 
     if (channels.length === 0) return { ok: false, error: "No signal data. Expected channels or signal." };
 

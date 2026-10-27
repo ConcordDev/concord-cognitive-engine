@@ -14,6 +14,7 @@ function osmUserAgent() {
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { requireList } from "../lib/lens-inputs.js";
 export default function registerAtlasActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -25,7 +26,8 @@ export default function registerAtlasActions(registerLensAction) {
    */
   registerLensAction("atlas", "geocode", (ctx, artifact, _params) => {
   try {
-    const places = artifact.data?.places || [];
+    const places = requireList(artifact.data?.places, "places");
+    if (!Array.isArray(places)) return places;
     if (places.length === 0) {
       return { ok: true, result: { message: "No places provided. Supply artifact.data.places as [{ name, lat?, lon? }]. Optionally set artifact.data.origin for distance calculations.", resolved: [], count: 0 } };
     }
@@ -162,7 +164,8 @@ export default function registerAtlasActions(registerLensAction) {
    */
   registerLensAction("atlas", "distanceMatrix", (ctx, artifact, _params) => {
   try {
-    const points = artifact.data?.points || [];
+    const points = requireList(artifact.data?.points, "points");
+    if (!Array.isArray(points)) return points;
     if (points.length < 2) {
       return { ok: true, result: { message: "Need at least 2 points. Supply artifact.data.points as [{ name?, lat, lon }].", matrix: [], stats: null } };
     }
@@ -282,7 +285,8 @@ export default function registerAtlasActions(registerLensAction) {
    */
   registerLensAction("atlas", "regionStats", (ctx, artifact, _params) => {
   try {
-    const regions = artifact.data?.regions || [];
+    const regions = requireList(artifact.data?.regions, "regions");
+    if (!Array.isArray(regions)) return regions;
     if (regions.length === 0) {
       return { ok: true, result: { message: "No region data provided. Supply artifact.data.regions as [{ name, population, area, gdp, density, growth }].", summary: null, rankings: null } };
     }

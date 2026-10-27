@@ -15,6 +15,7 @@ import { KNOWN_SCOPES, getDoc } from "../lib/yjs-realtime.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { registerEsignProvider, issueSigningLinks, deliverSigningLinks } from "../lib/esign-links.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { requireList } from "../lib/lens-inputs.js";
 
 const USPTO_PATENTSVIEW = "https://search.patentsview.org/api/v1";
 const COURTLISTENER_BASE = "https://www.courtlistener.com/api/rest/v4";
@@ -110,7 +111,8 @@ export default function registerLawActions(registerLensAction) {
    */
   registerLensAction("law", "caseAnalysis", (ctx, artifact, _params) => {
   try {
-    const cases = artifact.data?.cases || [];
+    const cases = requireList(artifact.data?.cases, "cases");
+    if (!Array.isArray(cases)) return cases;
     if (cases.length === 0) {
       return { ok: true, result: { message: "No case data provided. Supply artifact.data.cases as an array of case objects with fields: id, type, filedDate, closedDate, outcome." } };
     }
@@ -322,7 +324,8 @@ export default function registerLawActions(registerLensAction) {
    */
   registerLensAction("law", "deadlineTracker", (ctx, artifact, _params) => {
   try {
-    const deadlines = artifact.data?.deadlines || [];
+    const deadlines = requireList(artifact.data?.deadlines, "deadlines");
+    if (!Array.isArray(deadlines)) return deadlines;
     if (deadlines.length === 0) {
       return { ok: true, result: { message: "No deadlines provided. Supply artifact.data.deadlines as an array with id, description, dueDate, category, and status fields." } };
     }
@@ -419,7 +422,8 @@ export default function registerLawActions(registerLensAction) {
    */
   registerLensAction("law", "billingCalculator", (ctx, artifact, _params) => {
   try {
-    const entries = artifact.data?.timeEntries || [];
+    const entries = requireList(artifact.data?.timeEntries, "timeEntries");
+    if (!Array.isArray(entries)) return entries;
     if (entries.length === 0) {
       return { ok: true, result: { message: "No time entries provided. Supply artifact.data.timeEntries as an array with attorney, hours, rate, date, description, category, and billable fields." } };
     }
