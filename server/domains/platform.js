@@ -7,6 +7,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import dns from "node:dns/promises";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 
 export default function registerPlatformActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -138,7 +139,7 @@ export default function registerPlatformActions(registerLensAction) {
         serviceBreakdown,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -239,7 +240,7 @@ export default function registerPlatformActions(registerLensAction) {
         ],
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -359,7 +360,7 @@ export default function registerPlatformActions(registerLensAction) {
         noisiest: Object.entries(serviceFreq).sort((a, b) => b[1] - a[1])[0]?.[0],
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -475,7 +476,7 @@ export default function registerPlatformActions(registerLensAction) {
         healthScore: Math.round(Math.max(0, 100 - spofs.length * 15 - circulars.length * 20 - (maxDepth > 5 ? 10 : 0))),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ════════════════════════════════════════════════════════════════════

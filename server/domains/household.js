@@ -25,6 +25,7 @@ function finiteDate(v) {
 }
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 export default function registerHouseholdActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -122,7 +123,7 @@ export default function registerHouseholdActions(registerLensAction) {
     artifact.data.groceryList = result;
 
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -178,7 +179,7 @@ export default function registerHouseholdActions(registerLensAction) {
     artifact.data.maintenanceCheckResult = result;
 
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -292,7 +293,7 @@ export default function registerHouseholdActions(registerLensAction) {
     artifact.data.weeklySummary = result;
 
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -379,7 +380,7 @@ export default function registerHouseholdActions(registerLensAction) {
     artifact.data.maintenanceReport = report;
 
     return { ok: true, result: report };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -475,7 +476,7 @@ export default function registerHouseholdActions(registerLensAction) {
     artifact.data.lastRotation = result;
 
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -733,7 +734,7 @@ export default function registerHouseholdActions(registerLensAction) {
         paused: !!s.vacation.get(userId),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("household", "assignee-leaderboard", (ctx, _a, _params = {}) => {
@@ -793,7 +794,7 @@ export default function registerHouseholdActions(registerLensAction) {
         paused: !!s.vacation.get(userId),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── Coordination layer (Cozi-shape): calendar, meal plan, rewards,
@@ -929,7 +930,7 @@ export default function registerHouseholdActions(registerLensAction) {
     }
     saveHome();
     return { ok: true, result: { meal } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("household", "meal-plan-list", (ctx, _a, params = {}) => {
@@ -994,7 +995,7 @@ export default function registerHouseholdActions(registerLensAction) {
     const totalPoints = members.reduce((sum, m) => sum + m.points, 0);
     const totalAllowance = Math.round(members.reduce((sum, m) => sum + m.allowance, 0) * 100) / 100;
     return { ok: true, result: { members, dollarsPerPoint: rate, totalPoints, totalAllowance } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Per-member notifications ─────────────────────────────────────
@@ -1215,7 +1216,7 @@ export default function registerHouseholdActions(registerLensAction) {
     hmList(s.expenses, hmActor(ctx)).push(expense);
     saveHome();
     return { ok: true, result: { expense } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("household", "expense-list", (ctx, _a, params = {}) => {
@@ -1281,6 +1282,6 @@ export default function registerHouseholdActions(registerLensAction) {
       if (debtors[di].net <= 0.005) di++;
     }
     return { ok: true, result: { balances, transfers, unsettledExpenses: expenses.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 };

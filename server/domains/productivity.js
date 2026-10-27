@@ -12,21 +12,54 @@ export default function registerProductivityActions(registerLensAction) {
    * taskCreate — append a task to the artifact tasks list.
    *   params.title, params.project?, params.priority? (1-4), params.dueDate?
    */
-  registerLensAction("productivity", "taskCreate", (_ctx, artifact, params = {}) => {
-    if (!params.title || !String(params.title).trim()) return { ok: false, reason: "title required" };
-    const tasks = artifact.data?.tasks || [];
+  registerLensAction("productivity", "taskCreate", (ctx, artifact, params = {}) => {
+    const title = String(params.title || "").trim();
+    if (!title) return { ok: false, error: "invalid_input", field: "title", reason: "title required" };
+    const s = getProdState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pdAid(ctx);
+    const projectName = params.project ? String(params.project).trim() : "";
+    let projectId = null;
+    if (projectName && projectName.toLowerCase() !== "inbox") {
+      const existing = (s.projects.get(userId) || []).find((p) => p.name.toLowerCase() === projectName.toLowerCase());
+      if (existing) projectId = existing.id;
+      else {
+        const np = { id: pdId("prj"), name: projectName.slice(0, 80), color: "blue", createdAt: pdNow() };
+        pdListB(s.projects, userId).push(np);
+        projectId = np.id;
+      }
+    }
+    const priority = [1, 2, 3, 4].includes(parseInt(params.priority, 10)) ? parseInt(params.priority, 10) : 4;
     const task = {
-      id: `task-${Date.now()}`,
-      title: String(params.title).trim(),
-      project: params.project || "Inbox",
-      priority: [1, 2, 3, 4].includes(parseInt(params.priority, 10)) ? parseInt(params.priority, 10) : 4,
-      dueDate: params.dueDate || null,
+      id: pdId("tsk"),
+      content: title.slice(0, 500),
+      title: title.slice(0, 500),
+      project: projectName || "Inbox",
+      projectId,
+      priority,
+      dueDate: pdDay(params.dueDate) || null,
+      labels: [],
+      recurring: null,
+      subtasks: [],
+      assigneeId: null,
+      comments: [],
+      done: false,
       completed: false,
-      createdAt: new Date().toISOString(),
+      completedAt: null,
+      createdAt: pdNow(),
     };
-    tasks.push(task);
-    artifact.data = { ...artifact.data, tasks };
-    return { ok: true, result: { task, totalOpen: tasks.filter((t) => !t.completed).length } };
+    // The task list, detail, and delete actions read this per-user store.
+    // Writing only onto the call's artifact left the task invisible after
+    // the request, so task-list stayed empty and task-delete 404'd.
+    pdListB(s.tasks, userId).push(task);
+    saveProdState();
+    if (artifact) {
+      const tasks = Array.isArray(artifact.data?.tasks) ? artifact.data.tasks : [];
+      tasks.push(task);
+      artifact.data = { ...(artifact.data || {}), tasks };
+    }
+    const open = (s.tasks.get(userId) || []).filter((t) => !t.done && !t.completed).length;
+    return { ok: true, result: { task, totalOpen: open } };
   });
 
   /**
@@ -195,9 +228,14 @@ export default function registerProductivityActions(registerLensAction) {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const content = pdClean(params.content, 500);
     if (!content) return { ok: false, error: "task content required" };
+    const userId = pdAid(ctx);
+    const projectId = params.projectId ? String(params.projectId) : null;
+    if (projectId && !(s.projects.get(userId) || []).some((p) => p.id === projectId)) {
+      return { ok: false, error: "project not found" };
+    }
     const task = {
       id: pdId("tsk"), content,
-      projectId: params.projectId ? String(params.projectId) : null,
+      projectId,
       priority: Math.max(1, Math.min(4, Math.round(pdNum(params.priority, 4)))),
       dueDate: pdDay(params.dueDate) || null,
       labels: Array.isArray(params.labels)
@@ -208,7 +246,7 @@ export default function registerProductivityActions(registerLensAction) {
       comments: [],
       done: false, completedAt: null, createdAt: pdNow(),
     };
-    pdListB(s.tasks, pdAid(ctx)).push(task);
+    pdListB(s.tasks, userId).push(task);
     saveProdState();
     return { ok: true, result: { task } };
   });
@@ -518,10 +556,12 @@ export default function registerProductivityActions(registerLensAction) {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pdAid(ctx);
     const durationMin = Math.max(1, Math.round(pdNum(params.durationMin, 25)));
+    const taskId = params.taskId ? String(params.taskId) : null;
+    if (taskId && !findTask(s, userId, taskId)) return { ok: false, error: "task not found" };
     const session = {
       id: pdId("foc"), durationMin,
-      taskId: params.taskId ? String(params.taskId) : null,
-      taskContent: params.taskId ? (findTask(s, userId, params.taskId)?.content || null) : null,
+      taskId,
+      taskContent: taskId ? findTask(s, userId, taskId).content : null,
       date: new Date().toISOString().slice(0, 10),
       at: pdNow(),
     };

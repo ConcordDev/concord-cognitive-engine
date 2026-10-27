@@ -131,14 +131,17 @@ describe("billing — tax-calculate per jurisdiction (exact rates)", () => {
 describe("billing — metered usage tiered charge (exact graduated pricing)", () => {
   let ctx; before(async () => { ctx = await depthCtx("billing-usage"); });
   it("usage-record → usage-summary sums quantity and charges across default tiers", async () => {
-    // Record 3000 + 2000 = 5000 api_calls on one sub.
-    const rec1 = await lensRun("billing", "usage-record", { params: { subscriptionId: "sub_x", quantity: 3000 } }, ctx);
+    // Record 3000 + 2000 = 5000 api_calls on one real subscription.
+    const plan = await lensRun("billing", "plan-create", { params: { name: "Metered", amount: 10 } }, ctx);
+    const sub = await lensRun("billing", "subscription-create", { params: { planId: plan.result.plan.id, customerName: "C" } }, ctx);
+    const subId = sub.result.subscription.id;
+    const rec1 = await lensRun("billing", "usage-record", { params: { subscriptionId: subId, quantity: 3000 } }, ctx);
     assert.equal(rec1.ok, true);
     assert.equal(rec1.result.record.quantity, 3000);
-    await lensRun("billing", "usage-record", { params: { subscriptionId: "sub_x", quantity: 2000 } }, ctx);
+    await lensRun("billing", "usage-record", { params: { subscriptionId: subId, quantity: 2000 } }, ctx);
 
     // 5000 total: first 1000 @0 = 0; next 4000 @0.002 = 8.00. Total 8.00.
-    const sum = await lensRun("billing", "usage-summary", { params: { subscriptionId: "sub_x" } }, ctx);
+    const sum = await lensRun("billing", "usage-summary", { params: { subscriptionId: subId } }, ctx);
     assert.equal(sum.ok, true);
     assert.equal(sum.result.totalQuantity, 5000);
     assert.equal(sum.result.recordCount, 2);

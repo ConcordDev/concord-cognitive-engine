@@ -47,6 +47,15 @@ describe("ops legacy artifact macros", () => {
     const r = call("postmortemDraft", ctxA, { title: "API outage", severity: "sev2" });
     assert.equal(r.ok, true);
     assert.equal(r.result.sections.length, 5);
+    assert.equal(r.result.severity, "sev2");
+  });
+  it("postmortemDraft refuses a severity outside the allowlist", () => {
+    const bad = call("postmortemDraft", ctxA, { title: "API outage", severity: "critical" });
+    assert.equal(bad.ok, false);
+    assert.equal(bad.error, "invalid severity");
+    const omitted = call("postmortemDraft", ctxA, { title: "API outage" });
+    assert.equal(omitted.ok, true);
+    assert.equal(omitted.result.severity, "sev3");
   });
   it("escalationCheck flags a breach", () => {
     const r = call("escalationCheck", ctxA, { severity: "sev1", minutesOpen: 30 });
@@ -65,6 +74,20 @@ describe("ops incident lifecycle [L]", () => {
   it("rejects an incident with no title", () => {
     const r = call("incidentCreate", ctxA, {});
     assert.equal(r.ok, false);
+  });
+  it("refuses a severity or tier outside the allowlist and keeps the default when omitted", () => {
+    const badSev = call("incidentCreate", ctxA, { title: "X", severity: "critical" });
+    assert.equal(badSev.ok, false);
+    assert.equal(badSev.error, "invalid severity");
+    const omitted = call("incidentCreate", ctxA, { title: "Y" });
+    assert.equal(omitted.result.incident.severity, "sev3");
+    const badTier = call("serviceCreate", ctxA, { name: "api", tier: "sev1" });
+    assert.equal(badTier.ok, false);
+    assert.equal(badTier.error, "invalid tier");
+    const standard = call("serviceCreate", ctxA, { name: "api" });
+    assert.equal(standard.result.service.tier, "standard");
+    assert.equal(call("alertIngest", ctxA, { signature: "disk", severity: "page" }).error, "invalid severity");
+    assert.equal(call("escalationCheck", ctxA, { severity: "page", minutesOpen: 10 }).error, "invalid severity");
   });
   it("drives the state machine triggered → acknowledged → resolved", () => {
     const id = call("incidentCreate", ctxA, { title: "X" }).result.incident.id;
@@ -251,5 +274,17 @@ describe("ops status page [M]", () => {
     assert.equal(r.result.overall, "major_outage");
     assert.equal(r.result.components[0].status, "major_outage");
     assert.equal(r.result.activeIncidentCount, 1);
+  });
+  it("refuses an incident or service edge that names a missing parent", () => {
+    const inc = call("incidentCreate", ctxA, { title: "Ghost", serviceId: "svc_missing" });
+    assert.equal(inc.ok, false);
+    assert.equal(inc.error, "service not found");
+    const edge = call("serviceCreate", ctxA, { name: "api", dependsOn: ["svc_missing"] });
+    assert.equal(edge.ok, false);
+    assert.equal(edge.error, "service not found");
+    const pol = call("serviceCreate", ctxA, { name: "api", policyId: "pol_missing" });
+    assert.equal(pol.ok, false);
+    assert.equal(pol.error, "policy not found");
+    assert.equal(call("serviceList", ctxA, {}).result.total, 0);
   });
 });

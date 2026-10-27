@@ -165,6 +165,15 @@ describe("finance.retirement-monte-carlo", () => {
     assert.ok(r.result.trajectories.length > 0);
     assert.equal(r.result.paths, 500);
     assert.equal(r.result.years, 95 - 35);
+    assert.equal(r.result.method, "seeded_geometric_brownian");
+    const again = call("retirement-monte-carlo", ctxA, {
+      currentAge: 35, retireAge: 67,
+      currentSavings: 150000, annualContribution: 20000,
+      expectedReturn: 0.07, volatility: 0.15,
+      annualSpendInRetirement: 60000, paths: 500, seed: 1,
+    });
+    assert.equal(again.result.successProbability, r.result.successProbability);
+    assert.equal(again.result.medianFinalBalance, r.result.medianFinalBalance);
   });
 
   it("clamps inputs to safe ranges", () => {
@@ -402,23 +411,29 @@ describe("finance.dividends-* + earnings-calendar", () => {
     assert.ok(r.result.totalAnnual > 0);
     assert.ok(r.result.monthlyAverage > 0);
   });
-  it("calendar produces forward-dated quarterly events", () => {
-    call("holdings-add", ctxA, { symbol: "VYM", shares: 50, price: 120, dividendYield: 0.03 });
+  it("calendar uses stored pay dates and does not invent the rest", () => {
+    const pay = new Date(Date.now() + 40 * 86400000).toISOString().slice(0, 10);
+    call("holdings-add", ctxA, { symbol: "VYM", shares: 50, price: 120, dividendYield: 0.03, dividendPayDates: [pay] });
     const r = call("dividends-calendar", ctxA, { days: 365 });
-    assert.ok(r.result.events.length >= 4);
-    for (const e of r.result.events) {
-      assert.equal(e.kind, "dividend");
-      assert.ok(e.amount > 0);
-    }
+    const vym = r.result.events.filter((e) => e.symbol === "VYM");
+    assert.equal(vym.length, 1);
+    assert.equal(vym[0].date, pay);
+    assert.equal(vym[0].kind, "dividend");
+    assert.equal(vym[0].amount, 180);
+    assert.equal(r.result.events.some((e) => e.symbol === "SCHD"), false);
   });
-  it("earnings-calendar yields one event per holding sorted by date", () => {
-    call("holdings-add", ctxA, { symbol: "AAPL", shares: 10, price: 200 });
-    call("holdings-add", ctxA, { symbol: "MSFT", shares: 5, price: 400 });
+  it("earnings-calendar returns only holdings that have an earnings date", () => {
+    const aapl = new Date(Date.now() + 20 * 86400000).toISOString().slice(0, 10);
+    const msft = new Date(Date.now() + 50 * 86400000).toISOString().slice(0, 10);
+    call("holdings-add", ctxA, { symbol: "AAPL", shares: 10, price: 200, earningsDate: aapl, earningsSession: "after_market", estimateEps: 1.25 });
+    call("holdings-add", ctxA, { symbol: "MSFT", shares: 5, price: 400, earningsDate: msft });
     const r = call("earnings-calendar", ctxA, { days: 90 });
     assert.equal(r.result.events.length, 2);
-    if (r.result.events.length >= 2) {
-      assert.ok(r.result.events[0].date <= r.result.events[1].date);
-    }
+    assert.equal(r.result.events[0].date <= r.result.events[1].date, true);
+    const apple = r.result.events.find((e) => e.symbol === "AAPL");
+    assert.equal(apple.when, "after_market");
+    assert.equal(apple.estimateEps, 1.25);
+    assert.equal(r.result.events.find((e) => e.symbol === "MSFT").estimateEps, null);
   });
 });
 

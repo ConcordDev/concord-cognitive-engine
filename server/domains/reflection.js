@@ -5,6 +5,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { createHash } from "node:crypto";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 
 export default function registerReflectionActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -179,7 +180,7 @@ export default function registerReflectionActions(registerLensAction) {
         topTags: topTags.length > 0 ? topTags : null,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -354,7 +355,7 @@ export default function registerReflectionActions(registerLensAction) {
         growthWindows: windows.length <= 15 ? windows : windows.filter((_, i) => i % Math.ceil(windows.length / 15) === 0),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -551,7 +552,7 @@ export default function registerReflectionActions(registerLensAction) {
         needsAttention: habitProfiles.filter(h => (h.consistency || 0) < 0.3).map(h => h.name),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── Day One 2026 parity — journaling companion ─────────────────────
@@ -710,7 +711,7 @@ export default function registerReflectionActions(registerLensAction) {
     const userId = rfAid(ctx);
     let journalId = params.journalId ? String(params.journalId) : null;
     if (journalId && !(s.journals.get(userId) || []).some((j) => j.id === journalId)) {
-      journalId = null;
+      return { ok: false, error: "journal not found" };
     }
     const entry = {
       id: rfId("ent"), journalId, text,
@@ -826,7 +827,7 @@ export default function registerReflectionActions(registerLensAction) {
         daysJournaled: new Set(dates).size,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("reflection", "journal-stats", (ctx, _a, _params = {}) => {
@@ -892,7 +893,7 @@ export default function registerReflectionActions(registerLensAction) {
     const userId = rfAid(ctx);
     let journalId = params.journalId ? String(params.journalId) : null;
     if (journalId && !(s.journals.get(userId) || []).some((j) => j.id === journalId)) {
-      journalId = null;
+      return { ok: false, error: "journal not found" };
     }
     const entry = {
       id: rfId("ent"), journalId, text: tpl.body, title: tpl.name,
@@ -1231,7 +1232,7 @@ export default function registerReflectionActions(registerLensAction) {
           (new Date().getUTCHours() * 60 + new Date().getUTCMinutes()) >= reminder.hour * 60 + reminder.minute),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── End-to-end encryption (private journal at rest) ─────────────────
@@ -1328,7 +1329,7 @@ export default function registerReflectionActions(registerLensAction) {
         monthBuckets: Object.entries(byMonth).map(([month, count]) => ({ month, count })),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("reflection", "entry-map", (ctx, _a, _params = {}) => {
@@ -1385,7 +1386,7 @@ export default function registerReflectionActions(registerLensAction) {
     }
     let journalId = params.journalId ? String(params.journalId) : null;
     if (journalId && !(s.journals.get(userId) || []).some((j) => j.id === journalId)) {
-      journalId = null;
+      return { ok: false, error: "journal not found" };
     }
     const entry = {
       id: rfId("ent"), journalId,
@@ -1461,7 +1462,7 @@ export default function registerReflectionActions(registerLensAction) {
         lastEntryDate: yEntries[yEntries.length - 1].date,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("reflection", "journal-export", (ctx, _a, params = {}) => {
@@ -1520,7 +1521,7 @@ export default function registerReflectionActions(registerLensAction) {
         export: record,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("reflection", "export-history", (ctx, _a, _params = {}) => {

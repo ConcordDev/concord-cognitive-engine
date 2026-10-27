@@ -1,6 +1,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 import { executeToolCall } from "../lib/chat-agent.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 // server/domains/agents.js
 // Domain actions for autonomous agents: capability scoring, task routing,
 // swarm coordination, performance benchmarking — plus a real agent runtime:
@@ -106,7 +107,7 @@ export default function registerAgentsActions(registerLensAction) {
         totalAgents: agents.length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("agents", "swarmStatus", (ctx, artifact, params) => {

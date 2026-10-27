@@ -645,9 +645,15 @@ export default function registerAstronomyActions(registerLensAction) {
     const userId = asAid(ctx);
     const target = findTarget(s, userId, params.targetId);
     if (!target) return { ok: false, error: "target not found" };
+    let sessionId = null;
+    if (params.sessionId) {
+      sessionId = String(params.sessionId);
+      const sessions = s.sessions?.get(userId) || [];
+      if (!sessions.some((ses) => ses.id === sessionId)) return { ok: false, error: "session not found" };
+    }
     const obs = {
       id: asId("obs"), targetId: target.id, targetName: target.name,
-      sessionId: params.sessionId ? String(params.sessionId) : null,
+      sessionId,
       date: asDay(params.date) || asDay(asNow()),
       equipment: asClean(params.equipment, 120) || null,
       conditions: asClean(params.conditions, 120) || null,

@@ -3,6 +3,7 @@
 // analysis, frequency band decomposition, and neural activation mapping.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 export default function registerNeuroActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -153,7 +154,7 @@ export default function registerNeuroActions(registerLensAction) {
     });
 
     return { ok: true, result: { channels: results, channelCount: results.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -261,7 +262,7 @@ export default function registerNeuroActions(registerLensAction) {
         hubs: hubs.slice(0, 5),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -415,7 +416,7 @@ export default function registerNeuroActions(registerLensAction) {
         })),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ────────────────────────────────────────────────────────────────────
@@ -1293,7 +1294,7 @@ export default function registerNeuroActions(registerLensAction) {
         history,
       } };
     } catch (e) {
-      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+      return handlerFailure(e);
     }
   });
 }

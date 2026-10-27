@@ -3,6 +3,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { checkModel, replayTrace } from "../lib/verification/model-checker.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import {
   buildLedgerConservationModel,
   buildTreasuryInvariantModel,
@@ -418,7 +419,7 @@ export default function registerAuditActions(registerLensAction) {
 
     artifact.data.trailAnalysis = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -559,7 +560,7 @@ export default function registerAuditActions(registerLensAction) {
 
     artifact.data.riskScore = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -730,7 +731,7 @@ export default function registerAuditActions(registerLensAction) {
 
     artifact.data.samplingPlan = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─────────────────────────────────────────────────────────────
@@ -1165,7 +1166,7 @@ export default function registerAuditActions(registerLensAction) {
         },
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Feature 5: Policy library + acceptance tracking ──
@@ -1201,12 +1202,16 @@ export default function registerAuditActions(registerLensAction) {
     const now = Date.now();
     const enriched = list.map(p => {
       const accs = acceptances.filter(a => a.policyId === p.id);
-      const reviewDue = new Date(p.effectiveDate).getTime() + p.reviewCycleDays * 86400000;
+      const effectiveMs = new Date(p.effectiveDate).getTime();
+      const cycleDays = Number(p.reviewCycleDays);
+      const reviewDue = Number.isFinite(effectiveMs) && Number.isFinite(cycleDays)
+        ? effectiveMs + cycleDays * 86400000
+        : NaN;
       return {
         ...p,
         acceptanceCount: accs.length,
-        reviewOverdue: reviewDue < now,
-        nextReviewDate: new Date(reviewDue).toISOString().slice(0, 10),
+        reviewOverdue: Number.isFinite(reviewDue) ? reviewDue < now : false,
+        nextReviewDate: Number.isFinite(reviewDue) ? new Date(reviewDue).toISOString().slice(0, 10) : null,
       };
     });
     return { ok: true, result: { policies: enriched, total: enriched.length } };
@@ -1349,7 +1354,7 @@ export default function registerAuditActions(registerLensAction) {
     ].join("\n");
 
     return { ok: true, result: { report, markdown: md } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Feature 7: Vendor / third-party risk register ──
@@ -1388,7 +1393,7 @@ export default function registerAuditActions(registerLensAction) {
     state.vendors.get(userId).push(vendor);
     saveAuditState();
     return { ok: true, result: { vendor } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("audit", "vendorUpdate", (ctx, _artifact, params = {}) => {
@@ -1451,7 +1456,7 @@ export default function registerAuditActions(registerLensAction) {
         },
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ---------------------------------------------------------------------
@@ -1496,7 +1501,7 @@ export default function registerAuditActions(registerLensAction) {
       }
       return response;
     } catch (e) {
-      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+      return handlerFailure(e);
     }
   });
 
@@ -1515,7 +1520,7 @@ export default function registerAuditActions(registerLensAction) {
       const result = checkModel(model, { maxStates, maxDepth });
       return { ok: true, result };
     } catch (e) {
-      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+      return handlerFailure(e);
     }
   });
 
@@ -1544,7 +1549,7 @@ export default function registerAuditActions(registerLensAction) {
       }
       return response;
     } catch (e) {
-      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+      return handlerFailure(e);
     }
   });
 }

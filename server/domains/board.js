@@ -585,7 +585,10 @@ export default function registerBoardActions(registerLensAction) {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const board = findBoard(s, ctx, params.boardId);
     if (!board) return { ok: false, error: "board not found" };
-    const column = board.columns.find((c) => c.id === params.columnId) || board.columns[0];
+    const askedForColumn = params.columnId != null && String(params.columnId) !== "";
+    const found = board.columns.find((c) => c.id === params.columnId);
+    if (askedForColumn && !found) return { ok: false, error: "column not found" };
+    const column = found || board.columns[0];
     if (!column) return { ok: false, error: "board has no columns" };
     const title = bdClean(params.title, 240);
     if (!title) return { ok: false, error: "card title required" };

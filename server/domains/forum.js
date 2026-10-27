@@ -304,12 +304,12 @@ export default function registerForumActions(registerLensAction) {
     let categoryId = params.categoryId ? String(params.categoryId) : null;
     if (categoryId) {
       const cat = fmShared(s.categories).find((c) => c.id === categoryId);
-      if (!cat || !fmCanSeeContainer(cat, ctx)) categoryId = null;
+      if (!cat || !fmCanSeeContainer(cat, ctx)) return { ok: false, error: "category not found" };
     }
     let subforumId = params.subforumId ? String(params.subforumId) : null;
     if (subforumId) {
       const sf = fmShared(s.subforums).find((f) => f.id === subforumId);
-      if (!sf || !fmCanSeeContainer(sf, ctx)) subforumId = null;
+      if (!sf || !fmCanSeeContainer(sf, ctx)) return { ok: false, error: "subforum not found" };
     }
     const images = Array.isArray(params.images)
       ? params.images.map((u) => fmClean(u, 2000)).filter(Boolean).slice(0, 8) : [];

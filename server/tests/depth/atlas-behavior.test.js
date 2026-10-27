@@ -184,7 +184,8 @@ describe("atlas — saved-places / lists / trips CRUD round-trips + validation (
   it("validation: places-save with out-of-range lat is rejected", async () => {
     const bad = await lensRun("atlas", "places-save", { params: { name: "Nowhere", lat: 999, lng: 0 } }, ctx);
     assert.equal(bad.result.ok, false);
-    assert.match(bad.result.error, /valid lat\/lng required/);
+    assert.equal(bad.result.error, "invalid_input"); // input-validation wave: refused at the gate, naming the field
+    assert.equal(bad.result.field, "lat");
   });
 
   it("validation: trips-reorder-stops rejects a stopIds list that omits a stop", async () => {

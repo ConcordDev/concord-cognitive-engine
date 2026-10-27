@@ -124,12 +124,16 @@ describe("daily — journal + entry CRUD round-trip (shared ctx)", () => {
     assert.ok(list.result.journals.every((j) => typeof j.entryCount === "number"));
   });
 
-  it("entry-create clamps mood to 1..5, lowercases tags; entry-detail round-trips", async () => {
+  it("entry-create refuses mood outside 1..5, lowercases tags; entry-detail round-trips", async () => {
+    // input-validation wave: mood 9 is refused (400 invalid_input), not clamped
+    const badMood = await lensRun("daily", "entry-create", { params: { title: "x", body: "y", mood: 9 } }, ctx);
+    assert.equal(badMood.result.error, "invalid_input");
+    assert.equal(badMood.result.field, "mood");
     const created = await lensRun("daily", "entry-create", {
-      params: { title: "Day one", body: "Had a great walk by the river.", mood: 9, tags: ["Outdoors", "WALK", ""] },
+      params: { title: "Day one", body: "Had a great walk by the river.", mood: 5, tags: ["Outdoors", "WALK", ""] },
     }, ctx);
     assert.equal(created.ok, true);
-    assert.equal(created.result.entry.mood, 5);             // 9 clamped to 5
+    assert.equal(created.result.entry.mood, 5);
     assert.deepEqual(created.result.entry.tags, ["outdoors", "walk"]); // lowercased, empty dropped
     assert.equal(created.result.entry.date, TODAY);
     const id = created.result.entry.id;
@@ -235,9 +239,13 @@ describe("daily — habit builder + check-ins (shared ctx)", () => {
     const bad = await lensRun("daily", "habit-create", { params: { name: "" } }, ctx);
     assert.equal(bad.result.ok, false);
 
-    const made = await lensRun("daily", "habit-create", { params: { name: "Read", frequency: "nonsense", targetPerWeek: 99 } }, ctx);
+    // input-validation wave: an unknown frequency is refused, not silently defaulted
+    const badFreq = await lensRun("daily", "habit-create", { params: { name: "Read", frequency: "nonsense" } }, ctx);
+    assert.equal(badFreq.result.error, "invalid_input");
+    assert.equal(badFreq.result.field, "frequency");
+    const made = await lensRun("daily", "habit-create", { params: { name: "Read", targetPerWeek: 99 } }, ctx);
     assert.equal(made.ok, true);
-    assert.equal(made.result.habit.frequency, "daily");   // invalid → default daily
+    assert.equal(made.result.habit.frequency, "daily");   // omitted → default daily
     assert.equal(made.result.habit.targetPerWeek, 7);     // clamped to [1,7]
     const habitId = made.result.habit.id;
 

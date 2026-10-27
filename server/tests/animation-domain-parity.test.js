@@ -343,6 +343,28 @@ describe("animation templates", () => {
   });
 });
 
+describe("animation parent ids", () => {
+  it("frame-add refuses an unknown afterFrameId and leaves the reel unchanged", () => {
+    const a = newAnim();
+    const before = a.frames.length;
+    const r = call("frame-add", ctxA, { animId: a.id, afterFrameId: "frm_missing" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /frame not found/);
+    assert.equal(call("anim-get", ctxA, { id: a.id }).result.animation.frames.length, before);
+  });
+
+  it("rig-bone-add refuses an unknown layerId", () => {
+    const a = newAnim();
+    const r = call("rig-bone-add", ctxA, { animId: a.id, name: "Root", layerId: "lyr_missing" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /layer not found/);
+    const layerId = a.frames[0].layers[0].id;
+    const ok = call("rig-bone-add", ctxA, { animId: a.id, name: "Root", layerId });
+    assert.equal(ok.ok, true);
+    assert.equal(ok.result.bone.layerId, layerId);
+  });
+});
+
 describe("animation shareable links", () => {
   it("share-create + share-get + share-revoke manage a public link", () => {
     const a = newAnim();

@@ -255,20 +255,21 @@ describe("materials.fractographyAnalysis / fractographyRootCause — error contr
     // handlers are wrapped identically, so both fail the same honest way.
     const r = await lensRun("materials", "fractographyAnalysis", { data: { material: 12345 } });
     assert.equal(r.result.ok, false);
-    assert.equal(r.result.error, "handler_error");
-    assert.ok(typeof r.result.message === "string" && r.result.message.length > 0);
+    assert.equal(r.result.error, "invalid_input");
+    assert.equal(r.result.reason, "type_error");
   });
 
-  it("fractographyRootCause: a thrown error (non-string material) is caught with the same handler_error shape", async () => {
+  it("fractographyRootCause: a thrown error (non-string material) is caught with the same invalid_input shape", async () => {
     const r = await lensRun("materials", "fractographyRootCause", { data: { material: 12345 } });
     assert.equal(r.result.ok, false);
-    assert.equal(r.result.error, "handler_error");
-    assert.ok(typeof r.result.message === "string" && r.result.message.length > 0);
+    assert.equal(r.result.error, "invalid_input");
+    assert.equal(r.result.reason, "type_error");
   });
 
   it("corrosionRisk itself throws the identical way given a non-string material (contract parity, not just shape mimicry)", async () => {
     const r = await lensRun("materials", "corrosionRisk", { data: { material: 12345 } });
     assert.equal(r.result.ok, false);
-    assert.equal(r.result.error, "handler_error");
+    assert.equal(r.result.error, "invalid_input");
+    assert.equal(r.result.reason, "type_error");
   });
 });

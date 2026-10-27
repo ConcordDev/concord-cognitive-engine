@@ -72,3 +72,22 @@ export function sanitizeAgentHistory(history, {
   }
   return out.reverse();
 }
+
+// Client text that rides into a system-role message (ConKay's `persona`).
+// Role headers, chat-template tokens, "ignore previous instructions"-style
+// override lines and protocol markers are removed; the rest is capped.
+const ROLE_LINE_RE = /^\s*(?:#+\s*)?(?:system|developer|assistant|tool|function)\s*(?:prompt|message)?\s*[:>\]]/i;
+const OVERRIDE_RE = /\b(?:ignore|disregard|forget|override)\b[^.\n]{0,40}\b(?:previous|prior|above|earlier|all|system|policy|rules?|instructions?)\b|\bnew (?:system )?(?:prompt|instructions?|rules?)\b|\b(?:developer|god|jailbreak|dan) mode\b/i;
+export const CLIENT_SYSTEM_TEXT_MAX = 4000;
+
+export function sanitizeClientSystemText(text, max = CLIENT_SYSTEM_TEXT_MAX) {
+  if (typeof text !== "string") return "";
+  const cleaned = text
+    .replace(/<\|[^|>]{0,40}\|>/g, "")
+    .replace(/\[(\s*)(TOOL_RESULT|TOOL_CALL|SYSTEM)\b[^\]]*\]?/gi, "")
+    .split("\n")
+    .filter((line) => !ROLE_LINE_RE.test(line) && !OVERRIDE_RE.test(line))
+    .join("\n")
+    .trim();
+  return cleaned.slice(0, max);
+}

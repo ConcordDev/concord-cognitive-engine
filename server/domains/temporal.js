@@ -3,6 +3,7 @@
 // anomaly detection, and forecasting with exponential smoothing.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 export default function registerTemporalActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── Persistent per-user dataset store ──────────────────────────────
@@ -789,7 +790,7 @@ export default function registerTemporalActions(registerLensAction) {
         variance: { total: r(varTotal), trend: r(varTrend), seasonal: r(varSeasonal), residual: r(varResidual) },
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -910,7 +911,7 @@ export default function registerTemporalActions(registerLensAction) {
         anomalyRateLabel: anomalyRate > 0.1 ? "high" : anomalyRate > 0.03 ? "moderate" : "low",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -1069,7 +1070,7 @@ export default function registerTemporalActions(registerLensAction) {
         accuracyLabel: mape < 5 ? "excellent" : mape < 15 ? "good" : mape < 30 ? "moderate" : "poor",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // simulate — deterministic scenario projection over the resolved series. Linear
@@ -1107,6 +1108,6 @@ export default function registerTemporalActions(registerLensAction) {
           finalExpected: expected[expected.length - 1],
         },
       };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
   });
 }

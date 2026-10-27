@@ -123,12 +123,16 @@ describe("energy — device + reading CRUD round-trip (shared ctx)", () => {
     assert.equal(bad.result.ok, false);
     assert.ok(String(bad.result.error).includes("device name required"));
 
+    // input-validation wave: an unknown category is refused, not silently made "appliance"
+    const badCat = await lensRun("energy", "device-add", { params: { name: "Fridge", category: "not-a-cat" } }, ctx);
+    assert.equal(badCat.result.error, "invalid_input");
+    assert.equal(badCat.result.field, "category");
     const add = await lensRun("energy", "device-add", {
-      params: { name: "Fridge", category: "not-a-cat", wattage: 150.7, alwaysOn: true },
+      params: { name: "Fridge", wattage: 150.7, alwaysOn: true },
     }, ctx);
     assert.equal(add.ok, true);
     assert.equal(add.result.device.name, "Fridge");
-    assert.equal(add.result.device.category, "appliance"); // unknown → "appliance"
+    assert.equal(add.result.device.category, "appliance"); // omitted → "appliance"
     assert.equal(add.result.device.wattage, 151);          // round(150.7)
     assert.equal(add.result.device.alwaysOn, true);
     const devId = add.result.device.id;

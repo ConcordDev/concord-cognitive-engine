@@ -64,7 +64,8 @@ export function WorldBankExplorer() {
   useEffect(() => {
     let chart: { remove: () => void } | null = null;
     let cancelled = false;
-    if (!data || !chartHostRef.current || data.series.length === 0) return;
+    const points = Array.isArray(data?.series) ? data.series : [];
+    if (!data || !chartHostRef.current || points.length === 0) return;
     (async () => {
       const lib = await import('lightweight-charts');
       if (cancelled || !chartHostRef.current) return;
@@ -74,8 +75,9 @@ export function WorldBankExplorer() {
         grid: { vertLines: { color: '#1f1f23' }, horzLines: { color: '#1f1f23' } },
         rightPriceScale: { borderColor: '#27272a' }, timeScale: { borderColor: '#27272a' },
       });
-      const series = (c as unknown as { addLineSeries: (o?: unknown) => { setData: (d: unknown[]) => void } }).addLineSeries({ color: '#22d3ee', lineWidth: 2 });
-      const sorted = [...data.series].sort((a, b) => a.year - b.year);
+      // lightweight-charts v5 API: series constructors are passed to addSeries().
+      const series = c.addSeries(lib.LineSeries, { color: '#22d3ee', lineWidth: 2 });
+      const sorted = [...points].sort((a, b) => a.year - b.year);
       series.setData(sorted.map((p) => ({ time: `${p.year}-01-01`, value: p.value })));
       chart = c as unknown as { remove: () => void };
     })();

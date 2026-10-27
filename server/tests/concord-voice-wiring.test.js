@@ -202,10 +202,14 @@ describe("chat_agent.do voice block", () => {
 
   it("the macro composes voiceBlock then routeHint, and is unchanged with a hint alone", async () => {
     const { agentExtraSystemBlock } = await import("../domains/chat-agent.js");
-    assert.equal(agentExtraSystemBlock({ voiceBlock: "V", routeHint: "H" }), "\n\nV\n\nH");
-    assert.equal(agentExtraSystemBlock({ routeHint: "H" }), "\n\nH");
+    const { compactVoiceBlock } = await import("../prompts/voice.js");
+    const { routeHint } = await import("../lib/chat/agent-route.js");
+    const V = compactVoiceBlock().trim(), H = routeHint("lookup").trim();
+    assert.equal(agentExtraSystemBlock({ voiceBlock: V, routeHint: H }), `\n\n${V.slice(0, 2000)}\n\n${H.slice(0, 600)}`);
+    assert.equal(agentExtraSystemBlock({ routeHint: H }), `\n\n${H.slice(0, 600)}`);
     assert.equal(agentExtraSystemBlock({}), "");
-    assert.equal(agentExtraSystemBlock({ routeHint: "x".repeat(900) }).length, 602);
+    // Client-supplied (non-server) text is dropped, not passed into the system prompt.
+    assert.equal(agentExtraSystemBlock({ voiceBlock: "V", routeHint: "H" }), "");
   });
 });
 

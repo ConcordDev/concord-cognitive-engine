@@ -760,6 +760,7 @@ function parseNaturalQuery(query) {
 }
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 export default function registerMathActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -836,7 +837,7 @@ export default function registerMathActions(registerLensAction) {
         outliers: { count: outliers.length, values: outliers.slice(0, 20), lowerFence: r(lowerFence), upperFence: r(upperFence) },
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -1011,7 +1012,7 @@ export default function registerMathActions(registerLensAction) {
       default:
         return { ok: false, error: `Unknown operation "${op}". Supported: determinant, transpose, multiply, inverse, rank, eigenvalues` };
     }
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -1114,7 +1115,7 @@ export default function registerMathActions(registerLensAction) {
         rootsDetail: roots ? { values: roots, method: degree <= 2 ? "analytic" : "newton-raphson" } : { note: "Root-finding for degree > 4 not implemented" },
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -1197,7 +1198,7 @@ export default function registerMathActions(registerLensAction) {
           }),
         },
       };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
   });
 
   /**
@@ -1344,7 +1345,7 @@ export default function registerMathActions(registerLensAction) {
         fit: rSquared > 0.9 ? "excellent" : rSquared > 0.7 ? "good" : rSquared > 0.5 ? "moderate" : "poor",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /* ════════════════ symbolic computation (CAS) ════════════════ */

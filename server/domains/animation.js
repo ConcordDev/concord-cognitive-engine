@@ -456,9 +456,11 @@ export default function registerAnimationActions(registerLensAction) {
     const anim = findAnim(s, anAid(ctx), params.animId);
     if (!anim) return { ok: false, error: "animation not found" };
     if (anim.frames.length >= AN_MAX_FRAMES) return { ok: false, error: `frame limit (${AN_MAX_FRAMES}) reached` };
+    const afterId = params.afterFrameId ? String(params.afterFrameId) : "";
+    const afterIdx = afterId ? anim.frames.findIndex((f) => f.id === afterId) : -1;
+    if (afterId && afterIdx < 0) return { ok: false, error: "frame not found" };
     anPushUndoSnapshot(s, anim, "frame-add");
     const frame = blankFrame();
-    const afterIdx = anim.frames.findIndex((f) => f.id === params.afterFrameId);
     if (afterIdx >= 0) anim.frames.splice(afterIdx + 1, 0, frame);
     else anim.frames.push(frame);
     anim.updatedAt = anNow();
@@ -973,7 +975,9 @@ export default function registerAnimationActions(registerLensAction) {
     }
     const color = anHex(params.color) || "#222222";
     const size = anClamp(params.size, 0.5, 300, 6);
-    const startIdx = anim.frames.findIndex((f) => f.id === params.afterFrameId);
+    const afterId = params.afterFrameId ? String(params.afterFrameId) : "";
+    const startIdx = afterId ? anim.frames.findIndex((f) => f.id === afterId) : -1;
+    if (afterId && startIdx < 0) return { ok: false, error: "frame not found" };
     const insertAt = startIdx >= 0 ? startIdx + 1 : anim.frames.length;
     const created = [];
     for (let step = 0; step <= steps; step++) {
@@ -1001,6 +1005,9 @@ export default function registerAnimationActions(registerLensAction) {
     if (!anim.rig.poses || typeof anim.rig.poses !== "object") anim.rig.poses = {};
     return anim.rig;
   }
+  function animHasLayer(anim, layerId) {
+    return anim.frames.some((f) => Array.isArray(f.layers) && f.layers.some((l) => l.id === layerId));
+  }
   const AN_MAX_BONES = 60;
 
   registerLensAction("animation", "rig-bone-add", (ctx, _a, params = {}) => {
@@ -1014,6 +1021,8 @@ export default function registerAnimationActions(registerLensAction) {
     if (parentId && !rig.bones.some((b) => b.id === parentId)) {
       return { ok: false, error: "parent bone not found" };
     }
+    const layerId = params.layerId ? String(params.layerId) : null;
+    if (layerId && !animHasLayer(anim, layerId)) return { ok: false, error: "layer not found" };
     const bone = {
       id: anId("bone"),
       name: anClean(params.name, 50) || `Bone ${rig.bones.length + 1}`,
@@ -1022,7 +1031,7 @@ export default function registerAnimationActions(registerLensAction) {
       y: Math.round(anClamp(params.y, -2, anim.height + 2, anim.height / 2)),
       length: Math.round(anClamp(params.length, 4, 2000, 60)),
       angle: anClamp(params.angle, -360, 360, 0),
-      layerId: params.layerId ? String(params.layerId) : null,
+      layerId,
     };
     rig.bones.push(bone);
     anim.updatedAt = anNow();
@@ -1043,7 +1052,11 @@ export default function registerAnimationActions(registerLensAction) {
     if (params.y != null) bone.y = Math.round(anClamp(params.y, -2, anim.height + 2, bone.y));
     if (params.length != null) bone.length = Math.round(anClamp(params.length, 4, 2000, bone.length));
     if (params.angle != null) bone.angle = anClamp(params.angle, -360, 360, bone.angle);
-    if (params.layerId !== undefined) bone.layerId = params.layerId ? String(params.layerId) : null;
+    if (params.layerId !== undefined) {
+      const nextLayer = params.layerId ? String(params.layerId) : null;
+      if (nextLayer && !animHasLayer(anim, nextLayer)) return { ok: false, error: "layer not found" };
+      bone.layerId = nextLayer;
+    }
     anim.updatedAt = anNow();
     saveAnimState();
     return { ok: true, result: { bone } };

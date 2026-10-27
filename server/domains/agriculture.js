@@ -8,6 +8,7 @@ import { fetchPublicUrl } from "../lib/public-fetch.js";
 import { optNum, notComputed } from "../lib/lens-inputs.js";
 
 import { openMeteoDailyForecast } from "../lib/sourced-inputs.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 export default function registerAgricultureActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -86,7 +87,7 @@ export default function registerAgricultureActions(registerLensAction) {
     };
 
     return { ok: true, result: { fields: suggestions } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -168,7 +169,7 @@ export default function registerAgricultureActions(registerLensAction) {
     artifact.data.yieldAnalysis = report;
 
     return { ok: true, result: report };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -245,7 +246,7 @@ export default function registerAgricultureActions(registerLensAction) {
     artifact.data.equipmentServiceReport = report;
 
     return { ok: true, result: report };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -353,7 +354,7 @@ export default function registerAgricultureActions(registerLensAction) {
     artifact.data.waterSchedule = report;
 
     return { ok: true, result: report };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
   };
   // fetchForecast:true + lat/lng → Open-Meteo daily forecast (high °F, precip in)
   // fills every day the caller didn't supply (backend side of the 7-day gap).
@@ -445,7 +446,7 @@ export default function registerAgricultureActions(registerLensAction) {
     };
     if (artifact.data) artifact.data.lastCropPlan = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -508,7 +509,7 @@ export default function registerAgricultureActions(registerLensAction) {
     };
     if (artifact.data) artifact.data.lastSeasonTrack = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -571,7 +572,7 @@ export default function registerAgricultureActions(registerLensAction) {
     };
     if (artifact.data) artifact.data.lastSoilAnalysis = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -628,7 +629,7 @@ export default function registerAgricultureActions(registerLensAction) {
     };
     if (artifact.data) artifact.data.lastPestId = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -679,7 +680,7 @@ export default function registerAgricultureActions(registerLensAction) {
     };
     if (artifact.data) artifact.data.lastYieldPrediction = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -781,7 +782,7 @@ export default function registerAgricultureActions(registerLensAction) {
     s.fields.get(userId).set(field.id, field);
     saveAgriState();
     return { ok: true, result: { field } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("agriculture", "field-update", (ctx, _artifact, params = {}) => {
@@ -899,7 +900,7 @@ export default function registerAgricultureActions(registerLensAction) {
     if (arr.length > 500) arr.length = 500;
     saveAgriState();
     return { ok: true, result: { pin } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("agriculture", "scout-delete", (ctx, _artifact, params = {}) => {
@@ -1085,7 +1086,7 @@ export default function registerAgricultureActions(registerLensAction) {
     ensureAgBucket(s, "prescriptions", userId).push(rx);
     saveAgriState();
     return { ok: true, result: { prescription: rx } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("agriculture", "prescriptions-approve", (ctx, _a, params = {}) => {
@@ -1438,7 +1439,7 @@ export default function registerAgricultureActions(registerLensAction) {
         grainUtilizationPct: grainCapacity > 0 ? Math.round((grainStored / grainCapacity) * 100) : 0,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── 2026 backlog parity — Climate FieldView feature gaps ──────────
@@ -1601,7 +1602,7 @@ export default function registerAgricultureActions(registerLensAction) {
     if (bucket.length > 300) bucket.splice(0, bucket.length - 300);
     saveAgriState();
     return { ok: true, result: { sync, equipment: eq } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("agriculture", "telemetry-syncs-list", (ctx, _a, params = {}) => {
@@ -1718,7 +1719,7 @@ export default function registerAgricultureActions(registerLensAction) {
       status: netProfit > 0 ? "profitable" : netProfit === 0 ? "breakeven" : "loss",
     };
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── (4) Weather-driven spray-window advisor ────────────────────
@@ -1888,7 +1889,7 @@ export default function registerAgricultureActions(registerLensAction) {
     if (bucket.length > 100) bucket.splice(0, bucket.length - 100);
     saveAgriState();
     return { ok: true, result: { map } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("agriculture", "yield-maps-list", (ctx, _a, params = {}) => {
@@ -2009,7 +2010,7 @@ export default function registerAgricultureActions(registerLensAction) {
           : "No comparable hybrids.",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── (7) Soil-sampling grid generator + lab-result import ───────
@@ -2077,7 +2078,7 @@ export default function registerAgricultureActions(registerLensAction) {
     if (bucket.length > 100) bucket.splice(0, bucket.length - 100);
     saveAgriState();
     return { ok: true, result: { grid } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("agriculture", "soil-grids-list", (ctx, _a, params = {}) => {
@@ -2126,7 +2127,7 @@ export default function registerAgricultureActions(registerLensAction) {
     grid.pointsWithResults = withLab.length;
     saveAgriState();
     return { ok: true, result: { grid, applied, unmatched } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // feed — ingest real World Bank crop-yield indicators as visible DTUs.

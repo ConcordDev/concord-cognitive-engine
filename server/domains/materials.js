@@ -9,6 +9,7 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import { nullDict, ownArray, ownValue } from "../lib/own-lookup.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { ELEMENTS, getElement, categoryGroup } from "../lib/periodic-table-data.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import {
   getDegradationConstants,
   mechanismAvailable,
@@ -89,7 +90,7 @@ export default function registerMaterialsActions(registerLensAction) {
         bestOverall: scores[0]?.name || "N/A",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -158,7 +159,7 @@ export default function registerMaterialsActions(registerLensAction) {
         application: requirements.application || "General purpose",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -219,7 +220,7 @@ export default function registerMaterialsActions(registerLensAction) {
         ],
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -289,7 +290,7 @@ export default function registerMaterialsActions(registerLensAction) {
         estimatedLifespan: riskLevel === "low" ? "20+ years" : riskLevel === "moderate" ? "10-20 years" : riskLevel === "high" ? "3-10 years" : "< 3 years without protection",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -345,7 +346,7 @@ export default function registerMaterialsActions(registerLensAction) {
         warnings,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── Fractography / failure-analysis workflow ───────────────────────
@@ -542,7 +543,7 @@ export default function registerMaterialsActions(registerLensAction) {
     };
     if (c.homologousTemp != null) result.homologousTemperature = Math.round(c.homologousTemp * 100) / 100;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("materials", "fractographyRootCause", (_ctx, artifact, _params) => {
@@ -594,7 +595,7 @@ export default function registerMaterialsActions(registerLensAction) {
         reference: "ASM Handbook Volume 11: Failure Analysis and Prevention",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -724,7 +725,7 @@ export default function registerMaterialsActions(registerLensAction) {
           source: "curated-iupac-nist-crc-periodic-table",
         },
       };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
   });
 
   registerLensAction("materials", "element-detail", (_ctx, _artifact, params = {}) => {
@@ -745,7 +746,7 @@ export default function registerMaterialsActions(registerLensAction) {
           source: "curated-iupac-nist-crc-periodic-table",
         },
       };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
   });
 
   // ─── Saved materials shortlist (Granta MI-shape comparison set) ──────
@@ -802,7 +803,7 @@ export default function registerMaterialsActions(registerLensAction) {
     let list = [...mtSaved(s, mtActor(ctx))];
     if (params.category) list = list.filter((m) => m.category === params.category);
     return { ok: true, result: { materials: list, count: list.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("materials", "shortlist-remove", (ctx, _a, params = {}) => {
@@ -842,7 +843,7 @@ export default function registerMaterialsActions(registerLensAction) {
       return { property: p.label, key: p.key, values: vals, best: best ? best.name : null };
     });
     return { ok: true, result: { materials: list.map((m) => ({ id: m.id, name: m.name, formula: m.formula })), comparison } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("materials", "shortlist-dashboard", (ctx, _a, _params = {}) => {
@@ -852,7 +853,7 @@ export default function registerMaterialsActions(registerLensAction) {
     const byCategory = {};
     for (const m of list) byCategory[m.category] = (byCategory[m.category] || 0) + 1;
     return { ok: true, result: { shortlisted: list.length, byCategory } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── Ashby chart / property plot ────────────────────────────────────

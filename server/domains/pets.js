@@ -3,6 +3,7 @@
 // feeding plans, vet cost analysis, medication reminders, activity scoring.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 export default function registerPetsActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -109,7 +110,7 @@ export default function registerPetsActions(registerLensAction) {
           : "All vaccinations current",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -179,7 +180,7 @@ export default function registerPetsActions(registerLensAction) {
           : "Weight appears healthy — continue current care routine",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -249,7 +250,7 @@ export default function registerPetsActions(registerLensAction) {
         ].filter(Boolean),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -313,7 +314,7 @@ export default function registerPetsActions(registerLensAction) {
         ].filter(Boolean),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -365,7 +366,7 @@ export default function registerPetsActions(registerLensAction) {
         onTrack: reminders.filter(r => r.status === "on-track").length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -424,7 +425,7 @@ export default function registerPetsActions(registerLensAction) {
         ].filter(Boolean),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Real breed APIs (The Dog API + The Cat API) ──
@@ -632,7 +633,7 @@ export default function registerPetsActions(registerLensAction) {
         openReminders: reminders.filter((r) => !r.done).length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Vaccinations ────────────────────────────────────────────────────
@@ -914,7 +915,7 @@ export default function registerPetsActions(registerLensAction) {
         dueSoon: reminders.filter((r) => r.status === "due_soon").length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("pets", "reminder-complete", (ctx, _a, params = {}) => {
@@ -1064,7 +1065,7 @@ export default function registerPetsActions(registerLensAction) {
     plistB(s.bookings, userId).push(booking);
     savePetState();
     return { ok: true, result: { booking } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("pets", "booking-list", (ctx, _a, _params = {}) => {
@@ -1112,7 +1113,7 @@ export default function registerPetsActions(registerLensAction) {
     }
     savePetState();
     return { ok: true, result: { booking } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Dashboard ───────────────────────────────────────────────────────
@@ -1142,7 +1143,7 @@ export default function registerPetsActions(registerLensAction) {
         activeBookings: (s.bookings.get(userId) || []).filter((b) => ["requested", "confirmed", "in_progress"].includes(b.status)).length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── 2026 feature-parity backlog — 11pets / Pawprint ────────────────
@@ -1232,7 +1233,7 @@ export default function registerPetsActions(registerLensAction) {
         filename: `vaccine-schedule-${pday(pnow())}.ics`,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Shareable / portable health record export ───────────────────────
@@ -1296,7 +1297,7 @@ export default function registerPetsActions(registerLensAction) {
     tx.push(`SYMPTOM HISTORY (${symptoms.length})`);
     for (const x of symptoms) tx.push(`  - ${x.date || "-"}: ${x.symptom} [${x.severity}]`);
     return { ok: true, result: { record, text: tx.join("\n"), filename: `health-record-${pet.name.replace(/\s+/g, "-").toLowerCase()}.json` } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Multi-caregiver shared household access ──────────────────────────
@@ -1350,7 +1351,7 @@ export default function registerPetsActions(registerLensAction) {
       }
     }
     return { ok: true, result: { sharedWithMe: shared, count: shared.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("pets", "access-revoke", (ctx, _a, params = {}) => {
@@ -1408,7 +1409,7 @@ export default function registerPetsActions(registerLensAction) {
         milestones: photos.filter((p) => p.milestone).length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("pets", "photo-delete", (ctx, _a, params = {}) => {
@@ -1457,7 +1458,7 @@ export default function registerPetsActions(registerLensAction) {
     });
     savePetState();
     return { ok: true, result: { appointment: appt } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("pets", "appointment-list", (ctx, _a, params = {}) => {
@@ -1482,7 +1483,7 @@ export default function registerPetsActions(registerLensAction) {
         overdue: appts.filter((a) => a.status === "scheduled" && dueState(a.date) === "overdue").length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("pets", "appointment-update", (ctx, _a, params = {}) => {
@@ -1520,7 +1521,7 @@ export default function registerPetsActions(registerLensAction) {
     }
     savePetState();
     return { ok: true, result: { appointment: appt } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Breed-specific care guidance ────────────────────────────────────
@@ -1647,7 +1648,7 @@ export default function registerPetsActions(registerLensAction) {
     s.lostProfiles.set(pet.id, card);
     savePetState();
     return { ok: true, result: { card } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("pets", "lost-card-get", (ctx, _a, params = {}) => {
@@ -1666,7 +1667,7 @@ export default function registerPetsActions(registerLensAction) {
     const card = s.lostProfiles.get(pet.id);
     if (!card) return { ok: false, error: "no lost-pet card for this pet" };
     return { ok: true, result: { card } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("pets", "lost-card-list", (ctx, _a, _params = {}) => {

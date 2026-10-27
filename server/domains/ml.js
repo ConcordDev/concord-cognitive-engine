@@ -276,11 +276,15 @@ export default function registerMlActions(registerLensAction) {
     const userId = mlActor(ctx);
     const name = mlClean(params.name, 160);
     if (!name) return { ok: false, error: "experiment name required" };
+    const datasetId = mlClean(params.datasetId, 200);
+    if (datasetId && !mlList(m.datasets, userId).some((d) => d.id === datasetId)) {
+      return { ok: false, error: "dataset not found" };
+    }
     const exp = {
       id: mlId("exp"),
       name,
       modelId: mlClean(params.modelId, 200),
-      datasetId: mlClean(params.datasetId, 200),
+      datasetId,
       status: "running",
       hyperparams: {
         learningRate: mlNum(params.learningRate, 0.001),
@@ -679,10 +683,14 @@ export default function registerMlActions(registerLensAction) {
   registerLensAction("ml", "space-get", (ctx, _a, params = {}) => {
     const m = getMlState(); if (!m) return { ok: false, error: "STATE unavailable" };
     const userId = mlActor(ctx);
+    const spaceId = mlClean(params.spaceId || params.id, 80);
     const slug = mlClean(params.slug, 80);
-    if (!slug) return { ok: false, error: "slug required" };
+    if (!spaceId && !slug) return { ok: false, error: "slug required" };
     for (const [owner, list] of m.spaces) {
-      const sp = (Array.isArray(list) ? list : []).find((x) => x.url === `/lenses/ml/space/${slug}`);
+      const rows = Array.isArray(list) ? list : [];
+      const sp = spaceId
+        ? rows.find((x) => x.id === spaceId)
+        : rows.find((x) => x.url === `/lenses/ml/space/${slug}`);
       if (!sp) continue;
       if (sp.visibility === "private" && owner !== userId) continue;
       sp.views = (sp.views || 0) + 1;

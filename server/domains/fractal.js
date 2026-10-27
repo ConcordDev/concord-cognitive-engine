@@ -3,6 +3,7 @@
 // computation, self-similarity detection, and structural complexity measurement.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 export default function registerFractalActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -199,7 +200,7 @@ export default function registerFractalActions(registerLensAction) {
         },
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -362,7 +363,7 @@ export default function registerFractalActions(registerLensAction) {
         bestMotif: motifs.length > 0 ? motifs.sort((a, b) => a.distance - b.distance)[0] : null,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -541,7 +542,7 @@ export default function registerFractalActions(registerLensAction) {
         compositeScore: r((normalizedLZ + normalizedEntropy) / 2),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ──────────────────────────────────────────────────────────────────────

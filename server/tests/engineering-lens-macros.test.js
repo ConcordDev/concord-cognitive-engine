@@ -526,9 +526,10 @@ describe('EngineeringActionPanel — bench macro field contracts', () => {
     assert.equal(r.result.conversion, 'mm → in');
   });
 
-  it('unitConvert validation: unsupported pair → guidance, never a crash', () => {
+  it('unitConvert validation: unsupported pair → invalid_input, never a crash', () => {
     const r = run('unitConvert', { value: 1, from: 'mm', to: 'kg' });
-    assert.equal(r.ok, true);
-    assert.ok(r.result.error || r.result.supported);
+    assert.equal(r.ok, false);
+    assert.equal(r.error, 'invalid_input');
+    assert.equal(r.reason, 'unsupported_conversion');
   });
 });

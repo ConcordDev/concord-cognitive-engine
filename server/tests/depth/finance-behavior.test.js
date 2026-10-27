@@ -637,11 +637,12 @@ describe("finance — subscriptions + dividends-calendar + envelopes/household (
   it("dividends-calendar: quarterly amount = value × yield / 4 per holding", async () => {
     const dctx = await depthCtx("finance-topup8-divcal");
     // value 10000 * 0.04 = 400 annual → 100 per quarter
-    await lensRun("finance", "holdings-add", { params: { symbol: "SCHD", shares: 100, price: 100, dividendYield: 0.04 } }, dctx);
+    const payDates = [30, 120, 210, 300].map((daysAhead) => new Date(Date.now() + daysAhead * 86400000).toISOString().slice(0, 10));
+    await lensRun("finance", "holdings-add", { params: { symbol: "SCHD", shares: 100, price: 100, dividendYield: 0.04, dividendPayDates: payDates } }, dctx);
     const r = await lensRun("finance", "dividends-calendar", { params: { days: 365 } }, dctx);
     assert.equal(r.ok, true);
     const schdEvents = r.result.events.filter((e) => e.symbol === "SCHD");
-    assert.ok(schdEvents.length >= 1);
+    assert.equal(schdEvents.length, 4);
     assert.ok(schdEvents.every((e) => e.amount === 100));
     assert.ok(schdEvents.every((e) => e.kind === "dividend"));
   });
@@ -834,16 +835,16 @@ describe("finance — household-get + rollover-rule list/delete (uncovered)", ()
 describe("finance — earnings-calendar + retirement-monte-carlo (uncovered)", () => {
   it("earnings-calendar: one deterministic-dated event per held ticker within the horizon", async () => {
     const ectx = await depthCtx("finance-cov-earn");
-    await lensRun("finance", "holdings-add", { params: { symbol: "AAPL", shares: 10, price: 100 } }, ectx);
-    await lensRun("finance", "holdings-add", { params: { symbol: "MSFT", shares: 5, price: 200 } }, ectx);
+    const aaplDate = new Date(Date.now() + 15 * 86400000).toISOString().slice(0, 10);
+    const msftDate = new Date(Date.now() + 40 * 86400000).toISOString().slice(0, 10);
+    await lensRun("finance", "holdings-add", { params: { symbol: "AAPL", shares: 10, price: 100, earningsDate: aaplDate, earningsSession: "after_market", estimateEps: 2.1 } }, ectx);
+    await lensRun("finance", "holdings-add", { params: { symbol: "MSFT", shares: 5, price: 200, earningsDate: msftDate, earningsSession: "before_market", estimateEps: 3.4 } }, ectx);
     const r = await lensRun("finance", "earnings-calendar", { params: { days: 90 } }, ectx);
     assert.equal(r.ok, true);
     assert.equal(r.result.days, 90);
-    // exactly one event per holding
     assert.equal(r.result.events.length, 2);
     assert.ok(r.result.events.some((e) => e.symbol === "AAPL"));
     assert.ok(r.result.events.some((e) => e.symbol === "MSFT"));
-    // each event carries a before/after-market session + a numeric EPS estimate
     assert.ok(r.result.events.every((e) => ["after_market", "before_market"].includes(e.when)));
     assert.ok(r.result.events.every((e) => typeof e.estimateEps === "number"));
     // events are sorted ascending by date

@@ -305,7 +305,12 @@ export default function registerCreativeWritingActions(registerLensAction) {
     const userId = cwAid(ctx);
     if (!cwProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
     let chapterId = params.chapterId ? String(params.chapterId) : null;
-    if (chapterId && !(s.chapters.get(userId) || []).some((c) => c.id === chapterId)) chapterId = null;
+    if (chapterId) {
+      const chapter = (s.chapters.get(userId) || []).find((c) => c.id === chapterId);
+      if (!chapter || chapter.projectId !== String(params.projectId)) {
+        return { ok: false, error: "chapter not found" };
+      }
+    }
     const existing = (s.scenes.get(userId) || []).filter((x) => x.projectId === params.projectId);
     const scene = {
       id: cwId("scn"), projectId: String(params.projectId), chapterId,

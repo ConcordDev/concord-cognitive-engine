@@ -171,6 +171,13 @@ describe("docs — inline comments + suggestions", () => {
     call("comment-delete", ctxA, { pageId: p.id, commentId: c.result.comment.id });
     assert.equal(call("comment-list", ctxA, { pageId: p.id }).result.count, 0);
   });
+  it("refuses a comment on a block that is not on the page", () => {
+    const p = newPage();
+    const missing = call("comment-add", ctxA, { pageId: p.id, blockId: "blk_missing", text: "where?" });
+    assert.equal(missing.ok, false);
+    assert.equal(missing.error, "block not found");
+    assert.equal(call("comment-list", ctxA, { pageId: p.id }).result.count, 0);
+  });
   it("accepting a suggestion overwrites its target block", () => {
     const p = newPage();
     const blk = call("block-add", ctxA, { pageId: p.id, text: "old text" }).result.block;

@@ -1,4 +1,5 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 export default function registerServicesActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("services", "scheduleOptimize", (ctx, artifact, _params) => {
@@ -111,7 +112,7 @@ export default function registerServicesActions(registerLensAction) {
         atRiskClients: atRisk,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("services", "commissionCalc", (ctx, artifact, params) => {
@@ -183,7 +184,7 @@ export default function registerServicesActions(registerLensAction) {
         tiers,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("services", "dailyCloseReport", (ctx, artifact, params) => {
@@ -236,7 +237,7 @@ export default function registerServicesActions(registerLensAction) {
         generatedAt: new Date().toISOString(),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("services", "supplyCheck", (ctx, artifact, _params) => {

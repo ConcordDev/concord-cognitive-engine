@@ -34,6 +34,15 @@ describe("insurance.policy-* CRUD", () => {
   it("rejects missing carrier or policy#", () => {
     assert.equal(call("policy-add", ctxA, { carrier: "Geico" }).ok, false);
   });
+  it("refuses a policy kind outside the allowlist and defaults only when omitted", () => {
+    const bad = call("policy-add", ctxA, { carrier: "Geico", policyNumber: "Z", kind: "spaceship" });
+    assert.equal(bad.ok, false);
+    assert.equal(bad.error, "invalid kind");
+    const omitted = call("policy-add", ctxA, { carrier: "Geico", policyNumber: "OK" });
+    assert.equal(omitted.ok, true);
+    assert.equal(omitted.result.policy.kind, "auto");
+    assert.equal(call("policy-list", ctxA, {}).result.policies.length, 1);
+  });
 });
 
 describe("insurance.claim-* CRUD", () => {
@@ -47,6 +56,12 @@ describe("insurance.claim-* CRUD", () => {
   });
   it("rejects empty description", () => {
     assert.equal(call("claim-file", ctxA, { carrier: "X", description: "" }).ok, false);
+  });
+  it("refuses a claim, reminder, or asset kind outside the allowlist", () => {
+    assert.equal(call("claim-file", ctxA, { carrier: "Geico", description: "x", kind: "spaceship" }).error, "invalid kind");
+    assert.equal(call("reminder-create", ctxA, { title: "Pay", kind: "spaceship" }).error, "invalid kind");
+    assert.equal(call("asset-add", ctxA, { name: "Boat", kind: "spaceship" }).error, "invalid kind");
+    assert.equal(call("claim-list", ctxA, {}).result.claims.length, 0);
   });
 });
 
@@ -163,6 +178,24 @@ describe("insurance.beneficiaries + assets", () => {
     call("asset-add", ctxA, { name: "Honda Civic", kind: "vehicle", value: 22000 });
     call("asset-add", ctxA, { name: "Engagement ring", kind: "jewelry", value: 8000 });
     assert.equal(call("asset-list", ctxA, {}).result.totalValue, 30000);
+  });
+
+  it("asset-add refuses a policy the caller does not own", () => {
+    const missing = call("asset-add", ctxA, { name: "Ring", policyId: "pol_missing" });
+    assert.equal(missing.ok, false);
+    assert.equal(missing.error, "policy not found");
+    assert.equal(call("asset-list", ctxA, {}).result.assets.length, 0);
+    const theirs = newPolicy(ctxB);
+    const foreign = call("asset-add", ctxA, { name: "Ring", policyId: theirs.id });
+    assert.equal(foreign.ok, false);
+    assert.equal(foreign.error, "policy not found");
+    const mine = newPolicy(ctxA);
+    const ok = call("asset-add", ctxA, { name: "Ring", policyId: mine.id });
+    assert.equal(ok.ok, true);
+    assert.equal(ok.result.asset.policyId, mine.id);
+    const loose = call("asset-add", ctxA, { name: "Watch" });
+    assert.equal(loose.ok, true);
+    assert.equal(loose.result.asset.policyId, null);
   });
 });
 

@@ -233,17 +233,28 @@ export default function registerProjectsActions(registerLensAction) {
     if (!project) return { ok: false, error: "project not found" };
     const title = pjClean(params.title, 240);
     if (!title) return { ok: false, error: "task title required" };
-    project.seq += 1;
     let assigneeId = params.assigneeId ? String(params.assigneeId) : null;
-    if (assigneeId && !(s.members.get(userId) || []).some((m) => m.id === assigneeId)) assigneeId = null;
+    if (assigneeId) {
+      const member = (s.members.get(userId) || []).find((m) => m.id === assigneeId);
+      if (!member || (member.projectId && member.projectId !== project.id)) {
+        return { ok: false, error: "assignee not found" };
+      }
+    }
     let sprintId = params.sprintId ? String(params.sprintId) : null;
-    if (sprintId && !(s.sprints.get(userId) || []).some((sp) => sp.id === sprintId)) sprintId = null;
+    if (sprintId) {
+      const sprint = (s.sprints.get(userId) || []).find((sp) => sp.id === sprintId);
+      if (!sprint || sprint.projectId !== project.id) return { ok: false, error: "sprint not found" };
+    }
     let milestoneId = params.milestoneId ? String(params.milestoneId) : null;
-    if (milestoneId && !(s.milestones.get(userId) || []).some((m) => m.id === milestoneId)) milestoneId = null;
+    if (milestoneId) {
+      const milestone = (s.milestones.get(userId) || []).find((m) => m.id === milestoneId);
+      if (!milestone || milestone.projectId !== project.id) return { ok: false, error: "milestone not found" };
+    }
     let parentId = params.parentId ? String(params.parentId) : null;
     if (parentId && !(s.tasks.get(userId) || []).some((t) => t.id === parentId && t.projectId === project.id)) {
-      parentId = null;
+      return { ok: false, error: "parent task not found" };
     }
+    project.seq += 1;
     const siblings = (s.tasks.get(userId) || []).filter((t) => t.projectId === project.id);
     const task = {
       id: pjId("tsk"), projectId: project.id,

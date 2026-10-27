@@ -363,6 +363,12 @@ export function routeHint(route) {
   return ROUTE_HINT[route] || "";
 }
 
+/** True only for a route hint this server wrote (an exact ROUTE_HINT value). */
+export function isServerRouteHint(text) {
+  const t = typeof text === "string" ? text.trim() : "";
+  return !!t && Object.values(ROUTE_HINT).some((h) => typeof h === "string" && h.trim() === t);
+}
+
 /** Pull web sources out of agent tool calls for the chat envelope. */
 // Textbook asks: OpenStax by name, "a textbook source", or a named law/constant.
 const TEXTBOOK_RE = /\b(?:openstax|textbooks?|text book)\b|\b(?:young['’]?s modulus|bulk modulus|shear modulus|specific heat|latent heat|thermal conductivity|coefficient of (?:friction|thermal expansion|restitution)|bernoulli['’]?s|archimedes['’]? principle|le ch[aâ]telier|ideal gas law|ohm['’]?s law|hooke['’]?s law|kirchhoff['’]?s|newton['’]?s (?:first|second|third) law|faraday['’]?s law|snell['’]?s law|stefan[- ]boltzmann)\b/i;

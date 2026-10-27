@@ -366,6 +366,19 @@ describe("board — calendar surfaces labels + checkbox custom field", () => {
   });
 });
 
+describe("board — card-create refuses an unknown column", () => {
+  it("does not attach the card to the first column", () => {
+    const board = call("board-create", ctxA, { name: "Project X" }).result.board;
+    const r = call("card-create", ctxA, { boardId: board.id, columnId: "col_missing", title: "Orphan" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /column not found/);
+    assert.equal(call("board-detail", ctxA, { id: board.id }).result.board.cards.length, 0);
+    const omitted = call("card-create", ctxA, { boardId: board.id, title: "Default column" });
+    assert.equal(omitted.ok, true);
+    assert.equal(omitted.result.card.columnId, board.columns[0].id);
+  });
+});
+
 describe("board — automation rejects unknown trigger column", () => {
   it("rejects an automation rule for a column not on the board", () => {
     const { board } = seedBoardWithCard(ctxA);

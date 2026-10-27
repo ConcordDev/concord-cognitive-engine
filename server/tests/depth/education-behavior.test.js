@@ -351,8 +351,14 @@ describe("education — courses catalog + lessons + assignments (wave 17 top-up)
     assert.equal(bio.result.courses[0].id, id);
   });
 
-  it("courses-create: invalid level falls back to beginner; bogus kind falls back to course", async () => {
-    const c = await lensRun("education", "courses-create", { params: { title: "Defaults", level: "wizard", kind: "nonsense" } }, ctx);
+  it("courses-create: invalid level/kind are refused; omitted ones default to beginner/course", async () => {
+    // input-validation wave: unknown enums are a 400 invalid_input naming the field
+    const bad = await lensRun("education", "courses-create", { params: { title: "Defaults", level: "wizard" } }, ctx);
+    assert.equal(bad.result.error, "invalid_input");
+    assert.equal(bad.result.field, "level");
+    const bad2 = await lensRun("education", "courses-create", { params: { title: "Defaults", kind: "nonsense" } }, ctx);
+    assert.equal(bad2.result.error, "invalid_input");
+    const c = await lensRun("education", "courses-create", { params: { title: "Defaults" } }, ctx);
     assert.equal(c.result.course.level, "beginner");
     assert.equal(c.result.course.kind, "course");
   });

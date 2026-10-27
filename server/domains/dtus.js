@@ -179,6 +179,7 @@ function normalizeDtu(d) {
 }
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 export default function registerDtusActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -259,7 +260,7 @@ export default function registerDtusActions(registerLensAction) {
         oldestAncestor: oldest ? (typeof oldest === "object" ? (oldest.title || oldest.id) : oldest) : null,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -350,7 +351,7 @@ export default function registerDtusActions(registerLensAction) {
         ].filter(Boolean),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -420,7 +421,7 @@ export default function registerDtusActions(registerLensAction) {
           : 0,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -491,7 +492,7 @@ export default function registerDtusActions(registerLensAction) {
           : `DTU is correctly classified at ${currentTier} tier.`,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -574,7 +575,7 @@ export default function registerDtusActions(registerLensAction) {
         isUnique: duplicates.length === 0 && possibleDuplicates.length === 0,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -648,7 +649,7 @@ export default function registerDtusActions(registerLensAction) {
         },
       };
     } catch (e) {
-      return { ok: false, error: `citationGraph failed: ${e?.message || e}` };
+      return handlerFailure(e);
     }
   });
 
@@ -697,7 +698,7 @@ export default function registerDtusActions(registerLensAction) {
         },
       };
     } catch (e) {
-      return { ok: false, error: `facets failed: ${e?.message || e}` };
+      return handlerFailure(e);
     }
   });
 

@@ -80,9 +80,11 @@ describe("billing.plan + subscription lifecycle", () => {
 
 describe("billing.usage — metered billing with rate tiers", () => {
   it("records usage and computes graduated tier charge", () => {
-    const rec = call("usage-record", ctxA, {}, { subscriptionId: "sub_1", metric: "api_calls", quantity: 50000 });
+    const plan = call("plan-create", ctxA, {}, { name: "Metered", amount: 10 }).result.plan;
+    const subId = call("subscription-create", ctxA, {}, { planId: plan.id }).result.subscription.id;
+    const rec = call("usage-record", ctxA, {}, { subscriptionId: subId, metric: "api_calls", quantity: 50000 });
     assert.equal(rec.ok, true);
-    const sum = call("usage-summary", ctxA, {}, { subscriptionId: "sub_1" });
+    const sum = call("usage-summary", ctxA, {}, { subscriptionId: subId });
     assert.equal(sum.ok, true);
     assert.equal(sum.result.totalQuantity, 50000);
     assert.ok(sum.result.totalCharge > 0);
@@ -92,6 +94,9 @@ describe("billing.usage — metered billing with rate tiers", () => {
   it("rejects non-positive quantity and missing subscription", () => {
     assert.equal(call("usage-record", ctxA, {}, { quantity: 1 }).ok, false);
     assert.equal(call("usage-record", ctxA, {}, { subscriptionId: "s", quantity: 0 }).ok, false);
+    const missing = call("usage-record", ctxA, {}, { subscriptionId: "sub_missing", quantity: 10 });
+    assert.equal(missing.ok, false);
+    assert.equal(missing.error, "subscription not found");
   });
 });
 
@@ -139,6 +144,12 @@ describe("billing.dunning — failed payment workflow", () => {
 
   it("rejects opening a case with no amount", () => {
     assert.equal(call("dunning-open", ctxA, {}, { amount: 0 }).ok, false);
+  });
+
+  it("refuses a dunning case pointed at a missing subscription or invoice", () => {
+    assert.equal(call("dunning-open", ctxA, {}, { amount: 10, subscriptionId: "sub_missing" }).error, "subscription not found");
+    assert.equal(call("dunning-open", ctxA, {}, { amount: 10, invoiceId: "inv_missing" }).error, "invoice not found");
+    assert.equal(call("dunning-list", ctxA, {}, {}).result.openCount, 0);
   });
 });
 
@@ -194,6 +205,7 @@ describe("billing.invoice + revenue-analytics", () => {
     const r = call("invoice-create", ctxA, {}, { customerName: "Acme", amount: 120 });
     assert.equal(r.ok, true);
     assert.equal(r.result.invoice.amount, 120);
+    assert.equal(call("invoice-create", ctxA, {}, { amount: 10, subscriptionId: "sub_missing" }).error, "subscription not found");
   });
 
   it("computes MRR/ARR, cohorts and expansion", () => {

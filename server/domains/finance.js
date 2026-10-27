@@ -16,6 +16,44 @@ import { runPython } from "../lib/python-sandbox.js";
 import { pythonExecEnabled } from "./code.js";
 
 import { needNums, notComputed } from "../lib/lens-inputs.js";
+
+function finIsoDate(value) {
+  if (value == null || value === "") return null;
+  const s = String(value).trim().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  const [y, m, d] = s.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return null;
+  return s;
+}
+
+function finEps(value) {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function finPayDates(value) {
+  if (!Array.isArray(value)) return [];
+  const out = [];
+  for (const item of value) {
+    const day = finIsoDate(item);
+    if (day && !out.includes(day)) out.push(day);
+    if (out.length >= 24) break;
+  }
+  return out;
+}
+
+/** Seeded unit interval. Same seed replays the same retirement paths. */
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function next() {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 import { assertPayable } from "../lib/money-guards.js";
 import { finiteOrNull, boundedNum, moneyOrNull, badNumber, MAX_MONEY } from "../lib/finite-input.js";
 import { bindWave1 } from "../lib/lens-input-schemas-wave1.js";
@@ -433,14 +471,17 @@ export default function registerFinanceActions(registerLensAction) {
   try {
     const _req = needNums(params, ["currentAge>0", "retireAge>0", "expectedReturn", "volatility", "annualSpendInRetirement"]);
     if (_req.missing.length) return notComputed(_req.missing, "Retirement simulation needs ages, expected annual return, volatility and retirement spending — none are assumed (previously 35/67/7%/15%/$60k).");
-    const currentAge = Math.max(18, Math.min(90, Number(params.currentAge) || 35));
-    const retireAge = Math.max(currentAge + 1, Math.min(100, Number(params.retireAge) || 67));
+    const currentAge = Math.max(18, Math.min(90, Number(params.currentAge)));
+    const retireAge = Math.max(currentAge + 1, Math.min(100, Number(params.retireAge)));
     const currentSavings = Math.max(0, Number(params.currentSavings) || 0);
     const annualContribution = Math.max(0, Number(params.annualContribution) || 0);
-    const mu = Math.max(-0.5, Math.min(0.5, Number(params.expectedReturn) || 0.07));
-    const sigma = Math.max(0.01, Math.min(0.6, Number(params.volatility) || 0.15));
-    const annualSpend = Math.max(0, Number(params.annualSpendInRetirement) || 60000);
+    const mu = Math.max(-0.5, Math.min(0.5, Number(params.expectedReturn)));
+    const sigma = Math.max(0, Math.min(0.6, Number(params.volatility)));
+    const annualSpend = Math.max(0, Number(params.annualSpendInRetirement));
     const paths = Math.max(100, Math.min(5000, Number(params.paths) || 1000));
+    const seedRaw = Number(params.seed);
+    const seed = Number.isInteger(seedRaw) ? (seedRaw >>> 0) : 1;
+    const rand = mulberry32(seed);
     const livesTo = 95;
     const years = livesTo - currentAge;
 
@@ -455,7 +496,8 @@ export default function registerFinanceActions(registerLensAction) {
       let shortfallYear = null;
       for (let y = 0; y < years; y++) {
         // Sample annual return: N(mu, sigma²) via Box-Muller
-        const u1 = Math.random(), u2 = Math.random();
+        const u1 = rand() || 1e-12;
+        const u2 = rand();
         const z = Math.sqrt(-2 * Math.log(u1 || 0.0001)) * Math.cos(2 * Math.PI * u2);
         const r = mu + sigma * z;
         const age = currentAge + y;
@@ -493,6 +535,8 @@ export default function registerFinanceActions(registerLensAction) {
         trajectories: sampledPaths.map(p => p.map(v => Math.round(v))),
         years,
         paths,
+        seed,
+        method: "seeded_geometric_brownian",
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -1009,8 +1053,21 @@ Generate the summary.`;
         feeCategory: String(params.feeCategory || "large_blend"),
         expenseRatio: params.expenseRatio != null ? Number(params.expenseRatio) : null,
         dividendYield: Number(params.dividendYield) || 0,
+        dividendPayDates: finPayDates(params.dividendPayDates),
+        earningsDate: finIsoDate(params.earningsDate),
+        earningsSession: params.earningsSession === "before_market" || params.earningsSession === "after_market" ? params.earningsSession : null,
+        estimateEps: finEps(params.estimateEps),
         addedAt: new Date().toISOString(),
       });
+    }
+    if (existing) {
+      if (Array.isArray(params.dividendPayDates)) existing.dividendPayDates = finPayDates(params.dividendPayDates);
+      if (params.earningsDate != null) existing.earningsDate = finIsoDate(params.earningsDate);
+      if (params.earningsSession != null) {
+        existing.earningsSession = params.earningsSession === "before_market" || params.earningsSession === "after_market" ? params.earningsSession : null;
+      }
+      if (params.estimateEps != null) existing.estimateEps = finEps(params.estimateEps);
+      if (params.dividendYield != null) existing.dividendYield = Number(params.dividendYield) || 0;
     }
     saveStateIfAvailable();
     return { ok: true, result: { holdings } };
@@ -1078,50 +1135,59 @@ Generate the summary.`;
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const holdings = state.holdings.get(userId) || [];
     const days = Math.max(30, Math.min(365, Number(params.days) || 90));
-    const today = new Date();
+    const today = new Date().toISOString().slice(0, 10);
+    const todayMs = Date.parse(`${today}T00:00:00Z`);
     const events = [];
+    let yieldWithoutDates = 0;
     for (const h of holdings) {
       if (!h.dividendYield || h.dividendYield <= 0) continue;
+      const dates = finPayDates(h.dividendPayDates);
+      if (!dates.length) { yieldWithoutDates += 1; continue; }
       const annualDiv = h.value * h.dividendYield;
-      const quarterly = annualDiv / 4;
-      const offsetDays = (Math.abs(hashStr(h.symbol)) % 90);
-      for (let q = 0; q < 4; q++) {
-        const dayOffset = offsetDays + q * 90;
-        if (dayOffset > days) break;
-        const date = new Date(today.getTime() + dayOffset * 86400000);
+      const each = annualDiv / dates.length;
+      for (const date of dates) {
+        const dayOffset = (Date.parse(`${date}T00:00:00Z`) - todayMs) / 86400000;
+        if (dayOffset < 0 || dayOffset > days) continue;
         events.push({
-          date: date.toISOString().slice(0, 10),
+          date,
           symbol: h.symbol,
-          amount: Math.round(quarterly * 100) / 100,
+          amount: Math.round(each * 100) / 100,
           kind: "dividend",
+          amountBasis: "holding_yield",
         });
       }
     }
     events.sort((a, b) => a.date.localeCompare(b.date));
-    return { ok: true, result: { events, days } };
+    const unavailable = events.length === 0 && yieldWithoutDates > 0
+      ? "no dividend pay dates on file"
+      : null;
+    return { ok: true, result: { events, days, unavailable } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
-  // ── Earnings calendar (deterministic synthetic dates per ticker) ──
+  // Earnings dates come from the holding. A missing date is not invented.
 
   registerLensAction("finance", "earnings-calendar", (ctx, _a, params = {}) => {
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const holdings = state.holdings.get(userId) || [];
     const days = Math.max(30, Math.min(180, Number(params.days) || 90));
-    const today = new Date();
-    const events = holdings.map(h => {
-      const offset = Math.abs(hashStr(`${h.symbol}-earnings`)) % days;
-      const date = new Date(today.getTime() + offset * 86400000);
-      return {
-        date: date.toISOString().slice(0, 10),
-        symbol: h.symbol,
-        name: h.name,
-        when: offset % 2 === 0 ? "after_market" : "before_market",
-        estimateEps: Math.round((1 + Math.abs(hashStr(h.symbol)) % 500 / 100) * 100) / 100,
-      };
-    }).sort((a, b) => a.date.localeCompare(b.date));
-    return { ok: true, result: { events, days } };
+    const today = new Date().toISOString().slice(0, 10);
+    const todayMs = Date.parse(`${today}T00:00:00Z`);
+    const events = [];
+    let undated = 0;
+    for (const h of holdings) {
+      const date = finIsoDate(h.earningsDate);
+      if (!date) { undated += 1; continue; }
+      const dayOffset = (Date.parse(`${date}T00:00:00Z`) - todayMs) / 86400000;
+      if (dayOffset < 0 || dayOffset > days) continue;
+      const when = h.earningsSession === "before_market" || h.earningsSession === "after_market" ? h.earningsSession : null;
+      const estimateEps = finEps(h.estimateEps);
+      events.push({ date, symbol: h.symbol, name: h.name, when, estimateEps });
+    }
+    events.sort((a, b) => a.date.localeCompare(b.date));
+    const unavailable = events.length === 0 && undated > 0 ? "no earnings dates on file" : null;
+    return { ok: true, result: { events, days, unavailable } };
   });
 
   // ── Spending insights (MoM trends + anomalies) ─────────────────
@@ -2180,12 +2246,6 @@ function extractJsonFin(text) {
   const last = body.lastIndexOf("}");
   if (first < 0 || last <= first) return null;
   try { return JSON.parse(body.slice(first, last + 1)); } catch { return null; }
-}
-
-function hashStr(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
-  return h;
 }
 
 // applyRules — runs a user's pre-sorted categorisation rules against a

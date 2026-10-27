@@ -19,6 +19,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { SpikingNetwork, HONEST_BOUNDARY } from "../lib/simulation/spiking-network.js";
 import { applySTDP, pruneSynapses, growSynapses } from "../lib/simulation/stdp.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 
 // ─── Persistent per-user model store ─────────────────────────────────────────
 // System-dynamics models authored in the visual builder persist here keyed by
@@ -452,7 +453,7 @@ export default function registerSimActions(registerLensAction) {
     const p75 = results[Math.floor(trials * 0.75)];
     const p95 = results[Math.floor(trials * 0.95)];
     return { ok: true, result: { trials, formula, seeded, seed, mean: Math.round(mean * 1000) / 1000, stddev: Math.round(Math.sqrt(variance) * 1000) / 1000, min: Math.round(results[0] * 1000) / 1000, max: Math.round(results[trials - 1] * 1000) / 1000, percentiles: { p5: Math.round(p5 * 1000) / 1000, p25: Math.round(p25 * 1000) / 1000, p50: Math.round(p50 * 1000) / 1000, p75: Math.round(p75 * 1000) / 1000, p95: Math.round(p95 * 1000) / 1000 }, confidenceInterval90: { lower: Math.round(p5 * 1000) / 1000, upper: Math.round(p95 * 1000) / 1000 } } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("sim", "sensitivityAnalysis", (ctx, artifact, _params) => {
@@ -495,7 +496,7 @@ export default function registerSimActions(registerLensAction) {
       return { parameter: field, baseValue: baseVal, perturbation: `±${perturbation}%`, outputUp: Math.round(upOutput * 1000) / 1000, outputDown: Math.round(downOutput * 1000) / 1000, sensitivity: Math.round(Math.abs(elasticity) * 10) / 10, direction: elasticity > 0 ? "positive" : elasticity < 0 ? "negative" : "neutral" };
     }).sort((a, b) => b.sensitivity - a.sensitivity);
     return { ok: true, result: { outputField, baselineOutput: Math.round(baselineOutput * 1000) / 1000, perturbationPercent: perturbation, sensitivity, mostSensitive: sensitivity[0]?.parameter, leastSensitive: sensitivity[sensitivity.length - 1]?.parameter } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ════════════════════════════════════════════════════════════════════════

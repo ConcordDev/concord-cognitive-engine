@@ -704,10 +704,14 @@ export default function registerForestryActions(registerLensAction) {
     if (!name) return { ok: false, error: "project name required" };
     const acres = Math.max(0, frNum(params.acres));
     if (acres <= 0) return { ok: false, error: "acres must be > 0" };
+    const standId = frClean(params.standId, 80) || null;
+    if (standId && !frStands(s, frActor(ctx)).some((st) => st.id === standId)) {
+      return { ok: false, error: "stand not found" };
+    }
     const seedlingsPerAcre = Math.max(1, Math.round(frNum(params.seedlingsPerAcre) || 435));
     const project = {
       id: frId("rpl"), name,
-      standId: frClean(params.standId, 80) || null,
+      standId,
       species: SPECIES.includes(params.species) ? params.species : "mixed",
       acres,
       seedlingsPerAcre,
@@ -794,9 +798,13 @@ export default function registerForestryActions(registerLensAction) {
     if (tons <= 0) return { ok: false, error: "tonsCO2 must be > 0" };
     const vintage = Math.round(frNum(params.vintageYear)) || new Date().getFullYear();
     if (vintage < 1990 || vintage > new Date().getFullYear() + 1) return { ok: false, error: "vintageYear out of range" };
+    const standId = frClean(params.standId, 80) || null;
+    if (standId && !frStands(s, frActor(ctx)).some((st) => st.id === standId)) {
+      return { ok: false, error: "stand not found" };
+    }
     const credit = {
       id: frId("crd"), projectName,
-      standId: frClean(params.standId, 80) || null,
+      standId,
       registry: frClean(params.registry, 60) || "self-registered",
       vintageYear: vintage,
       tonsCO2: Math.round(tons * 100) / 100,

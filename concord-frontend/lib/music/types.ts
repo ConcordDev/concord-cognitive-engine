@@ -409,7 +409,8 @@ export interface BeatListing {
   key: string;
   genre: string;
   tags: string[];
-  licenses: { tier: ArtifactTier; price: number; currency: string }[];
+  // Live rows use the artistry license keys (basic, premium, unlimited, exclusive, free).
+  licenses: { tier: string; price: number; currency: string }[];
   ownerId: string;
   ownerName?: string;
   previewAssetId?: string;

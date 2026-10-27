@@ -150,7 +150,10 @@ export default function registerDailyActions(registerLensAction) {
     const body = dyClean(params.body, 20000);
     if (!body) return { ok: false, error: "entry body required" };
     const journals = ensureDefaultJournal(s, userId);
-    const journalId = journals.some((j) => j.id === params.journalId) ? params.journalId : journals[0].id;
+    const askedJournal = params.journalId != null && String(params.journalId) !== "";
+    const journal = askedJournal ? journals.find((j) => j.id === params.journalId) : null;
+    if (askedJournal && !journal) return { ok: false, error: "journal not found" };
+    const journalId = journal ? journal.id : journals[0].id;
     const date = /^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : dyToday();
     const mood = params.mood != null && Number.isFinite(Number(params.mood))
       ? Math.max(1, Math.min(5, Math.round(Number(params.mood)))) : null;

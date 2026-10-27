@@ -2,6 +2,7 @@
 // Domain actions for logistics: route optimization, HOS compliance, vehicle maintenance, inventory audit.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 export default function registerLogisticsActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -102,7 +103,7 @@ export default function registerLogisticsActions(registerLensAction) {
     artifact.data.optimizedRoute = result;
 
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -189,7 +190,7 @@ export default function registerLogisticsActions(registerLensAction) {
     artifact.data.hosReport = report;
 
     return { ok: true, result: report };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -257,7 +258,7 @@ export default function registerLogisticsActions(registerLensAction) {
     artifact.data.vehicleMaintenanceReport = report;
 
     return { ok: true, result: report };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -321,7 +322,7 @@ export default function registerLogisticsActions(registerLensAction) {
         shipments: results,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -376,7 +377,7 @@ export default function registerLogisticsActions(registerLensAction) {
         maintenanceDueCount,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -433,7 +434,7 @@ export default function registerLogisticsActions(registerLensAction) {
         alerts,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -504,7 +505,7 @@ export default function registerLogisticsActions(registerLensAction) {
     artifact.data.inventoryAudit = report;
 
     return { ok: true, result: report };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── Parity-sprint macros ──
@@ -1122,7 +1123,7 @@ export default function registerLogisticsActions(registerLensAction) {
         if (msg.startsWith("shipengine") || msg.startsWith("easypost")) return { ok: false, error: msg };
         return { ok: false, error: `carrier rates unreachable: ${msg}` };
       }
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
   });
 
   // ── Pickup scheduling ─────────────────────────────────────────
@@ -1278,7 +1279,7 @@ export default function registerLogisticsActions(registerLensAction) {
     ensureLogBucket(s, "dockAppointments", userId).push(apt);
     saveLogState();
     return { ok: true, result: { appointment: apt } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("logistics", "dock-appointments-cancel", (ctx, _a, params = {}) => {
@@ -1474,7 +1475,7 @@ export default function registerLogisticsActions(registerLensAction) {
         loadsBooked: loads.filter(l => l.status === "booked").length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ════════════════════════════════════════════════════════════════
@@ -1524,7 +1525,7 @@ export default function registerLogisticsActions(registerLensAction) {
     list.push(track);
     saveLogState();
     return { ok: true, result: { track } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("logistics", "gps-ping", (ctx, _a, params = {}) => {
@@ -1583,7 +1584,7 @@ export default function registerLogisticsActions(registerLensAction) {
         progressPct: track.progressPct,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("logistics", "gps-track-get", (ctx, _a, params = {}) => {
@@ -1670,7 +1671,7 @@ export default function registerLogisticsActions(registerLensAction) {
         factors, scoredAt: new Date().toISOString(),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── [M] VRP — multi-stop optimization with capacity constraints ─
@@ -1767,7 +1768,7 @@ export default function registerLogisticsActions(registerLensAction) {
         generatedAt: new Date().toISOString(),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── [M] Carrier scorecard — on-time %, damage, tender acceptance ─
@@ -1856,7 +1857,7 @@ export default function registerLogisticsActions(registerLensAction) {
     }).sort((a, b) => b.grade - a.grade);
 
     return { ok: true, result: { scorecards: cards, generatedAt: new Date().toISOString() } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── [S] Geofence / milestone auto-events (departed, arrived, dwell) ─
@@ -1948,7 +1949,7 @@ export default function registerLogisticsActions(registerLensAction) {
     }
     saveLogState();
     return { ok: true, result: { shipmentId, evaluatedAt: at, milestones: emitted } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("logistics", "milestones-list", (ctx, _a, params = {}) => {
@@ -2017,7 +2018,7 @@ export default function registerLogisticsActions(registerLensAction) {
     ensureLogBucket(s, "freightInvoices", userId).push(invoice);
     saveLogState();
     return { ok: true, result: { invoice } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("logistics", "freight-invoice-dispute", (ctx, _a, params = {}) => {

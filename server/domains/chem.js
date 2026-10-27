@@ -1090,6 +1090,7 @@ export default function registerChemActions(registerLensAction) {
         if (tok.v === "(") branchStack.push(prev);
         else prev = branchStack.pop();
       } else if (tok.t === "ring") {
+        if (prev < 0) throw new Error("ring digit before atom");
         if (ringMap[tok.v]) {
           const { atomIdx, order } = ringMap[tok.v];
           const o = Math.max(order, pendingBond);
@@ -1162,7 +1163,7 @@ export default function registerChemActions(registerLensAction) {
     try {
       graph = smilesToGraph(smiles);
     } catch (e) {
-      return { ok: false, error: `could not parse SMILES: ${e.message}` };
+      return { ok: false, error: "invalid_input", reason: "invalid_smiles" };
     }
     if (graph.atoms.length === 0) return { ok: false, error: "no atoms found in SMILES" };
     const { counts, rings } = graphToFormula(graph);
@@ -1263,7 +1264,7 @@ export default function registerChemActions(registerLensAction) {
     try {
       graph = smilesToGraph(smiles);
     } catch (e) {
-      return { ok: false, error: `could not parse SMILES: ${e.message}` };
+      return { ok: false, error: "invalid_input", reason: "invalid_smiles" };
     }
     if (graph.atoms.length === 0) return { ok: false, error: "no atoms in SMILES" };
     const coords = layout2D(graph);
@@ -1294,7 +1295,7 @@ export default function registerChemActions(registerLensAction) {
     if (!smiles) return { ok: false, error: "smiles required" };
     let graph;
     try { graph = smilesToGraph(smiles); }
-    catch (e) { return { ok: false, error: `invalid SMILES: ${e.message}` }; }
+    catch (e) { return { ok: false, error: "invalid_input", reason: "invalid_smiles" }; }
     const { counts } = graphToFormula(graph);
     const s = chemState();
     if (!s.chemStructures.has(userId)) s.chemStructures.set(userId, new Map());

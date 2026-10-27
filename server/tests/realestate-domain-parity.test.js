@@ -563,12 +563,16 @@ describe("realestate.agents-* + agent-message + messages-list", () => {
 });
 
 describe("realestate.open-houses-upcoming", () => {
-  it("returns one event per for_sale listing sorted by date", () => {
-    call("listings-add", ctxA, { address: "a", price: 500000, status: "for_sale" });
-    call("listings-add", ctxA, { address: "b", price: 600000, status: "sold" });
+  it("returns a for_sale listing only when it has an open-house date", () => {
+    const day = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+    call("listings-add", ctxA, { address: "a", price: 500000, status: "for_sale", openHouse: { date: day, startTime: "11:00", endTime: "13:00" } });
+    call("listings-add", ctxA, { address: "b", price: 600000, status: "sold", openHouse: { date: day, startTime: "11:00", endTime: "13:00" } });
+    call("listings-add", ctxA, { address: "c", price: 450000, status: "for_sale" });
     const r = call("open-houses-upcoming", ctxA, { days: 14 });
     assert.equal(r.result.events.length, 1);
     assert.equal(r.result.events[0].address, "a");
+    assert.equal(r.result.events[0].date, day);
+    assert.equal(r.result.events[0].startTime, "11:00");
   });
 });
 
@@ -743,8 +747,14 @@ describe("realestate.property-detail (tax history + lot + similar)", () => {
     call("listings-add", ctxA, { address: "far", price: 1500000, sqft: 6000, beds: 6, baths: 5 });
     const r = call("property-detail", ctxA, { listingId: a.result.listing.id });
     assert.equal(r.ok, true);
-    assert.equal(r.result.taxHistory.length, 5);
-    assert.ok(r.result.taxHistory.every(t => t.taxPaid > 0 && t.assessedValue > 0));
+    assert.equal(r.result.taxHistory.length, 0);
+    assert.equal(r.result.taxHistoryUnavailable, "no assessed value or mill rate on this listing");
+    const taxed = call("listings-add", ctxA, { address: "taxed", price: 500000, sqft: 2000, assessedValue: 400000, annualTax: 4800, taxYear: 2026 });
+    const withTax = call("property-detail", ctxA, { listingId: taxed.result.listing.id });
+    assert.equal(withTax.result.taxHistory.length, 1);
+    assert.equal(withTax.result.taxHistory[0].taxPaid, 4800);
+    assert.equal(withTax.result.taxHistory[0].assessedValue, 400000);
+    assert.equal(withTax.result.taxHistory[0].effectiveRatePct, 1.2);
     assert.ok(r.result.lot.lotAcres > 0);
     assert.equal(r.result.lot.pricePerSqft, 250);
     assert.ok(r.result.similarHomes.length >= 1);

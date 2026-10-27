@@ -215,14 +215,18 @@ describe("classroom — CRUD round-trips + validation rejections (shared ctx)", 
   let ctx;
   before(async () => { ctx = await depthCtx("classroom-crud"); });
 
-  it("assignment-create: points are clamped to [0, 1000]", async () => {
+  it("assignment-create: points outside [0, 1000] are refused, not clamped", async () => {
+    // input-validation wave: out-of-range points are a 400 invalid_input naming the field
     const over = await lensRun("classroom", "assignment-create",
       { params: { title: "Big", cohortId: 2, points: 5000 } }, ctx);
-    assert.equal(over.result.assignment.points, 1000);
+    assert.equal(over.result.error, "invalid_input");
+    assert.equal(over.result.field, "points");
     const under = await lensRun("classroom", "assignment-create",
       { params: { title: "Neg", cohortId: 2, points: -7 } }, ctx);
-    // Number(-7) is truthy-finite; Math.max(0, min(1000, -7)) = 0
-    assert.equal(under.result.assignment.points, 0);
+    assert.equal(under.result.error, "invalid_input");
+    const ok = await lensRun("classroom", "assignment-create",
+      { params: { title: "Max", cohortId: 2, points: 1000 } }, ctx);
+    assert.equal(ok.result.assignment.points, 1000);
   });
 
   it("material-add → material-list → material-delete: round-trips then is gone", async () => {

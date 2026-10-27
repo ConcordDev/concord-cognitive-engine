@@ -1523,9 +1523,13 @@ export default function registerGameDesignActions(registerLensAction) {
     if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
     const name = gdClean(params.name, 120);
     if (!name) return { ok: false, error: "animation name required" };
+    let entityId = params.entityId ? String(params.entityId) : null;
+    if (entityId && !(s.entities.get(userId) || []).some((e) => e.id === entityId && e.gameId === String(params.gameId))) {
+      return { ok: false, error: "entity not found" };
+    }
     const anim = {
       id: gdId("anm"), gameId: String(params.gameId), name,
-      entityId: params.entityId ? String(params.entityId) : null,
+      entityId,
       assetId: params.assetId ? String(params.assetId) : null,
       loop: params.loop == null ? true : !!params.loop,
       fps: Math.round(gdClamp(params.fps, 1, 60, 12)),
@@ -1633,9 +1637,13 @@ export default function registerGameDesignActions(registerLensAction) {
     if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
     const name = gdClean(params.name, 120);
     if (!name) return { ok: false, error: "behavior name required" };
+    let entityId = params.entityId ? String(params.entityId) : null;
+    if (entityId && !(s.entities.get(userId) || []).some((e) => e.id === entityId && e.gameId === String(params.gameId))) {
+      return { ok: false, error: "entity not found" };
+    }
     const behavior = {
       id: gdId("bhv"), gameId: String(params.gameId), name,
-      entityId: params.entityId ? String(params.entityId) : null,
+      entityId,
       rules: [],
       createdAt: gdNow(),
     };

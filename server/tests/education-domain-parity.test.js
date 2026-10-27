@@ -60,6 +60,13 @@ describe("education.flashcards-* (decks + cards + SM-2 review)", () => {
     assert.equal(call("flashcards-card-create", ctxA, { front: "x", back: "y" }).ok, false);
   });
 
+  it("refuses a card for a deck that does not exist", () => {
+    const missing = call("flashcards-card-create", ctxA, { deckId: "deck_missing", front: "f", back: "b" });
+    assert.equal(missing.ok, false);
+    assert.equal(missing.error, "deck not found");
+    assert.equal(call("flashcards-due", ctxA, {}).result.total, 0);
+  });
+
   it("SM-2 review: good rating advances interval, ease drifts, due moves to future", () => {
     const d = call("flashcards-deck-create", ctxA, { title: "x" });
     const c = call("flashcards-card-create", ctxA, { deckId: d.result.deck.id, front: "f", back: "b" });

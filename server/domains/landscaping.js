@@ -821,10 +821,14 @@ export default function registerLandscapingActions(registerLensAction) {
     const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const plant = lsClean(params.plant, 120);
     if (!plant) return { ok: false, error: "plant name required" };
+    const bedId = lsClean(params.bedId, 80);
+    if (bedId && !lsBeds(s, lsActor(ctx)).some((b) => b.id === bedId)) {
+      return { ok: false, error: "bed not found" };
+    }
     const entry = {
       id: lsId("diary"),
       plant,
-      bedId: lsClean(params.bedId, 80) || "",
+      bedId: bedId || "",
       date: lsClean(params.date, 30) || new Date().toISOString().slice(0, 10),
       health: HEALTH_RATINGS.includes(params.health) ? params.health : "healthy",
       heightCm: Math.max(0, lsNum(params.heightCm)) || null,
