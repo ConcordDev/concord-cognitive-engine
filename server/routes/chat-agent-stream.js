@@ -120,6 +120,7 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions, retriev
       return;
     }
 
+    let dtuNote = null;
     if (isConKay && typeof retrieveDtuContext === "function") {
       try {
         const got = await Promise.race([
@@ -127,7 +128,9 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions, retriev
           new Promise((r) => { setTimeout(() => r(null), CONKAY_DTU_TIMEOUT_MS); }),
         ]);
         const block = conkayDtuBlock(got?.text);
-        if (block) extraSystemBlock = `${extraSystemBlock || ""}\n\n${block}`;
+        // As a note next to the question (like Chat's tool route), not deep in
+        // the tool-heavy system prompt, where the model skipped it for web_search.
+        if (block) dtuNote = { role: "system", content: block };
         console.log(`[chat-agent-stream] dtu_context surface=${surface} hits=${got?.count ?? 0} consolidated=${got?.consolidated ?? 0} archived=${got?.archived ?? 0}`);
       } catch { /* retrieval is additive */ }
     }
@@ -140,7 +143,7 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions, retriev
         message: (isConKay && typeof plan?.message === "string" && plan.message) || message,
         runMacro,
         lensActions,
-        history,
+        history: dtuNote ? [...(Array.isArray(history) ? history : []), dtuNote] : history,
         opts: { maxTurns: resolveAgentMaxTurns({ requested: maxTurns }), slot, extraSystemBlock, surface, ...(plan?.fallbackCall ? { fallbackCall: plan.fallbackCall } : {}) },
         // Real-time bridge — fires as each turn/tool call actually
         // completes inside the loop, not after the whole thing finishes.
