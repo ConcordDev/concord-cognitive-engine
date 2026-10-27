@@ -6289,6 +6289,25 @@ function reconcileIndices() {
 // Run index reconciliation every 4 hours
 throttledInterval(() => reconcileIndices(), 4 * 60 * 60 * 1000, "index_reconciliation");
 _unrefInTest(setTimeout(() => reconcileIndices(), 120000)); // 2 min after startup
+// One-time consolidated-title cleanup (2026-10-27): nested "MEGA — MEGA —",
+// "MEGA:" prefixes, regulars titled "MEGA —"/"HYPER —", duplicate titles.
+// Applied through STATE.dtus.set (the app's write-through path), logged to
+// ~/concord/run/mega-title-cleanup-20261027.json first; skipped if that log
+// exists. CONCORD_TITLE_CLEANUP_UNDO=1 restores from the log;
+// CONCORD_TITLE_CLEANUP_20261027=0 disables.
+_unrefInTest(setTimeout(async () => {
+  if (process.env.CONCORD_TITLE_CLEANUP_20261027 === "0" || process.env.NODE_ENV === "test") return;
+  try {
+    const { runTitleCleanup } = await import("./lib/consolidation-title-cleanup.js");
+    const _fs = await import("node:fs");
+    const _os = await import("node:os");
+    const logPath = process.env.CONCORD_TITLE_CLEANUP_LOG || path.join(_os.homedir(), "concord", "run", "mega-title-cleanup-20261027.json");
+    const r = runTitleCleanup({ store: STATE.dtus, logPath, undo: process.env.CONCORD_TITLE_CLEANUP_UNDO === "1", fs: _fs.default || _fs, log: structuredLog });
+    structuredLog("info", "mega_title_cleanup_result", r);
+  } catch (e) {
+    structuredLog("error", "mega_title_cleanup_failed", { error: String(e?.message || e) });
+  }
+}, 150000));
 
 // ---- End semantic query expansion ----
 
