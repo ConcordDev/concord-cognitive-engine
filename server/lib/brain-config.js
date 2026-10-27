@@ -479,6 +479,8 @@ const _endpointInflight = new Map();
 const _endpointFailures = new Map();
 /** @type {Map<string, number>} endpoint URL → last health probe (epoch ms) */
 const _endpointLastHealthy = new Map();
+/** @type {Map<string, { ok: number, fail: number }>} endpoint URL → finished calls */
+const _endpointCompleted = new Map();
 /** @type {Map<string, number>} brain name → round-robin cursor */
 const _rrCursor = new Map();
 
@@ -577,12 +579,16 @@ export function noteEndpointFinish(url, { ok = true } = {}) {
   if (!url) return;
   const cur = _endpointInflight.get(url) || 0;
   _endpointInflight.set(url, Math.max(0, cur - 1));
+  const done = _endpointCompleted.get(url) || { ok: 0, fail: 0 };
   if (ok) {
     _endpointFailures.set(url, 0);
     _endpointLastHealthy.set(url, Date.now());
+    done.ok += 1;
   } else {
     _endpointFailures.set(url, (_endpointFailures.get(url) || 0) + 1);
+    done.fail += 1;
   }
+  _endpointCompleted.set(url, done);
 }
 
 /** Diagnostic snapshot — used by /api/admin/brain-endpoints. */
@@ -591,12 +597,17 @@ export function getEndpointStats() {
   const config = getActiveBrainConfig();
   for (const [brainName, cfg] of Object.entries(config)) {
     const urls = Array.isArray(cfg.urls) && cfg.urls.length ? cfg.urls : [cfg.url];
-    out[brainName] = urls.map((url) => ({
-      url,
-      inflight: _endpointInflight.get(url) || 0,
-      failures: _endpointFailures.get(url) || 0,
-      lastHealthyAt: _endpointLastHealthy.get(url) || 0,
-    }));
+    out[brainName] = urls.map((url) => {
+      const done = _endpointCompleted.get(url) || { ok: 0, fail: 0 };
+      return {
+        url,
+        inflight: _endpointInflight.get(url) || 0,
+        failures: _endpointFailures.get(url) || 0,
+        lastHealthyAt: _endpointLastHealthy.get(url) || 0,
+        completedOk: done.ok,
+        completedFail: done.fail,
+      };
+    });
   }
   return out;
 }
@@ -606,6 +617,7 @@ export function _resetEndpointStats() {
   _endpointInflight.clear();
   _endpointFailures.clear();
   _endpointLastHealthy.clear();
+  _endpointCompleted.clear();
   _rrCursor.clear();
 }
 

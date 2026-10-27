@@ -37,3 +37,50 @@ export function getFlagNumber(name, defaultVal) {
   const n = Number(raw);
   return Number.isFinite(n) ? n : defaultVal;
 }
+
+// Kill-switches the server actually branches on. The default matches the
+// getFlag() call site. Anything else named FF_* is off unless the env sets it.
+const KNOWN_FLAG_DEFAULTS = Object.freeze({
+  FF_DX_SOCKET: 1,
+  FF_MACRO_BILLING: 1,
+  FF_MOUNTS_RIDING: 1,
+  FF_MOUNT_CARE: 1,
+  FF_MOUNT_GEAR: 1,
+  FF_MOUNT_EVO: 1,
+  FF_MOUNT_COMBAT: 1,
+});
+
+function flagBit(raw, defaultVal) {
+  if (raw == null || String(raw).trim() === "") return defaultVal ? 1 : 0;
+  const v = String(raw).trim().toLowerCase();
+  if (TRUTHY.has(v)) return 1;
+  if (FALSY.has(v)) return 0;
+  return defaultVal ? 1 : 0;
+}
+
+/**
+ * Public on/off view of FF_* flags. The raw env value is never returned.
+ * `source` is "env" only when the variable is set to a non-empty string.
+ *
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {Record<string, { enabled: boolean, source: "env"|"default" }>}
+ */
+export function listPublicFlags(env = process.env) {
+  const names = new Set(Object.keys(KNOWN_FLAG_DEFAULTS));
+  for (const key of Object.keys(env)) {
+    if (/^FF_[A-Z0-9_]+$/.test(key)) names.add(key);
+  }
+  const flags = {};
+  for (const name of [...names].sort()) {
+    const def = Object.prototype.hasOwnProperty.call(KNOWN_FLAG_DEFAULTS, name)
+      ? KNOWN_FLAG_DEFAULTS[name]
+      : 0;
+    const raw = env[name];
+    const set = raw != null && String(raw).trim() !== "";
+    flags[name] = {
+      enabled: flagBit(raw, def) === 1,
+      source: set ? "env" : "default",
+    };
+  }
+  return flags;
+}
