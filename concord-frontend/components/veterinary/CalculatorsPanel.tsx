@@ -75,9 +75,7 @@ function TriageCalc() {
 
   const run = async () => {
     setBusy(true);
-    const r = await lensRun('veterinary', 'triageAssess', {
-      data: { species, age: Number(age), symptoms },
-    });
+    const r = await lensRun('veterinary', 'triageAssess', { species, age: Number(age), symptoms });
     setBusy(false);
     if (r.data.ok) setResult(r.data.result as CalcResult);
   };
@@ -159,9 +157,7 @@ function WeightCalc() {
 
   const run = async () => {
     setBusy(true);
-    const r = await lensRun('veterinary', 'weightCheck', {
-      data: { species, breed, weight: Number(weight) },
-    });
+    const r = await lensRun('veterinary', 'weightCheck', { species, breed, weight: Number(weight) });
     setBusy(false);
     if (r.data.ok) setResult(r.data.result as CalcResult);
   };
@@ -223,9 +219,7 @@ function VaccineCalc() {
 
   const run = async () => {
     setBusy(true);
-    const r = await lensRun('veterinary', 'vaccineSchedule', {
-      data: { species, age: Number(age) },
-    });
+    const r = await lensRun('veterinary', 'vaccineSchedule', { species, age: Number(age) });
     setBusy(false);
     if (r.data.ok) setResult(r.data.result as CalcResult);
   };
@@ -295,7 +289,7 @@ function CostCalc() {
   const run = async () => {
     setBusy(true);
     const r = await lensRun('veterinary', 'costEstimate', {
-      data: { procedures: selected.map((type) => ({ type })) },
+      procedures: selected.map((type) => ({ type })),
     });
     setBusy(false);
     if (r.data.ok) setResult(r.data.result as CalcResult);
