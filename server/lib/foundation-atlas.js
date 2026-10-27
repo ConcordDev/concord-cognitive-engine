@@ -112,6 +112,10 @@ const _atlasState = {
   // Reconstructed map tiles: key = `${lat_min}_${lng_min}_${alt_bottom}`
   tiles: new Map(),
 
+  // Layer summaries from the previous reconstruction of each tile.
+  // detectChanges diffs these. There is no voxel grid to compare.
+  priorLayers: new Map(),
+
   // Temporal change records
   changes: [],
 
@@ -317,7 +321,7 @@ export function reconstructTile(coordinates, pathModels, options = {}) {
   }
   if (bestResolution === Infinity) bestResolution = TOMO_CONSTANTS.VOXEL_SIZE_CM;
 
-  // Generate layer data (simulated — in production this would be actual voxel grids)
+  // Layer summaries from the path models. This store has no voxel grid.
   const layerSummaries = {};
   for (const layer of ALL_LAYERS) {
     layerSummaries[layer] = {
@@ -331,6 +335,7 @@ export function reconstructTile(coordinates, pathModels, options = {}) {
 
   const tileKey = `${lat_min}_${lng_min}_${altRange.bottom}`;
   const existingTile = _atlasState.tiles.get(tileKey);
+  if (existingTile?.layers) _atlasState.priorLayers.set(tileKey, existingTile.layers);
   const version = existingTile ? existingTile.version + 1 : 1;
 
   const tile = {
@@ -441,10 +446,28 @@ function classifyDominantMaterial(pathModels, layer) {
  */
 export function detectChanges(tileKey) {
   const tile = _atlasState.tiles.get(tileKey);
-  if (!tile || tile.version < 2) return null;
+  const prior = _atlasState.priorLayers.get(tileKey);
+  if (!tile || tile.version < 2 || !prior) return null;
 
-  // In a full implementation, we'd compare voxel grids.
-  // Here we simulate by tracking metadata changes.
+  // Compare the layer summaries the last two reconstructions stored.
+  // A material change counts. An impact-only change counts once the
+  // mean absolute delta reaches CHANGE_DETECTION_THRESHOLD.
+  const layers_affected = [];
+  let impactSum = 0;
+  for (const layer of ALL_LAYERS) {
+    const cur = tile.layers?.[layer];
+    const prev = prior[layer];
+    if (!cur || !prev) continue;
+    const impactDelta = Math.abs((Number(cur.avgImpact) || 0) - (Number(prev.avgImpact) || 0));
+    const materialChanged = cur.dominantMaterial !== prev.dominantMaterial;
+    if (!materialChanged && impactDelta < TOMO_CONSTANTS.CHANGE_DETECTION_THRESHOLD) continue;
+    layers_affected.push(layer);
+    impactSum += impactDelta;
+  }
+  if (layers_affected.length === 0) return null;
+
+  const magnitude = clamp(impactSum / layers_affected.length, 0, 1);
+  const structural = layers_affected.some((layer) => layer !== LAYERS.ATMOSPHERE);
   const change = {
     id: uid("change"),
     tileKey,
@@ -453,21 +476,18 @@ export function detectChanges(tileKey) {
     coordinates: tile.coordinates,
     detectedAt: nowISO(),
     confidence: tile.confidence,
-    layers_affected: ALL_LAYERS.filter(() => Math.random() > 0.6), // simulated
-    magnitude: clamp(Math.random() * 0.5, 0, 1), // simulated
-    type: "structural", // could be: structural, atmospheric, seasonal, activity
+    layers_affected,
+    magnitude,
+    type: structural ? "structural" : "atmospheric",
+    compared: "layer_summary",
   };
 
-  if (change.magnitude >= TOMO_CONSTANTS.CHANGE_DETECTION_THRESHOLD) {
-    _atlasState.changes.push(change);
-    if (_atlasState.changes.length > 1000) {
-      _atlasState.changes = _atlasState.changes.slice(-800);
-    }
-    _atlasState.stats.changesDetected++;
-    return change;
+  _atlasState.changes.push(change);
+  if (_atlasState.changes.length > 1000) {
+    _atlasState.changes = _atlasState.changes.slice(-800);
   }
-
-  return null;
+  _atlasState.stats.changesDetected++;
+  return change;
 }
 
 // ── Step 6: Multi-Frequency Fusion ──────────────────────────────────────────
@@ -865,6 +885,7 @@ export function _resetAtlasState() {
   _atlasState.initialized = false;
   _atlasState.signalPaths = new Map();
   _atlasState.tiles = new Map();
+  _atlasState.priorLayers = new Map();
   _atlasState.changes = [];
   _atlasState.coverage = {
     totalNodes: 0, totalPaths: 0, totalTiles: 0,
