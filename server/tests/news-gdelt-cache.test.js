@@ -220,3 +220,20 @@ describe("GDELT failure handling", () => {
     assert.equal(r.result.closing, "That's the briefing. Read any story in full from the Headlines tab.");
   });
 });
+
+describe("GDELT backoff with a queue", () => {
+  it("requests queued behind a 429 do not hit GDELT and do not stretch the backoff", async () => {
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; return errResponse(429); };
+    const results = await Promise.all(
+      ["tech", "science", "business"].map((category) => call("headlines", { category })),
+    );
+    assert.equal(calls, 1);
+    assert.ok(results.every((r) => r.ok === true && r.result.degraded === true && r.result.degradedReason === "rate_limited"));
+    // One 429 → one 60 s window, not 60 → 120 → 240.
+    globalThis.fetch = async () => { calls++; return okResponse(["back"]); };
+    const during = await call("headlines", { category: "tech" });
+    assert.equal(calls, 1);
+    assert.equal(during.result.degraded, true);
+  });
+});

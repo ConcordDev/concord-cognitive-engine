@@ -105,9 +105,11 @@ async function gdeltRequest(query) {
 // at least `spacingMs` after the previous start.
 function enqueueGdelt(task) {
   const run = gdeltTail.then(async () => {
-    const wait = gdeltLastStart + gdelt.spacingMs - gdelt.now();
-    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-    gdeltLastStart = gdelt.now();
+    if (gdelt.now() >= gdeltBackoff.until) {
+      const wait = gdeltLastStart + gdelt.spacingMs - gdelt.now();
+      if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+      if (gdelt.now() >= gdeltBackoff.until) gdeltLastStart = gdelt.now();
+    }
     return task();
   });
   gdeltTail = run.catch(() => {});
@@ -118,7 +120,16 @@ function enqueueGdelt(task) {
 // category share one promise. Rejects with GdeltError.
 function fetchGdeltCategory(category) {
   if (gdeltInflight.has(category)) return gdeltInflight.get(category);
-  const promise = enqueueGdelt(() => gdeltRequest(CATEGORY_QUERIES[category]))
+  // A request that was queued before a 429 landed must not hit GDELT again
+  // inside the backoff window; it fails with the backoff reason instead.
+  const promise = enqueueGdelt(() => {
+    if (gdelt.now() < gdeltBackoff.until) {
+      const skipped = new GdeltError(gdeltBackoff.reason || "rate_limited", "skipped during GDELT backoff");
+      skipped.skipped = true;
+      throw skipped;
+    }
+    return gdeltRequest(CATEGORY_QUERIES[category]);
+  })
     .then((articles) => {
       gdeltCache.set(category, { articles, fetchedAt: gdelt.now() });
       gdeltBackoff.until = 0;
@@ -126,6 +137,7 @@ function fetchGdeltCategory(category) {
       gdeltBackoff.reason = null;
       return articles;
     }, (err) => {
+      if (err?.skipped) throw err; // backoff already set; don't double it again
       const reason = err instanceof GdeltError ? err.reason : `upstream_error: ${err?.message || "network"}`;
       gdeltBackoff.ms = gdeltBackoff.ms ? Math.min(gdeltBackoff.ms * 2, gdelt.backoffMaxMs) : gdelt.backoffStartMs;
       gdeltBackoff.until = gdelt.now() + gdeltBackoff.ms;
