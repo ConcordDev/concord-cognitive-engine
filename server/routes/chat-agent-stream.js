@@ -39,11 +39,13 @@ import { resolveAgentMaxTurns } from "../lib/chat-reply-policy.js";
 // (hot + archived, megas/hypers first), injected by server.js.
 export const CONKAY_DTU_TIMEOUT_MS = 3500;
 
-export function conkayDtuBlock(lines) {
+export function conkayDtuBlock(lines, { strong = false } = {}) {
   const text = String(lines || "").trim();
   if (!text) return "";
   return "CONCORD KNOWLEDGE (retrieved DTUs; MEGA and HYPER entries are consolidated syntheses of many DTUs and are listed first). "
-    + "When the question is about Concord's DTUs or one of these answers it, answer from it without web_search and name the DTU title you used. Do not invent DTUs.\n" + text.slice(0, 6000);
+    + "When the question is about Concord's DTUs or one of these answers it, answer from it without web_search and name the DTU title you used. Do not invent DTUs.\n"
+    + (strong ? "These notes strongly match the question. Answer from these notes first; only search the web if they don't contain it.\n" : "")
+    + text.slice(0, 6000);
 }
 
 export function mountChatAgentStream({ app, auth, runMacro, lensActions, retrieveDtuContext = null }) {
@@ -128,11 +130,11 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions, retriev
           Promise.resolve(retrieveDtuContext(message, userId)),
           new Promise((r) => { setTimeout(() => r(null), CONKAY_DTU_TIMEOUT_MS); }),
         ]);
-        const block = conkayDtuBlock(got?.text);
+        const block = conkayDtuBlock(got?.text, { strong: !!got?.strong });
         // As a note next to the question (like Chat's tool route), not deep in
         // the tool-heavy system prompt, where the model skipped it for web_search.
         if (block) dtuNote = trustedNote(block);
-        console.log(`[chat-agent-stream] dtu_context surface=${surface} hits=${got?.count ?? 0} consolidated=${got?.consolidated ?? 0} archived=${got?.archived ?? 0}`);
+        console.log(`[chat-agent-stream] dtu_context surface=${surface} hits=${got?.count ?? 0} consolidated=${got?.consolidated ?? 0} archived=${got?.archived ?? 0} strong=${!!got?.strong}`);
       } catch { /* retrieval is additive */ }
     }
 
