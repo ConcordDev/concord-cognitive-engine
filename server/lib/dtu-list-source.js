@@ -77,6 +77,23 @@ export function sidecarCandidatePageIsComplete(body, offset = 0) {
  * sidecar after every write. mine/tag/signed-in search do fall back,
  * because the sidecar drops a brand-new private row and has no tag param.
  */
+/**
+ * True when this sidecar body may be missing visible megas/hypers.
+ * #1542 exempted tier mega/hyper from the system-source filter in
+ * userVisibleDTUs (they inherit source/creatorType "system" from the members
+ * they absorb). A sidecar binary built before that hides every one of them,
+ * so GET /api/dtus?tier=mega returned 0 whenever the sidecar served the list
+ * (and the in-memory path, used under event-loop lag, returned them). A
+ * sidecar with the same exemption marks its list bodies consolidatedVisible.
+ * Only lists that can contain megas/hypers (tier any/mega/hyper, not mine)
+ * are affected.
+ */
+export function sidecarMayHideConsolidated(body, tier = "") {
+  if (body && body.consolidatedVisible === true) return false;
+  const t = String(tier || "").toLowerCase();
+  return t === "any" || t === "mega" || t === "hyper";
+}
+
 export function shouldFallbackFromSidecarList(body, {
   q = "",
   tag = "",
@@ -84,10 +101,14 @@ export function shouldFallbackFromSidecarList(body, {
   viewer = "",
   lastWriteAt = 0,
   now = Date.now(),
+  tier = "",
 } = {}) {
   const query = String(q || "").trim();
   const tagSet = String(tag || "").trim();
   const mineOnly = mine === true || mine === "true";
+  // An owner vault (mine) holds no ownerless system megas, so an old sidecar
+  // loses nothing there.
+  if (!mineOnly && sidecarMayHideConsolidated(body, tier)) return true;
   const viewerId = viewer && viewer !== "anon" ? String(viewer) : "";
   const items = Array.isArray(body?.dtus) ? body.dtus : [];
   const wrote = Number(lastWriteAt) || 0;

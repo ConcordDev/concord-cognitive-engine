@@ -48,6 +48,16 @@ Rows whose `data` isn't a full DTU object with an `id` are skipped — mirrors
 `rehydrateFromSQLite`, so the sidecar's corpus is exactly the one Node holds in
 memory (old body-only rows are dead weight for both).
 
+## Megas and hypers
+
+`user_visible` exempts tier mega/hyper from the system-source/creatorType
+filter, like `_isHiddenSystemDtu` in server.js (#1542); scope "system" and
+visibility "internal" still hide every tier (#1543). List bodies carry
+`consolidatedVisible: true`. Node falls back to the in-memory list for
+tier any/mega/hyper (not `mine`) when a body lacks that flag, so a binary
+built before this change cannot hide them. Rebuild and restart the sidecar to
+get the fast path back for those lists.
+
 ## Correctness gate
 
 `proof/run-proof.mjs` boots the real server, seeds a **privacy-filter scenario

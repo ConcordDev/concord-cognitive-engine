@@ -27084,6 +27084,8 @@ register("dtu", "list", async (ctx, input) => {
           viewer: userId || "",
           lastWriteAt: globalThis._dtuLastWriteAt || 0,
           now: Date.now(),
+          // A sidecar without the mega/hyper exemption (#1542) drops them.
+          tier,
         });
         // Domain and kind are not sidecar params. They run in narrowListedDtus
         // after the sidecar has already counted. Using that count makes
