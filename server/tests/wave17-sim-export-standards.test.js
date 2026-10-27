@@ -195,3 +195,59 @@ describe("POST /api/standards/check", () => {
     assert.equal(r.body.ok, false);
   });
 });
+
+describe("POST /api/world/sim/export — SQL-only DTUs (grounding_*)", () => {
+  let app, dtuStore, queries;
+  const rows = {
+    grounding_pub: { id: "grounding_pub", title: "Grounded fact", visibility: "public", tier: "regular", content: "Water boils at 100 C at sea level.", created_at: "2026-01-01T00:00:00Z" },
+    grounding_bob_private: { id: "grounding_bob_private", title: "Bob only", owner_user_id: "bob", visibility: "private", content: "secret" },
+    grounding_novis: { id: "grounding_novis", title: "No visibility column", owner_user_id: "bob", content: "x" },
+    grounding_bob_personal: { id: "grounding_bob_personal", title: "P", owner_user_id: "bob", visibility: "public", data: JSON.stringify({ scope: "personal" }) },
+    in_both: { id: "in_both", title: "SQL copy", visibility: "public", content: "sql" },
+  };
+  const db = {
+    prepare(sql) {
+      return { get(id) { queries.push({ sql, id }); return rows[id]; } };
+    },
+  };
+  before(async () => {
+    queries = [];
+    dtuStore = new Map([["in_both", mkDtu("in_both", "bob", { visibility: "public", title: "STATE copy" })]]);
+    const e = express();
+    e.use(express.json({ limit: "1mb" }));
+    e.use(userMw);
+    e.use("/api/world", createWorldRoutes({ requireAuth: (_q, _r, n) => n(), dtuStore, db }));
+    app = await listen(e);
+  });
+  after(async () => { await app.close(); });
+  const exp = (user, dtuId, format) => post(app, "/api/world/sim/export", user, { dtuId, format });
+
+  it("a public SQL-only DTU exports through the shadow hydrator without entering STATE", async () => {
+    const r = await exp("alice", "grounding_pub", "json");
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    const doc = JSON.parse(Buffer.from(r.body.content, "base64").toString("utf-8"));
+    assert.equal(doc.id, "grounding_pub");
+    assert.equal(r.body.bytes, Buffer.from(r.body.content, "base64").length);
+    assert.equal(dtuStore.has("grounding_pub"), false);
+    assert.ok(queries.some((q) => q.id === "grounding_pub" && /SELECT \* FROM dtus WHERE id = \?/.test(q.sql)));
+  });
+
+  it("private, missing-visibility and personal SQL rows stay 404 for non-owners; owner can export", async () => {
+    for (const id of ["grounding_bob_private", "grounding_novis", "grounding_bob_personal"]) {
+      const r = await exp("alice", id, "json");
+      assert.equal(r.status, 404, id);
+      assert.equal(r.body.content, undefined);
+    }
+    const own = await exp("bob", "grounding_bob_private", "md");
+    assert.equal(own.status, 200);
+  });
+
+  it("STATE copy wins over SQL, and unknown ids are still 404", async () => {
+    queries.length = 0;
+    const r = await exp("alice", "in_both", "json");
+    assert.equal(r.status, 200);
+    assert.equal(JSON.parse(Buffer.from(r.body.content, "base64").toString("utf-8")).title, "STATE copy");
+    assert.equal(queries.length, 0);
+    assert.equal((await exp("alice", "grounding_nope", "json")).status, 404);
+  });
+});
