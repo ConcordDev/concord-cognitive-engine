@@ -581,3 +581,55 @@ describe("council decisions — archive / search / delete", () => {
     assert.ok(Number.isInteger(r.result.decision.votesAgainst) && r.result.decision.votesAgainst >= 0);
   });
 });
+
+describe("council.budget-simulate — no invented projection", () => {
+  it("refuses an empty budget instead of storing confidence 0.5", () => {
+    const created = call("proposal-create", ctxA, { title: "Road repair" });
+    const id = created.result.proposal.id;
+    const sim = call("budget-simulate", ctxA, { id, budget: { total: 0, items: [] } });
+    assert.equal(sim.ok, false);
+    assert.equal(sim.error, "unavailable");
+    assert.equal(sim.reason, "no_line_items");
+    const listed = call("proposal-list", ctxA, {}).result.proposals.find((p) => p.id === id);
+    assert.equal(listed.budgetSimulation, undefined);
+  });
+
+  it("projects a real line from its own amount and variance", () => {
+    const created = call("proposal-create", ctxA, { title: "Road repair" });
+    const id = created.result.proposal.id;
+    const sim = call("budget-simulate", ctxA, {
+      id,
+      budget: { items: [{ name: "asphalt", amount: 100, variance: 0.2 }] },
+    });
+    assert.equal(sim.ok, true);
+    const row = sim.result.simulation.itemBreakdown[0];
+    assert.equal(row.budgeted, 100);
+    assert.equal(row.low, 80);
+    assert.equal(row.high, 120);
+    assert.equal(row.expected, 102);
+    assert.equal(row.varianceAssumed, false);
+    assert.equal(sim.result.simulation.projected, 102);
+    assert.equal(sim.result.simulation.confidence, 0.8);
+  });
+
+  it("labels the 0.15 band when the caller omitted variance", () => {
+    const created = call("proposal-create", ctxA, { title: "Road repair" });
+    const sim = call("budget-simulate", ctxA, {
+      id: created.result.proposal.id,
+      budget: { items: [{ name: "asphalt", amount: 100 }] },
+    });
+    assert.equal(sim.result.simulation.itemBreakdown[0].variance, 0.15);
+    assert.equal(sim.result.simulation.itemBreakdown[0].varianceAssumed, true);
+  });
+
+  it("names a non-array items field", () => {
+    const created = call("proposal-create", ctxA, { title: "Road repair" });
+    const sim = call("budget-simulate", ctxA, {
+      id: created.result.proposal.id,
+      budget: { items: "asphalt" },
+    });
+    assert.equal(sim.ok, false);
+    assert.equal(sim.error, "invalid_input");
+    assert.equal(sim.field, "items");
+  });
+});

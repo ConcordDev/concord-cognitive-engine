@@ -230,6 +230,7 @@ registerHeartbeat("fauna-spawner", {
 import { runCreatureFlockCycle } from "./emergent/creature-flock-cycle.js";
 import { LruMap, LruSet } from "./lib/lru-map.js";
 import { serializeLensState, hydrateLensState, LENS_STATE_KEYS } from "./lib/lens-state-persistence.js";
+import { pickCount, unavailableTradeSimulation } from "./lib/finance-simulate-guard.js";
 import { resolveFrontendUrl, setFrontendUrlLogger } from "./lib/frontend-url.js";
 registerHeartbeat("creature-flock-cycle", {
   frequency: 4,
@@ -51799,21 +51800,32 @@ registerLensAction("finance", "alert", (ctx, artifact, params) => {
 });
 registerLensAction("finance", "simulate", (ctx, artifact, params) => {
   try {
-  const trades = artifact.data?.trades || [];
-  const currentPrice = artifact.data?.currentPrice || 0;
-  const scenarios = params.scenarios || 1000;
-  const prices = trades.filter(t => t.price > 0).map(t => t.price);
-  if (prices.length < 2) {
-    const base = currentPrice || 100;
-    return { ok: true, simulation: { mean: base, stdDev: 0, worstCase: base, bestCase: base, scenarios: 0, note: "insufficient_trade_history", simulatedAt: nowISO() } };
+  const tradesRaw = artifact.data?.trades;
+  if (tradesRaw != null && tradesRaw !== "" && !Array.isArray(tradesRaw)) {
+    return { ok: false, error: "invalid_input", field: "trades", reason: "expected_array" };
   }
+  const trades = Array.isArray(tradesRaw) ? tradesRaw : [];
+  const priceRaw = artifact.data?.currentPrice;
+  let currentPrice = 0;
+  if (priceRaw != null && priceRaw !== "") {
+    const priceN = typeof priceRaw === "number" ? priceRaw : Number(priceRaw);
+    if (!Number.isFinite(priceN)) return { ok: false, error: "invalid_input", field: "currentPrice", reason: "expected_finite_number" };
+    currentPrice = priceN;
+  }
+  const scenariosPick = pickCount(params.scenarios, 1000, 1, 10000);
+  if (scenariosPick.error) return { ok: false, error: "invalid_input", field: "scenarios", reason: "expected_finite_number" };
+  const scenarios = scenariosPick.n;
+  const prices = trades.filter(t => t.price > 0).map(t => t.price);
+  if (prices.length < 2) return unavailableTradeSimulation(currentPrice);
   const returns = [];
   for (let i = 1; i < prices.length; i++) returns.push(Math.log(prices[i] / prices[i - 1]));
   const meanReturn = returns.reduce((s, r) => s + r, 0) / returns.length;
   const variance = returns.reduce((s, r) => s + (r - meanReturn) ** 2, 0) / returns.length;
   const stdReturn = Math.sqrt(variance);
   const lastPrice = prices[prices.length - 1] || currentPrice;
-  const steps = params.steps || 30;
+  const stepsPick = pickCount(params.steps, 30, 1, 3650);
+  if (stepsPick.error) return { ok: false, error: "invalid_input", field: "steps", reason: "expected_finite_number" };
+  const steps = stepsPick.n;
   let seed = 0;
   { const _gid = String(artifact.id ?? artifact.domain ?? "game"); for (let i = 0; i < _gid.length; i++) seed = ((seed << 5) - seed) + _gid.charCodeAt(i); }
   const mulberry32 = (s) => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
