@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ds } from '@/lib/design-system';
 import { lensRun } from '@/lib/api/client';
+import { unavailableMessage } from '@/lib/unavailable';
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -67,14 +68,26 @@ function finiteOrNull(v: number | null | undefined): number | null {
   return typeof v === 'number' && Number.isFinite(v) ? v : null;
 }
 
-function formatCount(v: number | null | undefined): string {
-  const n = finiteOrNull(v);
-  return n == null ? '—' : n.toLocaleString();
+// A null value renders as "Not available — <reason>", never as a dash, "null" or a 0.
+function Unavailable({ reason, className = 'text-xs text-white/50 py-2' }: { reason?: string | null; className?: string }) {
+  return <p className={className}>{unavailableMessage(reason)}</p>;
 }
 
-function formatFixed(v: number | null | undefined, digits: number): string {
-  const n = finiteOrNull(v);
-  return n == null ? '—' : n.toFixed(digits);
+// Footer-line variant of Metric: same null → "Not available — reason" rule, inline <span>.
+function MetaStat({
+  value, reason, format,
+}: { value: number | null | undefined; reason?: string | null; format: (n: number) => string }) {
+  const n = finiteOrNull(value);
+  return <span>{n == null ? unavailableMessage(reason) : format(n)}</span>;
+}
+
+// A measured number (including a real 0) renders as-is; null renders Unavailable.
+function Metric({
+  value, reason, className, format = (n: number) => n.toLocaleString(),
+}: { value: number | null | undefined; reason?: string | null; className: string; format?: (n: number) => string }) {
+  const n = finiteOrNull(value);
+  if (n == null) return <Unavailable reason={reason} />;
+  return <p className={className}>{format(n)}</p>;
 }
 
 const DOMAIN_COLORS: Record<string, string> = {
@@ -156,18 +169,25 @@ export default function AnalyticsDashboard({
         if (cancelled) return;
         const d = r.data?.result;
         if (!r.data?.ok || !d) { setPersonalStats(null); return; }
-        // Map only the fields the macro genuinely provides. Unmapped fields
-        // (reputationByDomain, most-cited DTU/material, royalties, builds…)
-        // have no backend source, so they stay empty/zero — never invented.
+        // Map only the fields the macro genuinely provides. Its totalEvents and
+        // eventsToday are event-tracking counts, not citations or a login
+        // streak, so those stay null. Unmapped fields have no backend source
+        // and are null with a reason, never invented zeros.
         setPersonalStats({
-          totalCitations: d.totalEvents ?? 0,
-          totalRoyalties: 0,
-          mostCitedDTU: { name: '', citations: 0 },
-          mostUsedMaterial: { name: '', uses: 0 },
+          totalCitations: null,
+          totalRoyalties: null,
+          royaltyReason: 'not_recorded',
+          mostCitedDTU: null,
+          mostUsedMaterial: null,
+          mostUsedMaterialReason: 'not_recorded',
           reputationByDomain: {},
-          buildCount: d.savedDashboards ?? 0,
-          playtime: 0,
-          loginStreak: d.eventsToday ?? 0,
+          reputationReason: 'not_recorded',
+          buildCount: finiteOrNull(d.savedDashboards),
+          buildReason: finiteOrNull(d.savedDashboards) == null ? 'not_recorded' : null,
+          playtime: null,
+          playtimeReason: 'not_recorded',
+          loginStreak: null,
+          loginStreakReason: 'not_recorded',
         });
       } catch {
         if (!cancelled) setPersonalStats(null);
@@ -187,16 +207,20 @@ export default function AnalyticsDashboard({
         if (cancelled) return;
         const d = r.data?.result;
         if (!r.data?.ok || !d || d.found === false) { setWorldStats(null); return; }
-        // Map only fields the macro genuinely provides. Economic activity has
-        // no backend source here, so it stays 0; no fabricated timeseries.
+        // Map only fields the macro genuinely provides. Economic activity and
+        // the ecosystem score have no backend source here, so they are null;
+        // no fabricated timeseries.
+        const infra = finiteOrNull(d.infraCoverage);
         setWorldStats({
           worldId: d.worldId ?? worldId,
-          population: d.population ?? 0,
-          buildingCount: d.buildingCount ?? 0,
-          infraCoverage: d.infraCoverage ?? 0,
-          envScore: 0,
-          economicActivity: 0,
-          visitorCount: d.uniqueVisitors ?? 0,
+          population: finiteOrNull(d.population),
+          buildingCount: finiteOrNull(d.buildingCount),
+          infraCoverage: infra,
+          infraReason: infra == null ? 'not_recorded' : null,
+          envScore: null,
+          envReason: 'not_recorded',
+          economicActivity: null,
+          visitorCount: finiteOrNull(d.uniqueVisitors),
         });
       } catch {
         if (!cancelled) setWorldStats(null);
@@ -274,25 +298,16 @@ export default function AnalyticsDashboard({
           {/* Big numbers */}
           <div className="grid grid-cols-3 gap-3">
             <div className="text-center p-3 bg-white/5 rounded-lg">
-              <p className="text-3xl font-bold text-blue-400">{formatCount(personalStats.totalCitations)}</p>
+              <Metric value={personalStats.totalCitations} reason={personalStats.royaltyReason} className="text-3xl font-bold text-blue-400" />
               <p className="text-xs text-white/50 mt-1">Total Citations</p>
-              {personalStats.totalCitations == null && personalStats.royaltyReason && (
-                <p className="text-[10px] text-white/40 mt-1">{personalStats.royaltyReason}</p>
-              )}
             </div>
             <div className="text-center p-3 bg-white/5 rounded-lg">
-              <p className="text-3xl font-bold text-yellow-400">{formatFixed(personalStats.totalRoyalties, 2)}</p>
+              <Metric value={personalStats.totalRoyalties} reason={personalStats.royaltyReason} className="text-3xl font-bold text-yellow-400" format={(n) => n.toFixed(2)} />
               <p className="text-xs text-white/50 mt-1">Royalties Earned</p>
-              {personalStats.totalRoyalties == null && personalStats.royaltyReason && (
-                <p className="text-[10px] text-white/40 mt-1">{personalStats.royaltyReason}</p>
-              )}
             </div>
             <div className="text-center p-3 bg-white/5 rounded-lg">
-              <p className="text-3xl font-bold text-green-400">{formatCount(personalStats.loginStreak)}</p>
+              <Metric value={personalStats.loginStreak} reason={personalStats.loginStreakReason} className="text-3xl font-bold text-green-400" />
               <p className="text-xs text-white/50 mt-1">Day Streak</p>
-              {personalStats.loginStreak == null && personalStats.loginStreakReason && (
-                <p className="text-[10px] text-white/40 mt-1">{personalStats.loginStreakReason}</p>
-              )}
             </div>
           </div>
 
@@ -300,15 +315,24 @@ export default function AnalyticsDashboard({
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 bg-white/5 rounded-lg">
               <p className="text-xs text-white/50">Most Cited DTU</p>
-              <p className="text-sm text-white font-semibold mt-1">{personalStats.mostCitedDTU?.name || '—'}</p>
-              <p className="text-xs text-blue-400">{personalStats.mostCitedDTU ? `${formatCount(personalStats.mostCitedDTU.citations)} citations` : '—'}</p>
+              {personalStats.mostCitedDTU ? (
+                <>
+                  <p className="text-sm text-white font-semibold mt-1">{personalStats.mostCitedDTU.name || 'None yet'}</p>
+                  <Metric value={personalStats.mostCitedDTU.citations} reason={personalStats.royaltyReason} className="text-xs text-blue-400" format={(n) => `${n.toLocaleString()} citations`} />
+                </>
+              ) : (
+                <Unavailable reason={personalStats.royaltyReason ?? 'not_recorded'} />
+              )}
             </div>
             <div className="p-3 bg-white/5 rounded-lg">
               <p className="text-xs text-white/50">Most Used Material</p>
-              <p className="text-sm text-white font-semibold mt-1">{personalStats.mostUsedMaterial?.name || '—'}</p>
-              <p className="text-xs text-green-400">{personalStats.mostUsedMaterial ? `${formatCount(personalStats.mostUsedMaterial.uses)} uses` : '—'}</p>
-              {personalStats.mostUsedMaterialReason && (
-                <p className="text-[10px] text-white/40 mt-1">{personalStats.mostUsedMaterialReason}</p>
+              {personalStats.mostUsedMaterial ? (
+                <>
+                  <p className="text-sm text-white font-semibold mt-1">{personalStats.mostUsedMaterial.name || 'None yet'}</p>
+                  <Metric value={personalStats.mostUsedMaterial.uses} reason={personalStats.mostUsedMaterialReason} className="text-xs text-green-400" format={(n) => `${n.toLocaleString()} uses`} />
+                </>
+              ) : (
+                <Unavailable reason={personalStats.mostUsedMaterialReason ?? 'not_recorded'} />
               )}
             </div>
           </div>
@@ -316,30 +340,35 @@ export default function AnalyticsDashboard({
           {/* Reputation Bars */}
           <div>
             <h4 className="text-xs font-semibold text-white/70 uppercase mb-2">Reputation by Domain</h4>
-            {personalStats.reputationReason && (
-              <p className="text-[10px] text-white/40 mb-2">{personalStats.reputationReason}</p>
-            )}
-            <div className="space-y-1.5">
-              {REPUTATION_DOMAINS.map(domain => {
-                const val = finiteOrNull(personalStats.reputationByDomain[domain]);
-                const pct = val == null ? 0 : (val / maxReputation) * 100;
-                return (
-                  <div key={domain} className="flex items-center gap-2">
-                    <span className="text-xs text-white/60 w-24 capitalize">{domain}</span>
-                    <div className="flex-1 h-3 bg-white/10 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${DOMAIN_COLORS[domain] || 'bg-white/30'}`} style={{ width: `${pct}%` }} />
+            {personalStats.reputationReason ? (
+              <Unavailable reason={personalStats.reputationReason} />
+            ) : (
+              <div className="space-y-1.5">
+                {REPUTATION_DOMAINS.map(domain => {
+                  const val = finiteOrNull(personalStats.reputationByDomain[domain]);
+                  const pct = val == null ? 0 : (val / maxReputation) * 100;
+                  return (
+                    <div key={domain} className="flex items-center gap-2">
+                      <span className="text-xs text-white/60 w-24 capitalize">{domain}</span>
+                      <div className="flex-1 h-3 bg-white/10 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${DOMAIN_COLORS[domain] || 'bg-white/30'}`} style={{ width: `${pct}%` }} />
+                      </div>
+                      {val == null ? (
+                        <span className="text-xs text-white/50 text-right">{unavailableMessage('not_recorded')}</span>
+                      ) : (
+                        <span className="text-xs text-white/50 w-10 text-right">{val}</span>
+                      )}
                     </div>
-                    <span className="text-xs text-white/50 w-10 text-right">{val == null ? '—' : val}</span>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Meta stats */}
           <div className="flex items-center justify-between text-xs text-white/40 pt-2 border-t border-white/10">
-            <span>{formatCount(personalStats.buildCount)} saved dashboards{personalStats.buildCount == null && personalStats.buildReason ? ` (${personalStats.buildReason})` : ''}</span>
-            <span>{formatCount(personalStats.playtime)}h playtime{personalStats.playtime == null && personalStats.playtimeReason ? ` (${personalStats.playtimeReason})` : ''}</span>
+            <MetaStat value={personalStats.buildCount} reason={personalStats.buildReason} format={(n) => `${n.toLocaleString()} saved dashboards`} />
+            <MetaStat value={personalStats.playtime} reason={personalStats.playtimeReason} format={(n) => `${n}h playtime`} />
           </div>
         </div>
       )}
@@ -352,15 +381,15 @@ export default function AnalyticsDashboard({
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
             <div className="text-center p-3 bg-white/5 rounded-lg">
-              <p className="text-2xl font-bold text-white">{formatCount(worldStats.population)}</p>
+              <Metric value={worldStats.population} className="text-2xl font-bold text-white" />
               <p className="text-xs text-white/50">Population</p>
             </div>
             <div className="text-center p-3 bg-white/5 rounded-lg">
-              <p className="text-2xl font-bold text-white">{formatCount(worldStats.buildingCount)}</p>
+              <Metric value={worldStats.buildingCount} className="text-2xl font-bold text-white" />
               <p className="text-xs text-white/50">Buildings</p>
             </div>
             <div className="text-center p-3 bg-white/5 rounded-lg">
-              <p className="text-2xl font-bold text-white">{formatCount(worldStats.visitorCount)}</p>
+              <Metric value={worldStats.visitorCount} className="text-2xl font-bold text-white" />
               <p className="text-xs text-white/50">Visitors</p>
             </div>
           </div>
@@ -376,12 +405,15 @@ export default function AnalyticsDashboard({
               <div key={g.label} className="p-3 bg-white/5 rounded-lg">
                 <div className="flex justify-between text-xs mb-1">
                   <span className="text-white/60">{g.label}</span>
-                  <span className="text-white">{n == null ? '—' : `${n}%`}</span>
+                  {n == null ? (
+                    <span className="text-white/50 text-right">{unavailableMessage(g.reason)}</span>
+                  ) : (
+                    <span className="text-white">{`${n}%`}</span>
+                  )}
                 </div>
                 <div className="h-2 bg-white/10 rounded-full">
                   <div className={`h-full rounded-full ${g.color}`} style={{ width: `${n == null ? 0 : Math.max(0, Math.min(100, n))}%` }} />
                 </div>
-                {n == null && g.reason && <p className="text-[10px] text-white/40 mt-1">{g.reason}</p>}
               </div>
               );
             })}
@@ -407,7 +439,9 @@ export default function AnalyticsDashboard({
           )}
 
           <div className="text-center text-xs text-white/40">
-            Economic Activity: {formatCount(worldStats.economicActivity)} CC
+            Economic Activity: {finiteOrNull(worldStats.economicActivity) == null
+              ? unavailableMessage('not_recorded')
+              : `${(worldStats.economicActivity as number).toLocaleString()} CC`}
           </div>
         </div>
       )}
