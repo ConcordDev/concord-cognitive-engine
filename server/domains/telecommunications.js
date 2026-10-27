@@ -51,6 +51,14 @@ function num(v, fallback) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+// A missing or non-finite reading is not a network. Callers must not
+// substitute a canned bandwidth, user count, or latency.
+function measured(v) {
+  if (v == null || v === "") return null;
+  const n = typeof v === "number" ? v : parseFloat(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 // ---- RF physics helpers -----------------------------------------------------
 
 // Great-circle distance in km (haversine).
@@ -114,20 +122,27 @@ export default function registerTelecommunicationsActions(registerLensAction) {
   registerLensAction("telecommunications", "networkCapacity", (ctx, artifact, _params) => {
     try {
       const data = artifact?.data || {};
-      const bandwidth = num(data.bandwidthGbps, 10);
-      const utilization = num(data.utilizationPercent, 60);
-      const users = parseInt(data.activeUsers, 10) || 1000;
-      const perUserMbps = (bandwidth * 1000 * (1 - utilization / 100)) / Math.max(users, 1);
+      const bandwidth = measured(data.bandwidthGbps);
+      const utilization = measured(data.utilizationPercent);
+      const users = measured(data.activeUsers);
+      const unavailable = [];
+      if (bandwidth == null) unavailable.push("bandwidthGbps");
+      if (utilization == null) unavailable.push("utilizationPercent");
+      if (users == null || users <= 0) unavailable.push("activeUsers");
+      const perUserMbps = unavailable.length
+        ? null
+        : Math.round((bandwidth * 1000 * (1 - utilization / 100)) / users * 10) / 10;
       return {
         ok: true,
         result: {
-          totalBandwidth: `${bandwidth} Gbps`,
-          utilization: `${utilization}%`,
-          activeUsers: users,
-          availablePerUser: `${Math.round(perUserMbps * 10) / 10} Mbps`,
-          headroom: `${Math.round(100 - utilization)}%`,
-          status: utilization > 85 ? "critical" : utilization > 70 ? "high" : "normal",
-          upgrade: utilization > 80 ? "Capacity upgrade recommended" : "Sufficient capacity",
+          totalBandwidth: bandwidth == null ? null : `${bandwidth} Gbps`,
+          utilization: utilization == null ? null : `${utilization}%`,
+          activeUsers: users == null ? null : users,
+          availablePerUser: perUserMbps == null ? null : `${perUserMbps} Mbps`,
+          headroom: utilization == null ? null : `${Math.round(100 - utilization)}%`,
+          status: utilization == null ? null : utilization > 85 ? "critical" : utilization > 70 ? "high" : "normal",
+          upgrade: utilization == null ? null : utilization > 80 ? "Capacity upgrade recommended" : "Sufficient capacity",
+          ...(unavailable.length ? { reason: "not_recorded", unavailable } : {}),
         },
       };
     } catch (e) {
@@ -138,25 +153,31 @@ export default function registerTelecommunicationsActions(registerLensAction) {
   registerLensAction("telecommunications", "signalQuality", (ctx, artifact, _params) => {
     try {
       const data = artifact?.data || {};
-      const snr = num(data.snrDb, 20);
-      const ber = num(data.bitErrorRate, 1e-6);
-      const latency = num(data.latencyMs, 30);
-      const jitter = num(data.jitterMs, 5);
-      const mosScore = Math.min(
-        5,
-        Math.max(1, 4.5 - latency / 100 - jitter / 20 - (ber > 1e-4 ? 2 : 0)),
-      );
+      const snr = measured(data.snrDb);
+      const ber = measured(data.bitErrorRate);
+      const latency = measured(data.latencyMs);
+      const jitter = measured(data.jitterMs);
+      const unavailable = [];
+      if (snr == null) unavailable.push("snrDb");
+      if (ber == null) unavailable.push("bitErrorRate");
+      if (latency == null) unavailable.push("latencyMs");
+      if (jitter == null) unavailable.push("jitterMs");
+      const mosInputs = ber != null && latency != null && jitter != null;
+      const mosScore = mosInputs
+        ? Math.min(5, Math.max(1, 4.5 - latency / 100 - jitter / 20 - (ber > 1e-4 ? 2 : 0)))
+        : null;
       return {
         ok: true,
         result: {
-          snr: `${snr} dB`,
+          snr: snr == null ? null : `${snr} dB`,
           bitErrorRate: ber,
           latencyMs: latency,
           jitterMs: jitter,
-          mosScore: Math.round(mosScore * 10) / 10,
-          voiceQuality:
-            mosScore >= 4 ? "excellent" : mosScore >= 3.5 ? "good" : mosScore >= 3 ? "fair" : "poor",
-          videoCapable: latency < 100 && jitter < 30,
+          mosScore: mosScore == null ? null : Math.round(mosScore * 10) / 10,
+          voiceQuality: mosScore == null ? null
+            : mosScore >= 4 ? "excellent" : mosScore >= 3.5 ? "good" : mosScore >= 3 ? "fair" : "poor",
+          videoCapable: latency == null || jitter == null ? null : latency < 100 && jitter < 30,
+          ...(unavailable.length ? { reason: "not_recorded", unavailable } : {}),
         },
       };
     } catch (e) {
@@ -172,23 +193,24 @@ export default function registerTelecommunicationsActions(registerLensAction) {
       }
       const analyzed = towers.map((t) => ({
         name: t.name || t.id,
-        lat: num(t.lat, 0),
-        lon: num(t.lon, 0),
-        rangeKm: num(t.rangeKm, 5),
+        lat: measured(t.lat),
+        lon: measured(t.lon),
+        rangeKm: measured(t.rangeKm),
         technology: t.technology || "4G",
         status: t.status || "active",
       }));
-      const totalCoverageKm2 = analyzed.reduce(
-        (s, t) => s + Math.PI * t.rangeKm * t.rangeKm,
-        0,
-      );
+      const ranged = analyzed.filter((t) => t.rangeKm != null && t.rangeKm >= 0);
+      const totalCoverageKm2 = ranged.length
+        ? Math.round(ranged.reduce((s, t) => s + Math.PI * t.rangeKm * t.rangeKm, 0))
+        : null;
       return {
         ok: true,
         result: {
           towers: analyzed.length,
           activeTowers: analyzed.filter((t) => t.status === "active").length,
-          totalCoverageKm2: Math.round(totalCoverageKm2),
+          totalCoverageKm2,
           technologies: [...new Set(analyzed.map((t) => t.technology))],
+          ...(ranged.length === analyzed.length ? {} : { coverageReason: ranged.length ? "partial" : "range_not_recorded" }),
         },
       };
     } catch (e) {
@@ -199,10 +221,31 @@ export default function registerTelecommunicationsActions(registerLensAction) {
   registerLensAction("telecommunications", "costPerLine", (ctx, artifact, _params) => {
     try {
       const data = artifact?.data || {};
-      const infrastructure = num(data.infrastructureCost, 0);
-      const operations = num(data.monthlyOpsCost, 0);
-      const subscribers = parseInt(data.subscribers, 10) || 1;
-      const arpu = num(data.arpu, 50);
+      const infrastructure = measured(data.infrastructureCost);
+      const operations = measured(data.monthlyOpsCost);
+      const subscribers = measured(data.subscribers);
+      const arpu = measured(data.arpu);
+      const unavailable = [];
+      if (infrastructure == null) unavailable.push("infrastructureCost");
+      if (operations == null) unavailable.push("monthlyOpsCost");
+      if (subscribers == null || subscribers <= 0) unavailable.push("subscribers");
+      if (arpu == null) unavailable.push("arpu");
+      if (unavailable.length) {
+        return {
+          ok: true,
+          result: {
+            subscribers,
+            arpu,
+            costPerSubscriber: null,
+            margin: null,
+            marginPercent: null,
+            profitable: null,
+            breakeven: null,
+            reason: "not_recorded",
+            unavailable,
+          },
+        };
+      }
       const costPerSub = (infrastructure / 60 + operations) / subscribers;
       const margin = arpu - costPerSub;
       return {
@@ -212,7 +255,7 @@ export default function registerTelecommunicationsActions(registerLensAction) {
           arpu,
           costPerSubscriber: Math.round(costPerSub * 100) / 100,
           margin: Math.round(margin * 100) / 100,
-          marginPercent: Math.round((margin / arpu) * 100),
+          marginPercent: arpu === 0 ? null : Math.round((margin / arpu) * 100),
           profitable: margin > 0,
           breakeven:
             Math.ceil(infrastructure / (arpu - operations / subscribers) / 12) + " months",
@@ -462,9 +505,26 @@ export default function registerTelecommunicationsActions(registerLensAction) {
   registerLensAction("telecommunications", "capacityProjection", (ctx, _artifact, params) => {
     try {
       const p = params || {};
-      const bandwidthGbps = Math.max(0.1, num(p.bandwidthGbps, 10));
-      const startSubs = Math.max(1, parseInt(p.currentSubscribers, 10) || 1000);
-      const monthlyGrowthPct = num(p.monthlyGrowthPercent, 4);
+      const bandwidthGbps = measured(p.bandwidthGbps);
+      const startSubs = measured(p.currentSubscribers);
+      const monthlyGrowthPct = measured(p.monthlyGrowthPercent);
+      if (bandwidthGbps == null || bandwidthGbps <= 0 || startSubs == null || startSubs < 1 || monthlyGrowthPct == null) {
+        const unavailable = [];
+        if (bandwidthGbps == null || bandwidthGbps <= 0) unavailable.push("bandwidthGbps");
+        if (startSubs == null || startSubs < 1) unavailable.push("currentSubscribers");
+        if (monthlyGrowthPct == null) unavailable.push("monthlyGrowthPercent");
+        return {
+          ok: true,
+          result: {
+            horizonMonths: null,
+            series: null,
+            breachMonth: null,
+            recommendedBandwidthGbps: null,
+            reason: "not_recorded",
+            unavailable,
+          },
+        };
+      }
       const months = Math.max(1, Math.min(120, parseInt(p.months, 10) || 24));
       const mbpsPerSubBusyHour = Math.max(0.05, num(p.mbpsPerSubscriber, 1.5));
       const targetUtilPct = Math.max(10, Math.min(95, num(p.targetUtilizationPercent, 80)));

@@ -124,21 +124,30 @@ describe("telecommunications — networkCapacity", () => {
     assert.equal(r.result.availablePerUser, "2.5 Mbps");
   });
 
-  it("fail-CLOSED on a poisoned (Infinity) bandwidth — falls back to default, never NaN-leaks", () => {
-    // 1e309 overflows to Infinity → num() rejects → fallback 10 Gbps.
+  it("does not replace a non-finite bandwidth with 10 Gbps", () => {
     const r = call("networkCapacity", ctxA, { artifact: { data: { bandwidthGbps: 1e309, utilizationPercent: 60, activeUsers: 1000 } } });
     assert.equal(r.ok, true);
-    assert.equal(r.result.totalBandwidth, "10 Gbps"); // fell back to finite default
-    // and the rendered per-user number is finite
-    const perUser = parseFloat(r.result.availablePerUser);
-    assert.equal(Number.isFinite(perUser), true);
+    assert.equal(r.result.totalBandwidth, null);
+    assert.equal(r.result.availablePerUser, null);
+    assert.equal(r.result.reason, "not_recorded");
+    assert.ok(r.result.unavailable.includes("bandwidthGbps"));
   });
 
-  it("never NaN-leaks with a NaN-string utilization (poisoned numeric)", () => {
+  it("does not replace a NaN utilization with 60%", () => {
     const r = call("networkCapacity", ctxA, { artifact: { data: { bandwidthGbps: 10, utilizationPercent: "NaN", activeUsers: 1000 } } });
     assert.equal(r.ok, true);
-    assert.equal(r.result.utilization, "60%"); // fell back to default 60
-    assert.equal(Number.isFinite(parseFloat(r.result.availablePerUser)), true);
+    assert.equal(r.result.utilization, null);
+    assert.equal(r.result.availablePerUser, null);
+    assert.equal(r.result.reason, "not_recorded");
+  });
+
+  it("does not invent 1000 users when the reading is omitted", () => {
+    const r = call("networkCapacity", ctxA, { artifact: { data: {} } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.activeUsers, null);
+    assert.equal(r.result.totalBandwidth, null);
+    assert.equal(r.result.availablePerUser, null);
+    assert.equal(r.result.reason, "not_recorded");
   });
 });
 
@@ -187,12 +196,22 @@ describe("telecommunications — signalQuality", () => {
     assert.equal(r.result.videoCapable, false);
   });
 
-  it("fail-CLOSED on poisoned numerics — Infinity latency falls back, MOS stays finite", () => {
+  it("does not replace a non-finite latency with 30 ms", () => {
     const r = call("signalQuality", ctxA, { artifact: { data: { snrDb: 20, bitErrorRate: 1e-6, latencyMs: 1e309, jitterMs: 5 } } });
     assert.equal(r.ok, true);
-    assert.equal(r.result.latencyMs, 30); // fell back to finite default
-    assert.equal(Number.isFinite(r.result.mosScore), true);
-    assert.equal(r.result.mosScore >= 1 && r.result.mosScore <= 5, true);
+    assert.equal(r.result.latencyMs, null);
+    assert.equal(r.result.mosScore, null);
+    assert.equal(r.result.voiceQuality, null);
+    assert.equal(r.result.reason, "not_recorded");
+  });
+
+  it("does not invent an SNR or a MOS score from an empty reading", () => {
+    const r = call("signalQuality", ctxA, { artifact: { data: {} } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.snr, null);
+    assert.equal(r.result.mosScore, null);
+    assert.equal(r.result.videoCapable, null);
+    assert.equal(r.result.reason, "not_recorded");
   });
 });
 
@@ -228,14 +247,13 @@ describe("telecommunications — coverageMap", () => {
     assert.deepEqual(r.result.technologies, ["4G"]); // deduped
   });
 
-  it("fail-CLOSED on a poisoned (Infinity) range — coverage stays finite", () => {
+  it("does not replace a non-finite range with 5 km", () => {
     const r = call("coverageMap", ctxA, { artifact: { data: { towers: [
-      { name: "Bad", rangeKm: 1e309 }, // Infinity → num falls back to 5
+      { name: "Bad", rangeKm: 1e309 },
     ] } } });
     assert.equal(r.ok, true);
-    assert.equal(Number.isFinite(r.result.totalCoverageKm2), true);
-    // π·5² ≈ 78.5 → 79 (fell back to default range 5)
-    assert.equal(r.result.totalCoverageKm2, 79);
+    assert.equal(r.result.totalCoverageKm2, null);
+    assert.equal(r.result.coverageReason, "range_not_recorded");
   });
 });
 
@@ -277,14 +295,22 @@ describe("telecommunications — costPerLine", () => {
     assert.equal(r.result.margin, 30);
   });
 
-  it("fail-CLOSED on a poisoned (Infinity) infrastructure cost — margin stays finite", () => {
+  it("does not replace a non-finite infrastructure cost with zero", () => {
     const r = call("costPerLine", ctxA, { artifact: { data: { infrastructureCost: 1e309, monthlyOpsCost: 50000, subscribers: 10000, arpu: 50 } } });
     assert.equal(r.ok, true);
-    // Infinity infra → num falls back to 0 → costPerSub = (0 + 50000)/10000 = 5
-    assert.equal(r.result.costPerSubscriber, 5);
-    assert.equal(r.result.margin, 45);
-    assert.equal(Number.isFinite(r.result.margin), true);
-    assert.equal(Number.isFinite(r.result.marginPercent), true);
+    assert.equal(r.result.costPerSubscriber, null);
+    assert.equal(r.result.margin, null);
+    assert.equal(r.result.profitable, null);
+    assert.equal(r.result.reason, "not_recorded");
+  });
+
+  it("does not invent a $50 ARPU when none was recorded", () => {
+    const r = call("costPerLine", ctxA, { artifact: { data: {} } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.arpu, null);
+    assert.equal(r.result.subscribers, null);
+    assert.equal(r.result.margin, null);
+    assert.equal(r.result.reason, "not_recorded");
   });
 });
 
@@ -400,6 +426,16 @@ describe("telecommunications — interferenceAnalysis", () => {
 // ── capacityProjection (subscriber growth vs headroom) ──────────
 
 describe("telecommunications — capacityProjection", () => {
+  it("does not invent 1000 subscribers and 10 Gbps when none were recorded", () => {
+    const r = call("capacityProjection", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.series, null);
+    assert.equal(r.result.breachMonth, null);
+    assert.equal(r.result.reason, "not_recorded");
+    assert.ok(r.result.unavailable.includes("currentSubscribers"));
+    assert.ok(r.result.unavailable.includes("bandwidthGbps"));
+  });
+
   it("projects subscriber growth and flags the headroom breach month", () => {
     // 10 Gbps = 10000 Mbps capacity; 1.5 Mbps/sub; target 80% → demand budget 8000 Mbps.
     // breach when subs * 1.5 >= 8000 → subs >= ~5333.
@@ -429,13 +465,14 @@ describe("telecommunications — capacityProjection", () => {
     assert.match(r.result.breachWarning, /Capacity holds/);
   });
 
-  it("fail-CLOSED on poisoned numerics — series utilization stays finite", () => {
+  it("does not project from a non-finite bandwidth", () => {
     const r = call("capacityProjection", ctxA, {
       bandwidthGbps: 1e309, currentSubscribers: 5000, monthlyGrowthPercent: 4, months: 6,
     });
     assert.equal(r.ok, true);
-    // bandwidth falls back to finite default 10; every utilization is finite.
-    assert.equal(r.result.series.every((p) => Number.isFinite(p.utilizationPercent)), true);
+    assert.equal(r.result.series, null);
+    assert.equal(r.result.reason, "not_recorded");
+    assert.ok(r.result.unavailable.includes("bandwidthGbps"));
   });
 });
 
