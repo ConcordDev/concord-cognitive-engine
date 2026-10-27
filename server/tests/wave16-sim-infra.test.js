@@ -206,9 +206,21 @@ describe("world sim infra reads stored counts", () => {
       user: "user-a",
       body: { action: "check-builds" },
     });
+    // This fixture's world_buildings has no owner column, so builds cannot be
+    // attributed to a user: honest 501 naming the action.
     assert.equal(action.status, 501);
-    assert.equal(action.body.reason, "action_not_wired");
+    assert.equal(action.body.reason, "buildings_not_attributed");
+    assert.equal(action.body.action, "check-builds");
     assert.equal(action.body.executed, undefined);
+
+    const chat = await call("/api/world/sim/mobile/quick-action", {
+      method: "POST",
+      user: "user-a",
+      body: { action: "quick-chat" },
+    });
+    assert.equal(chat.status, 501);
+    assert.equal(chat.body.reason, "action_not_wired");
+    assert.equal(chat.body.action, "quick-chat");
 
     const plugins = await call("/api/world/sim/plugins/catalog");
     assert.equal(plugins.status, 501);
