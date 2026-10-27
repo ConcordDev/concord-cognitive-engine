@@ -179,13 +179,36 @@ describe("energy — fail-closed poison (no Infinity/NaN leak, no throw)", () =>
     }
   });
 
-  it("solarEstimate: poisoned inputs clamp to finite, never Infinity panels", () => {
+  it("solarEstimate: poisoned inputs are not a site, never Infinity panels", () => {
     for (const p of POISON) {
       const r = callCalcPanel("solarEstimate", ctxA, { roofAreaSqFt: p, peakSunHours: p, monthlyUsageKWh: p });
       assert.equal(r.ok, true);
-      assertFinite(r.result, `solarEstimate(${String(p)})`);
-      assert.ok(Number.isInteger(r.result.maxPanels));
+      assert.equal(r.result.maxPanels, null);
+      assert.equal(r.result.estimatedCost, null);
+      assert.equal(r.result.reason, "not_recorded");
+      assert.deepEqual(r.result.unavailable, ["roofAreaSqFt", "peakSunHours", "monthlyUsageKWh"]);
     }
+  });
+
+  it("solarEstimate: omitted site is not the 1000 sqft / 5 sun / 900 kWh house", () => {
+    const r = callCalcPanel("solarEstimate", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.maxPanels, null);
+    assert.equal(r.result.systemSizeKW, null);
+    assert.equal(r.result.monthlyProductionKWh, null);
+    assert.equal(r.result.coveragePercent, null);
+    assert.equal(r.result.estimatedCost, null);
+    assert.equal(r.result.annualSavings, null);
+    assert.equal(r.result.paybackYears, null);
+    assert.equal(r.result.reason, "not_recorded");
+    assert.deepEqual(r.result.unavailable, ["roofAreaSqFt", "peakSunHours", "monthlyUsageKWh"]);
+  });
+
+  it("solarEstimate: one missing reading withholds the whole quote", () => {
+    const r = callCalcPanel("solarEstimate", ctxA, { roofAreaSqFt: 1000, peakSunHours: 5 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.maxPanels, null);
+    assert.deepEqual(r.result.unavailable, ["monthlyUsageKWh"]);
   });
 
   it("carbonFootprint: poisoned inputs → finite zeros, never null", () => {
