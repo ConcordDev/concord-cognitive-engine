@@ -45,7 +45,9 @@ function parseArxivAtom(xml) {
     const arxivIdMatch = id?.match(/arxiv\.org\/abs\/(.+)$/);
     const arxivId = arxivIdMatch ? arxivIdMatch[1] : null;
     const pdfUrl = arxivId ? `https://arxiv.org/pdf/${arxivId}.pdf` : null;
-    entries.push({ arxivId, title, summary, published, updated, authors, abstractUrl: id, pdfUrl });
+    const catMatch = entryXml.match(/<category[^>]*\sterm="([^"]+)"/);
+    const category = catMatch ? catMatch[1] : null;
+    entries.push({ arxivId, title, summary, published, updated, authors, abstractUrl: id, pdfUrl, category });
   }
   return entries;
 }
@@ -62,26 +64,60 @@ const CATEGORY_FOR_DOMAIN = {
   ai: "cs.AI",
 };
 
+const CATEGORY_RE = /^[a-z-]+(\.[A-Za-z-]+)?$/;
+const ARXIV_FIELDS = new Set(["all", "abs", "ti", "cat-only"]);
+
+// Validates live_arxiv input and builds the fixed-host arXiv query URL.
+// Returns { ok:true, url, category, query } or { ok:false, error, reason }.
+function buildArxivRequest(defaultCategory, input = {}) {
+  const bad = (reason) => ({ ok: false, error: "invalid_input", reason });
+  const limit = Math.min(Math.max(Number(input.limit) || 15, 1), 30);
+  let category = defaultCategory;
+  if (input.category !== undefined && input.category !== null && input.category !== "") {
+    const c = input.category;
+    if (typeof c !== "string" || c.length > 32 || !CATEGORY_RE.test(c)) {
+      return bad("category must match /^[a-z-]+(\\.[A-Za-z-]+)?$/ and be at most 32 chars");
+    }
+    category = c;
+  }
+  let field = "all";
+  if (input.field !== undefined && input.field !== null && input.field !== "") {
+    if (typeof input.field !== "string" || !ARXIV_FIELDS.has(input.field)) {
+      return bad('field must be one of "all", "abs", "ti", "cat-only"');
+    }
+    field = input.field;
+  }
+  if (input.anyCategory !== undefined && typeof input.anyCategory !== "boolean") {
+    return bad("anyCategory must be a boolean");
+  }
+  const anyCategory = input.anyCategory === true;
+  const rawQuery = input.query ? String(input.query).slice(0, 200).trim() : "";
+  const usesQuery = field !== "cat-only" && rawQuery !== "";
+  if (anyCategory) {
+    if (field === "cat-only") return bad("anyCategory cannot be combined with field cat-only");
+    if (!usesQuery) return bad("query is required when anyCategory is true");
+  }
+  const clauses = [];
+  if (!anyCategory) clauses.push(`cat:${category}`);
+  if (usesQuery) clauses.push(`${field}:${encodeURIComponent(rawQuery)}`);
+  const url = `${ARXIV_BASE}?search_query=${clauses.join("+AND+")}&start=0&max_results=${limit}&sortBy=submittedDate&sortOrder=descending`;
+  return { ok: true, url, category: anyCategory ? null : category, query: usesQuery ? rawQuery : null };
+}
+
 function buildArxivMacro(register, domain) {
   const category = CATEGORY_FOR_DOMAIN[domain];
   register(domain, "live_arxiv", async (_ctx, input = {}) => {
-    const limit = Math.min(Math.max(Number(input.limit) || 15, 1), 30);
-    const query = input.query
-      ? encodeURIComponent(String(input.query).slice(0, 200))
-      : null;
-    const searchQuery = query
-      ? `search_query=cat:${category}+AND+all:${query}`
-      : `search_query=cat:${category}`;
-    const url = `${ARXIV_BASE}?${searchQuery}&start=0&max_results=${limit}&sortBy=submittedDate&sortOrder=descending`;
+    const req = buildArxivRequest(category, input || {});
+    if (!req.ok) return req;
     try {
-      const xml = await fetchTextWithTimeout(url);
+      const xml = await fetchTextWithTimeout(req.url);
       const entries = parseArxivAtom(xml);
       return {
         ok: true,
         source: "arXiv",
-        category,
+        category: req.category,
         fetchedAt: Math.floor(Date.now() / 1000),
-        query: input.query || null,
+        query: req.query,
         total: entries.length,
         papers: entries,
       };
@@ -97,4 +133,4 @@ export default function registerResearchLiveMacros(register) {
   }
 }
 
-export { CATEGORY_FOR_DOMAIN, parseArxivAtom };
+export { CATEGORY_FOR_DOMAIN, parseArxivAtom, buildArxivRequest };

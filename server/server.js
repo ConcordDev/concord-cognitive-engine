@@ -32708,6 +32708,11 @@ registerPharmacyLiveMacros(register);
 import registerResearchLiveMacros from "./domains/research-live.js";
 registerResearchLiveMacros(register);
 
+// BoardGameGeek hot list proxy (board.live_hot) — the browser can't call BGG
+// directly (CORS), so the board lens reads it through here.
+import registerBoardLiveMacros from "./domains/board-live.js";
+registerBoardLiveMacros(register);
+
 // Phase 4 cont'd — more REAL free-API wire-ups (no API keys needed):
 // PubChem (chem), NCBI PubMed (bio + neuro), MedlinePlus (mental-health),
 // iTunes Search (podcast), REST Countries (global), GBIF

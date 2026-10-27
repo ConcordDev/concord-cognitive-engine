@@ -1,11 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useArxivFeed } from '@/hooks/useArxivFeed';
 import { Microscope, Loader2, ExternalLink } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
-
-interface Paper { id: string; title: string; summary: string; authors: string[]; published: string; link: string; category?: string; }
 
 const CATEGORIES = [
   { id: 'physics', label: 'physics' },
@@ -15,35 +13,10 @@ const CATEGORIES = [
   { id: 'math', label: 'math' },
 ];
 
-function parseArxivAtom(xml: string): Paper[] {
-  const entries: Paper[] = [];
-  const doc = new DOMParser().parseFromString(xml, 'application/xml');
-  doc.querySelectorAll('entry').forEach((e) => {
-    const id = e.querySelector('id')?.textContent || '';
-    const title = e.querySelector('title')?.textContent?.replace(/\s+/g, ' ').trim() || '';
-    const summary = e.querySelector('summary')?.textContent?.replace(/\s+/g, ' ').trim() || '';
-    const authors = Array.from(e.querySelectorAll('author > name')).map((n) => n.textContent || '');
-    const published = e.querySelector('published')?.textContent || '';
-    const link = e.querySelector('link[rel="alternate"]')?.getAttribute('href') || id;
-    const category = e.querySelector('category')?.getAttribute('term') || '';
-    entries.push({ id, title, summary, authors, published, link, category });
-  });
-  return entries;
-}
-
 export function ScienceArxiv() {
   const [cat, setCat] = useState(CATEGORIES[0].id);
 
-  const papers = useQuery({
-    queryKey: ['arxiv-science', cat],
-    queryFn: async () => {
-      const r = await fetch(`https://export.arxiv.org/api/query?search_query=cat:${encodeURIComponent(cat)}&start=0&max_results=20&sortBy=submittedDate&sortOrder=descending`);
-      if (!r.ok) throw new Error(`arxiv ${r.status}`);
-      const xml = await r.text();
-      return parseArxivAtom(xml);
-    },
-    staleTime: 30 * 60 * 1000,
-  });
+  const papers = useArxivFeed({ category: cat });
 
   const list = papers.data || [];
 
