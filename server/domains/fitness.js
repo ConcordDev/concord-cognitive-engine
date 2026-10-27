@@ -265,7 +265,7 @@ export default function registerFitnessActions(registerLensAction) {
    * hr-zones — Compute 5 HR zones via Tanaka / Fox / Karvonen.
    * Weekly minute targets follow ACSM-style polarised distribution.
    */
-  registerLensAction("fitness", "hr-zones", (_ctx, _artifact, params = {}) => {
+  registerLensAction("fitness", "hr-zones", (ctx, _artifact, params = {}) => {
     const age = Math.max(5, Math.min(100, Number(params.age) || 30));
     const restingHr = Math.max(30, Math.min(120, Number(params.restingHr) || 60));
     const method = ["tanaka", "fox", "karvonen"].includes(params.method) ? params.method : "tanaka";
@@ -286,19 +286,54 @@ export default function registerFitnessActions(registerLensAction) {
       const highBpm = method === "karvonen"
         ? Math.round(restingHr + hrr * b.pct[1])
         : Math.round(maxHr * b.pct[1]);
-      // Seed weekly actual minutes deterministically by user-id+zone (demo)
-      const actualSeed = (i * 31 + age) % 100;
-      const weeklyMinutesActual = Math.round(b.weeklyMinutesTarget * (actualSeed / 100));
       return {
         zone: i + 1, name: b.name,
         lowBpm, highBpm,
         pctOfMax: `${Math.round(b.pct[0] * 100)}–${Math.round(b.pct[1] * 100)}%`,
         purpose: b.purpose,
         weeklyMinutesTarget: b.weeklyMinutesTarget,
-        weeklyMinutesActual,
+        weeklyMinutesActual: null,
       };
     });
-    return { ok: true, result: { zones, maxHr, restingHr, method } };
+
+    // Minutes actually spent in each band this UTC week-to-date (last 7
+    // days). Only activities that recorded an average heart rate count.
+    // No such rows is not a seeded fraction of the target.
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const activities = getFitState()?.activities?.get(userId) || [];
+    const end = new Date();
+    const endDay = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()));
+    const startDay = new Date(endDay);
+    startDay.setUTCDate(startDay.getUTCDate() - 6);
+    const startStr = startDay.toISOString().slice(0, 10);
+    const endStr = endDay.toISOString().slice(0, 10);
+    const windowed = activities.filter((a) => {
+      const day = String(a?.date || "").slice(0, 10);
+      const hr = Number(a?.avgHr);
+      const dur = Number(a?.durationSec);
+      return day >= startStr && day <= endStr
+        && Number.isFinite(hr) && hr > 0
+        && Number.isFinite(dur) && dur > 0;
+    });
+    const measured = windowed.length > 0;
+    if (measured) {
+      zones.forEach((z, i) => {
+        const last = i === zones.length - 1;
+        let sec = 0;
+        for (const a of windowed) {
+          const hr = Number(a.avgHr);
+          if (hr >= z.lowBpm && (last ? hr <= z.highBpm : hr < z.highBpm)) sec += Number(a.durationSec);
+        }
+        z.weeklyMinutesActual = Math.round(sec / 60);
+      });
+    }
+    return {
+      ok: true,
+      result: {
+        zones, maxHr, restingHr, method,
+        weeklyMinutesReason: measured ? null : "not_recorded",
+      },
+    };
   });
 
   /**

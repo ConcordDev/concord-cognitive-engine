@@ -275,6 +275,28 @@ describe("fitness.hr-zones — max HR formulas + zone bands HeartRateZones rende
     assert.equal(r.result.zones[0].lowBpm, 119);
   });
 
+  it("does not invent weekly minutes; it sums logged heart-rate time", () => {
+    const empty = call("hr-zones", ctxA, { age: 40, restingHr: 60, method: "fox" });
+    assert.equal(empty.result.weeklyMinutesReason, "not_recorded");
+    assert.ok(empty.result.zones.every((z) => z.weeklyMinutesActual === null));
+
+    // Fox age 40 → max 180. Zone 1 is round(90)–round(108) = 90–108, half-open.
+    const today = new Date().toISOString().slice(0, 10);
+    const logged = call("activity-create", ctxA, {
+      type: "run", durationSec: 600, distanceKm: 2, avgHr: 100, date: today,
+    });
+    assert.equal(logged.ok, true);
+    call("activity-create", ctxB, {
+      type: "run", durationSec: 3600, distanceKm: 10, avgHr: 100, date: today,
+    });
+    const r = call("hr-zones", ctxA, { age: 40, restingHr: 60, method: "fox" });
+    assert.equal(r.result.weeklyMinutesReason, null);
+    assert.equal(r.result.zones[0].weeklyMinutesActual, 10);
+    assert.ok(r.result.zones.slice(1).every((z) => z.weeklyMinutesActual === 0));
+    const other = call("hr-zones", ctxB, { age: 40, restingHr: 60, method: "fox" });
+    assert.equal(other.result.zones[0].weeklyMinutesActual, 60);
+  });
+
   it("fail-CLOSED: poisoned age/restingHr are clamped, zones stay finite", () => {
     const r = call("hr-zones", ctxA, { age: Infinity, restingHr: "1e999", method: "tanaka" });
     assert.equal(r.ok, true);
