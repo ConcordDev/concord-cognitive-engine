@@ -89,6 +89,43 @@ test("minSpacingMs serializes upstream calls", async () => {
   assert.ok(starts[2] - starts[1] >= 35, `gap2 ${starts[2] - starts[1]}`);
 });
 
+test("no-spacing source runs different keys concurrently; serialize:true opts in", async () => {
+  let releaseA; const gateA = new Promise((r) => { releaseA = r; });
+  const started = [];
+  registerSource("c", { ttlMs: 1000, fetcher: async (k) => { started.push(k); if (k === "a") await gateA; return k; } });
+  const pa = get("c", "a");
+  const pb = get("c", "b");
+  assert.equal((await pb).status, "fresh"); // b finishes while a is still pending
+  assert.deepEqual(started, ["a", "b"]);
+  releaseA();
+  assert.equal((await pa).status, "fresh");
+
+  let releaseS; const gateS = new Promise((r) => { releaseS = r; });
+  const startedS = [];
+  registerSource("ser", { ttlMs: 1000, serialize: true, fetcher: async (k) => { startedS.push(k); if (k === "a") await gateS; return k; } });
+  const sa = get("ser", "a");
+  const sb = get("ser", "b");
+  await flush(); await flush();
+  assert.deepEqual(startedS, ["a"]); // b queued behind a
+  releaseS();
+  await Promise.all([sa, sb]);
+  assert.deepEqual(startedS, ["a", "b"]);
+});
+
+test("cachedFetchJson on two different URLs is concurrent", async () => {
+  clearExternalFetchCache();
+  let release; const gate = new Promise((r) => { release = r; });
+  const started = [];
+  const slow = async () => { started.push("slow"); await gate; return { ok: true, status: 200, json: async () => ({ s: 1 }) }; };
+  const fast = async () => { started.push("fast"); return { ok: true, status: 200, json: async () => ({ f: 1 }) }; };
+  const p1 = cachedFetchJson("https://93.184.216.34/slow.json", { opts: { fetchImpl: slow } });
+  const p2 = cachedFetchJson("https://93.184.216.34/fast.json", { opts: { fetchImpl: fast } });
+  assert.deepEqual(await p2, { f: 1 }); // resolves while slow is still pending
+  assert.deepEqual(started, ["slow", "fast"]);
+  release();
+  assert.deepEqual(await p1, { s: 1 });
+});
+
 test("breaker backs off exponentially, never calls upstream while open, then recovers; failures not cached", async () => {
   let calls = 0, healthy = false;
   registerSource("s", {
@@ -236,6 +273,22 @@ test("persistence round-trip, corrupt file tolerated, generic source not persist
     registerSource("p", { persist: true, fetcher: async () => ["fresh"] });
     assert.equal(loadPersisted(), false);
     assert.deepEqual((await get("p", "k")).data, ["fresh"]);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("non-persist and generic external-fetch sources never write the persist file", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "feedcache-"));
+  try {
+    configureFeedCache({ dir });
+    registerSource("np", { fetcher: async () => ({ x: 1 }) });
+    await get("np", "k");
+    clearExternalFetchCache();
+    const fetchImpl = async () => ({ ok: true, status: 200, json: async () => ({ y: 2 }) });
+    await cachedFetchJson("https://93.184.216.34/np.json", { opts: { fetchImpl } });
+    assert.equal(await flushPersist(), false);
+    assert.deepEqual(fs.readdirSync(dir), []);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

@@ -90,6 +90,7 @@ export function registerSource(id, config = {}) {
     timeoutMs: config.timeoutMs > 0 ? config.timeoutMs : 0,
     license,
     persist: !!config.persist,
+    serialize: !!config.serialize || config.budget?.minSpacingMs > 0,
     maxKeys: config.maxKeys > 0 ? config.maxKeys : DEFAULT_MAX_KEYS,
     poolSize: config.poolSize > 0 ? config.poolSize : DEFAULT_POOL_SIZE,
     fetcher: config.fetcher,
@@ -198,9 +199,12 @@ function recordSuccess(src, key, data) {
   if (src.cfg.persist) schedulePersist();
 }
 
-/** Serialized, min-spaced, timeout-bounded upstream call. Resolves {ok,data}|{ok:false,error}. */
+/** Optionally serialized, min-spaced, timeout-bounded upstream call. Resolves {ok,data}|{ok:false,error}. */
 function runUpstream(src, key, fetcher) {
-  const run = src.tail.then(async () => {
+  // Only sources that ask for it (minSpacingMs > 0 or serialize:true) queue
+  // behind each other; the rest run concurrently (still coalesced per key).
+  const gate = src.cfg.serialize ? src.tail : Promise.resolve();
+  const run = gate.then(async () => {
     const spacing = src.cfg.budget.minSpacingMs || 0;
     if (spacing > 0) {
       const wait = src.lastStart + spacing - _cfg.now();
@@ -229,7 +233,7 @@ function runUpstream(src, key, fetcher) {
       if (timer) clearTimeout(timer);
     }
   });
-  src.tail = run.then(() => {}, () => {});
+  if (src.cfg.serialize) src.tail = run.then(() => {}, () => {});
   return run;
 }
 
@@ -478,6 +482,7 @@ export function flushPersist() {
   if (_persistTimer) { clearTimeout(_persistTimer); _persistTimer = null; }
   const dir = persistDir();
   if (!dir) return Promise.resolve(false);
+  if (![..._sources.values()].some((s) => s.cfg.persist)) return Promise.resolve(false); // nothing opted in: write nothing
   _persistWriting = _persistWriting.then(async () => {
     try {
       const body = buildSnapshot();
