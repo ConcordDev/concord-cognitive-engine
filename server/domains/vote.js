@@ -3,6 +3,7 @@
 // fairness checking, and consensus measurement.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 export default function registerVoteActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -156,7 +157,7 @@ export default function registerVoteActions(registerLensAction) {
         overallWinner: condorcetWinner || (methodAgreement === "unanimous" ? uniqueWinners[0] : pluralityWinner),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -297,7 +298,7 @@ export default function registerVoteActions(registerLensAction) {
         pairwiseLosses,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -483,7 +484,7 @@ export default function registerVoteActions(registerLensAction) {
         overallConsensus: fleissKappa > 0.6 && polarizationIndex < 0.3 ? "strong" : fleissKappa > 0.3 ? "moderate" : "weak",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -717,7 +718,7 @@ export default function registerVoteActions(registerLensAction) {
     if (!s.ballots.has(poll.id)) s.ballots.set(poll.id, []);
     saveVoteState();
     return { ok: true, result: { poll: { ...poll, status: pollStatus(poll) } } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -853,7 +854,7 @@ export default function registerVoteActions(registerLensAction) {
 
     saveVoteState();
     return { ok: true, result: { ballot, receipt, replaced: prevIdx >= 0 } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -996,7 +997,7 @@ export default function registerVoteActions(registerLensAction) {
         })),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -1096,7 +1097,7 @@ export default function registerVoteActions(registerLensAction) {
         polarization: vtround(divisiveComments.length / Math.max(comments.length, 1)),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -1154,6 +1155,6 @@ export default function registerVoteActions(registerLensAction) {
         receipt,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 }

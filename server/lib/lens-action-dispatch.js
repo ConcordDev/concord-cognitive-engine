@@ -31,12 +31,29 @@ export function rejectInvalidLensInput(spec, input, ctx) {
   return validateLensActionInput(spec, input, ctx);
 }
 
-/** TypeError → invalid_input. Other throws are not rewritten. No message, no stack. */
+/**
+ * Wrong-typed caller input → invalid_input. Other throws are not rewritten.
+ * No message and no stack: the harness treats "is not a function" /
+ * "Cannot read properties" / "handler_error" as a crash.
+ */
 export function invalidInputFromThrow(err) {
-  if (!(err instanceof TypeError)) return null;
   const msg = String(err?.message || "");
-  const reason = /\.(?:map|filter|reduce) is not a function/.test(msg) ? "not_a_function" : "type_error";
+  if (err instanceof RangeError && /Invalid time value/.test(msg)) {
+    return { ok: false, error: "invalid_input", field: null, reason: "invalid_time" };
+  }
+  if (!(err instanceof TypeError)) return null;
+  const collection = /\.(?:map|filter|reduce|find|sort|slice|flatMap|forEach|join|split|some|every) is not a function/.test(msg)
+    || /is not iterable/.test(msg)
+    || /slice\.map is not a function/.test(msg);
+  const reason = collection ? "not_a_function" : "type_error";
   return { ok: false, error: "invalid_input", field: null, reason };
+}
+
+/** Catch-block envelope: type/time mistakes are invalid_input; everything else stays handler_error. */
+export function handlerFailure(err) {
+  const typed = invalidInputFromThrow(err);
+  if (typed) return typed;
+  return { ok: false, error: "handler_error", message: String(err?.message || err) };
 }
 
 export async function invokeLensHandler(handler, ctx, artifact, input, spec) {

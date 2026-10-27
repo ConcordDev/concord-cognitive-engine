@@ -8,6 +8,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 
 export default function registerQuestmarketActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -205,7 +206,7 @@ export default function registerQuestmarketActions(registerLensAction) {
         overallBalance: adjustments.length === 0 ? "Well balanced" : `${adjustments.length} adjustment(s) recommended`,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -269,7 +270,7 @@ export default function registerQuestmarketActions(registerLensAction) {
         tierDistribution: ranked.reduce((acc, p) => { acc[p.tier] = (acc[p.tier] || 0) + 1; return acc; }, {}),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -318,7 +319,7 @@ export default function registerQuestmarketActions(registerLensAction) {
         nextUp: locked.slice(0, 3).map(a => ({ name: a.name, rarity: a.rarity, desc: a.desc })),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -371,7 +372,7 @@ export default function registerQuestmarketActions(registerLensAction) {
         topContributors,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -425,7 +426,7 @@ export default function registerQuestmarketActions(registerLensAction) {
           : "Reward economy is sustainable",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ────────────────────────────────────────────────────────────
@@ -495,7 +496,7 @@ export default function registerQuestmarketActions(registerLensAction) {
     evaluateAchievements(s, userId);
     qmSave();
     return { ok: true, result: { quest, walletBalance: w.balance, escrowed: w.escrowed } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("questmarket", "cancelQuest", (ctx, _artifact, params = {}) => {
@@ -584,7 +585,7 @@ export default function registerQuestmarketActions(registerLensAction) {
         allTags: Array.from(new Set(Array.from(s.quests.values()).flatMap((q) => q.tags))).sort(),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Accept → submit → verify lifecycle ──
@@ -810,7 +811,7 @@ export default function registerQuestmarketActions(registerLensAction) {
         ranks: RANKS,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Reputation leaderboard (live, from real claim history) ──
@@ -842,7 +843,7 @@ export default function registerQuestmarketActions(registerLensAction) {
         myPosition: board.find((r) => r.userId === me)?.position || null,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Achievement showcase ──
@@ -878,7 +879,7 @@ export default function registerQuestmarketActions(registerLensAction) {
         xp: rep.xp,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Guild membership + shared quests ──
@@ -1005,7 +1006,7 @@ export default function registerQuestmarketActions(registerLensAction) {
         sharedQuestCount: sharedQuests.length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Marketplace overview (real aggregate stats) ──
@@ -1048,6 +1049,6 @@ export default function registerQuestmarketActions(registerLensAction) {
         recentLedger: s.ledger.slice(-15).reverse().map((e) => redactLedgerEntry(e, userId)),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 }

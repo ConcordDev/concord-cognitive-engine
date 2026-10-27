@@ -14,6 +14,7 @@ import { moneyOrNull, badNumber } from "../lib/finite-input.js";
 import { KNOWN_SCOPES, getDoc } from "../lib/yjs-realtime.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { registerEsignProvider, issueSigningLinks, deliverSigningLinks } from "../lib/esign-links.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 
 const USPTO_PATENTSVIEW = "https://search.patentsview.org/api/v1";
 const COURTLISTENER_BASE = "https://www.courtlistener.com/api/rest/v4";
@@ -220,7 +221,7 @@ export default function registerLawActions(registerLensAction) {
         judgeStats,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -311,7 +312,7 @@ export default function registerLawActions(registerLensAction) {
         statuteSummary: Object.values(byCode).sort((a, b) => b.topScore - a.topScore),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -408,7 +409,7 @@ export default function registerLawActions(registerLensAction) {
         allDeadlines: processed,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -535,7 +536,7 @@ export default function registerLawActions(registerLensAction) {
         monthlyBreakdown,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -760,7 +761,7 @@ export default function registerLawActions(registerLensAction) {
         disclosure: "Legal status (active / expired / lapsed / invalidated / litigated) is NOT available from this free data source and is never inferred from claim presence, count, or content — verify current status directly with USPTO Patent Center before relying on this for any filing, licensing, or freedom-to-operate decision.",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -1549,7 +1550,7 @@ export default function registerLawActions(registerLensAction) {
     }
 
     return { ok: true, result: { cycleTime, spendTrend, renewalTrend } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── Backlog item 1: Visual contract editor with redline / version diff ───
@@ -1622,7 +1623,7 @@ export default function registerLawActions(registerLensAction) {
         ops, added, removed, unchanged: ops.length - added - removed,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── WAVE4: real-time multi-party collaborative redlining ───
@@ -1758,7 +1759,7 @@ export default function registerLawActions(registerLensAction) {
         stats: { lines: lines.length, sentences: sentences.length, chars: text.length },
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // clause-extract-apply — push extracted clauses straight onto a contract.
@@ -1960,7 +1961,7 @@ export default function registerLawActions(registerLensAction) {
         },
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── Backlog item 5: Cryptographic e-signature with audit certificate ───
@@ -2056,7 +2057,7 @@ export default function registerLawActions(registerLensAction) {
       signerUserId: lwPublicLabel(certificate.signerUserId, ctx),
     };
     return { ok: true, result: { contractId: c.id, certificate: presentedCert, status: c.status, signatureCount: c.signatures.length } };
-  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("law", "contract-verify", (ctx, _a, params = {}) => {
@@ -2093,7 +2094,7 @@ export default function registerLawActions(registerLensAction) {
         checks,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── Backlog item 6: Contract templates / playbooks ───
@@ -2212,7 +2213,7 @@ export default function registerLawActions(registerLensAction) {
     contract.updatedAt = lwNow();
     saveLaw();
     return { ok: true, result: { contract, clausesAdded: added } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── Backlog item 7: Full-text contract repository search ───
@@ -2266,7 +2267,7 @@ export default function registerLawActions(registerLensAction) {
         results,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // feed — ingest recent federal/state court opinions (CourtListener) as DTUs.

@@ -4,6 +4,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 
 export default function registerParentingActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -76,7 +77,7 @@ export default function registerParentingActions(registerLensAction) {
           : ageMonths > 0 ? "Limited milestone data — record more observations" : "Enter child age to assess milestones",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -143,7 +144,7 @@ export default function registerParentingActions(registerLensAction) {
         note: "Percentiles are approximations. Consult your pediatrician for precise growth chart plotting.",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -215,7 +216,7 @@ export default function registerParentingActions(registerLensAction) {
         ].filter(Boolean),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -297,7 +298,7 @@ export default function registerParentingActions(registerLensAction) {
         }, {}),
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -357,7 +358,7 @@ export default function registerParentingActions(registerLensAction) {
         action: overdue > 0 ? `${overdue} critical immunization(s) overdue — schedule pediatrician visit` : "Immunizations on track",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ─── Huckleberry 2026 parity — smart baby-care tracker ──────────────
@@ -859,7 +860,7 @@ export default function registerParentingActions(registerLensAction) {
         },
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Diapers ─────────────────────────────────────────────────────────
@@ -980,7 +981,7 @@ export default function registerParentingActions(registerLensAction) {
     }
     result.note = "Percentiles are estimates from WHO median references. Confirm growth on your pediatrician's official chart.";
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Milestones ──────────────────────────────────────────────────────
@@ -1010,7 +1011,7 @@ export default function registerParentingActions(registerLensAction) {
         achievedCount: items.filter((i) => i.achieved).length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("parenting", "milestone-record", (ctx, _a, params = {}) => {
@@ -1061,7 +1062,7 @@ export default function registerParentingActions(registerLensAction) {
         byCategory,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Medicine ────────────────────────────────────────────────────────
@@ -1144,7 +1145,7 @@ export default function registerParentingActions(registerLensAction) {
     }
     events.sort((a, b) => b.at.localeCompare(a.at));
     return { ok: true, result: { date, events, count: events.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Dashboard ───────────────────────────────────────────────────────
@@ -1178,7 +1179,7 @@ export default function registerParentingActions(registerLensAction) {
         lastSleepEndAt: lastSleep ? lastSleep.endAt : null,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Sleep schedule predictor (Huckleberry SweetSpot, full day) ───────
@@ -1260,7 +1261,7 @@ export default function registerParentingActions(registerLensAction) {
           : "No sleep logged yet — schedule anchored to now using age-based wake windows.",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── WHO growth curves — full percentile bands for charting ───────────
@@ -1322,7 +1323,7 @@ export default function registerParentingActions(registerLensAction) {
         note: "WHO Child Growth Standards reference bands. Confirm plotting with your pediatrician.",
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Multi-caregiver sync ─────────────────────────────────────────────
@@ -1476,7 +1477,7 @@ export default function registerParentingActions(registerLensAction) {
     }
     savePgState();
     return { ok: true, result: { committed: t.kind, durationMin, entry } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
   registerLensAction("parenting", "timer-cancel", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1624,7 +1625,7 @@ export default function registerParentingActions(registerLensAction) {
         note: withData.length < 3 ? "Log a few days of data for richer trend insights." : null,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── iCal (.ics) shared helpers — RFC 5545 escaping + DTSTAMP, reused by
@@ -1743,7 +1744,7 @@ export default function registerParentingActions(registerLensAction) {
         eventCount: appts.length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ── Family calendar (general shared events, not just appointments) ───
@@ -1836,7 +1837,7 @@ export default function registerParentingActions(registerLensAction) {
     pgListB(s.events, userId).push(entry);
     savePgState();
     return { ok: true, result: { event: entry } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("parenting", "event-list", (ctx, _a, params = {}) => {
@@ -1856,7 +1857,7 @@ export default function registerParentingActions(registerLensAction) {
       ok: true,
       result: { events: all, count: all.length, nextUp: upcoming[0] || null },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("parenting", "event-update", (ctx, _a, params = {}) => {
@@ -1923,7 +1924,7 @@ export default function registerParentingActions(registerLensAction) {
     if (params.notes !== undefined) evt.notes = pgClean(params.notes, 300) || null;
     savePgState();
     return { ok: true, result: { event: evt } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("parenting", "event-delete", (ctx, _a, params = {}) => {
@@ -2007,7 +2008,7 @@ export default function registerParentingActions(registerLensAction) {
       ok: true,
       result: { ical: lines.join("\r\n"), filename: "parenting-family-events.ics", eventCount: events.length },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
   });
 
   // feed — ingest real children's-product safety recalls from the U.S.

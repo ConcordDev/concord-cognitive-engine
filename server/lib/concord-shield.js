@@ -199,6 +199,7 @@ export function createThreatDTU(opts) {
 
   const subtype = THREAT_SUBTYPES.includes(opts.subtype) ? opts.subtype : "exploit";
   const severity = clamp(opts.severity || 5, 1, 10);
+  const behavior = Array.isArray(opts.behavior) ? opts.behavior : [];
 
   return {
     id,
@@ -233,7 +234,7 @@ export function createThreatDTU(opts) {
       suricata: opts.signatures?.suricata || "",
     },
     vector: opts.vector || "unknown",
-    behavior: opts.behavior || [],
+    behavior,
     affected: opts.affected || [],
     neutralization: opts.neutralization || "",
     firewall: opts.firewall || "",
@@ -250,7 +251,7 @@ export function createThreatDTU(opts) {
         `Type: ${subtype}`,
         `Severity: ${severity}/10`,
         `Vector: ${opts.vector || "unknown"}`,
-        ...(opts.behavior || []).slice(0, 3).map(b => `Behavior: ${b}`),
+        ...behavior.slice(0, 3).map(b => `Behavior: ${b}`),
       ],
     },
     core: {

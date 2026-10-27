@@ -286,21 +286,27 @@ describe("education lens — degrade-graceful (never throws)", () => {
     let r;
     assert.doesNotThrow(() => { r = call("gradeCalculation", ctxA, wrap({ students: 123 })); });
     assert.equal(r.ok, false);
-    assert.equal(r.error, "handler_error");
+    assert.equal(r.error, "invalid_input");
+    assert.match(String(r.reason), /not_a_function|type_error/);
+    assert.equal(r.message, undefined);
   });
 
   it("progressTrack with a non-array requirements returns {ok:false}, no throw", () => {
     let r;
     assert.doesNotThrow(() => { r = call("progressTrack", ctxA, wrap({ requirements: "nope", completions: 7 })); });
     assert.equal(r.ok, false);
-    assert.equal(r.error, "handler_error");
+    assert.equal(r.error, "invalid_input");
+    assert.match(String(r.reason), /not_a_function|type_error/);
+    assert.equal(r.message, undefined);
   });
 
   it("scheduleConflict with a non-array schedules returns {ok:false}, no throw", () => {
     let r;
     assert.doesNotThrow(() => { r = call("scheduleConflict", ctxA, wrap({ schedules: 42 })); });
     assert.equal(r.ok, false);
-    assert.equal(r.error, "handler_error");
+    assert.equal(r.error, "invalid_input");
+    assert.match(String(r.reason), /not_a_function|type_error/);
+    assert.equal(r.message, undefined);
   });
 });
 

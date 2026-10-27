@@ -3,6 +3,7 @@
 // File named importdomain.js to avoid JS keyword conflict; domain registered as "import".
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { handlerFailure } from "../lib/lens-action-dispatch.js";
 export default function registerImportActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -133,7 +134,7 @@ export default function registerImportActions(registerLensAction) {
 
     artifact.data.validationResult = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -287,7 +288,7 @@ export default function registerImportActions(registerLensAction) {
 
     artifact.data.fieldMappings = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -398,7 +399,7 @@ export default function registerImportActions(registerLensAction) {
 
     artifact.data.duplicateDetection = result;
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   /**
@@ -669,7 +670,7 @@ export default function registerImportActions(registerLensAction) {
       schema: Object.fromEntries(fields.map((f) => [f.suggestedTarget, { type: f.inferredType, required: f.required }])),
     };
     return { ok: true, result };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   // ---------------------------------------------------------------------------
@@ -715,7 +716,7 @@ export default function registerImportActions(registerLensAction) {
     const session = sessions.find((x) => x.id === params.id);
     if (!session) return { ok: false, error: "session not found" };
     return { ok: true, result: { session, validation: validateSessionRows(session) } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("import", "correctCell", (ctx, artifact, params) => {
@@ -1001,7 +1002,7 @@ export default function registerImportActions(registerLensAction) {
         savedCount: saved.length,
       },
     };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    } catch (e) { return handlerFailure(e); }
 });
 
   registerLensAction("import", "saveConnector", (ctx, artifact, params) => {
