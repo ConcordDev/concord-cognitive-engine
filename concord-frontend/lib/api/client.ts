@@ -4,6 +4,7 @@ import { useUIStore } from '@/store/ui';
 import { fromAxiosError } from '@/lib/errors';
 import { getApiBase } from './base';
 import { clearServerBusy, isServiceOverloadedPayload, noteServerBusy } from '@/lib/realtime/server-busy';
+import { createRestartWindow, isRestartFailure, type RestartWindow } from './restart-window';
 import type {
   CreateDTURequest,
   UpdateDTURequest,
@@ -269,6 +270,20 @@ function retryDelayMsFor(error: AxiosError, retryCount: number): number {
   }
   return RETRY_BASE_DELAY_MS * Math.pow(2, retryCount); // 1s, 2s, 4s
 }
+
+type RequestErrorEntry = Parameters<ReturnType<typeof useUIStore.getState>['addRequestError']>[0];
+
+/**
+ * Held restart-window errors are recorded only if the backend is still failing
+ * when the window closes. The probe uses plain axios, not `api`, so a failing
+ * probe does not re-enter this interceptor.
+ */
+const restartWindow: RestartWindow<RequestErrorEntry> = createRestartWindow<RequestErrorEntry>({
+  isHealthy: () =>
+    axios.get(`${api.defaults.baseURL ?? ''}/api/status`, { timeout: 5_000, withCredentials: true })
+      .then((res) => Boolean(res.data?.ok)),
+  record: (entry) => useUIStore.getState().addRequestError(entry),
+});
 
 api.interceptors.response.use(undefined, async (error: AxiosError) => {
   const config = error.config as InternalAxiosRequestConfig & { _retryCount?: number; _retried?: boolean };
@@ -573,9 +588,13 @@ api.interceptors.response.use(
       const isExpectedAuthRead = (requestStatus === 401 || requestStatus === 403) && requestMethod === 'GET';
       const isExpectedError = isExpected404 || isExpectedAuthRead;
 
-      // Only record unexpected errors in the store
-      if (!isExpectedError) {
-        useUIStore.getState().addRequestError({
+      // Restart windows: a shutting-down 503 is not an issue (and opens the
+      // window); 502/503/504 or a no-response network failure inside the window
+      // is held until the backend is known to be back or still down at the end.
+      if (isShuttingDownResponse(error)) {
+        restartWindow.open();
+      } else if (!isExpectedError) {
+        const entry = {
           path: error.config?.url,
           method: error.config?.method?.toUpperCase(),
           status: error.response?.status,
@@ -583,7 +602,12 @@ api.interceptors.response.use(
           requestId,
           message: data?.error || error.message,
           reason,
-        });
+        };
+        if (!axios.isCancel(error) && isRestartFailure(error.response?.status, Boolean(error.response))) {
+          restartWindow.hold(entry);
+        } else {
+          useUIStore.getState().addRequestError(entry);
+        }
       }
 
       // Surface API errors as toasts — but throttle to avoid flooding the UI.
