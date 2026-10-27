@@ -179,7 +179,8 @@ describe("world sim infra reads stored counts", () => {
     const timeline = await call("/api/world/sim/timeline/exchange");
     assert.equal(timeline.status, 200);
     assert.deepEqual(timeline.body.snapshots, []);
-    assert.equal(timeline.body.reason, "no_snapshot_store");
+    assert.equal(timeline.body.reason, "no_snapshots_recorded_yet");
+    assert.equal(timeline.body.power, null);
 
     const scene = await call("/api/world/sim/scene/exchange");
     assert.equal(scene.status, 200);

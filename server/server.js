@@ -224,6 +224,15 @@ registerHeartbeat("fauna-spawner", {
   scope: "global",
 });
 
+// District timeline: one real snapshot per world (building + population
+// counts) roughly hourly; the handler itself dedups within 55 minutes.
+import { runDistrictSnapshotHeartbeat } from "./lib/district-snapshot-heartbeat.js";
+registerHeartbeat("district-snapshot", {
+  frequency: 60,
+  handler: ({ db }) => runDistrictSnapshotHeartbeat({ db }),
+  scope: "global",
+});
+
 // Theme 2 (game-feel pass): boid steering for spawned fauna so creatures
 // flock/herd/scatter rather than sitting where the spawner placed them.
 // Frequency 4 (~60s) = visibly responsive without churning the DB.
