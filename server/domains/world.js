@@ -40,6 +40,12 @@ export function runDistrictStressTest(buildings, scenario, magnitude) {
   return { ok: true, result: { scenario, magnitude: m, buildingsTested: details.length, passed, marginal, failed, skipped, details, model: "materials engine yield/ultimate; simplified per-scenario load model" } };
 }
 
+// Standing buildings of one world: the stress test's only input. Shared by
+// the world lens action and the /api/world/sim/stress-test route.
+export function loadStandingBuildings(db, worldId) {
+  return db.prepare("SELECT id, name, building_type, material, floors, health_pct, state FROM world_buildings WHERE world_id = ? AND state != 'collapsed' LIMIT 2000").all(worldId);
+}
+
 export default function registerWorldActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("world", "countryCompare", (ctx, artifact, _params) => {
@@ -865,7 +871,7 @@ export default function registerWorldActions(registerLensAction) {
       if (!worldId) return { ok: false, error: "worldId required" };
       let rows = [];
       try {
-        rows = db.prepare(`SELECT id, name, building_type, material, floors, health_pct, state FROM world_buildings WHERE world_id = ? AND state != 'collapsed' LIMIT 2000`).all(worldId);
+        rows = loadStandingBuildings(db, worldId);
       } catch (e) { return { ok: false, error: String(e?.message || e) }; }
       if (!rows.length) return { ok: false, error: "no standing buildings in this world" };
       return runDistrictStressTest(rows, String(params.scenario || ""), params.magnitude);

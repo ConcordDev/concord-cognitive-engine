@@ -166,6 +166,7 @@ describe("world sim infra reads stored counts", () => {
     assert.equal(hub.body.concordia.totalVisits, 9);
     assert.equal(hub.body.concordia.buildingCount, 2);
     assert.equal(hub.body.concordia.districts, null);
+    assert.equal(hub.body.concordia.districtsReason, "no_district_table");
     assert.equal(hub.body.concordia.activeUsers, null);
     assert.equal(JSON.stringify(hub.body).includes("8200"), false);
 
@@ -191,8 +192,12 @@ describe("world sim infra reads stored counts", () => {
     assert.deepEqual(scene.body.scene.buildings, []);
 
     const stress = await call("/api/world/sim/stress-test", { method: "POST", body: { districtId: "exchange", magnitude: 7 } });
-    assert.equal(stress.status, 501);
-    assert.equal(stress.body.reason, "no_structural_model");
+    // This fixture's world_buildings has no material/floors/health columns, so the model cannot run.
+    assert.equal(stress.status, 503);
+    assert.equal(stress.body.error, "unavailable");
+    assert.equal(stress.body.reason, "no_building_table");
+    const noId = await call("/api/world/sim/stress-test", { method: "POST", body: { magnitude: 7 } });
+    assert.equal(noId.status, 400);
     assert.equal(JSON.stringify(stress.body).includes("bldg-001"), false);
   });
 
