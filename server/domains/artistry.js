@@ -712,6 +712,7 @@ export default function registerArtistryActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  const _artCountedViews = new Set();
   registerLensAction("artistry", "projectView", (ctx, artifact, params) => {
     try {
       const s = getArtState();
@@ -730,9 +731,16 @@ export default function registerArtistryActions(registerLensAction) {
       if (found.userId !== viewer && found.published === false) {
         return { ok: false, error: "project_not_found" };
       }
-      if (found.userId !== viewer) {
-        found.views += 1;
-        saveArtState();
+      // Count each other viewer once per project (per process), so a second
+      // account cannot inflate someone else's view count by re-opening it.
+      if (found.userId !== viewer && viewer && viewer !== "anon") {
+        const viewKey = `${found.id}\u0000${viewer}`;
+        if (!_artCountedViews.has(viewKey)) {
+          if (_artCountedViews.size > 50000) _artCountedViews.clear();
+          _artCountedViews.add(viewKey);
+          found.views += 1;
+          saveArtState();
+        }
       }
       const comments = (s.comments.get(found.id) || []).map((c) => presentArtComment(ctx, c));
       const appreciations = (s.appreciations.get(found.id) || []);

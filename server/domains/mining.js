@@ -853,6 +853,11 @@ export default function registerMiningActions(registerLensAction) {
       const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const name = mnClean(params.name, 80);
       if (!name) return { ok: false, error: "equipment name required" };
+      // Equipment may only be assigned to the caller's OWN site.
+      const assignSiteId = mnClean(params.siteId, 60) || null;
+      if (assignSiteId && !mnSites(s, mnActor(ctx)).some((x) => x.id === assignSiteId)) {
+        return { ok: false, error: "site not found" };
+      }
       const unit = {
         id: mnId("eq"), name,
         kind: EQUIP_KINDS.includes(params.kind) ? params.kind : "haul_truck",

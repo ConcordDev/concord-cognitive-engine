@@ -192,6 +192,12 @@ export default function registerHomeImprovementActions(registerLensAction) {
     const beforeImg = hiClean(params.beforeImage, 4000);
     const afterImg = hiClean(params.afterImage, 4000);
     if (!beforeImg && !afterImg) return { ok: false, error: "at least one image required" };
+    // A gallery entry may only link the caller's OWN project; a foreign or
+    // made-up id reads as "not found" so it does not confirm someone else's.
+    const linkProjectId = hiClean(params.projectId, 60) || "";
+    if (linkProjectId && !hiProjects(s, hiActor(ctx)).some((p) => p.id === linkProjectId)) {
+      return { ok: false, error: "project not found" };
+    }
     const entry = {
       id: hiId("gal"),
       room: ROOMS.includes(room) ? room : room,

@@ -177,8 +177,17 @@ export default function registerOpsActions(register) {
   /**
    * postmortemDraft — generate a 5-section post-mortem skeleton.
    */
-  registerLensAction("ops", "postmortemDraft", (_ctx, _artifact, params = {}) => {
-    const title = params.title || "Incident post-mortem";
+  registerLensAction("ops", "postmortemDraft", (ctx, _artifact, params = {}) => {
+    // A draft for a stored incident must be the caller's OWN incident; a
+    // foreign or made-up id reads as "not found". With no incidentId this
+    // stays a stateless template.
+    let inc = null;
+    if (params.incidentId) {
+      const s = getOpsState();
+      inc = s ? ensureList(s.incidents, actId(ctx)).find((i) => i.id === params.incidentId) : null;
+      if (!inc) return { ok: false, error: "incident not found" };
+    }
+    const title = params.title || (inc?.title ? `Post-mortem: ${inc.title}` : "Incident post-mortem");
     const incidentId = params.incidentId || `inc-${Date.now()}`;
     const startedAt = params.startedAt || new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const resolvedAt = params.resolvedAt || new Date().toISOString();
@@ -528,6 +537,10 @@ export default function registerOpsActions(register) {
       const endsAt = params.endsAt ? new Date(params.endsAt) : null;
       if (!startsAt || isNaN(startsAt) || !endsAt || isNaN(endsAt)) {
         return { ok: false, error: "valid startsAt and endsAt required" };
+      }
+      // An override may only target the caller's OWN shift.
+      if (params.shiftId && !ensureList(s.shifts, userId).some((sh) => sh.id === params.shiftId)) {
+        return { ok: false, error: "shift not found" };
       }
       const seq = ensureSeq(s, userId);
       const override = {
