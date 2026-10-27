@@ -509,11 +509,16 @@ export default function registerGameActions(registerLensAction) {
       const days = Array.isArray(p.days) ? p.days.filter(d => validDays.includes(d)) : validDays;
       const s = gameState();
       const userId = actorId(ctx);
+      const taskId = p.taskId ? String(p.taskId) : null;
+      if (taskId) {
+        const tasks = s.tasks instanceof Map ? s.tasks.get(userId) : null;
+        if (!tasks || !tasks.has(taskId)) return { ok: false, error: "task not found" };
+      }
       const map = userBucket(s.reminders, userId, () => new Map());
       const reminder = {
         id: uid("rem"), title, time,
         days: days.length ? days : validDays,
-        taskId: p.taskId || null,
+        taskId,
         enabled: true, createdAt: Date.now(),
       };
       map.set(reminder.id, reminder);

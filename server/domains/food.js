@@ -1706,6 +1706,8 @@ export default function registerFoodActions(registerLensAction) {
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const recipeId = String(params.recipeId || "").trim();
     if (!recipeId) return { ok: false, error: "recipeId required" };
+    const ownedRecipes = s.recipes instanceof Map ? (s.recipes.get(userId) || []) : [];
+    if (!ownedRecipes.some((r) => r.id === recipeId)) return { ok: false, error: "recipe not found" };
     const dataUrl = String(params.dataUrl || params.url || "").trim();
     if (!dataUrl) return { ok: false, error: "dataUrl or url required" };
     if (dataUrl.length > 4_000_000) return { ok: false, error: "image too large (max ~4MB)" };

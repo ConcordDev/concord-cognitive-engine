@@ -643,6 +643,10 @@ export default function registerUrbanplanningActions(registerLensAction) {
       const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const name = upClean(params.name, 120);
       if (!name) return { ok: false, error: "scenario name required" };
+      const parcelId = upClean(params.parcelId, 40) || null;
+      if (parcelId && !upList(s.parcels, upAid(ctx)).some((p) => p.id === parcelId)) {
+        return { ok: false, error: "parcel not found" };
+      }
       const zone = String(params.zoneType || "residential").toLowerCase();
       const scenario = {
         id: upId("scn"),
@@ -652,7 +656,7 @@ export default function registerUrbanplanningActions(registerLensAction) {
         lotSizeSqFt: Math.max(0, upNum(params.lotSizeSqFt, 5000)),
         useMix: String(params.useMix || zone).toLowerCase(),
         efficiency: Math.min(1, Math.max(0.4, upNum(params.efficiency, 0.82))),
-        parcelId: upClean(params.parcelId, 40) || null,
+        parcelId,
         createdAt: upNow(),
       };
       upList(s.scenarios, upAid(ctx)).push(scenario);

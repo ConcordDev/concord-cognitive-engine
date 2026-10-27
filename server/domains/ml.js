@@ -276,11 +276,15 @@ export default function registerMlActions(registerLensAction) {
     const userId = mlActor(ctx);
     const name = mlClean(params.name, 160);
     if (!name) return { ok: false, error: "experiment name required" };
+    const datasetId = mlClean(params.datasetId, 200);
+    if (datasetId && !mlList(m.datasets, userId).some((d) => d.id === datasetId)) {
+      return { ok: false, error: "dataset not found" };
+    }
     const exp = {
       id: mlId("exp"),
       name,
       modelId: mlClean(params.modelId, 200),
-      datasetId: mlClean(params.datasetId, 200),
+      datasetId,
       status: "running",
       hyperparams: {
         learningRate: mlNum(params.learningRate, 0.001),
