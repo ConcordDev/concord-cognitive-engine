@@ -11,6 +11,7 @@ import { executeTransfer } from "../economy/transfer.js";
 import { calculateFee } from "../economy/fees.js";
 import { moneyOrNull, badNumber } from "../lib/finite-input.js";
 import { registerHeartbeat } from "../emergent/heartbeat-registry.js";
+import { listFriends } from "../lib/friendships.js";
 
 export default function registerWalletActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -334,6 +335,40 @@ export default function registerWalletActions(registerLensAction) {
 
   function ledgerDb(ctx) {
     return ctx?.db || globalThis._concordSTATE?.db || null;
+  }
+
+  // Who can see a social-feed entry:
+  //   public  → everyone
+  //   friends → its author, the named counterparty, and the author's accepted
+  //             friends (friendships table). With no database to ask, only the
+  //             author and counterparty see it.
+  //   private → its author only
+  // Anonymous callers only ever see public entries.
+  function feedViewer(ctx) {
+    const userId = uid(ctx);
+    const anon = !userId || userId === "anon" || userId === "anonymous" || userId === "guest";
+    let friends = null;
+    const loadFriends = () => {
+      if (friends) return friends;
+      friends = new Set();
+      const db = ledgerDb(ctx) || globalThis._concordDB || null;
+      if (db && !anon) {
+        try { for (const f of listFriends(db, userId)) friends.add(f.friendUserId); } catch { /* no friendships table: author-only */ }
+      }
+      return friends;
+    };
+    return {
+      userId,
+      canSee(owner, e) {
+        const vis = e?.visibility || "friends";
+        if (vis === "public") return true;
+        if (anon) return false;
+        if (owner === userId || e?.actorId === userId) return true;
+        if (vis !== "friends") return false;
+        if (e?.counterparty && e.counterparty === userId) return true;
+        return loadFriends().has(owner);
+      },
+    };
   }
 
   function describeTransfer(result, amount) {
@@ -695,9 +730,10 @@ export default function registerWalletActions(registerLensAction) {
     if (scope === "mine") {
       entries = [...listFor(state.feed, userId)];
     } else {
+      const viewer = feedViewer(ctx);
       for (const [owner, list] of state.feed.entries()) {
         for (const e of list) {
-          if (owner === userId || e.visibility !== "private") entries.push(e);
+          if (viewer.canSee(owner, e)) entries.push(e);
         }
       }
     }
@@ -714,9 +750,10 @@ export default function registerWalletActions(registerLensAction) {
     const id = String(params.id || "").trim();
     if (!id) return { ok: false, error: "id required" };
     let target = null;
-    for (const list of state.feed.values()) {
+    const viewer = feedViewer(ctx);
+    for (const [owner, list] of state.feed.entries()) {
       const e = list.find(x => x.id === id);
-      if (e) target = e;
+      if (e && viewer.canSee(owner, e)) target = e;
     }
     if (!target) return { ok: false, error: "entry not found" };
     const idx = target.likes.indexOf(userId);

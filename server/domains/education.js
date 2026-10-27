@@ -570,6 +570,29 @@ export default function registerEducationActions(registerLensAction) {
     return !!course && (course.status === "published" || course.authorId === userId);
   }
 
+  // Course-scoped records (cohorts, discussion posts) follow their course:
+  // a draft/private course's records are seen only by the course author and
+  // learners enrolled in it. Records with no course, or whose course no
+  // longer exists, have nothing to protect and stay listed. A record's own
+  // author always sees it.
+  function courseRecordsVisibleTo(ctx, s, courseId, userId) {
+    if (!courseId) return true;
+    const course = courseStore(ctx, s).get(String(courseId));
+    if (!course) return true;
+    if (courseVisibleTo(course, userId)) return true;
+    if (!userId || userId === "anon") return false;
+    const mine = s.enrollments instanceof Map ? s.enrollments.get(userId) : null;
+    return Array.isArray(mine) && mine.some(e => e && e.courseId === course.id);
+  }
+  function courseVisibilityFilter(ctx, s, userId) {
+    const memo = new Map();
+    return (courseId) => {
+      const key = courseId ? String(courseId) : "";
+      if (!memo.has(key)) memo.set(key, courseRecordsVisibleTo(ctx, s, key, userId));
+      return memo.get(key);
+    };
+  }
+
   // Public stand-in for a user id. Raw ids stay on the stored row.
   // displayName comes from the users table when it is a real name;
   // otherwise a role label. Neither value is the id itself.
@@ -1656,7 +1679,10 @@ Constraints:
     const userId = eduActor(ctx);
     const store = discussionStore(ctx, s);
     const courseId = params.courseId ? String(params.courseId) : null;
-    const all = courseId ? store.listByCourse(courseId) : store.listAll();
+    const canSee = courseVisibilityFilter(ctx, s, userId);
+    if (courseId && !canSee(courseId)) return { ok: true, result: { discussions: [] } };
+    const all = (courseId ? store.listByCourse(courseId) : store.listAll())
+      .filter(d => d.author === userId || canSee(d.courseId));
     return { ok: true, result: { discussions: all.slice().reverse().map(d => viewDiscussion(ctx, userId, d)) } };
   });
 
@@ -1667,6 +1693,7 @@ Constraints:
     const text = String(params.text || "").trim();
     const replyTo = params.replyTo ? String(params.replyTo) : null;
     if (!courseId || !text) return { ok: false, error: "courseId and text required" };
+    if (!courseRecordsVisibleTo(ctx, s, courseId, userId)) return { ok: false, error: "course not found" };
     const post = {
       id: uidEdu("disc"), courseId, text, replyTo,
       author: userId,
@@ -1683,7 +1710,7 @@ Constraints:
     const store = discussionStore(ctx, s);
     const id = String(params.id || "");
     const post = store.get(id);
-    if (!post) return { ok: false, error: "post not found" };
+    if (!post || (post.author !== eduActor(ctx) && !courseRecordsVisibleTo(ctx, s, post.courseId, eduActor(ctx)))) return { ok: false, error: "post not found" };
     post.upvotes++;
     store.put(post);
     saveStateIfAvailable();
@@ -2086,7 +2113,10 @@ Constraints:
     const userId = eduActor(ctx);
     const store = cohortStore(ctx, s);
     const courseId = params.courseId ? String(params.courseId) : null;
-    const all = courseId ? store.listByCourse(courseId) : store.listAll();
+    const canSee = courseVisibilityFilter(ctx, s, userId);
+    if (courseId && !canSee(courseId)) return { ok: true, result: { cohorts: [] } };
+    const all = (courseId ? store.listByCourse(courseId) : store.listAll())
+      .filter(c => c.authorId === userId || canSee(c.courseId));
     const cohorts = all.slice()
       .sort((a, b) => String(a.scheduledAt).localeCompare(String(b.scheduledAt)))
       .map(c => viewCohort(ctx, userId, c));
@@ -2100,6 +2130,7 @@ Constraints:
     const instructor = String(params.instructor || "").trim();
     if (!title) return { ok: false, error: "title required" };
     if (!instructor) return { ok: false, error: "instructor required" };
+    if (params.courseId && !courseRecordsVisibleTo(ctx, s, params.courseId, userId)) return { ok: false, error: "course not found" };
     const cohort = {
       id: uidEdu("cohort"), authorId: userId, title, instructor,
       courseId: params.courseId ? String(params.courseId) : null,
@@ -2138,7 +2169,7 @@ Constraints:
     const store = cohortStore(ctx, s);
     const id = String(params.id || "");
     const cohort = store.get(id);
-    if (!cohort) return { ok: false, error: "cohort not found" };
+    if (!cohort || (cohort.authorId !== userId && !courseRecordsVisibleTo(ctx, s, cohort.courseId, userId))) return { ok: false, error: "cohort not found" };
     if (cohort.status === "ended") return { ok: false, error: "cohort has ended" };
     const learner = cohortRosterActor(cohort, userId, params);
     if (cohort.roster.includes(learner)) return { ok: false, error: "already on roster" };
