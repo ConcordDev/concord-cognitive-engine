@@ -28733,8 +28733,11 @@ const _consentFiltered = all.filter(_consentOk);
 let _queryVec = null;
 let _dtuEmbedMap = null;
 try {
-  const _embedTimeout = new Promise(r => { setTimeout(() => r(null), 120); });
-  const _embedQuery = embed(qRaw.slice(0, 512));
+  // 120ms was shorter than one local MiniLM query embed under load, so chat
+  // fell back to lexical-only and missed megas that only match by meaning.
+  const _embedTimeoutMs = Number(process.env.CONCORD_CHAT_EMBED_TIMEOUT_MS) || 800;
+  const _embedTimeout = new Promise(r => { setTimeout(() => r(null), _embedTimeoutMs); });
+  const _embedQuery = embed(qRaw.slice(0, 512), "passage", { timeoutMs: _embedTimeoutMs });
   _queryVec = await Promise.race([_embedQuery, _embedTimeout]);
   if (_queryVec && isEmbeddingAvailable()) {
     // Build a fast lookup: dtuId → cached embedding vector
@@ -28821,6 +28824,12 @@ const scored = _consentFiltered.map(d => {
   // Affect depthBudget controls how many DTUs enter the working set (default 6)
   const _affDepthLimit = clamp(Math.round(_aff.depthBudget || 5), 2, 10);
   const relevant = scored.filter(x=>x.score > 0.08).slice(0, _affDepthLimit).map(x=>x.d);
+  try {
+    structuredLog("info", "chat_dtu_retrieval", {
+      sessionId, candidates: _consentFiltered.length, embedUsed: !!(_queryVec && _dtuEmbedMap),
+      top: scored.slice(0, 5).map(x => ({ id: x.d.id, tier: x.d.tier || "regular", archived: !!x.d._archived, score: Math.round(x.score * 1000) / 1000 })),
+    });
+  } catch { /* observability only */ }
 
   // ── Context Engine: feed retrieval hits into activation pipeline ──
   // This accumulates activation across queries without clearing the session map.
