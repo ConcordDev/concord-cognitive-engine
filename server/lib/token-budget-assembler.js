@@ -85,9 +85,19 @@ export function formatDTUBlock(dtu, activationMeta) {
   }
 
   // Core content summary — pull the most informative field
-  const summary = dtu.human?.summary || dtu.core?.claims?.[0] || dtu.content || "";
+  // Megas/hypers carry no human.summary or claims; their body is in
+  // core.definitions and cretiHuman. Without this fallback a mega reached the
+  // prompt as a bare title.
+  const definition = Array.isArray(dtu.core?.definitions) ? dtu.core.definitions[0] : "";
+  const creti = typeof dtu.cretiHuman === "string"
+    ? dtu.cretiHuman.replace(/\*\*/g, "").replace(/\s+/g, " ").trim()
+    : "";
+  const summary = dtu.human?.summary || dtu.core?.claims?.[0] || dtu.content || definition || creti || "";
   if (summary) {
     lines.push(`  ${String(summary).slice(0, 300)}`);
+  }
+  if (definition && definition !== summary) {
+    lines.push(`  Definition: ${String(definition).slice(0, 200)}`);
   }
 
   // Key invariants (if any)
