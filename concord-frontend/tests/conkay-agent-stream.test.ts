@@ -32,7 +32,7 @@ describe('streamConKayAgent done parsing', () => {
   it('passes confidence and confidenceReason from a backup-model done event', async () => {
     const done = await runWith({
       ok: true, provider: 'concord_default', model: 'concord-utility-2b:latest',
-      turns: 1, confidence: 'low', confidenceReason: 'GPU brain offline — answered by small local model',
+      turns: 1, answerConfidence: 'low', answerConfidenceReason: 'GPU brain offline — answered by small local model',
     });
     expect(done.confidence).toBe('low');
     expect(done.confidenceReason).toBe('GPU brain offline — answered by small local model');
@@ -46,7 +46,7 @@ describe('streamConKayAgent done parsing', () => {
   });
 
   it('ignores a non-low confidence value', async () => {
-    const done = await runWith({ ok: true, confidence: 'high', confidenceReason: 'x' });
+    const done = await runWith({ ok: true, answerConfidence: 'high', answerConfidenceReason: 'x' });
     expect(done.confidence).toBeUndefined();
   });
 });

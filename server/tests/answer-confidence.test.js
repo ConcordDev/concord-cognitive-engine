@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 const { answerConfidence, LOW_CONFIDENCE_REASON } = await import("../lib/answer-confidence.js");
 const { getLocalUnifiedModel } = await import("../lib/brain-config.js");
 
-const LOW = { confidence: "low", confidenceReason: LOW_CONFIDENCE_REASON };
+const LOW = { answerConfidence: "low", answerConfidenceReason: LOW_CONFIDENCE_REASON };
 const SMALL = "concord-utility-2b:latest";
 
 let saved;
