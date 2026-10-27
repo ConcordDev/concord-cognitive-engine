@@ -20,6 +20,12 @@
 
 import { Router } from 'express';
 import crypto from 'crypto';
+import registerStandardsActions from '../domains/standards.js';
+
+// The standards domain registers its handlers through a registrar; capture
+// them so the route evaluates with the SAME coded rules the lens uses.
+const _standardsActions = new Map();
+registerStandardsActions((domain, name, handler) => { _standardsActions.set(`${domain}.${name}`, handler); });
 const logger = console;
 
 export default function createFrontierRoutesPart4({ requireAuth, db = null } = {}) {
@@ -249,15 +255,61 @@ export default function createFrontierRoutesPart4({ requireAuth, db = null } = {
     const standard = standards.get(standardId);
     if (!standard) throw new Error("Standard not found");
 
-    // The catalog row is real. Scoring it would need the target's measured
-    // properties. This route has neither a checker nor that data.
-    res.status(501).json({
-      ok: false,
-      error: "unavailable",
-      reason: "compliance_not_measured",
+    // Map this catalog row to the domain checker's catalog (ids like "ASCE7").
+    const domainId = String(standard.code || "").replace(/\s+/g, "").toUpperCase();
+    const getStd = _standardsActions.get("standards.standard-get");
+    const check = _standardsActions.get("standards.compliance-check");
+    const def = getStd?.({}, null, { id: domainId });
+    const rules = def?.ok ? def.result.standard.rules : [];
+    if (!def?.ok || !def.result.standard.checkable || !check) {
+      return res.status(501).json({
+        ok: false,
+        error: "unavailable",
+        reason: "compliance_not_measured",
+        standardId,
+        standardCode: standard.code,
+        missing: `No coded compliance rules exist for ${standard.code}; the checker covers only standards with rules in domains/standards.js.`,
+        message: "Compliance is not measured. No section score was invented.",
+      });
+    }
+
+    const supplied = data && typeof data === "object" && !Array.isArray(data) ? data : {};
+    // A value counts as measured only if it is a finite number or a boolean.
+    const measured = {};
+    for (const r of rules) {
+      const v = supplied[r.field];
+      if ((typeof v === "number" && Number.isFinite(v)) || typeof v === "boolean") measured[r.field] = v;
+    }
+    const out = check({ actor: { userId: _callerId(req) } }, null, { standardId: domainId, values: measured });
+    if (!out?.ok) {
+      return res.status(500).json({ ok: false, error: out?.error || "check_failed" });
+    }
+    const byCheck = new Map(rules.map((r) => [r.check, r]));
+    const results = out.result.results.map((r) => {
+      const field = byCheck.get(r.check)?.field;
+      if (!(field in measured)) {
+        return {
+          check: r.check, section: r.section, title: r.title, field,
+          status: "not_measured", passed: null, expected: r.expected, actual: null,
+          details: `${field} not provided`,
+        };
+      }
+      return { check: r.check, section: r.section, title: r.title, field, status: r.status, passed: r.passed, expected: r.expected, actual: r.actual };
+    });
+    const failed = results.filter((r) => r.status === "fail").length;
+    const passed = results.filter((r) => r.status === "pass").length;
+    const notMeasured = results.filter((r) => r.status === "not_measured").length;
+    res.json({
+      ok: true,
+      targetId,
       standardId,
       standardCode: standard.code,
-      message: "Compliance is not measured. No section score was invented.",
+      rulesChecked: results.length,
+      passedCount: passed,
+      failedCount: failed,
+      notMeasuredCount: notMeasured,
+      verdict: failed > 0 ? "non-compliant" : notMeasured > 0 ? "incomplete" : "compliant",
+      results,
     });
   }));
 
