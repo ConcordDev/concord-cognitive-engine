@@ -49,6 +49,17 @@ function badNumericField(input, keys) {
   return null;
 }
 
+// Omitted enum → fallback. A supplied value outside the allowlist → undefined.
+function pickEnum(value, allowed, fallback) {
+  if (value == null || value === "") return fallback;
+  return allowed.includes(value) ? value : undefined;
+}
+
+const POLICY_KINDS = ["auto", "home", "health", "life", "umbrella", "renters", "pet", "travel", "business"];
+const CLAIM_KINDS = ["collision", "comprehensive", "property", "health", "life", "liability", "other"];
+const REMINDER_KINDS = ["renewal", "payment", "inspection", "review", "general"];
+const ASSET_KINDS = ["vehicle", "property", "valuable", "electronics", "jewelry", "other"];
+
 // Snapshot bounds for inheritPacts and insAms. Creates reject before the
 // row is stored. Premium totals and payout splits are not rewritten;
 // installment history only drops the oldest rows past INSTALLMENT_CAP.
@@ -431,11 +442,13 @@ export default function registerInsuranceActions(register) {
     // byte-for-byte (no insured-name field was ever written before this).
     const ref = resolveClientRef(state, userId, params);
     if (ref.error) return { ok: false, error: ref.error };
+    const kind = pickEnum(params.kind, POLICY_KINDS, "auto");
+    if (kind === undefined) return { ok: false, error: "invalid kind" };
     if (!state.policies.has(userId)) state.policies.set(userId, []);
     const policy = {
       id: `pol_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       carrier, policyNumber,
-      kind: ["auto", "home", "health", "life", "umbrella", "renters", "pet", "travel", "business"].includes(params.kind) ? params.kind : "auto",
+      kind,
       annualPremium: Math.max(0, Number(params.annualPremium) || 0),
       deductible: Math.max(0, Number(params.deductible) || 0),
       liabilityLimit: params.liabilityLimit ? Number(params.liabilityLimit) : undefined,
@@ -478,12 +491,14 @@ export default function registerInsuranceActions(register) {
     // field was ever written before this).
     const ref = resolveClientRef(state, userId, params);
     if (ref.error) return { ok: false, error: ref.error };
+    const kind = pickEnum(params.kind, CLAIM_KINDS, "other");
+    if (kind === undefined) return { ok: false, error: "invalid kind" };
     if (!state.claims.has(userId)) state.claims.set(userId, []);
     const claim = {
       id: `clm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       policyId: String(params.policyId || ""),
       carrier, description,
-      kind: ["collision", "comprehensive", "property", "health", "life", "liability", "other"].includes(params.kind) ? params.kind : "other",
+      kind,
       incidentDate: params.incidentDate || new Date().toISOString().slice(0, 10),
       submittedDate: new Date().toISOString().slice(0, 10),
       status: "submitted",
@@ -979,10 +994,11 @@ export default function registerInsuranceActions(register) {
     const title = insClean(params.title, 120);
     if (!title) return { ok: false, error: "title required" };
     if (params.policyId && !findPolicy(s, insAid(ctx), String(params.policyId))) return { ok: false, error: "policy not found" };
+    const kind = pickEnum(params.kind, REMINDER_KINDS, "general");
+    if (kind === undefined) return { ok: false, error: "invalid kind" };
     const rem = {
       id: insId("rem"), title,
-      kind: ["renewal", "payment", "inspection", "review", "general"].includes(params.kind)
-        ? params.kind : "general",
+      kind,
       policyId: params.policyId ? String(params.policyId) : null,
       dueDate: insDay(params.dueDate) || null,
       done: false, createdAt: insNow(),
@@ -1053,10 +1069,15 @@ export default function registerInsuranceActions(register) {
     const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = insClean(params.name, 120);
     if (!name) return { ok: false, error: "asset name required" };
+    const kind = pickEnum(
+      params.kind == null || params.kind === "" ? "" : String(params.kind).toLowerCase(),
+      ASSET_KINDS,
+      "other",
+    );
+    if (kind === undefined) return { ok: false, error: "invalid kind" };
     const asset = {
       id: insId("ast"), name,
-      kind: ["vehicle", "property", "valuable", "electronics", "jewelry", "other"]
-        .includes(String(params.kind).toLowerCase()) ? String(params.kind).toLowerCase() : "other",
+      kind,
       value: Math.max(0, insNum(params.value)),
       policyId: params.policyId ? String(params.policyId) : null,
       serialNumber: insClean(params.serialNumber, 60) || null,
