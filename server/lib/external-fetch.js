@@ -38,12 +38,25 @@
 // Callers that need to bypass the guard for tests inject `opts.fetchImpl`,
 // exactly as connectorFetch and fetchPublicUrl already allow.
 import { fetchPublicUrl } from "./public-fetch.js";
+import { registerSource, hasSource, getOrThrow, clearSource } from "./feed-cache.js";
 
 const DEFAULT_TIMEOUT_MS = 8000;
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 500;
+const GENERIC_SOURCE = "external-fetch";
 
-const _cache = new Map(); // url -> { data, expiresAt }
+// Generic url-keyed source: no budget and no back-off (it spans many unrelated
+// hosts, so one failing host must not shut out the rest), not persisted.
+function _ensureGenericSource() {
+  if (hasSource(GENERIC_SOURCE)) return;
+  registerSource(GENERIC_SOURCE, {
+    ttlMs: DEFAULT_TTL_MS,
+    maxKeys: MAX_CACHE_ENTRIES,
+    breaker: false,
+    license: "public",
+    fetcher: () => { throw new Error("external-fetch: per-call fetcher required"); },
+  });
+}
 
 /**
  * fetchJsonWithTimeout — fetch + parse JSON with an AbortController
@@ -79,21 +92,20 @@ export async function fetchJsonWithTimeout(url, opts = {}, timeoutMs = DEFAULT_T
  * @param {number} [o.timeoutMs]
  */
 export async function cachedFetchJson(url, { ttlMs = DEFAULT_TTL_MS, opts = {}, timeoutMs } = {}) {
-  const now = Date.now();
-  const hit = _cache.get(url);
-  if (hit && hit.expiresAt > now) return hit.data;
-  const data = await fetchJsonWithTimeout(url, opts, timeoutMs);
-  if (_cache.size >= MAX_CACHE_ENTRIES) {
-    const oldest = _cache.keys().next().value;
-    if (oldest !== undefined) _cache.delete(oldest);
-  }
-  _cache.set(url, { data, expiresAt: now + ttlMs });
-  return data;
+  _ensureGenericSource();
+  // Same contract as before: url-keyed, returns the parsed JSON, THROWS on
+  // failure, never serves stale data. New: concurrent calls for one URL share
+  // a single upstream request (feed-cache coalescing).
+  return getOrThrow(GENERIC_SOURCE, url, {
+    ttlMs,
+    allowStale: false,
+    fetcher: () => fetchJsonWithTimeout(url, opts, timeoutMs),
+  });
 }
 
 /** Drop all cached responses (used by tests). */
 export function clearExternalFetchCache() {
-  _cache.clear();
+  clearSource(GENERIC_SOURCE);
 }
 
 /**
