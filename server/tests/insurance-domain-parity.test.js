@@ -34,6 +34,15 @@ describe("insurance.policy-* CRUD", () => {
   it("rejects missing carrier or policy#", () => {
     assert.equal(call("policy-add", ctxA, { carrier: "Geico" }).ok, false);
   });
+  it("refuses a policy kind outside the allowlist and defaults only when omitted", () => {
+    const bad = call("policy-add", ctxA, { carrier: "Geico", policyNumber: "Z", kind: "spaceship" });
+    assert.equal(bad.ok, false);
+    assert.equal(bad.error, "invalid kind");
+    const omitted = call("policy-add", ctxA, { carrier: "Geico", policyNumber: "OK" });
+    assert.equal(omitted.ok, true);
+    assert.equal(omitted.result.policy.kind, "auto");
+    assert.equal(call("policy-list", ctxA, {}).result.policies.length, 1);
+  });
 });
 
 describe("insurance.claim-* CRUD", () => {
@@ -47,6 +56,12 @@ describe("insurance.claim-* CRUD", () => {
   });
   it("rejects empty description", () => {
     assert.equal(call("claim-file", ctxA, { carrier: "X", description: "" }).ok, false);
+  });
+  it("refuses a claim, reminder, or asset kind outside the allowlist", () => {
+    assert.equal(call("claim-file", ctxA, { carrier: "Geico", description: "x", kind: "spaceship" }).error, "invalid kind");
+    assert.equal(call("reminder-create", ctxA, { title: "Pay", kind: "spaceship" }).error, "invalid kind");
+    assert.equal(call("asset-add", ctxA, { name: "Boat", kind: "spaceship" }).error, "invalid kind");
+    assert.equal(call("claim-list", ctxA, {}).result.claims.length, 0);
   });
 });
 

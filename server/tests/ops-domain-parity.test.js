@@ -66,6 +66,20 @@ describe("ops incident lifecycle [L]", () => {
     const r = call("incidentCreate", ctxA, {});
     assert.equal(r.ok, false);
   });
+  it("refuses a severity or tier outside the allowlist and keeps the default when omitted", () => {
+    const badSev = call("incidentCreate", ctxA, { title: "X", severity: "critical" });
+    assert.equal(badSev.ok, false);
+    assert.equal(badSev.error, "invalid severity");
+    const omitted = call("incidentCreate", ctxA, { title: "Y" });
+    assert.equal(omitted.result.incident.severity, "sev3");
+    const badTier = call("serviceCreate", ctxA, { name: "api", tier: "sev1" });
+    assert.equal(badTier.ok, false);
+    assert.equal(badTier.error, "invalid tier");
+    const standard = call("serviceCreate", ctxA, { name: "api" });
+    assert.equal(standard.result.service.tier, "standard");
+    assert.equal(call("alertIngest", ctxA, { signature: "disk", severity: "page" }).error, "invalid severity");
+    assert.equal(call("escalationCheck", ctxA, { severity: "page", minutesOpen: 10 }).error, "invalid severity");
+  });
   it("drives the state machine triggered → acknowledged → resolved", () => {
     const id = call("incidentCreate", ctxA, { title: "X" }).result.incident.id;
     const ack = call("incidentTransition", ctxA, { incidentId: id, to: "acknowledged" });

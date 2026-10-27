@@ -53,6 +53,13 @@ function badNumericField(input, keys) {
   return null;
 }
 
+// Omitted enum → fallback. A supplied value outside the allowlist → undefined
+// so the caller can refuse instead of rewriting it onto the default.
+function pickEnum(value, allowed, fallback) {
+  if (value == null || value === "") return fallback;
+  return allowed.includes(value) ? value : undefined;
+}
+
 import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerOpsActions(register) {
   register = guardAnonWrites(register); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -216,7 +223,8 @@ export default function registerOpsActions(register) {
   registerLensAction("ops", "escalationCheck", (_ctx, _artifact, params = {}) => {
     const badNum = badNumericField(params, ["minutesOpen"]);
     if (badNum) return { ok: false, error: `invalid_${badNum}` };
-    const sev = params.severity || "sev3";
+    const sev = pickEnum(params.severity, SEVERITIES, "sev3");
+    if (sev === undefined) return { ok: false, error: "invalid severity" };
     const minutesOpen = parseFloat(params.minutesOpen) || 0;
     const threshold = SEV_THRESHOLD_MIN[sev] ?? 60;
     const breached = minutesOpen >= threshold;
@@ -251,7 +259,8 @@ export default function registerOpsActions(register) {
       if (serviceId && !ensureList(s.services, userId).some((svc) => svc.id === serviceId)) {
         return { ok: false, error: "service not found" };
       }
-      const severity = SEVERITIES.includes(params.severity) ? params.severity : "sev3";
+      const severity = pickEnum(params.severity, SEVERITIES, "sev3");
+      if (severity === undefined) return { ok: false, error: "invalid severity" };
       const seq = ensureSeq(s, userId);
       const list = ensureList(s.incidents, userId);
       const incident = {
@@ -352,7 +361,8 @@ export default function registerOpsActions(register) {
       const signature = String(params.signature || "").trim();
       if (!signature) return { ok: false, error: "signature required" };
       const seq = ensureSeq(s, userId);
-      const severity = SEVERITIES.includes(params.severity) ? params.severity : "sev3";
+      const severity = pickEnum(params.severity, SEVERITIES, "sev3");
+      if (severity === undefined) return { ok: false, error: "invalid severity" };
       // dependency map: which service does this alert affect?
       const services = ensureList(s.services, userId);
       const matched = services.find((svc) =>
@@ -687,13 +697,15 @@ export default function registerOpsActions(register) {
       if (policyId && !ensureList(s.policies, userId).some((p) => p.id === policyId)) {
         return { ok: false, error: "policy not found" };
       }
+      const tier = pickEnum(params.tier, ["critical", "high", "standard"], "standard");
+      if (tier === undefined) return { ok: false, error: "invalid tier" };
       const seq = ensureSeq(s, userId);
       const service = {
         id: nextId("svc"), number: seq.svc++, name,
         owner: params.owner || null,
         dependsOn,
         alertKeys: Array.isArray(params.alertKeys) ? params.alertKeys.filter(Boolean) : [],
-        tier: ["critical", "high", "standard"].includes(params.tier) ? params.tier : "standard",
+        tier,
         policyId,
         createdAt: nowIso(),
       };
