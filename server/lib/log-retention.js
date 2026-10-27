@@ -68,7 +68,10 @@ function dayOf(tsKind, value) {
  * Archive then delete rows older than the retention window in one table.
  * Returns { ok, table, archived, deleted, done } — never rejects.
  */
-export async function pruneLog(db, spec, { days, now = Date.now(), archiveRoot, batchSize = 5000, maxBatches = 20 } = {}) {
+export async function pruneLog(db, spec, { days, now = Date.now(), archiveRoot, batchSize = 1000, maxBatches = 100 } = {}) {
+  // INC-150: 5000-row batches (select + gzip + delete, all synchronous) blocked
+  // the loop for seconds; 1000 x 100 keeps the same 100k-row cap per run with
+  // a setImmediate yield between each smaller batch.
   const { table, tsColumn, tsKind, keyColumn } = spec;
   const doArchive = spec.archive !== false;
   try {
