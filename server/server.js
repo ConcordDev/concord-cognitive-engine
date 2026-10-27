@@ -17228,13 +17228,20 @@ register("attention", "status", (ctx, _input = {}) => {
 
 register("attention", "create_thread", (ctx, input = {}) => {
   enforceEthosInvariant("attention_create");
-  return createCognitiveThread(input);
+  // Tag the creator so only they (or an admin) can complete it. ownerId is
+  // never taken from the caller's input.
+  const _owner = lensRequireActor(ctx);
+  return createCognitiveThread({ ...input, ownerId: _owner.ok ? _owner.actorId : null });
 }, { public: false });
 
 register("attention", "complete_thread", (ctx, input = {}) => {
   enforceEthosInvariant("attention_complete");
   const threadId = String(input.threadId || input.id || "");
   if (!threadId) return { ok: false, error: "threadId required" };
+  // A thread a user created is theirs to complete; another account gets the
+  // same "not found" as a missing id. System threads (no ownerId) unchanged.
+  const _t = STATE.attention?.threads?.get?.(threadId);
+  if (_t?.ownerId && !lensRequireOwner(ctx, _t.ownerId).ok) return { ok: false, error: "Thread not found" };
   return completeCognitiveThread(threadId, input.output || {});
 }, { public: false });
 
@@ -17414,7 +17421,8 @@ register("grounding", "status", (ctx, _input = {}) => {
 
 register("grounding", "register_sensor", (ctx, input = {}) => {
   enforceEthosInvariant("grounding_sensor");
-  return registerSensor(input);
+  const _owner = lensRequireActor(ctx);
+  return registerSensor({ ...input, ownerId: _owner.ok ? _owner.actorId : null });
 }, { public: false });
 
 register("grounding", "record_reading", (ctx, input = {}) => {
@@ -17422,6 +17430,10 @@ register("grounding", "record_reading", (ctx, input = {}) => {
   const sensorId = String(input.sensorId || "");
   if (!sensorId) return { ok: false, error: "sensorId required" };
   if (input.value === undefined) return { ok: false, error: "value required" };
+  // Readings go only onto the caller's OWN sensor (or a system sensor with no
+  // owner); another account's sensor reads as "not found".
+  const _sn = STATE.grounding?.sensors?.get?.(sensorId);
+  if (_sn?.ownerId && !lensRequireOwner(ctx, _sn.ownerId).ok) return { ok: false, error: "Sensor not found" };
   return recordSensorReading(sensorId, input.value, input.timestamp);
 }, { public: false });
 
@@ -80661,6 +80673,7 @@ function registerSensor(input) {
     pollInterval: clamp(Number(input.pollInterval || 60000), 1000, 3600000),
     lastReading: null,
     status: "active",
+    ownerId: input.ownerId || null,
     createdAt: nowISO()
   };
 
@@ -83657,6 +83670,7 @@ function createCognitiveThread(task) {
     startedAt: null,
     completedAt: null,
     parentThreadId: task.parentThreadId || null,
+    ownerId: task.ownerId || null,
     metadata: {}
   };
 

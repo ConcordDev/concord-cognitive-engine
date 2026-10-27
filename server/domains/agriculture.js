@@ -924,6 +924,22 @@ export default function registerAgricultureActions(registerLensAction) {
     if (!state[key].has(userId)) state[key].set(userId, []);
     return state[key].get(userId);
   }
+  // A child record (zone, prescription, planting/harvest pass, N plan, work
+  // order, cost or trial entry) may only point at the caller's OWN field /
+  // equipment. A foreign or made-up id gets the same "not found" as a missing
+  // one, so the refusal does not confirm another farm's record exists.
+  function agriParentRefusal(state, userId, params) {
+    const fieldId = params?.fieldId ? String(params.fieldId) : "";
+    if (fieldId) {
+      const fields = state.fields?.get(userId);
+      if (!(fields instanceof Map) || !fields.has(fieldId)) return { ok: false, error: "field not found" };
+    }
+    const equipmentId = params?.equipmentId ? String(params.equipmentId) : "";
+    if (equipmentId && !ensureAgBucket(state, "equipment", userId).some((e) => e.id === equipmentId)) {
+      return { ok: false, error: "equipment not found" };
+    }
+    return null;
+  }
 
   // ── Equipment / machine fleet ─────────────────────────────────
 
@@ -1004,6 +1020,7 @@ export default function registerAgricultureActions(registerLensAction) {
   registerLensAction("agriculture", "zones-create", (ctx, _a, params = {}) => {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = agriActor(ctx);
+    const parentRefusal = agriParentRefusal(s, userId, params); if (parentRefusal) return parentRefusal;
     const fieldId = String(params.fieldId || "");
     const name = String(params.name || "").trim();
     if (!fieldId || !name) return { ok: false, error: "fieldId and name required" };
@@ -1048,6 +1065,7 @@ export default function registerAgricultureActions(registerLensAction) {
   try {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = agriActor(ctx);
+    const parentRefusal = agriParentRefusal(s, userId, params); if (parentRefusal) return parentRefusal;
     const fieldId = String(params.fieldId || "");
     const product = String(params.product || "").trim();
     const kind = ["seed", "nitrogen", "phosphorus", "potassium", "herbicide", "fungicide", "insecticide"].includes(params.kind) ? params.kind : "nitrogen";
@@ -1108,6 +1126,7 @@ export default function registerAgricultureActions(registerLensAction) {
   registerLensAction("agriculture", "planting-log", (ctx, _a, params = {}) => {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = agriActor(ctx);
+    const parentRefusal = agriParentRefusal(s, userId, params); if (parentRefusal) return parentRefusal;
     const fieldId = String(params.fieldId || "");
     const crop = String(params.crop || "").trim();
     const variety = String(params.variety || "").trim();
@@ -1144,6 +1163,7 @@ export default function registerAgricultureActions(registerLensAction) {
   registerLensAction("agriculture", "harvest-log", (ctx, _a, params = {}) => {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = agriActor(ctx);
+    const parentRefusal = agriParentRefusal(s, userId, params); if (parentRefusal) return parentRefusal;
     const fieldId = String(params.fieldId || "");
     const crop = String(params.crop || "").trim();
     const acresHarvested = Math.max(0, Number(params.acresHarvested) || 0);
@@ -1181,6 +1201,7 @@ export default function registerAgricultureActions(registerLensAction) {
   registerLensAction("agriculture", "nitrogen-plan-create", (ctx, _a, params = {}) => {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = agriActor(ctx);
+    const parentRefusal = agriParentRefusal(s, userId, params); if (parentRefusal) return parentRefusal;
     const fieldId = String(params.fieldId || "");
     const targetLbsPerAcre = Math.max(0, Number(params.targetLbsPerAcre) || 0);
     if (!fieldId || targetLbsPerAcre <= 0) return { ok: false, error: "fieldId and targetLbsPerAcre > 0 required" };
@@ -1294,6 +1315,7 @@ export default function registerAgricultureActions(registerLensAction) {
   registerLensAction("agriculture", "work-orders-create", (ctx, _a, params = {}) => {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = agriActor(ctx);
+    const parentRefusal = agriParentRefusal(s, userId, params); if (parentRefusal) return parentRefusal;
     const fieldId = String(params.fieldId || "");
     const operation = String(params.operation || "").trim();
     if (!fieldId || !operation) return { ok: false, error: "fieldId and operation required" };
@@ -1608,6 +1630,7 @@ export default function registerAgricultureActions(registerLensAction) {
   registerLensAction("agriculture", "cost-entry-add", (ctx, _a, params = {}) => {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = agriActor(ctx);
+    const parentRefusal = agriParentRefusal(s, userId, params); if (parentRefusal) return parentRefusal;
     const fieldId = String(params.fieldId || "");
     const label = String(params.label || "").trim();
     const amount = Number(params.amount);
@@ -1894,6 +1917,7 @@ export default function registerAgricultureActions(registerLensAction) {
   registerLensAction("agriculture", "trial-entry-add", (ctx, _a, params = {}) => {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = agriActor(ctx);
+    const parentRefusal = agriParentRefusal(s, userId, params); if (parentRefusal) return parentRefusal;
     const trialName = String(params.trialName || "").trim();
     const hybrid = String(params.hybrid || "").trim();
     const yieldPerAcre = Number(params.yieldPerAcre);

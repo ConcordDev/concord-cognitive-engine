@@ -10,9 +10,25 @@ const ACTIONS = new Map();
 function register(domain, name, fn) {
   ACTIONS.set(`${domain}.${name}`, fn);
 }
+// Child-create actions now require the fieldId to be one of the caller's own
+// fields. These tests use short literal ids ("f1", "fp2"); give the caller a
+// bare field with that id first so the scenario under test stays the same.
+const FIELD_CHILD_ACTIONS = new Set(["zones-create", "prescriptions-create", "planting-log", "harvest-log", "nitrogen-plan-create", "work-orders-create", "cost-entry-add", "trial-entry-add"]);
+function ensureOwnField(ctx, fieldId) {
+  const userId = ctx?.actor?.userId || ctx?.userId;
+  const lens = globalThis._concordSTATE?.agricultureLens;
+  if (!lens || !userId || !fieldId) return;
+  if (!lens.fields.has(userId)) lens.fields.set(userId, new Map());
+  const mine = lens.fields.get(userId);
+  if (!mine.has(fieldId)) mine.set(fieldId, { id: fieldId, name: fieldId, acreage: 0, seededByTest: true });
+}
 function call(name, ctx, params = {}) {
   const fn = ACTIONS.get(`agriculture.${name}`);
   if (!fn) throw new Error(`agriculture.${name} not registered`);
+  if (FIELD_CHILD_ACTIONS.has(name) && params.fieldId && !params.__noSeed) {
+    call("field-list", ctx, {}); // initialise the lens state
+    ensureOwnField(ctx, String(params.fieldId));
+  }
   return fn(ctx, { id: null, data: {}, meta: {} }, params);
 }
 
@@ -539,9 +555,9 @@ describe("agriculture.dashboard-summary (AgFarmShell data source)", () => {
     call("equipment-add", ctxC, { name: "8R" });
     const eq = call("equipment-add", ctxC, { name: "S7" });
     call("equipment-update-telemetry", ctxC, { id: eq.result.equipment.id, status: "working" });
-    call("work-orders-create", ctxC, { fieldId: "f1", operation: "Spray" });
     const fields = call("field-list", ctxC, {}).result.fields;
     const fieldId = fields[0].id;
+    call("work-orders-create", ctxC, { fieldId, operation: "Spray" });
     call("harvest-log", ctxC, { fieldId, crop: "corn", acresHarvested: 80, yieldBushels: 16000 });
     const bin = call("grain-bins-create", ctxC, { name: "B", capacityBushels: 20000 });
     call("grain-bins-load", ctxC, { id: bin.result.bin.id, bushels: 10000 });
