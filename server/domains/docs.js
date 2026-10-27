@@ -835,11 +835,16 @@ export default function registerDocsActions(registerLensAction) {
     const text = dcClean(params.text, 2000);
     if (!text) return { ok: false, error: "comment text required" };
     const kind = params.kind === "suggestion" ? "suggestion" : "comment";
+    let blockId = null;
+    if (params.blockId) {
+      const blocks = Array.isArray(page.blocks) ? page.blocks : [];
+      if (!blocks.some((b) => b.id === params.blockId)) return { ok: false, error: "block not found" };
+      blockId = params.blockId;
+    }
     const comment = {
       id: dcId("cm"),
       pageId: page.id,
-      blockId: params.blockId && page.blocks.some((b) => b.id === params.blockId)
-        ? params.blockId : null,
+      blockId,
       author: userId,
       kind,
       text,

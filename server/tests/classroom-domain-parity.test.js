@@ -83,6 +83,13 @@ describe("classroom submissions + gradebook", () => {
     assert.equal(list.result.submissions[0].status, "returned");
   });
 
+  it("refuses a submission against an assignment that does not exist", () => {
+    const missing = call("submission-create", ctx, { assignmentId: "asg_missing", studentId: "s", content: "x" });
+    assert.equal(missing.ok, false);
+    assert.equal(missing.error, "assignment not found");
+    assert.equal(call("submission-list", ctx, {}).result.submissions.length, 0);
+  });
+
   it("builds a gradebook matrix with class average", () => {
     const a = call("assignment-create", ctx, { cohortId: 9, title: "Quiz1", points: 100 });
     const aid = a.result.assignment.id;

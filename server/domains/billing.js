@@ -700,6 +700,9 @@ export default function registerBillingActions(registerLensAction) {
       if (!subId) return { ok: false, error: "subscriptionId required" };
       const qty = billNum(params.quantity);
       if (qty <= 0) return { ok: false, error: "quantity must be positive" };
+      if (!listFor(s.subscriptions, userId).some((x) => x.id === subId)) {
+        return { ok: false, error: "subscription not found" };
+      }
       const rec = {
         id: billId("use"),
         subscriptionId: subId,
@@ -960,6 +963,14 @@ export default function registerBillingActions(registerLensAction) {
       const userId = billAid(ctx);
       const amount = Math.max(0, billNum(params.amount));
       if (amount <= 0) return { ok: false, error: "amount must be positive" };
+      const subscriptionId = params.subscriptionId ? String(params.subscriptionId) : null;
+      if (subscriptionId && !listFor(s.subscriptions, userId).some((x) => x.id === subscriptionId)) {
+        return { ok: false, error: "subscription not found" };
+      }
+      const invoiceId = params.invoiceId ? String(params.invoiceId) : null;
+      if (invoiceId && !listFor(s.invoices, userId).some((x) => x.id === invoiceId)) {
+        return { ok: false, error: "invoice not found" };
+      }
       const retryOffsetsDays = [1, 3, 5, 7];
       const now = Date.now();
       const schedule = retryOffsetsDays.map((d, i) => ({
@@ -970,8 +981,8 @@ export default function registerBillingActions(registerLensAction) {
       }));
       const dunning = {
         id: billId("dun"),
-        subscriptionId: params.subscriptionId ? String(params.subscriptionId) : null,
-        invoiceId: params.invoiceId ? String(params.invoiceId) : null,
+        subscriptionId,
+        invoiceId,
         amount: round2(amount),
         currency: String(params.currency || "USD").toUpperCase(),
         reason: String(params.reason || "card_declined"),
@@ -1034,9 +1045,13 @@ export default function registerBillingActions(registerLensAction) {
       const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = billAid(ctx);
       const amount = Math.max(0, billNum(params.amount));
+      const subscriptionId = params.subscriptionId ? String(params.subscriptionId) : null;
+      if (subscriptionId && !listFor(s.subscriptions, userId).some((x) => x.id === subscriptionId)) {
+        return { ok: false, error: "subscription not found" };
+      }
       const invoice = {
         id: billId("inv"),
-        subscriptionId: params.subscriptionId ? String(params.subscriptionId) : null,
+        subscriptionId,
         customerName: String(params.customerName || "Customer"),
         amount: round2(amount),
         currency: String(params.currency || "USD").toUpperCase(),
