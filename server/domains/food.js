@@ -4,6 +4,7 @@
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
 import { presentOwnedId } from "../lib/public-actor.js";
+import { boundedNum, moneyOrNull, badNumber } from "../lib/finite-input.js";
 
 export default function registerFoodActions(registerLensAction) {
   registerLensAction("food", "vision", async (ctx, artifact, _params) => {
@@ -582,6 +583,7 @@ export default function registerFoodActions(registerLensAction) {
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const itemName = String(params.itemName || "").trim();
     if (!itemName) return { ok: false, error: "itemName required" };
+    if (boundedNum(params.qty, { min: 0, max: 1e6 }, 1) === null) return badNumber("qty", "must be a finite quantity >= 0");
     if (!state.pantry.has(userId)) state.pantry.set(userId, []);
     const item = {
       id: `pan_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -616,6 +618,8 @@ export default function registerFoodActions(registerLensAction) {
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const itemName = String(params.itemName || "").trim();
     if (!itemName) return { ok: false, error: "itemName required" };
+    if (boundedNum(params.qty, { min: 0, max: 1e6 }, 1) === null) return badNumber("qty", "must be a finite quantity >= 0");
+    if (moneyOrNull(params.estimatedCostImpact, 0) === null) return badNumber("estimatedCostImpact", "must be a finite amount >= 0");
     if (!state.wasteLog.has(userId)) state.wasteLog.set(userId, []);
     const entry = {
       id: `waste_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,

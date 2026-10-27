@@ -10,6 +10,7 @@
 // so a later register that omits a spec cannot wipe one already stored.
 
 import { validateLensActionInput } from "./macro-param-schema.js";
+import { rejectNonFiniteInput } from "./finite-input.js";
 
 const SPECS = new Map();
 
@@ -24,6 +25,9 @@ export function lensActionSpec(domain, action) {
 }
 
 export function rejectInvalidLensInput(spec, input, ctx) {
+  // Global non-finite guard (Infinity / NaN / "1e999"), every action, spec or not.
+  const nonFinite = rejectNonFiniteInput(input);
+  if (nonFinite) return nonFinite;
   return validateLensActionInput(spec, input, ctx);
 }
 

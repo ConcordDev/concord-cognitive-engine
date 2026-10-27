@@ -1,4 +1,5 @@
 import { writeGmailMessage } from "../lib/connector-client.js";
+import { boundedNum, badNumber, MAX_MONEY } from "../lib/finite-input.js";
 
 // Test-only mail transport seam (never set in production).
 let testMailer = null;
@@ -55,9 +56,17 @@ export default function registerEventsActions(registerLensAction) {
     const doorSplit = artifact.data?.doorSplit || params.doorSplit || 80;
     const ticketsSold = artifact.data?.ticketsSold || params.ticketsSold || 0;
     const ticketPrice = artifact.data?.ticketPrice || params.ticketPrice || 0;
-    const grossDoor = ticketsSold * ticketPrice;
-    const artistDoorShare = grossDoor * (doorSplit / 100);
-    const settlement = Math.max(guarantee, artistDoorShare);
+    // Every input must be a real non-negative number; strings / NaN / Infinity / -1 gave garbage settlements.
+    {
+      const checks = { guarantee: [guarantee, MAX_MONEY], doorSplit: [doorSplit, 100], ticketsSold: [ticketsSold, 1e9], ticketPrice: [ticketPrice, MAX_MONEY] };
+      for (const [f, [v, max]] of Object.entries(checks)) {
+        if (typeof v !== "number" && typeof v !== "string") return badNumber(f, "must be a number");
+        if (boundedNum(v, { min: 0, max }, null) === null) return badNumber(f, `must be a finite number between 0 and ${max}`);
+      }
+    }
+    const grossDoor = Number(ticketsSold) * Number(ticketPrice);
+    const artistDoorShare = grossDoor * (Number(doorSplit) / 100);
+    const settlement = Math.max(Number(guarantee), artistDoorShare);
     const method = artistDoorShare > guarantee ? 'door_split' : 'guarantee';
     return { ok: true, result: { performer: artifact.title, guarantee, doorSplit: `${doorSplit}%`, grossDoor, artistDoorShare, settlement, method, ticketsSold } };
   });

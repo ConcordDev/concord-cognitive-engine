@@ -16,6 +16,7 @@ import { pythonExecEnabled } from "./code.js";
 
 import { needNums, notComputed } from "../lib/lens-inputs.js";
 import { assertPayable } from "../lib/money-guards.js";
+import { finiteOrNull, boundedNum, moneyOrNull, badNumber, MAX_MONEY } from "../lib/finite-input.js";
 import { bindWave1 } from "../lib/lens-input-schemas-wave1.js";
 
 export default function registerFinanceActions(registerLensAction) {
@@ -103,7 +104,8 @@ export default function registerFinanceActions(registerLensAction) {
   registerLensAction("finance", "monthly-income-set", (ctx, _artifact, params = {}) => {
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
-    const value = Math.max(0, Number(params.monthlyIncome) || 0);
+    const value = moneyOrNull(params.monthlyIncome, 0);
+    if (value === null) return badNumber("monthlyIncome", "must be a finite amount >= 0");
     state.monthlyIncome.set(userId, value);
     saveStateIfAvailable();
     return { ok: true, result: { monthlyIncome: value } };
@@ -313,12 +315,15 @@ export default function registerFinanceActions(registerLensAction) {
    */
   registerLensAction("finance", "tax-estimate", (_ctx, _artifact, params = {}) => {
   try {
-    const wages = Math.max(0, Number(params.wages) || 0);
-    const otherIncome = Math.max(0, Number(params.otherIncome) || 0);
-    const longTermGains = Math.max(0, Number(params.longTermGains) || 0);
-    const shortTermGains = Math.max(0, Number(params.shortTermGains) || 0);
-    const itemized = Math.max(0, Number(params.deductions) || 0);
-    const withholding = Math.max(0, Number(params.withholding) || 0);
+    for (const f of ["wages", "otherIncome", "longTermGains", "shortTermGains", "deductions", "withholding"]) {
+      if (moneyOrNull(params[f], 0) === null) return badNumber(f, "must be a finite amount >= 0");
+    }
+    const wages = moneyOrNull(params.wages, 0);
+    const otherIncome = moneyOrNull(params.otherIncome, 0);
+    const longTermGains = moneyOrNull(params.longTermGains, 0);
+    const shortTermGains = moneyOrNull(params.shortTermGains, 0);
+    const itemized = moneyOrNull(params.deductions, 0);
+    const withholding = moneyOrNull(params.withholding, 0);
     const filing = ["single", "married_jointly", "married_separately", "head_of_household"].includes(params.filing) ? params.filing : "single";
 
     const STANDARD = {
@@ -801,7 +806,8 @@ Generate the summary.`;
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const horizonDays = Math.max(7, Math.min(180, Number(params.horizonDays) || 60));
-    const startBalance = Math.max(0, Number(params.startBalance) || 0);
+    const startBalance = moneyOrNull(params.startBalance, 0);
+    if (startBalance === null) return badNumber("startBalance", "must be a finite amount >= 0");
     const monthlyIncome = state.monthlyIncome.get(userId) || 0;
     const bills = ensureBucket(state, "bills", userId);
     const subs = state.subscriptions.get(userId) || [];
@@ -1293,6 +1299,8 @@ Generate the summary.`;
     const name = String(params.name || "").trim();
     const kind = ["checking", "savings", "credit", "investment", "loan", "mortgage", "crypto"].includes(params.kind) ? params.kind : "checking";
     if (!institution || !name) return { ok: false, error: "institution and name required" };
+    // Balances may be negative (credit, loan) but must be finite and bounded.
+    if (boundedNum(params.balance, { min: -MAX_MONEY, max: MAX_MONEY }, 0) === null) return badNumber("balance", "must be a finite amount");
     const acct = {
       id: uid("acct"), institution, name, kind,
       mask: String(params.mask || "0000").slice(-4),
@@ -1454,6 +1462,8 @@ Generate the summary.`;
     const name = String(params.name || "").trim();
     const kind = ["checking", "savings", "credit", "investment", "loan", "mortgage", "crypto"].includes(params.kind) ? params.kind : "checking";
     if (!institution || !name) return { ok: false, error: "institution and name required" };
+    // Balances may be negative (credit, loan) but must be finite and bounded.
+    if (boundedNum(params.balance, { min: -MAX_MONEY, max: MAX_MONEY }, 0) === null) return badNumber("balance", "must be a finite amount");
     const acct = {
       id: uid("acct"), institution, name, kind,
       mask: String(params.mask || "0000").slice(-4),
@@ -1538,6 +1548,7 @@ Generate the summary.`;
     const amount = Number(params.amount);
     if (!description) return { ok: false, error: "description required" };
     if (Number.isNaN(amount)) return { ok: false, error: "amount required" };
+    if (!Number.isFinite(amount) || Math.abs(amount) > MAX_MONEY) return badNumber("amount", "must be a finite amount");
     const ledger = ensureBucket(state, "ledger", userId);
     const rules = ensureBucket(state, "rules", userId).slice().sort((a, b) => a.priority - b.priority);
     const ruleHit = applyRules(rules, description);

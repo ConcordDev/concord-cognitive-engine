@@ -2,6 +2,7 @@
 // Domain actions for trades/contracting: estimates, inspections, materials costs.
 
 import { assertPayable } from "../lib/money-guards.js";
+import { finiteOrNull, boundedNum, moneyOrNull, badNumber } from "../lib/finite-input.js";
 
 export default function registerTradesActions(registerLensAction) {
   /**
@@ -178,23 +179,26 @@ export default function registerTradesActions(registerLensAction) {
   registerLensAction("trades", "generateInvoice", (ctx, artifact, params) => {
   try {
     const workOrders = artifact.data?.workOrders || [];
-    const markupPct = params.markupPct != null ? params.markupPct : 15;
-    const taxRate = params.taxRate != null ? params.taxRate : 0.08;
+    // taxRate is a fraction (0.08 = 8%); markupPct is a percent.
+    const markupPct = boundedNum(params?.markupPct, { min: 0, max: 1000 }, 15);
+    if (markupPct === null) return badNumber("markupPct", "must be a finite percent between 0 and 1000");
+    const taxRate = boundedNum(params?.taxRate, { min: 0, max: 1 }, 0.08);
+    if (taxRate === null) return badNumber("taxRate", "must be a finite fraction between 0 and 1 (0.08 = 8%)");
 
     let totalLabor = 0;
     let totalMaterials = 0;
     let totalHours = 0;
 
     const lineItems = workOrders.map((wo, idx) => {
-      const hours = parseFloat(wo.laborHours) || 0;
-      const rate = parseFloat(wo.laborRate) || 0;
+      const hours = Math.max(0, finiteOrNull(wo.laborHours) ?? 0);
+      const rate = Math.max(0, finiteOrNull(wo.laborRate) ?? 0);
       const laborCost = Math.round(hours * rate * 100) / 100;
       totalHours += hours;
       totalLabor += laborCost;
 
       const materials = (wo.materials || []).map(m => {
-        const qty = parseFloat(m.quantity) || 0;
-        const uc = parseFloat(m.unitCost) || 0;
+        const qty = Math.max(0, finiteOrNull(m.quantity) ?? 0);
+        const uc = Math.max(0, finiteOrNull(m.unitCost) ?? 0);
         const cost = Math.round(qty * uc * 100) / 100;
         totalMaterials += cost;
         return { item: m.item || m.name, quantity: qty, unitCost: uc, cost };
@@ -519,7 +523,7 @@ export default function registerTradesActions(registerLensAction) {
       status: "unassigned",
       scheduledFor: params.scheduledFor ? String(params.scheduledFor) : null,
       assignedTech: params.assignedTech ? String(params.assignedTech) : null,
-      estimatedHours: Number(params.estimatedHours) || 0,
+      estimatedHours: Math.max(0, finiteOrNull(params.estimatedHours) ?? 0),
       notes: "",
       createdAt: nowIsoTrades(),
       updatedAt: nowIsoTrades(),
@@ -984,6 +988,7 @@ export default function registerTradesActions(registerLensAction) {
     const invoiceRef = String(params.invoiceRef || "").trim();
     const amount = Number(params.amount) || 0;
     if (!invoiceRef || amount <= 0) return { ok: false, error: "invoiceRef and amount required" };
+    if (moneyOrNull(amount, null) === null) return badNumber("amount", "must be a finite amount > 0");
     const payment = {
       id: uidTr("pay"), invoiceRef, amount,
       currency: "usd",
@@ -1035,6 +1040,7 @@ export default function registerTradesActions(registerLensAction) {
     const cadence = ["weekly", "monthly", "quarterly", "annual"].includes(params.cadence) ? params.cadence : "monthly";
     const priceEach = Number(params.priceEach) || 0;
     if (!customerId || !serviceType || priceEach <= 0) return { ok: false, error: "customerId, serviceType, priceEach required" };
+    if (moneyOrNull(priceEach, null) === null) return badNumber("priceEach", "must be a finite amount > 0");
     const plan = {
       id: uidTr("rec"), customerId, serviceType, cadence, priceEach,
       status: "active",

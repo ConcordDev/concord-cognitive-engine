@@ -2062,6 +2062,7 @@ import { checkUserQuota, incrementUserQuota } from "./lib/macro-quota.js";
 // Gate D — per-macro param-schema validation (opt-in via spec.paramSchema).
 import { validateParamSchema } from "./lib/macro-param-schema.js";
 import { invokeLensHandler, rememberLensActionSpec, lensActionSpec } from "./lib/lens-action-dispatch.js";
+import { rejectNonFiniteInput as _rejectNonFiniteInput } from "./lib/finite-input.js";
 // World Lens / MMO presence system
 import * as cityPresence from "./lib/city-presence.js";
 // V1.2 Wave A — Society & Presence: ephemeral spatially-scoped chat channel.
@@ -49667,6 +49668,11 @@ app.post("/api/lens/run", async (req, res) => {
     );
     if (!domain || !action) return res.status(400).json({ ok: false, error: "domain and action required" });
     if (enforcePlatformInternalLensRole(req, res, domain, requireRole)) return;
+    // Non-finite guard for BOTH the lens-action and macro paths (1e999 → Infinity).
+    {
+      const _nf = _rejectNonFiniteInput(rest);
+      if (_nf) return res.status(400).json(_nf);
+    }
     const ctx = makeCtx(req);
     // ConKay honest spine (Phase 2): let a genuinely multi-step macro report a
     // real intermediate `macro:stage` tied to this run id. It only emits when a

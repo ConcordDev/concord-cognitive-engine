@@ -9,6 +9,7 @@
 // env (courtlistener.com/help/api/rest/).
 
 import { createHash } from "node:crypto";
+import { moneyOrNull, badNumber } from "../lib/finite-input.js";
 import { KNOWN_SCOPES, getDoc } from "../lib/yjs-realtime.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { registerEsignProvider, issueSigningLinks, deliverSigningLinks } from "../lib/esign-links.js";
@@ -1254,6 +1255,7 @@ export default function registerLawActions(registerLensAction) {
     const title = lwClean(params.title, 160);
     if (!title) return { ok: false, error: "contract title required" };
     const type = CONTRACT_TYPES.includes(params.type) ? params.type : "other";
+    if (moneyOrNull(params.value, 0) === null) return badNumber("value", "must be a finite amount >= 0");
     const contract = {
       id: lwId("ctr"),
       title,
