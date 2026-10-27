@@ -33,7 +33,19 @@ import { sourcesFromToolCalls, withSourceLinks, writeReceipt, answerLongTaskRout
 import { takePendingLongTaskNotices } from "../lib/long-task.js";
 import { resolveAgentMaxTurns } from "../lib/chat-reply-policy.js";
 
-export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
+// ConKay used to answer without Concord's DTUs (Ramaj, 2026-10-27): the
+// agent loop got no retrieval. retrieveDtuContext is Chat's DTU retrieval
+// (hot + archived, megas/hypers first), injected by server.js.
+export const CONKAY_DTU_TIMEOUT_MS = 3500;
+
+export function conkayDtuBlock(lines) {
+  const text = String(lines || "").trim();
+  if (!text) return "";
+  return "CONCORD KNOWLEDGE (retrieved DTUs; MEGA and HYPER entries are consolidated syntheses of many DTUs and are listed first). "
+    + "When one of these answers the question, use it and name the DTU title you used. Do not invent DTUs.\n" + text.slice(0, 6000);
+}
+
+export function mountChatAgentStream({ app, auth, runMacro, lensActions, retrieveDtuContext = null }) {
   app.post("/api/chat-agent/stream", auth, async (req, res) => {
     // `persona` — an OPTIONAL client-supplied system-prompt addendum. Added
     // for ConKay: its free-form chat path (ConKayOverlay.tsx#chatWithBrain)
@@ -54,7 +66,7 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
     const isConKay = typeof persona === "string" && /\bConKay\b/.test(persona);
     let plan = null;
     if (isConKay) { try { plan = conkayTurnPlan(message, Array.isArray(history) ? history : []); } catch { plan = null; } }
-    const extraSystemBlock = typeof persona === "string" && persona.trim()
+    let extraSystemBlock = typeof persona === "string" && persona.trim()
       ? `\n\n${persona.trim().slice(0, 4000)}${isConKay ? `\n\n${conkayToolPolicy()}` : ""}${plan?.hint ? `\n\n${plan.hint}` : ""}`
       : undefined;
     const userId = req.user?.id || req.auth?.userId;
@@ -106,6 +118,18 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
       send("done", { ok: true, provider: null, model: null, turns: 0, route: plan.route });
       try { res.end(); } catch { /* noop */ }
       return;
+    }
+
+    if (isConKay && typeof retrieveDtuContext === "function") {
+      try {
+        const got = await Promise.race([
+          Promise.resolve(retrieveDtuContext(message, userId)),
+          new Promise((r) => { setTimeout(() => r(null), CONKAY_DTU_TIMEOUT_MS); }),
+        ]);
+        const block = conkayDtuBlock(got?.text);
+        if (block) extraSystemBlock = `${extraSystemBlock || ""}\n\n${block}`;
+        console.log(`[chat-agent-stream] dtu_context surface=${surface} hits=${got?.count ?? 0} consolidated=${got?.consolidated ?? 0} archived=${got?.archived ?? 0}`);
+      } catch { /* retrieval is additive */ }
     }
 
     try {

@@ -916,6 +916,15 @@ export function trimEmbeddingCache(targetSize = Math.floor(MAX_IN_MEMORY / 2)) {
 }
 
 /**
+ * Iterate cached (dtuId, vector) pairs — read-only. Used by archive retrieval
+ * (lib/archive-retrieval.js) to score vectors whose DTU is not hot.
+ * @returns {IterableIterator<[string, Float32Array]>}
+ */
+export function embeddingEntries() {
+  return embeddingCache.entries();
+}
+
+/**
  * Get current embedding cache size.
  */
 export function getEmbeddingCacheSize() {
@@ -944,4 +953,5 @@ export default {
   getEmbeddingModel,
   trimEmbeddingCache,
   getEmbeddingCacheSize,
+  embeddingEntries,
 };
