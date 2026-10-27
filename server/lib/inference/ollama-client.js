@@ -105,7 +105,9 @@ export async function ollamaChat(brainName, messages, opts = {}) {
     if (!text && toolCalls.length === 0 && (message.thinking || j?.thinking)) {
       return { ok: false, text: "", toolCalls, tokensIn, tokensOut, doneReason, error: `empty_answer: model only produced thinking (done_reason ${doneReason || "unknown"})` };
     }
-    return { ok: true, text, toolCalls, tokensIn, tokensOut, doneReason };
+    // `model` is the model that actually answered (Ollama echoes it back); the
+    // requested name is the fallback. Answer labelling reads it (answer-confidence.js).
+    return { ok: true, text, toolCalls, tokensIn, tokensOut, doneReason, model: j?.model || body.model };
   } catch (err) {
     noteEndpointFinish(endpoint, { ok: false });
     return { ok: false, text: "", toolCalls: [], tokensIn: 0, tokensOut: 0, error: err?.message || String(err) };

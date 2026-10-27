@@ -35,6 +35,7 @@ import { conkayTurnPlan, conkayToolPolicy } from "../lib/conkay/agent-turn.js";
 import { sourcesFromToolCalls, withSourceLinks, writeReceipt, answerLongTaskRoute } from "../lib/chat/agent-route.js";
 import { takePendingLongTaskNotices } from "../lib/long-task.js";
 import { resolveAgentMaxTurns } from "../lib/chat-reply-policy.js";
+import { answerConfidence } from "../lib/answer-confidence.js";
 
 // ConKay used to answer without Concord's DTUs (Ramaj, 2026-10-27): the
 // agent loop got no retrieval. retrieveDtuContext is Chat's DTU retrieval
@@ -152,7 +153,7 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions, retriev
             const answer = withNotices(direct.answer);
             for (let i = 0; i < answer.length; i += 80) send("token", { chunk: answer.slice(i, i + 80) });
             console.log(`[chat-agent-stream] done surface=${surface} ok=true turns=1 route=notes error=""`);
-            send("done", { ok: true, provider: direct.provider || null, model: direct.model || null, turns: 1, route: "notes" });
+            send("done", { ok: true, provider: direct.provider || null, model: direct.model || null, turns: 1, route: "notes", ...(answerConfidence({ provider: direct.provider, model: direct.model }) || {}) });
             try { res.end(); } catch { /* noop */ }
             return;
           }
@@ -214,6 +215,8 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions, retriev
         model: result.model,
         turns: result.turns,
         error: result.error,
+        // Backup-model answers (GPU pod offline) only; absent otherwise.
+        ...(answerConfidence({ provider: result.provider, model: result.model }) || {}),
       });
     } catch (err) {
       console.warn(`[chat-agent-stream] done surface=${surface} ok=false turns=? error=${JSON.stringify(String(err?.message || err).replace(/\s+/g, " ").slice(0, 160))}`);

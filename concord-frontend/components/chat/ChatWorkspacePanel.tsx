@@ -88,6 +88,7 @@ import { ToolCallCard } from '@/components/chat/ToolCallCard';
 import { ChatArtifacts, type ChatArtifact } from '@/components/chat/ChatArtifacts';
 import { isReadAloudRequest, speakText, canSpeak } from '@/lib/chat/read-aloud';
 import ComputeBadge from '@/components/chat/ComputeBadge';
+import LowConfidenceTag from '@/components/chat/LowConfidenceTag';
 import CitationChips from '@/components/chat/CitationChips';
 import AnonNudge from '@/components/chat/AnonNudge';
 import BranchForkButton from '@/components/chat/BranchForkButton';
@@ -203,6 +204,9 @@ interface Message {
     fetchedAt?: string;
   }>;
   webAugmented?: boolean;
+  // Set by the server when the small local backup model answered (GPU brain offline).
+  confidence?: 'low';
+  confidenceReason?: string;
   oracleResponse?: OracleResponseData;
   toolCalls?: Array<{
     tool: string;
@@ -791,6 +795,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             sources: Array.isArray(meta.sources) ? (meta.sources as Message['sources']) : undefined,
             artifacts: Array.isArray(meta.artifacts) ? (meta.artifacts as ChatArtifact[]) : undefined,
             webAugmented: !!meta.webAugmented,
+            confidence: meta.confidence === 'low' ? 'low' : undefined,
+            confidenceReason: typeof meta.confidenceReason === 'string' ? meta.confidenceReason : undefined,
           };
         });
         setLocalMessages(hydrated);
@@ -1272,6 +1278,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             computed: meta.computed,
             dtuRefs: meta.dtuRefs,
             artifacts: meta.artifacts,
+            confidence: meta.confidence,
+            confidenceReason: meta.confidenceReason,
             recovered: true,
           };
         } finally {
@@ -1371,6 +1379,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             computed: (finalOut as Record<string, unknown>)?.computed,
             dtuRefs: (finalOut as Record<string, unknown>)?.dtuRefs,
             artifacts: (finalOut as Record<string, unknown>)?.artifacts,
+            confidence: (finalOut as Record<string, unknown>)?.confidence,
+            confidenceReason: (finalOut as Record<string, unknown>)?.confidenceReason,
             streamed: true,
           };
         }
@@ -1488,6 +1498,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           : undefined,
         reasoningSessionId:
           typeof data.reasoningSessionId === 'string' ? data.reasoningSessionId : undefined,
+        confidence: data.confidence === 'low' ? 'low' : undefined,
+        confidenceReason: typeof data.confidenceReason === 'string' ? data.confidenceReason : undefined,
         wasSynthesized: !!data.wasSynthesized,
         shadowsUsed: typeof data.shadowsUsed === 'number' ? data.shadowsUsed : undefined,
         // Which brain/source produced this.
@@ -2406,6 +2418,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 {/* Compute provenance (compute-preflight ground truth) */}
                 {message.role === 'assistant' && message.computed && (
                   <ComputeBadge computed={message.computed} />
+                )}
+
+                {/* Backup-model answer (GPU brain offline) */}
+                {message.role === 'assistant' && (
+                  <LowConfidenceTag confidence={message.confidence} reason={message.confidenceReason} />
                 )}
 
                 {/* DTU citation chips (surgical refs the brain grounded in) */}

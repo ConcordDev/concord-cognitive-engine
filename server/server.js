@@ -1994,6 +1994,7 @@ async function _dtuSidecarListCall(args) {
   return dtuSidecar.list(args);
 }
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, getActiveBrainConfig, getSystemStatus, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish, resolveBrainModel } from "./lib/brain-config.js";
+import { answerConfidence } from "./lib/answer-confidence.js";
 import { authenticatedBrainStatus, brainStatusForViewer, denyAnonymousBrainRead, mountBrainStatusRoute } from "./lib/brain-status-public.js";
 import { installOllamaRequestGuard } from "./lib/ollama-request-guard.js";
 // Every brain request: num_ctx pinned per model (so ollama loads each model
@@ -18696,7 +18697,7 @@ function makeCtx(req=null) {
                 callerId: resolvedActor?.userId, latencyMs: elapsed,
                 tokensIn: json.prompt_eval_count, tokensOut: json.eval_count,
               });
-              return { ok: true, content, raw: json, brain: _useBrainName, source: "ollama", doneReason: json.done_reason || null };
+              return { ok: true, content, raw: json, brain: _useBrainName, source: "ollama", model: json.model || brainModel, doneReason: json.done_reason || null };
             }
             _brain.stats.errors++;
             structuredLog("warn", "llm_ollama_error", { status: res.status, error: json?.error, elapsed });
@@ -28678,11 +28679,14 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
           } catch {
             _agentArtifacts = (_agentOut.artifacts || []).filter((a) => { try { return a && JSON.stringify(a).length < 60000; } catch { return false; } }).slice(0, 4);
           }
+          // Backup-model answers (GPU pod offline): same tag as the conversational path.
+          const _agentTag = answerConfidence({ provider: _agentOut.provider, model: _agentOut.model });
           const _agentMeta = {
             llmUsed: true, mode, source: "chat_agent", agentRoute: _agentRouteKind,
             toolCallCount: _agentOut.toolCalls.length,
             tools: _agentOut.toolCalls.map((t) => t.tool).slice(0, 10),
             ...(_agentArtifacts.length ? { artifacts: _agentArtifacts } : {}),
+            ...(_agentTag || {}),
           };
           // Saved with the message so a reload (or another device) still shows the
           // cited sources, the tool cards and any playable song/preview/image/model.
@@ -28699,6 +28703,7 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
           return {
             ok: true, reply: _agentReply, content: _agentReply, sessionId, mode, llmUsed: true,
             route: "chat_agent", agentRoute: _agentRouteKind,
+            ...(_agentTag || {}),
             ...(_agentOut.selfContinuation ? { selfContinuation: _agentOut.selfContinuation } : {}),
             toolCalls: _agentOut.toolCalls, artifacts: _agentArtifacts, sources: _agentOut.sources,
             ...(_agentOut.linksRemoved.length ? { linksRemoved: _agentOut.linksRemoved } : {}),
@@ -29629,6 +29634,9 @@ let localReply = formatCrispResponse({
   // Set when a requested brain call fails (503 / circuit-open / network).
   // Read only if llmUsed stays false — a later successful attempt wins.
   let _brainFailure = null;
+  // Which path and model produced the reply, for answer confidence (lib/answer-confidence.js).
+  let _answerSource = null;
+  let _answerModel = null;
   const semanticUsed = Boolean(semanticEnhancement && semanticEnhancement.confidence > 0.4);
 
   // ===== TOOL CALLING INFRASTRUCTURE =====
@@ -30264,6 +30272,8 @@ ${_operatorV6Block}` : "";
       _replyDoneReason = r.doneReason || r.raw?.done_reason || null;
       finalReply = String(r.content || "").trim() || localReply;
       llmUsed = true;
+      _answerSource = r.source || null;
+      _answerModel = r.raw?.model || r.model || null;
       _llmSpan.end("ok", { responseLength: finalReply.length });
     } else {
       _brainFailure = { status: r?.status ?? null, error: r?.error || r?.reason || "llm_failed" };
@@ -30297,6 +30307,8 @@ ${_operatorV6Block}` : "";
           _replyDoneReason = _fbJson.done_reason || null;
           finalReply = String(_fbJson.message?.content || "").trim() || localReply;
           llmUsed = true;
+          _answerSource = "ollama";
+          _answerModel = _fbJson.model || brainModel;
           ctx.log("llm.fallback", "Conscious brain fallback succeeded.", { brainUrl, brainModel, elapsed: _fbElapsed });
         } else {
           BRAIN.conscious.stats.errors++;
@@ -30365,6 +30377,8 @@ ${_operatorV6Block}` : "";
         _replyDoneReason = _directJson.done_reason || null;
         finalReply = String(_directJson.message?.content || "").trim() || localReply;
         llmUsed = true;
+        _answerSource = "ollama";
+        _answerModel = _directJson.model || brainModel;
         ctx.log("llm.direct", "Direct conscious brain call succeeded (no ctx.llm).", { brainUrl, brainModel, elapsed: _directElapsed });
       } else {
         BRAIN.conscious.stats.errors++;
@@ -30793,7 +30807,10 @@ ${_operatorV6Block}` : "";
   } catch {
     _turnArtifacts = _turnArtifacts.filter((a) => { try { return a && JSON.stringify(a).length < 60000; } catch { return false; } });
   }
-  sess.messages.push({ role: "assistant", content: (finalReply = visibleChatReply(finalReply, prompt)), ts: nowISO(), meta: { llmUsed, semanticUsed, mode, code: _aiUnavailable?.code, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length, ...(_turnArtifacts.length ? { artifacts: _turnArtifacts } : {}) } });
+  // Backup-model answers (GPU pod offline) carry a low-confidence tag, set once
+  // here so the response and the saved session message agree.
+  const _answerTag = llmUsed ? answerConfidence({ source: _answerSource, model: _answerModel }) : null;
+  sess.messages.push({ role: "assistant", content: (finalReply = visibleChatReply(finalReply, prompt)), ts: nowISO(), meta: { llmUsed, semanticUsed, mode, code: _aiUnavailable?.code, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length, ...(_turnArtifacts.length ? { artifacts: _turnArtifacts } : {}), ...(_answerTag || {}) } });
   if (llmUsed && !_aiUnavailable) _recordChatPersonality(finalReply, currentLens || mode);
   ctx.log("chat", "Chat response generated", { sessionId, mode, llmUsed, semanticUsed, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, pipelineDtuCount: _pipelineDtuCount });
 
@@ -31041,6 +31058,7 @@ ${_operatorV6Block}` : "";
 
   return {
     ok: !_aiUnavailable, reply: finalReply, sessionId, mode, llmUsed, semanticUsed,
+    ...(_answerTag || {}),
     ...(_selfContMeta ? { selfContinuation: _selfContMeta } : {}),
     ...(_dtuRefsRemoved.length ? { dtuRefsRemoved: _dtuRefsRemoved } : {}),
     ...(_imageTurn?.artifact ? { artifact: _imageTurn.artifact } : {}),
@@ -57587,7 +57605,7 @@ function initChatSocketHandlers(io) {
                 role: "assistant",
                 content: (streamResult.content = visibleChatReply(streamResult.content, String(prompt || ""))),
                 ts: nowISO(),
-                meta: { llmUsed: true, source: "ollama-stream", model: streamResult.model },
+                meta: { llmUsed: true, source: "ollama-stream", model: streamResult.model, ...(answerConfidence({ source: "ollama-stream", model: streamResult.model }) || {}) },
               });
 
               // Persist the user/assistant turn so it survives a restart.
