@@ -6,16 +6,31 @@ import { ChartKit } from '@/components/viz';
 import { Activity, Play, Pause, AlertTriangle, Cpu, Thermometer, Radio, Loader2 } from 'lucide-react';
 import type { RobotRow } from './FleetManager';
 
-interface JointReading { joint: number; angle: number; velocity: number; torque: number; unit: string }
+interface JointReading { joint: number; angle: number | null; velocity?: number | null; torque?: number | null; unit?: string }
 interface Fault { code: string; severity: string; detail: string }
 interface Telemetry {
   robotId: string; name: string; type: string; status: string;
-  tick: number; timestamp: string;
-  joints: JointReading[]; dof: number;
-  sensors: { imu: { roll: number; pitch: number; yaw: number }; temperature: number; proximity: number; cpuLoad: number };
-  battery: number;
+  tick?: number; timestamp: string;
+  joints: JointReading[]; dof: number | null;
+  sensors: Record<string, number> | null;
+  battery: number | null;
   faults: Fault[]; faultCount: number; health: string;
+  telemetrySource?: string;
+  telemetryReason?: string | null;
 }
+
+function finiteNum(v: unknown): number | null {
+  return typeof v === 'number' && Number.isFinite(v) ? v : null;
+}
+
+function sensorValue(sensors: Record<string, number> | null, key: string): number | null {
+  if (!sensors) return null;
+  return finiteNum(sensors[key]);
+}
+
+const SENSOR_REASON: Record<string, string> = {
+  no_sensor_log: 'No sensor samples logged — use the Sensors tab / sensorLog',
+};
 
 const HEALTH_COLOR: Record<string, string> = {
   nominal: 'text-green-400', degraded: 'text-yellow-400', critical: 'text-red-400',
@@ -40,8 +55,20 @@ export function TelemetryDashboard({ robot }: { robot: RobotRow | null }) {
       const t = r.data.result as Telemetry;
       setTele(t);
       setHistory(prev => {
-        const row: Record<string, number> = { tick: t.tick, battery: t.battery, temp: t.sensors.temperature, cpu: t.sensors.cpuLoad };
-        t.joints.slice(0, 3).forEach(j => { row[`j${j.joint}`] = j.angle; });
+        const row: Record<string, number> = { tick: tickRef.current };
+        const battery = finiteNum(t.battery);
+        if (battery != null) row.battery = battery;
+        const sensors = t.sensors && typeof t.sensors === 'object' ? t.sensors : null;
+        if (sensors) {
+          for (const [channel, value] of Object.entries(sensors)) {
+            const n = finiteNum(value);
+            if (n != null) row[channel] = n;
+          }
+        }
+        for (const j of (Array.isArray(t.joints) ? t.joints : []).slice(0, 3)) {
+          const angle = finiteNum(j.angle);
+          if (angle != null) row[`j${j.joint}`] = angle;
+        }
         return [...prev.slice(-39), row];
       });
       setErr(null);
@@ -88,49 +115,74 @@ export function TelemetryDashboard({ robot }: { robot: RobotRow | null }) {
         <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 animate-spin text-neon-cyan" /></div>
       ) : (
         <>
+          {tele.telemetryReason && (
+            <p className="text-xs text-gray-400">{SENSOR_REASON[tele.telemetryReason] || tele.telemetryReason}</p>
+          )}
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="panel p-3 text-center">
-              <p className="text-2xl font-bold text-green-400">{Math.round(tele.battery)}%</p>
+              <p className="text-2xl font-bold text-green-400">{finiteNum(tele.battery) == null ? '—' : `${Math.round(finiteNum(tele.battery)!)}%`}</p>
               <p className="text-[11px] text-gray-400">Battery</p>
             </div>
             <div className="panel p-3 text-center">
               <Thermometer className="w-4 h-4 mx-auto text-orange-400 mb-0.5" />
-              <p className="text-xl font-bold font-mono">{tele.sensors.temperature}°C</p>
+              <p className="text-xl font-bold font-mono">{sensorValue(tele.sensors, 'temperature') == null ? '—' : `${sensorValue(tele.sensors, 'temperature')}°C`}</p>
               <p className="text-[11px] text-gray-400">Core temp</p>
             </div>
             <div className="panel p-3 text-center">
               <Cpu className="w-4 h-4 mx-auto text-neon-cyan mb-0.5" />
-              <p className="text-xl font-bold font-mono">{tele.sensors.cpuLoad}%</p>
+              <p className="text-xl font-bold font-mono">{sensorValue(tele.sensors, 'cpuLoad') == null ? '—' : `${sensorValue(tele.sensors, 'cpuLoad')}%`}</p>
               <p className="text-[11px] text-gray-400">CPU load</p>
             </div>
             <div className="panel p-3 text-center">
               <Radio className="w-4 h-4 mx-auto text-purple-400 mb-0.5" />
-              <p className="text-xl font-bold font-mono">{tele.sensors.proximity}m</p>
+              <p className="text-xl font-bold font-mono">{sensorValue(tele.sensors, 'proximity') == null ? '—' : `${sensorValue(tele.sensors, 'proximity')}m`}</p>
               <p className="text-[11px] text-gray-400">Proximity</p>
             </div>
           </div>
 
+          {tele.sensors && Object.keys(tele.sensors).some(k => !['temperature', 'cpuLoad', 'proximity'].includes(k)) && (
+            <div className="panel p-3">
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Logged channels</p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {Object.entries(tele.sensors).filter(([k]) => !['temperature', 'cpuLoad', 'proximity'].includes(k)).map(([channel, value]) => (
+                  <div key={channel} className="p-2 rounded bg-black/30 text-xs">
+                    <p className="text-gray-400">{channel}</p>
+                    <p className="font-mono text-neon-cyan">{finiteNum(value) == null ? '—' : String(value)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Joint angles bar grid */}
           <div className="panel p-3">
-            <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Joint state ({tele.dof} DOF)</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Joint state ({tele.dof == null ? '—' : tele.dof} DOF)</p>
+            {tele.joints.length === 0 ? (
+              <p className="text-xs text-gray-400">No joint samples logged.</p>
+            ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-              {tele.joints.map(j => (
+              {tele.joints.map(j => {
+                const angle = finiteNum(j.angle);
+                return (
                 <div key={j.joint} className="p-2 rounded bg-black/30">
                   <div className="flex justify-between text-[11px] text-gray-400">
                     <span>Joint {j.joint}</span>
-                    <span className="font-mono text-neon-cyan">{j.angle}°</span>
+                    <span className="font-mono text-neon-cyan">{angle == null ? '—' : `${angle}°`}</span>
                   </div>
                   <div className="h-1.5 bg-white/10 rounded-full mt-1">
                     <div className="h-full bg-neon-cyan rounded-full"
-                      style={{ width: `${(Math.abs(j.angle) / 180) * 100}%` }} />
+                      style={{ width: `${angle == null ? 0 : (Math.abs(angle) / 180) * 100}%` }} />
                   </div>
                   <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
-                    <span>ω {j.velocity}</span>
-                    <span>τ {j.torque}</span>
+                    <span>ω {finiteNum(j.velocity) == null ? '—' : j.velocity}</span>
+                    <span>τ {finiteNum(j.torque) == null ? '—' : j.torque}</span>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
+            )}
           </div>
 
           {/* Joint history chart */}
