@@ -31,6 +31,8 @@ const REASON_SENTENCES: Record<string, string> = {
   no_ecosystem_score: 'ecosystem score is not recorded',
   metrics_unreadable: 'ecosystem metrics could not be read',
   no_sample: 'no players have an ecosystem score here yet',
+  // Gauges (0-100 percent scale)
+  out_of_range: 'value is outside the expected 0-100 range',
   // Generic
   not_recorded: 'not recorded',
 };

@@ -109,6 +109,23 @@ describe("analytics — world-summary (REAL per-world DB aggregation)", () => {
     assert.equal(res.taggedDtus, 0);
     assert.equal(res.infraCoverage, 0);
   });
+
+  it("reports the Environment gauge on the 0-100 scale, and no_sample without metric rows", async () => {
+    const none = await lensRun("analytics", "world-summary", { params: { worldId: W } }, ctx);
+    assert.equal(none.result.envScore, null);
+    assert.equal(none.result.envReason, "no_sample");
+
+    // Stored signed ecosystem scores -100 and 0 → mean -50 → 25 on the 0-100 scale.
+    const W3 = `${W}-eco`;
+    const mstmt = db.prepare(
+      "INSERT OR REPLACE INTO player_world_metrics (user_id, world_id, ecosystem_score) VALUES (?,?,?)"
+    );
+    mstmt.run(`${W3}-u1`, W3, -100);
+    mstmt.run(`${W3}-u2`, W3, 0);
+    const r = await lensRun("analytics", "world-summary", { params: { worldId: W3 } }, ctx);
+    assert.equal(r.result.envScore, 25);
+    assert.equal(r.result.envReason, null);
+  });
 });
 
 describe("analytics — global-summary (REAL cross-world DB aggregation)", () => {

@@ -116,6 +116,9 @@ interface WorldSummaryResult {
   buildingCount?: number;
   standingBuildings?: number;
   infraCoverage?: number;
+  /** Environment gauge on the 0-100 scale (null + envReason when unmeasured). */
+  envScore?: number | null;
+  envReason?: string | null;
   eventCount?: number;
   activePresence?: number;
   uniqueVisitors?: number;
@@ -207,18 +210,19 @@ export default function AnalyticsDashboard({
         if (cancelled) return;
         const d = r.data?.result;
         if (!r.data?.ok || !d || d.found === false) { setWorldStats(null); return; }
-        // Map only fields the macro genuinely provides. Economic activity and
-        // the ecosystem score have no backend source here, so they are null;
-        // no fabricated timeseries.
+        // Map only fields the macro genuinely provides. Economic activity has
+        // no backend source here, so it is null; no fabricated timeseries.
+        // envScore is already on the 0-100 scale from the server.
         const infra = finiteOrNull(d.infraCoverage);
+        const env = finiteOrNull(d.envScore);
         setWorldStats({
           worldId: d.worldId ?? worldId,
           population: finiteOrNull(d.population),
           buildingCount: finiteOrNull(d.buildingCount),
           infraCoverage: infra,
           infraReason: infra == null ? 'not_recorded' : null,
-          envScore: null,
-          envReason: 'not_recorded',
+          envScore: env,
+          envReason: env == null ? (d.envReason ?? 'not_recorded') : null,
           economicActivity: null,
           visitorCount: finiteOrNull(d.uniqueVisitors),
         });
@@ -400,19 +404,23 @@ export default function AnalyticsDashboard({
               { label: 'Infrastructure', value: worldStats.infraCoverage, reason: worldStats.infraReason, color: 'bg-cyan-500' },
               { label: 'Environment', value: worldStats.envScore, reason: worldStats.envReason, color: 'bg-green-500' },
             ].map(g => {
-              const n = finiteOrNull(g.value);
+              // Both gauges are 0-100 percents. A finite value outside that range is
+              // shown as unavailable, never clamped and presented as a real reading.
+              const raw = finiteOrNull(g.value);
+              const n = raw != null && raw >= 0 && raw <= 100 ? raw : null;
+              const reason = raw != null && n == null ? 'out_of_range' : g.reason;
               return (
               <div key={g.label} className="p-3 bg-white/5 rounded-lg">
                 <div className="flex justify-between text-xs mb-1">
                   <span className="text-white/60">{g.label}</span>
                   {n == null ? (
-                    <span className="text-white/50 text-right">{unavailableMessage(g.reason)}</span>
+                    <span className="text-white/50 text-right">{unavailableMessage(reason)}</span>
                   ) : (
                     <span className="text-white">{`${n}%`}</span>
                   )}
                 </div>
                 <div className="h-2 bg-white/10 rounded-full">
-                  <div className={`h-full rounded-full ${g.color}`} style={{ width: `${n == null ? 0 : Math.max(0, Math.min(100, n))}%` }} />
+                  <div className={`h-full rounded-full ${g.color}`} style={{ width: `${n ?? 0}%` }} />
                 </div>
               </div>
               );

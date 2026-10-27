@@ -128,6 +128,7 @@ describe("/api/analytics — with seeded data", () => {
     assert.equal(body.worldStats.infraCoverage, null);
     assert.equal(body.worldStats.infraReason, "no_building_state");
     assert.equal(body.worldStats.envScore, null);
+    assert.equal(body.worldStats.envScale, "0-100");
     assert.equal(body.worldStats.envReason, "no_metrics_table");
   });
 
@@ -146,8 +147,8 @@ describe("/api/analytics — with seeded data", () => {
     db.prepare("INSERT INTO world_buildings (id, world_id, state) VALUES (?, ?, ?)").run("b1", "w1", "standing");
     db.prepare("INSERT INTO world_buildings (id, world_id, state) VALUES (?, ?, ?)").run("b2", "w1", "standing");
     db.prepare("INSERT INTO world_buildings (id, world_id, state) VALUES (?, ?, ?)").run("b3", "w1", "collapsed");
-    db.prepare("INSERT INTO player_world_metrics (user_id, world_id, ecosystem_score) VALUES (?, ?, ?)").run("u1", "w1", 0.2);
-    db.prepare("INSERT INTO player_world_metrics (user_id, world_id, ecosystem_score) VALUES (?, ?, ?)").run("u2", "w1", 0.8);
+    db.prepare("INSERT INTO player_world_metrics (user_id, world_id, ecosystem_score) VALUES (?, ?, ?)").run("u1", "w1", -100);
+    db.prepare("INSERT INTO player_world_metrics (user_id, world_id, ecosystem_score) VALUES (?, ?, ?)").run("u2", "w1", 0);
 
     const { stub, handlers } = makeStubApp();
     registerAnalyticsRoutes(stub, { db, asyncHandler });
@@ -155,7 +156,9 @@ describe("/api/analytics — with seeded data", () => {
     assert.equal(body.worldStats.buildingCount, 3);
     assert.equal(body.worldStats.infraCoverage, 67);
     assert.equal(body.worldStats.infraReason, null);
-    assert.equal(body.worldStats.envScore, 0.5);
+    // Stored signed mean -50 maps to the 0-100 display scale: (-50 + 100) / 2 = 25.
+    assert.equal(body.worldStats.envScore, 25);
+    assert.equal(body.worldStats.envScale, "0-100");
     assert.equal(body.worldStats.envReason, null);
 
     db.exec(`DELETE FROM world_buildings`);
