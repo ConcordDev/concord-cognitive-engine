@@ -132,16 +132,21 @@ fn normalize_lc(s: &str) -> String {
 
 /// Faithful port of userVisibleDTUs(viewerId) — the system/privacy/federation gate.
 fn user_visible(d: &Value, r: &ListReq) -> bool {
-    if SYSTEM_DTU_SOURCES.contains(&s(d, &["source"])) {
-        return false;
-    }
-    if SYSTEM_DTU_SOURCES.contains(&s(d, &["creatorType"])) {
-        return false;
-    }
+    // _isHiddenSystemDtu parity: scope "system" and visibility "internal" hide
+    // every tier (the ownership boundary, #1543).
     if s(d, &["scope"]) == "system" {
         return false;
     }
     if s(d, &["visibility"]) == "internal" {
+        return false;
+    }
+    // Megas/hypers are exempt from the system-source filter only (#1542): they
+    // inherit source/creatorType "system" from the members they absorb.
+    let consolidated = matches!(s(d, &["tier"]), "mega" | "hyper");
+    if !consolidated && SYSTEM_DTU_SOURCES.contains(&s(d, &["source"])) {
+        return false;
+    }
+    if !consolidated && SYSTEM_DTU_SOURCES.contains(&s(d, &["creatorType"])) {
         return false;
     }
     let privacy = s(d, &["privacy"]);
@@ -651,7 +656,7 @@ fn handle(stream: &mut UnixStream, conn: &Connection, cache: &Cache, served: &At
             let snap = snapshot(cache); // pointer clone; lock released immediately
             let (page, total) = list_dtus(&snap, &req);
             (200, json!({
-                "ok": true, "dtus": page, "total": total,
+                "ok": true, "dtus": page, "total": total, "consolidatedVisible": true,
                 "limit": req.limit, "offset": req.offset, "cachedDtus": snap.len(),
             }))
         }
@@ -759,5 +764,34 @@ fn main() {
     }
     for h in handles {
         let _ = h.join();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn req(viewer: &str) -> ListReq {
+        ListReq {
+            viewer: viewer.into(), scope: None, tier: "any".into(), q: String::new(), mine: false,
+            limit: 100, offset: 0, viewer_regional: String::new(), viewer_national: String::new(),
+        }
+    }
+
+    #[test]
+    fn system_sourced_public_mega_and_hyper_are_visible() {
+        let r = req("viewer-b");
+        assert!(user_visible(&json!({"id":"m","tier":"mega","source":"system","creatorType":"system","visibility":"public","scope":"global"}), &r));
+        assert!(user_visible(&json!({"id":"h","tier":"hyper","creatorType":"system","visibility":"public","scope":"global"}), &r));
+    }
+
+    #[test]
+    fn internal_system_and_private_stay_hidden() {
+        let r = req("viewer-b");
+        assert!(!user_visible(&json!({"id":"i","tier":"mega","creatorType":"system","visibility":"internal"}), &r));
+        assert!(!user_visible(&json!({"id":"s","tier":"mega","scope":"system"}), &r));
+        assert!(!user_visible(&json!({"id":"g","tier":"regular","source":"lattice_audit","visibility":"public"}), &r));
+        assert!(!user_visible(&json!({"id":"p","tier":"mega","visibility":"private","ownerId":"owner-a"}), &r));
+        assert!(user_visible(&json!({"id":"p","tier":"mega","visibility":"private","ownerId":"owner-a"}), &req("owner-a")));
     }
 }
