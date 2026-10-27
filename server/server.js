@@ -28881,14 +28881,13 @@ const scored = _consentFiltered.map(d => {
   const _hasEmbed = sEmbed > 0 ? 1 : 0;
   // When embedding is available: redistribute 20% weight to it from lexical terms
   // Megas/hypers are the compressed knowledge: rank them above a member.
-  const score = clamp(
-    _lensBoost * _dtuTierBoost(d) * (
-      _hasEmbed
-        ? (0.44*sBase + 0.24*sExp + 0.12*sNg + 0.08*tW + 0.20*sEmbed)
-        : (0.55*sBase + 0.30*sExp + 0.15*sNg + 0.10*tW)
-    ),
-    0, 1
-  );
+  // Long bodies (megas, archived rows) dilute Jaccard, so a strong meaning
+  // match could rank below a weak lexical one. Floor on the embedding.
+  const _blend = _hasEmbed
+    ? (0.44*sBase + 0.24*sExp + 0.12*sNg + 0.08*tW + 0.20*sEmbed)
+    : (0.55*sBase + 0.30*sExp + 0.15*sNg + 0.10*tW);
+  const _semFloor = sEmbed >= 0.45 ? 0.6 * sEmbed : 0;
+  const score = clamp(_lensBoost * _dtuTierBoost(d) * Math.max(_blend, _semFloor), 0, 1);
     return { d, score };
   }).sort((a,b)=>b.score-a.score);
   // Affect depthBudget controls how many DTUs enter the working set (default 6)
