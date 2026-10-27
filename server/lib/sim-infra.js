@@ -6,6 +6,16 @@
 import { runDistrictStressTest, loadStandingBuildings } from "../domains/world.js";
 import { listGallery } from "./plugin-gallery.js";
 import { readOwnBuildings, readOwnCitations } from "./sim-stats.js";
+import { recentEvents, unregisteredEventStats } from "./runtime/event-bus.js";
+import { stats as eventTimelineStats } from "./event-timeline.js";
+import { getPoolStats as getMacroPoolStats } from "../workers/macro-pool.js";
+import { getPoolStats as getHeartbeatPoolStats } from "../workers/heartbeat-pool.js";
+import { podJobs } from "./pod-jobs.js";
+import { podJobsEnabled } from "../routes/pod-jobs.js";
+
+// runtime/event-bus.js keeps its last 500 events (RECENT_MAX); asking for
+// that many returns the whole ring.
+const RECENT_RING_MAX = 500;
 
 const TABLES = new Set(["worlds", "world_buildings", "dtus", "dtu_citations", "economy_ledger", "districts"]);
 const OWNER_COLS = new Set(["creator_id", "owner_user_id"]);
@@ -134,23 +144,106 @@ export function readSimMetrics(db) {
   return { ok: true, metrics, unavailable, timestamp: new Date().toISOString() };
 }
 
-export function readEventBusStatus() {
+// Admin-only readings of the in-process runtime. Every dependency is
+// injectable so tests can exercise the "not initialised" paths; the defaults
+// are the live singletons server.js already runs.
+export function readEventBusStatus({
+  db = null,
+  getRealtimeClients = null,
+  bus = { recentEvents, unregisteredEventStats },
+  timeline = eventTimelineStats,
+} = {}) {
+  const ring = bus.recentEvents(RECENT_RING_MAX);
+  const perType = new Map();
+  for (const ev of ring) perType.set(ev.name, (perType.get(ev.name) || 0) + 1);
+  const ringChannels = [...perType.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+  // recentEvents() is newest-first.
+  const newestTs = ring.length ? ring[0].ts : null;
+  const oldestTs = ring.length ? ring[ring.length - 1].ts : null;
+
+  let clients = null;
+  let clientsReason = "realtime_not_attached";
+  if (typeof getRealtimeClients === "function") {
+    try {
+      const n = getRealtimeClients();
+      if (Number.isInteger(n)) { clients = n; clientsReason = null; }
+      else clientsReason = "socket_server_not_started";
+    } catch {
+      clientsReason = "socket_server_unreadable";
+    }
+  }
+
+  let timelineSection = { available: false, reason: "no_database" };
+  if (db) {
+    const t = timeline(db);
+    timelineSection = t?.ok
+      ? {
+          available: true,
+          source: "event_timeline_log",
+          window: "last_24h",
+          sinceTs: t.sinceTs,
+          total: t.total,
+          channels: t.channels,
+        }
+      : { available: false, reason: t?.reason || "stats_failed" };
+  }
+
   return {
-    ok: false,
-    status: 501,
-    error: "not_wired",
-    reason: "no_event_bus",
-    missing: "No message bus is attached to this process. In-process socket emits are not counted here.",
+    ok: true,
+    provider: "in-process",
+    runtimeBus: {
+      window: "recent_ring",
+      ringCapacity: RECENT_RING_MAX,
+      eventsInRing: ring.length,
+      oldestTs,
+      newestTs,
+      channels: ringChannels,
+      unregisteredEvents: bus.unregisteredEventStats(50),
+      unregisteredWindow: "since_start",
+    },
+    timeline: timelineSection,
+    connectedClients: clients,
+    connectedClientsReason: clientsReason,
+    consumers: null,
+    consumersReason: "not_measured_by_in_process_bus",
+    lagMs: null,
+    lagMsReason: "not_measured_by_in_process_bus",
+    deadLetter: null,
+    deadLetterReason: "no_dead_letter_queue_in_process_bus",
+    checkedAt: new Date().toISOString(),
   };
 }
 
-export function readJobQueueStatus() {
+function poolSection(getStats) {
+  let s;
+  try { s = getStats(); } catch { return { initialised: false, reason: "stats_unreadable" }; }
+  if (!s?.ready) return { initialised: false, reason: "pool_not_started" };
+  return { initialised: true, window: "since_start", ...s };
+}
+
+export function readJobQueueStatus({
+  macroStats = getMacroPoolStats,
+  heartbeatStats = getHeartbeatPoolStats,
+  podEnabled = podJobsEnabled,
+  podStats = () => podJobs.stats(),
+} = {}) {
+  let podSection = { enabled: false, reason: "CONCORD_POD_JOBS_not_enabled" };
+  if (podEnabled()) {
+    try {
+      podSection = { enabled: true, window: "since_start", ...podStats() };
+    } catch {
+      podSection = { enabled: true, reason: "stats_unreadable" };
+    }
+  }
   return {
-    ok: false,
-    status: 501,
-    error: "not_wired",
-    reason: "no_job_queue",
-    missing: "No external job queue is running in this process.",
+    ok: true,
+    provider: "in-process",
+    macroPool: poolSection(macroStats),
+    heartbeatPool: poolSection(heartbeatStats),
+    podJobs: podSection,
+    checkedAt: new Date().toISOString(),
   };
 }
 

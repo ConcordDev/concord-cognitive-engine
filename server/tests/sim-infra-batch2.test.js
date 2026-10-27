@@ -1,5 +1,5 @@
 // The plugin catalog reads the real plugin_gallery rows. Event bus and job
-// queue status stay honest 501s (owner decision 2026-10-27: no new infra).
+// queue status are covered by sim-infra-batch5.test.js.
 
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";

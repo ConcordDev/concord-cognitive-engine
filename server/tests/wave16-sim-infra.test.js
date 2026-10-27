@@ -141,14 +141,11 @@ describe("world sim infra reads stored counts", () => {
     assert.equal(metrics.body.metrics.activePlayers, undefined);
     assert.equal(JSON.stringify(metrics.body).includes("1847"), false);
 
-    const bus = await call("/api/world/sim/eventbus/status");
-    assert.equal(bus.status, 501);
-    assert.equal(bus.body.reason, "no_event_bus");
-    assert.equal(bus.body.channels, undefined);
-
-    const jobs = await call("/api/world/sim/jobs/queue-status");
-    assert.equal(jobs.status, 501);
-    assert.equal(jobs.body.reason, "no_job_queue");
+    // Event bus and job queue status are admin-only now (see sim-infra-batch5).
+    assert.equal((await call("/api/world/sim/eventbus/status")).status, 401);
+    assert.equal((await call("/api/world/sim/jobs/queue-status")).status, 401);
+    assert.equal((await call("/api/world/sim/eventbus/status", { user: "u1" })).status, 403);
+    assert.equal((await call("/api/world/sim/jobs/queue-status", { user: "u1" })).status, 403);
 
     const cache = await call("/api/world/sim/cache/status");
     assert.equal(cache.status, 200);
