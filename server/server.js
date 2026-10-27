@@ -154,6 +154,9 @@ import * as loopJobs from "./lib/loop-job-tracker.js";
 import { HUB_WORLD_ID, canonicalWorldId } from "./lib/world-ids.js";
 import { uniqueTmpPath, writeFileAtomicSync, createSnapshotOrdering, sweepStaleStateTmps } from "./lib/state-file-write.js";
 import { runConsolidationCycle } from "./lib/consolidation-cycle.js";
+import { consolidatedTitle, stripTierPrefix, screenClusterMembers, memberSetKey, createRejectionCache, bump as _consoBump } from "./lib/consolidation-dedupe.js";
+// Clusters the quality gates rejected: not rebuilt for 24h (lib/consolidation-dedupe.js).
+const _consoRejected = createRejectionCache();
 import { createSessionActivityBridge, createMacroRateBridge, createApiRateBridge, createChatSessionBridge, createStyleVectorBridge, createSocketRoomBridge, installMapWriteThrough } from "./lib/concurrency/shared-state.js";
 import { touchStickySession } from "./lib/concurrency/sticky-session.js";
 import { markActivity as _markActivity } from "./lib/presence-idle.js";
@@ -27527,24 +27530,38 @@ register("dtu", "gapPromote", async (ctx, input) => {
 
   const promoted = [];
   const created = [];
+  // Why clusters were not promoted (logged by _promoteClusterBatch).
+  const skipped = {};
+  const _isLiveConsolidated = (id) => {
+    const p = STATE.dtus.get(id);
+    return !!p && (p.tier === "mega" || p.tier === "hyper");
+  };
   for (const c of clusters) {
     if (promoted.length >= maxPromotions) break;
     const ids = Array.isArray(c.ids) ? c.ids.map(_idOf).filter(Boolean) : [];
-    if (ids.length < minCluster) continue;
-    const members = ids
+    if (ids.length < minCluster) { _consoBump(skipped, "too_few_ids"); continue; }
+    const liveMembers = ids
       .map(id => STATE.dtus.get(id))
       .filter(d => d && (d.tier || "regular") === childTier && !isShadowDTU(d) && (d.status || "active") === "active");
-    if (members.length < minCluster) continue;
+    if (liveMembers.length < minCluster) { _consoBump(skipped, "members_not_live"); continue; }
+    // Drop failed-promotion artifacts ("MEGA — …" regulars) and members a
+    // live mega/hyper already absorbed; refuse clusters of near-copies.
+    const screen = screenClusterMembers(liveMembers, { childTier, isLiveConsolidated: _isLiveConsolidated, minCluster });
+    if (!screen.ok) { _consoBump(skipped, screen.reason); continue; }
+    const members = screen.members;
 
     const clusterKey = topicKeyOf(members);
+    const setKey = `${targetTier}:${memberSetKey(members.map(d => d.id))}`;
+    if (_consoRejected.has(clusterKey) || _consoRejected.has(setKey)) { _consoBump(skipped, "recently_rejected"); continue; }
     // Tier-independent: a downgraded regular that already carries this
     // clusterKey must block a rebuild, or the same megas are minted every
     // tick and then re-clustered into "MEGA — MEGA …".
     const existing = Array.from(STATE.dtus.values()).find(d => d?.meta?.clusterKey === clusterKey);
-    if (existing) continue;
+    if (existing) { _consoBump(skipped, "cluster_exists"); continue; }
 
-    // Build a deterministic mega summary (no LLM dependency)
-    const titleSeed = (c.label || members[0]?.title || "Cluster").toString().slice(0, 80);
+    // Build a deterministic mega summary (no LLM dependency). One tier
+    // prefix only: a seed that already reads "MEGA — …" would nest.
+    const titleSeed = stripTierPrefix(c.label || members[0]?.title || "Cluster").slice(0, 80) || "Cluster";
     const tags = Array.from(new Set(members.flatMap(d => Array.isArray(d.tags)?d.tags:[]))).slice(0, 24);
     const excerpts = members
       .map(d => (d.cretiHuman || d.creti || "").toString().trim())
@@ -27566,7 +27583,7 @@ register("dtu", "gapPromote", async (ctx, input) => {
     const mega = {
       id: uid("dtu"),
       tier: targetTier,
-      title: `${targetTier.toUpperCase()} — ${titleSeed}`,
+      title: consolidatedTitle(targetTier, titleSeed),
       tags,
       scope: _megaScope,
       visibility: _seed.visibility || (String(_megaScope).match(/personal|private|local/i) ? "private" : "public"),
@@ -27634,14 +27651,19 @@ register("dtu", "gapPromote", async (ctx, input) => {
       } catch (err) {
         logger.debug?.("[compression] Quality gate check failed, proceeding with fallback", { error: err?.message });
       }
-      if (!qualityPassed) continue;
+      if (!qualityPassed) {
+        _consoRejected.add(clusterKey, "compression_gate");
+        _consoRejected.add(setKey, "compression_gate");
+        _consoBump(skipped, "compression_gate");
+        continue;
+      }
 
       const r = await pipelineCommitDTU(ctx, mega, { op: "gap_promotion" });
-      if (!r?.ok) continue;
+      if (!r?.ok) { _consoBump(skipped, "commit_failed"); continue; }
       const committed = STATE.dtus.get(mega.id) || r.dtu || mega;
       // Anti-gaming downgrade stores a regular with this clusterKey. That row
       // blocks a rebuild, but it is not a promotion and must not audit as a pass.
-      if (committed?.tier !== targetTier) continue;
+      if (committed?.tier !== targetTier) { _consoBump(skipped, "downgraded_on_commit"); continue; }
       try {
         const { logCompressionAttempt } = await import("./lib/compression-quality.js");
         logCompressionAttempt({
@@ -27665,12 +27687,13 @@ register("dtu", "gapPromote", async (ctx, input) => {
       created.push(committed);
     }
 
-    promoted.push({ megaId: mega.id, clusterKey, members: members.length, memberIds, label: titleSeed });
+    promoted.push({ megaId: mega.id, clusterKey, setKey, members: members.length, memberIds, label: titleSeed });
   }
 
   return {
     ok: true,
     did: promoted.length ? "promoted" : "none",
+    skipped,
     promoted,
     dtus: created,
     dtu: created[0] || null,
@@ -44352,6 +44375,7 @@ async function absorbConsolidatedPromotion(promotionResult, cluster) {
   if (!list.length) return { ok: false, reason: "no_dtu", promoted: records };
   const entityEconMod = await import("./emergent/entity-economy.js").catch(() => null);
   let absorbed = 0;
+  let linked = 0;
   const failures = [];
   for (const rec of list) {
     const megaId = rec.megaId || rec.id;
@@ -44368,6 +44392,14 @@ async function absorbConsolidatedPromotion(promotionResult, cluster) {
     const quality = validateConsolidationQuality(live, memberIds);
     if (!quality.ok) {
       try { STATE.dtus.delete(live.id); } catch { /* best-effort */ }
+      // Members must not keep pointing at the deleted node, and the same
+      // cluster must not be rebuilt and rejected again next cycle.
+      for (const memberId of memberIds) {
+        const m = STATE.dtus.get(memberId);
+        if (m?.meta?.megaParent === live.id) delete m.meta.megaParent;
+      }
+      if (rec.clusterKey) _consoRejected.add(rec.clusterKey, `absorb_gate:${quality.reason}`);
+      if (rec.setKey) _consoRejected.add(rec.setKey, `absorb_gate:${quality.reason}`);
       failures.push({ megaId: live.id, reason: quality.reason });
       continue;
     }
@@ -44378,7 +44410,10 @@ async function absorbConsolidatedPromotion(promotionResult, cluster) {
       if (src?.meta?.createdBy) creators.push(src.meta.createdBy);
       try { await transferEdgesToConsolidated(memberId, live.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
       try { demoteToArchive(memberId, live.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-      absorbed++;
+      // Count only members that actually left the hot set (seed-protected
+      // members stay hot and are linked by megaParent only).
+      if (!STATE.dtus.has(memberId)) absorbed++;
+      else linked++;
     }
     if (entityEconMod?.earnResource) {
       for (const creator of creators) {
@@ -44392,24 +44427,32 @@ async function absorbConsolidatedPromotion(promotionResult, cluster) {
       }
     } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
   }
-  return { ok: failures.length === 0, absorbed, failures, megaId: list[0]?.megaId || null };
+  return { ok: failures.length === 0, absorbed, linked, failures, megaId: list[0]?.megaId || null };
 }
 
+// Returns the number of REAL promotions: a node of the target tier was
+// committed and absorbed at least one member. It used to count every cluster
+// it looked at (done++ before the try), so skipped and rejected clusters
+// showed up as megaPromoted/hyperPromoted.
 async function _promoteClusterBatch(ctx, clusters, { tier, minCluster, budgetMs, startedAt }) {
-  let done = 0;
+  let attempted = 0;
+  let promotedCount = 0;
+  let absorbedTotal = 0;
+  const skips = {};
+  const megaIds = [];
   const batch = (clusters || []).slice(0, tier === "hyper" ? CONSOLIDATION.HYPER_MAX_PER_CYCLE : CONSOLIDATION.MEGA_MAX_PER_CYCLE);
   for (const cluster of batch) {
     await new Promise((r) => { setImmediate(r); });
     if (Date.now() - startedAt > budgetMs) {
       structuredLog("info", "consolidation_defer_remaining", {
-        done,
-        remaining: batch.length - done,
+        done: attempted,
+        remaining: batch.length - attempted,
         budgetMs,
         tier,
       });
       break;
     }
-    done++;
+    attempted++;
     try {
       const ids = _clusterMemberIds(cluster);
       const promoted = await runMacro("dtu", "gapPromote", {
@@ -44419,10 +44462,29 @@ async function _promoteClusterBatch(ctx, clusters, { tier, minCluster, budgetMs,
         maxPromotions: 1,
         dryRun: false,
       }, ctx);
-      await absorbConsolidatedPromotion(promoted, { ids });
-    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+      if (!promoted?.ok) { _consoBump(skips, promoted?.error || "promote_failed"); continue; }
+      if (!Array.isArray(promoted.promoted) || promoted.promoted.length === 0) {
+        const reasons = Object.keys(promoted.skipped || {});
+        _consoBump(skips, reasons[0] || promoted.reason || "not_promoted");
+        continue;
+      }
+      const absorbed = await absorbConsolidatedPromotion(promoted, { ids });
+      if (absorbed?.ok && (absorbed.absorbed > 0 || absorbed.linked > 0)) {
+        promotedCount++;
+        absorbedTotal += absorbed.absorbed || 0;
+        if (absorbed.megaId) megaIds.push(absorbed.megaId);
+      } else {
+        _consoBump(skips, `absorb:${absorbed?.failures?.[0]?.reason || absorbed?.reason || "none"}`);
+      }
+    } catch (_e) {
+      _consoBump(skips, "error");
+      logger.debug('server', 'silent catch', { error: _e?.message });
+    }
   }
-  return done;
+  structuredLog("info", "consolidation_promote_batch", {
+    tier, candidates: batch.length, attempted, promoted: promotedCount, absorbed: absorbedTotal, skips, megaIds: megaIds.slice(0, 8),
+  });
+  return promotedCount;
 }
 
 // Primary memory compression. Yields between clusters and stops at a
@@ -92132,6 +92194,8 @@ export const __TEST__ = Object.freeze({
   sumCompletedQuestXp,
   refreshGameProfile,
   absorbConsolidatedPromotion,
+  _promoteClusterBatch,
+  _consoRejected,
   governorTick,
 });
 // Test commit
