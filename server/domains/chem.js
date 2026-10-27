@@ -1088,11 +1088,15 @@ export default function registerChemActions(registerLensAction) {
         pendingBond = tok.v === "=" ? 2 : tok.v === "#" ? 3 : tok.v === ":" ? 1.5 : 1;
       } else if (tok.t === "branch") {
         if (tok.v === "(") branchStack.push(prev);
-        else prev = branchStack.pop();
+        else {
+          if (!branchStack.length) throw new Error("unbalanced ')'");
+          prev = branchStack.pop();
+        }
       } else if (tok.t === "ring") {
         if (prev < 0) throw new Error("ring digit before atom");
         if (ringMap[tok.v]) {
           const { atomIdx, order } = ringMap[tok.v];
+          if (atomIdx === prev) throw new Error("ring closure on the same atom");
           const o = Math.max(order, pendingBond);
           bonds.push({ a: atomIdx, b: prev, order: o, ring: true });
           atoms[atomIdx].bonds.push({ to: prev, order: o });
@@ -1104,6 +1108,7 @@ export default function registerChemActions(registerLensAction) {
         pendingBond = 1;
       }
     }
+    if (branchStack.length) throw new Error("unbalanced '('");
     if (Object.keys(ringMap).length) throw new Error("unclosed ring bond");
     return { atoms, bonds };
   }
