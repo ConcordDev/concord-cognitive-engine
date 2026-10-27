@@ -1498,8 +1498,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           : undefined,
         reasoningSessionId:
           typeof data.reasoningSessionId === 'string' ? data.reasoningSessionId : undefined,
-        confidence: data.confidence === 'low' ? 'low' : undefined,
-        confidenceReason: typeof data.confidenceReason === 'string' ? data.confidenceReason : undefined,
+        // Stream path: top-level on the final out; JSON path: on meta (toUI envelope).
+        confidence: (data.confidence ?? data.meta?.confidence) === 'low' ? 'low' : undefined,
+        confidenceReason: typeof (data.confidenceReason ?? data.meta?.confidenceReason) === 'string'
+          ? String(data.confidenceReason ?? data.meta?.confidenceReason)
+          : undefined,
         wasSynthesized: !!data.wasSynthesized,
         shadowsUsed: typeof data.shadowsUsed === 'number' ? data.shadowsUsed : undefined,
         // Which brain/source produced this.
