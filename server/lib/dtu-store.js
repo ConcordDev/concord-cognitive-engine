@@ -471,7 +471,8 @@ export function createDTUStore(db, memoryMap, opts = {}) {
      * any visibility backfill on those rows. Rows missing from the store are
      * still migrated, so nothing that exists only in memory is lost.
      *
-     * @returns {{ migrated: number, errors: number, skippedStale: number, staleSample: string[] }}
+     * @returns {{ migrated: number, errors: number, skippedStale: number, staleSample: string[],
+     *   inserted: number, replaced: number, insertedSample: string[], replacedSample: string[] }}
      */
     migrateMemoryToSQLite() {
       if (_migrated) return { migrated: 0, errors: 0, skipped: true };
@@ -482,6 +483,13 @@ export function createDTUStore(db, memoryMap, opts = {}) {
       let errors = 0;
       let skippedStale = 0;
       const staleSample = [];
+      // Which pre-attach rows were written, and why: new to the store, or a
+      // strictly newer copy replacing a row. Sampled ids go to the boot log
+      // so the code that creates them before the store attaches can be found.
+      let inserted = 0;
+      let replaced = 0;
+      const insertedSample = [];
+      const replacedSample = [];
       let storedAt = null;
       try { storedAt = db.prepare("SELECT updated_at FROM dtu_store WHERE id = ?"); } catch { storedAt = null; }
       const ts = (v) => { const n = Date.parse(String(v ?? "")); return Number.isFinite(n) ? n : null; };
@@ -502,6 +510,8 @@ export function createDTUStore(db, memoryMap, opts = {}) {
             }
             persistToSQLite(dtu);
             migrated++;
+            if (row) { replaced++; if (replacedSample.length < 50) replacedSample.push(String(dtu.id)); }
+            else { inserted++; if (insertedSample.length < 50) insertedSample.push(String(dtu.id)); }
           } catch {
             errors++;
           }
@@ -512,7 +522,7 @@ export function createDTUStore(db, memoryMap, opts = {}) {
       _migrated = true;
       if (migrated > 0) _version++;
       log("info", "dtu_store_migration_complete", { migrated, errors, skippedStale, total: memoryMap.size });
-      return { migrated, errors, skippedStale, staleSample };
+      return { migrated, errors, skippedStale, staleSample, inserted, replaced, insertedSample, replacedSample };
     },
 
     /**
