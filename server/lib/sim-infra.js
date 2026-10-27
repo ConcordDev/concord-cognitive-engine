@@ -40,13 +40,17 @@ function count(db, sql, ...params) {
 // created_at is a datetime string in the schema. Some writers bind unix seconds.
 // A JS number above 2^31 lands in a TEXT column as "1760000000.0", so the
 // unix branch accepts that trailing ".0". An ISO date stays on the datetime clock.
+// A 13-digit value (>= 1e11) is unix MILLISECONDS and is divided down to seconds;
+// left as-is it would compare as far in the future and count as "recent" forever.
 function createdWithin24h(column = "created_at") {
   return `(
     (${column} GLOB '????-??-??*' AND ${column} >= datetime('now', '-1 day'))
     OR (
       ${column} GLOB '[0-9]*'
       AND (${column} NOT GLOB '*[^0-9]*' OR ${column} GLOB '[0-9]*.0')
-      AND CAST(${column} AS INTEGER) >= unixepoch('now', '-1 day')
+      AND (CASE WHEN CAST(${column} AS INTEGER) >= 100000000000
+                THEN CAST(${column} AS INTEGER) / 1000
+                ELSE CAST(${column} AS INTEGER) END) >= unixepoch('now', '-1 day')
     )
   )`;
 }
