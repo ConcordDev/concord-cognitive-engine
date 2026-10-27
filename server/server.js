@@ -2403,7 +2403,9 @@ import {
   findCrossDomainConnections, embedDTU, storeEmbedding, getEmbedding,
   removeEmbedding, backfillEmbeddings, getEmbeddingStatus, isEmbeddingAvailable,
   trimEmbeddingCache, getEmbeddingCacheSize, setLocalEmbedder, reprobeEmbeddings,
+  embeddingEntries,
 } from "./embeddings.js";
+import { searchArchiveByVector, loadArchivedDtu, tierBoost as _dtuTierBoost, orderConsolidatedFirst } from "./lib/archive-retrieval.js";
 
 // One backfill at a time. Started at boot, when the CPU embedder is
 // registered as the fallback, and when a re-probe switches models.
@@ -18603,8 +18605,9 @@ function demoteToArchive(dtuId, consolidatedIntoId) {
   STATE.dtus.delete(dtuId);
   // Clean from shadow if present
   if (STATE.shadowDtus?.has(dtuId)) STATE.shadowDtus.delete(dtuId);
-  // Remove embedding vector to free memory
-  try { removeEmbedding(dtuId); } catch (e) { log("consolidation.warn", `removeEmbedding failed for ${dtuId}: ${e?.message}`); }
+  // Keep the embedding: archived DTUs stay searchable (lib/archive-retrieval.js).
+  // A 384-dim vector is 1.5 KB; deleting it made consolidated knowledge
+  // unfindable the moment it was compressed.
 }
 
 // Expose archive functions globally for module access
@@ -18728,6 +18731,20 @@ const _SYSTEM_DTU_SOURCES = new Set([
   "concord_system", "background", "internal", "migration",
   "embedding_backfill", "consolidation", "evolution",
 ]);
+
+/**
+ * System bookkeeping DTUs hidden from user-facing lists, search and brain
+ * context. Megas and hypers are exempt: they are the compressed knowledge,
+ * and they inherit source "system" / visibility "internal" from the lattice
+ * members they absorb, which hid every one of them (Ramaj, 2026-10-27).
+ * Privacy (privateDtuHiddenFrom) is applied separately and still holds.
+ */
+function _isHiddenSystemDtu(d) {
+  if (!d) return true;
+  if (d.tier === "mega" || d.tier === "hyper") return false;
+  return _SYSTEM_DTU_SOURCES.has(d.source) || _SYSTEM_DTU_SOURCES.has(d.creatorType)
+    || d.scope === "system" || d.visibility === "internal";
+}
 
 /** All DTUs (including system/internal). Use for admin endpoints only. */
 // Version-keyed snapshot cache (Concurrency Refactor Tier 0). ~40 call sites
@@ -18858,11 +18875,8 @@ function userVisibleDTUs(viewerId = null) {
   const viewerLoc = _resolveViewerLocation(viewerId);
 
   const result = dtusArray().filter(d => {
-    // System internal filters (always applied)
-    if (_SYSTEM_DTU_SOURCES.has(d.source)) return false;
-    if (_SYSTEM_DTU_SOURCES.has(d.creatorType)) return false;
-    if (d.scope === "system") return false;
-    if (d.visibility === "internal") return false;
+    // System internal filters (always applied; megas/hypers exempt)
+    if (_isHiddenSystemDtu(d)) return false;
 
     // Privacy / scope filters — private or user-scoped content is only
     // visible to its owner, never to a system caller that forgot to
@@ -19822,8 +19836,7 @@ async function embeddingSearch(query, { limit = 10, minScore = 0.3 } = {}) {
     const dtu = STATE.dtus.get(dtuId) || STATE.shadowDtus?.get(dtuId);
     if (!dtu) return null;
     // Filter out system/internal DTUs from user-facing search results
-    if (_SYSTEM_DTU_SOURCES.has(dtu.source) || _SYSTEM_DTU_SOURCES.has(dtu.creatorType) ||
-        dtu.scope === "system" || dtu.visibility === "internal") return null;
+    if (_isHiddenSystemDtu(dtu)) return null;
     // Shadow results get 0.6× score penalty (subconscious, not canonical)
     const effectiveScore = isShadowDTU(dtu) ? score * 0.6 : score;
     return { ...dtu, _semanticScore: effectiveScore, _isShadow: isShadowDTU(dtu) };
@@ -22821,6 +22834,65 @@ globalThis.__concordRecallMemory = async ({ query, userId, sessionId = null, lim
   return out;
 };
 
+/**
+ * Archived DTUs the viewer may see that match a query vector. Megas/hypers
+ * and the viewer's own archived DTUs; system bookkeeping stays hidden.
+ */
+function _archiveAllowFor(viewerId) {
+  return (d) => !_isHiddenSystemDtu(d) && !privateDtuHiddenFrom(d, viewerId || null);
+}
+function searchArchivedDtus(queryVec, { viewerId = null, topK = 5, minSim = 0.35 } = {}) {
+  if (!queryVec || !db) return [];
+  try {
+    return searchArchiveByVector({
+      queryVec,
+      entries: embeddingEntries(),
+      isHot: (id) => STATE.dtus.has(id) || !!STATE.shadowDtus?.has(id),
+      load: (id) => loadArchivedDtu(db, id),
+      allow: _archiveAllowFor(viewerId),
+      topK,
+      minSim,
+    });
+  } catch (e) {
+    structuredLog("warn", "archive_search_failed", { error: String(e?.message || e) });
+    return [];
+  }
+}
+
+/**
+ * One retrieval for agents (ConKay) and search: hot visible DTUs + archive,
+ * megas/hypers first. Returns [{ dtu, score, sim, archived }].
+ */
+async function retrieveDtuHits(query, { viewerId = null, topK = 8, timeoutMs = 3000 } = {}) {
+  const q = String(query || "").slice(0, 512);
+  if (!q.trim() || !isEmbeddingAvailable()) return [];
+  const qv = await Promise.race([
+    embed(q, "passage", { timeoutMs }),
+    new Promise((r) => { setTimeout(() => r(null), timeoutMs + 200); }),
+  ]).catch(() => null);
+  if (!qv) return [];
+  const hits = [];
+  for (const d of userVisibleDTUs(viewerId)) {
+    if (!d?.id || d.tier === "shadow") continue;
+    const vec = getEmbedding(d.id);
+    if (!vec) continue;
+    const sim = cosineSimilarity(qv, vec);
+    if (sim >= 0.3) hits.push({ dtu: d, sim, score: sim * _dtuTierBoost(d), archived: false });
+  }
+  for (const h of searchArchivedDtus(qv, { viewerId, topK })) hits.push({ ...h, archived: true });
+  hits.sort((a, b) => b.score - a.score);
+  return orderConsolidatedFirst(hits.slice(0, topK * 2)).slice(0, topK);
+}
+
+/** Prompt block for an agent: one line per DTU, megas/hypers first. */
+function formatDtuHitsForPrompt(hits, { maxChars = 360 } = {}) {
+  return (hits || []).map(({ dtu: d, archived }) => {
+    const title = _sanitizeDtuText(d.title || "");
+    const body = _sanitizeDtuText(String(d.cretiHuman || d.human?.summary || (Array.isArray(d.core?.claims) ? d.core.claims.join("; ") : "") || "").slice(0, maxChars));
+    return `[${(d.tier || "regular").toUpperCase()}${archived ? ", archived" : ""}] ${title}: ${body}`;
+  }).join("\n");
+}
+
 async function buildBrainContext(query, lens = null, maxDTUs = 10, sessionId = null, userId = null) {
   // Sovereignty: if userId provided, route through scoped context
   if (userId && userId !== "anon") {
@@ -22862,13 +22934,26 @@ async function buildBrainContext(query, lens = null, maxDTUs = 10, sessionId = n
     if (isEmbeddingAvailable()) {
       try {
         const results = await semanticSearch(query, all, { lens, topK: maxDTUs, includeHighTier: true });
-        if (results.length > 0) {
-          existingContext = results.map(r => {
+        // Archived DTUs (cold sweep + consolidated members) are not in
+        // `all`; score their kept vectors too.
+        let archivedHits = [];
+        try {
+          const qv = await embed(String(query || "").slice(0, 512), "passage", { timeoutMs: 3000 });
+          archivedHits = searchArchivedDtus(qv, { viewerId: userId && userId !== "anon" ? userId : null, topK: Math.min(5, maxDTUs) });
+        } catch { archivedHits = []; }
+        if (results.length > 0 || archivedHits.length > 0) {
+          const lines = results.map(r => {
             const d = all.find(x => x.id === r.id) || r;
             const title = _sanitizeDtuText(d.title || "");
             const body = _sanitizeDtuText((d.cretiHuman || d.human?.summary || "").slice(0, 400));
-            return `[${(d.tier || "regular").toUpperCase()}] ${title}: ${body}`;
-          }).join("\n");
+            return { score: r.score, line: `[${(d.tier || "regular").toUpperCase()}] ${title}: ${body}` };
+          });
+          for (const h of archivedHits) {
+            const w = h.dtu.tier === "hyper" ? 3 : h.dtu.tier === "mega" ? 2 : 1; // findSimilar's weights
+            lines.push({ score: h.sim * w, line: formatDtuHitsForPrompt([{ dtu: h.dtu, archived: true }], { maxChars: 400 }) });
+          }
+          lines.sort((a, b) => b.score - a.score);
+          existingContext = lines.slice(0, maxDTUs).map(x => x.line).join("\n");
         }
       } catch {
         // Fall through to keyword-based retrieval
@@ -28623,7 +28708,7 @@ const expandTokensFromTokens = (tokens=[]) => {
 // Before using someone else's DTU as brain context, check consent.
 // Own DTUs and system DTUs are always usable. Other users' DTUs
 // require allowCitations or allowAiTraining consent.
-const _consentFiltered = all.filter(d => {
+const _consentOk = (d) => {
   if (!d) return false;
   // Own DTUs: always usable
   if (!d.ownerId || d.ownerId === _universeUserId || d.ownerId === "anon" || d.ownerId === "system" || d.ownerId === "founder") return true;
@@ -28636,7 +28721,8 @@ const _consentFiltered = all.filter(d => {
   const vis = d.meta?.visibility || d.visibility;
   if (vis === "published" || vis === "public") return true;
   return false;
-});
+};
+const _consentFiltered = all.filter(_consentOk);
 
 // Embedding semantic search — run async in parallel with lexical scoring.
 // Guards: times out in 120ms, never blocks the chat path if embeddings unavailable.
@@ -28652,6 +28738,16 @@ try {
     for (const d of _consentFiltered) {
       const cached = getEmbedding(d.id);
       if (cached) _dtuEmbedMap.set(d.id, cached);
+    }
+    // Archived DTUs (cold sweep, consolidated members, archived megas) are
+    // not in STATE.dtus; their kept vectors make them retrievable here.
+    const _seen = new Set(_consentFiltered.map(d => d.id));
+    for (const h of searchArchivedDtus(_queryVec, { viewerId: _universeUserId || null, topK: 4, minSim: 0.4 })) {
+      if (_seen.has(h.dtu.id) || !_consentOk(h.dtu)) continue;
+      const vec = getEmbedding(h.dtu.id);
+      if (!vec) continue;
+      _consentFiltered.push(h.dtu);
+      _dtuEmbedMap.set(h.dtu.id, vec);
     }
   }
 } catch (_embErr) { _queryVec = null; _dtuEmbedMap = null; }
@@ -28707,8 +28803,9 @@ const scored = _consentFiltered.map(d => {
   }
   const _hasEmbed = sEmbed > 0 ? 1 : 0;
   // When embedding is available: redistribute 20% weight to it from lexical terms
+  // Megas/hypers are the compressed knowledge: rank them above a member.
   const score = clamp(
-    _lensBoost * (
+    _lensBoost * _dtuTierBoost(d) * (
       _hasEmbed
         ? (0.44*sBase + 0.24*sExp + 0.12*sNg + 0.08*tW + 0.20*sEmbed)
         : (0.55*sBase + 0.30*sExp + 0.15*sNg + 0.10*tW)
@@ -49544,6 +49641,16 @@ try {
     auth: (req, res, next) => next(), // chained through standard auth middleware downstream
     runMacro,
     lensActions: LENS_ACTIONS,
+    // Same DTU retrieval as Chat, megas/hypers first, archive included.
+    retrieveDtuContext: async (message, userId) => {
+      const hits = await retrieveDtuHits(message, { viewerId: userId || null, topK: 8 });
+      return {
+        text: formatDtuHitsForPrompt(hits),
+        count: hits.length,
+        consolidated: hits.filter(h => h.dtu.tier === "mega" || h.dtu.tier === "hyper").length,
+        archived: hits.filter(h => h.archived).length,
+      };
+    },
   });
 } catch (streamErr) {
   structuredLog("warn", "chat_agent_stream_mount_failed", { error: String(streamErr?.message || streamErr) });
@@ -68966,6 +69073,27 @@ app.get("/api/dtus/search/semantic", asyncHandler(async (req, res) => {
       summary: (dtu?.human?.summary || dtu?.cretiHuman || "").slice(0, 300),
     };
   });
+  // Archived DTUs keep their vectors; include them (archive=0 opts out).
+  if (req.query.archive !== "0") {
+    try {
+      const qv = await embed(String(q).slice(0, 512), "passage", { timeoutMs: 3000 });
+      for (const h of searchArchivedDtus(qv, { viewerId, topK: Math.min(topK, 10) })) {
+        const w = h.dtu.tier === "hyper" ? 3 : h.dtu.tier === "mega" ? 2 : 1;
+        enriched.push({
+          id: h.dtu.id,
+          title: h.dtu.title || "",
+          tier: h.dtu.tier || "regular",
+          tags: h.dtu.tags || [],
+          score: Math.round(h.sim * w * 1000) / 1000,
+          rawSimilarity: Math.round(h.sim * 1000) / 1000,
+          summary: (h.dtu.human?.summary || h.dtu.cretiHuman || "").slice(0, 300),
+          archived: h.dtu._archived || true,
+        });
+      }
+      enriched.sort((a, b) => b.score - a.score);
+      enriched.splice(topK);
+    } catch { /* archive is additive */ }
+  }
 
   res.json({ ok: true, query: q, lens: lens || null, results: enriched, total: enriched.length });
 }));
@@ -92195,6 +92323,10 @@ export const __TEST__ = Object.freeze({
   refreshGameProfile,
   absorbConsolidatedPromotion,
   _promoteClusterBatch,
+  _isHiddenSystemDtu,
+  userVisibleDTUs,
+  searchArchivedDtus,
+  formatDtuHitsForPrompt,
   _consoRejected,
   governorTick,
 });
