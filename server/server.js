@@ -2405,8 +2405,19 @@ import {
 // One backfill at a time. Started at boot, when the CPU embedder is
 // registered as the fallback, and when a re-probe switches models.
 let _semanticBackfillRunning = false;
+// A read replica (CONCORD_READ_REPLICA=1) opens the DB read-only: its vectors
+// can't be stored, and its in-memory DTU ids don't match the stored ones, so
+// it re-embedded ~2,000 DTUs on every boot and threw the work away.
+function _isReadReplicaEnv() {
+  const v = String(process.env.CONCORD_READ_REPLICA || "").toLowerCase();
+  return v === "1" || v === "true";
+}
 function startSemanticBackfill(trigger) {
   if (_semanticBackfillRunning || !isEmbeddingAvailable() || !(STATE.dtus?.size > 0)) return false;
+  if (_isReadReplicaEnv()) {
+    structuredLog("info", "backfill_skipped", { trigger, reason: "read_replica" });
+    return false;
+  }
   _semanticBackfillRunning = true;
   const st = getEmbeddingStatus(STATE.dtus.size);
   structuredLog("info", "backfill_start", { dtuCount: STATE.dtus.size, trigger, model: st.model, backend: st.backend });
@@ -20809,7 +20820,12 @@ async function initFiveBrains() {
         const modelNames = (tags.models || []).map(m => m.name || "");
         const modelBase = (brain.model || "").split(":")[0];
         const modelPresent = modelNames.some(m => m.startsWith(modelBase));
-        if (!modelPresent) {
+        if (!modelPresent && _isReadReplicaEnv()) {
+          // A read replica must not download models (multi-GB pulls on a
+          // memory/disk-tight host); the primary owns model management.
+          structuredLog("info", "brain_model_pull_skipped", { brain: name, model: brain.model, reason: "read_replica" });
+          brain.enabled = false; // model is not installed here
+        } else if (!modelPresent) {
           // Model not yet pulled — trigger async pull
           structuredLog("info", "brain_model_pull", { brain: name, model: brain.model });
           fetch(`${brain.url}/api/pull`, {
@@ -39347,7 +39363,7 @@ import { minorAgentScheduler } from "./emergent/minor-agent-scheduler.js";
 minorAgentScheduler.db = db;
 minorAgentScheduler.realtimeEmit = realtimeEmit;
 // Initialize agents for existing emergents after a short delay to avoid blocking boot
-_unrefInTest(setTimeout(async () => {
+if (!_isReadReplicaEnv()) _unrefInTest(setTimeout(async () => {
   try {
     const emergentsMap = STATE?.__emergent?.emergents;
     await minorAgentScheduler.initialize(emergentsMap);
