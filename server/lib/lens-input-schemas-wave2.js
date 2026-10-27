@@ -3,7 +3,7 @@
 // values concord-frontend actually sends). Compact rule DSL — see
 // lens-input-schemas.js compileRule(). Only fields the sweep flagged are
 // constrained; everything stays optional unless "$empty" (refuse {}).
-// Lens groups included: A
+// Lens groups included: A,B
 
 export const WAVE2 = {
   "accounting": {
@@ -23,11 +23,26 @@ export const WAVE2 = {
     "work-orders-create": { "kind": ["planting", "spraying", "tillage", "harvest", "scouting", "irrigation", "fertilize"] },
     "zones-create": { "areaAcres": "num>=0", "organicMatterPct": "num:0..100", "productivityClass": ["high", "medium", "low"] },
   },
+  "analytics": {
+    "alert-save": { "threshold": "num>=0", "window": "num>=0" },
+  },
   "animation": {
     "anim-create": { "$empty": true, "height": "num>=0", "width": "num>=0" },
     "audio-track-add": { "startSec": "num>=0" },
     "brush-save": { "tool": ["pencil", "ink", "marker", "airbrush", "eraser"] },
     "export-record": { "durationSec": "num>=0" },
+  },
+  "app-maker": {
+    "projectCreate": { "$empty": true },
+    "questGraphCreate": { "$empty": true },
+  },
+  "art": {
+    "artwork-create": { "height": "num>=0", "width": "num>=0" },
+  },
+  "artistry": {
+    "collectionCreate": { "$empty": true },
+    "jobPost": { "budgetMax": "num>=0" },
+    "projectCreate": { "$empty": true },
   },
   "astronomy": {
     "equipment-add": { "aperture": "num>=0", "focalLength": "num>=0", "kind": ["~i", "telescope", "eyepiece", "camera", "binoculars", "mount", "filter", "other"] },
@@ -37,15 +52,46 @@ export const WAVE2 = {
     "target-add": { "magnitude": "num", "type": ["~i", "planet", "moon", "star", "double_star", "galaxy", "nebula", "cluster", "comet", "asteroid", "other"] },
     "wishlist-add": { "priority": ["~i", "high", "medium", "low"], "type": ["~i", "planet", "moon", "star", "double_star", "galaxy", "nebula", "cluster", "comet", "asteroid", "other"] },
   },
+  "atlas": {
+    "places-save": { "category": ["~i", "restaurant", "cafe", "bar", "hotel", "attraction", "park", "shop", "museum", "transit", "home", "work", "other"], "lat": "lat", "lng": "lng", "rating": "num>=0" },
+    "trips-create": { "endDate": "date", "startDate": "date" },
+  },
+  "audit": {
+    "findingAdd": { "dueDate": "date", "severity": ["critical", "high", "medium", "low"] },
+    "policyAdd": { "effectiveDate": "date", "reviewCycleDays": "num>=0" },
+    "vendorAdd": { "criticality": ["low", "medium", "high"], "lastReviewDate": "date" },
+  },
   "automotive": {
     "shops-create": { "laborRate": "num>=0", "lat": "lat", "lon": "lng", "rating": "num>=0" },
     "vehicles-create": { "fuelUnit": ["gal", "L"], "odometerUnit": ["mi", "km"], "year": "num>=0" },
+  },
+  "billing": {
+    "invoice-create": { "$empty": true, "amount": "num>=0" },
+    "plan-create": { "amount": "num>=0" },
+    "subscription-create": { "quantity": "num>=0" },
   },
   "calendar": {
     "appointment-schedule-create": { "durationMin": "num>=0", "endHour": "num:0..24", "startHour": "num:0..24" },
     "events-create": { "end": "date" },
     "status-event-create": { "end": "date" },
     "tasks-create": { "dueAt": "date", "estimateMin": "num>=0", "priority": ["low", "medium", "high"] },
+  },
+  "carpentry": {
+    "crewAdd": { "hourlyRate": "num>=0" },
+    "scheduleAdd": { "date": "date", "status": ["scheduled", "dispatched", "done"] },
+  },
+  "chat": {
+    "assistant-create": { "model": ["overview", "deep", "creative", "code", "research", "creti"] },
+    "memory-add": { "category": ["preference", "fact", "context", "instruction"] },
+    "scheduled-create": { "recurring": ["daily", "weekly", "monthly"] },
+  },
+  "classroom": {
+    "assignment-create": { "dueAt": "date", "points": "num:0..1000" },
+    "material-add": { "kind": ["link", "book", "dtu", "file", "note"] },
+  },
+  "command-center": {
+    "createAlertRule": { "comparator": ["gt", "lt", "gte", "lte", "eq"], "severity": ["critical", "high", "medium", "low"], "threshold": "num>=0" },
+    "openIncident": { "severity": ["critical", "high", "medium", "low"] },
   },
   "construction": {
     "budget-add": { "actual": "num>=0", "budgetAmount": "num>=0", "committed": "num>=0" },
@@ -65,11 +111,24 @@ export const WAVE2 = {
     "recipes-create": { "cookMin": "num>=0", "prepMin": "num>=0", "servings": "num>=0" },
     "shopping-list-add": { "qty": "num>=0" },
   },
+  "council": {
+    "action-create": { "dueDate": "date" },
+    "agenda-add": { "durationMin": "num>=0" },
+    "meeting-create": { "quorumThreshold": "num>=0", "scheduledAt": "date" },
+    "proposal-create": { "votingDeadline": "date" },
+  },
   "creative": {
     "calendar-add": { "kind": ["shoot_day", "milestone", "deliverable_due", "meeting", "review"], "endDate": "date" },
     "callsheet-create": { "dayNumber": "num>=0", "shootDate": "date" },
     "card-add": { "color": ["amber", "rose", "sky", "emerald", "violet", "zinc"], "type": ["note", "task", "link", "header", "image"] },
     "review-asset-create": { "durationSec": "num>=0", "kind": ["video", "image"] },
+  },
+  "creative-writing": {
+    "project-create": { "deadline": "date", "targetWords": "num>=0" },
+    "session-log": { "minutes": "num>=0" },
+  },
+  "creator": {
+    "content-add": { "scheduledDate": "date" },
   },
   "crypto": {
     "holdings-add": { "acquiredAt": "date", "chain": ["~i", "ethereum", "solana", "bitcoin", "polygon", "base", "arbitrum", "optimism", "sui", "avalanche"] },
@@ -77,6 +136,10 @@ export const WAVE2 = {
     "order-create": { "chain": ["~i", "ethereum", "solana", "bitcoin", "polygon", "base", "arbitrum", "optimism", "sui", "avalanche"] },
     "transactions-record": { "chain": ["~i", "ethereum", "solana", "bitcoin", "polygon", "base", "arbitrum", "optimism", "sui", "avalanche"] },
     "wallet-create": { "kind": ["hot", "hardware", "exchange", "watch"] },
+  },
+  "daily": {
+    "entry-create": { "date": "date", "mood": "num:1..5" },
+    "habit-create": { "frequency": ["daily", "weekdays", "weekends", "weekly"], "weeklyDay": "num:0..6" },
   },
   "defense": {
     "comms-post": { "classification": ["unclassified", "confidential", "secret", "top_secret"], "precedence": ["routine", "priority", "immediate", "flash"] },
@@ -88,14 +151,39 @@ export const WAVE2 = {
     "sightingSave": { "confidence": ["certain", "probable", "possible"], "count": "num>=0", "lat": "lat", "lng": "lng", "observedAt": "date" },
     "trackedAdd": { "lat": "lat", "lng": "lng" },
   },
+  "diy": {
+    "bom-add": { "quantity": "num>=0", "unitPrice": "num>=0" },
+    "project-create": { "difficulty": ["~i", "beginner", "intermediate", "advanced", "expert"], "estimatedHours": "num>=0" },
+    "step-add": { "estimatedMinutes": "num>=0" },
+  },
+  "docs": {
+    "block-add": { "type": ["paragraph", "heading1", "heading2", "heading3", "bulleted_list", "numbered_list", "todo", "code", "quote", "callout", "divider", "toggle", "table", "embed"] },
+    "db-create": { "$empty": true },
+  },
+  "eco": {
+    "biodiversity-log": { "lat": "lat", "lng": "lng", "observedAt": "date" },
+    "footprint-record": { "netKgCO2e": "num" },
+    "locations-save": { "lat": "lat", "lng": "lng" },
+  },
   "education": {
-    "courses-create": { "durationHours": "num>=0" },
+    "cohorts-create": { "capacity": "num>=0" },
+    "courses-create": { "durationHours": "num>=0", "kind": ["course", "specialization", "certificate", "guided_project"], "level": ["beginner", "intermediate", "advanced"], "rating": "num>=0" },
     "courses-update": { "durationHours": "num>=0" },
   },
   "electrical": {
     "diagramCreate": { "$empty": true },
     "estimateCreate": { "$empty": true, "taxRate": "num>=0" },
     "panelCreate": { "$empty": true, "mainBreaker": "num>=0", "spaces": "num>=0", "voltage": "num>=0" },
+  },
+  "energy": {
+    "device-add": { "category": ["~i", "meter", "hvac", "appliance", "lighting", "electronics", "ev_charger", "water_heater", "kitchen", "laundry", "other"], "wattage": "num>=0" },
+    "reading-log": { "date": "date" },
+    "solar-log": { "$empty": true, "date": "date" },
+  },
+  "environment": {
+    "projects-create": { "costUsd": "num>=0" },
+    "suppliers-add": { "spendUsd": "num>=0" },
+    "targets-create": { "baseCo2eTonnes": "num>=0" },
   },
   "events": {
     "agenda-item-add": { "durationMin": "num>=0" },
@@ -105,6 +193,12 @@ export const WAVE2 = {
     "task-add": { "dueDate": "date" },
     "tier-create": { "price": "num>=0", "quantity": "num>=0" },
     "vendor-add": { "cost": "num>=0" },
+  },
+  "fashion": {
+    "calendar-log": { "date": "date" },
+    "capsule-create": { "season": ["~i", "spring", "summer", "fall", "winter", "all"], "targetSize": "num>=0" },
+    "outfit-create": { "season": ["~i", "spring", "summer", "fall", "winter", "all"] },
+    "wishlist-add": { "category": ["~i", "top", "bottom", "dress", "outerwear", "shoes", "accessory", "bag", "activewear", "underwear"] },
   },
   "film-studios": {
     "budget-line-add": { "actual": "num>=0", "estimated": "num>=0" },
@@ -143,6 +237,14 @@ export const WAVE2 = {
     "carbon-credit-issue": { "pricePerTon": "num>=0" },
     "stand-add": { "acres": "num>=0", "ageYears": "num>=0", "lat": "lat", "lon": "lng", "species": ["douglas_fir", "ponderosa_pine", "loblolly_pine", "oak", "maple", "spruce", "mixed", "other"], "treesPerAcre": "num>=0" },
   },
+  "gallery": {
+    "virtual-room-create": { "wallHeightM": "num>=0", "wallWidthM": "num>=0" },
+  },
+  "game": {
+    "challengeCreate": { "days": "num>=0" },
+    "rewardCreate": { "cost": "num>=0" },
+    "taskCreate": { "difficulty": ["trivial", "easy", "medium", "hard"], "kind": ["habit", "daily", "todo"] },
+  },
   "game-design": {
     "entity-add": { "damage": "num>=0", "health": "num>=0", "speed": "num>=0" },
     "loop-step-add": { "delta": "num" },
@@ -154,6 +256,10 @@ export const WAVE2 = {
     "fieldtrip-create": { "date": "date" },
     "measurement-record": { "planeKind": ["bedding", "foliation", "joint", "fault", "cleavage", "vein", "contact", "other"], "lat": "lat", "lon": "lng", "strike": "num>=0" },
     "observation-log": { "collectedAt": "date", "kind": ["rock", "mineral", "fossil", "outcrop", "structure", "other"], "lat": "lat", "lon": "lng" },
+  },
+  "healthcare": {
+    "medications-add": { "refillRemaining": "num>=0" },
+    "patients-create": { "dob": "date", "sex": ["M", "F", "X", "U"] },
   },
   "home-improvement": {
     "expense-log": { "amount": "num>=0" },
@@ -170,6 +276,13 @@ export const WAVE2 = {
     "task-create": { "effort": ["light", "medium", "heavy"], "intervalDays": "num>=0" },
     "task-template-create": { "effort": ["light", "medium", "heavy"], "frequency": ["daily", "weekly", "biweekly", "monthly", "quarterly", "yearly"] },
   },
+  "hr": {
+    "benefit-plan-add": { "category": ["~i", "medical", "dental", "vision", "retirement", "life", "disability"], "employerContribution": "num>=0" },
+    "compliance-doc-add": { "dueDate": "date" },
+    "course-add": { "durationHours": "num>=0" },
+    "employee-add": { "employmentType": ["~i", "full_time", "part_time", "contract", "intern"], "hireDate": "date" },
+    "job-post": { "employmentType": ["~i", "full_time", "part_time", "contract", "intern"] },
+  },
   "hvac": {
     "appointment-create": { "date": "date", "durationHrs": "num>=0", "priority": ["low", "normal", "high", "emergency"] },
     "asset-add": { "installYear": "num>=0", "seer": "num>=0", "tonnage": "num>=0" },
@@ -180,6 +293,9 @@ export const WAVE2 = {
     "client-add": { "dob": "date" },
     "policy-add": { "effectiveDate": "date", "renewalDate": "date" },
     "reminder-create": { "dueDate": "date" },
+  },
+  "lab": {
+    "inventory-add": { "lowThreshold": "num>=0", "quantity": "num>=0" },
   },
   "landscaping": {
     "bed-add": { "sizeSqft": "num>=0", "soilType": ["loam", "clay", "sandy", "silt", "chalk", "peat"], "sunExposure": ["full", "partial", "shade"] },
@@ -195,12 +311,33 @@ export const WAVE2 = {
     "obligation-add": { "amount": "num>=0" },
     "search-alert-add": { "alertType": ["case_law", "docket"], "dateAfter": "date", "dateBefore": "date" },
   },
+  "law-enforcement": {
+    "bookingCreate": { "dob": "date" },
+    "warrantIssue": { "validDays": "num>=0" },
+  },
+  "legal": {
+    "calendar-create": { "date": "date", "kind": ["deadline", "hearing", "meeting", "filing", "other"] },
+    "case-add": { "filedAt": "date", "matterType": ["civil", "criminal", "family", "probate", "corporate", "admin"] },
+    "contacts-create": { "kind": ["client", "opposing_party", "opposing_counsel", "witness", "court", "expert", "other"] },
+    "matters-create": { "billingType": ["hourly", "flat", "contingency", "pro_bono"], "flatFee": "num>=0" },
+    "trust-account-create": { "$empty": true },
+  },
   "logistics": {
     "docks-create": { "kind": ["loading", "unloading", "cross_dock"] },
     "fleet-vehicles-add": { "capacityLbs": "num>=0", "kind": ["box_truck", "tractor", "trailer", "van", "pickup"], "lat": "lat", "lng": "lng", "mileage": "num>=0", "year": "num>=0" },
     "geofence-create": { "kind": ["origin", "destination", "stop", "hub", "checkpoint"], "lat": "lat", "lng": "lng" },
     "loads-post": { "deliveryDate": "date" },
     "shipments-create": { "mode": ["parcel", "ltl", "ftl", "ocean", "air", "intermodal", "drayage"], "weightLbs": "num>=0" },
+  },
+  "manufacturing": {
+    "logDowntime": { "$empty": true, "durationMinutes": "num>=0" },
+    "ncr-create": { "quantityAffected": "num>=0" },
+    "schedule-job-add": { "dueDate": "date" },
+  },
+  "marketing": {
+    "content-add": { "channel": ["~i", "email", "social", "search", "display", "content", "affiliate", "video", "events", "direct"], "scheduledDate": "date" },
+    "lead-add": { "value": "num>=0" },
+    "segment-create": { "size": "num>=0" },
   },
   "marketplace": {
     "issue_license": { "$empty": true, "expiresAt": "date" },
@@ -216,11 +353,37 @@ export const WAVE2 = {
     "pricebook-save": { "unitCost": "num>=0" },
     "schedule-add": { "durationDays": "num>=0", "forecastLowF": "num", "precipChancePct": "num:0..100", "startDate": "date", "status": ["scheduled", "in_progress", "done"] },
   },
+  "mental-health": {
+    "course-create": { "totalSessions": "num>=0" },
+    "session-log": { "$empty": true, "date": "date", "durationMin": "num>=0" },
+    "sleep-log": { "date": "date" },
+  },
+  "mentorship": {
+    "goal-create": { "progress": "num>=0" },
+    "mentor-register": { "capacity": "num>=0" },
+    "review-add": { "rating": "num>=0" },
+  },
+  "metacognition": {
+    "journalLog": { "confidence": "num>=0", "initialAnchor": "num", "investedCost": "num>=0" },
+  },
+  "metalearning": {
+    "goalCreate": { "currentValue": "num>=0" },
+    "journalAdd": { "effectiveness": "num>=0" },
+  },
   "mining": {
     "drillhole-add": { "azimuth": "num:0..360", "collarX": "num", "collarY": "num", "collarZ": "num", "dip": "num:-90..90", "totalDepth": "num>=0" },
     "equipment-add": { "engineHours": "num>=0", "fuelLitres": "num>=0", "kind": ["haul_truck", "excavator", "loader", "drill_rig", "dozer", "grader", "water_cart", "other"], "nextServiceHours": "num>=0", "scheduledHours": "num>=0", "status": ["~i", "operating", "standby", "maintenance", "breakdown"] },
     "incident-log": { "date": "date", "severity": ["near_miss", "minor", "serious", "fatal"] },
     "site-add": { "kind": ["surface", "underground", "placer", "quarry", "other"], "productionTonnes": "num>=0" },
+  },
+  "ml": {
+    "dataset-register": { "features": "num>=0" },
+    "experiment-start": { "batchSize": "num>=0", "epochs": "num>=0", "learningRate": "num>=0" },
+  },
+  "music": {
+    "device-register": { "$empty": true, "kind": ["phone", "desktop", "tablet", "speaker", "tv", "web"] },
+    "jam-create": { "$empty": true },
+    "track-add": { "durationSec": "num>=0" },
   },
   "nonprofit": {
     "donation-page-create": { "goal": "num>=0" },
@@ -237,6 +400,9 @@ export const WAVE2 = {
   "ocean": {
     "session-log": { "date": "date", "rating": "num>=0", "waterTempC": "num", "waveHeightM": "num>=0" },
     "spot-add": { "kind": ["surf", "dive", "fishing", "swim", "other"], "lat": "lat", "lon": "lng" },
+  },
+  "organ": {
+    "scenario-create": { "count": "num>=0", "loadFactor": "num>=0" },
   },
   "parenting": {
     "activity-log": { "durationMin": "num>=0" },
@@ -260,6 +426,21 @@ export const WAVE2 = {
     "vet-visit-log": { "cost": "num>=0" },
     "weight-log": { "date": "date" },
   },
+  "photography": {
+    "export-preset-save": { "format": ["~i", "jpeg", "png", "tiff", "webp", "dng"], "longEdge": "num>=0" },
+    "shoot-create": { "date": "date" },
+    "tone-curve-save": { "channel": ["~i", "rgb", "red", "green", "blue"] },
+  },
+  "plumbing": {
+    "planCreate": { "cadence": ["weekly", "monthly", "quarterly", "biannual", "annual"], "fee": "num>=0" },
+    "priceItemAdd": { "cost": "num>=0", "kind": ["part", "labor"], "markupPct": "num>=0" },
+    "techCertAdd": { "expiryDate": "date", "issueDate": "date" },
+  },
+  "productivity": {
+    "focus-log": { "$empty": true, "durationMin": "num>=0" },
+    "habit-create": { "cadence": ["~i", "daily", "weekly"] },
+    "taskCreate": { "dueDate": "date", "priority": "num>=0" },
+  },
   "projects": {
     "goal-create": { "current": "num", "target": "num>=0" },
     "milestone-create": { "dueDate": "date" },
@@ -273,6 +454,10 @@ export const WAVE2 = {
     "lenders-add": { "loanType": ["conventional", "fha", "va", "usda", "jumbo"], "quotedRate": "num>=0" },
     "listings-add": { "baths": "num>=0", "beds": "num>=0", "daysOnMarket": "num>=0", "kind": ["single_family", "condo", "townhouse", "multi_family", "land"], "lat": "lat", "lng": "lng", "lotSqft": "num>=0", "sqft": "num>=0", "status": ["for_sale", "pending", "sold", "off_market"], "yearBuilt": "num>=0" },
   },
+  "reflection": {
+    "entry-create": { "date": "date", "mood": ["~i", "great", "good", "okay", "low", "rough"], "photoCount": "num>=0", "weather": ["~i", "sunny", "cloudy", "rainy", "snowy", "stormy", "clear", "windy", "foggy"] },
+    "voice-entry-create": { "bytes": "num>=0" },
+  },
   "research": {
     "annotation-add": { "color": ["~i", "yellow", "green", "blue", "pink", "purple"], "page": "num>=0" },
     "reference-add": { "type": ["~i", "article", "book", "chapter", "conference", "thesis", "report", "webpage", "preprint", "dataset"], "year": "num>=0" },
@@ -282,14 +467,26 @@ export const WAVE2 = {
     "customers-add": { "lastOrderAt": "date", "orderCount": "num>=0", "totalSpent": "num>=0" },
     "gift-cards-create": { "$empty": true, "expiresAt": "date", "initialValue": "num>=0" },
   },
+  "robotics": {
+    "fleetRegister": { "battery": "num>=0", "batteryCapacityWh": "num>=0", "powerDrawW": "num>=0", "type": ["arm", "mobile", "drone", "humanoid", "swarm", "custom"] },
+  },
   "security": {
     "camera-add": { "kind": ["indoor", "outdoor", "ptz", "thermal"] },
     "incident-open": { "severity": ["P1", "P2", "P3", "P4", "P5"] },
     "rule-add": { "field": ["message", "srcIp", "user", "host", "category", "source"], "incidentSeverity": ["P1", "P2", "P3", "P4", "P5"], "minSeverity": ["info", "low", "medium", "high", "critical"], "threshold": "num>=0", "windowMin": "num>=0" },
     "vuln-add": { "cvss": "num>=0", "status": ["open", "triaged", "in_progress", "remediated", "accepted"] },
   },
+  "sports": {
+    "game-add": { "awayScore": "num>=0", "date": "date", "homeScore": "num>=0", "status": ["~i", "scheduled", "live", "final"] },
+    "team-news-add": { "date": "date" },
+  },
   "telecommunications": {
     "towerSave": { "backhaul": ["fiber", "microwave", "satellite"], "freqMhz": "num>=0", "gainDbi": "num", "heightM": "num>=0", "lat": "lat", "lon": "lng", "powerWatts": "num>=0", "sectors": "num>=0", "status": ["active", "maintenance", "planned", "decommissioned"], "terrain": ["urban", "suburban", "rural", "water"] },
+  },
+  "trades": {
+    "bookings-create": { "preferredDate": "date" },
+    "invoices-create": { "dueDate": "date", "taxRate": "num>=0" },
+    "technicians-add": { "hireDate": "date", "lat": "lat", "lng": "lng" },
   },
   "travel": {
     "itinerary-add": { "category": ["~i", "sightseeing", "food", "transport", "lodging", "activity", "meeting", "rest"], "day": "date" },
@@ -305,10 +502,19 @@ export const WAVE2 = {
     "project-add": { "budget": "num>=0", "targetCompletionDate": "date" },
     "scenario-create": { "efficiency": "num>=0", "lotSizeSqFt": "num>=0" },
   },
+  "welding": {
+    "cert-add": { "$empty": true, "expiryDate": "date" },
+    "estimate-create": { "$empty": true, "taxRate": "num>=0" },
+    "wps-create": { "$empty": true },
+  },
   "whiteboard": {
     "board-save": { "$empty": true },
     "create": { "$empty": true },
     "embed-add": { "h": "num>=0", "kind": ["image", "video", "document", "link"], "w": "num>=0", "x": "num", "y": "num" },
     "frame-create": { "h": "num>=0", "w": "num>=0", "x": "num", "y": "num" },
+  },
+  "world": {
+    "combat-ability-add": { "slot": "num:1..8" },
+    "mount-add": { "kind": ["ground", "flying", "aquatic"], "speed": "num>=0", "stamina": "num>=0" },
   },
 };

@@ -772,8 +772,12 @@ describe("music — downloads queue, devices, artist-profile, share-card, stream
     // same name+kind returns the SAME device (dedup)
     const reg2 = await lensRun("music", "device-register", { params: { name: "Living Room", kind: "speaker" } }, c);
     assert.equal(reg2.result.device.id, deviceId);
-    // unknown kind falls back to "web"
-    const reg3 = await lensRun("music", "device-register", { params: { name: "Mystery", kind: "fridge" } }, c);
+    // input-validation wave: an unknown kind is refused (400 invalid_input), not coerced to "web"
+    const bad = await lensRun("music", "device-register", { params: { name: "Mystery", kind: "fridge" } }, c);
+    assert.equal(bad.result.error, "invalid_input");
+    assert.equal(bad.result.field, "kind");
+    // omitted kind still defaults to "web"
+    const reg3 = await lensRun("music", "device-register", { params: { name: "Mystery" } }, c);
     assert.equal(reg3.result.device.kind, "web");
     const list = await lensRun("music", "device-list", {}, c);
     assert.equal(list.result.count, 2);
