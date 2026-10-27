@@ -35,6 +35,7 @@ describe("world sim routes read stored data", () => {
         title TEXT,
         creator_id TEXT,
         data TEXT,
+        visibility TEXT,
         created_at TEXT
       );
       CREATE TABLE dtu_citations (
@@ -82,9 +83,11 @@ describe("world sim routes read stored data", () => {
       VALUES ('evt-1', 'world-1', 1, 4, 'season:enter', 'Summer opens the river.', 10)
     `).run();
     db.prepare(`
-      INSERT INTO dtus (id, type, title, creator_id, data, created_at)
-      VALUES ('dtu-pier', 'building', 'Pier Beam Catalog', 'user-a', '{}', '2026-01-01'),
-             ('dtu-root', 'note', 'Pier Foundation Note', 'user-a', '{}', '2025-12-01')
+      INSERT INTO dtus (id, type, title, creator_id, data, visibility, created_at)
+      VALUES ('dtu-pier', 'building', 'Pier Beam Catalog', 'user-a', '{}', 'public', '2026-01-01'),
+             ('dtu-root', 'note', 'Pier Foundation Note', 'user-a', '{}', 'public', '2025-12-01'),
+             ('dtu-secret', 'note', 'Secret Beam', 'user-b', '{"scope":"personal"}', 'public', '2026-02-01'),
+             ('dtu-private', 'ledger', 'Private Ledger', 'user-b', '{}', 'private', '2026-02-02')
     `).run();
     db.prepare(`
       INSERT INTO dtu_citations (dtu_id, citation_count) VALUES ('dtu-pier', 3)
@@ -92,7 +95,8 @@ describe("world sim routes read stored data", () => {
     db.prepare(`
       INSERT INTO royalty_lineage
         (id, child_id, parent_id, generation, creator_id, parent_creator)
-      VALUES ('lin-1', 'dtu-pier', 'dtu-root', 1, 'user-a', 'user-a')
+      VALUES ('lin-1', 'dtu-pier', 'dtu-root', 1, 'user-a', 'user-a'),
+             ('lin-secret', 'dtu-secret', 'dtu-pier', 1, 'user-b', 'user-a')
     `).run();
     db.prepare(`
       INSERT INTO audit_log
@@ -106,7 +110,10 @@ describe("world sim routes read stored data", () => {
     app.use(express.json());
     app.use((req, _res, next) => {
       const id = req.headers["x-user-id"];
-      if (id) req.user = { id: String(id) };
+      if (id) {
+        const role = req.headers["x-user-role"];
+        req.user = { id: String(id), role: role ? String(role) : "member" };
+      }
       next();
     });
     app.use("/api/world", createWorldRoutes({
@@ -134,9 +141,10 @@ describe("world sim routes read stored data", () => {
     db?.close();
   });
 
-  async function call(path, { user, method = "GET", body } = {}) {
+  async function call(path, { user, role, method = "GET", body } = {}) {
     const headers = {};
     if (user) headers["x-user-id"] = user;
+    if (role) headers["x-user-role"] = role;
     if (body != null) headers["content-type"] = "application/json";
     const res = await fetch(`${url}${path}`, {
       method,
@@ -233,7 +241,20 @@ describe("world sim routes read stored data", () => {
         json: async () => ({ models: [{ name: BRAIN_CONFIG.utility.model }] }),
       };
     });
-    const res = await call("/api/world/sim/ai/status?probe=1");
+    const member = await call("/api/world/sim/ai/status?probe=1", { user: "user-a" });
+    assert.equal(member.status, 200);
+    assert.equal(member.body.brains.utility.model, BRAIN_CONFIG.utility.model);
+    assert.equal(typeof member.body.brains.utility.configured, "boolean");
+    assert.equal(typeof member.body.brains.utility.status, "string");
+    assert.equal(member.body.probe, "admin_only");
+    assert.equal(member.body.brains.utility.reachable, undefined);
+    assert.equal(member.body.brains.utility.completed, undefined);
+    assert.equal(member.body.brains.utility.failures, undefined);
+    assert.equal(member.body.brains.utility.runningModels, undefined);
+    assert.equal(probed.length, 0);
+    assert.equal(JSON.stringify(member.body).includes(target), false);
+
+    const res = await call("/api/world/sim/ai/status?probe=1", { user: "ops", role: "admin" });
     assert.equal(res.status, 200);
     assert.equal(res.body.brains.utility.model, BRAIN_CONFIG.utility.model);
     assert.equal(res.body.brains.utility.reachable, true);
@@ -244,6 +265,7 @@ describe("world sim routes read stored data", () => {
     assert.equal(res.body.avgLatencyMs, null);
     assert.equal(JSON.stringify(res.body).includes("memoryGB"), false);
     assert.equal(JSON.stringify(res.body).includes("18420"), false);
+    assert.equal(JSON.stringify(res.body).includes(target), false);
     assert.ok(probed.some((u) => u.endsWith("/api/tags")));
     assert.ok(probed.some((u) => u.endsWith("/api/ps")));
     assert.equal(probed.some((u) => u === target), false);
@@ -295,6 +317,49 @@ describe("world sim routes read stored data", () => {
     assert.equal(found.body.graph.edges.some((e) => e.from === "dtu-pier" && e.to === "dtu-root" && e.type === "cites"), true);
     assert.equal(JSON.stringify(found.body).includes("ArchitectX"), false);
     assert.equal(JSON.stringify(found.body).includes("47"), false);
+  });
+
+  it("hides another user's personal and private DTUs", async () => {
+    const stranger = await call("/api/world/sim/knowledge/query", {
+      user: "user-a",
+      method: "POST",
+      body: { startId: "dtu-secret", depth: 2 },
+    });
+    assert.equal(stranger.status, 200);
+    assert.equal(stranger.body.graph.nodes.length, 1);
+    assert.equal(stranger.body.graph.nodes[0].hidden, true);
+    assert.equal(stranger.body.graph.nodes[0].label, undefined);
+    assert.equal(stranger.body.graph.nodes[0].creatorId, undefined);
+    assert.equal(stranger.body.graph.edges.length, 0);
+    assert.equal(JSON.stringify(stranger.body).includes("Secret Beam"), false);
+    assert.equal(JSON.stringify(stranger.body).includes("Pier Beam Catalog"), false);
+
+    const owner = await call("/api/world/sim/knowledge/query", {
+      user: "user-b",
+      method: "POST",
+      body: { startId: "dtu-secret", depth: 1 },
+    });
+    assert.equal(owner.body.graph.nodes.find((n) => n.id === "dtu-secret").label, "Secret Beam");
+    assert.equal(owner.body.graph.nodes.find((n) => n.id === "dtu-secret").hidden, undefined);
+
+    const priv = await call("/api/world/sim/knowledge/query", {
+      user: "user-a",
+      method: "POST",
+      body: { startId: "dtu-private", depth: 1 },
+    });
+    assert.equal(priv.body.graph.nodes[0].hidden, true);
+    assert.equal(JSON.stringify(priv.body).includes("Private Ledger"), false);
+
+    const viaPublic = await call("/api/world/sim/knowledge/query", {
+      user: "user-a",
+      method: "POST",
+      body: { startId: "dtu-pier", depth: 1 },
+    });
+    const secret = viaPublic.body.graph.nodes.find((n) => n.id === "dtu-secret");
+    assert.equal(secret.hidden, true);
+    assert.equal(secret.label, undefined);
+    assert.equal(viaPublic.body.graph.nodes.find((n) => n.id === "dtu-pier").label, "Pier Beam Catalog");
+    assert.equal(JSON.stringify(viaPublic.body).includes("Secret Beam"), false);
   });
 
   it("returns only the caller's audit rows", async () => {

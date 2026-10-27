@@ -199,6 +199,8 @@ import {
   readSeasonalCurrent,
   readSimFlags,
   readBrainStatus,
+  isSimAdmin,
+  publicBrainStatus,
   searchSimSemantic,
   querySimKnowledge,
   readSimAudit,
@@ -2229,8 +2231,10 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── ML Ops / AI Brain Status API ────────────────────────────────
 
   router.get("/sim/ai/status", wrap(async (req, res) => {
-    const probe = req.query.probe !== "0";
-    res.json(await readBrainStatus({ probe }));
+    const admin = isSimAdmin(req.user);
+    const probe = admin && req.query.probe !== "0";
+    const full = await readBrainStatus({ probe });
+    res.json(admin ? full : publicBrainStatus(full));
   }));
 
   // ── Semantic Search API ─────────────────────────────────────────
@@ -2259,6 +2263,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
       startId: req.body?.startId,
       edgeType: req.body?.edgeType,
       depth: req.body?.depth,
+      requesterId: req.user?.id || req.user?.userId || null,
     });
     if (!result.ok) return res.status(result.status).json(result);
     res.json({ ok: true, graph: result.graph, depth: result.depth, reason: result.reason });

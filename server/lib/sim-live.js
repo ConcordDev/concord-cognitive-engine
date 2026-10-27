@@ -259,6 +259,27 @@ export async function readBrainStatus({ probe = true } = {}) {
   };
 }
 
+const SIM_ADMIN_ROLES = new Set(["owner", "admin", "sovereign", "founder"]);
+
+export function isSimAdmin(user) {
+  return SIM_ADMIN_ROLES.has(user?.role);
+}
+
+// A signed-out caller and a normal member get the three fields a status
+// page can show. Counters, running-model lists, and the Ollama probe stay
+// on the admin response.
+export function publicBrainStatus(full) {
+  const brains = {};
+  for (const [name, brain] of Object.entries(full?.brains || {})) {
+    brains[name] = {
+      model: brain?.model ?? null,
+      configured: brain?.configured === true,
+      status: brain?.status || "unconfigured",
+    };
+  }
+  return { ok: true, brains, probe: "admin_only" };
+}
+
 export async function searchSimSemantic(db, { query, limit, requesterId } = {}) {
   const q = String(query ?? "").trim();
   if (!q) return { ok: false, status: 400, error: "query required" };
@@ -285,13 +306,50 @@ export async function searchSimSemantic(db, { query, limit, requesterId } = {}) 
   };
 }
 
+function dtuColumn(db, column) {
+  try {
+    return db.prepare("PRAGMA table_info(dtus)").all().some((row) => row.name === column);
+  } catch {
+    return false;
+  }
+}
+
 function loadDtu(db, id) {
   if (!tableExists(db, "dtus")) return null;
+  const visibility = dtuColumn(db, "visibility") ? "visibility" : "NULL AS visibility";
+  const data = dtuColumn(db, "data") ? "data" : "NULL AS data";
   try {
-    return db.prepare("SELECT id, type, title, creator_id FROM dtus WHERE id = ?").get(id) || null;
+    return db.prepare(
+      `SELECT id, type, title, creator_id, ${visibility}, ${data} FROM dtus WHERE id = ?`,
+    ).get(id) || null;
   } catch {
     return null;
   }
+}
+
+// Same gate as searchDtus: a personal-scope body is owner-only. A private
+// or internal visibility column is owner-only too. A missing row is not
+// hidden; there is nothing to leak.
+function dtuHidden(row, requesterId) {
+  if (!row) return false;
+  if (row.creator_id && requesterId && row.creator_id === requesterId) return false;
+  if (typeof row.data === "string" && row.data.includes('"scope":"personal"')) return true;
+  return row.visibility === "private" || row.visibility === "internal";
+}
+
+function nodeFromRow(db, id, requesterId) {
+  const row = loadDtu(db, id);
+  if (dtuHidden(row, requesterId)) return { id, hidden: true };
+  const cited = citationCount(db, id);
+  return {
+    id,
+    type: row?.type || null,
+    label: row?.title || null,
+    creatorId: row?.creator_id || null,
+    citations: cited.citations,
+    citationsReason: cited.citationsReason,
+    recorded: cited.recorded,
+  };
 }
 
 function citationCount(db, id) {
@@ -341,12 +399,13 @@ function neighborEdges(db, id, edgeType) {
   return edges;
 }
 
-export function querySimKnowledge(db, { startId, edgeType, depth } = {}) {
+export function querySimKnowledge(db, { startId, edgeType, depth, requesterId } = {}) {
   if (!db) return { ok: false, status: 503, error: "no_db" };
   const id = String(startId ?? "").trim();
   if (!id) return { ok: false, status: 400, error: "startId required" };
   const depthN = Math.min(3, Math.max(1, Number.isFinite(Number(depth)) ? Number(depth) : 1));
   const wantEdge = typeof edgeType === "string" && edgeType.trim() ? edgeType.trim() : "";
+  const viewer = requesterId || null;
 
   const nodes = new Map();
   const edges = [];
@@ -354,60 +413,51 @@ export function querySimKnowledge(db, { startId, edgeType, depth } = {}) {
   const queue = [id];
   const seen = new Set();
 
+  function remember(cur) {
+    if (nodes.has(cur)) return nodes.get(cur);
+    const node = nodeFromRow(db, cur, viewer);
+    nodes.set(cur, node);
+    return node;
+  }
+
+  function addEdge(edge) {
+    const key = `${edge.from}|${edge.to}|${edge.type}`;
+    if (seenEdge.has(key)) return;
+    seenEdge.add(key);
+    edges.push(edge);
+    for (const other of [edge.from, edge.to]) {
+      if (!seen.has(other)) queue.push(other);
+      remember(other);
+    }
+  }
+
   for (let d = 0; d < depthN && queue.length; d++) {
     const layer = queue.splice(0, queue.length);
     for (const cur of layer) {
       if (seen.has(cur)) continue;
       seen.add(cur);
-      const row = loadDtu(db, cur);
-      const cited = citationCount(db, cur);
-      nodes.set(cur, {
-        id: cur,
-        type: row?.type || null,
-        label: row?.title || null,
-        creatorId: row?.creator_id || null,
-        citations: cited.citations,
-        citationsReason: cited.citationsReason,
-        recorded: cited.recorded,
-      });
+      const node = remember(cur);
+      // A hidden node is an id only. Do not walk its neighbours.
+      if (node.hidden) continue;
       if (d === depthN - 1) continue;
-      for (const edge of neighborEdges(db, cur, wantEdge)) {
-        const key = `${edge.from}|${edge.to}|${edge.type}`;
-        if (seenEdge.has(key)) continue;
-        seenEdge.add(key);
-        edges.push(edge);
-        if (!seen.has(edge.from)) queue.push(edge.from);
-        if (!seen.has(edge.to)) queue.push(edge.to);
-      }
+      for (const edge of neighborEdges(db, cur, wantEdge)) addEdge(edge);
     }
   }
 
   // Depth 1 still needs the start node's own edges, without walking further.
-  if (depthN === 1) {
+  const startNode = remember(id);
+  if (depthN === 1 && !startNode.hidden) {
     for (const edge of neighborEdges(db, id, wantEdge)) {
       const key = `${edge.from}|${edge.to}|${edge.type}`;
       if (seenEdge.has(key)) continue;
       seenEdge.add(key);
       edges.push(edge);
-      for (const other of [edge.from, edge.to]) {
-        if (nodes.has(other)) continue;
-        const row = loadDtu(db, other);
-        const cited = citationCount(db, other);
-        nodes.set(other, {
-          id: other,
-          type: row?.type || null,
-          label: row?.title || null,
-          creatorId: row?.creator_id || null,
-          citations: cited.citations,
-          citationsReason: cited.citationsReason,
-          recorded: cited.recorded,
-        });
-      }
+      for (const other of [edge.from, edge.to]) remember(other);
     }
   }
 
   const start = nodes.get(id);
-  const missing = !start?.label && !start?.type && !start?.recorded && edges.length === 0;
+  const missing = !start?.hidden && !start?.label && !start?.type && !start?.recorded && edges.length === 0;
   const publicNodes = [...nodes.values()].map(({ recorded: _recorded, ...node }) => node);
   return {
     ok: true,
