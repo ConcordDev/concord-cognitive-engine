@@ -27744,11 +27744,11 @@ register("dtu", "gapPromote", async (ctx, input) => {
       }
 
       const r = await pipelineCommitDTU(ctx, mega, { op: "gap_promotion" });
-      if (!r?.ok) { _consoBump(skipped, "commit_failed"); continue; }
+      if (!r?.ok) { _consoBump(skipped, `commit_failed:${r?.error || r?.reason || "unknown"}`); continue; }
       const committed = STATE.dtus.get(mega.id) || r.dtu || mega;
       // Anti-gaming downgrade stores a regular with this clusterKey. That row
       // blocks a rebuild, but it is not a promotion and must not audit as a pass.
-      if (committed?.tier !== targetTier) { _consoBump(skipped, "downgraded_on_commit"); continue; }
+      if (committed?.tier !== targetTier) { _consoBump(skipped, `downgraded_on_commit:${committed?.meta?.tierDowngradeReason || committed?.tier || "unknown"}`); continue; }
       try {
         const { logCompressionAttempt } = await import("./lib/compression-quality.js");
         logCompressionAttempt({
