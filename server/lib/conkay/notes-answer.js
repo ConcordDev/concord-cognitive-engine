@@ -25,6 +25,7 @@ export function notesAnswerMessages({ block, message, history = [] }) {
   const system = [
     "You are ConKay, Concord's assistant. Answer the user's question from the CONCORD KNOWLEDGE notes below.",
     "Use only the notes. Give the answer first (a number when a number is asked), then name the DTU title you used in one short sentence.",
+    "Copy numbers exactly as the notes write them (66.7 stays 66.7, not 67): never round, convert or estimate.",
     `If the notes do not contain the answer, reply with exactly ${NOT_IN_NOTES} and nothing else.`,
     "",
     String(block || "").slice(0, 8000),

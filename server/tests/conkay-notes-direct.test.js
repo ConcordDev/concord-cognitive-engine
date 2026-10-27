@@ -37,3 +37,9 @@ test("an invented tool gets a clean error naming real tools, not a user-facing f
   assert.equal(unknownToolResult("x<y>").tool, "xy");
   assert.ok(!(composeToolTurnReply([r]) || "").includes("dila_status"));
 });
+
+test("notes prompt tells the model to quote numbers exactly, never rounded", async () => {
+  const { notesAnswerMessages } = await import("../lib/conkay/notes-answer.js");
+  const msgs = notesAnswerMessages({ block: "CONCORD KNOWLEDGE\n- X: 66.7%", message: "what %?" });
+  assert.match(msgs[0].content, /never round/);
+});
