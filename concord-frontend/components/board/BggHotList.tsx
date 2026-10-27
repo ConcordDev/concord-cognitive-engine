@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { Dices, Loader2, ExternalLink } from 'lucide-react';
+import { lensRun } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface HotGame { id: string; rank: number; name: string; yearPublished?: string; thumbnail?: string }
@@ -10,20 +11,11 @@ export function BggHotList() {
 
   const games = useQuery({
     queryKey: ['bgg-hot'],
+    // Fetched server-side (board.live_hot): the browser can't call BGG directly (CORS).
     queryFn: async () => {
-      const r = await fetch('https://boardgamegeek.com/xmlapi2/hot?type=boardgame');
-      if (!r.ok) throw new Error(`bgg ${r.status}`);
-      const xml = await r.text();
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(xml, 'application/xml');
-      const items = Array.from(doc.querySelectorAll('item'));
-      return items.map((el) => ({
-        id: el.getAttribute('id') || '',
-        rank: Number(el.getAttribute('rank') || 0),
-        name: el.querySelector('name')?.getAttribute('value') || '',
-        yearPublished: el.querySelector('yearpublished')?.getAttribute('value') || undefined,
-        thumbnail: el.querySelector('thumbnail')?.getAttribute('value') || undefined,
-      })) as HotGame[];
+      const r = await lensRun<{ games?: HotGame[] }>('board', 'live_hot', {});
+      if (!r.data.ok) throw new Error(r.data.error || r.data.reason || 'upstream_unavailable');
+      return r.data.result?.games || [];
     },
     staleTime: 6 * 60 * 60 * 1000,
   });

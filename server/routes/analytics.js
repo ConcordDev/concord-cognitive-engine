@@ -12,9 +12,18 @@
 //
 // Each slice is computed via try/wrap so a missing table doesn't
 // break the others — analytics is best-effort, not load-bearing.
-// All numeric fields default to 0; string fields default to ''.
+// A count from a real query can be 0. A missing table or an
+// unmeasured field is null, with a reason. The no-user envelope
+// stays numeric zeros: that caller has no personal rows to read.
 //
 // GET /api/analytics?worldId=<id>  (worldId optional)
+
+import { worldEcosystemPercent } from "../lib/ecosystem/score-engine.js";
+
+const REPUTATION_DOMAINS = [
+  "structural", "materials", "infrastructure", "energy",
+  "architecture", "mentorship", "governance", "exploration",
+];
 
 function _userId(req) {
   return req?.user?.id || req?.user?.userId || req?.session?.user?.id || null;
@@ -28,25 +37,46 @@ function _safe(fn, fallback) {
   }
 }
 
+function _columns(db, table) {
+  try {
+    const rows = db.prepare(`PRAGMA table_info(${table})`).all();
+    if (!rows.length) return null;
+    return new Set(rows.map((c) => c.name));
+  } catch {
+    return null;
+  }
+}
+
 function _personalStats(db, userId) {
   if (!userId) return _emptyPersonal();
 
-  // Royalties + citations from economy_ledger.
-  const royaltyRow = _safe(
-    () =>
-      db
-        .prepare(
-          `SELECT
-             COALESCE(SUM(net), 0) AS totalRoyalties,
-             COUNT(*) AS totalCitations
-           FROM economy_ledger
-           WHERE to_user_id = ?
-             AND status = 'complete'
-             AND (type = 'citation_royalty' OR type = 'royalty')`,
-        )
-        .get(userId),
-    { totalRoyalties: 0, totalCitations: 0 },
-  );
+  // Royalties + citations from economy_ledger. No table is not a zero balance.
+  let totalCitations = null;
+  let totalRoyalties = null;
+  let royaltyReason = "no_ledger_table";
+  if (_columns(db, "economy_ledger")) {
+    const royaltyRow = _safe(
+      () =>
+        db
+          .prepare(
+            `SELECT
+               COALESCE(SUM(net), 0) AS totalRoyalties,
+               COUNT(*) AS totalCitations
+             FROM economy_ledger
+             WHERE to_user_id = ?
+               AND status = 'complete'
+               AND (type = 'citation_royalty' OR type = 'royalty')`,
+          )
+          .get(userId),
+      null,
+    );
+    if (!royaltyRow) royaltyReason = "ledger_unreadable";
+    else {
+      totalCitations = royaltyRow.totalCitations;
+      totalRoyalties = Math.round(royaltyRow.totalRoyalties * 100) / 100;
+      royaltyReason = null;
+    }
+  }
 
   // Most-cited DTU (creator-keyed) — count citations from economy_ledger
   // grouped by metadata_json.dtuId; fall back to DTU title from dtus.
@@ -67,54 +97,103 @@ function _personalStats(db, userId) {
     return r ? { name: r.name || r.id, citations: r.citations } : { name: '', citations: 0 };
   }, { name: '', citations: 0 });
 
-  // Build count: world_buildings rows authored by user.
-  const buildCount = _safe(
-    () => db.prepare(`SELECT COUNT(*) AS c FROM world_buildings WHERE spawned_by_user_id = ?`).get(userId)?.c ?? 0,
-    0,
-  );
-
-  // Reputation by domain — placeholder until reputation table lands.
-  // Pull from any existing user-domain table; if none, return zeros for
-  // the canonical 8 domains the frontend expects.
-  const reputationByDomain = _safe(() => {
-    const rows = db
-      .prepare(`SELECT domain, score FROM user_reputation WHERE user_id = ?`)
-      .all(userId);
-    const out = {};
-    for (const r of rows) out[r.domain] = r.score;
-    return out;
-  }, {});
-  for (const d of ['structural', 'materials', 'infrastructure', 'energy', 'architecture', 'mentorship', 'governance', 'exploration']) {
-    if (!(d in reputationByDomain)) reputationByDomain[d] = 0;
+  // Build count: world_buildings the caller placed. No owner column is not zero builds.
+  let buildCount = null;
+  let buildReason = "no_building_table";
+  const buildingCols = _columns(db, "world_buildings");
+  if (buildingCols?.has("spawned_by_user_id")) {
+    const counted = _safe(
+      () => db.prepare(`SELECT COUNT(*) AS c FROM world_buildings WHERE spawned_by_user_id = ?`).get(userId)?.c ?? 0,
+      null,
+    );
+    if (counted == null) buildReason = "buildings_unreadable";
+    else {
+      buildCount = counted;
+      buildReason = null;
+    }
+  } else if (buildingCols) {
+    buildReason = "buildings_not_attributed";
   }
 
-  const playtime = _safe(
-    () => db
-      .prepare(
-        `SELECT COALESCE(SUM(
-           (julianday(COALESCE(departed_at, datetime('now'))) - julianday(arrived_at)) * 24
-         ), 0) AS hours
-         FROM world_visits
-         WHERE user_id = ?`,
-      )
-      .get(userId)?.hours ?? 0,
-    0,
-  );
+  // A missing reputation row is not a score of 0.
+  const reputationByDomain = {};
+  let reputationReason = "no_reputation_table";
+  if (_columns(db, "user_reputation")) {
+    const rows = _safe(
+      () => db.prepare(`SELECT domain, score FROM user_reputation WHERE user_id = ?`).all(userId),
+      null,
+    );
+    if (!rows) reputationReason = "reputation_unreadable";
+    else {
+      const byDomain = new Map(rows.map((r) => [r.domain, r.score]));
+      let any = false;
+      for (const domain of REPUTATION_DOMAINS) {
+        if (byDomain.has(domain)) {
+          const score = Number(byDomain.get(domain));
+          reputationByDomain[domain] = Number.isFinite(score) ? score : null;
+          any = true;
+        } else reputationByDomain[domain] = null;
+      }
+      reputationReason = any ? null : "no_reputation_row";
+    }
+  }
+  if (reputationReason) {
+    for (const domain of REPUTATION_DOMAINS) reputationByDomain[domain] = null;
+  }
 
-  const loginStreak = _safe(
-    () => db.prepare(`SELECT streak FROM user_login_streak WHERE user_id = ?`).get(userId)?.streak ?? 0,
-    0,
-  );
+  let playtime = null;
+  let playtimeReason = "no_visit_table";
+  if (_columns(db, "world_visits")) {
+    const hours = _safe(
+      () => db
+        .prepare(
+          `SELECT COALESCE(SUM(
+             (julianday(COALESCE(departed_at, datetime('now'))) - julianday(arrived_at)) * 24
+           ), 0) AS hours
+           FROM world_visits
+           WHERE user_id = ?`,
+        )
+        .get(userId)?.hours,
+      null,
+    );
+    if (hours == null) playtimeReason = "visits_unreadable";
+    else {
+      playtime = Math.round(Number(hours) * 10) / 10;
+      playtimeReason = null;
+    }
+  }
+
+  let loginStreak = null;
+  let loginStreakReason = "no_streak_table";
+  if (_columns(db, "user_login_streak")?.has("streak")) {
+    const row = _safe(
+      () => db.prepare(`SELECT streak FROM user_login_streak WHERE user_id = ?`).get(userId),
+      undefined,
+    );
+    if (row === undefined) loginStreakReason = "streak_unreadable";
+    else if (!row) loginStreakReason = "no_streak_row";
+    else {
+      const streak = Number(row.streak);
+      loginStreak = Number.isFinite(streak) ? streak : null;
+      loginStreakReason = loginStreak == null ? "streak_unreadable" : null;
+    }
+  }
 
   return {
-    totalCitations: royaltyRow.totalCitations,
-    totalRoyalties: Math.round(royaltyRow.totalRoyalties * 100) / 100,
+    totalCitations,
+    totalRoyalties,
+    royaltyReason,
     mostCitedDTU: mostCited,
-    mostUsedMaterial: { name: '', uses: 0 }, // material usage tracking is its own future surface
+    mostUsedMaterial: null,
+    mostUsedMaterialReason: "not_recorded",
     reputationByDomain,
+    reputationReason,
     buildCount,
-    playtime: Math.round(playtime * 10) / 10,
+    buildReason,
+    playtime,
+    playtimeReason,
     loginStreak,
+    loginStreakReason,
   };
 }
 
@@ -196,12 +275,43 @@ function _worldStats(db, worldId) {
     [],
   );
 
+  // Standing share of this world's buildings. No buildings is not 0% covered.
+  const buildingCols = _columns(db, "world_buildings");
+  let infraCoverage = null;
+  let infraReason = "no_building_table";
+  if (!buildingCols) {
+    infraReason = "no_building_table";
+  } else if (!buildingCols.has("state")) {
+    infraReason = "no_building_state";
+  } else if (!buildingCount) {
+    infraReason = "no_buildings";
+  } else {
+    const standing = _safe(
+      () => db.prepare(
+        `SELECT COUNT(*) AS c FROM world_buildings WHERE world_id = ? AND state = 'standing'`,
+      ).get(worldId)?.c,
+      null,
+    );
+    if (standing == null || !Number.isFinite(Number(standing))) infraReason = "buildings_unreadable";
+    else {
+      infraCoverage = Math.round((Number(standing) / buildingCount) * 100);
+      infraReason = null;
+    }
+  }
+
+  // Environment gauge: mean stored ecosystem score on the 0-100 display scale
+  // (see ecosystemScoreToPercent). An empty sample is not a score of 0.
+  const { envScore, envReason } = worldEcosystemPercent(db, worldId);
+
   return {
     worldId,
     population,
     buildingCount,
-    infraCoverage: 0, // infra coverage is its own metric pipeline; placeholder
-    envScore: 0, // ditto
+    infraCoverage,
+    infraReason,
+    envScore,
+    envScale: "0-100",
+    envReason,
     economicActivity: Math.round(economicActivity * 100) / 100,
     visitorCount,
     timeseries,

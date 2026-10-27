@@ -29,7 +29,26 @@ function pickMessage(e: unknown): string { const ax = e as { response?: { data?:
 
 interface CapResult { totalBandwidth: string; utilization: string; activeUsers: number; availablePerUser: string; headroom: string; status: string; upgrade: string }
 interface SigResult { snr: string; bitErrorRate: number; latencyMs: number; jitterMs: number; mosScore: number; voiceQuality: string; videoCapable: boolean }
-interface CovResult { towers: number; activeTowers: number; totalCoverageKm2: number; technologies: string[] }
+interface CovResult {
+  towers?: number;
+  activeTowers?: number;
+  totalCoverageKm2?: number | null;
+  technologies?: string[];
+  coverageReason?: string | null;
+  message?: string;
+}
+
+function coverageKm(n: number | null | undefined): string {
+  return n == null || !Number.isFinite(Number(n)) ? '—' : String(n);
+}
+
+/** One line for the card toast and the NOC brief. A missing range is "—", never "null". */
+function coverageLine(c: CovResult): string {
+  if (c.message && c.towers == null) return c.message;
+  const why = c.coverageReason ? ` (${c.coverageReason})` : '';
+  const techs = (c.technologies ?? []).join(', ');
+  return `${c.activeTowers ?? '—'}/${c.towers ?? '—'} active · ${coverageKm(c.totalCoverageKm2)} km²${why}${techs ? ` · ${techs}` : ''}`;
+}
 interface CostResult { subscribers: number; arpu: number; costPerSubscriber: number; margin: number; marginPercent: number; profitable: boolean; breakeven: string }
 
 // No seeded data — every input starts empty.
@@ -87,7 +106,7 @@ export function TelecommunicationsActionPanel() {
     if (!towersText.trim()) { err('Paste towers JSON first.'); return; }
     try { const towers = JSON.parse(towersText); setBusy('cov'); setFeedback(null);
       const r = await callMacro<CovResult>('coverageMap', { artifact: { data: { towers } } });
-      if (r.ok && r.result) { setCovResult(r.result); pipe.publish('telecom.cov', r.result, { label: `Cov ${r.result.activeTowers}/${r.result.towers}` }); ok(`${r.result.activeTowers}/${r.result.towers} active · ${r.result.totalCoverageKm2} km².`); } else err(r.error ?? 'cov failed');
+      if (r.ok && r.result) { setCovResult(r.result); pipe.publish('telecom.cov', r.result, { label: `Cov ${r.result.activeTowers ?? '—'}/${r.result.towers ?? '—'}` }); ok(coverageLine(r.result)); } else err(r.error ?? 'cov failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid towers JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actCost() {
@@ -113,7 +132,7 @@ export function TelecommunicationsActionPanel() {
     const body = [`📡 NOC brief`, '',
       capResult ? `Capacity: ${capResult.totalBandwidth} · ${capResult.utilization} util · ${capResult.availablePerUser}/user · ${capResult.status}` : '',
       sigResult ? `Signal: MOS ${sigResult.mosScore} (${sigResult.voiceQuality}) · latency ${sigResult.latencyMs}ms · video ${sigResult.videoCapable ? '✓' : '✗'}` : '',
-      covResult ? `Coverage: ${covResult.activeTowers}/${covResult.towers} towers · ${covResult.totalCoverageKm2} km² · ${covResult.technologies.join(', ')}` : '',
+      covResult ? `Coverage: ${coverageLine(covResult)}` : '',
       costResult ? `Unit econ: ARPU $${costResult.arpu} · cost $${costResult.costPerSubscriber} · margin ${costResult.marginPercent}%` : '',
       mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
@@ -247,9 +266,20 @@ export function TelecommunicationsActionPanel() {
         {covResult && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Coverage</div>
-            <div className="text-2xl font-bold text-purple-300">{covResult.totalCoverageKm2} <span className="text-xs text-zinc-400">km²</span></div>
-            <div className="text-[10px] text-zinc-400">{covResult.activeTowers}/{covResult.towers} active</div>
-            <div className="flex flex-wrap gap-1 mt-1">{covResult.technologies.map(t => <span key={t} className="text-[10px] bg-purple-500/10 text-purple-200 px-1.5 py-0.5 rounded font-mono">{t}</span>)}</div>
+            {covResult.message && covResult.towers == null ? (
+              <div className="text-[12px] text-zinc-300">{covResult.message}</div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-purple-300">{coverageKm(covResult.totalCoverageKm2)} <span className="text-xs text-zinc-400">km²</span></div>
+                <div className="text-[10px] text-zinc-400">{covResult.activeTowers ?? '—'}/{covResult.towers ?? '—'} active</div>
+                {covResult.coverageReason && (
+                  <div className="text-[10px] text-zinc-400">
+                    {covResult.totalCoverageKm2 == null ? `Not recorded: ${covResult.coverageReason}` : covResult.coverageReason}
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-1 mt-1">{(covResult.technologies ?? []).map(t => <span key={t} className="text-[10px] bg-purple-500/10 text-purple-200 px-1.5 py-0.5 rounded font-mono">{t}</span>)}</div>
+              </>
+            )}
           </div>
         )}
         {costResult && (

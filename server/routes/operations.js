@@ -1019,7 +1019,10 @@ export default function registerOperationRoutes(app, {
     }
   });
 
-  app.post("/api/abstraction/upgrade", asyncHandler(async (req, res) => {
+  // Forces an abstraction upgrade (tier promotions/demotions) for the whole
+  // store: owner/admin/founder only, like the other consolidation admin
+  // routes. requireRole fails closed (401 anonymous, 403 any other role).
+  app.post("/api/abstraction/upgrade", requireRole("owner", "admin", "founder"), asyncHandler(async (req, res) => {
     try {
       // force a local upgrade now
       STATE.abstraction.lastUpgradeAt = null;

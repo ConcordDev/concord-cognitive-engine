@@ -93,8 +93,10 @@ function SystemStatus() {
     if (err.status === 429) return false; // rate limit = handled by toast
     return true; // show anything else
   });
+  // The badge shows the real count; only the list is capped at the latest 5.
   const recentErrors = criticalErrors.slice(-5);
-  const hasErrors = recentErrors.length > 0;
+  const criticalCount = criticalErrors.length;
+  const hasErrors = criticalCount > 0;
 
   // Nothing to report: render nothing. Healthy status already lives in the
   // Topbar's health indicator; this corner only speaks up when the backend is
@@ -128,7 +130,7 @@ function SystemStatus() {
         </span>
         {hasErrors && (
           <span className="ml-auto px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded-full text-xs">
-            {recentErrors.length}
+            {criticalCount}
           </span>
         )}
         {expanded ? (
@@ -188,6 +190,11 @@ function SystemStatus() {
                   Clear
                 </button>
               </div>
+              {criticalCount > recentErrors.length && (
+                <p className="text-xs text-gray-400">
+                  Showing latest {recentErrors.length} of {criticalCount}
+                </p>
+              )}
               {recentErrors.map((err) => (
                 <div
                   key={err.id}

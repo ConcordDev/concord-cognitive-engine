@@ -74,15 +74,21 @@ describe("world sim routes do not invent metrics", () => {
     assert.equal(body.result.executed, false);
   });
 
-  it("export does not report a completed file size", async () => {
+  it("export validates input and reports 501 when no DTU store is wired", async () => {
     const missing = await post("/api/world/sim/export", {});
     assert.equal(missing.status, 400);
-    const { status, body } = await post("/api/world/sim/export", { dtuId: "dtu-1", format: "json" });
-    assert.equal(status, 501);
-    assert.equal(body.reason, "export_not_wired");
-    assert.equal(body.export, undefined);
-    assert.equal(Object.hasOwn(body, "size"), false);
-    assert.equal(Object.hasOwn(body, "url"), false);
+    const bad = await post("/api/world/sim/export", { dtuId: "dtu-1", format: "docx" });
+    assert.equal(bad.status, 400);
+    assert.ok(bad.body.supportedFormats.includes("json"));
+    const saved = globalThis._concordSTATE;
+    globalThis._concordSTATE = undefined;
+    try {
+      const { status, body } = await post("/api/world/sim/export", { dtuId: "dtu-1", format: "json" });
+      assert.equal(status, 501);
+      assert.equal(body.reason, "not_wired");
+      assert.ok(body.missing);
+      assert.equal(Object.hasOwn(body, "content"), false);
+    } finally { globalThis._concordSTATE = saved; }
   });
 });
 
@@ -107,11 +113,11 @@ describe("POST /api/standards/check does not invent a compliance score", () => {
     assert.equal(res.status, 400);
   });
 
-  it("refuses a real catalog standard instead of scoring it at random", async () => {
+  it("refuses a catalog standard with no coded rules instead of scoring it", async () => {
     const list = await fetch(`${app.url}/api/standards`);
     const listed = await list.json();
-    assert.ok(listed.standards.length > 0);
-    const standardId = listed.standards[0].id;
+    const std = listed.standards.find((x) => x.code === "ISO 9001");
+    const standardId = std.id;
     const res = await fetch(`${app.url}/api/standards/check`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -121,6 +127,7 @@ describe("POST /api/standards/check does not invent a compliance score", () => {
     const body = await res.json();
     assert.equal(body.ok, false);
     assert.equal(body.reason, "compliance_not_measured");
+    assert.ok(body.missing);
     assert.equal(body.standardId, standardId);
     assert.equal(body.compliance, undefined);
     assert.equal(body.overallScore, undefined);

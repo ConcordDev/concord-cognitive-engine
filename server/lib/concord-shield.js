@@ -298,6 +298,9 @@ export function createThreatDTU(opts) {
     updatedAt: now,
     createdBy: "shield",
     ownerId: "system",
+    // A user-reported threat with no visibility used to read as public
+    // (scope global, legacy path). User-sourced rows default to private.
+    ...(typeof opts.source === "string" && opts.source.startsWith("user:") ? { visibility: "private" } : {}),
   };
 }
 

@@ -43,6 +43,7 @@ import {
   actorFromReq,
 } from "./lib/log-access.js";
 import { dtuSkipsAutoTag } from "./lib/dtu-auto-tag.js";
+import { hasUsableBrainInput, needsInputError } from "./lib/brain-action-input.js";
 import { aggregateTopicCounts } from "./lib/trending-topics.js";
 import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-tags.js";
 import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
@@ -221,6 +222,15 @@ registerHeartbeat("fauna-spawner", {
   // FROM world_npcs) and loops over ALL of them under one shared
   // BATCH_LIMIT in a single invocation; not written to accept a single
   // worldId. Parent-only until it's refactored to take one.
+  scope: "global",
+});
+
+// District timeline: one real snapshot per world (building + population
+// counts) roughly hourly; the handler itself dedups within 55 minutes.
+import { runDistrictSnapshotHeartbeat } from "./lib/district-snapshot-heartbeat.js";
+registerHeartbeat("district-snapshot", {
+  frequency: 60,
+  handler: ({ db }) => runDistrictSnapshotHeartbeat({ db }),
   scope: "global",
 });
 
@@ -1985,6 +1995,7 @@ async function _dtuSidecarListCall(args) {
   return dtuSidecar.list(args);
 }
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, getActiveBrainConfig, getSystemStatus, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish, resolveBrainModel } from "./lib/brain-config.js";
+import { answerConfidence } from "./lib/answer-confidence.js";
 import { authenticatedBrainStatus, brainStatusForViewer, denyAnonymousBrainRead, mountBrainStatusRoute } from "./lib/brain-status-public.js";
 import { installOllamaRequestGuard } from "./lib/ollama-request-guard.js";
 // Every brain request: num_ctx pinned per model (so ollama loads each model
@@ -2411,6 +2422,7 @@ import {
 } from "./embeddings.js";
 import { consolidatedVisibility, applyConsolidatedVisibility, absorbVisibility, backfillConsolidatedVisibility } from "./lib/consolidated-visibility.js";
 import { isPublicFeedSource, backfillPublicFeedItems, asPublicFeedMember } from "./lib/public-feed-sources.js";
+import { wrapFeedIngestHandler, currentFeedIngest, stripFeedIngestMarker, feedIngestMarkerFor, isQuarantined, isOpenVisibility, quarantineVisibility, revertUnprovenPublicFeedItems, hideQuarantinedRows, privatizeUserSourcedRows, recloseConsolidatedNodes } from "./lib/feed-ingest-provenance.js";
 import { searchArchiveByVector, loadArchivedDtu, tierBoost as _dtuTierBoost, orderConsolidatedFirst, memberCount as _dtuMemberCount, strongDtuMatch } from "./lib/archive-retrieval.js";
 
 // One backfill at a time. Started at boot, when the CPU embedder is
@@ -3426,6 +3438,7 @@ import {
 async function gracefulShutdown(signal) {
   if (isShuttingDown) return;
   isShuttingDown = true;
+  const _shutdownT0 = Date.now();
   // Before server.close and before db.close. A request that still reaches
   // the app from here on is 503 shutting_down; one already past the
   // middleware keeps running until the inflight window below.
@@ -3630,6 +3643,14 @@ async function gracefulShutdown(signal) {
   // with drained=false, the pending count, and elapsed ms — not a clean
   // drain. ms is subtracted from SHUTDOWN_TIMEOUT_MS below so the wait
   // stays inside the kill_timeout budget.
+  // launchd SIGKILLs ~5-7 s after SIGTERM (deploy logs: "primary gone after
+  // 6s"/"7s"). At 15:14 and 15:25 ET the state save took 3.2 s, then the
+  // 2 s feed flush waited on 1 pending job and the process was killed
+  // before db.close ever ran. Both waits below are capped so db.close
+  // starts by SHUTDOWN_CLOSE_DEADLINE_MS (4000) after the signal; a write
+  // that lands after the close spills and replays instead.
+  const _closeDeadline = Number(process.env.SHUTDOWN_CLOSE_DEADLINE_MS ?? 4000);
+  const _closeLeftMs = () => Math.max(0, (Number.isFinite(_closeDeadline) ? _closeDeadline : 4000) - (Date.now() - _shutdownT0));
   // Background work already in flight (a heartbeat tick, a late LLM reply)
   // can still write a DTU and its lens artifacts. Wait, bounded, until the
   // stores have been quiet briefly before the DB closes; a write that still
@@ -3638,8 +3659,10 @@ async function gracefulShutdown(signal) {
   try {
     const quietMs = Number(process.env.SHUTDOWN_WRITE_QUIET_MS ?? 400);
     const budgetMs = Number(process.env.SHUTDOWN_WRITE_QUIET_BUDGET_MS ?? 1500);
-    const q = await waitForWriteQuiet({ quietMs: Number.isFinite(quietMs) ? quietMs : 400, budgetMs: Number.isFinite(budgetMs) ? budgetMs : 1500 });
-    structuredLog(q.quiet ? "info" : "warn", "shutdown_writes_quiet", { waited_ms: q.waitedMs, quiet: q.quiet });
+    // Keep 1 s of the close deadline for the feed flush below.
+    const budget = Math.min(Number.isFinite(budgetMs) ? budgetMs : 1500, Math.max(0, _closeLeftMs() - 1000));
+    const q = await waitForWriteQuiet({ quietMs: Number.isFinite(quietMs) ? quietMs : 400, budgetMs: budget });
+    structuredLog(q.quiet ? "info" : "warn", "shutdown_writes_quiet", { waited_ms: q.waitedMs, quiet: q.quiet, budget_ms: budget, since_signal_ms: Date.now() - _shutdownT0 });
   } catch (e) {
     structuredLog("warn", "shutdown_writes_quiet_failed", { error: e?.message });
   }
@@ -3656,7 +3679,7 @@ async function gracefulShutdown(signal) {
         structuredLog("warn", "shutdown_repair_observations_flush_failed", { error: e?.message });
       }
       const flushBudget = Number(process.env.FEED_SHUTDOWN_FLUSH_MS ?? 2000);
-      const timeoutMs = Number.isFinite(flushBudget) ? Math.max(0, flushBudget) : 2000;
+      const timeoutMs = Math.min(Number.isFinite(flushBudget) ? Math.max(0, flushBudget) : 2000, _closeLeftMs());
       const flushStart = _feedClock();
       structuredLog("info", "shutdown_feed_flushing", {
         timeoutMs,
@@ -6289,6 +6312,34 @@ function reconcileIndices() {
 // Run index reconciliation every 4 hours
 throttledInterval(() => reconcileIndices(), 4 * 60 * 60 * 1000, "index_reconciliation");
 _unrefInTest(setTimeout(() => reconcileIndices(), 120000)); // 2 min after startup
+// One-time consolidated-title cleanup (2026-10-27): nested "MEGA — MEGA —",
+// "MEGA:" prefixes, regulars titled "MEGA —"/"HYPER —", duplicate titles.
+// Applied through STATE.dtus.set (the app's write-through path), logged to
+// ~/concord/run/mega-title-cleanup-20261027.json first; skipped if that log
+// exists. CONCORD_TITLE_CLEANUP_UNDO=1 restores from the log;
+// CONCORD_TITLE_CLEANUP_20261027=0 disables.
+_unrefInTest(setTimeout(async () => {
+  if (process.env.CONCORD_TITLE_CLEANUP_20261027 === "0" || process.env.NODE_ENV === "test") return;
+  try {
+    const { runTitleCleanup, runNarrowRepair } = await import("./lib/consolidation-title-cleanup.js");
+    const _fs = await import("node:fs");
+    const _os = await import("node:os");
+    const logPath = process.env.CONCORD_TITLE_CLEANUP_LOG || path.join(_os.homedir(), "concord", "run", "mega-title-cleanup-20261027.json");
+    const _fsm = _fs.default || _fs;
+    const _undo = process.env.CONCORD_TITLE_CLEANUP_UNDO === "1";
+    // Rule narrowed to system-made rows: first undo what the earlier run did
+    // to anything else (its own log, once), then the normal run/undo.
+    if (!_undo) {
+      const repairPath = logPath.replace(/\.json$/, "") + "-narrow-repair.json";
+      const rr = runNarrowRepair({ store: STATE.dtus, logPath, repairPath, fs: _fsm, log: structuredLog });
+      structuredLog("info", "mega_title_cleanup_narrow_repair_result", rr);
+    }
+    const r = runTitleCleanup({ store: STATE.dtus, logPath, undo: _undo, fs: _fsm, log: structuredLog });
+    structuredLog("info", "mega_title_cleanup_result", r);
+  } catch (e) {
+    structuredLog("error", "mega_title_cleanup_failed", { error: String(e?.message || e) });
+  }
+}, 150000));
 
 // ---- End semantic query expansion ----
 
@@ -13927,6 +13978,35 @@ try {
 // whose source is an allowlisted public feed and that carry the "feed" tag
 // (lib/public-feed-sources.js). Off switch: PUBLIC_FEED_BACKFILL=off.
 const _publicFeedBackfillOn = String(process.env.PUBLIC_FEED_BACKFILL || "on").toLowerCase() !== "off";
+// Security follow-up (2026-10-27): source + "feed" tag are caller-controlled.
+// Rows the backfill above opened without the server-only meta.feedIngest
+// marker go back to private; quarantine:* rows are closed; user-sourced rows
+// with no visibility become private; megas/hypers opened by the member rule
+// are re-checked (tighten only). Always runs, through STATE.dtus.set.
+{
+  try {
+    const _nodes = () => Array.from(STATE.dtus.values());
+    const _persist = (d) => STATE.dtus.set(d.id, d);
+    const rv = revertUnprovenPublicFeedItems({ nodes: _nodes(), persist: _persist });
+    structuredLog("info", "public_feed_provenance_revert", { ...rv, revertedIds: rv.revertedIds.slice(0, 20) });
+    const qh = hideQuarantinedRows({ nodes: _nodes(), persist: _persist });
+    structuredLog("info", "quarantine_visibility_hide", qh);
+    const us = privatizeUserSourcedRows({ nodes: _nodes(), persist: _persist });
+    structuredLog("info", "user_sourced_visibility_default", us);
+    const rc = recloseConsolidatedNodes({
+      nodes: _nodes(),
+      loadMember: (id) => {
+        const m = STATE.dtus.get(id) || loadArchivedDtu(db, id);
+        return m && _publicFeedBackfillOn ? asPublicFeedMember(m) : m;
+      },
+      persist: _persist,
+    });
+    structuredLog("info", "consolidated_visibility_reclose", { ...rc, closedIds: rc.closedIds.slice(0, 50) });
+    if (rv.reverted + qh.hidden + us.privatized + rc.closed > 0) saveStateDebounced();
+  } catch (e) {
+    structuredLog("warn", "public_feed_provenance_failed", { error: String(e?.message || e) });
+  }
+}
 if (_publicFeedBackfillOn) {
   try {
     const fb = backfillPublicFeedItems({ nodes: Array.from(STATE.dtus.values()), persist: (d) => STATE.dtus.set(d.id, d) });
@@ -18618,7 +18698,7 @@ function makeCtx(req=null) {
                 callerId: resolvedActor?.userId, latencyMs: elapsed,
                 tokensIn: json.prompt_eval_count, tokensOut: json.eval_count,
               });
-              return { ok: true, content, raw: json, brain: _useBrainName, source: "ollama", doneReason: json.done_reason || null };
+              return { ok: true, content, raw: json, brain: _useBrainName, source: "ollama", model: json.model || brainModel, doneReason: json.done_reason || null };
             }
             _brain.stats.errors++;
             structuredLog("warn", "llm_ollama_error", { status: res.status, error: json?.error, elapsed });
@@ -25076,6 +25156,7 @@ const PUBLIC_LATTICE = {
 function publishDTU(dtuId) {
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "DTU not found" };
+  if (isQuarantined(dtu)) return { ok: false, error: "quarantined", message: "Quarantined DTUs cannot be published." };
 
   PUBLIC_LATTICE.publishedDTUs.add(dtuId);
   PUBLIC_LATTICE.enabled = true;
@@ -25098,7 +25179,7 @@ function getPublicDTU(dtuId) {
   }
 
   const dtu = STATE.dtus.get(dtuId);
-  if (!dtu) return { ok: false, error: "DTU not found" };
+  if (!dtu || isQuarantined(dtu)) return { ok: false, error: "DTU not found" };
 
   // Return sanitized public view
   return {
@@ -25118,7 +25199,7 @@ function getPublicDTU(dtuId) {
 function listPublicDTUs() {
   const dtus = Array.from(PUBLIC_LATTICE.publishedDTUs)
     .map(id => STATE.dtus.get(id))
-    .filter(Boolean)
+    .filter(d => d && !isQuarantined(d))
     .map(d => ({ id: d.id, title: d.title, tier: d.tier, updatedAt: d.updatedAt }));
 
   return { ok: true, dtus, count: dtus.length };
@@ -25128,7 +25209,7 @@ function generatePublicFeed() {
   // Generate RSS/Atom feed for public lattice
   const dtus = Array.from(PUBLIC_LATTICE.publishedDTUs)
     .map(id => STATE.dtus.get(id))
-    .filter(Boolean)
+    .filter(d => d && !isQuarantined(d))
     .sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""))
     .slice(0, 20);
 
@@ -26335,7 +26416,13 @@ register("dtu", "create", async (ctx, input) => {
   const tier = input.tier && ["regular","mega","hyper"].includes(input.tier) ? input.tier : "regular";
   const lineage = Array.isArray(input.lineage) ? input.lineage : [];
   const source = input.source || "local";
-  const meta = input.meta && typeof input.meta === "object" ? input.meta : {};
+  // meta.feedIngest is server-only: a caller-supplied one is always dropped,
+  // and it is stamped only while a lens feed action is running.
+  const meta = stripFeedIngestMarker(input.meta && typeof input.meta === "object" ? input.meta : {});
+  {
+    const _fiMarker = feedIngestMarkerFor(source);
+    if (_fiMarker) meta.feedIngest = _fiMarker;
+  }
   const allowRewrite = input.allowRewrite !== false;
 
   // ── Usage Rights Enforcement: check parent DTU consent OR license ──
@@ -26614,6 +26701,9 @@ register("dtu", "create", async (ctx, input) => {
     domain: input.domain || input.lens || meta?.lens || null,
   };
 
+  // quarantine:* (e.g. the injection scan above) is never public.
+  if (isQuarantined(dtu) && isOpenVisibility(dtu.visibility)) dtu.visibility = quarantineVisibility(dtu);
+
   // ── Content class + purchase-scoped license (dtu-content-classes / dtu-licenses) ──
   // Infer industry class so council admission is class-aware (media need not
   // carry academic core). Stamp license scopes the creator declared.
@@ -26707,7 +26797,7 @@ register("dtu", "create", async (ctx, input) => {
   // but is a reference record (title + source fields), not authored
   // knowledge: it keeps the personal-save bar instead of the public-promotion
   // bar, which every feed item (academic score 0) would fail.
-  const _publicFeedItem = isPublicFeedSource(source) && dtu.visibility === "public";
+  const _publicFeedItem = isPublicFeedSource(source) && dtu.visibility === "public" && !!currentFeedIngest();
   const gate = councilGate(dtu, {
     allowRewrite,
     userInitiated: isUserInitiated,
@@ -26970,6 +27060,11 @@ register("dtu", "update", async (ctx, input) => {
   }
   if (input.creti !== undefined) updated.creti = String(input.creti);
   if (input.tags !== undefined) updated.tags = Array.isArray(input.tags) ? input.tags.slice(0, 40) : existing.tags;
+  // A user edit cannot lift a quarantine: quarantine:* tags survive the edit.
+  if (input.tags !== undefined && !["owner", "admin", "founder"].includes(ctx?.actor?.role || "")) {
+    const _q = (Array.isArray(existing.tags) ? existing.tags : []).filter((t) => typeof t === "string" && t.toLowerCase().startsWith("quarantine:"));
+    for (const t of _q) if (!updated.tags.includes(t)) updated.tags.push(t);
+  }
   // Tier changes require admin role - prevent gaming via direct update
   if (input.tier !== undefined && ["regular", "mega", "hyper"].includes(input.tier)) {
     const role = ctx?.actor?.role || "guest";
@@ -27191,7 +27286,9 @@ register("dtu", "list", async (ctx, input) => {
         const postFilter = Boolean(domainWant || kindWant);
         const pageComplete = sidecarCandidatePageIsComplete(r, offset);
         if (!fallback && r && r.ok && Array.isArray(r.dtus) && (!postFilter || pageComplete)) {
-          const narrowed = narrowListedDtus(r.dtus);
+          // quarantine:* rows are never listed to anyone but their owner
+          // (lib/dtu-read-access.js); the sidecar filter predates that rule.
+          const narrowed = narrowListedDtus(r.dtus.filter((d) => !(isQuarantined(d) && privateDtuHiddenFrom(d, userId))));
           const items = narrowed.slice(0, limit);
           if (typeof calculateFreshness === "function") {
             for (const d of items) {
@@ -27867,6 +27964,10 @@ register("dtu", "gapPromote", async (ctx, input) => {
     // otherwise the most restrictive member visibility. Replaces copying the
     // first member's visibility (lib/consolidated-visibility.js).
     const _vis = consolidatedVisibility(members, { scope: _megaScope });
+    // A quarantine:* tag carried up from a member never makes a public node.
+    if (_vis.visibility === "public" && tags.some((t) => typeof t === "string" && t.toLowerCase().startsWith("quarantine:"))) {
+      _vis.visibility = "internal"; _vis.reason = "quarantined";
+    }
     const memberIds = members.map(d => d.id);
     const memberClaims = members.flatMap(d => Array.isArray(d.core?.claims) ? d.core.claims : []).slice(0, 24);
     const mega = {
@@ -28579,11 +28680,14 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
           } catch {
             _agentArtifacts = (_agentOut.artifacts || []).filter((a) => { try { return a && JSON.stringify(a).length < 60000; } catch { return false; } }).slice(0, 4);
           }
+          // Backup-model answers (GPU pod offline): same tag as the conversational path.
+          const _agentTag = answerConfidence({ provider: _agentOut.provider, model: _agentOut.model });
           const _agentMeta = {
             llmUsed: true, mode, source: "chat_agent", agentRoute: _agentRouteKind,
             toolCallCount: _agentOut.toolCalls.length,
             tools: _agentOut.toolCalls.map((t) => t.tool).slice(0, 10),
             ...(_agentArtifacts.length ? { artifacts: _agentArtifacts } : {}),
+            ...(_agentTag || {}),
           };
           // Saved with the message so a reload (or another device) still shows the
           // cited sources, the tool cards and any playable song/preview/image/model.
@@ -28600,6 +28704,7 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
           return {
             ok: true, reply: _agentReply, content: _agentReply, sessionId, mode, llmUsed: true,
             route: "chat_agent", agentRoute: _agentRouteKind,
+            ...(_agentTag || {}),
             ...(_agentOut.selfContinuation ? { selfContinuation: _agentOut.selfContinuation } : {}),
             toolCalls: _agentOut.toolCalls, artifacts: _agentArtifacts, sources: _agentOut.sources,
             ...(_agentOut.linksRemoved.length ? { linksRemoved: _agentOut.linksRemoved } : {}),
@@ -29530,6 +29635,9 @@ let localReply = formatCrispResponse({
   // Set when a requested brain call fails (503 / circuit-open / network).
   // Read only if llmUsed stays false — a later successful attempt wins.
   let _brainFailure = null;
+  // Which path and model produced the reply, for answer confidence (lib/answer-confidence.js).
+  let _answerSource = null;
+  let _answerModel = null;
   const semanticUsed = Boolean(semanticEnhancement && semanticEnhancement.confidence > 0.4);
 
   // ===== TOOL CALLING INFRASTRUCTURE =====
@@ -30165,6 +30273,8 @@ ${_operatorV6Block}` : "";
       _replyDoneReason = r.doneReason || r.raw?.done_reason || null;
       finalReply = String(r.content || "").trim() || localReply;
       llmUsed = true;
+      _answerSource = r.source || null;
+      _answerModel = r.raw?.model || r.model || null;
       _llmSpan.end("ok", { responseLength: finalReply.length });
     } else {
       _brainFailure = { status: r?.status ?? null, error: r?.error || r?.reason || "llm_failed" };
@@ -30198,6 +30308,8 @@ ${_operatorV6Block}` : "";
           _replyDoneReason = _fbJson.done_reason || null;
           finalReply = String(_fbJson.message?.content || "").trim() || localReply;
           llmUsed = true;
+          _answerSource = "ollama";
+          _answerModel = _fbJson.model || brainModel;
           ctx.log("llm.fallback", "Conscious brain fallback succeeded.", { brainUrl, brainModel, elapsed: _fbElapsed });
         } else {
           BRAIN.conscious.stats.errors++;
@@ -30266,6 +30378,8 @@ ${_operatorV6Block}` : "";
         _replyDoneReason = _directJson.done_reason || null;
         finalReply = String(_directJson.message?.content || "").trim() || localReply;
         llmUsed = true;
+        _answerSource = "ollama";
+        _answerModel = _directJson.model || brainModel;
         ctx.log("llm.direct", "Direct conscious brain call succeeded (no ctx.llm).", { brainUrl, brainModel, elapsed: _directElapsed });
       } else {
         BRAIN.conscious.stats.errors++;
@@ -30694,7 +30808,10 @@ ${_operatorV6Block}` : "";
   } catch {
     _turnArtifacts = _turnArtifacts.filter((a) => { try { return a && JSON.stringify(a).length < 60000; } catch { return false; } });
   }
-  sess.messages.push({ role: "assistant", content: (finalReply = visibleChatReply(finalReply, prompt)), ts: nowISO(), meta: { llmUsed, semanticUsed, mode, code: _aiUnavailable?.code, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length, ...(_turnArtifacts.length ? { artifacts: _turnArtifacts } : {}) } });
+  // Backup-model answers (GPU pod offline) carry a low-confidence tag, set once
+  // here so the response and the saved session message agree.
+  const _answerTag = llmUsed ? answerConfidence({ source: _answerSource, model: _answerModel }) : null;
+  sess.messages.push({ role: "assistant", content: (finalReply = visibleChatReply(finalReply, prompt)), ts: nowISO(), meta: { llmUsed, semanticUsed, mode, code: _aiUnavailable?.code, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length, ...(_turnArtifacts.length ? { artifacts: _turnArtifacts } : {}), ...(_answerTag || {}) } });
   if (llmUsed && !_aiUnavailable) _recordChatPersonality(finalReply, currentLens || mode);
   ctx.log("chat", "Chat response generated", { sessionId, mode, llmUsed, semanticUsed, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, pipelineDtuCount: _pipelineDtuCount });
 
@@ -30942,6 +31059,7 @@ ${_operatorV6Block}` : "";
 
   return {
     ok: !_aiUnavailable, reply: finalReply, sessionId, mode, llmUsed, semanticUsed,
+    ...(_answerTag || {}),
     ...(_selfContMeta ? { selfContinuation: _selfContMeta } : {}),
     ...(_dtuRefsRemoved.length ? { dtuRefsRemoved: _dtuRefsRemoved } : {}),
     ...(_imageTurn?.artifact ? { artifact: _imageTurn.artifact } : {}),
@@ -32589,6 +32707,11 @@ registerPharmacyLiveMacros(register);
 // each pre-filtered by the right arXiv category. Free, no key.
 import registerResearchLiveMacros from "./domains/research-live.js";
 registerResearchLiveMacros(register);
+
+// BoardGameGeek hot list proxy (board.live_hot) — the browser can't call BGG
+// directly (CORS), so the board lens reads it through here.
+import registerBoardLiveMacros from "./domains/board-live.js";
+registerBoardLiveMacros(register);
 
 // Phase 4 cont'd — more REAL free-API wire-ups (no API keys needed):
 // PubChem (chem), NCBI PubMed (bio + neuro), MedlinePlus (mental-health),
@@ -41126,7 +41249,14 @@ app.use("/api/lens-features", createLensFeatureRouter(db, LENS_FEATURES));
 
 // ===== WORLD ENGINE (districts, jobs, businesses, events, progression) =====
 import createWorldRoutes from "./routes/world.js";
-app.use("/api/world", createWorldRoutes({ requireAuth, db, emitToUser }));
+// Single source of the gallery-install opts, shared by POST /api/plugins/gallery/:id/install
+// and the sim install route so the two can never drift. Resolved lazily (call-time).
+const installGalleryPlugin = (pluginId, userId) => _pluginGallery.installFromGallery(STATE, pluginId, userId, {
+  register,
+  helpers: { uid, nowISO, log, upsertDTU, realtimeEmit, saveStateDebounced },
+  runMacro,
+});
+app.use("/api/world", createWorldRoutes({ requireAuth, db, emitToUser, getRealtimeClients: () => REALTIME?.io?.engine?.clientsCount ?? null, installGalleryPlugin }));
 
 // ── Competitive Parity: External Messaging ──────────────────────────────────
 import { createMessagingRouter } from "./routes/messaging.js";
@@ -41605,11 +41735,7 @@ app.post("/api/plugins/gallery/publish", requireAuth(), express.json({ limit: "1
 // "installed" success. See plugin-gallery.js#installFromGallery.
 app.post("/api/plugins/gallery/:id/install", requireAuth(), asyncHandler(async (req, res) => {
   const userId = req.user?.id;
-  const result = await _pluginGallery.installFromGallery(STATE, req.params.id, userId, {
-    register,
-    helpers: { uid, nowISO, log, upsertDTU, realtimeEmit, saveStateDebounced },
-    runMacro,
-  });
+  const result = await installGalleryPlugin(req.params.id, userId);
   if (!result.ok) {
     const status = result.error === "plugin_not_found" ? 404
       : result.error === "user_required" ? 401
@@ -42963,7 +43089,7 @@ import createFrontierRoutesPart4 from "./routes/frontier-part4.js";
 try {
   app.use("/api", createFrontierRoutesPart1({ requireAuth }));
   app.use("/api", createFrontierRoutesPart2({ requireAuth, db }));
-  app.use("/api", createFrontierRoutesPart4({ requireAuth }));
+  app.use("/api", createFrontierRoutesPart4({ requireAuth, db }));
 } catch (e) { structuredLog("warn", "frontier_routes_skip", { error: e.message }); }
 
 import registerHelpersExtendedRoutes from "./routes/helpers-extended.js";
@@ -48824,6 +48950,7 @@ register("lens", "run", async (ctx, input={}) => {
     // AI fallback (last resort): unregistered actions route to utility brain.
     // This should fire rarely now that aliases + common actions cover most cases.
     structuredLog("debug", "lens_action_ai_fallback", { domain: artifact.domain, action, note: "Register a real handler to avoid utility brain load" });
+    if (!hasUsableBrainInput(artifact?.data, params, artifact?.id ? artifact?.title : undefined)) return needsInputError(artifact.domain, action);
     try {
       const aiResult = await utilityCall(action, artifact.domain, {
         artifactTitle: artifact?.title,
@@ -48832,8 +48959,11 @@ register("lens", "run", async (ctx, input={}) => {
         artifactMeta: artifact?.meta,
         ...params,
       });
+      if (!aiResult?.ok) {
+        return { ok: false, error: aiResult?.error || "brain_unavailable", domain: artifact.domain, action };
+      }
       _lensEmitDTU(ctx, artifact.domain, action, artifact.type, artifact, { actionResult: aiResult, source: "ai-catchall" });
-      return { ok: true, result: { ok: aiResult.ok, output: aiResult.content || aiResult.error, source: "utility-brain", model: aiResult.model, action, domain: artifact.domain } };
+      return { ok: true, result: { ok: true, generated: true, output: aiResult.content, source: "utility-brain", model: aiResult.model, action, domain: artifact.domain } };
     } catch (e) {
       logger.debug("server", "ai-catchall-error", { domain: artifact.domain, action, error: String(e?.message || e) });
       return { ok: false, error: `${artifact.domain}.${action} encountered an error`, domain: artifact.domain, action };
@@ -49912,6 +50042,9 @@ globalThis.__concordLensActions = LENS_ACTIONS;
 const BRAIN_BACKED_LENS_ACTIONS = new Set();
 globalThis.__concordBrainBackedLensActions = BRAIN_BACKED_LENS_ACTIONS;
 function registerLensAction(domain, action, handler, spec) {
+  // Feed actions run as a feed ingest: dtu.create inside them stamps the
+  // server-only meta.feedIngest provenance marker (lib/feed-ingest-provenance.js).
+  if (action === "feed") handler = wrapFeedIngestHandler(domain, action, handler);
   LENS_ACTIONS.set(`${domain}.${action}`, handler);
   rememberLensActionSpec(`${domain}.${action}`, spec);
 }
@@ -50259,6 +50392,11 @@ app.post("/api/lens/run", async (req, res) => {
     // Explicit freeform-AI path (opt-in only): route to the utility brain, bounded
     // by a hard timeout so a dead/slow brain can't hang the worker ~96s on backoff
     // (#27, the slow_request / quality-pipeline hang #T3).
+    const { __ai: _aiFlag, ...catchallInput } = rest || {};
+    if (!hasUsableBrainInput(null, catchallInput)) {
+      emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: "needs_artifact_input" });
+      return res.status(200).json(needsInputError(domain, action));
+    }
     const CATCHALL_TIMEOUT_MS = Number(process.env.CONCORD_LENS_CATCHALL_TIMEOUT_MS) || 20000;
     let aiResult, _catchallTimer;
     try {
@@ -50284,7 +50422,7 @@ app.post("/api/lens/run", async (req, res) => {
       return res.status(200).json({ ok: false, error: "unknown_macro", reason: "macro_unavailable", domain, action, detail: aiResult?.error || "no registered macro; brain unavailable" });
     }
     emitMacroLife("macro:completed", { ok: true, ms: Date.now() - _lifeStartedAt });
-    return res.json({ ok: true, result: { ok: true, output: aiResult.content || aiResult.error, source: "utility-brain", model: aiResult.model, action, domain } });
+    return res.json({ ok: true, result: { ok: true, generated: true, output: aiResult.content || aiResult.error, source: "utility-brain", model: aiResult.model, action, domain } });
   } catch (e) {
     const msg = String(e?.message || e);
     // Lens-action throws used to become a 500 body with nothing written to
@@ -54074,6 +54212,8 @@ function registerDomainSpecificActions() {
       const dispatcher = BRAIN_DISPATCHERS[brain] || utilityCall;
       BRAIN_BACKED_LENS_ACTIONS.add(key); // brain-dispatch → static-contract-only
       LENS_ACTIONS.set(key, async (ctx, artifact, params) => {
+        // No input -> the brain can only answer with a refusal; don't call it.
+        if (!hasUsableBrainInput(artifact?.data, params, artifact?.id ? artifact?.title : undefined)) return needsInputError(domain, action);
         const result = await dispatcher(action, domain, {
           artifactTitle: artifact?.title,
           artifactData: artifact?.data,
@@ -54081,8 +54221,20 @@ function registerDomainSpecificActions() {
           description: desc,
           ...params,
         });
+        if (!result?.ok) {
+          return {
+            ok: false,
+            error: result?.error || "brain_unavailable",
+            output: result?.content || result?.error,
+            source: `${brain.toLowerCase()}-brain`,
+            action,
+            domain,
+            brain,
+          };
+        }
         return {
-          ok: result.ok,
+          ok: true,
+          generated: true,
           output: result.content || result.error,
           source: `${brain.toLowerCase()}-brain`,
           model: result.model,
@@ -57482,7 +57634,7 @@ function initChatSocketHandlers(io) {
                 role: "assistant",
                 content: (streamResult.content = visibleChatReply(streamResult.content, String(prompt || ""))),
                 ts: nowISO(),
-                meta: { llmUsed: true, source: "ollama-stream", model: streamResult.model },
+                meta: { llmUsed: true, source: "ollama-stream", model: streamResult.model, ...(answerConfidence({ source: "ollama-stream", model: streamResult.model }) || {}) },
               });
 
               // Persist the user/assistant turn so it survives a restart.
@@ -60339,7 +60491,7 @@ app.post("/api/dtus/:id/fork", requireAuth(), (req, res) => {
       source: `fork:${sourceDtu.id}`,
       lineage: [...(sourceDtu.lineage || []), sourceDtu.id],
       meta: {
-        ...(sourceDtu.meta || {}),
+        ...stripFeedIngestMarker(sourceDtu.meta || {}),
         forkedFrom: sourceDtu.id,
         forkedAt: nowISO(),
         originalSource: sourceDtu.source,

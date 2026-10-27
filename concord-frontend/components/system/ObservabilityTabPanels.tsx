@@ -43,15 +43,22 @@ type LoaderPlugin = {
   description?: string; citations?: number; downloads?: number; rating?: number; status?: string;
 };
 type PersonalStats = {
-  totalCitations: number; totalRoyalties: number;
-  mostCitedDTU: { name: string; citations: number };
-  mostUsedMaterial: { name: string; uses: number };
-  reputationByDomain: Record<string, number>;
-  buildCount: number; playtime: number; loginStreak: number;
+  totalCitations: number | null; totalRoyalties: number | null;
+  royaltyReason?: string | null;
+  mostCitedDTU: { name: string | null; citations: number | null } | null;
+  mostUsedMaterial: { name: string | null; uses: number | null } | null;
+  mostUsedMaterialReason?: string | null;
+  reputationByDomain: Record<string, number | null>;
+  reputationReason?: string | null;
+  buildCount: number | null; buildReason?: string | null;
+  playtime: number | null; playtimeReason?: string | null;
+  loginStreak: number | null; loginStreakReason?: string | null;
 };
 type WorldStats = {
-  worldId: string; population: number; buildingCount: number; infraCoverage: number;
-  envScore: number; economicActivity: number; visitorCount: number;
+  worldId: string; population: number | null; buildingCount: number | null; infraCoverage: number | null;
+  infraReason?: string | null;
+  envScore: number | null; envReason?: string | null;
+  economicActivity: number | null; visitorCount: number | null;
   timeseries?: { date: string; visitors: number; buildings: number }[];
 };
 type GlobalStats = {

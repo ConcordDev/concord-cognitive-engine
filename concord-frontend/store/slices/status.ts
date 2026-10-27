@@ -26,7 +26,10 @@ export interface AuthPosture {
  * `string` for the same reason.
  */
 export interface StatusSlice {
+  /** Latest errors only (capped at 20). Use requestErrorTotal for counts. */
   requestErrors: RequestError[];
+  /** Every non-duplicate error recorded since the last clear, not capped. */
+  requestErrorTotal: number;
   authPosture: AuthPosture;
   /**
    * Synced once per session from `/api/auth/me` (see `Providers.tsx`).
@@ -46,6 +49,7 @@ export interface StatusSlice {
 
 export const createStatusSlice: StateCreator<StatusSlice, [], [], StatusSlice> = (set) => ({
   requestErrors: [],
+  requestErrorTotal: 0,
   authPosture: { mode: 'unknown', usesJwt: false, usesApiKey: false },
   userRole: 'user',
 
@@ -69,10 +73,11 @@ export const createStatusSlice: StateCreator<StatusSlice, [], [], StatusSlice> =
             at: new Date().toISOString(),
           },
         ],
+        requestErrorTotal: state.requestErrorTotal + 1,
       };
     }),
 
-  clearRequestErrors: () => set({ requestErrors: [] }),
+  clearRequestErrors: () => set({ requestErrors: [], requestErrorTotal: 0 }),
 
   setAuthPosture: (authPosture) =>
     set((state) => ({ authPosture: { ...state.authPosture, ...authPosture } })),

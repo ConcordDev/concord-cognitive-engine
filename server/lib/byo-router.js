@@ -142,7 +142,7 @@ async function _brainChatDispatch({ db, userId, slot, messages, opts = {}, brain
   const mode = brainMode || getBrainMode(db, userId);
   if (mode === "private") {
     const r = await ollamaChat(slot, messages, opts);
-    return { ...r, provider: "concord_default", model: "ollama" };
+    return { ...r, provider: "concord_default", model: r.model || "ollama" };
   }
 
   // 1) Override path — user has plugged in a frontier-model API key.
@@ -207,11 +207,13 @@ async function _brainChatDispatch({ db, userId, slot, messages, opts = {}, brain
   }
 
   // 3) Default path — concord-os.org-hosted Ollama brain.
+  // The real answering model (not the old "ollama" placeholder) so answer
+  // labelling can tell the small local backup model from the pod's model.
   const r = await ollamaChat(slot, messages, opts);
   return {
     ...r,
     provider: "concord_default",
-    model: r.ok ? "ollama" : "ollama",
+    model: r.model || "ollama",
   };
 }
 

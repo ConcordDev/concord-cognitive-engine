@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { biasUnavailableText, finiteOrNull } from '@/components/news/bias-unavailable';
 import {
   runBiasDetection, runEventExtraction, runNarrativeTracking,
   headlineToAnalysisArticle,
@@ -177,27 +178,43 @@ function Bar({ value, label, tone = 'cyan' }: { value: number; label: string; to
   );
 }
 
-function BiasView({ r }: { r: BiasResult | null }) {
+export function BiasView({ r }: { r: BiasResult | null }) {
   if (!r) return <RunHint />;
   if (r.message) return <MessageNote text={r.message} />;
+  const overall = finiteOrNull(r.overallBiasScore);
   return (
     <div className="space-y-3 text-sm">
       <div className="flex items-center gap-2">
         <span className="text-xs text-zinc-400">Overall bias</span>
-        <span className="font-mono text-cyan-300">{r.overallBiasScore.toFixed(3)}</span>
-        <LevelPill level={r.biasLevel} />
+        {overall == null ? (
+          <span className="text-[11px] text-zinc-500">{biasUnavailableText(r.overallBiasReason)}</span>
+        ) : (
+          <>
+            <span className="font-mono text-cyan-300">{overall.toFixed(3)}</span>
+            {r.biasLevel && <LevelPill level={r.biasLevel} />}
+          </>
+        )}
         <span className="ml-auto text-[11px] text-zinc-500">{r.articlesAnalyzed} analyzed</span>
       </div>
       <Bar value={r.sourceDiversity.normalizedDiversity} label={`Source diversity — ${r.sourceDiversity.assessment}`} tone="emerald" />
       {r.sourceBiasProfiles.length > 0 && (
         <div className="space-y-1">
           <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">Per-source bias</p>
-          {r.sourceBiasProfiles.slice(0, 6).map((s) => (
-            <div key={s.source} className="flex items-center justify-between rounded bg-zinc-900/60 px-2 py-1 text-xs">
-              <span className="truncate text-zinc-300">{s.source || 'unknown'}</span>
-              <span className="ml-2 shrink-0 font-mono text-amber-300">{s.avgBiasScore.toFixed(2)}</span>
-            </div>
-          ))}
+          {r.sourceBiasProfiles.slice(0, 6).map((s) => {
+            const avg = finiteOrNull(s.avgBiasScore);
+            return (
+              <div key={s.source} className="flex items-center justify-between rounded bg-zinc-900/60 px-2 py-1 text-xs">
+                <span className="truncate text-zinc-300">{s.source || 'unknown'}</span>
+                <span className="ml-2 shrink-0">
+                  {avg == null ? (
+                    <span className="text-[11px] text-zinc-500">{biasUnavailableText(s.biasReason ?? 'no_bias_terms')}</span>
+                  ) : (
+                    <span className="font-mono text-amber-300">{avg.toFixed(2)}</span>
+                  )}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

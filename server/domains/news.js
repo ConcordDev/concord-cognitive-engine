@@ -5,6 +5,172 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
+
+// ── Real headlines via GDELT Project (free, no key) ──
+//
+// GDELT 2.0 doc API returns real news articles indexed every 15 minutes
+// from sources worldwide. No API key. The doc API allows roughly one request
+// per 5 seconds per IP, so every GDELT call goes through this module's single
+// queue (one in flight, >= 5 s between starts), is cached per category for
+// 15 minutes, and backs off after failures. Callers never see a thrown error:
+// they get the cached list (marked degraded/stale) or an honest empty list.
+// Endpoint: api.gdeltproject.org/api/v2/doc/doc
+
+const CATEGORY_QUERIES = {
+  top:        "(world OR breaking) sourcelang:eng",
+  world:      "(world OR international OR foreign) sourcelang:eng",
+  business:   "(business OR economy OR markets OR earnings) sourcelang:eng",
+  tech:       "(technology OR AI OR software OR startup) sourcelang:eng",
+  science:    "(science OR research OR climate OR space) sourcelang:eng",
+  politics:   "(politics OR congress OR election OR policy) sourcelang:eng",
+  sports:     "(sports OR olympics OR football OR basketball) sourcelang:eng",
+  health:     "(health OR medicine OR vaccine OR pandemic) sourcelang:eng",
+  entertainment: "(entertainment OR film OR music OR celebrity) sourcelang:eng",
+};
+
+const GDELT_DEFAULTS = {
+  spacingMs: 5000,            // min gap between request starts
+  timeoutMs: 8000,            // per-request ceiling
+  cacheTtlMs: 15 * 60 * 1000, // per-category cache lifetime
+  backoffStartMs: 60 * 1000,  // first backoff window after a failure
+  backoffMaxMs: 10 * 60 * 1000,
+  briefingBudgetMs: 8500,     // daily-briefing budget for the GDELT sections
+  briefingTotalMs: 9000,      // daily-briefing hard ceiling for the whole handler
+  llmClosingMs: 2500,         // cap on the optional LLM closing sentence
+  llmMinMs: 300,              // skip the LLM closing if less time than this is left
+  now: () => Date.now(),
+};
+const gdelt = { ...GDELT_DEFAULTS };
+
+const gdeltCache = new Map();    // category -> { articles, fetchedAt }
+const gdeltInflight = new Map(); // category -> shared promise
+const gdeltBackoff = { until: 0, ms: 0, reason: null };
+let gdeltLastStart = -Infinity;
+let gdeltTail = Promise.resolve();
+
+// Test hooks. Defaults are restored by __resetGdeltCacheForTests.
+export function __configureGdeltForTests(overrides = {}) {
+  Object.assign(gdelt, overrides);
+}
+export function __resetGdeltCacheForTests() {
+  gdeltCache.clear();
+  gdeltInflight.clear();
+  gdeltBackoff.until = 0;
+  gdeltBackoff.ms = 0;
+  gdeltBackoff.reason = null;
+  gdeltLastStart = -Infinity;
+  gdeltTail = Promise.resolve();
+  Object.assign(gdelt, GDELT_DEFAULTS);
+}
+
+// Resolves to `fallback` if `promise` does not settle within `ms`.
+function raceTimeout(promise, ms, fallback) {
+  let timer;
+  const expired = new Promise((resolve) => { timer = setTimeout(() => resolve(fallback), ms); });
+  return Promise.race([promise, expired]).finally(() => clearTimeout(timer));
+}
+
+class GdeltError extends Error {
+  constructor(reason, message) {
+    super(message || reason);
+    this.reason = reason;
+  }
+}
+
+async function gdeltRequest(query) {
+  const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(query)}&mode=ArtList&maxrecords=50&format=json&sort=DateDesc`;
+  const controller = new AbortController();
+  let timer;
+  const timedOut = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new GdeltError("timeout", `GDELT request exceeded ${gdelt.timeoutMs} ms`));
+    }, gdelt.timeoutMs);
+  });
+  try {
+    const r = await Promise.race([globalThis.fetch(url, { signal: controller.signal }), timedOut]);
+    if (!r.ok) {
+      if (r.status === 429) throw new GdeltError("rate_limited", "GDELT 429");
+      throw new GdeltError(`upstream_error: GDELT ${r.status}`);
+    }
+    const data = await Promise.race([r.json(), timedOut]);
+    return Array.isArray(data?.articles) ? data.articles : [];
+  } catch (e) {
+    if (e instanceof GdeltError) throw e;
+    throw new GdeltError(`upstream_error: ${e?.message || "network"}`);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Every GDELT request starts here. Runs strictly one at a time, and starts
+// at least `spacingMs` after the previous start.
+function enqueueGdelt(task) {
+  const run = gdeltTail.then(async () => {
+    if (gdelt.now() >= gdeltBackoff.until) {
+      const wait = gdeltLastStart + gdelt.spacingMs - gdelt.now();
+      if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+      if (gdelt.now() >= gdeltBackoff.until) gdeltLastStart = gdelt.now();
+    }
+    return task();
+  });
+  gdeltTail = run.catch(() => {});
+  return run;
+}
+
+// Fetches one category through the queue. Concurrent callers for the same
+// category share one promise. Rejects with GdeltError.
+function fetchGdeltCategory(category) {
+  if (gdeltInflight.has(category)) return gdeltInflight.get(category);
+  // A request that was queued before a 429 landed must not hit GDELT again
+  // inside the backoff window; it fails with the backoff reason instead.
+  const promise = enqueueGdelt(() => {
+    if (gdelt.now() < gdeltBackoff.until) {
+      const skipped = new GdeltError(gdeltBackoff.reason || "rate_limited", "skipped during GDELT backoff");
+      skipped.skipped = true;
+      throw skipped;
+    }
+    return gdeltRequest(CATEGORY_QUERIES[category]);
+  })
+    .then((articles) => {
+      gdeltCache.set(category, { articles, fetchedAt: gdelt.now() });
+      gdeltBackoff.until = 0;
+      gdeltBackoff.ms = 0;
+      gdeltBackoff.reason = null;
+      return articles;
+    }, (err) => {
+      if (err?.skipped) throw err; // backoff already set; don't double it again
+      const reason = err instanceof GdeltError ? err.reason : `upstream_error: ${err?.message || "network"}`;
+      gdeltBackoff.ms = gdeltBackoff.ms ? Math.min(gdeltBackoff.ms * 2, gdelt.backoffMaxMs) : gdelt.backoffStartMs;
+      gdeltBackoff.until = gdelt.now() + gdeltBackoff.ms;
+      gdeltBackoff.reason = reason;
+      throw err;
+    })
+    .finally(() => gdeltInflight.delete(category));
+  gdeltInflight.set(category, promise);
+  return promise;
+}
+
+// Never rejects. Returns the articles to use plus honesty metadata:
+//   { articles, cachedAt (ISO|null), stale, degradedReason (string|null) }
+async function getGdeltArticles(category) {
+  const entry = gdeltCache.get(category);
+  const cachedAt = entry ? new Date(entry.fetchedAt).toISOString() : null;
+  if (entry && gdelt.now() - entry.fetchedAt < gdelt.cacheTtlMs) {
+    return { articles: entry.articles, cachedAt, stale: false, degradedReason: null };
+  }
+  const fallback = (reason) => entry
+    ? { articles: entry.articles, cachedAt, stale: true, degradedReason: reason }
+    : { articles: [], cachedAt: null, stale: false, degradedReason: reason };
+  if (gdelt.now() < gdeltBackoff.until) return fallback(gdeltBackoff.reason);
+  try {
+    const articles = await fetchGdeltCategory(category);
+    return { articles, cachedAt: null, stale: false, degradedReason: null };
+  } catch (e) {
+    return fallback(e instanceof GdeltError ? e.reason : `upstream_error: ${e?.message || "network"}`);
+  }
+}
+
 export default function registerNewsActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -46,7 +212,9 @@ export default function registerNewsActions(registerLensAction) {
       const words = text.split(/\s+/).filter(w => w.length > 2);
       const wordCount = words.length;
 
-      if (wordCount === 0) return { index: idx, source: article.source, biasScore: 0 };
+      if (wordCount === 0) {
+        return { index: idx, source: article.source || "unknown", wordCount: 0, biasScore: null, sentimentBalance: null, biasDirection: null, biasReason: "no_text" };
+      }
 
       // Count loaded language
       let positiveCount = 0;
@@ -71,6 +239,22 @@ export default function registerNewsActions(registerLensAction) {
 
       // Hedge word ratio (higher = more tentative/balanced reporting)
       const hedgeRatio = hedgeCount / wordCount;
+
+      // No loaded or hedge terms is not a neutral score. The old floor
+      // treated that silence as 0.2 bias.
+      if (positiveCount + negativeCount + hedgeCount === 0) {
+        return {
+          index: idx,
+          source: article.source || "unknown",
+          wordCount,
+          loadedLanguage: { positive: 0, negative: 0, density: 0, examples: [] },
+          sentimentBalance: null,
+          hedgeRatio: 0,
+          biasScore: null,
+          biasDirection: null,
+          biasReason: "no_bias_terms",
+        };
+      }
 
       // Framing detection: passive voice as proxy for agency framing
       const passivePattern = /\b(was|were|been|being|is|are)\s+\w+ed\b/g;
@@ -122,29 +306,35 @@ export default function registerNewsActions(registerLensAction) {
     const sourceBias = {};
     for (const analysis of articleAnalyses) {
       const src = analysis.source;
-      if (!sourceBias[src]) sourceBias[src] = { scores: [], sentiments: [] };
-      sourceBias[src].scores.push(analysis.biasScore);
-      sourceBias[src].sentiments.push(analysis.sentimentBalance);
+      if (!sourceBias[src]) sourceBias[src] = { scores: [], sentiments: [], articleCount: 0 };
+      sourceBias[src].articleCount++;
+      if (Number.isFinite(analysis.biasScore)) sourceBias[src].scores.push(analysis.biasScore);
+      if (Number.isFinite(analysis.sentimentBalance)) sourceBias[src].sentiments.push(analysis.sentimentBalance);
     }
+    const avgOf = (vals) => vals.length ? r(vals.reduce((s, v) => s + v, 0) / vals.length) : null;
     const sourceBiasProfiles = Object.entries(sourceBias).map(([source, data]) => ({
       source,
-      articleCount: data.scores.length,
-      avgBiasScore: r(data.scores.reduce((s, v) => s + v, 0) / data.scores.length),
-      avgSentiment: r(data.sentiments.reduce((s, v) => s + v, 0) / data.sentiments.length),
-      consistency: r(1 - (data.scores.length > 1
-        ? Math.sqrt(data.scores.reduce((s, v) => s + Math.pow(v - data.scores.reduce((a, b) => a + b, 0) / data.scores.length, 2), 0) / data.scores.length)
-        : 0)),
-    })).sort((a, b) => b.avgBiasScore - a.avgBiasScore);
+      articleCount: data.articleCount,
+      avgBiasScore: avgOf(data.scores),
+      avgSentiment: avgOf(data.sentiments),
+      consistency: data.scores.length > 1
+        ? r(1 - Math.sqrt(data.scores.reduce((s, v) => s + Math.pow(v - data.scores.reduce((a, b) => a + b, 0) / data.scores.length, 2), 0) / data.scores.length))
+        : null,
+    })).sort((a, b) => (b.avgBiasScore ?? -1) - (a.avgBiasScore ?? -1));
 
     // --- Overall assessment ---
-    const overallBias = articleAnalyses.reduce((s, a) => s + a.biasScore, 0) / articleAnalyses.length;
+    const scoredAnalyses = articleAnalyses.filter((a) => Number.isFinite(a.biasScore));
+    const overallBias = scoredAnalyses.length
+      ? scoredAnalyses.reduce((s, a) => s + a.biasScore, 0) / scoredAnalyses.length
+      : null;
 
     return {
       ok: true,
       result: {
         articlesAnalyzed: articles.length,
-        overallBiasScore: r(overallBias),
-        biasLevel: overallBias > 0.6 ? "high" : overallBias > 0.3 ? "moderate" : "low",
+        overallBiasScore: overallBias == null ? null : r(overallBias),
+        overallBiasReason: overallBias == null ? "no_bias_terms" : null,
+        biasLevel: overallBias == null ? null : overallBias > 0.6 ? "high" : overallBias > 0.3 ? "moderate" : "low",
         sourceDiversity: {
           uniqueSources: sources.length,
           entropy: r(sourceEntropy),
@@ -509,32 +699,6 @@ export default function registerNewsActions(registerLensAction) {
 });
 
   // ─── Parity-sprint ──
-  // ── Real headlines via GDELT Project (free, no key) ──
-  //
-  // GDELT 2.0 doc API returns real news articles indexed every 15 minutes
-  // from sources worldwide. No API key, no rate limit for reasonable use.
-  // Endpoint: api.gdeltproject.org/api/v2/doc/doc
-
-  const CATEGORY_QUERIES = {
-    top:        "(world OR breaking) sourcelang:eng",
-    world:      "(world OR international OR foreign) sourcelang:eng",
-    business:   "(business OR economy OR markets OR earnings) sourcelang:eng",
-    tech:       "(technology OR AI OR software OR startup) sourcelang:eng",
-    science:    "(science OR research OR climate OR space) sourcelang:eng",
-    politics:   "(politics OR congress OR election OR policy) sourcelang:eng",
-    sports:     "(sports OR olympics OR football OR basketball) sourcelang:eng",
-    health:     "(health OR medicine OR vaccine OR pandemic) sourcelang:eng",
-    entertainment: "(entertainment OR film OR music OR celebrity) sourcelang:eng",
-  };
-
-  async function fetchGdeltArticles(query, limit) {
-    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(query)}&mode=ArtList&maxrecords=${limit}&format=json&sort=DateDesc`;
-    const r = await globalThis.fetch(url);
-    if (!r.ok) throw new Error(`GDELT ${r.status}`);
-    const data = await r.json();
-    return Array.isArray(data?.articles) ? data.articles : [];
-  }
-
   function mapGdeltArticle(a, idx, category) {
     return {
       id: `hl_${category}_${idx}`,
@@ -552,59 +716,76 @@ export default function registerNewsActions(registerLensAction) {
   registerLensAction("news", "headlines", async (_ctx, _artifact, params = {}) => {
     const category = String(params.category || "top");
     const limit = Math.min(50, Math.max(5, Number(params.limit) || 30));
-    const query = CATEGORY_QUERIES[category] || CATEGORY_QUERIES.top;
-    try {
-      const articles = await fetchGdeltArticles(query, limit);
-      const headlines = articles.map((a, i) => mapGdeltArticle(a, i, category));
-      return {
-        ok: true,
-        result: {
-          headlines,
-          category,
-          count: headlines.length,
-          source: "GDELT Project (real-time global news, no key required)",
-        },
-      };
-    } catch (e) {
-      return { ok: false, error: `headlines fetch failed: ${e?.message || "network"}` };
+    const key = CATEGORY_QUERIES[category] ? category : "top";
+    const { articles, cachedAt, stale, degradedReason } = await getGdeltArticles(key);
+    const headlines = articles.slice(0, limit).map((a, i) => mapGdeltArticle(a, i, category));
+    const result = {
+      headlines,
+      category,
+      count: headlines.length,
+      source: "GDELT Project (real-time global news, no key required)",
+    };
+    if (degradedReason) {
+      result.degraded = true;
+      result.degradedReason = degradedReason;
+      if (stale) { result.cachedAt = cachedAt; result.stale = true; }
     }
+    return { ok: true, result };
   });
 
   registerLensAction("news", "daily-briefing", async (ctx, _artifact, _params = {}) => {
+    const deadline = Date.now() + gdelt.briefingTotalMs;
     const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
     const greeting = `Good ${new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'} — here's what's happening today.`;
-    let tops = [], biz = [], tech = [], sci = [];
-    try {
-      [tops, biz, tech, sci] = await Promise.all([
-        fetchGdeltArticles(CATEGORY_QUERIES.world, 5),
-        fetchGdeltArticles(CATEGORY_QUERIES.business, 4),
-        fetchGdeltArticles(CATEGORY_QUERIES.tech, 4),
-        fetchGdeltArticles(CATEGORY_QUERIES.science, 3),
-      ]);
-    } catch (e) {
-      return { ok: false, error: `briefing fetch failed: ${e?.message || "network"}` };
+    // Each section starts its fetch now. Fetches that miss the budget keep
+    // running through the queue and fill the cache for the next call.
+    const sections = [
+      { key: "topStories", heading: "Top stories", category: "world", limit: 5 },
+      { key: "business", heading: "Business & markets", category: "business", limit: 4 },
+      { key: "tech", heading: "Technology", category: "tech", limit: 4 },
+      { key: "science", heading: "Science & health", category: "science", limit: 3 },
+    ];
+    const pending = sections.map((s) => getGdeltArticles(s.category));
+    const settled = await Promise.all(pending.map((p) => raceTimeout(p, gdelt.briefingBudgetMs, null)));
+    const briefing = { greeting, date: today };
+    const reasons = [];
+    let tallied = 0;
+    sections.forEach((s, i) => {
+      const got = settled[i];
+      const bullets = got ? got.articles.slice(0, s.limit).map(a => a.title).filter(Boolean) : [];
+      tallied += bullets.length;
+      const out = { heading: s.heading, bullets };
+      if (!got) {
+        out.unavailableReason = "budget_exceeded";
+        reasons.push("budget_exceeded");
+      } else if (got.degradedReason) {
+        out.degradedReason = got.degradedReason;
+        if (got.stale) { out.cachedAt = got.cachedAt; out.stale = true; }
+        if (!bullets.length) out.unavailableReason = got.degradedReason;
+        reasons.push(got.degradedReason);
+      }
+      briefing[s.key] = out;
+    });
+    briefing.closing = "That's the briefing. Read any story in full from the Headlines tab.";
+    briefing.source = "GDELT Project";
+    if (reasons.length) {
+      briefing.degraded = true;
+      briefing.degradedReason = reasons[0];
     }
-    const summarise = arr => arr.map(a => a.title).filter(Boolean);
-    let briefing = {
-      greeting, date: today,
-      topStories: { heading: "Top stories", bullets: summarise(tops) },
-      business: { heading: "Business & markets", bullets: summarise(biz) },
-      tech: { heading: "Technology", bullets: summarise(tech) },
-      science: { heading: "Science & health", bullets: summarise(sci) },
-      closing: "That's the briefing. Read any story in full from the Headlines tab.",
-      source: "GDELT Project",
-    };
-    if (ctx?.llm?.chat) {
+    // The closing sentence is optional. It only runs when there is something
+    // to summarise, and only within the time left before the total deadline.
+    const llmBudget = Math.min(gdelt.llmClosingMs, deadline - Date.now());
+    if (ctx?.llm?.chat && tallied > 0 && llmBudget >= gdelt.llmMinMs) {
       try {
-        const llmRes = await ctx.llm.chat({
+        const llmRes = await raceTimeout(ctx.llm.chat({
           messages: [
             { role: "system", content: `Write a 1-sentence punchy closing for a news briefing. Output ONLY the sentence, no quotes.` },
-            { role: "user", content: `Briefing covered ${tops.length + biz.length + tech.length + sci.length} stories across world, business, tech, science.` },
+            { role: "user", content: `Briefing covered ${tallied} stories across world, business, tech, science.` },
           ],
           temperature: 0.7, maxTokens: 60, slot: "utility",
-        });
+        }), llmBudget, null);
         const t = String(llmRes?.text || llmRes?.content || "").trim();
-        if (t && t.length < 200) briefing = { ...briefing, closing: t };
+        if (t && t.length < 200) briefing.closing = t;
       } catch (_e) { /* keep default */ }
     }
     return { ok: true, result: briefing };
@@ -1003,7 +1184,7 @@ export default function registerNewsActions(registerLensAction) {
     let l = 0, rt = 0;
     for (const w of words) { if (NW_LEFT_WORDS.has(w)) l++; if (NW_RIGHT_WORDS.has(w)) rt++; }
     const total = l + rt;
-    if (total === 0) return { lean: "center", score: 0, left: l, right: rt };
+    if (total === 0) return { lean: null, score: null, left: l, right: rt, reason: "no_bias_terms" };
     const score = (rt - l) / total; // -1 left .. +1 right
     return {
       lean: score < -0.25 ? "left" : score > 0.25 ? "right" : "center",
@@ -1027,30 +1208,36 @@ export default function registerNewsActions(registerLensAction) {
     if (arts.length === 0) {
       return { ok: true, result: { columns: { left: [], center: [], right: [], count: 0 } } };
     }
-    const cols = { left: [], center: [], right: [] };
+    const cols = { left: [], center: [], right: [], unscored: [] };
     for (const a of arts) {
       const b = nwBiasLean(`${a.title} ${a.summary || ""}`);
-      cols[b.lean].push({ ...articleView(s, userId, a), biasLean: b.lean, biasScore: b.score });
+      const row = { ...articleView(s, userId, a), biasLean: b.lean, biasScore: b.score, biasReason: b.reason || null };
+      (b.lean ? cols[b.lean] : cols.unscored).push(row);
     }
-    for (const k of ["left", "center", "right"]) {
+    for (const k of ["left", "center", "right", "unscored"]) {
       cols[k].sort((x, y) => String(y.publishedAt).localeCompare(String(x.publishedAt)));
     }
-    const total = arts.length;
+    const scored = cols.left.length + cols.center.length + cols.right.length;
+    const coverage = scored === 0
+      ? { left: null, center: null, right: null, reason: "no_bias_terms" }
+      : {
+          left: Math.round((cols.left.length / scored) * 100),
+          center: Math.round((cols.center.length / scored) * 100),
+          right: Math.round((cols.right.length / scored) * 100),
+        };
     return {
       ok: true,
       result: {
         topic: topic || q || "all",
         columns: cols,
-        count: total,
-        coverage: {
-          left: Math.round((cols.left.length / total) * 100),
-          center: Math.round((cols.center.length / total) * 100),
-          right: Math.round((cols.right.length / total) * 100),
-        },
-        blindspot:
-          cols.left.length === 0 ? "left" :
-          cols.right.length === 0 ? "right" :
-          cols.center.length === 0 ? "center" : null,
+        count: arts.length,
+        unscored: cols.unscored.length,
+        coverage,
+        blindspot: scored === 0 ? null
+          : cols.left.length === 0 ? "left"
+          : cols.right.length === 0 ? "right"
+          : cols.center.length === 0 ? "center"
+          : null,
       },
     };
     } catch (e) { return handlerFailure(e); }
@@ -1101,6 +1288,7 @@ export default function registerNewsActions(registerLensAction) {
           left: leans.filter((l) => l === "left").length,
           center: leans.filter((l) => l === "center").length,
           right: leans.filter((l) => l === "right").length,
+          unscored: leans.filter((l) => l == null).length,
         },
         articles: memArts.map((m) => articleView(s, userId, m)),
       });
@@ -1257,7 +1445,10 @@ export default function registerNewsActions(registerLensAction) {
     const arts = [...s.articles.values()].filter((a) => a.source === source);
     if (arts.length === 0) return { ok: false, error: "no articles from this source" };
     const leans = arts.map((a) => nwBiasLean(`${a.title} ${a.summary || ""}`));
-    const avgScore = leans.reduce((acc, l) => acc + l.score, 0) / leans.length;
+    const scoredLeans = leans.filter((l) => Number.isFinite(l.score));
+    const avgScore = scoredLeans.length
+      ? scoredLeans.reduce((acc, l) => acc + l.score, 0) / scoredLeans.length
+      : null;
     // Factuality proxy: hedge-word presence + summary completeness.
     const hedge = /\b(allegedly|reportedly|claimed|unverified|disputed|sources say)\b/i;
     let withSummary = 0, hedged = 0;
@@ -1278,8 +1469,9 @@ export default function registerNewsActions(registerLensAction) {
         source,
         articleCount: arts.length,
         contributors: [...new Set(arts.map((a) => a.addedBy))].length,
-        biasLean: avgScore < -0.25 ? "left" : avgScore > 0.25 ? "right" : "center",
-        biasScore: Math.round(avgScore * 1000) / 1000,
+        biasLean: avgScore == null ? null : avgScore < -0.25 ? "left" : avgScore > 0.25 ? "right" : "center",
+        biasScore: avgScore == null ? null : Math.round(avgScore * 1000) / 1000,
+        biasReason: avgScore == null ? "no_bias_terms" : null,
         factualityRating: factuality,
         factualityLabel: factuality >= 75 ? "high" : factuality >= 50 ? "mixed" : "low",
         transparency: {

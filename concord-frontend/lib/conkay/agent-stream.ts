@@ -24,6 +24,9 @@ export interface AgentDone {
   error?: string;
   provider?: string;
   model?: string;
+  /** Set by the server only when the small local backup model answered (GPU brain offline). */
+  confidence?: 'low';
+  confidenceReason?: string;
 }
 
 export interface SseEvent {
@@ -100,6 +103,8 @@ export async function streamConKayAgent(args: {
           error: data.error ? String(data.error) : undefined,
           provider: data.provider ? String(data.provider) : undefined,
           model: data.model ? String(data.model) : undefined,
+          confidence: data.answerConfidence === 'low' ? 'low' : undefined,
+          confidenceReason: data.answerConfidenceReason ? String(data.answerConfidenceReason) : undefined,
         };
       }
     }

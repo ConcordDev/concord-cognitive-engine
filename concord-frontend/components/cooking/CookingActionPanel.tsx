@@ -40,9 +40,9 @@ function pickMessage(e: unknown): string { const ax = e as { response?: { data?:
 
 interface Food { fdcId: number; description: string; dataType?: string; brandOwner?: string; servingSize?: number; servingSizeUnit?: string }
 interface UsdaResult { foods: Food[]; count: number; totalHits?: number }
-interface ScaledIng { name: string; original: string; scaled: string }
+interface ScaledIng { name: string; original: string; scaled: string | null }
 interface ScaleResult { recipe: string; baseServings: number | null; targetServings: number | null; scaleFactor: number | null; ingredients: ScaledIng[] | null; reason?: string | null; unavailable?: string[] }
-interface NutrResult { totalCalories: number | null; perServing: number | null; macros: { protein: string; carbs: string; fat: string } | null; servings: number | null; note?: string; reason?: string | null; unavailable?: string[] }
+interface NutrResult { totalCalories: number | null; perServing: number | null; macros: { protein: string; carbs: string; fat: string } | null; servings: number | null; note?: string; reason?: string | null; unavailable?: string[]; missingGrams?: string[] }
 interface Sub { sub: string; ratio: string; note?: string }
 interface SubResult { ingredient: string; substitutions: Sub[]; found: boolean }
 
@@ -171,8 +171,8 @@ export function CookingActionPanel() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`👨‍🍳 Recipe brief`, '',
-      scaleResult ? `${scaleResult.recipe}: scaled ${scaleResult.baseServings}→${scaleResult.targetServings} (${scaleResult.scaleFactor}×)` : '',
-      nutrResult ? `Nutrition: ${nutrResult.perServing} cal/serving · ${nutrResult.macros.protein} P / ${nutrResult.macros.carbs} C / ${nutrResult.macros.fat} F` : '',
+      scaleResult ? `${scaleResult.recipe}: scaled ${scaleResult.baseServings ?? '—'}→${scaleResult.targetServings ?? '—'} (${scaleResult.scaleFactor ?? '—'}×)` : '',
+      nutrResult ? `Nutrition: ${nutrResult.perServing ?? '—'} cal/serving${nutrResult.macros ? ` · ${nutrResult.macros.protein} P / ${nutrResult.macros.carbs} C / ${nutrResult.macros.fat} F` : ''}` : '',
       subResult?.substitutions[0] ? `${subResult.ingredient} sub: ${subResult.substitutions[0].sub} (${subResult.substitutions[0].ratio})` : '',
       usdaResult?.foods[0] ? `USDA: ${usdaResult.foods[0].description}` : '',
       mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
@@ -210,7 +210,7 @@ export function CookingActionPanel() {
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
-      const task = `Home cook advisor. ${scaleResult ? `Making ${scaleResult.recipe}, ${scaleResult.targetServings} servings.` : ''} ${nutrResult ? `Per serving: ${nutrResult.perServing} cal, ${nutrResult.macros.protein} protein.` : ''} ${subResult?.substitutions[0] ? `Substituting ${subResult.ingredient} with ${subResult.substitutions[0].sub}.` : ''} Suggest one technique tip + one flavor enhancement. Plain text, 3 sentences max.`;
+      const task = `Home cook advisor. ${scaleResult ? `Making ${scaleResult.recipe}, ${scaleResult.targetServings ?? '—'} servings.` : ''} ${nutrResult && nutrResult.perServing != null ? `Per serving: ${nutrResult.perServing} cal${nutrResult.macros ? `, ${nutrResult.macros.protein} protein` : ''}.` : ''} ${subResult?.substitutions[0] ? `Substituting ${subResult.ingredient} with ${subResult.substitutions[0].sub}.` : ''} Suggest one technique tip + one flavor enhancement. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) {
@@ -346,16 +346,18 @@ export function CookingActionPanel() {
         {scaleResult && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 max-h-60 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">{scaleResult.recipe}</div>
-            <div className="text-[11px] text-zinc-300">scaled <span className="text-amber-200 font-mono">{scaleResult.scaleFactor}×</span> · {scaleResult.baseServings} → {scaleResult.targetServings}</div>
-            {scaleResult.ingredients.map((i, idx) => <div key={idx} className="text-[10px] text-zinc-300 mt-0.5"><strong>{i.name}:</strong> <span className="text-zinc-400 line-through">{i.original}</span> → <span className="text-amber-200 font-mono">{i.scaled}</span></div>)}
+            <div className="text-[11px] text-zinc-300">scaled <span className="text-amber-200 font-mono">{scaleResult.scaleFactor ?? '—'}×</span> · {scaleResult.baseServings ?? '—'} → {scaleResult.targetServings ?? '—'}</div>
+            {(scaleResult.ingredients ?? []).map((i, idx) => <div key={idx} className="text-[10px] text-zinc-300 mt-0.5"><strong>{i.name}:</strong> <span className="text-zinc-400 line-through">{i.original}</span> → {i.scaled == null ? <span className="text-zinc-400 italic">quantity not recorded</span> : <span className="text-amber-200 font-mono">{i.scaled}</span>}</div>)}
           </div>
         )}
         {nutrResult && (
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Nutrition · {nutrResult.servings} servings</div>
+            <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Nutrition · {nutrResult.servings ?? '—'} servings</div>
             <div className="text-2xl font-bold text-blue-300">{nutrResult.perServing ?? '—'}<span className="text-xs text-zinc-400"> cal/serving</span></div>
             <div className="text-[10px] text-zinc-400">total {nutrResult.totalCalories ?? '—'} cal</div>
-            <div className="text-[10px] text-blue-200">P {nutrResult.macros.protein} · C {nutrResult.macros.carbs} · F {nutrResult.macros.fat}</div>
+            {nutrResult.macros && <div className="text-[10px] text-blue-200">P {nutrResult.macros.protein} · C {nutrResult.macros.carbs} · F {nutrResult.macros.fat}</div>}
+            {nutrResult.missingGrams && nutrResult.missingGrams.length > 0 && <div className="text-[10px] text-amber-300">Weight not recorded: {nutrResult.missingGrams.join(', ')}</div>}
+            {nutrResult.servings == null && <div className="text-[10px] text-amber-300">Servings not recorded</div>}
             {nutrResult.note && <div className="text-[10px] text-zinc-400 italic">{nutrResult.note}</div>}
           </div>
         )}

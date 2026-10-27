@@ -3,8 +3,10 @@
  * (/api/analytics).
  *
  * Pins the response shape and the missing-table tolerance — analytics
- * is best-effort, not load-bearing. Each slice should fall back to
- * zero/empty when its source table is missing rather than crash.
+ * is best-effort, not load-bearing. A missing personal or world source
+ * is null with a reason. A real query can still return 0. The no-user
+ * envelope stays numeric zeros. Global site totals stay on the empty
+ * fallback when their tables are absent.
  *
  * The route depends on a real Express app + db, so we exercise the
  * underlying helpers by directly importing them. Routes are
@@ -58,26 +60,41 @@ beforeEach(() => {
 });
 
 describe("/api/analytics — missing tables tolerance", () => {
-  it("returns ok with zero/empty values when no source tables exist", async () => {
+  it("returns null with a reason when the signed-in caller's source tables are missing", async () => {
     const { stub, handlers } = makeStubApp();
     registerAnalyticsRoutes(stub, { db, asyncHandler });
     const { body, statusCode } = await callRoute(handlers, "/api/analytics", { user: { id: "u1" }, query: {} });
 
     assert.equal(statusCode, 200);
     assert.equal(body.ok, true);
-    assert.equal(body.personalStats.totalCitations, 0);
-    assert.equal(body.personalStats.totalRoyalties, 0);
-    assert.equal(body.personalStats.buildCount, 0);
-    assert.equal(body.personalStats.loginStreak, 0);
+    assert.equal(body.personalStats.totalCitations, null);
+    assert.equal(body.personalStats.totalRoyalties, null);
+    assert.equal(body.personalStats.royaltyReason, "no_ledger_table");
+    assert.equal(body.personalStats.buildCount, null);
+    assert.equal(body.personalStats.buildReason, "no_building_table");
+    assert.equal(body.personalStats.loginStreak, null);
+    assert.equal(body.personalStats.loginStreakReason, "no_streak_table");
+    assert.equal(body.personalStats.playtime, null);
+    assert.equal(body.personalStats.playtimeReason, "no_visit_table");
+    assert.equal(body.personalStats.mostUsedMaterial, null);
+    assert.equal(body.personalStats.mostUsedMaterialReason, "not_recorded");
+    assert.equal(body.personalStats.reputationReason, "no_reputation_table");
     assert.deepEqual(Object.keys(body.personalStats.reputationByDomain).sort(), [
       "architecture", "energy", "exploration", "governance",
       "infrastructure", "materials", "mentorship", "structural",
     ]);
+    assert.ok(Object.values(body.personalStats.reputationByDomain).every((v) => v === null));
     assert.equal(body.globalStats.totalBuildings, 0);
     assert.equal(body.globalStats.totalWorlds, 0);
     assert.deepEqual(body.globalStats.trendingComponents, []);
     assert.deepEqual(body.globalStats.topCreators, []);
     assert.equal(body.worldStats, null);
+
+    const anon = await callRoute(handlers, "/api/analytics", { query: {} });
+    assert.equal(anon.body.personalStats.totalCitations, 0);
+    assert.equal(anon.body.personalStats.totalRoyalties, 0);
+    assert.equal(anon.body.personalStats.buildCount, 0);
+    assert.equal(anon.body.personalStats.loginStreak, 0);
   });
 });
 
@@ -107,6 +124,52 @@ describe("/api/analytics — with seeded data", () => {
     assert.equal(body.worldStats.population, 1); // only u1 has departed_at IS NULL
     assert.equal(body.worldStats.visitorCount, 2);
     assert.equal(body.worldStats.timeseries.length, 7);
+    // No state column: two buildings is not a measured coverage percent.
+    assert.equal(body.worldStats.infraCoverage, null);
+    assert.equal(body.worldStats.infraReason, "no_building_state");
+    assert.equal(body.worldStats.envScore, null);
+    assert.equal(body.worldStats.envScale, "0-100");
+    assert.equal(body.worldStats.envReason, "no_metrics_table");
+  });
+
+  it("measures standing coverage and the stored ecosystem average", async () => {
+    db.exec(`
+      CREATE TABLE world_buildings (
+        id TEXT PRIMARY KEY, world_id TEXT, state TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+      CREATE TABLE player_world_metrics (
+        user_id TEXT NOT NULL, world_id TEXT NOT NULL,
+        ecosystem_score REAL NOT NULL,
+        PRIMARY KEY (user_id, world_id)
+      );
+    `);
+    db.prepare("INSERT INTO world_buildings (id, world_id, state) VALUES (?, ?, ?)").run("b1", "w1", "standing");
+    db.prepare("INSERT INTO world_buildings (id, world_id, state) VALUES (?, ?, ?)").run("b2", "w1", "standing");
+    db.prepare("INSERT INTO world_buildings (id, world_id, state) VALUES (?, ?, ?)").run("b3", "w1", "collapsed");
+    db.prepare("INSERT INTO player_world_metrics (user_id, world_id, ecosystem_score) VALUES (?, ?, ?)").run("u1", "w1", -100);
+    db.prepare("INSERT INTO player_world_metrics (user_id, world_id, ecosystem_score) VALUES (?, ?, ?)").run("u2", "w1", 0);
+
+    const { stub, handlers } = makeStubApp();
+    registerAnalyticsRoutes(stub, { db, asyncHandler });
+    const { body } = await callRoute(handlers, "/api/analytics", { user: { id: "u1" }, query: { worldId: "w1" } });
+    assert.equal(body.worldStats.buildingCount, 3);
+    assert.equal(body.worldStats.infraCoverage, 67);
+    assert.equal(body.worldStats.infraReason, null);
+    // Stored signed mean -50 maps to the 0-100 display scale: (-50 + 100) / 2 = 25.
+    assert.equal(body.worldStats.envScore, 25);
+    assert.equal(body.worldStats.envScale, "0-100");
+    assert.equal(body.worldStats.envReason, null);
+
+    db.exec(`DELETE FROM world_buildings`);
+    const empty = await callRoute(handlers, "/api/analytics", { user: { id: "u1" }, query: { worldId: "w1" } });
+    assert.equal(empty.body.worldStats.infraCoverage, null);
+    assert.equal(empty.body.worldStats.infraReason, "no_buildings");
+
+    db.prepare("INSERT INTO world_buildings (id, world_id, state) VALUES (?, ?, ?)").run("b4", "w1", "collapsed");
+    const fallen = await callRoute(handlers, "/api/analytics", { user: { id: "u1" }, query: { worldId: "w1" } });
+    assert.equal(fallen.body.worldStats.infraCoverage, 0);
+    assert.equal(fallen.body.worldStats.infraReason, null);
   });
 
   it("personalStats filters royalties by recipient (to_user_id)", async () => {

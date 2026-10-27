@@ -94,6 +94,51 @@ function buildCountFor(db, userId) {
   }
 }
 
+// The caller's own buildings. Same attribution rule as the build count above.
+export function readOwnBuildings(db, userId, limit = 25) {
+  if (!userId) return { ok: false, status: 401, error: "sign_in_required" };
+  if (!db) return { ok: false, status: 503, error: "no_db" };
+  const counted = buildCountFor(db, userId);
+  if (counted.count === null) return { ok: false, reason: counted.reason };
+  const spawned = columnExists(db, "world_buildings", "spawned_by_user_id");
+  const owner = columnExists(db, "world_buildings", "owner_id");
+  const ownerType = columnExists(db, "world_buildings", "owner_type");
+  const clauses = [];
+  const params = [];
+  if (spawned) { clauses.push("spawned_by_user_id = ?"); params.push(userId); }
+  if (owner) {
+    clauses.push(ownerType ? "(owner_type = 'player' AND owner_id = ?)" : "owner_id = ?");
+    params.push(userId);
+  }
+  const want = ["id", "world_id", "name", "building_type", "state", "health_pct"]
+    .filter((c) => columnExists(db, "world_buildings", c));
+  try {
+    const rows = db.prepare(
+      `SELECT DISTINCT ${want.join(", ")} FROM world_buildings WHERE ${clauses.join(" OR ")} LIMIT ?`,
+    ).all(...params, Math.max(1, Math.min(100, Number(limit) || 25)));
+    return { ok: true, count: counted.count, buildings: rows };
+  } catch {
+    return { ok: false, reason: "buildings_unreadable" };
+  }
+}
+
+// The caller's own DTU citation totals and most-cited DTUs. Starter material
+// inventory (mat_ rows) is excluded, same as readCreatorSimStats.
+export function readOwnCitations(db, userId, limit = 5) {
+  if (!userId) return { ok: false, status: 401, error: "sign_in_required" };
+  if (!db) return { ok: false, status: 503, error: "no_db" };
+  const loaded = creatorRows(db, userId);
+  if (!loaded.ok) return { ok: false, reason: loaded.reason };
+  if (!loaded.citationsRecorded) return { ok: false, reason: "no_citation_table" };
+  const { total } = topCited(loaded.rows);
+  const top = loaded.rows
+    .filter((r) => Number(r.citations) > 0)
+    .sort((x, y) => Number(y.citations) - Number(x.citations))
+    .slice(0, Math.max(1, Math.min(25, Number(limit) || 5)))
+    .map((r) => ({ id: r.id, name: r.title || null, citations: Number(r.citations) }));
+  return { ok: true, totalCitations: total, dtuCount: loaded.rows.length, topCited: top };
+}
+
 function topCited(rows) {
   let top = null;
   let total = 0;

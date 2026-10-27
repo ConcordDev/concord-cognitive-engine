@@ -189,6 +189,9 @@ import {
 } from "../lib/city-manager.js";
 import { handlePlayerDeath, claimLootBag, handleRobbery, reclaimExpiredBags } from "../lib/pvp-loot.js";
 import { HUB_WORLD_ID } from "../lib/world-ids.js";
+import { renderDtuAsFile, DOCUMENT_EXPORT_FORMATS } from "../lib/dtu-document-export.js";
+import { ctxMayReadDtu } from "../lib/dtu-read-access.js";
+import { readAndHydrateDtu } from "../lib/dtu-shadow-hydrate.js";
 import {
   readDailyDigest,
   readPersonalAnalytics,
@@ -218,12 +221,14 @@ import {
   readDistrictTimeline,
   readStressTest,
   readScene,
-  readPluginSurface,
+  readPluginCatalog,
+  readInstalledPlugins,
+  readPluginInstallWrite,
   readNotifProfile,
   writeNotifProfile,
   recordNotifSignal,
   readMobileDashboard,
-  rejectQuickAction,
+  runQuickAction,
 } from "../lib/sim-infra.js";
 
 /**
@@ -231,7 +236,7 @@ import {
  * @param {Function} [opts.requireAuth] - Auth middleware
  * @returns {Router}
  */
-export default function createWorldRoutes({ requireAuth, db = null, emitToUser = null } = {}) {
+export default function createWorldRoutes({ requireAuth, db = null, emitToUser = null, dtuStore = null, getRealtimeClients = null, installGalleryPlugin = null } = {}) {
   const router = Router();
 
   function _userId(req) {
@@ -1111,8 +1116,8 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   // ── Disaster Stress Test API ──────────────────────────────────────
 
-  router.post("/sim/stress-test", auth, wrap((_req, res) => {
-    sendSim(res, readStressTest());
+  router.post("/sim/stress-test", auth, wrap((req, res) => {
+    sendSim(res, readStressTest(db, req.body));
   }));
 
   // ── Leaderboards API ──────────────────────────────────────────────
@@ -1124,7 +1129,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Timeline / History API ────────────────────────────────────────
 
   router.get("/sim/timeline/:districtId", wrap((req, res) => {
-    sendSim(res, readDistrictTimeline(req.params.districtId));
+    sendSim(res, readDistrictTimeline(req.params.districtId, { limit: req.query?.limit }));
   }));
 
   // ══════════════════════════════════════════════════════════════════
@@ -1926,15 +1931,76 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   // ── Export & Embed API ──────────────────────────────────────────
 
-  router.post("/sim/export", auth, wrap((req, res) => {
+  // Rendered through lib/dtu-document-export.js (the exporter behind
+  // document.export_dtu), from the in-memory DTU store that macro reads.
+  // Owner always; anyone else only visibility public/published rows that are
+  // not shadow, quarantined, personal/user-scoped or marked private.
+  const SIM_EXPORT_MAX_BYTES = 10 * 1024 * 1024;
+
+  function _simExportStore() {
+    return dtuStore || globalThis._concordSTATE?.dtus || null;
+  }
+
+  function _simExportHidden(dtu, callerId) {
+    // The app-wide by-id read gate first (private, followers-only, user scope,
+    // quarantine, internal, ownerless user-sourced rows).
+    if (!ctxMayReadDtu({ actor: { id: callerId || null } }, dtu)) return true;
+    const owners = [dtu.ownerId, dtu.author, dtu.userId, dtu.createdBy, dtu.creatorId, dtu.creator_id].filter(Boolean);
+    if (callerId && owners.includes(callerId)) return false;
+    // Non-owners get full content, so also refuse marketplace (paid), shadow,
+    // and personal-scope rows.
+    if (dtu.meta?.scope === "personal" || dtu.data?.scope === "personal") return true;
+    if (dtu.visibility !== "public" && dtu.visibility !== "published") return true;
+    if (dtu.tier === "shadow") return true;
+    if (typeof dtu.status === "string" && dtu.status.startsWith("quarantine")) return true;
+    if (dtu.scope === "personal" || dtu.scope === "user") return true;
+    if (dtu.privacy === "private" || dtu.privacy === "followers-only") return true;
+    return false;
+  }
+
+  router.post("/sim/export", auth, wrap(async (req, res) => {
     const { dtuId, format } = req.body || {};
-    if (!dtuId) return res.status(400).json({ ok: false, error: "dtuId required" });
-    res.status(501).json({
-      ok: false,
-      error: "unavailable",
-      reason: "export_not_wired",
-      format: format || null,
-      message: "Export does not write a file. No size or download URL was invented.",
+    if (!dtuId || typeof dtuId !== "string") return res.status(400).json({ ok: false, error: "dtuId required" });
+    const fmt = String(format || "pdf").toLowerCase();
+    if (!DOCUMENT_EXPORT_FORMATS.includes(fmt)) {
+      return res.status(400).json({ ok: false, error: "unsupported_format", supportedFormats: DOCUMENT_EXPORT_FORMATS });
+    }
+    const store = _simExportStore();
+    const hasStore = !!store && typeof store.get === "function";
+    if (!hasStore && !db) {
+      return res.status(501).json({
+        ok: false, error: "unavailable", reason: "not_wired",
+        missing: "DTU store (STATE.dtus) is not available in this process",
+      });
+    }
+    // DTUs written straight to SQL (e.g. grounding_*) are not in STATE.dtus.
+    // Read them through the shared shadow hydrator (read-only, nothing is
+    // inserted into STATE) and apply the same visibility gate below.
+    let dtu = hasStore ? store.get(dtuId) : null;
+    if (!dtu && db) dtu = readAndHydrateDtu(db, dtuId);
+    if (!dtu || _simExportHidden(dtu, _userId(req))) {
+      return res.status(404).json({ ok: false, error: "dtu_not_found" });
+    }
+    let rendered;
+    try {
+      rendered = await renderDtuAsFile(dtu, fmt);
+    } catch {
+      return res.status(501).json({
+        ok: false, error: "unavailable", reason: "render_failed", format: fmt,
+        message: `The ${fmt} renderer failed on this DTU. Nothing was exported.`,
+      });
+    }
+    if (!rendered.ok) {
+      return res.status(400).json({ ok: false, error: rendered.error, supportedFormats: rendered.supportedFormats || DOCUMENT_EXPORT_FORMATS });
+    }
+    if (rendered.buffer.length > SIM_EXPORT_MAX_BYTES) {
+      return res.status(413).json({ ok: false, error: "export_too_large", bytes: rendered.buffer.length, maxBytes: SIM_EXPORT_MAX_BYTES });
+    }
+    res.json({
+      ok: true, dtuId, format: fmt,
+      filename: rendered.filename, mimeType: rendered.mimeType,
+      bytes: rendered.buffer.length, encoding: "base64",
+      content: rendered.buffer.toString("base64"),
     });
   }));
 
@@ -2008,20 +2074,37 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Lens Plugin System API ──────────────────────────────────────
 
   router.get("/sim/plugins/catalog", wrap((_req, res) => {
-    sendSim(res, readPluginSurface());
+    sendSim(res, readPluginCatalog(db));
   }));
 
   router.get("/sim/plugins/installed/:userId", wrap((req, res) => {
+    if (!_userId(req)) return res.status(401).json({ ok: false, error: "sign_in_required" });
     if (!ownSimUser(req, res)) return;
-    sendSim(res, readPluginSurface());
+    sendSim(res, readInstalledPlugins());
   }));
 
-  router.post("/sim/plugins/install", auth, wrap((_req, res) => {
-    sendSim(res, readPluginSurface());
+  // Real install through the hardened gallery path. Only a gallery id is
+  // accepted — never a source/manifest from the request body.
+  router.post("/sim/plugins/install", auth, wrap(async (req, res) => {
+    const userId = _userId(req);
+    if (!userId) return res.status(401).json({ ok: false, error: "sign_in_required" });
+    const raw = req.body?.pluginId ?? req.body?.id;
+    const pluginId = typeof raw === "string" ? raw.trim() : "";
+    if (!pluginId) return res.status(400).json({ ok: false, error: "plugin_id_required" });
+    if (typeof installGalleryPlugin !== "function") return sendSim(res, readPluginInstallWrite());
+    const result = await installGalleryPlugin(pluginId, userId);
+    if (!result?.ok) {
+      const status = result?.error === "plugin_not_found" ? 404
+        : result?.error === "user_required" ? 401
+        : result?.error === "plugin_delisted" ? 410
+        : 400;
+      return res.status(status).json(result || { ok: false, error: "install_failed" });
+    }
+    res.json(result);
   }));
 
   router.post("/sim/plugins/uninstall", auth, wrap((_req, res) => {
-    sendSim(res, readPluginSurface());
+    sendSim(res, readPluginInstallWrite());
   }));
 
   // ── Smart Notifications API ─────────────────────────────────────
@@ -2052,8 +2135,8 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     sendSim(res, readMobileDashboard(db, viewer));
   }));
 
-  router.post("/sim/mobile/quick-action", auth, wrap((_req, res) => {
-    sendSim(res, rejectQuickAction());
+  router.post("/sim/mobile/quick-action", auth, wrap((req, res) => {
+    sendSim(res, runQuickAction(db, _userId(req), req.body));
   }));
 
   // ── Infrastructure Health API ───────────────────────────────────
@@ -2066,11 +2149,19 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     sendSim(res, readSimMetrics(db));
   }));
 
-  router.get("/sim/eventbus/status", wrap((_req, res) => {
-    sendSim(res, readEventBusStatus());
+  // Admin-only, same role set as /api/admin/worker-stats (owner/admin/
+  // sovereign/founder). Signed out 401, signed in non-admin 403.
+  function simAdminOnly(req, res, next) {
+    if (!req.user) return res.status(401).json({ ok: false, error: "auth_required" });
+    if (!isSimAdmin(req.user)) return res.status(403).json({ ok: false, error: "forbidden" });
+    next();
+  }
+
+  router.get("/sim/eventbus/status", simAdminOnly, wrap((_req, res) => {
+    sendSim(res, readEventBusStatus({ db, getRealtimeClients }));
   }));
 
-  router.get("/sim/jobs/queue-status", wrap((_req, res) => {
+  router.get("/sim/jobs/queue-status", simAdminOnly, wrap((_req, res) => {
     sendSim(res, readJobQueueStatus());
   }));
 

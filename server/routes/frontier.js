@@ -38,7 +38,7 @@ const frontierConfig = require('../config/frontier.cjs');
  * @param {Function} [opts.requireAuth] - Auth middleware
  * @returns {Router}
  */
-export default function createFrontierRoutes({ requireAuth } = {}) {
+export default function createFrontierRoutes({ requireAuth, db = null } = {}) {
   const router = Router();
 
   // Expose frontier config to all route handlers via req.frontierConfig
@@ -50,7 +50,7 @@ export default function createFrontierRoutes({ requireAuth } = {}) {
   // Mount each feature group
   router.use('/', createFrontierRoutesPart1({ requireAuth }));
   router.use('/', createFrontierRoutesPart2({ requireAuth }));
-  router.use('/', createFrontierRoutesPart4({ requireAuth }));
+  router.use('/', createFrontierRoutesPart4({ requireAuth, db }));
 
   // ── Health & Discovery ──────────────────────────────────────────────────
 

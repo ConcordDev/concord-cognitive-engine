@@ -59,11 +59,30 @@ export default function registerEnergyActions(registerLensAction) {
   });
   registerLensAction("energy", "solarEstimate", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    // Clamp to physically-sane bounds so a poisoned ("1e999"/"Infinity") or
-    // absurd input never cascades into Infinity panels/cost/payback.
-    const roofSqFt = finiteNum(data.roofAreaSqFt, 1000, 100, 1_000_000);
-    const sunHours = finiteNum(data.peakSunHours, 5, 0.1, 24);
-    const usageKWh = finiteNum(data.monthlyUsageKWh, 900, 1, 10_000_000);
+    // A missing or non-finite site reading is not a 1,000 sq ft house with
+    // 5 peak sun hours and 900 kWh/month. Out-of-range values are refused
+    // rather than clamped into a quote.
+    const siteReading = (v, min, max) => {
+      if (v == null || v === "") return null;
+      const n = typeof v === "number" ? v : parseFloat(v);
+      if (!Number.isFinite(n) || n < min || n > max) return null;
+      return n;
+    };
+    const roofSqFt = siteReading(data.roofAreaSqFt, 100, 1_000_000);
+    const sunHours = siteReading(data.peakSunHours, 0.1, 24);
+    const usageKWh = siteReading(data.monthlyUsageKWh, 1, 10_000_000);
+    const unavailable = [];
+    if (roofSqFt == null) unavailable.push("roofAreaSqFt");
+    if (sunHours == null) unavailable.push("peakSunHours");
+    if (usageKWh == null) unavailable.push("monthlyUsageKWh");
+    const blank = {
+      roofArea: null, maxPanels: null, systemSizeKW: null, monthlyProductionKWh: null,
+      coveragePercent: null, estimatedCost: null, afterTaxCredit: null, annualSavings: null,
+      paybackYears: null, recommendation: null,
+    };
+    if (unavailable.length) {
+      return { ok: true, result: { ...blank, reason: "not_recorded", unavailable } };
+    }
     const panelWatts = 400;
     const panelSqFt = 18;
     const maxPanels = Math.floor(roofSqFt * 0.7 / panelSqFt);
@@ -73,7 +92,7 @@ export default function registerEnergyActions(registerLensAction) {
     const costEstimate = Math.round(systemKW * 2800);
     const annualSavings = Math.round(Math.min(monthlyProduction, usageKWh) * 12 * 0.12);
     const paybackYears = annualSavings > 0 ? Math.round((costEstimate * 0.7) / annualSavings * 10) / 10 : 0; // 30% tax credit
-    return { ok: true, result: { roofArea: roofSqFt, maxPanels, systemSizeKW: Math.round(systemKW * 10) / 10, monthlyProductionKWh: Math.round(monthlyProduction), coveragePercent, estimatedCost: costEstimate, afterTaxCredit: Math.round(costEstimate * 0.7), annualSavings, paybackYears, recommendation: coveragePercent >= 100 ? "Solar can cover 100% of usage" : `Solar can cover ${coveragePercent}% of usage` } };
+    return { ok: true, result: { roofArea: roofSqFt, maxPanels, systemSizeKW: Math.round(systemKW * 10) / 10, monthlyProductionKWh: Math.round(monthlyProduction), coveragePercent, estimatedCost: costEstimate, afterTaxCredit: Math.round(costEstimate * 0.7), annualSavings, paybackYears, recommendation: coveragePercent >= 100 ? "Solar can cover 100% of usage" : `Solar can cover ${coveragePercent}% of usage`, reason: null, unavailable: [] } };
   });
   registerLensAction("energy", "carbonFootprint", (ctx, artifact, _params) => {
     const data = artifact.data || {};

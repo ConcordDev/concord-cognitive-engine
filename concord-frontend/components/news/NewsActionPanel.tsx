@@ -37,10 +37,29 @@ function pickMessage(e: unknown): string {
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
 
-interface BiasResult { lean?: string; score?: number; loadedWords?: string[]; balanceScore?: number }
-interface EventsResult { events?: Array<{ who: string; what: string; when?: string; where?: string }>; total?: number }
-interface NarrativeResult { dominantNarrative?: string; competingNarratives?: string[]; shiftDetected?: boolean }
-interface BriefingResult { headlines?: Array<{ source: string; headline: string; url?: string }>; topTopics?: string[] }
+// Shapes mirror server/domains/news.js biasDetection / eventExtraction / narrativeTracking / daily-briefing.
+interface BiasResult {
+  articlesAnalyzed?: number;
+  overallBiasScore?: number | null;
+  overallBiasReason?: string | null;
+  biasLevel?: 'low' | 'moderate' | 'high' | null;
+  articleAnalyses?: Array<{ sentimentBalance?: number | null; biasReason?: string | null; loadedLanguage?: { examples?: Array<{ word: string; polarity: string }> } }>;
+  message?: string;
+}
+interface EventsResult {
+  eventsExtracted?: number;
+  events?: Array<{ who?: string[]; action?: string; sentence?: string; where?: string[] }>;
+  message?: string;
+}
+interface NarrativeResult { narrativeStability?: number; stabilityLevel?: 'stable' | 'evolving' | 'volatile'; shiftCount?: number; message?: string }
+interface BriefingSection { heading: string; bullets: string[] }
+interface BriefingResult { greeting?: string; topStories?: BriefingSection; business?: BriefingSection; tech?: BriefingSection; science?: BriefingSection; closing?: string }
+interface StoredArticle { title: string; source: string; summary?: string | null; publishedAt?: string }
+
+const biasLabel = (b: BiasResult | null) => b?.biasLevel ?? 'not scored';
+const briefingSections = (b: BriefingResult | null): BriefingSection[] =>
+  [b?.topStories, b?.business, b?.tech, b?.science].filter((x): x is BriefingSection => !!x && Array.isArray(x.bullets));
+const articleInput = (headline: string, text: string) => [{ title: headline.trim(), body: text.trim() }];
 
 export function NewsActionPanel() {
   const [headline, setHeadline] = useState('');
@@ -79,30 +98,63 @@ export function NewsActionPanel() {
   async function actBias() {
     if (!articleText.trim()) { err('Add article text.'); return; }
     setBusy('bias'); setFeedback(null);
-    try { const r = await callMacro<BiasResult>('biasDetection', { text: articleText, headline }); if (r.ok && r.result) { setBiasResult(r.result); pipe.publish('news.bias', r.result, { label: r.result.lean ?? 'lean' }); ok(`Lean: ${r.result.lean}.`); } else err(r.error ?? 'bias failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<BiasResult>('biasDetection', { articles: articleInput(headline, articleText) });
+      if (r.ok && r.result) {
+        setBiasResult(r.result);
+        pipe.publish('news.bias', r.result, { label: biasLabel(r.result) });
+        if (r.result.overallBiasScore == null) ok(`No bias score: ${r.result.overallBiasReason ?? r.result.message ?? 'no loaded or hedge terms found'}.`);
+        else ok(`Bias level: ${r.result.biasLevel}.`);
+      } else err(r.error ?? 'bias failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actEvents() {
     if (!articleText.trim()) { err('Add article text.'); return; }
     setBusy('events'); setFeedback(null);
-    try { const r = await callMacro<EventsResult>('eventExtraction', { text: articleText }); if (r.ok && r.result) { setEventsResult(r.result); pipe.publish('news.events', r.result, { label: `${r.result.total ?? 0} events` }); ok(`${r.result.total ?? 0} events.`); } else err(r.error ?? 'events failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<EventsResult>('eventExtraction', { articles: articleInput(headline, articleText) });
+      if (r.ok && r.result) {
+        setEventsResult(r.result);
+        const n = r.result.eventsExtracted ?? 0;
+        pipe.publish('news.events', r.result, { label: `${n} events` });
+        ok(`${n} events.`);
+      } else err(r.error ?? 'events failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actNarrative() {
     if (!topic.trim()) { err('Topic required.'); return; }
     setBusy('narrative'); setFeedback(null);
-    try { const r = await callMacro<NarrativeResult>('narrativeTracking', { topic: topic.trim() }); if (r.ok && r.result) { setNarrativeResult(r.result); pipe.publish('news.narrative', r.result, { label: r.result.shiftDetected ? 'SHIFT' : 'stable' }); ok(r.result.shiftDetected ? 'Narrative SHIFT.' : 'Narrative stable.'); } else err(r.error ?? 'narrative failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      // Narrative tracking compares several articles over time; use the stored articles matching the topic.
+      const found = await callMacro<{ articles?: StoredArticle[] }>('article-search', { query: topic.trim() });
+      const stored = found.ok ? found.result?.articles ?? [] : [];
+      if (stored.length < 2) { setNarrativeResult(null); err(`Need at least 2 stored articles matching "${topic.trim()}" to track a narrative; found ${stored.length}.`); return; }
+      const articles = stored.map((a) => ({ title: a.title, body: a.summary || a.title, source: a.source, date: a.publishedAt }));
+      const r = await callMacro<NarrativeResult>('narrativeTracking', { articles });
+      if (r.ok && r.result) {
+        setNarrativeResult(r.result);
+        const shifted = (r.result.shiftCount ?? 0) > 0;
+        pipe.publish('news.narrative', r.result, { label: shifted ? 'SHIFT' : r.result.stabilityLevel ?? 'not scored' });
+        ok(r.result.message ?? (shifted ? `Narrative SHIFT (${r.result.shiftCount}).` : `Narrative ${r.result.stabilityLevel ?? 'not scored'}.`));
+      } else err(r.error ?? 'narrative failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actBriefing() {
     setBusy('briefing'); setFeedback(null);
-    try { const r = await callMacro<BriefingResult>('daily-briefing', {}); if (r.ok && r.result) { setBriefingResult(r.result); pipe.publish('news.briefing', r.result, { label: `${r.result.headlines?.length ?? 0} headlines` }); ok(`${r.result.headlines?.length ?? 0} headlines.`); } else err(r.error ?? 'briefing failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<BriefingResult>('daily-briefing', {});
+      if (r.ok && r.result) {
+        setBriefingResult(r.result);
+        const n = briefingSections(r.result).reduce((t, sec) => t + sec.bullets.length, 0);
+        pipe.publish('news.briefing', r.result, { label: `${n} bullets` });
+        ok(`${n} briefing bullets.`);
+      } else err(r.error ?? 'briefing failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `News — ${headline.trim() || topic.trim() || 'snapshot'}`, tags: ['news', biasResult?.lean ?? 'unknown', topic ? `topic:${topic.trim().toLowerCase()}` : ''].filter(Boolean), source: 'news:snapshot:mint', meta: { visibility: 'private', consent: { allowCitations: false }, news: { headline, topic, bias: biasResult, events: eventsResult, narrative: narrativeResult, briefing: briefingResult } } }, 'knowledge', ['private']) });
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `News — ${headline.trim() || topic.trim() || 'snapshot'}`, tags: ['news', biasResult?.biasLevel ?? 'unknown', topic ? `topic:${topic.trim().toLowerCase()}` : ''].filter(Boolean), source: 'news:snapshot:mint', meta: { visibility: 'private', consent: { allowCitations: false }, news: { headline, topic, bias: biasResult, events: eventsResult, narrative: narrativeResult, briefing: briefingResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('news.mintedDtuId', id, { label: `snapshot ${id.slice(0, 8)}` }); ok(`News DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -110,7 +162,7 @@ export function NewsActionPanel() {
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`📰 News brief: ${headline || topic || 'snapshot'}`, '', biasResult ? `Bias: ${biasResult.lean} (${biasResult.score})` : '', eventsResult ? `Events: ${eventsResult.total}` : '', narrativeResult ? `Narrative: ${narrativeResult.dominantNarrative}${narrativeResult.shiftDetected ? ' (SHIFT)' : ''}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
+    const body = [`📰 News brief: ${headline || topic || 'snapshot'}`, '', biasResult ? `Bias: ${biasLabel(biasResult)} (${biasResult.overallBiasScore ?? 'no score'})` : '', eventsResult ? `Events: ${eventsResult.eventsExtracted ?? 0}` : '', narrativeResult ? `Narrative: ${narrativeResult.stabilityLevel ?? 'not scored'}${(narrativeResult.shiftCount ?? 0) > 0 ? ' (SHIFT)' : ''}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
     try {
       const messageId = await dmRecall.run(async () => {
         const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
@@ -124,7 +176,7 @@ export function NewsActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `News literacy — ${topic || 'snapshot'}`, tags: ['news', 'literacy', 'public', biasResult?.lean ?? 'unknown'], source: 'news:literacy:publish', meta: { visibility: 'public', consent: { allowCitations: true }, literacy: { topic, bias: biasResult, narrative: narrativeResult } } }, 'knowledge', ['private', 'public_view', 'social_post']) });
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `News literacy — ${topic || 'snapshot'}`, tags: ['news', 'literacy', 'public', biasResult?.biasLevel ?? 'unknown'], source: 'news:literacy:publish', meta: { visibility: 'public', consent: { allowCitations: true }, literacy: { topic, bias: biasResult, narrative: narrativeResult } } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
@@ -137,7 +189,7 @@ export function NewsActionPanel() {
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
-      const task = `News topic: "${topic || headline || 'general'}". ${biasResult ? `Lean: ${biasResult.lean}.` : ''} ${narrativeResult ? `Narrative: ${narrativeResult.dominantNarrative}.` : ''} Suggest 3 cross-spectrum sources I should read this week to get balanced coverage. Plain text, one per line, with why each adds a different angle.`;
+      const task = `News topic: "${topic || headline || 'general'}". ${biasResult?.biasLevel ? `Bias level: ${biasResult.biasLevel}.` : ''} ${narrativeResult?.stabilityLevel ? `Narrative: ${narrativeResult.stabilityLevel}.` : ''} Suggest 3 cross-spectrum sources I should read this week to get balanced coverage. Plain text, one per line, with why each adds a different angle.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Source list ready.'); } else err('Agent returned empty.');
@@ -145,7 +197,7 @@ export function NewsActionPanel() {
   }
 
   const actions = [
-    { id: 'bias' as ActionId, label: 'Bias', desc: 'biasDetection lean + loaded words', icon: Compass, accent: '#ef4444', handler: actBias },
+    { id: 'bias' as ActionId, label: 'Bias', desc: 'biasDetection level + loaded words', icon: Compass, accent: '#ef4444', handler: actBias },
     { id: 'events' as ActionId, label: 'Events', desc: 'eventExtraction who/what/when/where', icon: Calendar, accent: '#06b6d4', handler: actEvents },
     { id: 'narrative' as ActionId, label: 'Narrative', desc: 'narrativeTracking + shift detection', icon: TrendingUp, accent: '#8b5cf6', handler: actNarrative },
     { id: 'briefing' as ActionId, label: 'Briefing', desc: 'daily-briefing top headlines', icon: RadioTower, accent: '#eab308', handler: actBriefing },
@@ -199,29 +251,31 @@ export function NewsActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {biasResult && (
           <div className="rounded-md border border-rose-500/30 bg-rose-500/5 p-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-rose-300 font-semibold">Bias: {biasResult.lean}</div>
-            <div className="text-2xl font-bold text-zinc-100">{biasResult.score}</div>
-            {biasResult.loadedWords && <div className="text-[10px] text-zinc-400 mt-1">Loaded: {biasResult.loadedWords.slice(0, 5).join(', ')}</div>}
-            {biasResult.balanceScore != null && <div className="text-[10px] text-zinc-400">Balance: {biasResult.balanceScore}/100</div>}
+            <div className="text-[10px] uppercase tracking-wider text-rose-300 font-semibold">Bias: {biasLabel(biasResult)}</div>
+            <div className="text-2xl font-bold text-zinc-100">{biasResult.overallBiasScore ?? '—'}</div>
+            {biasResult.overallBiasScore == null && <div className="text-[10px] text-zinc-400">Not scored: {biasResult.overallBiasReason ?? biasResult.message ?? 'no reason given'}</div>}
+            {(biasResult.articleAnalyses?.[0]?.loadedLanguage?.examples?.length ?? 0) > 0 && <div className="text-[10px] text-zinc-400 mt-1">Loaded: {biasResult.articleAnalyses?.[0]?.loadedLanguage?.examples?.slice(0, 5).map((x) => x.word).join(', ')}</div>}
           </div>
         )}
-        {eventsResult?.events && (
+        {eventsResult && (
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5 max-h-40 overflow-y-auto">
-            <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Events ({eventsResult.total})</div>
-            {eventsResult.events.slice(0, 6).map((e, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-cyan-200">{e.who}</strong> {e.what}{e.where && <span className="text-zinc-400"> · {e.where}</span>}</div>)}
+            <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Events ({eventsResult.eventsExtracted ?? 0})</div>
+            {eventsResult.message && <div className="text-[10px] text-zinc-400">{eventsResult.message}</div>}
+            {(eventsResult.events ?? []).slice(0, 6).map((e, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-cyan-200">{(e.who ?? []).join(', ') || 'unknown'}</strong> {e.action}{e.where && e.where.length > 0 && <span className="text-zinc-400"> · {e.where.join(', ')}</span>}</div>)}
           </div>
         )}
         {narrativeResult && (
-          <div className={cn('rounded-md border p-2.5', narrativeResult.shiftDetected ? 'border-amber-500/40 bg-amber-500/5' : 'border-purple-500/30 bg-purple-500/5')}>
-            <div className={cn('text-[10px] uppercase tracking-wider font-semibold', narrativeResult.shiftDetected ? 'text-amber-300' : 'text-purple-300')}>Narrative {narrativeResult.shiftDetected && '(SHIFT)'}</div>
-            <div className="text-sm font-semibold text-zinc-100 mt-1">{narrativeResult.dominantNarrative}</div>
-            {narrativeResult.competingNarratives && <div className="text-[10px] text-zinc-400 mt-1">vs: {narrativeResult.competingNarratives.slice(0, 3).join(' · ')}</div>}
+          <div className={cn('rounded-md border p-2.5', (narrativeResult.shiftCount ?? 0) > 0 ? 'border-amber-500/40 bg-amber-500/5' : 'border-purple-500/30 bg-purple-500/5')}>
+            <div className={cn('text-[10px] uppercase tracking-wider font-semibold', (narrativeResult.shiftCount ?? 0) > 0 ? 'text-amber-300' : 'text-purple-300')}>Narrative {(narrativeResult.shiftCount ?? 0) > 0 && '(SHIFT)'}</div>
+            <div className="text-sm font-semibold text-zinc-100 mt-1">{narrativeResult.stabilityLevel ?? 'not scored'}</div>
+            <div className="text-[10px] text-zinc-400 mt-1">Stability: {narrativeResult.narrativeStability ?? '—'} · shifts: {narrativeResult.shiftCount ?? '—'}</div>
+            {narrativeResult.message && <div className="text-[10px] text-zinc-400">{narrativeResult.message}</div>}
           </div>
         )}
-        {briefingResult?.headlines && (
+        {briefingResult && (
           <div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-2.5 max-h-40 overflow-y-auto">
-            <div className="text-[10px] uppercase tracking-wider text-yellow-300 font-semibold">Briefing ({briefingResult.headlines.length})</div>
-            {briefingResult.headlines.slice(0, 5).map((h, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-yellow-200">{h.source}:</strong> {h.headline.slice(0, 80)}</div>)}
+            <div className="text-[10px] uppercase tracking-wider text-yellow-300 font-semibold">Briefing</div>
+            {briefingSections(briefingResult).map((sec, i) => <div key={i} className="text-[11px] text-zinc-300 mt-1"><strong className="text-yellow-200">{sec.heading}</strong>{sec.bullets.slice(0, 3).map((b, j) => <div key={j} className="text-[10px] text-zinc-400">{b.slice(0, 100)}</div>)}</div>)}
           </div>
         )}
       </div>

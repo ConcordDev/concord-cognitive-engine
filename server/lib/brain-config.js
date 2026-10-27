@@ -112,6 +112,15 @@ const _background_urls = (() => {
 })();
 
 const _localUnifiedModel = String(process.env.BRAIN_LOCAL_UNIFIED_MODEL || "").trim();
+/**
+ * The small local model named by BRAIN_LOCAL_UNIFIED_MODEL, read at call time
+ * (so tests and operators see the live env), or null when unset. Answer
+ * labelling (lib/answer-confidence.js) uses this to recognise backup-model replies.
+ */
+export function getLocalUnifiedModel() {
+  const m = String(process.env.BRAIN_LOCAL_UNIFIED_MODEL || "").trim();
+  return m || null;
+}
 function _isLocalHttpEndpoint(u) {
   return typeof u === "string" && /^https?:\/\//i.test(u);
 }

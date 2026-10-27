@@ -125,19 +125,27 @@ describe("world sim infra reads stored counts", () => {
     const withStarter = await call("/api/world/sim/metrics");
     assert.equal(withStarter.body.metrics.dtusCreated24h, 2);
     db.prepare(`DELETE FROM dtus WHERE id IN ('dtu-unix-new', 'dtu-unix-old', 'mat_usera_wood_2_0')`).run();
+    // 13-digit unix MILLISECOND values: "now" counts, 10 days ago does not.
+    // Without the ms→s division these compare as far in the future and both count.
+    db.prepare(`
+      INSERT INTO dtus (id, title, creator_id, created_at)
+      VALUES ('dtu-ms-new', 'Ms New', 'user-a', ?),
+             ('dtu-ms-old', 'Ms Old', 'user-a', ?)
+    `).run(Date.now(), Date.now() - 10 * 24 * 3600 * 1000);
+    // Baseline here is 1 (dtu-pier); only the ms "now" row adds to it.
+    const withMs = await call("/api/world/sim/metrics");
+    assert.equal(withMs.body.metrics.dtusCreated24h, 2);
+    db.prepare(`DELETE FROM dtus WHERE id IN ('dtu-ms-new', 'dtu-ms-old')`).run();
     assert.equal(metrics.body.unavailable.activePlayers, "not_recorded");
     assert.equal(metrics.body.unavailable.cacheHitRate, "no_cache_stats");
     assert.equal(metrics.body.metrics.activePlayers, undefined);
     assert.equal(JSON.stringify(metrics.body).includes("1847"), false);
 
-    const bus = await call("/api/world/sim/eventbus/status");
-    assert.equal(bus.status, 501);
-    assert.equal(bus.body.reason, "no_event_bus");
-    assert.equal(bus.body.channels, undefined);
-
-    const jobs = await call("/api/world/sim/jobs/queue-status");
-    assert.equal(jobs.status, 501);
-    assert.equal(jobs.body.reason, "no_job_queue");
+    // Event bus and job queue status are admin-only now (see sim-infra-batch5).
+    assert.equal((await call("/api/world/sim/eventbus/status")).status, 401);
+    assert.equal((await call("/api/world/sim/jobs/queue-status")).status, 401);
+    assert.equal((await call("/api/world/sim/eventbus/status", { user: "u1" })).status, 403);
+    assert.equal((await call("/api/world/sim/jobs/queue-status", { user: "u1" })).status, 403);
 
     const cache = await call("/api/world/sim/cache/status");
     assert.equal(cache.status, 200);
@@ -155,6 +163,7 @@ describe("world sim infra reads stored counts", () => {
     assert.equal(hub.body.concordia.totalVisits, 9);
     assert.equal(hub.body.concordia.buildingCount, 2);
     assert.equal(hub.body.concordia.districts, null);
+    assert.equal(hub.body.concordia.districtsReason, "no_district_table");
     assert.equal(hub.body.concordia.activeUsers, null);
     assert.equal(JSON.stringify(hub.body).includes("8200"), false);
 
@@ -170,7 +179,8 @@ describe("world sim infra reads stored counts", () => {
     const timeline = await call("/api/world/sim/timeline/exchange");
     assert.equal(timeline.status, 200);
     assert.deepEqual(timeline.body.snapshots, []);
-    assert.equal(timeline.body.reason, "no_snapshot_store");
+    assert.equal(timeline.body.reason, "no_snapshots_recorded_yet");
+    assert.equal(timeline.body.power, null);
 
     const scene = await call("/api/world/sim/scene/exchange");
     assert.equal(scene.status, 200);
@@ -180,8 +190,12 @@ describe("world sim infra reads stored counts", () => {
     assert.deepEqual(scene.body.scene.buildings, []);
 
     const stress = await call("/api/world/sim/stress-test", { method: "POST", body: { districtId: "exchange", magnitude: 7 } });
-    assert.equal(stress.status, 501);
-    assert.equal(stress.body.reason, "no_structural_model");
+    // This fixture's world_buildings has no material/floors/health columns, so the model cannot run.
+    assert.equal(stress.status, 503);
+    assert.equal(stress.body.error, "unavailable");
+    assert.equal(stress.body.reason, "no_building_table");
+    const noId = await call("/api/world/sim/stress-test", { method: "POST", body: { magnitude: 7 } });
+    assert.equal(noId.status, 400);
     assert.equal(JSON.stringify(stress.body).includes("bldg-001"), false);
   });
 
@@ -206,13 +220,26 @@ describe("world sim infra reads stored counts", () => {
       user: "user-a",
       body: { action: "check-builds" },
     });
+    // This fixture's world_buildings has no owner column, so builds cannot be
+    // attributed to a user: honest 501 naming the action.
     assert.equal(action.status, 501);
-    assert.equal(action.body.reason, "action_not_wired");
+    assert.equal(action.body.reason, "buildings_not_attributed");
+    assert.equal(action.body.action, "check-builds");
     assert.equal(action.body.executed, undefined);
 
+    const chat = await call("/api/world/sim/mobile/quick-action", {
+      method: "POST",
+      user: "user-a",
+      body: { action: "quick-chat" },
+    });
+    assert.equal(chat.status, 501);
+    assert.equal(chat.body.reason, "action_not_wired");
+    assert.equal(chat.body.action, "quick-chat");
+
     const plugins = await call("/api/world/sim/plugins/catalog");
-    assert.equal(plugins.status, 501);
-    assert.equal(plugins.body.reason, "no_plugin_registry");
+    assert.equal(plugins.status, 200);
+    assert.deepEqual(plugins.body.plugins, []);
+    assert.equal(plugins.body.unavailable.databaseRows, "no_plugin_gallery_table");
 
     const empty = await call("/api/world/sim/smart-notifications/user-a", { user: "user-a" });
     assert.equal(empty.status, 501);

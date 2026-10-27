@@ -205,4 +205,43 @@ describe('SystemStatus', () => {
 
     expect(screen.getByText('Connection refused')).toBeInTheDocument();
   });
+
+  it('badge shows the real critical count above 5 while the list keeps only the latest 5', () => {
+    mockUIStoreState.requestErrors = Array.from({ length: 7 }, (_, i) => ({
+      id: `err-${i}`,
+      at: new Date().toISOString(),
+      message: `Failure ${i}`,
+      status: 500,
+      method: 'GET',
+      path: `/api/thing-${i}`,
+      reason: `Failure ${i}`,
+    }));
+
+    render(<SystemStatus />);
+    // Badge = all 7 critical errors, not the capped list length.
+    expect(screen.getByText('7')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('System Status').closest('button')!);
+    expect(screen.getByText('Showing latest 5 of 7')).toBeInTheDocument();
+    expect(screen.queryByText('Failure 0')).not.toBeInTheDocument();
+    expect(screen.queryByText('Failure 1')).not.toBeInTheDocument();
+    expect(screen.getByText('Failure 2')).toBeInTheDocument();
+    expect(screen.getByText('Failure 6')).toBeInTheDocument();
+  });
+
+  it('does not show the "Showing latest" note when 5 or fewer errors', () => {
+    mockUIStoreState.requestErrors = Array.from({ length: 5 }, (_, i) => ({
+      id: `err-${i}`,
+      at: new Date().toISOString(),
+      message: `Failure ${i}`,
+      status: 500,
+      method: 'GET',
+      path: `/api/thing-${i}`,
+      reason: `Failure ${i}`,
+    }));
+
+    render(<SystemStatus />);
+    fireEvent.click(screen.getByText('System Status').closest('button')!);
+    expect(screen.queryByText(/Showing latest/)).not.toBeInTheDocument();
+  });
 });

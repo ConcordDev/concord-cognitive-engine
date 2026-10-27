@@ -20,6 +20,7 @@ const SUPPRESSED_PATHS = ['/', '/login', '/register', '/forgot-password'];
 
 export function OperatorErrorBanner() {
   const requestErrors = useUIStore((state) => state.requestErrors);
+  const requestErrorTotal = useUIStore((state) => state.requestErrorTotal);
   const clearRequestErrors = useUIStore((state) => state.clearRequestErrors);
   const authPosture = useUIStore((state) => state.authPosture);
   const pathname = usePathname();
@@ -73,7 +74,7 @@ export function OperatorErrorBanner() {
           aria-label="Show debug panel"
         >
           <AlertTriangle className="h-3 w-3" />
-          <span>{requestErrors.length} issue{requestErrors.length !== 1 ? 's' : ''}</span>
+          <span>{requestErrorTotal} issue{requestErrorTotal !== 1 ? 's' : ''}</span>
         </button>
       </div>
     );

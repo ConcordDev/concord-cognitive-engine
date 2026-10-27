@@ -105,14 +105,33 @@ describe("robotics — telemetry", () => {
     assert.equal(r.ok, false);
   });
 
-  it("telemetry produces joints, sensors, faults for a real robot", () => {
-    const reg = call("fleetRegister", ctxA, { name: "T-1", type: "arm" });
-    const r = call("telemetry", ctxA, { robotId: reg.result.robot.id, tick: 5 });
-    assert.equal(r.ok, true);
-    assert.equal(r.result.dof, 6);
-    assert.equal(r.result.joints.length, 6);
-    assert.ok(["nominal", "degraded", "critical"].includes(r.result.health));
-    assert.ok(Array.isArray(r.result.faults));
+  it("telemetry does not invent a live feed; it reads the sensor log", () => {
+    const reg = call("fleetRegister", ctxA, { name: "T-1", type: "arm", battery: 80 });
+    const id = reg.result.robot.id;
+    const empty = call("telemetry", ctxA, { robotId: id });
+    assert.equal(empty.ok, true);
+    assert.equal(empty.result.telemetryReason, "no_sensor_log");
+    assert.equal(empty.result.telemetrySource, "none");
+    assert.deepEqual(empty.result.joints, []);
+    assert.equal(empty.result.dof, null);
+    assert.equal(empty.result.sensors, null);
+    assert.equal(empty.result.battery, 80);
+    assert.equal(empty.result.health, "nominal");
+
+    call("sensorLog", ctxA, { robotId: id, channel: "joint_1", value: 12.5 });
+    call("sensorLog", ctxA, { robotId: id, channel: "temperature", value: 51 });
+    const r = call("telemetry", ctxA, { robotId: id });
+    assert.equal(r.result.telemetrySource, "sensor_log");
+    assert.equal(r.result.telemetryReason, null);
+    assert.equal(r.result.dof, 1);
+    assert.equal(r.result.joints[0].angle, 12.5);
+    assert.equal(r.result.sensors.temperature, 51);
+    assert.ok(r.result.faults.some((f) => f.code === "THERMAL_WARN"));
+
+    call("fleetUpdate", ctxA, { robotId: id, battery: 10 });
+    const low = call("telemetry", ctxA, { robotId: id });
+    assert.equal(low.result.battery, 10);
+    assert.ok(low.result.faults.some((f) => f.code === "LOW_BATTERY"));
   });
 });
 

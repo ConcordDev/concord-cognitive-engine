@@ -8,6 +8,7 @@
     "moduleResolution": "bundler",
     "skipLibCheck": true,
     "lib": ["ES2022"],
+    "types": ["node"],
     "strict": false,
     "noImplicitAny": false,
     "resolveJsonModule": true,
