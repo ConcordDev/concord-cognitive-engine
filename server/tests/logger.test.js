@@ -246,4 +246,25 @@ describe("logger", () => {
       assert.equal(typeof logger.debug, "function");
     });
   });
+
+  describe("lens action failed meta tail", () => {
+    it("prints domain, action, error and 3 stack frames from scrubbed meta", () => {
+      const stack = ["TypeError: boom", "at a (a.js:1)", "at b (b.js:2)", "at c (c.js:3)", "at d (d.js:4)"].join("\n");
+      log("error", "lens-run", "lens action failed", { domain: "chem", action: "parse-smiles", error: "boom", stack, token: "sk-secret" });
+      const line = console.error.mock.calls[0].arguments[0];
+      assert.ok(line.includes('"domain":"chem"'));
+      assert.ok(line.includes('"action":"parse-smiles"'));
+      assert.ok(line.includes('"error":"boom"'));
+      assert.ok(line.includes("at c (c.js:3)"));
+      assert.ok(!line.includes("at d (d.js:4)"));
+      assert.ok(!line.includes("sk-secret"));
+    });
+
+    it("caps the tail and leaves other error lines bare", () => {
+      log("error", "lens-run", "lens action failed", { domain: "x", action: "y", error: "e".repeat(5000) });
+      assert.ok(console.error.mock.calls[0].arguments[0].length < 700);
+      log("error", "src", "other failure", { error: "hidden" });
+      assert.ok(!console.error.mock.calls[1].arguments[0].includes("hidden"));
+    });
+  });
 });
