@@ -3630,6 +3630,14 @@ async function gracefulShutdown(signal) {
   // with drained=false, the pending count, and elapsed ms — not a clean
   // drain. ms is subtracted from SHUTDOWN_TIMEOUT_MS below so the wait
   // stays inside the kill_timeout budget.
+  // launchd SIGKILLs ~5-7 s after SIGTERM (deploy logs: "primary gone after
+  // 6s"/"7s"). At 15:14 and 15:25 ET the state save took 3.2 s, then the
+  // 2 s feed flush waited on 1 pending job and the process was killed
+  // before db.close ever ran. Both waits below are capped so db.close
+  // starts by SHUTDOWN_CLOSE_DEADLINE_MS (4000) after the signal; a write
+  // that lands after the close spills and replays instead.
+  const _closeDeadline = Number(process.env.SHUTDOWN_CLOSE_DEADLINE_MS ?? 4000);
+  const _closeLeftMs = () => Math.max(0, (Number.isFinite(_closeDeadline) ? _closeDeadline : 4000) - (Date.now() - _shutdownT0));
   // Background work already in flight (a heartbeat tick, a late LLM reply)
   // can still write a DTU and its lens artifacts. Wait, bounded, until the
   // stores have been quiet briefly before the DB closes; a write that still
@@ -3638,12 +3646,8 @@ async function gracefulShutdown(signal) {
   try {
     const quietMs = Number(process.env.SHUTDOWN_WRITE_QUIET_MS ?? 400);
     const budgetMs = Number(process.env.SHUTDOWN_WRITE_QUIET_BUDGET_MS ?? 1500);
-    // launchd SIGKILLs ~5 s after SIGTERM (deploy logs: "primary gone after
-    // 6s"). Never let this wait push db.close past ~3.5 s from the signal:
-    // a clean close matters more than a fuller drain (stragglers spill).
-    const closeBy = Number(process.env.SHUTDOWN_CLOSE_DEADLINE_MS ?? 3500);
-    const left = Math.max(0, (Number.isFinite(closeBy) ? closeBy : 3500) - (Date.now() - _shutdownT0));
-    const budget = Math.min(Number.isFinite(budgetMs) ? budgetMs : 1500, left);
+    // Keep 1 s of the close deadline for the feed flush below.
+    const budget = Math.min(Number.isFinite(budgetMs) ? budgetMs : 1500, Math.max(0, _closeLeftMs() - 1000));
     const q = await waitForWriteQuiet({ quietMs: Number.isFinite(quietMs) ? quietMs : 400, budgetMs: budget });
     structuredLog(q.quiet ? "info" : "warn", "shutdown_writes_quiet", { waited_ms: q.waitedMs, quiet: q.quiet, budget_ms: budget, since_signal_ms: Date.now() - _shutdownT0 });
   } catch (e) {
@@ -3662,7 +3666,7 @@ async function gracefulShutdown(signal) {
         structuredLog("warn", "shutdown_repair_observations_flush_failed", { error: e?.message });
       }
       const flushBudget = Number(process.env.FEED_SHUTDOWN_FLUSH_MS ?? 2000);
-      const timeoutMs = Number.isFinite(flushBudget) ? Math.max(0, flushBudget) : 2000;
+      const timeoutMs = Math.min(Number.isFinite(flushBudget) ? Math.max(0, flushBudget) : 2000, _closeLeftMs());
       const flushStart = _feedClock();
       structuredLog("info", "shutdown_feed_flushing", {
         timeoutMs,
