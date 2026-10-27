@@ -54,6 +54,37 @@ describe("repos — repo lifecycle", () => {
     assert.equal(r.result.repo.defaultBranch, "main");
   });
 
+  it("counts the seed commit from the file bytes", () => {
+    const r = call("repo-create", ctxA, { name: "alpha", description: "hello" });
+    const id = r.result.repo.id;
+    const paths = ["README.md", "package.json", "src/index.ts", "src/util.ts"];
+    let lines = 0;
+    let bytes = 0;
+    for (const path of paths) {
+      const file = call("file-read", ctxA, { repoId: id, path });
+      assert.equal(file.ok, true);
+      const content = file.result.content;
+      const expectedLines = content.endsWith("\n")
+        ? content.split("\n").length - 1
+        : content.split("\n").length;
+      assert.equal(file.result.lineCount, expectedLines);
+      assert.equal(file.result.size, content.length);
+      lines += expectedLines;
+      bytes += content.length;
+    }
+    // "# alpha", blank, "hello" + 4 package lines + 3 index lines + 1 util line.
+    assert.equal(lines, 11);
+    const graph = call("commit-graph", ctxA, { repoId: id });
+    const initial = graph.result.nodes.find((n) => n.message === "Initial commit");
+    assert.equal(initial.additions, lines);
+    assert.equal(initial.deletions, 0);
+    assert.deepEqual(initial.files, paths);
+    const insights = call("repo-insights", ctxA, { repoId: id });
+    assert.equal(insights.result.totals.additions, lines);
+    const langBytes = insights.result.languages.reduce((n, row) => n + row.bytes, 0);
+    assert.equal(langBytes, bytes);
+  });
+
   it("rejects repo-create without a name", () => {
     assert.equal(call("repo-create", ctxA, {}).ok, false);
   });
