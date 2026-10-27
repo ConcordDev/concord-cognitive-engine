@@ -34,7 +34,7 @@ export function useDtuSurface() {
   const record = useCallback(async (input: RecordInput): Promise<void> => {
     if (!input.dtuId || !input.lensId || !input.surfaceKind) return;
     try {
-      await lensRun('dtu_surface', 'record', input);
+      await lensRun('dtu_surface', 'record', { ...input });
     } catch {
       // Fire and forget — surface logging is not user-critical.
     }
