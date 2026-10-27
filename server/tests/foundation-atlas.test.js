@@ -385,7 +385,7 @@ describe("Temporal Differencing", () => {
     assert.equal(result, null); // version 1, no comparison possible
   });
 
-  it("detects changes between tile versions", () => {
+  it("returns null when the next reconstruction matches", () => {
     const coords = { lat_min: 52.367, lat_max: 52.368, lng_min: 4.904, lng_max: 4.905 };
     const paths = Array.from({ length: 5 }, (_, i) => ({
       id: `p${i}`, sourcePos: { lat: 52.367, lng: 4.904 },
@@ -394,11 +394,30 @@ describe("Temporal Differencing", () => {
       excessLoss_dB: 10, phaseDeviation_deg: 30,
     }));
     reconstructTile(coords, paths);
-    reconstructTile(coords, paths); // version 2
+    reconstructTile(coords, paths);
+
+    assert.equal(detectChanges("52.367_4.904_-50"), null);
+    assert.equal(getAtlasMetrics().stats.changesDetected, 0);
+  });
+
+  it("reports layers whose stored material actually changed", () => {
+    const coords = { lat_min: 52.367, lat_max: 52.368, lng_min: 4.904, lng_max: 4.905 };
+    const paths = (loss, phase) => Array.from({ length: 5 }, (_, i) => ({
+      id: `p${i}`, sourcePos: { lat: 52.367, lng: 4.904 },
+      destPos: { lat: 52.368, lng: 4.905 },
+      band: "wifi_2.4ghz", environmentalImpact: 0.5,
+      excessLoss_dB: loss, phaseDeviation_deg: phase,
+    }));
+    reconstructTile(coords, paths(10, 30));
+    reconstructTile(coords, paths(40, 90));
 
     const result = detectChanges("52.367_4.904_-50");
-    // May or may not detect a change (randomized magnitude), but function should run
-    assert.equal(result === null || result.tileKey === "52.367_4.904_-50", true);
+    assert.equal(result.tileKey, "52.367_4.904_-50");
+    assert.equal(result.compared, "layer_summary");
+    assert.equal(result.magnitude, 0);
+    assert.equal(result.type, "structural");
+    assert.deepEqual(result.layers_affected.sort(), ["interior", "material", "surface"]);
+    assert.equal(getAtlasMetrics().stats.changesDetected, 1);
   });
 });
 
