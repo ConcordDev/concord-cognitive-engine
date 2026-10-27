@@ -2,6 +2,7 @@
 // Domain actions for retail/CRM: reorder, pipeline, LTV, SLA checks.
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { finiteOrNull, badNumber } from "../lib/finite-input.js";
+import { measuredPercent } from "../lib/measured-rate.js";
 
 // Cap on a single gift card's face value (USD).
 const GIFT_CARD_MAX = 10000;
@@ -511,11 +512,14 @@ export default function registerRetailActions(registerLensAction) {
         else breaches++;
       }
       const totalIncidents = incidents.length;
-      const complianceRate = totalIncidents > 0
-        ? Math.round((withinSLA / totalIncidents) * 10000) / 100
-        : 100;
+      const complianceMeasured = measuredPercent(
+        totalIncidents,
+        totalIncidents > 0 ? Math.round((withinSLA / totalIncidents) * 10000) / 100 : null,
+      );
+      const complianceRate = complianceMeasured.value;
       const avgResponseMinutes = responseSamples > 0 ? round2(responseSum / responseSamples) : 0;
-      const tier = complianceRate >= 95 ? "platinum"
+      const tier = complianceRate == null ? null
+        : complianceRate >= 95 ? "platinum"
         : complianceRate >= 90 ? "gold"
         : complianceRate >= 80 ? "silver"
         : complianceRate >= 60 ? "bronze" : "at-risk";
@@ -525,6 +529,7 @@ export default function registerRetailActions(registerLensAction) {
         withinSLA,
         breaches,
         complianceRate,
+        reason: complianceMeasured.reason,
         avgResponseMinutes,
         tier,
       };
@@ -3083,7 +3088,11 @@ export default function registerRetailActions(registerLensAction) {
       return { ...t, slaState };
     });
 
-    const complianceRate = resolvedCount > 0 ? ticketRound2((metCount / resolvedCount) * 100) : 100;
+    const complianceMeasured = measuredPercent(
+      resolvedCount,
+      resolvedCount > 0 ? ticketRound2((metCount / resolvedCount) * 100) : null,
+    );
+    const complianceRate = complianceMeasured.value;
 
     const tickets = (withState
       .filter((t) => (!statusFilter || t.status === statusFilter) && (!priorityFilter || t.priority === priorityFilter)))
@@ -3103,6 +3112,7 @@ export default function registerRetailActions(registerLensAction) {
           resolvedCount,
           metCount,
           complianceRate,
+          reason: complianceMeasured.reason,
           byPriority,
         },
       },

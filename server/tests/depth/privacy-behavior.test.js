@@ -51,10 +51,11 @@ describe("privacy — artifact.data calc contracts (exact computed values)", () 
     assert.equal(r.result.issues[0].user, "u2");
   });
 
-  it("consentAudit: no consents → 100% compliance + all-current action", async () => {
+  it("consentAudit: no consents is unmeasured, not 100% current", async () => {
     const r = await lensRun("privacy", "consentAudit", { data: { consents: [] } });
-    assert.equal(r.result.complianceRate, 100);
-    assert.equal(r.result.action, "All consents current");
+    assert.equal(r.result.complianceRate, null);
+    assert.equal(r.result.reason, "no_sample");
+    assert.equal(r.result.action, "No consents recorded");
   });
 
   it("impactAssessment: minors + cross-border + special-category → high risk, DPIA required", async () => {

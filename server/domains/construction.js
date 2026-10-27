@@ -3,6 +3,7 @@
 // safety compliance, change order tracking, progress reporting.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { measuredPercent } from "../lib/measured-rate.js";
 export default function registerConstructionActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Calculator inputs arrive as `artifact.data`. Some callers (the GC bench
@@ -81,10 +82,11 @@ export default function registerConstructionActions(registerLensAction) {
     const workers = parseInt(data.workerCount) || 1;
     const hoursWorked = parseInt(data.totalHoursWorked) || 0;
     const compliant = checklistItems.filter(c => c.passed || c.compliant).length;
-    const total = checklistItems.length || 1;
-    const complianceRate = Math.round((compliant / total) * 100);
+    const total = checklistItems.length;
+    const complianceMeasured = measuredPercent(total, total > 0 ? Math.round((compliant / total) * 100) : null);
+    const complianceRate = complianceMeasured.value;
     const incidentRate = hoursWorked > 0 ? Math.round((incidents.length / hoursWorked) * 200000 * 100) / 100 : 0; // OSHA incident rate formula
-    return { ok: true, result: { complianceRate, checklistResults: { passed: compliant, failed: total - compliant, total }, incidentRate, incidentRateLabel: "per 200,000 hours worked", incidents: incidents.length, workers, hoursWorked, rating: complianceRate >= 95 ? "excellent" : complianceRate >= 80 ? "acceptable" : "needs-improvement", criticalFailures: checklistItems.filter(c => !c.passed && c.critical).map(c => c.item || c.name) } };
+    return { ok: true, result: { complianceRate, reason: complianceMeasured.reason, checklistResults: { passed: compliant, failed: total - compliant, total }, incidentRate, incidentRateLabel: "per 200,000 hours worked", incidents: incidents.length, workers, hoursWorked, rating: complianceRate == null ? null : complianceRate >= 95 ? "excellent" : complianceRate >= 80 ? "acceptable" : "needs-improvement", criticalFailures: checklistItems.filter(c => !c.passed && c.critical).map(c => c.item || c.name) } };
   });
 
   registerLensAction("construction", "progressReport", (ctx, artifact, _params) => {

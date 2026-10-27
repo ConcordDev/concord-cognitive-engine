@@ -13,6 +13,7 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import { getProcedureForState, listProcedureStateSummaries } from "../lib/court-procedure-reference.js";
 import { createHash } from "node:crypto";
 import { moneyOrNull, badNumber } from "../lib/finite-input.js";
+import { measuredPercent } from "../lib/measured-rate.js";
 import { registerEsignProvider, issueSigningLinks, deliverSigningLinks, revokeSigningLinks } from "../lib/esign-links.js";
 
 export default function registerLegalActions(registerLensAction) {
@@ -142,7 +143,11 @@ export default function registerLegalActions(registerLensAction) {
         deadline: req.deadline || null,
       };
     });
-    const score = requirements.length > 0 ? Math.round((passCount / requirements.length) * 100) : 100;
+    const measured = measuredPercent(
+      requirements.length,
+      requirements.length > 0 ? Math.round((passCount / requirements.length) * 100) : null,
+    );
+    const score = measured.value;
     return {
       ok: true,
       result: {
@@ -151,7 +156,8 @@ export default function registerLegalActions(registerLensAction) {
         passed: passCount,
         failed: failCount,
         score,
-        rating: score >= 90 ? 'excellent' : score >= 70 ? 'good' : score >= 50 ? 'fair' : 'poor',
+        rating: score == null ? null : score >= 90 ? 'excellent' : score >= 70 ? 'good' : score >= 50 ? 'fair' : 'poor',
+        reason: measured.reason,
         findings,
         checklist: checked,
       },
@@ -255,7 +261,9 @@ export default function registerLegalActions(registerLensAction) {
 
   registerLensAction("legal", "complianceScore", (ctx, artifact, _params) => {
     const items = artifact.data?.requirements || [];
-    if (items.length === 0) return { ok: true, result: { score: 100, compliant: 0, overdue: 0, total: 0 } };
+    if (items.length === 0) {
+      return { ok: true, result: { score: null, compliant: 0, overdue: 0, total: 0, reason: "no_sample" } };
+    }
     const now = new Date();
     const compliant = items.filter(i => i.status === 'compliant').length;
     const overdue = items.filter(i => i.status === 'overdue' || (i.deadline && new Date(i.deadline) < now && i.status !== 'compliant')).length;
