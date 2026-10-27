@@ -4,8 +4,8 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { checkModel, replayTrace } from "../lib/verification/model-checker.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
-import {
 import { requireList } from "../lib/lens-inputs.js";
+import {
   buildLedgerConservationModel,
   buildTreasuryInvariantModel,
   buildRoyaltyCascadeModel,
