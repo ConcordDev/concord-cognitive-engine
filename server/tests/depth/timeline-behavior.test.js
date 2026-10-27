@@ -219,8 +219,12 @@ describe("timeline — posts, reactions, comments (CRUD round-trips)", () => {
     assert.ok(feed.result.posts.some((p) => p.id === id));
   });
 
-  it("post-create defaults to private when privacy is invalid", async () => {
-    const created = await lensRun("timeline", "post-create", { params: { content: "x", privacy: "everyone-on-earth" } }, ctx);
+  it("post-create refuses an invalid privacy; omitted privacy defaults to private", async () => {
+    // input-validation wave: unknown enum → 400 invalid_input naming the field (never silently widened or narrowed)
+    const bad = await lensRun("timeline", "post-create", { params: { content: "x", privacy: "everyone-on-earth" } }, ctx);
+    assert.equal(bad.result.error, "invalid_input");
+    assert.equal(bad.result.field, "privacy");
+    const created = await lensRun("timeline", "post-create", { params: { content: "x" } }, ctx);
     assert.equal(created.result.post.privacy, "private");
   });
 

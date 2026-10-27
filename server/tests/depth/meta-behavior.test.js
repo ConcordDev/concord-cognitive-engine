@@ -143,8 +143,12 @@ describe("meta — service catalog CRUD round-trips + validation (shared ctx)", 
     assert.match(bad.result.error, /name required/);
   });
 
-  it("serviceRegister: an invalid status falls back to green", async () => {
-    const reg = await lensRun("meta", "serviceRegister", { params: { name: "Defaulter", status: "purple" } }, ctx);
+  it("serviceRegister: an invalid status is refused; omitted status defaults to green", async () => {
+    // input-validation wave: unknown enum → 400 invalid_input naming the field
+    const bad = await lensRun("meta", "serviceRegister", { params: { name: "Defaulter", status: "purple" } }, ctx);
+    assert.equal(bad.result.error, "invalid_input");
+    assert.equal(bad.result.field, "status");
+    const reg = await lensRun("meta", "serviceRegister", { params: { name: "Defaulter" } }, ctx);
     assert.equal(reg.result.service.status, "green");
   });
 
