@@ -249,41 +249,15 @@ export default function createFrontierRoutesPart4({ requireAuth } = {}) {
     const standard = standards.get(standardId);
     if (!standard) throw new Error("Standard not found");
 
-    const results = standard.sections.map((section) => {
-      const score = Math.round(50 + Math.random() * 50);
-      const passed = score >= 70;
-      const findings = [];
-      for (const req of section.requirements) {
-        const met = Math.random() > 0.3;
-        findings.push({
-          requirement: req,
-          status: met ? 'pass' : 'fail',
-          detail: met ? 'Requirement satisfied' : `Non-compliance detected for: ${req}`,
-        });
-      }
-      return {
-        sectionId: section.id,
-        sectionTitle: section.title,
-        pass: passed,
-        score,
-        findings,
-      };
-    });
-
-    const overallScore = Math.round(results.reduce((sum, r) => sum + r.score, 0) / results.length);
-
-    res.json({
-      ok: true,
-      compliance: {
-        id: crypto.randomUUID(),
-        targetId,
-        standardId,
-        standardCode: standard.code,
-        overallScore,
-        overallPass: overallScore >= 70,
-        results,
-        checkedAt: new Date().toISOString(),
-      },
+    // The catalog row is real. Scoring it would need the target's measured
+    // properties. This route has neither a checker nor that data.
+    res.status(501).json({
+      ok: false,
+      error: "unavailable",
+      reason: "compliance_not_measured",
+      standardId,
+      standardCode: standard.code,
+      message: "Compliance is not measured. No section score was invented.",
     });
   }));
 

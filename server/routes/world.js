@@ -1474,14 +1474,15 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Daily Digest API ─────────────────────────────────────────────
 
   router.get("/sim/digest/:userId", wrap((req, res) => {
-    const digest = simDailyDigests.get(req.params.userId) || {
-      date: new Date().toISOString().split('T')[0],
-      newCitations: Math.floor(Math.random() * 12),
-      royaltiesEarned: +(Math.random() * 5).toFixed(2),
-      worldEvents: ['New building validated in District 3', 'Weather: light snow expected tonight'],
-      topCreation: { name: 'USB-A Foundation Slab', citations: 7 },
-      npcSummary: 'The blacksmith at The Forge completed 3 commissions while you were away.',
-    };
+    const digest = simDailyDigests.get(req.params.userId);
+    if (!digest) {
+      return res.status(501).json({
+        ok: false,
+        error: "unavailable",
+        reason: "no_recorded_digest",
+        message: "No daily digest is recorded for this user. Citations and royalties were not invented.",
+      });
+    }
     res.json({ ok: true, digest });
   }));
 
@@ -1637,25 +1638,30 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Collaboration / Project Board API ────────────────────────────
 
   router.get("/sim/projects/:boardId", wrap((req, res) => {
-    const seed = {
-      id: req.params.boardId, name: 'District 3 Development',
-      tasks: [
-        { id: 'task-1', title: 'Design water treatment plant', status: 'open', payment: 50 },
-        { id: 'task-2', title: 'Build Main Street facades', status: 'claimed', claimedBy: '@builder_bob', payment: 30 },
-        { id: 'task-3', title: 'Wire power grid section B', status: 'in-progress', claimedBy: '@power_mike', payment: 40 },
-        { id: 'task-4', title: 'Validate all residential structures', status: 'complete', claimedBy: '@architect_alex', payment: 25 },
-      ],
-    };
-    res.json({ ok: true, board: seed });
+    res.status(501).json({
+      ok: false,
+      error: "unavailable",
+      reason: "no_project_board",
+      message: "No project board is stored for this id. Tasks and payments were not invented.",
+    });
   }));
 
-  router.post("/sim/projects/:boardId/tasks", auth, wrap((req, res) => {
-    const task = { id: `task-${Date.now()}`, ...req.body, status: 'open', createdAt: new Date().toISOString() };
-    res.json({ ok: true, task });
+  router.post("/sim/projects/:boardId/tasks", auth, wrap((_req, res) => {
+    res.status(501).json({
+      ok: false,
+      error: "unavailable",
+      reason: "no_project_board",
+      message: "Project tasks are not stored. Nothing was created.",
+    });
   }));
 
-  router.post("/sim/projects/:boardId/tasks/:taskId/claim", auth, wrap((req, res) => {
-    res.json({ ok: true, taskId: req.params.taskId, claimedBy: req.user.id, status: 'claimed' });
+  router.post("/sim/projects/:boardId/tasks/:taskId/claim", auth, wrap((_req, res) => {
+    res.status(501).json({
+      ok: false,
+      error: "unavailable",
+      reason: "no_project_board",
+      message: "Project tasks are not stored. Nothing was claimed.",
+    });
   }));
 
   // ── Design Review API ────────────────────────────────────────────
@@ -1685,50 +1691,33 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Analytics API ────────────────────────────────────────────────
 
   router.get("/sim/analytics/personal/:userId", wrap((req, res) => {
-    const stats = simAnalytics.get(req.params.userId) || {
-      totalCitations: Math.floor(Math.random() * 500),
-      totalRoyalties: +(Math.random() * 100).toFixed(2),
-      mostCitedDTU: { name: 'USB-A Reinforced Beam', citations: 47 },
-      mostUsedMaterial: { name: 'USB Composite A', uses: 89 },
-      reputationByDomain: { structural: 340, materials: 120, infrastructure: 85, energy: 45, architecture: 200, mentorship: 30, governance: 15, exploration: 60 },
-      buildCount: Math.floor(Math.random() * 50) + 5,
-      playtime: Math.floor(Math.random() * 200) + 10,
-      loginStreak: Math.floor(Math.random() * 30) + 1,
-    };
+    const stats = simAnalytics.get(req.params.userId);
+    if (!stats) {
+      return res.status(501).json({
+        ok: false,
+        error: "unavailable",
+        reason: "no_recorded_stats",
+        message: "No personal stats are recorded for this user. Citations, royalties, and playtime were not invented.",
+      });
+    }
     res.json({ ok: true, stats });
   }));
 
-  router.get("/sim/analytics/world/:worldId", wrap((req, res) => {
-    res.json({
-      ok: true, stats: {
-        population: 2400, buildingCount: 47, infraCoverage: 72,
-        envScore: 68, economicActivity: 14500, visitorCount: 890,
-        timeseries: [
-          { date: '2025-10-01', visitors: 12, buildings: 2 },
-          { date: '2025-10-15', visitors: 45, buildings: 8 },
-          { date: '2025-11-01', visitors: 120, buildings: 23 },
-          { date: '2025-11-15', visitors: 230, buildings: 47 },
-        ],
-      },
+  router.get("/sim/analytics/world/:worldId", wrap((_req, res) => {
+    res.status(501).json({
+      ok: false,
+      error: "unavailable",
+      reason: "no_world_telemetry",
+      message: "World analytics has no live counter. Population and visitor series were not invented.",
     });
   }));
 
   router.get("/sim/analytics/global", wrap((_req, res) => {
-    res.json({
-      ok: true, stats: {
-        activeDistricts: 10, totalBuildings: 1250, totalCitations: 45000,
-        activeUsers: 890, totalWorlds: 67,
-        trendingComponents: [
-          { name: 'USB-B I-Beam 30cm', creator: '@struct_team', citationsThisWeek: 89 },
-          { name: 'Solar Mount v3', creator: '@green_firm', citationsThisWeek: 67 },
-          { name: 'Concrete Foundation Slab', creator: '@builder_bob', citationsThisWeek: 52 },
-        ],
-        topCreators: [
-          { userId: 'user-001', name: '@engineer_jane', citations: 2100, rank: 1 },
-          { userId: 'user-002', name: '@architect_alex', citations: 1800, rank: 2 },
-          { userId: 'user-003', name: '@materials_lab', citations: 1200, rank: 3 },
-        ],
-      },
+    res.status(501).json({
+      ok: false,
+      error: "unavailable",
+      reason: "no_global_telemetry",
+      message: "Global analytics has no live counter. Citation and creator ranks were not invented.",
     });
   }));
 
@@ -1869,9 +1858,10 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
       transcript,
       engine: engine || 'whisper',
       intent: detectedIntent,
-      confidence: 0.85 + Math.random() * 0.15,
+      match: detectedIntent === 'unknown' ? 'none' : 'keyword',
+      confidence: null,
       parsedAt: new Date().toISOString(),
-      executed: detectedIntent !== 'unknown',
+      executed: false,
     };
     if (!voiceHistory.has(userId)) voiceHistory.set(userId, []);
     voiceHistory.get(userId).push(result);
@@ -1955,17 +1945,15 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Export & Embed API ──────────────────────────────────────────
 
   router.post("/sim/export", auth, wrap((req, res) => {
-    const { dtuId, format, options } = req.body;
-    const exportResult = {
-      id: `export-${Date.now()}`,
-      dtuId,
-      format: format || 'json',
-      status: 'complete',
-      url: `/api/exports/export-${Date.now()}.${format || 'json'}`,
-      size: Math.floor(Math.random() * 5000000) + 100000,
-      createdAt: new Date().toISOString(),
-    };
-    res.json({ ok: true, export: exportResult });
+    const { dtuId, format } = req.body || {};
+    if (!dtuId) return res.status(400).json({ ok: false, error: "dtuId required" });
+    res.status(501).json({
+      ok: false,
+      error: "unavailable",
+      reason: "export_not_wired",
+      format: format || null,
+      message: "Export does not write a file. No size or download URL was invented.",
+    });
   }));
 
   router.post("/sim/embed", auth, wrap((req, res) => {
