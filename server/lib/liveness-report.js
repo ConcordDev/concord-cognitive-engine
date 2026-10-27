@@ -21,6 +21,38 @@ function safe(fn, fallback) {
   try { const r = fn(); return r ?? fallback; } catch { return fallback; }
 }
 
+function hasColumn(db, table, column) {
+  try {
+    return db.prepare(`PRAGMA table_info(${table})`).all().some((row) => row.name === column);
+  } catch {
+    return false;
+  }
+}
+
+// Starter inventory is one row per stack item (mat_<user>_…). It is not a record
+// someone authored. Skip it only when the type column exists, so a minimal schema
+// still runs the count.
+function starterExclusion(db) {
+  if (!hasColumn(db, "dtus", "type")) return "";
+  return " AND NOT (IFNULL(type, '') = 'material' AND id LIKE 'mat_%')";
+}
+
+// created_at is a datetime string. Some writers bind unix seconds, and a JS
+// number above 2^31 lands in a TEXT column as "1760000000.0".
+function createdSince(column, cutoffEpochS) {
+  return {
+    sql: `(
+      (${column} GLOB '????-??-??*' AND ${column} >= datetime(?, 'unixepoch'))
+      OR (
+        ${column} GLOB '[0-9]*'
+        AND (${column} NOT GLOB '*[^0-9]*' OR ${column} GLOB '[0-9]*.0')
+        AND CAST(${column} AS INTEGER) >= ?
+      )
+    )`,
+    params: [cutoffEpochS, cutoffEpochS],
+  };
+}
+
 /**
  * Substrate gravity — the "mass of the moat": how many real records live here,
  * spread across how many real creators, and how fast it's growing. Reads the SQL
@@ -29,14 +61,20 @@ function safe(fn, fallback) {
 export function computeSubstrateGravity(db, { nowMs = Date.now() } = {}) {
   if (!db) return { ok: false, reason: "no_db", totalRecords: 0, creators: 0, recordsPerCreator: 0, last7dRecords: 0 };
   try {
-    const totalRecords = db.prepare(`SELECT COUNT(*) AS n FROM dtus`).get().n || 0;
-    const creators = db.prepare(`SELECT COUNT(DISTINCT owner_user_id) AS n FROM dtus WHERE owner_user_id IS NOT NULL`).get().n || 0;
+    const skipStarter = starterExclusion(db);
+    const totalRecords = db.prepare(`SELECT COUNT(*) AS n FROM dtus WHERE 1 = 1${skipStarter}`).get().n || 0;
+    const creators = db.prepare(
+      `SELECT COUNT(DISTINCT owner_user_id) AS n FROM dtus WHERE owner_user_id IS NOT NULL${skipStarter}`,
+    ).get().n || 0;
     // Bind the 7-day cutoff off the injected `nowMs` (not SQLite's live
     // `datetime('now')`) so callers can pass a fixed clock and get a
     // deterministic, testable window instead of one that silently tracks
     // the real wall clock regardless of what was injected.
     const cutoffEpochS = Math.floor(nowMs / 1000) - 7 * 24 * 3600;
-    const last7dRecords = db.prepare(`SELECT COUNT(*) AS n FROM dtus WHERE created_at >= datetime(?, 'unixepoch')`).get(cutoffEpochS).n || 0;
+    const since = createdSince("created_at", cutoffEpochS);
+    const last7dRecords = db.prepare(
+      `SELECT COUNT(*) AS n FROM dtus WHERE ${since.sql}${skipStarter}`,
+    ).get(...since.params).n || 0;
     const recordsPerCreator = creators ? Math.round((totalRecords / creators) * 100) / 100 : 0;
     return { ok: true, totalRecords, creators, recordsPerCreator, last7dRecords };
   } catch (e) {
