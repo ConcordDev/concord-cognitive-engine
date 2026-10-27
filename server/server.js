@@ -28749,6 +28749,26 @@ try {
     // Archived DTUs (cold sweep, consolidated members, archived megas) are
     // not in STATE.dtus; their kept vectors make them retrievable here.
     const _seen = new Set(_consentFiltered.map(d => d.id));
+    // The user's local universe is a lexical pre-filter (often ~12 DTUs), so
+    // a mega that matches by meaning never reached scoring. Add the best
+    // viewer-visible matches by embedding, megas/hypers boosted.
+    if (_userContextDTUs) {
+      const _visHits = [];
+      for (const d of userVisibleDTUs(_universeUserId || null)) {
+        if (!d?.id || _seen.has(d.id) || d.tier === "shadow") continue;
+        const vec = getEmbedding(d.id);
+        if (!vec) continue;
+        const sim = cosineSimilarity(_queryVec, vec);
+        if (sim >= 0.35) _visHits.push({ d, vec, s: sim * _dtuTierBoost(d) });
+      }
+      _visHits.sort((a, b) => b.s - a.s);
+      for (const h of _visHits.slice(0, 6)) {
+        if (!_consentOk(h.d)) continue;
+        _consentFiltered.push(h.d);
+        _seen.add(h.d.id);
+        _dtuEmbedMap.set(h.d.id, h.vec);
+      }
+    }
     for (const h of searchArchivedDtus(_queryVec, { viewerId: _universeUserId || null, topK: 4, minSim: 0.4 })) {
       if (_seen.has(h.dtu.id) || !_consentOk(h.dtu)) continue;
       const vec = getEmbedding(h.dtu.id);
