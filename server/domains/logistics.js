@@ -3,7 +3,6 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
-import { requireList } from "../lib/lens-inputs.js";
 export default function registerLogisticsActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -14,8 +13,7 @@ export default function registerLogisticsActions(registerLensAction) {
    */
   registerLensAction("logistics", "optimizeRoute", (ctx, artifact, params) => {
   try {
-    const stops = requireList(artifact.data.stops, "stops");
-    if (!Array.isArray(stops)) return stops;
+    const stops = artifact.data.stops || [];
     const origin = artifact.data.origin || params.origin || (stops.length > 0 ? { lat: stops[0].lat, lng: stops[0].lng } : null);
     const returnToOrigin = params.returnToOrigin !== false;
 

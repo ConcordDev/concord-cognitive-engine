@@ -20,7 +20,6 @@ import {
 } from "../emergent/social-layer.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { presentOwnedId } from "../lib/public-actor.js";
-import { requireList } from "../lib/lens-inputs.js";
 
 export default function registerArtistryActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -46,8 +45,7 @@ export default function registerArtistryActions(registerLensAction) {
    */
   registerLensAction("artistry", "colorPaletteAnalysis", (ctx, artifact, _params) => {
   try {
-    const raw = requireList(artifact.data?.palette, "palette");
-    if (!Array.isArray(raw)) return raw;
+    const raw = artifact.data?.palette || [];
     if (raw.length === 0) {
       return { ok: true, result: { message: "No palette data provided. Supply artifact.data.palette as an array of hex color strings or objects with { color, weight }.", colors: [], dominantHue: null, harmonyScore: 0, contrastRange: 0 } };
     }
@@ -168,8 +166,7 @@ export default function registerArtistryActions(registerLensAction) {
    */
   registerLensAction("artistry", "compositionScore", (ctx, artifact, _params) => {
   try {
-    const elements = requireList(artifact.data?.elements, "elements");
-    if (!Array.isArray(elements)) return elements;
+    const elements = artifact.data?.elements || [];
     const canvas = artifact.data?.canvas || {};
     const canvasW = finNum(canvas.width, 100) || 100;
     const canvasH = finNum(canvas.height, 100) || 100;
@@ -269,9 +266,7 @@ export default function registerArtistryActions(registerLensAction) {
   registerLensAction("artistry", "styleClassify", (ctx, artifact, _params) => {
   try {
     const attrs = artifact.data?.attributes || {};
-    const tagList = requireList(artifact.data?.tags, "tags");
-    if (!Array.isArray(tagList)) return tagList;
-    const tags = tagList.map((t) => (typeof t === "string" ? t.toLowerCase().trim() : ""));
+    const tags = (artifact.data?.tags || []).map((t) => (typeof t === "string" ? t.toLowerCase().trim() : ""));
 
     if (Object.keys(attrs).length === 0 && tags.length === 0) {
       return { ok: true, result: { message: "No attributes or tags provided. Supply artifact.data.attributes (medium, era, technique, subject) and/or artifact.data.tags.", classification: null, confidence: 0 } };

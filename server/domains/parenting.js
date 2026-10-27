@@ -5,7 +5,6 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
-import { requireList } from "../lib/lens-inputs.js";
 
 export default function registerParentingActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -18,8 +17,7 @@ export default function registerParentingActions(registerLensAction) {
   try {
     const data = artifact.data || {};
     const childAge = data.childAge || "";
-    const milestones = requireList(data.milestones, "milestones");
-    if (!Array.isArray(milestones)) return milestones;
+    const milestones = data.milestones || [];
 
     // Parse age string like "2y 3m" into months
     const ageMatch = childAge.match(/(\d+)\s*y(?:ear)?s?\s*(?:(\d+)\s*m(?:onth)?s?)?/i);
@@ -230,8 +228,7 @@ export default function registerParentingActions(registerLensAction) {
   try {
     const data = artifact.data || {};
     const childAge = data.childAge || "2y";
-    const schedules = requireList(data.schedules, "schedules");
-    if (!Array.isArray(schedules)) return schedules;
+    const schedules = data.schedules || [];
 
     const ageMatch = childAge.match(/(\d+)/);
     const ageYears = ageMatch ? parseInt(ageMatch[1]) : 2;

@@ -4,7 +4,6 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
-import { requireList } from "../lib/lens-inputs.js";
 export default function registerFractalActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -214,9 +213,7 @@ export default function registerFractalActions(registerLensAction) {
    */
   registerLensAction("fractal", "selfSimilarity", (ctx, artifact, _params) => {
   try {
-    const valueList = requireList(artifact.data?.values, "values");
-    if (!Array.isArray(valueList)) return valueList;
-    const values = valueList.map(Number).filter(v => !isNaN(v));
+    const values = (artifact.data?.values || []).map(Number).filter(v => !isNaN(v));
     if (values.length < 8) return { ok: false, error: "Need at least 8 data points." };
 
     const n = values.length;

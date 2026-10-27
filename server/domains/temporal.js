@@ -41,18 +41,10 @@ export default function registerTemporalActions(registerLensAction) {
       if (!ds) return { error: "Dataset not found." };
       return { values: ds.values.slice(), timestamps: ds.timestamps ? ds.timestamps.slice() : null, dataset: ds };
     }
-    const valuesSrc = params?.values ?? artifact?.data?.values;
-    if (valuesSrc != null && valuesSrc !== "" && !Array.isArray(valuesSrc)) {
-      return { error: "invalid_input", field: "values", reason: "expected_array" };
-    }
-    const seriesSrc = params?.series ?? artifact?.data?.series;
-    if (seriesSrc != null && seriesSrc !== "" && !Array.isArray(seriesSrc)) {
-      return { error: "invalid_input", field: "series", reason: "expected_array" };
-    }
-    const series = Array.isArray(seriesSrc) ? seriesSrc : [];
-    const rawV = Array.isArray(valuesSrc) ? valuesSrc : series.map((x) => x?.value);
-    const rawT = series.map((x) => x?.timestamp);
-    const values = rawV.map(Number).filter((v) => !isNaN(v));
+    const rawV = params?.values || artifact?.data?.values
+      || (params?.series || artifact?.data?.series || []).map((x) => x.value);
+    const rawT = (params?.series || artifact?.data?.series || []).map((x) => x.timestamp);
+    const values = (rawV || []).map(Number).filter((v) => !isNaN(v));
     const timestamps = rawT.length && rawT.some((t) => t != null) ? rawT : null;
     return { values, timestamps, dataset: null };
   }
@@ -185,8 +177,8 @@ export default function registerTemporalActions(registerLensAction) {
    */
   registerLensAction("temporal", "changepoints", (ctx, artifact, params) => {
     try {
-      const { values, timestamps, error, field } = resolveSeries(ctx, artifact, params);
-      if (error) return { ok: false, error, ...(field ? { field, reason: "expected_array" } : {}) };
+      const { values, timestamps, error } = resolveSeries(ctx, artifact, params);
+      if (error) return { ok: false, error };
       const n = values.length;
       if (n < 8) return { ok: false, error: "Need at least 8 data points." };
       const maxCp = Math.min(params?.maxChangepoints || 8, Math.floor(n / 4));
@@ -282,8 +274,8 @@ export default function registerTemporalActions(registerLensAction) {
    */
   registerLensAction("temporal", "multiSeasonality", (ctx, artifact, params) => {
     try {
-      const { values, error, field } = resolveSeries(ctx, artifact, params);
-      if (error) return { ok: false, error, ...(field ? { field, reason: "expected_array" } : {}) };
+      const { values, error } = resolveSeries(ctx, artifact, params);
+      if (error) return { ok: false, error };
       const n = values.length;
       if (n < 12) return { ok: false, error: "Need at least 12 data points." };
       const mean = values.reduce((a, b) => a + b, 0) / n;
@@ -373,8 +365,8 @@ export default function registerTemporalActions(registerLensAction) {
    */
   registerLensAction("temporal", "holidayForecast", (ctx, artifact, params) => {
     try {
-      const { values, timestamps, error, field } = resolveSeries(ctx, artifact, params);
-      if (error) return { ok: false, error, ...(field ? { field, reason: "expected_array" } : {}) };
+      const { values, timestamps, error } = resolveSeries(ctx, artifact, params);
+      if (error) return { ok: false, error };
       const n = values.length;
       if (n < 6) return { ok: false, error: "Need at least 6 data points." };
       const horizon = Math.max(1, Math.min(params?.horizon || Math.floor(n * 0.25), 365));
@@ -509,8 +501,8 @@ export default function registerTemporalActions(registerLensAction) {
    */
   registerLensAction("temporal", "backtest", (ctx, artifact, params) => {
     try {
-      const { values, error, field } = resolveSeries(ctx, artifact, params);
-      if (error) return { ok: false, error, ...(field ? { field, reason: "expected_array" } : {}) };
+      const { values, error } = resolveSeries(ctx, artifact, params);
+      if (error) return { ok: false, error };
       const n = values.length;
       if (n < 12) return { ok: false, error: "Need at least 12 data points to backtest." };
       const testFrac = Math.min(Math.max(params?.testFraction || 0.2, 0.1), 0.5);
@@ -677,7 +669,7 @@ export default function registerTemporalActions(registerLensAction) {
   registerLensAction("temporal", "timeSeriesDecompose", (ctx, artifact, params) => {
   try {
     const resolved = resolveSeries(ctx, artifact, params);
-    if (resolved.error) return { ok: false, error: resolved.error, ...(resolved.field ? { field: resolved.field, reason: "expected_array" } : {}) };
+    if (resolved.error) return { ok: false, error: resolved.error };
     const values = resolved.values;
     if (values.length < 4) return { ok: false, error: "Need at least 4 data points." };
 
@@ -810,7 +802,7 @@ export default function registerTemporalActions(registerLensAction) {
   registerLensAction("temporal", "anomalyDetection", (ctx, artifact, params) => {
   try {
     const resolved = resolveSeries(ctx, artifact, params);
-    if (resolved.error) return { ok: false, error: resolved.error, ...(resolved.field ? { field: resolved.field, reason: "expected_array" } : {}) };
+    if (resolved.error) return { ok: false, error: resolved.error };
     const values = resolved.values;
     const timestamps = resolved.timestamps;
     if (values.length < 5) return { ok: false, error: "Need at least 5 data points." };
@@ -933,7 +925,7 @@ export default function registerTemporalActions(registerLensAction) {
   registerLensAction("temporal", "forecast", (ctx, artifact, params) => {
   try {
     const resolved = resolveSeries(ctx, artifact, params);
-    if (resolved.error) return { ok: false, error: resolved.error, ...(resolved.field ? { field: resolved.field, reason: "expected_array" } : {}) };
+    if (resolved.error) return { ok: false, error: resolved.error };
     const values = resolved.values;
     if (values.length < 4) return { ok: false, error: "Need at least 4 data points." };
 
@@ -1087,7 +1079,7 @@ export default function registerTemporalActions(registerLensAction) {
   registerLensAction("temporal", "simulate", (ctx, artifact, params) => {
     try {
       const resolved = resolveSeries(ctx, artifact, params);
-      if (resolved.error) return { ok: false, error: resolved.error, ...(resolved.field ? { field: resolved.field, reason: "expected_array" } : {}) };
+      if (resolved.error) return { ok: false, error: resolved.error };
       const values = resolved.values;
       if (values.length < 4) return { ok: false, error: "Need at least 4 data points." };
       const n = values.length;

@@ -2,7 +2,6 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 import { executeToolCall } from "../lib/chat-agent.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
-import { requireList } from "../lib/lens-inputs.js";
 // server/domains/agents.js
 // Domain actions for autonomous agents: capability scoring, task routing,
 // swarm coordination, performance benchmarking — plus a real agent runtime:
@@ -58,8 +57,7 @@ export default function registerAgentsActions(registerLensAction) {
   try {
     const data = { ...(artifact.data || {}), ...(params || {}) };
     const task = data.task || {};
-    const agents = requireList(data.agents, "agents");
-    if (!Array.isArray(agents)) return agents;
+    const agents = data.agents || [];
     if (agents.length === 0) return { ok: true, result: { message: "No agents available for routing." } };
 
     // Wave 4 fix (docs/WAVE4_INVENTORY.md line 87 / agents-capability-map.md):

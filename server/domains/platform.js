@@ -8,7 +8,6 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import dns from "node:dns/promises";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
-import { requireList } from "../lib/lens-inputs.js";
 
 export default function registerPlatformActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -53,8 +52,7 @@ export default function registerPlatformActions(registerLensAction) {
    */
   registerLensAction("platform", "slaCompute", (ctx, artifact, _params) => {
   try {
-    const incidents = requireList(artifact.data?.incidents, "incidents");
-    if (!Array.isArray(incidents)) return incidents;
+    const incidents = artifact.data?.incidents || [];
     const period = artifact.data?.period || {};
     const target = artifact.data?.target || 99.9;
 

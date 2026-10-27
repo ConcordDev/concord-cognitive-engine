@@ -3,7 +3,6 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
-import { requireList } from "../lib/lens-inputs.js";
 export default function registerBillingActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Finite-coercion guard for money compute. parseFloat("Infinity")||0 === Infinity
@@ -32,12 +31,9 @@ export default function registerBillingActions(registerLensAction) {
    */
   registerLensAction("billing", "invoiceCalculation", (ctx, artifact, params) => {
   try {
-    const lineItems = requireList(artifact.data.lineItems, "lineItems");
-    if (!Array.isArray(lineItems)) return lineItems;
-    const pricingTiers = requireList(artifact.data.pricingTiers, "pricingTiers");
-    if (!Array.isArray(pricingTiers)) return pricingTiers;
-    const discountRules = requireList(artifact.data.discountRules, "discountRules");
-    if (!Array.isArray(discountRules)) return discountRules;
+    const lineItems = artifact.data.lineItems || [];
+    const pricingTiers = artifact.data.pricingTiers || [];
+    const discountRules = artifact.data.discountRules || [];
     const taxRate = finNum(params.taxRate);
     const currency = params.currency || "USD";
     const exchangeRates = params.exchangeRates || {};
@@ -230,8 +226,7 @@ export default function registerBillingActions(registerLensAction) {
    */
   registerLensAction("billing", "revenueRecognition", (ctx, artifact, params) => {
   try {
-    const contracts = requireList(artifact.data.contracts, "contracts");
-    if (!Array.isArray(contracts)) return contracts;
+    const contracts = artifact.data.contracts || [];
     if (contracts.length === 0) {
       return { ok: true, result: { message: "No contracts provided." } };
     }
@@ -360,8 +355,7 @@ export default function registerBillingActions(registerLensAction) {
    */
   registerLensAction("billing", "churnPrediction", (ctx, artifact, params) => {
   try {
-    const customers = requireList(artifact.data.customers, "customers");
-    if (!Array.isArray(customers)) return customers;
+    const customers = artifact.data.customers || [];
     if (customers.length === 0) {
       return { ok: true, result: { message: "No customer data provided." } };
     }

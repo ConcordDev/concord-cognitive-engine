@@ -4,7 +4,6 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
-import { requireList } from "../lib/lens-inputs.js";
 export default function registerBioActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -210,8 +209,7 @@ export default function registerBioActions(registerLensAction) {
    */
   registerLensAction("bio", "phylogeneticDistance", (ctx, artifact, params) => {
   try {
-    const sequences = requireList(artifact.data?.sequences, "sequences");
-    if (!Array.isArray(sequences)) return sequences;
+    const sequences = artifact.data?.sequences || [];
     if (sequences.length < 2) return { ok: false, error: "Need at least 2 sequences." };
     if (sequences.length > 50) return { ok: false, error: "Limited to 50 sequences." };
 

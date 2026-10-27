@@ -761,7 +761,6 @@ function parseNaturalQuery(query) {
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
-import { requireList } from "../lib/lens-inputs.js";
 export default function registerMathActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -1023,8 +1022,7 @@ export default function registerMathActions(registerLensAction) {
    */
   registerLensAction("math", "polynomialAnalysis", (ctx, artifact, params) => {
   try {
-    const coefficients = requireList(artifact.data?.coefficients || params.coefficients, "coefficients");
-    if (!Array.isArray(coefficients)) return coefficients;
+    const coefficients = artifact.data?.coefficients || params.coefficients || [];
     if (coefficients.length === 0) return { ok: false, error: "No coefficients provided." };
 
     const degree = coefficients.length - 1;
@@ -1047,10 +1045,7 @@ export default function registerMathActions(registerLensAction) {
     integral.push(0); // constant of integration
 
     // Evaluation at requested points
-    const evalPoints = (params.evaluateAt == null || params.evaluateAt === "")
-      ? [0, 1, -1]
-      : requireList(params.evaluateAt, "evaluateAt");
-    if (!Array.isArray(evalPoints)) return evalPoints;
+    const evalPoints = params.evaluateAt || [0, 1, -1];
     const evaluations = evalPoints.map(x => ({ x, y: r(evaluate(x)) }));
 
     // Root finding for small degrees
