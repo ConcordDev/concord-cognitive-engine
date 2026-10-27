@@ -125,6 +125,17 @@ describe("world sim infra reads stored counts", () => {
     const withStarter = await call("/api/world/sim/metrics");
     assert.equal(withStarter.body.metrics.dtusCreated24h, 2);
     db.prepare(`DELETE FROM dtus WHERE id IN ('dtu-unix-new', 'dtu-unix-old', 'mat_usera_wood_2_0')`).run();
+    // 13-digit unix MILLISECOND values: "now" counts, 10 days ago does not.
+    // Without the ms→s division these compare as far in the future and both count.
+    db.prepare(`
+      INSERT INTO dtus (id, title, creator_id, created_at)
+      VALUES ('dtu-ms-new', 'Ms New', 'user-a', ?),
+             ('dtu-ms-old', 'Ms Old', 'user-a', ?)
+    `).run(Date.now(), Date.now() - 10 * 24 * 3600 * 1000);
+    // Baseline here is 1 (dtu-pier); only the ms "now" row adds to it.
+    const withMs = await call("/api/world/sim/metrics");
+    assert.equal(withMs.body.metrics.dtusCreated24h, 2);
+    db.prepare(`DELETE FROM dtus WHERE id IN ('dtu-ms-new', 'dtu-ms-old')`).run();
     assert.equal(metrics.body.unavailable.activePlayers, "not_recorded");
     assert.equal(metrics.body.unavailable.cacheHitRate, "no_cache_stats");
     assert.equal(metrics.body.metrics.activePlayers, undefined);
@@ -206,9 +217,21 @@ describe("world sim infra reads stored counts", () => {
       user: "user-a",
       body: { action: "check-builds" },
     });
+    // This fixture's world_buildings has no owner column, so builds cannot be
+    // attributed to a user: honest 501 naming the action.
     assert.equal(action.status, 501);
-    assert.equal(action.body.reason, "action_not_wired");
+    assert.equal(action.body.reason, "buildings_not_attributed");
+    assert.equal(action.body.action, "check-builds");
     assert.equal(action.body.executed, undefined);
+
+    const chat = await call("/api/world/sim/mobile/quick-action", {
+      method: "POST",
+      user: "user-a",
+      body: { action: "quick-chat" },
+    });
+    assert.equal(chat.status, 501);
+    assert.equal(chat.body.reason, "action_not_wired");
+    assert.equal(chat.body.action, "quick-chat");
 
     const plugins = await call("/api/world/sim/plugins/catalog");
     assert.equal(plugins.status, 501);

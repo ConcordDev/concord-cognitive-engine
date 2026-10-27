@@ -68,9 +68,15 @@ interface CapPoint {
   utilizationPercent: number; headroomPercent: number;
 }
 interface CapResult {
-  horizonMonths: number; series: CapPoint[]; targetUtilizationPercent: number;
-  breachMonth: number | null; breachWarning: string;
-  recommendedBandwidthGbps: number; additionalGbps: number;
+  horizonMonths: number | null;
+  series: CapPoint[] | null;
+  targetUtilizationPercent?: number;
+  breachMonth: number | null;
+  breachWarning?: string;
+  recommendedBandwidthGbps: number | null;
+  additionalGbps?: number | null;
+  reason?: string | null;
+  unavailable?: string[];
 }
 interface TopoResult {
   tree: TreeNode; towerCount: number; aggregationHubs: number;
@@ -613,6 +619,64 @@ function InterferenceTab({ towers, run, busy }: { towers: Tower[]; run: RunFn; b
 // Capacity — subscriber-growth projection
 // ===========================================================================
 
+function finiteCount(n: number | null | undefined): n is number {
+  return n != null && Number.isFinite(n);
+}
+
+function CapacityReadout({ result }: { result: CapResult }) {
+  const missing = result.reason === 'not_recorded' || !finiteCount(result.horizonMonths);
+  const breach = missing
+    ? '—'
+    : result.breachMonth != null ? `M${result.breachMonth}` : 'none';
+  const extra = finiteCount(result.additionalGbps) ? `+${result.additionalGbps} Gbps` : '—';
+  return (
+    <>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <Stat label="Horizon" value={finiteCount(result.horizonMonths) ? `${result.horizonMonths} mo` : '—'} />
+        <Stat label="Breach month" value={breach} tone={missing ? undefined : result.breachMonth != null ? 'bad' : 'good'} />
+        <Stat label="Recommended BW" value={finiteCount(result.recommendedBandwidthGbps) ? `${result.recommendedBandwidthGbps} Gbps` : '—'} />
+        <Stat label="Additional BW" value={extra} tone={finiteCount(result.additionalGbps) && result.additionalGbps > 0 ? 'warn' : finiteCount(result.additionalGbps) ? 'good' : undefined} />
+      </div>
+      {missing ? (
+        <div className="px-3 py-2 rounded text-[11px] border bg-zinc-900/60 text-zinc-300 border-zinc-700">
+          Not recorded{(result.unavailable && result.unavailable.length) ? `: ${result.unavailable.join(', ')}` : ''}
+        </div>
+      ) : (
+        <div className={cn('px-3 py-2 rounded text-[11px] border',
+          result.breachMonth != null
+            ? 'bg-amber-500/10 text-amber-200 border-amber-500/30'
+            : 'bg-emerald-500/10 text-emerald-200 border-emerald-500/30')}>
+          {result.breachWarning}
+        </div>
+      )}
+      {Array.isArray(result.series) && (
+        <>
+          <ChartKit
+            kind="area"
+            data={result.series as unknown as Array<Record<string, unknown>>}
+            xKey="month"
+            series={[
+              { key: 'utilizationPercent', label: 'Utilization %', color: '#ef4444' },
+              { key: 'headroomPercent', label: 'Headroom %', color: '#22c55e' },
+            ]}
+            height={240}
+          />
+          <ChartKit
+            kind="line"
+            data={result.series as unknown as Array<Record<string, unknown>>}
+            xKey="month"
+            series={[
+              { key: 'subscribers', label: 'Subscribers', color: '#6366f1' },
+              { key: 'demandMbps', label: 'Demand (Mbps)', color: '#06b6d4' },
+            ]}
+            height={220}
+          />
+        </>
+      )}
+    </>
+  );
+}
+
 function CapacityTab({ run, busy }: { run: RunFn; busy: string | null }) {
   const [result, setResult] = useState<CapResult | null>(null);
   const [f, setF] = useState({
@@ -653,43 +717,7 @@ function CapacityTab({ run, busy }: { run: RunFn; busy: string | null }) {
       </button>
 
       {result && (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <Stat label="Horizon" value={`${result.horizonMonths} mo`} />
-            <Stat label="Breach month"
-              value={result.breachMonth != null ? `M${result.breachMonth}` : 'none'}
-              tone={result.breachMonth != null ? 'bad' : 'good'} />
-            <Stat label="Recommended BW" value={`${result.recommendedBandwidthGbps} Gbps`} />
-            <Stat label="Additional BW" value={`+${result.additionalGbps} Gbps`}
-              tone={result.additionalGbps > 0 ? 'warn' : 'good'} />
-          </div>
-          <div className={cn('px-3 py-2 rounded text-[11px] border',
-            result.breachMonth != null
-              ? 'bg-amber-500/10 text-amber-200 border-amber-500/30'
-              : 'bg-emerald-500/10 text-emerald-200 border-emerald-500/30')}>
-            {result.breachWarning}
-          </div>
-          <ChartKit
-            kind="area"
-            data={result.series as unknown as Array<Record<string, unknown>>}
-            xKey="month"
-            series={[
-              { key: 'utilizationPercent', label: 'Utilization %', color: '#ef4444' },
-              { key: 'headroomPercent', label: 'Headroom %', color: '#22c55e' },
-            ]}
-            height={240}
-          />
-          <ChartKit
-            kind="line"
-            data={result.series as unknown as Array<Record<string, unknown>>}
-            xKey="month"
-            series={[
-              { key: 'subscribers', label: 'Subscribers', color: '#6366f1' },
-              { key: 'demandMbps', label: 'Demand (Mbps)', color: '#06b6d4' },
-            ]}
-            height={220}
-          />
-        </>
+        <CapacityReadout result={result} />
       )}
     </div>
   );
