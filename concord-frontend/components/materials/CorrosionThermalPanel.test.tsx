@@ -2,15 +2,18 @@
  * Clearing temperature or humidity must not invent 25 °C / 50 % RH,
  * and an unscored corrosion result must not render as undefined/100.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ReactNode } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
+
+// Thermal payload the CalcPanel mock hands to renderResults; each test sets it.
+const fixtures = vi.hoisted(() => ({ therm: null as unknown }));
 
 vi.mock('lucide-react', () => ({ Cog: () => null, Droplet: () => null, Thermometer: () => null }));
 vi.mock('@/components/lens-primitives/CalcPanel', () => ({
   CalcPanel: (props: {
     left: { render: ReactNode; buildArtifact: () => { data: { temperature: unknown; humidity: unknown } } };
-    renderResults: (cor: Record<string, unknown> | null, therm: null) => ReactNode;
+    renderResults: (cor: Record<string, unknown> | null, therm: unknown) => ReactNode;
   }) => (
     <div>
       {props.left.render}
@@ -21,7 +24,7 @@ vi.mock('@/components/lens-primitives/CalcPanel', () => ({
         reason: 'not_recorded',
         unavailable: ['category'],
         protectionMethods: [],
-      }, null)}
+      }, fixtures.therm)}
       {props.renderResults({
         corrosionResistance: 50,
         riskLevel: 'moderate',
@@ -35,6 +38,10 @@ vi.mock('@/components/lens-primitives/CalcPanel', () => ({
 import { CorrosionThermalPanel } from './CorrosionThermalPanel';
 
 describe('CorrosionThermalPanel', () => {
+  beforeEach(() => {
+    fixtures.therm = null;
+  });
+
   it('does not fill a cleared temperature with 25 °C or humidity with 50%', () => {
     render(<CorrosionThermalPanel />);
     const temp = screen.getByLabelText('Temperature (°C)') as HTMLInputElement;
@@ -56,5 +63,38 @@ describe('CorrosionThermalPanel', () => {
     expect(screen.getByText('moderate')).toBeInTheDocument();
     expect(screen.getByText('10-20 years')).toBeInTheDocument();
     expect(screen.queryByText(/undefined/)).not.toBeInTheDocument();
+  });
+
+  it('shows Not recorded (not AT-RISK) for a NOT_COMPUTED thermal payload', () => {
+    fixtures.therm = {
+      status: 'NOT_COMPUTED',
+      missingInputs: ['operatingTemp'],
+      message: 'Thermal analysis needs operatingTemp (was assumed 25 °C).',
+    };
+    render(<CorrosionThermalPanel />);
+    expect(screen.getByText('Not recorded: operating temperature')).toBeInTheDocument();
+    expect(screen.queryByText(/AT-RISK/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/SAFE/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Safety margin/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/undefined/)).not.toBeInTheDocument();
+  });
+
+  it('reads the server margin string and shows SAFE only with a real margin and verdict', () => {
+    fixtures.therm = {
+      thermalClass: 'moderate',
+      safetyMargin: '42%',
+      isSafe: true,
+      suitability: {},
+      warnings: [],
+    };
+    render(<CorrosionThermalPanel />);
+    expect(screen.getByText('Safety margin: 42% — SAFE')).toBeInTheDocument();
+    expect(screen.queryByText(/AT-RISK/)).not.toBeInTheDocument();
+  });
+
+  it('shows AT-RISK when the computed margin is unsafe', () => {
+    fixtures.therm = { thermalClass: 'insulator', safetyMargin: '-10%', isSafe: false, suitability: {}, warnings: [] };
+    render(<CorrosionThermalPanel />);
+    expect(screen.getByText('Safety margin: -10% — AT-RISK')).toBeInTheDocument();
   });
 });

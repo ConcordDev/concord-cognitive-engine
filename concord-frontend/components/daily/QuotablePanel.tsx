@@ -19,6 +19,30 @@ interface Q {
   tags: string[];
 }
 
+/** Provenance the server reports with each live_quote reply. */
+interface QuoteMeta {
+  source?: string;
+  degraded?: boolean;
+  degradedReason?: string;
+  filtersIgnored?: string[];
+}
+
+/** One line per honest caveat; empty when the reply came from the primary source unfiltered. */
+function quoteNotes(meta: QuoteMeta): string[] {
+  const notes: string[] = [];
+  if (meta.degraded) {
+    notes.push(
+      meta.source === 'local'
+        ? "Quotable is unavailable; showing a quote from Concord's built-in list."
+        : `Quotable is unavailable; showing a quote from ${meta.source ?? 'a fallback source'}.`,
+    );
+  }
+  if (meta.filtersIgnored && meta.filtersIgnored.length > 0) {
+    notes.push('author/tag filter not applied');
+  }
+  return notes;
+}
+
 async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
   try {
     const r = await api.post('/api/lens/run', { domain, name, input });
@@ -27,6 +51,8 @@ async function runMacro<T>(domain: string, name: string, input: Record<string, u
     return null;
   }
 }
+
+type QuoteReply = QuoteMeta & { ok: boolean; quotes?: Q[]; reason?: string };
 
 export interface QuotablePanelProps {
   domain: 'daily' | 'reflection';
@@ -37,33 +63,40 @@ export interface QuotablePanelProps {
 
 export function QuotablePanel({ domain, tag, className }: QuotablePanelProps) {
   const [quotes, setQuotes] = useState<Q[]>([]);
+  const [meta, setMeta] = useState<QuoteMeta>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
-    const r = await runMacro<{ ok: boolean; quotes?: Q[]; reason?: string }>(
+    const r = await runMacro<QuoteReply>(
       domain, 'live_quote', { limit: 3, ...(tag ? { tag } : {}) },
     );
-    if (r?.ok) setQuotes(r.quotes || []);
-    else setError(r?.reason || 'fetch_failed');
+    if (r?.ok) {
+      setQuotes(r.quotes || []);
+      setMeta(r);
+    } else setError(r?.reason || 'fetch_failed');
     setLoading(false);
   };
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const r = await runMacro<{ ok: boolean; quotes?: Q[]; reason?: string }>(
+      const r = await runMacro<QuoteReply>(
         domain, 'live_quote', { limit: 3, ...(tag ? { tag } : {}) },
       );
       if (cancelled) return;
-      if (r?.ok) setQuotes(r.quotes || []);
-      else setError(r?.reason || 'fetch_failed');
+      if (r?.ok) {
+        setQuotes(r.quotes || []);
+        setMeta(r);
+      } else setError(r?.reason || 'fetch_failed');
       setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [domain, tag]);
+
+  const notes = quoteNotes(meta);
 
   return (
     <section className={cn('rounded-lg border border-zinc-800 bg-zinc-950/80 overflow-hidden', className)}>
@@ -106,8 +139,11 @@ export function QuotablePanel({ domain, tag, className }: QuotablePanelProps) {
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
-        Source: Quotable · api.quotable.io
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40 space-y-0.5">
+        {notes.map((n) => (
+          <p key={n}>{n}</p>
+        ))}
+        {meta.source && <p>Source: {meta.source}</p>}
       </footer>
     </section>
   );

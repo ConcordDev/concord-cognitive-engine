@@ -25,7 +25,41 @@ interface CorrosionResult {
   message?: string;
   status?: string;
 }
-interface ThermalResult { thermalClass?: string; safetyMarginPercent?: number; isSafe?: boolean; suitability?: Record<string, string>; warnings?: string[]; recommendations?: string[] }
+interface ThermalResult {
+  status?: string;
+  missingInputs?: string[];
+  message?: string;
+  thermalClass?: string;
+  /** Server reports the margin as a "NN%" string in `safetyMargin`; numeric form accepted too. */
+  safetyMargin?: string;
+  safetyMarginPercent?: number | null;
+  isSafe?: boolean | null;
+  suitability?: Record<string, string>;
+  warnings?: string[];
+  recommendations?: string[];
+}
+
+const MISSING_INPUT_LABELS: Record<string, string> = { operatingTemp: 'operating temperature' };
+
+/** The safety margin as a finite number, or null when the server did not compute one. */
+function marginPercentOf(t: ThermalResult): number | null {
+  const n = typeof t.safetyMarginPercent === 'number' ? t.safetyMarginPercent : parseFloat(t.safetyMargin ?? '');
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Why the thermal analysis has no verdict, or null when it has one. */
+function thermalNotRecorded(t: ThermalResult): string | null {
+  if (t.status !== 'NOT_COMPUTED' && marginPercentOf(t) !== null) return null;
+  const missing = (t.missingInputs ?? []).map((k) => MISSING_INPUT_LABELS[k] ?? k);
+  if (missing.length) return `Not recorded: ${missing.join(', ')}`;
+  return t.message || 'Not recorded';
+}
+
+/** SAFE / AT-RISK only when there is a real margin and a real verdict. */
+function thermalVerdict(t: ThermalResult): 'SAFE' | 'AT-RISK' | null {
+  if (marginPercentOf(t) === null || typeof t.isSafe !== 'boolean') return null;
+  return t.isSafe ? 'SAFE' : 'AT-RISK';
+}
 
 const CATEGORIES = ['metal', 'polymer', 'ceramic', 'composite', 'semiconductor', 'biomaterial'] as const;
 const ENVS = ['indoor', 'outdoor', 'marine', 'chemical', 'industrial', 'underground'] as const;
@@ -143,10 +177,15 @@ export function CorrosionThermalPanel() {
           <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-3">
             <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Thermometer className="h-3 w-3" />Thermal profile</div>
             {!thermResult && <div className="text-[11px] text-zinc-400">Analyze to evaluate.</div>}
-            {thermResult && (
+            {thermResult && thermalNotRecorded(thermResult) && (
+              <p className="text-[11px] text-zinc-400">{thermalNotRecorded(thermResult)}</p>
+            )}
+            {thermResult && !thermalNotRecorded(thermResult) && (
               <div className="space-y-2 text-[11px]">
                 <div className={`inline-block rounded px-2 py-0.5 text-[10px] font-mono ${thermResult.thermalClass === 'excellent-conductor' ? 'bg-orange-500/20 text-orange-200' : 'bg-zinc-800 text-zinc-300'}`}>{thermResult.thermalClass}</div>
-                <div className={`text-[10px] ${thermResult.isSafe ? 'text-emerald-300' : 'text-rose-300'}`}>Safety margin: {thermResult.safetyMarginPercent}% — {thermResult.isSafe ? 'SAFE' : 'AT-RISK'}</div>
+                <div className={`text-[10px] ${thermalVerdict(thermResult) === 'SAFE' ? 'text-emerald-300' : thermalVerdict(thermResult) === 'AT-RISK' ? 'text-rose-300' : 'text-zinc-400'}`}>
+                  Safety margin: {marginPercentOf(thermResult)}%{thermalVerdict(thermResult) && ` — ${thermalVerdict(thermResult)}`}
+                </div>
                 {thermResult.suitability && (
                   <div className="grid grid-cols-2 gap-1">
                     {Object.entries(thermResult.suitability).map(([k, v]) => (
@@ -170,7 +209,14 @@ export function CorrosionThermalPanel() {
       dtu={{
         apiSource: 'concord-materials-corrosion-thermal',
         title: (cor, therm) => `${corrosion.name} — corrosion ${cor.corrosionResistance ?? '—'} · thermal ${therm.thermalClass ?? '—'}`,
-        content: (cor, therm) => `Corrosion (${corrosion.name} in ${corrosion.environment}):\n  Resistance: ${cor.corrosionResistance ?? '—'}/100 (${cor.riskLevel ?? '—'})\n  Estimated life: ${cor.estimatedLifespan ?? '—'}\n${(cor.protectionMethods || []).map((r) => `  • ${r}`).join('\n')}\n\nThermal (operating ${thermal.operatingTemp === '' ? '—' : thermal.operatingTemp}°C, app=${thermal.application}):\n  Class: ${therm.thermalClass}\n  Safety margin: ${therm.safetyMarginPercent}% (${therm.isSafe ? 'SAFE' : 'AT-RISK'})\n  Suitability:\n${Object.entries(therm.suitability || {}).map(([k, v]) => `    ${k}: ${v}`).join('\n')}\n${(therm.warnings || []).map((w) => `  ⚠ ${w}`).join('\n')}`,
+        content: (cor, therm) => {
+          const notRecorded = thermalNotRecorded(therm);
+          const verdict = thermalVerdict(therm);
+          const thermalLines = notRecorded
+            ? `  ${notRecorded}`
+            : `  Class: ${therm.thermalClass}\n  Safety margin: ${marginPercentOf(therm)}%${verdict ? ` (${verdict})` : ''}\n  Suitability:\n${Object.entries(therm.suitability || {}).map(([k, v]) => `    ${k}: ${v}`).join('\n')}\n${(therm.warnings || []).map((w) => `  ⚠ ${w}`).join('\n')}`;
+          return `Corrosion (${corrosion.name} in ${corrosion.environment}):\n  Resistance: ${cor.corrosionResistance ?? '—'}/100 (${cor.riskLevel ?? '—'})\n  Estimated life: ${cor.estimatedLifespan ?? '—'}\n${(cor.protectionMethods || []).map((r) => `  • ${r}`).join('\n')}\n\nThermal (operating ${thermal.operatingTemp === '' ? '—' : thermal.operatingTemp}°C, app=${thermal.application}):\n${thermalLines}`;
+        },
         tags: () => ['materials', corrosion.category, corrosion.environment],
         rawData: (cor, therm) => ({ corrosion, thermal, corResult: cor, thermResult: therm }),
       }}

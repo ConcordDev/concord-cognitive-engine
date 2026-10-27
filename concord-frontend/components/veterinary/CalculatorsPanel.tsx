@@ -273,6 +273,20 @@ function VaccineCalc() {
   );
 }
 
+/**
+ * Why a cost estimate has no total. The server sends `unavailable` (the
+ * procedure lines with no catalog or quoted price) for reason `not_recorded`;
+ * `message` only exists on the empty-input reply, so never render a blank.
+ */
+function costNotRecordedText(result: CalcResult): string {
+  const missing: string[] = Array.isArray(result.unavailable) ? result.unavailable : [];
+  if (missing.length > 0) {
+    const names = missing.map((m) => (m.startsWith('procedures[') ? 'an unnamed procedure' : m));
+    return `Not recorded: ${names.join(', ')}`;
+  }
+  return result.message || 'Not recorded';
+}
+
 function CostCalc() {
   const [selected, setSelected] = useState<string[]>([]);
   const [result, setResult] = useState<CalcResult | null>(null);
@@ -334,7 +348,7 @@ function CostCalc() {
                 <p className="mt-1 text-zinc-400">{result.tip}</p>
               </>
             ) : (
-              <p className="text-zinc-400">{result.message}</p>
+              <p className="text-zinc-400">{costNotRecordedText(result)}</p>
             )}
           </div>
         )}
