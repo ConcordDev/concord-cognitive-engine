@@ -39,6 +39,36 @@ export interface UsdaFoodSearchProps {
   onSelect?: (food: Food) => void;
 }
 
+interface UsdaSearchResult {
+  ok: boolean;
+  foods?: Food[];
+  reason?: string;
+  status?: number;
+  error?: string;
+  usdaMessage?: string | null;
+  usingDemoKey?: boolean;
+}
+
+/** Honest one-line failure text: what actually failed, never a generic "unreachable". */
+export function usdaErrorText(r: Pick<UsdaSearchResult, 'reason' | 'status' | 'error' | 'usdaMessage'> | null): string {
+  if (!r) return 'Food search request failed — no response from the server.';
+  const detail = r.usdaMessage ? `: ${r.usdaMessage}` : '';
+  switch (r.reason) {
+    case 'usda_rate_limited':
+      return `USDA rate limit reached (HTTP 429)${detail}. Try again shortly.`;
+    case 'usda_http_error':
+      return `USDA rejected the search (HTTP ${r.status ?? '?'})${detail}.`;
+    case 'usda_timeout':
+      return 'USDA did not answer in time.';
+    case 'usda_unreachable':
+      return `USDA unreachable${r.error ? ` (${r.error})` : ''}.`;
+    case 'query_too_long':
+      return 'Search is too long (100 characters max).';
+    default:
+      return r.error || r.reason || 'Food search failed.';
+  }
+}
+
 async function runMacro<T>(domain: string, name: string, input: Record<string, unknown> = {}): Promise<T | null> {
   try {
     const r = await lensRun({ domain, name, input });
@@ -60,14 +90,14 @@ export function UsdaFoodSearch({ domain = 'cooking', className, onSelect }: Usda
     if (q.trim().length < 2) { setFoods([]); return; }
     setLoading(true);
     setError(null);
-    const r = await runMacro<{ ok: boolean; foods?: Food[]; reason?: string; usingDemoKey?: boolean }>(
+    const r = await runMacro<UsdaSearchResult>(
       domain, 'live_food_search', { query: q, limit: 15 },
     );
     if (r?.ok) {
       setFoods(r.foods || []);
       setUsingDemoKey(!!r.usingDemoKey);
     } else {
-      setError(r?.reason || 'fetch_failed');
+      setError(usdaErrorText(r));
       setFoods([]);
     }
     setLoading(false);
@@ -103,8 +133,8 @@ export function UsdaFoodSearch({ domain = 'cooking', className, onSelect }: Usda
       </div>
 
       {error && (
-        <div className="px-3 py-3 text-xs text-rose-300/80">
-          <AlertTriangle className="inline w-3.5 h-3.5 mr-1" aria-hidden="true" />USDA unreachable ({error})
+        <div role="alert" className="px-3 py-3 text-xs text-rose-300/80">
+          <AlertTriangle className="inline w-3.5 h-3.5 mr-1" aria-hidden="true" />{error}
         </div>
       )}
 
