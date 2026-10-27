@@ -16,9 +16,11 @@
 // Persistent per-user data lives in globalThis._concordSTATE Maps keyed
 // by userId. Every handler returns { ok, result?, error? } and never throws.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { assessPublicUrl, fetchPublicUrl, PUBLIC_URL_BLOCKED } from "../lib/public-fetch.js";
 
 export default function registerObserveActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ---- per-user STATE -------------------------------------------------
   function getObserveState() {
     const STATE = globalThis._concordSTATE;

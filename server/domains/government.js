@@ -1,3 +1,4 @@
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
 import { nwsHeaders } from "../lib/keyless-atmosphere.js";
 import { stampIngestedRecord } from "../lib/provenance-ingest.js";
@@ -80,6 +81,7 @@ function mapCongressMember(m) {
 }
 
 export default function registerGovernmentActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Field-alias note (Wave 3 audit, docs/lens-specs/government-capability-
   // map.md): these four macros are driven by the generic "Permit"/
   // "Violation"/"EmergencyPlan"/"Record" case-management artifacts the

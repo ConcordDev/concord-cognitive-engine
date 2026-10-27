@@ -3,6 +3,7 @@
 // Sprint C / Track D — macro surface for kingdoms / decrees / takeover /
 // rebellion. The RulerHUD and DecreeComposer frontend lenses read these.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import {
   listKingdomsForWorld,
   getKingdom,
@@ -49,6 +50,7 @@ function _emitKingdomTakeover(db, kingdomId, userId, result) {
 }
 
 export default function registerKingdomsMacros(register) {
+  register = guardAnonWrites(register); // anonymous callers can read, not write (lib/lens-authz.js)
   register("kingdoms", "list", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };

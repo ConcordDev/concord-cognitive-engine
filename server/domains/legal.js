@@ -9,12 +9,14 @@
 // docs/lens-specs/legal-capability-map.md as DATA-SOURCING — reclassified
 // to CURATION because the primary source (state rules of civil procedure)
 // is real public-domain legal text, just not aggregated behind a free API.
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { getProcedureForState, listProcedureStateSummaries } from "../lib/court-procedure-reference.js";
 import { createHash } from "node:crypto";
 import { moneyOrNull, badNumber } from "../lib/finite-input.js";
 import { registerEsignProvider, issueSigningLinks, deliverSigningLinks, revokeSigningLinks } from "../lib/esign-links.js";
 
 export default function registerLegalActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Fail-CLOSED numeric coercion. parseFloat("Infinity") === Infinity and
   // Number("1e999") === Infinity both slip past a bare `|| 0`, leaking a
   // non-finite value into a rendered total. finiteNum rejects NaN/±Infinity and

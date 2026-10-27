@@ -500,7 +500,9 @@ export function computeMetrics(db, params = {}) {
 
 // ── registration ─────────────────────────────────────────────────────────────
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerGenesisActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── Identity detail — full timeline of an emergent's actions/decisions ──────
   registerLensAction("genesis", "identity-detail", (ctx, _artifact, params = {}) => {
     try {

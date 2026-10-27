@@ -2,7 +2,9 @@
 // Domain actions for system tick/heartbeat: health pulse computation,
 // load prediction, and rhythm/periodicity analysis.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerTickActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * healthPulse
    * Compute system health from tick data: heartbeat regularity, jitter

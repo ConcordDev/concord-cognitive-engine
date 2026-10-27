@@ -2,7 +2,9 @@
 // Domain actions for biology/bioinformatics: sequence alignment scoring,
 // gene expression analysis, phylogenetic distance, and motif detection.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerBioActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * sequenceAlign
    * Needleman-Wunsch global alignment of two DNA/protein sequences.

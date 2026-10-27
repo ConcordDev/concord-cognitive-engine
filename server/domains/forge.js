@@ -19,6 +19,7 @@
 // real AST-light section partitioner over the generator output; the
 // sandbox builds a runnable iframe document from the project files.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import {
   generateForgeApp,
   validateForgeConfig,
@@ -291,6 +292,7 @@ function diffLines(oldCode, newCode) {
 }
 
 export default function registerForgeActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── createProject — generate base app + open a refinement thread ───
   registerLensAction("forge", "createProject", (ctx, artifact, params) => {
     try {

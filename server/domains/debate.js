@@ -1,5 +1,7 @@
 // server/domains/debate.js
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerDebateActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── Shared helpers ─────────────────────────────────────────────────────
   // The AI-analysis actions are reached from TWO surfaces:
   //   1. page.tsx "AI Analysis Actions" → /api/lens/:domain/:id/run with

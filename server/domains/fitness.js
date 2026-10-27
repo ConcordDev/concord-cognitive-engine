@@ -1,6 +1,8 @@
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { presentOwnedId, publicActor } from "../lib/public-actor.js";
 
 export default function registerFitnessActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Fail-CLOSED numeric coercion for the legacy calc surfaces (progression /
   // body-comp / periodization / class-utilization) which predate the `fnum`
   // helper below and used `parseFloat(x) || 0` — a fail-OPEN pattern that lets

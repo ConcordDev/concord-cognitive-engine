@@ -20,7 +20,9 @@
 //   annotation-add / annotations-list / annotation-resolve
 //   cobuild-summary
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerCobuildActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── STATE plumbing ───────────────────────────────────────────────
   function STATE() {
     if (!globalThis._concordSTATE) globalThis._concordSTATE = {};

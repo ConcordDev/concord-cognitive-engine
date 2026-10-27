@@ -8,6 +8,7 @@
 // without auth; full text + dockets require a free COURTLISTENER_API_TOKEN
 // env (courtlistener.com/help/api/rest/).
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { createHash } from "node:crypto";
 import { moneyOrNull, badNumber } from "../lib/finite-input.js";
 import { KNOWN_SCOPES, getDoc } from "../lib/yjs-realtime.js";
@@ -100,6 +101,7 @@ export function lineDiff(oldText, newText) {
 }
 
 export default function registerLawActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * caseAnalysis
    * Analyze case data: compute duration, categorize by type, track outcomes and win rates.

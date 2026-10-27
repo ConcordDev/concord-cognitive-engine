@@ -2,7 +2,9 @@
 // Domain actions for analytics: funnel analysis, cohort analysis,
 // metric aggregation, anomaly detection, trend forecasting.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerAnalyticsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Fail-CLOSED numeric coercion. parseFloat("1e999")/parseFloat("Infinity")
   // both return Infinity (truthy → a bare `|| 0` does NOT catch them), which
   // then poisons mean/stdDev/slope/forecast to Infinity → JSON-serialised as

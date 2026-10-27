@@ -20,6 +20,7 @@
 // hypothesis.multipleComparison. The one genuinely new primitive is the
 // Monte Carlo convergence detector (lib/probability/monte-carlo-convergence.js).
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { createDTU } from "../economy/dtu-pipeline.js";
 import { uid } from "../lib/id-factory.js";
 import {
@@ -189,6 +190,7 @@ const CAPABILITY_DESCRIPTORS = [
 for (const descriptor of CAPABILITY_DESCRIPTORS) registerCapability(descriptor);
 
 export default function registerPredictActions(rawRegistrar) {
+  rawRegistrar = guardAnonWrites(rawRegistrar); // anonymous callers can read, not write (lib/lens-authz.js)
   // Operator-only: tickets have no owner column (one global pool that holds
   // Dila's live-trade tickets) — members could list or RESOLVE them.
   const registerLensAction = operatorOnlyRegistrar(rawRegistrar);

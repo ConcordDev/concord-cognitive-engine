@@ -12,10 +12,12 @@
 // lib/simulation/qec-decoder.js headers for the full complementary-not-
 // competing relationship and the honest boundary statement.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { buildToricCode, syndromeOf, sampleBitFlipError, xorEdgeSets, isHomologicallyTrivial } from "../lib/simulation/qec-surface-code.js";
 import { runBitFlipTrial, runDepolarizingTrial, sweepLogicalErrorRate, unionFindDecode } from "../lib/simulation/qec-decoder.js";
 
 export default function registerQuantumActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── Persistent per-user circuit store ──────────────────────────────
   function getQState() {
     const STATE = globalThis._concordSTATE;

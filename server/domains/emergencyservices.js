@@ -33,12 +33,14 @@
 // and unit commitment are real in-Concord records + a real realtime
 // broadcast to members already viewing the lens, and stop there.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import {
   createOrganization, getOrganization, joinOrganization, leaveOrganization,
   setMemberRole, getOrgMembers, getOrgsForUser, listOrganizations,
 } from "../lib/world-organizations.js";
 
 export default function registerEmergencyServicesActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Fail-CLOSED numeric coercion. parseInt/parseFloat happily yield Infinity
   // (parseFloat("Infinity") / parseFloat("1e999") === Infinity), which would
   // otherwise leak straight into a triage/dispatch/readiness number — e.g. an

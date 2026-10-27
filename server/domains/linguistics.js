@@ -7,7 +7,9 @@
 const FREE_DICTIONARY = "https://api.dictionaryapi.dev/api/v2/entries";
 const DATAMUSE = "https://api.datamuse.com/words";
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerLinguisticsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("linguistics", "textAnalysis", (ctx, artifact, _params) => {
     // Coerce to String so a poisoned non-string input (number/object) degrades
     // gracefully instead of throwing `text.split is not a function` (fail-closed).

@@ -15,6 +15,7 @@
 // visa macro hits the real REST Countries reference instead of a
 // hand-curated table.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 // Wave-4 gap-closure (travel-capability-map.md #2): Gmail inbox auto-sync
 // reuses the same SSRF-guarded connector read path domains/gmail.js already
@@ -78,6 +79,7 @@ export function parseBookingEmail(text) {
 }
 
 export default function registerTravelActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * trip-budget — Pure-compute trip cost breakdown. No price synthesis;
    * caller supplies known flight cost (or omits and gets a derived

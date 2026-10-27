@@ -16,6 +16,7 @@
 //
 // In-memory, STATE-backed. Per-user scope via ctx.actor.userId.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import {
   SEASONS,
   SEASON_NODE_YIELD_MULT,
@@ -27,6 +28,7 @@ import {
 const SEASON_LENGTH_DAYS = _internal.SEASON_LENGTH_DAYS; // 7
 
 export default function registerSeasonalActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── STATE plumbing ───────────────────────────────────────────────
   function seasonalStore() {
     if (!globalThis._concordSTATE) globalThis._concordSTATE = {};

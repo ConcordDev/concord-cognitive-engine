@@ -6,6 +6,7 @@
 // org/membership substrate (server/lib/world-organizations.js) instead of a
 // new parallel permissions layer — that substrate already has a "lab" org
 // type and 4 member roles. See the LAB_TIER_* mapping below.
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import {
   createOrganization,
   getOrganization,
@@ -17,6 +18,7 @@ import {
 } from "../lib/world-organizations.js";
 
 export default function registerLabActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * calibrationCurve
    * Fit a calibration curve from standard measurements and use it to

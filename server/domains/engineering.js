@@ -6,6 +6,7 @@
 //
 // All handlers return { ok: boolean, result?, error? } and never throw.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { runFEA } from '../lib/simulation/fea-solver.js';
 import { buildBeamStudy, summarizeBeamStudy } from '../lib/conkay/beam-study.js';
 import { parseSafetyFactor, safetyCheck } from '../lib/conkay/nlp-design-intent.js';
@@ -444,6 +445,7 @@ export function solveBeamSweep(data = {}) {
 }
 
 export default function registerEngineeringActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── toleranceAnalysis (existing — kept) ─────────────────────────────────
   registerLensAction('engineering', 'toleranceAnalysis', (ctx, artifact, params) => {
     try {

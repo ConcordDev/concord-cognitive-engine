@@ -12,7 +12,9 @@
 //
 // All parity state is per-user, persisted in globalThis._concordSTATE.feedLens.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerFeedActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── Per-user parity state ──────────────────────────────────────────────
   function getFeedState() {
     const STATE = globalThis._concordSTATE;

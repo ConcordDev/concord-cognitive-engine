@@ -1,4 +1,5 @@
 // server/domains/hvac.js
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { ductSizingFull, sectionProperties } from "../lib/compute/engineering-compute.js";
 import { runFEA } from "../lib/simulation/fea-solver.js";
 import { lumpUniformLoadToNodes } from "../lib/simulation/distributed-load.js";
@@ -9,6 +10,7 @@ const LB_PER_FT_TO_N_PER_M = 4.4482216153 / 0.3048;
 const GRAVITY = 9.80665;
 
 export default function registerHVACActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Fail-CLOSED numeric coercion: Number(v) rejects "12abc"/"Infinity"/"NaN"
   // (unlike parseFloat, which would accept the prefix or yield Infinity). A
   // non-finite or non-positive value falls to the default so no NaN/Infinity

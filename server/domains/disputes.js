@@ -9,10 +9,12 @@
 // STATE.disputesLens → lens-state-persistence. Every handler is wrapped in
 // try/catch and returns { ok, result?, error? } — never throws.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { isAdmin } from "../lib/lens-authz.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 
 export default function registerDisputesActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /* ---------------------------------------------------------------- */
   /*  State substrate — shared Map<caseId, case>, party access         */
   /* ---------------------------------------------------------------- */

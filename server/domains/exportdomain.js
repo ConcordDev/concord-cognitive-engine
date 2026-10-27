@@ -9,7 +9,9 @@
 // No fake/seed/demo data — every value is real user input or computed
 // from real input. Empty collections render "no data yet" in the UI.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerExportActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── legacy stateless macros (unchanged behaviour) ──────────────────
   registerLensAction("export", "generatePackage", (ctx, artifact, _params) => {
     const data = artifact.data || {};

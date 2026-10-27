@@ -9,9 +9,11 @@
 //
 // Per-user scope (ctx.actor.userId), STATE-backed (STATE.notaryRecords:
 // Map<userId, Array<record>>). No DB migrations.
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { createHash } from "node:crypto";
 
 export default function registerNotaryActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   function notaryStore() {
     if (!globalThis._concordSTATE) globalThis._concordSTATE = {};
     const STATE = globalThis._concordSTATE;

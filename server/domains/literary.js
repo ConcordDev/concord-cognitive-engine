@@ -14,6 +14,7 @@
 // Registered from server.js: `import registerLiteraryMacros from "./domains/literary.js";
 // registerLiteraryMacros(register);`
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { embed, cosineSimilarity } from "../embeddings.js";
 import { getResonanceEdges, resonanceSalience, salienceFrom } from "../lib/literary-resonance.js";
 import { searchVec } from "../lib/literary-vec.js";
@@ -175,6 +176,7 @@ async function searchLiterary(db, input = {}) {
 }
 
 export default function registerLiteraryMacros(register) {
+  register = guardAnonWrites(register); // anonymous callers can read, not write (lib/lens-authz.js)
   register("literary", "search", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };

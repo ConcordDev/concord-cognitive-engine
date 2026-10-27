@@ -33,7 +33,9 @@
 // mock / seed values. Every handler returns { ok, result|error } and
 // never throws.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerWorldmodelActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ---------------------------------------------------------------------------
   // State container
   // ---------------------------------------------------------------------------

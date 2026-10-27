@@ -104,7 +104,8 @@ describe("command center alert restart", () => {
 
   it("refuses an actorless write and drops the table", () => {
     const anon = { actor: {}, db };
-    assert.equal(call("alert-file", anon, { title: "Disk", line: "tight" }).error, "no_actor");
+    // The shared anon-write gate refuses before the handler's own no_actor check.
+    assert.ok(["no_actor", "auth_required"].includes(call("alert-file", anon, { title: "Disk", line: "tight" }).error));
     down(db);
     assert.equal(
       db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='command_center_alerts'").get(),

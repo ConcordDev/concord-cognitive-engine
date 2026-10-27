@@ -2,9 +2,11 @@
 // Domain actions for parenting: milestone tracking, growth percentiles,
 // sleep analysis, developmental screening, routine optimization.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 
 export default function registerParentingActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * milestoneCheck
    * Evaluate developmental milestones against age-appropriate expectations.

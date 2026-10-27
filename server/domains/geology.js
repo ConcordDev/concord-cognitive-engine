@@ -88,7 +88,9 @@ async function usgsFailureDetail(r) {
 // source behind Rockd's bedrock overlay and "rocks near me" lookup).
 const MACROSTRAT_API = "https://macrostrat.org/api/v2";
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerGeologyActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Fail-CLOSED numeric coercion: parseFloat/Number pass "Infinity"/1e999/NaN
   // through silently, which then serialize to `null` (or leak Infinity) in the
   // result and read as blank in production. fin() returns a finite number or

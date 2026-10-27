@@ -22,9 +22,11 @@ function finiteNum(v, fallback = 0, min, max) {
   return out;
 }
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { eiaRetailPrice } from "../lib/sourced-inputs.js";
 import { notComputed } from "../lib/lens-inputs.js";
 export default function registerEnergyActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   const consumptionAnalysisSync = (ctx, artifact, _params) => {
     const readings = Array.isArray(artifact.data?.readings) ? artifact.data.readings : [];
     if (readings.length === 0) return { ok: true, result: { message: "Add energy readings (kWh) to analyze consumption." } };

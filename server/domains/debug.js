@@ -8,7 +8,9 @@
 // distributed trace viewer (span waterfall), alert rules (threshold
 // breach detection), time-series metric charts, and release tracking.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerDebugActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── Per-user observability state ───────────────────────────────
   function getDebugState() {
     const STATE = globalThis._concordSTATE;

@@ -1,4 +1,6 @@
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerManufacturingActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("manufacturing", "scheduleOptimize", (ctx, artifact, _params) => {
     const workOrders = artifact.data?.workOrders || [artifact];
     const sorted = [...workOrders].sort((a, b) => {

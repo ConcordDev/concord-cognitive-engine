@@ -81,7 +81,9 @@ function statsOf(samples) {
   return { n, mean, stddev };
 }
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerPsyopsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── Configurable detection rules ────────────────────────────────
   function userRules(s, userId) {
     if (!s.rules.has(userId)) {

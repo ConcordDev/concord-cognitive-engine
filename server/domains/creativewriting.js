@@ -1,5 +1,7 @@
 // server/domains/creativewriting.js
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerCreativeWritingActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("creative-writing", "manuscriptAnalysis", (ctx, artifact, _params) => {
     const text = artifact.data?.content || artifact.data?.text || "";
     if (!text) return { ok: true, result: { message: "Add manuscript text to analyze." } };

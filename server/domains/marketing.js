@@ -3,10 +3,12 @@
 // Gmail campaign send (Wave-4 gap-closure) reuses the real, SSRF-guarded,
 // per-user-OAuth Gmail sender already shipped for Track C — same import as
 // server/domains/gmail.js#send. Consumed unmodified; no edits to either file.
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { writeGmailMessage } from "../lib/connector-client.js";
 import { getValidAccessToken } from "../lib/connector-tokens.js";
 
 export default function registerMarketingActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Fail-CLOSED numeric coercion for the pure calculators: any non-finite input
   // (NaN / Infinity / "Infinity" / "1e999" / "abc") collapses to the default so
   // no NaN/Infinity ever leaks into a rendered metric. parseFloat/parseInt alone

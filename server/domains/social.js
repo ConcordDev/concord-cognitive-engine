@@ -8,6 +8,7 @@
 // All state is per-user, persisted in globalThis._concordSTATE Maps.
 // Shadows Instagram / X core engagement features.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { screenLocalSync } from "../lib/content-safety/index.js";
 import { resolveUserDisplay } from "../lib/friend-presence.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
@@ -30,6 +31,7 @@ import { submitReport } from "../lib/content-moderation.js";
 import { assertSocialRate, duplicatePost, linkHeavyNewAccount, textHitsKeywordMute } from "../lib/social-safety.js";
 
 export default function registerSocialActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── shared state helpers ───────────────────────────────────────────
   // JSON.stringify(new Set(["id"])) is "{}". A snapshot written before nested
   // Sets were enveloped comes back as a plain object. `new Set(obj)` throws

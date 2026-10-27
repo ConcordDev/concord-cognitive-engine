@@ -2,10 +2,12 @@
 // Domain actions for self-reflection and journaling: insight extraction,
 // growth metrics tracking, and habit pattern analysis.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { createHash } from "node:crypto";
 
 export default function registerReflectionActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * insightExtraction
    * Extract insights from journal entries — pattern recognition across entries,

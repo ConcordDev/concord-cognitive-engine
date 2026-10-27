@@ -1,9 +1,11 @@
 // server/domains/marketplace.js
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { executeMarketplacePurchase } from "../economy/transfer.js";
 import { calculateFee } from "../economy/fees.js";
 import { moneyOrNull, badNumber } from "../lib/finite-input.js";
 
 export default function registerMarketplaceActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("marketplace", "listingScore", (ctx, artifact, _params) => {
     const listing = artifact.data || {};
     const title = listing.title || "";

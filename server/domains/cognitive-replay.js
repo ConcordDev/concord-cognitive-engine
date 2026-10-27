@@ -14,9 +14,11 @@
 //
 // NEW DOMAIN FILE: cognitive-replay.js
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import crypto from "node:crypto";
 
 export default function registerCognitiveReplayActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
 
   // ── persistent per-user state ──────────────────────────────────────
   function getReplayState() {

@@ -9,6 +9,7 @@
 // real ProPublica Nonprofit Explorer integration for org details +
 // search.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { writeGmailMessage } from "../lib/connector-client.js";
 
 const PROPUBLICA_BASE = "https://projects.propublica.org/nonprofits/api/v2";
@@ -27,6 +28,7 @@ function mailFailureReason(sent) {
 }
 
 export default function registerNonprofitActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("nonprofit", "donorRetention", (ctx, artifact, params) => {
     const givingHistory = artifact.data?.givingHistory || [];
     const currentYear = params.year || new Date().getFullYear();

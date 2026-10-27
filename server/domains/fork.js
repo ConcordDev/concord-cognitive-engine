@@ -14,6 +14,7 @@
 // repo). HARD SCOPE: preview-only, non-money — see the handler below and
 // docs/GOVERNANCE_DESIGN.md §5.5 (no monetized fork rental ships in Wave 1).
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import {
   createForkObject,
   instantiateForkSandbox,
@@ -25,6 +26,7 @@ import {
 const GITHUB_API = "https://api.github.com";
 
 export default function registerForkActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * divergenceAnalysis
    * Compute Levenshtein edit distance between forked text versions, identify

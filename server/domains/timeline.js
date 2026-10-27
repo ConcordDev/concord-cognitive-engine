@@ -5,10 +5,12 @@
 // Real friend-graph lookup (migration 214 `friendships` table) — the
 // authoritative, server-verified source for "are these two users friends",
 // as opposed to a client-supplied assertion. See checkPostAccess() below.
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { areFriends } from "../lib/friendships.js";
 import { presentOwnedId } from "../lib/public-actor.js";
 
 export default function registerTimelineActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * criticalPath
    * Compute the critical path through a project network using CPM.

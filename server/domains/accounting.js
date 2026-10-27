@@ -1,11 +1,13 @@
 // server/domains/accounting.js
 // Domain actions for accounting: trial balance, P&L, invoice aging, budget variance, rent roll.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { requireOwner } from "../lib/lens-authz.js";
 import { assertPayable } from "../lib/money-guards.js";
 import { bindWave1 } from "../lib/lens-input-schemas-wave1.js";
 
 export default function registerAccountingActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction = bindWave1(registerLensAction);
   /**
    * trialBalance

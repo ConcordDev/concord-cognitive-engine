@@ -1,3 +1,4 @@
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { newShareToken, isStrongShareToken } from "../lib/share-token.js";
 // server/domains/carpentry.js
 // Domain actions for carpentry: board foot calculation, joint strength analysis,
@@ -7,6 +8,7 @@ import { newShareToken, isStrongShareToken } from "../lib/share-token.js";
 // per-job time tracking for labor costing.
 
 export default function registerCarpentryActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("carpentry", "boardFootCalc", (ctx, artifact, _params) => {
     const pieces = artifact.data?.pieces || [];
     if (pieces.length === 0) return { ok: true, result: { message: "Add lumber pieces with thickness, width, and length." } };

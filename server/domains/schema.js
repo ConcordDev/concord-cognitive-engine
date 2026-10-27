@@ -2,7 +2,9 @@
 // Domain actions for schema management: validation, diffing, and
 // evolution planning with backward compatibility checks.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerSchemaActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * schemaValidate
    * Validate data against schema: type checking, required fields, pattern

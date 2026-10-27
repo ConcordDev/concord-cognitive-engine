@@ -1,9 +1,11 @@
 // server/domains/fashion.js
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { listFriends, areFriends } from "../lib/friendships.js";
 
 export default function registerFashionActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("fashion", "vision", async (ctx, artifact, _params) => {
     const { imageB64, imageUrl } = artifact.data || {};
     if (!imageB64 && !imageUrl) return { ok: false, error: "imageB64 or imageUrl required" };

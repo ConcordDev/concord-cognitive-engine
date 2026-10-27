@@ -2,7 +2,9 @@
 // Domain actions for legacy system management: technical debt computation,
 // migration readiness assessment, and risk mapping.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerLegacyActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * technicalDebt
    * Compute technical debt: complexity metrics, dependency age, test coverage

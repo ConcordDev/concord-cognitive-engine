@@ -41,7 +41,9 @@ export function classifySubstrateDomain(dtu) {
   return "unclassified";
 }
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerAllActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * crossDomainSearch
    * Search across all lens artifacts for matching query. Uses the live

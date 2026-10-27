@@ -6,7 +6,9 @@
 // service catalog, dependency-graph, live time-series metrics dashboards,
 // health-check roll-up, change/deploy timeline, alert surface, macro explorer.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerMetaActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── persistent per-user introspection state ──────────────────────────
   function getMetaState() {
     const STATE = globalThis._concordSTATE;

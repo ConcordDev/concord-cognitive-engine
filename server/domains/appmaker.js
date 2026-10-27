@@ -2,9 +2,11 @@
 // Domain actions for app building/prototyping: scaffold generation,
 // UI complexity measurement, and wireframe validation.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { assessPublicUrl, fetchPublicUrl, PUBLIC_URL_BLOCKED } from "../lib/public-fetch.js";
 
 export default function registerAppmakerActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * scaffoldApp
    * Generate app scaffold structure from a spec. Builds component tree,

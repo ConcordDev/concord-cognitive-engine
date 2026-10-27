@@ -1,7 +1,9 @@
 // server/domains/logistics.js
 // Domain actions for logistics: route optimization, HOS compliance, vehicle maintenance, inventory audit.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerLogisticsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * optimizeRoute
    * Reorder delivery stops for shortest total distance using nearest-neighbor heuristic.

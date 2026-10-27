@@ -1,7 +1,9 @@
 // server/domains/ar.js
 // Domain actions for augmented reality: spatial mapping, marker detection, scene graph analysis.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerArActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * spatialMapping
    * Process spatial anchor data — compute bounding volumes, occlusion zones,

@@ -1,3 +1,4 @@
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 import { executeToolCall } from "../lib/chat-agent.js";
 // server/domains/agents.js
@@ -8,6 +9,7 @@ import { executeToolCall } from "../lib/chat-agent.js";
 // cost/token budgets with enforcement, and template marketplace import.
 
 export default function registerAgentsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // NOTE (Wave 3 audit fix): these four diagnostic handlers used to read ONLY
   // `artifact.data` and ignore `params` entirely (`_params` was a discarded
   // arg). The frontend Agent Control Center never persists `skills` /

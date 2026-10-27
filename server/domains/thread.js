@@ -1,6 +1,8 @@
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { connectBluesky, publishBluesky, blueskyEngagement, connectMastodon, publishMastodon, mastodonEngagement, forgetSocialCredential, blueskyConnectorId, mastodonConnectorId } from "../lib/social-publish.js";
 // server/domains/thread.js
 export default function registerThreadActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // The lineage/branching tree (thread.branch / thread.merge, registered in
   // server.js) stores conversation turns as `data.nodes` — {id, parentNodeId,
   // content, authorId, createdAt}. These four analysis macros were written

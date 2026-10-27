@@ -51,6 +51,7 @@
 // mount and whenever the dummy count/HP changes, and re-targets attacks at
 // the returned real npc ids (see `app/lenses/sandbox/page.tsx#syncArena`).
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import * as cityPresence from "../lib/city-presence.js";
 
 // Reject a poisoned numeric input (NaN/Infinity/1e308/negative) BEFORE writing.
@@ -66,6 +67,7 @@ function badNumericField(input, keys) {
 }
 
 export default function registerSandboxMacros(register) {
+  register = guardAnonWrites(register); // anonymous callers can read, not write (lib/lens-authz.js)
   // Legacy-convention shim: adapt canonical register(ctx, input) → the
   // verified (ctx, artifact, params) handler bodies below, unchanged.
   const registerLensAction = (domain, action, handler, ...extra) =>

@@ -2,10 +2,12 @@
 // Domain actions for the productivity lens — Todoist + Things shape.
 // 4 macros over task / project / focus / daily summary.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { registerHeartbeat } from "../emergent/heartbeat-registry.js";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
 
 export default function registerProductivityActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * taskCreate — append a task to the artifact tasks list.
    *   params.title, params.project?, params.priority? (1-4), params.dueDate?

@@ -17,7 +17,9 @@ function finiteNum(v, fallback, { min = -Infinity, max = Infinity } = {}) {
   return Math.max(min, Math.min(max, n));
 }
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerDefenseActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("defense", "threatAssessment", (ctx, artifact, _params) => {
     const threats = Array.isArray(artifact.data?.threats) ? artifact.data.threats : [];
     if (threats.length === 0) return { ok: true, result: { message: "Add threats with likelihood and impact to assess." } };

@@ -4,6 +4,7 @@
 // gear recommendation, print size, vision via LLaVA) plus real Pexels
 // stock photo search (free with API key from pexels.com/api).
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 
 const PEXELS_BASE = "https://api.pexels.com/v1";
@@ -11,6 +12,7 @@ const PEXELS_BASE = "https://api.pexels.com/v1";
 import { needNums, optNum, notComputed, advisory } from "../lib/lens-inputs.js";
 
 export default function registerPhotographyActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("photography", "vision", async (ctx, artifact, _params) => {
     const { imageB64, imageUrl } = artifact.data || {};
     if (!imageB64 && !imageUrl) return { ok: false, error: "imageB64 or imageUrl required" };

@@ -2,11 +2,13 @@
 // Domain actions for research: citation network analysis, methodology scoring,
 // reproducibility assessment, and literature gap detection.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { computeContentHash } from "../lib/dtu-protocol.js";
 
 export default function registerResearchActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("research", "vision", async (ctx, artifact, _params) => {
     const { imageB64, imageUrl } = artifact.data || {};
     if (!imageB64 && !imageUrl) return { ok: false, error: "imageB64 or imageUrl required" };

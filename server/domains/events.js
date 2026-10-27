@@ -1,3 +1,4 @@
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { writeGmailMessage } from "../lib/connector-client.js";
 import { boundedNum, badNumber, MAX_MONEY } from "../lib/finite-input.js";
 
@@ -6,6 +7,7 @@ let testMailer = null;
 export function _setEventsMailerForTest(fn) { testMailer = typeof fn === "function" ? fn : null; }
 
 export default function registerEventsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("events", "budgetReconcile", (ctx, artifact, _params) => {
     const projectedBudget = artifact.data?.budget || 0;
     const expenses = artifact.data?.expenses || [];

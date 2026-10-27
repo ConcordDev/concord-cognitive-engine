@@ -67,7 +67,9 @@ function fetchDispatch(db, dispatchId) {
   } catch { return null; }
 }
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerGoddessActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * detail — resolve a single dispatch by id (permalink target). Also
    * returns the immediately-prior and immediately-next dispatch in the

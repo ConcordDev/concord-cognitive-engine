@@ -11,12 +11,14 @@
 // Persistent per-user data: globalThis._concordSTATE.desertLens Maps.
 // Pure-compute macros for budgets, sizing, classification.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { needNums, notComputed } from "../lib/lens-inputs.js";
 
 const OPEN_METEO = "https://api.open-meteo.com/v1/forecast";
 
 export default function registerDesertActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ───────────────────────── shared state ─────────────────────────
   function getDesertState() {
     const STATE = globalThis._concordSTATE;

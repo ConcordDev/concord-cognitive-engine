@@ -105,7 +105,9 @@ function rangeForBudget(budgetDb, f, hb, hm, terrain) {
 
 const TERRAIN_ATTEN = { urban: 0.62, suburban: 0.82, rural: 1.0, water: 1.08 };
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerTelecommunicationsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ===========================================================================
   // Legacy calculators (kept — wired by TelecommunicationsActionPanel)
   // ===========================================================================

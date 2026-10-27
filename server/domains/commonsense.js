@@ -4,6 +4,7 @@
 // ConceptNet knowledge-graph lookups (free, no API key — ~34M
 // edges across 304 languages).
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 
 const CONCEPTNET_BASE = "https://api.conceptnet.io";
@@ -112,6 +113,7 @@ function normTok(s) {
 }
 
 export default function registerCommonsenseActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * plausibilityCheck
    * Score statement plausibility using constraint satisfaction.

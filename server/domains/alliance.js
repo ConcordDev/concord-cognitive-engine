@@ -1,9 +1,11 @@
 // server/domains/alliance.js
 // Domain actions for partnership/alliance management: compatibility scoring, network analysis, risk assessment.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 
 export default function registerAllianceActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * compatibilityScore
    * Score compatibility between potential partners based on capabilities, values alignment,

@@ -10,9 +10,11 @@
 // globalThis._concordSTATE so it survives across macro calls and (via the
 // debounced save hook) across restarts.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { publicActor, presentOwnedId } from "../lib/public-actor.js";
 
 export default function registerCollabActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─────────────────────────────────────────────────────────────────
   //  Shared collaboration state
   // ─────────────────────────────────────────────────────────────────

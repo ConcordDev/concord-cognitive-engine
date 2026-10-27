@@ -1,3 +1,4 @@
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { fetchJsonWithTimeout } from "../lib/external-fetch.js";
 
 // secFin — fail-CLOSED numeric coercion for the threat/incident scoring
@@ -16,6 +17,7 @@ function secFin(v, def, lo = 1, hi = 5) {
 }
 
 export default function registerSecurityActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("security", "incidentTrend", (ctx, artifact, _params) => {
     const incidents = artifact.data?.incidents || [artifact.data];
     const byType = {};

@@ -21,7 +21,9 @@ const LABOR_SERIES = {
   "job-openings": { seriesId: "JTS000000000000000JOL", label: "Job openings, total nonfarm (JOLTS)", unit: "thousands" },
 };
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerHRActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── Pure-compute numeric coercion (fail-CLOSED) ─────────────────────
   // Number()+Number.isFinite, never parseFloat: parseFloat("Infinity")===Infinity
   // and parseFloat("12abc")===12 both silently poison the math. Here a poisoned

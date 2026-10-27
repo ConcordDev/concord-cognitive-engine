@@ -16,6 +16,7 @@
 // boundary: PPAD-completeness, support-enumeration's exponential cost, and
 // why "consistent with a cartel" is not proof of intent).
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { mixedNashEquilibria } from "../lib/game-theory/mixed-nash.js";
 import { replicatorDynamics } from "../lib/game-theory/replicator.js";
 import { analyzeMarketEquilibrium } from "../lib/game-theory/market-equilibrium.js";
@@ -112,6 +113,7 @@ const FX_MAJORS = [
 // ──────────────────────────────────────────────────────────────
 
 export default function registerMarketsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── State (per-user alerts cache) ──
 
   function getMarketsState() {

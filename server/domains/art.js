@@ -8,6 +8,7 @@
 // (tier 1) → procedural-buildings material slots. See pbr-loader.ts for
 // the 3-tier resolution order.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import fs from "fs";
 import * as fsp from "node:fs/promises";
 import path from "path";
@@ -41,6 +42,7 @@ function decodeDataUrl(dataUrl) {
 }
 
 export default function registerArtActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Dead-macro-call fix (verification-audit campaign): the "AI Generate"
   // panel called domain:'art', action:'generate' — never registered,
   // guaranteed unknown_macro. Wired to the same real Pollinations

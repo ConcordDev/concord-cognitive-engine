@@ -5,11 +5,13 @@
 // (patients / visits / vaccinations) + a real openFDA animal &
 // veterinary adverse-event feed. Free public source, no API key.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { needNums, optNum, notComputed, advisory } from "../lib/lens-inputs.js";
 import { assertPayable } from "../lib/money-guards.js";
 import { bindWave1 } from "../lib/lens-input-schemas-wave1.js";
 
 export default function registerVeterinaryActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction = bindWave1(registerLensAction);
   // ─── Clinical calculators ───────────────────────────────────────────
   registerLensAction("veterinary", "triageAssess", advisory("keyword triage heuristic; not a veterinary assessment — call a vet or emergency clinic if in doubt", (ctx, artifact, _params) => { const data = artifact.data || {}; const symptoms = data.symptoms || []; const species = (data.species || "dog").toLowerCase(); const age = parseFloat(data.age) || 3; const emergency = symptoms.some(s => ["not-breathing","seizure","bleeding","unconscious","poisoning","bloat","hit-by-car"].includes((s.name || s).toLowerCase())); const urgent = symptoms.some(s => ["vomiting","diarrhea","limping","not-eating","lethargy","swelling"].includes((s.name || s).toLowerCase())); return { ok: true, result: { species, age, symptoms: symptoms.map(s => s.name || s), triageLevel: emergency ? "EMERGENCY" : urgent ? "urgent" : "routine", responseTime: emergency ? "Immediate — go to emergency vet NOW" : urgent ? "See vet within 24 hours" : "Schedule routine appointment", firstAid: emergency ? ["Keep animal calm", "Do not move if spinal injury suspected", "Apply pressure to bleeding", "Call emergency vet en route"] : [] } }; }));

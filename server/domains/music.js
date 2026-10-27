@@ -14,6 +14,7 @@
 // state machine. Audio rides through route_artifacts (HTTP serving)
 // and dtus (discovery + royalty cascade tagging).
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import crypto from "node:crypto";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { presentOwnedId } from "../lib/public-actor.js";
@@ -106,6 +107,7 @@ async function mbFetch(path) {
 
 import { optNum, notComputed } from "../lib/lens-inputs.js";
 export default function registerMusicActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("music", "bpmAnalyze", (ctx, artifact, _params) => {
     const beats = artifact.data?.beats || artifact.data?.timestamps || [];
     if (beats.length < 4) return { ok: true, result: { message: "Provide 4+ beat timestamps (in seconds) to analyze BPM." } };

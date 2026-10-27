@@ -12,6 +12,7 @@
 // Wikipedia OpenSearch API. Persistent per-user data lives in
 // globalThis._concordSTATE Maps keyed by userId.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import crypto from "node:crypto";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { registerEsignProvider, issueSigningLinks, deliverSigningLinks, revokeSigningLinks } from "../lib/esign-links.js";
@@ -39,6 +40,7 @@ function badNumericField(input, keys) {
 // byte-for-byte intact via the `registerLensAction` shim that adapts the
 // canonical 2-arg `(ctx, input)` signature back to `(ctx, artifact, params)`.
 export default function registerToolsActions(register) {
+  register = guardAnonWrites(register); // anonymous callers can read, not write (lib/lens-authz.js)
   // Legacy-convention shim: canonical register(ctx, input) → the verified
   // (ctx, artifact, params) handler bodies below, unchanged. `params` IS the
   // input; `artifact` is a virtual wrapper (no tools macro reads it).

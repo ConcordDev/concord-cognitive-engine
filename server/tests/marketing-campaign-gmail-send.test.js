@@ -107,7 +107,8 @@ describe("marketing.campaign-send-gmail — honest not-connected failure", () =>
     const campaign = newCampaign(db);
     const r = await call("campaign-send-gmail", { actor: { userId: "anon" }, db }, { campaignId: campaign.id, recipients: ["a@x.com"], body: "hi" });
     assert.equal(r.ok, false);
-    assert.equal(r.reason, "no_user");
+    // The shared anon-write gate refuses before the handler's own no_user check.
+    assert.ok(["no_user", "auth_required"].includes(r.reason));
   });
 
   it("requires at least one recipient", async () => {

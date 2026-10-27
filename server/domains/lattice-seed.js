@@ -8,6 +8,7 @@
 // Quota / trust / fetch never read a caller-supplied privilege field.
 // Role comes from ctx.actor.role. Fetch goes through fetchPublicUrl.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import * as seed from "../lib/lattice-seed.js";
 
 function actorId(ctx) {
@@ -49,6 +50,7 @@ function mintDtuFromCtx(ctx) {
 }
 
 export default function registerLatticeSeedActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // input: {}
   registerLensAction("lattice-seed", "status", (ctx) => {
     try {

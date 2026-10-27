@@ -22,7 +22,9 @@
 // _companionNotifSeq, all in LENS_STATE_KEYS, so they survive a restart.
 // The inbox keeps the newest 200 notifications.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerCompanionActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── STATE plumbing ───────────────────────────────────────────────
   function store() {
     if (!globalThis._concordSTATE) globalThis._concordSTATE = {};

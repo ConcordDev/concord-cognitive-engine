@@ -2,6 +2,7 @@
 // Domain actions for system invariants: invariant checking, consistency
 // proofs via Merkle hashes, and constraint satisfaction (AC-3).
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import * as acorn from "acorn";
 
 // Hard cap on expression length before any parsing — defangs ReDoS-shaped
@@ -174,6 +175,7 @@ function evaluateValidatedExpression(expr, context) {
 }
 
 export default function registerInvariantActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * invariantCheck
    * Check system invariants: evaluate boolean expressions over system state,

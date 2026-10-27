@@ -2,12 +2,14 @@
 // Domain actions for data/knowledge transfer: schema mapping, data quality
 // assessment, and migration plan generation.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
 
 const URL_FETCH_TIMEOUT_MS = 15000;
 const URL_MAX_BYTES = 5 * 1024 * 1024;
 
 export default function registerTransferActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * schemaMapping
    * Map fields between source and target schemas using Levenshtein similarity,

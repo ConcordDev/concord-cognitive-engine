@@ -12,9 +12,11 @@
 // domains) — bounties, submissions, disputes and earnings are scoped to
 // the acting user but a global index makes the open board cross-user.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { isAdmin, requireActor } from "../lib/lens-authz.js";
 
 export default function registerBountiesActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   function getState() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;

@@ -2,7 +2,9 @@
 // Domain actions for neuroscience: EEG signal processing, connectivity
 // analysis, frequency band decomposition, and neural activation mapping.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerNeuroActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * frequencyAnalysis
    * Decompose neural signals into standard frequency bands and compute

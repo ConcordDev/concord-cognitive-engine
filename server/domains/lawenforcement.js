@@ -24,6 +24,7 @@
 // value returned is real (user input or deterministic computation) — no
 // seed/mock/demo data.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import crypto from "node:crypto";
 
 // ---- store ---------------------------------------------------------------
@@ -129,6 +130,7 @@ function haversineKm(a, b) {
 }
 
 export default function registerLawEnforcementActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ======================================================================
   // ORIGINAL pure-compute analytics macros (preserved verbatim).
   // ======================================================================

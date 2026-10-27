@@ -1,3 +1,4 @@
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import crypto from "node:crypto";
 import { newShareToken, isStrongShareToken } from "../lib/share-token.js";
 // server/domains/docs.js
@@ -5,6 +6,7 @@ import { newShareToken, isStrongShareToken } from "../lib/share-token.js";
 // cross-reference analysis, and semantic version diffing.
 
 export default function registerDocsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * readabilityScore
    * Compute readability metrics: Flesch-Kincaid, Gunning Fog, Coleman-Liau,

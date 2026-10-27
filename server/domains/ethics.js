@@ -2,7 +2,9 @@
 // Domain actions for ethical analysis: multi-framework evaluation, stakeholder
 // impact assessment, bias detection, and fairness metrics.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerEthicsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * frameworkAnalysis
    * Evaluate a decision/action against multiple ethical frameworks simultaneously.

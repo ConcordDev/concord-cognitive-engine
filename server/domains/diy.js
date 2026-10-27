@@ -1,9 +1,11 @@
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { needNums, notComputed } from "../lib/lens-inputs.js";
 // server/domains/diy.js
 // Domain actions for DIY/maker: project cost estimation, material calculation,
 // tool inventory management, build time estimation, safety assessment.
 
 export default function registerDIYActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * estimateProject
    * Calculate total project cost, time, and material needs.

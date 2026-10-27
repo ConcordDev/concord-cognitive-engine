@@ -2,7 +2,9 @@
 // Domain actions for meditation sessions: track picker, timer + streak
 // management, session log. Shadows Calm / Headspace / Insight Timer.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerMeditationActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * pickTrack — return a deterministic Calm-shape track for a goal.
    *   params.goal: 'focus' | 'sleep' | 'anxiety' | 'gratitude' | 'breath'

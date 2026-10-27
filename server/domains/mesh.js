@@ -54,6 +54,7 @@
 // NaN/Infinity/1e308/negative instead of silently clamping them to an accepted
 // row (the macro-assassin's V2 vector probes exactly this).
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { TRANSPORT_SPECS, TRANSPORT_LIST } from "../lib/concord-mesh.js";
 import { HashDag, generateKeypair } from "../lib/consensus/hash-dag.js";
 
@@ -142,6 +143,7 @@ function specFor(transport) {
 // ── Module registration ─────────────────────────────────────────────────────
 
 export default function registerMeshActions(register) {
+  register = guardAnonWrites(register); // anonymous callers can read, not write (lib/lens-authz.js)
   // Legacy-convention shim: adapt canonical register(ctx, input) → the
   // verified (ctx, artifact, params) handler bodies below, unchanged.
   const registerLensAction = (domain, action, handler, spec) =>

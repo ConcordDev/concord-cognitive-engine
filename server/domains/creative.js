@@ -1,3 +1,4 @@
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import crypto from "node:crypto";
 import { newShareToken, isStrongShareToken } from "../lib/share-token.js";
 import { generatePollinationsImage } from "../lib/pollinations-image.js";
@@ -21,6 +22,7 @@ const POETRY_FORM_SKELETONS = {
 };
 
 export default function registerCreativeActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Fail-CLOSED numeric coercion: poisoned ("1e999"/"Infinity"/"NaN"/objects)
   // collapse to the default so every computed field stays Number.isFinite.
   const cvNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };

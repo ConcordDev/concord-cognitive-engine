@@ -18,6 +18,7 @@
 // Free public API: GitHub releases for the Syncthing project, used by the
 // "real-world sync tooling" reference panel — no key required.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { exportUserCorpus } from "../lib/dtu-portability.js";
 
@@ -111,6 +112,7 @@ function ensureDevice(userId, deviceId, label) {
 const ALL_SCOPES = ["personal", "public", "artifacts", "shared", "drafts"];
 
 export default function registerSyncActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * register_device — create an experience-layer device record.
    * Mirrors the legacy dtu_sync.register_device but adds scopes/quota.

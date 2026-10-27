@@ -7,6 +7,7 @@
 // queries evo_assets for the highest-quality blueprint per archetype +
 // faction match. Marketplace canon picks winners.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import fs from "node:fs";
 import * as fsp from "node:fs/promises";
 import path from "node:path";
@@ -62,6 +63,7 @@ function serialiseBoardToBlueprintJson(scene, themeOverrides) {
 }
 
 export default function registerWhiteboardActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("whiteboard", "vision", async (ctx, artifact, _params) => {
     const { imageB64, imageUrl } = artifact.data || {};
     if (!imageB64 && !imageUrl) return { ok: false, error: "imageB64 or imageUrl required" };

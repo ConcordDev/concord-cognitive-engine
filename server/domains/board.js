@@ -1,7 +1,9 @@
 // server/domains/board.js
 // Domain actions for board/kanban management: workflow analysis, card prioritization, burndown forecasting.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerBoardActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * workflowAnalysis
    * Analyze kanban board flow — compute cycle time, lead time, throughput,

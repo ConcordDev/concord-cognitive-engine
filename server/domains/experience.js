@@ -13,6 +13,7 @@
 // Stateful macros persist per-user data in globalThis._concordSTATE.experienceLens
 // (Maps keyed by userId). Every handler returns { ok, result?, error? } and
 // never throws.
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import crypto from "node:crypto";
 import { newShareToken, isStrongShareToken } from "../lib/share-token.js";
 import { writeGmailMessage } from "../lib/connector-client.js";
@@ -21,6 +22,7 @@ let testMailer = null;
 export function _setExperienceMailerForTest(fn) { testMailer = typeof fn === "function" ? fn : null; }
 
 export default function registerExperienceActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─────────────────────────────────────────────────────────────────────
   // Artifact-bound analytical macros (unchanged behaviour)
   // ─────────────────────────────────────────────────────────────────────

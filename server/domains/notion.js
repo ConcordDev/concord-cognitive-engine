@@ -6,11 +6,13 @@
 // (search, page get) + outbound write (append block). Honest reason codes when
 // no token / not configured — never faked data.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { searchNotion, readNotionPage, appendNotionBlock } from "../lib/connector-client.js";
 
 const NOTION_ENABLED = process.env.CONCORD_NOTION_ENABLED !== "0";
 
 export default function registerNotionActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   const uid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const fail = (res, fallback) => {
     const reason = res?.reason || fallback;

@@ -2,6 +2,7 @@
 // Domain actions for logical inference: forward chaining, backward chaining
 // (goal-directed reasoning), and unification algorithm.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import {
   getInferenceLensState,
   saveInferenceLens,
@@ -11,6 +12,7 @@ import {
 } from "../lib/inference-lens-kb.js";
 
 export default function registerInferenceActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * forwardChain
    * Forward chaining inference — apply rules to facts, compute transitive

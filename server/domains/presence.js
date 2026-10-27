@@ -14,7 +14,9 @@
 //
 // Macros: heartbeat, active-list, presence-stats, clear-stale.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerPresenceActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── STATE plumbing ───────────────────────────────────────────────
   function state() {
     if (!globalThis._concordSTATE) globalThis._concordSTATE = {};

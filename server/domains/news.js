@@ -2,7 +2,9 @@
 // Domain actions for news analysis: media bias detection, event extraction,
 // and narrative tracking across articles.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerNewsActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * biasDetection
    * Detect media bias in news articles — sentiment asymmetry, source diversity,

@@ -2,7 +2,9 @@
 // Domain actions for voting and decision-making: multi-method tallying,
 // fairness checking, and consensus measurement.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerVoteActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * tallyVotes
    * Multi-method vote tallying: plurality, Borda count, approval voting,

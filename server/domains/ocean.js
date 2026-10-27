@@ -10,6 +10,7 @@
 // alerts/reminders, sea-surface-temperature lookup, and session
 // logbook export (GPX / CSV).
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { nwsHeaders } from "../lib/keyless-atmosphere.js";
 
@@ -21,6 +22,7 @@ const NDBC_REALTIME = "https://www.ndbc.noaa.gov/data/realtime2";
 import { needNums, optNum, notComputed } from "../lib/lens-inputs.js";
 
 export default function registerOceanActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   const waveAnalysisSync = (ctx, artifact, _params) => { const data = artifact.data || {}; const _req = needNums(data, ["waveHeightMeters>0", "wavePeriodSeconds>0"]); if (_req.missing.length) return notComputed(_req.missing, "Wave analysis needs significant wave height (m) and period (s). For live values use ocean.marine-forecast (Open-Meteo Marine)."); const height = _req.values.waveHeightMeters; const period = _req.values.wavePeriodSeconds; const windSpeed = optNum(data.windSpeedKnots); const wavelength = 1.56 * period * period; const deepWaterSpeed = 1.56 * period; const energy = 0.5 * 1025 * 9.81 * height * height; const beaufort = windSpeed === null ? null : windSpeed < 1 ? 0 : windSpeed < 4 ? 1 : windSpeed < 7 ? 2 : windSpeed < 11 ? 3 : windSpeed < 17 ? 4 : windSpeed < 22 ? 5 : windSpeed < 28 ? 6 : windSpeed < 34 ? 7 : 8; return { ok: true, result: { significantWaveHeight: `${height}m`, period: `${period}s`, wavelength: `${Math.round(wavelength)}m`, speed: `${Math.round(deepWaterSpeed*10)/10} m/s`, energyDensity: `${Math.round(energy)} J/m²`, beaufortScale: beaufort, seaState: height < 0.5 ? "calm" : height < 1.25 ? "slight" : height < 2.5 ? "moderate" : height < 4 ? "rough" : "very-rough", navigationAdvisory: height > 3 ? "Small craft advisory" : "Safe for navigation" } }; };
   // With lat/lon and no explicit height/period, take the current-hour
   // significant wave height + period from Open-Meteo Marine (keyless).

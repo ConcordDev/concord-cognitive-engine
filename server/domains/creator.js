@@ -3,7 +3,9 @@
 // income, citation graph entry-points, and audience metrics. Pulls from
 // the existing economy + DTU substrate; no parallel state.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerCreatorActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * dashboard — early, shallow rollup (dtuCount/publishedCount/recentDTUs
    * only). Superseded by the richer `GET /api/creator/dashboard` REST route

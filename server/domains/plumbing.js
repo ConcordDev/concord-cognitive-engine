@@ -4,12 +4,14 @@
 // substrate — dispatch board, quote-to-invoice flow, price book,
 // technician mobile workflow, maintenance plans, customer notifications,
 // and parts-inventory deduction tied to job completion.
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { listCodeReferences, listCodeReferenceCategories, PLUMBING_CODE_DISCLAIMER } from "../lib/plumbing-code-reference.js";
 
 import { needNums, optNum, notComputed } from "../lib/lens-inputs.js";
 import { assertPayable } from "../lib/money-guards.js";
 
 export default function registerPlumbingActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Finite-coercing numeric reader. parseFloat/parseInt PASS "Infinity" through
   // (and `Infinity || default === Infinity`), so a poisoned/garbage numeric
   // would leak Infinity/NaN into a rendered card ("Infinity\"" diameter). Use

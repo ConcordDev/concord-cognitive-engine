@@ -2,10 +2,12 @@
 // Domain actions for chat/messaging analysis: thread summarization,
 // participant engagement analysis, and topic shift detection.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import vm from "node:vm";
 import { generatePollinationsImage } from "../lib/pollinations-image.js";
 
 export default function registerChatActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * threadSummarize
    * Extract key points from chat messages using TF-IDF keyword extraction.

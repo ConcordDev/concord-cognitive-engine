@@ -9,6 +9,7 @@
 
 // Phase 1 — real type-aware semantics for the code lens (TS LanguageService over
 // the in-memory workspace). Lazy: typescript only loads on the first lsp-* call.
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import tsLang from "../lib/ts-language-service.js";
 // Phase 3 — the verifiable build loop (make→write→run→lint→verify→done).
 import { runBuildLoop } from "../lib/build-loop.js";
@@ -130,6 +131,7 @@ export function pythonExecEnabled() {
 }
 
 export default function registerCodeActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * complexityAnalysis — Cyclomatic, cognitive, maintainability index per
    * module. Reads `artifact.data.modules: [{ name, lines, functions, branches,

@@ -1,7 +1,9 @@
 // server/domains/graph.js
 // Domain actions for graph: node analysis, path finding, cluster detection, graph metrics.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerGraphActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * nodeAnalysis
    * Compute degree centrality and connectivity for nodes in adjacency data.

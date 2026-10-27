@@ -1,7 +1,9 @@
 // server/domains/attention.js
 // Domain actions for attention/focus management: focus scoring, priority matrix, attention budgeting.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerAttentionActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * focusScore
    * Calculate focus quality from activity data — session duration, interruption

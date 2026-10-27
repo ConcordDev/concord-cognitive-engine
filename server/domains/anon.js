@@ -15,9 +15,11 @@
 // ciphertext envelopes only. Identities that already exist keep their
 // server-held keys so older conversations still open.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import crypto from "node:crypto";
 
 export default function registerAnonActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
 
   // ─────────────────────────────────────────────────────────────────
   //  Pseudonymous messaging substrate — persistent per-user state in _concordSTATE

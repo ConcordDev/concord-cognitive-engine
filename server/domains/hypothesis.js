@@ -9,7 +9,9 @@
 // persistent state (imported datasets, saved analyses, pre-registered
 // hypotheses) lives in globalThis._concordSTATE.hypothesisLens, keyed by userId.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerHypothesisActions(rawRegister) {
+  rawRegister = guardAnonWrites(rawRegister); // anonymous callers can read, not write (lib/lens-authz.js)
   // Local registry so dataset-driven dispatch can re-enter handlers without
   // depending on the server-scoped LENS_ACTIONS map. Every registration both
   // forwards to the server registrar and caches the handler by its action name.

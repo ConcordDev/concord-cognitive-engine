@@ -20,7 +20,9 @@
 // all in LENS_STATE_KEYS, so they survive a restart. Visitor log is capped
 // at 200. Badges, portfolio, and reputation stay DB reads.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerProfileActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── STATE plumbing ───────────────────────────────────────────────
   function store() {
     if (!globalThis._concordSTATE) globalThis._concordSTATE = {};

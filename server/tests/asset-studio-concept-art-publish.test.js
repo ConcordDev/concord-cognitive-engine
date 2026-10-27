@@ -128,7 +128,8 @@ describe("art.artwork-publish-as-concept — real DB round-trip", () => {
     const anonCtx = { ...artistCtx, actor: { ...artistCtx.actor, userId: "anon" } };
     const r = await lensRun("art", "artwork-publish-as-concept", { params: { id: artworkId } }, anonCtx);
     assert.equal(r.result.ok, false);
-    assert.match(r.result.error, /authentication required/);
+    // The shared anon-write gate (lib/lens-authz.js guardAnonWrites) refuses first.
+    assert.match(r.result.error, /authentication required|auth_required/);
   });
 
   it("one user cannot publish another user's artwork (per-owner artwork Map scoping)", async () => {

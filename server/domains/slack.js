@@ -6,6 +6,7 @@
 // outbound write (post). Honest reason codes when no token / not configured —
 // never faked data. Mirrors the Gmail/Calendar Track-C pattern.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { listSlackChannels, readSlackMessages, postSlackMessage } from "../lib/connector-client.js";
 
 // Real gate is token presence (connectorFetch returns no_token without a stored
@@ -13,6 +14,7 @@ import { listSlackChannels, readSlackMessages, postSlackMessage } from "../lib/c
 const SLACK_ENABLED = process.env.CONCORD_SLACK_ENABLED !== "0";
 
 export default function registerSlackActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   const uid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   // Mirror the connector reason into `error` too: the frontend lensRun()
   // normalizer surfaces `error` (not `reason`), so the UI can switch on

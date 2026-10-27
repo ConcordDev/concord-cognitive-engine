@@ -8,6 +8,7 @@
 // All pipeline state is persisted per-user in globalThis._concordSTATE so it
 // survives across macro calls (and is checkpointed by the state debouncer).
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import crypto from "node:crypto";
 
 // ── Persistent per-user pipeline state ────────────────────────────────
@@ -179,6 +180,7 @@ export const CONNECTOR_CATALOG = [
 export const CATALOG_BY_ID = new Map(CONNECTOR_CATALOG.map((c) => [c.id, c]));
 
 export default function registerIngestActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("ingest", "listConnectors", (_ctx, _artifact, _params) => {
     try {
       return {

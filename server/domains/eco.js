@@ -2,9 +2,11 @@
 // Domain actions for ecology and sustainability: carbon footprint calculation,
 // biodiversity index computation, and multi-criteria sustainability assessment.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
 
 export default function registerEcoActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * carbonFootprint
    * Calculate carbon footprint from activity data.

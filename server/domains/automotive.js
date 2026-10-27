@@ -10,6 +10,7 @@
 // Per the "everything must be real" directive: no hardcoded 5-code
 // table, no synthesized prices, no fake VIN decoder.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 import { DTC_DATABASE } from "../lib/automotive-dtc.js";
 import { needNums, notComputed } from "../lib/lens-inputs.js";
 
@@ -17,6 +18,7 @@ const NHTSA_API_BASE = "https://vpic.nhtsa.dot.gov/api/vehicles";
 const NHTSA_RECALLS_BASE = "https://api.nhtsa.gov/recalls/recallsByVehicle";
 
 export default function registerAutomotiveActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * resolveData — normalize the artifact-data payload for the calculator
    * macros that read `artifact.data.<field>`.

@@ -5,7 +5,9 @@
 // real per-user journaling substrate: multiple journals, dated entries
 // with mood + tags, on-this-day, search, mood trend and streaks.
 
+import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerDailyActions(registerLensAction) {
+  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("daily", "dailySummary", (ctx, artifact, _params) => {
     const data = artifact.data || {};
     const entries = data.entries || [];
