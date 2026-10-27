@@ -1,6 +1,6 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { fredLatest } from "../lib/sourced-inputs.js";
-import { notComputed, requireList } from "../lib/lens-inputs.js";
+import { notComputed } from "../lib/lens-inputs.js";
 import { finiteOrNull, boundedNum, badNumber, MAX_MONEY } from "../lib/finite-input.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 export default function registerRealEstateActions(registerLensAction) {
@@ -57,8 +57,7 @@ export default function registerRealEstateActions(registerLensAction) {
     // records rather than one record with a units[] array) passes the
     // aggregated list via params.units. artifact.data.units stays the
     // primary source for any caller that does persist a portfolio shape.
-    const units = requireList(artifact.data?.units || params.units, "units");
-    if (!Array.isArray(units)) return units;
+    const units = artifact.data?.units || params.units || [];
     const avgRent = params.avgMarketRent || artifact.data?.avgMarketRent || 0;
     const now = new Date();
     const unitDetails = units.map(u => {

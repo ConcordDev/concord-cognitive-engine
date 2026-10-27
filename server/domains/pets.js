@@ -4,7 +4,6 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
-import { requireList } from "../lib/lens-inputs.js";
 export default function registerPetsActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -17,8 +16,7 @@ export default function registerPetsActions(registerLensAction) {
     const data = artifact.data || {};
     const species = (data.species || "dog").toLowerCase();
     const ageYears = parseFloat(data.age) || 1;
-    const vaccinations = requireList(data.vaccinations, "vaccinations");
-    if (!Array.isArray(vaccinations)) return vaccinations;
+    const vaccinations = data.vaccinations || [];
 
     // Core vaccination schedules by species
     const schedules = {
@@ -125,9 +123,7 @@ export default function registerPetsActions(registerLensAction) {
     const data = artifact.data || {};
     const species = (data.species || "dog").toLowerCase();
     const currentWeight = parseFloat(data.weight) || 0;
-    const historyList = requireList(data.weightHistory, "weightHistory");
-    if (!Array.isArray(historyList)) return historyList;
-    const history = historyList.slice().sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const history = (data.weightHistory || []).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     // Ideal weight ranges by species (lbs)
     const idealRanges = {
@@ -330,8 +326,7 @@ export default function registerPetsActions(registerLensAction) {
   try {
     const data = artifact.data || {};
     const medList = (data.medications || "").split(",").map(m => m.trim()).filter(Boolean);
-    const schedules = requireList(data.schedules, "schedules");
-    if (!Array.isArray(schedules)) return schedules;
+    const schedules = data.schedules || [];
 
     if (medList.length === 0 && schedules.length === 0) {
       return { ok: true, result: { message: "No medications tracked. Add medications to get reminders." } };
@@ -385,8 +380,7 @@ export default function registerPetsActions(registerLensAction) {
     const species = (data.species || "dog").toLowerCase();
     const age = parseFloat(data.age) || 3;
     const weight = parseFloat(data.weight) || 20;
-    const activities = requireList(data.activities, "activities");
-    if (!Array.isArray(activities)) return activities;
+    const activities = data.activities || [];
 
     // Recommended daily exercise by species (minutes)
     const dailyTargets = {

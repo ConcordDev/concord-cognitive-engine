@@ -30,19 +30,6 @@ export function needNums(data, specs) {
   return { values, missing };
 }
 
-/**
- * Caller-supplied collection.
- * Omitted (null, undefined, "") means an empty list, the same as `value || []`.
- * Any other non-array is the caller's input and is refused by field name,
- * before a `.map` or `for...of` can throw.
- * Returns the array, or `{ ok:false, error:"invalid_input", field, reason:"expected_array" }`.
- */
-export function requireList(value, field) {
-  if (value == null || value === "") return [];
-  if (Array.isArray(value)) return value;
-  return { ok: false, error: "invalid_input", field, reason: "expected_array" };
-}
-
 /** Optional finite number, or null when absent/invalid (never a silent default). */
 export function optNum(v) {
   if (v === null || v === undefined || v === "") return null;

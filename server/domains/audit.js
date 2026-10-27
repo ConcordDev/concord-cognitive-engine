@@ -5,7 +5,6 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import { checkModel, replayTrace } from "../lib/verification/model-checker.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import {
-import { requireList } from "../lib/lens-inputs.js";
   buildLedgerConservationModel,
   buildTreasuryInvariantModel,
   buildRoyaltyCascadeModel,
@@ -433,10 +432,8 @@ export default function registerAuditActions(registerLensAction) {
    */
   registerLensAction("audit", "riskScore", (ctx, artifact, params) => {
   try {
-    const controls = requireList(artifact.data.controls, "controls");
-    if (!Array.isArray(controls)) return controls;
-    const inherentRisks = requireList(artifact.data.inherentRisks, "inherentRisks");
-    if (!Array.isArray(inherentRisks)) return inherentRisks;
+    const controls = artifact.data.controls || [];
+    const inherentRisks = artifact.data.inherentRisks || [];
     // Fail-CLOSED probability coercion: Number()+Number.isFinite, then clamp to
     // [0,1]. parseFloat accepts "Infinity" (→ Infinity, leaks NaN downstream) and
     // a "12abc" prefix; this rejects both to 0. A finite out-of-range value is

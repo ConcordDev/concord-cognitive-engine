@@ -3,7 +3,6 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
-import { requireList } from "../lib/lens-inputs.js";
 export default function registerAttentionActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -16,8 +15,7 @@ export default function registerAttentionActions(registerLensAction) {
    */
   registerLensAction("attention", "focusScore", (ctx, artifact, params) => {
   try {
-    const sessions = requireList(artifact.data.sessions, "sessions");
-    if (!Array.isArray(sessions)) return sessions;
+    const sessions = artifact.data.sessions || [];
     if (sessions.length === 0) {
       return { ok: true, result: { message: "No session data provided." } };
     }
@@ -165,8 +163,7 @@ export default function registerAttentionActions(registerLensAction) {
    */
   registerLensAction("attention", "priorityMatrix", (ctx, artifact, params) => {
   try {
-    const tasks = requireList(artifact.data.tasks, "tasks");
-    if (!Array.isArray(tasks)) return tasks;
+    const tasks = artifact.data.tasks || [];
     if (tasks.length === 0) {
       return { ok: true, result: { message: "No tasks provided for prioritization." } };
     }
@@ -301,8 +298,7 @@ export default function registerAttentionActions(registerLensAction) {
    */
   registerLensAction("attention", "attentionBudget", (ctx, artifact, params) => {
   try {
-    const tasks = requireList(artifact.data.tasks, "tasks");
-    if (!Array.isArray(tasks)) return tasks;
+    const tasks = artifact.data.tasks || [];
     if (tasks.length === 0) {
       return { ok: true, result: { message: "No tasks provided for attention budgeting." } };
     }

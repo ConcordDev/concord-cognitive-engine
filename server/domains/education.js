@@ -4,7 +4,6 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
-import { requireList } from "../lib/lens-inputs.js";
 
 export default function registerEducationActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -25,10 +24,8 @@ export default function registerEducationActions(registerLensAction) {
    */
   registerLensAction("education", "gradeCalculation", (_ctx, artifact, params) => {
   try {
-    const students = requireList(artifact.data.students, "students");
-    if (!Array.isArray(students)) return students;
-    const weightScheme = requireList(artifact.data.weightScheme || params.weightScheme, "weightScheme");
-    if (!Array.isArray(weightScheme)) return weightScheme;
+    const students = artifact.data.students || [];
+    const weightScheme = artifact.data.weightScheme || params.weightScheme || [];
     const targetId = params.studentId || null;
     const gradeScale = params.gradeScale || [
       { min: 93, letter: "A" }, { min: 90, letter: "A-" },
@@ -143,8 +140,7 @@ export default function registerEducationActions(registerLensAction) {
    */
   registerLensAction("education", "attendanceReport", (_ctx, artifact, params) => {
   try {
-    const attendance = requireList(artifact.data.attendance, "attendance");
-    if (!Array.isArray(attendance)) return attendance;
+    const attendance = artifact.data.attendance || [];
     const startDate = params.startDate ? new Date(params.startDate) : null;
     const endDate = params.endDate ? new Date(params.endDate) : null;
 
@@ -228,10 +224,8 @@ export default function registerEducationActions(registerLensAction) {
    */
   registerLensAction("education", "progressTrack", (_ctx, artifact, params) => {
   try {
-    const requirements = requireList(artifact.data.requirements, "requirements");
-    if (!Array.isArray(requirements)) return requirements;
-    const completions = requireList(artifact.data.completions, "completions");
-    if (!Array.isArray(completions)) return completions;
+    const requirements = artifact.data.requirements || [];
+    const completions = artifact.data.completions || [];
 
     // Build completions map
     const completionMap = {};
@@ -388,8 +382,7 @@ export default function registerEducationActions(registerLensAction) {
    */
   registerLensAction("education", "scheduleConflict", (_ctx, artifact, _params) => {
   try {
-    const schedules = requireList(artifact.data.schedules, "schedules");
-    if (!Array.isArray(schedules)) return schedules;
+    const schedules = artifact.data.schedules || [];
 
     function timeToMinutes(t) {
       const [h, m] = (t || "0:00").split(":").map(Number);

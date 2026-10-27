@@ -1,5 +1,5 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
-import { needNums, notComputed, requireList } from "../lib/lens-inputs.js";
+import { needNums, notComputed } from "../lib/lens-inputs.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 // server/domains/diy.js
 // Domain actions for DIY/maker: project cost estimation, material calculation,
@@ -15,8 +15,7 @@ export default function registerDIYActions(registerLensAction) {
   registerLensAction("diy", "estimateProject", (ctx, artifact, _params) => {
   try {
     const data = artifact.data || {};
-    const materials = requireList(data.materials, "materials");
-    if (!Array.isArray(materials)) return materials;
+    const materials = data.materials || [];
     const laborHours = parseFloat(data.estimatedHours || data.laborHours) || 0;
     // No assumed $25/h labour rate.
     const hourlyRate = parseFloat(data.hourlyRate) >= 0 ? parseFloat(data.hourlyRate) : null;
@@ -154,10 +153,8 @@ export default function registerDIYActions(registerLensAction) {
   registerLensAction("diy", "toolCheck", (ctx, artifact, _params) => {
   try {
     const data = artifact.data || {};
-    const required = requireList(data.requiredTools, "requiredTools");
-    if (!Array.isArray(required)) return required;
-    const owned = requireList(data.ownedTools, "ownedTools");
-    if (!Array.isArray(owned)) return owned;
+    const required = data.requiredTools || [];
+    const owned = data.ownedTools || [];
 
     if (required.length === 0) {
       return { ok: true, result: { message: "List required tools for the project to check availability." } };
@@ -227,12 +224,8 @@ export default function registerDIYActions(registerLensAction) {
   try {
     const data = artifact.data || {};
     const category = (data.category || "general").toLowerCase();
-    const toolList = requireList(data.tools, "tools");
-    if (!Array.isArray(toolList)) return toolList;
-    const materialList = requireList(data.materials, "materials");
-    if (!Array.isArray(materialList)) return materialList;
-    const tools = toolList.map(t => typeof t === "string" ? t.toLowerCase() : (t.name || "").toLowerCase());
-    const materials = materialList.map(m => typeof m === "string" ? m.toLowerCase() : (m.name || "").toLowerCase());
+    const tools = (data.tools || []).map(t => typeof t === "string" ? t.toLowerCase() : (t.name || "").toLowerCase());
+    const materials = (data.materials || []).map(m => typeof m === "string" ? m.toLowerCase() : (m.name || "").toLowerCase());
     const experience = (data.difficulty || data.experience || "intermediate").toLowerCase();
 
     const ppe = new Set(["safety glasses"]);
@@ -300,8 +293,7 @@ export default function registerDIYActions(registerLensAction) {
   registerLensAction("diy", "buildTimeEstimate", (ctx, artifact, _params) => {
   try {
     const data = artifact.data || {};
-    const steps = requireList(data.steps, "steps");
-    if (!Array.isArray(steps)) return steps;
+    const steps = data.steps || [];
     const difficulty = (data.difficulty || "intermediate").toLowerCase();
 
     if (steps.length === 0) {

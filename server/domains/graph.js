@@ -3,7 +3,6 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
-import { requireList } from "../lib/lens-inputs.js";
 export default function registerGraphActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -15,10 +14,8 @@ export default function registerGraphActions(registerLensAction) {
    */
   registerLensAction("graph", "nodeAnalysis", (ctx, artifact, _params) => {
   try {
-    const rawNodes = requireList(artifact.data?.nodes, "nodes");
-    if (!Array.isArray(rawNodes)) return rawNodes;
-    const rawEdges = requireList(artifact.data?.edges, "edges");
-    if (!Array.isArray(rawEdges)) return rawEdges;
+    const rawNodes = artifact.data?.nodes || [];
+    const rawEdges = artifact.data?.edges || [];
     const directed = artifact.data?.directed || false;
 
     if (rawNodes.length === 0 && rawEdges.length === 0) {
@@ -203,8 +200,7 @@ export default function registerGraphActions(registerLensAction) {
    */
   registerLensAction("graph", "pathFind", (ctx, artifact, _params) => {
   try {
-    const rawEdges = requireList(artifact.data?.edges, "edges");
-    if (!Array.isArray(rawEdges)) return rawEdges;
+    const rawEdges = artifact.data?.edges || [];
     const from = artifact.data?.from != null ? String(artifact.data.from) : null;
     const to = artifact.data?.to != null ? String(artifact.data.to) : null;
     const directed = artifact.data?.directed || false;
@@ -321,10 +317,8 @@ export default function registerGraphActions(registerLensAction) {
    */
   registerLensAction("graph", "clusterDetect", (ctx, artifact, _params) => {
   try {
-    const rawEdges = requireList(artifact.data?.edges, "edges");
-    if (!Array.isArray(rawEdges)) return rawEdges;
-    const rawNodes = requireList(artifact.data?.nodes, "nodes");
-    if (!Array.isArray(rawNodes)) return rawNodes;
+    const rawEdges = artifact.data?.edges || [];
+    const rawNodes = artifact.data?.nodes || [];
 
     if (rawEdges.length === 0 && rawNodes.length === 0) {
       return { ok: true, result: { message: "No graph data provided. Supply artifact.data.edges as [{ source, target }] and optionally artifact.data.nodes.", clusters: [], clusterCount: 0 } };
@@ -448,10 +442,8 @@ export default function registerGraphActions(registerLensAction) {
    */
   registerLensAction("graph", "graphMetrics", (ctx, artifact, _params) => {
   try {
-    const rawEdges = requireList(artifact.data?.edges, "edges");
-    if (!Array.isArray(rawEdges)) return rawEdges;
-    const rawNodes = requireList(artifact.data?.nodes, "nodes");
-    if (!Array.isArray(rawNodes)) return rawNodes;
+    const rawEdges = artifact.data?.edges || [];
+    const rawNodes = artifact.data?.nodes || [];
     const directed = artifact.data?.directed || false;
 
     if (rawEdges.length === 0 && rawNodes.length === 0) {

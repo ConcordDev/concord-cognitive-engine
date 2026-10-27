@@ -180,7 +180,6 @@ function normalizeDtu(d) {
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
-import { requireList } from "../lib/lens-inputs.js";
 export default function registerDtusActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -207,10 +206,8 @@ export default function registerDtusActions(registerLensAction) {
     const p = params || {};
     const effectiveId = p.dtuId || p.id || artifact.id || null;
     const effectiveTitle = p.title || artifact.title || null;
-    const lineage = requireList(p.lineage || data.lineage, "lineage");
-    if (!Array.isArray(lineage)) return lineage;
-    const children = requireList(p.children || data.children, "children");
-    if (!Array.isArray(children)) return children;
+    const lineage = p.lineage || data.lineage || [];
+    const children = p.children || data.children || [];
     const parentId = p.parentId || data.parentId || (Array.isArray(p.parents) && p.parents[0]) || (Array.isArray(data.parents) && data.parents[0]) || null;
 
     // Walk lineage chain (tolerates plain id strings, not just {generation} objects)
@@ -372,10 +369,8 @@ export default function registerDtusActions(registerLensAction) {
   try {
     const data = artifact.data || {};
     const p = params || {};
-    const citedBy = requireList(p.citedBy || data.citedBy, "citedBy");
-    if (!Array.isArray(citedBy)) return citedBy;
-    const cites = requireList(p.cites || data.cites || data.references, "cites");
-    if (!Array.isArray(cites)) return cites;
+    const citedBy = p.citedBy || data.citedBy || [];
+    const cites = p.cites || data.cites || data.references || [];
 
     const inDegree = citedBy.length;
     const outDegree = cites.length;
@@ -513,12 +508,9 @@ export default function registerDtusActions(registerLensAction) {
   try {
     const data = artifact.data || {};
     const p = params || {};
-    const siblings = requireList(p.siblings || data.siblings || data.relatedDTUs, "siblings");
-    if (!Array.isArray(siblings)) return siblings;
+    const siblings = p.siblings || data.siblings || data.relatedDTUs || [];
     const title = (p.title || artifact.title || "").toLowerCase().trim();
-    const tagList = requireList(p.tags || artifact.meta?.tags, "tags");
-    if (!Array.isArray(tagList)) return tagList;
-    const tags = new Set(tagList.map(t => String(t).toLowerCase()));
+    const tags = new Set((p.tags || artifact.meta?.tags || []).map(t => t.toLowerCase()));
 
     if (siblings.length === 0) {
       return { ok: true, result: { message: "No sibling DTUs provided for duplicate detection.", duplicates: [], totalChecked: 0 } };
@@ -595,9 +587,7 @@ export default function registerDtusActions(registerLensAction) {
    */
   registerLensAction("dtus", "citationGraph", (ctx, artifact, params) => {
     try {
-      const dtus = requireList(params?.dtus || artifact.data?.dtus, "dtus");
-      if (!Array.isArray(dtus)) return dtus;
-      const raw = dtus.map(normalizeDtu).filter(Boolean);
+      const raw = (params?.dtus || artifact.data?.dtus || []).map(normalizeDtu).filter(Boolean);
       if (raw.length === 0) {
         return { ok: true, result: { nodes: [], edges: [], stats: { nodeCount: 0, edgeCount: 0 } } };
       }
@@ -671,9 +661,7 @@ export default function registerDtusActions(registerLensAction) {
    */
   registerLensAction("dtus", "facets", (ctx, artifact, params) => {
     try {
-      const dtus = requireList(params?.dtus || artifact.data?.dtus, "dtus");
-      if (!Array.isArray(dtus)) return dtus;
-      const raw = dtus.map(normalizeDtu).filter(Boolean);
+      const raw = (params?.dtus || artifact.data?.dtus || []).map(normalizeDtu).filter(Boolean);
       const bump = (m, k) => m.set(k, (m.get(k) || 0) + 1);
       const layer = new Map();
       const tier = new Map();
@@ -722,9 +710,7 @@ export default function registerDtusActions(registerLensAction) {
    */
   registerLensAction("dtus", "facetedSearch", (ctx, artifact, params) => {
     try {
-      const dtus = requireList(params?.dtus || artifact.data?.dtus, "dtus");
-      if (!Array.isArray(dtus)) return dtus;
-      const raw = dtus.map(normalizeDtu).filter(Boolean);
+      const raw = (params?.dtus || artifact.data?.dtus || []).map(normalizeDtu).filter(Boolean);
       const f = params?.filter || artifact.data?.filter || {};
       const q = (f.query || "").toLowerCase().trim();
       const layers = new Set((f.layers || []).map(x => String(x).toLowerCase()));

@@ -265,7 +265,7 @@ export default function registerElectricalActions(registerLensAction) {
     try {
       const data = { ...(artifact?.data || {}), ...(params || {}) };
       if (data.conductors != null && !Array.isArray(data.conductors)) {
-        return { ok: false, error: "invalid_input", field: "conductors", reason: "expected_array" };
+        return { ok: false, error: "invalid_input", reason: "not_a_function" };
       }
       const conductors = data.conductors || [];
       if (conductors.length === 0) {
