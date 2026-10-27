@@ -42,7 +42,7 @@ export function conkayDtuBlock(lines) {
   const text = String(lines || "").trim();
   if (!text) return "";
   return "CONCORD KNOWLEDGE (retrieved DTUs; MEGA and HYPER entries are consolidated syntheses of many DTUs and are listed first). "
-    + "When one of these answers the question, use it and name the DTU title you used. Do not invent DTUs.\n" + text.slice(0, 6000);
+    + "When the question is about Concord's DTUs or one of these answers it, answer from it without web_search and name the DTU title you used. Do not invent DTUs.\n" + text.slice(0, 6000);
 }
 
 export function mountChatAgentStream({ app, auth, runMacro, lensActions, retrieveDtuContext = null }) {
