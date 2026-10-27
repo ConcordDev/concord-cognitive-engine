@@ -25,6 +25,7 @@ import { detectNewDesign, type NewDesignIntent } from '@/lib/conkay/new-design-i
 import { DesignPane, StartScreen, type BriefClaim, type TrussAnswer, type WorkspaceDesign } from './DesignPane';
 import { CONKAY_PERSONA_PROMPT } from '@/components/conkay/conkay-persona';
 import { agentFailure, artifactKey, streamConKayAgent, stripToolCallLeak } from '@/lib/conkay/agent-stream';
+import LowConfidenceTag from '@/components/chat/LowConfidenceTag';
 import { ChatArtifacts, type ChatArtifact } from '@/components/chat/ChatArtifacts';
 import MessageRenderer from '@/components/chat/MessageRenderer';
 import { ConKayMessage } from '@/components/conkay/ConKayViz';
@@ -77,6 +78,9 @@ interface WsMessage {
   sweep?: SweepResult;
   /** Songs, images, audio previews and 3D models the agent's tools returned. */
   artifacts?: ChatArtifact[];
+  /** Set by the server only when the small local backup model answered (GPU brain offline). */
+  confidence?: 'low';
+  confidenceReason?: string;
 }
 
 const STUDY_CHIPS: Chip[] = [
@@ -328,7 +332,7 @@ export function ConKayWorkspace() {
       const clean = stripToolCallLeak(live);
       if (!done.ok && !clean.text) reply(id, agentFailure(done.error), { error: true, tools, artifacts });
       else if (clean.leaked && !clean.text) reply(id, 'ConKay tried to call a tool but the call didn’t run. Please ask again.', { error: true, tools, artifacts });
-      else reply(id, clean.text || (artifacts.length ? 'Here it is below.' : 'Done.'), { tools, artifacts });
+      else reply(id, clean.text || (artifacts.length ? 'Here it is below.' : 'Done.'), { tools, artifacts, confidence: done.confidence, confidenceReason: done.confidenceReason });
     } catch (e) {
       reply(id, agentFailure(e instanceof Error ? e.message : 'network error'), { error: true, tools });
     }
@@ -632,6 +636,7 @@ export function ConKayWorkspace() {
               </p>
             )}
             {m.role === 'assistant' && <ChatArtifacts artifacts={m.artifacts} />}
+            {m.role === 'assistant' && <LowConfidenceTag confidence={m.confidence} reason={m.confidenceReason} />}
             {m.pending && (
               <div className="mt-2 h-1 overflow-hidden rounded bg-white/5" role="progressbar" aria-label="Working">
                 <div className="h-full w-1/3 animate-conkay-indeterminate motion-reduce:animate-none rounded bg-sky-400/70" />
