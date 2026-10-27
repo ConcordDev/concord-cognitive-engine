@@ -99,6 +99,17 @@ function normalizeArgs(level, source, message, meta) {
   return { level, source, message, meta };
 }
 
+// "lens action failed" lines carry domain/action/error/stack in meta; print
+// them (from the scrubbed copy, capped) with the first 3 stack frames.
+function lensActionFailTail(safeMeta) {
+  if (!safeMeta || typeof safeMeta !== "object") return "";
+  const frames = typeof safeMeta.stack === "string"
+    ? safeMeta.stack.split("\n").slice(0, 4).map((l) => l.trim()).join(" | ")
+    : undefined;
+  const out = { domain: safeMeta.domain, action: safeMeta.action, error: safeMeta.error, stack: frames };
+  return ` ${JSON.stringify(out).slice(0, 600)}`;
+}
+
 function log(level, source, message, meta = {}) {
   const norm = normalizeArgs(level, source, message, meta);
   level = norm.level; source = norm.source; message = norm.message; meta = norm.meta;
@@ -129,7 +140,7 @@ function log(level, source, message, meta = {}) {
   const placeholderMessages = new Set(["silent catch", "individual symbol failure is ok", "silent rejection"]);
   const _meta = /** @type {Record<string, unknown>} */ (meta); const tail = (meta && typeof meta === "object" && placeholderMessages.has(safeMessage) && _meta.error)
     ? ` {${JSON.stringify(meta).slice(0, 200)}}`
-    : "";
+    : (safeMessage === "lens action failed" ? lensActionFailTail(safeMeta) : "");
   const prefix = `[${safeSource}] [${safeLevel.toUpperCase()}]`;
   if (safeLevel === 'error') console.error(`${prefix} ${safeMessage}${tail}`);
   else if (safeLevel === 'warn') console.warn(`${prefix} ${safeMessage}${tail}`);
