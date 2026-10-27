@@ -1947,7 +1947,7 @@ import {
   parseSubstrateImportBody,
   withTimeout,
 } from "./lib/lens-contract-guards.js";
-import { serverError, configureHttpErrorLogger } from "./lib/http-errors.js";
+import { serverError, configureHttpErrorLogger, httpStatusLogLevel, opensRepairSignal } from "./lib/http-errors.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
 import configureMiddleware from "./middleware/index.js";
 import { createCsrfMiddleware, PUBLIC_PROOF_COMMENT_RE, INGEST_WEBHOOK_RE } from "./middleware/csrf.js";
@@ -3876,14 +3876,14 @@ function requestLoggerMiddleware(req, res, next) {
     _LATENCY.record(duration, req.path, req.method);
     try { bgGovernorRecordHttp(duration, req.path); } catch { /* observability only */ }
 
-    if (res.statusCode >= 500 || res.statusCode === 403 || res.statusCode === 422 || res.statusCode === 429) {
+    if (opensRepairSignal(res.statusCode)) {
       try { reportHttpFailure(req, null, res.statusCode); } catch { /* cortex must never break the response */ }
     }
 
     // Log response (skip health checks to reduce noise)
     if (!req.path.startsWith("/health") && !req.path.startsWith("/ready")) {
       structuredLog(
-        res.statusCode >= 500 ? "error" : res.statusCode >= 400 ? "warn" : "info",
+        httpStatusLogLevel(res.statusCode),
         "http_request",
         {
           ...requestData,

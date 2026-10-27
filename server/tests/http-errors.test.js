@@ -9,7 +9,8 @@
 import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 
-import { serverError, clientError, configureHttpErrorLogger } from "../lib/http-errors.js";
+import { readFileSync } from "node:fs";
+import { serverError, clientError, configureHttpErrorLogger, httpStatusLogLevel, opensRepairSignal } from "../lib/http-errors.js";
 
 function fakeRes() {
   const calls = { status: null, json: null };
@@ -102,6 +103,35 @@ describe("serverError — dev/test surfaces the message + stack", () => {
     const res = fakeRes();
     serverError(res, "string-only error");
     assert.equal(res._calls.json.error, "string-only error");
+  });
+});
+
+describe("501 is unavailable, not a crash", () => {
+  it("logs 501 at info and does not open a repair signal", () => {
+    assert.equal(httpStatusLogLevel(501), "info");
+    assert.equal(httpStatusLogLevel(500), "error");
+    assert.equal(httpStatusLogLevel(404), "warn");
+    assert.equal(httpStatusLogLevel(200), "info");
+    assert.equal(opensRepairSignal(501), false);
+    assert.equal(opensRepairSignal(500), true);
+    assert.equal(opensRepairSignal(403), true);
+    assert.equal(opensRepairSignal(422), true);
+    assert.equal(opensRepairSignal(429), true);
+    assert.equal(opensRepairSignal(404), false);
+  });
+
+  it("serverError(501) logs info", () => {
+    const logs = [];
+    configureHttpErrorLogger((level, event) => logs.push({ level, event }));
+    serverError(fakeRes(), new Error("no_project_board"), 501, "unavailable");
+    assert.equal(logs[0].level, "info");
+    assert.equal(logs[0].event, "http_500_response");
+  });
+
+  it("the access log uses the same 501 rule", () => {
+    const src = readFileSync(new URL("../server.js", import.meta.url), "utf8");
+    assert.match(src, /opensRepairSignal\(res\.statusCode\)/);
+    assert.match(src, /httpStatusLogLevel\(res\.statusCode\)/);
   });
 });
 
