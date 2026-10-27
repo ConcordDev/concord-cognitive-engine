@@ -399,6 +399,23 @@ export function toolSchemaBlockFor({ role = null, env = process.env } = {}) {
     + "\n- run_python is NOT available in this session (sandboxed code execution is off for this account). Never call it; use run_compute, conkay_design or a lens action instead.";
 }
 
+/** The tool names TOOL_SCHEMA_BLOCK offers (the registry the model sees). */
+export const AGENT_TOOL_NAMES = Object.freeze([...TOOL_SCHEMA_BLOCK.matchAll(/^- ([a-z0-9_]+):/gm)].map((m) => m[1]));
+
+/**
+ * A call to a tool that does not exist (live: "dila_status"): a clean error
+ * naming the real tools, flagged so the reply never says "I couldn't complete
+ * dila_status" to the user.
+ */
+export function unknownToolResult(name) {
+  const tool = String(name || "").replace(/[^\w.-]/g, "").slice(0, 60) || "(none)";
+  return {
+    tool, ok: false, unknownTool: true,
+    error: `unknown tool: ${tool}`,
+    retryHint: `There is no tool named "${tool}". Real tools: ${AGENT_TOOL_NAMES.join(", ")}. If a CONCORD KNOWLEDGE note or an earlier result already answers the question, answer now without a tool.`,
+  };
+}
+
 /**
  * Parse [TOOL_CALL: {...}] markers out of a brain response.
  * Nested objects/arrays and braces inside strings stay inside the call.
@@ -1911,7 +1928,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
             retryHint: `[TOOL_CALL: {"tool": "run_lens_action", "params": {"domain": "${domain}", "action": "${action}", "params": ${JSON.stringify(call.params || {})}}}]`,
           };
         }
-        return { tool: call.tool, ok: false, error: `unknown tool: ${call.tool}` };
+        return unknownToolResult(call.tool);
       }
     }
   } catch (err) {

@@ -289,6 +289,8 @@ export function composeToolTurnReply(results) {
   const lines = [];
   for (const r of Array.isArray(results) ? results : []) {
     if (!r?.ok) {
+      // A hallucinated tool name is the model's slip, not a user-facing failure.
+      if (r?.unknownTool) continue;
       const raw = String(r?.error || "it failed");
       if (r?.terminal || /^3D generation is (?:busy|unavailable)\b/i.test(raw)) {
         lines.push(sanitizeUserReply(raw));
