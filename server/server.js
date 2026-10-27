@@ -2408,6 +2408,7 @@ import {
   trimEmbeddingCache, getEmbeddingCacheSize, setLocalEmbedder, reprobeEmbeddings,
   embeddingEntries,
 } from "./embeddings.js";
+import { consolidatedVisibility, applyConsolidatedVisibility, absorbVisibility, backfillConsolidatedVisibility } from "./lib/consolidated-visibility.js";
 import { searchArchiveByVector, loadArchivedDtu, tierBoost as _dtuTierBoost, orderConsolidatedFirst, memberCount as _dtuMemberCount, strongDtuMatch } from "./lib/archive-retrieval.js";
 
 // One backfill at a time. Started at boot, when the CPU embedder is
@@ -13871,6 +13872,28 @@ try {
     }
   } catch (e) {
     structuredLog("warn", "dtu_ownership_migration_failed", { error: String(e?.message || e) });
+  }
+}
+
+// One-shot backfill (2026-10-27): megas/hypers minted today with a closed
+// visibility copied from their first member become public only when every
+// member (live, else archived) is public. Never tightens, never touches
+// user-owned nodes; idempotent (an opened node is no longer closed).
+{
+  try {
+    const since = process.env.CONSOLIDATED_VIS_BACKFILL_SINCE || "2026-10-27T04:00:00.000Z";
+    if (since !== "off") {
+      const bf = backfillConsolidatedVisibility({
+        nodes: Array.from(STATE.dtus.values()),
+        loadMember: (id) => STATE.dtus.get(id) || loadArchivedDtu(db, id),
+        since,
+        persist: (n) => STATE.dtus.set(n.id, n),
+      });
+      structuredLog("info", "consolidated_visibility_backfill", { ...bf, openedIds: bf.openedIds.slice(0, 50), since });
+      if (bf.opened > 0) saveStateDebounced();
+    }
+  } catch (e) {
+    structuredLog("warn", "consolidated_visibility_backfill_failed", { error: String(e?.message || e) });
   }
 }
 
@@ -27701,6 +27724,9 @@ register("dtu", "gapPromote", async (ctx, input) => {
     const undo = growConsolidatedNode(node, tgt.members, { childTier, titleSeed: titleSeed || stripTierPrefix(node.title || "") });
     const q = validateConsolidationQuality(node, tgt.members.map(m => m.id));
     if (!q.ok) { undo(); _consoBump(skipped, `absorb_gate:${q.reason}`); return true; }
+    // Absorbing can only tighten: a public node that takes in a private or
+    // internal member stops being public (lib/consolidated-visibility.js).
+    applyConsolidatedVisibility(node, absorbVisibility(node, tgt.members));
     STATE.dtus.set(node.id, node);
     for (const m of tgt.members) { m.meta = m.meta || {}; if (!m.meta.megaParent) m.meta.megaParent = node.id; }
     saveStateDebounced();
@@ -27764,6 +27790,10 @@ register("dtu", "gapPromote", async (ctx, input) => {
     const _lensSet = Array.from(new Set(members.map(m => m.lens_id || m.lensId || m.meta?.lensId).filter(Boolean)));
     const _megaLens = _lensSet.length === 1 ? _lensSet[0] : (_lensSet.length > 1 ? "multi" : (_seed.lens_id || _seed.lensId || null));
     const _megaCreator = _seed.creator_id || _seed.creatorId || _seed.createdBy || _seed.userId || _seed.meta?.creatorId || null;
+    // Public only when every member is public (a hyper's members are megas);
+    // otherwise the most restrictive member visibility. Replaces copying the
+    // first member's visibility (lib/consolidated-visibility.js).
+    const _vis = consolidatedVisibility(members, { scope: _megaScope });
     const memberIds = members.map(d => d.id);
     const memberClaims = members.flatMap(d => Array.isArray(d.core?.claims) ? d.core.claims : []).slice(0, 24);
     const mega = {
@@ -27771,8 +27801,9 @@ register("dtu", "gapPromote", async (ctx, input) => {
       tier: targetTier,
       title: consolidatedTitle(targetTier, titleSeed),
       tags,
-      scope: _megaScope,
-      visibility: _seed.visibility || (String(_megaScope).match(/personal|private|local/i) ? "private" : "public"),
+      scope: _vis.scope || _megaScope,
+      visibility: _vis.visibility,
+      ...(_vis.ownerId ? { ownerId: _vis.ownerId } : {}),
       world_id: _megaWorld,
       lens_id: _megaLens,
       lensSpan: _lensSet.length > 1 ? _lensSet : undefined,
@@ -27799,7 +27830,8 @@ register("dtu", "gapPromote", async (ctx, input) => {
       // per distinct member), not boilerplate (lib/consolidation-synthesis.js).
       cretiHuman: synthesizeConsolidatedBody({ tier: targetTier, childTier, titleSeed, members, tags }).text,
       human: { summary: synthesizeConsolidatedBody({ tier: targetTier, childTier, titleSeed, members }).summary },
-      meta: { clusterKey, promotedFrom: members.length, promotionAt: nowISO(), createdBy: _megaCreator || undefined }
+      meta: { clusterKey, promotedFrom: members.length, promotionAt: nowISO(), createdBy: _megaCreator || undefined,
+        visibilityRule: { rule: "consolidated_members_v1", reason: _vis.reason, counts: _vis.counts } }
     };
 
     if (!dryRun) {
