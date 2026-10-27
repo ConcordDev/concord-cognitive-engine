@@ -5,6 +5,8 @@
 
 import { runAgentLoop } from "../lib/chat-agent.js";
 import { resolveAgentMaxTurns } from "../lib/chat-reply-policy.js";
+import { isServerRouteHint } from "../lib/chat/agent-route.js";
+import { COMPACT_VOICE } from "../prompts/voice.js";
 
 /** Prefer message; accept task as alias (ActionPanel fleet convention). */
 export function resolveAgentMessage(input = {}) {
@@ -17,11 +19,19 @@ export function resolveAgentMessage(input = {}) {
  * System addendum for one chat_agent.do call. The optional voice block
  * (prompts/voice.js, sent by lib/chat/agent-route.js) goes first; the route
  * hint (which tool, cite only what it returned) goes last so grounding is the
- * final word. Each part is length-capped. "" when neither is given.
+ * final word. "" when neither is given.
+ *
+ * chat_agent.do is client-reachable, so these fields are allowlisted: only a
+ * voice block from prompts/voice.js or a route hint from agent-route.js's
+ * ROUTE_HINT table reaches the system prompt. Any other text (a client's
+ * "system" override, fake tool markers) is dropped.
  */
+const _SERVER_VOICES = new Set(Object.values(COMPACT_VOICE).map((v) => String(v).trim()));
 export function agentExtraSystemBlock(input = {}) {
-  const voice = typeof input?.voiceBlock === "string" ? input.voiceBlock.trim().slice(0, 2000) : "";
-  const hint = typeof input?.routeHint === "string" ? input.routeHint.trim().slice(0, 600) : "";
+  const rawVoice = typeof input?.voiceBlock === "string" ? input.voiceBlock.trim() : "";
+  const rawHint = typeof input?.routeHint === "string" ? input.routeHint.trim() : "";
+  const voice = rawVoice && _SERVER_VOICES.has(rawVoice) ? rawVoice.slice(0, 2000) : "";
+  const hint = rawHint && isServerRouteHint(rawHint) ? rawHint.slice(0, 600) : "";
   return [voice, hint].filter(Boolean).map((b) => `\n\n${b}`).join("");
 }
 
