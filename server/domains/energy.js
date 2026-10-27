@@ -1264,6 +1264,7 @@ export default function registerEnergyActions(registerLensAction) {
           creti: `${title}\n\nCarbon intensity: ${actual} gCO2/kWh\nIndex: ${p.intensity?.index}\nForecast: ${p.intensity?.forecast} gCO2/kWh\nSource: National Grid ESO Carbon Intensity API`,
           tags: ["energy", "feed", "carbon-intensity", "grid"],
           source: "carbonintensity-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { from: p.from, to: p.to, intensity: actual, index: p.intensity?.index },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }

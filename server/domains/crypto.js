@@ -2361,6 +2361,7 @@ export default function registerCryptoActions(registerLensAction) {
           creti: `${it.name} (${String(it.symbol || "").toUpperCase()})\nMarket-cap rank: ${it.market_cap_rank || "?"}\nTrending on CoinGecko, ${day}.`,
           tags: ["crypto", "feed", "trending", "coingecko"],
           source: "coingecko-trending-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { coinId: it.id, name: it.name, symbol: it.symbol, rank: it.market_cap_rank },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); seen.add(key); }

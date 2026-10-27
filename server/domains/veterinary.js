@@ -618,6 +618,7 @@ export default function registerVeterinaryActions(registerLensAction) {
           creti: `${title}\n\nSpecies: ${species}\nBreed: ${ev.animal?.breed?.breed_component || "?"}\nDrug(s): ${drugs || "?"}\nReaction(s): ${reactions || "?"}\nReceived: ${ev.original_receive_date || "?"}\nSource: openFDA Animal & Veterinary`,
           tags: ["veterinary", "feed", "adverse-event", "openfda"],
           source: "openfda-vet-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { aerId: ev.unique_aer_id_number, species, drugs, receiveDate: ev.original_receive_date },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }

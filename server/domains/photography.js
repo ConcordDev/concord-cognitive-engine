@@ -1188,6 +1188,7 @@ export default function registerPhotographyActions(registerLensAction) {
           creti: `${title}\n\nArtist: ${w.artist_title || "Unknown"}\nDate: ${w.date_display || "?"}\nMedium: ${w.medium_display || "?"}\nCollection: Art Institute of Chicago`,
           tags: ["photography", "feed", "artwork", "artic"],
           source: "artic-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { artworkId: w.id, title: w.title, artist: w.artist_title, imageUrl },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }

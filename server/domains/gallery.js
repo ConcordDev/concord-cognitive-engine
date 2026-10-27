@@ -957,6 +957,7 @@ export default function registerGalleryActions(registerLensAction) {
           creti: `${w.title || "Untitled"}\n${w.artist_display || "Unknown artist"}\n${w.date_display || ""}\n${w.medium_display || ""}${image ? `\n\n${image}` : ""}`,
           tags: ["gallery", "feed", "artwork", "art-institute-chicago"],
           source: "artic-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { articId: w.id, title: w.title, artist: w.artist_display, date: w.date_display, image },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(String(w.id)); }

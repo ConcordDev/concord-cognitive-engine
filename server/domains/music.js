@@ -1843,6 +1843,7 @@ export default function registerMusicActions(registerLensAction) {
           creti: `${a.name}\nby ${a.artistName}\nReleased: ${a.releaseDate || "?"}\nGenre: ${(a.genres || []).map((g) => g.name).join(", ")}\n${a.url || ""}`,
           tags: ["music", "feed", "top-albums"],
           source: "apple-music-rss-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { albumId: a.id, name: a.name, artist: a.artistName, releaseDate: a.releaseDate, url: a.url },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(a.id); }

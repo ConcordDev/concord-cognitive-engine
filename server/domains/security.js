@@ -462,6 +462,7 @@ export default function registerSecurityActions(registerLensAction) {
           creti: `${cveId}\nCVSS: ${cvss ?? "unscored"} (${severityOf(cvss)})\n\n${String(summary).slice(0, 800)}`,
           tags: ["security", "feed", "cve", severityOf(cvss)],
           source: "circl-cve-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { cveId, cvss, severity: severityOf(cvss) },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(cveId); }

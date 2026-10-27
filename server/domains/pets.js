@@ -1723,6 +1723,7 @@ export default function registerPetsActions(registerLensAction) {
           creti: `${title}\n\nTemperament: ${b.temperament || "?"}\nLife span: ${b.life_span || "?"}\nWeight: ${b.weight?.imperial || "?"} lbs\nHeight: ${b.height?.imperial || "?"} in\nBred for: ${b.bred_for || "?"}\nGroup: ${b.breed_group || "?"}`,
           tags: ["pets", "feed", "dog-breed", "thedogapi"],
           source: "thedogapi-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { breedId: b.id, name: b.name, temperament: b.temperament, lifeSpan: b.life_span },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }

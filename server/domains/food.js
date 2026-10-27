@@ -2199,6 +2199,7 @@ export default function registerFoodActions(registerLensAction) {
           core: { claims: coreClaims },
           tags: ["food", "feed", "product", "openfoodfacts"],
           source: "openfoodfacts-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { code: p.code, name: p.product_name, brands: p.brands, nutriscore: p.nutriscore_grade },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }

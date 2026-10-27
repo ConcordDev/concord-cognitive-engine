@@ -85,7 +85,8 @@ export function absorbVisibility(node, fresh) {
 
 /**
  * One-shot backfill: consolidated nodes created on or after `since` that are
- * closed (internal/private), have no user owner, and whose members ALL load
+ * closed (internal/private), have no user owner (or were minted by gap
+ * promotion and only inherited one), and whose members ALL load
  * and are ALL public become public. Nothing is ever tightened or touched
  * otherwise. Megas run before hypers so a hyper sees its megas' new state.
  *
@@ -103,7 +104,9 @@ export function backfillConsolidatedVisibility({ nodes, loadMember, since, persi
   for (const n of nodes || []) {
     if (!n || (n.tier !== "mega" && n.tier !== "hyper")) continue;
     if (!["internal", "private"].includes(str(n.visibility))) continue;
-    if (concreteUserOwner(n)) continue;
+    // A user-owned node is only considered when consolidation minted it
+    // (it inherited the owner from its members). Chat/user megas stay put.
+    if (concreteUserOwner(n) && n.lineage?.kind !== "gap_promotion") continue;
     if (Number.isFinite(sinceMs) && !(Date.parse(n.createdAt || "") >= sinceMs)) continue;
     cands.push(n);
   }

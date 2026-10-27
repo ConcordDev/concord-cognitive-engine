@@ -2297,6 +2297,7 @@ export default function registerLawActions(registerLensAction) {
           creti: `${title}\n\nCourt: ${o.court || "?"}\nFiled: ${o.dateFiled || "?"}\nCitation: ${o.citation || "—"}\n${o.snippet || ""}${url ? `\n\n${url}` : ""}`,
           tags: ["law", "feed", "court-opinion"],
           source: "courtlistener-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { opinionId: o.id, caseName: o.caseName, court: o.court, dateFiled: o.dateFiled, url },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(String(o.id)); }

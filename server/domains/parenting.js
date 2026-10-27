@@ -2071,6 +2071,7 @@ export default function registerParentingActions(registerLensAction) {
           creti: `${title}\n\nHazard: ${hazard}\nRemedy: ${(rec.Remedies?.[0]?.Name) || "?"}\nRecall date: ${rec.RecallDate || "?"}\nDescription: ${(rec.Description || "").replace(/<[^>]+>/g, "").slice(0, 600)}\nSource: U.S. Consumer Product Safety Commission`,
           tags: ["parenting", "feed", "child-safety", "recall", "cpsc"],
           source: "cpsc-parenting-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { recallId: rec.RecallID, product, hazard, recallDate: rec.RecallDate },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }

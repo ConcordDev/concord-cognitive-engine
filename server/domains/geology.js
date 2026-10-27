@@ -428,6 +428,7 @@ export default function registerGeologyActions(registerLensAction) {
           creti: `${title}\n\nMagnitude: ${p.mag}\nDepth: ${c[2]} km\nTime: ${new Date(p.time).toISOString()}\nUSGS: ${p.url}`,
           tags: ["geology", "feed", "earthquake", "usgs"],
           source: "usgs.earthquake-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { magnitude: p.mag, place: p.place, time: p.time, lat: c[1], lon: c[0], depthKm: c[2], usgsId: f.id, url: p.url },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(f.id); }

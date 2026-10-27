@@ -342,6 +342,7 @@ export default function registerLandscapingActions(registerLensAction) {
           creti: `${title}\n\nScientific name: ${name}\nFamily: ${sp.family || "?"}\nGenus: ${sp.genus || "?"}\nOrder: ${sp.order || "?"}\nSource: GBIF Backbone Taxonomy`,
           tags: ["landscaping", "feed", "plant", "gbif"],
           source: "gbif-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { gbifKey: sp.key, scientificName: name, family: sp.family, commonName: common || null },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }

@@ -1091,6 +1091,7 @@ export default function registerEnvironmentActions(registerLensAction) {
           creti: `${p.event || "Hazard"}\nSeverity: ${p.severity || "?"}\nArea: ${p.areaDesc || "?"}\nEffective: ${p.effective || "?"} - Expires: ${p.expires || "?"}\n\n${String(p.headline || p.description || "").slice(0, 600)}`,
           tags: ["environment", "feed", "hazard-alert", "nws"],
           source: "nws-alerts-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { alertId: id, event: p.event, severity: p.severity, areaDesc: p.areaDesc },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); seen.add(id); }

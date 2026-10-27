@@ -585,6 +585,7 @@ export default function registerSportsActions(registerLensAction) {
           creti: `${title}\n\nLeague: ${ev.strLeague || "?"}\nDate: ${ev.dateEvent || "?"}\n${ev.strHomeTeam} ${ev.intHomeScore ?? "-"} — ${ev.intAwayScore ?? "-"} ${ev.strAwayTeam}\nVenue: ${ev.strVenue || "?"}`,
           tags: ["sports", "feed", "fixture", "thesportsdb"],
           source: "thesportsdb-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { eventId: ev.idEvent, league: ev.strLeague, home: ev.strHomeTeam, away: ev.strAwayTeam, date: ev.dateEvent },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }

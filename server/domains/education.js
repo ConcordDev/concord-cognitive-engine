@@ -2426,6 +2426,7 @@ Constraints:
           creti: `${question}\n\nAnswer: ${answer}\n\nCategory: ${decode(q.category)} · Difficulty: ${q.difficulty}`,
           tags: ["education", "feed", "quiz", "opentdb", q.difficulty].filter(Boolean),
           source: "opentdb-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { question, answer, category: decode(q.category), difficulty: q.difficulty },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }

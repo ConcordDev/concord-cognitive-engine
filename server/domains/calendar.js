@@ -1657,6 +1657,7 @@ export default function registerCalendarActions(registerLensAction) {
           creti: `${h.name} (${h.localName || h.name})\nDate: ${h.date}\nCountry: ${country}${h.global ? " · nationwide" : ""}`,
           tags: ["calendar", "feed", "public-holiday"],
           source: "nager-date-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { date: h.date, name: h.name, country, global: h.global },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(key); }

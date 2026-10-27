@@ -2410,6 +2410,7 @@ import {
   embeddingEntries,
 } from "./embeddings.js";
 import { consolidatedVisibility, applyConsolidatedVisibility, absorbVisibility, backfillConsolidatedVisibility } from "./lib/consolidated-visibility.js";
+import { isPublicFeedSource, backfillPublicFeedItems, asPublicFeedMember } from "./lib/public-feed-sources.js";
 import { searchArchiveByVector, loadArchivedDtu, tierBoost as _dtuTierBoost, orderConsolidatedFirst, memberCount as _dtuMemberCount, strongDtuMatch } from "./lib/archive-retrieval.js";
 
 // One backfill at a time. Started at boot, when the CPU embedder is
@@ -13921,6 +13922,21 @@ try {
   }
 }
 
+// Public external feeds (2026-10-27): feed items imported before feeds were
+// saved public are opened through STATE.dtus.set (write-through). Only rows
+// whose source is an allowlisted public feed and that carry the "feed" tag
+// (lib/public-feed-sources.js). Off switch: PUBLIC_FEED_BACKFILL=off.
+const _publicFeedBackfillOn = String(process.env.PUBLIC_FEED_BACKFILL || "on").toLowerCase() !== "off";
+if (_publicFeedBackfillOn) {
+  try {
+    const fb = backfillPublicFeedItems({ nodes: Array.from(STATE.dtus.values()), persist: (d) => STATE.dtus.set(d.id, d) });
+    structuredLog("info", "public_feed_backfill", fb);
+    if (fb.opened > 0) saveStateDebounced();
+  } catch (e) {
+    structuredLog("warn", "public_feed_backfill_failed", { error: String(e?.message || e) });
+  }
+}
+
 // One-shot backfill (2026-10-27): megas/hypers minted today with a closed
 // visibility copied from their first member become public only when every
 // member (live, else archived) is public. Never tightens, never touches
@@ -13931,7 +13947,12 @@ try {
     if (since !== "off") {
       const bf = backfillConsolidatedVisibility({
         nodes: Array.from(STATE.dtus.values()),
-        loadMember: (id) => STATE.dtus.get(id) || loadArchivedDtu(db, id),
+        // Archived feed members were archived before the feed rule; they
+        // count as public under it (the archive row itself is not rewritten).
+        loadMember: (id) => {
+          const m = STATE.dtus.get(id) || loadArchivedDtu(db, id);
+          return m && _publicFeedBackfillOn ? asPublicFeedMember(m) : m;
+        },
         since,
         persist: (n) => STATE.dtus.set(n.id, n),
       });
@@ -26682,10 +26703,16 @@ register("dtu", "create", async (ctx, input) => {
     input.scope === "global" ||
     input.scope === "marketplace"
   );
+  // A public external feed item (lib/public-feed-sources.js) is saved public
+  // but is a reference record (title + source fields), not authored
+  // knowledge: it keeps the personal-save bar instead of the public-promotion
+  // bar, which every feed item (academic score 0) would fail.
+  const _publicFeedItem = isPublicFeedSource(source) && dtu.visibility === "public";
   const gate = councilGate(dtu, {
     allowRewrite,
     userInitiated: isUserInitiated,
     promotePublic: _promotePublic,
+    ...(_publicFeedItem ? { minScore: 1 } : {}),
     contentClass: dtu.contentClass,
     skipCouncilGate: input.skipCouncilGate === true && (actorRole === "owner" || actorRole === "founder" || ctx?.actor?.internal),
   });
@@ -26726,7 +26753,7 @@ register("dtu", "create", async (ctx, input) => {
     dtu.meta.skipAutoTag = true;
   }
 
-  const _commit = await pipelineCommitDTU(ctx, dtu, { op: 'dtu.create', allowRewrite: true, userInitiated: isUserInitiated, promotePublic: typeof _promotePublic !== 'undefined' && _promotePublic, contentClass: dtu.contentClass });
+  const _commit = await pipelineCommitDTU(ctx, dtu, { op: 'dtu.create', allowRewrite: true, userInitiated: isUserInitiated, promotePublic: typeof _promotePublic !== 'undefined' && _promotePublic, contentClass: dtu.contentClass, ...(_publicFeedItem ? { minScore: 1 } : {}) });
   if (!_commit || _commit.ok === false) {
     ctx.log("dtu.create.reject", `DTU not committed: ${title}`, { id: dtu.id, reason: _commit?.error });
     return {

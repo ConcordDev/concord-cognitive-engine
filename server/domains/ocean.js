@@ -354,6 +354,7 @@ export default function registerOceanActions(registerLensAction) {
           creti: `${p.event || "Marine alert"}\nSeverity: ${p.severity || "?"}\nArea: ${p.areaDesc || "?"}\nEffective: ${p.effective || "?"}\nExpires: ${p.expires || "?"}\n\n${(p.headline || p.description || "").slice(0, 600)}`,
           tags: ["ocean", "feed", "marine-alert", "nws"],
           source: "nws-marine-alerts-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { alertId: p.id || f.id, event: p.event, severity: p.severity, areaDesc: p.areaDesc, expires: p.expires },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(p.id || f.id); }

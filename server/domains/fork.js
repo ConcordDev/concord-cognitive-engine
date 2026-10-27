@@ -1072,6 +1072,7 @@ export default function registerForkActions(registerLensAction) {
           creti: `Repository: ${fullName}\nEvent: ${ev.type}\nActor: ${actor}\nWhen: ${ev.created_at || ""}\n\n${detail || "(no further detail)"}`,
           tags: ["fork", "feed", "github", kind.toLowerCase()],
           source: "github-events-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { eventId: id, repo: fullName, type: ev.type, actor, createdAt: ev.created_at },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); seen.add(id); }

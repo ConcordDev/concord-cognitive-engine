@@ -979,6 +979,7 @@ export default function registerPaperActions(registerLensAction) {
           creti: `${title}\n\nAuthors: ${authors.join(", ") || "—"}\nVenue: ${venue || "—"}\nDOI: ${it.DOI}\nhttps://doi.org/${it.DOI}`,
           tags: ["paper", "feed", "crossref"],
           source: "crossref-feed",
+          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { doi: it.DOI, authors, venue },
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(it.DOI); }
