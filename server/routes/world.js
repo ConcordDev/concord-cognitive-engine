@@ -189,6 +189,12 @@ import {
 } from "../lib/city-manager.js";
 import { handlePlayerDeath, claimLootBag, handleRobbery, reclaimExpiredBags } from "../lib/pvp-loot.js";
 import { HUB_WORLD_ID } from "../lib/world-ids.js";
+import {
+  readDailyDigest,
+  readPersonalAnalytics,
+  readWorldAnalytics,
+  readGlobalAnalytics,
+} from "../lib/sim-stats.js";
 
 /**
  * @param {object} [opts]
@@ -763,8 +769,6 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   const simPresence = new Map();
   const simSnapTemplates = new Map();
   const simVisitorLogs = [];
-  const simDailyDigests = new Map();
-  const simAnalytics = new Map();
   const simCraftingRecipes = [
     { id: 'recipe-usb-beam', name: 'USB Composite Beam', inputs: [{ itemId: 'mat-usb-a', quantity: 3 }], output: { itemId: 'comp-usb-beam', quantity: 1 }, stationType: 'forge', duration: 30, skillRequired: 'novice' },
     { id: 'recipe-steel-column', name: 'Steel Column', inputs: [{ itemId: 'mat-steel-a36', quantity: 5 }], output: { itemId: 'comp-steel-column', quantity: 1 }, stationType: 'forge', duration: 45, skillRequired: 'apprentice' },
@@ -1474,15 +1478,13 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Daily Digest API ─────────────────────────────────────────────
 
   router.get("/sim/digest/:userId", wrap((req, res) => {
-    const digest = simDailyDigests.get(req.params.userId) || {
-      date: new Date().toISOString().split('T')[0],
-      newCitations: Math.floor(Math.random() * 12),
-      royaltiesEarned: +(Math.random() * 5).toFixed(2),
-      worldEvents: ['New building validated in District 3', 'Weather: light snow expected tonight'],
-      topCreation: { name: 'USB-A Foundation Slab', citations: 7 },
-      npcSummary: 'The blacksmith at The Forge completed 3 commissions while you were away.',
-    };
-    res.json({ ok: true, digest });
+    const viewer = req.user?.id || req.user?.userId || null;
+    if (!viewer || viewer !== req.params.userId) {
+      return res.status(403).json({ ok: false, error: "not_your_stats" });
+    }
+    const result = readDailyDigest(db, viewer);
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, digest: result.digest });
   }));
 
   // ── Moderation / Anti-Grief API ──────────────────────────────────
@@ -1685,51 +1687,25 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Analytics API ────────────────────────────────────────────────
 
   router.get("/sim/analytics/personal/:userId", wrap((req, res) => {
-    const stats = simAnalytics.get(req.params.userId) || {
-      totalCitations: Math.floor(Math.random() * 500),
-      totalRoyalties: +(Math.random() * 100).toFixed(2),
-      mostCitedDTU: { name: 'USB-A Reinforced Beam', citations: 47 },
-      mostUsedMaterial: { name: 'USB Composite A', uses: 89 },
-      reputationByDomain: { structural: 340, materials: 120, infrastructure: 85, energy: 45, architecture: 200, mentorship: 30, governance: 15, exploration: 60 },
-      buildCount: Math.floor(Math.random() * 50) + 5,
-      playtime: Math.floor(Math.random() * 200) + 10,
-      loginStreak: Math.floor(Math.random() * 30) + 1,
-    };
-    res.json({ ok: true, stats });
+    const viewer = req.user?.id || req.user?.userId || null;
+    if (!viewer || viewer !== req.params.userId) {
+      return res.status(403).json({ ok: false, error: "not_your_stats" });
+    }
+    const result = readPersonalAnalytics(db, viewer);
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, stats: result.stats });
   }));
 
   router.get("/sim/analytics/world/:worldId", wrap((req, res) => {
-    res.json({
-      ok: true, stats: {
-        population: 2400, buildingCount: 47, infraCoverage: 72,
-        envScore: 68, economicActivity: 14500, visitorCount: 890,
-        timeseries: [
-          { date: '2025-10-01', visitors: 12, buildings: 2 },
-          { date: '2025-10-15', visitors: 45, buildings: 8 },
-          { date: '2025-11-01', visitors: 120, buildings: 23 },
-          { date: '2025-11-15', visitors: 230, buildings: 47 },
-        ],
-      },
-    });
+    const result = readWorldAnalytics(db, req.params.worldId);
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, stats: result.stats });
   }));
 
   router.get("/sim/analytics/global", wrap((_req, res) => {
-    res.json({
-      ok: true, stats: {
-        activeDistricts: 10, totalBuildings: 1250, totalCitations: 45000,
-        activeUsers: 890, totalWorlds: 67,
-        trendingComponents: [
-          { name: 'USB-B I-Beam 30cm', creator: '@struct_team', citationsThisWeek: 89 },
-          { name: 'Solar Mount v3', creator: '@green_firm', citationsThisWeek: 67 },
-          { name: 'Concrete Foundation Slab', creator: '@builder_bob', citationsThisWeek: 52 },
-        ],
-        topCreators: [
-          { userId: 'user-001', name: '@engineer_jane', citations: 2100, rank: 1 },
-          { userId: 'user-002', name: '@architect_alex', citations: 1800, rank: 2 },
-          { userId: 'user-003', name: '@materials_lab', citations: 1200, rank: 3 },
-        ],
-      },
-    });
+    const result = readGlobalAnalytics(db);
+    if (!result.ok) return res.status(result.status).json(result);
+    res.json({ ok: true, stats: result.stats });
   }));
 
   // ── Seasonal / Events Calendar API ───────────────────────────────
