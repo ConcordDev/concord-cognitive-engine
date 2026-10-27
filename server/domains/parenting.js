@@ -384,6 +384,25 @@ export default function registerParentingActions(registerLensAction) {
   const pgId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const pgNow = () => new Date().toISOString();
   const pgAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  // A log row is stored only with a real timestamp. Garbage `at` used to be
+  // saved and then dropped by history (`Date.parse` is NaN, NaN >= cutoff
+  // is false), so the entry vanished from the owner's own log.
+  function pgLoggedAt(value) {
+    const raw = pgClean(value, 40);
+    if (!raw) return { at: pgNow() };
+    const t = Date.parse(raw);
+    if (!Number.isFinite(t)) {
+      return { error: { ok: false, error: "invalid_input", field: "at", reason: "invalid_time" } };
+    }
+    return { at: new Date(t).toISOString() };
+  }
+  // Rows already stored with an unparseable `at` stay visible. Hiding them
+  // is what made a successful log look like it never persisted.
+  function pgInWindow(at, cutoff) {
+    const t = Date.parse(at);
+    if (!Number.isFinite(t)) return true;
+    return t >= cutoff;
+  }
   const pgListB = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
   const pgNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const pgClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
@@ -727,6 +746,8 @@ export default function registerParentingActions(registerLensAction) {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pgBucket(s, ctx, params.childId);
     if (!pgChild(s, userId, params.childId)) return { ok: false, error: "child not found" };
+    const stamped = pgLoggedAt(params.at);
+    if (stamped.error) return stamped.error;
     const kind = PG_FEED_KINDS.includes(String(params.kind).toLowerCase()) ? String(params.kind).toLowerCase() : "nursing";
     const entry = {
       id: pgId("fed"), childId: String(params.childId), kind,
@@ -735,7 +756,7 @@ export default function registerParentingActions(registerLensAction) {
       side: kind === "nursing" && ["left", "right", "both"].includes(String(params.side))
         ? String(params.side) : null,
       food: kind === "solid" ? (pgClean(params.food, 80) || null) : null,
-      at: pgClean(params.at, 30) || pgNow(),
+      at: stamped.at,
     };
     pgListB(s.feeds, userId).push(entry);
     savePgState();
@@ -747,7 +768,7 @@ export default function registerParentingActions(registerLensAction) {
     const days = Math.max(1, Math.min(60, Math.round(pgNum(params.days, 7))));
     const cutoff = Date.now() - days * PG_DAY;
     const entries = (s.feeds.get(pgBucket(s, ctx, params.childId)) || [])
-      .filter((e) => e.childId === String(params.childId) && Date.parse(e.at) >= cutoff)
+      .filter((e) => e.childId === String(params.childId) && pgInWindow(e.at, cutoff))
       .sort((a, b) => b.at.localeCompare(a.at));
     return { ok: true, result: { entries, count: entries.length } };
   });
@@ -868,10 +889,12 @@ export default function registerParentingActions(registerLensAction) {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pgBucket(s, ctx, params.childId);
     if (!pgChild(s, userId, params.childId)) return { ok: false, error: "child not found" };
+    const stamped = pgLoggedAt(params.at);
+    if (stamped.error) return stamped.error;
     const entry = {
       id: pgId("dpr"), childId: String(params.childId),
       kind: PG_DIAPER_KINDS.includes(String(params.kind)) ? String(params.kind) : "wet",
-      at: pgClean(params.at, 30) || pgNow(),
+      at: stamped.at,
     };
     pgListB(s.diapers, userId).push(entry);
     savePgState();
@@ -884,7 +907,7 @@ export default function registerParentingActions(registerLensAction) {
     const cutoff = Date.now() - days * PG_DAY;
     const todayStr = pgNow().slice(0, 10);
     const all = (s.diapers.get(pgBucket(s, ctx, params.childId)) || []).filter((e) => e.childId === String(params.childId));
-    const entries = all.filter((e) => Date.parse(e.at) >= cutoff).sort((a, b) => b.at.localeCompare(a.at));
+    const entries = all.filter((e) => pgInWindow(e.at, cutoff)).sort((a, b) => b.at.localeCompare(a.at));
     const today = all.filter((e) => e.at.slice(0, 10) === todayStr);
     const byKind = {};
     for (const k of PG_DIAPER_KINDS) byKind[k] = today.filter((e) => e.kind === k).length;
@@ -894,12 +917,14 @@ export default function registerParentingActions(registerLensAction) {
   // ── Pumping ─────────────────────────────────────────────────────────
   registerLensAction("parenting", "pump-log", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const stamped = pgLoggedAt(params.at);
+    if (stamped.error) return stamped.error;
     const entry = {
       id: pgId("pmp"),
       amountMl: Math.max(0, pgNum(params.amountMl)),
       side: ["left", "right", "both"].includes(String(params.side)) ? String(params.side) : "both",
       durationMin: Math.max(0, pgNum(params.durationMin)),
-      at: pgClean(params.at, 30) || pgNow(),
+      at: stamped.at,
     };
     pgListB(s.pumps, pgAid(ctx)).push(entry);
     savePgState();
@@ -912,7 +937,7 @@ export default function registerParentingActions(registerLensAction) {
     const cutoff = Date.now() - days * PG_DAY;
     const todayStr = pgNow().slice(0, 10);
     const all = s.pumps.get(pgAid(ctx)) || [];
-    const entries = all.filter((e) => Date.parse(e.at) >= cutoff).sort((a, b) => b.at.localeCompare(a.at));
+    const entries = all.filter((e) => pgInWindow(e.at, cutoff)).sort((a, b) => b.at.localeCompare(a.at));
     return {
       ok: true,
       result: {
@@ -1072,10 +1097,12 @@ export default function registerParentingActions(registerLensAction) {
     if (!pgChild(s, userId, params.childId)) return { ok: false, error: "child not found" };
     const name = pgClean(params.name, 80);
     if (!name) return { ok: false, error: "medicine name required" };
+    const stamped = pgLoggedAt(params.at);
+    if (stamped.error) return stamped.error;
     const entry = {
       id: pgId("med"), childId: String(params.childId), name,
       dose: pgClean(params.dose, 40) || null,
-      at: pgClean(params.at, 30) || pgNow(),
+      at: stamped.at,
     };
     pgListB(s.meds, userId).push(entry);
     savePgState();
@@ -1087,7 +1114,7 @@ export default function registerParentingActions(registerLensAction) {
     const days = Math.max(1, Math.min(60, Math.round(pgNum(params.days, 14))));
     const cutoff = Date.now() - days * PG_DAY;
     const entries = (s.meds.get(pgBucket(s, ctx, params.childId)) || [])
-      .filter((e) => e.childId === String(params.childId) && Date.parse(e.at) >= cutoff)
+      .filter((e) => e.childId === String(params.childId) && pgInWindow(e.at, cutoff))
       .sort((a, b) => b.at.localeCompare(a.at));
     return { ok: true, result: { entries, count: entries.length } };
   });
@@ -1097,12 +1124,14 @@ export default function registerParentingActions(registerLensAction) {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pgBucket(s, ctx, params.childId);
     if (!pgChild(s, userId, params.childId)) return { ok: false, error: "child not found" };
+    const stamped = pgLoggedAt(params.at);
+    if (stamped.error) return stamped.error;
     const entry = {
       id: pgId("act"), childId: String(params.childId),
       kind: PG_ACTIVITY_KINDS.includes(String(params.kind)) ? String(params.kind) : "other",
       durationMin: Math.max(0, pgNum(params.durationMin)),
       note: pgClean(params.note, 200) || null,
-      at: pgClean(params.at, 30) || pgNow(),
+      at: stamped.at,
     };
     pgListB(s.activities, userId).push(entry);
     savePgState();
@@ -1114,7 +1143,7 @@ export default function registerParentingActions(registerLensAction) {
     const days = Math.max(1, Math.min(60, Math.round(pgNum(params.days, 7))));
     const cutoff = Date.now() - days * PG_DAY;
     const entries = (s.activities.get(pgBucket(s, ctx, params.childId)) || [])
-      .filter((e) => e.childId === String(params.childId) && Date.parse(e.at) >= cutoff)
+      .filter((e) => e.childId === String(params.childId) && pgInWindow(e.at, cutoff))
       .sort((a, b) => b.at.localeCompare(a.at));
     return { ok: true, result: { entries, count: entries.length } };
   });
