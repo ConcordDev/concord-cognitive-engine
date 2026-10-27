@@ -5,7 +5,7 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
 
-import { optNum, notComputed } from "../lib/lens-inputs.js";
+import { optNum, notComputed, requireList } from "../lib/lens-inputs.js";
 
 import { openMeteoDailyForecast } from "../lib/sourced-inputs.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
@@ -19,8 +19,10 @@ export default function registerAgricultureActions(registerLensAction) {
    */
   registerLensAction("agriculture", "rotationPlan", (ctx, artifact, params) => {
   try {
-    const fields = artifact.data.fields || [];
-    const rules = artifact.data.rotationRules || params.rotationRules || [];
+    const fields = requireList(artifact.data.fields, "fields");
+    if (!Array.isArray(fields)) return fields;
+    const rules = requireList(artifact.data.rotationRules || params.rotationRules, "rotationRules");
+    if (!Array.isArray(rules)) return rules;
 
     const rulesMap = {};
     for (const rule of rules) {

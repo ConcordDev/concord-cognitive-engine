@@ -4,6 +4,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { requireList } from "../lib/lens-inputs.js";
 export default function registerImportActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -145,8 +146,10 @@ export default function registerImportActions(registerLensAction) {
    */
   registerLensAction("import", "mapFields", (ctx, artifact, _params) => {
   try {
-    const sourceFields = artifact.data?.sourceFields || [];
-    const targetFields = artifact.data?.targetFields || [];
+    const sourceFields = requireList(artifact.data?.sourceFields, "sourceFields");
+    if (!Array.isArray(sourceFields)) return sourceFields;
+    const targetFields = requireList(artifact.data?.targetFields, "targetFields");
+    if (!Array.isArray(targetFields)) return targetFields;
 
     if (sourceFields.length === 0 || targetFields.length === 0) {
       return { ok: true, result: { message: "Provide artifact.data.sourceFields and artifact.data.targetFields as arrays of field name strings.", mappings: [], unmapped: [] } };

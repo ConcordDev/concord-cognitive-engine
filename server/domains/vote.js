@@ -4,6 +4,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { requireList } from "../lib/lens-inputs.js";
 export default function registerVoteActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -17,8 +18,10 @@ export default function registerVoteActions(registerLensAction) {
    */
   registerLensAction("vote", "tallyVotes", (ctx, artifact, _params) => {
   try {
-    const ballots = artifact.data?.ballots || [];
-    const approvals = artifact.data?.approvals || [];
+    const ballots = requireList(artifact.data?.ballots, "ballots");
+    if (!Array.isArray(ballots)) return ballots;
+    const approvals = requireList(artifact.data?.approvals, "approvals");
+    if (!Array.isArray(approvals)) return approvals;
     if (ballots.length === 0 && approvals.length === 0) {
       return { ok: false, error: "No ballots or approval data provided." };
     }

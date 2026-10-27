@@ -664,6 +664,7 @@ describe("logistics — remaining CRUD/list/dashboard (wave 11 top-up B)", () =>
     assert.equal(sum.result.dockCount, 1);
     assert.equal(sum.result.loadsAvailable, 1);
     assert.equal(sum.result.loadsBooked, 0);
-    assert.equal(sum.result.onTimePct, 100); // no completed-with-ETA shipments → defaults 100
+    assert.equal(sum.result.onTimePct, null); // no completed-with-ETA shipments → unmeasured
+    assert.equal(sum.result.onTimeReason, "no_sample");
   });
 });

@@ -5,6 +5,7 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import { assertPayable } from "../lib/money-guards.js";
 import { finiteOrNull, boundedNum, moneyOrNull, badNumber } from "../lib/finite-input.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { requireList } from "../lib/lens-inputs.js";
 
 export default function registerTradesActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -16,7 +17,8 @@ export default function registerTradesActions(registerLensAction) {
    */
   registerLensAction("trades", "calculateEstimate", (ctx, artifact, params) => {
   try {
-    const lineItems = artifact.data.lineItems || [];
+    const lineItems = requireList(artifact.data.lineItems, "lineItems");
+    if (!Array.isArray(lineItems)) return lineItems;
     const markupPct = params.markupPct != null ? params.markupPct : 20;
     const taxRate = params.taxRate != null ? params.taxRate : 0.08;
     const discountPct = params.discountPct || 0;
@@ -314,7 +316,8 @@ export default function registerTradesActions(registerLensAction) {
    */
   registerLensAction("trades", "scheduleInspection", (ctx, artifact, params) => {
   try {
-    const permits = artifact.data.permits || [];
+    const permits = requireList(artifact.data.permits, "permits");
+    if (!Array.isArray(permits)) return permits;
     const permitId = params.permitId;
     const stageName = params.stageName;
     const requestedDate = params.requestedDate || null;
@@ -378,7 +381,8 @@ export default function registerTradesActions(registerLensAction) {
    */
   registerLensAction("trades", "materialsCost", (ctx, artifact, params) => {
   try {
-    const jobs = artifact.data.jobs || [];
+    const jobs = requireList(artifact.data.jobs, "jobs");
+    if (!Array.isArray(jobs)) return jobs;
     const statusFilter = params.statusFilter || "active";
 
     const activeJobs = jobs.filter(

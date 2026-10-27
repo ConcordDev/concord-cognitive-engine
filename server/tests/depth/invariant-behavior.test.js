@@ -247,12 +247,18 @@ describe("invariant — monitor lifecycle + snapshot/violation history (shared c
   let ctx;
   before(async () => { ctx = await depthCtx("invariant-stateful"); });
 
-  it("registerMonitor → listMonitors: monitor reads back with normalized severity", async () => {
-    const reg = await lensRun("invariant", "registerMonitor", {
+  it("registerMonitor → listMonitors: bogus severity refused; omitted severity defaults to medium", async () => {
+    // input-validation wave: an unknown severity is a 400 invalid_input naming the field
+    const bad = await lensRun("invariant", "registerMonitor", {
       params: { name: "queue bound", expression: "depth <= 100", severity: "bogus" },
     }, ctx);
+    assert.equal(bad.result.error, "invalid_input");
+    assert.equal(bad.result.field, "severity");
+    const reg = await lensRun("invariant", "registerMonitor", {
+      params: { name: "queue bound", expression: "depth <= 100" },
+    }, ctx);
     assert.equal(reg.ok, true);
-    assert.equal(reg.result.monitor.severity, "medium"); // invalid severity → medium default
+    assert.equal(reg.result.monitor.severity, "medium"); // omitted → medium default
     const monId = reg.result.monitor.id;
     const list = await lensRun("invariant", "listMonitors", {}, ctx);
     assert.ok(list.result.monitors.some((m) => m.id === monId));

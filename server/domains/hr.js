@@ -5,6 +5,8 @@
 // real wage/employment data. Free with API key from
 // data.bls.gov/registrationEngine/ (25 req/day anonymous, 500 with key).
 
+import { measuredPercent } from "../lib/measured-rate.js";
+
 const BLS_API = "https://api.bls.gov/publicAPI/v2";
 
 // Curated set of REAL BLS v2 series for labor/wage forecasting. Every id below
@@ -1228,12 +1230,17 @@ export default function registerHRActions(registerLensAction) {
     const totalAcked = acks.filter((a) =>
       docs.some((d) => d.id === a.docId && d.version === a.version)
       && activeEmps.some((e) => e.id === a.employeeId)).length;
+    const complianceMeasured = measuredPercent(
+      totalRequired,
+      totalRequired ? Math.round((totalAcked / totalRequired) * 100) : null,
+    );
     return {
       ok: true,
       result: {
         totalRequired,
         totalAcknowledged: totalAcked,
-        compliancePct: totalRequired ? Math.round((totalAcked / totalRequired) * 100) : 100,
+        compliancePct: complianceMeasured.value,
+        reason: complianceMeasured.reason,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -1468,6 +1475,10 @@ export default function registerHRActions(registerLensAction) {
       !anyRecordEmployeeIds.has(e.id)
       && (new Date(today) - new Date(e.hireDate || today)) > THREE_DAYS_MS).length;
     const verifiedCount = activeEmps.filter((e) => verifiedEmployeeIds.has(e.id)).length;
+    const i9Measured = measuredPercent(
+      activeEmps.length,
+      activeEmps.length ? Math.round((verifiedCount / activeEmps.length) * 100) : null,
+    );
     return {
       ok: true,
       result: {
@@ -1475,7 +1486,8 @@ export default function registerHRActions(registerLensAction) {
         verified: verifiedCount,
         missing: activeEmps.length - verifiedCount,
         overdue,
-        compliancePct: activeEmps.length ? Math.round((verifiedCount / activeEmps.length) * 100) : 100,
+        compliancePct: i9Measured.value,
+        reason: i9Measured.reason,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }

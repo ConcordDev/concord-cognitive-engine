@@ -26,6 +26,8 @@ function finiteDate(v) {
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { requireList } from "../lib/lens-inputs.js";
+import { measuredPercent } from "../lib/measured-rate.js";
 export default function registerHouseholdActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -189,9 +191,11 @@ export default function registerHouseholdActions(registerLensAction) {
    * artifact.data.members: [string] or [{ name }]
    */
   registerLensAction("household", "rotateChores", (ctx, artifact, params = {}) => {
-    const rawChores = artifact.data.chores || params.chores || [];
+    const rawChores = requireList(artifact.data.chores || params.chores, "chores");
+    if (!Array.isArray(rawChores)) return rawChores;
     const chores = rawChores.map(c => typeof c === "string" ? { name: c } : (c || {}));
-    const rawMembers = artifact.data.members || params.members || [];
+    const rawMembers = requireList(artifact.data.members || params.members, "members");
+    if (!Array.isArray(rawMembers)) return rawMembers;
     const members = rawMembers.map(m => typeof m === "string" ? m : m.name).filter(Boolean);
 
     if (members.length === 0) return { ok: true, result: { error: "No household members defined." } };
@@ -395,9 +399,11 @@ export default function registerHouseholdActions(registerLensAction) {
     // Accept chores/members from artifact.data OR params (HouseholdActionPanel
     // sends them via the flat run-action input, which the dispatch maps to BOTH
     // artifact.data and params). Chores may be bare-string recipe names.
-    const rawChores = artifact.data.chores || params.chores || [];
+    const rawChores = requireList(artifact.data.chores || params.chores, "chores");
+    if (!Array.isArray(rawChores)) return rawChores;
     const chores = rawChores.map((c) => (typeof c === "string" ? { name: c } : (c || {})));
-    const rawMembers = artifact.data.members || params.members || [];
+    const rawMembers = requireList(artifact.data.members || params.members, "members");
+    if (!Array.isArray(rawMembers)) return rawMembers;
     const strategy = params.strategy || "round-robin";
 
     const members = rawMembers.map((m) => (typeof m === "string" ? m : m.name)).filter(Boolean);
@@ -781,14 +787,17 @@ export default function registerHouseholdActions(registerLensAction) {
     const nowMs = effectiveNow(s, userId);
     const tasks = hmList(s.tasks, userId);
     const conditions = tasks.map((t) => taskCondition(t, nowMs));
-    const cleanPct = tasks.length > 0
-      ? Math.round((conditions.filter((c) => c.state === "clean").length / tasks.length) * 100) : 100;
+    const cleanMeasured = measuredPercent(
+      tasks.length,
+      tasks.length > 0 ? Math.round((conditions.filter((c) => c.state === "clean").length / tasks.length) * 100) : null,
+    );
     return {
       ok: true,
       result: {
         rooms: hmList(s.rooms, userId).length,
         tasks: tasks.length,
-        cleanlinessPct: cleanPct,
+        cleanlinessPct: cleanMeasured.value,
+        cleanlinessReason: cleanMeasured.reason,
         needsAttention: conditions.filter((c) => c.state === "needs_attention").length,
         choresLoggedAllTime: hmList(s.choreLog, userId).length,
         paused: !!s.vacation.get(userId),

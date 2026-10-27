@@ -156,7 +156,7 @@ import { HUB_WORLD_ID, canonicalWorldId } from "./lib/world-ids.js";
 import { uniqueTmpPath, writeFileAtomicSync, createSnapshotOrdering, sweepStaleStateTmps } from "./lib/state-file-write.js";
 import { runConsolidationCycle } from "./lib/consolidation-cycle.js";
 import { consolidatedTitle, stripTierPrefix, screenClusterMembers, memberSetKey, createRejectionCache, bump as _consoBump } from "./lib/consolidation-dedupe.js";
-import { budgetDemotions, synthesizeConsolidatedBody, absorbTarget as _consoAbsorbTarget, growConsolidatedNode } from "./lib/consolidation-synthesis.js";
+import { budgetDemotions, clusterTitleSeed, synthesizeConsolidatedBody, absorbTarget as _consoAbsorbTarget, growConsolidatedNode } from "./lib/consolidation-synthesis.js";
 // Clusters the quality gates rejected: not rebuilt for 24h (lib/consolidation-dedupe.js).
 const _consoRejected = createRejectionCache();
 import { createSessionActivityBridge, createMacroRateBridge, createApiRateBridge, createChatSessionBridge, createStyleVectorBridge, createSocketRoomBridge, installMapWriteThrough } from "./lib/concurrency/shared-state.js";
@@ -27737,12 +27737,17 @@ register("dtu", "gapPromote", async (ctx, input) => {
 
     // Build a deterministic mega summary (no LLM dependency). One tier
     // prefix only: a seed that already reads "MEGA — …" would nest.
-    const titleSeed = stripTierPrefix(c.label || members[0]?.title || "Cluster").slice(0, 80) || "Cluster";
+    // The seed is the label or the first member that has a title; untitled
+    // clusters are named by their shared themes, never the generic "Cluster"
+    // (every untitled cluster used to get "MEGA — Cluster" and would then be
+    // absorbed into the first one by title).
+    const { seed: titleSeed, generic: _genericSeed } = clusterTitleSeed(c.label, members, stripTierPrefix);
     // Same title as a live consolidated node of this tier: the same topic
-    // grew; absorb into it (the commit would fail duplicate_blocked).
+    // grew; absorb into it (the commit would fail duplicate_blocked). A
+    // theme-derived seed is not proof of the same topic: skip, don't absorb.
     const _sameTitle = Array.from(STATE.dtus.values()).find(d => d?.title === consolidatedTitle(targetTier, titleSeed));
     if (_sameTitle) {
-      if (!_growExisting(_sameTitle, members, titleSeed)) _consoBump(skipped, "title_exists");
+      if (_genericSeed || !_growExisting(_sameTitle, members, titleSeed)) _consoBump(skipped, "title_exists");
       continue;
     }
     const tags = Array.from(new Set(members.flatMap(d => Array.isArray(d.tags)?d.tags:[]))).slice(0, 24);
@@ -50616,7 +50621,13 @@ registerLensAction("agents", "arbitrate", (ctx, artifact, params) => {
 // === Sim (Simulation) ===
 registerLensAction("sim", "simulate", (ctx, artifact, params) => {
   try {
-  const assumptions = artifact.data?.assumptions || params.assumptions || [];
+  const assumptionsSource = (artifact.data?.assumptions == null || artifact.data?.assumptions === "")
+    ? params.assumptions
+    : artifact.data.assumptions;
+  if (assumptionsSource != null && assumptionsSource !== "" && !Array.isArray(assumptionsSource)) {
+    return { ok: false, error: "invalid_input", field: "assumptions", reason: "expected_array" };
+  }
+  const assumptions = Array.isArray(assumptionsSource) ? assumptionsSource : [];
   const _variables = artifact.data?.variables || {};
   let seed = 0;
   { const _gid = String(artifact.id ?? artifact.domain ?? "game"); for (let i = 0; i < _gid.length; i++) seed = ((seed << 5) - seed) + _gid.charCodeAt(i); }

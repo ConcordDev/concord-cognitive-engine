@@ -1639,25 +1639,30 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Collaboration / Project Board API ────────────────────────────
 
   router.get("/sim/projects/:boardId", wrap((req, res) => {
-    const seed = {
-      id: req.params.boardId, name: 'District 3 Development',
-      tasks: [
-        { id: 'task-1', title: 'Design water treatment plant', status: 'open', payment: 50 },
-        { id: 'task-2', title: 'Build Main Street facades', status: 'claimed', claimedBy: '@builder_bob', payment: 30 },
-        { id: 'task-3', title: 'Wire power grid section B', status: 'in-progress', claimedBy: '@power_mike', payment: 40 },
-        { id: 'task-4', title: 'Validate all residential structures', status: 'complete', claimedBy: '@architect_alex', payment: 25 },
-      ],
-    };
-    res.json({ ok: true, board: seed });
+    res.status(501).json({
+      ok: false,
+      error: "unavailable",
+      reason: "no_project_board",
+      message: "No project board is stored for this id. Tasks and payments were not invented.",
+    });
   }));
 
-  router.post("/sim/projects/:boardId/tasks", auth, wrap((req, res) => {
-    const task = { id: `task-${Date.now()}`, ...req.body, status: 'open', createdAt: new Date().toISOString() };
-    res.json({ ok: true, task });
+  router.post("/sim/projects/:boardId/tasks", auth, wrap((_req, res) => {
+    res.status(501).json({
+      ok: false,
+      error: "unavailable",
+      reason: "no_project_board",
+      message: "Project tasks are not stored. Nothing was created.",
+    });
   }));
 
-  router.post("/sim/projects/:boardId/tasks/:taskId/claim", auth, wrap((req, res) => {
-    res.json({ ok: true, taskId: req.params.taskId, claimedBy: req.user.id, status: 'claimed' });
+  router.post("/sim/projects/:boardId/tasks/:taskId/claim", auth, wrap((_req, res) => {
+    res.status(501).json({
+      ok: false,
+      error: "unavailable",
+      reason: "no_project_board",
+      message: "Project tasks are not stored. Nothing was claimed.",
+    });
   }));
 
   // ── Design Review API ────────────────────────────────────────────
@@ -1845,9 +1850,10 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
       transcript,
       engine: engine || 'whisper',
       intent: detectedIntent,
-      confidence: 0.85 + Math.random() * 0.15,
+      match: detectedIntent === 'unknown' ? 'none' : 'keyword',
+      confidence: null,
       parsedAt: new Date().toISOString(),
-      executed: detectedIntent !== 'unknown',
+      executed: false,
     };
     if (!voiceHistory.has(userId)) voiceHistory.set(userId, []);
     voiceHistory.get(userId).push(result);
@@ -1931,17 +1937,15 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Export & Embed API ──────────────────────────────────────────
 
   router.post("/sim/export", auth, wrap((req, res) => {
-    const { dtuId, format, options } = req.body;
-    const exportResult = {
-      id: `export-${Date.now()}`,
-      dtuId,
-      format: format || 'json',
-      status: 'complete',
-      url: `/api/exports/export-${Date.now()}.${format || 'json'}`,
-      size: Math.floor(Math.random() * 5000000) + 100000,
-      createdAt: new Date().toISOString(),
-    };
-    res.json({ ok: true, export: exportResult });
+    const { dtuId, format } = req.body || {};
+    if (!dtuId) return res.status(400).json({ ok: false, error: "dtuId required" });
+    res.status(501).json({
+      ok: false,
+      error: "unavailable",
+      reason: "export_not_wired",
+      format: format || null,
+      message: "Export does not write a file. No size or download URL was invented.",
+    });
   }));
 
   router.post("/sim/embed", auth, wrap((req, res) => {
