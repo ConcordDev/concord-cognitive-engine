@@ -1,3 +1,4 @@
+import { dbIsClosed, isClosedDbError, noteDbWrite, spillWrite } from "./shutdown-write-gate.js";
 // server/lib/lens-artifact-store.js
 //
 // Write-through SQLite store for `STATE.lensArtifacts`.
@@ -96,8 +97,10 @@ export class LensArtifactStore extends Map {
    */
   _persist(id, artifact) {
     if (this._hydrating) return;
+    if (dbIsClosed(this._db)) { spillWrite("lens_artifact", id, artifact); return; }
     const s = this._statements();
     if (!s) return;
+    noteDbWrite();
     try {
       const now = new Date().toISOString();
       s.upsert.run(
@@ -111,6 +114,7 @@ export class LensArtifactStore extends Map {
         JSON.stringify(artifact ?? {}),
       );
     } catch (e) {
+      if (isClosedDbError(e)) { spillWrite("lens_artifact", id, artifact); return; }
       this._writeErrors++;
       this._log("error", "lens_artifact_persist_failed", { id: String(id), error: e?.message });
     }
