@@ -103,8 +103,10 @@ export interface AnalysisArticle {
 
 export interface BiasResult {
   articlesAnalyzed: number;
-  overallBiasScore: number;
-  biasLevel: 'low' | 'moderate' | 'high';
+  overallBiasScore: number | null;
+  /** Set when overallBiasScore is null. `no_bias_terms` means the lexicon matched nothing. */
+  overallBiasReason?: string | null;
+  biasLevel: 'low' | 'moderate' | 'high' | null;
   sourceDiversity: {
     uniqueSources: number;
     entropy: number;
@@ -114,9 +116,9 @@ export interface BiasResult {
   sourceBiasProfiles: Array<{
     source: string;
     articleCount: number;
-    avgBiasScore: number;
-    avgSentiment: number;
-    consistency: number;
+    avgBiasScore: number | null;
+    avgSentiment: number | null;
+    consistency: number | null;
   }>;
   articleAnalyses: Array<Record<string, unknown>>;
   message?: string;

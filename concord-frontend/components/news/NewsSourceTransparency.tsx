@@ -21,8 +21,9 @@ interface SourceProfile {
   source: string;
   articleCount: number;
   contributors: number;
-  biasLean: 'left' | 'center' | 'right';
-  biasScore: number;
+  biasLean: 'left' | 'center' | 'right' | null;
+  biasScore: number | null;
+  biasReason?: string | null;
   factualityRating: number;
   factualityLabel: 'high' | 'mixed' | 'low';
   transparency: { summaryRate: number; hedgeRate: number };
@@ -124,9 +125,15 @@ export function NewsSourceTransparency() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <span className={cn('text-[10px] px-2 py-0.5 rounded-full border capitalize', LEAN_STYLE[profile.biasLean])}>
-                    {profile.biasLean} lean ({profile.biasScore > 0 ? '+' : ''}{profile.biasScore})
-                  </span>
+                  {profile.biasLean == null || profile.biasScore == null ? (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full border text-zinc-400 border-zinc-700">
+                      lean not measurable (no bias terms)
+                    </span>
+                  ) : (
+                    <span className={cn('text-[10px] px-2 py-0.5 rounded-full border capitalize', LEAN_STYLE[profile.biasLean])}>
+                      {profile.biasLean} lean ({profile.biasScore > 0 ? '+' : ''}{profile.biasScore})
+                    </span>
+                  )}
                   <span className={cn('flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border capitalize', FACT_STYLE[profile.factualityLabel])}>
                     {profile.factualityLabel === 'low' ? (
                       <AlertTriangle className="w-3 h-3" />
