@@ -17,6 +17,7 @@
 // flips status to 'completed' or 'paused' respectively. max_turns
 // is a hard ceiling (default 200).
 
+import { markTrusted } from "./chat/agent-history-sanitize.js";
 import crypto from "node:crypto";
 import { runAgentLoop } from "./chat-agent.js";
 // Plan-tree integration (opt-in via opts.projectId only — see tickMarathon).
@@ -638,7 +639,8 @@ export function buildMarathonHistory(db, sessionId, fallbackMessage, copts = {})
         ORDER BY turn_index ASC
       `).all(sessionId);
 
-  const priorTurns = rows.map((t) => ({ role: t.role, content: t.content }));
+  // Stored checkpoints are server-written system turns: keep their role.
+  const priorTurns = rows.map((t) => (t.role === "system" ? markTrusted({ role: t.role, content: t.content }) : { role: t.role, content: t.content }));
   const history = priorTurns.slice(0, -1);
   const lastMessage = priorTurns[priorTurns.length - 1]?.content || fallbackMessage;
   const lastRole = priorTurns[priorTurns.length - 1]?.role || "user";

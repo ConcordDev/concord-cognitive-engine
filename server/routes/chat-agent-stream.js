@@ -26,6 +26,7 @@
 // pure added latency, not a real streaming benefit — any typewriter-style
 // reveal pacing belongs client-side, not as a server-side sleep.
 
+import { trustedNote } from "../lib/chat/agent-history-sanitize.js";
 import { runAgentLoop } from "../lib/chat-agent.js";
 import { startSSE } from "../lib/sse.js";
 import { conkayTurnPlan, conkayToolPolicy } from "../lib/conkay/agent-turn.js";
@@ -130,7 +131,7 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions, retriev
         const block = conkayDtuBlock(got?.text);
         // As a note next to the question (like Chat's tool route), not deep in
         // the tool-heavy system prompt, where the model skipped it for web_search.
-        if (block) dtuNote = { role: "system", content: block };
+        if (block) dtuNote = trustedNote(block);
         console.log(`[chat-agent-stream] dtu_context surface=${surface} hits=${got?.count ?? 0} consolidated=${got?.consolidated ?? 0} archived=${got?.archived ?? 0}`);
       } catch { /* retrieval is additive */ }
     }

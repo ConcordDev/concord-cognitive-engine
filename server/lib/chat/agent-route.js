@@ -16,6 +16,7 @@
 // loop (chat_agent.do). Everything else keeps the conversational path.
 // CONCORD_CHAT_AGENT_ROUTE=0 turns the routing off.
 
+import { trustedNote } from "./agent-history-sanitize.js";
 import { resolveDueDate } from "./today.js";
 import { collectRetrievedDtus, guardDtuCitations } from "./dtu-citation-guard.js";
 import { compactVoiceBlock } from "../../prompts/voice.js";
@@ -587,7 +588,7 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
         try { listing = (typeof tc.result === "string" ? tc.result : JSON.stringify(tc.result)).slice(0, 6000); } catch { listing = ""; }
         const retry = await runMacro("chat_agent", "do", {
           message: prompt,
-          history: [...agentHistory, { role: "system", content: `web_search results for "${query}" (already run for you; answer only from these rows, name the source and time, include links; do not call web_search again):\n${listing}` }],
+          history: [...agentHistory, trustedNote(`web_search results for "${query}" (already run for you; answer only from these rows, name the source and time, include links; do not call web_search again):\n${listing}`)],
           maxTurns: 2,
           routeHint: routeHint("web"),
           voiceBlock: compactVoiceBlock(),
@@ -876,7 +877,7 @@ export function historyItemTitles(history = []) {
 /** Chat memory first, then replayed turns, then this turn's DTU notes (formula / recall). */
 export function agentHistoryWithNotes(history, { memoryBlock = "", formulaDtus = [], recallDtus = [], knowledgeDtus = [] } = {}) {
   const out = [];
-  if (memoryBlock) out.push({ role: "system", content: String(memoryBlock) });
+  if (memoryBlock) out.push(trustedNote(String(memoryBlock)));
   out.push(...(history || []).slice(-CHAT_HISTORY_TURNS));
   const notes = [];
   const fb = formulaContextBlock(formulaDtus);
@@ -887,7 +888,7 @@ export function agentHistoryWithNotes(history, { memoryBlock = "", formulaDtus =
   }
   const kb = knowledgeNote(knowledgeDtus);
   if (kb) notes.push(kb);
-  if (notes.length) out.push({ role: "system", content: notes.join("\n\n") });
+  if (notes.length) out.push(trustedNote(notes.join("\n\n")));
   return out;
 }
 
