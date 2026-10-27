@@ -6310,11 +6310,20 @@ _unrefInTest(setTimeout(() => reconcileIndices(), 120000)); // 2 min after start
 _unrefInTest(setTimeout(async () => {
   if (process.env.CONCORD_TITLE_CLEANUP_20261027 === "0" || process.env.NODE_ENV === "test") return;
   try {
-    const { runTitleCleanup } = await import("./lib/consolidation-title-cleanup.js");
+    const { runTitleCleanup, runNarrowRepair } = await import("./lib/consolidation-title-cleanup.js");
     const _fs = await import("node:fs");
     const _os = await import("node:os");
     const logPath = process.env.CONCORD_TITLE_CLEANUP_LOG || path.join(_os.homedir(), "concord", "run", "mega-title-cleanup-20261027.json");
-    const r = runTitleCleanup({ store: STATE.dtus, logPath, undo: process.env.CONCORD_TITLE_CLEANUP_UNDO === "1", fs: _fs.default || _fs, log: structuredLog });
+    const _fsm = _fs.default || _fs;
+    const _undo = process.env.CONCORD_TITLE_CLEANUP_UNDO === "1";
+    // Rule narrowed to system-made rows: first undo what the earlier run did
+    // to anything else (its own log, once), then the normal run/undo.
+    if (!_undo) {
+      const repairPath = logPath.replace(/\.json$/, "") + "-narrow-repair.json";
+      const rr = runNarrowRepair({ store: STATE.dtus, logPath, repairPath, fs: _fsm, log: structuredLog });
+      structuredLog("info", "mega_title_cleanup_narrow_repair_result", rr);
+    }
+    const r = runTitleCleanup({ store: STATE.dtus, logPath, undo: _undo, fs: _fsm, log: structuredLog });
     structuredLog("info", "mega_title_cleanup_result", r);
   } catch (e) {
     structuredLog("error", "mega_title_cleanup_failed", { error: String(e?.message || e) });
