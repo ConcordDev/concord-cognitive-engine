@@ -133,12 +133,19 @@ describe("hvac estimate e-sign", () => {
 });
 
 describe("hvac payments", () => {
-  it("charges + lists + refunds a payment", () => {
-    const pay = call("payment-charge", ctx, { invoiceId: "INV-1", amount: 500, method: "card" });
+  it("does not claim a card charge, and records a cash receipt", () => {
+    const card = call("payment-charge", ctx, { invoiceId: "INV-1", amount: 500, method: "card" });
+    assert.equal(card.ok, false);
+    assert.equal(card.error, "no_card_processor");
+    const pay = call("payment-charge", ctx, { invoiceId: "INV-1", amount: 500, method: "cash" });
     assert.equal(pay.ok, true);
-    assert.ok(pay.result.payment.processingFee > 0);
+    assert.equal(pay.result.payment.status, "recorded");
+    assert.equal(pay.result.payment.processingFee, 0);
+    assert.equal(pay.result.payment.charged, false);
+    assert.equal(pay.result.payment.reference, null);
     const list = call("payment-list", ctx, {});
     assert.equal(list.result.summary.count, 1);
+    assert.equal(list.result.summary.collected, 500);
     const refund = call("payment-refund", ctx, { id: pay.result.payment.id });
     assert.equal(refund.result.payment.status, "refunded");
   });
