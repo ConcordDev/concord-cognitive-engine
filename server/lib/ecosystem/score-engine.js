@@ -14,10 +14,68 @@
 const SOFT_FLOOR = -100;
 const SOFT_CEILING = 100;
 
+// Canonical stored range for player_world_metrics.ecosystem_score (signed; 0 = neutral).
+export const ECOSYSTEM_SCORE_MIN = SOFT_FLOOR;
+export const ECOSYSTEM_SCORE_MAX = SOFT_CEILING;
+
 function clamp(v) {
   if (v < SOFT_FLOOR) return SOFT_FLOOR;
   if (v > SOFT_CEILING) return SOFT_CEILING;
   return v;
+}
+
+/**
+ * Map a stored signed ecosystem score onto the display scale 0-100.
+ *
+ * Linear: percent = (clamp(raw, -100, 100) + 100) / 2, rounded to 1 decimal.
+ * -100 -> 0, 0 -> 50 (neutral), 100 -> 100.
+ *
+ * Returns null for null, undefined, non-number, or non-finite input — a missing
+ * score is not a neutral 50.
+ */
+export function ecosystemScoreToPercent(raw) {
+  if (typeof raw !== "number" || !Number.isFinite(raw)) return null;
+  const v = clamp(raw);
+  return Math.round(((v + SOFT_CEILING) / 2) * 10) / 10;
+}
+
+/**
+ * World-level Environment gauge: the mean stored ecosystem score across all
+ * players with a row in this world, expressed on the 0-100 scale.
+ *
+ * Returns { envScore, envReason }. envScore is null whenever envReason is set:
+ *   no_metrics_table     — player_world_metrics does not exist
+ *   no_ecosystem_score   — table lacks the ecosystem_score or world_id column
+ *   no_sample            — no rows for this world (an empty sample is not 0)
+ *   metrics_unreadable   — the query failed or returned a non-finite mean
+ */
+export function worldEcosystemPercent(db, worldId) {
+  if (!db) return { envScore: null, envReason: "metrics_unreadable" };
+  let cols = null;
+  try {
+    const rows = db.prepare("PRAGMA table_info(player_world_metrics)").all();
+    cols = rows.length ? new Set(rows.map((c) => c.name)) : null;
+  } catch {
+    cols = null;
+  }
+  if (!cols) return { envScore: null, envReason: "no_metrics_table" };
+  if (!cols.has("ecosystem_score") || !cols.has("world_id")) {
+    return { envScore: null, envReason: "no_ecosystem_score" };
+  }
+  let sample = null;
+  try {
+    sample = db.prepare(
+      `SELECT AVG(ecosystem_score) AS s, COUNT(ecosystem_score) AS n
+       FROM player_world_metrics WHERE world_id = ?`,
+    ).get(worldId);
+  } catch {
+    sample = null;
+  }
+  if (!sample) return { envScore: null, envReason: "metrics_unreadable" };
+  if (!sample.n) return { envScore: null, envReason: "no_sample" };
+  const envScore = ecosystemScoreToPercent(Number(sample.s));
+  if (envScore == null) return { envScore: null, envReason: "metrics_unreadable" };
+  return { envScore, envReason: null };
 }
 
 function ensureRow(db, userId, worldId) {

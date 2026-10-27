@@ -18,6 +18,8 @@
 //
 // GET /api/analytics?worldId=<id>  (worldId optional)
 
+import { worldEcosystemPercent } from "../lib/ecosystem/score-engine.js";
+
 const REPUTATION_DOMAINS = [
   "structural", "materials", "infrastructure", "energy",
   "architecture", "mentorship", "governance", "exploration",
@@ -297,30 +299,9 @@ function _worldStats(db, worldId) {
     }
   }
 
-  // Mean stored ecosystem score. An empty sample is not a score of 0.
-  const metricCols = _columns(db, "player_world_metrics");
-  let envScore = null;
-  let envReason = "no_metrics_table";
-  if (!metricCols) {
-    envReason = "no_metrics_table";
-  } else if (!metricCols.has("ecosystem_score") || !metricCols.has("world_id")) {
-    envReason = "no_ecosystem_score";
-  } else {
-    const sample = _safe(
-      () => db.prepare(
-        `SELECT AVG(ecosystem_score) AS s, COUNT(ecosystem_score) AS n
-         FROM player_world_metrics WHERE world_id = ?`,
-      ).get(worldId),
-      null,
-    );
-    if (!sample) envReason = "metrics_unreadable";
-    else if (!sample.n) envReason = "no_sample";
-    else {
-      const avg = Number(sample.s);
-      envScore = Number.isFinite(avg) ? Math.round(avg * 1000) / 1000 : null;
-      envReason = envScore == null ? "metrics_unreadable" : null;
-    }
-  }
+  // Environment gauge: mean stored ecosystem score on the 0-100 display scale
+  // (see ecosystemScoreToPercent). An empty sample is not a score of 0.
+  const { envScore, envReason } = worldEcosystemPercent(db, worldId);
 
   return {
     worldId,
@@ -329,6 +310,7 @@ function _worldStats(db, worldId) {
     infraCoverage,
     infraReason,
     envScore,
+    envScale: "0-100",
     envReason,
     economicActivity: Math.round(economicActivity * 100) / 100,
     visitorCount,

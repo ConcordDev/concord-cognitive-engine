@@ -149,3 +149,41 @@ describe('AnalyticsDashboard null payload — world tab', () => {
     expectNoRawOrEmptyText();
   });
 });
+
+// The world tab fetches world-summary itself when no worldStats prop is passed.
+function mockWorldSummary(summary: Record<string, unknown>) {
+  vi.mocked(lensRun).mockImplementation((async (_domain: unknown, action: unknown) => ({
+    data: action === 'world-summary'
+      ? { ok: true, result: { worldId: 'w1', found: true, infraCoverage: 50, ...summary } }
+      : { ok: true, result: {} },
+  })) as never);
+}
+
+describe('AnalyticsDashboard — world-summary Environment gauge (0-100 scale)', () => {
+  beforeEach(() => { vi.mocked(lensRun).mockReset(); });
+
+  it('renders a server envScore of 25 as 25%', async () => {
+    mockWorldSummary({ envScore: 25, envReason: null });
+    render(<AnalyticsDashboard personalStats={nullPersonal} worldId="w1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'world' }));
+    await waitFor(() => expect(screen.getByText('25%')).toBeInTheDocument());
+  });
+
+  it('renders the server reason when envScore is null', async () => {
+    mockWorldSummary({ envScore: null, envReason: 'no_sample' });
+    render(<AnalyticsDashboard personalStats={nullPersonal} worldId="w1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'world' }));
+    await waitFor(() => expect(screen.getByText('Not available — no players have an ecosystem score here yet')).toBeInTheDocument());
+    expectNoRawOrEmptyText();
+  });
+
+  it('shows an out-of-range envScore as unavailable, never clamped to a percent', async () => {
+    mockWorldSummary({ envScore: 140, envReason: null });
+    render(<AnalyticsDashboard personalStats={nullPersonal} worldId="w1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'world' }));
+    await waitFor(() => expect(screen.getByText('Not available — value is outside the expected 0-100 range')).toBeInTheDocument());
+    expect(screen.queryByText('140%')).not.toBeInTheDocument();
+    expect(screen.queryByText('100%')).not.toBeInTheDocument();
+    expectNoRawOrEmptyText();
+  });
+});

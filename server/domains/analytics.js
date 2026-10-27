@@ -3,6 +3,7 @@
 // metric aggregation, anomaly detection, trend forecasting.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { worldEcosystemPercent } from "../lib/ecosystem/score-engine.js";
 export default function registerAnalyticsActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Fail-CLOSED numeric coercion. parseFloat("1e999")/parseFloat("Infinity")
@@ -832,6 +833,8 @@ export default function registerAnalyticsActions(registerLensAction) {
         ? anCount(db, "SELECT COUNT(DISTINCT user_id) AS c FROM world_visits WHERE world_id = ?", worldId) : 0;
       const taggedDtus = hasDtus
         ? anCount(db, "SELECT COUNT(*) AS c FROM dtus WHERE world_id = ?", worldId) : 0;
+      // Environment gauge: same 0-100 mean as the /api/analytics route.
+      const eco = worldEcosystemPercent(db, worldId);
 
       const infraCoverage = buildingCount > 0
         ? Math.round((standingBuildings / buildingCount) * 100) : 0;
@@ -853,6 +856,8 @@ export default function registerAnalyticsActions(registerLensAction) {
           uniqueVisitors,
           totalVisits,
           taggedDtus,
+          envScore: eco.envScore,
+          envReason: eco.envReason,
         },
       };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
