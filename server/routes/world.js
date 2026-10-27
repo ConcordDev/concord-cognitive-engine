@@ -218,7 +218,9 @@ import {
   readDistrictTimeline,
   readStressTest,
   readScene,
-  readPluginSurface,
+  readPluginCatalog,
+  readInstalledPlugins,
+  readPluginInstallWrite,
   readNotifProfile,
   writeNotifProfile,
   recordNotifSignal,
@@ -2008,20 +2010,21 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Lens Plugin System API ──────────────────────────────────────
 
   router.get("/sim/plugins/catalog", wrap((_req, res) => {
-    sendSim(res, readPluginSurface());
+    sendSim(res, readPluginCatalog(db));
   }));
 
   router.get("/sim/plugins/installed/:userId", wrap((req, res) => {
+    if (!_userId(req)) return res.status(401).json({ ok: false, error: "sign_in_required" });
     if (!ownSimUser(req, res)) return;
-    sendSim(res, readPluginSurface());
+    sendSim(res, readInstalledPlugins());
   }));
 
   router.post("/sim/plugins/install", auth, wrap((_req, res) => {
-    sendSim(res, readPluginSurface());
+    sendSim(res, readPluginInstallWrite());
   }));
 
   router.post("/sim/plugins/uninstall", auth, wrap((_req, res) => {
-    sendSim(res, readPluginSurface());
+    sendSim(res, readPluginInstallWrite());
   }));
 
   // ── Smart Notifications API ─────────────────────────────────────

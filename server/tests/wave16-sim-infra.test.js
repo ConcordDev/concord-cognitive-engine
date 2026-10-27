@@ -234,8 +234,9 @@ describe("world sim infra reads stored counts", () => {
     assert.equal(chat.body.action, "quick-chat");
 
     const plugins = await call("/api/world/sim/plugins/catalog");
-    assert.equal(plugins.status, 501);
-    assert.equal(plugins.body.reason, "no_plugin_registry");
+    assert.equal(plugins.status, 200);
+    assert.deepEqual(plugins.body.plugins, []);
+    assert.equal(plugins.body.unavailable.databaseRows, "no_plugin_gallery_table");
 
     const empty = await call("/api/world/sim/smart-notifications/user-a", { user: "user-a" });
     assert.equal(empty.status, 501);
