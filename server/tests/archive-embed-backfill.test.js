@@ -14,6 +14,8 @@ function fixture() {
   ins.run("r1", "regular", packDtuData(JSON.stringify({ id: "r1", tier: "regular", title: "r1" })));
   ins.run("m1", "mega", packDtuData(JSON.stringify({ id: "m1", tier: "mega", title: "m1" })));
   ins.run("r2", "regular", JSON.stringify({ id: "r2", tier: "regular", title: "r2" }));
+  // Older cold rows keep id/tier only in the columns.
+  ins.run("m0", "mega", packDtuData(JSON.stringify({ human: { summary: "old mega body" } })));
   ins.run("s1", "shadow", JSON.stringify({ id: "s1", tier: "shadow" }));
   db.prepare("INSERT INTO archived_dtus VALUES (?, ?)").run("c1", JSON.stringify({ id: "c1", tier: "regular", title: "c1" }));
   return db;
@@ -30,14 +32,14 @@ describe("archive embed backfill", () => {
       const r = await runArchiveEmbedSlice(opts);
       if (r.done) break;
     }
-    assert.deepEqual(order, ["m1", "c1", "r1"]);
+    assert.deepEqual(order, ["m1", "m0", "c1", "r1"]);
     const p = readProgress(db);
     assert.equal(p.done, 1);
-    assert.equal(p.embedded, 3);
+    assert.equal(p.embedded, 4);
     const again = await runArchiveEmbedSlice(opts);
     assert.equal(again.done, true);
     const cov = archiveCoverage(db, "emb");
-    assert.equal(cov.archiveEmbedded, 2); // m1, r1 (r2 pre-embedded elsewhere)
+    assert.equal(cov.archiveEmbedded, 3); // m1, m0, r1 (r2 pre-embedded elsewhere)
     assert.equal(cov.archivedDtusEmbedded, 1);
   });
 

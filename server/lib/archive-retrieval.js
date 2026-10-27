@@ -25,24 +25,36 @@ export function tierBoost(d) {
 }
 
 /**
+ * Archived row → DTU. Older cold rows keep id/title/tier/tags only in the
+ * table columns, not in the packed data JSON; fill them from the row.
+ */
+export function archiveRowToDtu(row) {
+  if (!row || row.data == null) return null;
+  let d = null;
+  try { d = JSON.parse(unpackDtuData(row.data)); } catch { return null; }
+  if (!d || typeof d !== "object") return null;
+  let tags = d.tags;
+  if (!Array.isArray(tags) && typeof row.tags === "string") { try { tags = JSON.parse(row.tags); } catch { tags = undefined; } }
+  const out = { ...d, id: d.id || row.id, title: d.title || row.title, tier: d.tier || row.tier || "regular" };
+  if (Array.isArray(tags)) out.tags = tags;
+  if (!out.source && row.source) out.source = row.source;
+  if (!out.scope && row.scope) out.scope = row.scope;
+  return out.id ? out : null;
+}
+
+/**
  * Load an archived DTU by id from the cold table, then the consolidation
  * archive. Returns the parsed DTU object or null.
  */
 export function loadArchivedDtu(db, id) {
   if (!db || !id) return null;
   try {
-    const row = db.prepare("SELECT data FROM dtu_store_archive WHERE id = ?").get(id);
-    if (row?.data != null) {
-      const d = JSON.parse(unpackDtuData(row.data));
-      if (d && d.id) return { ...d, _archived: "cold" };
-    }
+    const d = archiveRowToDtu(db.prepare("SELECT * FROM dtu_store_archive WHERE id = ?").get(id));
+    if (d) return { ...d, _archived: "cold" };
   } catch { /* fall through */ }
   try {
-    const row = db.prepare("SELECT data FROM archived_dtus WHERE id = ?").get(id);
-    if (row?.data != null) {
-      const d = JSON.parse(unpackDtuData(row.data));
-      if (d && d.id) return { ...d, _archived: "consolidated" };
-    }
+    const d = archiveRowToDtu(db.prepare("SELECT * FROM archived_dtus WHERE id = ?").get(id));
+    if (d) return { ...d, _archived: "consolidated" };
   } catch { /* none */ }
   return null;
 }
