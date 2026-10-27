@@ -585,11 +585,15 @@ describe("realestate — CRUD + property tooling (wave 10 top-up, shared ctx)", 
   it("property-detail: 5-year tax history + lot acres + price/sqft for owned listing", async () => {
     const add = await lensRun("realestate", "listings-add", { params: { address: `${randomUUID()} Detail Dr`, price: 500000, sqft: 2500, lotSqft: 43560, yearBuilt: 2010 } }, ctx);
     const listingId = add.result.listing.id;
-    const r = await lensRun("realestate", "property-detail", { params: { listingId } }, ctx);
-    assert.equal(r.result.taxHistory.length, 5);
-    // last entry (this year, yearsBack 0) assessed = list price exactly
-    const last = r.result.taxHistory[r.result.taxHistory.length - 1];
+    const bare = await lensRun("realestate", "property-detail", { params: { listingId } }, ctx);
+    assert.equal(bare.result.taxHistory.length, 0);
+    assert.equal(bare.result.taxHistoryUnavailable, "no assessed value or mill rate on this listing");
+    const taxed = await lensRun("realestate", "listings-add", { params: { address: `${randomUUID()} Taxed Dr`, price: 500000, sqft: 2500, lotSqft: 43560, yearBuilt: 2010, assessedValue: 500000, annualTax: 6000, taxYear: 2026 } }, ctx);
+    const r = await lensRun("realestate", "property-detail", { params: { listingId: taxed.result.listing.id } }, ctx);
+    assert.equal(r.result.taxHistory.length, 1);
+    const last = r.result.taxHistory[0];
     assert.equal(last.assessedValue, 500000);
+    assert.equal(last.taxPaid, 6000);
     assert.equal(r.result.lot.lotAcres, 1); // 43560 sqft = 1 acre
     assert.equal(r.result.lot.pricePerSqft, 200); // 500000/2500
   });
@@ -657,7 +661,8 @@ describe("realestate — CRUD + property tooling (wave 10 top-up, shared ctx)", 
 
   it("open-houses-upcoming: schedules events only for for_sale listings within window", async () => {
     const localCtx = await depthCtx("realestate-t10-oh");
-    const add = await lensRun("realestate", "listings-add", { params: { address: `${randomUUID()} OH St`, price: 400000, status: "for_sale" } }, localCtx);
+    const openDate = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+    const add = await lensRun("realestate", "listings-add", { params: { address: `${randomUUID()} OH St`, price: 400000, status: "for_sale", openHouse: { date: openDate, startTime: "12:00", endTime: "14:00" } } }, localCtx);
     const r = await lensRun("realestate", "open-houses-upcoming", { params: { days: 14 } }, localCtx);
     assert.equal(r.result.days, 14);
     assert.ok(r.result.events.some((e) => e.listingId === add.result.listing.id));

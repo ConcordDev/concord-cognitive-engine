@@ -2521,6 +2521,17 @@ Output the single best account code:`;
     } catch (e) { return handlerFailure(e); }
 });
 
+  // 1099-NEC reporting floor. Payments through 2025: $600. Payments in 2026: $2,000
+  // (IRS, 26 USC 6041 as amended by P.L. 119-21 §70433). Later years follow
+  // the inflation adjustment in IRS Pub. 1099, which is not loaded here.
+  function nec1099Threshold(year) {
+    const y = Number(year);
+    if (!Number.isInteger(y)) return { amount: null, citation: null, unavailable: "year required" };
+    if (y <= 2025) return { amount: 600, citation: "26 USC 6041, payments made through 2025", unavailable: null };
+    if (y === 2026) return { amount: 2000, citation: "IRS: 1099-NEC threshold is $2,000 for payments made in 2026", unavailable: null };
+    return { amount: null, citation: "IRS Pub. 1099", unavailable: "inflation-adjusted 1099-NEC threshold for this year is not loaded" };
+  }
+
   // ── 1099 summary (vendor totals for the tax year) ──────────────
 
   registerLensAction("accounting", "summary-1099", (ctx, _a, params = {}) => {
@@ -2542,9 +2553,21 @@ Output the single best account code:`;
       cur.billCount += 1;
       totals.set(v.id, cur);
     }
-    const THRESHOLD = 600; // IRS reporting threshold for 1099-NEC
-    const rows = Array.from(totals.values()).map(r => ({ ...r, reportable: r.total >= THRESHOLD }));
-    return { ok: true, result: { year, threshold: THRESHOLD, vendors: rows.sort((a, b) => b.total - a.total) } };
+    const gate = nec1099Threshold(year);
+    const rows = Array.from(totals.values()).map(r => ({
+      ...r,
+      reportable: gate.amount == null ? null : r.total >= gate.amount,
+    }));
+    return {
+      ok: true,
+      result: {
+        year,
+        threshold: gate.amount,
+        thresholdCitation: gate.citation,
+        unavailable: gate.unavailable,
+        vendors: rows.sort((a, b) => b.total - a.total),
+      },
+    };
     } catch (e) { return handlerFailure(e); }
 });
 
@@ -3974,7 +3997,9 @@ Output the single best account code:`;
       cur.total += bill.total;
       totals.set(v.id, cur);
     }
-    const THRESHOLD = 600;
+    const gate = nec1099Threshold(year);
+    if (gate.unavailable) return { ok: false, error: gate.unavailable };
+    const THRESHOLD = gate.amount;
     const payees = Array.from(totals.values()).filter(r => r.total >= THRESHOLD);
     if (!payees.length) {
       return { ok: false, error: `no 1099 vendors paid >= $${THRESHOLD} in ${year} — nothing to file` };
