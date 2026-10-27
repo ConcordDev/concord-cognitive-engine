@@ -108,5 +108,14 @@ describe("INC-100 — mission-runtime-cycle repo-index stall", () => {
     assert.equal(result.ok, true, result.reason || "heartbeat failed");
     assert.equal(result.repoGraph?.refreshed, false, "heartbeat must not re-index an unchanged repo");
     assert.ok(ms < 500, `mission-runtime-cycle took ${Math.round(ms)}ms; expected < 500ms`);
+    assert.equal(typeof result.deferred, "number");
+
+    // Steps yield to the event loop: an immediate queued mid-cycle runs
+    // before the cycle resolves.
+    let ranDuring = false;
+    const p = runMissionRuntimeCycle({ db });
+    setImmediate(() => { ranDuring = true; });
+    await p;
+    assert.equal(ranDuring, true, "mission cycle must yield between steps");
   });
 });
