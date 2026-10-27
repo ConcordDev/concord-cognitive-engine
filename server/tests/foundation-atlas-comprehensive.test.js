@@ -109,15 +109,29 @@ describe("Atlas Comprehensive — collectSignal frequency bands", () => {
     assert.equal(sig.band, "rf_433mhz");
   });
 
-  it("defaults signal strength, phase, and other fields", () => {
+  it("leaves unmeasured radio fields empty", () => {
     const sig = collectSignal({ sourceNode: "A", destNode: "B", frequency: 2400 });
-    assert.equal(sig.signalStrength, -70);
-    assert.equal(sig.phase, 0);
-    assert.equal(sig.noiseFloor, -100);
-    assert.equal(sig.doppler, 0);
+    assert.equal(sig.signalStrength, null);
+    assert.equal(sig.signalStrengthReason, "not_measured");
+    assert.equal(sig.phase, null);
+    assert.equal(sig.noiseFloor, null);
+    assert.equal(sig.doppler, null);
+    assert.equal(sig.arrivalTime, null);
     assert.equal(sig.polarization, "unknown");
     assert.equal(sig.position, null);
     assert.deepEqual(sig.multipath, []);
+  });
+
+  it("keeps a measured zero instead of a canned floor", () => {
+    const sig = collectSignal({
+      sourceNode: "A", destNode: "B", frequency: 2400,
+      signalStrength: 0, phase: 0, noiseFloor: 0, doppler: 0,
+    });
+    assert.equal(sig.signalStrength, 0);
+    assert.equal(sig.phase, 0);
+    assert.equal(sig.noiseFloor, 0);
+    assert.equal(sig.doppler, 0);
+    assert.equal(sig.signalStrengthReason, null);
   });
 
   it("preserves provided optional fields", () => {
@@ -161,13 +175,19 @@ describe("Atlas Comprehensive — modelPath edge cases", () => {
     assert.equal(result, null);
   });
 
-  it("defaults frequency to 2400 when not provided", () => {
+  it("does not invent a carrier frequency", () => {
     const posA = { lat: 52.3676, lng: 4.9041 };
     const posB = { lat: 52.3700, lng: 4.9100 };
     const result = modelPath(posA, posB, { signalStrength: -70 });
     assert.notEqual(result, null);
-    assert.equal(result.frequency, 2400);
-    assert.equal(result.band, "wifi_2.4ghz");
+    assert.equal(result.frequency, null);
+    assert.equal(result.band, null);
+    assert.equal(result.freeSpaceLoss_dB, null);
+    assert.equal(result.excessLoss_dB, null);
+    assert.equal(result.environmentalImpact, null);
+    assert.equal(result.actualLoss_dB, 70);
+    assert.equal(result.reason, "frequency_not_measured");
+    assert.ok(result.distance_m > 0);
   });
 
   it("handles non-array multipath gracefully", () => {
@@ -268,11 +288,13 @@ describe("Atlas Comprehensive — classifyMaterial all profiles", () => {
     assert.equal(result.material, "glass");
   });
 
-  it("handles NaN inputs by defaulting to 0", () => {
+  it("does not classify a material from a missing reading", () => {
     const result = classifyMaterial(NaN, NaN);
-    assert.equal(result.material, "air");
-    assert.equal(result.excessLoss, 0);
-    assert.equal(result.phaseDeviation, 0);
+    assert.equal(result.material, "unknown");
+    assert.equal(result.excessLoss, null);
+    assert.equal(result.phaseDeviation, null);
+    assert.equal(result.confidence, null);
+    assert.equal(result.reason, "not_measured");
   });
 
   it("returns low confidence for ambiguous inputs", () => {

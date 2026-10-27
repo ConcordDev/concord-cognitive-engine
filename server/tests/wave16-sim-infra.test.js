@@ -110,6 +110,21 @@ describe("world sim infra reads stored counts", () => {
     assert.equal(metrics.body.metrics.worldCount, 1);
     assert.equal(metrics.body.metrics.buildingCount, 2);
     assert.equal(metrics.body.metrics.dtusCreated24h, 1);
+    const nowS = Math.floor(Date.now() / 1000);
+    db.prepare(`
+      INSERT INTO dtus (id, title, creator_id, created_at)
+      VALUES ('dtu-unix-new', 'Unix New', 'user-a', ?),
+             ('dtu-unix-old', 'Unix Old', 'user-a', ?)
+    `).run(nowS, nowS - 10 * 24 * 3600);
+    const withUnix = await call("/api/world/sim/metrics");
+    assert.equal(withUnix.body.metrics.dtusCreated24h, 2);
+    db.prepare(`
+      INSERT INTO dtus (id, title, creator_id, created_at, type)
+      VALUES ('mat_usera_wood_2_0', 'Wood', 'user-a', ?, 'material')
+    `).run(nowS);
+    const withStarter = await call("/api/world/sim/metrics");
+    assert.equal(withStarter.body.metrics.dtusCreated24h, 2);
+    db.prepare(`DELETE FROM dtus WHERE id IN ('dtu-unix-new', 'dtu-unix-old', 'mat_usera_wood_2_0')`).run();
     assert.equal(metrics.body.unavailable.activePlayers, "not_recorded");
     assert.equal(metrics.body.unavailable.cacheHitRate, "no_cache_stats");
     assert.equal(metrics.body.metrics.activePlayers, undefined);

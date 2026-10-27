@@ -764,17 +764,36 @@ export default function registerReposActions(registerLensAction) {
   const rpNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const rpList = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
   const rpSha = () => Math.random().toString(16).slice(2, 9);
+  // A trailing newline is not an extra line. "a\n" is one line.
+  function rpTextLines(text) {
+    const parts = String(text ?? "").split("\n");
+    if (parts.length > 0 && parts[parts.length - 1] === "") parts.pop();
+    return parts.length;
+  }
 
   function rpFindRepo(s, uid, repoId) {
     return (s.repos.get(uid) || []).find((r) => r.id === repoId) || null;
   }
   // Seed a fresh repo with a tiny but real file tree + main branch.
+  // Line counts and sizes are measured from those file bytes.
   function rpSeedRepo(name, description, language) {
     const ts = rpNow();
-    const c0 = { sha: rpSha(), message: "Initial commit", author: "you", branch: "main", parents: [], date: ts, additions: 12, deletions: 0 };
+    const title = name || "untitled-repo";
+    const blurb = description || "A Concord repository.";
+    const files = [
+      { path: "README.md", type: "file", content: `# ${title}\n\n${blurb}\n` },
+      { path: "package.json", type: "file", content: `{\n  "name": "${title}",\n  "version": "0.1.0"\n}\n` },
+      { path: "src/index.ts", type: "file", content: "export function main(): void {\n  console.log('hello');\n}\n" },
+      { path: "src/util.ts", type: "file", content: "export const noop = (): void => {};\n" },
+    ].map((f) => ({ ...f, size: f.content.length }));
+    const c0 = {
+      sha: rpSha(), message: "Initial commit", author: "you", branch: "main", parents: [], date: ts,
+      additions: files.reduce((n, f) => n + rpTextLines(f.content), 0), deletions: 0,
+      files: files.map((f) => f.path),
+    };
     return {
       id: rpId("repo"),
-      name: name || "untitled-repo",
+      name: title,
       description: description || "",
       language: language || "TypeScript",
       isPrivate: false,
@@ -782,12 +801,7 @@ export default function registerReposActions(registerLensAction) {
       defaultBranch: "main",
       createdAt: ts,
       updatedAt: ts,
-      files: [
-        { path: "README.md", type: "file", content: `# ${name || "untitled-repo"}\n\n${description || "A Concord repository."}\n`, size: 64 },
-        { path: "package.json", type: "file", content: `{\n  "name": "${name || "untitled-repo"}",\n  "version": "0.1.0"\n}\n`, size: 48 },
-        { path: "src/index.ts", type: "file", content: "export function main(): void {\n  console.log('hello');\n}\n", size: 58 },
-        { path: "src/util.ts", type: "file", content: "export const noop = (): void => {};\n", size: 36 },
-      ],
+      files,
       branches: [{ name: "main", head: c0.sha, protected: true, createdAt: ts }],
       tags: [],
       commits: [c0],
@@ -900,7 +914,7 @@ export default function registerReposActions(registerLensAction) {
         ok: true,
         result: {
           path: file.path, content, language: rpLangOf(file.path),
-          lineCount: content.split("\n").length, size: file.size || content.length,
+          lineCount: rpTextLines(content), size: file.size || content.length,
         },
       };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }

@@ -37,6 +37,26 @@ function count(db, sql, ...params) {
   return Number(db.prepare(sql).get(...params).n) || 0;
 }
 
+// created_at is a datetime string in the schema. Some writers bind unix seconds.
+// A JS number above 2^31 lands in a TEXT column as "1760000000.0", so the
+// unix branch accepts that trailing ".0". An ISO date stays on the datetime clock.
+function createdWithin24h(column = "created_at") {
+  return `(
+    (${column} GLOB '????-??-??*' AND ${column} >= datetime('now', '-1 day'))
+    OR (
+      ${column} GLOB '[0-9]*'
+      AND (${column} NOT GLOB '*[^0-9]*' OR ${column} GLOB '[0-9]*.0')
+      AND CAST(${column} AS INTEGER) >= unixepoch('now', '-1 day')
+    )
+  )`;
+}
+
+// Starter inventory is one row per item (mat_<user>_…). It is not an authored DTU.
+function skipStarterInventory(cols) {
+  if (!cols?.has("type")) return "";
+  return " AND NOT (type = 'material' AND id LIKE 'mat_%')";
+}
+
 function clockTime(value) {
   const s = String(value || "");
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(s) ? s : null;
@@ -96,7 +116,10 @@ export function readSimMetrics(db) {
   else unavailable.buildingCount = "no_building_table";
   const dtuCols = columns(db, "dtus");
   if (dtuCols?.has("created_at")) {
-    metrics.dtusCreated24h = count(db, "SELECT COUNT(*) AS n FROM dtus WHERE created_at >= datetime('now', '-1 day')");
+    metrics.dtusCreated24h = count(
+      db,
+      `SELECT COUNT(*) AS n FROM dtus WHERE ${createdWithin24h()}${skipStarterInventory(dtuCols)}`,
+    );
   } else {
     unavailable.dtusCreated24h = dtuCols ? "no_created_at" : "no_dtu_table";
   }

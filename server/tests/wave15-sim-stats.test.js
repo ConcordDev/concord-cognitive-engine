@@ -25,7 +25,10 @@ describe("world sim digest and analytics read stored counts", () => {
       CREATE TABLE world_buildings (
         id TEXT PRIMARY KEY,
         world_id TEXT NOT NULL,
-        name TEXT
+        name TEXT,
+        owner_type TEXT,
+        owner_id TEXT,
+        spawned_by_user_id TEXT
       );
       CREATE TABLE dtus (
         id TEXT PRIMARY KEY,
@@ -54,7 +57,11 @@ describe("world sim digest and analytics read stored counts", () => {
       );
     `);
     db.prepare(`INSERT INTO worlds (id, name, population, total_visits) VALUES ('world-1', 'Pier', 4, 9)`).run();
-    db.prepare(`INSERT INTO world_buildings (id, world_id, name) VALUES ('b1', 'world-1', 'Boathouse'), ('b2', 'world-1', 'Shed')`).run();
+    db.prepare(`
+      INSERT INTO world_buildings (id, world_id, name, owner_type, owner_id, spawned_by_user_id)
+      VALUES ('b1', 'world-1', 'Boathouse', 'player', 'user-a', 'user-a'),
+             ('b2', 'world-1', 'Shed', 'world', NULL, NULL)
+    `).run();
     db.prepare(`
       INSERT INTO dtus (id, title, type, tags_json, creator_id)
       VALUES ('dtu-pier', 'Pier Beam Catalog', 'building', '[]', 'user-a'),
@@ -118,7 +125,9 @@ describe("world sim digest and analytics read stored counts", () => {
     assert.equal(personal.body.stats.totalCitations, 3);
     assert.equal(personal.body.stats.totalRoyalties, 1.5);
     assert.equal(personal.body.stats.mostCitedDTU.name, "Pier Beam Catalog");
-    assert.equal(personal.body.stats.buildCount, 2);
+    assert.equal(personal.body.stats.dtuCount, 2);
+    assert.equal(personal.body.stats.buildCount, 1);
+    assert.equal(personal.body.stats.buildCountReason, null);
     assert.equal(personal.body.stats.playtime, null);
     assert.equal(personal.body.stats.loginStreak, null);
     assert.equal(personal.body.stats.mostUsedMaterial, null);

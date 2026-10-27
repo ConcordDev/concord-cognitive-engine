@@ -37,6 +37,22 @@ export function configureHttpErrorLogger(fn) {
   if (typeof fn === "function") _structuredLog = fn;
 }
 
+// 501 is the honest "this is not available" answer. It is not a crash,
+// so it must not open a repair signal or log as an error.
+export function httpStatusLogLevel(statusCode) {
+  const status = Number(statusCode) || 0;
+  if (status === 501) return "info";
+  if (status >= 500) return "error";
+  if (status >= 400) return "warn";
+  return "info";
+}
+
+export function opensRepairSignal(statusCode) {
+  const status = Number(statusCode) || 0;
+  if (status === 501) return false;
+  return status >= 500 || status === 403 || status === 422 || status === 429;
+}
+
 function safeLog(level, event, payload) {
   try {
     if (_structuredLog) _structuredLog(level, event, payload);
@@ -71,10 +87,10 @@ export function serverError(res, err, statusCode = 500, hint = "") {
   // the wire response — operators reading logs see everything.
   // Report before the log and the json() so the access-log path cannot
   // observe the same response a second time.
-  if (statusCode >= 500 || statusCode === 403 || statusCode === 422 || statusCode === 429) {
+  if (opensRepairSignal(statusCode)) {
     try { reportHttpFailure(res?.req, err, statusCode); } catch { /* cortex must never change the response */ }
   }
-  safeLog("error", "http_500_response", {
+  safeLog(httpStatusLogLevel(statusCode), "http_500_response", {
     statusCode,
     message,
     stack,
