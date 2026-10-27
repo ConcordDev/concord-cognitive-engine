@@ -150,6 +150,7 @@ import { initAll as initLoaf } from "./loaf/index.js";
 import { init as initEmergent } from "./emergent/index.js";
 import { tickAllRegistered, registerHeartbeat, getRegistryScheduleSummary, getRegistrySkipStats } from "./emergent/heartbeat-registry.js";
 import * as presenceIdle from "./lib/presence-idle.js";
+import * as loopJobs from "./lib/loop-job-tracker.js";
 import { HUB_WORLD_ID, canonicalWorldId } from "./lib/world-ids.js";
 import { uniqueTmpPath, writeFileAtomicSync, createSnapshotOrdering, sweepStaleStateTmps } from "./lib/state-file-write.js";
 import { runConsolidationCycle } from "./lib/consolidation-cycle.js";
@@ -6143,8 +6144,8 @@ function cleanupShadowDTUs() {
 }
 
 // Run shadow cleanup periodically (every 6 hours)
-throttledInterval(() => cleanupShadowDTUs(), 6 * 60 * 60 * 1000, "shadow_dtu_cleanup");
-_unrefInTest(setTimeout(() => cleanupShadowDTUs(), 60000)); // Initial cleanup after 1 min
+throttledInterval(() => loopJobs.withJob("shadow_dtu_cleanup", cleanupShadowDTUs), 6 * 60 * 60 * 1000, "shadow_dtu_cleanup");
+_unrefInTest(setTimeout(() => loopJobs.withJob("shadow_dtu_cleanup", cleanupShadowDTUs), 60000)); // Initial cleanup after 1 min
 
 // ---- Index Reconciliation (Category 3: Data Integrity) ----
 // Ensures lens domain index stays consistent with artifact store
@@ -6730,7 +6731,7 @@ if (db && !READ_REPLICA) {
   try {
     const { backfillE5Embeddings } = await import("./lib/embed-backfill.js");
     // Fire backfill in background, don't await
-    backfillE5Embeddings({ db, embed: (await import("./embeddings.js")).embed, STATE })
+    loopJobs.withJob("embed_backfill", async () => backfillE5Embeddings({ db, embed: (await import("./embeddings.js")).embed, STATE }))
       .then(result => {
         if (result.ok) {
           structuredLog("info", "embed_backfill_complete", result);
@@ -13615,7 +13616,7 @@ import { lazy as _lazyModule } from "./lib/lazy-module.js";
   try {
     import("./lib/dtu-archive.js").then(async (mod) => {
       try {
-        const bootResult = await mod.runBootArchiveSweep({ db, STATE });
+        const bootResult = await loopJobs.withJob("dtu_archive_boot_sweep", () => mod.runBootArchiveSweep({ db, STATE }));
         structuredLog("info", "dtu_archive_boot_sweep", {
           archived: bootResult.archived,
           inMemoryPruned: bootResult.inMemoryPruned ?? 0,
@@ -27282,6 +27283,23 @@ function _dtuScopeKey(d) {
   return `${scope}|${world}`;
 }
 
+// INC-150 fairness: the consolidation cycle bounds dtu.cluster by maxItems and a
+// wall-clock budget. To stop the same (newest) slice winning every cycle and older
+// DTUs starving, bounded calls walk the tier oldest-first and resume where the
+// previous cycle stopped (a rotating cursor keyed per fromTier, wrapping at the end).
+const _dtuClusterCursor = new Map(); // fromTier -> { ts, id } of the first DTU to start at
+function _dtuClusterTs(d) {
+  const v = d?.createdAt ?? d?.updatedAt;
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  if (typeof v === "string") { const t = Date.parse(v); return Number.isFinite(t) ? t : 0; }
+  return 0;
+}
+function _dtuClusterKeyCmp(aTs, aId, bTs, bId) {
+  if (aTs !== bTs) return aTs - bTs;
+  const x = String(aId ?? ""), y = String(bId ?? "");
+  return x < y ? -1 : (x > y ? 1 : 0);
+}
+
 register("dtu", "cluster", async (ctx, input) => {
   try {
   // group DTUs by similarity (simple jaccard on title+tags) — BUT only ever WITHIN a
@@ -27292,8 +27310,43 @@ register("dtu", "cluster", async (ctx, input) => {
   // fromTier lets the HYPER pass cluster MEGAs (fromTier:'mega') instead of only regulars —
   // without it, "cluster MEGAs into HYPERs" silently re-clustered regulars and HYPERs never formed.
   const _fromTier = input.fromTier || "regular";
-  const items = dtusArray().filter(d => (d.tier || "regular") === _fromTier);
+  let items = dtusArray().filter(d => (d.tier || "regular") === _fromTier);
   const threshold = Number(input.threshold ?? 0.38);
+
+  // Optional wall-clock budget/deadline. Exceeding it stops early and returns
+  // partial clusters with truncated:true. Used by the consolidation heartbeat.
+  const budgetMs = Number(input.budgetMs);
+  const explicitDeadline = Number(input.deadline);
+  const deadline = Number.isFinite(explicitDeadline) ? explicitDeadline
+    : (Number.isFinite(budgetMs) && budgetMs > 0 ? Date.now() + budgetMs : Infinity);
+
+  // INC-150: when called from the consolidation cycle, bound the input set so a
+  // huge pool cannot produce an unbounded O(n²) pass, and rotate fairly across
+  // cycles (oldest-first, resume at the cursor). Explicit macro/API callers that
+  // pass neither maxItems nor a budget keep the previous "consider everything" order.
+  const maxItems = Number(input.maxItems);
+  const _bounded = (Number.isFinite(maxItems) && maxItems > 0) || deadline !== Infinity;
+  const _rotate = _bounded && input.rotate !== false;
+  let _ordered = null; // sorted tier list when rotating
+  if (_rotate && items.length) {
+    _ordered = items
+      .map((d) => ({ d, ts: _dtuClusterTs(d) }))
+      .sort((a, b) => _dtuClusterKeyCmp(a.ts, a.d.id, b.ts, b.d.id));
+    const cur = _dtuClusterCursor.get(_fromTier);
+    let start = 0;
+    if (cur) {
+      start = _ordered.findIndex((e) => _dtuClusterKeyCmp(e.ts, e.d.id, cur.ts, cur.id) >= 0);
+      if (start < 0) start = 0; // ran off the end → wrap to the oldest
+    }
+    const cap = (Number.isFinite(maxItems) && maxItems > 0) ? Math.min(maxItems, _ordered.length) : _ordered.length;
+    const win = [];
+    for (let k = 0; k < cap; k++) win.push(_ordered[(start + k) % _ordered.length]);
+    items = win.map((e) => e.d);
+    _ordered = { win, start, all: _ordered };
+  } else if (Number.isFinite(maxItems) && maxItems > 0 && items.length > maxItems) {
+    items = items.slice(0, maxItems);
+  }
+
   const clusters = [];
   const used = new Set();
 
@@ -27305,22 +27358,52 @@ register("dtu", "cluster", async (ctx, input) => {
     partitions.get(key).push(d);
   }
 
-  // Profiled 2026-09-27 (pod, ~2.2K DTUs): this pass held the event loop for
-  // 0.8-0.97 s per run — the stalls the lag detector blamed on presence —
-  // because it re-tokenized `b` inside the inner loop (n²/2 simpleTokens
-  // calls) and jaccard() built two fresh Sets per pair. Tokenize each DTU
-  // once, compare the cached Sets, and yield to the event loop between rows
-  // so players' moves and requests are served while it runs. Same clusters.
-  let _sinceYield = 0;
+  // INC-150: make the pass cooperative. Tokenize and compare in chunks, yield to the
+  // event loop on a time slice, and stop if the deadline is exceeded. The clustering
+  // algorithm itself is unchanged; small inputs produce the same clusters as before.
+  const YIELD_SLICE_MS = 25;
+  const TOKENIZE_CHUNK = 500;
+  const COMPARE_CHUNK = 500;
+  let truncated = false;
+  let lastYield = performance.now();
+
+  async function _clusterYield(force = false) {
+    const nowPerf = performance.now();
+    if (force || (nowPerf - lastYield) > YIELD_SLICE_MS) {
+      await new Promise((r) => { setImmediate(r); });
+      lastYield = performance.now();
+    }
+    if (Date.now() > deadline) {
+      truncated = true;
+      return false;
+    }
+    return true;
+  }
+
+  const visited = new Set(); // seeds whose full compare row finished (fairness cursor)
+  const seeds = new Set();
   for (const [, partItems] of partitions) {
-    const toks = partItems.map((d) => new Set(simpleTokens(d.title + " " + (d.tags||[]).join(" "))));
-    for (let i=0;i<partItems.length;i++){
+    if (truncated) break;
+    const toks = [];
+    for (let k = 0; k < partItems.length; k += TOKENIZE_CHUNK) {
+      for (let idx = k; idx < Math.min(k + TOKENIZE_CHUNK, partItems.length); idx++) {
+        toks[idx] = new Set(simpleTokens(partItems[idx].title + " " + (partItems[idx].tags || []).join(" ")));
+      }
+      if (!(await _clusterYield())) break;
+    }
+    if (truncated) break;
+
+    for (let i = 0; i < partItems.length; i++) {
+      if (truncated) break;
       const a = partItems[i];
       if (used.has(a.id)) continue;
       const A = toks[i];
       const cluster = [a];
+      seeds.add(a.id);
       used.add(a.id);
-      for (let j=i+1;j<partItems.length;j++){
+      let comparisons = 0;
+      for (let j = i + 1; j < partItems.length; j++) {
+        if (truncated) break;
         const b = partItems[j];
         if (used.has(b.id)) continue;
         const B = toks[j];
@@ -27332,23 +27415,43 @@ register("dtu", "cluster", async (ctx, input) => {
           cluster.push(b);
           used.add(b.id);
         }
+        if (++comparisons % COMPARE_CHUNK === 0) {
+          if (!(await _clusterYield())) break;
+        }
       }
       clusters.push(cluster);
-      _sinceYield += partItems.length - i;
-      if (_sinceYield > 20000) { _sinceYield = 0; await new Promise((r) => { setImmediate(r); }); }
+      if (!truncated) visited.add(a.id);
+      if (!(await _clusterYield())) break;
     }
   }
 
-  clusters.sort((c1,c2)=>c2.length - c1.length);
+  if (_ordered && _ordered.all.length) {
+    // Resume at the first window entry that never got a full pass (truncated), or
+    // just past the window (complete). Anything clustered as a member counts as done.
+    const { win, start, all } = _ordered;
+    let next = win.length;
+    if (truncated) {
+      // done = finished seeds, or members absorbed into another seed's cluster
+      next = win.findIndex((e) => !visited.has(e.d.id) && !(used.has(e.d.id) && !seeds.has(e.d.id)));
+      if (next < 0) next = win.length;
+      if (next === 0 && win.length) next = 1; // always make progress
+    }
+    const e = all[(start + next) % all.length];
+    if (next >= all.length) _dtuClusterCursor.delete(_fromTier);
+    else _dtuClusterCursor.set(_fromTier, { ts: e.ts, id: e.d.id });
+  }
+
+  clusters.sort((c1, c2) => c2.length - c1.length);
   return {
     ok: true,
     threshold,
+    truncated,
     clusters: clusters.map(c => ({
       size: c.length,
-      ids: c.map(x=>x.id),
-      titles: c.map(x=>x.title).slice(0, 12),
+      ids: c.map(x => x.id),
+      titles: c.map(x => x.title).slice(0, 12),
       scope: _dtuScopeKey(c[0]),
-      tagHints: Array.from(new Set(c.flatMap(x=>x.tags||[]))).slice(0, 20)
+      tagHints: Array.from(new Set(c.flatMap(x => x.tags || []))).slice(0, 20)
     }))
   };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -42976,6 +43079,7 @@ const _tickHistory = [];
  */
 async function runHeartbeatModule(name, fn) {
   const __start = Date.now();
+  const jobToken = loopJobs.beginJob(`heartbeat:${name}`, __start);
   try {
     return await fn();
   } catch (err) {
@@ -42985,6 +43089,7 @@ async function runHeartbeatModule(name, fn) {
     } catch { /* metrics best-effort */ }
     return undefined;
   } finally {
+    loopJobs.endJob(jobToken);
     const __ms = Date.now() - __start;
     try { METRICS?.histograms?.heartbeatBlockMs?.observe({ module: name }, __ms); } catch { /* metrics best-effort */ }
     if (__ms > 5000) {
@@ -44312,11 +44417,15 @@ async function _runDtuConsolidationCycle(ctx) {
         minCluster: CONSOLIDATION.MEGA_MIN_CLUSTER,
         maxClusters: CONSOLIDATION.MEGA_MAX_PER_CYCLE,
         fromTier: "regular",
+        maxItems: 2000,
+        budgetMs: CONSO_BUDGET_MS,
       }, cycleCtx),
       clusterMega: () => runMacro("dtu", "cluster", {
         minCluster: CONSOLIDATION.HYPER_MIN_MEGAS,
         maxClusters: CONSOLIDATION.HYPER_MAX_PER_CYCLE,
         fromTier: "mega",
+        maxItems: 2000,
+        budgetMs: CONSO_BUDGET_MS,
       }, cycleCtx),
       promoteBatch: (clusters, tier, startedAt) => _promoteClusterBatch(cycleCtx, clusters, {
         tier,
@@ -76056,6 +76165,7 @@ try {
         const maxMs = Math.round(maxNs / 1e6);
         let attr = { culprit: "unknown", culpritMs: null, candidates: [] };
         try { attr = presenceIdle.getLagCulprit({ windowMs: 30_000, stallMs: maxMs }); } catch (_e) { /* informational */ }
+        const _spikeNow = Date.now();
         structuredLog("warn", "event_loop_lag_spike", {
           maxMs,
           meanMs: Math.round(histogram.mean / 1e6),
@@ -76065,6 +76175,7 @@ try {
           culpritMs: attr.culpritMs,
           candidates: attr.candidates,
           heartbeats: attr.heartbeats || [],
+          jobs: loopJobs.jobsInWindow(Math.max(maxMs, 5000) + 250, _spikeNow, 5),
           lastTimer: globalThis.__lastLagProbeName || null,
         });
       }
@@ -76092,6 +76203,7 @@ try {
           const maxMs = Math.round(maxNs / 1e6);
           let attr = { culprit: "unknown", culpritMs: null, candidates: [] };
           try { attr = presenceIdle.getLagCulprit({ windowMs: 5_000, stallMs: maxMs }); } catch (_e) { /* informational */ }
+          const _burstNow = Date.now();
           structuredLog("warn", "event_loop_burst_lag", {
             maxMs,
             p99Ms: Math.round(_burstHist.percentile(99) / 1e6),
@@ -76101,6 +76213,7 @@ try {
             culpritMs: attr.culpritMs,
             candidates: attr.candidates,
             heartbeats: attr.heartbeats || [],
+            jobs: loopJobs.jobsInWindow(Math.max(maxMs, 5000) + 250, _burstNow, 5),
             lastTimer: globalThis.__lastLagProbeName || null,
           });
         }
@@ -76112,6 +76225,46 @@ try {
   }, 5_000).unref();
 } catch (e) {
   structuredLog("info", "event_loop_monitor_unavailable", { error: String(e?.message || e) });
+}
+
+// INC-150 — lightweight event-loop drift probe. Runs more often than the
+// perf_hooks histograms above so it can name the job(s) in flight during a
+// sub-second freeze. Logs only when the loop is actually blocked, rate-limited
+// to avoid spam, with an always-log carve-out for severe stalls.
+if (process.env.CONCORD_LOOP_BLOCK_ALERT !== "0") {
+  try {
+    const _DRIFT_INTERVAL_MS = 250;
+    const _DRIFT_THRESHOLD_MS = 1000;
+    const _DRIFT_RATE_LIMIT_MS = 5000;
+    let _driftExpected = Date.now() + _DRIFT_INTERVAL_MS;
+    let _lastDriftAlertAt = 0;
+    const _driftTimer = setInterval(() => {
+      try {
+        const now = Date.now();
+        const blockedMs = now - _driftExpected;
+        _driftExpected = now + _DRIFT_INTERVAL_MS;
+        if (!Number.isFinite(blockedMs) || blockedMs < _DRIFT_THRESHOLD_MS) return;
+        const severe = blockedMs >= 5000;
+        if (!severe && (now - _lastDriftAlertAt) < _DRIFT_RATE_LIMIT_MS) return;
+        _lastDriftAlertAt = now;
+        const mem = process.memoryUsage();
+        const jobs = loopJobs.jobsInWindow(Math.max(blockedMs, _DRIFT_RATE_LIMIT_MS) + _DRIFT_INTERVAL_MS, now, 8);
+        structuredLog("warn", "event_loop_block", {
+          blockedMs,
+          jobs,
+          lastJob: loopJobs.lastJob(),
+          lastTimer: globalThis.__lastLagProbeName || null,
+          rssMb: Math.round(mem.rss / 1024 / 1024),
+          heapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+        });
+      } catch { /* probe must never throw */ }
+    }, _DRIFT_INTERVAL_MS);
+    // Tracked so shutdown's _activeTimers sweep clears it; unref so it never holds the process open.
+    _driftTimer.unref?.();
+    _activeTimers.add(_driftTimer);
+  } catch (e) {
+    structuredLog("info", "event_loop_block_probe_unavailable", { error: String(e?.message || e) });
+  }
 }
 
 // Stall attribution (2026-10-22). The monitors above measure how long the
