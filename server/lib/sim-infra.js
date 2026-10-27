@@ -3,10 +3,11 @@
 // A missing table or an unmeasured counter stays null with a reason.
 // A zero from a real query is a real zero.
 
+import { runDistrictStressTest, loadStandingBuildings } from "../domains/world.js";
 import { listGallery } from "./plugin-gallery.js";
 import { readOwnBuildings, readOwnCitations } from "./sim-stats.js";
 
-const TABLES = new Set(["worlds", "world_buildings", "dtus", "dtu_citations", "economy_ledger"]);
+const TABLES = new Set(["worlds", "world_buildings", "dtus", "dtu_citations", "economy_ledger", "districts"]);
 const OWNER_COLS = new Set(["creator_id", "owner_user_id"]);
 const NOTIF_ACTIONS = new Set(["opened", "dismissed", "snoozed"]);
 const PRIORITY_KEYS = ["citation", "royalty", "social", "system", "event"];
@@ -180,6 +181,10 @@ export function readConcordiaHub(db) {
     activeUsers: null,
     activeUsersReason: "not_recorded",
   };
+  if (columns(db, "districts")) {
+    concordia.districts = count(db, "SELECT COUNT(*) AS n FROM districts");
+    delete concordia.districtsReason;
+  }
   concordia.population = worldsCols.has("population")
     ? count(db, "SELECT COALESCE(SUM(population), 0) AS n FROM worlds")
     : null;
@@ -252,14 +257,25 @@ export function readDistrictTimeline(districtId) {
   };
 }
 
-export function readStressTest() {
-  return {
-    ok: false,
-    status: 501,
-    error: "not_wired",
-    reason: "no_structural_model",
-    missing: "No stored building model is connected to this route, so a seismic pass cannot run.",
-  };
+export function readStressTest(db, body = {}) {
+  const worldId = String(body?.districtId || body?.worldId || "").slice(0, 80);
+  if (!worldId) return { ok: false, status: 400, error: "district_required" };
+  if (!db) return { ok: false, status: 503, error: "unavailable", reason: "no_database", message: "No database is connected." };
+  let rows;
+  try {
+    rows = loadStandingBuildings(db, worldId);
+  } catch {
+    return {
+      ok: false, status: 503, error: "unavailable", reason: "no_building_table",
+      missing: "The world_buildings table (with material, floors and health_pct columns) is not present.",
+    };
+  }
+  if (!rows.length) {
+    return { ok: false, status: 404, error: "no_standing_buildings", districtId: worldId, message: "No standing buildings are stored for this world id." };
+  }
+  const out = runDistrictStressTest(rows, String(body?.scenario || ""), body?.magnitude);
+  if (!out.ok) return { ok: false, status: 400, error: "invalid_stress_input", message: out.error };
+  return { ok: true, districtId: worldId, ...out.result };
 }
 
 export function readScene(districtId, district) {

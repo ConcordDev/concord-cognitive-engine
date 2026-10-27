@@ -1115,8 +1115,8 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   // ── Disaster Stress Test API ──────────────────────────────────────
 
-  router.post("/sim/stress-test", auth, wrap((_req, res) => {
-    sendSim(res, readStressTest());
+  router.post("/sim/stress-test", auth, wrap((req, res) => {
+    sendSim(res, readStressTest(db, req.body));
   }));
 
   // ── Leaderboards API ──────────────────────────────────────────────
