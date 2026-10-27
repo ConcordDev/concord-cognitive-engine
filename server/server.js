@@ -93,6 +93,7 @@ import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
+import { chatContextPool, makeChatMayUse } from "./lib/chat/context-pool.js";
 import { filterVisibleSearchHits, materializeIndexedHits, searchCandidateLimit } from "./lib/dtu-search-hits.js";
 import { handleArchaeology, handleSubstrateDiff, handleTimeCrystalDetect } from "./lib/knowledge-archaeology.js";
 import { artifactDtuForViewer, publicArtifactRef } from "./lib/artifact-access.js";
@@ -28764,7 +28765,10 @@ const _updateAnchorsFromTurn = ({ promptText, bestScoreHint = 0, wantsStructured
 // v4 Universe: check user's local universe first, fall back to global
 const _universeUserId = ctx?.actor?.userId;
 const _userContextDTUs = (() => { try { return typeof getContextDTUsForUser === "function" ? getContextDTUsForUser(_universeUserId, prompt) : null; } catch { return null; } })();
-const all = _userContextDTUs || dtusArray();
+// Fail closed: no universe means viewer-visible DTUs only, never the
+// whole hot pool (internal and other users' private DTUs).
+const _chatMayUse = makeChatMayUse({ viewerId: _universeUserId || null, isHidden: _isHiddenSystemDtu, isPrivateFrom: privateDtuHiddenFrom });
+const all = chatContextPool({ universe: _userContextDTUs, visible: () => userVisibleDTUs(_universeUserId || null), mayUse: _chatMayUse });
 const qRaw = String(prompt || "");
 const qBase = tokensNoStop(qRaw);
 const qExp  = expandQueryTokens(qRaw);
@@ -29192,7 +29196,7 @@ let localReply = formatCrispResponse({
       // Resolve full DTU objects from the working set IDs
       const _wsIds = new Set(_ctxResult.workingSet.map(w => w.dtuId || w.id).filter(Boolean));
       const _allDtus = dtusArray();
-      _unifiedContextDtus = _allDtus.filter(d => _wsIds.has(d.id));
+      _unifiedContextDtus = _allDtus.filter(d => _wsIds.has(d.id) && _chatMayUse(d));
     }
   } catch (_uctxErr) {
     // Unified context engine is supplementary — never block the chat path
