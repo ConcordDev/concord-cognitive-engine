@@ -5,18 +5,20 @@ import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import { Activity, Play, Pause, AlertTriangle, Cpu, Thermometer, Radio, Loader2 } from 'lucide-react';
 import type { RobotRow } from './FleetManager';
+import { reasonSentence } from './telemetry-reasons';
 
-interface JointReading { joint: number; angle: number | null; velocity?: number | null; torque?: number | null; unit?: string }
+// Joint velocity/torque are not produced by robotics.telemetry (no real source), so only angle is typed.
+interface JointReading { joint: number; angle: number | null; unit?: string; loggedAt?: string }
 interface Fault { code: string; severity: string; detail: string }
 interface Telemetry {
   robotId: string; name: string; type: string; status: string;
-  tick?: number; timestamp: string;
+  timestamp: string;
   joints: JointReading[]; dof: number | null;
   sensors: Record<string, number> | null;
   battery: number | null;
   faults: Fault[]; faultCount: number; health: string;
-  telemetrySource?: string;
-  telemetryReason?: string | null;
+  telemetrySource: 'sensor_log' | 'none';
+  telemetryReason: string | null;
 }
 
 function finiteNum(v: unknown): number | null {
@@ -28,9 +30,15 @@ function sensorValue(sensors: Record<string, number> | null, key: string): numbe
   return finiteNum(sensors[key]);
 }
 
-const SENSOR_REASON: Record<string, string> = {
-  no_sensor_log: 'No sensor samples logged — use the Sensors tab / sensorLog',
-};
+/** Replaces a null value with "Not available" and the plain-language reason. */
+function Unavailable({ reason }: { reason: string }) {
+  return (
+    <>
+      <span className="block text-sm font-semibold text-gray-500">Not available</span>
+      <span className="block text-[10px] text-gray-500">{reason}</span>
+    </>
+  );
+}
 
 const HEALTH_COLOR: Record<string, string> = {
   nominal: 'text-green-400', degraded: 'text-yellow-400', critical: 'text-red-400',
@@ -96,6 +104,15 @@ export function TelemetryDashboard({ robot }: { robot: RobotRow | null }) {
     return <p className="text-gray-400 text-sm text-center py-6">Select a robot to view live telemetry.</p>;
   }
 
+  // Reason shown under every sensor card that has no value. A missing channel
+  // on a robot that does have samples is "not recorded"; a robot with no log
+  // at all gets the telemetryReason code.
+  const sensorReason = reasonSentence(tele?.telemetryReason);
+  const batteryValue = finiteNum(tele?.battery);
+  const tempValue = sensorValue(tele?.sensors ?? null, 'temperature');
+  const cpuValue = sensorValue(tele?.sensors ?? null, 'cpuLoad');
+  const proxValue = sensorValue(tele?.sensors ?? null, 'proximity');
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -116,27 +133,37 @@ export function TelemetryDashboard({ robot }: { robot: RobotRow | null }) {
       ) : (
         <>
           {tele.telemetryReason && (
-            <p className="text-xs text-gray-400">{SENSOR_REASON[tele.telemetryReason] || tele.telemetryReason}</p>
+            <p className="text-xs text-gray-400">Not available — {sensorReason}.</p>
           )}
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="panel p-3 text-center">
-              <p className="text-2xl font-bold text-green-400">{finiteNum(tele.battery) == null ? '—' : `${Math.round(finiteNum(tele.battery)!)}%`}</p>
+              {batteryValue == null ? (
+                <Unavailable reason={reasonSentence('not_recorded')} />
+              ) : (
+                <p className="text-2xl font-bold text-green-400">{`${Math.round(batteryValue)}%`}</p>
+              )}
               <p className="text-[11px] text-gray-400">Battery</p>
             </div>
             <div className="panel p-3 text-center">
               <Thermometer className="w-4 h-4 mx-auto text-orange-400 mb-0.5" />
-              <p className="text-xl font-bold font-mono">{sensorValue(tele.sensors, 'temperature') == null ? '—' : `${sensorValue(tele.sensors, 'temperature')}°C`}</p>
+              {tempValue == null ? <Unavailable reason={sensorReason} /> : (
+                <p className="text-xl font-bold font-mono">{`${tempValue}°C`}</p>
+              )}
               <p className="text-[11px] text-gray-400">Core temp</p>
             </div>
             <div className="panel p-3 text-center">
               <Cpu className="w-4 h-4 mx-auto text-neon-cyan mb-0.5" />
-              <p className="text-xl font-bold font-mono">{sensorValue(tele.sensors, 'cpuLoad') == null ? '—' : `${sensorValue(tele.sensors, 'cpuLoad')}%`}</p>
+              {cpuValue == null ? <Unavailable reason={sensorReason} /> : (
+                <p className="text-xl font-bold font-mono">{`${cpuValue}%`}</p>
+              )}
               <p className="text-[11px] text-gray-400">CPU load</p>
             </div>
             <div className="panel p-3 text-center">
               <Radio className="w-4 h-4 mx-auto text-purple-400 mb-0.5" />
-              <p className="text-xl font-bold font-mono">{sensorValue(tele.sensors, 'proximity') == null ? '—' : `${sensorValue(tele.sensors, 'proximity')}m`}</p>
+              {proxValue == null ? <Unavailable reason={sensorReason} /> : (
+                <p className="text-xl font-bold font-mono">{`${proxValue}m`}</p>
+              )}
               <p className="text-[11px] text-gray-400">Proximity</p>
             </div>
           </div>
@@ -148,7 +175,11 @@ export function TelemetryDashboard({ robot }: { robot: RobotRow | null }) {
                 {Object.entries(tele.sensors).filter(([k]) => !['temperature', 'cpuLoad', 'proximity'].includes(k)).map(([channel, value]) => (
                   <div key={channel} className="p-2 rounded bg-black/30 text-xs">
                     <p className="text-gray-400">{channel}</p>
-                    <p className="font-mono text-neon-cyan">{finiteNum(value) == null ? '—' : String(value)}</p>
+                    {finiteNum(value) == null ? (
+                      <Unavailable reason={reasonSentence('not_recorded')} />
+                    ) : (
+                      <p className="font-mono text-neon-cyan">{String(value)}</p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -157,10 +188,13 @@ export function TelemetryDashboard({ robot }: { robot: RobotRow | null }) {
 
           {/* Joint angles bar grid */}
           <div className="panel p-3">
-            <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Joint state ({tele.dof == null ? '—' : tele.dof} DOF)</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">
+              Joint state ({tele.dof == null ? 'Not available' : `${tele.dof} DOF`})
+            </p>
             {tele.joints.length === 0 ? (
-              <p className="text-xs text-gray-400">No joint samples logged.</p>
+              <p className="text-xs text-gray-400">Not available — no joint samples logged.</p>
             ) : (
+            <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
               {tele.joints.map(j => {
                 const angle = finiteNum(j.angle);
@@ -168,20 +202,20 @@ export function TelemetryDashboard({ robot }: { robot: RobotRow | null }) {
                 <div key={j.joint} className="p-2 rounded bg-black/30">
                   <div className="flex justify-between text-[11px] text-gray-400">
                     <span>Joint {j.joint}</span>
-                    <span className="font-mono text-neon-cyan">{angle == null ? '—' : `${angle}°`}</span>
+                    <span className="font-mono text-neon-cyan">{angle == null ? 'Not available' : `${angle}°`}</span>
                   </div>
                   <div className="h-1.5 bg-white/10 rounded-full mt-1">
                     <div className="h-full bg-neon-cyan rounded-full"
                       style={{ width: `${angle == null ? 0 : (Math.abs(angle) / 180) * 100}%` }} />
                   </div>
-                  <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
-                    <span>ω {finiteNum(j.velocity) == null ? '—' : j.velocity}</span>
-                    <span>τ {finiteNum(j.torque) == null ? '—' : j.torque}</span>
-                  </div>
                 </div>
                 );
               })}
             </div>
+            <p className="text-[10px] text-gray-400 mt-2">
+              Velocity and torque: Not available — {reasonSentence('not_recorded')}.
+            </p>
+            </>
             )}
           </div>
 
