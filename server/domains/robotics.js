@@ -62,16 +62,6 @@ export default function registerRoboticsActions(registerLensAction) {
   const rclean = (v, max = 240) => String(v == null ? "" : v).trim().slice(0, max);
   const rlist = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
 
-  // Deterministic pseudo-random in [0,1) seeded by a string — used for
-  // repeatable sensor simulation without storing every sample.
-  function seededRand(seed) {
-    let h = 2166136261;
-    const str = String(seed);
-    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
-    h = (h >>> 0) / 4294967295;
-    return h;
-  }
-
   // ─── Fleet management ──────────────────────────────────────────────
   // robotics.fleetList — all robots for the user.
   registerLensAction("robotics", "fleetList", (ctx, _artifact, _params) => {
@@ -153,55 +143,68 @@ export default function registerRoboticsActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
-  // ─── Telemetry — live joint angles, sensors, battery, faults ───────
-  // robotics.telemetry — synthesizes a deterministic snapshot from the
-  // robot's id + a tick value, so the dashboard can poll for a "live"
-  // feed. Real compute: sinusoidal joint motion, battery draw model,
-  // fault probability, sensor noise.
+  // ─── Telemetry — last logged samples, not a simulated feed ────────
+  // Joint angles and sensor channels come from robotics.sensorLog.
+  // Battery is the value stored on the robot. Nothing is synthesized.
   registerLensAction("robotics", "telemetry", (ctx, _artifact, params = {}) => {
     try {
       const robotId = rclean(params.robotId || params.id, 64);
       if (!robotId) return { ok: false, error: "robotId required." };
       const s = getRoboState();
-      const robots = rlist(s.robots, ruid(ctx));
-      const robot = robots.find((r) => r.id === robotId);
+      const uid = ruid(ctx);
+      const robot = rlist(s.robots, uid).find((r) => r.id === robotId);
       if (!robot) return { ok: false, error: "Robot not found." };
-      const tick = rnum(params.tick, Math.floor(Date.now() / 1000));
-      const dof = robot.type === "humanoid" ? 12 : robot.type === "arm" ? 6 : robot.type === "drone" ? 4 : 2;
-      const phase = tick * 0.15;
-      const joints = [];
-      for (let i = 0; i < dof; i++) {
-        const angle = Math.round(Math.sin(phase + i * 0.7) * 90 * 10) / 10;
-        const velocity = Math.round(Math.cos(phase + i * 0.7) * 13.5 * 100) / 100;
-        const torque = Math.round((6 + Math.abs(velocity) * 0.4) * 100) / 100;
-        joints.push({ joint: i + 1, angle, velocity, torque, unit: "deg" });
+      const buf = s.sensorLogs.get(`${uid}:${robotId}`) || [];
+      const latest = new Map();
+      for (const sample of buf) {
+        if (!sample || !sample.channel) continue;
+        latest.set(sample.channel, sample);
       }
-      // Sensor block — type-aware channels with seeded noise.
-      const noise = (ch) => (seededRand(`${robotId}:${tick}:${ch}`) - 0.5);
-      const sensors = {
-        imu: { roll: Math.round(noise("r") * 4 * 100) / 100, pitch: Math.round(noise("p") * 4 * 100) / 100, yaw: Math.round((phase * 12) % 360 * 10) / 10 },
-        temperature: Math.round((38 + Math.abs(noise("t")) * 14) * 10) / 10,
-        proximity: Math.round((0.4 + Math.abs(noise("pr")) * 3) * 100) / 100,
-        cpuLoad: Math.round((35 + Math.abs(noise("c")) * 50)),
-      };
-      // Battery: drain model from registered draw.
-      const drainPerTick = (robot.powerDrawW || 35) / (robot.batteryCapacityWh || 50) / 3600 * 100;
-      const battery = rclamp(robot.battery - drainPerTick * (tick % 60), 0, 100);
-      // Fault detection.
+      const joints = [];
+      const sensors = {};
+      for (const [channel, sample] of latest) {
+        const jointMatch = /^joint[:_]?(\d+)$/i.exec(channel);
+        if (jointMatch) {
+          joints.push({
+            joint: Number(jointMatch[1]),
+            angle: sample.value,
+            unit: "deg",
+            loggedAt: sample.t,
+          });
+        } else {
+          sensors[channel] = sample.value;
+        }
+      }
+      joints.sort((a, b) => a.joint - b.joint);
+      const battery = Number.isFinite(Number(robot.battery)) ? Number(robot.battery) : null;
       const faults = [];
-      if (sensors.temperature > 48) faults.push({ code: "THERMAL_WARN", severity: "warning", detail: `Core temp ${sensors.temperature}°C exceeds 48°C` });
-      if (battery < 15) faults.push({ code: "LOW_BATTERY", severity: "critical", detail: `Battery at ${Math.round(battery)}%` });
-      if (sensors.cpuLoad > 90) faults.push({ code: "CPU_SATURATION", severity: "warning", detail: `CPU load ${sensors.cpuLoad}%` });
-      if (robot.status === "error") faults.push({ code: "FAULT_STATE", severity: "critical", detail: "Robot in error state — diagnostics required" });
+      if (Number.isFinite(Number(sensors.temperature)) && Number(sensors.temperature) > 48) {
+        faults.push({ code: "THERMAL_WARN", severity: "warning", detail: `Logged temperature ${sensors.temperature}°C exceeds 48°C` });
+      }
+      if (battery != null && battery < 15) {
+        faults.push({ code: "LOW_BATTERY", severity: "critical", detail: `Stored battery at ${Math.round(battery)}%` });
+      }
+      if (Number.isFinite(Number(sensors.cpuLoad)) && Number(sensors.cpuLoad) > 90) {
+        faults.push({ code: "CPU_SATURATION", severity: "warning", detail: `Logged CPU load ${sensors.cpuLoad}%` });
+      }
+      if (robot.status === "error") {
+        faults.push({ code: "FAULT_STATE", severity: "critical", detail: "Robot in error state — diagnostics required" });
+      }
+      const logged = latest.size > 0;
       return {
         ok: true,
         result: {
           robotId, name: robot.name, type: robot.type, status: robot.status,
-          tick, timestamp: rnow(),
-          joints, dof, sensors,
-          battery: Math.round(battery * 10) / 10,
-          faults, faultCount: faults.length,
+          timestamp: rnow(),
+          joints,
+          dof: joints.length ? joints.length : null,
+          sensors: logged ? sensors : null,
+          battery,
+          faults,
+          faultCount: faults.length,
           health: faults.some((f) => f.severity === "critical") ? "critical" : faults.length ? "degraded" : "nominal",
+          telemetrySource: logged ? "sensor_log" : "none",
+          telemetryReason: logged ? null : "no_sensor_log",
         },
       };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
