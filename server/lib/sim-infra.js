@@ -367,7 +367,14 @@ export function readMobileDashboard(db, userId) {
   if (!dtuCols) quickStats.dtuReason = "no_dtu_table";
   else if (!ownerCol || !OWNER_COLS.has(ownerCol)) quickStats.dtuReason = "no_creator_column";
   else {
-    quickStats.dtuCount = count(db, `SELECT COUNT(*) AS n FROM dtus WHERE ${ownerCol} = ?`, userId);
+    // Starter inventory is one row per item (mat_<user>_…). It is not an authored DTU.
+    const skipStarter = dtuCols.has("type")
+      ? " AND NOT (type = 'material' AND id LIKE 'mat_%')"
+      : "";
+    const skipStarterJoin = dtuCols.has("type")
+      ? " AND NOT (d.type = 'material' AND d.id LIKE 'mat_%')"
+      : "";
+    quickStats.dtuCount = count(db, `SELECT COUNT(*) AS n FROM dtus WHERE ${ownerCol} = ?${skipStarter}`, userId);
     const citeCols = columns(db, "dtu_citations");
     if (!citeCols?.has("citation_count")) quickStats.citationReason = "no_citation_table";
     else {
@@ -375,7 +382,7 @@ export function readMobileDashboard(db, userId) {
         SELECT COALESCE(SUM(c.citation_count), 0) AS n
         FROM dtus d
         LEFT JOIN dtu_citations c ON c.dtu_id = d.id
-        WHERE d.${ownerCol} = ?
+        WHERE d.${ownerCol} = ?${skipStarterJoin}
       `, userId);
     }
   }

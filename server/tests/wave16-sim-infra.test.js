@@ -32,6 +32,7 @@ describe("world sim infra reads stored counts", () => {
       CREATE TABLE dtus (
         id TEXT PRIMARY KEY,
         title TEXT,
+        type TEXT,
         creator_id TEXT,
         created_at TEXT
       );
@@ -50,9 +51,10 @@ describe("world sim infra reads stored counts", () => {
     db.prepare(`INSERT INTO worlds (id, name, population, total_visits) VALUES ('world-1', 'Pier', 4, 9)`).run();
     db.prepare(`INSERT INTO world_buildings (id, world_id, name) VALUES ('b1', 'world-1', 'Boathouse'), ('b2', 'world-1', 'Shed')`).run();
     db.prepare(`
-      INSERT INTO dtus (id, title, creator_id, created_at)
-      VALUES ('dtu-pier', 'Pier Beam Catalog', 'user-a', datetime('now')),
-             ('dtu-old', 'Old Note', 'user-a', '2000-01-01 00:00:00')
+      INSERT INTO dtus (id, title, type, creator_id, created_at)
+      VALUES ('dtu-pier', 'Pier Beam Catalog', 'building', 'user-a', datetime('now')),
+             ('dtu-old', 'Old Note', 'note', 'user-a', '2000-01-01 00:00:00'),
+             ('mat_usera_wood_1_0', 'Wood', 'material', 'user-a', '2000-01-01 00:00:00')
     `).run();
     db.prepare(`INSERT INTO dtu_citations (dtu_id, citation_count) VALUES ('dtu-pier', 3)`).run();
     db.prepare(`
@@ -116,14 +118,13 @@ describe("world sim infra reads stored counts", () => {
     `).run(nowS, nowS - 10 * 24 * 3600);
     const withUnix = await call("/api/world/sim/metrics");
     assert.equal(withUnix.body.metrics.dtusCreated24h, 2);
-    db.exec(`ALTER TABLE dtus ADD COLUMN type TEXT`);
     db.prepare(`
       INSERT INTO dtus (id, title, creator_id, created_at, type)
-      VALUES ('mat_usera_wood_1_0', 'Wood', 'user-a', ?, 'material')
+      VALUES ('mat_usera_wood_2_0', 'Wood', 'user-a', ?, 'material')
     `).run(nowS);
     const withStarter = await call("/api/world/sim/metrics");
     assert.equal(withStarter.body.metrics.dtusCreated24h, 2);
-    db.prepare(`DELETE FROM dtus WHERE id IN ('dtu-unix-new', 'dtu-unix-old', 'mat_usera_wood_1_0')`).run();
+    db.prepare(`DELETE FROM dtus WHERE id IN ('dtu-unix-new', 'dtu-unix-old', 'mat_usera_wood_2_0')`).run();
     assert.equal(metrics.body.unavailable.activePlayers, "not_recorded");
     assert.equal(metrics.body.unavailable.cacheHitRate, "no_cache_stats");
     assert.equal(metrics.body.metrics.activePlayers, undefined);

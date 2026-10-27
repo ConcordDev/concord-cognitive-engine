@@ -23,19 +23,29 @@ function columnExists(db, table, column) {
   }
 }
 
+// grantStarterInventoryToUser writes one dtus row per stack item
+// (id mat_<user>_<type>_<time>_<i>, type material). Those are inventory,
+// not authored DTUs.
+function authoredOnly(db, alias) {
+  if (!columnExists(db, "dtus", "type")) return "";
+  const p = alias ? `${alias}.` : "";
+  return ` AND NOT (${p}type = 'material' AND ${p}id LIKE 'mat_%')`;
+}
+
 function creatorRows(db, userId) {
   if (!tableExists(db, "dtus")) return { ok: false, reason: "dtu_tables_missing" };
   const citations = tableExists(db, "dtu_citations");
+  const skipStarter = authoredOnly(db, citations ? "d" : "");
   try {
     const rows = citations
       ? db.prepare(`
           SELECT d.id AS id, d.title AS title, COALESCE(c.citation_count, 0) AS citations
             FROM dtus d
             LEFT JOIN dtu_citations c ON c.dtu_id = d.id
-           WHERE d.creator_id = ?
+           WHERE d.creator_id = ?${skipStarter}
         `).all(userId)
       : db.prepare(`
-          SELECT id, title, 0 AS citations FROM dtus WHERE creator_id = ?
+          SELECT id, title, 0 AS citations FROM dtus WHERE creator_id = ?${skipStarter}
         `).all(userId);
     return { ok: true, rows, citationsRecorded: citations };
   } catch {

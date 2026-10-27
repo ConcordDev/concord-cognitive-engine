@@ -65,7 +65,8 @@ describe("world sim digest and analytics read stored counts", () => {
     db.prepare(`
       INSERT INTO dtus (id, title, type, tags_json, creator_id)
       VALUES ('dtu-pier', 'Pier Beam Catalog', 'building', '[]', 'user-a'),
-             ('dtu-note', 'Quiet Note', 'note', '[]', 'user-a')
+             ('dtu-note', 'Quiet Note', 'note', '[]', 'user-a'),
+             ('mat_usera_wood_1_0', 'Wood', 'material', '[]', 'user-a')
     `).run();
     db.prepare(`INSERT INTO dtu_citations (dtu_id, citation_count, last_cited) VALUES ('dtu-pier', 3, '2026-10-01')`).run();
     db.prepare(`
