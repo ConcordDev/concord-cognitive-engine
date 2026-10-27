@@ -26,6 +26,30 @@ test("substrate gravity: records, distinct creators, records-per-creator", () =>
   assert.equal(g.last7dRecords, 4);   // all just inserted
 });
 
+test("substrate gravity: unix-second rows fall in the window, starter stacks do not", () => {
+  const db = new Database(":memory:");
+  db.exec(`CREATE TABLE dtus (
+    id TEXT PRIMARY KEY,
+    owner_user_id TEXT,
+    type TEXT,
+    title TEXT,
+    created_at TEXT
+  )`);
+  const nowS = Math.floor(Date.now() / 1000);
+  const ins = db.prepare(`INSERT INTO dtus (id, owner_user_id, type, title, created_at) VALUES (?,?,?,?,?)`);
+  db.prepare(`INSERT INTO dtus (id, owner_user_id, type, title, created_at) VALUES ('iso-new', 'u1', 'note', 't', datetime('now'))`).run();
+  ins.run("unix-new", "u1", "note", "t", nowS);
+  ins.run("unix-old", "u1", "note", "t", nowS - 10 * 24 * 3600);
+  ins.run("mat_usera_wood_1_0", "u1", "material", "Wood", nowS);
+  ins.run("mat_userb_wood_1_0", "u2", "material", "Wood", nowS);
+  const g = computeSubstrateGravity(db);
+  assert.equal(g.ok, true);
+  assert.equal(g.totalRecords, 3);
+  assert.equal(g.last7dRecords, 2);
+  assert.equal(g.creators, 1);
+  assert.equal(g.recordsPerCreator, 3);
+});
+
 test("substrate gravity: last7dRecords honors the injected nowMs clock, not the live wall clock", () => {
   // A record created "now" (real wall clock) should be excluded from the
   // 7-day window once we inject a `nowMs` far enough in the future — proving
