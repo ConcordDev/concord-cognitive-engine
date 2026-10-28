@@ -4662,33 +4662,13 @@ export default function WorldOsSurface() {
         m.recordAssetInteraction('authored', building.dtuId, 'building_inspect', 1.0),
       ).catch(() => { /* network errors silent */ });
     } catch { /* import failure silent */ }
-    // Generate mock citations for demo
-    setCitations([
-      {
-        id: 'c1',
-        citingDTU: building.dtuId,
-        citedDTU: 'comp-concrete-found-v2',
-        citedCreator: '@engineer_jane',
-        timestamp: new Date().toISOString(),
-        context: 'foundation',
-      },
-      {
-        id: 'c2',
-        citingDTU: building.dtuId,
-        citedDTU: 'mat-usb-a',
-        citedCreator: '@materials_lab',
-        timestamp: new Date().toISOString(),
-        context: 'beam material',
-      },
-      {
-        id: 'c3',
-        citingDTU: building.dtuId,
-        citedDTU: 'infra-water-1',
-        citedCreator: '@civil_sara',
-        timestamp: new Date().toISOString(),
-        context: 'water connection',
-      },
-    ]);
+    // No citations are loaded for a building here — a real per-DTU
+    // citation lookup is not wired into this surface yet. This handler
+    // used to fabricate three citations (invented DTU ids and creator
+    // handles) and the Inspector rendered them as real provenance;
+    // removed. The Inspector's Citations section renders only when the
+    // list is non-empty, so an empty list is the honest state.
+    setCitations([]);
   }, []);
 
   const handleInfraClick = useCallback((infra: InfrastructureDTU) => {
