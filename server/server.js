@@ -51,6 +51,7 @@ import { humanMacroAclDenial } from "./lib/macro-acl-human-gate.js";
 import { forumModDenial } from "./lib/forum-mod-gate.js";
 import { marketplaceOwnerDenial, marketplaceBuyDenial } from "./lib/marketplace-action-gate.js";
 import { threadModerationDenial, threadDeleteNodeDenial } from "./lib/thread-node-gate.js";
+import { collabCouncilDenial } from "./lib/collab-council-gate.js";
 
 // === DATA DIRECTORY (canonical) ===
 // Resolution order:
@@ -51645,6 +51646,15 @@ registerLensAction("collab", "summarize_thread", (ctx, artifact, _params) => {
   return { ok: true, summary: { changeCount: changes.length, participantCount: Math.max(participants.length, uniqueParticipants.length), operationCounts, topContributors, timeline, summarizedAt: nowISO() } };
 });
 registerLensAction("collab", "run_council", (ctx, artifact, params) => {
+  // SECURITY: `collab` is a LENS_SOCIAL_DOMAINS domain, so the generic lens
+  // run path lets ANY signed-in member act on ANY member's collab session
+  // artifact. `run_council` overwrites artifact.data.councilVote — replacing
+  // an in-progress council vote with a new "pending" one on an
+  // attacker-chosen topic. Only the session owner, a moderator-class role,
+  // or an internal/admin caller may start a council vote
+  // (collab-council-gate.js).
+  const denial = collabCouncilDenial({ isSessionOwner: _lensIsOwnerActor(ctx, artifact) || _lensIsAdminActor(ctx), role: ctx?.actor?.role, roles: ctx?.actor?.roles, internal: ctx?.internal === true || ctx?.actor?.internal === true, userId: ctx?.actor?.userId });
+  if (denial) return denial;
   const vote = { id: uid("cvote"), sessionId: artifact.id, topic: params.topic || artifact.title, status: "pending", initiatedAt: nowISO() };
   artifact.data = { ...artifact.data, councilVote: vote };
   artifact.updatedAt = nowISO();
