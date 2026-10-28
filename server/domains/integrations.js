@@ -5,6 +5,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import crypto from "node:crypto";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
+import { webhookMetaAccess, safeSignatureEqual } from "../lib/webhook-meta-access.js";
 
 export default function registerIntegrationsActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -1087,10 +1088,26 @@ export default function registerIntegrationsActions(registerLensAction) {
   // The page calls /api/webhooks/:id/test and /api/webhooks/:id/activate
   // which do not exist server-side. These macros are the resolved backend
   // the frontend now calls via /api/lens/run.
-  function getWebhookMeta(s, webhookId) {
+  //
+  // SECURITY (fix/sec-webhook-hmac): webhook metadata (HMAC secret, delivery
+  // history, enabled flag) is keyed by webhookId only, so every access below
+  // resolves it through resolveWebhookMeta: the first signed-in caller to
+  // touch a webhookId becomes its owner, and anyone else — including legacy
+  // ownerless metas — is refused (admins excepted). Anonymous callers get
+  // 401 and never create or read a meta.
+  const WEBHOOK_ADMIN_ROLES = new Set(["owner", "admin", "founder", "sovereign"]);
+  function isWebhookAdmin(ctx) {
+    const role = ctx?.actor?.role;
+    return typeof role === "string" && WEBHOOK_ADMIN_ROLES.has(role.toLowerCase());
+  }
+  function getWebhookMeta(s, webhookId, ctx) {
     let meta = s.webhookMeta.get(webhookId);
     if (!meta) {
+      const actor = intActor(ctx);
       meta = {
+        // SECURITY: stamp the creating actor as owner; anon never creates
+        // (resolveWebhookMeta refuses it first) — guard is defense in depth.
+        ...(actor !== "anon" ? { ownerId: actor } : {}),
         deliveries: [],
         retryPolicy: { maxAttempts: 3, backoffSeconds: [2, 8, 30] },
         secret: `whsec_${crypto.randomBytes(24).toString("hex")}`,
@@ -1098,6 +1115,19 @@ export default function registerIntegrationsActions(registerLensAction) {
       s.webhookMeta.set(webhookId, meta);
     }
     return meta;
+  }
+  // SECURITY: ownership-checked meta resolution. Returns { meta } when the
+  // actor may touch this webhook, else { denial } (fresh object, safe to
+  // return to the caller as-is).
+  function resolveWebhookMeta(s, webhookId, ctx) {
+    const actor = intActor(ctx);
+    if (!actor || actor === "anon") {
+      return { denial: { ok: false, status: 401, code: "AUTH_REQUIRED", error: "sign in required" } };
+    }
+    const meta = getWebhookMeta(s, webhookId, ctx);
+    const denial = webhookMetaAccess({ meta, actorId: actor, isAdmin: isWebhookAdmin(ctx) });
+    if (denial) return { denial };
+    return { meta };
   }
   // HMAC-SHA256 over the raw body with the webhook's secret, sent as
   // X-Concord-Signature: sha256=<hex>.
@@ -1132,7 +1162,10 @@ export default function registerIntegrationsActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const webhookId = params.webhookId;
     if (!webhookId) return { ok: false, error: "webhookId required" };
-    const meta = getWebhookMeta(s, webhookId);
+    // SECURITY: this action is a signing oracle — it HMACs a caller-chosen
+    // body with the webhook's secret and returns the signature. Owner only.
+    const { meta, denial } = resolveWebhookMeta(s, webhookId, ctx);
+    if (denial) return denial;
     const payload = params.payload || { event: "test.ping", timestamp: nowIso(), data: { message: "Test payload from Concord" } };
     const body = JSON.stringify(payload);
     const signature = signPayload(meta.secret, body);
@@ -1177,13 +1210,16 @@ export default function registerIntegrationsActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const webhookId = params.webhookId;
     if (!webhookId) return { ok: false, error: "webhookId required" };
+    // SECURITY: ownership check BEFORE any toggle, so a non-owner cannot
+    // flip someone else's webhook — neither meta nor the registry below.
+    const { meta, denial } = resolveWebhookMeta(s, webhookId, ctx);
+    if (denial) return denial;
+    const enabled = params.enabled !== false;
     // Try the canonical WEBHOOKS registry first (server.js webhook macros).
     const STATE = globalThis._concordSTATE;
-    const enabled = params.enabled !== false;
     if (STATE && STATE.webhooksRegistry instanceof Map && STATE.webhooksRegistry.has(webhookId)) {
       STATE.webhooksRegistry.get(webhookId).enabled = enabled;
     }
-    const meta = getWebhookMeta(s, webhookId);
     meta.enabled = enabled;
     meta.activatedAt = nowIso();
     saveIntegrationsState();
@@ -1195,7 +1231,9 @@ export default function registerIntegrationsActions(registerLensAction) {
     const s = getIntegrationsState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     if (!params.webhookId) return { ok: false, error: "webhookId required" };
-    const meta = getWebhookMeta(s, params.webhookId);
+    // SECURITY: delivery history (bodies + signatures) is owner-only.
+    const { meta, denial } = resolveWebhookMeta(s, params.webhookId, ctx);
+    if (denial) return denial;
     const limit = Math.min(Number(params.limit) || 50, 100);
     return {
       ok: true,
@@ -1215,7 +1253,9 @@ export default function registerIntegrationsActions(registerLensAction) {
     const s = getIntegrationsState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     if (!params.webhookId || !params.deliveryId) return { ok: false, error: "webhookId and deliveryId required" };
-    const meta = getWebhookMeta(s, params.webhookId);
+    // SECURITY: retry re-signs and re-sends with the webhook's secret — owner only.
+    const { meta, denial } = resolveWebhookMeta(s, params.webhookId, ctx);
+    if (denial) return denial;
     const original = meta.deliveries.find(d => d.id === params.deliveryId);
     if (!original) return { ok: false, error: "Delivery not found" };
     const attempt = (original.attempt || 1) + 1;
@@ -1257,14 +1297,19 @@ export default function registerIntegrationsActions(registerLensAction) {
     const s = getIntegrationsState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     if (!params.webhookId) return { ok: false, error: "webhookId required" };
-    const meta = getWebhookMeta(s, params.webhookId);
+    // SECURITY: no cross-tenant signing oracle — only the owner/admin may
+    // verify against this webhook's secret, and the computed HMAC is never
+    // echoed back (removing `expected` closed a forge-any-signature oracle).
+    const { meta, denial } = resolveWebhookMeta(s, params.webhookId, ctx);
+    if (denial) return denial;
     const body = typeof params.body === "string" ? params.body : JSON.stringify(params.body || {});
     const expected = signPayload(meta.secret, body);
     const provided = String(params.signature || "");
-    const valid = provided === expected;
+    // SECURITY: constant-time compare — no early-exit byte leak.
+    const valid = safeSignatureEqual(provided, expected);
     return {
       ok: true,
-      result: { valid, expected, provided, signatureHeader: "X-Concord-Signature" },
+      result: { valid, provided, signatureHeader: "X-Concord-Signature" },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
