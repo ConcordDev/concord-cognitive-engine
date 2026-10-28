@@ -102,9 +102,8 @@ async function loadDomain(file) {
   return { handlers, loaded: true };
 }
 
-const PENDING_OWNED_ELSEWHERE = new Set([
-  "chem.save-structure", "chem.delete-structure", "chem.notebook-add", "chem.notebook-delete",
-]);
+// Known-missing saves tracked here instead of hidden. Empty: every write action is enforced.
+const PENDING_OWNED_ELSEWHERE = new Set([]);
 const REQUIRED_DOMAINS = [
   "diy", "electrical", "appmaker", "accounting", "ml", "timeline", "whiteboard",
 ];
@@ -215,9 +214,7 @@ describe("lens save-on-write guard", () => {
       .flatMap(([file, names]) => names.map((n) => `${file}:${n}`))
       .filter((k) => !checkedNames.has(k));
     if (unexercised.length) console.log(`[save-guard] not exercised by generic input: ${unexercised.join(", ")}`);
-    // domains/chem.js is owned by another change in flight; its four write
-    // actions mutate chemLens without a save. Tracked here, not hidden: the
-    // list prints every run and an entry that starts saving must be removed.
+    // Any entry added to PENDING_OWNED_ELSEWHERE prints every run; remove it once it saves.
     const pending = failures.filter((f) => PENDING_OWNED_ELSEWHERE.has(f));
     if (pending.length) console.log(`[save-guard] known missing saves (domain owned elsewhere): ${pending.join(", ")}`);
     const unexpected = failures.filter((f) => !PENDING_OWNED_ELSEWHERE.has(f));
