@@ -183,7 +183,7 @@ export function applyOutletPolicy(item, o = {}) {
 
 // ── read-only audit helper for existing DTUs ────────────────────────────────
 
-const TEXT_FIELDS = ["body", "content", "description", "excerpt", "summary", "creti", "text", "snippet"];
+const TEXT_FIELDS = ["body", "content", "description", "excerpt", "summary", "creti", "cretiHuman", "text", "snippet"];
 const ARTICLE_TEXT_MIN = 300;
 
 function dtuUrls(d) {
@@ -204,6 +204,7 @@ function dtuTextFields(d) {
   for (const def of Array.isArray(d?.core?.definitions) ? d.core.definitions : []) {
     if (typeof def === "string") fields.push(def);
   }
+  if (typeof d?.human?.summary === "string") fields.push(d.human.summary);
   if (typeof d?.data?.summary === "string") fields.push(d.data.summary);
   if (typeof d?.data?.description === "string") fields.push(d.data.description);
   return fields;

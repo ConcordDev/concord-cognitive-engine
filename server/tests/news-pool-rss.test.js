@@ -561,6 +561,15 @@ describe("countRestrictedFullTextDtus (read-only audit helper)", () => {
     assert.equal(countRestrictedFullTextDtus(new Map().values()).count, 0);
     assert.equal(countRestrictedFullTextDtus(null).count, 0);
   });
+  it("sees text held in the live DTU shape (human.summary, cretiHuman)", () => {
+    const longText = "word ".repeat(120);
+    const r = countRestrictedFullTextDtus([
+      { id: "h", title: "T", human: { summary: longText }, meta: { sourceUrl: "https://www.theverge.com/x" } },
+      { id: "i", title: "T", cretiHuman: longText, meta: { externalUrl: "https://techcrunch.com/y" } },
+      { id: "j", title: "T", human: { summary: "short" }, meta: { sourceUrl: "https://www.theverge.com/x" } },
+    ]);
+    assert.deepEqual(r.ids.sort(), ["h", "i"]);
+  });
 });
 
 // ── GDELT timeout / user wait / warm gate ───────────────────────────────────

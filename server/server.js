@@ -44374,6 +44374,17 @@ async function governorTick(reason="heartbeat") {
             ns.ensureNewsRssSource();
             const fc = await import("./lib/feed-cache.js");
             await fc.warmTick(_tick);
+            // One read-only audit per process: how many existing DTUs hold article text from
+            // restricted/excluded outlets. Counts only (ids are capped), never edits a DTU.
+            if (!globalThis.__restrictedDtuAuditDone && STATE?.dtus) {
+              globalThis.__restrictedDtuAuditDone = true;
+              try {
+                const pol = await import("./lib/news-outlet-policy.js");
+                const vals = typeof STATE.dtus.values === "function" ? STATE.dtus.values() : Object.values(STATE.dtus);
+                const a = pol.countRestrictedFullTextDtus(vals);
+                structuredLog("info", "restricted_fulltext_dtu_audit", { count: a.count, examined: a.examined, byHost: a.byHost, sampleIds: a.ids.slice(0, 20) });
+              } catch (e) { structuredLog("warn", "restricted_fulltext_dtu_audit_failed", { error: String(e?.message || e) }); }
+            }
             // Concord summaries for summary-only outlets: background, small budget, skipped when the
             // utility brain isn't up. The outlet text is only the in-memory prompt input.
             // While the utility brain is the small local fallback (GPU pod down) it also serves chat
