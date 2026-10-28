@@ -102,6 +102,8 @@ const REMINDER_OPTIONS = [
   { label: '3 days before',  time: 3, unit: 'days' as const },
   { label: '1 day before',   time: 1, unit: 'days' as const },
   { label: '1 hour before',  time: 1, unit: 'hours' as const },
+  { label: '30 minutes before', time: 30, unit: 'minutes' as const },
+  { label: '10 minutes before', time: 10, unit: 'minutes' as const },
 ];
 
 
@@ -360,6 +362,29 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
 
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [detailInvites, setDetailInvites] = useState<Array<{ id: string; guest: string; rsvp: string }>>([]);
+  const [dueReminders, setDueReminders] = useState<Array<{ id: string; eventTitle: string; occurrenceStart: string; offsetMin: number; fireAt?: string; missed?: boolean }>>([]);
+
+  // F8: due reminders surface at the top of the lens itself — the user
+  // should not have to open Sync & share → Reminders to be reminded.
+  const refreshDueReminders = useCallback(async () => {
+    try {
+      const r = await lensRun({ domain: 'calendar', action: 'reminders-due', input: {} });
+      setDueReminders(((r.data?.result as { pending?: typeof dueReminders } | null)?.pending) || []);
+    } catch { /* best-effort banner; the Reminders tab is the full surface */ }
+  }, []);
+  useEffect(() => {
+    void refreshDueReminders();
+    const id = setInterval(() => { void refreshDueReminders(); }, 60_000);
+    return () => clearInterval(id);
+  }, [refreshDueReminders]);
+  const ackReminder = async (id: string) => {
+    await lensRun({ domain: 'calendar', action: 'reminders-acknowledge', input: { id } });
+    await refreshDueReminders();
+  };
+  const snoozeReminder = async (id: string) => {
+    await lensRun({ domain: 'calendar', action: 'reminders-acknowledge', input: { id, snoozeMin: 10 } });
+    await refreshDueReminders();
+  };
   const [showEventModal, setShowEventModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
@@ -1730,6 +1755,25 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
           {activityNote && (
             <p className="mt-2 text-[13px] text-zinc-300" role="status">{activityNote}</p>
           )}
+          {dueReminders.length > 0 && (
+            <div className="mt-2 space-y-1" role="alert">
+              {dueReminders.slice(0, 3).map((n) => (
+                <div key={n.id} className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[13px] text-amber-200">
+                  <Bell className="h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1 truncate">
+                    {n.missed ? 'Missed reminder: ' : 'Reminder: '}
+                    <span className="text-white">{n.eventTitle}</span>
+                    <span className="text-amber-200/70"> · starts {new Date(n.occurrenceStart).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} · {n.offsetMin} min before</span>
+                  </span>
+                  <button onClick={() => void snoozeReminder(n.id)} className="shrink-0 rounded px-2 py-0.5 text-[11px] bg-white/[0.06] hover:bg-white/[0.12] text-amber-100">Snooze 10m</button>
+                  <button onClick={() => void ackReminder(n.id)} className="shrink-0 rounded px-2 py-0.5 text-[11px] bg-white/[0.06] hover:bg-white/[0.12] text-amber-100">Dismiss</button>
+                </div>
+              ))}
+              {dueReminders.length > 3 && (
+                <p className="text-[11px] text-amber-200/70">+{dueReminders.length - 3} more in Sync &amp; share → Reminders</p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-5 pb-1">
@@ -1930,7 +1974,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                   <div className="flex items-center gap-3 text-gray-400">
                     <Bell className="w-5 h-5" />
                     <span className="tabular-nums">
-                      {selectedEvent.reminders.map((r) => `${r.time} ${r.unit}`).join(', ')} before
+                      {selectedEvent.reminders.map((r) => `${r.time} ${r.time === 1 ? r.unit.replace(/s$/, '') : r.unit}`).join(', ')} before
                     </span>
                   </div>
                 )}
