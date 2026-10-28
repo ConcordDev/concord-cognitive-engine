@@ -67,6 +67,18 @@ export function hasFeedIngestProvenance(d) {
   return hasIngestMarker(d);
 }
 
+/**
+ * True when the row is an auto-source citation (phase 9a): the server-only
+ * marker stamped by dtu.create inside runAsFeedIngest({ action:
+ * "auto-source" }) plus the citation kind the auto-source writer sets.
+ * Deliberately separate from hasIngestMarker: auto-source is NOT a public
+ * feed source, and these rows must never be treated as feed items.
+ */
+export function hasAutoSourceMarker(d) {
+  const fi = d?.meta?.feedIngest;
+  return !!fi && typeof fi === "object" && fi.action === "auto-source" && d?.meta?.kind === "citation";
+}
+
 export { isQuarantined };
 
 const OPEN_VIS = new Set(["public", "published", "marketplace"]);

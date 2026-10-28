@@ -2,7 +2,8 @@
 // Domain actions for research: citation network analysis, methodology scoring,
 // reproducibility assessment, and literature gap detection.
 
-import { guardAnonWrites } from "../lib/lens-authz.js";
+import { guardAnonWrites, refuseAnonWrite } from "../lib/lens-authz.js";
+import { autoSource, publishAutoSourceSummary, buildSummaryPrompt, autoSourceEnabled, autoSourceUsage } from "../lib/auto-source.js";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { computeContentHash } from "../lib/dtu-protocol.js";
@@ -1727,5 +1728,74 @@ ${corpus}`;
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
+  });
+
+  // ── Phase 9a: auto-source (lib/auto-source.js) ─────────────────────
+  // Gated by CONCORD_AUTOSOURCE_ENABLED (default off until reviewed).
+  // Limits live in the lib (5 runs/user/hour, 200/day by default). The
+  // action sets nothing about visibility itself: the lib writes public
+  // citations and ONE private summary; only the summary's author can
+  // publish it (auto-source-publish).
+  // Read-only status for the 9b button: enabled flag, caps and current usage.
+  registerLensAction("research", "auto-source-status", async (ctx) => {
+    const signedIn = !refuseAnonWrite(ctx);
+    const userId = signedIn ? researchActor(ctx) : null;
+    return { ok: true, result: { enabled: autoSourceEnabled(), signedIn, ...autoSourceUsage(userId) } };
+  });
+
+  registerLensAction("research", "auto-source", async (ctx, _a, params = {}) => {
+    // Writes public citation DTUs: never for signed-out callers. ("auto-source"
+    // is not write-shaped by name, so guardAnonWrites alone would let it through.)
+    const no = refuseAnonWrite(ctx);
+    if (no) return no;
+    if (!autoSourceEnabled()) return { ok: false, status: 503, error: "auto_source_disabled" };
+    const topic = String(params.topic || "").trim();
+    if (!topic) return { ok: false, status: 400, error: "topic_required" };
+    const userId = researchActor(ctx);
+    const r = await autoSource(
+      { topic, lensDomain: params.lensDomain ? String(params.lensDomain).slice(0, 60) : null, userId },
+      {
+        searchDtus: async (q) => {
+          const res = await ctx.macro.run("dtu", "search", { q, limit: 25 });
+          return res?.dtus || [];
+        },
+        runMacro: (d, a, input) => ctx.macro.run(d, a, input),
+        summarize: typeof ctx.llm?.chat === "function"
+          ? async ({ topic: t, sources }) => {
+              const res = await ctx.llm.chat({
+                system: "You write short, strictly source-bound research summaries. Every sentence carries a citation like [1]. You never state a fact that is not in the provided sources.",
+                messages: [{ role: "user", content: buildSummaryPrompt(t, sources) }],
+                temperature: 0.2,
+                maxTokens: 900,
+                slot: "conscious",
+              });
+              return String(res?.text || res?.content || res?.message?.content || "").trim();
+            }
+          : null,
+      },
+    );
+    try {
+      ctx.log("research.auto-source", `auto-source "${topic}" -> ${r.ok ? (r.covered ? "covered" : "created") : (r.reason || r.error || "failed")}`, { providersUsed: r.providersUsed || [], userId });
+    } catch { /* logging is best-effort */ }
+    if (!r.ok) return { ok: false, status: r.status || 422, error: r.error || r.reason || "auto_source_failed", ...(r.reason ? { reason: r.reason } : {}) };
+    return { ok: true, result: r };
+  });
+
+  registerLensAction("research", "auto-source-publish", async (ctx, _a, params = {}) => {
+    const no = refuseAnonWrite(ctx);
+    if (no) return no;
+    const summaryId = String(params.summaryId || params.id || "");
+    if (!summaryId) return { ok: false, status: 400, error: "summary_id_required" };
+    const r = await publishAutoSourceSummary(
+      { summaryId, userId: researchActor(ctx) },
+      {
+        getDtu: async (id) => {
+          const res = await ctx.macro.run("dtu", "get", { id });
+          return res?.dtu || null;
+        },
+      },
+    );
+    if (!r.ok) return { ok: false, status: r.status || 400, error: r.error || "publish_failed", ...(r.missing ? { missing: r.missing } : {}) };
+    return { ok: true, result: r };
   });
 }
