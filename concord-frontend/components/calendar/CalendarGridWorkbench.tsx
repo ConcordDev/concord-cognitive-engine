@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
-import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/ui';
@@ -656,6 +655,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
       linkedProject: newEvent.linkedProject,
       reminders: newEvent.reminders,
       recurrence: newEvent.recurrence,
+      tz: newEvent.tz,
       artworkColor: newEvent.artworkColor,
       calendarId: newEvent.calendarId || defaultCalId,
     };
@@ -2139,11 +2139,14 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                 {/* Description */}
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">Description (optional)</label>
-                  <DraftedTextarea
-                    lensId="calendar"
-                    draftKey="event-description"
-                    initial={newEvent.description || ''}
-                    onValueChange={(v) => setNewEvent({ ...newEvent, description: v })}
+                  {/* Per-event data, bound to this form's own state. This field
+                      was a DraftedTextarea on a single lens-wide draft, which
+                      hydrated the previous event's description into every
+                      fresh form and saved it into the next event (F4). */}
+                  <textarea
+                    aria-label="Description (optional)"
+                    value={newEvent.description || ''}
+                    onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
                     placeholder="Add notes, details, links..."
                     rows={3}
                     className="w-full bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan resize-none"
