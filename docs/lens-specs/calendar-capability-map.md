@@ -1,41 +1,26 @@
 # Calendar Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
-> **Re-verification (HANDOFF-3 batch L7, 2026-10-28, against main e9791d4d):**
-> The Wave-3 audit below is kept as history. Current truth:
+> **Rework (PR #1713, B7 — gap list of record: Product Review 5's frozen live
+> review, `lens-reviews/calendar.md`, routed 2026-10-28):** The L7
+> re-verification block this replaces is superseded by the live review.
+> Tier: **REDESIGN until slices S1–S5 land.** Live pass 2026-10-28:
+> 79 features inventoried — 47 passed / 26 failed / 6 not run; acceptance
+> flows 8 PASS / 14 FAIL. Three-column mapping vs Google Calendar's full
+> feature list (frozen review §5d, 49 features): **have-and-works-live 7 ·
+> have-in-backend-unsurfaced-or-broken 24 · missing 18.**
 >
-> - **53 macros now** (was 51). Fresh surfacing scan: 52 of 53 are named
->   in the frontend. The one unsurfaced is `expandRecurring`, a tier-A
->   scratch-pad calculator that was never wired — its job (recurrence
->   expansion) is performed server-side inside `events-list` via
->   `expandOccurrences`, and the other three tier-A calculators are
->   surfaced in `ScheduleAnalyzer`/`CalendarActionPanel`. Honest
->   relabel: a redundant scratch tool, not a missing feature.
-> - **INC-84 — fixed separately in PR #1712**
->   (`fix/calendar-event-end-after-start`): `events-create` accepted a
->   caller-supplied end before the start verbatim, and `events-update`
->   applied start/end edits with no ordering check. All three write
->   paths (create, `applyEventEdits`, "this"-scope overrides) now
->   reject `end must be after start` violations (all-day events may end
->   at their start instant), with a new 7-case suite
->   (`calendar-event-range.test.js`, 106/106 across the calendar suites
->   locally).
-> - Wave-3's five wirings (calendars-delete, dashboard tab,
->   conflicts/availability tab, push-event form) and the page structure
->   it produced are intact: `page.tsx` is a 129-line view shell (grid
->   first, per northstar 08; the parity surfaces are one "More" pick
->   away). The documented seam — the main grid persists through generic
->   artifact CRUD while `GCalSection` uses the STATE engine — still
->   stands as the named future unification, unchanged.
-> - **Shipped in this batch:** the concept's serif headline — "Your
->   week, {username}" — as the grid workbench's header
->   (`data-testid="calendar-greeting"`; the period label already serves
->   as the concept's "October 2026" sub-line), with
->   `tests/calendar-greeting.test.tsx`.
-> - Server suites run locally this pass: calendar-domain-parity,
->   calendar-lens-macros, calendar-recurrence-scopes — all pass (122
->   across the combined calendar+goals run; the one failure was
->   `agent-goals.test.js` failing to load on this sandbox's missing
->   `better-sqlite3`, Mac-run).
+> Findings F1–F14 map to build slices S1–S15 in the review's §7:
+> S1 one true time (F1, P0) · S2 one conflict truth (F2, P0) · S3 wire
+> Add calendar / Add task (F3, P0) · S4 description integrity (F4, P0) ·
+> S5 booking pages end to end, ungated (F5, P0) · S6 collaborators/invites
+> (F6) · S7 dashboard counts (F7) · S8 reminders (F8) · S9 Scheduler on
+> real data + crash paths (F9) · S10 recurring edit scope (F10) · S11
+> quick-add parse (F11; the top-level Export half is B2's audit queue) ·
+> S12 delete Undo + trash (F12) · S13 form/chrome state bundle (F13) ·
+> S14 sync/import honesty (F14) · S15 delight layer (§3b).
+> Re-review gate (Review 5): flows 2, 6, 12, 17, 19, 21 must clear.
+> The Goals half of the original L7 batch is split out of this PR
+> (greeting changes reverted as split mechanics); Goals is its own PR.
 
 
 > Derived, not asserted. Every macro below was enumerated by reading
