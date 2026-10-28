@@ -393,6 +393,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   // A feature the generic artifact-CRUD store could never offer (it had no
   // notion of "my other real events").
   const [conflicts, setConflicts] = useState<BackendConflict[]>([]);
+  const [nearestSlot, setNearestSlot] = useState<{ start: string; end: string } | null>(null);
   const [checkingConflicts, setCheckingConflicts] = useState(false);
   const [activityNote, setActivityNote] = useState<string | null>(null);
 
@@ -446,7 +447,26 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
           input: { start: start.toISOString(), end: end.toISOString(), excludeEventId: editingEventId || undefined },
         });
         if (cancelled) return;
-        setConflicts(r.data.ok === false ? [] : ((r.data.result as { conflicts?: BackendConflict[] } | null)?.conflicts || []));
+        const found = r.data.ok === false ? [] : ((r.data.result as { conflicts?: BackendConflict[] } | null)?.conflicts || []);
+        setConflicts(found);
+        // Conflict-with-grace (F2/§3b-4): offer the nearest free slot for
+        // this event's length on its own day, in its own zone.
+        if (found.length > 0) {
+          try {
+            const durationMin = Math.max(15, Math.round((end.getTime() - start.getTime()) / 60000));
+            const av = await lensRun({
+              domain: 'calendar',
+              action: 'availability-find',
+              input: { day: calendarDateKey(start, formTz), durationMin, tz: formTz },
+            });
+            if (!cancelled) {
+              const free = (av.data?.result as { freeSlots?: Array<{ start: string; end: string }> } | null)?.freeSlots || [];
+              setNearestSlot(free[0] || null);
+            }
+          } catch { if (!cancelled) setNearestSlot(null); }
+        } else {
+          setNearestSlot(null);
+        }
       } catch {
         if (!cancelled) setConflicts([]);
       } finally {
@@ -2029,6 +2049,11 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                         {c.title} — {new Date(c.start).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                       </div>
                     ))}
+                    {nearestSlot && (
+                      <div className="mt-1.5 text-emerald-300 tabular-nums">
+                        Nearest free slot: {new Date(nearestSlot.start).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} – {new Date(nearestSlot.end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                      </div>
+                    )}
                   </div>
                 )}
 
