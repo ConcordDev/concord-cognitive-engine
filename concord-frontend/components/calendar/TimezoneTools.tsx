@@ -18,6 +18,7 @@ import { useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Calendar, Globe2, Upload, Download, Loader2, AlertTriangle, ArrowRight } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
+import { browserTimeZone, fromZonedInputValue, toZonedInputValue } from '@/lib/calendar-date';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
@@ -75,14 +76,18 @@ export function TimezoneTools() {
 }
 
 function TzConverter() {
-  const [iso, setIso] = useState(() => new Date().toISOString().slice(0, 16));
-  const [fromTz, setFromTz] = useState('UTC');
+  const [iso, setIso] = useState(() => toZonedInputValue(new Date(), browserTimeZone()));
+  const [fromTz, setFromTz] = useState(() => browserTimeZone());
   const [toTz, setToTz] = useState('America/Los_Angeles');
   const [result, setResult] = useState<{ inFromTz: string; inToTz: string; epochMs: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const conv = useMutation({
-    mutationFn: async () => callMacro<{ inFromTz: string; inToTz: string; epochMs: number }>('timezone-convert', { isoString: iso, fromTz, toTz }),
+    mutationFn: async () => {
+      const instant = fromZonedInputValue(iso, fromTz);
+      if (!instant) return { ok: false, error: 'Enter a valid date and time.' } as MacroEnvelope<{ inFromTz: string; inToTz: string; epochMs: number }>;
+      return callMacro<{ inFromTz: string; inToTz: string; epochMs: number }>('timezone-convert', { isoString: instant.toISOString(), fromTz, toTz });
+    },
     onSuccess: (env) => {
       if (env.ok && env.result) { setResult(env.result); setError(null); }
       else { setResult(null); setError(env.error || 'failed'); }
@@ -93,7 +98,7 @@ function TzConverter() {
     <div className="space-y-3">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <div>
-          <label className="mb-1 block text-[10px] uppercase tracking-wider text-gray-400">Time (local-ish)</label>
+          <label className="mb-1 block text-[10px] uppercase tracking-wider text-gray-400">Time (wall clock in From TZ)</label>
           <input type="datetime-local" value={iso} onChange={(e) => setIso(e.target.value)} className="w-full rounded border border-lattice-border bg-lattice-deep px-2 py-1 text-xs text-white" />
         </div>
         <div>
