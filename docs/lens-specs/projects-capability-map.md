@@ -1,5 +1,29 @@
 # Projects Lens — Capability Map (Frontend Rebuild Program, Wave 2, batch 7)
 
+> **Re-verification (HANDOFF-3 batch L12, 2026-10-28, against main 02910bbb):**
+> The rebuild audit below is kept as history. Current truth:
+>
+> - **93/99 macros named in the frontend** (fresh scan). The 6
+>   unnamed all carry dispositions: `ganttGenerate`/`riskMatrix`/
+>   `burndownCalc` — three of the four legacy generic-artifact macros
+>   this map left unwired by design (their jobs are done better by
+>   the real per-project panels; the fourth, `stakeholderMap`, is
+>   named in the frontend today); `attachment-list`/`relation-list`
+>   — superseded by the composite `task-detail` macro, which returns
+>   both in one call; `sync-since` — an incremental-sync API
+>   primitive (tasks changed since a timestamp, server-tested),
+>   an integration surface rather than a missing UI feature.
+> - The three "deferred low-priority" items from the audit below
+>   (`view-run`, `integration-link`, `label-update`) are all named
+>   in the frontend today — wired or referenced since; the WIP-limit
+>   editing this rebuild added (`wip-set`) is intact.
+> - **Shipped in this batch:** the concept's serif headline —
+>   "What's in flight, {username}" — as the page header
+>   (`data-testid="projects-greeting"`, `tests/projects-greeting.test.tsx`).
+> - Server suites run locally this pass: projects-domain-parity
+>   passes (in the combined 82-pass L12 run).
+
+
 Reproduce the macro list:
 `grep -c 'registerLensAction("projects"' server/domains/projects.js` → 98 macros
 (plus 4 legacy generic-artifact macros — `ganttGenerate`, `riskMatrix`,

@@ -1,4 +1,23 @@
-# analytics — Capability Map (Frontend Rebuild Program, Wave 3)
+# Analytics Lens — Capability Map (Frontend Rebuild Program, Wave 3)
+
+> **Re-verification (HANDOFF-3 batch L12, 2026-10-28, against main 02910bbb):**
+> The audit below is kept as history, including its headline fix
+> (the dead parallel "Actions" tab — four calculator buttons that
+> could never fire — replaced by the real `AnalyticsActionPanel`).
+> Current truth:
+>
+> - **31/32 macros named in the frontend** (fresh scan). The one
+>   unnamed is `alert-evaluate`, this map's documented false
+>   positive: `alert-list` already maps every saved alert through
+>   the same `evaluateAlert()` helper and returns live
+>   `{value, firing, detail}` per row, so the standalone re-check
+>   macro duplicates data already on screen. No unmet capability.
+> - **Shipped in this batch:** the concept's serif headline — "The
+>   one chart, {username}" — as the page header
+>   (`data-testid="analytics-greeting"`, `tests/analytics-greeting.test.tsx`).
+> - Server suites run locally this pass: analytics-domain-parity
+>   passes (in the combined 82-pass L12 run).
+
 
 > Derived, not asserted. Reproduce the macro list:
 > `grep -c 'registerLensAction("analytics"' server/domains/analytics.js` → 30

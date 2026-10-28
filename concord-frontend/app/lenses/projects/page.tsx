@@ -10,10 +10,12 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useAuth } from '@/hooks/useAuth';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
 export default function ProjectsLensPage() {
+  const { user } = useAuth();
   useLensNav('projects');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('projects');
   const [showRepos, setShowRepos] = useState(false);
@@ -24,7 +26,7 @@ export default function ProjectsLensPage() {
     <div data-lens-theme="projects" className="relative min-h-full space-y-5 px-8 pb-28 pt-6">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Projects</h1>
+          <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl" data-testid="projects-greeting">What's in flight{user?.username ? `, ${user.username}` : ''}</h1>
         </div>
         <div className="flex shrink-0 items-center gap-3 pt-2">
           <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
