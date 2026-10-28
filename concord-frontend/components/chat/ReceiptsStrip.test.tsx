@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import ReceiptsStrip, { receiptVerdict } from './ReceiptsStrip';
 
-// F2/A6 (Product Chat review 2026-10-28): every assistant reply carries a
-// receipts verdict — including the honest "nothing was checked" state the
-// old surfaces hid by rendering nothing at all.
+// F2/S2 (Product Chat review 2026-10-28): every assistant reply carries a
+// receipts verdict in ConKay's vocabulary — sourced / computed / estimated
+// / not computed — with a designed confidence element and tap-to-open
+// detail. The honest "nothing was checked" state renders out loud; the
+// old surfaces hid it by rendering nothing at all.
 
 describe('receiptVerdict', () => {
   it('is computed when a solver capability ran', () => {
@@ -24,10 +26,18 @@ describe('receiptVerdict', () => {
     expect(receiptVerdict({ webAugmented: true })).toBe('sourced');
   });
 
-  it('is model when nothing was sourced or computed (the fallback-reply shape)', () => {
-    expect(receiptVerdict({})).toBe('model');
-    expect(receiptVerdict({ computed: null, sources: [], dtuRefs: [] })).toBe('model');
-    expect(receiptVerdict({ computed: { capabilities: [] } })).toBe('model');
+  it('is estimated when the server flagged the answer low-confidence (backup model)', () => {
+    expect(receiptVerdict({ confidence: 'low', confidenceReason: 'GPU brain offline' })).toBe('estimated');
+  });
+
+  it('sourced wins over estimated — checking state is the headline, confidence rides along', () => {
+    expect(receiptVerdict({ sources: [{ url: 'https://example.com' }], confidence: 'low' })).toBe('sourced');
+  });
+
+  it('is not-computed when nothing was sourced, computed, or flagged', () => {
+    expect(receiptVerdict({})).toBe('not-computed');
+    expect(receiptVerdict({ computed: null, sources: [], dtuRefs: [] })).toBe('not-computed');
+    expect(receiptVerdict({ computed: { capabilities: [] } })).toBe('not-computed');
   });
 });
 
@@ -36,18 +46,47 @@ describe('ReceiptsStrip', () => {
     render(<ReceiptsStrip message={{}} />);
     expect(screen.getByText('No external sources — model answer')).toBeTruthy();
     expect(screen.getByText('Not computed')).toBeTruthy();
-    expect(screen.getByTestId('receipts-strip').getAttribute('data-verdict')).toBe('model');
+    expect(screen.getByTestId('receipts-strip').getAttribute('data-verdict')).toBe('not-computed');
   });
 
   it('renders the computed verdict for a solver-checked answer', () => {
     render(<ReceiptsStrip message={{ computed: { capabilities: [{ key: 'math.eval' }] } }} />);
     expect(screen.getByText(/Computed — checked by Concord's solvers/)).toBeTruthy();
-    expect(screen.queryByText('Not computed')).toBeNull();
+    expect(screen.queryByText('No external sources — model answer')).toBeNull();
   });
 
   it('renders the sourced verdict with a count for a cited answer', () => {
     render(<ReceiptsStrip message={{ sources: [{ url: 'https://a.example' }, { url: 'https://b.example' }], dtuRefs: [{ id: 'dtu-9' }] }} />);
-    expect(screen.getByText(/Sourced — 3 sources below/)).toBeTruthy();
+    expect(screen.getByText(/Sourced — 3 sources/)).toBeTruthy();
     expect(screen.getByTestId('receipts-strip').getAttribute('data-verdict')).toBe('sourced');
+  });
+
+  it('renders the estimated verdict + designed confidence meter for a backup-model answer', () => {
+    render(<ReceiptsStrip message={{ confidence: 'low', confidenceReason: 'GPU brain offline — answered by small local model' }} />);
+    expect(screen.getByText(/Estimated — not checked/)).toBeTruthy();
+    expect(screen.getByTestId('receipts-confidence')).toBeTruthy();
+    expect(screen.getByTestId('receipts-strip').getAttribute('data-verdict')).toBe('estimated');
+  });
+
+  it('tap-to-open detail shows clickable sources (spec d)', () => {
+    render(<ReceiptsStrip message={{ sources: [{ title: 'Docs page', url: 'https://a.example/x', source: 'web' }] }} />);
+    expect(screen.queryByTestId('receipts-detail')).toBeNull();
+    fireEvent.click(screen.getByRole('button'));
+    const detail = screen.getByTestId('receipts-detail');
+    const link = detail.querySelector('a');
+    expect(link?.getAttribute('href')).toBe('https://a.example/x');
+    expect(link?.textContent).toBe('Docs page');
+  });
+
+  it('tap-to-open detail on a plain answer explains that nothing was checked', () => {
+    render(<ReceiptsStrip message={{}} />);
+    fireEvent.click(screen.getByRole('button'));
+    expect(screen.getByText(/Nothing was checked for this answer/)).toBeTruthy();
+  });
+
+  it('tap-to-open detail on a computed answer names the solver check', () => {
+    render(<ReceiptsStrip message={{ computed: { capabilities: [{ key: 'math.eval', description: 'exact arithmetic' }], engineCount: 2 } }} />);
+    fireEvent.click(screen.getByRole('button'));
+    expect(screen.getByText(/Solver check: exact arithmetic \(2 engines\)/)).toBeTruthy();
   });
 });

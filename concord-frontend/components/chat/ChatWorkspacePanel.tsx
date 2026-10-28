@@ -3604,9 +3604,14 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 >
                   {greeting}
                 </motion.h2>
-                {/* North star (docs/lens-northstar/02-chat): subtitle + a few
-                    starter prompts. A chip only fills the composer — the user
-                    still sends it. */}
+                {/* North star (docs/lens-northstar/02-chat): subtitle + job
+                    starters (Product F3/S3). Most chips fill the composer —
+                    the user still sends. The solver chip is the exception
+                    per the AMENDED S3 ruling (Lane 2 Lead, 2026-10-28): it
+                    sends a real question in-conversation, no typing, and the
+                    checked answer lands here carrying the S2 receipts strip
+                    — that live answer is the first-run demonstration (the
+                    seeded demo conversation was withdrawn as fake data). */}
                 <p className="mt-3 text-[15px] text-zinc-500">How can I help you think today?</p>
                 <div className="mt-6 flex flex-wrap justify-center gap-2">
                   {[
@@ -3623,10 +3628,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       run: () => { setInput('Write a short piece for me that I can keep as my own: '); inputRef.current?.focus(); },
                     },
                     {
-                      label: 'Compute something exactly',
+                      label: 'Try a solver',
                       run: () => {
-                        const kay = AI_MODES.find((m) => m.id === 'conkay');
-                        if (kay) selectAiMode(kay);
+                        if (!sendMutation.isPending) {
+                          sendMutation.mutate('Compute exactly: 47 × 89 — show the checked result.');
+                        }
                       },
                     },
                   ].map((chip) => (
