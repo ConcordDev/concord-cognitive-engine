@@ -370,6 +370,24 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [detailInvites, setDetailInvites] = useState<Array<{ id: string; guest: string; rsvp: string }>>([]);
   const [dueReminders, setDueReminders] = useState<Array<{ id: string; eventTitle: string; occurrenceStart: string; offsetMin: number; fireAt?: string; missed?: boolean }>>([]);
+  const [lastDeleted, setLastDeleted] = useState<{ id: string; title: string } | null>(null);
+  useEffect(() => {
+    if (!lastDeleted) return;
+    const id = setTimeout(() => setLastDeleted(null), 12_000);
+    return () => clearTimeout(id);
+  }, [lastDeleted]);
+  const undoDelete = async () => {
+    if (!lastDeleted) return;
+    const target = lastDeleted;
+    setLastDeleted(null);
+    try {
+      const r = await lensRun({ domain: 'calendar', action: 'events-restore', input: { id: target.id } });
+      if (r.data.ok === false) throw new Error(r.data.error || 'Could not restore');
+      await fetchData();
+    } catch (e) {
+      useUIStore.getState().addToast({ type: 'error', message: e instanceof Error ? e.message : 'Could not restore that event' });
+    }
+  };
 
   // F8: due reminders surface at the top of the lens itself — the user
   // should not have to open Sync & share → Reminders to be reminded.
@@ -881,6 +899,9 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
       if (recurring) { input.scope = scope; input.occurrenceKey = target.occurrenceKey; }
       const r = await lensRun({ domain: 'calendar', action: 'events-delete', input });
       if (r.data.ok === false) throw new Error(r.data.error || 'Failed to delete event');
+      // F12: the delete names the event and offers Undo (soft delete —
+      // the event also sits in Sync & share → Trash until emptied).
+      if (!recurring) setLastDeleted({ id: eventId, title: target.title });
     } catch (e) {
       setEvents(previousEvents);
       useUIStore.getState().addToast({ type: 'error', message: e instanceof Error ? e.message : 'Failed to delete event' });
@@ -1766,6 +1787,13 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
           </div>
           {activityNote && (
             <p className="mt-2 text-[13px] text-zinc-300" role="status">{activityNote}</p>
+          )}
+          {lastDeleted && (
+            <div className="mt-2 flex items-center gap-2 rounded-lg border border-white/10 bg-lattice-elevated px-3 py-1.5 text-[13px] text-zinc-300" role="status">
+              <span className="flex-1 truncate">Deleted “{lastDeleted.title}”.</span>
+              <button onClick={() => void undoDelete()} className="shrink-0 rounded px-2 py-0.5 text-[11px] font-semibold bg-white/[0.08] hover:bg-white/[0.16] text-white">Undo</button>
+              <button onClick={() => setLastDeleted(null)} className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-zinc-500 hover:text-zinc-300" aria-label="Dismiss">✕</button>
+            </div>
           )}
           {dueReminders.length > 0 && (
             <div className="mt-2 space-y-1" role="alert">
