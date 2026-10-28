@@ -48,6 +48,7 @@ import { aggregateTopicCounts } from "./lib/trending-topics.js";
 import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-tags.js";
 import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
 import { humanMacroAclDenial } from "./lib/macro-acl-human-gate.js";
+import { forumModDenial } from "./lib/forum-mod-gate.js";
 
 // === DATA DIRECTORY (canonical) ===
 // Resolution order:
@@ -51780,6 +51781,10 @@ registerLensAction("marketplace", "distribute_royalties", (ctx, artifact, params
 // interchangeably below for back-compat with any caller still using the old
 // shape (e.g. a hand-built params object).
 registerLensAction("forum", "pin", (ctx, artifact, params) => {
+  // SECURITY: `forum` is a LENS_SOCIAL_DOMAINS domain, so the generic lens run
+  // path lets any signed-in member act on anyone's post. Pinning mutates
+  // other people's artifacts — moderator-class roles only (forum-mod-gate.js).
+  const _modDenied = forumModDenial(ctx); if (_modDenied) return _modDenied;
   // Toggleable (params.pinned === false unpins); defaults to true so any
   // existing no-param caller keeps the original always-pin behavior.
   const pinned = params?.pinned !== false;
@@ -51789,7 +51794,16 @@ registerLensAction("forum", "pin", (ctx, artifact, params) => {
   return { ok: true, pinned };
 });
 registerLensAction("forum", "moderate", (ctx, artifact, params) => {
-  const action = params.action || "flag";
+  // SECURITY: same gate as forum.pin above — moderation mutates other
+  // people's artifacts, so only moderator-class roles may act.
+  const _modDenied = forumModDenial(ctx); if (_modDenied) return _modDenied;
+  // Allowlisted moderation vocabulary only; unknown actions are rejected
+  // before any mutation happens.
+  const requested = params?.action || "flag";
+  if (!["flag", "approve", "remove", "lock", "unlock", "hide", "restore"].includes(requested)) {
+    return { ok: false, status: 400, error: "invalid moderation action" };
+  }
+  const action = requested;
   artifact.data = { ...artifact.data, moderationStatus: action, moderatedAt: nowISO(), moderatedBy: ctx.actor?.userId || "system" };
   artifact.updatedAt = nowISO();
   saveStateDebounced();
