@@ -4,6 +4,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
+import { getOffCategory, getSpoonacularMealPlan, OFF_CATEGORIES } from "../lib/food-feed-sources.js";
 import { presentOwnedId } from "../lib/public-actor.js";
 import { boundedNum, moneyOrNull, badNumber } from "../lib/finite-input.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
@@ -972,14 +973,15 @@ export default function registerFoodActions(registerLensAction) {
     } else if (process.env.SPOONACULAR_API_KEY) {
       const targetCalories = Number(params.targetCalories) || 2000;
       const diet = params.diet || "";
-      const url = `https://api.spoonacular.com/mealplanner/generate?apiKey=${encodeURIComponent(process.env.SPOONACULAR_API_KEY)}&timeFrame=week&targetCalories=${targetCalories}${diet ? `&diet=${encodeURIComponent(diet)}` : ""}`;
       try {
-        // Routed through the SSRF-guarded keyless fetch (public-fetch.js)
-        // instead of a bare fetch() — closes the same bypass class
-        // fetchJsonGov (government.js) closed. Behavior unchanged.
-        const r = await fetchPublicUrl(url);
-        if (!r.ok) throw new Error(`spoonacular ${r.status}`);
-        const data = await r.json();
+        // Server-side cache + budget (feed-cache source "spoonacular-mealplan"):
+        // the key travels in an x-api-key header, never the URL, and a repeat
+        // of the same (calories, diet) plan within 24h makes no upstream call.
+        const plan = await getSpoonacularMealPlan({ targetCalories, diet });
+        if (!plan.ok) {
+          return { ok: false, status: "unavailable", reason: plan.reason, lastOkAt: plan.lastOkAt, error: `spoonacular unavailable: ${plan.reason}` };
+        }
+        const data = plan.data;
         const weekDays = data?.week ? Object.entries(data.week) : [];
         for (let d = 0; d < Math.min(days, weekDays.length); d++) {
           const date = new Date(new Date(startDate).getTime() + d * 86400000).toISOString().slice(0, 10);
@@ -2167,16 +2169,14 @@ export default function registerFoodActions(registerLensAction) {
     const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
     const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
-    const categories = ["snacks", "beverages", "breakfasts", "cheeses", "pastas", "chocolates"];
+    const categories = OFF_CATEGORIES;
     const cat = categories[new Date().getHours() % categories.length];
     try {
-      // Routed through the SSRF-guarded keyless fetch (public-fetch.js)
-      // instead of a bare fetch() — closes the same bypass class
-      // fetchJsonGov (government.js) closed. Behavior unchanged.
-      const r = await fetchPublicUrl(`https://world.openfoodfacts.org/category/${cat}.json?page_size=${limit}&fields=code,product_name,brands,nutriscore_grade,categories`);
-      if (!r.ok) return { ok: false, error: `openfoodfacts ${r.status}` };
-      const data = await r.json();
-      const products = (Array.isArray(data?.products) ? data.products : []).filter((p) => p.product_name).slice(0, limit);
+      // Cached per category (fixed page_size 24) in feed-cache source
+      // "openfoodfacts-category"; SSRF-guarded fetch lives in food-feed-sources.js.
+      const feed = await getOffCategory(cat);
+      if (!feed.ok) return { ok: false, status: "unavailable", reason: feed.reason, lastOkAt: feed.lastOkAt, error: `openfoodfacts unavailable: ${feed.reason}` };
+      const products = (Array.isArray(feed.data?.products) ? feed.data.products : []).filter((p) => p.product_name).slice(0, limit);
       let ingested = 0, skipped = 0; const dtuIds = [];
       for (const p of products) {
         const id = `off_${p.code}`;

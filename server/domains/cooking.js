@@ -7,11 +7,10 @@
 // (falls back to DEMO_KEY rate-limited 1000/hr per IP).
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
-import { fetchJsonWithTimeout } from "../lib/external-fetch.js";
+import { getMealDbLetter, getUsdaSearch, getUsdaFood } from "../lib/food-feed-sources.js";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
 import { callVision, callVisionUrl } from "../lib/vision-inference.js";
 
-const FDC_BASE = "https://api.nal.usda.gov/fdc/v1";
 
 export default function registerCookingActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -132,14 +131,14 @@ export default function registerCookingActions(registerLensAction) {
     if (query.length < 2) return { ok: false, error: "query must be ≥ 2 characters" };
     const apiKey = process.env.NASA_FDC_API_KEY || process.env.FDC_API_KEY || "DEMO_KEY";
     const pageSize = Math.max(1, Math.min(50, Number(params.pageSize) || 10));
-    const dataType = params.dataType ? `&dataType=${encodeURIComponent(String(params.dataType))}` : "";
     try {
-      const r = await fetch(`${FDC_BASE}/foods/search?api_key=${encodeURIComponent(apiKey)}&query=${encodeURIComponent(query)}&pageSize=${pageSize}${dataType}`);
-      if (!r.ok) {
-        if (r.status === 429) return { ok: false, error: "FDC rate limit exceeded — set FDC_API_KEY env (free at api.data.gov/signup)" };
-        throw new Error(`fdc ${r.status}`);
+      // feed-cache source "usda-fdc": cached 24h, budgeted, SSRF-guarded, key in a header.
+      const res = await getUsdaSearch({ query, pageSize, dataType: params.dataType ? String(params.dataType) : "" });
+      if (!res.ok) {
+        if (/fdc 429/.test(res.error || "")) return { ok: false, status: "unavailable", reason: res.reason, lastOkAt: res.lastOkAt, error: "FDC rate limit exceeded — set FDC_API_KEY env (free at api.data.gov/signup)" };
+        return { ok: false, status: "unavailable", reason: res.reason, lastOkAt: res.lastOkAt, error: `fdc unavailable: ${res.reason}` };
       }
-      const data = await r.json();
+      const data = res.data;
       const foods = (data.foods || []).map((f) => ({
         fdcId: f.fdcId,
         description: f.description,
@@ -156,6 +155,7 @@ export default function registerCookingActions(registerLensAction) {
         ok: true,
         result: {
           foods, count: foods.length,
+          fetchedAt: res.fetchedAt, ...(res.stale ? { stale: true } : {}),
           totalHits: data.totalHits,
           currentPage: data.currentPage,
           totalPages: data.totalPages,
@@ -180,13 +180,13 @@ export default function registerCookingActions(registerLensAction) {
     if (!Number.isFinite(fdcId) || fdcId <= 0) return { ok: false, error: "fdcId required (integer from usda-search)" };
     const apiKey = process.env.NASA_FDC_API_KEY || process.env.FDC_API_KEY || "DEMO_KEY";
     try {
-      const r = await fetch(`${FDC_BASE}/food/${fdcId}?api_key=${encodeURIComponent(apiKey)}`);
-      if (r.status === 404) return { ok: false, error: `FDC ID not found: ${fdcId}` };
-      if (!r.ok) {
-        if (r.status === 429) return { ok: false, error: "FDC rate limit exceeded — set FDC_API_KEY env" };
-        throw new Error(`fdc ${r.status}`);
+      const res = await getUsdaFood(fdcId);
+      if (!res.ok) {
+        if (/fdc 429/.test(res.error || "")) return { ok: false, status: "unavailable", reason: res.reason, lastOkAt: res.lastOkAt, error: "FDC rate limit exceeded — set FDC_API_KEY env" };
+        return { ok: false, status: "unavailable", reason: res.reason, lastOkAt: res.lastOkAt, error: `fdc unavailable: ${res.reason}` };
       }
-      const food = await r.json();
+      if (res.data?.notFound) return { ok: false, error: `FDC ID not found: ${fdcId}` };
+      const food = res.data;
       // Build a {nutrientName: { amount, unit }} dict
       const nutrients = {};
       for (const n of food.foodNutrients || []) {
@@ -740,10 +740,10 @@ export default function registerCookingActions(registerLensAction) {
     const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 10)));
     const letter = "abcdefghijklmnoprst"[new Date().getHours() % 19];
     try {
-      const r = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?f=${letter}`);
-      if (!r.ok) return { ok: false, error: `themealdb ${r.status}` };
-      const data = await r.json();
-      const meals = (Array.isArray(data?.meals) ? data.meals : []).slice(0, limit);
+      // feed-cache source "themealdb-search": one upstream call per letter per day.
+      const feed = await getMealDbLetter(letter);
+      if (!feed.ok) return { ok: false, status: "unavailable", reason: feed.reason, lastOkAt: feed.lastOkAt, error: `themealdb unavailable: ${feed.reason}` };
+      const meals = (Array.isArray(feed.data?.meals) ? feed.data.meals : []).slice(0, limit);
       let ingested = 0, skipped = 0; const dtuIds = [];
       for (const m of meals) {
         const id = `meal_${m.idMeal}`;
@@ -1028,18 +1028,15 @@ export default function registerCookingActions(registerLensAction) {
     const r = listCk(s.recipes, aidCk(ctx)).find((x) => x.id === String(params.id || ""));
     if (!r) return { ok: false, error: "recipe not found" };
     if (!r.ingredients.length) return { ok: false, error: "recipe has no ingredients" };
-    const apiKey = process.env.NASA_FDC_API_KEY || process.env.FDC_API_KEY || "DEMO_KEY";
     const totals = { kcal: 0, protein: 0, fat: 0, carbs: 0, fiber: 0, sugar: 0, sodium: 0 };
     const lines = [];
     for (const ing of r.ingredients) {
       const grams = ingredientGrams(ing);
       let resolved = null;
       try {
-        const search = await fetchJsonWithTimeout(
-          `${FDC_BASE}/foods/search?api_key=${encodeURIComponent(apiKey)}&query=${encodeURIComponent(ing.name)}&pageSize=1`,
-          {}, 10000,
-        );
-        const food = (search.foods || [])[0];
+        const search = await getUsdaSearch({ query: ing.name, pageSize: 1 });
+        if (!search.ok) throw new Error(search.reason); // unresolved, recorded below
+        const food = (search.data.foods || [])[0];
         if (food) {
           const pick = (...names) => {
             for (const n of food.foodNutrients || []) {

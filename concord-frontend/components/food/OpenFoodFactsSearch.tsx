@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Utensils, Loader2, Search, ExternalLink } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { lensRun } from '@/lib/api/client';
 
 interface Product {
   code: string;
@@ -12,10 +13,17 @@ interface Product {
   nutriscore_grade?: string;
   nova_group?: number;
   ecoscore_grade?: string;
-  categories_tags?: string[];
-  ingredients_text?: string;
-  countries_tags?: string[];
 }
+
+interface SearchHit {
+  barcode: string;
+  name?: string;
+  brand?: string;
+  nutriScore?: string;
+  novaGroup?: number;
+  ecoScore?: string;
+}
+interface SearchPayload { products: SearchHit[]; fetchedAt?: number; stale?: boolean }
 
 const NUTRI_COLOR: Record<string, string> = {
   a: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
@@ -26,22 +34,33 @@ const NUTRI_COLOR: Record<string, string> = {
 };
 
 export function OpenFoodFactsSearch() {
-  const [draft, setDraft] = useState('sourdough');
-  const [query, setQuery] = useState('sourdough');
+  // Explicit submit only: nothing is fetched until the user presses search.
+  const [draft, setDraft] = useState('');
+  const [query, setQuery] = useState('');
 
+  // Server-side: household.off-product-search goes through the shared feed cache
+  // (budgeted, cached, stale-aware); the browser never calls Open Food Facts.
   const products = useQuery({
     queryKey: ['off-search', query],
     queryFn: async () => {
-      const r = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=25&fields=code,product_name,brands,nutriscore_grade,nova_group,ecoscore_grade,categories_tags,ingredients_text,countries_tags`);
-      if (!r.ok) throw new Error(`off ${r.status}`);
-      const j = await r.json();
-      return (j.products || []) as Product[];
+      const r = await lensRun<SearchPayload>('household', 'off-product-search', { query, pageSize: 25 });
+      if (!r.data?.ok || !r.data.result) throw new Error(r.data?.error || 'Open Food Facts unavailable');
+      const res = r.data.result;
+      return {
+        list: (res.products || []).map((h): Product => ({
+          code: h.barcode, product_name: h.name, brands: h.brand,
+          nutriscore_grade: h.nutriScore, nova_group: h.novaGroup, ecoscore_grade: h.ecoScore,
+        })),
+        fetchedAt: res.fetchedAt,
+        stale: !!res.stale,
+      };
     },
     enabled: query.length >= 2,
     staleTime: 60 * 60 * 1000,
   });
 
-  const list = products.data || [];
+  const list = products.data?.list || [];
+  const asOf = products.data?.fetchedAt ? new Date(products.data.fetchedAt).toLocaleDateString() : null;
   const nutriDist = list.reduce<Record<string, number>>((a, p) => { const g = p.nutriscore_grade; if (g) a[g] = (a[g] || 0) + 1; return a; }, {});
   const novaAvg = list.length > 0 ? list.filter((p) => p.nova_group).reduce((a, p) => a + (p.nova_group || 0), 0) / Math.max(1, list.filter((p) => p.nova_group).length) : 0;
 
@@ -72,7 +91,7 @@ export function OpenFoodFactsSearch() {
         </div>
         <button type="submit" className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-mono text-amber-200 hover:bg-amber-500/20">search</button>
       </form>
-      {products.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Open Food Facts unreachable.</div>}
+      {products.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{products.error instanceof Error ? products.error.message : 'Open Food Facts unavailable.'}</div>}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded border border-lattice-border bg-lattice-void px-2.5 py-1.5 tabular-nums"><div className="text-[10px] uppercase tracking-wider text-gray-400">Products</div><div className="mt-0.5 font-mono text-lg text-amber-300">{list.length}</div></div>
         <div className="rounded border border-lattice-border bg-lattice-void px-2.5 py-1.5 tabular-nums"><div className="text-[10px] uppercase tracking-wider text-gray-400">NutriScore A/B</div><div className="mt-0.5 font-mono text-lg text-emerald-300">{(nutriDist.a || 0) + (nutriDist.b || 0)}</div></div>
@@ -97,6 +116,8 @@ export function OpenFoodFactsSearch() {
         ))}
         {list.length === 0 && !products.isPending && !products.isError && query.length >= 2 && <div className="rounded border border-dashed border-lattice-border p-4 text-center text-[11px] text-gray-400">No products.</div>}
       </div>
+      {asOf && <div className="text-[10px] text-gray-400">{products.data?.stale ? 'Stale — last refreshed ' : 'As of '}{asOf}</div>}
+      <div className="text-[10px] text-gray-500">Data: Open Food Facts (ODbL)</div>
       {products.isPending && query.length >= 2 && <div className="flex items-center gap-2 text-xs text-gray-400"><Loader2 className="h-4 w-4 animate-spin" /> Searching…</div>}
     </div>
   );

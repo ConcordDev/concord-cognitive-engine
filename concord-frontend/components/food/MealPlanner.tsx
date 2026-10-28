@@ -19,6 +19,7 @@ export interface PlannedMeal {
   protein?: number;
   carbs?: number;
   fat?: number;
+  source?: string;
 }
 
 export function MealPlanner() {
@@ -147,6 +148,12 @@ export function MealPlanner() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {plan.some(m => m.source === 'spoonacular') && (
+        <div className="border-t border-white/10 px-4 py-2 text-[10px] text-gray-400">
+          Powered by <a href="https://spoonacular.com/food-api" target="_blank" rel="noopener noreferrer" className="text-cyan-300 hover:underline">Spoonacular</a>
         </div>
       )}
     </div>

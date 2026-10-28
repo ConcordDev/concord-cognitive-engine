@@ -1,9 +1,12 @@
 // Contract tests for server/domains/cooking.js — pure-compute recipe
 // helpers + real USDA FoodData Central integration.
 
-import { describe, it, before, beforeEach } from "node:test";
+import { describe, it, before, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import registerCookingActions from "../domains/cooking.js";
+import { __setPublicFetchTestTransport } from "../lib/public-fetch.js";
+import { configureFeedCache, _resetFeedCacheForTests } from "../lib/feed-cache.js";
+import { _resetFoodFeedForTests } from "../lib/food-feed-sources.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -18,10 +21,19 @@ function call(name, ctx, artifactOrParams = {}, maybeParams) {
 before(() => { registerCookingActions(register); });
 
 beforeEach(() => {
+  // USDA/TheMealDB now go through feed-cache + the SSRF-guarded fetchPublicUrl.
+  // The guarded transport is pointed at the per-test globalThis.fetch stub, and
+  // the feed cache is reset so one test's cached answer can't leak into the next.
+  _resetFeedCacheForTests();
+  _resetFoodFeedForTests();
+  configureFeedCache({ sleep: async () => {}, log: () => {}, logUpstream: null });
+  __setPublicFetchTestTransport((url, init) => globalThis.fetch(url, init));
   globalThis.fetch = async () => { throw new Error("network disabled in tests"); };
   delete process.env.FDC_API_KEY;
   delete process.env.NASA_FDC_API_KEY;
 });
+
+afterEach(() => { __setPublicFetchTestTransport(null); _resetFeedCacheForTests(); });
 
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
 
@@ -58,8 +70,10 @@ describe("cooking.usda-search (USDA FoodData Central)", () => {
 
   it("hits FDC + parses real response", async () => {
     let capturedUrl = "";
-    globalThis.fetch = async (url) => {
+    let capturedInit = {};
+    globalThis.fetch = async (url, init) => {
       capturedUrl = url;
+      capturedInit = init || {};
       return {
         ok: true,
         json: async () => ({
@@ -81,7 +95,8 @@ describe("cooking.usda-search (USDA FoodData Central)", () => {
     const r = await call("usda-search", ctxA, { query: "cheddar" });
     assert.equal(r.ok, true);
     assert.match(capturedUrl, /api\.nal\.usda\.gov\/fdc\/v1\/foods\/search/);
-    assert.match(capturedUrl, /api_key=DEMO_KEY/);
+    assert.doesNotMatch(capturedUrl, /api_key=/); // the key rides in the X-Api-Key header now
+    assert.equal(capturedInit.headers["X-Api-Key"], "DEMO_KEY");
     assert.match(capturedUrl, /query=cheddar/);
     assert.equal(r.result.foods.length, 2);
     assert.equal(r.result.foods[0].fdcId, 173410);
@@ -93,13 +108,13 @@ describe("cooking.usda-search (USDA FoodData Central)", () => {
 
   it("uses FDC_API_KEY env when set", async () => {
     process.env.FDC_API_KEY = "real-fdc-key";
-    let capturedUrl = "";
-    globalThis.fetch = async (url) => {
-      capturedUrl = url;
+    let capturedInit = {};
+    globalThis.fetch = async (_url, init) => {
+      capturedInit = init || {};
       return { ok: true, json: async () => ({ foods: [] }) };
     };
     const r = await call("usda-search", ctxA, { query: "apple" });
-    assert.match(capturedUrl, /api_key=real-fdc-key/);
+    assert.equal(capturedInit.headers["X-Api-Key"], "real-fdc-key");
     assert.equal(r.result.usingDemoKey, false);
   });
 
