@@ -15,6 +15,13 @@ import {
   wikiSummaryKey, wikiSearchKey, wikiOnThisDayKey, wikidataEntityKey, wikidataSearchKey,
   commonsSearchKey, seSearchKey, hnSearchKey, LOOKUP_ATTRIBUTION,
 } from "../lib/public-lookup-sources.js";
+import {
+  getNvdCves, getEonetEvents, getGutendexBooks, getSketchfabSearch, getUsgsQuakes,
+  getFemaDisasters, getRestCountriesRegion, getSunriseSunset, getImgflipMemes,
+  getOnionooSummary, getNpmSearch, getOpenRouterModels,
+  nvdCvesKey, eonetEventsKey, gutendexBooksKey, sketchfabSearchKey, usgsQuakesKey,
+  femaDisastersKey, restCountriesKey, sunriseSunsetKey, npmSearchKey,
+} from "../lib/public-data-sources.js";
 
 const bad = (error) => ({ ok: false, status: 400, error });
 
@@ -41,4 +48,19 @@ export default function registerPublicLookupActions(registerLensAction) {
   def("commons-search", (p) => !!commonsSearchKey(p.q), (p) => getCommonsSearch(p.q), LOOKUP_ATTRIBUTION.commons);
   def("se-search", (p) => !!seSearchKey(p.site, p), (p) => getSeSearch(p.site, p), LOOKUP_ATTRIBUTION.stackexchange);
   def("hn-search", (p) => !!hnSearchKey(p.q, p.tags, p.byDate === true), (p) => getHnSearch(p.q, p.tags, p.byDate === true), null);
+
+  // Phase 8d: the remaining public data reads (lib/public-data-sources.js) — same
+  // contract: fixed templates, validated scalar params, no client URL or host.
+  def("nvd-cves", (p) => !!nvdCvesKey(p), (p) => getNvdCves(p), null);
+  def("eonet-events", (p) => !!eonetEventsKey(p), (p) => getEonetEvents(p), null);
+  def("gutendex-books", (p) => !!gutendexBooksKey(p), (p) => getGutendexBooks(p), null);
+  def("sketchfab-search", (p) => !!sketchfabSearchKey(p), (p) => getSketchfabSearch(p), null);
+  def("usgs-quakes", (p) => !!usgsQuakesKey(p), (p) => getUsgsQuakes(p), null);
+  def("fema-disasters", (p) => !!femaDisastersKey(p), (p) => getFemaDisasters(p), null);
+  def("restcountries-region", (p) => !!restCountriesKey(p), (p) => getRestCountriesRegion(p), null);
+  def("sunrise-sunset", (p) => !!sunriseSunsetKey(p), (p) => getSunriseSunset(p), null);
+  def("imgflip-memes", () => true, () => getImgflipMemes(), null);
+  def("onionoo-summary", () => true, () => getOnionooSummary(), null);
+  def("npm-search", (p) => !!npmSearchKey(p), (p) => getNpmSearch(p), null);
+  def("openrouter-models", () => true, () => getOpenRouterModels(), null);
 }

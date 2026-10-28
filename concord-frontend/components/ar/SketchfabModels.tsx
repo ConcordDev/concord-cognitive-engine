@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Box, Loader2, Search, ExternalLink, Heart, Eye } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup, lookupMeta } from '@/lib/public-lookup';
 
 interface SfModel {
   uid: string;
@@ -28,22 +29,16 @@ export function SketchfabModels() {
   const [downloadable, setDownloadable] = useState(true);
   const [hits, setHits] = useState<SfModel[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [noticeData, setNoticeData] = useState<unknown>(null);
 
   const load = useMutation({
     mutationFn: async () => {
       setError(null);
-      const qs = new URLSearchParams();
-      if (query.trim()) qs.set('q', query.trim());
-      if (downloadable) qs.set('downloadable', 'true');
-      qs.set('archives_flavours', 'false');
-      qs.set('count', '20');
-      qs.set('sort_by', '-likeCount');
       try {
-        const r = await fetch(`https://api.sketchfab.com/v3/search?type=models&${qs.toString()}`);
-        if (!r.ok) throw new Error(`sketchfab ${r.status}`);
-        const j = await r.json();
+        const j = await publicLookup<{ results?: SfModel[] }>('sketchfab-search', { q: query.trim(), downloadable });
         setHits((j.results || []) as SfModel[]);
-      } catch (e) { setHits([]); setError(e instanceof Error ? e.message : 'request failed'); }
+        setNoticeData(j);
+      } catch (e) { setHits([]); setNoticeData(null); setError('Sketchfab is unavailable right now — nothing is being shown in its place.'); }
     },
   });
 
@@ -53,19 +48,21 @@ export function SketchfabModels() {
     return small?.url;
   };
 
+  const noticeMeta = lookupMeta(noticeData);
+
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
         <div className="flex items-center gap-2">
           <Box className="h-5 w-5 text-cyan-400" />
           <h2 className="text-sm font-semibold text-white">Sketchfab models</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">api.sketchfab.com v3 · no key</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">Sketchfab · via Concord server</span>
         </div>
         {hits.length > 0 && (
           <SaveAsDtuButton
             compact
             apiSource="sketchfab"
-            apiUrl={`https://api.sketchfab.com/v3/search?type=models&q=${encodeURIComponent(query)}`}
+            apiUrl="https://sketchfab.com/search?type=models"
             title={`Sketchfab models — "${query || 'top'}"`}
             content={hits.slice(0, 25).map((m, i) => `${i + 1}. ${m.name} by ${m.user.displayName} (${m.likeCount}♥/${m.viewCount}👁) — ${m.vertexCount.toLocaleString()}v/${m.faceCount.toLocaleString()}f ${m.isDownloadable ? '⬇' : ''}\n   ${m.viewerUrl}`).join('\n\n')}
             extraTags={['ar', 'sketchfab', '3d-models']}
@@ -88,6 +85,7 @@ export function SketchfabModels() {
         </button>
       </form>
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
+      {noticeMeta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached Sketchfab data{noticeMeta.fetchedAt ? ` from ${new Date(noticeMeta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 max-h-[520px] overflow-y-auto">
         {hits.map((m) => (
           <a key={m.uid} href={m.viewerUrl} target="_blank" rel="noopener noreferrer" className="group block rounded border border-zinc-800 bg-zinc-950 overflow-hidden hover:border-cyan-500/30">

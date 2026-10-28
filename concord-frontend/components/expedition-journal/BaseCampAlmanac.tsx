@@ -3,6 +3,7 @@
 import { useQueries } from '@tanstack/react-query';
 import { Mountain, Loader2, Sunrise, Sunset, Moon, ExternalLink } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup, lookupMeta } from '@/lib/public-lookup';
 
 interface AlmanacResponse {
   status: string;
@@ -33,11 +34,7 @@ export function BaseCampAlmanac() {
   const results = useQueries({
     queries: CAMPS.map((c) => ({
       queryKey: ['sunrise-sunset', c.id],
-      queryFn: async () => {
-        const r = await fetch(`https://api.sunrise-sunset.org/json?lat=${c.lat}&lng=${c.lon}&formatted=0`);
-        if (!r.ok) throw new Error(`almanac ${r.status}`);
-        return (await r.json()) as AlmanacResponse;
-      },
+      queryFn: async () => publicLookup<AlmanacResponse>('sunrise-sunset', { lat: c.lat, lng: c.lon }),
       staleTime: 60 * 60 * 1000,
     })),
   });
@@ -56,13 +53,13 @@ export function BaseCampAlmanac() {
         <div className="flex items-center gap-2">
           <Mountain className="h-5 w-5 text-stone-400" />
           <h2 className="text-sm font-semibold text-white">Base camp almanac (today UTC)</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">sunrise-sunset.org · live</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">sunrise-sunset.org · via Concord server</span>
         </div>
         {loaded.length > 0 && (
           <SaveAsDtuButton
             compact
             apiSource="sunrise-sunset"
-            apiUrl="https://api.sunrise-sunset.org/json"
+            apiUrl="https://sunrise-sunset.org/"
             title={`Base camp almanac — ${loaded.length} sites (${new Date().toISOString().slice(0, 10)})`}
             content={loaded.map(({ c, q }) => {
               const r = q.data!.results;
@@ -73,6 +70,7 @@ export function BaseCampAlmanac() {
           />
         )}
       </header>
+      {camps.some(({ q }) => lookupMeta(q.data)?.stale) && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached sunrise/sunset times for one or more camps — live source unavailable.</div>}
       <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
         {camps.map(({ c, q }) => {
           const r = q.data?.results;
@@ -83,7 +81,7 @@ export function BaseCampAlmanac() {
                 <span className="font-mono text-[10px] text-zinc-400">{c.lat.toFixed(1)}°, {c.lon.toFixed(1)}°</span>
               </div>
               {q.isPending && <div className="mt-2 flex items-center gap-1 text-[10px] text-zinc-400"><Loader2 className="h-3 w-3 animate-spin" /> almanac…</div>}
-              {q.isError && <div className="mt-2 text-[10px] text-rose-400">unreachable</div>}
+              {q.isError && <div className="mt-2 text-[10px] text-rose-400">unavailable</div>}
               {r && (
                 <div className="mt-2 grid grid-cols-3 gap-1.5 text-[11px]">
                   <div className="flex items-center gap-1"><Sunrise className="h-3 w-3 text-amber-400" /><span className="font-mono text-zinc-100">{fmt(r.sunrise)}</span></div>

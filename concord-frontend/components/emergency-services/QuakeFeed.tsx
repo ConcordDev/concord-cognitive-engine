@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { AlertOctagon, Loader2, ExternalLink, MapPin, Activity, Database, Check, AlertTriangle } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { lensRun } from '@/lib/api/client';
+import { publicLookup, carryLookupMeta, lookupMeta } from '@/lib/public-lookup';
 import { cn } from '@/lib/utils';
 
 interface FeedIngestResult { ingested: number; skipped: number; source: string; dtuIds: string[] }
@@ -63,16 +64,17 @@ export function QuakeFeed() {
   const quakes = useQuery({
     queryKey: ['usgs-quakes', feed],
     queryFn: async () => {
-      const r = await fetch(`https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/${feed}.geojson`);
-      if (!r.ok) throw new Error(`usgs ${r.status}`);
-      const j = await r.json();
-      return ((j.features || []) as Quake[]).slice(0, 30);
+      const j = await publicLookup<{ features?: Quake[] }>('usgs-quakes', { feed });
+      const items = ((j.features || []) as Quake[]).slice(0, 30);
+      carryLookupMeta(j, items);
+      return items;
     },
     staleTime: 5 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
   });
 
   const list = quakes.data || [];
+  const meta = lookupMeta(quakes.data);
   const tsunamis = list.filter((q) => q.properties.tsunami === 1).length;
   const m5plus = list.filter((q) => q.properties.mag >= 5).length;
   const maxMag = list.length > 0 ? Math.max(...list.map((q) => q.properties.mag)) : 0;
@@ -83,7 +85,7 @@ export function QuakeFeed() {
         <div className="flex items-center gap-2">
           <AlertOctagon className="h-5 w-5 text-rose-400" />
           <h2 className="text-sm font-semibold text-white">Live seismic feed</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">earthquake.usgs.gov · live</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">USGS · via Concord server · live</span>
         </div>
         <div className="flex items-center gap-2">
           <select value={feed} onChange={(e) => setFeed(e.target.value as typeof FEEDS[number]['id'])} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
@@ -103,7 +105,7 @@ export function QuakeFeed() {
             <SaveAsDtuButton
               compact
               apiSource="usgs-earthquakes"
-              apiUrl={`https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/${feed}.geojson`}
+              apiUrl="https://earthquake.usgs.gov/earthquakes/map/"
               title={`USGS quakes — ${feed} (${list.length})`}
               content={list.slice(0, 20).map((q, i) => `${i + 1}. M${q.properties.mag.toFixed(1)} · ${q.properties.place}\n   ${new Date(q.properties.time).toISOString()} · depth ${q.geometry.coordinates[2]?.toFixed(1)}km${q.properties.tsunami ? ' · TSUNAMI' : ''}\n   ${q.properties.url}`).join('\n\n')}
               extraTags={['emergency-services', 'usgs', 'earthquake', feed]}
@@ -123,7 +125,8 @@ export function QuakeFeed() {
           <span>{ingestResult.text}</span>
         </div>
       )}
-      {quakes.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">USGS unreachable.</div>}
+      {quakes.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">The USGS earthquake feed is unavailable right now — nothing is being shown in its place.</div>}
+      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached USGS data{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}
       <div className="grid grid-cols-4 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
           <div className="text-[10px] uppercase tracking-wider text-zinc-400">Events</div>

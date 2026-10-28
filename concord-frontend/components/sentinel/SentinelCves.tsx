@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ShieldAlert, Loader2, ExternalLink, AlertOctagon } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup, carryLookupMeta, lookupMeta } from '@/lib/public-lookup';
 
 interface Cve { cve: { id: string; published: string; descriptions: { lang: string; value: string }[]; metrics?: { cvssMetricV31?: { cvssData: { baseScore: number; baseSeverity: string } }[]; cvssMetricV30?: { cvssData: { baseScore: number; baseSeverity: string } }[] } } }
 
@@ -15,26 +16,28 @@ export function SentinelCves() {
   const cves = useQuery({
     queryKey: ['nvd-sentinel', sev],
     queryFn: async () => {
-      const r = await fetch(`https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=25&cvssV3Severity=${sev}`);
-      if (!r.ok) throw new Error(`nvd ${r.status}`);
-      const j = await r.json();
-      return (j?.vulnerabilities || []) as Cve[];
+      const j = await publicLookup<{ vulnerabilities?: Cve[] }>('nvd-cves', { severity: sev });
+      const items = (j?.vulnerabilities || []) as Cve[];
+      carryLookupMeta(j, items);
+      return items;
     },
     staleTime: 10 * 60 * 1000,
   });
 
   const list = cves.data || [];
+  const meta = lookupMeta(cves.data);
 
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
-        <div className="flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-rose-400" /><h2 className="text-sm font-semibold text-white">NVD sentinel alerts</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">nvd · {sev}</span></div>
+        <div className="flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-rose-400" /><h2 className="text-sm font-semibold text-white">NVD sentinel alerts</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">NVD · via Concord server · {sev}</span></div>
         <div className="flex items-center gap-2">
           <select value={sev} onChange={(e) => setSev(e.target.value as typeof SEVERITY[number])} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{SEVERITY.map((s) => <option key={s} value={s}>{s}</option>)}</select>
-          {list.length > 0 && <SaveAsDtuButton compact apiSource="nvd-sentinel" apiUrl={`https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Severity=${sev}`} title={`NVD sentinel — ${sev} (${list.length})`} content={list.slice(0, 20).map((v, i) => { const desc = v.cve.descriptions?.find((d) => d.lang === 'en')?.value || ''; return `${i + 1}. ${v.cve.id}\n   ${desc.slice(0, 200)}`; }).join('\n\n')} extraTags={['sentinel', 'nvd', sev.toLowerCase()]} rawData={{ severity: sev, cves: list }} />}
+          {list.length > 0 && <SaveAsDtuButton compact apiSource="nvd-sentinel" apiUrl="https://nvd.nist.gov/vuln/search" title={`NVD sentinel — ${sev} (${list.length})`} content={list.slice(0, 20).map((v, i) => { const desc = v.cve.descriptions?.find((d) => d.lang === 'en')?.value || ''; return `${i + 1}. ${v.cve.id}\n   ${desc.slice(0, 200)}`; }).join('\n\n')} extraTags={['sentinel', 'nvd', sev.toLowerCase()]} rawData={{ severity: sev, cves: list }} />}
         </div>
       </header>
-      {cves.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">NVD unreachable.</div>}
+      {cves.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">NVD is unavailable right now — nothing is being shown in its place.</div>}
+      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached NVD data{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">CVEs</div><div className="mt-0.5 font-mono text-lg text-rose-300">{list.length}</div></div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Sev</div><div className="mt-0.5 font-mono text-lg text-rose-300">{sev}</div></div>

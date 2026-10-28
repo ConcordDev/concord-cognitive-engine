@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Bitcoin, Loader2, TrendingUp, TrendingDown } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { DataAttribution } from '@/components/common/DataAttribution';
+import { lensRun } from '@/lib/api/client';
 
 interface Coin {
   id: string;
@@ -38,15 +39,17 @@ export function CoinGeckoTicker() {
   const coins = useQuery({
     queryKey: ['coingecko-markets', vs],
     queryFn: async () => {
-      const r = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=${vs}&order=market_cap_desc&per_page=30&page=1&price_change_percentage=24h,7d`);
-      if (!r.ok) throw new Error(`coingecko ${r.status}`);
-      return (await r.json()) as Coin[];
+      const r = await lensRun<{ coins?: Coin[]; stale?: boolean; fetchedAt?: number }>('crypto', 'coingecko-markets', { vs, perPage: 30, changes: true });
+      const out = r.data?.result;
+      if (!r.data?.ok || !out) throw new Error(r.data?.error || 'coingecko unavailable');
+      return { items: out.coins || [], stale: !!out.stale, fetchedAt: out.fetchedAt ?? null };
     },
     staleTime: 60_000,
     refetchInterval: 60_000,
   });
 
-  const list = coins.data || [];
+  const list = coins.data?.items || [];
+  const meta = coins.data;
   const sym = vs === 'usd' ? '$' : vs === 'eur' ? '€' : vs === 'btc' ? '₿' : 'Ξ';
   const fmt = (n: number) => n >= 1 ? n.toLocaleString(undefined, { maximumFractionDigits: 2 }) : n.toLocaleString(undefined, { maximumSignificantDigits: 4 });
 
@@ -56,7 +59,7 @@ export function CoinGeckoTicker() {
         <div className="flex items-center gap-2">
           <Bitcoin className="h-5 w-5 text-amber-400" />
           <h2 className="text-sm font-semibold text-white">Live crypto markets</h2>
-          <span className="rounded bg-lattice-elevated px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-gray-400">api.coingecko.com · 60s poll · top 30 by mcap</span>
+          <span className="rounded bg-lattice-elevated px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-gray-400">CoinGecko · via Concord server · 60s poll · top 30 by mcap</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex rounded-md border border-lattice-border bg-lattice-surface p-0.5 text-[10px]">
@@ -69,7 +72,7 @@ export function CoinGeckoTicker() {
               defaultContentClass="dataset"
               compact
               apiSource="coingecko"
-              apiUrl={`https://api.coingecko.com/api/v3/coins/markets?vs_currency=${vs}`}
+              apiUrl="https://www.coingecko.com/"
               title={`Crypto markets (${vs.toUpperCase()}) — ${list.length} coins`}
               content={list.slice(0, 20).map((c) => `#${c.market_cap_rank} ${c.symbol.toUpperCase()} ${c.name} · ${sym}${fmt(c.current_price)} · 24h ${c.price_change_percentage_24h?.toFixed(2)}% · mcap ${sym}${(c.market_cap / 1e9).toFixed(2)}B`).join('\n')}
               extraTags={['crypto', 'markets', 'coingecko', vs]}
@@ -78,7 +81,8 @@ export function CoinGeckoTicker() {
           )}
         </div>
       </header>
-      {coins.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">CoinGecko rate-limited or unreachable.</div>}
+      {coins.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">CoinGecko is unavailable right now — nothing is being shown in its place.</div>}
+      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached CoinGecko data{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}
       {coins.isPending && <div className="flex items-center gap-2 text-xs text-gray-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling live ticker…</div>}
       <div className="space-y-1 max-h-[500px] overflow-y-auto">
         {list.map((c) => {

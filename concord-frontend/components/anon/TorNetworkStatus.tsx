@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Shield, Loader2, Server, Globe } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup, carryLookupMeta, lookupMeta } from '@/lib/public-lookup';
 
 interface OnionooSummary { relays_published?: string; relays?: { n: string; f: string }[]; bridges_published?: string; bridges?: { n: string; h: string }[] }
 
@@ -14,16 +15,13 @@ export function TorNetworkStatus() {
 
   const summary = useQuery({
     queryKey: ['onionoo-summary'],
-    queryFn: async () => {
-      const r = await fetch('https://onionoo.torproject.org/summary?limit=2000');
-      if (!r.ok) throw new Error(`onionoo ${r.status}`);
-      return (await r.json()) as OnionooSummary;
-    },
+    queryFn: async () => publicLookup<OnionooSummary>('onionoo-summary', {}),
     refetchInterval: 5 * 60 * 1000,
     staleTime: 5 * 60 * 1000,
   });
 
   const data = summary.data || {};
+  const meta = lookupMeta(summary.data);
   const relayCount = data.relays?.length ?? 0;
   const bridgeCount = data.bridges?.length ?? 0;
   const flagCounts: Record<string, number> = {};
@@ -42,13 +40,13 @@ export function TorNetworkStatus() {
         <div className="flex items-center gap-2">
           <Shield className="h-5 w-5 text-cyan-400" />
           <h2 className="text-sm font-semibold text-white">Tor network status</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">onionoo.torproject.org · live</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">Tor Onionoo · via Concord server</span>
         </div>
         {summary.data && (
           <SaveAsDtuButton
             compact
             apiSource="tor-onionoo"
-            apiUrl="https://onionoo.torproject.org/summary"
+            apiUrl="https://onionoo.torproject.org/"
             title={`Tor network — ${relayCount} relays, ${bridgeCount} bridges`}
             content={`Relays: ${relayCount} (sampled to 2000)\nBridges: ${bridgeCount}\nPublished: ${data.relays_published || '—'}\n\nFlag distribution:\n${Object.entries(flagCounts).sort((a, b) => b[1] - a[1]).map(([f, n]) => `  ${FLAG_MAP[f] || f}: ${n}`).join('\n')}`}
             extraTags={['anon', 'tor', 'network-health']}
@@ -57,7 +55,8 @@ export function TorNetworkStatus() {
         )}
       </header>
 
-      {summary.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Tor onionoo unreachable.</div>}
+      {summary.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Tor network data (Onionoo) is unavailable right now — nothing is being shown in its place.</div>}
+      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached Tor network data{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}
       {summary.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling onionoo…</div>}
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

@@ -28,8 +28,8 @@
  *   • Asset Library        → a real "My Models" catalog (generic
  *                            lens-artifact CRUD, Model3D type only) +
  *                            live Sketchfab search (components/ar/
- *                            SketchfabModels.tsx, real api.sketchfab.com
- *                            v3 call, no key) — was ALREADY real, kept.
+ *                            SketchfabModels.tsx, real Sketchfab v3
+ *                            search via the Concord server, no key) — was ALREADY real, kept.
  *   • AR Preview viewport   → ar.render (deterministic drawList + WebXR
  *                            session plan) driving a real Three.js
  *                            viewport, with an honest `navigator.xr

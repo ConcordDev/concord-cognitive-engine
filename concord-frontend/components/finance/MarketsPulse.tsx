@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { TrendingUp, Loader2, ExternalLink, DollarSign, Activity, Bitcoin } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { DataAttribution } from '@/components/common/DataAttribution';
+import { lensRun } from '@/lib/api/client';
 
 interface GlobalData {
   data?: {
@@ -25,9 +26,10 @@ export function MarketsPulse() {
   const global = useQuery({
     queryKey: ['cg-global'],
     queryFn: async () => {
-      const r = await fetch('https://api.coingecko.com/api/v3/global');
-      if (!r.ok) throw new Error(`cg ${r.status}`);
-      return (await r.json()) as GlobalData;
+      const r = await lensRun<{ global?: GlobalData; stale?: boolean; fetchedAt?: number }>('crypto', 'coingecko-global', {});
+      const out = r.data?.result;
+      if (!r.data?.ok || !out?.global) throw new Error(r.data?.error || 'coingecko unavailable');
+      return { payload: out.global, stale: !!out.stale, fetchedAt: out.fetchedAt ?? null };
     },
     refetchInterval: 5 * 60 * 1000,
   });
@@ -35,15 +37,16 @@ export function MarketsPulse() {
   const top = useQuery({
     queryKey: ['cg-top'],
     queryFn: async () => {
-      const r = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=15&page=1');
-      if (!r.ok) throw new Error(`cg ${r.status}`);
-      return (await r.json()) as Coin[];
+      const r = await lensRun<{ coins?: Coin[]; stale?: boolean; fetchedAt?: number }>('crypto', 'coingecko-markets', { vs: 'usd', perPage: 15 });
+      const out = r.data?.result;
+      if (!r.data?.ok || !out) throw new Error(r.data?.error || 'coingecko unavailable');
+      return { items: out.coins || [], stale: !!out.stale, fetchedAt: out.fetchedAt ?? null };
     },
     refetchInterval: 5 * 60 * 1000,
   });
 
-  const g = global.data?.data;
-  const list = top.data || [];
+  const g = global.data?.payload?.data;
+  const list = top.data?.items || [];
   const totalMcap = g?.total_market_cap?.usd || 0;
   const totalVol = g?.total_volume?.usd || 0;
   const change24 = g?.market_cap_change_percentage_24h_usd ?? 0;
@@ -55,13 +58,13 @@ export function MarketsPulse() {
         <div className="flex items-center gap-2">
           <TrendingUp className="h-5 w-5 text-emerald-400" />
           <h2 className="text-sm font-semibold text-white">Real-world markets pulse</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">coingecko · global + top 15</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">CoinGecko · via Concord server · global + top 15</span>
         </div>
         {g && list.length > 0 && (
           <SaveAsDtuButton
             compact
             apiSource="coingecko-markets"
-            apiUrl="https://api.coingecko.com/api/v3/global"
+            apiUrl="https://www.coingecko.com/"
             title={`Markets snapshot — $${(totalMcap / 1e12).toFixed(2)}T mcap · BTC dom ${btcDom.toFixed(1)}%`}
             content={`Total market cap: $${(totalMcap / 1e12).toFixed(2)}T (${change24 >= 0 ? '+' : ''}${change24.toFixed(2)}% 24h)\nTotal volume 24h: $${(totalVol / 1e9).toFixed(2)}B\nBTC dominance: ${btcDom.toFixed(2)}%\nActive cryptos: ${g.active_cryptocurrencies}\nMarkets: ${g.markets}\n\nTop 15 by mcap:\n${list.map((c, i) => `${i + 1}. ${c.symbol.toUpperCase()} ${c.name} — $${c.current_price.toLocaleString()} (${c.price_change_percentage_24h >= 0 ? '+' : ''}${c.price_change_percentage_24h.toFixed(2)}% 24h)`).join('\n')}`}
             extraTags={['finance', 'markets', 'coingecko', 'crypto']}
@@ -69,7 +72,8 @@ export function MarketsPulse() {
           />
         )}
       </header>
-      {(global.isError || top.isError) && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">CoinGecko unreachable.</div>}
+      {(global.isError || top.isError) && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">CoinGecko is unavailable right now — nothing is being shown in its place.</div>}
+      {(global.data?.stale || top.data?.stale) && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached CoinGecko data — live source unavailable.</div>}
       <div className="grid grid-cols-4 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
           <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><DollarSign className="h-2.5 w-2.5" />Total mcap</div>

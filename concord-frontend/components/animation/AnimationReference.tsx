@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Film, Loader2, Search, ExternalLink } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup, carryLookupMeta, lookupMeta } from '@/lib/public-lookup';
 
 interface Meme { id: string; name: string; url: string; width: number; height: number; box_count: number; captions?: number }
 
@@ -15,16 +16,17 @@ export function AnimationReference() {
   const memes = useQuery({
     queryKey: ['imgflip-memes'],
     queryFn: async () => {
-      const r = await fetch('https://api.imgflip.com/get_memes');
-      if (!r.ok) throw new Error(`imgflip ${r.status}`);
-      const j = await r.json();
-      if (!j.success) throw new Error('imgflip returned failure');
-      return (j.data?.memes || []) as Meme[];
+      const j = await publicLookup<{ success?: boolean; data?: { memes?: Meme[] } }>('imgflip-memes', {});
+      if (!j.success) throw new Error('imgflip unavailable');
+      const items = (j.data?.memes || []) as Meme[];
+      carryLookupMeta(j, items);
+      return items;
     },
     refetchInterval: false,
     staleTime: 60 * 60 * 1000,
   });
 
+  const meta = lookupMeta(memes.data);
   const filtered = (memes.data || []).filter((m) => !query.trim() || m.name.toLowerCase().includes(query.toLowerCase()));
 
   return (
@@ -33,13 +35,13 @@ export function AnimationReference() {
         <div className="flex items-center gap-2">
           <Film className="h-5 w-5 text-cyan-400" />
           <h2 className="text-sm font-semibold text-white">Frame templates</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">imgflip · 100 most-used compositions</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">imgflip · via Concord server · 100 most-used compositions</span>
         </div>
         {memes.data && memes.data.length > 0 && (
           <SaveAsDtuButton
             compact
             apiSource="imgflip"
-            apiUrl="https://api.imgflip.com/get_memes"
+            apiUrl="https://imgflip.com/"
             title={`Frame templates — ${filtered.length}${query ? ` matching "${query}"` : ''}`}
             content={filtered.slice(0, 30).map((m, i) => `${i + 1}. ${m.name} (${m.width}×${m.height}, ${m.box_count} panels) — ${m.url}`).join('\n')}
             extraTags={['animation', 'reference', 'compositions']}
@@ -54,7 +56,8 @@ export function AnimationReference() {
         </div>
         <span className="font-mono text-[10px] text-zinc-400">{filtered.length} / {memes.data?.length ?? '—'}</span>
       </form>
-      {memes.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">imgflip unreachable.</div>}
+      {memes.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Imgflip is unavailable right now — nothing is being shown in its place.</div>}
+      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached Imgflip data{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}
       {memes.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Fetching reference templates…</div>}
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 max-h-[480px] overflow-y-auto">
         {filtered.slice(0, 40).map((m) => (

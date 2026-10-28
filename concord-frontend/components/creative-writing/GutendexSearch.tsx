@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { BookOpen, Loader2, Search, ExternalLink, Download } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup, lookupMeta } from '@/lib/public-lookup';
 
 interface Book {
   id: number;
@@ -19,16 +20,16 @@ export function GutendexSearch() {
   const [query, setQuery] = useState('shakespeare');
   const [books, setBooks] = useState<Book[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [noticeData, setNoticeData] = useState<unknown>(null);
 
   const search = useMutation({
     mutationFn: async () => {
       setError(null);
       try {
-        const r = await fetch(`https://gutendex.com/books?search=${encodeURIComponent(query)}`);
-        if (!r.ok) throw new Error(`gutendex ${r.status}`);
-        const j = await r.json();
+        const j = await publicLookup<{ results?: Book[] }>('gutendex-books', { q: query });
         setBooks((j.results || []) as Book[]);
-      } catch (e) { setBooks([]); setError(e instanceof Error ? e.message : 'request failed'); }
+        setNoticeData(j);
+      } catch (e) { setBooks([]); setNoticeData(null); setError('Project Gutenberg (Gutendex) is unavailable right now — nothing is being shown in its place.'); }
     },
   });
 
@@ -36,19 +37,21 @@ export function GutendexSearch() {
     return b.formats['text/plain; charset=utf-8'] || b.formats['text/html; charset=utf-8'] || b.formats['application/epub+zip'] || b.formats['text/html'] || Object.values(b.formats)[0];
   };
 
+  const noticeMeta = lookupMeta(noticeData);
+
   return (
     <div className="space-y-4">
       <header className="flex items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
         <div className="flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-cyan-400" />
           <h2 className="text-sm font-semibold text-white">Project Gutenberg search</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">gutendex.com · 75k public-domain books</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">Gutendex · via Concord server · 75k public-domain books</span>
         </div>
         {books.length > 0 && (
           <SaveAsDtuButton
             compact
             apiSource="gutendex"
-            apiUrl={`https://gutendex.com/books?search=${encodeURIComponent(query)}`}
+            apiUrl="https://www.gutenberg.org/"
             title={`Project Gutenberg — "${query}" (${books.length})`}
             content={books.slice(0, 20).map((b, i) => `${i + 1}. ${b.title} — ${b.authors.map((a) => a.name).join(', ')}\n   ${b.subjects.slice(0, 3).join(' / ')}\n   ${b.download_count.toLocaleString()} downloads · ${preferredFormat(b)}`).join('\n\n')}
             extraTags={['creative-writing', 'gutenberg', 'public-domain']}
@@ -67,6 +70,7 @@ export function GutendexSearch() {
         </button>
       </form>
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
+      {noticeMeta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached Gutenberg data{noticeMeta.fetchedAt ? ` from ${new Date(noticeMeta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}
       <div className="space-y-1 max-h-[480px] overflow-y-auto">
         {books.map((b) => (
           <div key={b.id} className="rounded border border-zinc-800 bg-zinc-950 p-2.5">

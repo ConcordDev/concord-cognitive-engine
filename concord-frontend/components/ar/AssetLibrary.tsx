@@ -17,7 +17,7 @@
  *     viewport — a single-object preview, the AR-tool equivalent of
  *     Sketchfab's own "View in AR" button, not a scene.
  *  2. Sketchfab search (`SketchfabModels`, already real — a live,
- *     no-key-required call to api.sketchfab.com/v3/search) for discovering
+ *     no-key-required search read through the Concord server) for discovering
  *     third-party models to reference.
  *
  * The former 6-tab generic artifact CRUD (Scene/Layer/Anchor/Model3D/
