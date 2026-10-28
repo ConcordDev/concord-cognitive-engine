@@ -1665,7 +1665,11 @@ export default function registerRealEstateActions(registerLensAction) {
       saveREState();
       return { ok: true, result: { ingested, skipped, source: "census-home-values", dtuIds } };
     } catch (e) {
-      return { ok: false, error: `census unreachable: ${e instanceof Error ? e.message : String(e)}`, reason: "upstream_unavailable" };
+      // Never echo the optional CENSUS_API_KEY back in an error message.
+      const censusKey = process.env.CENSUS_API_KEY;
+      let msg = e instanceof Error ? e.message : String(e);
+      if (censusKey) msg = msg.split(censusKey).join("[redacted]").split(encodeURIComponent(censusKey)).join("[redacted]");
+      return { ok: false, error: `census unreachable: ${msg}`, reason: "upstream_unavailable" };
     }
   });
 };

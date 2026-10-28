@@ -64,6 +64,31 @@ describe("shapeLensRunHttp", () => {
     assert.equal(httpStatusForLensFailure("missing_required_fields"), 422);
   });
 
+  it("returns upstream outages as HTTP 200 but keeps Concord's own rate_limited non-200", () => {
+    for (const raw of [
+      { ok: false, error: "thedogapi 503", reason: "upstream_unavailable" },
+      { ok: false, error: "fetch failed", reason: "opentdb_unreachable" },
+      { ok: false, error: "upstream_unavailable" },
+      { ok: false, error: "x 429", reason: "upstream_rate_limited" },
+    ]) {
+      const shaped = shapeLensRunHttp(raw);
+      assert.equal(shaped.status, 200, JSON.stringify(raw));
+      assert.equal(shaped.body.ok, false);
+    }
+    // Concord's own throttles (runMacro checkMacroRateLimit, quest report
+    // cooldown) are client-side "slow down" answers, not upstream outages.
+    for (const raw of [
+      { ok: false, error: "rate_limited", retryAfterMs: 60000 },
+      { ok: false, error: "rate_limited", reason: "rate_limited", questId: "q1" },
+      { ok: false, reason: "rate_limited" },
+      { ok: false, error: "agent_rate_limited", retryAfterMs: 1000 },
+    ]) {
+      const shaped = shapeLensRunHttp(raw);
+      assert.notEqual(shaped.status, 200, JSON.stringify(raw));
+      assert.equal(shaped.body.ok, false);
+    }
+  });
+
   it("peels one success envelope and lifts a failure nested under one", () => {
     const ok = shapeLensRunHttp({ ok: true, result: { position: { id: "stk_1" } } });
     assert.equal(ok.status, 200);

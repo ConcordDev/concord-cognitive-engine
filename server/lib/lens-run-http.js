@@ -69,17 +69,24 @@ export function httpStatusForLensFailure(error, raw = {}) {
   // that flags its failure as an upstream problem — `upstream_unavailable`,
   // the `<source>_unreachable` reason family the live-feed macros return
   // (opentdb_unreachable, nasa_apod_unreachable, usda_unreachable, …), or
-  // an upstream `rate_limited` — gets the same HTTP 200 treatment as
+  // `upstream_rate_limited` — gets the same HTTP 200 treatment as
   // `missing_api_key`: the body still says { ok:false, reason }, panels
   // render their honest "unavailable" state, and the browser does not log
   // a 4xx resource error for a third-party outage. The check reads the
   // reason channel as well as the error string, because most feed
   // handlers put the exception text in `error` and the stable token in
   // `reason`.
+  //
+  // Bare `rate_limited` is deliberately NOT here: it is Concord's OWN
+  // per-user / per-macro throttle (runMacro's checkMacroRateLimit,
+  // quests.reportObjective's cooldown, combat/chat limiters). Those are
+  // client-side "slow down" answers and must stay non-200. Only a handler
+  // that explicitly marks a third-party 429 as `upstream_rate_limited`
+  // gets the 200 treatment.
   const reason = String(raw?.reason || "").trim().toLowerCase();
   if (
-    e === "upstream_unavailable" || e.endsWith("_unreachable") || e === "rate_limited" ||
-    reason === "upstream_unavailable" || reason.endsWith("_unreachable") || reason === "rate_limited"
+    e === "upstream_unavailable" || e.endsWith("_unreachable") || e === "upstream_rate_limited" ||
+    reason === "upstream_unavailable" || reason.endsWith("_unreachable") || reason === "upstream_rate_limited"
   ) {
     return 200;
   }
