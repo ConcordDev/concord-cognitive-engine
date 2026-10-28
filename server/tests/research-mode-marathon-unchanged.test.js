@@ -6,6 +6,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { saveCitationDtus, cleanExcerpt } from "../lib/research-mode.js";
 
+// Fixture hosts are full-tier (.gov): since #1692 a non-full-tier citation is
+// stored summary-only (tests/restricted-ingest-guard.test.js covers that path),
+// so this refactor-parity check uses hosts whose page text is still kept.
+
 function fakeDb() {
   const store = new Map();
   return {
@@ -21,7 +25,7 @@ const PAGE_TEXT = "The MG996R is a metal-gear servo with 11 kg-cm of stall torqu
 const TOOL_CALLS = [
   {
     tool: "browse_url",
-    url: "https://components101.com/mg996r?utm_source=test",
+    url: "https://nist.gov/mg996r?utm_source=test",
     title: "MG996R datasheet",
     text: PAGE_TEXT,
     publishedAt: "2026-01-15",
@@ -29,7 +33,7 @@ const TOOL_CALLS = [
   {
     tool: "web_search",
     result: JSON.stringify({
-      results: [{ title: "Servo torque guide", url: "https://servodatabase.com/torque", snippet: "How stall torque is measured for hobby servos in practice." }],
+      results: [{ title: "Servo torque guide", url: "https://energy.gov/torque", snippet: "How stall torque is measured for hobby servos in practice." }],
     }),
   },
 ];
@@ -52,26 +56,26 @@ test("marathon saveCitationDtus output is unchanged after the refactor", async (
   assert.equal(page.domain, "dtu");
   assert.equal(page.name, "create");
   assert.equal(page.input.title, "Source: MG996R datasheet");
-  assert.equal(page.input.content, `MG996R datasheet\nhttps://components101.com/mg996r\n\n${cleanExcerpt(PAGE_TEXT, 4000)}`);
+  assert.equal(page.input.content, `MG996R datasheet\nhttps://nist.gov/mg996r\n\n${cleanExcerpt(PAGE_TEXT, 4000)}`);
   assert.equal(page.input.creti, page.input.content);
-  assert.deepEqual(page.input.tags, ["citation", "web-source", "research", "components101.com"]);
+  assert.deepEqual(page.input.tags, ["citation", "web-source", "research", "nist.gov"]);
   assert.equal(page.input.source, "agent_tool");
   assert.equal(page.input.visibility, "private");
   assert.equal(page.input.meta.kind, "citation");
   assert.equal(page.input.meta.sourceKind, "page");
   assert.equal(page.input.meta.marathonSessionId, "sess1");
-  assert.equal(page.input.meta.url, "https://components101.com/mg996r");
+  assert.equal(page.input.meta.url, "https://nist.gov/mg996r");
   assert.equal(page.ctx.actor.userId, "u1");
   assert.equal(page.ctx.actor.sessionId, "sess1");
 
   const hit = calls[1];
   assert.equal(hit.input.meta.sourceKind, "search");
-  assert.equal(hit.input.content, `Servo torque guide\nhttps://servodatabase.com/torque\n\nHow stall torque is measured for hobby servos in practice.`);
+  assert.equal(hit.input.content, `Servo torque guide\nhttps://energy.gov/torque\n\nHow stall torque is measured for hobby servos in practice.`);
 
   // Session meta gained the citation bookkeeping.
   const meta = JSON.parse(db._store.get("sess1"));
   assert.deepEqual(meta.citationDtuIds, ["dtu_c1", "dtu_c2"]);
-  assert.deepEqual(meta.citationUrls, ["https://components101.com/mg996r", "https://servodatabase.com/torque"]);
+  assert.deepEqual(meta.citationUrls, ["https://nist.gov/mg996r", "https://energy.gov/torque"]);
   assert.equal(meta.citations.length, 2);
   assert.equal(meta.citations[0].kind, "page");
   assert.ok(meta.citations[0].text.length > 0, "private marathon citations keep the page excerpt");

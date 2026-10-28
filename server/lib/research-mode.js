@@ -6,6 +6,8 @@
 // section lists those citations. Best-effort throughout: a failed save never
 // stops the job, and nothing here invents a source that a tool didn't return.
 
+import { enforceSummaryOnly } from "./news-outlet-policy.js";
+
 const MAX_CITATIONS_PER_JOB = Number(process.env.CONCORD_RESEARCH_MAX_CITATIONS) || 30;
 const MAX_SEARCH_HITS_PER_CALL = 3;
 
@@ -195,6 +197,7 @@ export async function writeCitationDtus(records, runMacro, { visibility = "priva
         creti: rec.creti,
         tags: rec.tags,
         tier: rec.tier || "regular",
+        ...(rec.contentPolicy ? { contentPolicy: rec.contentPolicy } : {}),
         source,
         visibility,
         meta: { ...(rec.meta || {}), ...meta },
@@ -232,7 +235,19 @@ export async function saveCitationDtus(db, session, toolCalls, runMacro) {
     if (rec.entry.kind === "page") pageUrls.add(rec.entry.url);
     picked.push(rec);
   }
-  const saved = await writeCitationDtus(picked, runMacro, {
+  // Outlet policy: a citation from a non-full-tier host may not store the
+  // page text. enforceSummaryOnly reduces the draft to headline + link +
+  // attribution (human.summary becomes a validated Concord summary or
+  // empty); full-tier drafts come back as the same object, unchanged. A
+  // reduced record also drops the page text from its session entry.
+  const guarded = picked.map((rec) => {
+    const { entry, ...draft } = rec;
+    const out = enforceSummaryOnly(draft);
+    if (out === draft) return rec;
+    const { text: _text, ...safeEntry } = entry || {};
+    return { ...out, entry: safeEntry };
+  });
+  const saved = await writeCitationDtus(guarded, runMacro, {
     visibility: "private",
     source: "agent_tool",
     meta: { marathonSessionId: session.id },
