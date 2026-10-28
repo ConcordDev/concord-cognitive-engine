@@ -289,7 +289,11 @@ describe("atlas external-IO — validation-rejection happens BEFORE any fetch", 
   it("nominatim-geocode rejects an empty query without touching the network", async () => {
     const r = await call("nominatim-geocode", ctxA, { query: "   " });
     assert.equal(r.ok, false);
-    assert.match(r.error, /query required/);
+    // HANDOFF-3 C1 (#1695): blank query is the structured invalid_input (HTTP 400) shape.
+    assert.equal(r.error, "invalid_input");
+    assert.equal(r.field, "query");
+    assert.equal(r.reason, "required");
+    assert.match(r.message, /query required/);
     assert.equal(fetchCalls, 0, "no network call on validation-reject");
   });
 

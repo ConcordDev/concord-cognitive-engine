@@ -1,7 +1,8 @@
 // atlas.nominatim-reverse: bad coordinates are an input error (HTTP 400
-// invalid_input, no upstream call), never a "geocoder unreachable" outage.
-// "unreachable" is reserved for real upstream failures. No network: the
-// public-fetch test transport is injected, as in nominatim-limit.test.js.
+// invalid_input, no upstream call), never an outage. A real upstream
+// failure carries the geocoder_unavailable code (HTTP 503, HANDOFF-3 C1).
+// No network: the public-fetch test transport is injected, as in
+// nominatim-limit.test.js.
 import { test, before, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import registerAtlasActions from "../domains/atlas.js";
@@ -82,14 +83,16 @@ test("a valid coordinate is still served", async () => {
   assert.equal(calls.length, 1);
 });
 
-test("an upstream outage is the honest unavailable, and only then says unreachable", async () => {
+test("an upstream outage is the honest unavailable with the geocoder_unavailable code (503)", async () => {
   route = () => ({ ok: false, status: 503, headers: { get: () => null }, json: async () => ({}) });
   const r = await reverse({ latitude: 48.85, longitude: 2.35 });
   assert.equal(r.ok, false);
   assert.equal(r.status, "unavailable");
-  assert.match(r.error, /^nominatim unreachable: /);
-  // Note: the geo layer's outage reason ("upstream_error: nominatim 503")
-  // does not carry one of lens-run-http's *_unreachable tokens, so the HTTP
-  // status for a real outage is unchanged by this PR (pre-existing mapper
-  // behaviour, flagged in the PR description).
+  // HANDOFF-3 C1: a real outage is the opt-in geocoder_unavailable shape —
+  // lens-run-http maps the code to HTTP 503 (updated from #1684, where the
+  // outage fell through to the generic mapper and surfaced as a 400).
+  assert.equal(r.code, "geocoder_unavailable");
+  assert.equal(r.error, "geocoder_unavailable");
+  assert.equal(r.retryAfterS, 30);
+  assert.equal(shapeLensRunHttp(r).status, 503);
 });

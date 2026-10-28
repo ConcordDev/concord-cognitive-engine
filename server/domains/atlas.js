@@ -12,7 +12,7 @@ function osmFetch(url, init = {}) {
   return fetchPublicUrl(url, { ...init, signal: init.signal || AbortSignal.timeout(OSM_FETCH_TIMEOUT_MS) });
 }
 
-import { nominatimSearch, nominatimReverse, osmUserAgent } from "../lib/geo-feed-sources.js";
+import { nominatimSearch, nominatimReverse, osmUserAgent, geocoderUnavailable } from "../lib/geo-feed-sources.js";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
 import { boundedNum, badNumber } from "../lib/finite-input.js";
 import { guardAnonWrites } from "../lib/lens-authz.js";
@@ -580,11 +580,17 @@ export default function registerAtlasActions(registerLensAction) {
    */
   registerLensAction("atlas", "nominatim-geocode", async (_ctx, _artifact, params = {}) => {
     const query = String(params.query || "").trim();
-    if (!query) return { ok: false, error: "query required (free-form address or place name)" };
+    // A blank query is an INPUT error (HTTP 400), never an outage.
+    if (!query) return { ok: false, error: "invalid_input", field: "query", reason: "required", message: "query required (free-form address or place name)" };
     const limit = Math.max(1, Math.min(10, Number(params.limit) || 5));
     try {
       const geo = await nominatimSearch(query, { limit });
-      if (!geo.ok) return { ok: false, status: "unavailable", reason: geo.reason, lastOkAt: geo.lastOkAt, error: `nominatim unreachable: ${geo.error}` };
+      if (!geo.ok) {
+        if (geo.reason === "empty_query") return { ok: false, error: "invalid_input", field: "query", reason: "required", message: "query required (free-form address or place name)" };
+        // A real upstream failure is a 503 geocoder_unavailable (via
+        // lens-run-http), not a 400 and not a 200.
+        return geocoderUnavailable(geo.reason, geo.lastOkAt);
+      }
       const data = geo.data;
       const places = (Array.isArray(data) ? data : []).map((p) => ({
         osmType: p.osm_type,
@@ -605,7 +611,7 @@ export default function registerAtlasActions(registerLensAction) {
         result: { query, places, count: places.length, source: "openstreetmap-nominatim" },
       };
     } catch (e) {
-      return { ok: false, error: `nominatim unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return geocoderUnavailable(`upstream_error: ${e instanceof Error ? e.message : String(e)}`);
     }
   });
 
@@ -631,7 +637,7 @@ export default function registerAtlasActions(registerLensAction) {
         // Backstop: the geo source's own range refusal is still an input
         // error, never an upstream outage.
         if (geo.reason === "bad_coordinates") return badNumber("latitude", "must be between -90 and 90");
-        return { ok: false, status: "unavailable", reason: geo.reason, lastOkAt: geo.lastOkAt, error: `nominatim unreachable: ${geo.error}` };
+        return geocoderUnavailable(geo.reason, geo.lastOkAt);
       }
       const p = geo.data || {};
       if (p.error) return { ok: false, error: `nominatim: ${p.error}` };
@@ -647,7 +653,7 @@ export default function registerAtlasActions(registerLensAction) {
         },
       };
     } catch (e) {
-      return { ok: false, error: `nominatim unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return geocoderUnavailable(`upstream_error: ${e instanceof Error ? e.message : String(e)}`);
     }
   });
 

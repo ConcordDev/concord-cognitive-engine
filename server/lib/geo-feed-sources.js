@@ -87,6 +87,27 @@ function unavailable(reason, lastOkAt = null) {
   return { ok: false, status: "unavailable", reason, lastOkAt, error: `geocoder unavailable: ${reason}` };
 }
 
+/**
+ * The public failure shape for a REAL geocoder outage: network failure,
+ * timeout, upstream 5xx / rate limit, or the queue-full "geocoder_busy".
+ * Lens actions return this verbatim. lens-run-http maps the
+ * "geocoder_unavailable" code to HTTP 503 (the one opt-in 503) and the
+ * client is taught not to auto-retry it — retryAfterS is a hint for the
+ * user ("try again in N s"), not for a retry loop. Input errors (empty
+ * query, bad coordinates) never use this shape; they stay invalid_input.
+ */
+export function geocoderUnavailable(reason, lastOkAt = null) {
+  return {
+    ok: false,
+    status: "unavailable",
+    code: "geocoder_unavailable",
+    error: "geocoder_unavailable",
+    reason,
+    lastOkAt,
+    retryAfterS: reason === "geocoder_busy" ? 5 : 30,
+  };
+}
+
 async function via(key) {
   ensureGeoFeedSources();
   const hit = peek(SOURCE_ID, key);

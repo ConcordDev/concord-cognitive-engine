@@ -236,6 +236,17 @@ function isShuttingDownResponse(error: AxiosError): boolean {
   return error.response?.status === 503 && isShuttingDownPayload(error.response?.data);
 }
 
+/** True when the body is the geocoder's opt-in outage shape (atlas). */
+export function isGeocoderUnavailablePayload(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false;
+  const body = data as { code?: string; error?: string };
+  return body.code === 'geocoder_unavailable' || body.error === 'geocoder_unavailable';
+}
+
+function isGeocoderUnavailableResponse(error: AxiosError): boolean {
+  return error.response?.status === 503 && isGeocoderUnavailablePayload(error.response?.data);
+}
+
 /** Idempotent reads only. A write during restart must fail honestly. */
 function isIdempotentRead(method: string | undefined): boolean {
   const m = (method || '').toLowerCase();
@@ -292,6 +303,13 @@ api.interceptors.response.use(undefined, async (error: AxiosError) => {
   const status = error.response?.status;
   const warmingOrOverloaded = isServiceWarmingOrOverloaded(error);
   const shuttingDown = isShuttingDownResponse(error);
+  // A geocoder_unavailable 503 is never auto-retried: its retryAfterS is a
+  // hint for the user (the Atlas panels render "try again in N s"), and the
+  // geocoder's door is rate-limited to 1 req/s — retrying would only queue
+  // more lookups behind an outage.
+  if (isGeocoderUnavailableResponse(error)) {
+    return Promise.reject(error);
+  }
   // A restart 503 is not a transient overload. Retry idempotent GETs with
   // a bounded backoff (the server is back in ~10–20s). Writes reject here
   // so a later retry cannot look like the write succeeded.
@@ -659,7 +677,7 @@ api.interceptors.response.use(
           // non-admin session): stay silent — the caller handles it.
         } else if (toastStatus === 429) {
           store.addToast({ type: 'warning', message: 'Too many requests. Please wait a moment.' });
-        } else if (toastStatus && toastStatus >= 500 && !isBackgroundFetch) {
+        } else if (toastStatus && toastStatus >= 500 && !isBackgroundFetch && !isGeocoderUnavailableResponse(error)) {
           store.addToast({ type: 'error', message: 'Something went wrong on our end. Please try again.' });
         } else if (!error.response && !isBackgroundFetch) {
           store.addToast({ type: 'error', message: 'Unable to reach the local Concord API. If you are on this machine, the backend may be down — this is not your internet.' });
@@ -668,6 +686,10 @@ api.interceptors.response.use(
         }
       }
     }
+    // Keep the raw axios error for a geocoder outage: the Atlas panels and
+    // lensRun read code / retryAfterS from error.response.data, which the
+    // ConcordError conversion would drop.
+    if (isGeocoderUnavailableResponse(error)) return Promise.reject(error);
     return Promise.reject(fromAxiosError(error));
   }
 );
@@ -700,9 +722,17 @@ interface LensRunSpec {
  * bodies stay `{ ok, result, error }` so a validation `reason` does not
  * start appearing on callers that never read one.
  */
-function honestKeyFields(node: unknown): { reason?: string; envVar?: string; signupUrl?: string } {
+function honestKeyFields(node: unknown): { reason?: string; envVar?: string; signupUrl?: string; code?: string; retryAfterS?: number } {
   if (!node || typeof node !== 'object') return {};
   const n = node as Record<string, unknown>;
+  // A geocoder outage keeps its code + retry hint through the unwrap so
+  // panels can render "Geocoder unavailable — try again in N s" instead of
+  // a raw error token.
+  if (n.code === 'geocoder_unavailable' || n.error === 'geocoder_unavailable') {
+    const out: { code: string; retryAfterS?: number } = { code: 'geocoder_unavailable' };
+    if (typeof n.retryAfterS === 'number') out.retryAfterS = n.retryAfterS;
+    return out;
+  }
   const reason = typeof n.reason === 'string' ? n.reason : undefined;
   const error = typeof n.error === 'string' ? n.error : undefined;
   if (reason !== 'missing_api_key' && error !== 'missing_api_key') return {};
@@ -739,7 +769,7 @@ export async function lensRun<T = any>(
   action?: string,
   input: Record<string, unknown> = {},
   runId?: string,
-): Promise<{ data: { ok: boolean; result: T | null; error: string | null; reason?: string; envVar?: string; signupUrl?: string } }> {
+): Promise<{ data: { ok: boolean; result: T | null; error: string | null; reason?: string; envVar?: string; signupUrl?: string; code?: string; retryAfterS?: number } }> {
   try {
     let domain: string;
     let act: string;
