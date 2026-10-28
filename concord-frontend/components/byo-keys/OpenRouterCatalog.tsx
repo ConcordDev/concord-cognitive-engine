@@ -68,8 +68,8 @@ export function OpenRouterCatalog() {
         </div>
         <span className="font-mono text-[10px] text-zinc-400">{filtered.length} / {models.data?.length ?? '—'}</span>
       </form>
-      {models.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">The OpenRouter model list unavailable right now — nothing is being shown in its place.</div>
-      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached the OpenRouter model list{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}}
+      {models.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">The OpenRouter model list is unavailable right now — nothing is being shown in its place.</div>}
+      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing the cached OpenRouter model list{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}
       {models.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling provider catalog…</div>}
       <div className="space-y-1 max-h-[500px] overflow-y-auto">
         {filtered.map((m) => (

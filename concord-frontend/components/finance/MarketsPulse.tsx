@@ -72,8 +72,8 @@ export function MarketsPulse() {
           />
         )}
       </header>
-      {(global.isError || top.isError) && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">CoinGecko unavailable right now — nothing is being shown in its place.</div>
-      {(global.data?.stale || top.data?.stale) && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached CoinGecko data — live source unavailable.</div>}}
+      {(global.isError || top.isError) && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">CoinGecko is unavailable right now — nothing is being shown in its place.</div>}
+      {(global.data?.stale || top.data?.stale) && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached CoinGecko data — live source unavailable.</div>}
       <div className="grid grid-cols-4 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
           <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><DollarSign className="h-2.5 w-2.5" />Total mcap</div>

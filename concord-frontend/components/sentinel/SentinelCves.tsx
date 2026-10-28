@@ -36,8 +36,8 @@ export function SentinelCves() {
           {list.length > 0 && <SaveAsDtuButton compact apiSource="nvd-sentinel" apiUrl="https://nvd.nist.gov/vuln/search" title={`NVD sentinel — ${sev} (${list.length})`} content={list.slice(0, 20).map((v, i) => { const desc = v.cve.descriptions?.find((d) => d.lang === 'en')?.value || ''; return `${i + 1}. ${v.cve.id}\n   ${desc.slice(0, 200)}`; }).join('\n\n')} extraTags={['sentinel', 'nvd', sev.toLowerCase()]} rawData={{ severity: sev, cves: list }} />}
         </div>
       </header>
-      {cves.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">NVD unavailable right now — nothing is being shown in its place.</div>
-      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached NVD data{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}}
+      {cves.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">NVD is unavailable right now — nothing is being shown in its place.</div>}
+      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached NVD data{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">CVEs</div><div className="mt-0.5 font-mono text-lg text-rose-300">{list.length}</div></div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Sev</div><div className="mt-0.5 font-mono text-lg text-rose-300">{sev}</div></div>

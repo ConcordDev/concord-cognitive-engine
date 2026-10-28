@@ -29,8 +29,8 @@ export function WalletMarkets() {
         <div className="flex items-center gap-2"><Wallet className="h-5 w-5 text-emerald-400" /><h2 className="text-sm font-semibold text-white">Real-world wallet markets</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">CoinGecko · via Concord server · top 20</span></div>
         {list.length > 0 && <SaveAsDtuButton compact apiSource="coingecko-wallet" apiUrl="https://www.coingecko.com/" title={`Wallet markets — top ${list.length}`} content={list.map((c, i) => `${i + 1}. ${c.symbol.toUpperCase()} ${c.name} — $${c.current_price.toLocaleString()} (${c.price_change_percentage_24h?.toFixed(2)}% 24h)`).join('\n')} extraTags={['wallet', 'coingecko', 'markets']} rawData={{ coins: list }} />}
       </header>
-      {coins.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">CoinGecko unavailable right now — nothing is being shown in its place.</div>
-      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached CoinGecko data{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}}
+      {coins.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">CoinGecko is unavailable right now — nothing is being shown in its place.</div>}
+      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached CoinGecko data{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}
       <div className="space-y-1 max-h-[500px] overflow-y-auto">
         {list.map((c) => (
           <a key={c.id} href={`https://www.coingecko.com/en/coins/${c.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded border border-emerald-500/15 bg-emerald-500/5 p-2 text-[11px] hover:border-emerald-500/40">

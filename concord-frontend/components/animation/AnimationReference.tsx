@@ -56,8 +56,8 @@ export function AnimationReference() {
         </div>
         <span className="font-mono text-[10px] text-zinc-400">{filtered.length} / {memes.data?.length ?? '—'}</span>
       </form>
-      {memes.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Imgflip unavailable right now — nothing is being shown in its place.</div>
-      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached Imgflip data{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}}
+      {memes.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Imgflip is unavailable right now — nothing is being shown in its place.</div>}
+      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached Imgflip data{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}
       {memes.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Fetching reference templates…</div>}
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 max-h-[480px] overflow-y-auto">
         {filtered.slice(0, 40).map((m) => (
