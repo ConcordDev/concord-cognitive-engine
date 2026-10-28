@@ -12,7 +12,7 @@
 
 import { useState, useEffect } from 'react';
 import { Brain, RefreshCw, AlertTriangle, Check } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface TriviaQuestion {
@@ -26,12 +26,15 @@ interface TriviaQuestion {
 }
 
 async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
-  try {
-    const r = await api.post('/api/lens/run', { domain, name, input });
-    return r?.data as T;
-  } catch {
-    return null;
+  const r = await lensRun(domain, name, input);
+  if (!r.data.ok) {
+    // lensRun folds the handler's stable reason token into `error` when the
+    // body carries one (rate_limited, opentdb_unreachable, …); anything else
+    // is transport noise, so fall back to the generic token the panel renders.
+    const err = r.data.error || '';
+    return { ok: false, reason: /^[a-z][a-z0-9_]*$/.test(err) ? err : 'fetch_failed' } as T;
   }
+  return (r.data.result ?? null) as T | null;
 }
 
 function shuffle<T>(arr: T[]): T[] {
