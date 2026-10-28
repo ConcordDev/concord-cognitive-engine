@@ -422,7 +422,13 @@ export function MindMapBuilder() {
             <div className="mb-2 bg-zinc-900/40 border border-zinc-800 rounded-lg p-3">
               <p className="text-[11px] uppercase tracking-wide text-zinc-400 mb-1">Unlinked nodes</p>
               {orphans.length === 0
-                ? <p className="text-[11px] text-zinc-500">None — every node is linked.</p>
+                ? (active.nodes.length >= 2
+                  // §5f delight (S6): the orphan roundup — one quiet line,
+                  // earned by actually clearing the panel. No confetti;
+                  // the emptiness is the reward. A map with <2 nodes has
+                  // nothing to connect, so it keeps the neutral line.
+                  ? <p className="text-[11px] italic text-zinc-400">Every thought is connected.</p>
+                  : <p className="text-[11px] text-zinc-500">None — every node is linked.</p>)
                 : (
                   <ul className="flex flex-wrap gap-1">
                     {orphans.map((n) => <li key={n.id} className="rounded bg-zinc-800/70 px-1.5 py-0.5 text-[11px] text-zinc-300">{n.label}</li>)}

@@ -183,6 +183,19 @@ describe('MindMapBuilder rework flows', () => {
     expect(panel?.textContent).not.toContain('Alpha');
   });
 
+  it('shows the §5f orphan-roundup line only once the panel is actually cleared', async () => {
+    await openSeeded();
+    fireEvent.click(screen.getByRole('button', { name: 'Show unlinked nodes' }));
+    await screen.findByText('Unlinked nodes');
+    // Solo is still unlinked — the line is not earned yet.
+    expect(screen.queryByText('Every thought is connected.')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Hide unlinked' }));
+    // Link Solo to the central node in the store, then re-open the panel.
+    store.maps[0].edges.push({ id: 'ed_2', from: 'nd_c', to: 'nd_solo', label: '', type: '' });
+    fireEvent.click(screen.getByRole('button', { name: 'Show unlinked nodes' }));
+    await screen.findByText('Every thought is connected.');
+  });
+
   it('undoes a node deletion', async () => {
     await openSeeded();
     // Alpha is a branch of the central node; delete it via its row button
