@@ -2048,6 +2048,7 @@ import {
 import { initDTUStore, createDTUStore } from "./lib/dtu-store.js";
 import { configureWriteSpill, waitForWriteQuiet, replaySpill, spilledIsNewer, spillStats } from "./lib/shutdown-write-gate.js";
 import { assignDtuCustody, dtuMutationDenial, normalizeOwnerlessDtus } from "./lib/dtu-ownership.js";
+import { dtuImportDecision, importAuthDenial, stampImportedDtu } from "./lib/dtu-import-guard.js";
 import { renderAndAttach, hasRenderer as _hasRenderer } from "./lib/render-engine.js";
 import { registerAllRenderers } from "./lib/render-registry.js";
 import { getArtifactSchema } from "./lib/artifact-schemas.js";
@@ -45580,38 +45581,50 @@ register("export", "json", (ctx, input) => {
   return { ok: true, format: "json", dtus, count: dtus.length };
 });
 
+// SECURITY: import.json used to let any signed-in member overwrite ANY
+// existing DTU by id when input.overwrite was set (no ownership check) and
+// to set tier/meta from caller input, while newly imported DTUs got no
+// ownerId/visibility at all (ownerless → normalized to system/internal).
+// lib/dtu-import-guard.js now enforces ownership per DTU: overwrites pass
+// dtuMutationDenial, non-admin imports in secured modes get server-stamped
+// ownership (ownerId/creatorType/visibility, tier forced to "regular"),
+// and spoofed ownership keys in caller meta are stripped.
 register("import", "json", (ctx, input) => {
+  const authDenial = importAuthDenial(ctx, AUTH_MODE);
+  if (authDenial) return { ok: false, status: authDenial.status, code: authDenial.code, error: authDenial.error };
+
   const dtus = Array.isArray(input.dtus) ? input.dtus : [];
-  let imported = 0, skipped = 0;
+  let imported = 0, skipped = 0, denied = 0;
 
   for (const dtu of dtus) {
-    if (!dtu.id || !dtu.title) { skipped++; continue; }
-    if (STATE.dtus.has(dtu.id) && !input.overwrite) { skipped++; continue; }
-
-    const normalized = {
-      id: dtu.id,
-      title: normalizeText(dtu.title),
-      tier: dtu.tier || "regular",
-      tags: Array.isArray(dtu.tags) ? dtu.tags : [],
-      human: dtu.human || {},
-      core: dtu.core || {},
-      machine: dtu.machine || {},
-      lineage: dtu.lineage || [],
-      source: "import",
-      createdAt: dtu.createdAt || nowISO(),
-      updatedAt: nowISO(),
-      meta: { ...dtu.meta, importedAt: nowISO() }
-    };
-
-    STATE.dtus.set(normalized.id, normalized);
+    const existing = dtu?.id ? STATE.dtus.get(dtu.id) : null;
+    const decision = dtuImportDecision({
+      existing,
+      incoming: dtu,
+      ctx,
+      overwrite: input.overwrite,
+      authMode: AUTH_MODE,
+      normalizeText,
+      nowISO,
+    });
+    if (decision.action === "deny") { denied++; skipped++; continue; }
+    if (decision.action !== "write" || !decision.dtu) { skipped++; continue; }
+    STATE.dtus.set(decision.dtu.id, decision.dtu);
     imported++;
   }
 
   if (imported > 0) saveStateDebounced();
-  return { ok: true, imported, skipped, total: dtus.length };
+  return { ok: true, imported, skipped, denied, total: dtus.length };
 });
 
+// SECURITY: same ownership rules as import.json above — anonymous callers
+// are rejected in secured modes, and markdown-imported DTUs are stamped
+// with the importer's ownership (admins and AUTH_MODE=public keep the
+// historical ownerless behavior).
 register("import", "markdown", (ctx, input) => {
+  const authDenial = importAuthDenial(ctx, AUTH_MODE);
+  if (authDenial) return { ok: false, status: authDenial.status, code: authDenial.code, error: authDenial.error };
+
   const content = String(input.content || "");
   const sections = content.split(/^## /m).filter(Boolean);
   const dtus = [];
@@ -45648,6 +45661,7 @@ register("import", "markdown", (ctx, input) => {
 
   let imported = 0;
   for (const dtu of dtus) {
+    stampImportedDtu(dtu, ctx, AUTH_MODE);
     STATE.dtus.set(dtu.id, dtu);
     imported++;
   }
