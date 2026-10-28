@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { explodedShift, sectionPlane } from '@/lib/conkay/assembly-view';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, fireEvent, act, cleanup, waitFor } from '@testing-library/react';
+import { explodedShift, sectionPlane, subsystemOf, explodeAmountFor, EXPLODE_SUBSYSTEMS } from '@/lib/conkay/assembly-view';
 import type { KnobResponse, WorkbenchClient, WorkbenchView } from '@/lib/conkay/workbench-api';
 
 vi.mock('@react-three/fiber', () => ({
@@ -51,6 +51,10 @@ const assembly: VehicleAssembly = {
     caliper: { positions: [0, 0, 0, 1, 0, 0, 0, 1, 0], indices: [0, 1, 2] },
   },
 };
+
+// The viewer writes its view state (mode, explode, section, selection) to the URL query (HANDOFF-3 A5);
+// jsdom shares one location across a file, so reset it after every test or one test's mode leaks into the next.
+afterEach(() => { window.history.replaceState(null, '', '/'); });
 
 describe('assembly view math', () => {
   it('explodes along the part axis and builds a section plane', () => {
@@ -430,5 +434,110 @@ describe('AssemblyViewer per-part analyses (HANDOFF-3 A4)', () => {
     fireEvent.click(screen.getByTestId('rerun-aero.shape'));
     await waitFor(() => expect(rerun).toHaveBeenCalledWith('wb-1', 'aero.shape'));
     await waitFor(() => expect(screen.getByTestId('analysis-aero.shape').textContent).toMatch(/reportedCd: 0\.29/));
+  });
+});
+
+// HANDOFF-3 A5: step-through explode by subsystem, camera presets, URL view state.
+describe('AssemblyViewer explode sequence + URL view state (HANDOFF-3 A5)', () => {
+  const base = () => render(<AssemblyViewer assembly={assembly} />);
+  const chip = (id: string) => screen.getByTestId(`xsub-${id}`).getAttribute('data-state');
+  afterEach(() => { window.history.pushState(null, '', '/'); });
+
+  it('maps every part to its sequence subsystem, in build order', () => {
+    expect(EXPLODE_SUBSYSTEMS.map((x) => x.id)).toEqual(['body', 'glazing', 'doors', 'interior', 'powertrain', 'chassis']);
+    expect(subsystemOf({ group: 'exterior', role: 'body' })).toBe('body');
+    expect(subsystemOf({ group: 'exterior', role: 'lamp' })).toBe('body');
+    expect(subsystemOf({ group: 'exterior', role: 'glass' })).toBe('glazing');
+    expect(subsystemOf({ group: 'exterior', role: 'opening' })).toBe('doors');
+    expect(subsystemOf({ group: 'exterior', role: 'handle' })).toBe('doors');
+    expect(subsystemOf({ group: 'interior', role: 'seat' })).toBe('interior');
+    expect(subsystemOf({ group: 'storage', role: 'volume' })).toBe('interior');
+    expect(subsystemOf({ group: 'powertrain', role: 'cooling' })).toBe('powertrain');
+    expect(subsystemOf({ group: 'chassis', role: 'frame' })).toBe('chassis');
+    expect(subsystemOf({ group: 'wheels', role: 'wheel' })).toBe('chassis');
+  });
+
+  it('a sequence position moves only the subsystems it crosses', () => {
+    const body = { group: 'exterior', role: 'body' };
+    const doors = { group: 'exterior', role: 'opening' };
+    const engine = { group: 'powertrain', role: 'powertrain' };
+    expect(explodeAmountFor(body, 0)).toBe(0);
+    expect(explodeAmountFor(body, 2.5)).toBe(1);
+    expect(explodeAmountFor(doors, 2.5)).toBe(0.5);
+    expect(explodeAmountFor(engine, 2.5)).toBe(0);
+    expect(explodeAmountFor(engine, 6)).toBe(1);
+  });
+
+  it('steps through the subsystems with buttons and arrow keys', () => {
+    base();
+    expect(screen.getByTestId('explode-step')).toHaveTextContent('step 1 is Body');
+    for (const sub of EXPLODE_SUBSYSTEMS) expect(chip(sub.id)).toBe('assembled');
+    fireEvent.click(screen.getByTestId('explode-next'));
+    expect(chip('body')).toBe('exploded');
+    expect(chip('glazing')).toBe('assembled');
+    fireEvent.click(screen.getByTestId('explode-next'));
+    expect(chip('glazing')).toBe('exploded');
+    expect(screen.getByTestId('explode-step')).toHaveTextContent('Step 3 of 6 — Doors');
+    fireEvent.keyDown(screen.getByTestId('assembly-canvas'), { key: 'ArrowRight' });
+    expect(chip('doors')).toBe('exploded');
+    fireEvent.keyDown(screen.getByTestId('assembly-canvas'), { key: 'ArrowLeft' });
+    expect(chip('doors')).toBe('assembled');
+    fireEvent.click(screen.getByTestId('explode-prev'));
+    expect(chip('glazing')).toBe('assembled');
+    expect(chip('body')).toBe('exploded');
+  });
+
+  it('plays the sequence on a timer and pauses', () => {
+    vi.useFakeTimers();
+    try {
+      base();
+      fireEvent.click(screen.getByTestId('explode-play'));
+      act(() => { vi.advanceTimersByTime(1100); });
+      expect(chip('body')).toBe('exploded');
+      expect(chip('glazing')).toBe('assembled');
+      act(() => { vi.advanceTimersByTime(1100); });
+      expect(chip('glazing')).toBe('exploded');
+      fireEvent.click(screen.getByTestId('explode-play'));
+      act(() => { vi.advanceTimersByTime(3300); });
+      expect(chip('doors')).toBe('assembled');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('writes the view state into the URL as it changes', () => {
+    window.history.pushState(null, '', '/conkay/designs/demo');
+    base();
+    fireEvent.click(screen.getByTestId('explode-next'));
+    fireEvent.click(screen.getByTestId('explode-next'));
+    fireEvent.click(screen.getByTestId('part-BODY_SHELL'));
+    fireEvent.click(screen.getByTestId('section-x'));
+    fireEvent.click(screen.getByTestId('cam-side'));
+    const q = new URLSearchParams(window.location.search);
+    expect(q.get('xpos')).toBe('2');
+    expect(q.get('sel')).toBe('BODY_SHELL');
+    expect(q.get('sec')).toMatch(/^x:/);
+    expect(q.get('cam')).toBe('side');
+    expect(q.get('view')).toBeNull();
+    expect(screen.getByTestId('cam-side')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('restores the exact view from the URL on load', () => {
+    window.history.pushState(null, '', '/conkay/designs/demo?view=engineering&xpos=3&sel=TIRE_FL&iso=BODY_SHELL&hide=BODY_SHELL&cam=top&sec=y:0.2');
+    base();
+    expect(screen.getByTestId('explode-step')).toHaveTextContent('Step 4 of 6 — Interior');
+    expect(chip('body')).toBe('exploded');
+    expect(chip('doors')).toBe('exploded');
+    expect(chip('interior')).toBe('assembled');
+    expect(screen.getByTestId('inspector')).toHaveTextContent('TIRE_FL');
+    expect(screen.getByTestId('cam-top')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('checks-overlay')).toBeTruthy();
+    // hidden/isolated round-tripped through state: any later change re-serializes them
+    fireEvent.click(screen.getByTestId('explode-next'));
+    const q = new URLSearchParams(window.location.search);
+    expect(q.get('xpos')).toBe('4');
+    expect(q.get('hide')).toBe('BODY_SHELL');
+    expect(q.get('iso')).toBe('BODY_SHELL');
+    expect(q.get('view')).toBe('engineering');
   });
 });
