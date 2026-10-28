@@ -53068,7 +53068,11 @@ registerUniversalLensActions();
     if (!found) return { ok: false, error: "artifact id required" };
     const allowed = mode === "read"
       ? _lensArtifactVisible(ctx, found)
-      : (LENS_SOCIAL_DOMAINS.has(found.domain) || !found.ownerId || found.ownerId === "anon"
+      // Write = owner or admin. Social-domain artifacts are NOT exempt here (unlike
+      // lens.update's content edits): save/publish/archive/lock/pin/... over someone
+      // else's forum or marketplace post is takeover, not collaboration. Unowned
+      // (anon/system) artifacts keep lens.update's open rule.
+      : (!found.ownerId || found.ownerId === "anon"
           || _lensIsOwnerActor(ctx, found) || _lensIsAdminActor(ctx));
     if (!allowed) return { ok: false, error: "artifact not found" };
     return { ok: true, artifact: found };
@@ -53120,7 +53124,7 @@ registerUniversalLensActions();
       copy.ownerId = callerId;
       copy.createdBy = callerId;
       if (copy.createdByUser !== undefined) copy.createdByUser = callerId;
-      copy.meta = { ...copy.meta, visibility: "private" };
+      copy.meta = { ...copy.meta, visibility: "private", ...(copy.meta?.status === "published" ? { status: "draft" } : {}) };
       STATE.lensArtifacts.set(copy.id, copy);
       _lensDomainIndexAdd(copy.domain, copy.id);
       saveStateDebounced();

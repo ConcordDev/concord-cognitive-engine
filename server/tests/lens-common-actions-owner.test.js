@@ -88,5 +88,26 @@ describe("COMMON_ACTIONS owner/visibility gate", () => {
     assert.equal(act("save", ctx(B), id, { z: 1 }).ok, false);
     // A cannot see B's private copy via duplicate-then-act as someone else.
     assert.equal(act("save", ctx("ca-third"), copy.id, { z: 1 }).ok, false);
+    assert.notEqual(copy.meta.status, "published", "a private copy is not marked published");
+  });
+
+  it("social-domain post: B can engage but cannot take it over (lock/archive/publish/save)", () => {
+    const id = `lart-ca-${randomUUID()}`;
+    STATE.lensArtifacts.set(id, {
+      id, domain: "forum", type: "post", ownerId: A, createdBy: A, title: "A post",
+      data: { body: "hello" }, meta: { visibility: "public", status: "published" },
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), version: 1,
+    });
+    const run = (name, c, params = {}) =>
+      LENS_ACTIONS.get(`forum.${name}`)(c, { id: null, domain: "forum", data: {}, meta: {} }, { id, ...params });
+    assert.equal(run("like", ctx(B)).ok, true);
+    assert.equal(run("comment", ctx(B), { text: "hi" }).ok, true);
+    const before = JSON.stringify(STATE.lensArtifacts.get(id).meta);
+    for (const name of ["lock", "archive", "save", "publish", "star"]) {
+      assert.equal(run(name, ctx(B), { title: "pwn" }).ok, false, `${name} by non-owner must be refused`);
+    }
+    assert.equal(JSON.stringify(STATE.lensArtifacts.get(id).meta), before);
+    assert.equal(run("lock", ctx(A)).ok, true, "owner can still lock");
+    STATE.lensArtifacts.delete(id);
   });
 });
