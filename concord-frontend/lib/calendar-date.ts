@@ -240,3 +240,18 @@ export const COMMON_TIME_ZONES: string[] = [
   'Asia/Tokyo',
   'Australia/Sydney',
 ];
+
+
+/** The next clean one-hour slot in `timeZone`: the first full hour that
+ *  starts comfortably after `now` (the probe jumps 90 minutes ahead and
+ *  floors to the hour in the zone), plus the instant one hour later.
+ *  Form defaults use this so a fresh form never opens with a
+ *  zero-duration Start = End at the current instant (F13). */
+export function nextHourSlotInZone(timeZone: string, now: Date = new Date()): { start: Date; end: Date } {
+  const probe = new Date(now.getTime() + 90 * 60_000);
+  const p = zonedParts(timeZone, probe);
+  const start = zonedWallTimeToUtc(timeZone, {
+    year: p.year, month: p.month, day: p.day, hour: p.hour, minute: 0, second: 0,
+  });
+  return { start, end: new Date(start.getTime() + 3_600_000) };
+}
