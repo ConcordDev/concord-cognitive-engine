@@ -28,7 +28,7 @@ import { designFromChat } from "../lib/conkay/chat/run.js";
 import { parseChatBrief } from "../lib/conkay/chat/brief-parser.js";
 import { ChatSession } from "../lib/conkay/chat/session.js";
 import { DesignConversation } from "../lib/conkay/chat/what-if.js";
-import { workbenchView } from "../lib/conkay/chat/workbench.js";
+import { workbenchView, assemblySnapshot, fitCheckDiff } from "../lib/conkay/chat/workbench.js";
 import { carEvaluator } from "../lib/conkay/chat/orchestrator.js";
 import { REPAIR_RULES } from "../lib/conkay/chat/repair-rules.js";
 import { carAcceptanceAsync } from "../lib/conkay/compiler/car-from-library.js";
@@ -122,8 +122,23 @@ export default function createConkayWorkbenchRouter({ requireAuth, store = new M
 
   router.post("/workbench/:id/knob", auth, handle(async (req, res) => {
     const c = own(req, res); if (!c) return;
+    // an invalid knob value is an input error (HTTP 400 invalid_input), never a 200 with an error string;
+    // a successful edit also returns what it changed in the solved assembly: the fit checks that flipped,
+    // the solver runs that re-ran, and the new compact assembly (HANDOFF-3 A1)
+    const before = assemblySnapshot(c.conv);
     const reply = await c.conv.setKnob(String(req.body?.variable || ""), req.body?.value);
-    res.json({ ok: true, reply: plain(reply), view: workbenchView(c.conv) });
+    if (reply?.error === "invalid_input") {
+      return res.status(400).json({ ok: false, error: "invalid_input", field: reply.field, reason: reply.reason, message: reply.message });
+    }
+    const after = assemblySnapshot(c.conv);
+    res.json({
+      ok: true,
+      reply: plain(reply),
+      fitCheckDiff: fitCheckDiff(before?.checks, after?.checks),
+      rerun: Array.isArray(reply?.diff?.rerun) ? reply.diff.rerun : [],
+      assembly: after?.compact ?? null,
+      view: workbenchView(c.conv),
+    });
   }));
 
   router.post("/workbench/:id/lock", auth, handle(async (req, res) => {
