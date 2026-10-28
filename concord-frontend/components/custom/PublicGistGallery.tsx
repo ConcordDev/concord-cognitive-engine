@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { FileCode, Loader2, ExternalLink } from 'lucide-react';
+import { lensRun } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface Gist {
@@ -23,12 +24,15 @@ export function PublicGistGallery() {
   const gists = useQuery({
     queryKey: ['public-gists', tick],
     queryFn: async () => {
-      const r = await fetch('https://api.github.com/gists/public?per_page=30', { headers: { Accept: 'application/vnd.github+json' } });
-      if (!r.ok) throw new Error(`github gists ${r.status}`);
-      return (await r.json()) as Gist[];
+      const res = await lensRun('repos', 'github-gists-public', {});
+      if (!res.data?.ok) throw new Error(res.data?.reason || res.data?.error || 'github_unavailable');
+      const out = res.data.result as { items?: Gist[]; stale?: boolean; fetchedAt?: number } | null;
+      return { items: out?.items || [], stale: !!out?.stale, fetchedAt: out?.fetchedAt ?? null };
     },
     staleTime: 5 * 60 * 1000,
   });
+
+  const rows = gists.data?.items;
 
   return (
     <div className="space-y-4">
@@ -36,27 +40,28 @@ export function PublicGistGallery() {
         <div className="flex items-center gap-2">
           <FileCode className="h-5 w-5 text-cyan-400" />
           <h2 className="text-sm font-semibold text-white">Public gist inspiration</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">api.github.com/gists/public · live</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">GitHub gists · via Concord server</span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setTick((t) => t + 1)} className="rounded border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[10px] text-cyan-200 hover:bg-cyan-500/20">Refresh</button>
-          {(gists.data?.length ?? 0) > 0 && (
+          {(rows?.length ?? 0) > 0 && (
             <SaveAsDtuButton
               compact
               apiSource="github-gists"
-              apiUrl="https://api.github.com/gists/public"
-              title={`Public gists — ${gists.data?.length}`}
-              content={(gists.data || []).slice(0, 20).map((g, i) => `${i + 1}. ${g.description || '(no description)'} by ${g.owner?.login || '?'}\n   files: ${Object.values(g.files).map((f) => `${f.filename}${f.language ? ` [${f.language}]` : ''}`).join(', ')}\n   ${g.html_url}`).join('\n\n')}
+              apiUrl="https://gist.github.com/discover"
+              title={`Public gists — ${rows?.length}`}
+              content={(rows || []).slice(0, 20).map((g, i) => `${i + 1}. ${g.description || '(no description)'} by ${g.owner?.login || '?'}\n   files: ${Object.values(g.files).map((f) => `${f.filename}${f.language ? ` [${f.language}]` : ''}`).join(', ')}\n   ${g.html_url}`).join('\n\n')}
               extraTags={['custom', 'gists', 'github']}
-              rawData={{ gists: gists.data }}
+              rawData={{ gists: rows }}
             />
           )}
         </div>
       </header>
-      {gists.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub gists unreachable.</div>}
+      {gists.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub gists unavailable right now — nothing is being shown in their place.</div>}
+      {gists.data?.stale && !gists.isError && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached GitHub gists{gists.data.fetchedAt ? ` from ${new Date(gists.data.fetchedAt).toLocaleString()}` : ''} — live refresh is rate-limited.</div>}
       {gists.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
       <div className="space-y-1 max-h-[500px] overflow-y-auto">
-        {(gists.data || []).map((g) => {
+        {(rows || []).map((g) => {
           const files = Object.values(g.files);
           const totalSize = files.reduce((s, f) => s + (f.size || 0), 0);
           return (

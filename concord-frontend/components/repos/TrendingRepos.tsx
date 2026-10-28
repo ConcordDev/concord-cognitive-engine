@@ -4,14 +4,15 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { GitBranch, Loader2, ExternalLink, Star } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { lensRun } from '@/lib/api/client';
 
 interface Repo { id: number; full_name: string; html_url: string; description?: string; stargazers_count: number; forks_count: number; language?: string; license?: { spdx_id?: string }; }
 
 const LANGUAGES = ['', 'TypeScript', 'Python', 'Rust', 'Go', 'JavaScript', 'C++', 'Java'];
 const RANGES = [
+  { id: '1', label: 'today' },
   { id: '7', label: 'last 7d' },
   { id: '30', label: 'last 30d' },
-  { id: '90', label: 'last 90d' },
 ];
 
 export function TrendingRepos() {
@@ -21,17 +22,15 @@ export function TrendingRepos() {
   const repos = useQuery({
     queryKey: ['gh-trending', lang, days],
     queryFn: async () => {
-      const since = new Date(Date.now() - Number(days) * 86400000).toISOString().slice(0, 10);
-      const langQ = lang ? `+language:${lang}` : '';
-      const r = await fetch(`https://api.github.com/search/repositories?q=created:>${since}${langQ}&sort=stars&order=desc&per_page=25`);
-      if (!r.ok) throw new Error(`gh ${r.status}`);
-      const j = await r.json();
-      return (j.items || []) as Repo[];
+      const res = await lensRun('repos', 'github-trending', { sinceDays: Number(days), lang: lang || undefined });
+      if (!res.data?.ok) throw new Error(res.data?.reason || res.data?.error || 'github_unavailable');
+      const out = res.data.result as { items?: Repo[]; stale?: boolean; fetchedAt?: number } | null;
+      return { items: out?.items || [], stale: !!out?.stale, fetchedAt: out?.fetchedAt ?? null };
     },
     staleTime: 30 * 60 * 1000,
   });
 
-  const list = repos.data || [];
+  const list = repos.data?.items || [];
   const totalStars = list.reduce((a, r) => a + (r.stargazers_count || 0), 0);
 
   return (
@@ -44,7 +43,8 @@ export function TrendingRepos() {
           {list.length > 0 && <SaveAsDtuButton compact apiSource="github-trending" apiUrl={`https://api.github.com/search/repositories?q=created:%3E${new Date(Date.now() - Number(days) * 86400000).toISOString().slice(0, 10)}`} title={`GitHub trending — ${lang || 'all'} (${list.length})`} content={list.slice(0, 20).map((r, i) => `${i + 1}. ★${r.stargazers_count.toLocaleString()} · ${r.full_name}\n   ${r.description || ''}\n   ${r.html_url}`).join('\n\n')} extraTags={['repos', 'trending', 'github', lang || 'all']} rawData={{ lang, days, repos: list }} />}
         </div>
       </header>
-      {repos.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub unreachable.</div>}
+      {repos.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub results unavailable right now — nothing is being shown in their place.</div>}
+      {repos.data?.stale && !repos.isError && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached GitHub results{repos.data.fetchedAt ? ` from ${new Date(repos.data.fetchedAt).toLocaleString()}` : ''} — live refresh is rate-limited.</div>}
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Repos</div><div className="mt-0.5 font-mono text-lg text-cyan-300">{list.length}</div></div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Stars (new)</div><div className="mt-0.5 font-mono text-lg text-cyan-300">{totalStars.toLocaleString()}</div></div>

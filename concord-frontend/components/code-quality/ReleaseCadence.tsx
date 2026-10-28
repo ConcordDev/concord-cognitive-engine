@@ -3,18 +3,19 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { GitBranch, Loader2, Calendar, ExternalLink, Tag } from 'lucide-react';
+import { lensRun } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface Release {
   id: number;
   tag_name: string;
-  name?: string;
+  name?: string | null;
   body?: string;
   draft: boolean;
   prerelease: boolean;
   published_at: string;
   html_url: string;
-  author?: { login: string };
+  author?: { login: string } | null;
 }
 
 export function ReleaseCadence() {
@@ -22,15 +23,21 @@ export function ReleaseCadence() {
   const [repo, setRepo] = useState('react');
   const [releases, setReleases] = useState<Release[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [staleInfo, setStaleInfo] = useState<{ stale: boolean; fetchedAt: number | null } | null>(null);
 
   const load = useMutation({
     mutationFn: async () => {
       setError(null);
+      setStaleInfo(null);
       try {
-        const r = await fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases?per_page=30`, { headers: { Accept: 'application/vnd.github+json' } });
-        if (!r.ok) throw new Error(`github ${r.status}`);
-        const j = await r.json();
-        setReleases(j as Release[]);
+        const res = await lensRun('repos', 'github-repo-meta', { owner, repo, kind: 'releases' });
+        if (!res.data?.ok) {
+          const reason = res.data?.reason || res.data?.error || 'github_unavailable';
+          throw new Error(reason === 'owner_or_repo_invalid' ? 'That owner/repo name is not valid.' : 'GitHub is unavailable right now — nothing is being shown in its place.');
+        }
+        const out = res.data.result as { items?: Release[]; stale?: boolean; fetchedAt?: number } | null;
+        setReleases(out?.items || []);
+        setStaleInfo({ stale: !!out?.stale, fetchedAt: out?.fetchedAt ?? null });
       } catch (e) { setReleases([]); setError(e instanceof Error ? e.message : 'request failed'); }
     },
   });
@@ -50,13 +57,13 @@ export function ReleaseCadence() {
         <div className="flex items-center gap-2">
           <GitBranch className="h-5 w-5 text-cyan-400" />
           <h2 className="text-sm font-semibold text-white">Release cadence (real-data quality signal)</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">api.github.com/repos/{`{owner}/{repo}`}/releases</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">GitHub releases · via Concord server</span>
         </div>
         {releases.length > 0 && (
           <SaveAsDtuButton
             compact
             apiSource="github-releases"
-            apiUrl={`https://api.github.com/repos/${owner}/${repo}/releases`}
+            apiUrl={`https://github.com/${owner}/${repo}/releases`}
             title={`${owner}/${repo} release cadence — ${releases.length} releases`}
             content={`avg gap ${avgGapDays?.toFixed(1) ?? '—'} days · days since last ${daysSinceLast ?? '—'}\n\n${releases.slice(0, 25).map((r) => `${r.tag_name} (${new Date(r.published_at).toISOString().slice(0, 10)})${r.prerelease ? ' [pre]' : ''}${r.draft ? ' [draft]' : ''}`).join('\n')}`}
             extraTags={['code-quality', 'github', 'releases', owner.toLowerCase(), repo.toLowerCase()]}
@@ -74,6 +81,7 @@ export function ReleaseCadence() {
         </button>
       </form>
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
+      {staleInfo?.stale && !error && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached GitHub releases{staleInfo.fetchedAt ? ` from ${new Date(staleInfo.fetchedAt).toLocaleString()}` : ''} — live refresh is rate-limited.</div>}
       {avgGapDays != null && (
         <div className="grid grid-cols-3 gap-2">
           <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">

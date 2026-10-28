@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence } from 'framer-motion';
 import { ShieldAlert, Loader2, ExternalLink, AlertOctagon, Zap } from 'lucide-react';
+import { lensRun } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { AdvisoryActionMenu } from '@/components/security/AdvisoryActionMenu';
 
@@ -27,27 +28,28 @@ export function SecurityAdvisories() {
   const advs = useQuery({
     queryKey: ['gh-advisories', sev],
     queryFn: async () => {
-      const sevQ = sev ? `&severity=${sev}` : '';
-      const r = await fetch(`https://api.github.com/advisories?per_page=25${sevQ}`);
-      if (!r.ok) throw new Error(`gh ${r.status}`);
-      return (await r.json()) as Advisory[];
+      const res = await lensRun('repos', 'github-advisories', { severity: sev || undefined });
+      if (!res.data?.ok) throw new Error(res.data?.reason || res.data?.error || 'github_unavailable');
+      const out = res.data.result as { items?: Advisory[]; stale?: boolean; fetchedAt?: number } | null;
+      return { items: (out?.items || []).slice(0, 25), stale: !!out?.stale, fetchedAt: out?.fetchedAt ?? null };
     },
     staleTime: 30 * 60 * 1000,
   });
 
-  const list = advs.data || [];
+  const list = advs.data?.items || [];
   const sevCounts = list.reduce<Record<string, number>>((a, v) => { a[v.severity] = (a[v.severity] || 0) + 1; return a; }, {});
 
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
-        <div className="flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-rose-400" /><h2 className="text-sm font-semibold text-white">GitHub security advisories</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">api.github.com/advisories</span></div>
+        <div className="flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-rose-400" /><h2 className="text-sm font-semibold text-white">GitHub security advisories</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">GitHub advisories · via Concord server</span></div>
         <div className="flex items-center gap-2">
           <select value={sev} onChange={(e) => setSev(e.target.value as typeof SEVERITY[number])} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{SEVERITY.map((s) => <option key={s} value={s}>{s || 'all severities'}</option>)}</select>
-          {list.length > 0 && <SaveAsDtuButton compact apiSource="github-advisories" apiUrl={`https://api.github.com/advisories?per_page=25${sev ? `&severity=${sev}` : ''}`} title={`GH advisories${sev ? ` (${sev})` : ''} — ${list.length}`} content={list.slice(0, 20).map((a, i) => `${i + 1}. ${a.ghsa_id}${a.cve_id ? ` / ${a.cve_id}` : ''} · ${a.severity}${a.cvss?.score ? ` (${a.cvss.score})` : ''}\n   ${a.summary.slice(0, 200)}\n   ${a.html_url}`).join('\n\n')} extraTags={['security', 'github', 'advisory', sev || 'all']} rawData={{ severity: sev, advisories: list }} />}
+          {list.length > 0 && <SaveAsDtuButton compact apiSource="github-advisories" apiUrl="https://github.com/advisories" title={`GH advisories${sev ? ` (${sev})` : ''} — ${list.length}`} content={list.slice(0, 20).map((a, i) => `${i + 1}. ${a.ghsa_id}${a.cve_id ? ` / ${a.cve_id}` : ''} · ${a.severity}${a.cvss?.score ? ` (${a.cvss.score})` : ''}\n   ${a.summary.slice(0, 200)}\n   ${a.html_url}`).join('\n\n')} extraTags={['security', 'github', 'advisory', sev || 'all']} rawData={{ severity: sev, advisories: list }} />}
         </div>
       </header>
-      {advs.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub unreachable.</div>}
+      {advs.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub advisories unavailable right now — nothing is being shown in their place.</div>}
+      {advs.data?.stale && !advs.isError && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached GitHub advisories{advs.data.fetchedAt ? ` from ${new Date(advs.data.fetchedAt).toLocaleString()}` : ''} — live refresh is rate-limited.</div>}
       <div className="grid grid-cols-4 gap-2">
         {(['critical', 'high', 'medium', 'low'] as const).map((s) => (
           <div key={s} className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">{s}</div><div className={`mt-0.5 font-mono text-lg ${s === 'critical' ? 'text-rose-300' : s === 'high' ? 'text-orange-300' : s === 'medium' ? 'text-amber-300' : 'text-zinc-300'}`}>{sevCounts[s] || 0}</div></div>
