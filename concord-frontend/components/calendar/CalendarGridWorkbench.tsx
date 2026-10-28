@@ -262,7 +262,14 @@ function fromBackendEvent(e: BackendEvent): CalendarEvent {
       ? {
         frequency: e.recurrence.freq,
         interval: e.recurrence.interval,
-        endDate: e.recurrence.until ? new Date(e.recurrence.until) : undefined,
+        // A date-only until is a WALL DATE in the event's zone — parsing
+        // it as a UTC instant rendered it a day early west of UTC
+        // (form said Jan 30, detail said Jan 29 — F10).
+        endDate: e.recurrence.until
+          ? (e.recurrence.until.length <= 10
+            ? fromZonedInputValue(`${e.recurrence.until}T00:00`, e.tz || e.recurrence.tz || browserTimeZone()) || new Date(e.recurrence.until)
+            : new Date(e.recurrence.until))
+          : undefined,
         count: e.recurrence.count || undefined,
         byDay: e.recurrence.byDay?.length ? e.recurrence.byDay : undefined,
         monthlyMode: e.recurrence.monthlyMode,
@@ -789,7 +796,12 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
         if (r.data.ok === false) throw new Error(r.data.error || 'Failed to update event');
         const id = eventIdFromResult(r.data);
         if (!id) throw new Error('The server returned no event id');
-        setActivityNote(eventUpdatedSentence(id));
+        const affected = (r.data.result as { occurrencesAffected?: number | null } | null)?.occurrencesAffected;
+        if (recurringEdit && typeof affected === 'number' && affected > 1) {
+          setActivityNote(`Updated ${affected} occurrences of this series.`);
+        } else {
+          setActivityNote(eventUpdatedSentence(id));
+        }
       } else {
         const r = await lensRun({ domain: 'calendar', action: 'events-create', input: params });
         if (r.data.ok === false) throw new Error(r.data.error || 'Failed to create event');
