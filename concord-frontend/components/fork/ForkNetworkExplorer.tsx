@@ -127,7 +127,7 @@ export function ForkNetworkExplorer() {
           <SaveAsDtuButton
             compact
             apiSource="github"
-            apiUrl={`https://api.github.com/repos/${owner}/${repo}/forks`}
+            apiUrl={`https://github.com/${owner}/${repo}/forks`}
             title={`${owner}/${repo} fork network — ${forks.length} forks`}
             content={`Parent: ${parent?.fullName} · ⭐${parent?.stargazers} · forks ${parent?.forks}\n\nTop forks (sorted ${sort}):\n${forks.slice(0, 15).map((f, i) => `  ${i + 1}. ${f.fullName} · ⭐${f.stargazers} · pushed ${f.pushedAt}`).join('\n')}`}
             extraTags={['fork', 'github', owner.toLowerCase(), repo.toLowerCase()]}

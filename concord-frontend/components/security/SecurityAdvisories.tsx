@@ -41,10 +41,10 @@ export function SecurityAdvisories() {
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
-        <div className="flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-rose-400" /><h2 className="text-sm font-semibold text-white">GitHub security advisories</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">api.github.com/advisories</span></div>
+        <div className="flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-rose-400" /><h2 className="text-sm font-semibold text-white">GitHub security advisories</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">GitHub advisories · via Concord server</span></div>
         <div className="flex items-center gap-2">
           <select value={sev} onChange={(e) => setSev(e.target.value as typeof SEVERITY[number])} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{SEVERITY.map((s) => <option key={s} value={s}>{s || 'all severities'}</option>)}</select>
-          {list.length > 0 && <SaveAsDtuButton compact apiSource="github-advisories" apiUrl={`https://api.github.com/advisories?per_page=25${sev ? `&severity=${sev}` : ''}`} title={`GH advisories${sev ? ` (${sev})` : ''} — ${list.length}`} content={list.slice(0, 20).map((a, i) => `${i + 1}. ${a.ghsa_id}${a.cve_id ? ` / ${a.cve_id}` : ''} · ${a.severity}${a.cvss?.score ? ` (${a.cvss.score})` : ''}\n   ${a.summary.slice(0, 200)}\n   ${a.html_url}`).join('\n\n')} extraTags={['security', 'github', 'advisory', sev || 'all']} rawData={{ severity: sev, advisories: list }} />}
+          {list.length > 0 && <SaveAsDtuButton compact apiSource="github-advisories" apiUrl="https://github.com/advisories" title={`GH advisories${sev ? ` (${sev})` : ''} — ${list.length}`} content={list.slice(0, 20).map((a, i) => `${i + 1}. ${a.ghsa_id}${a.cve_id ? ` / ${a.cve_id}` : ''} · ${a.severity}${a.cvss?.score ? ` (${a.cvss.score})` : ''}\n   ${a.summary.slice(0, 200)}\n   ${a.html_url}`).join('\n\n')} extraTags={['security', 'github', 'advisory', sev || 'all']} rawData={{ severity: sev, advisories: list }} />}
         </div>
       </header>
       {advs.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub advisories unavailable right now — nothing is being shown in their place.</div>}
