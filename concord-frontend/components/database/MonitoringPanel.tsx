@@ -4,9 +4,12 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Cpu, Play, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api/client';
-import { formatUptime, MetricCard, MiniBarChart, type PerfSnapshot } from './db-utils';
+import { useAuth } from '@/hooks/useAuth';
+import { canUseDbAdmin, formatUptime, MetricCard, MiniBarChart, type PerfSnapshot } from './db-utils';
 
 export function MonitoringPanel() {
+  const { user } = useAuth();
+  const isDbAdmin = canUseDbAdmin(user);
   const [perfHistory, setPerfHistory] = useState<PerfSnapshot[]>([]);
 
   const { data: dbStatus } = useQuery({
@@ -39,6 +42,9 @@ export function MonitoringPanel() {
     });
   }, [perfMetrics]);
 
+  // Admin-only on the server; disabled (and never rendered) for everyone
+  // else, so a non-admin can never fire the POST that used to come back as
+  // a bare 403 dressed up as a session error.
   const migrateMutation = useMutation({
     mutationFn: () => api.post('/api/db/migrate', {}),
     onError: (err) => {
@@ -108,33 +114,39 @@ export function MonitoringPanel() {
 
       <div className="panel p-4">
         <h2 className="text-lg font-semibold mb-4">Database Actions</h2>
-        <div className="flex gap-4 flex-wrap">
-          <button
-            onClick={() => migrateMutation.mutate()}
-            disabled={migrateMutation.isPending || !dbStatus?.postgres?.connected}
-            className="btn-neon flex items-center gap-2 text-sm"
-          >
-            <Play className="w-4 h-4" />
-            {migrateMutation.isPending ? 'Running Migrations...' : 'Run Migrations'}
-          </button>
-          <button
-            onClick={() => syncMutation.mutate()}
-            disabled={syncMutation.isPending || !dbStatus?.postgres?.connected}
-            className="btn-neon flex items-center gap-2 text-sm"
-          >
-            <RefreshCw className="w-4 h-4" />
-            {syncMutation.isPending ? 'Syncing...' : 'Sync to PostgreSQL'}
-          </button>
-        </div>
-        {migrateMutation.data && (
-          <p className="mt-2 text-sm text-green-400">
-            Migrations complete: {(migrateMutation.data as { data?: { applied?: number; total?: number } }).data?.applied}/{(migrateMutation.data as { data?: { applied?: number; total?: number } }).data?.total}
-          </p>
-        )}
-        {syncMutation.data && (
-          <p className="mt-2 text-sm text-green-400">
-            Synced: {(syncMutation.data as { data?: { synced?: number; total?: number } }).data?.synced}/{(syncMutation.data as { data?: { synced?: number; total?: number } }).data?.total} DTUs
-          </p>
+        {isDbAdmin ? (
+          <>
+            <div className="flex gap-4 flex-wrap">
+              <button
+                onClick={() => migrateMutation.mutate()}
+                disabled={migrateMutation.isPending || !dbStatus?.postgres?.connected}
+                className="btn-neon flex items-center gap-2 text-sm"
+              >
+                <Play className="w-4 h-4" />
+                {migrateMutation.isPending ? 'Running Migrations...' : 'Run Migrations'}
+              </button>
+              <button
+                onClick={() => syncMutation.mutate()}
+                disabled={syncMutation.isPending || !dbStatus?.postgres?.connected}
+                className="btn-neon flex items-center gap-2 text-sm"
+              >
+                <RefreshCw className="w-4 h-4" />
+                {syncMutation.isPending ? 'Syncing...' : 'Sync to PostgreSQL'}
+              </button>
+            </div>
+            {migrateMutation.data && (
+              <p className="mt-2 text-sm text-green-400">
+                Migrations complete: {(migrateMutation.data as { data?: { applied?: number; total?: number } }).data?.applied}/{(migrateMutation.data as { data?: { applied?: number; total?: number } }).data?.total}
+              </p>
+            )}
+            {syncMutation.data && (
+              <p className="mt-2 text-sm text-green-400">
+                Synced: {(syncMutation.data as { data?: { synced?: number; total?: number } }).data?.synced}/{(syncMutation.data as { data?: { synced?: number; total?: number } }).data?.total} DTUs
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-gray-500">Migrations and sync are admin-only.</p>
         )}
       </div>
     </div>
