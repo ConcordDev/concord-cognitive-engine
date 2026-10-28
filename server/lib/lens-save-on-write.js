@@ -52,11 +52,27 @@ export function isWriteName(name) {
   return true;
 }
 
-function requestSave() {
+// Count every save the process schedules so a handler that already saved is not
+// saved twice. The global hook is wrapped lazily (and re-wrapped if replaced, e.g.
+// by tests); the wrapper only counts and forwards.
+let _saveSeq = 0;
+function countedHook() {
   const fn = globalThis._concordSaveStateDebounced;
-  if (typeof fn === "function") {
-    try { fn(); } catch { /* best effort: a failed schedule must not fail the action */ }
-  }
+  if (typeof fn !== "function") return null;
+  if (fn.__saveCounted) return fn;
+  const counted = function (...a) { _saveSeq += 1; return fn.apply(this, a); };
+  counted.__saveCounted = true;
+  try { globalThis._concordSaveStateDebounced = counted; } catch { return fn; }
+  return counted;
+}
+
+function requestSave(seqBefore) {
+  const fn = countedHook();
+  if (typeof fn !== "function") return;
+  // Any save scheduled since the handler started (its own, or another write's debounced
+  // save, which serializes the whole STATE when it fires) already covers this write.
+  if (_saveSeq !== seqBefore) return;
+  try { fn(); } catch { /* best effort: a failed schedule must not fail the action */ }
 }
 
 const succeeded = (res) => res && typeof res === "object" && res.ok !== false && !res.error;
@@ -75,16 +91,20 @@ export function saveAfterWrites(register) {
     const isAsync = handler.constructor && handler.constructor.name === "AsyncFunction";
     const saving = isAsync
       ? async function (...args) {
+        countedHook();
+        const seq = _saveSeq;
         const res = await handler.apply(this, args);
-        if (succeeded(res)) requestSave();
+        if (succeeded(res)) requestSave(seq);
         return res;
       }
       : function (...args) {
+        countedHook();
+        const seq = _saveSeq;
         const res = handler.apply(this, args);
         if (res && typeof res.then === "function") {
-          return res.then((r) => { if (succeeded(r)) requestSave(); return r; });
+          return res.then((r) => { if (succeeded(r)) requestSave(seq); return r; });
         }
-        if (succeeded(res)) requestSave();
+        if (succeeded(res)) requestSave(seq);
         return res;
       };
     Object.assign(saving, handler);
