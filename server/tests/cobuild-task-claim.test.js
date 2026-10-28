@@ -61,7 +61,9 @@ describe("cobuild task-claim + /sim/projects alias", () => {
   });
 
   it("GET board lists the cobuild tasks for that session id", async () => {
-    const r = await call(`/${sessionId}`);
+    const anon = await call(`/${sessionId}`);
+    assert.equal(anon.status, 401, "the board read needs a signed-in caller");
+    const r = await call(`/${sessionId}`, { user: "alice" });
     assert.equal(r.status, 200);
     assert.equal(r.body.boardId, sessionId);
     assert.equal(r.body.count, 1);
@@ -80,7 +82,16 @@ describe("cobuild task-claim + /sim/projects alias", () => {
     assert.equal(none.status, 404);
   });
 
+  it("a signed-in user who is not a session member cannot claim (403), and nothing changes", async () => {
+    const r = await call(`/${sessionId}/tasks/${taskId}/claim`, { method: "POST", user: "mallory" });
+    assert.equal(r.status, 403);
+    assert.equal(r.body.error, "not a participant");
+    const list = runLensAction("cobuild", "task-list", "alice", { sessionId });
+    assert.equal(list.result.tasks.find((t) => t.id === taskId).assignee, null);
+  });
+
   it("first claim assigns the caller, same user again is idempotent, another user gets 409", async () => {
+    for (const u of ["bob", "carol"]) assert.equal(runLensAction("cobuild", "session-join", u, { sessionId }).ok, true);
     const first = await call(`/${sessionId}/tasks/${taskId}/claim`, { method: "POST", user: "bob" });
     assert.equal(first.status, 200);
     assert.equal(first.body.task.assignee, "bob");
@@ -114,6 +125,7 @@ describe("cobuild task-claim + /sim/projects alias", () => {
     globalThis._concordSaveStateDebounced = () => { saves++; };
     try {
       const t = runLensAction("cobuild", "task-create", "alice", { sessionId, title: "Paint" }).result.task;
+      runLensAction("cobuild", "session-join", "dave", { sessionId });
       const before = saves;
       assert.equal(runLensAction("cobuild", "task-claim", "dave", { sessionId, taskId: t.id }).ok, true);
       assert.equal(saves, before + 1);

@@ -614,6 +614,26 @@ const READ_ACTIONS = new Set(["check-builds", "view-citations"]);
 const WIRED_ACTIONS = ["manage-inventory", "quick-chat", "toggle-notifications"];
 const READ_OPS = new Set(["get", "read", "view", "list"]);
 const QUICK_CHAT_MAX = 4000;
+// Per-user send limit for quick-chat (sliding window, in memory per process).
+export const QUICK_CHAT_RATE = { max: 10, windowMs: 60_000 };
+const _quickChatSends = new Map(); // userId -> [timestamps]
+let _qcNow = () => Date.now();
+export function __resetQuickChatRateForTests({ now } = {}) {
+  _quickChatSends.clear();
+  _qcNow = typeof now === "function" ? now : () => Date.now();
+}
+function quickChatAllowed(userId) {
+  const t = _qcNow();
+  const recent = (_quickChatSends.get(userId) || []).filter((x) => t - x < QUICK_CHAT_RATE.windowMs);
+  if (recent.length >= QUICK_CHAT_RATE.max) {
+    _quickChatSends.set(userId, recent);
+    return { ok: false, retryAfterMs: QUICK_CHAT_RATE.windowMs - (t - recent[0]) };
+  }
+  recent.push(t);
+  _quickChatSends.set(userId, recent);
+  if (_quickChatSends.size > 5000) _quickChatSends.delete(_quickChatSends.keys().next().value);
+  return { ok: true };
+}
 
 // Sends text to a DM through the message lens action, so validation and
 // persistence are the ones the message lens uses. Finds the caller's existing DM
@@ -628,6 +648,8 @@ function quickChat(db, userId, body) {
   const me = String(userId);
   if (to === me) return fail(400, "cannot_message_self");
   if (!db) return fail(501, "not_wired", { reason: "no_database" });
+  const rl = quickChatAllowed(me);
+  if (!rl.ok) return fail(429, "rate_limited", { retryAfterMs: rl.retryAfterMs, limit: QUICK_CHAT_RATE.max, windowMs: QUICK_CHAT_RATE.windowMs });
   let known;
   try {
     known = db.prepare("SELECT 1 AS n FROM users WHERE id = ?").get(to);

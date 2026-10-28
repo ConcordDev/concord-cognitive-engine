@@ -8,6 +8,7 @@ import Database from "better-sqlite3";
 
 import createWorldRoutes from "../routes/world.js";
 import { runLensAction } from "../lib/sim-lens-bridge.js";
+import { __resetQuickChatRateForTests, QUICK_CHAT_RATE } from "../lib/sim-infra.js";
 
 describe("sim quick-action: chat, inventory, retired toggle", () => {
   let db;
@@ -16,6 +17,7 @@ describe("sim quick-action: chat, inventory, retired toggle", () => {
   let savedState;
 
   before(async () => {
+    __resetQuickChatRateForTests();
     savedState = globalThis._concordSTATE;
     globalThis._concordSTATE = {};
     db = new Database(":memory:");
@@ -126,5 +128,23 @@ describe("sim quick-action: chat, inventory, retired toggle", () => {
     assert.equal(r.status, 410);
     assert.equal(r.body.error, "retired");
     assert.equal(r.body.use, "companion.push-prefs-set");
+  });
+  it("quick-chat is rate limited per user (429 past the window budget; other users unaffected)", async () => {
+    let t = 1_000_000;
+    __resetQuickChatRateForTests({ now: () => t });
+    for (let i = 0; i < QUICK_CHAT_RATE.max; i++) {
+      const ok = await act({ action: "quick-chat", toUserId: "bob", text: `msg ${i}` });
+      assert.equal(ok.status, 200, `send ${i}`);
+    }
+    const over = await act({ action: "quick-chat", toUserId: "bob", text: "one too many" });
+    assert.equal(over.status, 429);
+    assert.equal(over.body.error, "rate_limited");
+    assert.ok(over.body.retryAfterMs > 0);
+    const bobSends = await act({ action: "quick-chat", toUserId: "alice", text: "hi alice" }, "bob");
+    assert.equal(bobSends.status, 200);
+    t += QUICK_CHAT_RATE.windowMs + 1;
+    const later = await act({ action: "quick-chat", toUserId: "bob", text: "after the window" });
+    assert.equal(later.status, 200);
+    __resetQuickChatRateForTests();
   });
 });

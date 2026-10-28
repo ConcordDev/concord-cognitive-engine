@@ -169,7 +169,12 @@ export default function registerCobuildActions(registerLensAction) {
       if (!sessionId) return { ok: false, error: "sessionId required" };
       const taskId = String(p.taskId || "");
       if (!taskId) return { ok: false, error: "taskId required" };
-      if (!S.cobuildSessions.has(sessionId)) return { ok: false, error: "session not found" };
+      const session = S.cobuildSessions.get(sessionId);
+      if (!session) return { ok: false, error: "session not found" };
+      // Only a member of the session may claim one of its tasks.
+      if (userId === "anon" || !Array.isArray(session.participants) || !session.participants.includes(userId)) {
+        return { ok: false, error: "not a participant" };
+      }
       const task = sessionTasks(S, sessionId).get(taskId);
       if (!task) return { ok: false, error: "task not found" };
       if (task.assignee && task.assignee !== userId) {
