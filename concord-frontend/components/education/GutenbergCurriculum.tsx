@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { GraduationCap, Loader2, ExternalLink, BookOpen, Download } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup, carryLookupMeta, lookupMeta } from '@/lib/public-lookup';
 
 interface Book {
   id: number;
@@ -32,15 +33,16 @@ export function GutenbergCurriculum() {
   const books = useQuery({
     queryKey: ['gutendex', topic],
     queryFn: async () => {
-      const r = await fetch(`https://gutendex.com/books?topic=${topic}&sort=popular`);
-      if (!r.ok) throw new Error(`gutendex ${r.status}`);
-      const j = await r.json();
-      return ((j.results || []) as Book[]).slice(0, 25);
+      const j = await publicLookup<{ results?: Book[] }>('gutendex-books', { topic });
+      const items = ((j.results || []) as Book[]).slice(0, 25);
+      carryLookupMeta(j, items);
+      return items;
     },
     staleTime: 60 * 60 * 1000,
   });
 
   const list = books.data || [];
+  const meta = lookupMeta(books.data);
   const totalDl = list.reduce((a, b) => a + (b.download_count || 0), 0);
   const authors = new Set(list.flatMap((b) => b.authors?.map((a) => a.name) || [])).size;
 
@@ -50,7 +52,7 @@ export function GutenbergCurriculum() {
         <div className="flex items-center gap-2">
           <GraduationCap className="h-5 w-5 text-sky-400" />
           <h2 className="text-sm font-semibold text-white">Public-domain curriculum</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">gutendex.com · topic:{topic}</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">Gutendex · via Concord server · topic:{topic}</span>
         </div>
         <div className="flex items-center gap-2">
           <select value={topic} onChange={(e) => setTopic(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
@@ -60,7 +62,7 @@ export function GutenbergCurriculum() {
             <SaveAsDtuButton
               compact
               apiSource="gutendex"
-              apiUrl={`https://gutendex.com/books?topic=${topic}&sort=popular`}
+              apiUrl="https://www.gutenberg.org/"
               title={`Project Gutenberg — ${topic} (${list.length} books)`}
               content={list.slice(0, 20).map((b, i) => `${i + 1}. ${b.title}\n   ${b.authors?.map((a) => a.name).join(', ') || 'anon'}\n   ${b.download_count.toLocaleString()} downloads · gutenberg.org/ebooks/${b.id}`).join('\n\n')}
               extraTags={['education', 'gutenberg', 'books', topic]}
@@ -69,7 +71,8 @@ export function GutenbergCurriculum() {
           )}
         </div>
       </header>
-      {books.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Gutendex unreachable.</div>}
+      {books.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Project Gutenberg (Gutendex) unavailable right now — nothing is being shown in its place.</div>
+      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached Gutenberg data{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
           <div className="text-[10px] uppercase tracking-wider text-zinc-400">Books</div>

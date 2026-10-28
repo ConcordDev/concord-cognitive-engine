@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { ShieldAlert, Loader2, Search, ExternalLink } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup, lookupMeta } from '@/lib/public-lookup';
 
 interface CveItem {
   cve: {
@@ -32,21 +33,23 @@ export function CveSearch() {
   const [keyword, setKeyword] = useState('openssl');
   const [hits, setHits] = useState<CveItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [noticeData, setNoticeData] = useState<unknown>(null);
 
   const search = useMutation({
     mutationFn: async () => {
       setError(null);
       try {
-        const r = await fetch(`https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch=${encodeURIComponent(keyword)}&resultsPerPage=20`);
-        if (!r.ok) throw new Error(`nvd ${r.status}`);
-        const j = await r.json();
+        const j = await publicLookup<{ vulnerabilities?: CveItem[] }>('nvd-cves', { keyword });
         setHits(j.vulnerabilities || []);
-      } catch (e) { setHits([]); setError(e instanceof Error ? e.message : 'request failed'); }
+        setNoticeData(j);
+      } catch (e) { setHits([]); setNoticeData(null); setError('NVD is unavailable right now — nothing is being shown in its place.'); }
     },
   });
 
   const descFor = (c: CveItem) => c.cve.descriptions.find((d) => d.lang === 'en')?.value || c.cve.descriptions[0]?.value || '';
   const sevFor = (c: CveItem) => c.cve.metrics?.cvssMetricV31?.[0]?.cvssData;
+
+  const noticeMeta = lookupMeta(noticeData);
 
   return (
     <div className="space-y-4">
@@ -54,13 +57,13 @@ export function CveSearch() {
         <div className="flex items-center gap-2">
           <ShieldAlert className="h-5 w-5 text-cyan-400" />
           <h2 className="text-sm font-semibold text-white">CVE security search</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">nvd.nist.gov v2.0 · no key</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">NVD · via Concord server</span>
         </div>
         {hits.length > 0 && (
           <SaveAsDtuButton
             compact
             apiSource="nvd"
-            apiUrl={`https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch=${encodeURIComponent(keyword)}`}
+            apiUrl="https://nvd.nist.gov/vuln/search"
             title={`CVE search — "${keyword}" (${hits.length})`}
             content={hits.slice(0, 15).map((c, i) => `${i + 1}. ${c.cve.id} · ${sevFor(c)?.baseSeverity || 'NONE'} ${sevFor(c)?.baseScore?.toFixed(1) || '—'}\n   ${descFor(c).slice(0, 200)}`).join('\n\n')}
             extraTags={['audit', 'cve', 'security', keyword.toLowerCase()]}
@@ -79,6 +82,7 @@ export function CveSearch() {
         </button>
       </form>
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
+      {noticeMeta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached NVD data{noticeMeta.fetchedAt ? ` from ${new Date(noticeMeta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}
       <div className="space-y-2 max-h-[480px] overflow-y-auto">
         {hits.map((c) => {
           const sev = sevFor(c);

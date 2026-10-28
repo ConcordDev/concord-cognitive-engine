@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Bug, Loader2, ExternalLink, AlertOctagon, Shield } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup, carryLookupMeta, lookupMeta } from '@/lib/public-lookup';
 
 interface Cve {
   cve: {
@@ -35,17 +36,17 @@ export function NvdCveFeed() {
   const cves = useQuery({
     queryKey: ['nvd-cves', severity],
     queryFn: async () => {
-      const sev = severity ? `&cvssV3Severity=${severity}` : '';
-      const r = await fetch(`https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=25${sev}`);
-      if (!r.ok) throw new Error(`nvd ${r.status}`);
-      const j = await r.json();
-      return (j?.vulnerabilities || []) as Cve[];
+      const j = await publicLookup<{ vulnerabilities?: Cve[] }>('nvd-cves', severity ? { severity } : {});
+      const items = (j?.vulnerabilities || []) as Cve[];
+      carryLookupMeta(j, items);
+      return items;
     },
     staleTime: 10 * 60 * 1000,
     refetchInterval: 10 * 60 * 1000,
   });
 
   const list = cves.data || [];
+  const meta = lookupMeta(cves.data);
   const sevCounts = list.reduce<Record<string, number>>((a, v) => {
     const s = v.cve.metrics?.cvssMetricV31?.[0]?.cvssData.baseSeverity || v.cve.metrics?.cvssMetricV30?.[0]?.cvssData.baseSeverity || 'UNKNOWN';
     a[s] = (a[s] || 0) + 1; return a;
@@ -57,7 +58,7 @@ export function NvdCveFeed() {
         <div className="flex items-center gap-2">
           <Bug className="h-5 w-5 text-rose-400" />
           <h2 className="text-sm font-semibold text-white">Real-world CVE feed</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">nvd.nist.gov · CVE 2.0 API</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">NVD · via Concord server</span>
         </div>
         <div className="flex items-center gap-2">
           <select value={severity} onChange={(e) => setSeverity(e.target.value as typeof SEVERITY_FILTERS[number])} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
@@ -67,7 +68,7 @@ export function NvdCveFeed() {
             <SaveAsDtuButton
               compact
               apiSource="nvd-cve"
-              apiUrl={`https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=25${severity ? `&cvssV3Severity=${severity}` : ''}`}
+              apiUrl="https://nvd.nist.gov/vuln/search"
               title={`NVD CVEs${severity ? ` (${severity})` : ''} — ${list.length} latest`}
               content={list.slice(0, 20).map((v, i) => {
                 const desc = v.cve.descriptions?.find((d) => d.lang === 'en')?.value || '';
@@ -81,7 +82,8 @@ export function NvdCveFeed() {
           )}
         </div>
       </header>
-      {cves.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">NVD API unreachable (rate-limit or network).</div>}
+      {cves.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">NVD unavailable right now — nothing is being shown in its place.</div>
+      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached NVD data{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}}
       <div className="grid grid-cols-4 gap-2">
         {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const).map((s) => (
           <div key={s} className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">

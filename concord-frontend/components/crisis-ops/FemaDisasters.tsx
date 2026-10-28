@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, Loader2, ExternalLink, MapPin, Calendar } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup, carryLookupMeta, lookupMeta } from '@/lib/public-lookup';
 
 interface Disaster {
   id: string;
@@ -27,14 +28,15 @@ export function FemaDisasters() {
   const disasters = useQuery({
     queryKey: ['fema-disasters', state],
     queryFn: async () => {
-      const filter = state ? `&$filter=state%20eq%20'${state}'` : '';
-      const r = await fetch(`https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries?$top=30&$orderby=declarationDate%20desc${filter}`);
-      if (!r.ok) throw new Error(`fema ${r.status}`);
-      const j = await r.json();
-      return (j.DisasterDeclarationsSummaries || []) as Disaster[];
+      const j = await publicLookup<{ DisasterDeclarationsSummaries?: Disaster[] }>('fema-disasters', state ? { state } : {});
+      const items = (j.DisasterDeclarationsSummaries || []) as Disaster[];
+      carryLookupMeta(j, items);
+      return items;
     },
     staleTime: 5 * 60 * 1000,
   });
+
+  const meta = lookupMeta(disasters.data);
 
   return (
     <div className="space-y-4">
@@ -42,7 +44,7 @@ export function FemaDisasters() {
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-amber-400" />
           <h2 className="text-sm font-semibold text-white">FEMA disaster declarations</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">fema.gov/api/open/v2 · live</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">FEMA OpenFEMA · via Concord server</span>
         </div>
         <div className="flex items-center gap-2">
           <select value={state} onChange={(e) => setState(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
@@ -52,7 +54,7 @@ export function FemaDisasters() {
             <SaveAsDtuButton
               compact
               apiSource="fema-disasters"
-              apiUrl="https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries"
+              apiUrl="https://www.fema.gov/about/openfema"
               title={`FEMA disasters${state ? ` (${state})` : ''} — ${disasters.data?.length} recent`}
               content={(disasters.data || []).slice(0, 25).map((d, i) => `${i + 1}. DR-${d.disasterNumber} · ${d.incidentType} · ${d.state}/${d.designatedArea}\n   ${d.declarationTitle}\n   declared ${d.declarationDate?.slice(0, 10)}`).join('\n\n')}
               extraTags={['crisis-ops', 'fema', 'disasters', state.toLowerCase() || 'all']}
@@ -61,7 +63,8 @@ export function FemaDisasters() {
           )}
         </div>
       </header>
-      {disasters.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">FEMA OpenAPI unreachable.</div>}
+      {disasters.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">FEMA disaster data unavailable right now — nothing is being shown in its place.</div>
+      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached FEMA data{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}}
       {disasters.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling declarations…</div>}
       <div className="space-y-2 max-h-[500px] overflow-y-auto">
         {(disasters.data || []).map((d) => (

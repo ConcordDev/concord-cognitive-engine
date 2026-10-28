@@ -31,7 +31,10 @@ export function carryLookupMeta<T extends object>(from: unknown, to: T): T {
 export type LookupAction =
   | 'wiki-summary' | 'wiki-search' | 'wiki-onthisday'
   | 'wikidata-entity' | 'wikidata-search' | 'commons-search'
-  | 'se-search' | 'hn-search';
+  | 'se-search' | 'hn-search'
+  | 'nvd-cves' | 'eonet-events' | 'gutendex-books' | 'sketchfab-search'
+  | 'usgs-quakes' | 'fema-disasters' | 'restcountries-region' | 'sunrise-sunset'
+  | 'imgflip-memes' | 'onionoo-summary' | 'npm-search' | 'openrouter-models';
 
 /** Run a public-lookup action; resolves to the upstream JSON, throws on failure (bad params, unavailable). */
 export async function publicLookup<T = unknown>(action: LookupAction, params: Record<string, unknown>): Promise<T> {

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Package, Loader2, Search, ExternalLink, Calendar } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup, lookupMeta } from '@/lib/public-lookup';
 
 interface NpmHit {
   package: {
@@ -24,20 +25,22 @@ export function NpmPackageSearch() {
   const [query, setQuery] = useState('react');
   const [hits, setHits] = useState<NpmHit[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [noticeData, setNoticeData] = useState<unknown>(null);
 
   const search = useMutation({
     mutationFn: async () => {
       setError(null);
       try {
-        const r = await fetch(`https://registry.npmjs.org/-/v1/search?text=${encodeURIComponent(query)}&size=20`);
-        if (!r.ok) throw new Error(`npm ${r.status}`);
-        const j = await r.json();
+        const j = await publicLookup<{ objects?: NpmHit[] }>('npm-search', { q: query });
         setHits(j.objects || []);
-      } catch (e) { setHits([]); setError(e instanceof Error ? e.message : 'request failed'); }
+        setNoticeData(j);
+      } catch (e) { setHits([]); setNoticeData(null); setError('The npm registry is unavailable right now — nothing is being shown in its place.'); }
     },
   });
 
   const scoreColor = (s: number) => s > 0.7 ? 'text-emerald-300' : s > 0.4 ? 'text-cyan-300' : s > 0.2 ? 'text-amber-300' : 'text-zinc-400';
+
+  const noticeMeta = lookupMeta(noticeData);
 
   return (
     <div className="space-y-4">
@@ -45,13 +48,13 @@ export function NpmPackageSearch() {
         <div className="flex items-center gap-2">
           <Package className="h-5 w-5 text-cyan-400" />
           <h2 className="text-sm font-semibold text-white">NPM package search</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">registry.npmjs.org · no key</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">npm registry · via Concord server</span>
         </div>
         {hits.length > 0 && (
           <SaveAsDtuButton
             compact
             apiSource="npm-registry"
-            apiUrl={`https://registry.npmjs.org/-/v1/search?text=${encodeURIComponent(query)}`}
+            apiUrl={`https://www.npmjs.com/search?q=${encodeURIComponent(query)}`}
             title={`NPM search — "${query}" (${hits.length})`}
             content={hits.slice(0, 25).map((h, i) => `${i + 1}. ${h.package.name}@${h.package.version} — ${h.package.description || ''}\n   score: q=${h.score.detail.quality.toFixed(2)} pop=${h.score.detail.popularity.toFixed(2)} maint=${h.score.detail.maintenance.toFixed(2)}\n   ${h.package.links?.npm || ''}`).join('\n\n')}
             extraTags={['app-maker', 'npm', 'packages']}
@@ -70,6 +73,7 @@ export function NpmPackageSearch() {
         </button>
       </form>
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
+      {noticeMeta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached npm data{noticeMeta.fetchedAt ? ` from ${new Date(noticeMeta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}
       <div className="space-y-1 max-h-96 overflow-y-auto">
         {hits.map((h) => (
           <a key={h.package.name} href={h.package.links?.npm} target="_blank" rel="noopener noreferrer" className="block rounded border border-zinc-800 bg-zinc-950 p-2.5 hover:border-cyan-500/30">

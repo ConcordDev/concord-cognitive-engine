@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Globe, Loader2, ExternalLink, Users, Languages } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup, carryLookupMeta, lookupMeta } from '@/lib/public-lookup';
 
 interface Country {
   name: { common: string; official: string };
@@ -26,28 +27,29 @@ export function CountryAtlas() {
   const countries = useQuery({
     queryKey: ['restcountries', region],
     queryFn: async () => {
-      const r = await fetch(`https://restcountries.com/v3.1/region/${region}?fields=name,cca3,capital,region,subregion,population,area,languages,currencies`);
-      if (!r.ok) throw new Error(`rc ${r.status}`);
-      const j = (await r.json()) as Country[];
-      return j.sort((a, b) => b.population - a.population).slice(0, 30);
+      const j = await publicLookup<Country[]>('restcountries-region', { region });
+      const sorted = (j as Country[]).sort((a, b) => b.population - a.population).slice(0, 30);
+      return carryLookupMeta(j, sorted);
     },
     staleTime: 60 * 60 * 1000,
   });
 
   const list = countries.data || [];
+  const meta = lookupMeta(countries.data);
   const totalPop = list.reduce((a, c) => a + (c.population || 0), 0);
   const subregions = new Set(list.map((c) => c.subregion).filter(Boolean)).size;
 
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
-        <div className="flex items-center gap-2"><Globe className="h-5 w-5 text-sky-400" /><h2 className="text-sm font-semibold text-white">Global atlas — countries by region</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">restcountries.com</span></div>
+        <div className="flex items-center gap-2"><Globe className="h-5 w-5 text-sky-400" /><h2 className="text-sm font-semibold text-white">Global atlas — countries by region</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">REST Countries · via Concord server</span></div>
         <div className="flex items-center gap-2">
           <select value={region} onChange={(e) => setRegion(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}</select>
-          {list.length > 0 && <SaveAsDtuButton compact apiSource="restcountries" apiUrl={`https://restcountries.com/v3.1/region/${region}`} title={`Country atlas — ${region} (${list.length} countries)`} content={list.slice(0, 30).map((c, i) => `${i + 1}. ${c.name.common} (${c.cca3}) · capital ${c.capital?.[0] || '—'} · pop ${c.population.toLocaleString()}`).join('\n')} extraTags={['global', 'countries', region.toLowerCase()]} rawData={{ region, countries: list }} />}
+          {list.length > 0 && <SaveAsDtuButton compact apiSource="restcountries" apiUrl="https://restcountries.com/" title={`Country atlas — ${region} (${list.length} countries)`} content={list.slice(0, 30).map((c, i) => `${i + 1}. ${c.name.common} (${c.cca3}) · capital ${c.capital?.[0] || '—'} · pop ${c.population.toLocaleString()}`).join('\n')} extraTags={['global', 'countries', region.toLowerCase()]} rawData={{ region, countries: list }} />}
         </div>
       </header>
-      {countries.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">REST Countries unreachable.</div>}
+      {countries.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">REST Countries unavailable right now — nothing is being shown in its place.</div>
+      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached country data{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Countries</div><div className="mt-0.5 font-mono text-lg text-sky-300">{list.length}</div></div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Pop (sum)</div><div className="mt-0.5 font-mono text-lg text-sky-300">{totalPop > 1e9 ? `${(totalPop / 1e9).toFixed(2)}B` : `${(totalPop / 1e6).toFixed(0)}M`}</div></div>

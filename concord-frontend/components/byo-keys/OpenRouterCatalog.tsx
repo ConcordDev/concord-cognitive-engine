@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Key, Loader2, Search, Cpu } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup, carryLookupMeta, lookupMeta } from '@/lib/public-lookup';
 
 interface OrModel {
   id: string;
@@ -22,14 +23,15 @@ export function OpenRouterCatalog() {
   const models = useQuery({
     queryKey: ['openrouter-models'],
     queryFn: async () => {
-      const r = await fetch('https://openrouter.ai/api/v1/models');
-      if (!r.ok) throw new Error(`openrouter ${r.status}`);
-      const j = await r.json();
-      return (j.data || []) as OrModel[];
+      const j = await publicLookup<{ data?: OrModel[] }>('openrouter-models', {});
+      const items = (j.data || []) as OrModel[];
+      carryLookupMeta(j, items);
+      return items;
     },
     staleTime: 60 * 60 * 1000,
   });
 
+  const meta = lookupMeta(models.data);
   const filtered = (models.data || []).filter((m) => !query.trim() || m.id.toLowerCase().includes(query.toLowerCase()) || (m.name || '').toLowerCase().includes(query.toLowerCase())).slice(0, 100);
 
   const fmtPrice = (p?: string) => {
@@ -45,13 +47,13 @@ export function OpenRouterCatalog() {
         <div className="flex items-center gap-2">
           <Key className="h-5 w-5 text-cyan-400" />
           <h2 className="text-sm font-semibold text-white">Provider catalog</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">openrouter.ai/api/v1/models · {models.data?.length ?? '—'} models</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">OpenRouter · via Concord server · {models.data?.length ?? '—'} models</span>
         </div>
         {filtered.length > 0 && (
           <SaveAsDtuButton
             compact
             apiSource="openrouter"
-            apiUrl="https://openrouter.ai/api/v1/models"
+            apiUrl="https://openrouter.ai/models"
             title={`OpenRouter model catalog — ${filtered.length}${query ? ` matching "${query}"` : ''}`}
             content={filtered.slice(0, 50).map((m) => `${m.id} · ctx=${m.context_length || '?'} · in=${fmtPrice(m.pricing?.prompt)} · out=${fmtPrice(m.pricing?.completion)}${m.name ? ` · ${m.name}` : ''}`).join('\n')}
             extraTags={['byo-keys', 'llm-catalog', 'openrouter']}
@@ -66,7 +68,8 @@ export function OpenRouterCatalog() {
         </div>
         <span className="font-mono text-[10px] text-zinc-400">{filtered.length} / {models.data?.length ?? '—'}</span>
       </form>
-      {models.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">OpenRouter unreachable.</div>}
+      {models.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">The OpenRouter model list unavailable right now — nothing is being shown in its place.</div>
+      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached the OpenRouter model list{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}}
       {models.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling provider catalog…</div>}
       <div className="space-y-1 max-h-[500px] overflow-y-auto">
         {filtered.map((m) => (
