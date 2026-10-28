@@ -1610,12 +1610,21 @@ export default function registerCalendarActions(registerLensAction) {
     ensureBacklogMaps(s);
     const userId = aidCal(ctx);
     const now = Date.now();
+    const nowIso = new Date(now).toISOString();
     const lookAheadMin = Math.max(0, Math.min(1440, Number(params.lookAheadMin) || 0));
     const queue = listCal(s.reminderQueue, userId);
     const firedKeys = new Set(queue.map(n => n.key));
-    const winStart = new Date(now);
+    // F8: a reminder fires at its NOMINAL time (event start − offset).
+    // The old code materialized anything inside the caller's look-ahead
+    // as already "fired" (~29 min early in the review) and silently
+    // dropped reminders whose event had already started. Now: due
+    // reminders materialize once fireAt <= now; ones whose event has
+    // begun are marked missed (24 h window — older history stays
+    // history); look-ahead only feeds the separate `upcoming` list.
+    const winStart = new Date(now - 86_400_000);
     const winEnd = new Date(now + 30 * 86_400_000);
     let firedNow = 0;
+    const upcoming = [];
     for (const e of listCal(s.events, userId)) {
       const reminders = Array.isArray(e.reminders) ? e.reminders : [];
       if (reminders.length === 0) continue;
@@ -1625,8 +1634,7 @@ export default function registerCalendarActions(registerLensAction) {
           const fireAt = occMs - Number(offsetMin) * 60_000;
           const key = `${e.id}:${occ.occurrenceStart}:${offsetMin}`;
           if (firedKeys.has(key)) continue;
-          // Fires once the wall clock reaches fireAt (plus lookAhead grace).
-          if (fireAt <= now + lookAheadMin * 60_000 && occMs > now) {
+          if (fireAt <= now && occMs > now - 86_400_000) {
             const note = {
               id: uidCal('ntf'),
               key,
@@ -1634,19 +1642,32 @@ export default function registerCalendarActions(registerLensAction) {
               eventTitle: e.title,
               occurrenceStart: occ.occurrenceStart,
               offsetMin: Number(offsetMin),
-              firedAt: isoCal(),
+              fireAt: new Date(fireAt).toISOString(),
+              surfacedAt: isoCal(),
+              missed: occMs <= now,
               acknowledged: false,
+              snoozedUntil: null,
             };
             queue.push(note);
             firedKeys.add(key);
             firedNow++;
+          } else if (lookAheadMin > 0 && fireAt > now && fireAt <= now + lookAheadMin * 60_000) {
+            upcoming.push({
+              eventId: e.id, eventTitle: e.title,
+              occurrenceStart: occ.occurrenceStart,
+              offsetMin: Number(offsetMin),
+              fireAt: new Date(fireAt).toISOString(),
+            });
           }
         }
       }
     }
     if (firedNow > 0) saveCal();
-    const pending = queue.filter(n => !n.acknowledged).sort((a, b) => a.occurrenceStart.localeCompare(b.occurrenceStart));
-    return { ok: true, result: { firedNow, pending, pendingCount: pending.length } };
+    const pending = queue
+      .filter(n => !n.acknowledged && (!n.snoozedUntil || n.snoozedUntil <= nowIso))
+      .sort((a, b) => String(a.fireAt || a.occurrenceStart).localeCompare(String(b.fireAt || b.occurrenceStart)));
+    upcoming.sort((a, b) => a.fireAt.localeCompare(b.fireAt));
+    return { ok: true, result: { firedNow, pending, pendingCount: pending.length, upcoming } };
     } catch (e) { return handlerFailure(e); }
 });
 
@@ -1662,6 +1683,14 @@ export default function registerCalendarActions(registerLensAction) {
     }
     const note = queue.find(x => x.id === String(params.id || ""));
     if (!note) return { ok: false, error: "notification not found" };
+    // Snooze is not dismiss (F8): it hides the reminder until the snooze
+    // expires without consuming it.
+    const snoozeMin = Math.max(0, Math.min(1440, Number(params.snoozeMin) || 0));
+    if (snoozeMin > 0) {
+      note.snoozedUntil = new Date(Date.now() + snoozeMin * 60_000).toISOString();
+      saveCal();
+      return { ok: true, result: { notification: note, snoozedUntil: note.snoozedUntil } };
+    }
     note.acknowledged = true;
     note.acknowledgedAt = isoCal();
     saveCal();
