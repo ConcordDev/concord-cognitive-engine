@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { AutoSourceButton } from '@/components/common/AutoSourceButton';
 import { NoteGraphView } from './NoteGraphView';
 import { AcademicSearchPanel } from './AcademicSearchPanel';
 import { LiteratureReviewPanel } from './LiteratureReviewPanel';
@@ -443,12 +444,14 @@ function DailyTab() {
 function SearchTab({ onOpen }: { onOpen: (id: string) => void }) {
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<{ id: string; title: string; score: number; preview: string }[]>([]);
+  const [searched, setSearched] = useState(false);
 
   const search = async () => {
     if (query.trim().length < 2) return;
     try {
       const r = await lensRun({ domain: 'research', action: 'notes-search', input: { query } });
       setHits(((r.data as { result?: { hits?: typeof hits } }).result?.hits) || []);
+      setSearched(true);
     } catch (e) { console.error(e); }
   };
 
@@ -469,6 +472,9 @@ function SearchTab({ onOpen }: { onOpen: (id: string) => void }) {
           <p className="text-[11px] text-gray-400 line-clamp-2">{h.preview}</p>
         </button>
       ))}
+      {searched && hits.length < 3 && query.trim().length >= 2 && (
+        <AutoSourceButton key={query} topic={query} lensDomain="research" />
+      )}
     </div>
   );
 }
