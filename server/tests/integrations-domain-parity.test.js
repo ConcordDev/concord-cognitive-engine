@@ -272,11 +272,15 @@ describe("integrations webhook test / activate / retry / signature", () => {
     assert.equal(sent[0].url, "https://x.dev/h");
     assert.ok(retry.result.nextBackoffSeconds > 0);
 
-    const body = JSON.stringify({ event: "ping" });
+    // verifyWebhookSignature no longer echoes the expected HMAC (that was a
+    // forge-any-signature oracle); the delivery's own recorded body/signature
+    // pair stands in as the known-good pair.
+    const body = test.result.delivery.body;
     const bad = call("verifyWebhookSignature", ctxA, { webhookId: "wh_4", body, signature: "sha256=deadbeef" });
     assert.equal(bad.ok, true);
     assert.equal(bad.result.valid, false);
-    const good = call("verifyWebhookSignature", ctxA, { webhookId: "wh_4", body, signature: bad.result.expected });
+    assert.equal("expected" in bad.result, false);
+    const good = call("verifyWebhookSignature", ctxA, { webhookId: "wh_4", body, signature: test.result.delivery.signature });
     assert.equal(good.result.valid, true);
   });
 });

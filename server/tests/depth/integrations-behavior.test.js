@@ -373,13 +373,15 @@ describe("integrations — webhook test, signature verify, and retry backoff (sh
 
   it("verifyWebhookSignature validates a correct signature and rejects a tampered one", async () => {
     const body = JSON.stringify({ event: "order.created", id: 7 });
-    // Fire a test to ensure the webhook meta (and its secret) exists, then read deliveries.
-    await lensRun("integrations", "webhookTest", { params: { webhookId: "wh3", url: "https://x", payload: JSON.parse(body) } }, ctx);
-    // We don't know the secret, but verify can compute the expected sig itself.
+    // Fire a test to ensure the webhook meta (and its secret) exists; capture
+    // the delivery so its recorded body/signature pair is the known-good pair.
+    const seed = await lensRun("integrations", "webhookTest", { params: { webhookId: "wh3", url: "https://x", payload: JSON.parse(body) } }, ctx);
+    // We don't know the secret, and verify no longer echoes the expected HMAC
+    // (signing-oracle fix) — feed it the signature the test delivery recorded.
     const wrong = await lensRun("integrations", "verifyWebhookSignature", { params: { webhookId: "wh3", body, signature: "sha256=deadbeefdeadbeef" } }, ctx);
     assert.equal(wrong.result.valid, false);
-    // Now feed back the expected signature it just told us → must validate.
-    const good = await lensRun("integrations", "verifyWebhookSignature", { params: { webhookId: "wh3", body, signature: wrong.result.expected } }, ctx);
+    // Now feed back the recorded signature for this exact body → must validate.
+    const good = await lensRun("integrations", "verifyWebhookSignature", { params: { webhookId: "wh3", body, signature: seed.result.delivery.signature } }, ctx);
     assert.equal(good.result.valid, true);
   });
 
