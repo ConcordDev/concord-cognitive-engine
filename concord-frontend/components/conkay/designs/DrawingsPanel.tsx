@@ -32,7 +32,14 @@ const StlViewer = dynamic(() => import('./StlViewer'), {
   ),
 });
 
-export function DrawingsPanel({ designId, drawings, model3d, assembly = null }: { designId: string; drawings: DesignDrawing[]; model3d: DesignModel3d | null; assembly?: DesignSnapshot['assembly'] }) {
+export function DrawingsPanel({ designId, drawings, model3d, assembly = null, workbench = null, onStartEditing, startingEdit = false }: {
+  designId: string; drawings: DesignDrawing[]; model3d: DesignModel3d | null; assembly?: DesignSnapshot['assembly'];
+  /** A live workbench session for the viewer (HANDOFF-3 A2): its driving parameters become editable. */
+  workbench?: import('./AssemblyViewer').ViewerWorkbench | null;
+  /** Snapshot mode: start a workbench session from this design. */
+  onStartEditing?: () => void;
+  startingEdit?: boolean;
+}) {
   const sheets = drawings.flatMap((d) => d.files.filter((f) => f.kind === 'svg').map((f) => ({ ...f, drawing: d })));
   const [sheet, setSheet] = useState(0);
   const [show3d, setShow3d] = useState(false);
@@ -93,7 +100,7 @@ export function DrawingsPanel({ designId, drawings, model3d, assembly = null }: 
       {assembly && (
         <div className="rounded-xl border border-white/10 bg-[#0c1218] p-2">
           <h3 className="mb-2 text-xs font-medium text-slate-300">Assembly</h3>
-          <AssemblyView assembly={assembly} glbUrl={presentGlbUrl(designId)} />
+          <AssemblyView assembly={assembly} glbUrl={presentGlbUrl(designId)} workbench={workbench} onStartEditing={onStartEditing} startingEdit={startingEdit} />
         </div>
       )}
       {model3d && (
