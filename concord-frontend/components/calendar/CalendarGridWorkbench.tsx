@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/ui';
@@ -18,7 +18,7 @@ import { ErrorState } from '@/components/common/EmptyState';
 import { Skeleton } from '@/components/ui';
 import { EventActionRail } from '@/components/calendar/EventActionRail';
 import { eventIdFromResult, eventNotSavedSentence, eventOnCalendarSentence, eventSavedSentence, eventUpdatedSentence } from '@/components/calendar/calendarKeep';
-import { browserTimeZone, calendarDateKey, COMMON_TIME_ZONES, fromZonedInputValue, nextHourSlotInZone, profileTimeZone, resolveCalendarTimeZone, toZonedInputValue, zoneAbbrev, zoneCityLabel } from '@/lib/calendar-date';
+import { browserTimeZone, calendarDateKey, COMMON_TIME_ZONES, fromZonedInputValue, nextHourSlotInZone, profileTimeZone, resolveCalendarTimeZone, shiftDateKey, toZonedInputValue, zoneAbbrev, zoneCityLabel } from '@/lib/calendar-date';
 import { RecurrenceEditor, RecurrenceScopeDialog, describeRecurrence, type RecurrenceScope, type UiRecurrence } from '@/components/calendar/RecurrenceEditor';
 import Link from 'next/link';
 
@@ -94,6 +94,45 @@ const COLORS = [
 ];
 
 const PLATFORMS = ['Web', 'Mobile', 'Desktop', 'API', 'Social', 'Email', 'Print'];
+
+// ── §3b real-date awareness ──────────────────────────────────────────
+// Solstice/equinox dates (Northern Hemisphere) by year. The table is
+// deliberately finite: outside it the grid shows no marker rather than
+// a guessed date.
+const SEASON_DATES: Record<number, Record<string, string>> = {
+  2025: { '03-20': 'Spring equinox', '06-20': 'Summer solstice', '09-22': 'Autumn equinox', '12-21': 'Winter solstice' },
+  2026: { '03-20': 'Spring equinox', '06-21': 'Summer solstice', '09-22': 'Autumn equinox', '12-21': 'Winter solstice' },
+  2027: { '03-20': 'Spring equinox', '06-21': 'Summer solstice', '09-23': 'Autumn equinox', '12-21': 'Winter solstice' },
+  2028: { '03-19': 'Spring equinox', '06-20': 'Summer solstice', '09-22': 'Autumn equinox', '12-21': 'Winter solstice' },
+};
+
+export function seasonMarkerFor(date: Date): string | null {
+  if (date.getMonth() === 1 && date.getDate() === 29) return 'Leap day';
+  const key = `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  return SEASON_DATES[date.getFullYear()]?.[key] ?? null;
+}
+
+export function isLeapFebruary(date: Date): boolean {
+  if (date.getMonth() !== 1) return false;
+  const y = date.getFullYear();
+  return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+}
+
+// One live drag gesture on an event block (see beginDrag/moveDrag).
+interface CalDragGesture {
+  key: string;
+  event: CalendarEvent;
+  mode: 'move' | 'resize';
+  startX: number;
+  startY: number;
+  cellW: number;
+  cellH: number;
+  pxPerHour: number;
+  month: boolean;
+  dxDays: number;
+  dyMinutes: number;
+  moved: boolean;
+}
 
 const INITIAL_PROJECTS: string[] = [];
 
@@ -371,6 +410,13 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   const [detailInvites, setDetailInvites] = useState<Array<{ id: string; guest: string; rsvp: string }>>([]);
   const [dueReminders, setDueReminders] = useState<Array<{ id: string; eventTitle: string; occurrenceStart: string; offsetMin: number; fireAt?: string; missed?: boolean }>>([]);
   const [lastDeleted, setLastDeleted] = useState<{ id: string; title: string } | null>(null);
+  // S15 (§3b): drag gestures, the M3 settle marker, the M7 flash.
+  const dragRef = useRef<CalDragGesture | null>(null);
+  const [dragView, setDragView] = useState<{ key: string; dxPx: number; dyPx: number; dhPx: number } | null>(null);
+  const suppressClickAt = useRef(0);
+  const [justMovedStart, setJustMovedStart] = useState<string | null>(null);
+  const [noteSeq, setNoteSeq] = useState(0);
+  const flashNote = (msg: string) => { setActivityNote(msg); setNoteSeq((n) => n + 1); };
   useEffect(() => {
     if (!lastDeleted) return;
     const id = setTimeout(() => setLastDeleted(null), 12_000);
@@ -762,6 +808,105 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
     setShowCreateModal(true);
   };
 
+  // ── S15 drag: move / resize event blocks ──────────────────────────
+  const dragKeyOf = (event: CalendarEvent) => `${event.id}|${event.occurrenceKey || ''}`;
+
+  const beginDrag = (e: ReactPointerEvent<HTMLButtonElement>, event: CalendarEvent, pxPerHour: number, allowResize: boolean, month: boolean) => {
+    if (e.button !== 0 || event.allDay) return;
+    const el = e.currentTarget;
+    const cell = month ? el.parentElement?.parentElement : el.parentElement;
+    const cellRect = cell?.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    dragRef.current = {
+      key: dragKeyOf(event), event,
+      mode: allowResize && e.clientY - elRect.top > elRect.height - 10 ? 'resize' : 'move',
+      startX: e.clientX, startY: e.clientY,
+      cellW: cellRect?.width || 120, cellH: cellRect?.height || 72,
+      pxPerHour, month, dxDays: 0, dyMinutes: 0, moved: false,
+    };
+    try { el.setPointerCapture(e.pointerId); } catch { /* capture is an enhancement */ }
+  };
+
+  const moveDrag = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const dx = e.clientX - d.startX;
+    const dy = e.clientY - d.startY;
+    if (!d.moved && Math.abs(dx) + Math.abs(dy) <= 4) return;
+    d.moved = true;
+    if (d.month) {
+      const cols = Math.round(dx / d.cellW);
+      const rows = Math.round(dy / d.cellH);
+      d.dxDays = cols + 7 * rows;
+      setDragView({ key: d.key, dxPx: cols * d.cellW, dyPx: rows * d.cellH, dhPx: 0 });
+    } else if (d.mode === 'resize') {
+      const durMin = Math.round((new Date(d.event.endDate).getTime() - new Date(d.event.startDate).getTime()) / 60000);
+      d.dyMinutes = Math.max(15 - durMin, Math.round(((dy / d.pxPerHour) * 60) / 15) * 15);
+      setDragView({ key: d.key, dxPx: 0, dyPx: 0, dhPx: (d.dyMinutes / 60) * d.pxPerHour });
+    } else {
+      d.dxDays = Math.round(dx / d.cellW);
+      d.dyMinutes = Math.round(((dy / d.pxPerHour) * 60) / 15) * 15;
+      setDragView({ key: d.key, dxPx: d.dxDays * d.cellW, dyPx: (d.dyMinutes / 60) * d.pxPerHour, dhPx: 0 });
+    }
+  };
+
+  const endDrag = () => {
+    const d = dragRef.current;
+    dragRef.current = null;
+    setDragView(null);
+    if (!d || !d.moved) return;
+    suppressClickAt.current = Date.now();
+    void commitDrag(d);
+  };
+
+  const cancelDrag = () => { dragRef.current = null; setDragView(null); };
+
+  const consumeDragClick = () => {
+    if (Date.now() - suppressClickAt.current < 400) { suppressClickAt.current = 0; return true; }
+    return false;
+  };
+
+  const commitDrag = async (d: CalDragGesture) => {
+    const event = d.event;
+    const start0 = new Date(event.startDate).getTime();
+    const end0 = new Date(event.endDate).getTime();
+    let newStart = start0;
+    let newEnd = end0;
+    if (d.mode === 'resize') {
+      newEnd = end0 + d.dyMinutes * 60000;
+      if (newEnd - newStart < 900_000) return;
+    } else {
+      const delta = d.dxDays * 86_400_000 + d.dyMinutes * 60_000;
+      if (delta === 0) return;
+      newStart += delta;
+      newEnd += delta;
+    }
+    const movedEvent: CalendarEvent = { ...event, startDate: new Date(newStart), endDate: new Date(newEnd) };
+    try {
+      const params = toBackendEventParams(movedEvent) as Record<string, unknown>;
+      params.id = event.id;
+      const recurring = !!(event.recurrence && event.occurrenceKey);
+      if (recurring) {
+        // Dragging one occurrence moves just that occurrence.
+        params.scope = 'this';
+        params.occurrenceKey = event.occurrenceKey;
+        delete params.recurrence;
+      }
+      setActivityNote(null);
+      const r = await lensRun({ domain: 'calendar', action: 'events-update', input: params });
+      if (r.data.ok === false) throw new Error(r.data.error || 'Could not move that event');
+      await fetchData();
+      // M3 The Settle: the landed block eases into place once.
+      setJustMovedStart(new Date(newStart).toISOString());
+      setTimeout(() => setJustMovedStart(null), 320);
+      flashNote(recurring
+        ? `Moved just this occurrence of “${event.title}”.`
+        : `Moved “${event.title}” to ${formatTime(new Date(newStart))}.`);
+    } catch (err) {
+      setActivityNote(`Could not move “${event.title}” — ${err instanceof Error ? err.message : 'it stayed where it was'}.`);
+    }
+  };
+
   const handleCreateEvent = async (scope?: RecurrenceScope) => {
     setActivityNote(null);
     if (!newEvent.title) return;
@@ -828,16 +973,16 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
         if (!id) throw new Error('The server returned no event id');
         const affected = (r.data.result as { occurrencesAffected?: number | null } | null)?.occurrencesAffected;
         if (recurringEdit && typeof affected === 'number' && affected > 1) {
-          setActivityNote(`Updated ${affected} occurrences of this series.`);
+          flashNote(`Updated ${affected} occurrences of this series.`);
         } else {
-          setActivityNote(eventUpdatedSentence(id));
+          flashNote(eventUpdatedSentence(id));
         }
       } else {
         const r = await lensRun({ domain: 'calendar', action: 'events-create', input: params });
         if (r.data.ok === false) throw new Error(r.data.error || 'Failed to create event');
         const id = eventIdFromResult(r.data);
         if (!id) throw new Error('The server returned no event id');
-        setActivityNote(eventSavedSentence(id));
+        flashNote(eventSavedSentence(id) + (calendarDateKey(event.startDate).endsWith('-02-29') ? ' A day that only sometimes exists.' : ''));
       }
       await fetchData();
     } catch (e) {
@@ -873,6 +1018,33 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
     else if (viewMode === 'week') shiftDate(-7);
     else shiftDate(-1);
   };
+
+  // §3b series milestones: count this occurrence's position in its
+  // series from the real series start, and name the 10th / 52nd.
+  const [seriesMilestone, setSeriesMilestone] = useState<string | null>(null);
+  useEffect(() => {
+    setSeriesMilestone(null);
+    const ev = selectedEvent;
+    if (!showEventModal || !ev?.recurrence || !ev.occurrenceKey || !ev.seriesStart) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await lensRun({
+          domain: 'calendar', action: 'events-list',
+          input: {
+            rangeStart: calendarDateKey(ev.seriesStart!),
+            rangeEnd: shiftDateKey(calendarDateKey(new Date(ev.occurrenceKey!)), 1),
+          },
+        });
+        const occ = ((r.data.result as { events?: Array<{ id: string; occurrenceStart: string }> } | null)?.events || [])
+          .filter((o) => o.id === ev.id && o.occurrenceStart <= ev.occurrenceKey!);
+        if (cancelled) return;
+        if (occ.length === 10) setSeriesMilestone(`The 10th ${ev.title} — ten in the books.`);
+        else if (occ.length === 52) setSeriesMilestone(`The 52nd ${ev.title} — a year of showing up.`);
+      } catch { /* a milestone is garnish; its absence is honest */ }
+    })();
+    return () => { cancelled = true; };
+  }, [showEventModal, selectedEvent]);
 
   useLensCommand(
     [
@@ -997,6 +1169,9 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
 
     return (
       <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.015]">
+        {isLeapFebruary(currentDate) && (
+          <p className="border-b border-white/[0.06] py-1.5 text-center font-serif text-[13px] italic text-violet-200/90">A bonus day. Spend it like one.</p>
+        )}
         <div className="grid grid-cols-7 border-b border-white/[0.06]">
           {DAY_NAMES.map((day) => (
             <div key={day} className="py-3 text-center text-[12px] uppercase tracking-[0.12em] text-zinc-500">
@@ -1010,6 +1185,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
             if (!date) return <div key={index} />;
 
             const isCurrentMonth = date.getMonth() === currentDate.getMonth();
+            const marker = seasonMarkerFor(date);
             const dayEvents = getEventsForDay(date);
             const isSelected = isSameDay(date, selectedDate);
             const today = isToday(date);
@@ -1037,6 +1213,9 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                 >
                   {date.getDate()}
                 </span>
+                {marker && (
+                  <span className="text-[9px] uppercase tracking-[0.14em] text-violet-300/80">{marker}</span>
+                )}
 
                 <div className="w-full space-y-1">
                   {dayEvents.slice(0, 2).map((event) => (
@@ -1045,10 +1224,22 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (consumeDragClick()) return;
                         setSelectedEvent(event);
                         setShowEventModal(true);
                       }}
-                      className="w-full rounded-lg border border-white/[0.08] bg-black/40 px-2 py-1 text-left transition-colors hover:border-white/20"
+                      onPointerDown={(e) => beginDrag(e, event, 0, false, true)}
+                      onPointerMove={moveDrag}
+                      onPointerUp={endDrag}
+                      onPointerCancel={cancelDrag}
+                      className={cn(
+                        'w-full rounded-lg border border-white/[0.08] bg-black/40 px-2 py-1 text-left transition-colors hover:border-white/20 cursor-grab touch-none',
+                        dragView?.key === dragKeyOf(event) && 'shadow-xl ring-1 ring-white/40 relative z-50',
+                        justMovedStart === new Date(event.startDate).toISOString() && 'cal-settle',
+                      )}
+                      style={{
+                        transform: dragView?.key === dragKeyOf(event) ? `translate(${dragView.dxPx}px, ${dragView.dyPx}px)` : undefined,
+                      }}
                     >
                       <span className="flex items-center gap-1.5 truncate text-[12px] text-zinc-100">
                         <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ backgroundColor: event.color }} aria-hidden="true" />
@@ -1130,6 +1321,12 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
           })}
         </div>
 
+        {weekDates.every((d) => getEventsForDay(d).length === 0) && (
+          <p className="border-b border-lattice-border py-3 text-center text-[13px] text-zinc-400">
+            Nothing booked the week of {weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — yet.
+          </p>
+        )}
+
         <div className="flex-1 overflow-y-auto">
           <div className="relative">
             {hours.map((hour) => (
@@ -1164,16 +1361,27 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                             key={event.id}
                             onClick={(e) => {
                               e.stopPropagation();
+                              if (consumeDragClick()) return;
                               setSelectedEvent(event);
                               setShowEventModal(true);
                             }}
-                            className="absolute left-1 right-1 rounded px-2 py-1 text-xs font-medium overflow-hidden z-10"
+                            onPointerDown={(e) => beginDrag(e, event, 64, true, false)}
+                            onPointerMove={moveDrag}
+                            onPointerUp={endDrag}
+                            onPointerCancel={cancelDrag}
+                            className={cn(
+                              'absolute left-1 right-1 rounded px-2 py-1 text-xs font-medium overflow-hidden z-10 cursor-grab touch-none',
+                              dragView?.key === dragKeyOf(event) && 'shadow-xl ring-1 ring-white/40 cursor-grabbing',
+                              justMovedStart === new Date(event.startDate).toISOString() && 'cal-settle',
+                            )}
                             style={{
                               top: `${top}px`,
-                              height: `${height}px`,
+                              height: dragView?.key === dragKeyOf(event) && dragView.dhPx ? `${height + dragView.dhPx}px` : `${height}px`,
                               backgroundColor: event.color + '30',
                               color: event.color,
                               borderLeft: `3px solid ${event.color}`,
+                              transform: dragView?.key === dragKeyOf(event) ? `translate(${dragView.dxPx}px, ${dragView.dyPx}px)` : undefined,
+                              zIndex: dragView?.key === dragKeyOf(event) ? 50 : undefined,
                             }}
                           >
                             <p className="font-semibold truncate flex items-center gap-1">
@@ -1232,6 +1440,12 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
           </div>
         )}
 
+        {dayEvents.length === 0 && (
+          <p className="py-3 text-center text-[13px] text-zinc-400">
+            Nothing booked on {selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} — yet.
+          </p>
+        )}
+
         <div className="flex-1 overflow-y-auto">
           {hours.map((hour) => {
             const hourEvents = getEventsForHour(selectedDate, hour);
@@ -1264,16 +1478,27 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                         key={event.id}
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (consumeDragClick()) return;
                           setSelectedEvent(event);
                           setShowEventModal(true);
                         }}
-                        className="absolute left-2 right-2 rounded-lg px-3 py-2 text-sm overflow-hidden"
+                        onPointerDown={(e) => beginDrag(e, event, 80, true, false)}
+                        onPointerMove={moveDrag}
+                        onPointerUp={endDrag}
+                        onPointerCancel={cancelDrag}
+                        className={cn(
+                          'absolute left-2 right-2 rounded-lg px-3 py-2 text-sm overflow-hidden cursor-grab touch-none',
+                          dragView?.key === dragKeyOf(event) && 'shadow-xl ring-1 ring-white/40 cursor-grabbing',
+                          justMovedStart === new Date(event.startDate).toISOString() && 'cal-settle',
+                        )}
                         style={{
                           top: `${top}px`,
-                          height: `${height}px`,
+                          height: dragView?.key === dragKeyOf(event) && dragView.dhPx ? `${height + dragView.dhPx}px` : `${height}px`,
                           backgroundColor: event.color + '30',
                           color: event.color,
                           borderLeft: `4px solid ${event.color}`,
+                          transform: dragView?.key === dragKeyOf(event) ? `translate(${dragView.dxPx}px, ${dragView.dyPx}px)` : undefined,
+                          zIndex: dragView?.key === dragKeyOf(event) ? 50 : undefined,
                         }}
                       >
                         <p className="font-semibold flex items-center gap-1">
@@ -1804,8 +2029,9 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
               Today
             </button>
           </div>
+          <style>{`@keyframes cal-settle{from{transform:translateY(-4px);opacity:.55}to{transform:translateY(0);opacity:1}}@keyframes cal-view-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}@keyframes cal-note-flash{0%{box-shadow:inset 0 0 0 0 rgba(45,212,191,0)}30%{box-shadow:inset 0 0 0 1px rgba(45,212,191,.55)}100%{box-shadow:inset 0 0 0 0 rgba(45,212,191,0)}}.cal-settle{animation:cal-settle 140ms ease-out}.cal-view-in{animation:cal-view-in 220ms ease-out}.cal-note-flash{animation:cal-note-flash 650ms ease-out;border-radius:6px;padding-left:6px;margin-left:-6px}@media (prefers-reduced-motion: reduce){.cal-settle,.cal-view-in,.cal-note-flash{animation:none}}`}</style>
           {activityNote && (
-            <p className="mt-2 text-[13px] text-zinc-300" role="status">{activityNote}</p>
+            <p key={noteSeq} className={cn('mt-2 text-[13px] text-zinc-300', noteSeq > 0 && 'cal-note-flash')} role="status">{activityNote}</p>
           )}
           {lastDeleted && (
             <div className="mt-2 flex items-center gap-2 rounded-lg border border-white/10 bg-lattice-elevated px-3 py-1.5 text-[13px] text-zinc-300" role="status">
@@ -1868,10 +2094,12 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
         {renderSidebar()}
 
         <main className="relative flex flex-1 flex-col overflow-hidden px-8">
-          {viewMode === 'month' && renderMonthView()}
-          {viewMode === 'week' && renderWeekView()}
-          {viewMode === 'day' && renderDayView()}
-          {viewMode === 'agenda' && renderAgendaView()}
+          <div key={viewMode} className="flex flex-1 flex-col overflow-hidden cal-view-in">
+            {viewMode === 'month' && renderMonthView()}
+            {viewMode === 'week' && renderWeekView()}
+            {viewMode === 'day' && renderDayView()}
+            {viewMode === 'agenda' && renderAgendaView()}
+          </div>
 
           <div className="pointer-events-none flex flex-col items-center gap-2 py-5">
             {events.length === 0 && (
@@ -2023,9 +2251,14 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                 )}
 
                 {selectedEvent.recurrence && (
-                  <div className="flex items-center gap-3 text-gray-400">
-                    <Repeat className="w-5 h-5" />
-                    <span>{describeRecurrence(selectedEvent.recurrence, selectedEvent.seriesStart || selectedEvent.startDate)}</span>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-3 text-gray-400">
+                      <Repeat className="w-5 h-5" />
+                      <span>{describeRecurrence(selectedEvent.recurrence, selectedEvent.seriesStart || selectedEvent.startDate)}</span>
+                    </div>
+                    {seriesMilestone && (
+                      <p className="pl-8 text-[13px] text-violet-200/90">{seriesMilestone}</p>
+                    )}
                   </div>
                 )}
 
