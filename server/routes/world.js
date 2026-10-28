@@ -230,6 +230,7 @@ import {
   readMobileDashboard,
   runQuickAction,
 } from "../lib/sim-infra.js";
+import { runLensAction, lensErrorStatus } from "../lib/sim-lens-bridge.js";
 
 /**
  * @param {object} [opts]
@@ -1642,31 +1643,43 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   // ── Collaboration / Project Board API ────────────────────────────
 
-  router.get("/sim/projects/:boardId", wrap((req, res) => {
-    res.status(501).json({
-      ok: false,
-      error: "unavailable",
-      reason: "no_project_board",
-      message: "No project board is stored for this id. Tasks and payments were not invented.",
-    });
+  // These alias the cobuild lens: a board id is a cobuild session id, so the
+  // board, its tasks and the claim are the same rows the Collaboration panel uses.
+  function sendBoard(res, out, okStatus, shape) {
+    if (!out.ok) {
+      const { ok: _ok, status: _status, ...rest } = out;
+      return res.status(lensErrorStatus(out)).json({ ok: false, ...rest });
+    }
+    return res.status(okStatus).json({ ok: true, ...shape(out) });
+  }
+
+  router.get("/sim/projects/:boardId", auth, wrap((req, res) => {
+    const boardId = req.params.boardId;
+    const out = runLensAction("cobuild", "task-list", _userId(req), { sessionId: boardId });
+    sendBoard(res, out, 200, (o) => ({ boardId, ...o.result }));
   }));
 
-  router.post("/sim/projects/:boardId/tasks", auth, wrap((_req, res) => {
-    res.status(501).json({
-      ok: false,
-      error: "unavailable",
-      reason: "no_project_board",
-      message: "Project tasks are not stored. Nothing was created.",
+  router.post("/sim/projects/:boardId/tasks", auth, wrap((req, res) => {
+    const b = req.body || {};
+    const out = runLensAction("cobuild", "task-create", _userId(req), {
+      sessionId: req.params.boardId,
+      title: b.title,
+      description: b.description,
+      assignee: b.assignee,
     });
+    sendBoard(res, out, 201, (o) => ({ boardId: req.params.boardId, task: o.result.task }));
   }));
 
-  router.post("/sim/projects/:boardId/tasks/:taskId/claim", auth, wrap((_req, res) => {
-    res.status(501).json({
-      ok: false,
-      error: "unavailable",
-      reason: "no_project_board",
-      message: "Project tasks are not stored. Nothing was claimed.",
+  router.post("/sim/projects/:boardId/tasks/:taskId/claim", auth, wrap((req, res) => {
+    const out = runLensAction("cobuild", "task-claim", _userId(req), {
+      sessionId: req.params.boardId,
+      taskId: req.params.taskId,
     });
+    sendBoard(res, out, 200, (o) => ({
+      boardId: req.params.boardId,
+      task: o.result.task,
+      unchanged: o.unchanged === true,
+    }));
   }));
 
   // ── Design Review API ────────────────────────────────────────────

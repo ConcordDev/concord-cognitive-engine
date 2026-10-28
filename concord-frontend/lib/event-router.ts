@@ -56,6 +56,61 @@ function buildHandlers(opts: {
     }
   };
 
+  // MobileCompanion quick-action ids → the real backend reads. Marketplace
+  // (qa-5) and Royalties (qa-6) have no action yet; the panel renders them
+  // disabled, so they never reach here.
+  const SIM_QUICK_ACTIONS: Record<string, { action: string; label: string; summarize: (b: Record<string, unknown>) => string }> = {
+    'qa-1': { action: 'check-builds', label: 'Builds', summarize: (b) => `${Number(b.count ?? 0)} building(s)` },
+    'qa-2': {
+      action: 'view-citations',
+      label: 'Citations',
+      summarize: (b) => `${Number(b.totalCitations ?? 0)} citation(s) across ${Number(b.dtuCount ?? 0)} DTU(s)`,
+    },
+    'qa-3': {
+      action: 'manage-inventory',
+      label: 'Inventory',
+      summarize: (b) => `${Array.isArray(b.items) ? b.items.length : 0} item(s) in your bag`,
+    },
+  };
+
+  const runMobileQuickAction = async (actionId: string) => {
+    try {
+      if (actionId === 'qa-4') {
+        // Firm Board: the task board of the user's most recent co-build session.
+        const sres = await apiHelpers.lens.runDomain('cobuild', 'session-list', {});
+        const sessions = (sres as { data?: { result?: { sessions?: Array<{ id: string; name?: string }> } } }).data?.result?.sessions;
+        const session = Array.isArray(sessions) ? sessions[0] : undefined;
+        if (!session) {
+          addToast({ type: 'info', message: 'Firm board: you are not in a co-build session yet', duration: 4000 });
+          return;
+        }
+        const tres = await apiHelpers.lens.runDomain('cobuild', 'task-list', { sessionId: session.id });
+        const by = (tres as { data?: { result?: { count?: number; byStatus?: Record<string, number> } } }).data?.result;
+        addToast({
+          type: 'info',
+          message: `Firm board "${session.name || session.id}": ${by?.count ?? 0} task(s), ${by?.byStatus?.todo ?? 0} to do, ${by?.byStatus?.doing ?? 0} doing, ${by?.byStatus?.done ?? 0} done`,
+          duration: 5000,
+        });
+        return;
+      }
+      const spec = SIM_QUICK_ACTIONS[actionId];
+      if (!spec) {
+        addToast({ type: 'info', message: 'Coming soon', duration: 2500 });
+        return;
+      }
+      const r = await api.post('/api/world/sim/mobile/quick-action', { action: spec.action });
+      const body = (r.data || {}) as Record<string, unknown>;
+      addToast({ type: 'info', message: `${spec.label}: ${spec.summarize(body)}`, duration: 4000 });
+    } catch (err) {
+      const data = (err as { response?: { data?: { error?: string; reason?: string } } })?.response?.data;
+      addToast({
+        type: 'error',
+        message: `Action failed: ${data?.reason || data?.error || (err instanceof Error ? err.message : 'unknown error')}`,
+        duration: 6000,
+      });
+    }
+  };
+
   return {
     // ── Media (UniversalPlayer) ────────────────────────────────────
     'media:like': async (e) => {
@@ -128,7 +183,7 @@ function buildHandlers(opts: {
     'digital-twin:create': () => router.push('/lenses/digital-twin/new'),
     'events:calendar-prev': () => addToast({ type: 'info', message: 'Previous month', duration: 1500 }),
     'events:calendar-next': () => addToast({ type: 'info', message: 'Next month', duration: 1500 }),
-    'mobile-companion:quick-action': (e) => callMacro('mobile_companion', 'quick_action', { actionId: e.detail?.actionId }, 'Action sent'),
+    'mobile-companion:quick-action': (e) => runMobileQuickAction(String(e.detail?.actionId || '')),
     'moderation:unban': (e) => callMacro('moderation', 'unban', { userId: e.detail?.userId }, 'Unbanned'),
     'moderation:mute-player': () => addToast({ type: 'info', message: 'Click a player avatar to mute them', duration: 4000 }),
     'moderation:kick-from-world': () => addToast({ type: 'info', message: 'Click a player avatar to kick them', duration: 4000 }),

@@ -53,15 +53,16 @@ describe("world sim routes do not invent metrics", () => {
 
   // Digest and analytics read stored counts since #1586 (tests/wave15-sim-stats.test.js).
 
-  it("project board does not seed paid tasks", async () => {
+  it("project board aliases cobuild: an unknown board is 404, nothing is seeded", async () => {
     const board = await get("/api/world/sim/projects/board-1");
-    assert.equal(board.status, 501);
-    assert.equal(board.body.reason, "no_project_board");
+    assert.equal(board.status, 404);
+    assert.equal(board.body.ok, false);
+    assert.equal(board.body.tasks, undefined);
     const created = await post("/api/world/sim/projects/board-1/tasks", { title: "Pave the road", payment: 50 });
-    assert.equal(created.status, 501);
+    assert.equal(created.status, 404);
     assert.equal(created.body.task, undefined);
     const claimed = await post("/api/world/sim/projects/board-1/tasks/task-1/claim", {});
-    assert.equal(claimed.status, 501);
+    assert.equal(claimed.status, 404);
   });
 
   it("voice match is a keyword, not a random confidence, and does not claim execution", async () => {
