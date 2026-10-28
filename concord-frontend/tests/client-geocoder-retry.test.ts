@@ -46,7 +46,8 @@ describe('geocoder_unavailable client handling', () => {
   it('a plain 503 without the geocoder code IS retried', async () => {
     const counter = { n: 0 };
     api.defaults.adapter = failingAdapter(503, { ok: false, error: 'boom', retryAfterS: 1 }, counter);
-    await expect(api.get('/api/lens/run')).rejects.toMatchObject({ response: { status: 503 } });
+    // Ordinary 5xx failures are normalised to a ConcordError (statusCode) after the retries.
+    await expect(api.get('/api/lens/run')).rejects.toMatchObject({ statusCode: 503 });
     expect(counter.n).toBeGreaterThan(1);
   }, 20_000);
 });

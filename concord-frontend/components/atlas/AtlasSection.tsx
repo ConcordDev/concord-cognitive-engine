@@ -624,7 +624,8 @@ function fmtMeters(m: number): string {
 
 async function geocodeOne(query: string): Promise<{ name: string; lat: number; lng: number } | null> {
   if (!query.trim()) return null;
-  let r: Awaited<ReturnType<typeof lensRun>>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let r: Awaited<ReturnType<typeof lensRun<any>>>;
   try {
     r = await lensRun({ domain: 'atlas', action: 'nominatim-geocode', input: { query: query.trim(), limit: 1 } });
   } catch { return null; }

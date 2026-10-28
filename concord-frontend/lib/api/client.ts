@@ -677,7 +677,7 @@ api.interceptors.response.use(
           // non-admin session): stay silent — the caller handles it.
         } else if (toastStatus === 429) {
           store.addToast({ type: 'warning', message: 'Too many requests. Please wait a moment.' });
-        } else if (toastStatus && toastStatus >= 500 && !isBackgroundFetch) {
+        } else if (toastStatus && toastStatus >= 500 && !isBackgroundFetch && !isGeocoderUnavailableResponse(error)) {
           store.addToast({ type: 'error', message: 'Something went wrong on our end. Please try again.' });
         } else if (!error.response && !isBackgroundFetch) {
           store.addToast({ type: 'error', message: 'Unable to reach the local Concord API. If you are on this machine, the backend may be down — this is not your internet.' });
@@ -686,6 +686,10 @@ api.interceptors.response.use(
         }
       }
     }
+    // Keep the raw axios error for a geocoder outage: the Atlas panels and
+    // lensRun read code / retryAfterS from error.response.data, which the
+    // ConcordError conversion would drop.
+    if (isGeocoderUnavailableResponse(error)) return Promise.reject(error);
     return Promise.reject(fromAxiosError(error));
   }
 );
