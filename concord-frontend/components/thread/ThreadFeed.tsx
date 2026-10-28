@@ -42,8 +42,8 @@ export function ThreadFeed() {
           {list.length > 0 && <SaveAsDtuButton compact apiSource="hn-thread" apiUrl="https://news.ycombinator.com/" title={`HN ${tag} threads (${list.length})`} content={list.slice(0, 20).map((h, i) => `${i + 1}. [${h.points || 0}↑ · ${h.num_comments || 0}💬] ${h.title || h.story_title}\n   ${h.url || h.story_url || `https://news.ycombinator.com/item?id=${h.objectID}`}`).join('\n\n')} extraTags={['thread', 'hn', tag]} rawData={{ tag, hits: list }} />}
         </div>
       </header>
-      {hits.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Hacker News unavailable right now — nothing is being shown in its place.</div>
-      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached Hacker News results{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}}
+      {hits.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Hacker News unavailable right now — nothing is being shown in its place.</div>}
+      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached Hacker News results{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Threads</div><div className="mt-0.5 font-mono text-lg text-orange-300">{list.length}</div></div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Comments</div><div className="mt-0.5 font-mono text-lg text-orange-300">{totalComments.toLocaleString()}</div></div>
