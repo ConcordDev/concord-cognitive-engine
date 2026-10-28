@@ -12,6 +12,7 @@
 // All write-side state lives under STATE.financeLens.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { getFrankfurterLatest } from "../lib/market-feed-sources.js";
 import { runPython } from "../lib/python-sandbox.js";
 import { pythonExecEnabled } from "./code.js";
 
@@ -2107,9 +2108,11 @@ Generate the summary.`;
     if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
     const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
     try {
-      const r = await fetch("https://api.frankfurter.app/latest?from=USD");
-      if (!r.ok) return { ok: false, error: `frankfurter ${r.status}` };
-      const data = await r.json();
+      // Shared feed-cache read (ECB rates change once a day: 1 h TTL). Each DTU carries ECB's own publication
+      // date (data.date), so a stale cache entry is still labelled with its true "as of" date.
+      const r = await getFrankfurterLatest({ base: "USD" });
+      if (!r.ok) return { ok: false, error: `frankfurter ${r.httpStatus ?? r.reason}` };
+      const data = r.data;
       const rates = data?.rates && typeof data.rates === "object" ? data.rates : {};
       const entries = Object.entries(rates).slice(0, limit);
       let ingested = 0, skipped = 0; const dtuIds = [];

@@ -13,6 +13,13 @@ import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 
 import registerCryptoActions from "../domains/crypto.js";
+import { __setPublicFetchTestTransport } from "../lib/public-fetch.js";
+import { _resetMarketFeedForTests } from "../lib/market-feed-sources.js";
+
+// CoinGecko reads go through the shared feed-cache -> fetchPublicUrl (the SSRF-guarded chokepoint). Install
+// public-fetch's module-scope test transport and delegate to whatever globalThis.fetch currently is, so each
+// test's own stub keeps working; the market cache + budgets are reset per test so no test sees another's answer.
+__setPublicFetchTestTransport((url, init) => globalThis.fetch(url, init));
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -27,6 +34,7 @@ before(() => {
 });
 
 beforeEach(() => {
+  _resetMarketFeedForTests();
   globalThis._concordSTATE = { dtus: new Map(), cryptoLens: { priceAlerts: [], allowances: new Map(), addressBook: new Map() } };
   globalThis._concordSaveStateDebounced = () => {};
   // Force `fetch` to throw so every test exercises the deterministic fallback

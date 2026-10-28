@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Coins, Loader2, ExternalLink } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { DataAttribution } from '@/components/common/DataAttribution';
 
 interface Coin { id: string; symbol: string; name: string; current_price: number; market_cap: number; market_cap_rank: number; price_change_percentage_24h: number; }
 
@@ -44,6 +45,7 @@ export function StakingMarkets() {
         ))}
       </div>
       {coins.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
+      <DataAttribution provider="coingecko" />
     </div>
   );
 }

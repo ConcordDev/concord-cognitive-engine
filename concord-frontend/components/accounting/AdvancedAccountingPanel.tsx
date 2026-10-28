@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { DataAttribution } from '@/components/common/DataAttribution';
 import {
   Loader2, Plus, Trash2, RefreshCw, Banknote, Globe, Tags, Landmark,
   CalendarClock, ScanLine, History, FileDown, Check, AlertTriangle, Link2,
@@ -277,6 +278,7 @@ function CurrencyTab() {
             ))}
           </div>
         )}
+        {rates.length > 0 && <DataAttribution provider="erapi" />}
       </section>
 
       <section className="bg-black/30 border border-white/10 rounded-lg p-3 space-y-2">

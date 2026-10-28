@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { LineChart } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { DataAttribution } from '@/components/common/DataAttribution';
 
 const CandleChart = dynamic(() => import('@/components/charts/CandleChart'), { ssr: false });
 
@@ -95,6 +96,7 @@ export default function CryptoExposureChart() {
         </div>
       </header>
       <CandleChart candles={candles} loading={loading} symbol={tokenId.toUpperCase()} height={260} emaPeriod={20} showVolume={false} />
+      <div className="px-4 pb-1"><DataAttribution provider="coingecko" /></div>
       {cryptoSymbols.length === 0 ? (
         <div className="px-4 py-2 text-[10px] text-gray-500 border-t border-white/5">
           No crypto holdings yet — showing market price. Add a holding with asset class &ldquo;crypto&rdquo; to track your own exposure here.

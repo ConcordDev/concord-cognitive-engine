@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { DataAttribution } from '@/components/common/DataAttribution';
 
 const fmtUsd = (n: number | null | undefined) =>
   n == null ? '—' : `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
@@ -200,6 +201,7 @@ export function MarketPanel() {
               {data.losers.map((c) => <CoinRow key={c.id} c={c} />)}
             </MarketList>
           </div>
+          <DataAttribution provider="coingecko" />
         </div>
       ) : null}
     </div>

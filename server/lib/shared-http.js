@@ -10,6 +10,7 @@
 
 import { fetchPublicUrl } from "./public-fetch.js";
 import { registerSource, hasSource, get, getOrThrow } from "./feed-cache.js";
+import { yahooChartUrl, COINGECKO_TOP10_URL } from "./market-feed-sources.js";
 
 export const SHARED_HTTP_SOURCE_ID = "shared-http";
 export const SHARED_UA = "ConcordOS/1.0 (+https://concord-os.org; feed reader)";
@@ -19,11 +20,11 @@ const FETCH_TIMEOUT_MS = 10_000;
 // ── upstream URLs that more than one system polls ───────────────────────────
 // Single source of truth: realtime-feeds builds its requests from these, and
 // feed-manager's feed-sources.js lists the same literal URLs (pinned by a test).
+// The Yahoo chart + CoinGecko top-10 URLs are defined in lib/market-feed-sources.js (the only module
+// that names those hosts) and re-exported; they are READ through that module's own cache entries,
+// not through the text cache below.
 
-export const yahooChartUrl = (sym) =>
-  `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`;
-export const COINGECKO_TOP10_URL =
-  "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,cardano,polkadot,ripple,dogecoin,chainlink,avalanche-2,polygon-ecosystem-token&vs_currencies=usd&include_24hr_change=true&include_market_cap=true";
+export { yahooChartUrl, COINGECKO_TOP10_URL };
 export const NPR_TOP_URL = "https://feeds.npr.org/1001/rss.xml";
 export const BBC_TOP_URL = "https://feeds.bbci.co.uk/news/rss.xml";
 export const BBC_WORLD_URL = "https://feeds.bbci.co.uk/news/world/rss.xml";

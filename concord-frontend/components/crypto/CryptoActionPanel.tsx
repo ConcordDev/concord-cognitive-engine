@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { DataAttribution } from '@/components/common/DataAttribution';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
@@ -172,6 +173,7 @@ export function CryptoActionPanel() {
         <Coins className="h-4 w-4 text-yellow-400" />
         <h3 className="text-sm font-semibold text-white">Crypto workbench</h3>
         <span className="rounded bg-lattice-elevated px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-gray-400">coingecko · uniswap · etherscan</span>
+        <DataAttribution provider="coingecko" className="ml-auto" />
       </header>
 
       <div>

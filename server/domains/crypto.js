@@ -10,6 +10,7 @@
 // boundary (additive-only PHE, not FHE; encryption ≠ differential privacy).
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { getCoinGecko, coingeckoJson, COINGECKO_ATTRIBUTION } from "../lib/market-feed-sources.js";
 import crypto from "node:crypto";
 import { moneyOrNull, badNumber } from "../lib/finite-input.js";
 import {
@@ -379,24 +380,23 @@ export default function registerCryptoActions(registerLensAction) {
 
     try {
       if (ids && ids.length > 0) {
-        const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(ids.join(","))}&order=market_cap_desc&per_page=${ids.length}&page=1&price_change_percentage=24h`;
-        const tokens = await fetchAndShape(url);
-        return { ok: true, result: { tokens, source: "coingecko" } };
+        const path = `/coins/markets?vs_currency=usd&ids=${encodeURIComponent(ids.join(","))}&order=market_cap_desc&per_page=${ids.length}&page=1&price_change_percentage=24h`;
+        const { tokens, ...fresh } = await fetchAndShape(path);
+        return { ok: true, result: { tokens, source: "coingecko", ...cgFreshness(fresh) } };
       }
       if (query) {
-        const searchUrl = `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(query)}`;
-        const r = await safeFetchJson(searchUrl);
-        const coins = (r?.coins || []).slice(0, pageSize);
-        if (coins.length === 0) return { ok: true, result: { tokens: [], source: "coingecko" } };
+        const searchRead = await cgRead(`/search?query=${encodeURIComponent(query)}`);
+        const coins = (searchRead.data?.coins || []).slice(0, pageSize);
+        if (coins.length === 0) return { ok: true, result: { tokens: [], source: "coingecko", ...cgFreshness(searchRead) } };
         const idsForMarkets = coins.map(c => c.id).join(",");
-        const marketsUrl = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(idsForMarkets)}&order=market_cap_desc&per_page=${coins.length}&page=1&price_change_percentage=24h`;
-        const tokens = await fetchAndShape(marketsUrl);
-        return { ok: true, result: { tokens, source: "coingecko" } };
+        const marketsPath = `/coins/markets?vs_currency=usd&ids=${encodeURIComponent(idsForMarkets)}&order=market_cap_desc&per_page=${coins.length}&page=1&price_change_percentage=24h`;
+        const { tokens, ...fresh } = await fetchAndShape(marketsPath);
+        return { ok: true, result: { tokens, source: "coingecko", ...cgFreshness(searchRead, fresh) } };
       }
       // Browse top by market cap
-      const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${pageSize}&page=${page}&price_change_percentage=24h`;
-      const tokens = await fetchAndShape(url);
-      return { ok: true, result: { tokens, source: "coingecko", page } };
+      const path = `/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${pageSize}&page=${page}&price_change_percentage=24h`;
+      const { tokens, ...fresh } = await fetchAndShape(path);
+      return { ok: true, result: { tokens, source: "coingecko", page, ...cgFreshness(fresh) } };
     } catch (e) {
       // Per "everything must be real" directive: surface the network
       // error instead of returning a hardcoded FALLBACK_TOP_TOKENS list.
@@ -420,16 +420,17 @@ export default function registerCryptoActions(registerLensAction) {
     const id = String(params.id || "bitcoin");
     const days = Math.max(1, Math.min(365, Number(params.days) || 30));
     try {
-      const [ohlcRaw, volRaw] = await Promise.all([
-        safeFetchJson(`https://api.coingecko.com/api/v3/coins/${encodeURIComponent(id)}/ohlc?vs_currency=usd&days=${days}`),
-        safeFetchJson(`https://api.coingecko.com/api/v3/coins/${encodeURIComponent(id)}/market_chart?vs_currency=usd&days=${days}`),
+      const [ohlc, vol] = await Promise.all([
+        cgRead(`/coins/${encodeURIComponent(id)}/ohlc?vs_currency=usd&days=${days}`),
+        cgRead(`/coins/${encodeURIComponent(id)}/market_chart?vs_currency=usd&days=${days}`),
       ]);
+      const ohlcRaw = ohlc.data, volRaw = vol.data;
       const candles = Array.isArray(ohlcRaw) ? ohlcRaw.map((row, i) => {
         const [ms, open, high, low, close] = row;
         const vol = Array.isArray(volRaw?.total_volumes) ? volRaw.total_volumes[i]?.[1] || 0 : 0;
         return { time: Math.floor(ms / 1000), open, high, low, close, volume: vol };
       }) : [];
-      return { ok: true, result: { id, candles, count: candles.length, days, source: "coingecko" } };
+      return { ok: true, result: { id, candles, count: candles.length, days, source: "coingecko", ...cgFreshness(ohlc, vol) } };
     } catch (e) {
       // Per "everything must be real" directive: no synthetic candle fallback.
       // CoinGecko is the real source; if it's unreachable, surface the error
@@ -465,10 +466,11 @@ export default function registerCryptoActions(registerLensAction) {
     }
     if (fromId === toId) return { ok: false, error: "from and to must differ" };
 
-    let fromPrice = 0, toPrice = 0;
+    let fromPrice = 0, toPrice = 0, quoteFresh = {};
     try {
-      const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(`${fromId},${toId}`)}&vs_currencies=usd`;
-      const r = await safeFetchJson(url);
+      const read = await cgRead(`/simple/price?ids=${encodeURIComponent(`${fromId},${toId}`)}&vs_currencies=usd`);
+      const r = read.data;
+      quoteFresh = cgFreshness(read);
       fromPrice = Number(r?.[fromId]?.usd) || 0;
       toPrice = Number(r?.[toId]?.usd) || 0;
     } catch (e) {
@@ -501,6 +503,7 @@ export default function registerCryptoActions(registerLensAction) {
         feeUsd: round(feeOut * toPrice, 6),
         route: [fromId.toUpperCase(), toId.toUpperCase()],
         source: "coingecko",
+        ...quoteFresh,
         kind: "indicative",
         slippagePercent,
         notes: "Indicative spot quote — assumes 0.3% LP fee. For executable quote with real depth + gas, call crypto.swap-route (0x aggregator, requires ZEROX_API_KEY).",
@@ -677,8 +680,7 @@ export default function registerCryptoActions(registerLensAction) {
     const uniqueIds = [...new Set(active.map(a => a.tokenId))];
     let prices = {};
     try {
-      const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(uniqueIds.join(","))}&vs_currencies=usd`;
-      prices = await safeFetchJson(url) || {};
+      prices = await safeFetchJson(`/simple/price?ids=${encodeURIComponent(uniqueIds.join(","))}&vs_currencies=usd`) || {};
     } catch (_e) {
       return { ok: true, result: { triggered: [], checked: 0, message: "price fetch failed" } };
     }
@@ -825,10 +827,7 @@ export default function registerCryptoActions(registerLensAction) {
     if (!symbols || symbols.length === 0) return {};
     try {
       const ids = symbols.map(s => String(s).toLowerCase()).join(',');
-      const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids)}&vs_currencies=usd`;
-      const r = await fetch(url, { headers: { Accept: 'application/json' } });
-      if (!r.ok) return {};
-      const data = await r.json();
+      const data = await safeFetchJson(`/simple/price?ids=${encodeURIComponent(ids)}&vs_currencies=usd`);
       const out = {};
       for (const [id, val] of Object.entries(data)) {
         if (val && typeof val.usd === 'number') out[id] = val.usd;
@@ -1739,11 +1738,14 @@ export default function registerCryptoActions(registerLensAction) {
 
   registerLensAction("crypto", "market-overview", async (_ctx, _a, _p = {}) => {
     try {
-      const [trendingRaw, markets, globalRaw] = await Promise.all([
-        safeFetchJson('https://api.coingecko.com/api/v3/search/trending').catch(() => null),
-        fetchAndShape('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&price_change_percentage=24h').catch(() => []),
-        safeFetchJson('https://api.coingecko.com/api/v3/global').catch(() => null),
+      const [trendingRead, marketsRead, globalRead] = await Promise.all([
+        cgRead('/search/trending').catch(() => null),
+        fetchAndShape('/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&price_change_percentage=24h').catch(() => null),
+        cgRead('/global').catch(() => null),
       ]);
+      const trendingRaw = trendingRead?.data ?? null;
+      const markets = marketsRead?.tokens ?? [];
+      const globalRaw = globalRead?.data ?? null;
       if (markets.length === 0 && !Array.isArray(trendingRaw?.coins)) {
         return { ok: false, error: "coingecko unreachable: market data unavailable" };
       }
@@ -1770,6 +1772,7 @@ export default function registerCryptoActions(registerLensAction) {
             activeCoins: Number(g.active_cryptocurrencies) || null,
           },
           source: 'coingecko',
+          ...cgFreshness(trendingRead, marketsRead, globalRead),
         },
       };
     } catch (e) {
@@ -2273,8 +2276,7 @@ export default function registerCryptoActions(registerLensAction) {
     const uniqueIds = [...new Set(active.map(a => a.tokenId))];
     let prices = {};
     try {
-      const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(uniqueIds.join(","))}&vs_currencies=usd`;
-      prices = await safeFetchJson(url) || {};
+      prices = await safeFetchJson(`/simple/price?ids=${encodeURIComponent(uniqueIds.join(","))}&vs_currencies=usd`) || {};
     } catch (_e) {
       return { ok: true, result: { delivered: [], checked: 0, message: "price fetch failed" } };
     }
@@ -2345,9 +2347,14 @@ export default function registerCryptoActions(registerLensAction) {
     if (!(STATE.cryptoLens.feedSeen instanceof Set)) STATE.cryptoLens.feedSeen = new Set();
     const seen = STATE.cryptoLens.feedSeen;
     try {
-      const r = await fetch("https://api.coingecko.com/api/v3/search/trending");
-      if (!r.ok) return { ok: false, error: `coingecko ${r.status}` };
-      const data = await r.json();
+      // Shared cache entry with market-overview's trending read (one upstream call per TTL).
+      let data;
+      try {
+        const read = await cgRead("/search/trending");
+        // Public "trending today" DTUs are only minted from a fresh read, never from a stale cache entry.
+        if (read.stale) return { ok: false, error: "coingecko stale: trending data not refreshed", stale: true, fetchedAt: read.fetchedAt };
+        data = read.data;
+      } catch (e) { return { ok: false, error: `coingecko ${e?.reason || e?.message || "unavailable"}` }; }
       const coins = (data.coins || []).slice(0, 15);
       const day = new Date().toISOString().slice(0, 10);
       let ingested = 0, skipped = 0; const dtuIds = [];
@@ -2652,23 +2659,37 @@ export default function registerCryptoActions(registerLensAction) {
 
 // ─── helpers ────────────────────────────────────────────────────────────
 
-async function safeFetchJson(url) {
-  if (typeof fetch !== "function") throw new Error("fetch unavailable");
-  const ac = new AbortController();
-  const t = setTimeout(() => ac.abort(), 5000);
-  try {
-    const r = await fetch(url, { signal: ac.signal, headers: { "user-agent": "ConcordCryptoLens/1.0" } });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return await r.json();
-  } finally {
-    clearTimeout(t);
-  }
+// Every CoinGecko read goes through the shared feed-cache (lib/market-feed-sources.js): the same request asked
+// by the realtime ticker, feed-manager and other lenses costs one upstream call per TTL. Takes "/path?query"
+// (relative to the CoinGecko v3 API); throws `coingecko <reason>` when nothing truthful can be served.
+async function safeFetchJson(pathWithQuery) {
+  return coingeckoJson(pathWithQuery);
 }
 
-async function fetchAndShape(url) {
-  const data = await safeFetchJson(url);
-  if (!Array.isArray(data)) return [];
-  return data.map(c => ({
+// { data, stale, fetchedAt } — for macros that report freshness alongside the value.
+async function cgRead(pathWithQuery) {
+  const r = await getCoinGecko(pathWithQuery);
+  if (!r.ok) {
+    const err = new Error(`coingecko ${r.reason}`);
+    err.reason = r.reason;
+    err.lastOkAt = r.lastOkAt;
+    throw err;
+  }
+  return { data: r.data, stale: r.stale, fetchedAt: r.fetchedAt };
+}
+
+// Freshness fields a macro result carries: stale data is labelled, never passed off as live.
+const cgFreshness = (...reads) => {
+  const rs = reads.filter(Boolean);
+  const stale = rs.some((x) => x.stale);
+  const fetchedAt = rs.length ? Math.min(...rs.map((x) => x.fetchedAt)) : null;
+  return { attribution: COINGECKO_ATTRIBUTION, ...(stale ? { stale: true } : {}), ...(fetchedAt ? { fetchedAt } : {}) };
+};
+
+async function fetchAndShape(pathWithQuery) {
+  const read = await cgRead(pathWithQuery);
+  const data = read.data;
+  const tokens = !Array.isArray(data) ? [] : data.map(c => ({
     id: c.id,
     symbol: (c.symbol || "").toUpperCase(),
     name: c.name,
@@ -2678,6 +2699,7 @@ async function fetchAndShape(url) {
     marketCap: Number(c.market_cap) || 0,
     rank: Number(c.market_cap_rank) || null,
   }));
+  return { tokens, stale: read.stale, fetchedAt: read.fetchedAt };
 }
 
 function round(n, decimals) {

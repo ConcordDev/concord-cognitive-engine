@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Bitcoin, Loader2, TrendingUp, TrendingDown } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { DataAttribution } from '@/components/common/DataAttribution';
 
 interface Coin {
   id: string;
@@ -109,6 +110,7 @@ export function CoinGeckoTicker() {
           );
         })}
       </div>
+      <DataAttribution provider="coingecko" />
     </div>
   );
 }

@@ -914,7 +914,10 @@ describe("accounting — [M] multi-currency + FX revaluation", () => {
   });
 
   it("refreshes FX rates from the free keyless provider", async () => {
-    try { (await import("../lib/external-fetch.js")).clearExternalFetchCache(); } catch { /* ignore */ }
+    // FX goes through the shared feed-cache (lib/market-feed-sources.js) -> fetchPublicUrl, which this file's
+    // module-level transport (top of file) routes to the globalThis.fetch stub below. The market cache is cleared
+    // so no earlier test's rate leaks in.
+    (await import("../lib/market-feed-sources.js")).clearMarketCaches();
     globalThis.fetch = async (url) => {
       assert.match(String(url), /open\.er-api\.com/);
       return { ok: true, json: async () => ({ rates: { EUR: 0.92, GBP: 0.79 }, time_last_update_utc: "x" }) };
@@ -922,13 +925,14 @@ describe("accounting — [M] multi-currency + FX revaluation", () => {
     const r = await callAsync("currency-refresh-rates", ctxA, { symbols: ["EUR", "GBP"] });
     assert.equal(r.ok, true);
     assert.equal(r.result.updated, 2);
+    assert.equal(r.result.attribution, "Rates By Exchange Rate API");
     assert.equal(call("currency-list", ctxA).result.rates.length, 2);
   });
 
   it("computes unrealized gain/loss from booked vs current rate", async () => {
     // Clear the external-fetch URL cache so this refresh isn't served a
     // stale rate from a prior test in the same process.
-    try { (await import("../lib/external-fetch.js")).clearExternalFetchCache(); } catch { /* ignore */ }
+    (await import("../lib/market-feed-sources.js")).clearMarketCaches();
     globalThis.fetch = async () => ({ ok: true, json: async () => ({ rates: { EUR: 1.0 } }) });
     await callAsync("currency-refresh-rates", ctxA, { symbols: ["EUR"] });
     // 920 EUR booked at 0.92 → $1000 book; current 1.0 → $920 → $80 loss.

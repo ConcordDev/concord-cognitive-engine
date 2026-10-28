@@ -30,6 +30,7 @@ import { normalizeTagList } from "./dtu-tags.js";
 import { trackFeedJob } from "../emergent/feed.js";
 import { getForecast as getWeatherForecast } from "./weather-feed-sources.js";
 import { isSharedUpstream, getSharedTextOrThrow, responseLike } from "./shared-http.js";
+import { isMarketUpstream, getMarketUpstream } from "./market-feed-sources.js";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // CONSTANTS & LIMITS
@@ -519,8 +520,9 @@ async function fetchFeed(feedSource) {
     return { items: [], errors: ["backoff"] };
   }
   // G2 — robots.txt politeness (reuses the entity-web-exploration check, 24h-cached).
-  // A weather-descriptor feed reads the shared weather cache (its own SSRF-guarded, budgeted path), not feedSource.url.
-  if (!feedSource.weather && !(await robotsAllows(feedSource.url))) {
+  // A weather-descriptor feed reads the shared weather cache (its own SSRF-guarded, budgeted path), not feedSource.url;
+  // a Yahoo-chart / CoinGecko feed reads the market cache (a budgeted JSON API client, not a crawl).
+  if (!feedSource.weather && !isMarketUpstream(feedSource.url) && !(await robotsAllows(feedSource.url))) {
     health.lastError = "robots_disallow";
     return { items: [], errors: ["robots_disallow"] };
   }
@@ -535,6 +537,18 @@ async function fetchFeed(feedSource) {
         return { items: [], errors: [`weather_${wx.reason}`] };
       }
       res = responseLike({ text: JSON.stringify(wx.data), contentType: "application/json" });
+    } else if (isMarketUpstream(feedSource.url)) {
+      // Yahoo chart / CoinGecko: the SAME cache entries realtime-feeds and the crypto/markets lenses read, so a fresh
+      // entry means no upstream call. Stale data is served as-is; nothing is invented when there is none.
+      const mk = await getMarketUpstream(feedSource.url);
+      if (!mk.ok) {
+        if (/^(key_backoff|budget_exhausted|upstream_backoff)$/.test(mk.reason)) {
+          // The market cache is protecting the upstream: not this feed's failure, so it must not count toward auto-disable.
+          return { items: [], errors: [mk.reason] };
+        }
+        throw new Error(`market_${mk.reason}`);
+      }
+      res = responseLike({ text: JSON.stringify(mk.data), contentType: "application/json" });
     } else if (isSharedUpstream(feedSource.url)) {
       // Same upstream URL that realtime-feeds / the news pool also poll: read through the shared
       // feed-cache so it is fetched once. A read younger than half this feed's interval is a hit.
