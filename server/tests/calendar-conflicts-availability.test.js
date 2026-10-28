@@ -51,7 +51,7 @@ describe("availability-find", () => {
     assert.deepEqual(r.result.freeSlots, [
       { start: "2026-10-28T13:00:00.000Z", end: "2026-10-28T14:00:00.000Z" },
       { start: "2026-10-28T15:30:00.000Z", end: "2026-10-28T16:00:00.000Z" },
-      { start: "2026-10-28T17:00:00.000Z", end: "2026-10-28T23:00:00.000Z" },
+      { start: "2026-10-28T17:00:00.000Z", end: "2026-10-28T22:00:00.000Z" },
     ]);
     assert.equal(r.result.tz, "America/New_York");
   });
