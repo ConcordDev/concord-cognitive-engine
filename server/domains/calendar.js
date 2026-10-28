@@ -500,6 +500,7 @@ export default function registerCalendarActions(registerLensAction) {
   }
 
   function expandOccurrences(event, rangeStart, rangeEnd) {
+    if (event.deletedAt) return []; // F12: trashed events are invisible everywhere
     const start = new Date(event.start);
     const end = new Date(event.end || event.start);
     const durationMs = end.getTime() - start.getTime();
@@ -640,7 +641,7 @@ export default function registerCalendarActions(registerLensAction) {
     const userId = aidCal(ctx);
     const list = listCal(s.events, userId);
     const e = list.find(x => x.id === String(params.id || ""));
-    if (!e) return { ok: false, error: "event not found" };
+    if (!e || e.deletedAt) return { ok: false, error: "event not found" };
     const scope = params.scope === "this" || params.scope === "following" ? params.scope : "all";
     if (scope !== "all" && e.recurrence) {
       const key = params.occurrenceKey ? new Date(params.occurrenceKey) : null;
@@ -738,6 +739,7 @@ export default function registerCalendarActions(registerLensAction) {
     const i = list.findIndex(e => e.id === String(params.id || ""));
     if (i < 0) return { ok: false, error: "event not found" };
     const ev = list[i];
+    if (ev.deletedAt) return { ok: false, error: "event not found" };
     const scope = params.scope === "this" || params.scope === "following" ? params.scope : "all";
     if (scope !== "all" && ev.recurrence) {
       const key = params.occurrenceKey ? new Date(params.occurrenceKey) : null;
@@ -755,9 +757,40 @@ export default function registerCalendarActions(registerLensAction) {
         return { ok: true, result: { deleted: true, scope } };
       }
     }
+    // F12: a full delete is a SOFT delete — the event leaves every
+    // surface (expansion returns nothing for it) but can be restored
+    // from the trash until it is permanently deleted.
+    ev.deletedAt = isoCal();
+    saveCal();
+    return { ok: true, result: { deleted: true, soft: true } };
+  });
+
+  registerLensAction("calendar", "events-trash-list", (ctx, _a, _p = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const events = listCal(s.events, aidCal(ctx))
+      .filter(e => e.deletedAt)
+      .map(e => ({ id: e.id, title: e.title, start: e.start, end: e.end, deletedAt: e.deletedAt }))
+      .sort((a, b) => b.deletedAt.localeCompare(a.deletedAt));
+    return { ok: true, result: { events, count: events.length } };
+  });
+
+  registerLensAction("calendar", "events-restore", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const e = listCal(s.events, aidCal(ctx)).find(x => x.id === String(params.id || ""));
+    if (!e || !e.deletedAt) return { ok: false, error: "trashed event not found" };
+    delete e.deletedAt;
+    saveCal();
+    return { ok: true, result: { restored: e.id, event: e } };
+  });
+
+  registerLensAction("calendar", "events-delete-permanent", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = listCal(s.events, aidCal(ctx));
+    const i = list.findIndex(e => e.id === String(params.id || "") && e.deletedAt);
+    if (i < 0) return { ok: false, error: "trashed event not found" };
     list.splice(i, 1);
     saveCal();
-    return { ok: true, result: { deleted: true } };
+    return { ok: true, result: { deletedPermanently: params.id } };
   });
 
   // ── Conflict detection (real, STATE-backed) ───────────────────
@@ -1829,7 +1862,7 @@ export default function registerCalendarActions(registerLensAction) {
     let attached = false;
     if (params.eventId) {
       const e = listCal(s.events, userId).find(x => x.id === String(params.eventId));
-      if (e) { e.conferenceLink = url; e.conferenceProvider = provider; e.conferenceRoom = room; attached = true; saveCal(); }
+      if (e && !e.deletedAt) { e.conferenceLink = url; e.conferenceProvider = provider; e.conferenceRoom = room; attached = true; saveCal(); }
     }
     return { ok: true, result: { provider, room, url, attachedToEvent: attached, eventId: params.eventId || null } };
   });
@@ -1837,7 +1870,7 @@ export default function registerCalendarActions(registerLensAction) {
   registerLensAction("calendar", "conference-clear", (ctx, _a, params = {}) => {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const e = listCal(s.events, aidCal(ctx)).find(x => x.id === String(params.eventId || ""));
-    if (!e) return { ok: false, error: "event not found" };
+    if (!e || e.deletedAt) return { ok: false, error: "event not found" };
     e.conferenceLink = '';
     delete e.conferenceProvider;
     delete e.conferenceRoom;
@@ -1856,7 +1889,7 @@ export default function registerCalendarActions(registerLensAction) {
     ensureBacklogMaps(s);
     const userId = aidCal(ctx);
     const event = listCal(s.events, userId).find(e => e.id === String(params.eventId || ""));
-    if (!event) return { ok: false, error: "event not found" };
+    if (!event || event.deletedAt) return { ok: false, error: "event not found" };
     const guests = Array.isArray(params.guests) ? params.guests.map(g => String(g).trim()).filter(Boolean) : [];
     if (guests.length === 0) return { ok: false, error: "guests array (emails/identifiers) required" };
     const list = listCal(s.eventInvites, userId);
