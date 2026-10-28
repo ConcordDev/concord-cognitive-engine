@@ -121,7 +121,97 @@ export function digitalFitCheck(mesh, {
   };
 }
 
-/** Emit medical-printer-flavored G-code + extrusion telemetry stub. */
+/**
+ * Intersect a triangle mesh with the horizontal plane y = planeY.
+ * Returns the intersection segments in the XZ plane: [[[x1,z1],[x2,z2]], …].
+ * Pure — the core of the real slicer below.
+ */
+export function sliceMeshAtY(positions, indices, planeY) {
+  const segs = [];
+  if (!positions?.length || !indices?.length) return segs;
+  const px = (vi) => positions[vi * 3];
+  const py = (vi) => positions[vi * 3 + 1];
+  const pz = (vi) => positions[vi * 3 + 2];
+  for (let t = 0; t + 2 < indices.length; t += 3) {
+    const tri = [indices[t], indices[t + 1], indices[t + 2]];
+    const hits = [];
+    for (let e = 0; e < 3; e++) {
+      const a = tri[e];
+      const b = tri[(e + 1) % 3];
+      const da = py(a) - planeY;
+      const db = py(b) - planeY;
+      if ((da < 0 && db < 0) || (da > 0 && db > 0)) continue;
+      if (da === 0 && db === 0) continue; // edge lies in the plane; neighbours cover it
+      const s = da === db ? 0 : da / (da - db);
+      hits.push([px(a) + (px(b) - px(a)) * s, pz(a) + (pz(b) - pz(a)) * s]);
+    }
+    const uniq = [];
+    for (const h of hits) {
+      if (!uniq.some((u) => Math.abs(u[0] - h[0]) < 1e-9 && Math.abs(u[1] - h[1]) < 1e-9)) uniq.push(h);
+    }
+    if (uniq.length === 2) segs.push(uniq);
+  }
+  return segs;
+}
+
+/**
+ * Chain intersection segments into polylines by matching endpoints.
+ * Returns [{ points: [[x,z],…], closed: boolean }, …]. Segments that
+ * cannot be chained (open/non-manifold input) come back as short
+ * polylines rather than being dropped — the toolpath stays honest
+ * about what the mesh actually contains.
+ */
+export function chainSegments(segments, tol = 1e-6) {
+  const key = (p) => `${Math.round(p[0] / tol)},${Math.round(p[1] / tol)}`;
+  const byEndpoint = new Map();
+  segments.forEach((seg, i) => {
+    for (const end of seg) {
+      const k = key(end);
+      if (!byEndpoint.has(k)) byEndpoint.set(k, []);
+      byEndpoint.get(k).push(i);
+    }
+  });
+  const used = new Array(segments.length).fill(false);
+  const same = (p, q) => Math.abs(p[0] - q[0]) <= tol * 2 && Math.abs(p[1] - q[1]) <= tol * 2;
+  const lines = [];
+  for (let i = 0; i < segments.length; i++) {
+    if (used[i]) continue;
+    used[i] = true;
+    const pts = [segments[i][0], segments[i][1]];
+    // Grow forward, then backward, until no unused segment touches an end.
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const atStart of [false, true]) {
+        const endPt = atStart ? pts[0] : pts[pts.length - 1];
+        const cands = byEndpoint.get(key(endPt)) || [];
+        for (const ci of cands) {
+          if (used[ci]) continue;
+          const seg = segments[ci];
+          const other = same(seg[0], endPt) ? seg[1] : same(seg[1], endPt) ? seg[0] : null;
+          if (!other) continue;
+          used[ci] = true;
+          if (atStart) pts.unshift(other); else pts.push(other);
+          grew = true;
+          break;
+        }
+      }
+    }
+    const closed = pts.length > 2 && same(pts[0], pts[pts.length - 1]);
+    if (closed) pts.pop(); // start point repeats implicitly on close
+    lines.push({ points: pts, closed });
+  }
+  return lines;
+}
+
+/**
+ * Emit medical-printer-flavored G-code by SLICING the supplied mesh:
+ * each layer's toolpath is the mesh's real cross-section contour at
+ * that height (triangle/plane intersections chained into loops), and
+ * extrusion is computed from actual segment lengths. Telemetry is
+ * computed from the generated toolpath — it describes the slicing,
+ * never live printer feedback (no printer is attached here).
+ */
 export function emitBioprintToolpath(mesh, {
   outDir,
   layerHeight = 0.2,
@@ -129,23 +219,28 @@ export function emitBioprintToolpath(mesh, {
   tempNozzle = 210,
   tempBed = 60,
   material = 'PLA_biocompatible_geometry',
+  lineWidth = 0.4,
+  filamentDiameter = 1.75,
 } = {}) {
   if (!outDir) return { ok: false, error: 'need_outDir', code: 'NO_DIR' };
-  fs.mkdirSync(outDir, { recursive: true });
-
   const pos = mesh?.positions || [];
-  let minX = Infinity, minY = Infinity, minZ = Infinity;
-  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  const idx = mesh?.indices || [];
+  if (pos.length < 9 || idx.length < 3) return { ok: false, error: 'empty_mesh', code: 'NO_MESH' };
+  fs.mkdirSync(outDir, { recursive: true });
+  let minY = Infinity;
+  let maxY = -Infinity;
   for (let i = 0; i < pos.length; i += 3) {
-    minX = Math.min(minX, pos[i]); maxX = Math.max(maxX, pos[i]);
     minY = Math.min(minY, pos[i + 1]); maxY = Math.max(maxY, pos[i + 1]);
-    minZ = Math.min(minZ, pos[i + 2]); maxZ = Math.max(maxZ, pos[i + 2]);
   }
   const height = Math.max(layerHeight, maxY - minY);
   const layers = Math.max(1, Math.ceil(height / layerHeight));
+  // mm of filament per mm of toolpath travel: bead cross-section
+  // (layerHeight × lineWidth) over filament cross-section.
+  const filamentArea = Math.PI * (filamentDiameter / 2) ** 2;
+  const ePerMm = (layerHeight * lineWidth) / filamentArea;
 
   const lines = [];
-  lines.push('; ConKay bioprint/prosthetic TOOLPATH — SYNTHETIC geometry');
+  lines.push('; ConKay bioprint/prosthetic TOOLPATH — sliced from the supplied mesh');
   lines.push('; NOT FDA cleared / NOT clinical manufacture instruction');
   lines.push(`; material=${material}`);
   lines.push(`; layerHeight=${layerHeight} feed=${feedRate}`);
@@ -158,29 +253,41 @@ export function emitBioprintToolpath(mesh, {
   lines.push('G28 ; home');
   lines.push('G1 Z0.2 F300');
 
-  const cx = (minX + maxX) / 2;
-  const cz = (minZ + maxZ) / 2;
-  const r0 = Math.max(5, (maxX - minX) * 0.45);
   let e = 0;
+  let skippedLayers = 0;
   const telemetryLayers = [];
 
   for (let L = 0; L < layers; L++) {
     const z = layerHeight * (L + 1);
-    const scale = 1 - (L / layers) * 0.25;
-    const r = r0 * scale;
-    const segs = 24;
+    // Slice at the layer's mid-plane so planes never sit exactly on a
+    // vertex ring of a stacked mesh.
+    const planeY = minY + layerHeight * (L + 0.5);
+    const contours = chainSegments(sliceMeshAtY(pos, idx, planeY));
+    if (contours.length === 0) { skippedLayers++; continue; }
     lines.push(`;LAYER:${L}`);
-    for (let s = 0; s <= segs; s++) {
-      const th = (s / segs) * Math.PI * 2;
-      const x = cx + Math.cos(th) * r;
-      const y = cz + Math.sin(th) * r; // printer Y ← mesh Z
-      e += 0.02 * r / r0;
-      lines.push(`G1 X${x.toFixed(3)} Y${y.toFixed(3)} Z${z.toFixed(3)} E${e.toFixed(4)} F${feedRate}`);
+    let perimeter = 0;
+    let pointCount = 0;
+    for (const contour of contours) {
+      const pts = contour.points;
+      pointCount += pts.length;
+      const start = pts[0];
+      lines.push(`G1 X${start[0].toFixed(3)} Y${start[1].toFixed(3)} Z${z.toFixed(3)} F3000 ; travel`);
+      const seq = contour.closed ? [...pts, pts[0]] : pts;
+      for (let s = 1; s < seq.length; s++) {
+        const prev = seq[s - 1];
+        const cur = seq[s];
+        const segLen = Math.hypot(cur[0] - prev[0], cur[1] - prev[1]);
+        perimeter += segLen;
+        e += segLen * ePerMm;
+        lines.push(`G1 X${cur[0].toFixed(3)} Y${cur[1].toFixed(3)} E${e.toFixed(4)} F${feedRate}`);
+      }
     }
     telemetryLayers.push({
       layer: L,
       zMm: Number(z.toFixed(3)),
-      radiusMm: Number(r.toFixed(3)),
+      loops: contours.length,
+      points: pointCount,
+      perimeterMm: Number(perimeter.toFixed(3)),
       feedRate,
       extrusionE: Number(e.toFixed(4)),
       tempNozzleC: tempNozzle,
@@ -209,8 +316,9 @@ export function emitBioprintToolpath(mesh, {
     layerHeightMm: layerHeight,
     layers: telemetryLayers,
     honesty: {
-      stub: true,
-      note: 'Extrusion telemetry STUB from synthetic toolpath — not live printer feedback',
+      stub: false,
+      source: 'sliced_mesh_toolpath',
+      note: 'Telemetry computed from the generated toolpath (real cross-sections sliced from the supplied mesh) — not live printer feedback',
       fda: false,
     },
   };
@@ -222,6 +330,8 @@ export function emitBioprintToolpath(mesh, {
     telemetryPath: telemPath,
     gcodeBytes: Buffer.byteLength(gcode, 'utf8'),
     layers,
+    slicedLayers: telemetryLayers.length,
+    skippedLayers,
     sha256gcode: createHash('sha256').update(gcode).digest('hex').slice(0, 16),
     fileWrites: {
       gcodeExists: fs.existsSync(gcodePath),
@@ -254,6 +364,8 @@ export function runProstheticsCert({ outDir, tolMm = 0.5 } = {}) {
 export default {
   buildParametricSocket,
   digitalFitCheck,
+  sliceMeshAtY,
+  chainSegments,
   emitBioprintToolpath,
   runProstheticsCert,
 };
