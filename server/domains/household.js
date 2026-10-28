@@ -4,8 +4,6 @@
 // (2,000,000+ food products, ingredients, allergens, nutrition,
 // Nutri-Score grade). Free, no API key.
 
-const OPEN_FOOD_FACTS = "https://world.openfoodfacts.org/api/v2";
-
 // Fail-closed numeric parse. parseFloat/Number() silently pass Infinity/NaN
 // ("Infinity", "1e999", NaN) — guard with Number.isFinite so a poisoned input
 // collapses to the fallback instead of leaking Infinity/NaN into output.
@@ -28,6 +26,7 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
 import { measuredPercent } from "../lib/measured-rate.js";
+import { getOffProduct, getOffSearch } from "../lib/food-feed-sources.js";
 export default function registerHouseholdActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -498,13 +497,13 @@ export default function registerHouseholdActions(registerLensAction) {
     if (!barcode) return { ok: false, error: "barcode required (UPC/EAN, 8-14 digits)" };
     if (barcode.length < 8 || barcode.length > 14) return { ok: false, error: `barcode must be 8-14 digits (got ${barcode.length})` };
     try {
-      const r = await fetch(`${OPEN_FOOD_FACTS}/product/${barcode}.json`);
-      if (!r.ok) throw new Error(`openfoodfacts ${r.status}`);
-      const data = await r.json();
-      if (data.status !== 1 || !data.product) {
+      // feed-cache source "openfoodfacts-product": cached per barcode, budgeted, SSRF-guarded.
+      const hit = await getOffProduct(barcode);
+      if (!hit.ok) return { ok: false, status: "unavailable", reason: hit.reason, lastOkAt: hit.lastOkAt, error: `open food facts unavailable: ${hit.reason}` };
+      if (!hit.data.found || !hit.data.product) {
         return { ok: false, error: `product not found: ${barcode}` };
       }
-      const p = data.product;
+      const p = hit.data.product;
       return {
         ok: true,
         result: {
@@ -536,6 +535,8 @@ export default function registerHouseholdActions(registerLensAction) {
           imageIngredientsUrl: p.image_ingredients_url,
           countries: p.countries_tags,
           source: "open-food-facts",
+          fetchedAt: hit.fetchedAt,
+          ...(hit.stale ? { stale: true } : {}),
         },
       };
     } catch (e) {
@@ -554,15 +555,18 @@ export default function registerHouseholdActions(registerLensAction) {
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.max(1, Math.min(100, Number(params.pageSize) || 20));
     try {
-      const url = `${OPEN_FOOD_FACTS}/search?search_terms=${encodeURIComponent(query)}&page=${page}&page_size=${pageSize}&fields=code,product_name,brands,nutriscore_grade,image_url,quantity`;
-      const r = await fetch(url);
-      if (!r.ok) throw new Error(`openfoodfacts ${r.status}`);
-      const data = await r.json();
+      // feed-cache source "openfoodfacts-search": legacy cgi/search.pl (real full-text
+      // search; the v2 endpoint ignores search_terms), cached per normalized query+page.
+      const hit = await getOffSearch({ query, page, pageSize });
+      if (!hit.ok) return { ok: false, status: "unavailable", reason: hit.reason, lastOkAt: hit.lastOkAt, error: `open food facts unavailable: ${hit.reason}` };
+      const data = hit.data;
       const products = (data.products || []).map((p) => ({
         barcode: p.code,
         name: p.product_name,
         brand: p.brands,
         nutriScore: p.nutriscore_grade,
+        novaGroup: p.nova_group,
+        ecoScore: p.ecoscore_grade,
         imageUrl: p.image_url,
         quantity: p.quantity,
       }));
@@ -573,6 +577,8 @@ export default function registerHouseholdActions(registerLensAction) {
           totalResults: data.count,
           page,
           source: "open-food-facts",
+          fetchedAt: hit.fetchedAt,
+          ...(hit.stale ? { stale: true } : {}),
         },
       };
     } catch (e) {
