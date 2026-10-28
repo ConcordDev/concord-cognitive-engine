@@ -297,7 +297,7 @@ export function GraphParityPanel() {
   }
 
   // ── Export-view state ─────────────────────────────────────────────
-  const [exportFmt, setExportFmt] = useState<'svg' | 'json'>('svg');
+  const [exportFmt, setExportFmt] = useState<'svg' | 'png' | 'json'>('svg');
   const [exZoom, setExZoom] = useState('1');
   const [exPanX, setExPanX] = useState('0');
   const [exPanY, setExPanY] = useState('0');
@@ -306,25 +306,56 @@ export function GraphParityPanel() {
   async function runExport() {
     if (!mapId) { setNotice('Select a map first'); return; }
     setBusy(true);
+    // PNG is the server's real SVG rasterized client-side — the export
+    // macro's formats are svg/json, and the raster must come from the
+    // same drawing, not a second renderer.
+    const serverFmt = exportFmt === 'png' ? 'svg' : exportFmt;
     const r = await lensRun('graph', 'export-view', {
-      mapId, format: exportFmt,
+      mapId, format: serverFmt,
       zoom: parseFloat(exZoom) || 1,
       panX: parseFloat(exPanX) || 0,
       panY: parseFloat(exPanY) || 0,
     });
     setBusy(false);
     if (!r.data?.ok) { setNotice(r.data?.error || 'Export failed'); return; }
-    if (exportFmt === 'svg') {
-      const svg = (r.data.result?.svg as string) || '';
-      setExSvg(svg);
-      const blob = new Blob([svg], { type: 'image/svg+xml' });
-      triggerDownload(blob, `graph-${mapId}.svg`);
-    } else {
+    if (exportFmt === 'json') {
       setExSvg('');
       const blob = new Blob([JSON.stringify(r.data.result?.export, null, 2)], { type: 'application/json' });
       triggerDownload(blob, `graph-${mapId}.json`);
+    } else {
+      const svg = (r.data.result?.svg as string) || '';
+      setExSvg(svg);
+      if (exportFmt === 'svg') {
+        const blob = new Blob([svg], { type: 'image/svg+xml' });
+        triggerDownload(blob, `graph-${mapId}.svg`);
+      } else {
+        const png = await rasterizeSvgToPng(svg);
+        if (!png) { setNotice('PNG conversion failed in this browser — SVG export works.'); return; }
+        triggerDownload(png, `graph-${mapId}.png`);
+      }
     }
     setNotice(`Exported as ${exportFmt.toUpperCase()}`);
+  }
+  function rasterizeSvgToPng(svg: string): Promise<Blob | null> {
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+      const img = new Image();
+      img.onload = () => {
+        const scale = 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = (img.naturalWidth || 900) * scale;
+        canvas.height = (img.naturalHeight || 600) * scale;
+        const cx = canvas.getContext('2d');
+        if (!cx) { URL.revokeObjectURL(url); resolve(null); return; }
+        cx.fillStyle = '#09090b';
+        cx.fillRect(0, 0, canvas.width, canvas.height);
+        cx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        canvas.toBlob((b) => resolve(b), 'image/png');
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+      img.src = url;
+    });
   }
   function triggerDownload(blob: Blob, name: string) {
     const url = URL.createObjectURL(blob);
@@ -734,9 +765,10 @@ export function GraphParityPanel() {
         {tab === 'export' && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
-              <select value={exportFmt} onChange={(e) => setExportFmt(e.target.value as 'svg' | 'json')}
+              <select value={exportFmt} onChange={(e) => setExportFmt(e.target.value as 'svg' | 'png' | 'json')}
                 className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200">
                 <option value="svg">SVG image</option>
+                <option value="png">PNG image</option>
                 <option value="json">JSON</option>
               </select>
               <label className="text-[11px] text-zinc-400">Zoom</label>
