@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Newspaper, Loader2, ExternalLink, ArrowUp, MessageSquare } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup, carryLookupMeta, lookupMeta } from '@/lib/public-lookup';
 
 interface Hit { objectID: string; title?: string; story_title?: string; url?: string; story_url?: string; author: string; points?: number; num_comments?: number; created_at: string; }
 
@@ -20,10 +21,10 @@ export function HnFrontPage() {
   const hits = useQuery({
     queryKey: ['hn-feed', tag],
     queryFn: async () => {
-      const r = await fetch(`https://hn.algolia.com/api/v1/search?tags=${tag}&hitsPerPage=25`);
-      if (!r.ok) throw new Error(`hn ${r.status}`);
-      const j = await r.json();
-      return (j.hits || []) as Hit[];
+      const j = await publicLookup<{ hits?: Hit[] }>('hn-search', { tags: tag });
+      const items = (j.hits || []) as Hit[];
+      carryLookupMeta(j, items);
+      return items;
     },
     staleTime: 5 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
@@ -31,6 +32,7 @@ export function HnFrontPage() {
   });
 
   const list = hits.data || [];
+  const meta = lookupMeta(hits.data);
   const totalPoints = list.reduce((a, h) => a + (h.points || 0), 0);
   const totalComments = list.reduce((a, h) => a + (h.num_comments || 0), 0);
 
@@ -40,7 +42,7 @@ export function HnFrontPage() {
         <div className="flex items-center gap-2">
           <Newspaper className="h-5 w-5 text-orange-400" />
           <h2 className="text-sm font-semibold text-white">HN live feed</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">hn.algolia.com · {tag}</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">Hacker News · via Concord server · {tag}</span>
         </div>
         <div className="flex items-center gap-2">
           <select value={tag} onChange={(e) => setTag(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
@@ -50,7 +52,7 @@ export function HnFrontPage() {
             <SaveAsDtuButton
               compact
               apiSource="hn-feed"
-              apiUrl={`https://hn.algolia.com/api/v1/search?tags=${tag}`}
+              apiUrl="https://news.ycombinator.com/"
               title={`HN ${tag} (${list.length} stories)`}
               content={list.slice(0, 20).map((h, i) => `${i + 1}. [${h.points || 0}↑ · ${h.num_comments || 0}💬] ${h.title || h.story_title}\n   ${h.url || h.story_url || `https://news.ycombinator.com/item?id=${h.objectID}`}`).join('\n\n')}
               extraTags={['feed', 'hn', 'hackernews', tag]}
@@ -59,7 +61,8 @@ export function HnFrontPage() {
           )}
         </div>
       </header>
-      {hits.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">HN unreachable.</div>}
+      {hits.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Hacker News unavailable right now — nothing is being shown in its place.</div>
+      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached Hacker News results{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Stories</div><div className="mt-0.5 font-mono text-lg text-orange-300">{list.length}</div></div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Points</div><div className="mt-0.5 font-mono text-lg text-orange-300">{totalPoints.toLocaleString()}</div></div>

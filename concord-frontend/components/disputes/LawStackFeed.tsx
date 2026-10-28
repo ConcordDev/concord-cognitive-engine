@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Gavel, Loader2, ExternalLink, MessageSquare, ArrowUp, CheckCircle } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup, carryLookupMeta } from '@/lib/public-lookup';
+import { LookupNotice } from '@/components/common/LookupNotice';
 
 interface Question {
   question_id: number;
@@ -38,10 +40,10 @@ export function LawStackFeed() {
   const questions = useQuery({
     queryKey: ['stackex', site, sort],
     queryFn: async () => {
-      const r = await fetch(`https://api.stackexchange.com/2.3/questions?order=desc&sort=${sort}&site=${site}&pagesize=25`);
-      if (!r.ok) throw new Error(`stackex ${r.status}`);
-      const j = await r.json();
-      return (j.items || []) as Question[];
+      const j = await publicLookup<{ items?: Question[] }>('se-search', { site, sort });
+      const items = (j.items || []) as Question[];
+      carryLookupMeta(j, items);
+      return items;
     },
     staleTime: 5 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
@@ -70,7 +72,7 @@ export function LawStackFeed() {
             <SaveAsDtuButton
               compact
               apiSource="stackexchange-law"
-              apiUrl={`https://api.stackexchange.com/2.3/questions?order=desc&sort=${sort}&site=${site}`}
+              apiUrl={`https://${site}.stackexchange.com/questions`}
               title={`${site}.SE — ${sort} (${list.length} questions)`}
               content={list.slice(0, 20).map((q, i) => `${i + 1}. [${q.score}↑ · ${q.answer_count}A · ${q.view_count.toLocaleString()} views${q.is_answered ? ' · ✓answered' : ''}] ${q.title}\n   ${q.link}`).join('\n\n')}
               extraTags={['disputes', 'stackexchange', site, sort]}
@@ -79,7 +81,8 @@ export function LawStackFeed() {
           )}
         </div>
       </header>
-      {questions.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Stack Exchange unreachable (rate-limit or network).</div>}
+      {questions.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Stack Exchange unavailable right now — nothing is being shown in its place.</div>}
+      <LookupNotice provider="stackexchange" data={questions.data} />
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
           <div className="text-[10px] uppercase tracking-wider text-zinc-400">Questions</div>

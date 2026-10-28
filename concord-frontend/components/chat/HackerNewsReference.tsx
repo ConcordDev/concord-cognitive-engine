@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { MessageSquare, Loader2, Search, ExternalLink, ArrowUp, Calendar } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup, lookupMeta } from '@/lib/public-lookup';
 
 interface HnHit {
   objectID: string;
@@ -22,19 +23,20 @@ export function HackerNewsReference() {
   const [byDate, setByDate] = useState(false);
   const [hits, setHits] = useState<HnHit[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [noticeData, setNoticeData] = useState<unknown>(null);
 
   const search = useMutation({
     mutationFn: async () => {
       setError(null);
-      const endpoint = byDate ? 'search_by_date' : 'search';
       try {
-        const r = await fetch(`https://hn.algolia.com/api/v1/${endpoint}?query=${encodeURIComponent(query)}&tags=story&hitsPerPage=20`);
-        if (!r.ok) throw new Error(`algolia ${r.status}`);
-        const j = await r.json();
+        const j = await publicLookup<{ hits?: HnHit[] }>('hn-search', { q: query, tags: 'story', byDate });
         setHits(j.hits || []);
-      } catch (e) { setHits([]); setError(e instanceof Error ? e.message : 'request failed'); }
+        setNoticeData(j);
+      } catch (e) { setHits([]); setNoticeData(null); setError('Hacker News is unavailable right now — nothing is being shown in its place.'); }
     },
   });
+
+  const noticeMeta = lookupMeta(noticeData);
 
   return (
     <div className="space-y-4">
@@ -42,13 +44,13 @@ export function HackerNewsReference() {
         <div className="flex items-center gap-2">
           <MessageSquare className="h-5 w-5 text-cyan-400" />
           <h2 className="text-sm font-semibold text-white">Hacker News reference</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">hn.algolia.com · live</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">Hacker News · via Concord server</span>
         </div>
         {hits.length > 0 && (
           <SaveAsDtuButton
             compact
             apiSource="hn-algolia"
-            apiUrl={`https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(query)}`}
+            apiUrl={`https://hn.algolia.com/?q=${encodeURIComponent(query)}`}
             title={`HN search — "${query}" (${hits.length})`}
             content={hits.slice(0, 20).map((h, i) => `${i + 1}. ${h.title || '(no title)'} [${h.points || 0}↑ · ${h.num_comments || 0} comments]\n   by ${h.author} · ${new Date(h.created_at).toLocaleDateString()}\n   ${h.url || `https://news.ycombinator.com/item?id=${h.objectID}`}`).join('\n\n')}
             extraTags={['chat', 'hacker-news', 'reference']}
@@ -71,6 +73,7 @@ export function HackerNewsReference() {
         </button>
       </form>
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
+      {noticeMeta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached Hacker News results{noticeMeta.fetchedAt ? ` from ${new Date(noticeMeta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}
       <div className="space-y-1 max-h-96 overflow-y-auto">
         {hits.map((h) => (
           <a key={h.objectID} href={h.url || `https://news.ycombinator.com/item?id=${h.objectID}`} target="_blank" rel="noopener noreferrer" className="block rounded border border-zinc-800 bg-zinc-950 p-2 hover:border-cyan-500/30">

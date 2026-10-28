@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Film, Loader2, ExternalLink, MessageSquare, ArrowUp, CheckCircle } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup, carryLookupMeta } from '@/lib/public-lookup';
+import { LookupNotice } from '@/components/common/LookupNotice';
 
 interface Question { question_id: number; title: string; link: string; score: number; answer_count: number; view_count: number; is_answered: boolean; tags: string[]; accepted_answer_id?: number; }
 
@@ -22,10 +24,10 @@ export function FilmStackFeed() {
   const questions = useQuery({
     queryKey: ['film-stack', tag],
     queryFn: async () => {
-      const r = await fetch(`https://api.stackexchange.com/2.3/questions?tagged=${tag}&order=desc&sort=votes&site=video&pagesize=25`);
-      if (!r.ok) throw new Error(`stackex ${r.status}`);
-      const j = await r.json();
-      return (j.items || []) as Question[];
+      const j = await publicLookup<{ items?: Question[] }>('se-search', { site: 'video', tagged: tag, sort: 'votes' });
+      const items = (j.items || []) as Question[];
+      carryLookupMeta(j, items);
+      return items;
     },
     staleTime: 30 * 60 * 1000,
   });
@@ -51,7 +53,7 @@ export function FilmStackFeed() {
               defaultContentClass="media"
               compact
               apiSource="video-stackexchange"
-              apiUrl={`https://api.stackexchange.com/2.3/questions?tagged=${tag}&site=video`}
+              apiUrl={`https://video.stackexchange.com/questions/tagged/${tag}`}
               title={`video.SE — ${tag} (${list.length})`}
               content={list.slice(0, 20).map((q, i) => `${i + 1}. [${q.score}↑ · ${q.answer_count}A${q.is_answered ? ' ✓' : ''}] ${q.title}\n   ${q.link}`).join('\n\n')}
               extraTags={['film-studios', 'video', 'stackexchange', tag]}
@@ -60,7 +62,8 @@ export function FilmStackFeed() {
           )}
         </div>
       </header>
-      {questions.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Stack Exchange unreachable.</div>}
+      {questions.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Stack Exchange unavailable right now — nothing is being shown in its place.</div>}
+      <LookupNotice provider="stackexchange" data={questions.data} />
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Questions</div><div className="mt-0.5 font-mono text-lg text-amber-300">{list.length}</div></div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Answered</div><div className="mt-0.5 font-mono text-lg text-emerald-300">{answered}</div></div>
