@@ -49,6 +49,7 @@ function defaultConfig() {
     dir: undefined, // undefined => resolve from env/home; null => disabled
     persistDebounceMs: 2000,
     log: (...a) => { try { console.warn("[feed-cache]", ...a); } catch { /* ignore */ } },
+    logUpstream: (line) => { console.info(line); },
   };
 }
 
@@ -66,6 +67,16 @@ export function _resetFeedCacheForTests() {
   _persistSnapshot = null;
   _persistLoaded = false;
   _persistWriting = Promise.resolve();
+}
+
+function isReadReplica() {
+  const v = String(process.env.CONCORD_READ_REPLICA || "").toLowerCase();
+  return v === "1" || v === "true";
+}
+
+/** Directory for WRITING the persist file (null on read replicas, which may still read it). */
+function persistWriteDir() {
+  return isReadReplica() ? null : persistDir();
 }
 
 function persistDir() {
@@ -90,6 +101,8 @@ export function registerSource(id, config = {}) {
     timeoutMs: config.timeoutMs > 0 ? config.timeoutMs : 0,
     license,
     persist: !!config.persist,
+    // Optional (key) => bool: only matching keys are written to the persist file (keeps user-claim queries off disk).
+    persistFilter: typeof config.persistFilter === "function" ? config.persistFilter : null,
     serialize: !!config.serialize || config.budget?.minSpacingMs > 0,
     maxKeys: config.maxKeys > 0 ? config.maxKeys : DEFAULT_MAX_KEYS,
     poolSize: config.poolSize > 0 ? config.poolSize : DEFAULT_POOL_SIZE,
@@ -111,6 +124,9 @@ export function registerSource(id, config = {}) {
   src.cfg = cfg;
   src.minute = { tokens: cfg.budget.perMin > 0 ? cfg.budget.perMin : Infinity, at: _cfg.now() };
   src.day = { tokens: cfg.budget.perDay > 0 ? cfg.budget.perDay : Infinity, at: _cfg.now() };
+  // Slow-refill bucket: `burst` tokens max (default 1), one new token every `everyMs`.
+  // For hosts that allow far less than 1 request/min (the shared GDELT budget).
+  src.slow = { tokens: cfg.budget.everyMs > 0 ? slowCapacity(cfg.budget) : Infinity, at: _cfg.now() };
   _sources.set(id, src);
   if (cfg.persist) { _ensureLoaded(); _applySnapshot(src); }
   return src;
@@ -119,6 +135,8 @@ export function registerSource(id, config = {}) {
 export function hasSource(id) { return _sources.has(id); }
 
 // ── budget (token bucket) ───────────────────────────────────────────────────
+
+function slowCapacity(b) { return b.burst > 0 ? b.burst : 1; }
 
 function refill(bucket, capacity, perMs) {
   if (!Number.isFinite(capacity)) return;
@@ -130,23 +148,35 @@ function refill(bucket, capacity, perMs) {
 
 /** Take one token from every configured bucket, or none. */
 function takeBudget(src) {
-  const { perMin, perDay } = src.cfg.budget;
+  const { perMin, perDay, everyMs } = src.cfg.budget;
   if (perMin > 0) refill(src.minute, perMin, perMin / 60_000);
   if (perDay > 0) refill(src.day, perDay, perDay / 86_400_000);
+  const needSlow = everyMs > 0;
+  if (needSlow) refill(src.slow, slowCapacity(src.cfg.budget), 1 / everyMs);
   const needMin = perMin > 0, needDay = perDay > 0;
-  if ((needMin && src.minute.tokens < 1) || (needDay && src.day.tokens < 1)) return false;
+  if ((needMin && src.minute.tokens < 1) || (needDay && src.day.tokens < 1) || (needSlow && src.slow.tokens < 1)) return false;
   if (needMin) src.minute.tokens -= 1;
   if (needDay) src.day.tokens -= 1;
+  if (needSlow) src.slow.tokens -= 1;
   return true;
 }
 
+function refundBudget(src) {
+  const { perMin, perDay, everyMs } = src.cfg.budget;
+  if (perMin > 0) src.minute.tokens = Math.min(perMin, src.minute.tokens + 1);
+  if (perDay > 0) src.day.tokens = Math.min(perDay, src.day.tokens + 1);
+  if (everyMs > 0) src.slow.tokens = Math.min(slowCapacity(src.cfg.budget), src.slow.tokens + 1);
+}
+
 function budgetLeft(src) {
-  const { perMin, perDay } = src.cfg.budget;
+  const { perMin, perDay, everyMs } = src.cfg.budget;
   if (perMin > 0) refill(src.minute, perMin, perMin / 60_000);
   if (perDay > 0) refill(src.day, perDay, perDay / 86_400_000);
+  if (everyMs > 0) refill(src.slow, slowCapacity(src.cfg.budget), 1 / everyMs);
   return {
     perMin: perMin > 0 ? Math.floor(src.minute.tokens) : null,
     perDay: perDay > 0 ? Math.floor(src.day.tokens) : null,
+    slow: everyMs > 0 ? Math.floor(src.slow.tokens) : null,
   };
 }
 
@@ -205,6 +235,12 @@ function runUpstream(src, key, fetcher) {
   // behind each other; the rest run concurrently (still coalesced per key).
   const gate = src.cfg.serialize ? src.tail : Promise.resolve();
   const run = gate.then(async () => {
+    // A request queued before an earlier one failed must not hit the upstream
+    // inside the back-off window it just opened: skip it (and give the budget token back).
+    if (backoffActive(src)) {
+      refundBudget(src);
+      return { ok: false, error: new Error(src.lastError?.message || "upstream_backoff"), skipped: true };
+    }
     const spacing = src.cfg.budget.minSpacingMs || 0;
     if (spacing > 0) {
       const wait = src.lastStart + spacing - _cfg.now();
@@ -241,7 +277,7 @@ function runUpstream(src, key, fetcher) {
  * Core resolution. Returns the public result plus `_error` (the original
  * upstream error, if this call's own fetch failed) for getOrThrow.
  */
-async function resolve(src, key, { allowStale = true, force = false, ttlMs, fetcher } = {}) {
+async function resolve(src, key, { allowStale = true, force = false, ttlMs, fetcher, reason: why } = {}) {
   const ttl = Number.isFinite(ttlMs) && ttlMs >= 0 ? ttlMs : src.cfg.ttlMs; // 0 = always refetch (legacy cachedFetchJson)
   const entry = src.entries.get(key);
   const age = entry ? _cfg.now() - entry.fetchedAt : Infinity;
@@ -261,6 +297,7 @@ async function resolve(src, key, { allowStale = true, force = false, ttlMs, fetc
   if (!takeBudget(src)) return staleOk ? useStale() : unavailable(src, key, "budget_exhausted");
 
   src.st.misses++;
+  logUpstream(src, key, why || (staleOk && !force ? "swr" : "miss"));
   const p = runUpstream(src, key, fetcher || src.cfg.fetcher).then((r) => {
     src.inflight.delete(key);
     if (r.ok) return served(src, src.entries.get(key), false);
@@ -279,6 +316,12 @@ async function resolve(src, key, { allowStale = true, force = false, ttlMs, fetc
     return useStale();
   }
   return p;
+}
+
+/** One info line per REAL upstream fetch, so backend.log proves user clicks don't cause upstream calls. */
+function logUpstream(src, key, reason) {
+  if (!_cfg.logUpstream) return;
+  try { _cfg.logUpstream(`[feed-cache] upstream source=${src.id} key=${String(key).slice(0, 60).replace(/\s+/g, "_")} reason=${reason}`); } catch { /* ignore */ }
 }
 
 function stripInternal(r) {
@@ -358,6 +401,7 @@ async function defaultShouldRun() {
 
 /** Refresh due warm keys; at most one warm fetch per source per call. */
 export async function warmTick(tickNumber = 0, { shouldRun } = {}) {
+  if (isReadReplica()) return { ran: false, reason: "read_replica", refreshed: [] };
   const gate = shouldRun || defaultShouldRun;
   let ok = true;
   try { ok = !!(await gate()); } catch { ok = true; }
@@ -368,12 +412,17 @@ export async function warmTick(tickNumber = 0, { shouldRun } = {}) {
     if (!w?.keys?.length) continue;
     const every = w.everyTicks > 0 ? w.everyTicks : 1;
     if (tickNumber % every !== 0) continue;
-    const due = w.keys.find((k) => {
+    // Stalest due key first (never-fetched counts as oldest): each tick moves the least-fresh key.
+    let due; let dueAt = Infinity;
+    for (const k of w.keys) {
       const e = src.entries.get(k);
-      return !e || _cfg.now() - e.fetchedAt >= src.cfg.ttlMs;
-    });
+      if (e && _cfg.now() - e.fetchedAt < src.cfg.ttlMs) continue;
+      const at = e ? e.fetchedAt : -Infinity;
+      if (at < dueAt) { due = k; dueAt = at; }
+    }
     if (due === undefined) continue;
-    const r = await get(src.id, due, { force: true, allowStale: true });
+    if (backoffActive(src)) continue; // don't queue warm fetches into an open breaker
+    const r = await get(src.id, due, { force: true, allowStale: true, reason: "warm" });
     refreshed.push({ source: src.id, key: due, status: r.status, reason: r.reason });
   }
   return { ran: true, refreshed };
@@ -451,9 +500,10 @@ function buildSnapshot() {
   for (const src of _sources.values()) {
     if (!src.cfg.persist) continue;
     const entries = {};
-    for (const [k, e] of src.entries) entries[k] = { data: e.data, fetchedAt: e.fetchedAt };
+    const keep = src.cfg.persistFilter || (() => true);
+    for (const [k, e] of src.entries) if (keep(k)) entries[k] = { data: e.data, fetchedAt: e.fetchedAt };
     const poolOut = {};
-    for (const [k, h] of src.poolHist) poolOut[k] = h;
+    for (const [k, h] of src.poolHist) if (keep(k)) poolOut[k] = h;
     sources[src.id] = { entries, pool: poolOut };
   }
   let body = JSON.stringify({ v: 1, savedAt: _cfg.now(), sources });
@@ -472,7 +522,7 @@ function buildSnapshot() {
 }
 
 function schedulePersist() {
-  if (!persistDir() || _persistTimer) return;
+  if (!persistWriteDir() || _persistTimer) return;
   _persistTimer = setTimeout(() => { _persistTimer = null; flushPersist().catch(() => {}); }, _cfg.persistDebounceMs);
   if (typeof _persistTimer.unref === "function") _persistTimer.unref();
 }
@@ -480,7 +530,7 @@ function schedulePersist() {
 /** Write the snapshot now (atomic tmp+rename). Resolves true when written. */
 export function flushPersist() {
   if (_persistTimer) { clearTimeout(_persistTimer); _persistTimer = null; }
-  const dir = persistDir();
+  const dir = persistWriteDir();
   if (!dir) return Promise.resolve(false);
   if (![..._sources.values()].some((s) => s.cfg.persist)) return Promise.resolve(false); // nothing opted in: write nothing
   _persistWriting = _persistWriting.then(async () => {

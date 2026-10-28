@@ -6,7 +6,7 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerGroundingActions from "../domains/grounding.js";
-import { clearExternalFetchCache } from "../lib/external-fetch.js";
+import { __resetGdeltForTests, __configureGdeltForTests } from "../lib/gdelt-source.js";
 
 
 // external-fetch.js routes through the SSRF guard (lib/public-fetch.js), so
@@ -34,7 +34,8 @@ beforeEach(() => {
   // fresh STATE per test so per-user Maps don't leak
   globalThis._concordSTATE = {};
   globalThis.fetch = async () => { throw new Error("network disabled in tests"); };
-  clearExternalFetchCache();
+  __resetGdeltForTests();
+  __configureGdeltForTests({ everyMs: 0, minSpacingMs: 0 }); // shared budget/spacing are covered in news-gdelt-cache.test.js
 });
 
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };

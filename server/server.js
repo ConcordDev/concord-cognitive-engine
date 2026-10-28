@@ -44356,6 +44356,14 @@ async function governorTick(reason="heartbeat") {
 
           await tickRealTimeFeeds(STATE, _tick, realtimeEmit, callBrain, feedBridge);
         } catch (e) { structuredLog("warn", "governor_realtime_data_tick", { error: String(e?.message || e) }); }
+
+        // Shared feed-cache warm (GDELT news categories): fire-and-forget, at most one
+        // upstream fetch per call, gated on idle/load, skipped on the read replica.
+        // Never blocks or throws into the heartbeat.
+        import("./lib/gdelt-source.js")
+          .then((g) => { g.ensureGdeltSource(); return import("./lib/feed-cache.js"); })
+          .then((fc) => fc.warmTick(_tick))
+          .catch((e) => { structuredLog("warn", "feed_cache_warm_tick", { error: String(e?.message || e) }); });
       }
 
       // Lens learning — every LENS_LEARNING ticks (~8 min), staggered across domains

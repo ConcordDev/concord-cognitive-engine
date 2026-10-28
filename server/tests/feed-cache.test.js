@@ -374,3 +374,71 @@ test("getOrThrow throws the original upstream error", async () => {
   registerSource("s", { fetcher: async () => { throw new TypeError("kaboom"); } });
   await assert.rejects(() => getOrThrow("s", "k"), (e) => e instanceof TypeError && e.message === "kaboom");
 });
+
+test("read replica (CONCORD_READ_REPLICA) never writes the persist file and never warms", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "feedcache-"));
+  const prev = process.env.CONCORD_READ_REPLICA;
+  try {
+    configureFeedCache({ dir });
+    let calls = 0;
+    registerSource("p", { persist: true, warm: { keys: ["k"], everyTicks: 1 }, fetcher: async () => { calls++; return [{ url: "u" }]; } });
+    process.env.CONCORD_READ_REPLICA = "1";
+    const w = await warmTick(0, { shouldRun: () => true });
+    assert.equal(w.ran, false);
+    assert.equal(w.reason, "read_replica");
+    assert.equal(calls, 0);
+    await get("p", "k"); // user reads may still fill memory
+    assert.equal(await flushPersist(), false);
+    assert.deepEqual(fs.readdirSync(dir), []);
+    delete process.env.CONCORD_READ_REPLICA;
+    assert.equal(await flushPersist(), true); // same state does write on the primary
+  } finally {
+    if (prev === undefined) delete process.env.CONCORD_READ_REPLICA; else process.env.CONCORD_READ_REPLICA = prev;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("persistFilter keeps non-matching keys off disk", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "feedcache-"));
+  try {
+    configureFeedCache({ dir });
+    registerSource("p", { persist: true, persistFilter: (k) => k === "ok", fetcher: async (k) => [{ url: `u-${k}` }] });
+    await get("p", "ok");
+    await get("p", "private-claim");
+    await flushPersist();
+    const txt = fs.readFileSync(path.join(dir, "feed-cache.json"), "utf8");
+    assert.ok(txt.includes("u-ok"));
+    assert.ok(!txt.includes("private-claim"));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("requests queued behind a failure skip the upstream during back-off and return their budget token", async () => {
+  let calls = 0;
+  registerSource("s", {
+    serialize: true, budget: { perMin: 10 },
+    fetcher: async () => { calls++; throw new Error("rate_limited"); },
+  });
+  const rs = await Promise.all([get("s", "a"), get("s", "b"), get("s", "c")]);
+  assert.equal(calls, 1);
+  assert.ok(rs.every((r) => r.status === "unavailable"));
+  assert.equal(stats().s.budget.perMin, 9); // only the one real request was charged
+});
+
+test("upstream log line: one per real fetch with reason, none for cache hits", async () => {
+  const lines = [];
+  configureFeedCache({ logUpstream: (l) => lines.push(l) });
+  registerSource("s", { ttlMs: 1000, staleMaxMs: 60_000, warm: { keys: ["w"], everyTicks: 1 }, fetcher: async () => [1] });
+  await get("s", "k");
+  await get("s", "k"); // hit
+  await warmTick(0, { shouldRun: () => true });
+  tick(2000);
+  await get("s", "k"); // swr
+  await flush(); await flush();
+  assert.deepEqual(lines, [
+    "[feed-cache] upstream source=s key=k reason=miss",
+    "[feed-cache] upstream source=s key=w reason=warm",
+    "[feed-cache] upstream source=s key=k reason=swr",
+  ]);
+});
