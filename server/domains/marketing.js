@@ -6,6 +6,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { writeGmailMessage } from "../lib/connector-client.js";
 import { getValidAccessToken } from "../lib/connector-tokens.js";
+import { trackingBaseUrl, buildTrackedEmailHtml, extractEmailLinks, engagementCounts } from "../lib/marketing-tracking.js";
 
 export default function registerMarketingActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -659,8 +660,12 @@ export default function registerMarketingActions(registerLensAction) {
   // configured it attempts real delivery via lib/email-service.js and
   // reports real delivered/failed counts; without a provider it records
   // the campaign as queued_no_provider and sends nothing. Open/click
-  // engagement is NEVER synthesized — there are no tracking pixels, so
-  // opened/clicked are reported as null (unknown), not invented rates.
+  // engagement is NEVER synthesized: when CONCORD_BASE_URL is set, the
+  // HTML body carries this deployment's own tracking pixel + click
+  // redirects (lib/marketing-tracking.js, beacons in
+  // routes/marketing-track.js) and opened/clicked are the real counts
+  // recorded on the send records; without a base URL there is nowhere
+  // for beacons to point, so engagement stays null (unknown).
   const EMAIL_BLOCK_TYPES = ["heading", "text", "image", "button", "divider", "spacer"];
 
   registerLensAction("marketing", "email-create", (ctx, _a, params = {}) => {
@@ -791,16 +796,26 @@ export default function registerMarketingActions(registerLensAction) {
     const skipped = recipients.length - batch.length;
     const text = e.blocks.map((b) => b.content).filter(Boolean).join("\n\n");
     const sends = mkListB(s.emailSends, e.id);
+    // Engagement tracking activates only when the deployment has a
+    // public base URL for beacons to point at (CONCORD_BASE_URL).
+    const base = trackingBaseUrl();
+    const links = extractEmailLinks(e.blocks);
     let delivered = 0, failed = 0;
     const failures = [];
     for (const to of batch) {
+      const sendId = mkId("snd");
       try {
-        const r = await sendEmail({ to, subject: e.subject, text });
+        // Per-recipient HTML: the pixel + click redirects carry this
+        // recipient's send id. No base URL → no HTML tracking body,
+        // text-only send exactly as before.
+        const html = base ? buildTrackedEmailHtml({ blocks: e.blocks, sendId, baseUrl: base }).html : undefined;
+        const r = await sendEmail({ to, subject: e.subject, text, ...(html ? { html } : {}) });
         if (r && r.ok) {
           delivered++;
-          // opened/clicked are unknown (no tracking pixels) — stored as
-          // null so downstream stats count them as 0, never as invented.
-          sends.push({ id: mkId("snd"), to, sentAt: at, opened: null, clicked: null });
+          // opened/clicked start null (unknown) and are filled in by
+          // the tracking beacons if/when the recipient interacts —
+          // never invented at send time.
+          sends.push({ id: sendId, to, sentAt: at, opened: null, clicked: null, links, tracking: !!base });
         } else {
           failed++;
           failures.push({ to, error: String(r?.error || "send failed") });
@@ -813,6 +828,7 @@ export default function registerMarketingActions(registerLensAction) {
     e.status = "sent";
     e.lastSentAt = at;
     saveMktState();
+    const counts = engagementCounts(sends);
     return {
       ok: true,
       result: {
@@ -823,9 +839,14 @@ export default function registerMarketingActions(registerLensAction) {
         failed,
         ...(skipped > 0 ? { skipped } : {}),
         ...(failures.length > 0 ? { failures: failures.slice(0, 20) } : {}),
-        opened: null,
-        clicked: null,
-        note: "engagement tracking not implemented",
+        // Cumulative real counts across this email's send records
+        // when tracking is active; null (unknown) when it is not.
+        opened: base ? counts.opened : null,
+        clicked: base ? counts.clicked : null,
+        tracking: !!base,
+        note: base
+          ? "Engagement tracking active — opens/clicks are recorded by this deployment's own beacons (CONCORD_BASE_URL) and grow as recipients interact."
+          : "Engagement tracking inactive — set CONCORD_BASE_URL so tracking beacons can point back to this deployment; opened/clicked remain unknown (null), never estimated.",
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }

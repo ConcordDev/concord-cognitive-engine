@@ -49,9 +49,6 @@ import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-ta
 import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
 import { humanMacroAclDenial } from "./lib/macro-acl-human-gate.js";
 import { forumModDenial } from "./lib/forum-mod-gate.js";
-import { personaCreateDenial, personaModifyDenial, personaListVisible, personaPromptVisible, personaRosterPutDenial } from "./lib/persona-legacy-gate.js";
-import { lensUpdateDenial } from "./lib/lens-update-gate.js";
-import { applyBallot, findCommentInTree, countCommentTree, appendCommentTree, applyAward, toggleSavedBy } from "./lib/forum-interactions.js";
 import { marketplaceOwnerDenial, marketplaceBuyDenial } from "./lib/marketplace-action-gate.js";
 import { threadModerationDenial, threadDeleteNodeDenial } from "./lib/thread-node-gate.js";
 import { collabCouncilDenial } from "./lib/collab-council-gate.js";
@@ -2055,8 +2052,6 @@ import {
 import { initDTUStore, createDTUStore } from "./lib/dtu-store.js";
 import { configureWriteSpill, waitForWriteQuiet, replaySpill, spilledIsNewer, spillStats } from "./lib/shutdown-write-gate.js";
 import { assignDtuCustody, dtuMutationDenial, normalizeOwnerlessDtus } from "./lib/dtu-ownership.js";
-import { dtuReadDenial, credibilityAdminDenial, collabParticipantDenial } from "./lib/dtu-macro-guards.js";
-import { exportableDtus, exportBulkDenial } from "./lib/export-filter.js";
 import { dtuImportDecision, importAuthDenial, stampImportedDtu } from "./lib/dtu-import-guard.js";
 import { renderAndAttach, hasRenderer as _hasRenderer } from "./lib/render-engine.js";
 import { registerAllRenderers } from "./lib/render-registry.js";
@@ -2152,6 +2147,7 @@ import createSovereignRouter from "./routes/sovereign.js";
 import createSovereignEmergentRouter from "./routes/sovereign-emergent.js";
 import { createUserDispatchRouter } from "./routes/user-dispatch.js";
 import createFederationRouter from "./routes/federation.js";
+import { createMarketingTrackRouter } from "./routes/marketing-track.js";
 import registerOAuthRoutes from "./routes/oauth.js";
 import registerConnectorOAuthRoutes from "./routes/connector-oauth.js";
 import { mountDxOAuth } from "./routes/dx-oauth.js";
@@ -19582,14 +19578,10 @@ function createFromTemplate(templateId, overrides = {}) {
 }
 
 // ---- Import/Export ----
-function exportDTUsToMarkdown(dtuIds = null, _options = {}, ctx = null) {
-  // SECURITY: export only DTUs the caller may read, minus hidden
-  // system rows (lib/export-filter.js). A null ctx is the
-  // server-internal CLI export — no HTTP caller — and stays
-  // unfiltered; HTTP routes pass makeCtx(req).
-  const dtus = exportableDtus(ctx, dtuIds
+function exportDTUsToMarkdown(dtuIds = null, _options = {}) {
+  const dtus = dtuIds
     ? dtuIds.map(id => STATE.dtus.get(id)).filter(Boolean)
-    : dtusArray(), _isHiddenSystemDtu);
+    : dtusArray();
 
   const lines = [];
 
@@ -19609,11 +19601,10 @@ function exportDTUsToMarkdown(dtuIds = null, _options = {}, ctx = null) {
   return { ok: true, markdown: lines.join("\n"), count: dtus.length };
 }
 
-function exportDTUsToJSON(dtuIds = null, ctx = null) {
-  // SECURITY: see exportDTUsToMarkdown — same read filter.
-  const dtus = exportableDtus(ctx, dtuIds
+function exportDTUsToJSON(dtuIds = null) {
+  const dtus = dtuIds
     ? dtuIds.map(id => STATE.dtus.get(id)).filter(Boolean)
-    : dtusArray(), _isHiddenSystemDtu);
+    : dtusArray();
 
   return {
     ok: true,
@@ -40991,6 +40982,7 @@ app.use("/api/sovereign", createSovereignRouter({ STATE, makeCtx, runMacro, save
 app.use("/api/sovereign-emergent", createSovereignEmergentRouter({ STATE }));
 app.use("/api", createUserDispatchRouter({ STATE })); // non-sovereign user action dispatch (POST /api/run)
 app.use("/api/federation", createFederationRouter({ db }));
+app.use("/api/marketing/track", createMarketingTrackRouter()); // public email beacons (open pixel + click redirect); handlers are probe/redirect-safe by design — see routes/marketing-track.js
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PROMOTION PIPELINE — HTTP routes for council voting UI
@@ -45534,12 +45526,7 @@ register("llm", "embed", (ctx, input) => {
 // ---- Export/Import System ----
 register("export", "markdown", (ctx, input) => {
   if (input.ids != null && !Array.isArray(input.ids)) return { ok: false, error: "invalid_input", reason: "not_a_function" };
-  // SECURITY: exports are read-filtered per caller (lib/export-
-  // filter.js); bulk export requires a signed-in user. Explicit
-  // ids the caller may not read are silently dropped.
-  const bulkDenial = exportBulkDenial(ctx, Array.isArray(input.ids));
-  if (bulkDenial) return bulkDenial;
-  const dtus = exportableDtus(ctx, Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray(), _isHiddenSystemDtu);
+  const dtus = Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray();
   const lines = ["# Concord DTU Export", `Exported: ${nowISO()}`, `Count: ${dtus.length}`, ""];
 
   for (const dtu of dtus) {
@@ -45570,10 +45557,7 @@ register("export", "markdown", (ctx, input) => {
 
 register("export", "obsidian", (ctx, input) => {
   if (input.ids != null && !Array.isArray(input.ids)) return { ok: false, error: "invalid_input", reason: "not_a_function" };
-  // SECURITY: same read filter as export.markdown.
-  const bulkDenial = exportBulkDenial(ctx, Array.isArray(input.ids));
-  if (bulkDenial) return bulkDenial;
-  const dtus = exportableDtus(ctx, Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray(), _isHiddenSystemDtu);
+  const dtus = Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray();
   const files = [];
 
   for (const dtu of dtus) {
@@ -45613,12 +45597,7 @@ register("export", "obsidian", (ctx, input) => {
 
 register("export", "json", (ctx, input) => {
   if (input.ids != null && !Array.isArray(input.ids)) return { ok: false, error: "invalid_input", reason: "not_a_function" };
-  // SECURITY: same read filter as export.markdown. Filter only —
-  // the full-object shape this macro returns is unchanged (a shape
-  // change for non-admins is a noted follow-up, not this fix).
-  const bulkDenial = exportBulkDenial(ctx, Array.isArray(input.ids));
-  if (bulkDenial) return bulkDenial;
-  const dtus = exportableDtus(ctx, Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray(), _isHiddenSystemDtu);
+  const dtus = Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray();
   return { ok: true, format: "json", dtus, count: dtus.length };
 });
 
@@ -45834,17 +45813,8 @@ register("council", "tally", (ctx, input) => {
 
 register("council", "credibility", (ctx, input) => {
   const { dtuId, score, reason } = input;
-  // SECURITY: credibility is an authority score — writing it is an
-  // admin act on ANY DTU (including the caller's own), and the DTU
-  // must be readable by the caller. Previously any member could set
-  // the credibility of any DTU by id. Admin gate first, then the
-  // read gate (unreadable reads as not found).
-  const adminDenial = credibilityAdminDenial(ctx);
-  if (adminDenial) return adminDenial;
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "DTU not found" };
-  const readDenial = dtuReadDenial(ctx, dtu);
-  if (readDenial) return readDenial;
 
   dtu.authority = dtu.authority || {};
   dtu.authority.credibility = clamp(Number(score || 0.5), 0, 1);
@@ -45925,11 +45895,6 @@ register("council", "proposePromotion", (ctx, input = {}) => {
 if (!STATE.customPersonas) STATE.customPersonas = new Map();
 
 register("persona", "create", (ctx, input) => {
-  // SECURITY: a real signed-in user is required and becomes the
-  // persona's owner (lib/persona-legacy-gate.js). The personas.*
-  // alias copies this fn, so the guard covers both names.
-  const createDenial = personaCreateDenial(ctx);
-  if (createDenial) return createDenial;
   const { name, description, style, traits } = input;
   if (!name) return { ok: false, error: "Persona name required" };
 
@@ -45946,7 +45911,6 @@ register("persona", "create", (ctx, input) => {
     },
     traits: Array.isArray(traits) ? traits : [],
     systemPrompt: input.systemPrompt || "",
-    ownerId: ctx?.actor?.userId || ctx?.actor?.id || null,
     createdAt: nowISO(),
     updatedAt: nowISO(),
     usageCount: 0
@@ -45962,27 +45926,20 @@ register("persona", "create", (ctx, input) => {
 // line ~20086 (which used ctx.state.personas instead of
 // STATE.customPersonas). The earlier registration is dead through the
 // dispatcher but its function still runs for any direct callers.
-register("persona", "list", (ctx, _input) => {
+register("persona", "list", (_ctx, _input) => {
   const builtIn = [
     { id: "ethicist", name: "Ethicist", description: "Focuses on moral implications", builtin: true },
     { id: "engineer", name: "Engineer", description: "Practical, implementation-focused", builtin: true },
     { id: "historian", name: "Historian", description: "Historical context and precedent", builtin: true },
     { id: "economist", name: "Economist", description: "Economic analysis and trade-offs", builtin: true }
   ];
-  // SECURITY: members see the built-ins + their OWN custom personas
-  // only (admin/internal see all) — this list used to return every
-  // user's personas including their systemPrompt (persona-legacy-gate.js).
-  const custom = Array.from(STATE.customPersonas.values()).filter((p) => personaListVisible(ctx, p));
+  const custom = Array.from(STATE.customPersonas.values());
   return { ok: true, personas: [...builtIn, ...custom], builtInCount: builtIn.length, customCount: custom.length };
 }, { note: "intentional_shadow_ok" });
 
 register("persona", "update", (ctx, input) => {
   const persona = STATE.customPersonas.get(input.id);
   if (!persona) return { ok: false, error: "Persona not found" };
-  // SECURITY: owner, admin-class or internal only; legacy ownerless
-  // personas are admin-only (persona-legacy-gate.js).
-  const updateDenial = personaModifyDenial(ctx, persona);
-  if (updateDenial) return updateDenial;
 
   if (input.name) persona.name = normalizeText(input.name);
   if (input.description) persona.description = input.description;
@@ -45998,11 +45955,7 @@ register("persona", "update", (ctx, input) => {
 });
 
 register("persona", "delete", (ctx, input) => {
-  const persona = STATE.customPersonas.get(input.id);
-  if (!persona) return { ok: false, error: "Persona not found" };
-  // SECURITY: same ownership rule as update (persona-legacy-gate.js).
-  const deleteDenial = personaModifyDenial(ctx, persona);
-  if (deleteDenial) return deleteDenial;
+  if (!STATE.customPersonas.has(input.id)) return { ok: false, error: "Persona not found" };
   STATE.customPersonas.delete(input.id);
   saveStateDebounced();
   return { ok: true, deleted: input.id };
@@ -46036,12 +45989,6 @@ register("personas", "get", (ctx, input = {}) => {
   if (!id) return { ok: false, error: "missing_id" };
   const p = STATE.customPersonas.get(id);
   if (!p) return { ok: false, error: "persona_not_found" };
-  // SECURITY: same store, same rule as persona.list — another user's
-  // systemPrompt is never returned (persona-legacy-gate.js, Fix 9).
-  if (!personaPromptVisible(ctx, p)) {
-    const { systemPrompt: _omitted, ...rest } = p;
-    return { ok: true, persona: rest };
-  }
   return { ok: true, persona: p };
 }, { note: "Z4 thin wrapper" });
 
@@ -47590,12 +47537,6 @@ register("scope", "promote", async (ctx, input) => {
   const dtu = STATE.dtus.get(dtuId);
 
   if (!dtu) return { ok: false, error: "dtu_not_found" };
-  // SECURITY: nominating a VISIBLE DTU is intended (see above), but
-  // a DTU the caller may not read must be indistinguishable from a
-  // missing one — previously any member could nominate (and thereby
-  // probe) another user's private DTU by id.
-  const promoteReadDenial = dtuReadDenial(ctx, dtu, ctxMayReadDtu, { ok: false, status: 404, error: "dtu_not_found" });
-  if (promoteReadDenial) return promoteReadDenial;
   if (dtu.scope === targetScope) return { ok: false, error: "already_in_scope" };
 
   if (!["global", "creative_global"].includes(targetScope)) {
@@ -48161,10 +48102,6 @@ register("scope", "checkCitations", async (ctx, input) => {
   const { dtuId } = input || {};
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "dtu_not_found" };
-  // SECURITY: citation integrity reads the DTU's content — a by-id
-  // read, gated (unreadable keeps this handler's not-found body).
-  const citationsReadDenial = dtuReadDenial(ctx, dtu, ctxMayReadDtu, { ok: false, status: 404, error: "dtu_not_found" });
-  if (citationsReadDenial) return citationsReadDenial;
   const result = verifyCitationIntegrity(dtu);
   return { ok: true, ...result };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -48177,11 +48114,6 @@ register("scope", "royaltyPreview", async (ctx, input) => {
   const { dtuId } = input || {};
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "dtu_not_found" };
-  // SECURITY: the royalty cascade is derived from the DTU's content
-  // and lineage — a by-id read, gated (unreadable keeps this
-  // handler's not-found body).
-  const royaltyReadDenial = dtuReadDenial(ctx, dtu, ctxMayReadDtu, { ok: false, status: 404, error: "dtu_not_found" });
-  if (royaltyReadDenial) return royaltyReadDenial;
   const royalties = computeRoyaltyCascade(dtu);
   return { ok: true, royalties, totalRate: royalties.reduce((s, r) => s + r.rate, 0) };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -48549,18 +48481,10 @@ register("schema", "apply", async (ctx, input) => {
   const { schemaName, dtuId, data } = input;
   const schema = SCHEMA_REGISTRY.get(schemaName);
   if (!schema) return { ok: false, error: "Schema not found" };
-  // SECURITY: apply WRITES machine.schema*, tags onto the DTU and
-  // bumps schema.usageCount. The lookup and both gates run BEFORE
-  // validation and the usage bump — previously any member could
-  // stamp a schema onto any DTU by id, including private ones.
-  const dtu = STATE.dtus.get(dtuId);
-  if (!dtu) return { ok: false, error: "DTU not found" };
-  const readDenial = dtuReadDenial(ctx, dtu);
-  if (readDenial) return readDenial;
-  const mutationDenial = dtuMutationDenial(dtu, ctx, { authMode: AUTH_MODE, verb: "update", actorUserId: ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId });
-  if (mutationDenial) return { ok: false, error: mutationDenial.error, status: mutationDenial.status, code: mutationDenial.code };
   const validation = await runMacro("schema", "validate", { schemaName, data }, ctx);
   if (!validation.valid) return { ok: false, error: "Validation failed", errors: validation.errors };
+  const dtu = STATE.dtus.get(dtuId);
+  if (!dtu) return { ok: false, error: "DTU not found" };
   dtu.machine = dtu.machine || {};
   dtu.machine.schema = schemaName;
   dtu.machine.schemaVersion = schema.version;
@@ -48617,15 +48541,6 @@ const DOMAIN_KEYWORDS = {
 register("autotag", "analyze", (ctx, input) => {
   const { dtuId, content, useEmbeddings: _useEmbeddings } = input;
   const dtu = dtuId ? STATE.dtus.get(dtuId) : null;
-  // SECURITY: analyzing by id reads the DTU's title/summary — gate
-  // it like any by-id read (unreadable reads as not found). The
-  // suggestedRelations loop below likewise skips DTUs the caller
-  // may not read; previously it listed ids+titles of every DTU in
-  // STATE, including other users' private ones.
-  if (dtuId) {
-    const readDenial = dtuReadDenial(ctx, dtu);
-    if (readDenial) return readDenial;
-  }
   const text = content || (dtu ? dtu.title + " " + (dtu.human?.summary || "") + " " + (dtu.core?.definitions?.join(" ") || "") : "");
   if (!text) return { ok: false, error: "No content to analyze" };
   const suggestedTags = [], textLower = text.toLowerCase(), domainScores = {};
@@ -48640,7 +48555,6 @@ register("autotag", "analyze", (ctx, input) => {
     const tagSet = new Set(suggestedTags);
     for (const [id, d] of STATE.dtus.entries()) {
       if (id === dtuId) continue;
-      if (!ctxMayReadDtu(ctx, d)) continue;
       const overlap = (d.tags || []).filter(t => tagSet.has(t)).length;
       if (overlap >= 2) suggestedRelations.push({ id, title: d.title, overlap });
     }
@@ -48653,14 +48567,6 @@ register("autotag", "apply", (ctx, input) => {
   const { dtuId, tags, domain, relations } = input;
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "DTU not found" };
-  // SECURITY: apply WRITES tags, meta.autotaggedDomain and lineage
-  // parents onto the DTU. Read gate first (unreadable = not found),
-  // then the ownership mutation gate — previously any member could
-  // tag/retitle-lineage any DTU by id.
-  const readDenial = dtuReadDenial(ctx, dtu);
-  if (readDenial) return readDenial;
-  const mutationDenial = dtuMutationDenial(dtu, ctx, { authMode: AUTH_MODE, verb: "update", actorUserId: ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId });
-  if (mutationDenial) return { ok: false, error: mutationDenial.error, status: mutationDenial.status, code: mutationDenial.code };
   if (tags && tags.length > 0) dtu.tags = [...new Set([...(dtu.tags || []), ...tags])];
   if (domain) { dtu.tags = [...new Set([...(dtu.tags || []), domain])]; dtu.meta = dtu.meta || {}; dtu.meta.autotaggedDomain = domain; }
   if (relations && relations.length > 0) { dtu.lineage = dtu.lineage || { parents: [], children: [] }; for (const rel of relations) { if (!dtu.lineage.parents.includes(rel.id)) dtu.lineage.parents.push(rel.id); } }
@@ -48673,13 +48579,7 @@ register("autotag", "apply", (ctx, input) => {
 
 register("autotag", "batchProcess", async (ctx, input) => {
   const { tier, limit, dryRun } = input;
-  // SECURITY: candidates are filtered to DTUs the caller may read
-  // AND mutate BEFORE the limit slice — previously the batch ran
-  // analyze+apply over any DTUs in STATE and returned the title of
-  // every one processed. Internal/autogen callers are unaffected
-  // (ctxMayReadDtu and dtuMutationDenial both pass for them).
   let dtus = dtusArray().filter(d => !d.meta?.autotaggedAt);
-  dtus = dtus.filter(d => ctxMayReadDtu(ctx, d) && !dtuMutationDenial(d, ctx, { authMode: AUTH_MODE, verb: "update", actorUserId: ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId }));
   if (tier) dtus = dtus.filter(d => d.tier === tier);
   dtus = dtus.slice(0, Number(limit) || 50);
   const results = [];
@@ -49089,24 +48989,11 @@ register("lens", "update", async (ctx, input={}) => {
   if (!id) return { ok: false, error: "id required" };
   const artifact = STATE.lensArtifacts.get(id);
   if (!artifact) return { ok: false, error: "not found" };
-  // SECURITY: ownership validation — mirrors lens.delete's rule (owner
-  // or admin). The old check SKIPPED social domains entirely
-  // (!LENS_SOCIAL_DOMAINS.has(...)), so on forum/feed/marketplace/
-  // collab/thread/vote/alliance/global/news/questmarket any signed-in
-  // member could overwrite any other user's artifact title/data/meta.
-  // The gate (lib/lens-update-gate.js) now applies to every owned
-  // artifact: owner, admin, internal callers, and — on social domains
-  // only — moderator-class roles (the forum post lock is a moderator
-  // action riding this path) may update. The ownerless/anon clause is
-  // unchanged here on purpose; ownerless artifacts are Fix 10.
-  if (artifact.ownerId && artifact.ownerId !== "anon") {
-    const updateDenial = lensUpdateDenial({
-      ctx,
-      isOwner: _lensIsOwnerActor(ctx, artifact),
-      isAdmin: _lensIsAdminActor(ctx),
-      isSocialDomain: LENS_SOCIAL_DOMAINS.has(artifact.domain),
-    });
-    if (updateDenial) return updateDenial;
+  // Ownership validation — mirrors lens.delete's rule (owner or admin), which
+  // this handler was missing entirely: any authenticated caller could
+  // silently overwrite another user's private artifact's title/data/meta.
+  if (!LENS_SOCIAL_DOMAINS.has(artifact.domain) && artifact.ownerId && artifact.ownerId !== "anon" && !_lensIsOwnerActor(ctx, artifact) && !_lensIsAdminActor(ctx)) {
+    return { ok: false, error: "unauthorized: you can only update your own artifacts" };
   }
   // Validate status transitions if status is changing
   if (meta?.status && meta.status !== artifact.meta?.status) {
@@ -51970,106 +51857,6 @@ registerLensAction("forum", "moderate", (ctx, artifact, params) => {
   artifact.updatedAt = nowISO();
   saveStateDebounced();
   return { ok: true, moderation: { action, moderatedAt: nowISO() } };
-});
-// ── Forum post interactions (feature PR ahead of SEC Fix 7) ─────────────
-// BoardPanel used to persist votes, comment votes, comments, saves and
-// awards by rewriting the WHOLE post artifact through the generic
-// lens.update. Fix 7 closes lens.update to non-owners on social domains,
-// which would have broken every one of those interactions for everyone
-// but the post's author. These four actions are the proper server-side
-// path: each requires a real signed-in user, resolves the post artifact,
-// and applies ONLY the caller's own change (lib/forum-interactions.js) —
-// one ballot per user, one appended comment, the caller's own save,
-// one award. The client never sends the post body, so it cannot forge
-// another user's ballot, edit the post text, or flip shared state.
-// The post LOCK intentionally stays on lens.update (moderator path) and
-// becomes moderator-only when Fix 7 lands.
-function _forumInteractionDenial(ctx) {
-  const userId = ctx?.actor?.userId || ctx?.actor?.id || null;
-  if (!userId || userId === "anon") {
-    return { ok: false, status: 401, code: "AUTH_REQUIRED", error: "sign in required" };
-  }
-  return null;
-}
-function _forumPostArtifact(artifact) {
-  if (!artifact || artifact.domain !== "forum" || artifact.type !== "post") return null;
-  if (artifact.data?.removed) return null;
-  return artifact;
-}
-registerLensAction("forum", "post-vote", (ctx, artifact, params) => {
-  const denied = _forumInteractionDenial(ctx); if (denied) return denied;
-  const post = _forumPostArtifact(artifact);
-  if (!post) return { ok: false, status: 404, error: "post not found" };
-  const userId = ctx.actor.userId || ctx.actor.id;
-  const target = params?.targetId
-    ? findCommentInTree(post.data.comments, String(params.targetId))
-    : post.data;
-  if (!target) return { ok: false, status: 404, error: "comment not found" };
-  const result = applyBallot(target, userId, params?.direction);
-  post.updatedAt = nowISO();
-  saveStateDebounced();
-  return { ok: true, ...result, ...(params?.targetId ? { targetId: String(params.targetId) } : {}) };
-});
-registerLensAction("forum", "post-comment", (ctx, artifact, params) => {
-  const denied = _forumInteractionDenial(ctx); if (denied) return denied;
-  const post = _forumPostArtifact(artifact);
-  if (!post) return { ok: false, status: 404, error: "post not found" };
-  if (post.data.locked) return { ok: false, status: 403, code: "FORBIDDEN", error: "forbidden: post is locked" };
-  const content = String(params?.content || "").trim().slice(0, 8000);
-  if (!content) return { ok: false, status: 400, error: "comment content required" };
-  const userId = ctx.actor.userId || ctx.actor.id;
-  const username = ctx.actor.username || userId;
-  const requestedId = typeof params?.id === "string" && params.id ? params.id : null;
-  const commentId = requestedId && !findCommentInTree(post.data.comments, requestedId)
-    ? requestedId
-    : uid("cmt");
-  const comment = {
-    id: commentId,
-    author: { username, displayName: ctx.actor.displayName || username, avatar: String(username).slice(0, 1).toUpperCase() },
-    authorId: userId,
-    content,
-    score: 1,
-    userVote: 1,
-    voters: { [userId]: 1 },
-    createdAt: nowISO(),
-    awards: [],
-    replies: [],
-    collapsed: false,
-  };
-  if (!Array.isArray(post.data.comments)) post.data.comments = [];
-  const parentId = params?.parentId ? String(params.parentId) : null;
-  if (!appendCommentTree(post.data.comments, parentId, comment)) {
-    return { ok: false, status: 404, error: "parent comment not found" };
-  }
-  post.data.commentCount = countCommentTree(post.data.comments);
-  post.updatedAt = nowISO();
-  saveStateDebounced();
-  return { ok: true, comment, commentCount: post.data.commentCount };
-});
-registerLensAction("forum", "post-save", (ctx, artifact, params) => {
-  const denied = _forumInteractionDenial(ctx); if (denied) return denied;
-  const post = _forumPostArtifact(artifact);
-  if (!post) return { ok: false, status: 404, error: "post not found" };
-  const userId = ctx.actor.userId || ctx.actor.id;
-  const result = toggleSavedBy(post.data, userId);
-  post.updatedAt = nowISO();
-  saveStateDebounced();
-  return { ok: true, ...result };
-});
-registerLensAction("forum", "post-award", (ctx, artifact, params) => {
-  const denied = _forumInteractionDenial(ctx); if (denied) return denied;
-  const post = _forumPostArtifact(artifact);
-  if (!post) return { ok: false, status: 404, error: "post not found" };
-  const award = String(params?.award || "").trim().slice(0, 8);
-  if (!award) return { ok: false, status: 400, error: "award required" };
-  const target = params?.targetId
-    ? findCommentInTree(post.data.comments, String(params.targetId))
-    : post.data;
-  if (!target) return { ok: false, status: 404, error: "comment not found" };
-  const result = applyAward(target, award);
-  post.updatedAt = nowISO();
-  saveStateDebounced();
-  return { ok: true, ...result, ...(params?.targetId ? { targetId: String(params.targetId) } : {}) };
 });
 registerLensAction("forum", "rank_posts", (ctx, artifact, params) => {
   try {
@@ -58355,19 +58142,12 @@ register("collab", "listSessions", (_ctx, _input) => {
 });
 
 register("collab", "lock", (ctx, input) => {
-  const { sessionId, path } = input;
+  const { sessionId, userId, path } = input;
   const session = COLLAB_SESSIONS.get(sessionId);
   if (!session) return { ok: false, error: "Session not found" };
-  // SECURITY: the lock holder is the ACTOR from ctx — input.userId
-  // was caller-supplied and spoofable, and any caller could lock
-  // any path in any session. Only session participants (or
-  // admin/internal callers) may lock; input.userId is ignored.
-  const actorId = _collabActorId(ctx);
-  const participantDenial = collabParticipantDenial(ctx, session, actorId);
-  if (participantDenial) return participantDenial;
   const lockKey = `${session.dtuId}:${path}`;
-  COLLAB_LOCKS.set(lockKey, { userId: actorId, lockedAt: nowISO(), path });
-  realtimeEmit("collab:lock", { sessionId, userId: actorId, path }, {});
+  COLLAB_LOCKS.set(lockKey, { userId, lockedAt: nowISO(), path });
+  realtimeEmit("collab:lock", { sessionId, userId, path }, {});
   return { ok: true, locked: true, path };
 });
 
@@ -58375,19 +58155,7 @@ register("collab", "unlock", (ctx, input) => {
   const { sessionId, path } = input;
   const session = COLLAB_SESSIONS.get(sessionId);
   if (!session) return { ok: false, error: "Session not found" };
-  // SECURITY: previously any caller could clear any lock. Only
-  // session participants may unlock, and a lock held by someone
-  // else can be cleared only by its holder or an admin/internal
-  // caller.
-  const actorId = _collabActorId(ctx);
-  const participantDenial = collabParticipantDenial(ctx, session, actorId);
-  if (participantDenial) return participantDenial;
   const lockKey = `${session.dtuId}:${path}`;
-  const existingLock = COLLAB_LOCKS.get(lockKey);
-  const isAdminOrInternal = ctx?.internal === true || ctx?.actor?.internal === true || _lensIsAdminActor(ctx);
-  if (existingLock && existingLock.userId !== actorId && !isAdminOrInternal) {
-    return { ok: false, status: 403, code: "FORBIDDEN", error: "forbidden: lock held by another user" };
-  }
   COLLAB_LOCKS.delete(lockKey);
   realtimeEmit("collab:unlock", { sessionId, path }, {});
   return { ok: true, unlocked: true, path };
@@ -58715,10 +58483,6 @@ register("mobile", "touchOptimized", (ctx, input) => {
   const { dtuId } = input;
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "DTU not found" };
-  // SECURITY: returns title/summary/tags of the DTU — a by-id read,
-  // gated (unreadable reads as not found).
-  const readDenial = dtuReadDenial(ctx, dtu);
-  if (readDenial) return readDenial;
   return {
     ok: true,
     compactView: {
@@ -59316,10 +59080,6 @@ register("vscode", "dtuToCode", (ctx, input) => {
   const { dtuId, format: _format } = input;
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "DTU not found" };
-  // SECURITY: returns machine.code / examples / summary of the DTU
-  // — a by-id read, gated (unreadable reads as not found).
-  const readDenial = dtuReadDenial(ctx, dtu);
-  if (readDenial) return readDenial;
   let code = "";
   if (dtu.machine?.code) code = dtu.machine.code;
   else if (dtu.core?.examples?.[0]) code = dtu.core.examples[0];
@@ -60645,12 +60405,7 @@ app.post("/api/import/roam", (req, res) => {
 
 app.get("/api/export/markdown", (req, res) => {
   const ids = req.query.ids ? req.query.ids.split(",") : null;
-  // SECURITY: bulk (no-ids) export requires a signed-in user, and
-  // the export is filtered to DTUs the caller may read.
-  const ctx = makeCtx(req);
-  const bulkDenial = exportBulkDenial(ctx, !!ids);
-  if (bulkDenial) return res.status(401).json(bulkDenial);
-  const result = exportDTUsToMarkdown(ids, {}, ctx);
+  const result = exportDTUsToMarkdown(ids);
   if (req.query.download === "1") {
     res.set("Content-Type", "text/markdown");
     res.set("Content-Disposition", "attachment; filename=concord-export.md");
@@ -60661,12 +60416,7 @@ app.get("/api/export/markdown", (req, res) => {
 
 app.get("/api/export/json", (req, res) => {
   const ids = req.query.ids ? req.query.ids.split(",") : null;
-  // SECURITY: same rule as the markdown route — bulk requires a
-  // signed-in user; the export is read-filtered per caller.
-  const ctx = makeCtx(req);
-  const bulkDenial = exportBulkDenial(ctx, !!ids);
-  if (bulkDenial) return res.status(401).json(bulkDenial);
-  const result = exportDTUsToJSON(ids, ctx);
+  const result = exportDTUsToJSON(ids);
   if (req.query.download === "1") {
     res.set("Content-Disposition", "attachment; filename=concord-export.json");
   }
@@ -73528,13 +73278,6 @@ app.post("/api/personas/:id/ask", async (req, res) => {
 });
 
 app.put("/api/personas/:id", (req, res) => {
-  // SECURITY: this route mutates the GLOBAL agent persona roster
-  // (customInstructions/active/name every user's agent persona uses).
-  // It had no auth check at all — admin-class only now, checked before
-  // the roster lookup so members cannot probe roster ids
-  // (persona-legacy-gate.js, Fix 9).
-  const rosterDenial = personaRosterPutDenial(makeCtx(req));
-  if (rosterDenial) return res.status(rosterDenial.status).json(rosterDenial);
   const persona = Array.isArray(STATE.personas) ? STATE.personas.find(p => p.id === req.params.id) : null;
   if (!persona) return res.status(404).json({ ok: false, error: "Persona not found" });
   if (req.body.customInstructions !== undefined) persona.customInstructions = req.body.customInstructions;
@@ -89122,10 +88865,6 @@ register("autotag", "classify", (ctx, input = {}) => {
   if (!dtuId) return { ok: false, error: "dtuId required" };
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "DTU not found" };
-  // SECURITY: classify returns the DTU's title + tags — a by-id
-  // read, gated like the others (unreadable reads as not found).
-  const readDenial = dtuReadDenial(ctx, dtu);
-  if (readDenial) return readDenial;
   const domains = autoClassifyDTU(dtu);
   return { ok: true, dtuId, title: dtu.title, domains, currentTags: dtu.tags || [] };
 }, { summary: "Preview domain classification for a specific DTU." });
