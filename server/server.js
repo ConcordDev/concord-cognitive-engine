@@ -2052,6 +2052,7 @@ import {
 import { initDTUStore, createDTUStore } from "./lib/dtu-store.js";
 import { configureWriteSpill, waitForWriteQuiet, replaySpill, spilledIsNewer, spillStats } from "./lib/shutdown-write-gate.js";
 import { assignDtuCustody, dtuMutationDenial, normalizeOwnerlessDtus } from "./lib/dtu-ownership.js";
+import { exportableDtus, exportBulkDenial } from "./lib/export-filter.js";
 import { dtuImportDecision, importAuthDenial, stampImportedDtu } from "./lib/dtu-import-guard.js";
 import { renderAndAttach, hasRenderer as _hasRenderer } from "./lib/render-engine.js";
 import { registerAllRenderers } from "./lib/render-registry.js";
@@ -19577,10 +19578,14 @@ function createFromTemplate(templateId, overrides = {}) {
 }
 
 // ---- Import/Export ----
-function exportDTUsToMarkdown(dtuIds = null, _options = {}) {
-  const dtus = dtuIds
+function exportDTUsToMarkdown(dtuIds = null, _options = {}, ctx = null) {
+  // SECURITY: export only DTUs the caller may read, minus hidden
+  // system rows (lib/export-filter.js). A null ctx is the
+  // server-internal CLI export — no HTTP caller — and stays
+  // unfiltered; HTTP routes pass makeCtx(req).
+  const dtus = exportableDtus(ctx, dtuIds
     ? dtuIds.map(id => STATE.dtus.get(id)).filter(Boolean)
-    : dtusArray();
+    : dtusArray(), _isHiddenSystemDtu);
 
   const lines = [];
 
@@ -19600,10 +19605,11 @@ function exportDTUsToMarkdown(dtuIds = null, _options = {}) {
   return { ok: true, markdown: lines.join("\n"), count: dtus.length };
 }
 
-function exportDTUsToJSON(dtuIds = null) {
-  const dtus = dtuIds
+function exportDTUsToJSON(dtuIds = null, ctx = null) {
+  // SECURITY: see exportDTUsToMarkdown — same read filter.
+  const dtus = exportableDtus(ctx, dtuIds
     ? dtuIds.map(id => STATE.dtus.get(id)).filter(Boolean)
-    : dtusArray();
+    : dtusArray(), _isHiddenSystemDtu);
 
   return {
     ok: true,
@@ -45524,7 +45530,12 @@ register("llm", "embed", (ctx, input) => {
 // ---- Export/Import System ----
 register("export", "markdown", (ctx, input) => {
   if (input.ids != null && !Array.isArray(input.ids)) return { ok: false, error: "invalid_input", reason: "not_a_function" };
-  const dtus = Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray();
+  // SECURITY: exports are read-filtered per caller (lib/export-
+  // filter.js); bulk export requires a signed-in user. Explicit
+  // ids the caller may not read are silently dropped.
+  const bulkDenial = exportBulkDenial(ctx, Array.isArray(input.ids));
+  if (bulkDenial) return bulkDenial;
+  const dtus = exportableDtus(ctx, Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray(), _isHiddenSystemDtu);
   const lines = ["# Concord DTU Export", `Exported: ${nowISO()}`, `Count: ${dtus.length}`, ""];
 
   for (const dtu of dtus) {
@@ -45555,7 +45566,10 @@ register("export", "markdown", (ctx, input) => {
 
 register("export", "obsidian", (ctx, input) => {
   if (input.ids != null && !Array.isArray(input.ids)) return { ok: false, error: "invalid_input", reason: "not_a_function" };
-  const dtus = Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray();
+  // SECURITY: same read filter as export.markdown.
+  const bulkDenial = exportBulkDenial(ctx, Array.isArray(input.ids));
+  if (bulkDenial) return bulkDenial;
+  const dtus = exportableDtus(ctx, Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray(), _isHiddenSystemDtu);
   const files = [];
 
   for (const dtu of dtus) {
@@ -45595,7 +45609,12 @@ register("export", "obsidian", (ctx, input) => {
 
 register("export", "json", (ctx, input) => {
   if (input.ids != null && !Array.isArray(input.ids)) return { ok: false, error: "invalid_input", reason: "not_a_function" };
-  const dtus = Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray();
+  // SECURITY: same read filter as export.markdown. Filter only —
+  // the full-object shape this macro returns is unchanged (a shape
+  // change for non-admins is a noted follow-up, not this fix).
+  const bulkDenial = exportBulkDenial(ctx, Array.isArray(input.ids));
+  if (bulkDenial) return bulkDenial;
+  const dtus = exportableDtus(ctx, Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray(), _isHiddenSystemDtu);
   return { ok: true, format: "json", dtus, count: dtus.length };
 });
 
@@ -60403,7 +60422,12 @@ app.post("/api/import/roam", (req, res) => {
 
 app.get("/api/export/markdown", (req, res) => {
   const ids = req.query.ids ? req.query.ids.split(",") : null;
-  const result = exportDTUsToMarkdown(ids);
+  // SECURITY: bulk (no-ids) export requires a signed-in user, and
+  // the export is filtered to DTUs the caller may read.
+  const ctx = makeCtx(req);
+  const bulkDenial = exportBulkDenial(ctx, !!ids);
+  if (bulkDenial) return res.status(401).json(bulkDenial);
+  const result = exportDTUsToMarkdown(ids, {}, ctx);
   if (req.query.download === "1") {
     res.set("Content-Type", "text/markdown");
     res.set("Content-Disposition", "attachment; filename=concord-export.md");
@@ -60414,7 +60438,12 @@ app.get("/api/export/markdown", (req, res) => {
 
 app.get("/api/export/json", (req, res) => {
   const ids = req.query.ids ? req.query.ids.split(",") : null;
-  const result = exportDTUsToJSON(ids);
+  // SECURITY: same rule as the markdown route — bulk requires a
+  // signed-in user; the export is read-filtered per caller.
+  const ctx = makeCtx(req);
+  const bulkDenial = exportBulkDenial(ctx, !!ids);
+  if (bulkDenial) return res.status(401).json(bulkDenial);
+  const result = exportDTUsToJSON(ids, ctx);
   if (req.query.download === "1") {
     res.set("Content-Disposition", "attachment; filename=concord-export.json");
   }
