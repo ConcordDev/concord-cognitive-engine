@@ -38,6 +38,7 @@ export function settingsFromEffect(fx: EffectInstance, project: { key: string; s
     flexCents: Math.max(0, Math.min(200, num(fx.params.flexCents, 200))),
     preserveVibrato: num(fx.params.preserveVibrato, 0) !== 0,
     transpose: Math.max(-12, Math.min(12, Math.round(num(fx.params.transpose, 0)))),
+    formantSemitones: Math.max(-12, Math.min(12, num(fx.params.formantSemitones, 0))),
     mix: Math.max(0, Math.min(1, Number.isFinite(fx.wet) ? fx.wet : 1)),
     mode: num(fx.params.quality, 0) !== 0 ? 'quality' : 'low',
     minHz: range.minHz,
