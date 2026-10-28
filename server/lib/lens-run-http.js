@@ -17,7 +17,9 @@
  * 422. `unknown_macro` and the brain catch-all stay on their existing
  * explicit HTTP 200 path in server.js — those are non-retryable "not a macro"
  * answers, not a handler refusing the action. 502/503/504 are the axios retry
- * set; nothing this module returns is in that set.
+ * set; nothing this module returns is in that set, with ONE opt-in exception:
+ * the geocoder's `geocoder_unavailable` code returns 503, and the client is
+ * taught not to auto-retry that code (see httpStatusForLensFailure).
  */
 
 /**
@@ -64,6 +66,14 @@ export function httpStatusForLensFailure(error, raw = {}) {
   // Exact match only. `missing_inputs` / `missing_world_id` and the rest of
   // the missing_* validation family stay 422 below.
   if (e === "missing_api_key") return 200;
+
+  // The ONE opt-in 503: atlas (and automotive's shop locator) mark a real
+  // Nominatim outage with code / error "geocoder_unavailable". The body
+  // carries retryAfterS for the user, and the client never auto-retries
+  // this code (lib/api/client.ts), so the 503 cannot turn into a retry
+  // storm against the geocoder's 1 req/s door. Exact match only — every
+  // other upstream failure keeps the 200 treatment below.
+  if (e === "geocoder_unavailable" || code === "geocoder_unavailable") return 503;
 
   // Upstream outages are not client faults either (Phase-1 C2). A handler
   // that flags its failure as an upstream problem — `upstream_unavailable`,
