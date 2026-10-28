@@ -216,6 +216,85 @@ export default function registerCalendarActions(registerLensAction) {
 });
 
   /**
+   * ical-import — the COMMIT step behind ical-parse's preview (F14).
+   * Re-parses the same document server-side (the client's parse is a
+   * preview, never the source of truth), creates the events on the
+   * default calendar (or params.calendarId), and dedupes by source
+   * UID so importing the same file twice does not double it.
+   * Recurrence rules are noted, not carried: an RRULE event imports as
+   * its first occurrence, and the count is reported, never hidden.
+   *
+   * params: { ics: string, calendarId?: string }
+   * Returns: { imported, skipped, withRecurrence, calendarId, calendarName }
+   */
+  registerLensAction("calendar", "ical-import", (ctx, _a, params = {}) => {
+  try {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidCal(ctx);
+    const ics = String(params.ics || "");
+    if (!ics.trim()) return { ok: false, error: "ics string required" };
+    if (!ics.includes("BEGIN:VCALENDAR")) return { ok: false, error: "input is not a VCALENDAR document" };
+    const unfolded = ics.replace(/\r\n[ \t]/g, "");
+    const incoming = [];
+    let cur = null;
+    for (const line of unfolded.split(/\r?\n/)) {
+      if (line === "BEGIN:VEVENT") { cur = {}; continue; }
+      if (line === "END:VEVENT") { if (cur) incoming.push(cur); cur = null; continue; }
+      if (!cur) continue;
+      const sep = line.indexOf(":");
+      if (sep < 0) continue;
+      const key = line.slice(0, sep).split(";")[0].toUpperCase();
+      const value = line.slice(sep + 1);
+      if (key === "UID") cur.uid = value;
+      else if (key === "SUMMARY") cur.summary = icsUnescape(value);
+      else if (key === "DESCRIPTION") cur.description = icsUnescape(value);
+      else if (key === "LOCATION") cur.location = icsUnescape(value);
+      else if (key === "DTSTART") cur.start = parseIcsDate(value);
+      else if (key === "DTEND") cur.end = parseIcsDate(value);
+      else if (key === "RRULE") cur.rrule = value;
+      else if (key === "ATTENDEE") (cur.attendeeEmails ||= []).push(value.replace(/^mailto:/i, ""));
+    }
+    const calendars = ensureDefaultCalendars(s, userId);
+    const target = params.calendarId
+      ? calendars.find(c => c.id === String(params.calendarId))
+      : (calendars.find(c => c.isDefault) || calendars[0]);
+    if (!target) return { ok: false, error: "calendar not found" };
+    const events = listCal(s.events, userId);
+    const seq = ensureSeqCal(s, userId);
+    let imported = 0, skipped = 0, withRecurrence = 0;
+    for (const inc of incoming) {
+      if (!inc.start || isNaN(new Date(inc.start).getTime())) { skipped++; continue; }
+      const extKey = inc.uid ? `ical-import:${inc.uid}` : null;
+      if (extKey && events.some(e => e.externalKey === extKey)) { skipped++; continue; }
+      if (inc.rrule) withRecurrence++;
+      const end = inc.end && !isNaN(new Date(inc.end).getTime())
+        ? inc.end
+        : new Date(new Date(inc.start).getTime() + 3_600_000).toISOString();
+      events.push({
+        id: uidCal('evt'),
+        number: `EV-${String(seq.evt).padStart(6, '0')}`,
+        calendarId: target.id,
+        title: inc.summary || "Untitled event",
+        description: inc.description || "",
+        location: inc.location || "",
+        start: inc.start, end,
+        allDay: false,
+        recurrence: null,
+        reminders: [],
+        attendees: inc.attendeeEmails || [],
+        conferenceLink: "",
+        externalKey: extKey,
+        createdAt: isoCal(),
+      });
+      seq.evt++;
+      imported++;
+    }
+    saveCal();
+    return { ok: true, result: { imported, skipped, withRecurrence, calendarId: target.id, calendarName: target.name } };
+    } catch (e) { return handlerFailure(e); }
+});
+
+  /**
    * timezone-convert — Converts a date/time from one IANA timezone to
    * another. Uses Node's built-in Intl.DateTimeFormat (no dep).
    *
@@ -1412,7 +1491,7 @@ export default function registerCalendarActions(registerLensAction) {
   // sync pulls live events from that feed via cachedFetchJson-equivalent
   // fetch + ical-parse, importing them into a dedicated calendar.
 
-  registerLensAction("calendar", "accounts-connect", (ctx, _a, params = {}) => {
+  registerLensAction("calendar", "accounts-connect", async (ctx, _a, params = {}) => {
   try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     ensureBacklogMaps(s);
@@ -1422,6 +1501,19 @@ export default function registerCalendarActions(registerLensAction) {
     const icsUrl = String(params.icsUrl || "").trim();
     if (!label) return { ok: false, error: "label required" };
     if (!/^https?:\/\//i.test(icsUrl)) return { ok: false, error: "valid icsUrl (https) required" };
+    // F14: validate the feed BEFORE the account exists — fetch it and
+    // parse-check it, so a bogus URL can never become a "connected"
+    // account that only fails later at Sync time.
+    let icsText;
+    try {
+      const r = await fetch(icsUrl);
+      if (!r.ok) return { ok: false, error: `feed responded ${r.status} — check the URL and try again` };
+      icsText = await r.text();
+    } catch (e) {
+      return { ok: false, error: `feed unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+    if (!icsText.includes("BEGIN:VCALENDAR")) return { ok: false, error: "that URL did not return an iCalendar (VCALENDAR) feed" };
+    const validatedEventCount = (icsText.match(/BEGIN:VEVENT/g) || []).length;
     const account = {
       id: uidCal('acct'),
       provider,
@@ -1430,11 +1522,12 @@ export default function registerCalendarActions(registerLensAction) {
       direction: ['pull', 'push', 'two-way'].includes(params.direction) ? params.direction : 'two-way',
       lastSyncAt: null,
       lastSyncCount: 0,
+      validatedEventCount,
       connectedAt: isoCal(),
     };
     listCal(s.connectedAccounts, userId).push(account);
     saveCal();
-    return { ok: true, result: { account } };
+    return { ok: true, result: { account, validatedEventCount } };
     } catch (e) { return handlerFailure(e); }
 });
 
