@@ -4,6 +4,9 @@ import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerAtlasActions from "../domains/atlas.js";
 import registerReposActions from "../domains/repos.js";
+import { __setPublicFetchTestTransport } from "../lib/public-fetch.js";
+import { configureFeedCache, _resetFeedCacheForTests } from "../lib/feed-cache.js";
+import { _resetGeoFeedForTests } from "../lib/geo-feed-sources.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -19,6 +22,14 @@ before(() => {
 });
 
 beforeEach(() => {
+  // Nominatim goes through lib/geo-feed-sources (feed-cache + fetchPublicUrl),
+  // so tests inject the public-fetch transport and reset the cache each time.
+  _resetFeedCacheForTests();
+  _resetGeoFeedForTests();
+  configureFeedCache({ now: () => Date.now(), sleep: async () => {}, log: () => {}, logUpstream: null });
+  // Default transport hands off to whatever globalThis.fetch a test installs
+  // (no DNS, no egress); tests that need the guarded path set their own.
+  __setPublicFetchTestTransport((u, i) => globalThis.fetch(u, i));
   globalThis.fetch = async () => { throw new Error("network disabled in tests"); };
   delete process.env.GITHUB_TOKEN;
 });
@@ -65,7 +76,7 @@ describe("atlas.nominatim-reverse", () => {
 
   it("parses reverse-geocode response", async () => {
     let capturedUrl = "";
-    globalThis.fetch = async (url) => {
+    __setPublicFetchTestTransport(async (url) => {
       capturedUrl = url;
       return {
         ok: true,
@@ -76,18 +87,28 @@ describe("atlas.nominatim-reverse", () => {
           address: { road: "Pennsylvania Avenue NW", city: "Washington", state: "DC", country_code: "us" },
         }),
       };
-    };
+    });
     const r = await call("atlas.nominatim-reverse", ctxA, { latitude: 38.8977, longitude: -77.0365 });
     assert.equal(r.ok, true);
-    assert.match(capturedUrl, /\/reverse\?lat=38\.8977&lon=-77\.0365/);
+    assert.match(capturedUrl, /\/reverse\?lat=38\.89770&lon=-77\.03650/);
     assert.equal(r.result.address.country_code, "us");
   });
 
   it("surfaces in-body error from Nominatim", async () => {
-    globalThis.fetch = async () => ({ ok: true, json: async () => ({ error: "Unable to geocode" }) });
-    const r = await call("atlas.nominatim-reverse", ctxA, { latitude: 999, longitude: 999 });
+    __setPublicFetchTestTransport(async () => ({ ok: true, json: async () => ({ error: "Unable to geocode" }) }));
+    const r = await call("atlas.nominatim-reverse", ctxA, { latitude: 0.1, longitude: 0.1 });
     assert.equal(r.ok, false);
     assert.match(r.error, /nominatim: Unable to geocode/);
+  });
+
+  it("rejects out-of-range coordinates without any upstream call", async () => {
+    let calls = 0;
+    __setPublicFetchTestTransport(async () => { calls++; return { ok: true, json: async () => ({}) }; });
+    const r = await call("atlas.nominatim-reverse", ctxA, { latitude: 999, longitude: 999 });
+    assert.equal(r.ok, false);
+    assert.equal(r.status, "unavailable");
+    assert.equal(r.reason, "bad_coordinates");
+    assert.equal(calls, 0);
   });
 });
 

@@ -18,6 +18,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { openMeteoJson } from "../lib/weather-feed-sources.js";
+import { nominatimSearch } from "../lib/geo-feed-sources.js";
 // Wave-4 gap-closure (travel-capability-map.md #2): Gmail inbox auto-sync
 // reuses the same SSRF-guarded connector read path domains/gmail.js already
 // rides (readGmailMessages/readGmailMessage — see that file's `guard()` for
@@ -1119,11 +1120,9 @@ export default function registerTravelActions(registerLensAction) {
     const query = tvclean(params.query || item.location || item.title, 200);
     if (!query) return { ok: false, error: "no location to geocode" };
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
-      const r = await fetch(url, { headers: { "User-Agent": "ConcordTravelLens/1.0" } });
-      if (!r.ok) throw new Error(`nominatim ${r.status}`);
-      const arrR = await r.json();
-      const hit = Array.isArray(arrR) ? arrR[0] : null;
+      const geo = await nominatimSearch(query, { limit: 1 });
+      if (!geo.ok) throw new Error(geo.error);
+      const hit = Array.isArray(geo.data) ? geo.data[0] : null;
       if (!hit) return { ok: false, error: `no coordinates found for "${query}"` };
       item.lat = Math.round(parseFloat(hit.lat) * 1e6) / 1e6;
       item.lng = Math.round(parseFloat(hit.lon) * 1e6) / 1e6;

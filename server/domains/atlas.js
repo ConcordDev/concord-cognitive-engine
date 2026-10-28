@@ -4,14 +4,16 @@
 // (geocoding, free no key, 1 req/sec courtesy limit) + Overpass API
 // (OSM feature search, free no key) + Wikidata SPARQL for population.
 
-const NOMINATIM_BASE = "https://nominatim.openstreetmap.org";
 const OVERPASS_BASE = "https://overpass-api.de/api";
+const OSM_FETCH_TIMEOUT_MS = 30_000;
 
-function osmUserAgent() {
-  const contact = process.env.OSM_CONTACT || "https://concord-os.org";
-  return `Concord-OS/1.0 (${contact})`;
+// Overpass + OSRM: SSRF-guarded fetch with a hard timeout (no new cache).
+function osmFetch(url, init = {}) {
+  return fetchPublicUrl(url, { ...init, signal: init.signal || AbortSignal.timeout(OSM_FETCH_TIMEOUT_MS) });
 }
 
+import { nominatimSearch, nominatimReverse, osmUserAgent } from "../lib/geo-feed-sources.js";
+import { fetchPublicUrl } from "../lib/public-fetch.js";
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
@@ -580,11 +582,9 @@ export default function registerAtlasActions(registerLensAction) {
     if (!query) return { ok: false, error: "query required (free-form address or place name)" };
     const limit = Math.max(1, Math.min(10, Number(params.limit) || 5));
     try {
-      const r = await fetch(`${NOMINATIM_BASE}/search?q=${encodeURIComponent(query)}&format=jsonv2&limit=${limit}&addressdetails=1`, {
-        headers: { "User-Agent": osmUserAgent(), Accept: "application/json" },
-      });
-      if (!r.ok) throw new Error(`nominatim ${r.status}`);
-      const data = await r.json();
+      const geo = await nominatimSearch(query, { limit });
+      if (!geo.ok) return { ok: false, status: "unavailable", reason: geo.reason, lastOkAt: geo.lastOkAt, error: `nominatim unreachable: ${geo.error}` };
+      const data = geo.data;
       const places = (Array.isArray(data) ? data : []).map((p) => ({
         osmType: p.osm_type,
         osmId: p.osm_id,
@@ -616,11 +616,9 @@ export default function registerAtlasActions(registerLensAction) {
     const lng = Number(params.longitude);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok: false, error: "latitude + longitude required" };
     try {
-      const r = await fetch(`${NOMINATIM_BASE}/reverse?lat=${lat}&lon=${lng}&format=jsonv2&addressdetails=1`, {
-        headers: { "User-Agent": osmUserAgent(), Accept: "application/json" },
-      });
-      if (!r.ok) throw new Error(`nominatim ${r.status}`);
-      const p = await r.json();
+      const geo = await nominatimReverse(lat, lng);
+      if (!geo.ok) return { ok: false, status: "unavailable", reason: geo.reason, lastOkAt: geo.lastOkAt, error: `nominatim unreachable: ${geo.error}` };
+      const p = geo.data || {};
       if (p.error) return { ok: false, error: `nominatim: ${p.error}` };
       return {
         ok: true,
@@ -657,7 +655,7 @@ export default function registerAtlasActions(registerLensAction) {
     const filter = amenity ? `["amenity"="${amenity}"]` : `["amenity"]`;
     const query = `[out:json][timeout:25];(node${filter}(${south},${west},${north},${east}););out tags center 100;`;
     try {
-      const r = await fetch(`${OVERPASS_BASE}/interpreter`, {
+      const r = await osmFetch(`${OVERPASS_BASE}/interpreter`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": osmUserAgent() },
         body: `data=${encodeURIComponent(query)}`,
@@ -956,7 +954,7 @@ export default function registerAtlasActions(registerLensAction) {
     const coords = waypoints.map(w => `${Number(w.lng)},${Number(w.lat)}`).join(';');
     try {
       const url = `https://router.project-osrm.org/route/v1/${profile}/${coords}?overview=full&geometries=geojson&steps=false`;
-      const r = await fetch(url, { headers: { Accept: 'application/json' } });
+      const r = await osmFetch(url, { headers: { Accept: 'application/json' } });
       if (!r.ok) return { ok: false, error: `OSRM ${r.status}` };
       const data = await r.json();
       if (data.code !== 'Ok' || !data.routes?.[0]) return { ok: false, error: `OSRM: ${data.code || 'no route'}` };
@@ -1000,7 +998,7 @@ export default function registerAtlasActions(registerLensAction) {
     const profile = ['driving', 'walking', 'cycling'].includes(params.mode) ? params.mode : 'driving';
     try {
       const coords = `${Number(start.lng)},${Number(start.lat)};${Number(end.lng)},${Number(end.lat)}`;
-      const routeR = await fetch(`https://router.project-osrm.org/route/v1/${profile}/${coords}?overview=full&geometries=geojson&steps=false`, { headers: { Accept: 'application/json' } });
+      const routeR = await osmFetch(`https://router.project-osrm.org/route/v1/${profile}/${coords}?overview=full&geometries=geojson&steps=false`, { headers: { Accept: 'application/json' } });
       if (!routeR.ok) return { ok: false, error: `OSRM ${routeR.status}` };
       const routeData = await routeR.json();
       const route = routeData.routes?.[0];
@@ -1011,7 +1009,7 @@ export default function registerAtlasActions(registerLensAction) {
       const pad = 0.045; // ~5km box around the midpoint
       const bbox = { south: mid[1] - pad, north: mid[1] + pad, west: mid[0] - pad, east: mid[0] + pad };
       const query = `[out:json][timeout:25];(node["amenity"="${amenity}"](${bbox.south},${bbox.west},${bbox.north},${bbox.east}););out tags center 40;`;
-      const poiR = await fetch(`${OVERPASS_BASE}/interpreter`, {
+      const poiR = await osmFetch(`${OVERPASS_BASE}/interpreter`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": osmUserAgent() },
         body: `data=${encodeURIComponent(query)}`,
@@ -1163,7 +1161,7 @@ export default function registerAtlasActions(registerLensAction) {
     const apiProfile = host.includes("project-osrm") ? profile
       : profile === "walking" ? "foot" : profile === "cycling" ? "bike" : "driving";
     const url = `${host}/route/v1/${apiProfile}/${coords}?overview=full&geometries=geojson&steps=${withSteps ? "true" : "false"}&annotations=duration,distance`;
-    const r = await fetch(url, { headers: { Accept: "application/json", "User-Agent": osmUserAgent() } });
+    const r = await osmFetch(url, { headers: { Accept: "application/json", "User-Agent": osmUserAgent() } });
     if (!r.ok) throw new Error(`OSRM ${r.status}`);
     const data = await r.json();
     if (data.code !== "Ok" || !data.routes?.[0]) throw new Error(`OSRM: ${data.code || "no route"}`);
@@ -1299,7 +1297,7 @@ export default function registerAtlasActions(registerLensAction) {
     const pad = 0.012; // ~1.3km search radius for stops
     const stopQuery = (la, lo) => `[out:json][timeout:25];(node["public_transport"="stop_position"](${la - pad},${lo - pad},${la + pad},${lo + pad});node["highway"="bus_stop"](${la - pad},${lo - pad},${la + pad},${lo + pad});node["railway"="station"](${la - pad},${lo - pad},${la + pad},${lo + pad});node["railway"="tram_stop"](${la - pad},${lo - pad},${la + pad},${lo + pad}););out tags 60;`;
     async function nearestStop(la, lo) {
-      const r = await fetch(`${OVERPASS_BASE}/interpreter`, {
+      const r = await osmFetch(`${OVERPASS_BASE}/interpreter`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": osmUserAgent() },
         body: `data=${encodeURIComponent(stopQuery(la, lo))}`,
@@ -1419,7 +1417,7 @@ export default function registerAtlasActions(registerLensAction) {
     }
     try {
       const q = `[out:json][timeout:25];${osmType}(${osmId});out tags center 1;`;
-      const r = await fetch(`${OVERPASS_BASE}/interpreter`, {
+      const r = await osmFetch(`${OVERPASS_BASE}/interpreter`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": osmUserAgent() },
         body: `data=${encodeURIComponent(q)}`,
