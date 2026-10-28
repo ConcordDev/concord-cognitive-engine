@@ -1710,7 +1710,7 @@ export default function registerPetsActions(registerLensAction) {
     const page = new Date().getDate() % 8;
     try {
       const r = await fetch(`https://api.thedogapi.com/v1/breeds?limit=${limit}&page=${page}`);
-      if (!r.ok) return { ok: false, error: `thedogapi ${r.status}` };
+      if (!r.ok) return { ok: false, error: `thedogapi ${r.status}`, reason: "upstream_unavailable" };
       const data = await r.json();
       const breeds = (Array.isArray(data) ? data : []).slice(0, limit);
       let ingested = 0, skipped = 0; const dtuIds = [];
@@ -1731,7 +1731,7 @@ export default function registerPetsActions(registerLensAction) {
       savePetState();
       return { ok: true, result: { ingested, skipped, source: "thedogapi-breeds", dtuIds } };
     } catch (e) {
-      return { ok: false, error: `thedogapi unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return { ok: false, error: `thedogapi unreachable: ${e instanceof Error ? e.message : String(e)}`, reason: "upstream_unavailable" };
     }
   });
 }

@@ -223,18 +223,20 @@ export default function registerFreeApiLiveMacros(register) {
     } catch (e) {
       // USDA answered with an error status: say so (never echo the URL — it carries the key).
       if (e?.status) {
+        // lensRun clients only keep `error`, so USDA's own message rides in it too.
+        const usdaMessage = usdaErrorMessage(e.bodyText, apiKey);
         return {
           ok: false,
           reason: e.status === 429 ? "usda_rate_limited" : "usda_http_error",
           status: e.status,
-          error: `USDA FoodData Central returned HTTP ${e.status}`,
-          usdaMessage: usdaErrorMessage(e.bodyText, apiKey),
+          error: `USDA FoodData Central returned HTTP ${e.status}${usdaMessage ? `: ${usdaMessage}` : ""}`,
+          usdaMessage,
         };
       }
       if (e?.name === "AbortError") {
         return { ok: false, reason: "usda_timeout", error: `USDA FoodData Central did not answer within ${FETCH_TIMEOUT_MS / 1000}s` };
       }
-      return { ok: false, reason: "usda_unreachable", error: String(e?.message || e) };
+      return { ok: false, reason: "usda_unreachable", error: `USDA FoodData Central unreachable: ${String(e?.message || e)}` };
     }
   };
   register("cooking", "live_food_search", usdaFoodSearch, { note: "live USDA FoodData Central food search" });

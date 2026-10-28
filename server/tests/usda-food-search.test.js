@@ -60,7 +60,7 @@ describe("live_food_search handler", () => {
     assert.equal(r.ok, false);
     assert.equal(r.reason, "usda_http_error");
     assert.equal(r.status, 400);
-    assert.match(r.error, /HTTP 400/);
+    assert.equal(r.error, "USDA FoodData Central returned HTTP 400: Invalid request for key [redacted]");
     assert.equal(r.usdaMessage, "Invalid request for key [redacted]");
     assert.equal(JSON.stringify(r).includes(FAKE_KEY), false);
   });
@@ -69,6 +69,7 @@ describe("live_food_search handler", () => {
     stubFetch(() => new Response("<html><body>400 Bad Request</body></html>", { status: 400, headers: { "content-type": "text/html" } }));
     const r = await handler()({}, { query: "apple" });
     assert.deepEqual([r.ok, r.reason, r.status, r.usdaMessage], [false, "usda_http_error", 400, null]);
+    assert.equal(r.error, "USDA FoodData Central returned HTTP 400");
   });
 
   it("429 → usda_rate_limited", async () => {
@@ -82,6 +83,7 @@ describe("live_food_search handler", () => {
     stubFetch(() => { throw new TypeError("fetch failed"); });
     const r = await handler()({}, { query: "apple" });
     assert.equal(r.reason, "usda_unreachable");
+    assert.equal(r.error, "USDA FoodData Central unreachable: fetch failed");
     assert.equal(JSON.stringify(r).includes(FAKE_KEY), false);
   });
 

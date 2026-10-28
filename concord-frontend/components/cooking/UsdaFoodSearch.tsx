@@ -49,30 +49,36 @@ interface UsdaSearchResult {
   usingDemoKey?: boolean;
 }
 
+/**
+ * lensRun returns { data: { ok, result, error } }: on success the macro's own
+ * object is in `result`; on failure only `error` (the server's honest text)
+ * survives. Reading `foods` off the envelope (the old code) made every search
+ * look like "No matches".
+ */
+export function toUsdaResult(data: { ok: boolean; result?: unknown; error?: string | null; reason?: string } | null | undefined): UsdaSearchResult | null {
+  if (!data) return null;
+  const res = data.result as UsdaSearchResult | null | undefined;
+  if (data.ok && res && typeof res === 'object') return res;
+  return { ok: false, reason: res?.reason ?? data.reason, status: res?.status, error: res?.error ?? data.error ?? undefined, usdaMessage: res?.usdaMessage };
+}
+
 /** Honest one-line failure text: what actually failed, never a generic "unreachable". */
 export function usdaErrorText(r: Pick<UsdaSearchResult, 'reason' | 'status' | 'error' | 'usdaMessage'> | null): string {
   if (!r) return 'Food search request failed — no response from the server.';
   const detail = r.usdaMessage ? `: ${r.usdaMessage}` : '';
-  switch (r.reason) {
-    case 'usda_rate_limited':
-      return `USDA rate limit reached (HTTP 429)${detail}. Try again shortly.`;
-    case 'usda_http_error':
-      return `USDA rejected the search (HTTP ${r.status ?? '?'})${detail}.`;
-    case 'usda_timeout':
-      return 'USDA did not answer in time.';
-    case 'usda_unreachable':
-      return `USDA unreachable${r.error ? ` (${r.error})` : ''}.`;
-    case 'query_too_long':
-      return 'Search is too long (100 characters max).';
-    default:
-      return r.error || r.reason || 'Food search failed.';
-  }
+  if (r.reason === 'usda_http_error' && r.status) return `USDA rejected the search (HTTP ${r.status})${detail}.`;
+  if (r.reason === 'usda_rate_limited') return `USDA rate limit reached (HTTP 429)${detail}. Try again shortly.`;
+  if (r.reason === 'query_too_long') return 'Search is too long (100 characters max).';
+  if (r.error) return r.error;
+  if (r.reason === 'usda_timeout') return 'USDA did not answer in time.';
+  if (r.reason === 'usda_unreachable') return 'USDA unreachable.';
+  return r.reason || 'Food search failed.';
 }
 
-async function runMacro<T>(domain: string, name: string, input: Record<string, unknown> = {}): Promise<T | null> {
+async function runSearch(domain: string, input: Record<string, unknown>): Promise<UsdaSearchResult | null> {
   try {
-    const r = await lensRun({ domain, name, input });
-    return r?.data as T;
+    const r = await lensRun({ domain, name: 'live_food_search', input });
+    return toUsdaResult(r?.data);
   } catch {
     return null;
   }
@@ -90,9 +96,7 @@ export function UsdaFoodSearch({ domain = 'cooking', className, onSelect }: Usda
     if (q.trim().length < 2) { setFoods([]); return; }
     setLoading(true);
     setError(null);
-    const r = await runMacro<UsdaSearchResult>(
-      domain, 'live_food_search', { query: q, limit: 15 },
-    );
+    const r = await runSearch(domain, { query: q, limit: 15 });
     if (r?.ok) {
       setFoods(r.foods || []);
       setUsingDemoKey(!!r.usingDemoKey);

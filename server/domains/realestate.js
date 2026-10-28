@@ -1640,8 +1640,9 @@ export default function registerRealEstateActions(registerLensAction) {
     if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
     const limit = Math.max(1, Math.min(52, Math.round(Number(params.limit) || 15)));
     try {
-      const r = await fetch("https://api.census.gov/data/2023/acs/acs1?get=NAME,B25077_001E&for=state:*");
-      if (!r.ok) return { ok: false, error: `census ${r.status}` };
+      const censusKey = process.env.CENSUS_API_KEY;
+      const r = await fetch(`https://api.census.gov/data/2023/acs/acs1?get=NAME,B25077_001E&for=state:*${censusKey ? `&key=${encodeURIComponent(censusKey)}` : ""}`);
+      if (!r.ok) return { ok: false, error: `census ${r.status}`, reason: "upstream_unavailable" };
       const data = await r.json();
       const rows = (Array.isArray(data) ? data.slice(1) : []).slice(0, limit);
       let ingested = 0, skipped = 0; const dtuIds = [];
@@ -1664,7 +1665,11 @@ export default function registerRealEstateActions(registerLensAction) {
       saveREState();
       return { ok: true, result: { ingested, skipped, source: "census-home-values", dtuIds } };
     } catch (e) {
-      return { ok: false, error: `census unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      // Never echo the optional CENSUS_API_KEY back in an error message.
+      const censusKey = process.env.CENSUS_API_KEY;
+      let msg = e instanceof Error ? e.message : String(e);
+      if (censusKey) msg = msg.split(censusKey).join("[redacted]").split(encodeURIComponent(censusKey)).join("[redacted]");
+      return { ok: false, error: `census unreachable: ${msg}`, reason: "upstream_unavailable" };
     }
   });
 };
