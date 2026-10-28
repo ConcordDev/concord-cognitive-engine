@@ -17,6 +17,11 @@
 // the environment at fetch time and only ever placed in the Authorization header:
 // it is never part of a cache key, a result or a log line.
 //
+// Phase 8b adds, on the same pattern: trending-by-creation-date (shares the
+// github-search source/budget) and the "github-core" source (repo releases/forks,
+// public gists, security advisories). owner/repo are validated against a strict
+// charset and every other parameter against an allowlist: still no free-form URL.
+//
 // Sources register on import (register-once via hasSource) and again on demand
 // via ensureGithubFeedSources(), because feed-cache's test reset clears them.
 
@@ -28,6 +33,8 @@ const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
 
 export const GITHUB_SEARCH_SOURCE = "github-search";
+export const GITHUB_CORE_SOURCE = "github-core";
+const GITHUB_API = "https://api.github.com";
 const GITHUB_SEARCH_URL = "https://api.github.com/search/repositories";
 const USER_AGENT = "concord-code-lens";
 
@@ -67,6 +74,17 @@ export const TOPIC_ALLOWLIST = new Set([
   "webxr", "whisper", "whiteboard", "wireguard", "workflow", "world-building", "xmpp", "zapier",
   "zero-trust",
 ]);
+
+export const TRENDING_DAYS = new Set([1, 7, 30]);
+/** Languages the trending widgets offer. */
+export const LANG_ALLOWLIST = new Set(["TypeScript", "JavaScript", "Python", "Rust", "Go", "C++", "Java", "Swift", "Ruby"]);
+export const ECOSYSTEM_ALLOWLIST = new Set([
+  "actions", "composer", "erlang", "go", "maven", "npm", "nuget", "other", "pip", "pub", "rubygems", "rust", "swift",
+]);
+export const SEVERITY_ALLOWLIST = new Set(["unknown", "low", "medium", "high", "critical"]);
+export const REPO_META_KINDS = new Set(["releases", "forks"]);
+const NAME_RE = /^[A-Za-z0-9_.-]{1,100}$/;
+const TTL_BY_KIND = { releases: HOUR, forks: HOUR, gists: 30 * MIN, advisories: 6 * HOUR };
 
 class UpstreamError extends Error {
   constructor(message, status) { super(message); this.status = status; }
@@ -113,9 +131,7 @@ const TRIM = (r) => ({
 });
 
 // key "topic|perPage" -> { items }. Only validated key parts reach the URL.
-async function fetchGithubSearch(key, { signal }) {
-  const [topic, perPage] = key.split("|");
-  const url = `${GITHUB_SEARCH_URL}?q=${encodeURIComponent(`topic:${topic}`)}&sort=stars&order=desc&per_page=${clampPerPage(perPage)}`;
+async function githubGetJson(url, signal) {
   const init = { headers: githubHeaders(), signal };
   const r = _transport ? await _transport(url, init) : await fetchPublicUrl(url, init);
   if (!r || r.ok !== true) {
@@ -123,8 +139,73 @@ async function fetchGithubSearch(key, { signal }) {
     // Status only: never the response body or any header (those may echo credentials).
     throw new UpstreamError(status === 403 || status === 429 ? "github_rate_limited" : `github_http_${status || "error"}`, status);
   }
-  const body = await r.json();
+  return r.json();
+}
+
+// Keys: "topic|perPage" (topic search) or "trending|days|lang" (created-since search).
+async function fetchGithubSearch(key, { signal }) {
+  let url;
+  if (key.startsWith("trending|")) {
+    const [, days, lang] = key.split("|");
+    const since = new Date(Date.now() - Number(days) * DAY).toISOString().slice(0, 10);
+    const q = `created:>${since}${lang ? ` language:${lang}` : ""}`;
+    url = `${GITHUB_SEARCH_URL}?q=${encodeURIComponent(q)}&sort=stars&order=desc&per_page=25`;
+  } else {
+    const [topic, perPage] = key.split("|");
+    url = `${GITHUB_SEARCH_URL}?q=${encodeURIComponent(`topic:${topic}`)}&sort=stars&order=desc&per_page=${clampPerPage(perPage)}`;
+  }
+  const body = await githubGetJson(url, signal);
   return { items: (Array.isArray(body?.items) ? body.items : []).map(TRIM) };
+}
+
+const str = (v, max) => (typeof v === "string" ? v : "").slice(0, max);
+const TRIM_RELEASE = (r) => ({
+  id: r.id, tag_name: r.tag_name, name: r.name ?? null, draft: !!r.draft, prerelease: !!r.prerelease,
+  published_at: r.published_at, html_url: r.html_url, author: r.author?.login ? { login: r.author.login } : null,
+  body: str(r.body, 2000),
+});
+const TRIM_FORK = (r) => ({
+  id: r.id, full_name: r.full_name, html_url: r.html_url, description: r.description ?? null,
+  stargazers_count: r.stargazers_count, forks_count: r.forks_count, pushed_at: r.pushed_at,
+  owner: r.owner?.login ? { login: r.owner.login } : null,
+});
+const TRIM_GIST = (g) => ({
+  id: g.id, description: g.description ?? null, html_url: g.html_url, public: !!g.public,
+  files: Object.fromEntries(Object.entries(g.files || {}).map(([k, f]) => [k, { filename: f.filename, language: f.language ?? null, size: f.size, raw_url: f.raw_url }])),
+  owner: g.owner ? { login: g.owner.login, avatar_url: g.owner.avatar_url } : undefined,
+  created_at: g.created_at, updated_at: g.updated_at, comments: g.comments,
+});
+const TRIM_ADVISORY = (a) => ({
+  ghsa_id: a.ghsa_id, cve_id: a.cve_id ?? undefined, summary: str(a.summary, 500), severity: a.severity,
+  published_at: a.published_at, html_url: a.html_url, type: a.type,
+  cvss: a.cvss ? { score: a.cvss.score, vector_string: a.cvss.vector_string } : undefined,
+  vulnerabilities: (Array.isArray(a.vulnerabilities) ? a.vulnerabilities : []).slice(0, 10).map((v) => ({
+    package: v.package ? { ecosystem: v.package.ecosystem, name: v.package.name } : undefined,
+    vulnerable_version_range: v.vulnerable_version_range,
+  })),
+});
+
+// Keys: "releases|owner|repo", "forks|owner|repo", "gists", "advisories|ecosystem|severity".
+// Only parts validated by the public functions below ever reach here.
+async function fetchGithubCore(key, { signal }) {
+  const [kind, a, b] = key.split("|");
+  if (kind === "releases" || kind === "forks") {
+    const base = `${GITHUB_API}/repos/${encodeURIComponent(a)}/${encodeURIComponent(b)}`;
+    const body = await githubGetJson(kind === "releases" ? `${base}/releases?per_page=30` : `${base}/forks?sort=stargazers&per_page=30`, signal);
+    return { items: (Array.isArray(body) ? body : []).map(kind === "releases" ? TRIM_RELEASE : TRIM_FORK) };
+  }
+  if (kind === "gists") {
+    const body = await githubGetJson(`${GITHUB_API}/gists/public?per_page=30`, signal);
+    return { items: (Array.isArray(body) ? body : []).map(TRIM_GIST) };
+  }
+  if (kind === "advisories") {
+    const p = new URLSearchParams({ per_page: "30" });
+    if (a) p.set("ecosystem", a);
+    if (b) p.set("severity", b);
+    const body = await githubGetJson(`${GITHUB_API}/advisories?${p}`, signal);
+    return { items: (Array.isArray(body) ? body : []).map(TRIM_ADVISORY) };
+  }
+  throw new UpstreamError("github_bad_key", 0);
 }
 
 const sources = () => [
@@ -138,6 +219,17 @@ const sources = () => [
     persist: true,
     maxKeys: 500,
     fetcher: fetchGithubSearch,
+  }],
+  [GITHUB_CORE_SOURCE, {
+    ttlMs: HOUR,
+    staleMaxMs: 7 * DAY,
+    // Core REST: 60/h unauthenticated, 5000/h with a token.
+    budget: { perMin: process.env.GITHUB_TOKEN ? 25 : 10, perDay: 1000, minSpacingMs: 0 },
+    timeoutMs: 10_000,
+    license: "public",
+    persist: true,
+    maxKeys: 2000,
+    fetcher: fetchGithubCore,
   }],
 ];
 
@@ -162,6 +254,46 @@ export async function githubTopicSearch({ topic, perPage } = {}) {
     return { ok: false, status: "unavailable", reason: String(r.reason || "") || "unavailable", lastOkAt: r.lastOkAt ?? null };
   }
   return { ok: true, items: r.data.items || [], stale: !!r.stale, fetchedAt: r.fetchedAt };
+}
+
+async function viaCache(sourceId, key, ttlMs) {
+  ensureGithubFeedSources();
+  const r = await get(sourceId, key, { ttlMs });
+  if (r.status === "unavailable" || r.data == null) {
+    return { ok: false, status: "unavailable", reason: String(r.reason || "") || "unavailable", lastOkAt: r.lastOkAt ?? null };
+  }
+  return { ok: true, items: r.data.items || [], stale: !!r.stale, fetchedAt: r.fetchedAt };
+}
+
+/** Repos created in the last sinceDays (1|7|30), optionally one allowlisted language. Shares the github-search budget. */
+export async function githubTrending({ sinceDays, lang } = {}) {
+  const days = Number(sinceDays);
+  if (!TRENDING_DAYS.has(days)) return { ok: false, status: "invalid_params", reason: "sinceDays_not_allowed" };
+  const l = lang == null || lang === "" ? "" : lang;
+  if (l !== "" && !LANG_ALLOWLIST.has(l)) return { ok: false, status: "invalid_params", reason: "lang_not_allowed" };
+  return viaCache(GITHUB_SEARCH_SOURCE, `trending|${days}|${l}`, 6 * HOUR);
+}
+
+/** Releases or forks of one repo. owner/repo must match ^[A-Za-z0-9_.-]{1,100}$. */
+export async function githubRepoMeta({ owner, repo, kind } = {}) {
+  if (!REPO_META_KINDS.has(kind)) return { ok: false, status: "invalid_params", reason: "kind_not_allowed" };
+  if (typeof owner !== "string" || typeof repo !== "string" || !NAME_RE.test(owner) || !NAME_RE.test(repo)) {
+    return { ok: false, status: "invalid_params", reason: "owner_or_repo_invalid" };
+  }
+  return viaCache(GITHUB_CORE_SOURCE, `${kind}|${owner}|${repo}`, TTL_BY_KIND[kind]);
+}
+
+export async function githubGistsPublic() {
+  return viaCache(GITHUB_CORE_SOURCE, "gists", TTL_BY_KIND.gists);
+}
+
+/** Global security advisories, optionally narrowed by allowlisted ecosystem / severity. */
+export async function githubAdvisories({ ecosystem, severity } = {}) {
+  const e = ecosystem == null || ecosystem === "" ? "" : ecosystem;
+  const v = severity == null || severity === "" ? "" : severity;
+  if (e !== "" && !ECOSYSTEM_ALLOWLIST.has(e)) return { ok: false, status: "invalid_params", reason: "ecosystem_not_allowed" };
+  if (v !== "" && !SEVERITY_ALLOWLIST.has(v)) return { ok: false, status: "invalid_params", reason: "severity_not_allowed" };
+  return viaCache(GITHUB_CORE_SOURCE, `advisories|${e}|${v}`, TTL_BY_KIND.advisories);
 }
 
 /** Test hook: forget every cached entry and any test transport. */

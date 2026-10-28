@@ -8,7 +8,7 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import vm from "node:vm";
 import { cachedFetchJson, fetchJsonWithTimeout } from "../lib/external-fetch.js";
 import { analyzeSourceComplexity } from "../lib/code-ast-complexity.js";
-import { githubTopicSearch } from "../lib/github-feed-sources.js";
+import { githubTopicSearch, githubTrending, githubRepoMeta, githubGistsPublic, githubAdvisories } from "../lib/github-feed-sources.js";
 
 const GITHUB_API_REPOS = "https://api.github.com";
 
@@ -670,6 +670,25 @@ export default function registerReposActions(registerLensAction) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
   });
+
+  // Shared reply shape for the feed-cache GitHub read actions (phase 8b).
+  function ghReply(r, extra = {}) {
+    if (r.ok) return { ok: true, result: { ...extra, items: r.items, count: r.items.length, stale: r.stale, fetchedAt: r.fetchedAt, source: "github-api" } };
+    if (r.status === "invalid_params") return { ok: false, status: 400, error: "invalid parameters", reason: r.reason };
+    return { ok: false, status: "unavailable", error: "github unavailable", reason: r.reason, lastOkAt: r.lastOkAt ?? null };
+  }
+  const ghAction = (name, fn) => registerLensAction("repos", name, async (_ctx, _artifact, params = {}) => {
+    try { return await fn(params || {}); } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  /** github-trending — repos created in the last sinceDays (1|7|30), optional allowlisted lang. */
+  ghAction("github-trending", async (p) => ghReply(await githubTrending({ sinceDays: p.sinceDays, lang: p.lang }), { sinceDays: Number(p.sinceDays), lang: p.lang || "" }));
+  /** github-repo-meta — releases | forks of one repo (owner/repo charset-validated). */
+  ghAction("github-repo-meta", async (p) => ghReply(await githubRepoMeta({ owner: p.owner, repo: p.repo, kind: p.kind }), { owner: p.owner, repo: p.repo, kind: p.kind }));
+  /** github-gists-public — newest public gists. */
+  ghAction("github-gists-public", async () => ghReply(await githubGistsPublic()));
+  /** github-advisories — global security advisories, optional allowlisted ecosystem/severity. */
+  ghAction("github-advisories", async (p) => ghReply(await githubAdvisories({ ecosystem: p.ecosystem, severity: p.severity }), { ecosystem: p.ecosystem || "", severity: p.severity || "" }));
 
   /**
    * github-commits-recent — Real recent commits for a repo. Author,

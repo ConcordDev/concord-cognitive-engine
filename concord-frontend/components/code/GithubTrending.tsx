@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Code2 as Github, Loader2, Star, GitFork, Eye, ExternalLink } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { lensRun } from '@/lib/api/client';
 
 interface Repo {
   id: number;
@@ -34,15 +35,14 @@ export function GithubTrending() {
     queryKey: ['github-trending', language, window],
     queryFn: async () => {
       const days = WINDOWS.find((w) => w.id === window)?.days ?? 7;
-      const date = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
-      const q = `created:>${date}${language !== 'any' ? ` language:${language}` : ''}`;
-      const r = await fetch(`https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&sort=stars&order=desc&per_page=20`, { headers: { Accept: 'application/vnd.github+json' } });
-      if (!r.ok) throw new Error(`github ${r.status}`);
-      const j = await r.json();
-      return (j.items || []) as Repo[];
+      const res = await lensRun('repos', 'github-trending', { sinceDays: days, lang: language !== 'any' ? language : undefined });
+      if (!res.data?.ok) throw new Error(res.data?.reason || res.data?.error || 'github_unavailable');
+      const out = res.data.result as { items?: Repo[]; stale?: boolean; fetchedAt?: number } | null;
+      return { items: (out?.items || []).slice(0, 20), stale: !!out?.stale, fetchedAt: out?.fetchedAt ?? null };
     },
     staleTime: 5 * 60 * 1000,
   });
+  const rows = trending.data?.items;
 
   return (
     <div className="space-y-4">
@@ -52,15 +52,15 @@ export function GithubTrending() {
           <h2 className="text-sm font-semibold text-white">Trending repositories</h2>
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">api.github.com/search · live</span>
         </div>
-        {(trending.data?.length ?? 0) > 0 && (
+        {(rows?.length ?? 0) > 0 && (
           <SaveAsDtuButton
             compact
             apiSource="github-trending"
             apiUrl="https://api.github.com/search/repositories"
-            title={`GitHub trending — ${language} · ${window} (${trending.data?.length})`}
-            content={(trending.data || []).map((r, i) => `${i + 1}. ${r.full_name} · ⭐${r.stargazers_count.toLocaleString()} · ${r.language || '?'}\n   ${r.description || ''}\n   ${r.html_url}`).join('\n\n')}
+            title={`GitHub trending — ${language} · ${window} (${rows?.length})`}
+            content={(rows || []).map((r, i) => `${i + 1}. ${r.full_name} · ⭐${r.stargazers_count.toLocaleString()} · ${r.language || '?'}\n   ${r.description || ''}\n   ${r.html_url}`).join('\n\n')}
             extraTags={['code', 'github', 'trending', language.toLowerCase(), window]}
-            rawData={{ language, window, repos: trending.data }}
+            rawData={{ language, window, repos: rows }}
           />
         )}
       </header>
@@ -74,10 +74,11 @@ export function GithubTrending() {
           ))}
         </div>
       </div>
-      {trending.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub unreachable / rate-limited.</div>}
+      {trending.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub results unavailable right now — nothing is being shown in their place.</div>}
+      {trending.data?.stale && !trending.isError && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached GitHub results{trending.data.fetchedAt ? ` from ${new Date(trending.data.fetchedAt).toLocaleString()}` : ''} — live refresh is rate-limited.</div>}
       {trending.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Searching trending repos…</div>}
       <div className="space-y-1 max-h-[500px] overflow-y-auto">
-        {(trending.data || []).map((r) => (
+        {(rows || []).map((r) => (
           <a key={r.id} href={r.html_url} target="_blank" rel="noopener noreferrer" className="block rounded border border-zinc-800 bg-zinc-950 p-2.5 hover:border-cyan-500/30">
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
