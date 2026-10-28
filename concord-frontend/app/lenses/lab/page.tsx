@@ -18,11 +18,13 @@ import { FlaskConical, Play, Square, History, Zap, Search, Plus, Trash2, CheckCi
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useAuth } from '@/hooks/useAuth';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
 export default function LabLensPage() {
+  const { user } = useAuth();
   useLensNav('lab');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('lab');
 
@@ -112,7 +114,7 @@ export default function LabLensPage() {
     <div data-lens-theme="lab" className="relative min-h-full space-y-6 px-8 pb-28 pt-6">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Lab</h1>
+          <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl" data-testid="lab-greeting">The experiment{user?.username ? `, ${user.username}` : ''}</h1>
           <p className="mt-2 max-w-2xl text-[14px] text-zinc-500">
             Run experiments against the growth organs, keep the notebook and inventory, and explore what could be.
           </p>
