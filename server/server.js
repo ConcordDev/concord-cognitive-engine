@@ -49,6 +49,7 @@ import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-ta
 import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
 import { humanMacroAclDenial } from "./lib/macro-acl-human-gate.js";
 import { forumModDenial } from "./lib/forum-mod-gate.js";
+import { applyBallot, findCommentInTree, countCommentTree, appendCommentTree, applyAward, toggleSavedBy } from "./lib/forum-interactions.js";
 import { marketplaceOwnerDenial, marketplaceBuyDenial } from "./lib/marketplace-action-gate.js";
 import { threadModerationDenial, threadDeleteNodeDenial } from "./lib/thread-node-gate.js";
 import { collabCouncilDenial } from "./lib/collab-council-gate.js";
@@ -51931,6 +51932,106 @@ registerLensAction("forum", "moderate", (ctx, artifact, params) => {
   artifact.updatedAt = nowISO();
   saveStateDebounced();
   return { ok: true, moderation: { action, moderatedAt: nowISO() } };
+});
+// ── Forum post interactions (feature PR ahead of SEC Fix 7) ─────────────
+// BoardPanel used to persist votes, comment votes, comments, saves and
+// awards by rewriting the WHOLE post artifact through the generic
+// lens.update. Fix 7 closes lens.update to non-owners on social domains,
+// which would have broken every one of those interactions for everyone
+// but the post's author. These four actions are the proper server-side
+// path: each requires a real signed-in user, resolves the post artifact,
+// and applies ONLY the caller's own change (lib/forum-interactions.js) —
+// one ballot per user, one appended comment, the caller's own save,
+// one award. The client never sends the post body, so it cannot forge
+// another user's ballot, edit the post text, or flip shared state.
+// The post LOCK intentionally stays on lens.update (moderator path) and
+// becomes moderator-only when Fix 7 lands.
+function _forumInteractionDenial(ctx) {
+  const userId = ctx?.actor?.userId || ctx?.actor?.id || null;
+  if (!userId || userId === "anon") {
+    return { ok: false, status: 401, code: "AUTH_REQUIRED", error: "sign in required" };
+  }
+  return null;
+}
+function _forumPostArtifact(artifact) {
+  if (!artifact || artifact.domain !== "forum" || artifact.type !== "post") return null;
+  if (artifact.data?.removed) return null;
+  return artifact;
+}
+registerLensAction("forum", "post-vote", (ctx, artifact, params) => {
+  const denied = _forumInteractionDenial(ctx); if (denied) return denied;
+  const post = _forumPostArtifact(artifact);
+  if (!post) return { ok: false, status: 404, error: "post not found" };
+  const userId = ctx.actor.userId || ctx.actor.id;
+  const target = params?.targetId
+    ? findCommentInTree(post.data.comments, String(params.targetId))
+    : post.data;
+  if (!target) return { ok: false, status: 404, error: "comment not found" };
+  const result = applyBallot(target, userId, params?.direction);
+  post.updatedAt = nowISO();
+  saveStateDebounced();
+  return { ok: true, ...result, ...(params?.targetId ? { targetId: String(params.targetId) } : {}) };
+});
+registerLensAction("forum", "post-comment", (ctx, artifact, params) => {
+  const denied = _forumInteractionDenial(ctx); if (denied) return denied;
+  const post = _forumPostArtifact(artifact);
+  if (!post) return { ok: false, status: 404, error: "post not found" };
+  if (post.data.locked) return { ok: false, status: 403, code: "FORBIDDEN", error: "forbidden: post is locked" };
+  const content = String(params?.content || "").trim().slice(0, 8000);
+  if (!content) return { ok: false, status: 400, error: "comment content required" };
+  const userId = ctx.actor.userId || ctx.actor.id;
+  const username = ctx.actor.username || userId;
+  const requestedId = typeof params?.id === "string" && params.id ? params.id : null;
+  const commentId = requestedId && !findCommentInTree(post.data.comments, requestedId)
+    ? requestedId
+    : uid("cmt");
+  const comment = {
+    id: commentId,
+    author: { username, displayName: ctx.actor.displayName || username, avatar: String(username).slice(0, 1).toUpperCase() },
+    authorId: userId,
+    content,
+    score: 1,
+    userVote: 1,
+    voters: { [userId]: 1 },
+    createdAt: nowISO(),
+    awards: [],
+    replies: [],
+    collapsed: false,
+  };
+  if (!Array.isArray(post.data.comments)) post.data.comments = [];
+  const parentId = params?.parentId ? String(params.parentId) : null;
+  if (!appendCommentTree(post.data.comments, parentId, comment)) {
+    return { ok: false, status: 404, error: "parent comment not found" };
+  }
+  post.data.commentCount = countCommentTree(post.data.comments);
+  post.updatedAt = nowISO();
+  saveStateDebounced();
+  return { ok: true, comment, commentCount: post.data.commentCount };
+});
+registerLensAction("forum", "post-save", (ctx, artifact, params) => {
+  const denied = _forumInteractionDenial(ctx); if (denied) return denied;
+  const post = _forumPostArtifact(artifact);
+  if (!post) return { ok: false, status: 404, error: "post not found" };
+  const userId = ctx.actor.userId || ctx.actor.id;
+  const result = toggleSavedBy(post.data, userId);
+  post.updatedAt = nowISO();
+  saveStateDebounced();
+  return { ok: true, ...result };
+});
+registerLensAction("forum", "post-award", (ctx, artifact, params) => {
+  const denied = _forumInteractionDenial(ctx); if (denied) return denied;
+  const post = _forumPostArtifact(artifact);
+  if (!post) return { ok: false, status: 404, error: "post not found" };
+  const award = String(params?.award || "").trim().slice(0, 8);
+  if (!award) return { ok: false, status: 400, error: "award required" };
+  const target = params?.targetId
+    ? findCommentInTree(post.data.comments, String(params.targetId))
+    : post.data;
+  if (!target) return { ok: false, status: 404, error: "comment not found" };
+  const result = applyAward(target, award);
+  post.updatedAt = nowISO();
+  saveStateDebounced();
+  return { ok: true, ...result, ...(params?.targetId ? { targetId: String(params.targetId) } : {}) };
 });
 registerLensAction("forum", "rank_posts", (ctx, artifact, params) => {
   try {
