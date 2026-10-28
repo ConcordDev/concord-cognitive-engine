@@ -49,6 +49,7 @@ import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-ta
 import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
 import { humanMacroAclDenial } from "./lib/macro-acl-human-gate.js";
 import { forumModDenial } from "./lib/forum-mod-gate.js";
+import { marketplaceOwnerDenial, marketplaceBuyDenial } from "./lib/marketplace-action-gate.js";
 
 // === DATA DIRECTORY (canonical) ===
 // Resolution order:
@@ -51724,6 +51725,14 @@ registerLensAction("experience", "validate_claims", (ctx, artifact, _params) => 
 
 // === Marketplace ===
 registerLensAction("marketplace", "buy", (ctx, artifact, _params) => {
+  // SECURITY: `marketplace` is a LENS_SOCIAL_DOMAINS domain, so the generic
+  // lens run path lets any signed-in member act on ANY listing artifact.
+  // `buy` used to append a "purchase" record with NO payment — fake sales
+  // counts that feed `distribute_royalties` (computed from
+  // artifact.data.purchases). Purchases must go through the paid marketplace
+  // checkout; only internal/admin callers keep the legacy behavior.
+  const _buyDenied = marketplaceBuyDenial({ isAdmin: _lensIsAdminActor(ctx), internal: ctx?.internal === true || ctx?.actor?.internal === true });
+  if (_buyDenied) return _buyDenied;
   const purchase = { id: uid("pur"), listingId: artifact.id, buyerId: ctx.actor?.userId || "anon", amount: artifact.data?.price || 0, purchasedAt: nowISO() };
   artifact.data = { ...artifact.data, purchases: [...(artifact.data?.purchases || []), purchase] };
   artifact.updatedAt = nowISO();
@@ -51731,6 +51740,11 @@ registerLensAction("marketplace", "buy", (ctx, artifact, _params) => {
   return { ok: true, purchase };
 });
 registerLensAction("marketplace", "sell", (ctx, artifact, _params) => {
+  // SECURITY: `sell` used to set status "listed" on ANY member's listing
+  // artifact. Only the listing owner (or an admin/internal caller) may list
+  // it — see lib/marketplace-action-gate.js.
+  const _sellDenied = marketplaceOwnerDenial({ isOwner: _lensIsOwnerActor(ctx, artifact), isAdmin: _lensIsAdminActor(ctx), internal: ctx?.internal === true || ctx?.actor?.internal === true, userId: ctx?.actor?.userId });
+  if (_sellDenied) return _sellDenied;
   artifact.data = { ...artifact.data, status: "listed", listedAt: nowISO() };
   artifact.updatedAt = nowISO();
   saveStateDebounced();
@@ -51748,6 +51762,14 @@ registerLensAction("marketplace", "verify_artifact_hash", (ctx, artifact, _param
   return { ok: true, verified: hash !== "none", hash, verifiedAt: nowISO() };
 });
 registerLensAction("marketplace", "issue_license", (ctx, artifact, params) => {
+  // SECURITY: `issue_license` used to grant a license to params.grantedTo
+  // (anyone) on ANY member's listing artifact. Only the listing owner (or an
+  // admin/internal caller) may issue licenses — see
+  // lib/marketplace-action-gate.js. For non-admin owners the explicit
+  // grantedTo from params is kept: an owner granting a license to someone
+  // else is the legitimate use of this action.
+  const _licDenied = marketplaceOwnerDenial({ isOwner: _lensIsOwnerActor(ctx, artifact), isAdmin: _lensIsAdminActor(ctx), internal: ctx?.internal === true || ctx?.actor?.internal === true, userId: ctx?.actor?.userId });
+  if (_licDenied) return _licDenied;
   const license = { id: uid("lic"), listingId: artifact.id, type: params.type || "standard", grantedTo: params.grantedTo || ctx.actor?.userId || "anon", issuedAt: nowISO(), expiresAt: params.expiresAt || null };
   artifact.data = { ...artifact.data, licenses: [...(artifact.data?.licenses || []), license] };
   artifact.updatedAt = nowISO();
