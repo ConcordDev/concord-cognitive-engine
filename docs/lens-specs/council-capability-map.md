@@ -1,5 +1,33 @@
 # Council Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **Re-verification (HANDOFF-3 batch L16b, 2026-10-28, against main 02910bbb):**
+> The rebuild audit below is kept as history. Current truth:
+>
+> - **41/41 `council` domain actions named in the frontend** (fresh
+>   scan of `server/domains/council.js` registrations against the
+>   whole frontend tree, including the `run('…')` helper calls in
+>   MeetingsWorkspace that a literal `lensRun('council', …)` grep
+>   misses).
+> - The two Wave-3 "BACKEND-CAPABLE-BUT-UNSURFACED" rows below are
+>   now closed: budget simulation is wired as the domain action
+>   `budget-simulate` (CouncilChamber, per-proposal, with results and
+>   error state), superseding the older server.js `simulate-budget`
+>   macro; the process-completeness trail is wired via
+>   `computeProcessCompleteness` in `lib/council/council-audit.ts`,
+>   a documented client-side port of the server.js `audit` macro
+>   (the macro itself is unsafe against real Proposal artifacts —
+>   it expects `data.votes` as an array while Proposals store a
+>   Record; see that file's header). The server.js `vote` lens
+>   registration remains the name-collision case documented below.
+> - **Shipped in this batch:** the concept's serif headline —
+>   "The question before us, {username}" — as the chamber header
+>   (`data-testid="council-greeting"`, `tests/council-greeting.test.tsx`).
+>   The page is a thin shell over CouncilChamber, so the headline
+>   lives there, with the actor name the chamber already computes.
+> - Server suites run locally this pass: council-domain-parity +
+>   crypto-domain-parity — **108 pass, 0 fail** (with L16b's crypto
+>   batch); boot.test.js 20 pass / 1 skipped.
+
 > Derived, not asserted. Reproduce the macro counts:
 > `grep -c 'registerLensAction("council"' server/domains/council.js` → 28
 > `grep -c 'registerLensAction("council"' server/server.js` → 4 (`debate`, `vote`, `simulate-budget`, `audit`)

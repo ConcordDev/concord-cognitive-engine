@@ -2769,7 +2769,7 @@ export default function CouncilLensPage() {
       <header>
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-[22rem]">
-            <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Council</h1>
+            <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl" data-testid="council-greeting">The question before us{actorName ? `, ${actorName}` : ''}</h1>
             <p className="text-[14px] text-zinc-500">
               Governance, deliberation, and collective decision-making
             </p>

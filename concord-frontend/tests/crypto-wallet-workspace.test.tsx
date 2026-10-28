@@ -82,6 +82,13 @@ describe('CryptoWalletWorkspace', () => {
     }
   });
 
+  it('opens on the ledger greeting addressed to the signed-in user (L16b)', () => {
+    render(<CryptoWalletWorkspace />);
+    const greeting = screen.getByTestId('crypto-greeting');
+    expect(greeting.textContent).toBe('The ledger, ada');
+    expect(greeting.className).toContain('font-vault');
+  });
+
   it('executes every canonical workspace and wallet transaction flow', async () => {
     render(<CryptoWalletWorkspace />);
     act(() => {

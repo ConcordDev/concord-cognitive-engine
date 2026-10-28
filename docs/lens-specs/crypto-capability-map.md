@@ -1,5 +1,29 @@
 # Crypto Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **Re-verification (HANDOFF-3 batch L16b, 2026-10-28, against main 02910bbb):**
+> The audit below is kept as history (it counted 61 macros; the
+> domain has since grown). Current truth:
+>
+> - **68 `crypto` domain actions registered; 67 now named in the
+>   frontend.** Of the 3 initially unnamed, two were genuine
+>   add/delete-but-never-edit gaps and are **wired in this batch**:
+>   `wallet-rename` (WalletsPanel gains inline rename — name and
+>   kind — pinned by `tests/crypto-wallet-rename.test.tsx`) and
+>   `transactions-record` (ActivityPanel gains a manual record form —
+>   kind/symbol/qty/total USD/chain/notes — pinned by
+>   `tests/crypto-activity-record.test.tsx`). The third,
+>   `price-alerts-check`, is accounted for: it is documented in its
+>   own handler as heartbeat-callable and is run internally by
+>   `alert-deliver`, which the frontend does call
+>   (PortfolioWorkbench) — not a missing UI surface.
+> - **Shipped in this batch:** the concept's serif headline —
+>   "The ledger, {username}" — as the workspace header
+>   (`data-testid="crypto-greeting"`, pinned in
+>   `tests/crypto-wallet-workspace.test.tsx`).
+> - Server suites run locally this pass: crypto-domain-parity +
+>   council-domain-parity — **108 pass, 0 fail**; boot.test.js
+>   20 pass / 1 skipped. No server code changed in this batch.
+
 > Derived, not asserted. Backend surface enumerated by reading
 > `server/domains/crypto.js` (2378 LOC) — 61 macro registrations via
 > `grep -c 'registerLensAction("crypto"' server/domains/crypto.js`.

@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useAuth } from '@/hooks/useAuth';
 import { LensShell } from '@/components/lens/LensShell';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -154,6 +155,7 @@ const CRYPTO_TABS: { key: CryptoTab; label: string; keys: string; icon: typeof W
 
 export function CryptoWalletWorkspace() {
   useLensNav('crypto');
+  const { user } = useAuth();
   // Phase 12 (Item 8 cont.) — flash + invalidate on crypto:ticker.
   useTilePush({ lensId: 'crypto' });
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('crypto');
@@ -651,7 +653,7 @@ export function CryptoWalletWorkspace() {
     <div data-lens-theme="crypto" className="relative min-h-full space-y-6 px-8 pb-28 pt-6">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="font-vault mb-1 mt-1 text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Crypto</h1>
+          <h1 className="font-vault mb-1 mt-1 text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl" data-testid="crypto-greeting">The ledger{user?.username ? `, ${user.username}` : ''}</h1>
         </div>
         <div className="flex shrink-0 items-center gap-3 pt-2">
           <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
