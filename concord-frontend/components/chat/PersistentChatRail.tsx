@@ -73,6 +73,7 @@ import type { Initiative } from './InitiativeChip';
 import ChatRouteOverlay from './ChatRouteOverlay';
 import ForgeCard from './ForgeCard';
 import { ConfidenceBadge } from '@/components/common/ConfidenceBadge';
+import LowConfidenceTag from '@/components/chat/LowConfidenceTag';
 import { showToast } from '@/components/common/Toasts';
 
 // ── Types ──────────────────────────────────────────────────────
@@ -144,6 +145,10 @@ interface ChatMessage {
   forge?: ForgeEnvelope | null;
   // AI confidence score for this response
   confidence?: { score: number; level: string; factors?: Record<string, { score: number }> } | null;
+  // Backup-model label (server/lib/answer-confidence.js): 'low' when the small
+  // local model answered because the GPU brain was offline.
+  answerConfidence?: string | null;
+  answerConfidenceReason?: string | null;
 }
 
 interface LensRecommendation {
@@ -469,6 +474,8 @@ export function PersistentChatRail({
         route?: RouteMeta | null;
         forge?: ForgeEnvelope | null;
         confidence?: { score: number; level: string; factors?: Record<string, { score: number }> } | null;
+        answerConfidence?: string;
+        answerConfidenceReason?: string;
       };
       if (d.sessionId === sessionId) {
         const msg: ChatMessage = {
@@ -486,6 +493,8 @@ export function PersistentChatRail({
           route: d.route || null,
           forge: d.forge || null,
           confidence: d.confidence || null,
+          answerConfidence: d.answerConfidence || null,
+          answerConfidenceReason: d.answerConfidenceReason || null,
         };
         setMessages(prev => [...prev, msg]);
         setStreamingText('');
@@ -601,6 +610,8 @@ export function PersistentChatRail({
           route: data?.route || null,
           forge: data?.forge || null,
           confidence: data?.confidence || null,
+          answerConfidence: data?.answerConfidence || null,
+          answerConfidenceReason: data?.answerConfidenceReason || null,
         };
         setMessages(prev => [...prev, assistantMsg]);
         if (data?.dtuCount != null) setLastDtuCount(data.dtuCount);
@@ -1031,6 +1042,12 @@ export function PersistentChatRail({
                       <Zap className="w-3 h-3" />
                       Generate {msg.lensRecommendation.suggestedAction.replace(/-/g, ' ')}
                     </button>
+                  )}
+
+                  {/* Backup-model label — renders only when the server tagged
+                      this reply as answered by the small local model */}
+                  {msg.role === 'assistant' && (
+                    <LowConfidenceTag confidence={msg.answerConfidence} reason={msg.answerConfidenceReason} />
                   )}
 
                   {/* Confidence score indicator */}
