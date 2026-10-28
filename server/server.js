@@ -2052,6 +2052,7 @@ import {
 import { initDTUStore, createDTUStore } from "./lib/dtu-store.js";
 import { configureWriteSpill, waitForWriteQuiet, replaySpill, spilledIsNewer, spillStats } from "./lib/shutdown-write-gate.js";
 import { assignDtuCustody, dtuMutationDenial, normalizeOwnerlessDtus } from "./lib/dtu-ownership.js";
+import { dtuReadDenial, credibilityAdminDenial, collabParticipantDenial } from "./lib/dtu-macro-guards.js";
 import { dtuImportDecision, importAuthDenial, stampImportedDtu } from "./lib/dtu-import-guard.js";
 import { renderAndAttach, hasRenderer as _hasRenderer } from "./lib/render-engine.js";
 import { registerAllRenderers } from "./lib/render-registry.js";
@@ -45811,8 +45812,17 @@ register("council", "tally", (ctx, input) => {
 
 register("council", "credibility", (ctx, input) => {
   const { dtuId, score, reason } = input;
+  // SECURITY: credibility is an authority score — writing it is an
+  // admin act on ANY DTU (including the caller's own), and the DTU
+  // must be readable by the caller. Previously any member could set
+  // the credibility of any DTU by id. Admin gate first, then the
+  // read gate (unreadable reads as not found).
+  const adminDenial = credibilityAdminDenial(ctx);
+  if (adminDenial) return adminDenial;
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "DTU not found" };
+  const readDenial = dtuReadDenial(ctx, dtu);
+  if (readDenial) return readDenial;
 
   dtu.authority = dtu.authority || {};
   dtu.authority.credibility = clamp(Number(score || 0.5), 0, 1);
@@ -47535,6 +47545,12 @@ register("scope", "promote", async (ctx, input) => {
   const dtu = STATE.dtus.get(dtuId);
 
   if (!dtu) return { ok: false, error: "dtu_not_found" };
+  // SECURITY: nominating a VISIBLE DTU is intended (see above), but
+  // a DTU the caller may not read must be indistinguishable from a
+  // missing one — previously any member could nominate (and thereby
+  // probe) another user's private DTU by id.
+  const promoteReadDenial = dtuReadDenial(ctx, dtu, ctxMayReadDtu, { ok: false, status: 404, error: "dtu_not_found" });
+  if (promoteReadDenial) return promoteReadDenial;
   if (dtu.scope === targetScope) return { ok: false, error: "already_in_scope" };
 
   if (!["global", "creative_global"].includes(targetScope)) {
@@ -48100,6 +48116,10 @@ register("scope", "checkCitations", async (ctx, input) => {
   const { dtuId } = input || {};
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "dtu_not_found" };
+  // SECURITY: citation integrity reads the DTU's content — a by-id
+  // read, gated (unreadable keeps this handler's not-found body).
+  const citationsReadDenial = dtuReadDenial(ctx, dtu, ctxMayReadDtu, { ok: false, status: 404, error: "dtu_not_found" });
+  if (citationsReadDenial) return citationsReadDenial;
   const result = verifyCitationIntegrity(dtu);
   return { ok: true, ...result };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -48112,6 +48132,11 @@ register("scope", "royaltyPreview", async (ctx, input) => {
   const { dtuId } = input || {};
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "dtu_not_found" };
+  // SECURITY: the royalty cascade is derived from the DTU's content
+  // and lineage — a by-id read, gated (unreadable keeps this
+  // handler's not-found body).
+  const royaltyReadDenial = dtuReadDenial(ctx, dtu, ctxMayReadDtu, { ok: false, status: 404, error: "dtu_not_found" });
+  if (royaltyReadDenial) return royaltyReadDenial;
   const royalties = computeRoyaltyCascade(dtu);
   return { ok: true, royalties, totalRate: royalties.reduce((s, r) => s + r.rate, 0) };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -48479,10 +48504,18 @@ register("schema", "apply", async (ctx, input) => {
   const { schemaName, dtuId, data } = input;
   const schema = SCHEMA_REGISTRY.get(schemaName);
   if (!schema) return { ok: false, error: "Schema not found" };
-  const validation = await runMacro("schema", "validate", { schemaName, data }, ctx);
-  if (!validation.valid) return { ok: false, error: "Validation failed", errors: validation.errors };
+  // SECURITY: apply WRITES machine.schema*, tags onto the DTU and
+  // bumps schema.usageCount. The lookup and both gates run BEFORE
+  // validation and the usage bump — previously any member could
+  // stamp a schema onto any DTU by id, including private ones.
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "DTU not found" };
+  const readDenial = dtuReadDenial(ctx, dtu);
+  if (readDenial) return readDenial;
+  const mutationDenial = dtuMutationDenial(dtu, ctx, { authMode: AUTH_MODE, verb: "update", actorUserId: ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId });
+  if (mutationDenial) return { ok: false, error: mutationDenial.error, status: mutationDenial.status, code: mutationDenial.code };
+  const validation = await runMacro("schema", "validate", { schemaName, data }, ctx);
+  if (!validation.valid) return { ok: false, error: "Validation failed", errors: validation.errors };
   dtu.machine = dtu.machine || {};
   dtu.machine.schema = schemaName;
   dtu.machine.schemaVersion = schema.version;
@@ -48539,6 +48572,15 @@ const DOMAIN_KEYWORDS = {
 register("autotag", "analyze", (ctx, input) => {
   const { dtuId, content, useEmbeddings: _useEmbeddings } = input;
   const dtu = dtuId ? STATE.dtus.get(dtuId) : null;
+  // SECURITY: analyzing by id reads the DTU's title/summary — gate
+  // it like any by-id read (unreadable reads as not found). The
+  // suggestedRelations loop below likewise skips DTUs the caller
+  // may not read; previously it listed ids+titles of every DTU in
+  // STATE, including other users' private ones.
+  if (dtuId) {
+    const readDenial = dtuReadDenial(ctx, dtu);
+    if (readDenial) return readDenial;
+  }
   const text = content || (dtu ? dtu.title + " " + (dtu.human?.summary || "") + " " + (dtu.core?.definitions?.join(" ") || "") : "");
   if (!text) return { ok: false, error: "No content to analyze" };
   const suggestedTags = [], textLower = text.toLowerCase(), domainScores = {};
@@ -48553,6 +48595,7 @@ register("autotag", "analyze", (ctx, input) => {
     const tagSet = new Set(suggestedTags);
     for (const [id, d] of STATE.dtus.entries()) {
       if (id === dtuId) continue;
+      if (!ctxMayReadDtu(ctx, d)) continue;
       const overlap = (d.tags || []).filter(t => tagSet.has(t)).length;
       if (overlap >= 2) suggestedRelations.push({ id, title: d.title, overlap });
     }
@@ -48565,6 +48608,14 @@ register("autotag", "apply", (ctx, input) => {
   const { dtuId, tags, domain, relations } = input;
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "DTU not found" };
+  // SECURITY: apply WRITES tags, meta.autotaggedDomain and lineage
+  // parents onto the DTU. Read gate first (unreadable = not found),
+  // then the ownership mutation gate — previously any member could
+  // tag/retitle-lineage any DTU by id.
+  const readDenial = dtuReadDenial(ctx, dtu);
+  if (readDenial) return readDenial;
+  const mutationDenial = dtuMutationDenial(dtu, ctx, { authMode: AUTH_MODE, verb: "update", actorUserId: ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId });
+  if (mutationDenial) return { ok: false, error: mutationDenial.error, status: mutationDenial.status, code: mutationDenial.code };
   if (tags && tags.length > 0) dtu.tags = [...new Set([...(dtu.tags || []), ...tags])];
   if (domain) { dtu.tags = [...new Set([...(dtu.tags || []), domain])]; dtu.meta = dtu.meta || {}; dtu.meta.autotaggedDomain = domain; }
   if (relations && relations.length > 0) { dtu.lineage = dtu.lineage || { parents: [], children: [] }; for (const rel of relations) { if (!dtu.lineage.parents.includes(rel.id)) dtu.lineage.parents.push(rel.id); } }
@@ -48577,7 +48628,13 @@ register("autotag", "apply", (ctx, input) => {
 
 register("autotag", "batchProcess", async (ctx, input) => {
   const { tier, limit, dryRun } = input;
+  // SECURITY: candidates are filtered to DTUs the caller may read
+  // AND mutate BEFORE the limit slice — previously the batch ran
+  // analyze+apply over any DTUs in STATE and returned the title of
+  // every one processed. Internal/autogen callers are unaffected
+  // (ctxMayReadDtu and dtuMutationDenial both pass for them).
   let dtus = dtusArray().filter(d => !d.meta?.autotaggedAt);
+  dtus = dtus.filter(d => ctxMayReadDtu(ctx, d) && !dtuMutationDenial(d, ctx, { authMode: AUTH_MODE, verb: "update", actorUserId: ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId }));
   if (tier) dtus = dtus.filter(d => d.tier === tier);
   dtus = dtus.slice(0, Number(limit) || 50);
   const results = [];
@@ -58140,12 +58197,19 @@ register("collab", "listSessions", (_ctx, _input) => {
 });
 
 register("collab", "lock", (ctx, input) => {
-  const { sessionId, userId, path } = input;
+  const { sessionId, path } = input;
   const session = COLLAB_SESSIONS.get(sessionId);
   if (!session) return { ok: false, error: "Session not found" };
+  // SECURITY: the lock holder is the ACTOR from ctx — input.userId
+  // was caller-supplied and spoofable, and any caller could lock
+  // any path in any session. Only session participants (or
+  // admin/internal callers) may lock; input.userId is ignored.
+  const actorId = _collabActorId(ctx);
+  const participantDenial = collabParticipantDenial(ctx, session, actorId);
+  if (participantDenial) return participantDenial;
   const lockKey = `${session.dtuId}:${path}`;
-  COLLAB_LOCKS.set(lockKey, { userId, lockedAt: nowISO(), path });
-  realtimeEmit("collab:lock", { sessionId, userId, path }, {});
+  COLLAB_LOCKS.set(lockKey, { userId: actorId, lockedAt: nowISO(), path });
+  realtimeEmit("collab:lock", { sessionId, userId: actorId, path }, {});
   return { ok: true, locked: true, path };
 });
 
@@ -58153,7 +58217,19 @@ register("collab", "unlock", (ctx, input) => {
   const { sessionId, path } = input;
   const session = COLLAB_SESSIONS.get(sessionId);
   if (!session) return { ok: false, error: "Session not found" };
+  // SECURITY: previously any caller could clear any lock. Only
+  // session participants may unlock, and a lock held by someone
+  // else can be cleared only by its holder or an admin/internal
+  // caller.
+  const actorId = _collabActorId(ctx);
+  const participantDenial = collabParticipantDenial(ctx, session, actorId);
+  if (participantDenial) return participantDenial;
   const lockKey = `${session.dtuId}:${path}`;
+  const existingLock = COLLAB_LOCKS.get(lockKey);
+  const isAdminOrInternal = ctx?.internal === true || ctx?.actor?.internal === true || _lensIsAdminActor(ctx);
+  if (existingLock && existingLock.userId !== actorId && !isAdminOrInternal) {
+    return { ok: false, status: 403, code: "FORBIDDEN", error: "forbidden: lock held by another user" };
+  }
   COLLAB_LOCKS.delete(lockKey);
   realtimeEmit("collab:unlock", { sessionId, path }, {});
   return { ok: true, unlocked: true, path };
@@ -58481,6 +58557,10 @@ register("mobile", "touchOptimized", (ctx, input) => {
   const { dtuId } = input;
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "DTU not found" };
+  // SECURITY: returns title/summary/tags of the DTU — a by-id read,
+  // gated (unreadable reads as not found).
+  const readDenial = dtuReadDenial(ctx, dtu);
+  if (readDenial) return readDenial;
   return {
     ok: true,
     compactView: {
@@ -59078,6 +59158,10 @@ register("vscode", "dtuToCode", (ctx, input) => {
   const { dtuId, format: _format } = input;
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "DTU not found" };
+  // SECURITY: returns machine.code / examples / summary of the DTU
+  // — a by-id read, gated (unreadable reads as not found).
+  const readDenial = dtuReadDenial(ctx, dtu);
+  if (readDenial) return readDenial;
   let code = "";
   if (dtu.machine?.code) code = dtu.machine.code;
   else if (dtu.core?.examples?.[0]) code = dtu.core.examples[0];
@@ -88863,6 +88947,10 @@ register("autotag", "classify", (ctx, input = {}) => {
   if (!dtuId) return { ok: false, error: "dtuId required" };
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "DTU not found" };
+  // SECURITY: classify returns the DTU's title + tags — a by-id
+  // read, gated like the others (unreadable reads as not found).
+  const readDenial = dtuReadDenial(ctx, dtu);
+  if (readDenial) return readDenial;
   const domains = autoClassifyDTU(dtu);
   return { ok: true, dtuId, title: dtu.title, domains, currentTags: dtu.tags || [] };
 }, { summary: "Preview domain classification for a specific DTU." });
