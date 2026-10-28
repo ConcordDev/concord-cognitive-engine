@@ -1137,10 +1137,30 @@ export default function registerCalendarActions(registerLensAction) {
     const arr = listCal(s.appointmentSchedules, aidCal(ctx));
     const i = arr.findIndex((sc) => sc.id === params.id);
     if (i < 0) return { ok: false, error: "schedule not found" };
+    const doomed = new Set((arr[i].bookings || []).map((b) => b.eventId).filter(Boolean));
+    if (doomed.size > 0) {
+      const evList = listCal(s.events, aidCal(ctx));
+      for (let k = evList.length - 1; k >= 0; k--) if (doomed.has(evList[k].id)) evList.splice(k, 1);
+    }
     arr.splice(i, 1);
     saveCal();
     return { ok: true, result: { deleted: params.id } };
   });
+
+  // F5: a bookable slot must respect the owner's REAL calendar (events
+  // expanded over the slot window), not just other bookings.
+  function slotEventConflict(s, userId, slotStartMs, slotEndMs) {
+    const winStart = new Date(slotStartMs - 7 * 86_400_000);
+    const winEnd = new Date(slotEndMs + 7 * 86_400_000);
+    for (const e of listCal(s.events, userId)) {
+      for (const occ of expandOccurrences(e, winStart, winEnd)) {
+        const os = new Date(occ.occurrenceStart).getTime();
+        const oe = new Date(occ.occurrenceEnd).getTime();
+        if (os < slotEndMs && oe > slotStartMs) return e;
+      }
+    }
+    return null;
+  }
 
   registerLensAction("calendar", "appointment-slots", (ctx, _a, params = {}) => {
   try {
@@ -1155,6 +1175,7 @@ export default function registerCalendarActions(registerLensAction) {
       return { ok: true, result: { date: dateStr, weekday: WEEKDAY_NAMES[weekday], slots: [], reason: "not an available weekday" } };
     }
     const booked = new Set(schedule.bookings.map((b) => b.slotStart));
+    const userId = aidCal(ctx);
     const slots = [];
     const now = Date.now();
     for (let mins = schedule.availability.startHour * 60; mins + schedule.durationMin <= schedule.availability.endHour * 60; mins += schedule.durationMin) {
@@ -1162,10 +1183,14 @@ export default function registerCalendarActions(registerLensAction) {
       const m = String(mins % 60).padStart(2, '0');
       const slotStart = `${dateStr}T${h}:${m}:00`;
       const slotMs = new Date(slotStart).getTime();
+      const clash = slotMs > now && !booked.has(slotStart)
+        ? slotEventConflict(s, userId, slotMs, slotMs + schedule.durationMin * 60_000)
+        : null;
       slots.push({
         slotStart,
         label: `${h}:${m}`,
-        available: !booked.has(slotStart) && slotMs > now,
+        available: !booked.has(slotStart) && slotMs > now && !clash,
+        ...(clash ? { conflictTitle: clash.title } : {}),
       });
     }
     return { ok: true, result: { date: dateStr, weekday: WEEKDAY_NAMES[weekday], durationMin: schedule.durationMin, slots } };
@@ -1182,13 +1207,46 @@ export default function registerCalendarActions(registerLensAction) {
     if (schedule.bookings.some((b) => b.slotStart === slotStart)) return { ok: false, error: "slot already booked" };
     const bookerName = String(params.bookerName || "").trim().slice(0, 120);
     if (!bookerName) return { ok: false, error: "bookerName required" };
+    const slotMs = new Date(slotStart).getTime();
+    if (isNaN(slotMs)) return { ok: false, error: "valid slotStart required" };
+    if (slotMs <= Date.now()) return { ok: false, error: "slot is in the past" };
+    const userId = aidCal(ctx);
+    const clash = slotEventConflict(s, userId, slotMs, slotMs + schedule.durationMin * 60_000);
+    if (clash) return { ok: false, error: `slot conflicts with "${clash.title}" on your calendar` };
     const booking = {
       id: uidCal("bk"),
       slotStart,
       bookerName,
       note: String(params.note || "").trim().slice(0, 400),
       bookedAt: isoCal(),
+      eventId: null,
     };
+    // A booking is a real calendar event: it shows on the grid, blocks
+    // the slot through the ordinary busy path, and dies with the booking.
+    const calendars = ensureDefaultCalendars(s, userId);
+    const seq = ensureSeqCal(s, userId);
+    const mirror = {
+      id: uidCal('evt'),
+      number: `EV-${String(seq.evt).padStart(6, '0')}`,
+      calendarId: (calendars.find(c => c.isDefault) || calendars[0]).id,
+      title: `${schedule.title} — ${bookerName}`,
+      description: booking.note,
+      location: "",
+      start: new Date(slotMs).toISOString(),
+      end: new Date(slotMs + schedule.durationMin * 60_000).toISOString(),
+      tz: null,
+      allDay: false,
+      recurrence: null,
+      reminders: [10],
+      attendees: [],
+      conferenceLink: "",
+      createdAt: isoCal(),
+      bookingId: booking.id,
+      appointmentScheduleId: schedule.id,
+    };
+    seq.evt++;
+    listCal(s.events, userId).push(mirror);
+    booking.eventId = mirror.id;
     schedule.bookings.push(booking);
     schedule.bookings.sort((a, b) => a.slotStart.localeCompare(b.slotStart));
     saveCal();
@@ -1210,7 +1268,12 @@ export default function registerCalendarActions(registerLensAction) {
     if (!schedule) return { ok: false, error: "schedule not found" };
     const i = schedule.bookings.findIndex((b) => b.id === params.bookingId);
     if (i < 0) return { ok: false, error: "booking not found" };
-    schedule.bookings.splice(i, 1);
+    const [removed] = schedule.bookings.splice(i, 1);
+    if (removed.eventId) {
+      const evList = listCal(s.events, aidCal(ctx));
+      const ei = evList.findIndex((e) => e.id === removed.eventId);
+      if (ei >= 0) evList.splice(ei, 1);
+    }
     saveCal();
     return { ok: true, result: { cancelled: params.bookingId } };
   });
