@@ -517,7 +517,12 @@ describe("agriculture — rotation + telemetry + maps (wave 12 top-up · exact c
 
     const neg = await lensRun("agriculture", "zones-create",
       { params: { fieldId, name: "Neg", areaAcres: -10 } }, ctx);
-    assert.equal(neg.result.zone.areaAcres, 0);          // Math.max(0, …)
+    // The shared lens input validator now refuses negative acreage before the
+    // handler's Math.max(0, …) clamp runs, so nothing is saved.
+    assert.equal(neg.ok, false);
+    assert.equal(neg.error, "invalid_input");
+    assert.equal(neg.field, "areaAcres");
+    assert.equal(neg.reason, "min_0");
 
     const bad = await lensRun("agriculture", "zones-create",
       { params: { fieldId } }, ctx);  // missing name
