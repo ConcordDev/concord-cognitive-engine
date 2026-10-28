@@ -237,9 +237,14 @@ import {
 
 import {
   registerPeer as registerFedPeer, receiveHeartbeat, buildHeartbeat,
-  buildSyncPackage, receiveSyncPackage,
+  buildSyncPackage, receiveSyncPackage, receiveProposal,
   detectStalePeers, getFederationPeeringMetrics,
 } from "./federation-peering.js";
+import {
+  sendHeartbeat as sendFedHeartbeat,
+  sendSync as sendFedSync,
+  sendProposal as sendFedProposal,
+} from "../lib/federation-peering-transport.js";
 
 // ── User Feedback Loop ───────────────────────────────────────────────────────
 
@@ -1735,6 +1740,22 @@ function init({ register, STATE, helpers }) {
   register("emergent", "federation.receiveSync", (_ctx, input = {}) => {
     return receiveSyncPackage(STATE, input.peerId, input.package);
   }, { description: "Receive DTU sync package from a peer", public: false });
+
+  register("emergent", "federation.receiveProposal", (_ctx, input = {}) => {
+    return receiveProposal(STATE, input.peerId, input.proposal);
+  }, { description: "Receive a governance proposal from a peer", public: false });
+
+  register("emergent", "federation.sendHeartbeat", async (_ctx, input = {}) => {
+    return sendFedHeartbeat(STATE, input.selfPeerId || process.env.CONCORD_PEER_ID, input.peerId);
+  }, { description: "Exchange heartbeats with a peer over HTTP (federation peering transport)", public: false });
+
+  register("emergent", "federation.sendSync", async (_ctx, input = {}) => {
+    return sendFedSync(STATE, input.selfPeerId || process.env.CONCORD_PEER_ID, input.peerId, { dtuIds: input.dtuIds, limit: input.limit });
+  }, { description: "Deliver a DTU sync package to a peer over HTTP (federation peering transport)", public: false });
+
+  register("emergent", "federation.sendProposal", async (_ctx, input = {}) => {
+    return sendFedProposal(STATE, input.selfPeerId || process.env.CONCORD_PEER_ID, input.peerId, input.proposal);
+  }, { description: "Deliver a governance proposal to a peer over HTTP (federation peering transport)", public: false });
 
   register("emergent", "federation.stalePeers", (_ctx) => {
     return detectStalePeers(STATE);

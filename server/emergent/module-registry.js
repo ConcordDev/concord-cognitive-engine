@@ -1751,6 +1751,8 @@ export const MODULE_REGISTRY = {
           "buildSyncPackage",
           "receiveSyncPackage",
           "routeProposalToPeer",
+          "receiveProposal",
+          "getRegisteredPeer",
           "detectStalePeers",
           "getFederationPeeringMetrics"
       ],

@@ -9,9 +9,11 @@
  *   3. Distributed governance — cross-lattice proposal routing
  *   4. Trust propagation — peer trust influences import trust
  *
- * NOTE: This module does NOT make actual HTTP calls.
- * It defines the protocol and state management.
- * Actual transport is handled by the WebSocket/HTTP layer.
+ * NOTE: This module is the protocol + state layer and makes no network
+ * calls itself. The HTTP transport lives in
+ * server/lib/federation-peering-transport.js (outbound, SSRF-guarded)
+ * with inbound endpoints in server/routes/federation-peering.js
+ * (mounted under /api/federation/v1).
  */
 
 import { getEmergentState } from "./store.js";
@@ -74,6 +76,16 @@ function validateSyncDtu(dtu) {
   if (dtu.tier && typeof dtu.tier !== "string")
     {return { valid: false, reason: "invalid_tier" };}
   return { valid: true };
+}
+
+/**
+ * Look up a registered peer's record (endpoint, trust, shared secret).
+ * The transport layer reads connection details through here rather than
+ * reaching into the peering store. Returns null for unknown peers.
+ */
+export function getRegisteredPeer(STATE, peerId) {
+  const store = getPeeringStore(STATE);
+  return store.peers.get(peerId) || null;
 }
 
 // ── Peering State ────────────────────────────────────────────────────────────
@@ -383,6 +395,35 @@ export function routeProposalToPeer(STATE, peerId, proposal = {}) {
     routedTo: peerId,
     timestamp: new Date().toISOString(),
   };
+}
+
+/**
+ * Receive a governance proposal from a peer (the inbound half of
+ * routeProposalToPeer — the store's inboundProposals map existed for
+ * this and was never written). The trust gate mirrors the outbound
+ * one: proposals only flow between peers at trust >= 0.5.
+ *
+ * @param {Object} STATE
+ * @param {string} peerId - The sending peer (must be registered)
+ * @param {Object} proposal - Must carry a proposalId
+ * @returns {{ ok, proposalId }}
+ */
+export function receiveProposal(STATE, peerId, proposal = {}) {
+  const store = getPeeringStore(STATE);
+  const peer = store.peers.get(peerId);
+  if (!peer) return { ok: false, error: "unknown_peer" };
+  if (peer.trust < 0.5) return { ok: false, error: "insufficient_trust_for_proposals" };
+  if (!proposal.proposalId || typeof proposal.proposalId !== "string") {
+    return { ok: false, error: "proposal_id_required" };
+  }
+
+  store.inboundProposals.set(proposal.proposalId, {
+    fromPeer: peerId,
+    receivedAt: new Date().toISOString(),
+    proposal,
+  });
+
+  return { ok: true, proposalId: proposal.proposalId };
 }
 
 // ── Stale Peer Detection ─────────────────────────────────────────────────────

@@ -47,6 +47,7 @@ import {
   DEFAULT_MARKETPLACE_FILTERS, DEFAULT_WEALTH_PREFERENCES,
 } from "../lib/federation-constants.js";
 import { checkConsent } from "../lib/consent.js";
+import createFederationPeeringRouter from "./federation-peering.js";
 
 /**
  * Create the federation router.
@@ -54,6 +55,14 @@ import { checkConsent } from "../lib/consent.js";
  */
 export default function createFederationRouter({ db, requireAuth }) {
   const router = express.Router();
+
+  // ── Pod peering (protocol v1) ───────────────────────────────────────
+  // Mounted BEFORE the user-auth middleware below on purpose: peering
+  // is pod-to-pod and carries no user session. Its endpoints
+  // authenticate via the peering protocol itself (registered-peer
+  // check on every call, HMAC verification on sync packages when a
+  // shared secret is configured, trust gate on proposals).
+  router.use("/v1", createFederationPeeringRouter());
 
   // ── Auth: Require authentication for all write operations ──────────
   // GET endpoints are PUBLIC for frontend data fetching.
