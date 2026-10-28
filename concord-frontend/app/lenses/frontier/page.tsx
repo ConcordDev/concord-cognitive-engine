@@ -16,18 +16,20 @@
  * lens routes — `lib/destinations.ts`'s own comment on the `frontier`
  * entry explains why it has no `absorbs` list.
  *
- * Wave-1 physics engines (materials degradation, non-Newtonian FSI,
- * safety-envelope compiler) ship real Compute/Verify panels. The other
- * seven render `UnbuiltEnginePanel` — an honest "not built yet" state,
- * never fabricated data — until a real panel lands for them. Flip an
- * entry in `PANEL_BY_ENGINE_ID` below AND `built:true` in
- * `lib/frontier-engines.ts` together, in the same change.
+ * All ten engines now ship real Compute/Verify panels (the Wave-1
+ * physics engines first, the rest since). An engine registered with
+ * `built:false` and no entry in `PANEL_BY_ENGINE_ID` below would
+ * render `UnbuiltEnginePanel` — an honest "not built yet" state,
+ * never fabricated data. Flip an entry in `PANEL_BY_ENGINE_ID` below
+ * AND `built:true` in `lib/frontier-engines.ts` together, in the
+ * same change.
  */
 
 import { useCallback, useMemo, useState, type ComponentType } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useAuth } from '@/hooks/useAuth';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { FrontierEngineShell } from '@/components/frontier/FrontierEngineShell';
@@ -75,6 +77,7 @@ const PANEL_BY_ENGINE_ID: Partial<Record<string, EnginePanel>> = {
 const DIGIT_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 
 export default function FrontierPage() {
+  const { user } = useAuth();
   const { isLive, lastUpdated } = useRealtimeLens('frontier');
   const [activeId, setActiveId] = useState<string>(DEFAULT_FRONTIER_ENGINE_ID);
 
@@ -110,8 +113,8 @@ export default function FrontierPage() {
       <div data-lens-theme="frontier" className="relative flex min-h-full flex-col pt-6">
         <div className="flex items-start justify-between gap-4 px-8">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Frontier</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">{activeEngine.name}</h1>
+            <p className="text-[14px] text-zinc-500">Frontier · {activeEngine.name}</p>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl" data-testid="frontier-greeting">The beam{user?.username ? `, ${user.username}` : ''}</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

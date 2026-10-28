@@ -1,4 +1,19 @@
-# Agents Lens — Capability Map (Frontend Rebuild Program, Wave 3)
+# Agents Lens — Capability Map (Frontend Rebuild Program)
+
+> **Re-verification (HANDOFF-3 batch L15b, 2026-10-28, against main 02910bbb):**
+> The audit below is kept as history (its two call-shape defects
+> were fixed in its pass). Current truth:
+>
+> - **28/28 macros named in the frontend** (fresh scan). No
+>   unsurfaced remainder; the governance macros additionally remain
+>   reachable through the Goals lens's AgentAutonomyPanel (see the
+>   L7 batch).
+> - **Shipped in this batch:** the concept's serif headline — "Who
+>   is working, {username}" — as the page header
+>   (`data-testid="agents-greeting"`, `tests/agents-greeting.test.tsx`).
+> - Server suites run locally this pass: agents-domain-parity
+>   passes (in the L15b run below).
+
 
 > Derived, not asserted. Every number below has a reproduction command; every
 > classification is backed by a grep or a full read of the file it's about.
