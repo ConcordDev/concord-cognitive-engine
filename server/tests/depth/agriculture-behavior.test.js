@@ -188,8 +188,12 @@ describe("agriculture — state CRUD round-trips + validation (shared ctx)", () 
   });
 
   it("nitrogen-plan-create → nitrogen-apply: applied reduces remaining exactly", async () => {
+    // child records must reference a real field owned by the caller (#1500 guard)
+    const fc = await lensRun("agriculture", "field-create",
+      { params: { name: `NField-${randomUUID()}`, acreage: 80, lat: 41.5, lng: -93.6 } }, ctx);
+    const fieldId = fc.result.field.id;
     const plan = await lensRun("agriculture", "nitrogen-plan-create",
-      { params: { fieldId: "fN", targetLbsPerAcre: 180, crop: "corn" } }, ctx);
+      { params: { fieldId, targetLbsPerAcre: 180, crop: "corn" } }, ctx);
     assert.equal(plan.result.plan.remaining, 180);
     const planId = plan.result.plan.id;
 
@@ -201,22 +205,36 @@ describe("agriculture — state CRUD round-trips + validation (shared ctx)", () 
   });
 
   it("harvest-log: yieldPerAcre = bushels / acres, computed exactly", async () => {
+    const fc = await lensRun("agriculture", "field-create",
+      { params: { name: `HField-${randomUUID()}`, acreage: 50, lat: 41.5, lng: -93.6 } }, ctx);
+    const fieldId = fc.result.field.id;
     const r = await lensRun("agriculture", "harvest-log",
-      { params: { fieldId: "fH", crop: "corn", acresHarvested: 50, yieldBushels: 9000 } }, ctx);
+      { params: { fieldId, crop: "corn", acresHarvested: 50, yieldBushels: 9000 } }, ctx);
     assert.equal(r.result.pass.yieldPerAcre, 180);      // 9000 / 50
-    const passes = await lensRun("agriculture", "harvest-passes", { params: { fieldId: "fH" } }, ctx);
+    const passes = await lensRun("agriculture", "harvest-passes", { params: { fieldId } }, ctx);
     assert.ok(passes.result.passes.some((p) => p.id === r.result.pass.id));
   });
 
   it("harvest-log: zero acres harvested is rejected", async () => {
+    const fc = await lensRun("agriculture", "field-create",
+      { params: { name: `H0Field-${randomUUID()}`, acreage: 50, lat: 41.5, lng: -93.6 } }, ctx);
     const r = await lensRun("agriculture", "harvest-log",
-      { params: { fieldId: "fH", crop: "corn", acresHarvested: 0, yieldBushels: 100 } }, ctx);
+      { params: { fieldId: fc.result.field.id, crop: "corn", acresHarvested: 0, yieldBushels: 100 } }, ctx);
     assert.equal(r.result.ok, false);
     assert.match(r.result.error, /acresHarvested must be > 0/);
   });
 
+  it("harvest-log: a made-up fieldId is refused by the parent guard (#1500)", async () => {
+    const r = await lensRun("agriculture", "harvest-log",
+      { params: { fieldId: `ghost-${randomUUID()}`, crop: "corn", acresHarvested: 10, yieldBushels: 100 } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /field not found/);
+  });
+
   it("cost-entry-add + profit-analysis: gross, net and breakeven price are exact", async () => {
-    const fieldId = `fP-${randomUUID()}`;
+    const fc = await lensRun("agriculture", "field-create",
+      { params: { name: `PField-${randomUUID()}`, acreage: 100, lat: 41.5, lng: -93.6 } }, ctx);
+    const fieldId = fc.result.field.id;
     await lensRun("agriculture", "cost-entry-add",
       { params: { fieldId, label: "Seed + fert", amount: 5000, category: "seed" } }, ctx);
     const r = await lensRun("agriculture", "profit-analysis",
@@ -336,9 +354,12 @@ describe("agriculture — rotation + telemetry + maps (wave 12 top-up · exact c
 
   it("prescriptions-create: avgRate = mean of zoneRates, exact", async () => {
     const ctx = await depthCtx(`agri-rx-${randomUUID()}`);
+    const fc = await lensRun("agriculture", "field-create",
+      { params: { name: `RxField-${randomUUID()}`, acreage: 60, lat: 41.5, lng: -93.6 } }, ctx);
+    const fieldId = fc.result.field.id;
     const r = await lensRun("agriculture", "prescriptions-create", {
       params: {
-        fieldId: "fRx", product: "UAN-32", kind: "nitrogen",
+        fieldId, product: "UAN-32", kind: "nitrogen",
         zoneRates: [{ rate: 120 }, { rate: 150 }, { rate: 180 }],
       },
     }, ctx);
@@ -351,7 +372,7 @@ describe("agriculture — rotation + telemetry + maps (wave 12 top-up · exact c
     assert.equal(approve.result.prescription.status, "approved");
 
     const bad = await lensRun("agriculture", "prescriptions-create",
-      { params: { fieldId: "fRx" } }, ctx);  // missing product
+      { params: { fieldId } }, ctx);  // missing product
     assert.equal(bad.result.ok, false);
     assert.match(bad.result.error, /fieldId and product required/);
   });
@@ -432,12 +453,12 @@ describe("agriculture — rotation + telemetry + maps (wave 12 top-up · exact c
 
   it("dashboard-summary: aggregates fields/acres/yield/grain across stores", async () => {
     const ctx = await depthCtx(`agri-dash-${randomUUID()}`);
-    await lensRun("agriculture", "field-create",
+    const d1 = await lensRun("agriculture", "field-create",
       { params: { name: `D1-${randomUUID()}`, acreage: 100, lat: 41, lng: -93 } }, ctx);
     await lensRun("agriculture", "field-create",
       { params: { name: `D2-${randomUUID()}`, acreage: 50, lat: 41, lng: -93 } }, ctx);
     await lensRun("agriculture", "harvest-log",
-      { params: { fieldId: "fD", crop: "corn", acresHarvested: 100, yieldBushels: 18000 } }, ctx);
+      { params: { fieldId: d1.result.field.id, crop: "corn", acresHarvested: 100, yieldBushels: 18000 } }, ctx);
     const bin = await lensRun("agriculture", "grain-bins-create",
       { params: { name: `DB-${randomUUID()}`, capacityBushels: 10000, crop: "corn" } }, ctx);
     await lensRun("agriculture", "grain-bins-load",
@@ -485,26 +506,32 @@ describe("agriculture — rotation + telemetry + maps (wave 12 top-up · exact c
 
   it("zones-create: areaAcres clamped to >= 0; bad input rejected", async () => {
     const ctx = await depthCtx(`agri-zone-${randomUUID()}`);
+    const fc = await lensRun("agriculture", "field-create",
+      { params: { name: `ZField-${randomUUID()}`, acreage: 90, lat: 41.5, lng: -93.6 } }, ctx);
+    const fieldId = fc.result.field.id;
     const z = await lensRun("agriculture", "zones-create", {
-      params: { fieldId: "fZ", name: "High NW", productivityClass: "high", areaAcres: 23.5, organicMatterPct: 4.2 },
+      params: { fieldId, name: "High NW", productivityClass: "high", areaAcres: 23.5, organicMatterPct: 4.2 },
     }, ctx);
     assert.equal(z.result.zone.areaAcres, 23.5);
     assert.equal(z.result.zone.productivityClass, "high");
 
     const neg = await lensRun("agriculture", "zones-create",
-      { params: { fieldId: "fZ", name: "Neg", areaAcres: -10 } }, ctx);
+      { params: { fieldId, name: "Neg", areaAcres: -10 } }, ctx);
     assert.equal(neg.result.zone.areaAcres, 0);          // Math.max(0, …)
 
     const bad = await lensRun("agriculture", "zones-create",
-      { params: { fieldId: "fZ" } }, ctx);  // missing name
+      { params: { fieldId } }, ctx);  // missing name
     assert.equal(bad.result.ok, false);
     assert.match(bad.result.error, /fieldId and name required/);
   });
 
   it("work-orders: create (scheduled) → complete (completed) round-trip; missing op rejected", async () => {
     const ctx = await depthCtx(`agri-wo-${randomUUID()}`);
+    const fc = await lensRun("agriculture", "field-create",
+      { params: { name: `WField-${randomUUID()}`, acreage: 70, lat: 41.5, lng: -93.6 } }, ctx);
+    const fieldId = fc.result.field.id;
     const wo = await lensRun("agriculture", "work-orders-create",
-      { params: { fieldId: "fW", operation: "spray glyphosate", kind: "spraying" } }, ctx);
+      { params: { fieldId, operation: "spray glyphosate", kind: "spraying" } }, ctx);
     assert.equal(wo.result.order.status, "scheduled");
     const id = wo.result.order.id;
 
@@ -517,7 +544,7 @@ describe("agriculture — rotation + telemetry + maps (wave 12 top-up · exact c
     assert.ok(list.result.orders.some((o) => o.id === id));
 
     const bad = await lensRun("agriculture", "work-orders-create",
-      { params: { fieldId: "fW" } }, ctx);  // missing operation
+      { params: { fieldId } }, ctx);  // missing operation
     assert.equal(bad.result.ok, false);
     assert.match(bad.result.error, /fieldId and operation required/);
   });
@@ -626,8 +653,12 @@ describe("agriculture — fleet / zone / prescription CRUD (wave 13 · round-tri
 
   it("zones-list (filtered by fieldId) → zones-delete round-trip; missing id rejected", async () => {
     const c = await depthCtx(`agri-zl-${randomUUID()}`);
-    const fieldA = `zfA-${randomUUID()}`;
-    const fieldB = `zfB-${randomUUID()}`;
+    const fcA = await lensRun("agriculture", "field-create",
+      { params: { name: `ZLA-${randomUUID()}`, acreage: 45, lat: 41.5, lng: -93.6 } }, c);
+    const fieldA = fcA.result.field.id;
+    const fcB = await lensRun("agriculture", "field-create",
+      { params: { name: `ZLB-${randomUUID()}`, acreage: 45, lat: 41.5, lng: -93.6 } }, c);
+    const fieldB = fcB.result.field.id;
     const za = await lensRun("agriculture", "zones-create", { params: { fieldId: fieldA, name: "A1" } }, c);
     await lensRun("agriculture", "zones-create", { params: { fieldId: fieldB, name: "B1" } }, c);
 
@@ -650,7 +681,9 @@ describe("agriculture — fleet / zone / prescription CRUD (wave 13 · round-tri
 
   it("prescriptions-list (filtered) + prescriptions-delete: round-trip; missing id rejected", async () => {
     const c = await depthCtx(`agri-rxl-${randomUUID()}`);
-    const fId = `rxf-${randomUUID()}`;
+    const fc = await lensRun("agriculture", "field-create",
+      { params: { name: `RxL-${randomUUID()}`, acreage: 45, lat: 41.5, lng: -93.6 } }, c);
+    const fId = fc.result.field.id;
     const rx = await lensRun("agriculture", "prescriptions-create",
       { params: { fieldId: fId, product: "UAN-32", kind: "nitrogen", flatRate: 140 } }, c);
     assert.equal(rx.result.prescription.avgRate, 140);        // no zoneRates → flatRate
@@ -671,8 +704,10 @@ describe("agriculture — fleet / zone / prescription CRUD (wave 13 · round-tri
 
   it("prescriptions-create: seed kind defaults unit to seeds/acre", async () => {
     const c = await depthCtx(`agri-rxseed-${randomUUID()}`);
+    const fc = await lensRun("agriculture", "field-create",
+      { params: { name: `RxSeed-${randomUUID()}`, acreage: 45, lat: 41.5, lng: -93.6 } }, c);
     const rx = await lensRun("agriculture", "prescriptions-create",
-      { params: { fieldId: "fsd", product: "DKC64", kind: "seed", zoneRates: [{ rate: 32000 }, { rate: 34000 }] } }, c);
+      { params: { fieldId: fc.result.field.id, product: "DKC64", kind: "seed", zoneRates: [{ rate: 32000 }, { rate: 34000 }] } }, c);
     assert.equal(rx.result.prescription.kind, "seed");
     assert.equal(rx.result.prescription.unit, "seeds/acre");
     assert.equal(rx.result.prescription.avgRate, 33000);     // (32000+34000)/2
@@ -685,7 +720,9 @@ describe("agriculture — planting / nitrogen / imagery + list reads (wave 13 ·
 
   it("planting-log: defaults applied (rowSpacing 30, unit seeds/acre); negatives clamped; missing crop rejected", async () => {
     const c = await depthCtx(`agri-plog-${randomUUID()}`);
-    const fId = `pf-${randomUUID()}`;
+    const fc = await lensRun("agriculture", "field-create",
+      { params: { name: `PLog-${randomUUID()}`, acreage: 80, lat: 41.5, lng: -93.6 } }, c);
+    const fId = fc.result.field.id;
     const p = await lensRun("agriculture", "planting-log",
       { params: { fieldId: fId, crop: "corn", variety: "P1197", seedingRate: -100, depthInches: -2, acresPlanted: 80 } }, c);
     assert.equal(p.result.pass.rowSpacingInches, 30);          // default when not passed
@@ -706,9 +743,13 @@ describe("agriculture — planting / nitrogen / imagery + list reads (wave 13 ·
 
   it("planting-passes: logged passes read back filtered by fieldId", async () => {
     const c = await depthCtx(`agri-ppasses-${randomUUID()}`);
-    const fId = `ppf-${randomUUID()}`;
+    const fc = await lensRun("agriculture", "field-create",
+      { params: { name: `PPass-${randomUUID()}`, acreage: 80, lat: 41.5, lng: -93.6 } }, c);
+    const fId = fc.result.field.id;
+    const fcOther = await lensRun("agriculture", "field-create",
+      { params: { name: `PPassOther-${randomUUID()}`, acreage: 30, lat: 41.5, lng: -93.6 } }, c);
     const a = await lensRun("agriculture", "planting-log", { params: { fieldId: fId, crop: "corn" } }, c);
-    await lensRun("agriculture", "planting-log", { params: { fieldId: "other", crop: "wheat" } }, c);
+    await lensRun("agriculture", "planting-log", { params: { fieldId: fcOther.result.field.id, crop: "wheat" } }, c);
     const passes = await lensRun("agriculture", "planting-passes", { params: { fieldId: fId } }, c);
     assert.equal(passes.result.passes.length, 1);
     assert.ok(passes.result.passes.some((p) => p.id === a.result.pass.id));
@@ -718,7 +759,9 @@ describe("agriculture — planting / nitrogen / imagery + list reads (wave 13 ·
 
   it("nitrogen-plans: created plans read back; default split application seeded at target", async () => {
     const c = await depthCtx(`agri-nplans-${randomUUID()}`);
-    const fId = `nf-${randomUUID()}`;
+    const fc = await lensRun("agriculture", "field-create",
+      { params: { name: `NPlans-${randomUUID()}`, acreage: 80, lat: 41.5, lng: -93.6 } }, c);
+    const fId = fc.result.field.id;
     const plan = await lensRun("agriculture", "nitrogen-plan-create",
       { params: { fieldId: fId, targetLbsPerAcre: 200, crop: "corn" } }, c);
     assert.equal(plan.result.plan.remaining, 200);
@@ -815,7 +858,9 @@ describe("agriculture — list-read macros over their stores (wave 13 · round-t
 
   it("cost-entries-list + cost-entry-delete: round-trip; rounding to cents; missing id rejected", async () => {
     const c = await depthCtx(`agri-cel-${randomUUID()}`);
-    const fId = `cef-${randomUUID()}`;
+    const fc = await lensRun("agriculture", "field-create",
+      { params: { name: `CEList-${randomUUID()}`, acreage: 80, lat: 41.5, lng: -93.6 } }, c);
+    const fId = fc.result.field.id;
     const add = await lensRun("agriculture", "cost-entry-add",
       { params: { fieldId: fId, label: "Seed", amount: 1234.567, category: "seed" } }, c);
     assert.equal(add.result.entry.amount, 1234.57);          // round to cents
