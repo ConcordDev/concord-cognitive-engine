@@ -9,6 +9,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { writeGoogleCalendarEvent, readGoogleCalendarEvents } from "../lib/connector-client.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { createNotification } from "../emergent/social-layer.js";
 
 export default function registerCalendarActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -1786,6 +1787,33 @@ export default function registerCalendarActions(registerLensAction) {
   // reminders-due computes which event-reminder offsets are now in
   // the firing window and emits them as persisted notifications.
 
+  // S8 completion — the bell half. A fired reminder also lands in the
+  // global Notifications bell through the platform notification
+  // substrate (createNotification, server/emergent/social-layer.js) —
+  // the same write path likes/comments/DMs use, read back by
+  // server/routes/social-core.js for GET /api/social/notifications,
+  // and pushed live over the social:notification socket. The payload
+  // mirrors the budget-alert cycle's scheduler precedent: { userId,
+  // type, content } — no fromUserId/postId (a reminder is not a post
+  // and has no other actor). Fire-and-forget, artistry-style: a
+  // substrate failure must never fail a calendar action. Called ONLY
+  // from the materialization branch of reminders-due, which the
+  // firedKeys guard runs exactly once per (event, occurrence,
+  // offset) — re-polls can never duplicate a bell entry.
+  function notifyReminderBell(userId, note) {
+    try {
+      const STATE = globalThis._concordSTATE;
+      if (!STATE || !userId) return;
+      createNotification(STATE, {
+        userId,
+        type: "reminder",
+        content: note.missed
+          ? `Missed reminder: "${note.eventTitle}" started at ${note.occurrenceStart} (its ${note.offsetMin}-minute reminder).`
+          : `Reminder: "${note.eventTitle}" starts at ${note.occurrenceStart} (${note.offsetMin} min before).`,
+      });
+    } catch (_e) { /* best effort — never break reminders over the bell */ }
+  }
+
   registerLensAction("calendar", "reminders-due", (ctx, _a, params = {}) => {
   try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1831,6 +1859,7 @@ export default function registerCalendarActions(registerLensAction) {
               snoozedUntil: null,
             };
             queue.push(note);
+            notifyReminderBell(userId, note);
             firedKeys.add(key);
             firedNow++;
           } else if (lookAheadMin > 0 && fireAt > now && fireAt <= now + lookAheadMin * 60_000) {
