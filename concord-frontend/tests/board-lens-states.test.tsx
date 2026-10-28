@@ -32,6 +32,12 @@ vi.mock('@/lib/api/client', () => ({
 vi.mock('@/components/board/CardDetailModal', () => ({ CardDetailModal: () => null }));
 vi.mock('@/components/board/BoardSettingsPanel', () => ({ BoardSettingsPanel: () => null }));
 
+// The workspace's northstar empty-state greeting addresses the signed-in
+// user by name (approved Board concept: "What's next, Ramaj").
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({ user: { id: 'u1', username: 'Ramaj', email: '', role: 'member' }, isLoading: false, isAuthenticated: true, logout: () => {} }),
+}));
+
 import { BoardWorkspace } from '@/components/board/BoardWorkspace';
 
 // A board-list response carrying `boards`.
@@ -101,6 +107,13 @@ describe('board workspace — EMPTY', () => {
     const utils = render(<BoardWorkspace />);
     await waitFor(() => expect(utils.getByText(/No boards yet/i)).toBeInTheDocument());
     expect(utils.container.textContent).not.toMatch(/Could not load boards/i);
+  });
+
+  it('zero boards greets the signed-in user by name (northstar concept)', async () => {
+    routeByName({ 'board-list': () => listOk([]) });
+    const utils = render(<BoardWorkspace />);
+    const greeting = await utils.findByTestId('board-empty-greeting');
+    expect(greeting.textContent).toBe('What’s next, Ramaj');
   });
 });
 

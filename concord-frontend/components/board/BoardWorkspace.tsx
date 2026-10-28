@@ -37,6 +37,7 @@ import { CardDetailModal } from './CardDetailModal';
 import { BoardSettingsPanel } from './BoardSettingsPanel';
 import { BoardKeepMenu } from './BoardKeepMenu';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 
 function isOverdue(due: string | null): boolean {
   if (!due) return false;
@@ -48,6 +49,7 @@ function isOverdue(due: string | null): boolean {
 }
 
 export function BoardWorkspace() {
+  const { user } = useAuth();
   const { boards, loading: listLoading, error: listError, reload: reloadList } = useBoardList();
   const [activeId, setActiveId] = useState<string | null>(null);
   const { board, loading: boardLoading, error: boardError, reload: reloadBoard } = useBoardDetail(activeId);
@@ -335,8 +337,11 @@ export function BoardWorkspace() {
       )}
 
       {!listLoading && !listError && boards.length === 0 && (
-        <div className="text-center py-12 text-sm text-gray-400">
-          No boards yet. Create your first board above.
+        <div className="py-12 text-center">
+          <p data-testid="board-empty-greeting" className="font-vault text-3xl text-zinc-100">
+            What&rsquo;s next{user?.username ? `, ${user.username}` : ''}
+          </p>
+          <p className="mt-3 text-sm text-gray-400">No boards yet. Create your first board above.</p>
         </div>
       )}
 
