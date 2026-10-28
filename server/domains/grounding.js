@@ -4,7 +4,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { ingestProtocol } from "../lib/provenance-ingest.js";
-import { cachedFetchJson } from "../lib/external-fetch.js";
+import { getGdelt, queryKey } from "../lib/gdelt-source.js";
 
 // ── Misinformation provenance shield (docs/NEXT_ARC_PLAN.md §D.2) ──────────
 // `sourceCredibility` (below) previously trusted a caller-supplied `type`
@@ -784,16 +784,14 @@ export default function registerGroundingActions(registerLensAction) {
     const keywordQuery = buildCoverageQuery(claim);
     const langCode = params.language ? String(params.language).toLowerCase().replace(/[^a-z]/g, "").slice(0, 20) : "";
     const fullQuery = langCode ? `${keywordQuery} sourcelang:${langCode}` : keywordQuery;
-    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(fullQuery)}&mode=ArtList&maxrecords=${maxRecords}&format=json&sort=DateDesc`;
-
-    let data;
-    try {
-      data = await cachedFetchJson(url, { ttlMs: 10 * 60 * 1000, timeoutMs: 8000 });
-    } catch (e) {
-      return { ok: false, reason: "gdelt_unreachable", error: `GDELT unreachable: ${String(e && e.message || e)}` };
+    // Shared "gdelt" feed-cache source: same budget (1 request / ~100 s), queue and
+    // back-off as news.headlines. Keeps its own 10 min freshness for these keys.
+    const g = await getGdelt(queryKey(fullQuery, maxRecords), { ttlMs: 10 * 60 * 1000 });
+    if (g.status === "unavailable") {
+      return { ok: false, reason: "gdelt_unreachable", detail: g.reason, lastOkAt: g.lastOkAt, error: `GDELT unreachable: ${g.reason}` };
     }
 
-    const rawArticles = Array.isArray(data?.articles) ? data.articles : [];
+    const rawArticles = g.articles;
     const articles = rawArticles.slice(0, maxRecords).map((a, i) => {
       const bias = biasFor(a.url || a.domain);
       const title = gClean(a.title, 400);
@@ -825,6 +823,8 @@ export default function registerGroundingActions(registerLensAction) {
         claim,
         query: fullQuery,
         source: "GDELT Project (real-time global news index, no key required)",
+        fetchedAt: g.fetchedAt,
+        stale: g.stale,
         count: articles.length,
         knownSourceCount: knownSources,
         spectrumCoverage: articles.length === 0 ? "no-coverage-found" : leanSpread >= 4 ? "broad" : leanSpread >= 2 ? "moderate" : "narrow",

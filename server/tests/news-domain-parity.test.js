@@ -11,9 +11,9 @@ beforeEach(() => {
   globalThis._concordSTATE = { dtus: new Map() };
   globalThis._concordSaveStateDebounced = () => {};
   globalThis.fetch = async () => { throw new Error("network disabled"); };
-  // Fresh GDELT cache/queue per test; no 5 s spacing or budget race in the parity assertions.
+  // Fresh GDELT cache/queue per test; no 5 s spacing or shared 100 s budget (covered in news-gdelt-cache.test.js).
   __resetGdeltCacheForTests();
-  __configureGdeltForTests({ spacingMs: 0 });
+  __configureGdeltForTests({ spacingMs: 0, everyMs: 0 });
 });
 
 const ctxA = { actor: { userId: "u" }, userId: "u" };
