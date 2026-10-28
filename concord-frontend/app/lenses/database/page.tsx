@@ -19,6 +19,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useAuth } from '@/hooks/useAuth';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { cn } from '@/lib/utils';
@@ -57,6 +58,7 @@ const TABS: { id: DbView; label: string; icon: typeof Database; keys: string }[]
 ];
 
 export default function DatabaseLensPage() {
+  const { user } = useAuth();
   useLensNav('database');
   useLensIdentity('database');
   const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('database');
@@ -93,7 +95,7 @@ export default function DatabaseLensPage() {
       <div data-lens-theme="database" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Database</h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl" data-testid="database-greeting">Ask the data{user?.username ? `, ${user.username}` : ''}</h1>
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

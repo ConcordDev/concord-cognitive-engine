@@ -1,5 +1,24 @@
 # Database Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **Re-verification (HANDOFF-3 batch L9b, 2026-10-28, against main e9791d4d):**
+> The audit below is kept as history. Current truth:
+>
+> - **34 macros now** (33 at audit time). Fresh surfacing scan: 33/34
+>   named in the frontend. The one unnamed is `schema-dashboard`, a
+>   counts aggregate (schemas / totalTables / totalRelations) whose
+>   numbers the Schema Designer already shows from its `schema-list`
+>   data — an unsurfaced convenience aggregate, not missing
+>   information; disposition recorded here rather than wiring a
+>   duplicate stat call.
+> - The 9/9 DBeaver/TablePlus checklist below stands; the page's
+>   no-fake-fallback discipline is unchanged.
+> - **Shipped in this batch:** the concept's serif headline — "Ask
+>   the data, {username}" — as the page header
+>   (`data-testid="database-greeting"`, `tests/database-greeting.test.tsx`).
+> - Server suites run locally this pass: database-domain-parity
+>   passes (in the combined 89-pass L9b run).
+
+
 > Derived, not asserted. Backend surface enumerated by reading
 > `server/domains/database.js` (806 LOC) in full —
 > `grep -n 'registerLensAction("database"' server/domains/database.js`

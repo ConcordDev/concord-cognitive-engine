@@ -1,4 +1,31 @@
-# Repos — capability map (Wave 3, Frontend Rebuild Program)
+# Repos Lens — Capability Map (Frontend Rebuild Program, Wave 3)
+
+> **Re-verification (HANDOFF-3 batch L9b, 2026-10-28, against main e9791d4d):**
+> The audit below is kept as history, including its three fixes (the
+> fabricated parallel repo browser removed, the envelope-unwrap bug
+> fixed across all workspace tabs, the Analysis tab wiring the three
+> static-analysis macros) — all verified intact. Current truth:
+>
+> - **31/31 domain-file macros are named in the frontend** (fresh
+>   scan, zero unsurfaced), including `codeComplexity` /
+>   `commitAnalysis` / `dependencyAudit` via the Analysis tab, with
+>   the AST engine this map's deferred table records as CLOSED
+>   2026-07-16 (`server/lib/code-ast-complexity.js`).
+> - The one open deferred item below stands unchanged:
+>   `security-scan`'s vulnerability table is still a small hardcoded
+>   CVE list rather than a live OSV/npm-audit feed — a backend
+>   data-sourcing item, recorded here and in the remaining-work
+>   audit, not a frontend gap.
+> - **Shipped in this batch:** the concept's serif headline — "Your
+>   repos, {username}" — as the page header
+>   (`data-testid="repos-greeting"`, `tests/repos-greeting.test.tsx`).
+> - Server suites run locally this pass: repos-domain-parity 89 pass
+>   across the combined L9b run with 2 failures that are
+>   environmental only — the two `codeComplexity` AST tests need the
+>   `typescript` package (server `node_modules`, absent in the audit
+>   sandbox), where the macro honestly degrades to
+>   `ast_engine_unavailable` instead of fabricating a count; Mac-run.
+
 
 Audited 2026-07-10. **Reference app / category leader: GitHub** (repo
 hosting + code review + CI + security scanning), with the "explore" half
