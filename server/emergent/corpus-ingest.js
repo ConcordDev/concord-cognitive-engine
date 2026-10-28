@@ -82,6 +82,32 @@ function _safeFetch(url, opts = {}) {
 }
 
 // ── OpenStax (Rice University free college textbooks, CC-BY) ──────────────
+
+// Rotation window for the OpenStax pull (audit Q65/B#25): previously every
+// cycle fetched catalog page 1 and chapters 1-3 of each book, so books 21+
+// and chapters 4+ were unreachable FOREVER despite the daily budget being
+// spent. The cursor advances the chapter window every cycle and the
+// catalog page whenever a page is fully consumed, wrapping at the ends —
+// coverage now rotates through the whole catalog over successive cycles.
+// In-memory like the daily counters above (a restart restarts the
+// rotation; worst case some early chapters are re-pulled, never lost).
+const OPENSTAX_PAGE_SIZE = 20;
+const OPENSTAX_CHAPTER_WINDOW = 3;
+const _openstaxCursor = { offset: 0, chapterStart: 0 };
+
+/** Pure rotation step — exported for tests. */
+export function _nextOpenStaxWindow(cursor, { booksOnPage = 0, pageCompleted = false, maxToc = 0 } = {}) {
+  let chapterStart = cursor.chapterStart;
+  if (maxToc > 0) {
+    chapterStart = chapterStart + OPENSTAX_CHAPTER_WINDOW >= maxToc ? 0 : chapterStart + OPENSTAX_CHAPTER_WINDOW;
+  }
+  let offset = cursor.offset;
+  if (pageCompleted) {
+    offset = booksOnPage < OPENSTAX_PAGE_SIZE ? 0 : offset + OPENSTAX_PAGE_SIZE;
+  }
+  return { offset, chapterStart };
+}
+
 //
 // The OpenStax catalog is at https://openstax.org/api/v2/pages
 // (no key required). Pull a small batch per day, parse chapter
@@ -91,15 +117,20 @@ async function _pullOpenStax(bridgeEvent) {
   if (budget <= 0) return { source: "openstax", pulled: 0, reason: "budget_exhausted" };
 
   let pulled = 0;
+  let pageCompleted = false;
+  let maxToc = 0;
+  let booksOnPage = 0;
   try {
-    // Catalog listing — fetch first page only and round-robin chapters.
-    const catalogRes = await _safeFetch("https://openstax.org/api/v2/pages/?type=books.Book&fields=title,slug,description&limit=20");
+    // Catalog listing — one page per cycle, rotating (see _openstaxCursor).
+    const catalogRes = await _safeFetch(`https://openstax.org/api/v2/pages/?type=books.Book&fields=title,slug,description&limit=${OPENSTAX_PAGE_SIZE}&offset=${_openstaxCursor.offset}`);
     if (!catalogRes.ok) return { source: "openstax", pulled: 0, reason: `catalog_${catalogRes.status}` };
     const catalog = await catalogRes.json().catch(() => null);
     const books = Array.isArray(catalog?.items) ? catalog.items : [];
+    booksOnPage = books.length;
 
+    pageCompleted = true;
     for (const book of books) {
-      if (pulled >= budget) break;
+      if (pulled >= budget) { pageCompleted = false; break; }
       try {
         const slug = book?.slug || book?.meta?.slug;
         if (!slug) continue;
@@ -108,9 +139,10 @@ async function _pullOpenStax(bridgeEvent) {
         if (!tocRes.ok) continue;
         const tocJson = await tocRes.json().catch(() => null);
         const tocItems = tocJson?.items?.[0]?.book_state || [];
+        if (tocItems.length > maxToc) maxToc = tocItems.length;
 
-        for (const chapter of (tocItems || []).slice(0, 3)) {
-          if (pulled >= budget) break;
+        for (const chapter of (tocItems || []).slice(_openstaxCursor.chapterStart, _openstaxCursor.chapterStart + OPENSTAX_CHAPTER_WINDOW)) {
+          if (pulled >= budget) { pageCompleted = false; break; }
           const chapterTitle = chapter?.title || chapter?.tree?.title || "(untitled chapter)";
           const chapterContent = chapter?.content || chapter?.text || chapter?.tree?.contents || "";
           if (!chapterTitle || !chapterContent) continue;
@@ -137,6 +169,9 @@ async function _pullOpenStax(bridgeEvent) {
   } catch (e) {
     logger.warn?.("corpus-ingest", "openstax_catalog_fail", { error: e?.message });
   }
+  const next = _nextOpenStaxWindow(_openstaxCursor, { booksOnPage, pageCompleted, maxToc });
+  _openstaxCursor.offset = next.offset;
+  _openstaxCursor.chapterStart = next.chapterStart;
   return { source: "openstax", pulled };
 }
 
@@ -450,5 +485,6 @@ export function getCorpusIngestStatus() {
     remaining: Object.fromEntries(
       Object.entries(DAILY_PER_SOURCE).map(([k, v]) => [k, Math.max(0, v - (_dailyCount.get(k) || 0))])
     ),
+    openstaxWindow: { ..._openstaxCursor },
   };
 }
