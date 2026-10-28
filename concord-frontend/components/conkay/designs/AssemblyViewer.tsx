@@ -40,7 +40,7 @@ export interface SurfaceOverlays {
 }
 export interface VehicleAssembly {
   schema?: string;
-  verification?: { statement: string; geometricOnly?: string[] };
+  verification?: { statement: string; geometricOnly?: string[]; geometricOnlyParts?: string[] };
   coordinateSystem?: { axes?: Record<string, string>; origin?: string };
   components: (ExplodePart & {
     name: string;
@@ -54,7 +54,7 @@ export interface VehicleAssembly {
     /** 'styling-loft': placed on the styled loft, which is not the analysed solid drawn here. */
     placedOn?: string;
   })[];
-  checks: { id: string; status: 'pass' | 'warn' | 'fail'; detail: string; outside?: string[]; parts?: string[] }[];
+  checks: { id: string; status: 'pass' | 'warn' | 'fail'; detail: string; outside?: string[]; parts?: string[]; clearanceM?: number | null }[];
   surface: { source?: 'cad.body' | 'styling'; overlays?: SurfaceOverlays | null; mesh: { positions: number[]; normals: number[]; paint: number[]; glass: GlassField; arch?: AssemblyMesh; bounds: { min: number[]; max: number[] } } };
   wheel: { tire: AssemblyMesh; rim: AssemblyMesh; disc: AssemblyMesh; caliper: AssemblyMesh; spec?: { spokes?: number } };
   detail?: { lamp?: AssemblyMesh; grille?: AssemblyMesh };
@@ -195,8 +195,14 @@ function checkParts(c: VehicleAssembly['checks'][number]): string[] {
   return c.parts ?? c.outside ?? [];
 }
 
-function WheelMeshes({ assembly, explode, clip, opacity, visibleIds }: {
+/** Check status colours, shared by the marks, the Checks overlay and the inspector. */
+const CHECK_HEX: Record<'pass' | 'warn' | 'fail', string> = { pass: '#6ee7b7', warn: '#fcd34d', fail: '#fb7185' };
+const CHECK_SEVERITY: Record<'pass' | 'warn' | 'fail', number> = { pass: 0, warn: 1, fail: 2 };
+
+function WheelMeshes({ assembly, explode, clip, opacity, visibleIds, checkColors }: {
   assembly: VehicleAssembly; explode: number; clip: THREE.Plane[]; opacity: number; visibleIds: Set<string>;
+  /** Checks overlay: a wheel's tyre takes its worst check's colour when present. */
+  checkColors?: Map<string, string> | null;
 }) {
   const tires = useMemo(() => assembly.components.filter((c) => c.role === 'wheel' && visibleIds.has(c.id)), [assembly, visibleIds]);
   const tire = useMemo(() => geo(assembly.wheel.tire), [assembly]);
@@ -215,7 +221,7 @@ function WheelMeshes({ assembly, explode, clip, opacity, visibleIds }: {
         return (
           <group key={w.id} position={[tx, ty, tz]} scale={[1, 1, mirror]}>
             <mesh name="tyre" geometry={tire}>
-              <meshStandardMaterial color="#161616" roughness={0.94} side={THREE.DoubleSide} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
+              <meshStandardMaterial color={checkColors?.get(w.id) || '#161616'} roughness={0.94} side={THREE.DoubleSide} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
             </mesh>
             <mesh name="rim" geometry={rim}>
               <meshPhysicalMaterial color="#8a8e94" metalness={1} roughness={0.22} clearcoat={0.45} clearcoatRoughness={0.12} side={THREE.DoubleSide} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
@@ -233,7 +239,7 @@ function WheelMeshes({ assembly, explode, clip, opacity, visibleIds }: {
   );
 }
 
-function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explode, section, opacity, hidden, isolated, onSelect, marks }: {
+function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explode, section, opacity, hidden, isolated, onSelect, marks, checkColors }: {
   assembly: VehicleAssembly;
   showOverlays: boolean;
   mode: 'studio' | 'engineering';
@@ -245,8 +251,10 @@ function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explode, sec
   hidden: Set<string>;
   isolated: string | null;
   onSelect: (id: string) => void;
-  /** Parts named by a failing (red) or warning (amber) fit check, outlined in the check's colour. */
-  marks: Map<string, 'fail' | 'warn'>;
+  /** Parts named by a fit check, outlined in the check's colour (a focused check may add pass outlines). */
+  marks: Map<string, 'pass' | 'fail' | 'warn'>;
+  /** Checks overlay (Engineering): part id → fill colour of its worst related check. Null = overlay off. */
+  checkColors?: Map<string, string> | null;
 }) {
   const bounds = assembly.surface.mesh.bounds;
   const cx = (bounds.min[0] + bounds.max[0]) / 2;
@@ -294,7 +302,7 @@ function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explode, sec
           <mesh geometry={paint} castShadow receiveShadow onClick={(e) => { e.stopPropagation(); onSelect('BODY_SHELL'); }}>
             {mode === 'studio'
               ? <meshPhysicalMaterial color={coatColor} metalness={coat.metallic} roughness={coat.roughness} clearcoat={coat.clearcoat} clearcoatRoughness={coat.clearcoatRoughness} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
-              : <meshLambertMaterial color={GROUP_COLOR.exterior} flatShading clippingPlanes={clip} transparent opacity={Math.min(opacity, 0.45)} />}
+              : <meshLambertMaterial color={checkColors?.get('BODY_SHELL') || GROUP_COLOR.exterior} flatShading clippingPlanes={clip} transparent opacity={Math.min(opacity, 0.45)} />}
           </mesh>
         )}
         {show('GLAZING') && (
@@ -310,7 +318,7 @@ function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explode, sec
         {showOverlays && assembly.surface.source === 'cad.body' && assembly.surface.overlays && show('BODY_SHELL') && (
           <OverlayLayer overlays={assembly.surface.overlays} mode={mode} clip={clip} />
         )}
-        <WheelMeshes assembly={assembly} explode={explode} clip={clip} opacity={opacity} visibleIds={new Set(assembly.components.filter((c) => c.role === 'wheel' && show(c.id)).map((c) => c.id))} />
+        <WheelMeshes assembly={assembly} explode={explode} clip={clip} opacity={opacity} checkColors={checkColors} visibleIds={new Set(assembly.components.filter((c) => c.role === 'wheel' && show(c.id)).map((c) => c.id))} />
         {mode === 'engineering' && doors.filter((d) => show(d.id)).map((d) => {
           const part = assembly.components.find((c) => c.id === d.id);
           const dy = part ? explodedShift(part, explode)[1] - d.placementY : 0;
@@ -346,7 +354,7 @@ function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explode, sec
                     ? <meshPhysicalMaterial color="#e6e8ee" metalness={0.9} roughness={0.16} clearcoat={1} clearcoatRoughness={0.05} clippingPlanes={clip} />
                     : c.role === 'handle'
                       ? <meshStandardMaterial color="#2a2e33" metalness={0.85} roughness={0.28} clippingPlanes={clip} />
-                      : <meshLambertMaterial color={GROUP_COLOR[c.group] || '#888'} flatShading={mode === 'engineering'} transparent opacity={mode === 'engineering' ? 0.85 : 0.55} clippingPlanes={clip} />}
+                      : <meshLambertMaterial color={checkColors?.get(c.id) || GROUP_COLOR[c.group] || '#888'} flatShading={mode === 'engineering'} transparent opacity={mode === 'engineering' ? 0.85 : 0.55} clippingPlanes={clip} />}
             </mesh>
           );
         })}
@@ -355,7 +363,7 @@ function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explode, sec
           if (!c || !c.half || !show(c.id)) return null;
           const [x, y, z] = explodedShift(c, explode);
           const [tx, ty, tz] = toThree(x, y, z);
-          return <MarkBox key={pid} part={c} position={[tx, ty, tz]} color={sev === 'fail' ? '#fb7185' : '#fcd34d'} clip={clip} />;
+          return <MarkBox key={pid} part={c} position={[tx, ty, tz]} color={CHECK_HEX[sev]} clip={clip} />;
         })}
       </group>
       {mode === 'studio' && <ContactShadows position={[0, 0.001, 0]} opacity={0.42} scale={12} blur={2.6} far={3.2} />}
@@ -467,6 +475,33 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
     }
     return m;
   }, [shown]);
+  // A3: the Checks overlay (Engineering) colours each part by the worst check that names it, and a
+  // focused Fit check outlines its parts on top of the standing fail/warn marks.
+  const [checksOverlay, setChecksOverlay] = useState(false);
+  const [focusCheck, setFocusCheck] = useState<string | null>(null);
+  useEffect(() => { setFocusCheck(null); }, [shown]);
+  const worstByPart = useMemo(() => {
+    const m = new Map<string, 'pass' | 'warn' | 'fail'>();
+    for (const c of shown.checks) {
+      for (const p of checkParts(c)) {
+        const cur = m.get(p);
+        if (!cur || CHECK_SEVERITY[c.status] > CHECK_SEVERITY[cur]) m.set(p, c.status);
+      }
+    }
+    return m;
+  }, [shown]);
+  const checkColors = useMemo(() => {
+    if (mode !== 'engineering' || !checksOverlay) return null;
+    const m = new Map<string, string>();
+    for (const [pid, st] of worstByPart) m.set(pid, CHECK_HEX[st]);
+    return m;
+  }, [mode, checksOverlay, worstByPart]);
+  const displayMarks = useMemo(() => {
+    const m = new Map<string, 'pass' | 'warn' | 'fail'>(marks);
+    const focused = focusCheck ? shown.checks.find((c) => c.id === focusCheck) : null;
+    if (focused) for (const p of checkParts(focused)) m.set(p, focused.status);
+    return m;
+  }, [marks, focusCheck, shown]);
   const commitKnob = async (k: WorkbenchKnob, value: number) => {
     if (!workbench) return;
     const client = workbench.client ?? workbenchClient;
@@ -491,6 +526,10 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
     }
   };
   const part = shown.components.find((c) => c.id === selected) || null;
+  // The selected part's stored clearances: the gap each fit check computed and stored (clearanceM),
+  // displayed verbatim — the browser never recomputes a clearance.
+  const partClearances = part ? shown.checks.filter((c) => typeof c.clearanceM === 'number' && checkParts(c).includes(part.id)) : [];
+  const partGeoOnly = part ? (shown.verification?.geometricOnlyParts || []).includes(part.id) : false;
   const bounds = shown.surface.mesh.bounds;
   const viewNose = bounds.min[0] - (bounds.min[0] + bounds.max[0]) / 2;
   const section = sectionAxis ? { axis: sectionAxis, position: sectionPos } : null;
@@ -548,6 +587,12 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
                 Design surface (drawn, not cut)
               </label>
             )}
+            {mode === 'engineering' && (
+              <label className="flex items-center gap-1.5 text-[11px] text-slate-400" title="Colour every part by the worst fit check that names it; parts no check names keep their group colour">
+                <input data-testid="checks-overlay" type="checkbox" checked={checksOverlay} onChange={(e) => setChecksOverlay(e.target.checked)} />
+                Checks overlay — colour by worst check
+              </label>
+            )}
             <label className="text-[11px] text-slate-400">Transparency
               <input data-testid="opacity" type="range" min={0.15} max={1} step={0.01} value={opacity} onChange={(e) => setOpacity(Number(e.target.value))} className="w-full" />
             </label>
@@ -556,6 +601,9 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
                 <li key={c.id}>
                   <button type="button" data-testid={`part-${c.id}`} className={`w-full truncate rounded px-1 py-0.5 text-left text-[11px] ${selected === c.id ? 'bg-white/15' : 'text-slate-300'}`} onClick={() => setSelected(c.id)}>
                     {mode === 'engineering' ? `${c.id}  ${c.name}` : c.name}
+                    {checkColors && worstByPart.get(c.id) && (
+                      <span data-testid={`part-check-${c.id}`} className={`ml-1 ${worstByPart.get(c.id) === 'fail' ? 'text-rose-300' : worstByPart.get(c.id) === 'warn' ? 'text-amber-200' : 'text-emerald-200'}`}>· {worstByPart.get(c.id)}</span>
+                    )}
                   </button>
                 </li>
               ))}
@@ -579,7 +627,7 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
             dpr={narrow ? [1, 1] : [1, 1.5]}
           >
             <color attach="background" args={[mode === 'studio' ? '#d8d9db' : '#ececec']} />
-            <CarScene assembly={shown} mode={mode} paintId={paintId} hdriUrl={hdriUrl} showOverlays={showOverlays} explode={explode} section={section} opacity={opacity} hidden={hidden} isolated={isolated} onSelect={setSelected} marks={marks} />
+            <CarScene assembly={shown} mode={mode} paintId={paintId} hdriUrl={hdriUrl} showOverlays={showOverlays} explode={explode} section={section} opacity={opacity} hidden={hidden} isolated={isolated} onSelect={setSelected} marks={displayMarks} checkColors={checkColors} />
           </Canvas>
         </div>
         {!locked && (
@@ -633,6 +681,9 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
               <>
                 <h3 className="text-sm text-slate-100">{part.name}</h3>
                 <p className="text-slate-400">{part.geometry.kind === 'envelope' ? part.geometry.label : 'Kernel or loft solid.'}</p>
+                <p data-testid="part-badge" className={partGeoOnly ? 'text-amber-200' : 'text-emerald-200'} title={shown.verification?.statement}>
+                  {partGeoOnly ? 'Geometric only — drawn form, not an analysed solid' : 'Verified envelope — a library box the fit checks evaluate'}
+                </p>
                 <p className="mt-1 text-slate-300">{part.id}</p>
                 <p className="text-slate-300">x {part.placement.x} m · y {part.placement.y} m · z {part.placement.z} m</p>
                 {part.half && <p className="text-slate-400">span { (part.half[0] * 2).toFixed(3) } × { (part.half[1] * 2).toFixed(3) } × { (part.half[2] * 2).toFixed(3) } m</p>}
@@ -645,9 +696,32 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
                     <li key={p.id}><span className="text-slate-200">{p.name}</span> {String(p.value)} {p.unit} <span className="text-slate-500">({p.provenance.state}{p.provenance.note ? `: ${p.provenance.note}` : ''})</span></li>
                   ))}
                 </ul>
+                {partClearances.length > 0 && (
+                  <div className="mt-2" data-testid="part-clearances">
+                    <h4 className="text-slate-200">Clearances</h4>
+                    <ul className="space-y-1">
+                      {partClearances.map((c) => (
+                        <li key={c.id} data-testid={`clearance-${c.id}`} className={c.status === 'fail' ? 'text-rose-300' : c.status === 'warn' ? 'text-amber-200' : 'text-emerald-200'}>
+                          {c.id}: {Math.round((c.clearanceM as number) * 1000)} mm ({c.status})
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-slate-500">Stored solver values from the fit checks — not recomputed here.</p>
+                  </div>
+                )}
                 {(part.relationships || []).length > 0 && (
                   <ul className="mt-2 space-y-1 text-slate-400">
-                    {part.relationships!.map((r, i) => <li key={i}>{r.kind} {r.target}{r.note ? ` — ${r.note}` : ''}</li>)}
+                    {part.relationships!.map((r, i) => {
+                      const target = shown.components.find((x) => x.id === r.target);
+                      return (
+                        <li key={i}>
+                          {target
+                            ? <button type="button" data-testid={`rel-${part.id}-${r.target}`} className="hover:text-slate-200 hover:underline" title={`Select ${r.target}`} onClick={() => setSelected(r.target)}>{r.kind} {r.target}</button>
+                            : <span>{r.kind} {r.target}</span>}
+                          {r.note ? ` — ${r.note}` : ''}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </>
@@ -672,7 +746,7 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
                 return (
                   <li key={c.id} data-testid={`fit-${c.id}`} className={c.status === 'fail' ? 'text-rose-300' : c.status === 'warn' ? 'text-amber-200' : 'text-emerald-200'}>
                     {first
-                      ? <button type="button" className="hover:underline" onClick={() => setSelected(first)} title="Select the first part this check names">{c.status} {c.id}</button>
+                      ? <button type="button" className="hover:underline" aria-pressed={focusCheck === c.id} onClick={() => { setSelected(first); setFocusCheck(focusCheck === c.id ? null : c.id); }} title="Select the first part this check names and outline every part it names">{c.status} {c.id}</button>
                       : <>{c.status} {c.id}</>}
                   </li>
                 );

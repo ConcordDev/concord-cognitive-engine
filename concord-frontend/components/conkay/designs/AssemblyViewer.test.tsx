@@ -230,3 +230,102 @@ describe('AssemblyViewer workbench mode (HANDOFF-3 A2)', () => {
     expect(screen.queryByTestId('wb-edit')).toBeNull();
   });
 });
+
+describe('AssemblyViewer relationships, clearances and checks overlay (HANDOFF-3 A3)', () => {
+  const a3: VehicleAssembly = {
+    ...assembly,
+    verification: { statement: 'Geometric assembly. Not manufactured.', geometricOnlyParts: ['BODY_SHELL', 'TRUNK'] },
+    components: [
+      {
+        id: 'BODY_SHELL', name: 'Body loft', group: 'exterior', role: 'body',
+        placement: { x: 2, y: 0, z: 0.6 }, half: [2, 0.9, 0.5],
+        geometry: { kind: 'envelope', label: 'parametric loft' },
+        relationships: [
+          { kind: 'constrained-by', target: 'SEAT_1', note: 'clears the driver' },
+          { kind: 'references', target: 'GHOST', note: 'not a component in this document' },
+        ],
+        explode: { axis: 'z', sign: 1, rank: 3 },
+      },
+      {
+        id: 'SEAT_1', name: 'Driver seat', group: 'interior', role: 'seat',
+        placement: { x: 1.8, y: -0.37, z: 0.34 }, half: [0.28, 0.25, 0.45],
+        geometry: { kind: 'envelope', label: 'library seat' },
+        explode: { axis: 'z', sign: 1, rank: 3 },
+      },
+      {
+        id: 'TIRE_FL', name: 'TIRE_FL', group: 'wheels', role: 'wheel',
+        placement: { x: 1, y: -0.8, z: 0.33 }, half: [0.33, 0.12, 0.33],
+        geometry: { kind: 'envelope', label: 'tyre' },
+        explode: { axis: 'y', sign: -1, rank: 2 },
+      },
+      {
+        id: 'TRUNK', name: 'Trunk volume', group: 'storage', role: 'volume',
+        placement: { x: 3.6, y: 0, z: 0.6 }, half: [0.4, 0.6, 0.25],
+        geometry: { kind: 'envelope', label: 'volume box' },
+        explode: { axis: 'x', sign: 1, rank: 2 },
+      },
+    ],
+    checks: [
+      { id: 'head-M95', status: 'pass', detail: 'head clears the roof', parts: ['SEAT_1', 'BODY_SHELL'], clearanceM: 0.076 },
+      { id: 'wheel-footwell', status: 'fail', detail: 'the swept tyre reaches the foot box', parts: ['TIRE_FL', 'SEAT_1'], clearanceM: -0.012 },
+      { id: 'containment', status: 'warn', detail: 'the trunk box crosses the styled surface', outside: ['TRUNK'] },
+    ],
+  };
+
+  it('relationship click-through selects the target part; a target that is not a component stays plain text', () => {
+    render(<AssemblyViewer assembly={a3} />);
+    fireEvent.click(screen.getByTestId('part-BODY_SHELL'));
+    expect(screen.getByTestId('rel-BODY_SHELL-SEAT_1')).toBeTruthy();
+    expect(screen.queryByTestId('rel-BODY_SHELL-GHOST')).toBeNull();
+    expect(screen.getByTestId('inspector').textContent).toMatch(/GHOST/);
+    fireEvent.click(screen.getByTestId('rel-BODY_SHELL-SEAT_1'));
+    expect(screen.getByTestId('inspector').textContent).toMatch(/Driver seat/);
+  });
+
+  it('the provenance badge separates geometric-only parts from verified envelopes', () => {
+    render(<AssemblyViewer assembly={a3} />);
+    fireEvent.click(screen.getByTestId('part-BODY_SHELL'));
+    expect(screen.getByTestId('part-badge').textContent).toMatch(/Geometric only/);
+    fireEvent.click(screen.getByTestId('part-TRUNK'));
+    expect(screen.getByTestId('part-badge').textContent).toMatch(/Geometric only/);
+    fireEvent.click(screen.getByTestId('part-SEAT_1'));
+    expect(screen.getByTestId('part-badge').textContent).toMatch(/Verified envelope/);
+  });
+
+  it('clearances are the stored solver gaps of the checks naming the part, in mm', () => {
+    render(<AssemblyViewer assembly={a3} />);
+    fireEvent.click(screen.getByTestId('part-SEAT_1'));
+    expect(screen.getByTestId('clearance-head-M95').textContent).toMatch(/76 mm \(pass\)/);
+    expect(screen.getByTestId('clearance-wheel-footwell').textContent).toMatch(/-12 mm \(fail\)/);
+    fireEvent.click(screen.getByTestId('part-TIRE_FL'));
+    expect(screen.getByTestId('clearance-wheel-footwell')).toBeTruthy();
+    expect(screen.queryByTestId('clearance-head-M95')).toBeNull();
+    fireEvent.click(screen.getByTestId('part-TRUNK'));
+    expect(screen.queryByTestId('part-clearances')).toBeNull();
+  });
+
+  it('the Checks overlay exists in Engineering only and reports each part\'s worst check', () => {
+    render(<AssemblyViewer assembly={a3} />);
+    expect(screen.queryByTestId('checks-overlay')).toBeNull();
+    fireEvent.click(screen.getByText('Engineering'));
+    expect(screen.queryByTestId('part-check-TIRE_FL')).toBeNull();
+    fireEvent.click(screen.getByTestId('checks-overlay'));
+    expect(screen.getByTestId('part-check-TIRE_FL').textContent).toMatch(/fail/);
+    expect(screen.getByTestId('part-check-SEAT_1').textContent).toMatch(/fail/); // pass head + fail footwell → fail
+    expect(screen.getByTestId('part-check-TRUNK').textContent).toMatch(/warn/); // via containment's outside list
+    expect(screen.getByTestId('part-check-BODY_SHELL').textContent).toMatch(/pass/);
+    fireEvent.click(screen.getByTestId('checks-overlay'));
+    expect(screen.queryByTestId('part-check-TIRE_FL')).toBeNull();
+  });
+
+  it('clicking a Fit check focuses it (aria-pressed) and selects its first named part', () => {
+    render(<AssemblyViewer assembly={a3} />);
+    const btn = screen.getByTestId('fit-wheel-footwell').querySelector('button') as HTMLButtonElement;
+    expect(btn.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(btn);
+    expect(btn.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByTestId('inspector').textContent).toMatch(/TIRE_FL/);
+    fireEvent.click(btn);
+    expect(btn.getAttribute('aria-pressed')).toBe('false');
+  });
+});
