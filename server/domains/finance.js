@@ -77,7 +77,10 @@ export default function registerFinanceActions(registerLensAction) {
 
   registerLensAction("finance", "budgetTracker", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const income = parseFloat(data.monthlyIncome) || 0;
+    // Same rule as monthly-income-set (Ramaj, Oct 28): a negative or
+    // non-finite income is a validation error, never silently clamped.
+    const income = moneyOrNull(data.monthlyIncome, 0);
+    if (income === null) return badNumber("monthlyIncome", "must be a finite amount >= 0");
     const categories = data.categories || [];
     const spent = categories.reduce((s, c) => s + (parseFloat(c.spent) || 0), 0);
     const budgeted = categories.reduce((s, c) => s + (parseFloat(c.budget) || 0), 0);

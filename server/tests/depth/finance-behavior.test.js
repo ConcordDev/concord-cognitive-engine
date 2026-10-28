@@ -596,14 +596,32 @@ describe("finance — transactions edit + recurring DCA + monthly-income (wave 8
     assert.ok(bad.result.error.includes("symbol and amount required"));
   });
 
-  it("monthly-income-set clamps a negative income to 0; envelopes-list reads it back", async () => {
+  it("monthly-income-set rejects a negative income; the stored value is unchanged", async () => {
     const mctx = await depthCtx("finance-topup8-income");
-    const set = await lensRun("finance", "monthly-income-set", { params: { monthlyIncome: -200 } }, mctx);
-    assert.equal(set.result.monthlyIncome, 0);   // Math.max(0, …)
     const set2 = await lensRun("finance", "monthly-income-set", { params: { monthlyIncome: 6200 } }, mctx);
     assert.equal(set2.result.monthlyIncome, 6200);
+    // Ramaj's decision (Oct 28): reject with a validation error, never clamp.
+    const bad = await lensRun("finance", "monthly-income-set", { params: { monthlyIncome: -200 } }, mctx);
+    assert.equal(bad.ok, false);
+    assert.equal(bad.result.error, "invalid_input");
+    assert.equal(bad.result.field, "monthlyIncome");
+    for (const v of ["abc", Infinity, -0.01]) {
+      const r = await lensRun("finance", "monthly-income-set", { params: { monthlyIncome: v } }, mctx);
+      assert.equal(r.ok, false, `monthlyIncome=${String(v)} must be rejected`);
+      assert.equal(r.result.error, "invalid_input");
+      assert.equal(r.result.field, "monthlyIncome");
+    }
     const env = await lensRun("finance", "envelopes-list", {}, mctx);
     assert.equal(env.result.monthlyIncome, 6200);
+  });
+
+  it("budgetTracker rejects a negative or non-finite monthlyIncome", async () => {
+    for (const v of [-500, "abc", Infinity]) {
+      const r = await lensRun("finance", "budgetTracker", { data: { monthlyIncome: v, categories: [] } });
+      assert.equal(r.ok, false, `monthlyIncome=${String(v)} must be rejected`);
+      assert.equal(r.result.error, "invalid_input");
+      assert.equal(r.result.field, "monthlyIncome");
+    }
   });
 });
 
