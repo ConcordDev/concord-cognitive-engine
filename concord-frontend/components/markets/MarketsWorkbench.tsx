@@ -267,7 +267,7 @@ function ForexTab() {
   if (loading) return (
     <div className="p-3">
       <div className="border border-white/10 rounded overflow-hidden">
-        <SkeletonTableRows rows={6} columns={5} />
+        <SkeletonTableRows rows={6} columns={6} />
       </div>
     </div>
   );
@@ -277,12 +277,13 @@ function ForexTab() {
       <div className="border border-white/10 rounded overflow-hidden">
         <table className="w-full text-xs">
           <thead className="bg-black/40 text-gray-400 uppercase text-[10px]">
-            <tr><th className="text-left px-2 py-1">Pair</th><th className="text-right px-2 py-1">Bid</th><th className="text-right px-2 py-1">Ask</th><th className="text-right px-2 py-1">Spread</th><th className="text-right px-2 py-1">Pip value</th></tr>
+            <tr><th className="text-left px-2 py-1">Pair</th><th className="text-right px-2 py-1">Mid</th><th className="text-right px-2 py-1">Bid</th><th className="text-right px-2 py-1">Ask</th><th className="text-right px-2 py-1">Spread</th><th className="text-right px-2 py-1">Pip value</th></tr>
           </thead>
           <tbody>
             {quotes.map((q) => (
               <tr key={q.pair} className="border-t border-white/5">
                 <td className="px-2 py-1 font-mono text-cyan-300">{q.pair}<p className="text-[9px] text-gray-400 font-sans">{q.name}</p></td>
+                <td className="px-2 py-1 text-right font-mono tabular-nums text-gray-100">{q.mid ?? '—'}</td>
                 <td className="px-2 py-1 text-right font-mono tabular-nums text-gray-100" title={q.bid == null ? `No quoted bid; mid ${q.mid ?? '—'}` : undefined}>{q.bid ?? '—'}</td>
                 <td className="px-2 py-1 text-right font-mono tabular-nums text-gray-100" title={q.ask == null ? `No quoted ask; mid ${q.mid ?? '—'}` : undefined}>{q.ask ?? '—'}</td>
                 <td className="px-2 py-1 text-right text-gray-400">{q.spreadPips != null ? `${q.spreadPips}p` : 'n/a'}</td>
