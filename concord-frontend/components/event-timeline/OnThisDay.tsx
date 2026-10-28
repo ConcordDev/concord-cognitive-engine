@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Calendar, Loader2, ExternalLink, History } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup } from '@/lib/public-lookup';
+import { LookupNotice } from '@/components/common/LookupNotice';
 
 interface Page {
   title: string;
@@ -42,11 +44,7 @@ export function OnThisDay() {
   const data = useQuery({
     queryKey: ['on-this-day', month, day],
     queryFn: async () => {
-      const m = String(month).padStart(2, '0');
-      const d = String(day).padStart(2, '0');
-      const r = await fetch(`https://en.wikipedia.org/api/rest_v1/feed/onthisday/all/${m}/${d}`);
-      if (!r.ok) throw new Error(`wiki ${r.status}`);
-      return (await r.json()) as OnThisDayResponse;
+      return publicLookup<OnThisDayResponse>('wiki-onthisday', { kind: 'all', month, day });
     },
     staleTime: 6 * 60 * 60 * 1000,
   });
@@ -83,6 +81,7 @@ export function OnThisDay() {
           )}
         </div>
       </header>
+      <LookupNotice provider="wikipedia" data={data.data} />
       {data.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Wikipedia REST unreachable.</div>}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">

@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Calendar, Loader2, ExternalLink, History } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup } from '@/lib/public-lookup';
+import { LookupNotice } from '@/components/common/LookupNotice';
 
 interface Page { title: string; extract?: string; content_urls?: { desktop?: { page?: string } }; }
 interface Event { year: number; text: string; pages?: Page[]; }
@@ -17,11 +19,7 @@ export function TimelineWiki() {
   const data = useQuery({
     queryKey: ['wiki-timeline', month, day],
     queryFn: async () => {
-      const m = String(month).padStart(2, '0');
-      const d = String(day).padStart(2, '0');
-      const r = await fetch(`https://en.wikipedia.org/api/rest_v1/feed/onthisday/selected/${m}/${d}`);
-      if (!r.ok) throw new Error(`wiki ${r.status}`);
-      return (await r.json()) as Resp;
+      return publicLookup<Resp>('wiki-onthisday', { kind: 'selected', month, day });
     },
     staleTime: 6 * 60 * 60 * 1000,
   });
@@ -40,7 +38,8 @@ export function TimelineWiki() {
           {list.length > 0 && <SaveAsDtuButton compact apiSource="wikipedia-timeline" apiUrl={`https://en.wikipedia.org/api/rest_v1/feed/onthisday/selected/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`} title={`Timeline ${month}/${day} (${list.length} selected events)`} content={list.slice(0, 20).map((e) => `${e.year}: ${e.text}`).join('\n')} extraTags={['timeline', 'wikipedia', 'history']} rawData={{ month, day, events: list }} />}
         </div>
       </header>
-      {data.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Wikipedia REST unreachable.</div>}
+      <LookupNotice provider="wikipedia" data={data.data} />
+      {data.isError &&<div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Wikipedia REST unreachable.</div>}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Events</div><div className="mt-0.5 font-mono text-lg text-amber-300">{list.length}</div></div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Oldest</div><div className="mt-0.5 font-mono text-lg text-amber-300">{oldest || '—'}</div></div>

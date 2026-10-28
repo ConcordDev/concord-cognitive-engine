@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Trees, Loader2, ExternalLink } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { wikiSummary, lookupMeta } from '@/lib/public-lookup';
+import { LookupNotice } from '@/components/common/LookupNotice';
 
 interface WikiSummary { title: string; extract?: string; description?: string; thumbnail?: { source: string }; content_urls?: { desktop?: { page: string } } }
 
@@ -22,9 +24,7 @@ export function WoodSpeciesReference() {
     mutationFn: async (species: string) => {
       setBusy(species); setError(null);
       try {
-        const r = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(species)}`);
-        if (!r.ok) throw new Error(`wiki ${r.status}`);
-        const data = (await r.json()) as WikiSummary;
+        const data = await wikiSummary<WikiSummary>(species);
         setResults((prev) => ({ ...prev, [species]: data }));
       } catch (e) { setError(e instanceof Error ? e.message : 'lookup failed'); }
       finally { setBusy(null); }
@@ -60,6 +60,7 @@ export function WoodSpeciesReference() {
       </div>
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
       {load.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Looking up {busy}…</div>}
+      <LookupNotice provider="wikipedia" data={all.find(([, v]) => lookupMeta(v)?.stale)?.[1]} />
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {all.map(([k, v]) => (
           <a key={k} href={v.content_urls?.desktop?.page} target="_blank" rel="noopener noreferrer" className="block rounded-lg border border-cyan-500/20 bg-zinc-950/60 p-3 hover:border-cyan-500/40">

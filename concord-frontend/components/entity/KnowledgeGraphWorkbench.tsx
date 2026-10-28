@@ -6,6 +6,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { publicLookup } from '@/lib/public-lookup';
+import { LookupNotice } from '@/components/common/LookupNotice';
 import { TreeDiagram, type TreeNode } from '@/components/viz';
 import {
   Network, Plus, Trash2, Link2, GitMerge, Scissors, Route, Upload,
@@ -939,19 +941,21 @@ function ImportTab({ busy, mutate }: {
   const [wdQuery, setWdQuery] = useState('');
   const [wdResults, setWdResults] = useState<Array<{ id: string; label: string; description?: string }>>([]);
   const [wdSearching, setWdSearching] = useState(false);
+  const [wdError, setWdError] = useState<string | null>(null);
+  const [wdRaw, setWdRaw] = useState<object | undefined>(undefined);
 
   const searchWikidata = async () => {
     if (wdQuery.trim().length < 2) return;
     setWdSearching(true);
     setWdResults([]);
+    setWdError(null);
     try {
-      const r = await fetch(`https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(wdQuery.trim())}&format=json&language=en&type=item&limit=15&origin=*`);
-      if (r.ok) {
-        const j = await r.json();
-        setWdResults((j.search || []).map((m: any) => ({ id: m.id, label: m.label || m.id, description: m.description })));
-      }
-    } catch {
-      /* unreachable — empty list shown */
+      const j = await publicLookup<{ search?: any[] }>('wikidata-search', { q: wdQuery.trim() });
+      setWdRaw(j);
+      setWdResults((j.search || []).slice(0, 15).map((m: any) => ({ id: m.id, label: m.label || m.id, description: m.description })));
+    } catch (e) {
+      setWdRaw(undefined);
+      setWdError(e instanceof Error ? e.message : 'Wikidata unavailable');
     }
     setWdSearching(false);
   };
@@ -1060,9 +1064,11 @@ function ImportTab({ busy, mutate }: {
                 </button>
               </div>
             ))}
-            {!wdSearching && wdResults.length === 0 && wdQuery.trim().length >= 2 && (
+            {wdError && <p className="text-xs text-red-300 text-center py-3">Wikidata unavailable: {wdError}</p>}
+            {!wdSearching && !wdError && wdResults.length === 0 && wdQuery.trim().length >= 2 && (
               <p className="text-xs text-gray-400 text-center py-3">No results — search to load entities.</p>
             )}
+            <LookupNotice provider="wikidata" data={wdRaw} />
           </div>
         </div>
       )}
