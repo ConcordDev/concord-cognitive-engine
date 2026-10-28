@@ -1,31 +1,5 @@
 # SRS Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
-> **Re-verification (HANDOFF-3 batch L8, 2026-10-28, against main e9791d4d):**
-> The Wave-3 audit below is kept as history; its four-defect fix (the
-> page rewrite) is intact — `app/lenses/srs/page.tsx` is still the
-> ~355-line post-rewrite page over `SrsWorkbench`. Current truth:
->
-> - **INC-86 (deck-delete orphans cards) — verified FIXED in current
->   code**, no change needed: `deck-delete`
->   (server/domains/srs.js:216) splices the deck and filters the
->   owner's card list by `deckId` in the same handler before saving.
->   The audit row that still listed it as open is stale.
-> - Fresh surfacing scan: 26/31 macros named in the frontend. The 5
->   unnamed are all dispositioned: the 4 legacy artifact analytics
->   (`spacedRepetitionSchedule`/`retentionCurve`/`cardDifficulty`/
->   `deckStats`) carry this map's honest-relabel (superseded, below),
->   and `card-list` is the plain per-deck listing whose UI job is done
->   by the richer `card-browse` (search/filter/bulk) in the Browser
->   tab — a superseded subset, not a gap.
-> - **Shipped in this batch:** the concept's serif headline — "What do
->   you still know, {username}" — as the Study page header
->   (`data-testid="srs-greeting"`, `tests/srs-greeting.test.tsx`); the
->   concept's due-count chip already exists in the same header row
->   ("{remaining} due").
-> - Server suites run locally this pass: srs-domain-parity +
->   srs-wire — pass (in the combined 98-pass L8 run).
-
-
 Reproduce the macro list: `grep -c 'registerLensAction("srs"' server/domains/srs.js` → 31
 (plus 4 legacy artifact-based analysis macros registered inline in
 `server/server.js` — `srs.review`/`srs.schedule`/`srs.optimize_intervals`/
