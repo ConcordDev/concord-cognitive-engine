@@ -43,6 +43,9 @@ const TYPE_TO_TONE: Record<string, 'success' | 'info' | 'warning' | 'error'> = {
   // wording once a cap is fully hit — the toast tone itself doesn't
   // need to distinguish the two since the message text already does.
   budget_alert: 'warning',
+  // Calendar reminders (server/domains/calendar.js via the substrate):
+  // time-sensitive by definition, so 'warning' like the budget alerts.
+  reminder: 'warning',
 };
 
 export function useSocialNotificationToast() {
