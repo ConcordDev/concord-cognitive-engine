@@ -44,6 +44,8 @@ const DEFAULT_UA = "ConcordOS/1.0 (https://concord-os.org; contact@concord-os.or
 const userAgent = () => (typeof process.env.CONCORD_PUBLIC_UA === "string" && process.env.CONCORD_PUBLIC_UA.trim()) || DEFAULT_UA;
 const enc = encodeURIComponent;
 const MAX_FETCHED = 6;
+// Per-source text in the summary prompt (keeps the prompt small for the local model).
+const SUMMARY_SOURCE_CHARS = 1200;
 
 // Ramaj's Oct 27 decisions, applied on top of the shared outlet policy:
 // DW is off until a distribution agreement exists; CBC is off.
@@ -290,15 +292,38 @@ const PROVIDERS = [
 // ── summary drafting ────────────────────────────────────────────────────────
 
 export function buildSummaryPrompt(topic, sources) {
-  const material = sources.map((s) => `[${s.n}] ${s.title} (${s.url})\n${String(s.text || "").slice(0, 2500)}`).join("\n\n");
+  // Material first, rules last: the conscious brain is a small local model
+  // that follows the instruction nearest the end and ignores a long preamble.
+  const material = sources.map((s) => `[${s.n}] ${s.title}\n${String(s.text || "").slice(0, SUMMARY_SOURCE_CHARS)}`).join("\n\n");
   return [
-    `Write a short factual summary of "${topic}" using ONLY the numbered sources below.`,
-    "Rules: every sentence must end with at least one citation like [1] or [2] naming the source it came from.",
-    "Do not use any fact that is not in the sources. Do not add an introduction or conclusion that makes new claims.",
-    "Plain sentences only, no headings, no bullet lists.",
+    "Sources:",
     "",
     material,
+    "",
+    `Task: write 3 to 5 sentences summarizing "${topic}" using ONLY the sources above.`,
+    "End EVERY sentence with the number of its source in square brackets, for example: \"This is a fact [2].\"",
+    "Use at least two different sources. Do not use any fact that is not in the sources. Plain sentences only, no headings, no bullet lists.",
   ].join("\n");
+}
+
+/**
+ * Pick at most `max` sources for the summary prompt, round-robin across
+ * registrable domains so one provider (e.g. five Wikipedia pages) cannot fill
+ * every slot and make the >= 2 independent-domain rule impossible to meet.
+ */
+export function selectSummarySources(sources, max = MAX_FETCHED) {
+  const byDomain = new Map();
+  for (const s of sources) {
+    const d = registrableDomain(s.host || hostOf(s.url));
+    if (!byDomain.has(d)) byDomain.set(d, []);
+    byDomain.get(d).push(s);
+  }
+  const queues = [...byDomain.values()];
+  const out = [];
+  while (out.length < max && queues.some((q) => q.length)) {
+    for (const q of queues) if (q.length && out.length < max) out.push(q.shift());
+  }
+  return out;
 }
 
 /** Keep only sentences carrying a valid [n]; strip invalid citation markers. Returns { text, cited:Set<number> }. */
@@ -395,7 +420,7 @@ export async function autoSource({ topic, lensDomain = null, userId = "anon" } =
 
   // 4. Summary from fetched text only; uncited sentences are dropped; fewer
   //    than 2 independent sources cited => save nothing.
-  const numbered = fetched.map((c, i) => ({ ...c, n: i + 1 }));
+  const numbered = selectSummarySources(fetched).map((c, i) => ({ ...c, n: i + 1 }));
   let raw = "";
   try { raw = await deps.summarize({ topic: t, sources: numbered }); } catch { raw = ""; }
   const { text: summaryText, cited } = citedSentences(raw, numbered.length);
