@@ -19,7 +19,8 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { explodedShift, sectionPlane, toThree, type ExplodePart } from '@/lib/conkay/assembly-view';
 import { STUDIO_HDRI_URL, STUDIO_PAINTS, type StudioPaintId } from '@/lib/conkay/present-paint';
-import { workbenchClient, type FitCheckFlip, type WorkbenchClient, type WorkbenchKnob, type WorkbenchView } from '@/lib/conkay/workbench-api';
+import { workbenchClient, type FitCheckFlip, type PartAnalysis, type WorkbenchClient, type WorkbenchKnob, type WorkbenchView } from '@/lib/conkay/workbench-api';
+import { feaUtilToColor } from '@/lib/conkay/fea-util-color';
 
 export interface AssemblyMesh {
   positions: number[];
@@ -51,6 +52,8 @@ export interface VehicleAssembly {
     mesh?: { outline?: number[][]; side?: string; positions?: number[]; normals?: number[]; indices?: number[] };
     parameters?: { id: string; name: string; value: number | string; unit: string; provenance: { state: string; source?: string; note?: string } }[];
     relationships?: { kind: string; target: string; note?: string }[];
+    /** Per-part solver analyses joined from a live session (HANDOFF-3 A4); absent on a saved snapshot. */
+    analyses?: PartAnalysis[];
     /** 'styling-loft': placed on the styled loft, which is not the analysed solid drawn here. */
     placedOn?: string;
   })[];
@@ -197,6 +200,12 @@ function checkParts(c: VehicleAssembly['checks'][number]): string[] {
 
 /** Check status colours, shared by the marks, the Checks overlay and the inspector. */
 const CHECK_HEX: Record<'pass' | 'warn' | 'fail', string> = { pass: '#6ee7b7', warn: '#fcd34d', fail: '#fb7185' };
+
+/** An analysis key-output value, verbatim from the solver's envelope (6dp at most, never rescaled). */
+function fmtAnalysisValue(v: number | string): string {
+  if (typeof v !== 'number') return v;
+  return Number.isInteger(v) ? String(v) : String(Math.round(v * 1e6) / 1e6);
+}
 const CHECK_SEVERITY: Record<'pass' | 'warn' | 'fail', number> = { pass: 0, warn: 1, fail: 2 };
 
 function WheelMeshes({ assembly, explode, clip, opacity, visibleIds, checkColors }: {
@@ -525,6 +534,23 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
       setBusy(false);
     }
   };
+  const [inspTab, setInspTab] = useState<'details' | 'analyses'>('details');
+  const runAnalysis = async (solver: string) => {
+    if (!workbench) return;
+    const client = workbench.client ?? workbenchClient;
+    setBusy(true);
+    setWbError('');
+    try {
+      const r = await client.rerun(workbench.id, solver);
+      if (r.assembly) setLive(r.assembly as unknown as VehicleAssembly);
+      if (r.view) { setWbView(r.view); workbench.onView?.(r.view); }
+    } catch (e) {
+      const data = (e as { response?: { data?: { message?: string } } })?.response?.data;
+      setWbError(data?.message || (e instanceof Error ? e.message : 'The re-run failed.'));
+    } finally {
+      setBusy(false);
+    }
+  };
   const part = shown.components.find((c) => c.id === selected) || null;
   // The selected part's stored clearances: the gap each fit check computed and stored (clearanceM),
   // displayed verbatim — the browser never recomputes a clearance.
@@ -691,6 +717,44 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
                   <button type="button" className="rounded bg-white/10 px-2 py-0.5" onClick={() => setHidden((h) => { const n = new Set(h); if (n.has(part.id)) n.delete(part.id); else n.add(part.id); return n; })}>{hidden.has(part.id) ? 'Show' : 'Hide'}</button>
                   <button type="button" className="rounded bg-white/10 px-2 py-0.5" onClick={() => setIsolated(isolated === part.id ? null : part.id)}>{isolated === part.id ? 'Show all' : 'Isolate'}</button>
                 </div>
+                <div className="mt-2 flex gap-1">
+                  <button type="button" data-testid="insp-tab-details" aria-pressed={inspTab === 'details'} className={`rounded px-2 py-0.5 ${inspTab === 'details' ? 'bg-white/15 text-slate-100' : 'text-slate-400'}`} onClick={() => setInspTab('details')}>Details</button>
+                  <button type="button" data-testid="insp-tab-analyses" aria-pressed={inspTab === 'analyses'} className={`rounded px-2 py-0.5 ${inspTab === 'analyses' ? 'bg-white/15 text-slate-100' : 'text-slate-400'}`} onClick={() => setInspTab('analyses')}>Analyses</button>
+                </div>
+                {inspTab === 'analyses' && (
+                  <div data-testid="part-analyses">
+                    {part.analyses === undefined && (
+                      <p className="mt-2 text-slate-400">{workbench ? 'No analyses are linked for this part in this session yet.' : 'Analyses link from a live workbench session — start editing to run the solvers on this design.'}</p>
+                    )}
+                    {part.analyses !== undefined && part.analyses.length === 0 && (
+                      <p className="mt-2 text-slate-400">No solver analysis is mapped to this part.</p>
+                    )}
+                    {(part.analyses || []).map((a) => (
+                      <div key={a.solver} data-testid={`analysis-${a.solver}`} className="mt-2 border-t border-white/10 pt-2">
+                        <p className="text-slate-200">
+                          {a.solver}{a.version ? ` v${a.version}` : ''} —{' '}
+                          <span className={a.status === 'fail' || a.status === 'error' ? 'text-rose-300' : a.status === 'warn' ? 'text-amber-200' : a.status === 'pass' ? 'text-emerald-200' : 'text-slate-400'}>{a.status}</span>
+                          {a.utilization != null && (
+                            <span data-testid={`analysis-${a.solver}-util`} className="ml-1" style={{ color: feaUtilToColor(a.utilization).hex }}>· utilisation {(a.utilization * 100).toFixed(0)}%</span>
+                          )}
+                        </p>
+                        {a.keyOutputs.map((o) => (
+                          <p key={o.id} className="text-slate-300">{o.id}: {fmtAnalysisValue(o.value)}{o.unit ? ` ${o.unit}` : ''}</p>
+                        ))}
+                        {a.receipt && <p className="text-slate-500">receipt {a.receipt.runId} · inputs {a.receipt.inputHash ? `${a.receipt.inputHash.slice(0, 12)}…` : '—'}</p>}
+                        {a.ranAt && <p className="text-slate-500">ran {a.ranAt}</p>}
+                        {a.recordedAt && <p className="text-slate-500">recorded run imported {a.recordedAt}</p>}
+                        {a.reason && <p className="text-slate-400">{a.reason}</p>}
+                        {a.solver === 'aero.cfd' && a.status !== 'not_run' && <p className="text-slate-500">Recorded OpenFOAM result — imported from the pod, not re-run here.</p>}
+                        {workbench && a.status !== 'not_run' && a.solver !== 'aero.cfd' && (
+                          <button type="button" data-testid={`rerun-${a.solver}`} disabled={busy} className="mt-1 rounded border border-sky-400/40 bg-sky-400/10 px-2 py-0.5 text-sky-100 hover:bg-sky-400/20 disabled:opacity-40" onClick={() => void runAnalysis(a.solver)}>Re-run</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {inspTab === 'details' && (
+                <>
                 <ul className="mt-2 space-y-1">
                   {(part.parameters || []).map((p) => (
                     <li key={p.id}><span className="text-slate-200">{p.name}</span> {String(p.value)} {p.unit} <span className="text-slate-500">({p.provenance.state}{p.provenance.note ? `: ${p.provenance.note}` : ''})</span></li>
@@ -723,6 +787,8 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
                       );
                     })}
                   </ul>
+                )}
+                </>
                 )}
               </>
             )}

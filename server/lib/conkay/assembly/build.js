@@ -1091,6 +1091,118 @@ function tubeFromSpine(spine, section, origin) {
 }
 
 /** Drop generated triangles. The spec is enough to rebuild the meshes. */
+/**
+ * Per-part analysis links (HANDOFF-3 A4): which solvers evaluate a part, and the envelope of the run
+ * that did — or an honest not_run. The mapping is deliberately small and explicit; a part is only
+ * linked to a solver whose own computation reads it:
+ *   frame/tub members → structure.frame (the run's own covers list names the members it solved)
+ *   RADIATOR          → fluid.cooling-opening
+ *   ENGINE            → electrical.motor-thermal, vehicle.required-power
+ *   BODY_SHELL        → aero.shape, aero.cfd (a recorded OpenFOAM result: imported, never re-run here)
+ * The join is pure: it links only the envelopes it is given (a session's own runs), so a receipt from
+ * another design can never leak into this one. Statuses and numbers are the envelope's own, verbatim.
+ */
+const ANALYSIS_KEY_OUTPUTS = {
+  "structure.frame": ["bending.maxVonMises", "bending.maxTranslation", "twist.maxVonMises", "stiffness.torsional"],
+  "fluid.cooling-opening": ["openingAreaM2", "faceVelocityMs", "riseK"],
+  "electrical.motor-thermal": ["torqueNm", "current.armatureA", "copperLoss.W", "temperatures.windingPeakK", "temperatures.housingPeakK"],
+  "vehicle.required-power": ["requiredPower", "aeroPower", "rollingPower"],
+  "aero.shape": ["verdict", "reportedCd", "baselineCd", "sectionLift"],
+  "aero.cfd": ["dragCoefficient", "dragArea", "liftCoefficient"],
+};
+const ANALYSIS_NOT_RUN_REASONS = {
+  "aero.cfd": "not run here — OpenFOAM runs on the GPU pod and the result is imported; no recorded run is linked to this design",
+};
+export const ANALYSIS_SOLVERS = Object.keys(ANALYSIS_KEY_OUTPUTS);
+
+/** The solvers mapped to a component, in display order. Frame membership is by role: the tub parts. */
+function analysisSolversFor(component) {
+  switch (component.id) {
+    case "RADIATOR": return ["fluid.cooling-opening"];
+    case "ENGINE": return ["electrical.motor-thermal", "vehicle.required-power"];
+    case "BODY_SHELL": return ["aero.shape", "aero.cfd"];
+    default: return component.role === "frame" ? ["structure.frame"] : [];
+  }
+}
+
+/** One key output: registry envelopes key outputs flat ("bending.maxVonMises"), graph-native ones
+ *  nest them (current.armatureA) — try the flat key first, then walk the path. */
+function scalarOutput(outputs, path) {
+  let node = outputs && typeof outputs === "object" && path in outputs ? outputs[path] : outputs;
+  if (node === outputs) {
+    for (const key of path.split(".")) {
+      if (node == null || typeof node !== "object") return null;
+      node = node[key];
+    }
+  }
+  const value = node && typeof node === "object" && "value" in node ? node.value : node;
+  if (typeof value === "number" && Number.isFinite(value)) return { id: path, value, ...(node?.unit ? { unit: node.unit } : {}) };
+  if (typeof value === "string" && value.length > 0 && value.length <= 80) return { id: path, value };
+  return null;
+}
+
+function analysisRecord(solverId, envelope, notRunReason) {
+  if (!envelope) {
+    return { solver: solverId, status: "not_run", keyOutputs: [], receipt: null, ranAt: null, reason: notRunReason || ANALYSIS_NOT_RUN_REASONS[solverId] || "the solver has not run for this design" };
+  }
+  const keyOutputs = (ANALYSIS_KEY_OUTPUTS[solverId] || []).map((p) => scalarOutput(envelope.outputs, p)).filter(Boolean);
+  const utils = (envelope.margins || []).map((m) => m?.utilization).filter((u) => Number.isFinite(u));
+  const recordedAt = envelope.inputs?.run?.value?.importedAt;
+  return {
+    solver: solverId,
+    ...(envelope.solver?.version ? { version: envelope.solver.version } : {}),
+    status: String(envelope.status || "ERROR").toLowerCase(),
+    keyOutputs,
+    ...(utils.length ? { utilization: Math.round(Math.max(...utils) * 10000) / 10000 } : {}),
+    receipt: { runId: envelope.runId, solver: envelope.solver?.id || solverId, version: envelope.solver?.version || null, inputHash: envelope.provenance?.inputHash ?? null },
+    ranAt: envelope.provenance?.computedAt ?? null,
+    ...(typeof recordedAt === "string" ? { recordedAt } : {}),
+    ...(envelope.reason ? { reason: envelope.reason } : {}),
+  };
+}
+
+/**
+ * The analyses of every component in the document: { [componentId]: [record, ...] }. A component no
+ * solver is mapped to gets an empty list (nothing evaluates it — different from not_run, where a
+ * mapped solver simply has not run). Pure: pass the envelopes of ONE design/session only.
+ */
+export function partAnalyses(doc, envelopes) {
+  const envs = [...(envelopes || [])].filter(Boolean);
+  const bySolver = new Map();
+  for (const e of envs) {
+    const id = e.solver?.id;
+    if (!id) continue;
+    if (!bySolver.has(id)) bySolver.set(id, []);
+    bySolver.get(id).push(e);
+  }
+  const out = {};
+  for (const c of doc.components || []) {
+    const records = [];
+    for (const solverId of analysisSolversFor(c)) {
+      const candidates = bySolver.get(solverId) || [];
+      let envelope = null;
+      let notRunReason;
+      if (solverId === "structure.frame") {
+        // the frame run names the members it solved in covers; a member it did not cover was not solved
+        envelope = candidates.find((e) => (e.covers || []).includes(c.id)) || null;
+        if (!envelope && candidates.length) notRunReason = "structure.frame ran for this design but did not cover this member";
+      } else {
+        envelope = candidates.find((e) => (e.covers || []).includes(c.id)) || (candidates.length === 1 ? candidates[0] : null);
+      }
+      records.push(analysisRecord(solverId, envelope, notRunReason));
+    }
+    out[c.id] = records;
+  }
+  return out;
+}
+
+/** A copy of the document with each component's analyses attached (the input document is not mutated). */
+export function withPartAnalyses(doc, envelopes) {
+  if (!doc?.components) return doc;
+  const map = partAnalyses(doc, envelopes);
+  return { ...doc, components: doc.components.map((c) => ({ ...c, analyses: map[c.id] || [] })) };
+}
+
 export function compactAssembly(doc) {
   if (!doc?.surface?.spec) return doc;
   const mesh = doc.surface.mesh || {};

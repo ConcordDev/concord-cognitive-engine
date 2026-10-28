@@ -16,7 +16,7 @@ import express from "express";
 import { orchestrate, carEvaluator } from "../lib/conkay/chat/orchestrator.js";
 import { REPAIR_RULES } from "../lib/conkay/chat/repair-rules.js";
 import { DesignConversation, knobsOf } from "../lib/conkay/chat/what-if.js";
-import { workbenchView, explainCheck, assemblySnapshot, fitCheckDiff } from "../lib/conkay/chat/workbench.js";
+import { workbenchView, explainCheck, assemblySnapshot, fitCheckDiff, attachSessionAnalyses } from "../lib/conkay/chat/workbench.js";
 import { carAcceptanceAsync } from "../lib/conkay/compiler/car-from-library.js";
 import createConkayWorkbenchRouter from "../routes/conkay-workbench.js";
 
@@ -167,6 +167,65 @@ describe("the assembly edit API (HANDOFF-3 A1)", () => {
       [{ id: "a", from: "pass", to: "fail" }, { id: "b", from: "pass", to: null }, { id: "c", from: null, to: "warn" }],
     );
     assert.deepEqual(fitCheckDiff(null, null), []);
+  });
+});
+
+describe("part analysis links (HANDOFF-3 A4)", () => {
+  it("the session's own envelopes join onto the assembly: frame receipt, required power, honest not_runs", async () => {
+    const conv = await conversation(140);
+    const snap = assemblySnapshot(conv);
+    assert.ok(snap, "the screening car has an assembly run");
+    const doc = attachSessionAnalyses(conv, snap.compact);
+    const byId = (id) => doc.components.find((c) => c.id === id);
+    // structure.frame ran on this car and covers the tub floor: the record is that run, receipt included
+    const frameEnv = conv.current.final.envelopes.get("structure.frame@CHASSIS");
+    assert.ok(frameEnv, "the session has a frame run");
+    const floor = byId("TUB_FLOOR_L");
+    assert.ok((frameEnv.covers || []).includes("TUB_FLOOR_L"), "the frame run covers the tub floor on this car");
+    const frame = floor.analyses.find((a) => a.solver === "structure.frame");
+    assert.equal(frame.status, frameEnv.status.toLowerCase());
+    assert.equal(frame.receipt.inputHash, frameEnv.provenance.inputHash);
+    assert.equal(frame.receipt.runId, "structure.frame@CHASSIS");
+    assert.ok(frame.keyOutputs.some((o) => o.id === "bending.maxVonMises"));
+    // ENGINE: required-power ran (pass); motor-thermal has no run on this car and says so
+    const engine = Object.fromEntries(byId("ENGINE").analyses.map((a) => [a.solver, a]));
+    assert.equal(engine["vehicle.required-power"].status, "pass");
+    assert.equal(engine["electrical.motor-thermal"].status, "not_run");
+    // BODY_SHELL: neither aero solver ran on the screening car — both say so, CFD with its pod reason
+    const body = Object.fromEntries(byId("BODY_SHELL").analyses.map((a) => [a.solver, a]));
+    assert.equal(body["aero.shape"].status, "not_run");
+    assert.equal(body["aero.cfd"].status, "not_run");
+    assert.match(body["aero.cfd"].reason, /GPU pod/);
+    // RADIATOR: the cooling run's numbers are the envelope's own
+    const coolEnv = conv.current.final.envelopes.get("fluid.cooling-opening@RADIATOR");
+    const cool = byId("RADIATOR").analyses[0];
+    assert.equal(cool.status, coolEnv.status.toLowerCase());
+    assert.equal(cool.keyOutputs.find((o) => o.id === "openingAreaM2").value, coolEnv.outputs.openingAreaM2.value);
+  });
+
+  it("rerunSolver recomputes an in-process run and refreshes the revision's envelopes in place", async () => {
+    const conv = await conversation(140);
+    const runId = "fluid.cooling-opening@RADIATOR";
+    const beforeEnv = conv.current.final.envelopes.get(runId);
+    assert.ok(beforeEnv);
+    const r = await conv.rerunSolver("fluid.cooling-opening");
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.runs, [runId]);
+    assert.ok(r.rerun.includes(runId), "the engine recomputed the run");
+    const afterEnv = conv.current.final.envelopes.get(runId);
+    assert.notStrictEqual(afterEnv, beforeEnv); // a fresh envelope object, not the cached one
+    assert.equal(afterEnv.status, beforeEnv.status); // same inputs: same verdict, honestly recomputed
+    assert.equal(afterEnv.provenance.inputHash, beforeEnv.provenance.inputHash);
+  });
+
+  it("rerunSolver refuses a recorded result and a solver that never ran", async () => {
+    const conv = await conversation(140);
+    const cfd = await conv.rerunSolver("aero.cfd");
+    assert.equal(cfd.kind, "error");
+    assert.equal(cfd.error, "recorded_result");
+    const none = await conv.rerunSolver("electrical.motor-thermal");
+    assert.equal(none.kind, "error");
+    assert.equal(none.error, "not_run");
   });
 });
 
