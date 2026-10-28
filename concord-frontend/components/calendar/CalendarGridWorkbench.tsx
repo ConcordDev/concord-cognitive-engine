@@ -18,7 +18,7 @@ import { ErrorState } from '@/components/common/EmptyState';
 import { Skeleton } from '@/components/ui';
 import { EventActionRail } from '@/components/calendar/EventActionRail';
 import { eventIdFromResult, eventNotSavedSentence, eventOnCalendarSentence, eventSavedSentence, eventUpdatedSentence } from '@/components/calendar/calendarKeep';
-import { browserTimeZone, calendarDateKey, COMMON_TIME_ZONES, fromZonedInputValue, profileTimeZone, resolveCalendarTimeZone, toZonedInputValue, zoneAbbrev, zoneCityLabel } from '@/lib/calendar-date';
+import { browserTimeZone, calendarDateKey, COMMON_TIME_ZONES, fromZonedInputValue, nextHourSlotInZone, profileTimeZone, resolveCalendarTimeZone, toZonedInputValue, zoneAbbrev, zoneCityLabel } from '@/lib/calendar-date';
 import { RecurrenceEditor, RecurrenceScopeDialog, describeRecurrence, type RecurrenceScope, type UiRecurrence } from '@/components/calendar/RecurrenceEditor';
 import Link from 'next/link';
 
@@ -420,20 +420,27 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   const [showSidebar, setShowSidebar] = useState(false);
 
   // New event form
-  const [newEvent, setNewEvent] = useState<Partial<CalendarEvent>>({
-    title: '',
-    description: '',
-    startDate: new Date(),
-    endDate: new Date(),
-    allDay: false,
-    color: COLORS[0].value,
-    category: EVENT_TYPE_META.release.label,
-    eventType: 'release',
-    platforms: [],
-    collaborators: [],
-    linkedProject: '',
-    reminders: [],
-    tz: accountTz,
+  const [newEvent, setNewEvent] = useState<Partial<CalendarEvent>>(() => {
+    // F13: a fresh form starts at the next clean hour in the user's
+    // zone (never Start = End at the current instant) with the honest
+    // default type — 'session' (Work Sessions), the same type the
+    // decoder falls back to, so the highlight matches what saves.
+    const slot = nextHourSlotInZone(accountTz);
+    return {
+      title: '',
+      description: '',
+      startDate: slot.start,
+      endDate: slot.end,
+      allDay: false,
+      color: EVENT_TYPE_META.session.color,
+      category: EVENT_TYPE_META.session.label,
+      eventType: 'session',
+      platforms: [],
+      collaborators: [],
+      linkedProject: '',
+      reminders: [],
+      tz: accountTz,
+    };
   });
 
 
@@ -724,21 +731,24 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
 
   const formTz = newEvent.tz || accountTz;
 
-  const defaultNewEventForm = (): Partial<CalendarEvent> => ({
-    title: '',
-    description: '',
-    startDate: new Date(),
-    endDate: new Date(),
-    allDay: false,
-    color: COLORS[0].value,
-    category: EVENT_TYPE_META.release.label,
-    eventType: 'release',
-    platforms: [],
-    collaborators: [],
-    linkedProject: '',
-    reminders: [],
-    tz: accountTz,
-  });
+  const defaultNewEventForm = (): Partial<CalendarEvent> => {
+    const slot = nextHourSlotInZone(accountTz);
+    return {
+      title: '',
+      description: '',
+      startDate: slot.start,
+      endDate: slot.end,
+      allDay: false,
+      color: EVENT_TYPE_META.session.color,
+      category: EVENT_TYPE_META.session.label,
+      eventType: 'session',
+      platforms: [],
+      collaborators: [],
+      linkedProject: '',
+      reminders: [],
+      tz: accountTz,
+    };
+  };
 
   /** "+ Event": a one-hour slot at 10:00 on the selected day. */
   const openCreateFor = (day: Date) => {
@@ -747,11 +757,13 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
     const end = new Date(start);
     end.setHours(11);
     setEditingEventId(null);
+    setActivityNote(null);
     setNewEvent({ ...defaultNewEventForm(), startDate: start, endDate: end, eventType: 'session', category: EVENT_TYPE_META.session.label, color: EVENT_TYPE_META.session.color });
     setShowCreateModal(true);
   };
 
   const handleCreateEvent = async (scope?: RecurrenceScope) => {
+    setActivityNote(null);
     if (!newEvent.title) return;
     const original = editingEventId ? editingOriginal : null;
     const recurringEdit = !!(original?.recurrence && original.occurrenceKey);
@@ -831,8 +843,9 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
     } catch (e) {
       setEvents(previousEvents);
       const message = e instanceof Error ? e.message : 'Failed to save event';
+      // One surface per failure (F13): the banner above the grid is the
+      // save report — a duplicate toast for the same failure is noise.
       setActivityNote(eventNotSavedSentence(message));
-      useUIStore.getState().addToast({ type: 'error', message });
     }
   };
 
@@ -1049,7 +1062,13 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     </button>
                   ))}
                   {dayEvents.length > 2 && (
-                    <span className="block text-center text-[11px] tabular-nums text-zinc-500">+{dayEvents.length - 2} more</span>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setSelectedDate(date); setViewMode('day'); }}
+                      className="block w-full text-center text-[11px] tabular-nums text-zinc-500 transition-colors hover:text-zinc-100"
+                    >
+                      +{dayEvents.length - 2} more
+                    </button>
                   )}
                 </div>
               </div>
@@ -1129,7 +1148,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                         newStart.setHours(hour, 0, 0, 0);
                         const newEnd = new Date(newStart);
                         newEnd.setHours(hour + 1);
-                        setNewEvent({ ...newEvent, startDate: newStart, endDate: newEnd });
+                        setNewEvent({ ...defaultNewEventForm(), startDate: newStart, endDate: newEnd });
                         setEditingEventId(null);
                         setShowCreateModal(true);
                       }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
@@ -1229,7 +1248,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     newStart.setHours(hour, 0, 0, 0);
                     const newEnd = new Date(newStart);
                     newEnd.setHours(hour + 1);
-                    setNewEvent({ ...newEvent, startDate: newStart, endDate: newEnd });
+                    setNewEvent({ ...defaultNewEventForm(), startDate: newStart, endDate: newEnd });
                     setEditingEventId(null);
                     setShowCreateModal(true);
                   }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
@@ -1452,7 +1471,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
               <CalendarDays className="w-16 h-16 mb-4 opacity-30" />
               <p>No upcoming events</p>
               <button
-                onClick={() => { setEditingEventId(null); setShowCreateModal(true); }}
+                onClick={() => openCreateFor(selectedDate)}
                 className="mt-4 btn-neon"
               >
                 Schedule Something
@@ -1537,7 +1556,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
 
             {/* Create button */}
             <button
-              onClick={() => { setEditingEventId(null); setShowCreateModal(true); }}
+              onClick={() => openCreateFor(selectedDate)}
               className="w-full btn-neon flex items-center justify-center gap-2"
             >
               <Plus className="w-4 h-4" />
@@ -2304,11 +2323,17 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
 
                 {/* Color */}
                 <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Color</label>
+                  <label className="text-xs text-gray-400 mb-1 block">
+                    Color{COLORS.find((c) => c.value === newEvent.color) ? ` — ${COLORS.find((c) => c.value === newEvent.color)!.name}` : ''}
+                  </label>
                   <div className="flex items-center gap-2">
                     {COLORS.map((color) => (
                       <button
                         key={color.value}
+                        type="button"
+                        title={color.name}
+                        aria-label={`Colour ${color.name}`}
+                        aria-pressed={newEvent.color === color.value}
                         onClick={() => setNewEvent({ ...newEvent, color: color.value })}
                         className={cn(
                           'w-8 h-8 rounded-full transition-transform',
