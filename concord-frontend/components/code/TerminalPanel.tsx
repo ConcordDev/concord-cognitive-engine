@@ -16,21 +16,62 @@ interface TerminalPanelProps {
 
 type Line = { kind: 'system' | 'stdout' | 'stderr' | 'cmd' | 'result'; text: string; ts: number };
 
+interface ExecResponseData {
+  ok?: boolean;
+  result?: {
+    stdout?: unknown;
+    stderr?: unknown;
+    exitCode?: unknown;
+    supported?: unknown;
+  } | null;
+  error?: string | null;
+}
+
+/**
+ * Map an execution response that did NOT run anything to a user-worded
+ * line. Raw server codes (code_exec_host_retired, code_exec_forbidden, …)
+ * are internal vocabulary and never reach the terminal.
+ */
+export function execFailureMessage(data: ExecResponseData | null | undefined): string {
+  const raw = String(data?.error ?? '');
+  if (raw.includes('code_exec_host_retired')) {
+    return 'That didn’t run — server-side execution was retired for this surface. Nothing was executed.';
+  }
+  if (raw.includes('code_exec_forbidden')) {
+    return 'That didn’t run — server execution is limited to founder and sovereign accounts. Nothing was executed.';
+  }
+  if (/^[a-z0-9_]+$/.test(raw.trim())) {
+    return 'That didn’t run — the execution service refused the request. Nothing was executed.';
+  }
+  return raw
+    ? `That didn’t run — ${raw}`
+    : 'That didn’t run — the execution service returned no result. Nothing was executed.';
+}
+
+/** True only when the response carries a real execution result. */
+export function isRealExecResult(data: ExecResponseData | null | undefined): boolean {
+  if (!data || data.ok === false) return false;
+  const result = data.result;
+  if (!result || typeof result !== 'object') return false;
+  if (result.supported === false) return false;
+  return true;
+}
+
 /**
  * Terminal panel — xterm.js-grade output surface for the code lens.
  *
  * Not a full PTY (the lens isn't a shell). Instead:
- *   1) Run open file via /api/lens/run code.exec — streams stdout/stderr
- *      into the buffer; final result row carries timing + exit code.
+ *   1) Run open file — streams stdout/stderr into the buffer; the final
+ *      result row carries timing + exit code, and is printed ONLY when
+ *      the code actually ran (see isRealExecResult). A refused or
+ *      retired execution says so in user words; it never prints an
+ *      exit line for a run that did not happen.
  *   2) Type a quick command and Enter — supported "commands":
  *        run                — run open file
  *        clear              — clear buffer
  *        help               — show built-ins
- *        eval <expr>        — JS eval in a sandboxed Function in this tab
- *      Anything else → routed to code.exec as a one-shot snippet.
- *   3) Streaming chunks arrive via fetch + ReadableStream when the
- *      backend macro supports it; otherwise we render the full result
- *      after the macro returns.
+ *      Anything else is treated as a one-shot code snippet and held to
+ *      the same honesty rule.
  *
  * Renders xterm.js when available; degrades to a styled <pre> if the lib
  * fails to load (sandboxed environments without WASM, etc.).
@@ -122,6 +163,25 @@ export function TerminalPanel({ open, onClose, activeCode, activeLanguage, activ
     xtermRef.current?.clear();
   }, []);
 
+  /**
+   * Render one exec call's outcome. The exit line exists only on the
+   * real-result path — a refused/retired execution gets the failure
+   * line and nothing else.
+   */
+  const renderExecOutcome = useCallback((data: ExecResponseData | null | undefined, started: number) => {
+    if (!isRealExecResult(data)) {
+      appendLine({ kind: 'stderr', text: execFailureMessage(data), ts: Date.now() });
+      return;
+    }
+    const result = data!.result!;
+    if (result.stdout) appendLine({ kind: 'stdout', text: String(result.stdout), ts: Date.now() });
+    if (result.stderr) appendLine({ kind: 'stderr', text: String(result.stderr), ts: Date.now() });
+    if (!result.stdout && !result.stderr) appendLine({ kind: 'result', text: '(no output)', ts: Date.now() });
+    const elapsed = Math.round(performance.now() - started);
+    const exit = result.exitCode === undefined || result.exitCode === null ? '0' : String(result.exitCode);
+    appendLine({ kind: 'result', text: `[exit ${exit} in ${elapsed}ms]`, ts: Date.now() });
+  }, [appendLine]);
+
   const runActiveFile = useCallback(async () => {
     if (running) return;
     setRunning(true);
@@ -133,19 +193,14 @@ export function TerminalPanel({ open, onClose, activeCode, activeLanguage, activ
         action: 'exec',
         input: { code: activeCode, language: activeLanguage, filename: activeName },
       });
-      const result = res.data?.result || {};
-      if (result.stdout) appendLine({ kind: 'stdout', text: String(result.stdout), ts: Date.now() });
-      if (result.stderr) appendLine({ kind: 'stderr', text: String(result.stderr), ts: Date.now() });
-      const elapsed = Math.round(performance.now() - started);
-      const exit = result.exitCode === undefined ? '0' : String(result.exitCode);
-      appendLine({ kind: 'result', text: `[exit ${exit} in ${elapsed}ms]`, ts: Date.now() });
+      renderExecOutcome(res.data as ExecResponseData, started);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'run failed';
-      appendLine({ kind: 'stderr', text: msg, ts: Date.now() });
+      appendLine({ kind: 'stderr', text: `That didn’t run — ${msg}`, ts: Date.now() });
     } finally {
       setRunning(false);
     }
-  }, [running, activeCode, activeLanguage, activeName, appendLine]);
+  }, [running, activeCode, activeLanguage, activeName, appendLine, renderExecOutcome]);
 
   const handleSubmit = useCallback(async () => {
     const cmd = input.trim();
@@ -154,38 +209,25 @@ export function TerminalPanel({ open, onClose, activeCode, activeLanguage, activ
     appendLine({ kind: 'cmd', text: `❯ ${cmd}`, ts: Date.now() });
     if (cmd === 'clear' || cmd === 'cls') { clearBuffer(); return; }
     if (cmd === 'help') {
-      appendLine({ kind: 'system', text: 'Built-ins: run, clear, help, eval <expr>. Anything else is sent to code.exec.', ts: Date.now() });
+      appendLine({ kind: 'system', text: 'Built-ins: run, clear, help. Anything else is run as a code snippet in the active file’s language.', ts: Date.now() });
       return;
     }
     if (cmd === 'run') { runActiveFile(); return; }
-    if (cmd.startsWith('eval ')) {
-      const expr = cmd.slice(5);
-      try {
-        const fn = new Function(`"use strict"; return (${expr});`);
-        const result = fn();
-        appendLine({ kind: 'stdout', text: typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result), ts: Date.now() });
-      } catch (e) {
-        appendLine({ kind: 'stderr', text: e instanceof Error ? `${e.name}: ${e.message}` : String(e), ts: Date.now() });
-      }
-      return;
-    }
     setRunning(true);
+    const started = performance.now();
     try {
       const res = await lensRun({
         domain: 'code',
         action: 'exec',
         input: { code: cmd, language: activeLanguage, filename: 'inline' },
       });
-      const result = res.data?.result || {};
-      if (result.stdout) appendLine({ kind: 'stdout', text: String(result.stdout), ts: Date.now() });
-      if (result.stderr) appendLine({ kind: 'stderr', text: String(result.stderr), ts: Date.now() });
-      if (!result.stdout && !result.stderr) appendLine({ kind: 'result', text: '(no output)', ts: Date.now() });
+      renderExecOutcome(res.data as ExecResponseData, started);
     } catch (e) {
-      appendLine({ kind: 'stderr', text: e instanceof Error ? e.message : 'eval failed', ts: Date.now() });
+      appendLine({ kind: 'stderr', text: `That didn’t run — ${e instanceof Error ? e.message : 'run failed'}`, ts: Date.now() });
     } finally {
       setRunning(false);
     }
-  }, [input, activeLanguage, appendLine, clearBuffer, runActiveFile]);
+  }, [input, activeLanguage, appendLine, clearBuffer, runActiveFile, renderExecOutcome]);
 
   if (!open) return null;
 
@@ -261,7 +303,7 @@ export function TerminalPanel({ open, onClose, activeCode, activeLanguage, activ
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }}
           disabled={running}
-          placeholder='type "run", "clear", "help", "eval 2+2", or a code snippet…'
+          placeholder='type "run", "clear", "help", or a code snippet…'
           className="flex-1 bg-transparent outline-none text-xs text-white placeholder:text-white/30 font-mono"
         />
         {running && <Loader2 className="w-3 h-3 text-cyan-400 animate-spin" />}
