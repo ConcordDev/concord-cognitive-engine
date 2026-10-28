@@ -80,4 +80,25 @@ describe("reminders-acknowledge", () => {
   it("acknowledging an unknown id errors honestly", () => {
     assert.equal(call("reminders-acknowledge", { id: "ntf_nope" }).ok, false);
   });
+
+  it("a fired reminder also lands in the global bell store — exactly once (S8 completion)", () => {
+    call("events-create", { title: "Soon", start: iso(30 * MIN), end: iso(60 * MIN), reminders: [60] });
+    call("reminders-due", {});
+    const bell = () => globalThis._concordSTATE._social?.notifications?.get("cal-u1") || [];
+    assert.equal(bell().length, 1);
+    assert.equal(bell()[0].type, "reminder");
+    assert.match(bell()[0].content, /Soon/);
+    assert.equal(bell()[0].read, false);
+    // Re-polling never duplicates the bell entry.
+    call("reminders-due", {});
+    call("reminders-due", {});
+    assert.equal(bell().length, 1);
+  });
+
+  it("upcoming (not yet due) reminders do NOT touch the bell", () => {
+    call("events-create", { title: "Later", start: iso(90 * MIN), end: iso(120 * MIN), reminders: [60] });
+    call("reminders-due", { lookAheadMin: 60 });
+    const bell = globalThis._concordSTATE._social?.notifications?.get("cal-u1") || [];
+    assert.equal(bell.length, 0);
+  });
 });
