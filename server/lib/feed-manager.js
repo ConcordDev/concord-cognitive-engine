@@ -24,7 +24,7 @@ import { feedAttribution } from "./source-attribution.js";
 import { browserEngine } from "./browser-engine.js";
 import { checkQualityGate, logRejectedDTU, pruneQualityLog } from "./ingest-quality.js";
 import { getDedupKey, hashDedupKey } from "./dedup-keys.js";
-import { hostTier, isExcludedHost } from "./news-outlet-policy.js";
+import { hostTier, isExcludedHost, restrictedContentText } from "./news-outlet-policy.js";
 import { summaryForItem, queueItemForSummary } from "./news-summarizer.js";
 import { normalizeTagList } from "./dtu-tags.js";
 import { trackFeedJob } from "../emergent/feed.js";
@@ -735,13 +735,13 @@ function restrictedSummary(item) {
 
 /** Headline + source + date + link (+ Concord summary). Nothing from the outlet's body. */
 function restrictedContent(item, feedSource, summary) {
-  return [
-    `${item.title || ""}`,
-    `Source: ${feedSource.name || feedSource.id}`,
-    item.publishedAt ? `Published: ${item.publishedAt}` : null,
-    summary ? `Concord summary: ${summary}` : null,
-    item.sourceUrl ? `Link: ${item.sourceUrl}` : null,
-  ].filter(Boolean).join("\n");
+  return restrictedContentText({
+    title: item.title,
+    sourceName: feedSource.name || feedSource.id,
+    publishedAt: item.publishedAt,
+    summary,
+    url: item.sourceUrl,
+  });
 }
 
 /**
