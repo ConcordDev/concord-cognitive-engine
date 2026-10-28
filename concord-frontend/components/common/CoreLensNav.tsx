@@ -40,5 +40,13 @@ export function CoreLensNav({ coreLensId }: CoreLensNavProps) {
     })),
   ];
 
-  return <WorkspaceTabs tabs={tabs} activePath={pathname} label={`${config.name} workspace navigation`} />;
+  return (
+    <WorkspaceTabs
+      tabs={tabs}
+      activePath={pathname}
+      label={`${config.name} workspace navigation`}
+      maxVisible={4}
+      storageKey={`concord_tabs_${coreLensId}`}
+    />
+  );
 }

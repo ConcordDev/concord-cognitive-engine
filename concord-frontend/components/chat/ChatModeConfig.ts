@@ -8,6 +8,7 @@ import {
   BookOpen,
   Bot,
   Brain,
+  Calculator,
   Code,
   Download,
   Globe,
@@ -64,7 +65,7 @@ export const AI_MODES: AIMode[] = [
   { id: 'code', name: 'Code', icon: Code, description: 'Programming help' },
   { id: 'research', name: 'Research', icon: BookOpen, description: 'Research mode with citations' },
   { id: 'creti', name: 'CRETI', icon: Zap, description: 'Structured CRETI format' },
-  { id: 'conkay', name: 'ConKay', icon: Sparkles, description: 'Voice-native majordomo — archives + research, holographic' },
+  { id: 'conkay', name: 'ConKay', icon: Calculator, description: 'Deterministic solvers — answers that show their work' },
 ];
 
 export const PERSONAS: Persona[] = [

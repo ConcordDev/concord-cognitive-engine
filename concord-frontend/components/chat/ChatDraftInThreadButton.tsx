@@ -3,7 +3,9 @@
 /**
  * Draft in Thread — the same Keep order Board and Accounting use:
  * a real DTU id, a read-back that returns that id, then thread-draft
- * citing it. Disabled until the read-back matches. A refusal stays a refusal.
+ * citing it. The button stays clickable so a click before forging
+ * explains itself (draft() refuses until the read-back matches).
+ * A refusal stays a refusal.
  */
 
 import { useEffect, useState } from 'react';
@@ -83,7 +85,7 @@ export function ChatDraftInThreadButton({ dtuId, title, content, className }: Pr
       <button
         type="button"
         onClick={() => void draft()}
-        disabled={!verified || busy || Boolean(draftId)}
+        disabled={busy || Boolean(draftId)}
         className={cn(
           'hover:text-neon-cyan transition-colors flex items-center gap-1 disabled:opacity-50',
           className,

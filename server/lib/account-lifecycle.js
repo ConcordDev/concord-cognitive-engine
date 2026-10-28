@@ -562,7 +562,7 @@ export function exportUserData(db, userId) {
   // Chats — sessions this user owns, and the messages in those sessions.
   try {
     data.chats.sessions = db.prepare(
-      "SELECT session_id, title, last_lens, created_at, updated_at, msg_count FROM chat_sessions WHERE owner_id = ? ORDER BY updated_at DESC"
+      "SELECT session_id, title, last_lens, created_at, updated_at, (SELECT COUNT(*) FROM chat_messages m WHERE m.session_id = chat_sessions.session_id AND m.role IN ('user', 'assistant')) AS msg_count FROM chat_sessions WHERE owner_id = ? ORDER BY updated_at DESC"
     ).all(userId);
   } catch (err) { console.warn('[account-lifecycle] data export: failed to export chat sessions', { userId, err: err.message }); }
   try {

@@ -1259,7 +1259,7 @@ describe('ChatWorkspacePanel — message actions', () => {
   it('forge turns a reply into a DTU and announces it', async () => {
     renderPanel();
     await screen.findByText('It is four.');
-    fireEvent.click(screen.getByLabelText('Forge to DTU'));
+    fireEvent.click(screen.getByLabelText('Keep as DTU'));
     expect(await screen.findByText('Forged to DTU: Forged insight')).toBeInTheDocument();
     expect(forgeFn).toHaveBeenCalledWith({
       content: 'It is four.',
@@ -1285,7 +1285,7 @@ describe('ChatWorkspacePanel — message actions', () => {
     });
     renderPanel();
     await screen.findByText('It is four.');
-    fireEvent.click(screen.getByLabelText('Forge to DTU'));
+    fireEvent.click(screen.getByLabelText('Keep as DTU'));
     const draft = await screen.findByRole('button', { name: 'Draft in Thread' });
     await waitFor(() => expect(draft).toBeEnabled());
     fireEvent.click(draft);
@@ -1299,7 +1299,7 @@ describe('ChatWorkspacePanel — message actions', () => {
     forgeFn.mockRejectedValue(new Error('nope'));
     renderPanel();
     await screen.findByText('It is four.');
-    fireEvent.click(screen.getByLabelText('Forge to DTU'));
+    fireEvent.click(screen.getByLabelText('Keep as DTU'));
     await waitFor(() => expect(addToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' })));
     addToast.mockRestore();
   });

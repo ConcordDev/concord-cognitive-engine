@@ -1,186 +1,43 @@
-# Chat Lens — Capability Map (Frontend Rebuild Program, Wave 3)
+# Chat Lens — Capability Map (three-column, LENS REWORK format)
 
-> **Re-verified 2026-10-28 (HANDOFF-3 Workstream B, batch L1 — audit/gap
-> pass, not a restyle).** Every row below was re-checked against main
-> 4c964675. What changed since the Wave 3 edition:
+> Reworked 2026-10-28 (PR #1704 rework). Base table: Product's live
+> review of the Chat lens (`concord-product/lens-reviews/chat.md` §5d,
+> verified live 2026-10-28 as the concordosdev account), updated for
+> what this rework shipped. New/changed rows are marked
+> "(this rework)" and are behaviour-tested in this PR; per the Concord
+> Standard they count as closed only on Product's §9 re-review, not on
+> this document's say-so.
 >
-> - The 4,595-line `app/lenses/chat/page.tsx` has since been refactored
->   into a 63-line shell; the primary surface is now
->   `components/chat/ChatWorkspacePanel.tsx` (4,269 LOC). Both Wave 3
->   fixes survived the move: the `chat.thread-index` sync effect and the
->   `ThreadSearchOverlay` mount live in the panel today.
-> - **The deferred branch item is DONE.** `BranchForkButton` is mounted
->   in ChatWorkspacePanel and a `SyncedBranchesSection.tsx` (79 LOC)
->   lists / opens / deletes server branches via `chat.branches-list` and
->   `chat.branch-delete`, with vitest coverage
->   (`tests/chat-synced-branches.test.tsx`). Local (device) forks and
->   synced (account) branches coexist — the local fork is the instant
->   per-message action; the synced section is the account-level manager.
->   All 45 `chat` macros are now surfaced; the only one with no
->   dedicated UI call is `project-get`, redundant by design
->   (`projects-list` returns full records).
-> - HANDOFF-2 T6 shipped: low-confidence answers are labelled on the
->   streaming and `chat:complete` socket paths (INC-152, #1689).
-> - This pass fixed `server/tests/chat-agent.test.js`: 9 tests predated
->   the MCP execution bridge's identity gate
->   (`lib/mcp-hermes-identity.js` — bridge calls must be attributed to an
->   authenticated actor) and failed with `auth_required` before reaching
->   the dispatch behavior they pin. Fixtures now pass an authenticated
->   member ctx, and one assertion was re-scoped from whole-ctx equality
->   to the attribution invariant (the bridge normalizes the ctx it
->   forwards). No production code changed. 47/49 pass in a bare sandbox;
->   the 2 `mcp_connect` SSRF tests need `node_modules`
->   (`@modelcontextprotocol/sdk`) to load the real bridge — Mac-run.
->
-> **2026 competitor delta (ChatGPT / Claude, checked 2026-10-28):**
-> Memory (ChatGPT "Dreaming V3") → `memory-*` macros + UI, real.
-> Projects with files/instructions → `project-*` + ProjectsPanel, real
-> (records carry instructions; per-project file knowledge is the one
-> partial row). Deep Research → Concord's research mode with citation
-> receipts (feed-cache 9a/9b) — ahead on provenance. Agent Mode →
-> AgentModePanel + the MCP execution bridge (131 tools) — native.
-> Tasks → `scheduled-*`, real. Canvas → `canvas-*`, real. Data analysis
-> → `code-run` + attachments, real. Voice → voice-chat + `voice-*`
-> settings + composer dictation (SpeechRecognition), real.
-> Out of scope for this pass, with reasons: in-thread image *editing*
-> (the pod's FLUX endpoint is generate-only from chat today; wiring
-> img2img is a media-pipeline project, not a lens fix); voice with
-> video/screen-share (a calling surface, not a chat-lens feature);
-> Sora-class video generation (separate media pipeline).
+> Backend inventory (unchanged by the rework): 45 `chat` domain
+> macros, all surfaced; `project-get` is the one macro with no
+> dedicated UI call, redundant by design (`projects-list` returns full
+> records). Chat surface: `components/chat/ChatWorkspacePanel.tsx`.
 
-> **Handle with care note (owner directive honored):** `chat` is the
-> highest-traffic lens in Concord and had an urgent layout regression fixed
-> earlier this same session (commit `0840de3a` — two extra flex-row
-> siblings were stealing ~550px from the message column). This lens was
-> read in full before any change was made, and the audit below is scoped
-> to genuine, narrow, low-risk fixes on top of that fix — not a
-> second-guess or a rewrite of the page's structure.
->
-> Derived, not asserted. Every macro below was enumerated by reading
-> `server/domains/chat.js` (1456 LOC) in full — the entire backend
-> surface for this lens (no inline registrations elsewhere; confirmed via
-> grep). `app/lenses/chat/page.tsx` is 4595 LOC; `components/chat/` adds
-> ~12,400 more LOC across ~38 files (`bespokeComponentLoc: 12398`,
-> `maxBespokeComponentLoc: 1307` per `grade-ux-polish.mjs --honest`) — this
-> is genuinely one of the deepest, most bespoke lenses in the app.
->
-> Reproduce the macro list:
-> `grep -n 'registerLensAction("chat"' server/domains/chat.js`
+| ChatGPT feature | 1. Have, and works live | 2. Have in backend, not surfaced or broken | 3. Missing |
+|---|---|---|---|
+| General chat with streaming reply + stop control | **Yes** — live-verified by Product; stop is wired (AbortController) and pinned by panel behaviour tests | | |
+| Conversation history: list, search, rename, delete | **Yes** — panel now starts OPEN on desktop for first-run users and remembers the user's choice (this rework, S3); message counts are DERIVED from the stored rows server-side and from the real thread client-side — the "3 messages for 2" defect is fixed at both ends (this rework, S4) | | |
+| Message actions: copy, edit (own), regenerate, feedback thumbs | **Yes** — live-verified by Product | | |
+| Read answer aloud | **Yes** — present on assistant messages (presence verified; audio playback not exercised) | | |
+| Suggestion prompts on the home view | **Yes** — 4 job starters, jargon-free: Explain a concept simply / Help me outline a plan / Make something I can keep / Compute something exactly (the last routes to ConKay) (this rework, S3) | | |
+| Visible model / brain choice before send | **Yes** — a Brain chip on the composer names the answering slot (Conscious brain / Backup model) and the live pool state from GET /api/brain/status BEFORE sending, and re-reads when a send starts (this rework, S1). Mode menu opens readably with per-mode descriptions and full menu semantics in BOTH the toolbar and the composer (this rework, S6); ConKay carries its true subtitle — "Deterministic solvers — answers that show their work" — and a calculator glyph instead of a microphone | | |
+| Citations / sources on answers | **Yes, surfaced honestly** — every assistant reply carries a receipts strip: "Computed — checked by Concord's solvers" when the server marked it computed, "Sourced — N sources below" when it carries sources/DTU refs (the sources render under it), or "No external sources — model answer" when it has none (this rework, S2). Citation depth itself stays the narrow verified-compute scope | | |
+| Verification of an answer (checked, not just cited) | Computed-marked answers state their checked status on the receipts strip (this rework, S2) | | One-click re-verify of an arbitrary reply — no chat backend exists for it; not built, not faked |
+| Truthful generation progress | **Yes** — stage line in the thread: "Thinking" until content streams, then "Writing", with a real elapsed clock (this rework, S8) | | |
+| Answer → persistent work object (Canvas) | **Yes** — "Keep as DTU" is a labelled, primary-styled action on every reply (was the icon-like "Forge DTU"), with an ownership line under unforged replies ("Yours to keep — save this answer as a DTU…"); "Draft in Thread" now explains itself when clicked before forging instead of sitting silently disabled (this rework, S5). Prod caveat stands: DTU provenance is not yet switched on in prod (proof index) | | |
+| Branch a conversation from a message | **Yes** — local branch + server-synced branch, renamed in plain language ("Branch this conversation" / "Save branch") (this rework, S5) | | |
+| Memory across chats / custom assistants | | **Unsurfaced/unverified** — advertised inside Chat settings; not reachable/testable in Product's pass; outside this rework's scope | |
+| BYOK / bring your own model | | **Backend + one panel entry, not surfaced as a flow** — brain slots + BYO keys exist in-product; no composer-level flow beyond the mode menu and the Brain chip's slot disclosure | |
+| Queue / capacity state when brains are busy | | **Partially surfaced** — the Brain chip shows pool state (all/partial/offline); a true queue depth is NOT tracked server-side, so no queue position is shown or invented | |
+| Projects / Library inside Chat | | | **Missing in Chat** — organisation is conversations + branches; Projects is its own lens |
+| First-run overlay sequencing | **Yes** — the install banner on Chat now waits until after the first completed reply (localStorage `concord_first_reply_done`, via the lib/first-run coordinator); the cookie notice already persisted its answer (verified, unchanged) (this rework, S9) | | |
+| Sub-tab overload (9 tabs) | **Yes** — the core-lens tab strip caps at 4 + a More menu for Chat and every core lens; the active tab is always visible and the last-visited overflow tab is promoted and remembered per user (this rework, S7) | | |
 
-## Backend surface — 45 macros, all real
+**Counts: 18 rows mapped — 13 have-and-works (7 of them moved or fixed
+by this rework), 3 have-in-backend-unsurfaced, 2 missing.**
 
-`STATE.chatLens`-backed: assistants (custom system-prompt personas),
-projects, saved prompt library, thread search index, conversation
-branches, canvas (collaborative document mode), code execution + history,
-image generation + history, memory (long-term facts), scheduled prompts,
-share links, and participant/topic analysis for group threads.
-
-| Macro group | Real effect | Surfaced |
-|---|---|---|
-| `assistant-create`/`delete`/`update`, `assistants-list` | custom persona/system-prompt profiles | DESIGNED |
-| `project-create`/`delete`/`update`, `projects-list` | conversation projects/folders | DESIGNED (`ProjectsPanel.tsx`) |
-| `project-get` | single-project detail fetch | **UNSURFACED** — redundant, not a gap (see notes) | 
-| `prompt-create`/`delete`/`update`, `prompts-list` | saved prompt library (slash-command templates) | DESIGNED |
-| `thread-index` | write a thread's title/snippet/timestamp into the server-side search index | **UNSURFACED — the write-half of a real feature was entirely missing** | **FIXED THIS SESSION** |
-| `threads-search` | search the index `thread-index` populates | DESIGNED (`ThreadSearchOverlay.tsx`) — but always returned "0 threads indexed" | Now actually returns real hits |
-| `branches-list`/`branch-delete` | list/delete forked conversation branches | DESIGNED (`SyncedBranchesSection.tsx`) | Wired in a later pass — see the 2026-10-28 re-verification note |
-| `branch-fork` | fork a conversation at a message into a real server-persisted branch | DESIGNED (`BranchForkButton` mounted in ChatWorkspacePanel) | Wired in a later pass — see the 2026-10-28 re-verification note |
-| `canvas-create`/`get`/`update`/`revert`/`delete`, `canvas-list` | collaborative canvas/document mode | DESIGNED |
-| `code-run`, `code-history` | in-thread code execution + history | DESIGNED |
-| `image-generate`, `image-history`, `image-delete` | in-thread image generation | DESIGNED |
-| `memory-add`/`update`/`delete`, `memory-list` | long-term memory facts | DESIGNED |
-| `scheduled-create`/`cancel`, `scheduled-list` | scheduled/recurring prompts | DESIGNED |
-| `share-create`/`revoke`, `share-list` | public share-link generation | DESIGNED (`ChatStudioPanel.tsx`'s ShareTab) |
-| `share-view` | resolve a share token to the shared conversation | **UNSURFACED — the share URL the UI generates and lets you copy pointed at no route in the app** | **FIXED THIS SESSION** |
-| `voice-get`/`voice-update` | voice settings | DESIGNED |
-| `participantAnalysis`, `topicDetection` | group-thread participant/topic analysis | DESIGNED |
-
-**41 of 45 macros were DESIGNED at the Wave 3 edition.** As of the
-2026-10-28 re-verification the count is 44 of 45 surfaced: the branch
-trio (`branch-fork`/`branches-list`/`branch-delete`) was wired in a
-later pass, leaving only `project-get` unsurfaced — redundant, not a
-gap (`projects-list` already returns full records; no UI needs a
-single-item re-fetch).
-
-## 1.5 Reference-parity checklist
-
-**(a) Reference apps:** [Claude.ai](https://claude.ai) and
-[ChatGPT](https://chatgpt.com) — both explicitly named in the codebase's
-own comments (`handleExportMarkdown` mirrors "the Claude.ai / ChatGPT
-behaviour," `handleBranchFromMessage` mirrors "Claude.ai's edit-rewind /
-ChatGPT's 'fork from here'").
-
-| # | Checklist item | Disposition |
-|---|---|---|
-| 1 | Conversation list, message thread, composer, streaming responses | ALREADY REAL | Core layout (just re-verified sound post-`0840de3a`) |
-| 2 | ⌘K / "Search chats" finds real past conversations | **GENUINE DEFECT → FIXED THIS SESSION** | See below — the most-discoverable search entry point was silently broken for every user |
-| 3 | Export/copy a transcript (Markdown, JSON, clipboard) | ALREADY REAL | `handleExportMarkdown`/`handleCopyTranscript` |
-| 4 | Fork/branch a conversation from any message | ALREADY REAL (client-only) + GENUINELY MISSING (server-backed) | `handleBranchFromMessage` works today (creates a real, localStorage-persisted new conversation) — not fabricated, just device-local. The *separate*, real, server-persisted `branch-fork`/`branches-list`/`branch-delete` macros have a fully-built, tested `BranchForkButton.tsx` component that is **never mounted anywhere in the app** — an orphaned, unreachable feature. Left unwired this session: reconciling it with the already-working client-side branch flow is a design decision (do they coexist as "local branch" vs. "cloud/synced branch," or does one replace the other?) that deserves its own scoped pass, not a quick insert into an already-just-stabilized 4595-line page |
-| 5 | Custom assistants/personas | ALREADY REAL | `assistant-*` |
-| 6 | Saved prompt library / slash commands | ALREADY REAL | `prompt-*` |
-| 7 | Projects/folders to organize conversations | ALREADY REAL | `project-*`/`ProjectsPanel.tsx` |
-| 8 | Public share links that actually resolve when opened | **GENUINE DEFECT → FIXED THIS SESSION** | See below — same defect class as the animation lens's previously-fixed dead share link |
-| 9 | In-thread code execution, image generation, collaborative canvas | ALREADY REAL | `code-run`, `image-generate`, `canvas-*` |
-| 10 | Long-term memory | ALREADY REAL | `memory-*` |
-| 11 | Scheduled/recurring prompts | ALREADY REAL | `scheduled-*` |
-| 12 | Voice settings, group-thread participant/topic analysis | ALREADY REAL | `voice-*`, `participantAnalysis`, `topicDetection` |
-
-**Coverage summary:** 10 of 12 checklist items already real (this is a
-deep, mature lens). 2 real defects found and fixed this session (search,
-share links). 1 item is a hybrid: the user-facing behavior already works
-(client-side branching), but a parallel real backend feature sits fully
-orphaned — named honestly as a scoped future decision rather than forced
-into this pass.
-
-## 2. What this rebuild changed
-
-**Fixed ⌘K "Search chats" — it always reported zero results.**
-`ThreadSearchOverlay.tsx` (bound to ⌘K and the "Search chats" menu item —
-the primary, most-discoverable search entry point) calls the real
-`chat.threads-search` macro and honestly renders "N threads indexed" — but
-nothing in the entire codebase ever called `chat.thread-index` to
-populate that index. Every search, for every user, silently returned
-empty. (Note: a *separate*, already-working "global search" — bound to a
-different, less-discoverable trigger — scans `localStorage`-persisted
-messages directly and was never broken; this is why the defect went
-unnoticed. That search's existence doesn't fix ⌘K's.) Fixed by adding a
-2-second-debounced effect (alongside the existing message-persistence
-effect) that calls `chat.thread-index` with the current thread's id,
-title, latest-message snippet, and timestamp whenever the active
-conversation's messages change — best-effort (a failed index write is
-silently non-fatal; search staying briefly stale is preferable to
-blocking the chat UI on it).
-
-**Fixed the share-link 404.** `ChatStudioPanel.tsx`'s `ShareTab` creates
-real share links (`chat.share-create`) and lets the user copy a real URL
-(`/share/chat/{token}`) with a working "copied!" confirmation — implying
-the link works. No route in the entire app rendered `/share/chat/[token]`,
-so every copied link 404'd. Built `app/share/chat/[token]/page.tsx`,
-mirroring the exact, already-shipped pattern from
-`/share/animation/[token]` (see that lens's capability map for the
-precedent): calls `chat.share-view`, renders the shared messages, shows an
-honest "sign in to view" state for a logged-out visitor (`share-view` is
-not in `server.js`'s `publicReadDomains` allowlist — widening that is a
-permission-system change, deliberately not done here), and an honest error
-for an invalid/revoked token.
-
-**Audited and deliberately left alone:** the recent layout fix
-(`0840de3a`) was re-verified intact — the message column owns full width,
-the "Analysis & features" drawer pattern is sound, no regression
-introduced by this session's two additions (both are `useEffect`s and a
-new standalone route, zero layout changes). `BranchForkButton.tsx` was
-found orphaned but is explicitly NOT wired this session (see checklist
-item 4) — mounting it without first deciding how it relates to the
-already-working client-side branch flow risks presenting the user with
-two competing, confusing "fork" actions in an already load-bearing page.
-
-## Files touched
-
-- `concord-frontend/app/lenses/chat/page.tsx` — added the `thread-index`
-  sync effect (debounced, best-effort)
-- `concord-frontend/app/share/chat/[token]/page.tsx` — new public(-for-
-  signed-in-users) share viewer for `chat.share-view`
-- `concord-frontend/tests/chat-share-page.test.tsx` — new test pinning the
-  share page's 3 honest states (sign-in prompt / real content / invalid
-  token error)
-- No backend changes — `server/domains/chat.js` was already complete
+Deliberately NOT built in this rework (stated, not faked): a canned
+"demo conversation" for first run (fabricated history violates the
+no-fake-data bar — the Compute chip produces a real checked answer
+live instead); a one-click re-verify action (no backend); queue
+positions (not tracked server-side).

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Download, X } from 'lucide-react';
 import { Z_INDEX } from '@/lib/ui/z-index';
 import { useUIStore } from '@/store/ui';
+import { useFirstReplyDone } from '@/lib/first-run';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -31,11 +32,16 @@ interface BeforeInstallPromptEvent extends Event {
 export function InstallPrompt() {
   const pathname = usePathname();
   const studioWorkspace = !!pathname && /^\/lenses\/studio(\/|$)/.test(pathname);
+  // First-run sequencing (Product Chat review S9): on Chat, the banner
+  // waits until after the user's first completed reply — it must not
+  // compete with the first conversation in the composer zone.
+  const onChat = !!pathname && /^\/lenses\/chat(\/|$)/.test(pathname);
+  const firstReply = useFirstReplyDone();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const bannerRef = useRef<HTMLDivElement | null>(null);
   const setInstallBannerFootprint = useUIStore((s) => s.setInstallBannerFootprint);
-  const showing = !studioWorkspace && !!deferredPrompt && !dismissed;
+  const showing = !studioWorkspace && !!deferredPrompt && !dismissed && (!onChat || firstReply);
 
   useEffect(() => {
     // Don't capture the one-shot beforeinstallprompt on Studio: preventDefault

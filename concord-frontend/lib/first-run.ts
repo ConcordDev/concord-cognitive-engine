@@ -18,6 +18,7 @@ export const FIRST_RUN_ADVANCE = 'concord:first-run-advance';
 export const COOKIE_CONSENT_KEY = 'concord_cookie_consent';
 export const ONBOARDING_DONE_KEY = 'concord-onboarding-completed';
 export const FIRST_WIN_DISMISSED_KEY = 'concord_first_win_dismissed';
+export const FIRST_REPLY_KEY = 'concord_first_reply_done';
 
 /** Notify all first-run surfaces that a step was just completed/dismissed. */
 export function advanceFirstRun(): void {
@@ -70,4 +71,39 @@ export function useCookieConsentVisible(): boolean {
   }, []);
 
   return visible;
+}
+
+/**
+ * Has the user completed a first chat reply on this device? The Chat
+ * panel marks it the moment an assistant reply exists in the thread
+ * (Product Chat review S9: first-run overlays must sequence — the
+ * install banner stays out of the composer zone until after the first
+ * reply, instead of competing with the first conversation).
+ */
+export function firstReplyDone(): boolean {
+  try {
+    return Boolean(localStorage.getItem(FIRST_REPLY_KEY));
+  } catch {
+    return false;
+  }
+}
+
+export function markFirstReplyDone(): void {
+  try {
+    localStorage.setItem(FIRST_REPLY_KEY, '1');
+  } catch { /* storage unavailable */ }
+  advanceFirstRun();
+}
+
+export function useFirstReplyDone(): boolean {
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    setDone(firstReplyDone());
+    const onAdvance = () => setDone(firstReplyDone());
+    window.addEventListener(FIRST_RUN_ADVANCE, onAdvance);
+    return () => window.removeEventListener(FIRST_RUN_ADVANCE, onAdvance);
+  }, []);
+
+  return done;
 }

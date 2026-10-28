@@ -236,8 +236,18 @@ export function hydrateSession(db, STATE, sessionId, { ownerId = null } = {}) {
 export function listRecentSessions(db, ownerId, { limit = 50 } = {}) {
   if (!db || !ownerId) return [];
   try {
+    // msg_count is DERIVED from the message rows the user will actually
+    // see on opening the session (user + assistant), never read from the
+    // stored counter: that counter is bumped by several persist paths
+    // (socket, chat.respond, REST) and drifts — a fresh 1-exchange
+    // conversation listed as "3 messages" in the wild (Product review
+    // 2026-10-28, F4). The stored column stays as a write-side heuristic
+    // (auto-title gate); the displayed number is true by construction.
     return db.prepare(`
-      SELECT session_id AS id, title, last_lens AS lens, created_at, updated_at, msg_count
+      SELECT session_id AS id, title, last_lens AS lens, created_at, updated_at,
+        (SELECT COUNT(*) FROM chat_messages m
+          WHERE m.session_id = chat_sessions.session_id
+            AND m.role IN ('user', 'assistant')) AS msg_count
       FROM chat_sessions
       WHERE owner_id = ?
       ORDER BY updated_at DESC

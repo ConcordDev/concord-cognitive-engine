@@ -8,6 +8,7 @@ vi.mock('next/navigation', () => ({
 
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { useUIStore } from '@/store/ui';
+import { markFirstReplyDone } from '@/lib/first-run';
 
 function fireInstallable(outcome: 'accepted' | 'dismissed' = 'dismissed') {
   const event = new Event('beforeinstallprompt');
@@ -25,12 +26,17 @@ describe('InstallPrompt', () => {
   beforeEach(() => {
     nav.pathname = '/lenses/chat';
     localStorage.removeItem('concord_pwa_dismissed');
+    // These scenarios are post-first-reply visits: on Chat the banner
+    // is S9-deferred until the first reply lands (pinned separately
+    // below), so the general cases run with that step completed.
+    localStorage.setItem('concord_first_reply_done', '1');
     useUIStore.setState({ installBannerFootprint: 0 });
   });
 
   afterEach(() => {
     cleanup();
     localStorage.removeItem('concord_pwa_dismissed');
+    localStorage.removeItem('concord_first_reply_done');
     useUIStore.setState({ installBannerFootprint: 0 });
     vi.restoreAllMocks();
   });
@@ -145,6 +151,15 @@ describe('InstallPrompt', () => {
     // Dismissing the banner releases the reserved space.
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss install prompt' }));
     expect(useUIStore.getState().installBannerFootprint).toBe(0);
+  });
+
+  it('on Chat it waits for the first completed reply before showing (S9)', () => {
+    localStorage.removeItem('concord_first_reply_done');
+    render(<InstallPrompt />);
+    fireInstallable();
+    expect(screen.queryByText('Install Concord')).toBeNull();
+    act(() => { markFirstReplyDone(); });
+    expect(screen.getByText('Install Concord')).toBeInTheDocument();
   });
 
   it('publishes no footprint when it has no measurable rect (jsdom-honest: never pad for a phantom banner)', () => {

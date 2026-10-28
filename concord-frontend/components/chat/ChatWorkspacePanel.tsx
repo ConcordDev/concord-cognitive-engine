@@ -43,6 +43,7 @@ import {
   ThumbsDown,
   FileText,
   Brain,
+  Calculator,
   ChevronDown,
   MessageSquare,
   Zap,
@@ -60,7 +61,6 @@ import {
   Check,
   ExternalLink,
   Layers,
-  Mic,
   PauseCircle,
   GitBranch,
   Key,
@@ -88,6 +88,10 @@ import { ToolCallCard } from '@/components/chat/ToolCallCard';
 import { ChatArtifacts, type ChatArtifact } from '@/components/chat/ChatArtifacts';
 import { isReadAloudRequest, speakText, canSpeak } from '@/lib/chat/read-aloud';
 import ComputeBadge from '@/components/chat/ComputeBadge';
+import ReceiptsStrip from '@/components/chat/ReceiptsStrip';
+import { GenerationStatus } from '@/components/chat/GenerationStatus';
+import { firstReplyDone, markFirstReplyDone } from '@/lib/first-run';
+import BrainChip from '@/components/chat/BrainChip';
 import LowConfidenceTag from '@/components/chat/LowConfidenceTag';
 import CitationChips from '@/components/chat/CitationChips';
 import AnonNudge from '@/components/chat/AnonNudge';
@@ -439,9 +443,37 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   };
   const setChatSidebarOpen = (v: boolean | ((p: boolean) => boolean)) => {
     const next = typeof v === 'function' ? v(chatSidebarOpen) : v;
+    try {
+      window.localStorage.setItem('concord_chat_convos', next ? 'open' : 'closed');
+    } catch { /* storage unavailable — the choice just won't persist */ }
     setOverlay(next ? 'convos' : null);
   };
+  // First run (Product review A4): the conversations panel starts OPEN
+  // on desktop so a new user can see where their conversations live,
+  // instead of it hiding in a collapsed drawer. Only when the user has
+  // never chosen — every open/close above is remembered per user.
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem('concord_chat_convos')) return;
+      if (window.innerWidth >= 1024) setOverlay('convos');
+    } catch { /* storage unavailable */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
+  // Mirror for handlers that must count the thread as the user sees it
+  // (F4: the conversation list count is derived from the real thread,
+  // never incremented blind — a new conversation starts at 1 for the
+  // user message, so a blind +2 on reply listed 2 messages as "3").
+  const localMessagesRef = useRef<Message[]>([]);
+  useEffect(() => { localMessagesRef.current = localMessages; }, [localMessages]);
+  // First-reply marker (S9): once an assistant reply exists in the
+  // thread, the first conversation has happened — the install banner
+  // may show on Chat from then on (lib/first-run sequencing).
+  useEffect(() => {
+    if (!firstReplyDone() && localMessages.some((m) => m.role === 'assistant')) {
+      markFirstReplyDone();
+    }
+  }, [localMessages]);
   const [feedbackState, setFeedbackState] = useState<Record<string, 'up' | 'down'>>({});
   const [forgedDtuByMessage, setForgedDtuByMessage] = useState<
     Record<string, { id: string; title: string; content: string }>
@@ -1455,7 +1487,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     ...c,
                     lastMessage: down.notice.slice(0, 100),
                     updatedAt: new Date().toISOString(),
-                    messageCount: c.messageCount + 2,
+                    messageCount: localMessagesRef.current.length + 1,
                   }
                 : c
             );
@@ -1523,7 +1555,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   ...c,
                   lastMessage: (assistantMsg.content || '').slice(0, 100),
                   updatedAt: new Date().toISOString(),
-                  messageCount: c.messageCount + 2,
+                  messageCount: localMessagesRef.current.length + 1,
                 }
               : c
           );
@@ -2418,6 +2450,14 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   <ChatArtifacts artifacts={message.artifacts} />
                 )}
 
+                {/* Receipts — ALWAYS on for an assistant reply (F2/A6):
+                    the verdict line renders even when nothing was
+                    sourced or computed, so an unchecked answer can never
+                    look like a checked one. Detail surfaces stay below. */}
+                {message.role === 'assistant' && (
+                  <ReceiptsStrip message={message} />
+                )}
+
                 {/* Compute provenance (compute-preflight ground truth) */}
                 {message.role === 'assistant' && message.computed && (
                   <ComputeBadge computed={message.computed} />
@@ -2610,7 +2650,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     onClick={() => handleBranchFromMessage(message.id)}
                     className="hover:text-neon-purple transition-colors"
                     title="Branch a new conversation from this message (local, instant)"
-                    aria-label="Branch from here"
+                    aria-label="Branch this conversation"
                   >
                     <GitBranch className="w-3 h-3" />
                   </button>
@@ -2621,10 +2661,10 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       messages={messages
                         .slice(0, forkIdx + 1)
                         .map((m) => ({ role: m.role, content: m.content, ts: m.timestamp }))}
-                      label="Sync"
-                      doneLabel="Synced"
+                      label="Save branch"
+                      doneLabel="Saved"
                       title="Save a synced branch to your account (persists across devices, separate from the local branch above)"
-                      ariaLabel="Save a server-synced branch from this message"
+                      ariaLabel="Save branch to server"
                       onForked={() => {
                         setSyncedBranchesKey((k) => k + 1);
                         useUIStore.getState().addToast({
@@ -2645,14 +2685,14 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     onClick={() => forgeMutation.mutate({ content: message.content, messageId: message.id })}
                     disabled={forgeMutation.isPending}
                     className={cn(
-                      'hover:text-neon-cyan transition-colors flex items-center gap-1',
+                      'flex items-center gap-1 rounded-full border border-neon-cyan/40 bg-neon-cyan/10 px-2 py-0.5 text-neon-cyan transition-colors hover:bg-neon-cyan/20',
                       forgeMutation.isPending && 'opacity-50'
                     )}
-                    title="Forge this response into a DTU"
-                    aria-label="Forge to DTU"
+                    title="Keep this answer as a DTU — a permanent copy you own, citable anywhere on Concord"
+                    aria-label="Keep as DTU"
                   >
                     <Zap className="w-3 h-3" />
-                    <span className="hidden sm:inline">Forge DTU</span>
+                    <span>Keep as DTU</span>
                   </button>
                   <ChatDraftInThreadButton
                     dtuId={forgedDtuByMessage[message.id]?.id || ''}
@@ -2662,6 +2702,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 </>
               )}
             </div>}
+            {message.role === 'assistant' && !forgedDtuByMessage[message.id] && (
+              <p className="mt-1 text-[11px] leading-snug text-white/40">
+                Yours to keep — save this answer as a DTU to cite and reuse it anywhere on Concord.
+              </p>
+            )}
           </div>
         </motion.div>
       );
@@ -2781,6 +2826,10 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   // the thread scroller) so the newest text stays reachable above the composer.
   const threadFooter = (
     <>
+      <GenerationStatus
+        generating={streamActive || sendMutation.isPending || regenerateMutation.isPending}
+        streamingContent={streamingContent}
+      />
       {/* Streaming indicator */}
       {streamActive && streamingContent && (
         <div className="flex gap-4 px-4 lg:px-6 pb-2">
@@ -3159,6 +3208,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 <button
                   onClick={() => setModeSelectOpen(!modeSelectOpen)}
                   className="flex items-center gap-2 px-4 py-2 bg-lattice-bg border border-lattice-border rounded-lg hover:border-gray-500 transition-colors"
+                  aria-haspopup="menu"
+                  aria-expanded={modeSelectOpen}
+                  aria-label="Choose mode"
                 >
                   <aiMode.icon className="w-4 h-4 text-neon-cyan" />
                   <span className="text-white text-sm font-medium">{aiMode.name}</span>
@@ -3172,10 +3224,17 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
                       className="absolute top-full left-0 mt-2 w-64 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl z-50 overflow-hidden"
+                      role="menu"
+                      aria-label="Choose mode"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') setModeSelectOpen(false);
+                      }}
                     >
                       {AI_MODES.map((mode) => (
                         <button
                           key={mode.id}
+                          role="menuitemradio"
+                          aria-checked={aiMode.id === mode.id}
                           onClick={() => {
                             selectAiMode(mode);
                             setModeSelectOpen(false);
@@ -3551,17 +3610,33 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 <p className="mt-3 text-[15px] text-zinc-500">How can I help you think today?</p>
                 <div className="mt-6 flex flex-wrap justify-center gap-2">
                   {[
-                    'Summarize what’s new in my lattice',
-                    'Help me outline a plan',
-                    'Explain a concept simply',
-                  ].map((s) => (
+                    {
+                      label: 'Explain a concept simply',
+                      run: () => { setInput('Explain a concept simply'); inputRef.current?.focus(); },
+                    },
+                    {
+                      label: 'Help me outline a plan',
+                      run: () => { setInput('Help me outline a plan'); inputRef.current?.focus(); },
+                    },
+                    {
+                      label: 'Make something I can keep',
+                      run: () => { setInput('Write a short piece for me that I can keep as my own: '); inputRef.current?.focus(); },
+                    },
+                    {
+                      label: 'Compute something exactly',
+                      run: () => {
+                        const kay = AI_MODES.find((m) => m.id === 'conkay');
+                        if (kay) selectAiMode(kay);
+                      },
+                    },
+                  ].map((chip) => (
                     <button
-                      key={s}
+                      key={chip.label}
                       type="button"
-                      onClick={() => { setInput(s); inputRef.current?.focus(); }}
+                      onClick={chip.run}
                       className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[13px] text-zinc-300 transition-colors hover:border-white/20 hover:text-zinc-100"
                     >
-                      {s}
+                      {chip.label}
                     </button>
                   ))}
                 </div>
@@ -3601,6 +3676,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               'max-w-3xl mx-auto pointer-events-auto',
               cleanEmpty && 'rounded-2xl border border-white/10 bg-[#161616] shadow-[0_12px_40px_rgba(0,0,0,0.55)] px-3 pt-3 pb-2',
             )}>
+              {/* Brain disclosure — visible BEFORE the first send (F1/A5) */}
+              <BrainChip generating={streamActive || sendMutation.isPending} />
+
               {/* Quoted message indicator */}
               {quotedMessage && (
                 <div className="flex items-center gap-2 mb-2 p-2 bg-lattice-bg border border-lattice-border rounded-lg">
@@ -3788,6 +3866,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                           className="mx-1 mb-1 inline-flex items-center gap-1 rounded-full border border-white/15 px-2.5 py-1 text-[11px] text-white/70 hover:text-white hover:border-white/30"
                           aria-label="Choose mode"
                           title={`Mode: ${aiMode.name}`}
+                          aria-haspopup="menu"
                           aria-expanded={modeSelectOpen}
                         >
                           <aiMode.icon className="w-3.5 h-3.5" />
@@ -3800,20 +3879,30 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                               initial={{ opacity: 0, y: 8 }}
                               animate={{ opacity: 1, y: 0 }}
                               exit={{ opacity: 0, y: 8 }}
-                              className="absolute bottom-full right-0 mb-2 w-56 rounded-xl border border-white/10 bg-[#1c1c1c] shadow-xl z-50 overflow-hidden"
+                              className="absolute bottom-full right-0 mb-2 w-64 rounded-xl border border-white/10 bg-[#1c1c1c] shadow-xl z-50 overflow-hidden"
+                              role="menu"
+                              aria-label="Choose mode"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Escape') setModeSelectOpen(false);
+                              }}
                             >
                               {AI_MODES.map((mode) => (
                                 <button
                                   key={mode.id}
                                   type="button"
+                                  role="menuitemradio"
+                                  aria-checked={aiMode.id === mode.id}
                                   onClick={() => { selectAiMode(mode); setModeSelectOpen(false); }}
                                   className={cn(
-                                    'w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/5',
+                                    'w-full flex items-start gap-2 px-3 py-2 text-left text-sm hover:bg-white/5',
                                     aiMode.id === mode.id ? 'text-white' : 'text-white/70',
                                   )}
                                 >
-                                  <mode.icon className="w-4 h-4" />
-                                  {mode.name}
+                                  <mode.icon className="w-4 h-4 mt-0.5 shrink-0" />
+                                  <span>
+                                    <span className="block">{mode.name}</span>
+                                    <span className="block text-xs text-white/50">{mode.description}</span>
+                                  </span>
                                 </button>
                               ))}
                             </motion.div>
@@ -3829,10 +3918,10 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                           if (kay) selectAiMode(kay);
                         }}
                         className="p-2 text-white/50 hover:text-white transition-colors"
-                        title="Open ConKay"
+                        title="Open ConKay — deterministic solvers, answers that show their work"
                         aria-label="Open ConKay"
                       >
-                        <Mic className="w-5 h-5" />
+                        <Calculator className="w-5 h-5" />
                       </button>
                     )}
                     {!cleanEmpty && (
