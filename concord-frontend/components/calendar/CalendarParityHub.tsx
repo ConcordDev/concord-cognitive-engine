@@ -47,7 +47,7 @@ interface Invite {
   guest: string; rsvp: string;
 }
 
-type Tab = 'dashboard' | 'sync' | 'sharing' | 'reminders' | 'status' | 'conference' | 'invites' | 'conflicts';
+type Tab = 'dashboard' | 'sync' | 'sharing' | 'reminders' | 'status' | 'conference' | 'invites' | 'conflicts' | 'trash';
 
 const TABS: { id: Tab; label: string; icon: typeof RefreshCw }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -58,6 +58,7 @@ const TABS: { id: Tab; label: string; icon: typeof RefreshCw }[] = [
   { id: 'conference', label: 'Video Links', icon: Video },
   { id: 'invites', label: 'Guest RSVP', icon: MailCheck },
   { id: 'conflicts', label: 'Conflicts & Availability', icon: CalendarSearch },
+  { id: 'trash', label: 'Trash', icon: Trash2 },
 ];
 
 const RSVP_COLOR: Record<string, string> = {
@@ -108,6 +109,7 @@ export function CalendarParityHub() {
         {tab === 'conference' && <ConferencePanel />}
         {tab === 'invites' && <InvitesPanel />}
         {tab === 'conflicts' && <ConflictsAvailabilityPanel />}
+        {tab === 'trash' && <TrashPanel />}
       </div>
     </div>
   );
@@ -957,5 +959,67 @@ function ErrLine({ msg }: { msg: string }) {
     <p className="text-[11px] text-rose-400 inline-flex items-center gap-1">
       <AlertCircle className="w-3 h-3" /> {msg}
     </p>
+  );
+}
+
+
+// ── Trash — soft-deleted events (F12) ────────────────────────────────
+interface TrashedEvent { id: string; title: string; start: string; end: string; deletedAt: string }
+function TrashPanel() {
+  const [items, setItems] = useState<TrashedEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [confirmPermanentId, setConfirmPermanentId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const r = await lensRun<{ events: TrashedEvent[]; count: number }>('calendar', 'events-trash-list', {});
+    setItems(r.data?.result?.events || []);
+    setLoading(false);
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+
+  async function restore(id: string) {
+    await lensRun('calendar', 'events-restore', { id });
+    await load();
+  }
+  async function destroy(id: string) {
+    if (confirmPermanentId !== id) { setConfirmPermanentId(id); return; }
+    setConfirmPermanentId(null);
+    await lensRun('calendar', 'events-delete-permanent', { id });
+    await load();
+  }
+
+  if (loading) return <Spin />;
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-gray-400">
+        Deleted events live here until you empty the trash. Restoring puts an event
+        back on your calendar exactly as it was.
+      </p>
+      {items.length === 0 ? (
+        <Empty msg="Trash is empty." />
+      ) : (
+        <ul className="space-y-1.5">
+          {items.map((e) => (
+            <li key={e.id} className="flex items-center gap-2 bg-lattice-elevated/50 border border-lattice-border rounded-lg px-3 py-2">
+              <Trash2 className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-white truncate">{e.title}</p>
+                <p className="text-[10px] text-gray-400 tabular-nums">
+                  {fmt(e.start)} · deleted {fmt(e.deletedAt)}
+                </p>
+              </div>
+              <button onClick={() => void restore(e.id)}
+                className="px-2 py-1 rounded text-[11px] bg-blue-600/20 text-blue-300 hover:bg-blue-600/30">
+                Restore
+              </button>
+              <button onClick={() => void destroy(e.id)}
+                className={cn('px-2 py-1 rounded text-[11px]', confirmPermanentId === e.id ? 'bg-rose-600 text-white font-semibold' : 'bg-lattice-elevated hover:bg-lattice-border text-rose-300')}>
+                {confirmPermanentId === e.id ? 'Delete forever?' : 'Delete forever'}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
