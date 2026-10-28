@@ -49,6 +49,7 @@ import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-ta
 import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
 import { humanMacroAclDenial } from "./lib/macro-acl-human-gate.js";
 import { forumModDenial } from "./lib/forum-mod-gate.js";
+import { lensUpdateDenial } from "./lib/lens-update-gate.js";
 import { applyBallot, findCommentInTree, countCommentTree, appendCommentTree, applyAward, toggleSavedBy } from "./lib/forum-interactions.js";
 import { marketplaceOwnerDenial, marketplaceBuyDenial } from "./lib/marketplace-action-gate.js";
 import { threadModerationDenial, threadDeleteNodeDenial } from "./lib/thread-node-gate.js";
@@ -49064,11 +49065,24 @@ register("lens", "update", async (ctx, input={}) => {
   if (!id) return { ok: false, error: "id required" };
   const artifact = STATE.lensArtifacts.get(id);
   if (!artifact) return { ok: false, error: "not found" };
-  // Ownership validation — mirrors lens.delete's rule (owner or admin), which
-  // this handler was missing entirely: any authenticated caller could
-  // silently overwrite another user's private artifact's title/data/meta.
-  if (!LENS_SOCIAL_DOMAINS.has(artifact.domain) && artifact.ownerId && artifact.ownerId !== "anon" && !_lensIsOwnerActor(ctx, artifact) && !_lensIsAdminActor(ctx)) {
-    return { ok: false, error: "unauthorized: you can only update your own artifacts" };
+  // SECURITY: ownership validation — mirrors lens.delete's rule (owner
+  // or admin). The old check SKIPPED social domains entirely
+  // (!LENS_SOCIAL_DOMAINS.has(...)), so on forum/feed/marketplace/
+  // collab/thread/vote/alliance/global/news/questmarket any signed-in
+  // member could overwrite any other user's artifact title/data/meta.
+  // The gate (lib/lens-update-gate.js) now applies to every owned
+  // artifact: owner, admin, internal callers, and — on social domains
+  // only — moderator-class roles (the forum post lock is a moderator
+  // action riding this path) may update. The ownerless/anon clause is
+  // unchanged here on purpose; ownerless artifacts are Fix 10.
+  if (artifact.ownerId && artifact.ownerId !== "anon") {
+    const updateDenial = lensUpdateDenial({
+      ctx,
+      isOwner: _lensIsOwnerActor(ctx, artifact),
+      isAdmin: _lensIsAdminActor(ctx),
+      isSocialDomain: LENS_SOCIAL_DOMAINS.has(artifact.domain),
+    });
+    if (updateDenial) return updateDenial;
   }
   // Validate status transitions if status is changing
   if (meta?.status && meta.status !== artifact.meta?.status) {
