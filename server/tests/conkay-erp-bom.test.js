@@ -13,7 +13,7 @@ import {
   defaultTransform,
 } from '../lib/conkay/assembly-store.js';
 import { attachMaterialToPart } from '../lib/conkay/material-library.js';
-import { buildErpBom, erpBomToCsv } from '../lib/conkay/erp-bom.js';
+import { buildErpBom, erpBomToCsv, parseVendorPriceList } from '../lib/conkay/erp-bom.js';
 
 function boxMesh() {
   // unit cube
@@ -67,11 +67,87 @@ describe('conkay ERP-shaped BOM', () => {
     assert.equal(line.material, 'steel');
     assert.ok(line.massKg != null && line.massKg > 0);
     assert.ok(line.volumeM3 != null && line.volumeM3 > 0);
-    assert.equal(line.vendorId, 'STUB-VENDOR');
-    assert.ok(line.unitCostUsd != null && line.unitCostUsd > 0);
-    assert.ok(bom.rollup.rollupCostUsd > bom.rollup.materialCostUsd);
+    // Q45: no price source supplied → honestly unpriced. There is no
+    // stub vendor and no hard-coded $/kg estimate anymore.
+    assert.equal(line.vendorId, null);
+    assert.equal(line.vendorName, null);
+    assert.equal(line.unitCostUsd, null);
+    assert.equal(line.extendedCostUsd, null);
+    assert.equal(line.costBasis, 'unpriced');
+    assert.equal(bom.rollup.materialCostUsd, 0);
+    assert.equal(bom.rollup.pricedLines, 0);
+    assert.equal(bom.rollup.unpricedLines, 1);
     assert.match(bom.honesty.note, /ERP-shaped BOM export LIVE/);
     assert.match(bom.honesty.not, /SAP/);
+  });
+
+  it('prices lines from an imported vendor price list (material rate, then part number)', () => {
+    const db = new Database(':memory:');
+    ensureAssemblyTables(db);
+    const asm = createAssembly(db, { name: 'erp-priced' });
+    const a = addPart(db, asm.id, {
+      name: 'plate',
+      kind: 'box',
+      source: 'test',
+      transform: defaultTransform(),
+      mesh: boxMesh(),
+      material: 'steel',
+      meta: { intent: { width: 1, depth: 1, height: 1, material: 'steel' }, erp: { partNumber: 'PN-1' } },
+    });
+    attachMaterialToPart(db, asm.id, a.part.id, 'steel');
+
+    // Material rate: unit cost = mass x rate; vendor defaults flow in.
+    const byRate = buildErpBom(db, asm.id, {
+      priceList: [{ material: 'steel', costPerKgUsd: 0.9, vendorId: 'V-9', vendorName: 'Real Metals Co', leadTimeDays: 21 }],
+    });
+    const rl = byRate.lines[0];
+    assert.equal(rl.costBasis, 'vendor_price_list_rate');
+    assert.ok(Math.abs(rl.unitCostUsd - rl.massKg * 0.9) < 1e-6);
+    assert.equal(rl.vendorId, 'V-9');
+    assert.equal(rl.leadTimeDays, 21);
+    assert.equal(byRate.rollup.pricedLines, 1);
+    assert.ok(byRate.rollup.rollupCostUsd > byRate.rollup.materialCostUsd, 'overhead applies on priced lines');
+
+    // Part-number unit price beats the material rate.
+    const byPart = buildErpBom(db, asm.id, {
+      priceList: [
+        { material: 'steel', costPerKgUsd: 0.9 },
+        { partNumber: 'PN-1', unitCostUsd: 42.5 },
+      ],
+    });
+    assert.equal(byPart.lines[0].costBasis, 'vendor_price_list');
+    assert.equal(byPart.lines[0].unitCostUsd, 42.5);
+  });
+
+  it('a per-part meta.erp override still prices the line (part_override)', () => {
+    const db = new Database(':memory:');
+    ensureAssemblyTables(db);
+    const asm = createAssembly(db, { name: 'erp-override' });
+    addPart(db, asm.id, {
+      name: 'plate',
+      kind: 'box',
+      source: 'test',
+      transform: defaultTransform(),
+      mesh: boxMesh(),
+      material: 'steel',
+      meta: { intent: { width: 1, depth: 1, height: 1, material: 'steel' }, erp: { unitCostUsd: 7.25, vendorId: 'V-OVERRIDE' } },
+    });
+    const bom = buildErpBom(db, asm.id);
+    assert.equal(bom.lines[0].costBasis, 'part_override');
+    assert.equal(bom.lines[0].unitCostUsd, 7.25);
+    assert.equal(bom.lines[0].vendorId, 'V-OVERRIDE');
+  });
+
+  it('parseVendorPriceList accepts CSV text and JSON, and reports bad rows', () => {
+    const csv = parseVendorPriceList('partNumber,unitCostUsd,vendorName\nPN-1,10.5,"Acme, Inc"\n,,\n');
+    assert.equal(csv.rows.length, 1);
+    assert.equal(csv.rows[0].vendorName, 'Acme, Inc');
+    assert.equal(csv.rows[0].unitCostUsd, 10.5);
+    assert.equal(csv.errors.length, 1, 'blank-priced row reported');
+    const json = parseVendorPriceList('[{"material":"steel","costPerKgUsd":0.9}]');
+    assert.equal(json.rows.length, 1);
+    assert.equal(json.rows[0].costPerKgUsd, 0.9);
+    assert.deepEqual(parseVendorPriceList(null), { rows: [], errors: [] });
   });
 
   it('erpBomToCsv emits header + line + rollup comments', () => {

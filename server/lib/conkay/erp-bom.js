@@ -6,15 +6,102 @@ import { buildBom } from './assembly-export.js';
 import { getPart } from './assembly-store.js';
 import { resolveMaterial } from './material-library.js';
 
-/** Stub unit costs ($/kg) for rollup — NOT live vendor pricing. */
-export const MATERIAL_COST_USD_PER_KG = Object.freeze({
-  steel: 0.85,
-  aluminum: 2.4,
-  concrete: 0.12,
-  timber: 1.1,
-  plastic: 1.8,
-  unspecified: 1.0,
-});
+/**
+ * Vendor price source (Q45/A#28/B#27). Costs in a BOM come ONLY from
+ * real data the caller supplies — an imported vendor price list
+ * (opts.priceList: array of rows, a JSON string, or CSV text) or a
+ * per-part override in part.meta.erp. There is deliberately NO
+ * built-in $/kg table: a line with no price source is reported
+ * `unpriced` with a null cost instead of a hard-coded estimate.
+ *
+ * Price-list row shape (all fields optional except a price):
+ *   partNumber   — matches a BOM line's part number (unit price)
+ *   material     — material id the row prices (per-kg rate and/or
+ *                  vendor defaults for that material)
+ *   unitCostUsd  — price per unit (partNumber rows)
+ *   costPerKgUsd — price per kg (material rows)
+ *   vendorId, vendorName, leadTimeDays — vendor defaults for matches
+ */
+export function parseVendorPriceList(input) {
+  if (input == null) return { rows: [], errors: [] };
+  let rawRows = null;
+  if (Array.isArray(input)) rawRows = input;
+  else if (typeof input === "string") {
+    const text = input.trim();
+    if (!text) return { rows: [], errors: [] };
+    if (text.startsWith("[") || text.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(text);
+        rawRows = Array.isArray(parsed) ? parsed : parsed?.rows || parsed?.prices || null;
+      } catch (e) { return { rows: [], errors: [`price list JSON did not parse: ${e.message}`] }; }
+    } else {
+      rawRows = parsePriceListCsv(text);
+      if (!rawRows) return { rows: [], errors: ["price list CSV needs a header row (partNumber, material, unitCostUsd, costPerKgUsd, …)"] };
+    }
+  }
+  if (!Array.isArray(rawRows)) return { rows: [], errors: ["price list must be an array of rows, JSON, or CSV text"] };
+  const rows = [];
+  const errors = [];
+  rawRows.forEach((r, i) => {
+    if (!r || typeof r !== "object") { errors.push(`row ${i + 1}: not an object`); return; }
+    const num = (v) => (v == null || v === "" ? null : (Number.isFinite(Number(v)) ? Number(v) : null));
+    const row = {
+      partNumber: r.partNumber ? String(r.partNumber) : null,
+      material: r.material ? String(r.material).toLowerCase() : null,
+      unitCostUsd: num(r.unitCostUsd),
+      costPerKgUsd: num(r.costPerKgUsd ?? r.costPerKg ?? r.usdPerKg),
+      vendorId: r.vendorId ? String(r.vendorId) : null,
+      vendorName: r.vendorName ? String(r.vendorName) : null,
+      leadTimeDays: num(r.leadTimeDays),
+    };
+    if (!row.partNumber && !row.material) { errors.push(`row ${i + 1}: needs partNumber or material`); return; }
+    if (row.unitCostUsd == null && row.costPerKgUsd == null && !row.vendorId && !row.vendorName && row.leadTimeDays == null) {
+      errors.push(`row ${i + 1}: carries no price or vendor data`);
+      return;
+    }
+    rows.push(row);
+  });
+  return { rows, errors };
+}
+
+function parsePriceListCsv(text) {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (lines.length < 1) return null;
+  const parseLine = (line) => {
+    const out = [];
+    let cur = "";
+    let inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQ) {
+        if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else inQ = false; }
+        else cur += ch;
+      } else if (ch === '"') inQ = true;
+      else if (ch === ",") { out.push(cur.trim()); cur = ""; }
+      else cur += ch;
+    }
+    out.push(cur.trim());
+    return out;
+  };
+  const headers = parseLine(lines[0]).map((h) => h.trim());
+  if (!headers.some((h) => ["partNumber", "material", "unitCostUsd", "costPerKgUsd"].includes(h))) return null;
+  return lines.slice(1).map((line) => {
+    const cells = parseLine(line);
+    const row = {};
+    headers.forEach((h, i) => { if (cells[i] !== undefined && cells[i] !== "") row[h] = cells[i]; });
+    return row;
+  });
+}
+
+function indexPriceRows(rows) {
+  const byPartNumber = new Map();
+  const byMaterial = new Map();
+  for (const row of rows) {
+    if (row.partNumber && !byPartNumber.has(row.partNumber)) byPartNumber.set(row.partNumber, row);
+    if (row.material && !byMaterial.has(row.material)) byMaterial.set(row.material, row);
+  }
+  return { byPartNumber, byMaterial };
+}
 
 function meshAabbVolumeM3(mesh, transform) {
   const p = mesh?.positions;
@@ -110,43 +197,63 @@ function revisionFor(part) {
   return String(part.meta?.revision || part.meta?.erp?.revision || 'A');
 }
 
-function vendorStubFor(part) {
+function vendorFor(part, priceIdx, massProps, partNumber) {
   const erp = part.meta?.erp || {};
+  const partRow = priceIdx.byPartNumber.get(partNumber) || null;
+  const matRow = priceIdx.byMaterial.get(massProps.materialId) || null;
+  const pick = (...vals) => vals.find((v) => v != null && v !== "") ?? null;
   return {
-    vendorId: erp.vendorId || 'STUB-VENDOR',
-    vendorName: erp.vendorName || 'Stub Industrial Supply',
-    leadTimeDays: Number.isFinite(Number(erp.leadTimeDays)) ? Number(erp.leadTimeDays) : 14,
-    unitCostUsdOverride: erp.unitCostUsd != null ? Number(erp.unitCostUsd) : null,
+    partRow,
+    matRow,
+    vendorId: pick(erp.vendorId, partRow?.vendorId, matRow?.vendorId),
+    vendorName: pick(erp.vendorName, partRow?.vendorName, matRow?.vendorName),
+    leadTimeDays: pick(
+      Number.isFinite(Number(erp.leadTimeDays)) && erp.leadTimeDays != null ? Number(erp.leadTimeDays) : null,
+      partRow?.leadTimeDays, matRow?.leadTimeDays),
+    unitCostUsdOverride: erp.unitCostUsd != null && Number.isFinite(Number(erp.unitCostUsd)) ? Number(erp.unitCostUsd) : null,
   };
 }
 
 /**
  * ERP-shaped BOM: part numbers, revisions, qty, material, mass/volume,
- * vendor stubs, rollup cost stub. NOT SAP/Oracle.
+ * vendor + cost data from an imported price list or per-part
+ * overrides only (see parseVendorPriceList). NOT SAP/Oracle.
+ *
+ * opts.priceList — array of rows | JSON string | CSV text.
  */
 export function buildErpBom(db, assemblyId, opts = {}) {
   const base = buildBom(db, assemblyId);
   if (!base.ok) return base;
   const overheadPct = Number.isFinite(Number(opts.overheadPct)) ? Number(opts.overheadPct) : 0.15;
+  const priceList = parseVendorPriceList(opts.priceList);
+  const priceIdx = indexPriceRows(priceList.rows);
   const lines = [];
   let totalMassKg = 0;
   let totalMaterialCostUsd = 0;
   let massKnown = 0;
+  let pricedLines = 0;
 
   for (const p of base.parts) {
     const full = getPart(db, assemblyId, p.id) || p;
     const massProps = estimatePartMassProps(full);
-    const vendor = vendorStubFor(full);
+    const partNumber = partNumberFor(full);
+    const vendor = vendorFor(full, priceIdx, massProps, partNumber);
     const qty = Number(full.meta?.erp?.qty || p.qty || 1) || 1;
-    const costPerKg =
-      MATERIAL_COST_USD_PER_KG[massProps.materialId] ?? MATERIAL_COST_USD_PER_KG.unspecified;
-    const unitCostUsd =
-      vendor.unitCostUsdOverride != null && Number.isFinite(vendor.unitCostUsdOverride)
-        ? vendor.unitCostUsdOverride
-        : massProps.massKg == null
-          ? null
-          : massProps.massKg * costPerKg;
+    // Cost resolution, in precedence order. No source → unpriced.
+    let unitCostUsd = null;
+    let costBasis = 'unpriced';
+    if (vendor.partRow?.unitCostUsd != null) {
+      unitCostUsd = vendor.partRow.unitCostUsd;
+      costBasis = 'vendor_price_list';
+    } else if (vendor.unitCostUsdOverride != null) {
+      unitCostUsd = vendor.unitCostUsdOverride;
+      costBasis = 'part_override';
+    } else if (vendor.matRow?.costPerKgUsd != null && massProps.massKg != null) {
+      unitCostUsd = massProps.massKg * vendor.matRow.costPerKgUsd;
+      costBasis = 'vendor_price_list_rate';
+    }
     const extendedCostUsd = unitCostUsd == null ? null : unitCostUsd * qty;
+    if (unitCostUsd != null) pricedLines += 1;
     if (massProps.massKg != null) {
       totalMassKg += massProps.massKg * qty;
       massKnown += 1;
@@ -158,7 +265,7 @@ export function buildErpBom(db, assemblyId, opts = {}) {
       (full.mesh?.indices?.length ? Math.floor(full.mesh.indices.length / 3) : null);
 
     lines.push({
-      partNumber: partNumberFor(full),
+      partNumber,
       revision: revisionFor(full),
       name: full.name || p.name,
       partId: full.id || p.id,
@@ -176,8 +283,7 @@ export function buildErpBom(db, assemblyId, opts = {}) {
       leadTimeDays: vendor.leadTimeDays,
       unitCostUsd,
       extendedCostUsd,
-      costBasis:
-        vendor.unitCostUsdOverride != null ? 'vendor_override_stub' : 'mass_x_material_rate_stub',
+      costBasis,
       hasMesh: !!(full.mesh?.positions?.length),
       advanced_brep: !!full.meta?.advanced_brep,
       triangleCount: tri,
@@ -186,6 +292,7 @@ export function buildErpBom(db, assemblyId, opts = {}) {
 
   const overheadUsd = totalMaterialCostUsd * overheadPct;
   const rollupCostUsd = totalMaterialCostUsd + overheadUsd;
+  const unpricedLines = lines.length - pricedLines;
 
   return {
     ok: true,
@@ -194,10 +301,13 @@ export function buildErpBom(db, assemblyId, opts = {}) {
     assemblyName: base.assemblyName,
     totalParts: base.totalParts,
     lines,
+    priceList: { rows: priceList.rows.length, errors: priceList.errors },
     rollup: {
       totalMassKg: massKnown ? totalMassKg : null,
       massLinesKnown: massKnown,
       materialCostUsd: totalMaterialCostUsd,
+      pricedLines,
+      unpricedLines,
       overheadPct,
       overheadUsd,
       rollupCostUsd,
@@ -207,7 +317,7 @@ export function buildErpBom(db, assemblyId, opts = {}) {
     honesty: {
       wave: 'ERP-BOM',
       status: 'LIVE',
-      note: 'ERP-shaped BOM export LIVE — part numbers, revisions, qty, material, mass/volume estimates, vendor stubs, CSV+JSON, rollup cost stub.',
+      note: 'ERP-shaped BOM export LIVE — part numbers, revisions, qty, material, mass/volume estimates, CSV+JSON. Costs and vendors come only from an imported vendor price list or per-part overrides; lines without a price source are unpriced (null cost), never estimated from hard-coded rates.',
       not: 'SAP / Oracle / NetSuite / live vendor EDI / ISO weighing',
       volumeNote:
         'Volume from OCC bbox when present, else mesh AABB, else intent dims — not CAD kernel mass props API.',
@@ -257,6 +367,8 @@ export function erpBomToCsv(erpBom) {
   rows.push(`# rollup.overheadUsd,${erpBom.rollup?.overheadUsd ?? ''}`);
   rows.push(`# rollup.rollupCostUsd,${erpBom.rollup?.rollupCostUsd ?? ''}`);
   rows.push(`# rollup.totalMassKg,${erpBom.rollup?.totalMassKg ?? ''}`);
+  rows.push(`# rollup.pricedLines,${erpBom.rollup?.pricedLines ?? ''}`);
+  rows.push(`# rollup.unpricedLines,${erpBom.rollup?.unpricedLines ?? ''}`);
   rows.push('# honesty,ERP-shaped BOM export LIVE — not SAP/Oracle');
   return {
     ok: true,
@@ -265,4 +377,4 @@ export function erpBomToCsv(erpBom) {
   };
 }
 
-export default { buildErpBom, erpBomToCsv, estimatePartMassProps, MATERIAL_COST_USD_PER_KG };
+export default { buildErpBom, erpBomToCsv, estimatePartMassProps, parseVendorPriceList };
