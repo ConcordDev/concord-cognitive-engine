@@ -4,6 +4,7 @@ import {
   coerceDateKey,
   formatDateKey,
   fromZonedInputValue,
+  nextHourSlotInZone,
   profileTimeZone,
   resolveCalendarTimeZone,
   shiftDateKey,
@@ -59,5 +60,28 @@ describe('zoned wall time ⇄ instant (S1)', () => {
   it('names the zone abbreviation for the detail whisper', () => {
     expect(zoneAbbrev('America/New_York', new Date('2026-10-28T18:00:00.000Z'))).toBe('EDT');
     expect(zoneAbbrev('America/New_York', new Date('2026-11-04T19:00:00.000Z'))).toBe('EST');
+  });
+});
+
+describe('nextHourSlotInZone (F13 form defaults)', () => {
+  it('returns the next full hour in the zone, one hour long', () => {
+    // 2:20 PM EDT -> slot starts 3:00 PM EDT (19:00Z), ends 20:00Z.
+    const { start, end } = nextHourSlotInZone('America/New_York', new Date('2026-10-28T18:20:00.000Z'));
+    expect(start.toISOString()).toBe('2026-10-28T19:00:00.000Z');
+    expect(end.toISOString()).toBe('2026-10-28T20:00:00.000Z');
+  });
+
+  it('never returns a zero-duration or past slot near the hour edge', () => {
+    // 2:59 PM EDT -> the 3 PM slot is a minute away; the helper must
+    // land on 4:00 PM EDT (20:00Z) instead.
+    const { start, end } = nextHourSlotInZone('America/New_York', new Date('2026-10-28T18:59:00.000Z'));
+    expect(start.toISOString()).toBe('2026-10-28T20:00:00.000Z');
+    expect(end.getTime() - start.getTime()).toBe(3_600_000);
+  });
+
+  it('works in UTC too', () => {
+    const { start, end } = nextHourSlotInZone('UTC', new Date('2026-01-15T10:05:00.000Z'));
+    expect(start.toISOString()).toBe('2026-01-15T11:00:00.000Z');
+    expect(end.toISOString()).toBe('2026-01-15T12:00:00.000Z');
   });
 });
