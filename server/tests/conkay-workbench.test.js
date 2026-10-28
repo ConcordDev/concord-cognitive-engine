@@ -236,5 +236,7 @@ describe("the routes (signed in, owner only)", () => {
     assert.ok(ok.body.rerun.includes("assembly.vehicle@VEH"), JSON.stringify(ok.body.rerun));
     const wb = ok.body.assembly.components.find((c) => c.id === "BODY_SHELL").parameters.find((p) => p.id === "wheelbase");
     assert.equal(wb.value, 2.8);
+    // the returned assembly is viewer-ready (HANDOFF-3 A2): meshes hydrated from the surface spec
+    assert.ok(ok.body.assembly.surface.mesh.positions.length > 0, "the knob response carries a drawable body mesh");
   });
 });

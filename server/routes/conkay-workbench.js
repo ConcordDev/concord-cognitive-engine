@@ -29,6 +29,8 @@ import { parseChatBrief } from "../lib/conkay/chat/brief-parser.js";
 import { ChatSession } from "../lib/conkay/chat/session.js";
 import { DesignConversation } from "../lib/conkay/chat/what-if.js";
 import { workbenchView, assemblySnapshot, fitCheckDiff } from "../lib/conkay/chat/workbench.js";
+import { hydrateAssembly } from "../lib/conkay/assembly/build.js";
+import { readStlFile } from "../lib/conkay/assembly/cad-skin.js";
 import { carEvaluator } from "../lib/conkay/chat/orchestrator.js";
 import { REPAIR_RULES } from "../lib/conkay/chat/repair-rules.js";
 import { carAcceptanceAsync } from "../lib/conkay/compiler/car-from-library.js";
@@ -40,6 +42,24 @@ const plain = (r) => JSON.parse(JSON.stringify(r, (k, v) => (k === "session" || 
 
 /** A pending conversation's turns as role-tagged history for the client. */
 const historyOf = (turns) => turns.map((text) => ({ role: "user", text }));
+
+/**
+ * The compact assembly snapshot made viewer-ready (HANDOFF-3 A2): hydrateAssembly rebuilds the meshes
+ * from the surface spec; for a cad.body surface it needs the kernel's STL, which the session's own
+ * cad.body run recorded (path + sha256) — readStl serves exactly that file, nothing else.
+ */
+function hydratedAssembly(conv, compact) {
+  if (compact?.surface?.source !== "cad.body") return hydrateAssembly(compact);
+  const envs = conv?.current?.final?.envelopes;
+  const cad = envs ? [...envs.values()].find((x) => x?.solver?.id === "cad.body") : null;
+  const stl = cad?.outputs?.files?.value?.stl;
+  if (!stl?.path || !stl?.sha256) return hydrateAssembly(compact);
+  try {
+    return hydrateAssembly(compact, { readStl: (sha) => (sha === stl.sha256 ? readStlFile(stl.path) : null) });
+  } catch {
+    return hydrateAssembly(compact);
+  }
+}
 
 export default function createConkayWorkbenchRouter({ requireAuth, store = new Map(), evaluatorFor = null }) {
   const router = express.Router();
@@ -136,7 +156,7 @@ export default function createConkayWorkbenchRouter({ requireAuth, store = new M
       reply: plain(reply),
       fitCheckDiff: fitCheckDiff(before?.checks, after?.checks),
       rerun: Array.isArray(reply?.diff?.rerun) ? reply.diff.rerun : [],
-      assembly: after?.compact ?? null,
+      assembly: after ? hydratedAssembly(c.conv, after.compact) : null,
       view: workbenchView(c.conv),
     });
   }));
