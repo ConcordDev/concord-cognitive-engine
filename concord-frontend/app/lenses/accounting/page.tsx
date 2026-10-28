@@ -10,6 +10,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { Calculator } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useAuth } from '@/hooks/useAuth';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import IndicatorChart, { type IndicatorPayload } from '@/components/lens/IndicatorChart';
@@ -45,6 +46,7 @@ import { PipingProvider } from '@/components/panel-polish';
 /* ------------------------------------------------------------------ */
 
 export default function AccountingLensPage() {
+  const { user } = useAuth();
   useLensNav('accounting');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('accounting');
 
@@ -88,7 +90,7 @@ export default function AccountingLensPage() {
       <div data-lens-theme="accounting" className="relative min-h-full space-y-5 px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Accounting</h1>
+            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl" data-testid="accounting-greeting">The books{user?.username ? `, ${user.username}` : ''}</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             {balance != null && (

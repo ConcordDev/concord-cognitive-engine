@@ -36,6 +36,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useAuth } from '@/hooks/useAuth';
 import { PriceFeedProvider, priceFeedLabel, useSharedPriceFeed, type PriceFeedStatus } from '@/lib/finance/price-feed';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -108,6 +109,7 @@ const fmtUsd = (v: number, opts: Intl.NumberFormatOptions = {}) =>
   }).format(v);
 
 export default function FinanceTerminalPage() {
+  const { user } = useAuth();
   return (
     <PriceFeedProvider>
       <FinanceTerminal />
@@ -237,7 +239,7 @@ function FinanceTerminal() {
       <div data-lens-theme="finance" className="relative min-h-full space-y-5 px-8 pb-28 pt-6 text-gray-200">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Finance</h1>
+            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl" data-testid="finance-greeting">What you hold{user?.username ? `, ${user.username}` : ''}</h1>
             <div className="mt-2 flex items-center gap-2 text-[12px] text-zinc-500">
               <StatusDot state={feedDot(feedStatus)} size="xs" />
               <span>{priceFeedLabel(feedStatus)}</span>

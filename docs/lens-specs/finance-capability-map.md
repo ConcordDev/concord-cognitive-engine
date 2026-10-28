@@ -1,5 +1,34 @@
 # Finance Lens — Capability Map (Flagship Rebuild)
 
+> **Re-verification (HANDOFF-3 batch L11, 2026-10-28, against main 02910bbb):**
+> The flagship-rebuild audit below is kept as history — its honesty
+> fixes (synthetic portfolio chart, fabricated 24h high/low, fake
+> order-book depth, facade trade surfaces — all removed) are verified
+> still in effect. Current truth:
+>
+> - **77 macros now; fresh surfacing scan names all 77 in the
+>   frontend.** The classifications below stand: every non-stub macro
+>   has a designed surface; the 4 artifact-transform macros remain
+>   superseded by `investment-checkup` and the 5 inline stubs remain
+>   retired from the UI by design.
+> - Cross-reference: the separate hand audit of this lens's backend
+>   (2026-10-26, findings F1–F18 — payroll realism, FIRE/EFW2 export
+>   shapes, invoice→GL posting, Infinity acceptance, fabricated
+>   calendar dates since relabeled) lives outside this map; its items
+>   are backend-correctness work for the ranked fix queue, not lens
+>   surfacing. One of its adjacent items already shipped via
+>   HANDOFF-2: `monthly-income-set` validation (PR #1683). The batch
+>   note "`/api/events/paginated` 500" is likewise **verified fixed
+>   in current code**: `server/lib/events-page.js` coerces numeric
+>   timestamps before sorting (the localeCompare-on-number throw was
+>   the 500), and `tests/events-page.test.js` passes.
+> - **Shipped in this batch:** the concept's serif headline — "What
+>   you hold, {username}" — as the page header
+>   (`data-testid="finance-greeting"`, `tests/finance-greeting.test.tsx`).
+> - Server suites run locally this pass: finance-domain-parity +
+>   events-page — pass (in the combined 180-pass L11 run).
+
+
 > Derived, not asserted. Every macro below was enumerated by grepping
 > `server/domains/finance.js` (2020 LOC) + inline `registerLensAction("finance", …)`
 > in `server/server.js`. Realtime/feature/panel surfaces were read from the actual

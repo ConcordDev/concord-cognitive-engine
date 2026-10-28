@@ -1,4 +1,27 @@
-# accounting — Capability Map (Frontend Rebuild Program, Wave 3)
+# Accounting Lens — Capability Map (Frontend Rebuild Program, Wave 3)
+
+> **Re-verification (HANDOFF-3 batch L11, 2026-10-28, against main 02910bbb):**
+> The Wave-3 audit below is kept as history, including its two
+> verified defects and the `ai-suggest-vendor` closure (2026-07-12).
+> Current truth:
+>
+> - **112/116 macros named in the frontend** (fresh scan). The 4
+>   unnamed carry this map's standing dispositions: `ai-categorize-txn`
+>   (intentional — the bulk suggest flow wraps the same helper),
+>   `generate-invoice` + `generate-statements` (legacy artifact-shaped,
+>   superseded by `invoice-create` and the compute trio),
+>   `invoice-webhook-mark-paid` (webhook-only by design — no UI
+>   surface should exist). The other four from this map's unsurfaced-8
+>   (`audit-trail`, `reconcile`, `validate-ledger`, and the closed
+>   `ai-suggest-vendor`) are named in the frontend today.
+> - **Shipped in this batch:** the concept's serif headline — "The
+>   books, {username}" — as the page header
+>   (`data-testid="accounting-greeting"`, `tests/accounting-greeting.test.tsx`).
+> - Server suites run locally this pass: accounting-domain-parity
+>   passes (in the combined 180-pass L11 run; the probe-harness
+>   verification of 2026-10-26 also graded this domain ALL PASS on
+>   identity/hostile-input/persistence).
+
 
 > Derived, not asserted. Reproduce the macro list:
 > `grep -c 'registerLensAction("accounting"' server/domains/accounting.js` → 116
