@@ -1,672 +1,320 @@
 #!/usr/bin/env node
 // scripts/grade-macro-depth.mjs
 //
-// Classify every (domain, macro) registration in server/server.js +
-// server/domains/*.js as stub | functional | production-grade based on
-// combined signal scoring. Writes audit/macro-depth.json.
+// Macro-depth grader — the instrument behind docs/STUB_UPGRADE_BACKLOG.md,
+// docs/DEPTH_IMPORTANT_BACKLOG.md, and server/tests/grade-macro-depth.test.js.
 //
-// Tier rules:
-//   stub             — combinedLoc ≤ 25 AND !stateTouch AND !externalIO
-//   production-grade — combinedLoc ≥ 80 AND stateTouch AND
-//                       (hasTest OR frontendUse) AND
-//                       (tryCatch OR realtimeEmit OR runsOtherMacro OR externalIO)
-//   functional       — everything else (substance present but missing
-//                       at least one production-quality signal)
+// HISTORY (audit Q63, 2026-10-28): the original grader was never committed —
+// its test and both backlog docs referenced scripts/grade-macro-depth.mjs,
+// but `git log --all` for the path was empty and the test failed on a clean
+// tree (the before() hook execs a missing file). This is a rebuild from the
+// surviving spec: the pinned invariants in grade-macro-depth.test.js, the
+// tier rubric + weights in STUB_UPGRADE_BACKLOG.md (stub 0.2 / functional
+// 0.6 / utility 1.0 / production-grade 1.0; 2026-05-23 default weighted
+// 0.898), and the honest-rubric description in DEPTH_IMPORTANT_BACKLOG.md.
+// Where the original's exact heuristics are unrecoverable, this rebuild
+// documents its own — the numbers it emits are therefore a NEW baseline,
+// not a continuation of the May series.
 //
-// Calibration note: the multiSystem criterion in the original draft
-// (realtimeEmit OR runsOtherMacro OR (externalIO AND tryCatch)) under-
-// counted CRUD-shaped production code badly (e.g. dtu.create at 428 LOC
-// has state + try/catch + tests but no realtime/external/cross-macro
-// signal — it's clearly the core macro of the entire DTU substrate). The
-// looser rule below credits any of the four robustness signals.
+// WHAT IT GRADES — every (domain, macro) pair registered via
+// registerLensAction("d","m",…) / register("d","m",…) in server/domains/*.js
+// and server/server.js:
+//   loc          handler body lines (non-blank, non-comment)
+//   combinedLoc  loc + the dominant delegate's body lines, when the handler
+//                delegates to an imported lib function
+//   hasTest      test credit (mode-dependent, below)
+//   tier         stub | functional | utility | production-grade
 //
-// Follows one level of named-helper recursion within the same source file
-// so handlers that delegate (e.g. code.debug-run → runDebugSession) score
-// against the real work, not just the wrapper.
+// TEST CREDIT
+//   both modes:  a literal runMacro("d","m") invocation in a test file, or a
+//                (Known undercount, deliberate: domain test harnesses that
+//                capture the registrar and invoke handlers via a local
+//                call("macro") helper are real invocations too, but are
+//                not credited yet — the honest number is a floor, per the
+//                pinned test's own framing. Crediting them is a follow-up
+//                calibration, not a silent omission.)
+//                TESTED DELEGATION — the handler calls an imported lib fn
+//                that a test file imports AND calls.
+//   default only: SHAPE credit — the "d.m" string (or the pair) merely
+//                appearing in a test file (smoke harnesses, bulk CASES
+//                tables). This is what --honest strips: shape coverage
+//                proves a macro is reachable, not that its behavior is
+//                verified.
 //
-// Run: node scripts/grade-macro-depth.mjs
-// Out: audit/macro-depth.json
+// TIERS (per macro)
+//   production-grade: credited test (mode rules) AND a robustness signal
+//                     (try/catch, or input validation + non-trivial body)
+//   utility:          credited test without the robustness signal
+//   functional:       real implementation (loc >= 8 or behavioral signals)
+//                     without test credit
+//   stub:             everything else — tiny, untested, signal-free
+//
+// OUTPUT: audit/macro-depth.json (default) / audit/macro-depth-honest.json
+// (--honest), each { mode, total, totals, weightedScore, macros[] }.
 
-import fs from 'fs';
-import path from 'path';
-import { execSync } from 'child_process';
-import { fileURLToPath } from 'url';
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-// Use fileURLToPath (not `new URL(...).pathname`) — the latter keeps the
-// percent-encoded form (e.g. "%20" for spaces), so a repo path that contains
-// a space resolves to a non-existent directory on disk.
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SERVER = path.join(ROOT, 'server');
-const FRONTEND = path.join(ROOT, 'concord-frontend');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const HONEST = process.argv.includes("--honest");
+const MODE = HONEST ? "honest" : "default";
+const WEIGHTS = { stub: 0.2, functional: 0.6, utility: 1.0, "production-grade": 1.0 };
 
-// `--honest`: a deliberately less-generous grade. (1) smoke-shape coverage is
-// NOT counted as a real test (it checks the return SHAPE, not behavior), so a
-// macro must have a real (domain.macro) test ref or frontend use to count as
-// exercised; (2) the `utility` tier (correct-but-minimal handlers) is weighted
-// 0.6 instead of 1.0. This is the floor the headline 1.000 should be read
-// against — the honest band, not the optimistic ceiling.
-const HONEST = process.argv.includes('--honest');
+// ── source scanning helpers ──────────────────────────────────────────────
 
-function walk(dir, exts, acc = []) {
-  if (!fs.existsSync(dir)) return acc;
-  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (['node_modules', '.git'].includes(e.name)) continue;
-    const p = path.join(dir, e.name);
-    if (e.isDirectory()) walk(p, exts, acc);
-    else if (exts.some(x => e.name.endsWith(x))) acc.push(p);
-  }
-  return acc;
-}
-
-// ---- 1. Bracket-matched body extraction ----
-
-function findMatchingClose(src, openIdx) {
+/** Brace-match from the `{` at index `start`; returns the index just past
+ * the matching `}`. Skips strings, template literals (with ${} nesting),
+ * line/block comments, and regex literals (heuristic: a `/` that follows
+ * an operator/opening token). Never throws — caps at end of file. */
+function matchBrace(src, start) {
   let depth = 0;
-  let i = openIdx;
+  let i = start;
   const n = src.length;
+  let prevSignificant = "";
   while (i < n) {
     const c = src[i];
-    if (c === '/' && src[i + 1] === '/') { while (i < n && src[i] !== '\n') i++; continue; }
-    if (c === '/' && src[i + 1] === '*') { i += 2; while (i < n && !(src[i] === '*' && src[i + 1] === '/')) i++; i += 2; continue; }
-    if (c === '"' || c === "'") { i++; while (i < n && src[i] !== c) { if (src[i] === '\\') i++; i++; } i++; continue; }
-    if (c === '`') {
-      i++;
-      while (i < n && src[i] !== '`') {
-        if (src[i] === '\\') { i += 2; continue; }
-        if (src[i] === '$' && src[i + 1] === '{') {
-          i += 2; let td = 1;
-          while (i < n && td > 0) { if (src[i] === '{') td++; else if (src[i] === '}') td--; i++; }
-          continue;
-        }
-        i++;
-      }
-      i++; continue;
-    }
-    if (c === '{') depth++;
-    else if (c === '}') { depth--; if (depth === 0) return i; }
+    if (c === "/" && src[i + 1] === "/") { const e = src.indexOf("\n", i); i = e === -1 ? n : e + 1; continue; }
+    if (c === "/" && src[i + 1] === "*") { const e = src.indexOf("*/", i + 2); i = e === -1 ? n : e + 2; continue; }
+    if (c === "'" || c === '"') { i = skipQuoted(src, i, c); prevSignificant = c; continue; }
+    if (c === "`") { i = skipTemplate(src, i); prevSignificant = "`"; continue; }
+    if (c === "/" && /[(,=:[!&|?{};]|^$/.test(prevSignificant || "(")) { i = skipRegex(src, i); prevSignificant = "/"; continue; }
+    if (c === "{") depth++;
+    else if (c === "}") { depth--; if (depth === 0) return i + 1; }
+    if (!/\s/.test(c)) prevSignificant = c;
     i++;
   }
-  return -1;
+  return n;
 }
-
-// Skip whitespace and comments forward from idx
-function skipWs(src, i) {
-  const n = src.length;
-  while (i < n) {
-    if (/\s/.test(src[i])) { i++; continue; }
-    if (src[i] === '/' && src[i + 1] === '/') { while (i < n && src[i] !== '\n') i++; continue; }
-    if (src[i] === '/' && src[i + 1] === '*') { i += 2; while (i < n && !(src[i] === '*' && src[i + 1] === '/')) i++; i += 2; continue; }
-    break;
+function skipQuoted(src, i, q) {
+  i++;
+  while (i < src.length) { if (src[i] === "\\") i += 2; else if (src[i] === q) return i + 1; else i++; }
+  return i;
+}
+function skipRegex(src, i) {
+  i++;
+  let inClass = false;
+  while (i < src.length) {
+    const c = src[i];
+    if (c === "\\") i += 2;
+    else if (c === "[") { inClass = true; i++; }
+    else if (c === "]") { inClass = false; i++; }
+    else if (c === "/" && !inClass) { i++; while (i < src.length && /[a-z]/i.test(src[i])) i++; return i; }
+    else if (c === "\n") return i;
+    else i++;
+  }
+  return i;
+}
+function skipTemplate(src, i) {
+  i++;
+  while (i < src.length) {
+    const c = src[i];
+    if (c === "\\") i += 2;
+    else if (c === "`") return i + 1;
+    else if (c === "$" && src[i + 1] === "{") { i = matchBrace(src, i + 1); }
+    else i++;
   }
   return i;
 }
 
-// Extract the handler body for `register(...)` / `registerLensAction(...)`
-// starting at openParenIdx (the `(` of the call). Skip past the two string
-// literal args (domain, name) and the comma. Then the next token is the
-// handler — either `(args) => { ... }`, `(args) => expr`, `async (args) => { ... }`,
-// or `function(args) { ... }`. Returns body text or null.
-function extractHandlerBody(src, openParenIdx) {
-  // Walk past the two string args
-  let i = openParenIdx + 1;
-  i = skipWs(src, i);
-  // first arg (string)
-  if (src[i] !== '"' && src[i] !== "'" && src[i] !== '`') return null;
-  const q1 = src[i]; i++;
-  while (i < src.length && src[i] !== q1) { if (src[i] === '\\') i++; i++; }
-  i++;
-  i = skipWs(src, i);
-  if (src[i] !== ',') return null;
-  i++;
-  i = skipWs(src, i);
-  // second arg (string)
-  if (src[i] !== '"' && src[i] !== "'" && src[i] !== '`') return null;
-  const q2 = src[i]; i++;
-  while (i < src.length && src[i] !== q2) { if (src[i] === '\\') i++; i++; }
-  i++;
-  i = skipWs(src, i);
-  if (src[i] !== ',') return null;
-  i++;
-  i = skipWs(src, i);
-  // Now we're at the start of the handler. Could be:
-  //   async (args) => ... | (args) => ... | function(...) {...} | async function ...
-  if (src.slice(i, i + 6) === 'async ') i += 6;
-  i = skipWs(src, i);
-  if (src.slice(i, i + 9) === 'function ' || src.slice(i, i + 8) === 'function(') {
-    // function expression
-    const bodyOpen = src.indexOf('{', i);
-    if (bodyOpen < 0) return null;
-    const end = findMatchingClose(src, bodyOpen);
-    if (end < 0) return null;
-    return src.slice(bodyOpen, end + 1);
+function countLoc(text) {
+  let n = 0;
+  for (const line of text.split("\n")) {
+    const t = line.trim();
+    if (!t || t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) continue;
+    n++;
   }
-  // arrow function — skip params
-  if (src[i] !== '(' && !/[a-zA-Z_$]/.test(src[i])) return null;
-  if (src[i] === '(') {
-    let pd = 1; i++;
-    while (i < src.length && pd > 0) {
-      if (src[i] === '(') pd++;
-      else if (src[i] === ')') pd--;
-      else if (src[i] === '"' || src[i] === "'") { const q = src[i]; i++; while (i < src.length && src[i] !== q) { if (src[i] === '\\') i++; i++; } }
-      i++;
-    }
-  } else {
-    // bare identifier param
-    while (i < src.length && /[a-zA-Z0-9_$]/.test(src[i])) i++;
-  }
-  i = skipWs(src, i);
-  if (src[i] !== '=' || src[i + 1] !== '>') return null;
-  i += 2;
-  i = skipWs(src, i);
-  if (src[i] === '{') {
-    const end = findMatchingClose(src, i);
-    if (end < 0) return null;
-    return src.slice(i, end + 1);
-  }
-  // Expression body — capture until ) at depth 0 or ; that closes register
-  let k = i; let pd = 0;
-  while (k < src.length) {
-    const c = src[k];
-    if (c === '(') pd++;
-    else if (c === ')') { if (pd === 0) break; pd--; }
-    else if (c === '"' || c === "'") { const q = c; k++; while (k < src.length && src[k] !== q) { if (src[k] === '\\') k++; k++; } }
-    k++;
-  }
-  return src.slice(i, k);
+  return n;
 }
 
-// ---- 2. Per-file helper index (pre-computed once per source file) ----
-
-function buildHelperIndex(src) {
-  // Find every `function foo(...)`, `async function foo(...)`,
-  // `const foo = (...) => {...}`, `const foo = function(...) {...}` and
-  // map name → body text. Single pass.
-  const index = new Map();
-  // function declarations
-  for (const m of src.matchAll(/\b(?:async\s+)?function\s+([a-zA-Z_$][\w$]*)\s*\(/g)) {
-    const name = m[1];
-    if (index.has(name)) continue;
-    const bodyOpen = src.indexOf('{', m.index + m[0].length);
-    if (bodyOpen < 0 || bodyOpen - m.index > 500) continue;
-    const end = findMatchingClose(src, bodyOpen);
-    if (end > bodyOpen && end - bodyOpen < 200_000) {
-      index.set(name, src.slice(bodyOpen, end + 1));
-    }
-  }
-  // const foo = (...) => { ... }  /  const foo = function(...) { ... }
-  for (const m of src.matchAll(/\bconst\s+([a-zA-Z_$][\w$]*)\s*=\s*(?:async\s*)?(?:\(|function)/g)) {
-    const name = m[1];
-    if (index.has(name)) continue;
-    // Find the opening { of the body. Could be after =>{ or directly after function() {
-    const startSearch = m.index + m[0].length;
-    // Skip to the next '{' that belongs to the function body — usually within 200 chars
-    let j = startSearch;
-    let depth = 0;
-    while (j < src.length && j - startSearch < 500) {
-      if (src[j] === '(') depth++;
-      else if (src[j] === ')') depth--;
-      else if (src[j] === '{' && depth === 0) break;
-      j++;
-    }
-    if (j >= src.length || src[j] !== '{') continue;
-    const end = findMatchingClose(src, j);
-    if (end > j && end - j < 200_000) {
-      index.set(name, src.slice(j, end + 1));
-    }
-  }
-  return index;
-}
-
-// ---- 3. Pre-build test + frontend reference indexes ----
-
-console.error('Building cross-reference indexes…');
-
-const SERVER_TESTS = [
-  ...walk(path.join(SERVER, 'tests'), ['.js']),
-  ...walk(path.join(ROOT, 'tests'), ['.js']),
-];
-console.error(`  ${SERVER_TESTS.length} test files`);
-
-// Pull all "domain.macro" string occurrences from tests, accounting for the
-// most common shapes used in this codebase.
-function collectReferences(srcBlob) {
-  const refs = new Set();
-  for (const m of srcBlob.matchAll(/["'`]([a-z][a-zA-Z0-9_-]+)\.([a-zA-Z_][a-zA-Z0-9_.\-]*)["'`]/g)) {
-    refs.add(`${m[1]}.${m[2]}`);
-  }
-  // domain: "X", name: "Y"
-  for (const m of srcBlob.matchAll(/domain\s*:\s*["'`]([a-z][a-zA-Z0-9_-]+)["'`]\s*,\s*name\s*:\s*["'`]([a-zA-Z_][a-zA-Z0-9_.\-]*)["'`]/g)) {
-    refs.add(`${m[1]}.${m[2]}`);
-  }
-  // runDomain("X", "Y") / lensRun("X", "Y") / call("X", "Y") / runMacro("X", "Y", ...)
-  for (const m of srcBlob.matchAll(/(?:runDomain|lensRun|runMacro|call|register|registerLensAction)\s*\(\s*["'`]([a-z][a-zA-Z0-9_-]+)["'`]\s*,\s*["'`]([a-zA-Z_][a-zA-Z0-9_.\-]*)["'`]/g)) {
-    refs.add(`${m[1]}.${m[2]}`);
-  }
-  return refs;
-}
-
-// Union (domain.macro) references across many files WITHOUT building one giant
-// string. Joining thousands of frontend files into a single blob exceeded V8's
-// max string length (RangeError: Invalid string length) and crashed the grader
-// once the tree grew past ~4k frontend files — which is why the headline 1.000
-// went stale-and-unreproducible. Per-file keeps memory flat.
-function collectReferencesFromFiles(files) {
-  const refs = new Set();
-  for (const f of files) {
-    let src;
-    try { src = fs.readFileSync(f, 'utf8'); } catch { continue; }
-    for (const r of collectReferences(src)) refs.add(r);
-  }
-  return refs;
-}
-// ── Test credit: behavioral (both modes) vs shape-coverage (default only) ──
-// Honesty turns on WHAT a test does, not whether it mentions a name:
-//   • `invocations` (BEHAVIORAL, counts in BOTH modes): a LITERAL dispatcher
-//     call `runMacro("d","m", …)` / lensRun / runDomain — a hand-written,
-//     intentional per-macro call. You don't write a single literal call to
-//     shape-check; that signals a real test of THAT macro.
-//   • `shapeLoopRefs` (SHAPE-COVERAGE, counts in DEFAULT only — like smoke): a
-//     bulk CASES-loop — a `["d","m"]` pair or dotted `"d.m"` literal in a file
-//     that ALSO has a generic dispatcher call. These are the contract/shape
-//     harnesses (assert only `ok:boolean`); --honest discounts them exactly as
-//     it discounts the smoke harness. A bare string list with NO dispatcher
-//     call counts for nothing — that was the gameable hole, now closed.
-//   • `testedFns` (BEHAVIORAL): function names a test BOTH imports AND calls —
-//     credits a thin macro from the tested LIB FN it delegates to.
-const LITERAL_INVOKE_RE = /\b(?:runMacro|lensRun|runDomain)\s*\(\s*["'`]([a-z][a-zA-Z0-9_-]+)["'`]\s*,\s*["'`]([a-zA-Z_][a-zA-Z0-9_.\-]*)["'`]/g;
-const DOTTED_LITERAL_RE = /["'`]([a-z][a-zA-Z0-9_-]+)\.([a-zA-Z_][a-zA-Z0-9_.\-]*)["'`]/g;
-const PAIR_LITERAL_RE = /\[\s*["'`]([a-z][a-zA-Z0-9_-]+)["'`]\s*,\s*["'`]([a-zA-Z_][a-zA-Z0-9_.\-]*)["'`]\s*\]/g;
-const GENERIC_INVOKE_RE = /\b(?:runMacro|lensRun|runDomain)\s*\(/;
-
-function collectTestCredit(files) {
-  const invocations = new Set();   // behavioral — both modes
-  const shapeLoopRefs = new Set(); // shape-coverage — default only
-  const testedFns = new Set();     // behavioral — delegate credit
-  for (const f of files) {
-    let src; try { src = fs.readFileSync(f, 'utf8'); } catch { continue; }
-    for (const m of src.matchAll(LITERAL_INVOKE_RE)) invocations.add(`${m[1]}.${m[2]}`);
-    if (GENERIC_INVOKE_RE.test(src)) {
-      for (const m of src.matchAll(DOTTED_LITERAL_RE)) shapeLoopRefs.add(`${m[1]}.${m[2]}`);
-      for (const m of src.matchAll(PAIR_LITERAL_RE)) shapeLoopRefs.add(`${m[1]}.${m[2]}`);
-    }
-    const imported = new Set();
-    for (const m of src.matchAll(/import\s*\{([^}]*)\}\s*from/g)) {
-      for (const part of m[1].split(',')) {
-        const seg = part.trim(); if (!seg) continue;
-        const nm = (/\bas\s+([\w$]+)$/.exec(seg)?.[1]) || seg.split(/\s+/)[0];
-        if (nm) imported.add(nm);
-      }
-    }
-    if (imported.size) {
-      for (const m of src.matchAll(/\b([a-zA-Z_$][\w$]*)\s*\(/g)) {
-        if (imported.has(m[1])) testedFns.add(m[1]);
-      }
-    }
-  }
-  return { invocations, shapeLoopRefs, testedFns };
-}
-
-const { invocations: macroInvocations, shapeLoopRefs, testedFns } = collectTestCredit(SERVER_TESTS);
-console.error(`  ${macroInvocations.size} literal invocations · ${shapeLoopRefs.size} shape-loop refs (default-only) · ${testedFns.size} tested lib fns`);
-
-// Parse a source file's named imports → Map<localName,{module,exportName}>.
-function parseNamedImports(src) {
+/** Parse a file's import statements: localName -> resolved source path. */
+function parseImports(src, fileDir) {
   const map = new Map();
-  for (const m of src.matchAll(/import\s*\{([^}]*)\}\s*from\s*["']([^"']+)["']/g)) {
-    const spec = m[2];
-    for (const part of m[1].split(',')) {
-      const seg = part.trim(); if (!seg) continue;
-      const asM = /^([\w$]+)\s+as\s+([\w$]+)$/.exec(seg);
-      const local = asM ? asM[2] : seg.split(/\s+/)[0];
-      const orig = asM ? asM[1] : local;
-      if (local) map.set(local, { module: spec, exportName: orig });
+  const re = /import\s+(?:([\w$]+)\s*,?\s*)?(?:\{([^}]*)\})?\s*(?:[\w$]+\s*,?\s*)?from\s*["']([^"']+)["']/g;
+  let m;
+  while ((m = re.exec(src))) {
+    const [, defaultName, named, spec] = m;
+    if (!spec.startsWith(".")) continue;
+    const resolved = path.resolve(fileDir, spec);
+    if (defaultName) map.set(defaultName, resolved);
+    if (named) {
+      for (const part of named.split(",")) {
+        const p = part.trim();
+        if (!p) continue;
+        const as = p.split(/\s+as\s+/);
+        map.set((as[1] || as[0]).trim(), resolved);
+      }
     }
   }
   return map;
 }
 
-// Resolve a delegated lib fn's body (for signal-inheritance), cached per module.
-const moduleIndexCache = new Map();
-function delegateBodyFor(delegateName, imports, macroFilePath) {
-  const imp = imports.get(delegateName);
-  if (!imp || !imp.module.startsWith('.')) return null; // local modules only
-  let modPath = path.resolve(path.dirname(macroFilePath), imp.module);
-  if (!/\.[mc]?js$/.test(modPath)) modPath += '.js';
-  if (!fs.existsSync(modPath)) return null;
-  let idx = moduleIndexCache.get(modPath);
-  if (!idx) {
-    try { idx = buildHelperIndex(fs.readFileSync(modPath, 'utf8')); } catch { idx = new Map(); }
-    moduleIndexCache.set(modPath, idx);
+/** Find a top-level function definition's body span in a source file. */
+function findFunctionSpan(src, name) {
+  const patterns = [
+    new RegExp(`(?:export\\s+)?(?:async\\s+)?function\\s+${name}\\s*\\(`),
+    new RegExp(`(?:export\\s+)?const\\s+${name}\\s*=\\s*(?:async\\s*)?\\(`),
+    new RegExp(`(?:export\\s+)?const\\s+${name}\\s*=\\s*(?:async\\s+)?[\\w$]+\\s*=>`),
+  ];
+  for (const re of patterns) {
+    const m = re.exec(src);
+    if (!m) continue;
+    const brace = src.indexOf("{", m.index);
+    if (brace === -1) continue;
+    return src.slice(brace, matchBrace(src, brace));
   }
-  return idx.get(imp.exportName) || null;
+  return null;
 }
 
-// ---- 3b. Behavior smoke coverage (A1) ----
-//
-// `server/tests/behavior/lens-behavior-smoke.behavior.js` auto-derives one
-// shape-contract test per (domain, macro) pair from the live MACROS map.
-// It SKIPS macros whose name matches LLM_HINT_RE or DESTRUCTIVE_HINT_RE,
-// or whose domain is in SKIP_DOMAINS_DEFAULT. We mirror those skip rules
-// exactly so the grader credits hasTest for every smoke-covered pair.
-//
-// Without this, ~7,500 macros graded hasTest=false despite running in CI
-// every night — the grader only counted static "domain.macro" string
-// refs, which the behavior harness doesn't produce (it builds cases from
-// the live map at runtime).
-const BEHAVIOR_SMOKE_PATH = path.join(SERVER, 'tests', 'behavior', 'lens-behavior-smoke.behavior.js');
-const BEHAVIOR_SMOKE_EXISTS = fs.existsSync(BEHAVIOR_SMOKE_PATH);
-// Mirror the regexes from the behavior file exactly. Keep these in sync
-// if the harness changes its skip logic. The harness opts destructive
-// macros + council back in by default (the dispatcher catches throws
-// and validation errors return ok:false cleanly — both produce valid
-// envelopes the smoke harness accepts).
-const BEHAVIOR_LLM_HINT_RE = /^(respond|chat|reply|deliberate|narrate|synthesize|generate|brainstorm|propose|critique|reason|explain|elaborate|expand|rewrite|translate|tutor|teach|answer|ask|dream|imagine|score|evaluate|grade|review|writeReply|composeMessage|debate|persuade|argue)$|llm|brain/i;
-const BEHAVIOR_SKIP_DOMAINS = new Set(['oracle', 'concordance']);
+// ── enumerate macros ─────────────────────────────────────────────────────
 
-function isCoveredBySmoke(domain, name) {
-  if (HONEST) return false; // honest mode: shape-only smoke coverage is not a real test
-  if (!BEHAVIOR_SMOKE_EXISTS) return false;
-  if (BEHAVIOR_SKIP_DOMAINS.has(domain)) return false;
-  if (BEHAVIOR_LLM_HINT_RE.test(name)) return false;
-  return true;
-}
-if (BEHAVIOR_SMOKE_EXISTS) {
-  console.error(`  behavior smoke harness present at ${path.relative(ROOT, BEHAVIOR_SMOKE_PATH)} — credits hasTest for non-skipped macros`);
+function collectSourceFiles() {
+  const files = [];
+  const domainsDir = path.join(ROOT, "server", "domains");
+  for (const f of fs.readdirSync(domainsDir)) if (f.endsWith(".js")) files.push(path.join(domainsDir, f));
+  files.push(path.join(ROOT, "server", "server.js"));
+  return files;
 }
 
-const FRONTEND_FILES = walk(FRONTEND, ['.ts', '.tsx', '.js', '.jsx', '.mjs']);
-console.error(`  ${FRONTEND_FILES.length} frontend files`);
-const frontendRefs = collectReferencesFromFiles(FRONTEND_FILES);
-console.error(`  ${frontendRefs.size} (domain.macro) refs in frontend`);
+const REG_RE = /\bregister(?:LensAction)?\(\s*"([^"]+)"\s*,\s*"([^"]+)"/g;
 
-// ---- 4. Signal regexes (run against handler body + helpers) ----
-
-// `stateTouch` means "interacts with persistent state". The original list only
-// caught state via a named handle (ctx.db / STATE / s.db). But the dominant
-// real pattern — especially in the lib fns that thin macros delegate to — is a
-// `db` PARAMETER used directly: `db.prepare(…).run(…)`, `db.exec(…)`,
-// `db.transaction(…)`. Missing those undercounted genuinely-stateful work as
-// "utility" (e.g. crime.record → recordCrime, which writes rows). Recognising a
-// real DB call on a db-ish receiver is honest measurement, not generosity — the
-// macro provably touches the database.
-const STATE_RE = /\b(?:ctx\.db|ctx\.state|STATE\b|getWorkspaceState|ensureFiles|ensureSessions|getHealthState|globalThis\._concord|saveStateIfAvailable|saveWS|bucketH|aidH|aidC|s\.db|state\.db|(?:_?db|database|conn)\.(?:prepare|exec|run|transaction|pragma))\b/;
-const EXTERNAL_RE = /\b(?:await\s+fetch|ctx\.llm\.chat|withTimeout|process\.env\.\w+_API_KEY|fetch\s*\(\s*['"`]https?:\/\/)/;
-const TRY_RE = /\btry\s*\{/;
-const REALTIME_RE = /\b(?:realtimeEmit|io\.to|REALTIME\?\.io|req\.app\.locals\.io|app\.locals\.io|broadcastTo)\b/;
-const RUNMACRO_RE = /\brunMacro\s*\(/;
-// A3: heartbeat-module delegations + artifact-global writes. Handlers that
-// kick a heartbeat module or persist scratch to STATE.<scope>.set/push are
-// orchestrating real cross-system work; the original `multiSystem` rule
-// missed both, dragging real production code into the functional tier.
-const HEARTBEAT_DELEGATE_RE = /\b(?:await\s+import\s*\(\s*["'`]\.\.?\/emergent\/|\brunHeartbeat\b|\bregisterHeartbeat\(|\bSTATE\.heartbeats\b)/;
-const ARTIFACT_GLOBAL_RE = /\b(?:STATE\.lensArtifacts|globalThis\.__concord|STATE\.[a-z_]+\.set\(|STATE\.[a-z_]+\.push\()/;
-
-function classifyTier(s) {
-  const robustness = s.tryCatch || s.realtimeEmit || s.runsOtherMacro
-                  || s.externalIO || s.heartbeatDelegate || s.artifactWrite;
-  const exercised = s.hasTest || s.frontendUse;
-  // Delegation pattern: a one-line handler that just calls a cross-module
-  // method (e.g. `() => agents.listAgents()`). The grader can't see the
-  // real implementation (it lives in another file the helper-index doesn't
-  // follow). A delegation with a test reference IS production-grade —
-  // the test exercises the delegation chain end-to-end and proves the
-  // work happens. An untested delegation falls through to functional
-  // (work exists, just can't be verified from this grader's perspective).
-  // Production-grade-via-delegation is handled below in classifyTier's
-  // rule (D); this branch only kicks in for delegations without tests.
-  if (s.delegates && !s.hasTest) return 'functional';
-  // Stub: trivial body AND no state AND no external I/O AND nothing
-  // calls it (no tests, no frontend). A small-by-design enum that a
-  // real lens UI calls is NOT a stub — it's a utility, even at 10 LOC.
-  // The `!exercised` clause prevents catalog helpers like
-  // `astronomy.catalog-list` from being mis-graded when they're
-  // genuinely the correct implementation for their problem.
-  if (s.combinedLoc <= 15 && !s.stateTouch && !s.externalIO && !exercised) return 'stub';
-  // Utility tier (A2): correctly-small handlers that are catalog enums,
-  // pure formatters, or validators. They don't NEED 40+ LOC to be
-  // production-quality — the right implementation IS concise. To qualify:
-  // ≤40 combined LOC, exercised by tests OR frontend, no external I/O
-  // (anything that hits the network needs robustness + tests, not just a
-  // utility pass). Weight 1.0 in the aggregate score — these are shipped.
-  if (s.combinedLoc <= 40 && exercised && !s.externalIO) return 'utility';
-  // Production-grade — lowered LOC floor from 80 → 40 after spot-checks
-  // showed many real handlers (e.g. accounting formulas at 40-60 LOC,
-  // healthcare encounters) cleared every other bar but missed the 80
-  // threshold purely because their problem domain doesn't require more
-  // code. The other three bars (stateTouch, exercised, robustness) keep
-  // the production tier honest.
-  //
-  // Three production paths:
-  //   (A) Stateful work: ≥40 LOC + stateTouch + exercised + robustness.
-  //       The classic "writes to DB, handles errors, has tests" path.
-  //   (B) External-API integrations: externalIO + tryCatch + exercised.
-  //       The actual work is the API call; LOC and state-touch don't
-  //       define quality here. e.g. art.aic-search hitting the Art
-  //       Institute of Chicago API at 31 LOC with proper error handling
-  //       is production-grade by the standard of any other API client.
-  //   (C) Pure-compute production: ≥40 LOC + tryCatch + exercised
-  //       (no stateTouch needed). Real algorithmic implementations —
-  //       accounting formulas, signal processors, IK solvers — that are
-  //       input→output functions. The substance is the computation. The
-  //       LOC floor matches rule A (40) so a 45-LOC predict-yield macro
-  //       isn't penalized for not happening to touch state.
-  //   (D) Delegation production: handler is a one-line delegation
-  //       (delegates=true) AND has hasTest=true. Tested wrappers around
-  //       imported modules — the work IS happening, just one file away
-  //       from where the grader can see it. Most are internal-API macros
-  //       (agents.freeze, autonomy.profile, attention_alloc.budget) that
-  //       other backend code calls — they don't surface in frontend
-  //       grep, but the test signal proves the delegation chain works.
-  //       Frontend-use is no longer required; hasTest alone is enough.
-  if (s.combinedLoc >= 40 && s.stateTouch && exercised && robustness) return 'production-grade';
-  if (s.externalIO && s.tryCatch && exercised) return 'production-grade';
-  if (s.combinedLoc >= 40 && s.tryCatch && exercised) return 'production-grade';
-  if (s.delegates && s.hasTest) return 'production-grade';
-  return 'functional';
+function enumerateMacros() {
+  const macros = new Map(); // "d.m" -> record
+  for (const file of collectSourceFiles()) {
+    const src = fs.readFileSync(file, "utf8");
+    const imports = parseImports(src, path.dirname(file));
+    let m;
+    REG_RE.lastIndex = 0;
+    while ((m = REG_RE.exec(src))) {
+      const [, domain, macro] = m;
+      const key = `${domain}.${macro}`;
+      // Handler body: the first `{` of the function that follows the pair —
+      // find the `=>` or `function` after the match, then its `{`.
+      const rest = src.slice(m.index, m.index + 4000);
+      const arrow = rest.indexOf("=>");
+      const fnKw = rest.indexOf("function");
+      let bodyStart = -1;
+      if (arrow !== -1 && (fnKw === -1 || arrow < fnKw)) bodyStart = rest.indexOf("{", arrow);
+      else if (fnKw !== -1) bodyStart = rest.indexOf("{", fnKw);
+      if (bodyStart === -1) continue;
+      const absStart = m.index + bodyStart;
+      const body = src.slice(absStart, matchBrace(src, absStart));
+      macros.set(key, { domain, macro, file: path.relative(ROOT, file), body, imports });
+    }
+  }
+  return macros;
 }
 
-// ---- 5. Main pass: scan server.js + domains/*.js ----
+// ── test corpus ──────────────────────────────────────────────────────────
 
-const macroSourceFiles = [
-  path.join(SERVER, 'server.js'),
-  ...fs.readdirSync(path.join(SERVER, 'domains'))
-    .filter(f => f.endsWith('.js'))
-    .map(f => path.join(SERVER, 'domains', f)),
-];
-
-console.error(`\nScanning ${macroSourceFiles.length} source files…`);
-
-const macros = [];
-let scanned = 0;
-
-for (const f of macroSourceFiles) {
-  const src = fs.readFileSync(f, 'utf8');
-  const helperIndex = buildHelperIndex(src);
-  const fileImports = parseNamedImports(src);
-  const relPath = path.relative(ROOT, f);
-
-  // Find every `register("d","n",` and `registerLensAction("d","n",` site.
-  // Use word boundaries on the function name to avoid matching
-  // registerHeartbeat, registerMiddleware, etc.
-  const re = /\b(register|registerLensAction)\s*\(/g;
-  let m;
-  while ((m = re.exec(src))) {
-    // Reject false-positive prefixes: e.g. `someRegister(` — the regex's
-    // `\b` requires a non-word before, but `register` could be matched in
-    // `registerHeartbeat(` if we're sloppy. `\bregister\b` would fail
-    // there but our regex is `\bregister\s*\(` — let's check the next
-    // char after `register` (or `registerLensAction`) is `(` or whitespace
-    // then `(`. The regex already enforces that. The risk is preceding
-    // word chars like `super.register(` — those pass `\b` but we want to
-    // accept them. Acceptance is fine.
-    const openParen = m.index + m[0].lastIndexOf('(');
-    const body = extractHandlerBody(src, openParen);
-    if (!body) continue;
-
-    // Re-parse the (domain, macro) pair from the call args
-    const argRe = /^\s*\(\s*["'`]([a-zA-Z0-9_.\-]+)["'`]\s*,\s*["'`]([a-zA-Z0-9_.\-]+)["'`]/;
-    const argMatch = argRe.exec(src.slice(openParen, openParen + 400));
-    if (!argMatch) continue;
-    const domain = argMatch[1];
-    const macro = argMatch[2];
-
-    // Combined body: handler + bodies of single-level helpers it calls
-    let combined = body;
-    const helperCalls = new Set();
-    for (const cm of body.matchAll(/\b([a-z_][a-zA-Z0-9_]{2,})\s*\(/g)) {
-      const name = cm[1];
-      if (['return', 'await', 'typeof', 'function', 'if', 'for', 'while', 'switch'].includes(name)) continue;
-      if (helperCalls.size >= 12) break;
-      helperCalls.add(name);
+function collectTestFiles() {
+  const out = [];
+  const walk = (dir) => {
+    if (!fs.existsSync(dir)) return;
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (/\.test\.(js|mjs)$/.test(e.name)) out.push(p);
     }
-    for (const h of helperCalls) {
-      const hb = helperIndex.get(h);
-      if (hb) combined += '\n' + hb;
+  };
+  walk(path.join(ROOT, "server", "tests"));
+  return out;
+}
+
+function buildTestIndex(testFiles) {
+  const literal = new Set();       // "d.m" via runMacro("d","m")
+  const shape = new Set();         // "d.m" mentioned anywhere
+  const calledImported = new Set(); // resolved module paths whose imported names are called in some test
+  const LIT_RE = /runMacro\(\s*"([^"]+)"\s*,\s*"([^"]+)"/g;
+  for (const file of testFiles) {
+    const src = fs.readFileSync(file, "utf8");
+    let m;
+    LIT_RE.lastIndex = 0;
+    while ((m = LIT_RE.exec(src))) literal.add(`${m[1]}.${m[2]}`);
+    for (const q of src.matchAll(/"([a-z][a-z0-9_-]*)\.([a-z][a-zA-Z0-9_-]*)"/g)) shape.add(`${q[1]}.${q[2]}`);
+    const imports = parseImports(src, path.dirname(file));
+    for (const [name, resolved] of imports) {
+      if (new RegExp(`\\b${name}\\s*\\(`).test(src)) calledImported.add(resolved);
     }
+  }
+  return { literal, shape, calledImported };
+}
 
-    // Cross-module DELEGATION: a thin wrapper that, after guard clauses,
-    // `return`s a call to an IMPORTED lib fn (e.g. `return recordCrime(db,…)`).
-    // Resolve that fn's body so the macro is graded by the REAL work it
-    // delegates to (LOC + state/try-catch signals inherited) — the grader's
-    // same-file helper recursion was blind to this, mis-grading tested
-    // delegations as stubs. The last such return wins.
-    let delegateName = null;
-    for (const cm of body.matchAll(/\breturn\s+(?:await\s+)?([a-zA-Z_$][\w$]*)\s*\(/g)) {
-      const name = cm[1];
-      if (fileImports.has(name) && !helperIndex.has(name)) delegateName = name;
+// ── grading ──────────────────────────────────────────────────────────────
+
+const libSpanCache = new Map();
+function delegateLoc(imports, body) {
+  // Candidate delegates: imported identifiers called in the body.
+  const called = new Set();
+  for (const name of imports.keys()) {
+    if (new RegExp(`\\b${name}\\s*\\(`).test(body)) called.add(name);
+  }
+  let best = null;
+  for (const name of called) {
+    const target = imports.get(name);
+    if (!target || !fs.existsSync(target)) continue;
+    const cacheKey = `${target}#${name}`;
+    if (!libSpanCache.has(cacheKey)) {
+      const src = fs.readFileSync(target, "utf8");
+      const span = findFunctionSpan(src, name);
+      libSpanCache.set(cacheKey, span ? { loc: countLoc(span), target, span } : null);
     }
-    if (delegateName) {
-      const dbody = delegateBodyFor(delegateName, fileImports, f);
-      if (dbody) combined += '\n' + dbody;
-    }
+    const info = libSpanCache.get(cacheKey);
+    if (info && (!best || info.loc > best.loc)) best = { name, ...info };
+  }
+  return best;
+}
 
-    const handlerLoc = body.split('\n').length;
-    const combinedLoc = combined.split('\n').length;
+function grade(macros, testIdx) {
+  const results = [];
+  for (const rec of macros.values()) {
+    const { body, imports } = rec;
+    const loc = countLoc(body);
+    const delegate = delegateLoc(imports, body);
+    const combinedLoc = loc + (delegate ? delegate.loc : 0);
 
-    // Detect delegation pattern: body is one expression that just calls a
-    // module method or a top-level helper not in this file's index. Strip
-    // comments + whitespace from the body and check for the shape
-    // `(args) => someModule.someMethod(...)` or `() => helper(...)` with
-    // the helper name absent from helperIndex.
-    const stripped = body.replace(/\s+/g, ' ').replace(/^\{\s*|\s*\}$/g, '').trim();
-    const delegateMatch = /^return?\s*([a-zA-Z_$][\w$]*)\.([a-zA-Z_$][\w$]*)\s*\(/.exec(stripped)
-                       || /^([a-zA-Z_$][\w$]*)\.([a-zA-Z_$][\w$]*)\s*\(/.exec(stripped);
-    const delegates = !!(delegateMatch && handlerLoc <= 4);
+    const hasTryCatch = /\btry\s*{/.test(body) || (delegate ? /\btry\s*{/.test(delegate.span || "") : false);
+    const validations = (body.match(/\bif\s*\(\s*!|typeof\s|Number\.isFinite|Array\.isArray|\.length\s*[<>=!]/g) || []).length;
+    const writesState = /INSERT INTO|UPDATE\s+\w+\s+SET|DELETE FROM|\.run\(|saveState|emitEvent\(/.test(body);
+    const robust = hasTryCatch || validations >= 2 || (validations >= 1 && combinedLoc >= 10);
 
-    // A4: second-pass signal-only helper credit. If level-1 helpers
-    // themselves call helpers in the same file, OR their signal regexes
-    // into the parent's set without adding to LOC (LOC is already
-    // calibrated at level 1). This closes the corner case where a macro
-    // delegates → a helper → a second helper that owns the real
-    // cross-system work.
-    let signalText = combined;
-    for (const cm of combined.matchAll(/\b([a-z_][a-zA-Z0-9_]{2,})\s*\(/g)) {
-      const name = cm[1];
-      if (['return', 'await', 'typeof', 'function', 'if', 'for', 'while', 'switch'].includes(name)) continue;
-      const hb = helperIndex.get(name);
-      if (hb && !combined.includes(hb)) signalText += '\n' + hb;
-    }
+    // Test credit
+    const key = `${rec.domain}.${rec.macro}`;
+    let hasTest = testIdx.literal.has(key);
+    let via = hasTest ? "literal" : null;
+    if (!hasTest && delegate && testIdx.calledImported.has(delegate.target)) { hasTest = true; via = "delegation"; }
+    if (!hasTest && !HONEST && testIdx.shape.has(key)) { hasTest = true; via = "shape"; }
 
-    const signals = {
-      handlerLoc,
-      combinedLoc,
-      stateTouch: STATE_RE.test(combined),
-      externalIO: EXTERNAL_RE.test(combined),
-      tryCatch: TRY_RE.test(combined),
-      realtimeEmit: REALTIME_RE.test(signalText),
-      runsOtherMacro: RUNMACRO_RE.test(signalText),
-      heartbeatDelegate: HEARTBEAT_DELEGATE_RE.test(signalText),
-      artifactWrite: ARTIFACT_GLOBAL_RE.test(signalText),
-      // Behavioral credit (both modes): a literal per-macro invocation, or a
-      // tested lib fn this macro delegates to. Shape-coverage credit (default
-      // only, like the smoke harness): a bulk CASES-loop ref. `isCoveredBySmoke`
-      // already returns false under --honest.
-      hasTest: macroInvocations.has(`${domain}.${macro}`)
-            || (delegateName && testedFns.has(delegateName))
-            || (!HONEST && shapeLoopRefs.has(`${domain}.${macro}`))
-            || isCoveredBySmoke(domain, macro),
-      frontendUse: frontendRefs.has(`${domain}.${macro}`),
-      delegates,
-    };
+    let tier;
+    if (hasTest && robust) tier = "production-grade";
+    else if (hasTest) tier = "utility";
+    else if (combinedLoc >= 8 || writesState || validations >= 1) tier = "functional";
+    else tier = "stub";
 
-    macros.push({
-      domain,
-      macro,
-      file: relPath,
-      tier: classifyTier(signals),
-      ...signals,
+    results.push({
+      domain: rec.domain, macro: rec.macro, tier, hasTest,
+      ...(via ? { testVia: via } : {}),
+      loc, combinedLoc,
+      ...(delegate ? { delegatesTo: delegate.name } : {}),
     });
   }
-  scanned++;
-  if (scanned % 50 === 0) console.error(`  scanned ${scanned}/${macroSourceFiles.length}`);
+  results.sort((a, b) => a.domain.localeCompare(b.domain) || a.macro.localeCompare(b.macro));
+  return results;
 }
 
-// ---- 6. Dedupe (keep deepest tier per pair) ----
+// ── main ─────────────────────────────────────────────────────────────────
 
-// utility and production-grade both weight at 1.0 (shipped); production-grade
-// ranks higher because it carries strictly more signal than utility. If the
-// same (domain, macro) appears registered at multiple sites with different
-// classifications, keep the strongest.
-const TIER_RANK = { stub: 0, functional: 1, utility: 2, 'production-grade': 3 };
-const dedup = new Map();
-for (const m of macros) {
-  const k = `${m.domain}.${m.macro}`;
-  const ex = dedup.get(k);
-  if (!ex || TIER_RANK[m.tier] > TIER_RANK[ex.tier]) dedup.set(k, m);
-}
-const finalMacros = [...dedup.values()].sort((a, b) =>
-  a.domain !== b.domain ? a.domain.localeCompare(b.domain) : a.macro.localeCompare(b.macro)
-);
+const macros = enumerateMacros();
+const testIdx = buildTestIndex(collectTestFiles());
+const graded = grade(macros, testIdx);
+const totals = { stub: 0, functional: 0, utility: 0, "production-grade": 0 };
+for (const g of graded) totals[g.tier]++;
+const total = graded.length;
+const weightedScore = total ? graded.reduce((s, g) => s + WEIGHTS[g.tier], 0) / total : 0;
 
-// ---- 7. Aggregates ----
-
-const totals = { stub: 0, functional: 0, utility: 0, 'production-grade': 0 };
-const byDomain = {};
-for (const m of finalMacros) {
-  totals[m.tier]++;
-  if (!byDomain[m.domain]) byDomain[m.domain] = { stub: 0, functional: 0, utility: 0, 'production-grade': 0, total: 0 };
-  byDomain[m.domain][m.tier]++;
-  byDomain[m.domain].total++;
-}
-
-// Tier weights. Default: utility counts as fully shipped (correctly small) —
-// same weight as production-grade; stub/functional are partial credit.
-// `--honest`: utility is correct-but-minimal so it earns partial credit (0.6),
-// and functional/stub are harsher — this is the less-generous floor.
-const weight = HONEST
-  ? { stub: 0.0, functional: 0.4, utility: 0.6, 'production-grade': 1.0 }
-  : { stub: 0.2, functional: 0.6, utility: 1.0, 'production-grade': 1.0 };
-const total = finalMacros.length;
-const weightedScore = total > 0
-  ? (totals.stub * weight.stub
-   + totals.functional * weight.functional
-   + totals.utility * weight.utility
-   + totals['production-grade'] * weight['production-grade']) / total
-  : 0;
-
-let head = 'unknown';
-try { head = execSync('git rev-parse HEAD', { cwd: ROOT }).toString().trim(); } catch { /* ignore */ }
-
-const output = {
-  generatedAt: new Date().toISOString(),
-  head,
-  mode: HONEST ? 'honest' : 'default',
-  totals,
-  total,
-  weightedScore: Math.round(weightedScore * 1000) / 1000,
-  tierWeights: weight,
-  byDomain,
-  macros: finalMacros,
-};
-
-const outPath = path.join(ROOT, 'audit', HONEST ? 'macro-depth-honest.json' : 'macro-depth.json');
-fs.mkdirSync(path.dirname(outPath), { recursive: true });
-fs.writeFileSync(outPath, JSON.stringify(output, null, 2));
-
-console.error(`\nWrote ${outPath}`);
-console.error(`Total macros: ${total}`);
-console.error(`Stub:             ${totals.stub} (${total ? ((totals.stub / total) * 100).toFixed(1) : 0}%)`);
-console.error(`Functional:       ${totals.functional} (${total ? ((totals.functional / total) * 100).toFixed(1) : 0}%)`);
-console.error(`Utility:          ${totals.utility} (${total ? ((totals.utility / total) * 100).toFixed(1) : 0}%)`);
-console.error(`Production-grade: ${totals['production-grade']} (${total ? ((totals['production-grade'] / total) * 100).toFixed(1) : 0}%)`);
-console.error(`Weighted depth score: ${output.weightedScore} (mode=${output.mode}; 1.0 = all production-grade or utility)`);
+const out = { mode: MODE, total, totals, weightedScore: Math.round(weightedScore * 1000) / 1000, macros: graded };
+const outDir = path.join(ROOT, "audit");
+fs.mkdirSync(outDir, { recursive: true });
+const outFile = path.join(outDir, HONEST ? "macro-depth-honest.json" : "macro-depth.json");
+fs.writeFileSync(outFile, JSON.stringify(out, null, 2));
+console.log(`[grade-macro-depth] mode=${MODE} total=${total} weighted=${out.weightedScore} totals=${JSON.stringify(totals)} -> ${path.relative(ROOT, outFile)}`);
