@@ -4,7 +4,6 @@ import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useAuth } from '@/hooks/useAuth';
 import { useState, useRef, useEffect, useCallback, type ComponentType } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -71,7 +70,6 @@ export function WhiteboardStudio({
   onWorkbenchClose: () => void;
 }) {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -851,7 +849,7 @@ export function WhiteboardStudio({
       {/* Greeting + board switcher, over the canvas (north star 14) */}
       <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 flex items-start justify-between px-8 pt-4">
         <div className="pointer-events-auto">
-          <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100" data-testid="whiteboard-greeting">Sketch it{user?.username ? `, ${user.username}` : ''}</h1>
+          <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">Whiteboard</h1>
         </div>
         <div className="pointer-events-auto relative flex items-center gap-4 pt-1 text-[13px]">
           {saveMutation.isPending && <span className="text-zinc-600">Saving…</span>}
