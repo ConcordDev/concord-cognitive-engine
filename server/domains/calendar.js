@@ -954,29 +954,50 @@ export default function registerCalendarActions(registerLensAction) {
     else if (/\bevery week\b|\bweekly\b|\bevery (mon|tue|wed|thu|fri|sat|sun)/.test(lower)) recurrence = { freq: 'weekly', interval: 1 };
     else if (/\bevery month\b|\bmonthly\b/.test(lower)) recurrence = { freq: 'monthly', interval: 1 };
     else if (/\bevery year\b|\bannually\b|\byearly\b/.test(lower)) recurrence = { freq: 'yearly', interval: 1 };
-    // Time
+    // Time — am/pm, 24h after "at", a bare HH:MM, or the words
+    // noon/midnight (F11: "tomorrow at noon" used to keep "at noon"
+    // in the title and default to 9 AM).
     let hour = 9, minute = 0;
     const tm = lower.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/);
     if (tm) {
       hour = parseInt(tm[1], 10) % 12;
       if (tm[3] === 'pm') hour += 12;
       minute = tm[2] ? parseInt(tm[2], 10) : 0;
+    } else if (/\bnoon\b/.test(lower)) {
+      hour = 12; minute = 0;
+    } else if (/\bmidnight\b/.test(lower)) {
+      hour = 0; minute = 0;
     } else {
-      const tm24 = lower.match(/\bat\s+(\d{1,2}):(\d{2})\b/);
+      const tm24 = lower.match(/\b(\d{1,2}):(\d{2})\b/);
       if (tm24) { hour = parseInt(tm24[1], 10); minute = parseInt(tm24[2], 10); }
     }
-    // Day
-    const target = new Date(now);
+    // Day — resolved as a WALL DATE in the caller's zone when one is
+    // given (F1's frame rule), else in the server's local frame.
     const weekdays = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
     const dowMatch = weekdays.findIndex(d => lower.includes(d) || lower.includes(d.slice(0, 3)));
-    if (/\btomorrow\b/.test(lower)) target.setDate(target.getDate() + 1);
-    else if (/\btoday\b/.test(lower)) { /* keep */ }
-    else if (dowMatch >= 0) {
-      let delta = (dowMatch - target.getDay() + 7) % 7;
-      if (delta === 0) delta = 7; // "next monday" semantics
-      target.setDate(target.getDate() + delta);
+    let dayDelta = 0;
+    const tz = isValidZoneName(params.tz) ? String(params.tz) : null;
+    let target;
+    if (tz) {
+      const p = zonePartsAt(tz, now.getTime());
+      const todayDow = new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay();
+      if (/\btomorrow\b/.test(lower)) dayDelta = 1;
+      else if (dowMatch >= 0) {
+        dayDelta = (dowMatch - todayDow + 7) % 7;
+        if (dayDelta === 0) dayDelta = 7; // "next monday" semantics
+      }
+      target = new Date(wallTimeInZoneToUtcMs(tz, p.year, p.month, p.day + dayDelta, hour, minute));
+    } else {
+      target = new Date(now);
+      if (/\btomorrow\b/.test(lower)) target.setDate(target.getDate() + 1);
+      else if (/\btoday\b/.test(lower)) { /* keep */ }
+      else if (dowMatch >= 0) {
+        let delta = (dowMatch - target.getDay() + 7) % 7;
+        if (delta === 0) delta = 7;
+        target.setDate(target.getDate() + delta);
+      }
+      target.setHours(hour, minute, 0, 0);
     }
-    target.setHours(hour, minute, 0, 0);
     // Duration
     let durMin = 60;
     const durM = lower.match(/\bfor\s+(\d{1,3})\s*(min|minute|hour|hr)/);
@@ -990,7 +1011,11 @@ export default function registerCalendarActions(registerLensAction) {
       .replace(/\bevery (mon|tue|wed|thu|fri|sat|sun)\w*/gi, '')
       .replace(/\b(today|tomorrow)\b/gi, '')
       .replace(new RegExp(`\\b(${weekdays.join('|')})\\b`, 'gi'), '')
+      .replace(/\bat\s+(noon|midnight)\b/gi, '')
+      .replace(/\b(noon|midnight)\b/gi, '')
       .replace(/\bat\s+\d{1,2}(:\d{2})?\s*(am|pm)?\b/gi, '')
+      .replace(/\b\d{1,2}(:\d{2})?\s*(am|pm)\b/gi, '')
+      .replace(/\b\d{1,2}:\d{2}\b/gi, '')
       .replace(/\bfor\s+\d{1,3}\s*(min|minute|minutes|hour|hours|hr)\b/gi, '')
       .replace(/\bon\b/gi, '')
       .replace(/\s{2,}/g, ' ')
