@@ -41,10 +41,15 @@ export const COINGECKO_ATTRIBUTION = "Data provided by CoinGecko";
 export const COINGECKO_ATTRIBUTION_URL = "https://www.coingecko.com";
 export const ERAPI_ATTRIBUTION = "Rates By Exchange Rate API";
 export const ERAPI_ATTRIBUTION_URL = "https://www.exchangerate-api.com";
+export const FRANKFURTER_ATTRIBUTION = "Rates: European Central Bank via Frankfurter";
+export const FRANKFURTER_ATTRIBUTION_URL = "https://frankfurter.dev";
 
 const COINGECKO_BASE = "https://api.coingecko.com/api/v3";
 const YAHOO_BASE = "https://query1.finance.yahoo.com";
-const FRANKFURTER_BASE = "https://api.frankfurter.app";
+// api.frankfurter.app now 301-redirects to api.frankfurter.dev/v1, which the
+// SSRF-guarded fetch cannot follow cross-host — call the new base directly.
+// The v1 API accepts the same from/to parameter aliases this fetcher sends.
+const FRANKFURTER_BASE = "https://api.frankfurter.dev/v1";
 const ERAPI_BASE = "https://open.er-api.com/v6/latest";
 const YAHOO_UA = "Mozilla/5.0 (Concord-OS/1.0)";
 

@@ -1,13 +1,14 @@
 /**
  * DataAttribution — the linked credit line a third-party market data provider requires wherever its
  * data is displayed. Wording matches the server constants in server/lib/market-feed-sources.js
- * (COINGECKO_ATTRIBUTION / ERAPI_ATTRIBUTION).
+ * (COINGECKO_ATTRIBUTION / ERAPI_ATTRIBUTION / FRANKFURTER_ATTRIBUTION).
  */
 import { cn } from '@/lib/utils';
 
 const PROVIDERS = {
   coingecko: { text: 'Data provided by CoinGecko', href: 'https://www.coingecko.com' },
   erapi: { text: 'Rates By Exchange Rate API', href: 'https://www.exchangerate-api.com' },
+  frankfurter: { text: 'Rates: European Central Bank via Frankfurter', href: 'https://frankfurter.dev' },
 } as const;
 
 export function DataAttribution({ provider, className }: { provider: keyof typeof PROVIDERS; className?: string }) {

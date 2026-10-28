@@ -7,6 +7,7 @@ import {
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { SkeletonTableRows } from '@/components/ui';
+import { DataAttribution } from '@/components/common/DataAttribution';
 import PredictionDepthPanel from '@/components/markets/PredictionDepthPanel';
 
 export interface OptionsRow {
@@ -248,13 +249,16 @@ function FuturesTab() {
 
 function ForexTab() {
   const [quotes, setQuotes] = useState<ForexQuote[]>([]);
+  const [fxMeta, setFxMeta] = useState<{ asOf: string | null; stale: boolean }>({ asOf: null, stale: false });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
         const r = await api.post('/api/lens/run', { domain: 'markets', action: 'forex-quotes', input: {} });
-        setQuotes(((r.data as { result?: { quotes?: ForexQuote[] } }).result?.quotes) || []);
+        const result = (r.data as { result?: { quotes?: ForexQuote[]; asOf?: string | null; stale?: boolean } }).result;
+        setQuotes(result?.quotes || []);
+        setFxMeta({ asOf: result?.asOf || null, stale: !!result?.stale });
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
     })();
@@ -287,6 +291,13 @@ function ForexTab() {
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="mt-2 flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] text-gray-500">
+          ECB reference rate{fxMeta.asOf ? `, as of ${fxMeta.asOf}` : ''} — mid only, no quoted bid/ask.
+          {fxMeta.stale && <span className="text-amber-400/80"> Cached copy — live source unavailable.</span>}
+        </span>
+        <DataAttribution provider="frankfurter" />
       </div>
     </div>
   );

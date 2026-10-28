@@ -30,7 +30,7 @@ export const PUBLIC_FEED_SOURCES = Object.freeze(new Set([
   "cpsc-feed",              // saferproducts.gov recalls
   "cpsc-parenting-feed",    // saferproducts.gov recalls
   "crossref-feed",          // api.crossref.org works
-  "frankfurter-feed",       // api.frankfurter.app ECB rates
+  "frankfurter-feed",       // api.frankfurter.dev ECB rates
   "gbif-feed",              // api.gbif.org occurrences
   "github-events-feed",     // public events of a public repo, unauthenticated
   "inciweb-feed",           // InciWeb public incidents
