@@ -50,6 +50,7 @@ import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
 import { humanMacroAclDenial } from "./lib/macro-acl-human-gate.js";
 import { forumModDenial } from "./lib/forum-mod-gate.js";
 import { marketplaceOwnerDenial, marketplaceBuyDenial } from "./lib/marketplace-action-gate.js";
+import { threadModerationDenial, threadDeleteNodeDenial } from "./lib/thread-node-gate.js";
 
 // === DATA DIRECTORY (canonical) ===
 // Resolution order:
@@ -52022,6 +52023,13 @@ registerLensAction("thread", "branch", (ctx, artifact, params) => {
   return { ok: true, branch };
 });
 registerLensAction("thread", "merge", (ctx, artifact, params) => {
+  // SECURITY: `thread` is a LENS_SOCIAL_DOMAINS domain, so the generic lens
+  // run path lets ANY signed-in member act on ANY member's thread artifact.
+  // `merge` appends a node built from other users' branch contents to the
+  // thread — only the thread owner, a moderator-class role, or an
+  // internal/admin caller may merge (thread-node-gate.js).
+  const _modDenied = threadModerationDenial({ isThreadOwner: _lensIsOwnerActor(ctx, artifact) || _lensIsAdminActor(ctx), role: ctx?.actor?.role, roles: ctx?.actor?.roles, internal: ctx?.internal === true || ctx?.actor?.internal === true, userId: ctx?.actor?.userId });
+  if (_modDenied) return _modDenied;
   const branchIds = params.branchIds || [];
   const nodes = artifact.data?.nodes || [];
   if (branchIds.length === 0) return { ok: false, error: "branchIds required" };
@@ -52088,6 +52096,16 @@ registerLensAction("thread", "delete_node", (ctx, artifact, params) => {
       }
     }
   }
+  // SECURITY: `thread` is a LENS_SOCIAL_DOMAINS domain, so the generic lens
+  // run path let ANY signed-in member delete ANY node — and its whole
+  // descendant subtree, including other users' replies — from ANY member's
+  // thread. Gate the mutation (thread-node-gate.js): the thread owner, a
+  // moderator-class role, or an internal/admin caller may delete anything;
+  // anyone else may only remove a subtree made up ENTIRELY of their own
+  // nodes (the node plus every descendant must be authored by them).
+  const removedNodes = nodes.filter(n => toRemove.has(n.id));
+  const _delDenied = threadDeleteNodeDenial({ isThreadOwner: _lensIsOwnerActor(ctx, artifact) || _lensIsAdminActor(ctx), role: ctx?.actor?.role, roles: ctx?.actor?.roles, internal: ctx?.internal === true || ctx?.actor?.internal === true, userId: ctx?.actor?.userId, removedNodes });
+  if (_delDenied) return _delDenied;
   const remaining = nodes.filter(n => !toRemove.has(n.id));
   artifact.data = { ...artifact.data, nodes: remaining };
   artifact.updatedAt = nowISO();
