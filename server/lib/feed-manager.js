@@ -24,6 +24,8 @@ import { feedAttribution } from "./source-attribution.js";
 import { browserEngine } from "./browser-engine.js";
 import { checkQualityGate, logRejectedDTU, pruneQualityLog } from "./ingest-quality.js";
 import { getDedupKey, hashDedupKey } from "./dedup-keys.js";
+import { hostTier, isExcludedHost } from "./news-outlet-policy.js";
+import { summaryForItem, queueItemForSummary } from "./news-summarizer.js";
 import { normalizeTagList } from "./dtu-tags.js";
 import { trackFeedJob } from "../emergent/feed.js";
 
@@ -249,8 +251,15 @@ function isDuplicate(item) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 /** Parse RSS/Atom XML into normalized items */
-function parseRSS(text, feedSource) {
+export function parseRSS(text, feedSource, { strictDates = false } = {}) {
   const items = [];
+  // strictDates: a missing/unparseable date is null (never "now") so callers can say "time unknown".
+  const dateOf = (raw) => {
+    if (!raw) return strictDates ? null : new Date().toISOString();
+    if (!strictDates) return tryParseDate(raw);
+    const d = new Date(raw);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  };
 
   // Try RSS <item> format
   const rssItems = text.match(/<item>[\s\S]*?<\/item>/g) || [];
@@ -265,7 +274,7 @@ function parseRSS(text, feedSource) {
         title: cleanCDATA(title),
         sourceUrl: link || "",
         summary: cleanCDATA(description || "").slice(0, 200),
-        publishedAt: pubDate ? tryParseDate(pubDate) : new Date().toISOString(),
+        publishedAt: dateOf(pubDate),
         categories,
         content: cleanCDATA(description || ""),
       });
@@ -286,7 +295,7 @@ function parseRSS(text, feedSource) {
           title: cleanCDATA(title),
           sourceUrl: link || "",
           summary: cleanCDATA(summary || "").slice(0, 200),
-          publishedAt: published ? tryParseDate(published) : new Date().toISOString(),
+          publishedAt: dateOf(published),
           categories,
           content: cleanCDATA(summary || ""),
         });
@@ -661,6 +670,38 @@ export function feedDtuTags(feedSource, item) {
 }
 
 /**
+ * Article-text feeds (rss/xml/atom) are policy-gated by the feed host. Structured data
+ * feeds (JSON APIs, scraped HTML) carry no outlet article text and are unaffected.
+ */
+export function isRestrictedFeedItem(feedSource, item = {}) {
+  const t = feedSource?.type || "rss";
+  if (t !== "rss" && t !== "xml" && t !== "atom") return false;
+  return hostTier(feedSource?.url) !== "full";
+}
+
+/** Concord's stored summary for this item (read-only) and queue it for one if absent. */
+function restrictedSummary(item) {
+  try {
+    const have = summaryForItem(item.title, item.sourceUrl);
+    if (have) return have;
+    const desc = String(item.content || item.summary || "");
+    if (desc.length > 20) queueItemForSummary({ title: item.title, url: item.sourceUrl, description: desc, source: "feed-manager" });
+  } catch { /* summary is optional */ }
+  return null;
+}
+
+/** Headline + source + date + link (+ Concord summary). Nothing from the outlet's body. */
+function restrictedContent(item, feedSource, summary) {
+  return [
+    `${item.title || ""}`,
+    `Source: ${feedSource.name || feedSource.id}`,
+    item.publishedAt ? `Published: ${item.publishedAt}` : null,
+    summary ? `Concord summary: ${summary}` : null,
+    item.sourceUrl ? `Link: ${item.sourceUrl}` : null,
+  ].filter(Boolean).join("\n");
+}
+
+/**
  * Convert a parsed feed item into a DTU and commit it.
  * @param {object} item - Parsed feed item
  * @param {object} feedSource - Feed source config
@@ -675,8 +716,13 @@ async function commitFeedDTU(item, feedSource) {
 
   const uniqueTags = feedDtuTags(feedSource, item);
 
+  // Outlet policy (lib/news-outlet-policy.js): article-text feeds from outlets that are not in
+  // the full-display tier get headline + link + date + source + Concord's own summary ONLY.
+  const restricted = isRestrictedFeedItem(feedSource, item);
+  const concordSummary = restricted ? restrictedSummary(item) : null;
+
   // Build universal source attribution
-  const attribution = feedAttribution(feedSource, item);
+  const attribution = feedAttribution(feedSource, restricted ? { ...item, link: item.sourceUrl } : item);
 
   const dtu = {
     id: dtuId,
@@ -686,12 +732,15 @@ async function commitFeedDTU(item, feedSource) {
     tags: uniqueTags,
     source: attribution, // Universal source attribution object
     core: {
-      definitions: [item.summary || item.title || ""],
+      definitions: [restricted ? (concordSummary || item.title || "") : (item.summary || item.title || "")],
       assertions: [],
       evidence: item.sourceUrl ? [{ type: "url", value: item.sourceUrl, label: feedSource.name || feedSource.id }] : [],
     },
-    content: item.content || item.summary || item.title || "", // For quality gate body check
+    // For the quality gate body check. Restricted items: never the outlet's text, only the fields we may keep.
+    content: restricted ? restrictedContent(item, feedSource, concordSummary) : (item.content || item.summary || item.title || ""),
+    ...(restricted ? { contentPolicy: "summary-only", ...(concordSummary ? { summaryBy: "concord" } : {}) } : {}),
     meta: {
+      ...(restricted ? { contentPolicy: "summary-only", ...(concordSummary ? { summaryBy: "concord" } : {}) } : {}),
       feedId: feedSource.id,
       lensId: feedSource.lensId || feedSource.domain,
       fetchedAt: now,
@@ -708,7 +757,7 @@ async function commitFeedDTU(item, feedSource) {
   };
 
   // Quality gate: check coherence before commit
-  const gateResult = checkQualityGate(dtu);
+  const gateResult = checkQualityGate(dtu, restricted ? { headlineOnly: true } : {});
   if (!gateResult.ok) {
     // Log the rejection for analysis
     logRejectedDTU({
@@ -835,7 +884,8 @@ async function tickFeed(feedId, opts) {
               title: item.title,
               source: feedSource.name || feedSource.id,
               link: item.sourceUrl,
-              summary: item.summary,
+              // restricted outlets: never the outlet's description (Concord's own summary or nothing)
+              summary: isRestrictedFeedItem(feedSource, item) ? (restrictedSummary(item) || undefined) : item.summary,
             },
             source: feedSource.id,
             timestamp: item.publishedAt,
@@ -985,6 +1035,8 @@ export function initFeedManager(deps = {}) {
  */
 export function registerFeed(source) {
   if (!source?.id || !source?.url) return { ok: false, error: "missing_id_or_url" };
+  // Excluded outlets (Al Jazeera, France 24, ABC AU) and dead relays (feeds.reuters.com, rsshub.app) are never registered.
+  if (isExcludedHost(source.url)) return { ok: false, error: "excluded_outlet" };
 
   const activeCount = [..._feedSources.values()].filter(f => f.enabled).length;
   if (activeCount >= MAX_ACTIVE_FEEDS && source.enabled !== false) {

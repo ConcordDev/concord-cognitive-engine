@@ -28,8 +28,18 @@ export interface Headline {
   source: string;
   sourceCountry?: string | null;
   language?: string;
-  publishedAt: string;
+  /** null when the outlet gave no parseable date — shown as "time unknown", never invented. */
+  publishedAt: string | null;
   socialImageUrl?: string | null;
+  /** "summary-only" outlets: headline + link + date + source + Concord's own summary only. */
+  contentPolicy?: 'summary-only' | 'full';
+  /** Credit line for the source (e.g. "ScienceDaily", "GDELT Project · bbc.co.uk"). */
+  attribution?: string;
+  /** Full-display outlets only: the feed's own short, unmodified snippet. */
+  snippet?: string | null;
+  /** Concord's own summary (summary-only outlets); null until one exists. Never outlet text. */
+  summary?: string | null;
+  summaryBy?: 'concord';
 }
 
 export interface MacroEnvelope<T> {
@@ -69,10 +79,29 @@ export const NEWS_CATEGORIES = [
 ] as const;
 export type NewsCategory = (typeof NEWS_CATEGORIES)[number];
 
-export function fetchHeadlines(category: NewsCategory, limit = 30) {
-  return callNewsMacro<{ headlines: Headline[]; category: string; count: number; source: string }>(
+/** Freshness + rotation metadata from news.headlines. All optional: older responses lack them. */
+export interface HeadlinesResult {
+  headlines: Headline[];
+  category: string;
+  count: number;
+  source: string;
+  /** Size of the pooled, deduped set the window was cut from. */
+  total?: number;
+  /** Pass back as `cursor` to see the next window of the pool (no upstream call). 0 = wrapped. */
+  nextCursor?: number;
+  fetchedAt?: string | null;
+  stale?: boolean;
+  status?: 'fresh' | 'stale' | 'unavailable';
+  reason?: string;
+  lastOkAt?: string | null;
+  degraded?: boolean;
+  degradedReason?: string;
+}
+
+export function fetchHeadlines(category: NewsCategory, limit = 30, cursor?: number) {
+  return callNewsMacro<HeadlinesResult>(
     'headlines',
-    { category, limit },
+    cursor === undefined ? { category, limit } : { category, limit, cursor },
   );
 }
 
@@ -158,5 +187,5 @@ export function runNarrativeTracking(articles: AnalysisArticle[]) {
 
 /** Map a live headline into the analysis-article shape the engines read. */
 export function headlineToAnalysisArticle(h: Headline): AnalysisArticle {
-  return { title: h.title, body: h.title, source: h.source, date: h.publishedAt };
+  return { title: h.title, body: h.title, source: h.source, date: h.publishedAt ?? undefined };
 }

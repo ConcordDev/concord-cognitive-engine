@@ -85,16 +85,6 @@ export const FINANCE_FEEDS = [
 
 export const NEWS_FEEDS = [
   {
-    id: "news-reuters-top",
-    name: "Reuters Top News",
-    domain: "news",
-    type: "rss",
-    url: "https://feeds.reuters.com/reuters/topNews",
-    interval: 900000,
-    tags: ["news", "reuters", "world"],
-    enabled: true,
-  },
-  {
     id: "news-bbc-world",
     name: "BBC World News",
     domain: "news",
@@ -112,16 +102,6 @@ export const NEWS_FEEDS = [
     url: "https://feeds.npr.org/1001/rss.xml",
     interval: 900000,
     tags: ["news", "npr", "us"],
-    enabled: true,
-  },
-  {
-    id: "news-ap-top",
-    name: "AP News Top Stories",
-    domain: "news",
-    type: "rss",
-    url: "https://rsshub.app/apnews/topics/apf-topnews",
-    interval: 900000,
-    tags: ["news", "ap", "world"],
     enabled: true,
   },
   {

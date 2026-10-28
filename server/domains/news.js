@@ -6,9 +6,12 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
 import {
-  getGdeltCategory, CATEGORY_QUERIES,
+  getGdeltCategory, getGdeltPool, CATEGORY_QUERIES,
   __configureGdeltForTests as __configureSourceForTests, __resetGdeltForTests,
 } from "../lib/gdelt-source.js";
+import { getNewsRssPool, ensureNewsRssSource, dedupHashOf } from "../lib/news-sources.js";
+import { summaryForItem } from "../lib/news-summarizer.js";
+import { hostTier, contentPolicyFor } from "../lib/news-outlet-policy.js";
 
 // ── Real headlines via GDELT Project (free, no key) ──
 //
@@ -24,7 +27,8 @@ import {
 // Endpoint: api.gdeltproject.org/api/v2/doc/doc
 
 const BRIEFING_DEFAULTS = {
-  briefingBudgetMs: 8500,     // daily-briefing budget for the GDELT sections
+  userWaitMs: 8000,           // max time a user request waits for the shared GDELT fetch (then reason "warming")
+  briefingBudgetMs: 8000,     // daily-briefing budget for the GDELT sections
   briefingTotalMs: 9000,      // daily-briefing hard ceiling for the whole handler
   llmClosingMs: 2500,         // cap on the optional LLM closing sentence
   llmMinMs: 300,              // skip the LLM closing if less time than this is left
@@ -56,9 +60,18 @@ function raceTimeout(promise, ms, fallback) {
 
 // Never rejects. Returns the articles to use plus honesty metadata:
 //   { articles, cachedAt (ISO|null), stale, degradedReason, status, fetchedAt, lastOkAt, reason }
+//
+// A user never waits longer than gdelt.userWaitMs (~8 s) for the shared fetch: past that
+// they get the honest { status:"unavailable", reason:"warming" } shape while the SAME
+// in-flight request keeps running and fills the cache (feed-cache coalesces; there is no
+// duplicate upstream call). grounding.discoverCoverage may wait the source's full timeout.
 async function getGdeltArticles(category) {
-  const r = await getGdeltCategory(category);
-  return { ...r, cachedAt: r.stale ? r.fetchedAt : null };
+  const pending = getGdeltCategory(category).then((r) => ({ ...r, cachedAt: r.stale ? r.fetchedAt : null }));
+  const warming = {
+    articles: [], status: "unavailable", stale: false, fetchedAt: null, lastOkAt: null,
+    reason: "warming", degradedReason: "warming", cachedAt: null,
+  };
+  return raceTimeout(pending, gdelt.userWaitMs, warming);
 }
 
 export default function registerNewsActions(registerLensAction) {
@@ -596,39 +609,125 @@ export default function registerNewsActions(registerLensAction) {
     const d = new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`);
     return Number.isNaN(d.getTime()) ? null : d.toISOString();
   }
-  function mapGdeltArticle(a, idx, category) {
+  // GDELT carries headline + link + outlet domain only (no description text), so every
+  // field here is metadata. contentPolicy follows the OUTLET's tier (unknown => summary-only).
+  function mapGdeltArticle(a, category) {
+    const title = a.title || "";
+    const url = a.url || "";
+    const policy = contentPolicyFor(hostTier(url || a.domain));
     return {
-      id: `hl_${category}_${idx}`,
+      id: `hl_${category}_${dedupHashOf(title, url)}`,
       category,
-      title: a.title || "",
-      url: a.url || "",
+      title,
+      url,
       source: a.domain || "",
       sourceCountry: a.sourcecountry || null,
       language: a.language || "English",
       publishedAt: gdeltDateToIso(a.seendate),
       socialImageUrl: a.socialimage || null,
+      contentPolicy: policy,
+      attribution: a.domain ? `GDELT Project · ${a.domain}` : "GDELT Project",
+      snippet: null,
+      summary: policy === "summary-only" ? summaryForItem(title, url) : null,
     };
   }
+
+  function mapRssItem(it, category) {
+    const restricted = it.contentPolicy !== "full";
+    const summary = restricted ? summaryForItem(it.title, it.url) : null;
+    return {
+      id: `hl_${category}_${it.dedupHash}`,
+      category,
+      title: it.title,
+      url: it.url,
+      source: it.source,
+      sourceCountry: null,
+      language: "English",
+      publishedAt: it.publishedAt || null,
+      socialImageUrl: null,
+      contentPolicy: restricted ? "summary-only" : "full",
+      attribution: it.attribution || it.source,
+      // full tier: the feed's own short, unmodified snippet. restricted: never outlet text.
+      snippet: restricted ? null : (it.snippet || null),
+      summary,
+      ...(summary ? { summaryBy: "concord" } : {}),
+    };
+  }
+
+  function canonTitle(t) { return String(t || "").toLowerCase().replace(/\s+/g, " ").trim(); }
+  function timeOf(h) { const t = h.publishedAt ? Date.parse(h.publishedAt) : NaN; return Number.isNaN(t) ? -Infinity : t; }
 
   registerLensAction("news", "headlines", async (_ctx, _artifact, params = {}) => {
     const category = String(params.category || "top");
     const limit = Math.min(50, Math.max(5, Number(params.limit) || 30));
     const key = CATEGORY_QUERIES[category] ? category : "top";
-    const g = await getGdeltArticles(key);
-    const headlines = g.articles.slice(0, limit).map((a, i) => mapGdeltArticle(a, i, category));
+    // Rotation: with a cursor the user is paging the pooled last-N pulls, so NOTHING upstream
+    // is touched (cache-only reads). Without one, behave as before (GDELT read, bounded wait).
+    const hasCursor = params.cursor !== undefined && params.cursor !== null && params.cursor !== "";
+    const cursor = hasCursor ? Math.max(0, Math.floor(Number(params.cursor)) || 0) : 0;
+
+    ensureNewsRssSource();
+    const g = hasCursor ? null : await getGdeltArticles(key);
+    const gp = await getGdeltPool(key);
+    const rss = await getNewsRssPool(key);
+
+    // Merge: RSS first (it names the real outlet and may carry a snippet), then GDELT; dedupe by
+    // the repo dedup hash AND canonical title so the same story from both doesn't show twice.
+    const seenHash = new Set();
+    const seenTitle = new Set();
+    const merged = [];
+    const take = (h, hash) => {
+      const ct = canonTitle(h.title);
+      if (!h.title || !h.url) return;
+      if (seenHash.has(hash) || (ct && seenTitle.has(ct))) return;
+      seenHash.add(hash); if (ct) seenTitle.add(ct);
+      merged.push(h);
+    };
+    for (const it of rss.items) take(mapRssItem(it, category), it.dedupHash);
+    // This call's own snapshot first (what the status/stale flags describe), then older pooled pulls.
+    const gdeltArticles = g ? [...g.articles, ...gp.items] : gp.items;
+    for (const a of gdeltArticles) take(mapGdeltArticle(a, category), dedupHashOf(a.title || "", a.url || ""));
+    // newest first; undated items sink to the end (never given an invented date)
+    merged.sort((a, b) => timeOf(b) - timeOf(a));
+
+    const total = merged.length;
+    const start = total ? cursor % total : 0;
+    const headlines = merged.slice(start, start + limit);
+    const nextCursor = start + limit < total ? start + limit : 0;
+
+    const gdeltStatus = g ? g.status : gp.status;
+    const gdeltFresh = gdeltStatus === "fresh";
+    const toMs = (iso) => (iso ? Date.parse(iso) : NaN);
+    const stamps = [g?.fetchedAt || gp.fetchedAt, rss.fetchedAt].filter(Boolean);
+    const fetchedAt = stamps.length ? stamps.reduce((a, b) => (toMs(a) >= toMs(b) ? a : b)) : null;
+    const stale = total ? !(gdeltFresh || rss.anyFresh) : false;
+    const status = total === 0 ? "unavailable" : stale ? "stale" : "fresh";
+    const usesRss = rss.items.length > 0;
     const result = {
       headlines,
       category,
       count: headlines.length,
-      source: "GDELT Project (real-time global news, no key required)",
-      // Freshness metadata: fetchedAt is when the data was pulled from GDELT
+      total,
+      nextCursor,
+      source: usesRss
+        ? "GDELT Project + vetted RSS feeds (each headline names its own source)"
+        : "GDELT Project (real-time global news, no key required)",
+      sources: [
+        { id: "gdelt", name: "GDELT Project", attribution: "GDELT Project", status: gdeltStatus },
+        ...rss.feeds.map((f) => ({ id: f.id, name: f.name, attribution: f.attribution, status: f.status })),
+      ],
+      // Freshness metadata: fetchedAt is when the newest contributing source was pulled
       // (null when nothing is cached); status is fresh | stale | unavailable.
-      fetchedAt: g.fetchedAt,
-      stale: g.stale,
-      status: g.status,
+      fetchedAt: total ? fetchedAt : null,
+      stale,
+      status,
     };
-    if (g.status === "unavailable") result.lastOkAt = g.lastOkAt;
-    if (g.degradedReason) {
+    if (status === "unavailable") {
+      result.lastOkAt = g?.lastOkAt || gp.lastOkAt || null;
+      result.reason = g?.reason || "warming"; // nothing cached yet: the warm tick is still filling it
+      result.degraded = true;
+      result.degradedReason = result.reason;
+    } else if (g?.degradedReason) {
       result.degraded = true;
       result.degradedReason = g.degradedReason;
       result.reason = g.degradedReason;
@@ -660,8 +759,8 @@ export default function registerNewsActions(registerLensAction) {
       tallied += bullets.length;
       const out = { heading: s.heading, bullets };
       if (!got) {
-        out.unavailableReason = "budget_exceeded";
-        reasons.push("budget_exceeded");
+        out.unavailableReason = "warming";
+        reasons.push("warming");
       } else {
         out.status = got.status;
         out.stale = got.stale;
