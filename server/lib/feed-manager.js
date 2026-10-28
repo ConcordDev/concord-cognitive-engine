@@ -28,6 +28,7 @@ import { hostTier, isExcludedHost } from "./news-outlet-policy.js";
 import { summaryForItem, queueItemForSummary } from "./news-summarizer.js";
 import { normalizeTagList } from "./dtu-tags.js";
 import { trackFeedJob } from "../emergent/feed.js";
+import { isSharedUpstream, getSharedTextOrThrow, responseLike } from "./shared-http.js";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // CONSTANTS & LIMITS
@@ -524,10 +525,29 @@ async function fetchFeed(feedSource) {
 
   try {
     health.lastAttempt = Date.now();
-    const res = await safeFetch(feedSource.url, {
-      timeout: feedSource.timeout || FETCH_TIMEOUT,
-      headers: feedSource.headers || {},
-    });
+    let res;
+    if (isSharedUpstream(feedSource.url)) {
+      // Same upstream URL that realtime-feeds / the news pool also poll: read through the shared
+      // feed-cache so it is fetched once. A read younger than half this feed's interval is a hit.
+      const ttlMs = Math.min(10 * 60_000, Math.max(30_000, Math.floor((feedSource.interval || 60_000) / 2)));
+      try {
+        res = responseLike(await getSharedTextOrThrow(feedSource.url, { ttlMs }));
+      } catch (e) {
+        if (e?.status === 429) {
+          res = { ok: false, status: 429, statusText: "Too Many Requests", headers: { get: (h) => (String(h).toLowerCase() === "retry-after" ? e.retryAfter : null) } };
+        } else if (/^(key_backoff|budget_exhausted|upstream_backoff)$/.test(String(e?.message))) {
+          // The shared cache is protecting this URL: not this feed's failure, so it must not count toward auto-disable.
+          return { items: [], errors: [String(e.message)] };
+        } else {
+          throw e;
+        }
+      }
+    } else {
+      res = await safeFetch(feedSource.url, {
+        timeout: feedSource.timeout || FETCH_TIMEOUT,
+        headers: feedSource.headers || {},
+      });
+    }
 
     // G2 — rate-limit politeness: on 429, set a backoff window from Retry-After
     // (seconds or HTTP-date) and skip this cycle instead of hammering the source.

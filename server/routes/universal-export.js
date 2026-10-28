@@ -464,16 +464,19 @@ export default function createUniversalExportRouter(STATE, runMacro, makeCtx) {
     }
   }));
 
-  // GET /api/realtime/feed/:feed — Get cached data for a specific feed
+  // GET /api/realtime/feed/:feed — latest snapshot of a realtime feed, straight from the shared
+  // feed-cache (never an upstream call). `data` is the SAME payload the socket event carries;
+  // status/stale/fetchedAt say how fresh it is. Nothing cached => honest
+  // { status:"unavailable", reason, lastOkAt, data:null } (never placeholder data).
   router.get("/api/realtime/feed/:feed", asyncHandler(async (req, res) => {
     try {
-      const { getRealtimeFeedData } = await import("../emergent/realtime-feeds.js");
-      const data = getRealtimeFeedData(req.params.feed);
-      if (data) {
-        res.json({ ok: true, feed: req.params.feed, data });
-      } else {
-        res.json({ ok: true, feed: req.params.feed, data: null, message: "No cached data yet — waiting for next heartbeat tick" });
+      const { getRealtimeSnapshot } = await import("../emergent/realtime-feeds.js");
+      const snap = getRealtimeSnapshot(req.params.feed);
+      if (!snap.known) {
+        return res.status(404).json({ ok: false, feed: req.params.feed, status: "unavailable", reason: snap.reason, data: null });
       }
+      const { known: _known, ...out } = snap;
+      res.json({ ok: true, ...out });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
