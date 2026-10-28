@@ -1,5 +1,53 @@
 # Chat Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **Re-verified 2026-10-28 (HANDOFF-3 Workstream B, batch L1 — audit/gap
+> pass, not a restyle).** Every row below was re-checked against main
+> 4c964675. What changed since the Wave 3 edition:
+>
+> - The 4,595-line `app/lenses/chat/page.tsx` has since been refactored
+>   into a 63-line shell; the primary surface is now
+>   `components/chat/ChatWorkspacePanel.tsx` (4,269 LOC). Both Wave 3
+>   fixes survived the move: the `chat.thread-index` sync effect and the
+>   `ThreadSearchOverlay` mount live in the panel today.
+> - **The deferred branch item is DONE.** `BranchForkButton` is mounted
+>   in ChatWorkspacePanel and a `SyncedBranchesSection.tsx` (79 LOC)
+>   lists / opens / deletes server branches via `chat.branches-list` and
+>   `chat.branch-delete`, with vitest coverage
+>   (`tests/chat-synced-branches.test.tsx`). Local (device) forks and
+>   synced (account) branches coexist — the local fork is the instant
+>   per-message action; the synced section is the account-level manager.
+>   All 45 `chat` macros are now surfaced; the only one with no
+>   dedicated UI call is `project-get`, redundant by design
+>   (`projects-list` returns full records).
+> - HANDOFF-2 T6 shipped: low-confidence answers are labelled on the
+>   streaming and `chat:complete` socket paths (INC-152, #1689).
+> - This pass fixed `server/tests/chat-agent.test.js`: 9 tests predated
+>   the MCP execution bridge's identity gate
+>   (`lib/mcp-hermes-identity.js` — bridge calls must be attributed to an
+>   authenticated actor) and failed with `auth_required` before reaching
+>   the dispatch behavior they pin. Fixtures now pass an authenticated
+>   member ctx, and one assertion was re-scoped from whole-ctx equality
+>   to the attribution invariant (the bridge normalizes the ctx it
+>   forwards). No production code changed. 47/49 pass in a bare sandbox;
+>   the 2 `mcp_connect` SSRF tests need `node_modules`
+>   (`@modelcontextprotocol/sdk`) to load the real bridge — Mac-run.
+>
+> **2026 competitor delta (ChatGPT / Claude, checked 2026-10-28):**
+> Memory (ChatGPT "Dreaming V3") → `memory-*` macros + UI, real.
+> Projects with files/instructions → `project-*` + ProjectsPanel, real
+> (records carry instructions; per-project file knowledge is the one
+> partial row). Deep Research → Concord's research mode with citation
+> receipts (feed-cache 9a/9b) — ahead on provenance. Agent Mode →
+> AgentModePanel + the MCP execution bridge (131 tools) — native.
+> Tasks → `scheduled-*`, real. Canvas → `canvas-*`, real. Data analysis
+> → `code-run` + attachments, real. Voice → voice-chat + `voice-*`
+> settings + composer dictation (SpeechRecognition), real.
+> Out of scope for this pass, with reasons: in-thread image *editing*
+> (the pod's FLUX endpoint is generate-only from chat today; wiring
+> img2img is a media-pipeline project, not a lens fix); voice with
+> video/screen-share (a calling surface, not a chat-lens feature);
+> Sora-class video generation (separate media pipeline).
+
 > **Handle with care note (owner directive honored):** `chat` is the
 > highest-traffic lens in Concord and had an urgent layout regression fixed
 > earlier this same session (commit `0840de3a` — two extra flex-row
@@ -35,8 +83,8 @@ share links, and participant/topic analysis for group threads.
 | `prompt-create`/`delete`/`update`, `prompts-list` | saved prompt library (slash-command templates) | DESIGNED |
 | `thread-index` | write a thread's title/snippet/timestamp into the server-side search index | **UNSURFACED — the write-half of a real feature was entirely missing** | **FIXED THIS SESSION** |
 | `threads-search` | search the index `thread-index` populates | DESIGNED (`ThreadSearchOverlay.tsx`) — but always returned "0 threads indexed" | Now actually returns real hits |
-| `branches-list`/`branch-delete` | list/delete forked conversation branches | **UNSURFACED** | Still unsurfaced — genuine scoped gap (see checklist) |
-| `branch-fork` | fork a conversation at a message into a real server-persisted branch | **UNSURFACED — the consuming component (`BranchForkButton.tsx`) exists, is tested, but is never mounted anywhere** | Still unsurfaced this session — see checklist item 4 |
+| `branches-list`/`branch-delete` | list/delete forked conversation branches | DESIGNED (`SyncedBranchesSection.tsx`) | Wired in a later pass — see the 2026-10-28 re-verification note |
+| `branch-fork` | fork a conversation at a message into a real server-persisted branch | DESIGNED (`BranchForkButton` mounted in ChatWorkspacePanel) | Wired in a later pass — see the 2026-10-28 re-verification note |
 | `canvas-create`/`get`/`update`/`revert`/`delete`, `canvas-list` | collaborative canvas/document mode | DESIGNED |
 | `code-run`, `code-history` | in-thread code execution + history | DESIGNED |
 | `image-generate`, `image-history`, `image-delete` | in-thread image generation | DESIGNED |
@@ -47,11 +95,12 @@ share links, and participant/topic analysis for group threads.
 | `voice-get`/`voice-update` | voice settings | DESIGNED |
 | `participantAnalysis`, `topicDetection` | group-thread participant/topic analysis | DESIGNED |
 
-**41 of 45 macros are DESIGNED.** 4 remain unsurfaced after this session:
-`project-get` (redundant — `projects-list` already returns full records,
-no UI needs a single-item re-fetch), `branches-list`/`branch-delete`
-(genuine scoped gap, see below), and `branch-fork` (component exists,
-tested, but orphaned — genuine scoped gap, see below).
+**41 of 45 macros were DESIGNED at the Wave 3 edition.** As of the
+2026-10-28 re-verification the count is 44 of 45 surfaced: the branch
+trio (`branch-fork`/`branches-list`/`branch-delete`) was wired in a
+later pass, leaving only `project-get` unsurfaced — redundant, not a
+gap (`projects-list` already returns full records; no UI needs a
+single-item re-fetch).
 
 ## 1.5 Reference-parity checklist
 
