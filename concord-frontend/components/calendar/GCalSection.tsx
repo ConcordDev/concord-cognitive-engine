@@ -136,7 +136,7 @@ export function GCalSection() {
           title: editEvent.title, start: editEvent.start, end: editEvent.end,
           calendarId: editEvent.calendarId, description: editEvent.description, location: editEvent.location,
         } });
-        if (r.data?.ok === false) { alert(r.data?.error); return; }
+        if (r.data?.ok === false) { setRailError(r.data?.error || 'Could not save that event.'); return; }
       } else {
         await lensRun({ domain: 'calendar', action: 'events-update', input: {
           id: editEvent.id, title: editEvent.title, start: editEvent.start, end: editEvent.end,
@@ -148,13 +148,19 @@ export function GCalSection() {
     } catch (err) { console.error('[GCal] saveEvent', err); }
   }
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
   async function deleteEvent(id: string) {
-    if (!confirm('Delete this event?')) return;
+    // Two-step inline confirm (native confirm() never surfaces in
+    // embedded browsers — the S3/F3 dialog class). The delete itself is
+    // soft (F12): the event lands in the trash, restorable from
+    // Sync & share → Trash.
+    if (!confirmDelete) { setConfirmDelete(true); return; }
+    setConfirmDelete(false);
     try {
       await lensRun({ domain: 'calendar', action: 'events-delete', input: { id } });
       setEditEvent(null);
       await refresh();
-    } catch (err) { console.error('[GCal] deleteEvent', err); }
+    } catch (err) { console.error('[GCal] deleteEvent', err); setRailError('Could not delete that event.'); }
   }
 
   async function toggleCalendar(cal: CalendarMeta) {
@@ -559,7 +565,7 @@ export function GCalSection() {
               <textarea value={editEvent.description || ''} onChange={e => setEditEvent({ ...editEvent, description: e.target.value })} placeholder="Description" rows={2} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
               <div className="flex items-center gap-2 pt-1">
                 <button onClick={saveEvent} className="flex-1 px-3 py-1.5 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400">{editEvent._new ? 'Create' : 'Save'}</button>
-                {!editEvent._new && editEvent.id && <button onClick={() => deleteEvent(editEvent.id!)} className="px-3 py-1.5 text-xs rounded border border-rose-500/30 text-rose-300 hover:bg-rose-500/10">Delete</button>}
+                {!editEvent._new && editEvent.id && <button onClick={() => deleteEvent(editEvent.id!)} className="px-3 py-1.5 text-xs rounded border border-rose-500/30 text-rose-300 hover:bg-rose-500/10">{confirmDelete ? 'Delete?' : 'Delete'}</button>}
               </div>
             </div>
           </div>
