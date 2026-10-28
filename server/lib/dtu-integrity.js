@@ -13,8 +13,27 @@
 
 import { createHash, createHmac, randomUUID } from "crypto";
 
-// Platform signing key (in production, loaded from secure storage / HSM)
-const PLATFORM_SIGNING_KEY = "concord-platform-integrity-key-v1";
+// Platform signing key — H2 (security audit 2026-10-14): this key used to be
+// hardcoded here in a public repository, so every signature it produced was
+// forgeable by anyone who could read the repo. It is now loaded from the
+// environment, mirroring lib/receipts/attest.js (CONCORD_RECEIPT_SIGNING_KEY):
+// set CONCORD_DTU_SIGNING_KEY in the server's env / secure storage. This
+// module never falls back to a baked-in or generated key — with no key
+// configured, envelopes are stored unsigned (signature: null) and verify()
+// reports the signature as invalid rather than pretending otherwise.
+export const DTU_SIGNING_KEY_ENV = "CONCORD_DTU_SIGNING_KEY";
+
+/**
+ * Resolve the platform signing key: an explicit key wins, then the
+ * environment. Returns null when no key is configured.
+ * @param {string} [explicitKey]
+ * @returns {string|null}
+ */
+export function resolvePlatformSigningKey(explicitKey) {
+  if (explicitKey) return explicitKey;
+  const fromEnv = process.env[DTU_SIGNING_KEY_ENV];
+  return fromEnv && fromEnv.trim() ? fromEnv.trim() : null;
+}
 
 function nowISO() {
   return new Date().toISOString();
@@ -40,12 +59,29 @@ export function initIntegrityTable(db) {
         signed_at TEXT,
         verified_at TEXT,
         is_valid INTEGER DEFAULT 1,
+        parent_dtu_id TEXT,
+        parent_hash TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
     `);
+    // Provenance chain link: derivatives record their parent DTU and the
+    // parent's content hash at creation time. CREATE TABLE IF NOT EXISTS
+    // does not add columns to a table that already exists, so add them
+    // idempotently for pre-existing databases.
+    const cols = db
+      .prepare("PRAGMA table_info(dtu_integrity)")
+      .all()
+      .map((r) => r.name);
+    if (!cols.includes("parent_dtu_id")) {
+      db.exec(`ALTER TABLE dtu_integrity ADD COLUMN parent_dtu_id TEXT`);
+    }
+    if (!cols.includes("parent_hash")) {
+      db.exec(`ALTER TABLE dtu_integrity ADD COLUMN parent_hash TEXT`);
+    }
     db.exec(`CREATE INDEX IF NOT EXISTS idx_integrity_hash ON dtu_integrity(content_hash)`);
     db.exec(`CREATE INDEX IF NOT EXISTS idx_integrity_valid ON dtu_integrity(is_valid)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_integrity_parent_hash ON dtu_integrity(parent_hash)`);
     return true;
   } catch (e) {
     console.error("[DTUIntegrity] Failed to initialize table:", e.message);
@@ -65,7 +101,13 @@ export function initIntegrityTable(db) {
 export function createIntegritySystem(db, opts = {}) {
   const log = opts.log || (() => {});
   const dtuStore = opts.dtuStore || null;
+  const configuredKey = opts.signingKey || null;
   let _stmts = null;
+
+  // Explicit key argument > system-level opts.signingKey > environment.
+  function platformKey(explicitKey) {
+    return resolvePlatformSigningKey(explicitKey || configuredKey);
+  }
 
   function stmts() {
     if (_stmts) return _stmts;
@@ -76,8 +118,8 @@ export function createIntegritySystem(db, opts = {}) {
         getByHash: db.prepare("SELECT * FROM dtu_integrity WHERE content_hash = ?"),
         upsert: db.prepare(`
           INSERT OR REPLACE INTO dtu_integrity
-            (dtu_id, content_hash, header_checksum, layer_checksums_json, signature, signed_by, signed_at, verified_at, is_valid, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (dtu_id, content_hash, header_checksum, layer_checksums_json, signature, signed_by, signed_at, verified_at, is_valid, parent_dtu_id, parent_hash, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `),
         updateVerification: db.prepare(
           "UPDATE dtu_integrity SET verified_at = ?, is_valid = ?, updated_at = ? WHERE dtu_id = ?"
@@ -167,7 +209,8 @@ export function createIntegritySystem(db, opts = {}) {
    * @returns {string}
    */
   function generateSignature(contentHash, key) {
-    const signingKey = key || PLATFORM_SIGNING_KEY;
+    const signingKey = platformKey(key);
+    if (!signingKey) return null;
     return createHmac("sha256", signingKey).update(contentHash).digest("hex");
   }
 
@@ -179,7 +222,7 @@ export function createIntegritySystem(db, opts = {}) {
      * @param {object} dtu - The DTU object
      * @returns {object} The integrity envelope
      */
-    generateIntegrity(dtu) {
+    generateIntegrity(dtu, chainOpts = {}) {
       if (!dtu || !dtu.id) {
         return { ok: false, error: "missing_dtu_or_id" };
       }
@@ -190,21 +233,38 @@ export function createIntegritySystem(db, opts = {}) {
       const signature = generateSignature(contentHash);
       const now = nowISO();
 
+      // Provenance chain link: a derivative records its parent DTU and the
+      // parent's content hash. The hash is resolved from the parent's own
+      // integrity row when the caller only names the parent.
+      const parentDtuId =
+        chainOpts.parentDtuId || dtu.parentId || dtu.parentDtuId || null;
+      let parentHash = chainOpts.parentHash || null;
+      const s = stmts();
+      if (!parentHash && parentDtuId && s) {
+        try {
+          parentHash = s.get.get(parentDtuId)?.content_hash || null;
+        } catch {
+          parentHash = null;
+        }
+      }
+
       const envelope = {
         dtuId: dtu.id,
         contentHash,
         headerChecksum,
         layerChecksums,
         signature,
-        signedBy: "platform",
-        signedAt: now,
+        signedBy: signature ? "platform" : null,
+        signedAt: signature ? now : null,
+        unsignedReason: signature ? null : "no_signing_key",
+        parentDtuId,
+        parentHash,
         isValid: true,
         createdAt: now,
         updatedAt: now,
       };
 
       // Persist to database
-      const s = stmts();
       if (s) {
         try {
           s.upsert.run(
@@ -213,10 +273,12 @@ export function createIntegritySystem(db, opts = {}) {
             headerChecksum,
             JSON.stringify(layerChecksums),
             signature,
-            "platform",
-            now,
+            envelope.signedBy,
+            envelope.signedAt,
             now,
             1,
+            parentDtuId,
+            parentHash,
             now,
             now
           );
@@ -280,9 +342,31 @@ export function createIntegritySystem(db, opts = {}) {
           if (!match) allLayersMatch = false;
         }
 
-        // Verify signature
+        // Verify signature. An unsigned record (no platform key was
+        // configured when it was written) or a verifier with no key
+        // configured can never report a valid signature.
         const expectedSignature = generateSignature(stored.content_hash);
-        const signatureValid = stored.signature === expectedSignature;
+        const signatureValid =
+          !!stored.signature &&
+          !!expectedSignature &&
+          stored.signature === expectedSignature;
+
+        // Provenance chain link: when this DTU recorded a parent hash at
+        // creation, check it still matches the parent's current content
+        // hash. Informational only — a parent that has been legitimately
+        // deleted or lives on another node reports null/false here without
+        // invalidating this DTU's own content integrity.
+        let parentLinkValid = null;
+        if (stored.parent_hash) {
+          try {
+            const parentRow = stored.parent_dtu_id
+              ? s.get.get(stored.parent_dtu_id)
+              : s.getByHash.get(stored.parent_hash);
+            parentLinkValid = !!parentRow && parentRow.content_hash === stored.parent_hash;
+          } catch {
+            parentLinkValid = null;
+          }
+        }
 
         // Overall validity
         const isValid = contentMatch && headerMatch && allLayersMatch && signatureValid;
@@ -301,6 +385,9 @@ export function createIntegritySystem(db, opts = {}) {
           layerResults,
           allLayersMatch,
           signatureValid,
+          parentDtuId: stored.parent_dtu_id || null,
+          parentHash: stored.parent_hash || null,
+          parentLinkValid,
           verifiedAt: now,
         };
 
@@ -361,6 +448,7 @@ export function createIntegritySystem(db, opts = {}) {
           contentHash: verification.contentHash,
           contentMatch: verification.contentMatch,
           signatureValid: verification.signatureValid,
+          parentLinkValid: verification.parentLinkValid ?? null,
         });
 
         // Add children/derivatives to the queue
@@ -434,6 +522,8 @@ export function createIntegritySystem(db, opts = {}) {
             signedAt: stored.signed_at,
             verifiedAt: stored.verified_at,
             isValid: !!stored.is_valid,
+            parentDtuId: stored.parent_dtu_id || null,
+            parentHash: stored.parent_hash || null,
             createdAt: stored.created_at,
             updatedAt: stored.updated_at,
           },
@@ -459,6 +549,11 @@ export function createIntegritySystem(db, opts = {}) {
 
       const contentHash = hashContent(dtu.content || "");
       const signature = generateSignature(contentHash, key);
+      if (!signature) {
+        // No explicit key and no configured platform key — refuse rather
+        // than storing a null "signature" that reads as signed.
+        return { ok: false, error: "no_signing_key", dtuId: dtu.id };
+      }
       const now = nowISO();
 
       const s = stmts();
@@ -477,6 +572,8 @@ export function createIntegritySystem(db, opts = {}) {
               now,
               existing.verified_at,
               existing.is_valid,
+              existing.parent_dtu_id ?? null,
+              existing.parent_hash ?? null,
               existing.created_at,
               now
             );
@@ -494,6 +591,8 @@ export function createIntegritySystem(db, opts = {}) {
               now,
               null,
               1,
+              null,
+              null,
               now,
               now
             );
