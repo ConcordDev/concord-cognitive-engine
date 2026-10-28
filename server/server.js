@@ -2322,6 +2322,7 @@ import {
   initSpotCheck,
 } from "./emergent/repair-cortex.js";
 import { createRoleGate } from "./lib/role-gate.js";
+import { registerDbConsoleRoutes, dbMacroDenied } from "./lib/db-console.js";
 import { registerRepairCortexStatusRoutes } from "./lib/repair-cortex-status-routes.js";
 import {
   handleMacroHandlerThrow,
@@ -8464,7 +8465,7 @@ function authMiddleware(req, res, next) {
     "/api/heal", "/api/cache", "/api/redis", "/api/efficiency",
     "/api/model-optimizer", "/api/lens-items", "/api/mobile",
     "/api/global", "/api/sovereign", "/api/autotag",
-    "/api/ml", "/api/db", "/api/preview-action", "/api/undo",
+    "/api/ml", "/api/preview-action", "/api/undo", // "/api/db" removed: admin-only (lib/db-console.js)
     "/api/autocrawl", "/api/reseed", "/api/integrations",
     "/api/swarm", "/api/utility",
     // Extended domains (three-gate audit)
@@ -15568,7 +15569,7 @@ async function runMacro(domain, name, input, ctx) {
     "/api/artifacts", "/api/notifications", "/api/reminders", "/api/webhooks",
     "/api/whiteboard", "/api/whiteboards", "/api/mobile", "/api/global",
     "/api/sovereign", "/api/autotag", "/api/efficiency", "/api/model-optimizer",
-    "/api/lens-items", "/api/lens-actions", "/api/ml", "/api/db", "/api/preview-action", "/api/pwa",
+    "/api/lens-items", "/api/lens-actions", "/api/ml", "/api/preview-action", "/api/pwa", // "/api/db" removed: admin-only
     "/api/obsidian", "/api/integrations", "/api/distribution", "/api/backpressure",
     "/api/embeddings", "/api/perf", "/api/precompute", "/api/distillation",
     // "/api/creative-commerce" mirrors "/api/artistry" (WAVE4 dual-mount
@@ -60090,13 +60091,15 @@ async function runMigrations() {
   return { ok: true, applied, total: migrations.length };
 }
 
-register("db", "status", (_ctx, _input) => {
+register("db", "status", (ctx, _input) => {
+  const denied = dbMacroDenied(ctx); if (denied) return denied;
   return { ok: true, postgres: { enabled: PG_CONFIG.enabled, connected: !!pgPool, pool: pgPool ? { total: pgPool.totalCount, idle: pgPool.idleCount, waiting: pgPool.waitingCount } : null }, redis: { enabled: REDIS_CONFIG.enabled, connected: !!redisClient }, mode: pgPool ? "postgresql" : "in-memory" };
 });
 
-register("db", "migrate", (_ctx, _input) => { return runMigrations(); });
+register("db", "migrate", (ctx, _input) => { const denied = dbMacroDenied(ctx); if (denied) return denied; return runMigrations(); });
 
 register("db", "query", async (ctx, input) => {
+  const denied = dbMacroDenied(ctx); if (denied) return denied;
   const { sql, params } = input;
   if (!pgPool) return { ok: false, error: "PostgreSQL not connected" };
   if (!sql) return { ok: false, error: "SQL query required" };
@@ -60105,6 +60108,7 @@ register("db", "query", async (ctx, input) => {
 });
 
 register("db", "syncToPostgres", async (ctx, input) => {
+  const denied = dbMacroDenied(ctx); if (denied) return denied;
   if (!pgPool) return { ok: false, error: "PostgreSQL not connected" };
   const batch = Number(input.batchSize) || 100;
   let synced = 0;
@@ -60172,40 +60176,8 @@ register("redis", "stats", async (_ctx, _input) => {
   catch (e) { return { ok: false, error: e.message }; }
 });
 
-app.get("/api/db/status", async (req, res) => res.json(await runMacro("db", "status", {}, makeCtx(req))));
-app.post("/api/db/migrate", async (req, res) => { try { res.json(await runMacro("db", "migrate", {}, makeCtx(req))); } catch (e) { res.status(500).json({ ok: false, error: String(e?.message || e) }); } });
-app.post("/api/db/sync", async (req, res) => { try { res.json(await runMacro("db", "syncToPostgres", req.body, makeCtx(req))); } catch (e) { res.status(500).json({ ok: false, error: String(e?.message || e) }); } });
-// Database lens endpoints (query/tables/indexes) — graceful stubs when no DB connected
-app.post("/api/db/query", (req, res) => {
-  const q = String(req.body?.query || "").trim();
-  if (!q) return res.status(400).json({ ok: false, error: "query required" });
-  if (!db) return res.json({ ok: true, rows: [], columns: [], message: "No database connected. Set DATABASE_URL to enable." });
-  try {
-    const stmt = db.prepare(q);
-    if (q.toUpperCase().startsWith("SELECT") || q.toUpperCase().startsWith("PRAGMA") || q.toUpperCase().startsWith("EXPLAIN")) {
-      const rows = stmt.all();
-      const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
-      res.json({ ok: true, rows, columns, rowCount: rows.length });
-    } else {
-      const info = stmt.run();
-      res.json({ ok: true, rows: [], columns: [], changes: info.changes });
-    }
-  } catch (e) { res.status(400).json({ ok: false, error: String(e?.message || e) }); }
-});
-app.get("/api/db/tables", (req, res) => {
-  if (!db) return res.json({ ok: true, tables: [] });
-  try {
-    const tables = db.prepare("SELECT name, type FROM sqlite_master WHERE type IN ('table','view') ORDER BY name").all();
-    res.json({ ok: true, tables });
-  } catch (e) { res.status(500).json({ ok: false, tables: [], error: String(e?.message || e) }); }
-});
-app.get("/api/db/indexes", (req, res) => {
-  if (!db) return res.json({ ok: true, indexes: [] });
-  try {
-    const indexes = db.prepare("SELECT name, tbl_name as tableName, sql FROM sqlite_master WHERE type='index' ORDER BY tbl_name, name").all();
-    res.json({ ok: true, indexes });
-  } catch (e) { res.status(500).json({ ok: false, indexes: [], error: String(e?.message || e) }); }
-});
+// Database lens endpoints — admin-only + read-only console (lib/db-console.js).
+registerDbConsoleRoutes(app, { requireRole, getDb: () => db, runMacro, makeCtx });
 app.get("/api/redis/stats", async (req, res) => res.json(await runMacro("redis", "stats", {}, makeCtx(req))));
 
 _unrefInTest(setTimeout(async () => {
