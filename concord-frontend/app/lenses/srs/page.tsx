@@ -170,7 +170,7 @@ export default function SRSLensPage() {
       <div data-lens-theme="srs" className="relative min-h-full px-8 pb-28 pt-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100" data-testid="srs-greeting">What do you still know{user?.username ? `, ${user.username}` : ''}</h1>
+            <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">Study</h1>
           </div>
           <div className="flex items-center gap-5 pt-1 text-[13px]">
             {view === 'review' && !dueQuery.isLoading && (
