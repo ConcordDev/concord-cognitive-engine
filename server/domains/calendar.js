@@ -1062,19 +1062,40 @@ export default function registerCalendarActions(registerLensAction) {
 
   // ── Dashboard summary ────────────────────────────────────────
 
-  registerLensAction("calendar", "calendar-dashboard-summary", (ctx, _a, _p = {}) => {
+  registerLensAction("calendar", "calendar-dashboard-summary", (ctx, _a, params = {}) => {
   try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCal(ctx);
     const calendars = ensureDefaultCalendars(s, userId);
     const now = new Date();
-    const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
-    const weekEnd = new Date(now.getTime() + 7 * 86_400_000);
+    // F7: the tiles used to expand occurrences from NOW, so everything
+    // earlier today vanished from "Events today" and the tiles read
+    // 0–2 against 3–4 real events. The counts now cover the user's
+    // actual day and calendar week (Sunday-start, as the grid renders)
+    // in their zone — the same store and instants as the grid.
+    const tz = isValidZoneName(params.tz) ? String(params.tz) : null;
+    let dayStartMs, dayEndMs, weekStartMs, weekEndMs;
+    if (tz) {
+      const p = zonePartsAt(tz, now.getTime());
+      const dow = new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay();
+      dayStartMs = wallTimeInZoneToUtcMs(tz, p.year, p.month, p.day, 0, 0);
+      dayEndMs = wallTimeInZoneToUtcMs(tz, p.year, p.month, p.day + 1, 0, 0);
+      weekStartMs = wallTimeInZoneToUtcMs(tz, p.year, p.month, p.day - dow, 0, 0);
+      weekEndMs = wallTimeInZoneToUtcMs(tz, p.year, p.month, p.day - dow + 7, 0, 0);
+    } else {
+      const sod = new Date(now); sod.setHours(0, 0, 0, 0);
+      const eod = new Date(sod); eod.setDate(eod.getDate() + 1);
+      const sow = new Date(sod); sow.setDate(sow.getDate() - sow.getDay());
+      const eow = new Date(sow); eow.setDate(eow.getDate() + 7);
+      dayStartMs = sod.getTime(); dayEndMs = eod.getTime();
+      weekStartMs = sow.getTime(); weekEndMs = eow.getTime();
+    }
     let todayCount = 0, weekCount = 0;
     for (const e of listCal(s.events, userId)) {
-      for (const occ of expandOccurrences(e, now, weekEnd)) {
-        weekCount++;
-        if (new Date(occ.occurrenceStart) <= todayEnd) todayCount++;
+      for (const occ of expandOccurrences(e, new Date(weekStartMs), new Date(weekEndMs))) {
+        const os = new Date(occ.occurrenceStart).getTime();
+        if (os >= weekStartMs && os < weekEndMs) weekCount++;
+        if (os >= dayStartMs && os < dayEndMs) todayCount++;
       }
     }
     const tasks = listCal(s.tasks, userId);
@@ -1089,6 +1110,7 @@ export default function registerCalendarActions(registerLensAction) {
         openTasks,
         overdueTasks,
         unblockedTasks: tasks.filter(t => t.status === 'todo' && !t.blockedEventId).length,
+        tz: tz || "local",
       },
     };
     } catch (e) { return handlerFailure(e); }
