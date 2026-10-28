@@ -47,6 +47,7 @@ import { hasUsableBrainInput, needsInputError } from "./lib/brain-action-input.j
 import { aggregateTopicCounts } from "./lib/trending-topics.js";
 import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-tags.js";
 import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
+import { humanMacroAclDenial } from "./lib/macro-acl-human-gate.js";
 
 // === DATA DIRECTORY (canonical) ===
 // Resolution order:
@@ -15679,13 +15680,40 @@ async function runMacro(domain, name, input, ctx) {
   // ── MACRO ACL ──────────────────────────────────────────────────────────
   // Users should be able to use every lens except sovereign-only operations.
   // The ACL restricts: (a) sovereign/owner-only domains, (b) autonomous system ticks.
-  // Human HTTP requests bypass ACL for everything else.
+  // Human HTTP requests bypass the scope-based canRunMacro ACL for everything
+  // else (human sessions carry ["read","write"] scopes, so scope checks would
+  // lock out real admins), but admin/owner-tier rules are now enforced for
+  // humans by lib/macro-acl-human-gate.js (role-only, with the
+  // member-usable allowlist).
   const _isHumanRequest = !!ctx?.reqMeta?.path;
   const _sovereignOnlyDomains = new Set(["sovereign", "council", "org", "auth", "governor", "global", "shard"]);
   if (_sovereignOnlyDomains.has(domain) || (!safeReadBypass && !_isAuthenticatedUser && !_isHumanRequest)) {
     if (typeof globalThis.canRunMacro === "function" && !globalThis.canRunMacro(actor, domain, name)) {
       throw new Error(`forbidden: ${domain}.${name}`);
     }
+  }
+
+  // SEC-MACRO-ACL: enforce admin/owner-tier matrix rules for human callers.
+  // canRunMacro above only fires for sovereign-only domains / non-human
+  // callers, which left admin-tier tags decorative for signed-in members.
+  // humanMacroAclDenial checks roles only (never scopes) and allowlists the
+  // admin-tagged macros the product deliberately exposes to members.
+  // Unregistered names must keep their existing behavior (e.g. /api/sovereignty/audit
+  // calls the unregistered audit.run and relies on the thrown error path), so
+  // the gate only fires for names actually present in the registry. It only
+  // covers the callers that skipped canRunMacro above (non-human callers
+  // already went through the full matrix), and uses the same resolved
+  // `actor` canRunMacro would have seen (ctx without an actor = internal).
+  if (
+    !_sovereignOnlyDomains.has(domain) &&
+    (safeReadBypass || _isAuthenticatedUser || _isHumanRequest) &&
+    MACROS.get(domain)?.has(name)
+  ) {
+    const _aclDenied = humanMacroAclDenial({
+      ctx: ctx?.actor ? ctx : { ...(ctx || {}), actor },
+      domain, name, macroAcl: MACRO_ACL, macroAclDomain: MACRO_ACL_DOMAIN,
+    });
+    if (_aclDenied) return _aclDenied;
   }
 
   if (!safeReadBypass && !_isAuthenticatedUser) {
@@ -39552,9 +39580,10 @@ function _canRunMacro(actor, domain, name) {
   //    want explicit rules, not a default-deny — the previous
   //    default-deny-in-production was causing false positives that
   //    popped "forbidden" errors on normal lens actions in production
-  //    builds. Sensitive operations (admin, federation, sovereign) are
-  //    handled by per-handler role checks we added earlier, so we don't
-  //    need to double-gate them here.
+  //    builds. Admin/owner-tier rules in this matrix are now also
+  //    enforced for humans by lib/macro-acl-human-gate.js (role-only,
+  //    with the member-usable allowlist), so sensitive operations are
+  //    no longer solely dependent on per-handler role checks.
   return true;
 }
 
