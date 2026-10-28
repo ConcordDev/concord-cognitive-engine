@@ -634,6 +634,15 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
         : "Geometric assembly. A shape that looks finished has not been manufactured or tested. The loft's length, width and height come from the styling skeleton pinned to the package hard points, not a kernel solid. Each check is pass, warn, fail, or info.",
       verified: ["library component boxes", "J1100 dimensions from the H-points", "J941 eyellipse centroid", "fit checks listed here"],
       geometricOnly: [...(cadSkin ? [] : ["viewer body loft"]), ...(cadSkin && designSurface ? ["design-surface overlays (panel lines, glass, lamps drawn on the solid, not cut into it)"] : []), "spoke count", "headlamp lenses", "pedal pad size", "caliper envelope", "trunk and frunk boxes"],
+      // The component-level view of geometricOnly: the parts whose drawn form is not an analysed
+      // solid — the styled-loft body when no cad.body solid was solved, the headlamp lenses, the
+      // pedal pads and the trunk/frunk volume boxes named above. (Spoke count and the caliper
+      // envelope live inside the wheel rendering, not in a component of their own.) Every other
+      // component is a library envelope the fit checks evaluate.
+      geometricOnlyParts: [
+        ...(cadSkin ? [] : ["BODY_SHELL"]),
+        ...components.filter((c) => c.role === "lamp" || /^PEDAL_/.test(c.id) || c.id === "TRUNK" || c.id === "FRUNK").map((c) => c.id),
+      ],
     },
     surface: (() => {
       const loftMesh = (({ details: _d, spec: _s, ...mesh }) => mesh)(loft);
@@ -681,6 +690,11 @@ const J941_AXES_SAFE = { x: 206.4 };
 function fitChecks(ctx) {
   const checks = [];
   const add = (id, status, detail, extra = {}) => checks.push({ id, status, detail, ...extra });
+  // A check names the parts it is about (parts: [componentIds]) so a viewer can highlight exactly those
+  // parts — never a part the check did not evaluate. Occupant components are named OCC_<seat>_<key> in
+  // this document; occId resolves one only when the document actually carries that manikin.
+  const occId = (seat, key) => (seat && ctx.components.some((c) => c.id === `OCC_${seat}_${key}`) ? `OCC_${seat}_${key}` : null);
+  const partsOf = (...ids) => ids.filter(Boolean);
 
   // Head vs roof.
   for (const [label, occ] of [["M95", ctx.driver], ["F5", ctx.driverF5]]) {
@@ -692,7 +706,7 @@ function fitChecks(ctx) {
     const minRoof = r4(top + 0.004);
     add(`head-${label}`, gap >= 0 ? "pass" : "fail",
       `${label} head top at ${mm(top)} mm (x ${mm(hx)} mm), roof at that station ${mm(local)} mm, inner gap ${mm(gap)} mm`,
-      { valueM: r4(gap), minimumOverallHeightM: minRoof, occupant: label });
+      { valueM: r4(gap), clearanceM: r4(gap), minimumOverallHeightM: minRoof, occupant: label, parts: partsOf(occId(occ.seat, label), "BODY_SHELL") });
   }
   if (ctx.rearM?.landmarks?.headTop) {
     const top = ctx.rearM.landmarks.headTop[1];
@@ -701,33 +715,33 @@ function fitChecks(ctx) {
     const gap = local - 0.004 - top;
     add("head-M95-rear", gap >= 0 ? "pass" : "fail",
       `rear M95 head top at ${mm(top)} mm (x ${mm(hx)} mm), roof at that station ${mm(local)} mm, inner gap ${mm(gap)} mm`,
-      { valueM: r4(gap), minimumOverallHeightM: r4(top + 0.004) });
+      { valueM: r4(gap), clearanceM: r4(gap), minimumOverallHeightM: r4(top + 0.004), parts: partsOf(occId(ctx.rearM.seat, "M95"), "BODY_SHELL") });
   }
   if (ctx.measuredRoof != null && ctx.minInnerRoof != null && ctx.measuredRoof < ctx.minInnerRoof) {
     add("roof-vs-solved-height", "fail",
       `the kernel body's overall height ${mm(ctx.measuredRoof)} mm is below the M95 head top ${mm(ctx.minInnerRoof)} mm. Minimum overall height ${mm(ctx.minInnerRoof + 0.004)} mm.`,
-      { minimumOverallHeightM: r4(ctx.minInnerRoof + 0.004) });
+      { minimumOverallHeightM: r4(ctx.minInnerRoof + 0.004), parts: ["BODY_SHELL"] });
   }
 
   // Floor: heel on the floor.
   if (ctx.driver) {
     const heel = ctx.driver.landmarks.heel[1];
     const gap = heel - ctx.scene.floorZ;
-    add("heel-floor", gap >= -1e-4 ? "pass" : "fail", `driver heel z ${mm(heel)} mm, floor ${mm(ctx.scene.floorZ)} mm`, { valueM: r4(gap) });
+    add("heel-floor", gap >= -1e-4 ? "pass" : "fail", `driver heel z ${mm(heel)} mm, floor ${mm(ctx.scene.floorZ)} mm`, { valueM: r4(gap), clearanceM: r4(gap), parts: partsOf(occId(ctx.driver.seat, "M95")) });
   }
 
   // Rear leg reach: if the shin posture cannot place the knee, the wheelbase is short.
   if (ctx.rearM && ctx.rearM.leg && ctx.rearM.leg.reachable === false) {
     const need = (ctx.rearM.dims?.thighLink || 0.45) - Math.abs((ctx.scene.floorZ + (ctx.rearM.dims?.calfLink || 0.4) + (ctx.rearM.dims?.lateralMalleolusHeight || 0.07)) - ctx.rearM.landmarks.hPoint[1]);
     const minWb = ctx.rearAxleX - ctx.frontAxleX + Math.max(0, need);
-    add("rear-leg", "fail", `M95 rear leg does not reach in the vertical-shin posture. Minimum wheelbase about ${mm(minWb)} mm.`, { minimumWheelbaseM: r4(minWb) });
+    add("rear-leg", "fail", `M95 rear leg does not reach in the vertical-shin posture. Minimum wheelbase about ${mm(minWb)} mm.`, { minimumWheelbaseM: r4(minWb), parts: partsOf(occId(ctx.rearM.seat, "M95"), "SEAT_1") });
   } else if (ctx.rearM) {
-    add("rear-leg", "pass", "M95 rear occupant reaches the floor in the vertical-shin posture", { wheelbaseM: r4(ctx.rearAxleX - ctx.frontAxleX) });
+    add("rear-leg", "pass", "M95 rear occupant reaches the floor in the vertical-shin posture", { wheelbaseM: r4(ctx.rearAxleX - ctx.frontAxleX), parts: partsOf(occId(ctx.rearM.seat, "M95"), "SEAT_1") });
   }
 
   // Four seats: both rows present.
   const seats = ["SEAT_1", "SEAT_2", "SEAT_3", "SEAT_4"].filter((id) => ctx.components.some((c) => c.id === id));
-  add("four-seats", seats.length === 4 ? "pass" : "fail", `${seats.length} seat positions placed`, { seats });
+  add("four-seats", seats.length === 4 ? "pass" : "fail", `${seats.length} seat positions placed`, { seats, parts: seats });
 
   // Powertrain vs cabin. A front engine is checked at the firewall. Motors are checked the same way when they sit ahead of it.
   const engine = ctx.components.find((c) => c.id === "ENGINE");
@@ -740,26 +754,27 @@ function fitChecks(ctx) {
     const unit = aabb({ id: "ENGINE", min: [0, 1, 2].map((i) => [engine.placement.x, engine.placement.y, engine.placement.z][i] - engine.half[i]), max: [0, 1, 2].map((i) => [engine.placement.x, engine.placement.y, engine.placement.z][i] + engine.half[i]) });
     let worst = { gap: Infinity, id: null };
     for (const o of rearOcc) for (const b of o.boxes) { const g = separation(unit, b).separation; if (g < worst.gap) worst = { gap: g, id: `${o.seat}:${b.id}` }; }
+    const worstSeat = /^SEAT_\d/.test(worst.id || "") ? worst.id.split(":")[0] : null;
     add("powertrain-cabin", worst.gap >= 0 ? "pass" : "fail",
       `drive unit to the nearest rear occupant box (${worst.id}): ${mm(worst.gap)} mm (separating-axis lower bound; the package derived the rear axle from this clearance)`,
-      { valueM: r4(worst.gap) });
+      { valueM: r4(worst.gap), clearanceM: r4(worst.gap), parts: partsOf("ENGINE", worstSeat) });
   } else if (engine?.half) {
     const engineRear = engine.placement.x + engine.half[0];
     const gap = wall - engineRear;
     const lifts = (ctx.spec?.pushes || []).filter((p) => /engine|hood|radiator|deck|fuel/.test(p));
     add("powertrain-cabin", gap >= 0 ? "pass" : "fail",
       `engine rear face ${mm(engineRear)} mm, firewall ${mm(wall)} mm, gap ${mm(gap)} mm. ${lifts.join("; ") || "No hood push was required."}`,
-      { valueM: r4(gap) });
+      { valueM: r4(gap), clearanceM: r4(gap), parts: ["ENGINE"] });
   } else {
     const motors = ctx.components.filter((c) => c.id.startsWith("MOTOR_"));
     if (!motors.length) add("powertrain-cabin", "warn", "no drive unit, powertrain-to-cabin not checked");
     else {
       const ahead = motors.filter((m) => m.placement.x + m.half[0] > wall - 1e-6 && m.placement.x < wall);
       const intruding = motors.find((m) => m.placement.x < wall && m.placement.x + m.half[0] > wall + 0.01);
-      if (intruding) add("powertrain-cabin", "fail", `${intruding.id} rear face crosses the firewall at ${mm(wall)} mm`);
+      if (intruding) add("powertrain-cabin", "fail", `${intruding.id} rear face crosses the firewall at ${mm(wall)} mm`, { parts: [intruding.id] });
       else {add("powertrain-cabin", "pass",
         `${motors.map((m) => m.id).join(" and ")} clear the firewall at ${mm(wall)} mm${ahead.length ? "" : ""}`,
-        { motors: motors.map((m) => m.id) });}
+        { motors: motors.map((m) => m.id), parts: motors.map((m) => m.id) });}
     }
   }
   const layoutId = ctx.layoutChoice?.id || ctx.spec?.layout || "ev_skateboard";
@@ -796,7 +811,7 @@ function fitChecks(ctx) {
       const gap = separation(sweep, footBox).separation;
       add("wheel-footwell", gap >= 0 ? "pass" : "fail",
         `front tyre swept ±${lock.toFixed(1)} deg vs the driver foot, gap ${mm(gap)} mm (separating-axis lower bound)`,
-        { valueM: r4(gap), steerDeg: lock });
+        { valueM: r4(gap), clearanceM: r4(gap), steerDeg: lock, parts: partsOf("TIRE_FL", "TIRE_FR", occId(foot.seat, foot === ctx.driverF5 ? "F5" : "M95")) });
     } else add("wheel-footwell", "warn", "foot or front tyre missing, steer sweep not checked");
   } else add("wheel-footwell", "warn", "no steering lock, steer sweep not checked");
 
@@ -815,7 +830,7 @@ function fitChecks(ctx) {
     const conflict = gap < 0 ? " The roof rail is below the head, so this is a packaging conflict at this height." : "";
     add("ingress", gap >= 0 ? "pass" : "fail",
       `${ctx.cadSkin ? "styling reference (the styled loft's roof rail; the analysed body's door egress is package.tub-fit's opening check): " : ""}skin door aperture (roof rail) ${mm(top)} mm, M95 head top ${mm(need)} mm, gap ${mm(gap)} mm.${tubNote}${conflict} J1100 H11 is this class of dimension; no minimum entrance height is published, so the threshold is the head itself.`,
-      { valueM: r4(gap), minimumApertureTopM: r4(need) });
+      { valueM: r4(gap), clearanceM: r4(gap), minimumApertureTopM: r4(need), parts: partsOf(occId(ctx.driver.seat, "M95"), "BODY_SHELL") });
   }
 
   const EXTERIOR = new Set(["body", "glass", "wheel", "lamp", "intake", "opening", "axle", "mirror", "handle"]);
@@ -847,9 +862,9 @@ function fitChecks(ctx) {
   if (!ctx.spec) add("containment", "warn", "no body spec, containment not checked");
   else if (outside.length) {add("containment", "fail",
     `${outside.length} non-exterior part${outside.length === 1 ? "" : "s"} sit outside the body envelope: ${outside.slice(0, 12).join(", ")}${outside.length > 12 ? "…" : ""}. They are a packaging failure and are not drawn in Studio.${previewNote}`,
-    { outside, previewOnly });}
+    { outside, previewOnly, parts: outside });}
   else if (ctx.cadSkin) add("containment", "pass", `every non-exterior part is inside the analysed body (cad.body solid): ${proof.kernel} enclosed by the kernel's solve, ${proof.tubFit} verified by package.tub-fit, ${proof.solid} by a point-in-solid test of their boxes`, { outside: [], proof });
-  else if (previewOnly.length) add("containment", "warn", `every non-exterior part is inside the analysed body.${previewNote}`, { outside: [], previewOnly });
+  else if (previewOnly.length) add("containment", "warn", `every non-exterior part is inside the analysed body.${previewNote}`, { outside: [], previewOnly, parts: previewOnly });
   else add("containment", "pass", "every non-exterior bounding box is inside the body envelope");
 
   // Pillar vs occupant: B-pillar x should sit between the rows.
@@ -857,11 +872,12 @@ function fitChecks(ctx) {
     const bx = ctx.spec.bPillarX;
     const frontH = ctx.scene.sgRPFront.x, rearH = ctx.scene.sgRPRear.x;
     const between = bx > frontH && bx < rearH;
-    add("b-pillar", between ? "pass" : "warn", `B-pillar station ${mm(bx)} mm, front H ${mm(frontH)} mm, rear H ${mm(rearH)} mm`, { valueM: r4(bx) });
+    add("b-pillar", between ? "pass" : "warn", `B-pillar station ${mm(bx)} mm, front H ${mm(frontH)} mm, rear H ${mm(rearH)} mm`, { valueM: r4(bx), parts: ["BODY_SHELL"] });
   }
 
+  const radiatorParts = ctx.components.some((c) => c.id === "RADIATOR") ? ["RADIATOR"] : [];
   if (ctx.designParts && ctx.electric) {
-    add("cooling-power", "warn", `the cooling core is the package's radiator box; the drive unit's and the traction battery's heat rejection is not solved (vehicle.traction-battery reports the pack's conduction loss)${Number.isFinite(ctx.powerW) ? `; required power at the brief speed is ${Math.round(ctx.powerW)} W` : ""}`, { powerW: Number.isFinite(ctx.powerW) ? Math.round(ctx.powerW) : null });
+    add("cooling-power", "warn", `the cooling core is the package's radiator box; the drive unit's and the traction battery's heat rejection is not solved (vehicle.traction-battery reports the pack's conduction loss)${Number.isFinite(ctx.powerW) ? `; required power at the brief speed is ${Math.round(ctx.powerW)} W` : ""}`, { powerW: Number.isFinite(ctx.powerW) ? Math.round(ctx.powerW) : null, parts: radiatorParts });
   } else if (!ctx.designParts) {
     const installed = ctx.evPack?.installedW;
     const powerNote = Number.isFinite(ctx.powerW)
@@ -871,8 +887,8 @@ function fitChecks(ctx) {
     add("cooling-power", short ? "warn" : "warn",
       `Cooling core is an assumed EV heat exchanger, not the library gasoline radiator and not a heat-rejection solve. Installed motor peak is ${installed ? Math.round(installed) : "unknown"} W. ${powerNote}${short ? " Installed peak is below the solved power." : ""}`,
       { powerW: Number.isFinite(ctx.powerW) ? Math.round(ctx.powerW) : null, installedW: installed || null });
-  } else if (!Number.isFinite(ctx.powerW)) add("cooling-power", "warn", "required power was not passed in, so the radiator is the library part and is not resized");
-  else add("cooling-power", "pass", `radiator stays the library core; required power at the brief speed is ${Math.round(ctx.powerW)} W (coolant-loop is a separate solver)`, { powerW: Math.round(ctx.powerW) });
+  } else if (!Number.isFinite(ctx.powerW)) add("cooling-power", "warn", "required power was not passed in, so the radiator is the library part and is not resized", { parts: radiatorParts });
+  else add("cooling-power", "pass", `radiator stays the library core; required power at the brief speed is ${Math.round(ctx.powerW)} W (coolant-loop is a separate solver)`, { powerW: Math.round(ctx.powerW), parts: radiatorParts });
 
   add("spare", "warn", "no spare tire is specified, so none is placed");
   if (ctx.spec?.crownKeys) checks.push(designQualityCheck(ctx.spec));
@@ -1075,6 +1091,118 @@ function tubeFromSpine(spine, section, origin) {
 }
 
 /** Drop generated triangles. The spec is enough to rebuild the meshes. */
+/**
+ * Per-part analysis links (HANDOFF-3 A4): which solvers evaluate a part, and the envelope of the run
+ * that did — or an honest not_run. The mapping is deliberately small and explicit; a part is only
+ * linked to a solver whose own computation reads it:
+ *   frame/tub members → structure.frame (the run's own covers list names the members it solved)
+ *   RADIATOR          → fluid.cooling-opening
+ *   ENGINE            → electrical.motor-thermal, vehicle.required-power
+ *   BODY_SHELL        → aero.shape, aero.cfd (a recorded OpenFOAM result: imported, never re-run here)
+ * The join is pure: it links only the envelopes it is given (a session's own runs), so a receipt from
+ * another design can never leak into this one. Statuses and numbers are the envelope's own, verbatim.
+ */
+const ANALYSIS_KEY_OUTPUTS = {
+  "structure.frame": ["bending.maxVonMises", "bending.maxTranslation", "twist.maxVonMises", "stiffness.torsional"],
+  "fluid.cooling-opening": ["openingAreaM2", "faceVelocityMs", "riseK"],
+  "electrical.motor-thermal": ["torqueNm", "current.armatureA", "copperLoss.W", "temperatures.windingPeakK", "temperatures.housingPeakK"],
+  "vehicle.required-power": ["requiredPower", "aeroPower", "rollingPower"],
+  "aero.shape": ["verdict", "reportedCd", "baselineCd", "sectionLift"],
+  "aero.cfd": ["dragCoefficient", "dragArea", "liftCoefficient"],
+};
+const ANALYSIS_NOT_RUN_REASONS = {
+  "aero.cfd": "not run here — OpenFOAM runs on the GPU pod and the result is imported; no recorded run is linked to this design",
+};
+export const ANALYSIS_SOLVERS = Object.keys(ANALYSIS_KEY_OUTPUTS);
+
+/** The solvers mapped to a component, in display order. Frame membership is by role: the tub parts. */
+function analysisSolversFor(component) {
+  switch (component.id) {
+    case "RADIATOR": return ["fluid.cooling-opening"];
+    case "ENGINE": return ["electrical.motor-thermal", "vehicle.required-power"];
+    case "BODY_SHELL": return ["aero.shape", "aero.cfd"];
+    default: return component.role === "frame" ? ["structure.frame"] : [];
+  }
+}
+
+/** One key output: registry envelopes key outputs flat ("bending.maxVonMises"), graph-native ones
+ *  nest them (current.armatureA) — try the flat key first, then walk the path. */
+function scalarOutput(outputs, path) {
+  let node = outputs && typeof outputs === "object" && path in outputs ? outputs[path] : outputs;
+  if (node === outputs) {
+    for (const key of path.split(".")) {
+      if (node == null || typeof node !== "object") return null;
+      node = node[key];
+    }
+  }
+  const value = node && typeof node === "object" && "value" in node ? node.value : node;
+  if (typeof value === "number" && Number.isFinite(value)) return { id: path, value, ...(node?.unit ? { unit: node.unit } : {}) };
+  if (typeof value === "string" && value.length > 0 && value.length <= 80) return { id: path, value };
+  return null;
+}
+
+function analysisRecord(solverId, envelope, notRunReason) {
+  if (!envelope) {
+    return { solver: solverId, status: "not_run", keyOutputs: [], receipt: null, ranAt: null, reason: notRunReason || ANALYSIS_NOT_RUN_REASONS[solverId] || "the solver has not run for this design" };
+  }
+  const keyOutputs = (ANALYSIS_KEY_OUTPUTS[solverId] || []).map((p) => scalarOutput(envelope.outputs, p)).filter(Boolean);
+  const utils = (envelope.margins || []).map((m) => m?.utilization).filter((u) => Number.isFinite(u));
+  const recordedAt = envelope.inputs?.run?.value?.importedAt;
+  return {
+    solver: solverId,
+    ...(envelope.solver?.version ? { version: envelope.solver.version } : {}),
+    status: String(envelope.status || "ERROR").toLowerCase(),
+    keyOutputs,
+    ...(utils.length ? { utilization: Math.round(Math.max(...utils) * 10000) / 10000 } : {}),
+    receipt: { runId: envelope.runId, solver: envelope.solver?.id || solverId, version: envelope.solver?.version || null, inputHash: envelope.provenance?.inputHash ?? null },
+    ranAt: envelope.provenance?.computedAt ?? null,
+    ...(typeof recordedAt === "string" ? { recordedAt } : {}),
+    ...(envelope.reason ? { reason: envelope.reason } : {}),
+  };
+}
+
+/**
+ * The analyses of every component in the document: { [componentId]: [record, ...] }. A component no
+ * solver is mapped to gets an empty list (nothing evaluates it — different from not_run, where a
+ * mapped solver simply has not run). Pure: pass the envelopes of ONE design/session only.
+ */
+export function partAnalyses(doc, envelopes) {
+  const envs = [...(envelopes || [])].filter(Boolean);
+  const bySolver = new Map();
+  for (const e of envs) {
+    const id = e.solver?.id;
+    if (!id) continue;
+    if (!bySolver.has(id)) bySolver.set(id, []);
+    bySolver.get(id).push(e);
+  }
+  const out = {};
+  for (const c of doc.components || []) {
+    const records = [];
+    for (const solverId of analysisSolversFor(c)) {
+      const candidates = bySolver.get(solverId) || [];
+      let envelope = null;
+      let notRunReason;
+      if (solverId === "structure.frame") {
+        // the frame run names the members it solved in covers; a member it did not cover was not solved
+        envelope = candidates.find((e) => (e.covers || []).includes(c.id)) || null;
+        if (!envelope && candidates.length) notRunReason = "structure.frame ran for this design but did not cover this member";
+      } else {
+        envelope = candidates.find((e) => (e.covers || []).includes(c.id)) || (candidates.length === 1 ? candidates[0] : null);
+      }
+      records.push(analysisRecord(solverId, envelope, notRunReason));
+    }
+    out[c.id] = records;
+  }
+  return out;
+}
+
+/** A copy of the document with each component's analyses attached (the input document is not mutated). */
+export function withPartAnalyses(doc, envelopes) {
+  if (!doc?.components) return doc;
+  const map = partAnalyses(doc, envelopes);
+  return { ...doc, components: doc.components.map((c) => ({ ...c, analyses: map[c.id] || [] })) };
+}
+
 export function compactAssembly(doc) {
   if (!doc?.surface?.spec) return doc;
   const mesh = doc.surface.mesh || {};

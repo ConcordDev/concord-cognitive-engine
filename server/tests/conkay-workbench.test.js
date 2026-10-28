@@ -15,8 +15,8 @@ import http from "node:http";
 import express from "express";
 import { orchestrate, carEvaluator } from "../lib/conkay/chat/orchestrator.js";
 import { REPAIR_RULES } from "../lib/conkay/chat/repair-rules.js";
-import { DesignConversation } from "../lib/conkay/chat/what-if.js";
-import { workbenchView, explainCheck } from "../lib/conkay/chat/workbench.js";
+import { DesignConversation, knobsOf } from "../lib/conkay/chat/what-if.js";
+import { workbenchView, explainCheck, assemblySnapshot, fitCheckDiff, attachSessionAnalyses } from "../lib/conkay/chat/workbench.js";
 import { carAcceptanceAsync } from "../lib/conkay/compiler/car-from-library.js";
 import createConkayWorkbenchRouter from "../routes/conkay-workbench.js";
 
@@ -89,6 +89,146 @@ describe("the view", () => {
   });
 });
 
+describe("the assembly edit API (HANDOFF-3 A1)", () => {
+  let conv;
+  before(async () => { conv = await conversation(140); });
+  const graph = () => conv.current.final.session.engine.graph;
+
+  it("the driving-parameter knobs are declared with bounds, step, unit and source, valued from the design itself", () => {
+    const ks = new Map(knobsOf(conv).map((k) => [k.variable, k]));
+    const veh = graph().node("VEH");
+    const dc = veh.props.vehicle.packaging.designChoices;
+    for (const v of ["wheelbaseM", "frontTrackM", "rearTrackM", "rideHeightM", "seatHPointXM", "seatHPointZM"]) {
+      const k = ks.get(v);
+      assert.ok(k, v);
+      assert.ok(Array.isArray(k.bounds) && k.bounds[0] < k.value && k.value < k.bounds[1], `${v} value inside its bounds`);
+      assert.ok(k.step > 0 && k.unit === "m" && typeof k.source === "string" && k.source.length > 10, `${v} declared`);
+    }
+    assert.equal(ks.get("wheelbaseM").value, Math.round((veh.props.vehicle.rearAxleX - veh.props.vehicle.frontAxleX) * 1e4) / 1e4);
+    assert.equal(ks.get("rideHeightM").value, dc.floorZ.value);
+    assert.equal(ks.get("seatHPointZM").value, Math.round((dc.floorZ.value + dc.h30.value) * 1e4) / 1e4);
+  });
+
+  it("a wheelbase change re-runs assembly.vehicle and package.*, moves the rear axle and its tyres, and undo restores the receipt exactly", async () => {
+    const r = await conv.setKnob("wheelbaseM", 2.8);
+    assert.equal(r.kind, "parameter");
+    assert.ok(r.ok);
+    assert.ok(r.diff.rerun.includes("assembly.vehicle@VEH"), JSON.stringify(r.diff.rerun));
+    assert.ok(r.diff.rerun.some((id) => id.startsWith("package.")), JSON.stringify(r.diff.rerun));
+    assert.equal(graph().node("VEH").props.vehicle.rearAxleX, 3.8);
+    assert.equal(graph().node("TIRE_RL").position.x, 3.8);
+    assert.equal(graph().node("TIRE_RR").position.x, 3.8);
+    const snap = assemblySnapshot(conv);
+    const wb = snap.compact.components.find((c) => c.id === "BODY_SHELL").parameters.find((p) => p.id === "wheelbase");
+    assert.equal(wb.value, 2.8, "the solved assembly reports the new wheelbase");
+    const u = await conv.undo();
+    assert.equal(u.matches, true, "undo restores the prior assembly exactly (same receipt)");
+    assert.equal(graph().node("VEH").props.vehicle.rearAxleX, 4.019);
+  });
+
+  it("the fit-check diff lists the flipped checks: the H-point moved forward eats the footwell clearance", async () => {
+    // the compiler derived ahpX as the smallest heel point at which the foot boxes clear the front tyres'
+    // steering sweep, so moving the H-point forward must flip wheel-footwell pass -> fail
+    const before = assemblySnapshot(conv);
+    const cur = knobsOf(conv).find((k) => k.variable === "seatHPointXM").value;
+    const r = await conv.setKnob("seatHPointXM", Math.round((cur - 0.275) * 1e4) / 1e4);
+    assert.equal(r.kind, "parameter");
+    const after = assemblySnapshot(conv);
+    assert.deepEqual(fitCheckDiff(before.checks, after.checks), [{ id: "wheel-footwell", from: "pass", to: "fail" }]);
+    await conv.undo();
+  });
+
+  it("validation: out of bounds, an impossible H30 and an unknown variable are invalid_input; a locked knob refuses", async () => {
+    const revs = conv.revisions.length;
+    const oob = await conv.setKnob("wheelbaseM", 9);
+    assert.equal(oob.kind, "error");
+    assert.equal(oob.error, "invalid_input");
+    assert.equal(oob.field, "wheelbaseM");
+    assert.equal(oob.reason, "out_of_range");
+    assert.match(oob.message, /2\.4\.\.3\.6/);
+    const unk = await conv.setKnob("spoilerM", 1);
+    assert.equal(unk.error, "invalid_input");
+    assert.equal(unk.reason, "unknown_variable");
+    const hg = await conv.setKnob("seatHPointZM", 0.6);
+    assert.equal(hg.error, "invalid_input");
+    assert.equal(hg.reason, "out_of_range");
+    assert.match(hg.message, /H30/);
+    assert.equal(conv.revisions.length, revs, "a refused edit applies nothing");
+    assert.equal(conv.lock("wheelbaseM").ok, true);
+    const lk = await conv.setKnob("wheelbaseM", 2.8);
+    assert.equal(lk.kind, "locked");
+    assert.match(lk.note, /is locked/);
+    conv.unlock("wheelbaseM");
+  });
+
+  it("fitCheckDiff reports flipped, appeared and vanished checks", () => {
+    assert.deepEqual(
+      fitCheckDiff([{ id: "a", status: "pass" }, { id: "b", status: "pass" }], [{ id: "a", status: "fail" }, { id: "c", status: "warn" }]),
+      [{ id: "a", from: "pass", to: "fail" }, { id: "b", from: "pass", to: null }, { id: "c", from: null, to: "warn" }],
+    );
+    assert.deepEqual(fitCheckDiff(null, null), []);
+  });
+});
+
+describe("part analysis links (HANDOFF-3 A4)", () => {
+  it("the session's own envelopes join onto the assembly: frame receipt, required power, honest not_runs", async () => {
+    const conv = await conversation(140);
+    const snap = assemblySnapshot(conv);
+    assert.ok(snap, "the screening car has an assembly run");
+    const doc = attachSessionAnalyses(conv, snap.compact);
+    const byId = (id) => doc.components.find((c) => c.id === id);
+    // structure.frame ran on this car and covers the tub floor: the record is that run, receipt included
+    const frameEnv = conv.current.final.envelopes.get("structure.frame@CHASSIS");
+    assert.ok(frameEnv, "the session has a frame run");
+    const floor = byId("TUB_FLOOR_L");
+    assert.ok((frameEnv.covers || []).includes("TUB_FLOOR_L"), "the frame run covers the tub floor on this car");
+    const frame = floor.analyses.find((a) => a.solver === "structure.frame");
+    assert.equal(frame.status, frameEnv.status.toLowerCase());
+    assert.equal(frame.receipt.inputHash, frameEnv.provenance.inputHash);
+    assert.equal(frame.receipt.runId, "structure.frame@CHASSIS");
+    assert.ok(frame.keyOutputs.some((o) => o.id === "bending.maxVonMises"));
+    // ENGINE: required-power ran (pass); motor-thermal has no run on this car and says so
+    const engine = Object.fromEntries(byId("ENGINE").analyses.map((a) => [a.solver, a]));
+    assert.equal(engine["vehicle.required-power"].status, "pass");
+    assert.equal(engine["electrical.motor-thermal"].status, "not_run");
+    // BODY_SHELL: neither aero solver ran on the screening car — both say so, CFD with its pod reason
+    const body = Object.fromEntries(byId("BODY_SHELL").analyses.map((a) => [a.solver, a]));
+    assert.equal(body["aero.shape"].status, "not_run");
+    assert.equal(body["aero.cfd"].status, "not_run");
+    assert.match(body["aero.cfd"].reason, /GPU pod/);
+    // RADIATOR: the cooling run's numbers are the envelope's own
+    const coolEnv = conv.current.final.envelopes.get("fluid.cooling-opening@RADIATOR");
+    const cool = byId("RADIATOR").analyses[0];
+    assert.equal(cool.status, coolEnv.status.toLowerCase());
+    assert.equal(cool.keyOutputs.find((o) => o.id === "openingAreaM2").value, coolEnv.outputs.openingAreaM2.value);
+  });
+
+  it("rerunSolver recomputes an in-process run and refreshes the revision's envelopes in place", async () => {
+    const conv = await conversation(140);
+    const runId = "fluid.cooling-opening@RADIATOR";
+    const beforeEnv = conv.current.final.envelopes.get(runId);
+    assert.ok(beforeEnv);
+    const r = conv.rerunSolver("fluid.cooling-opening");
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.runs, [runId]);
+    assert.ok(r.rerun.includes(runId), "the engine recomputed the run");
+    const afterEnv = conv.current.final.envelopes.get(runId);
+    assert.notStrictEqual(afterEnv, beforeEnv); // a fresh envelope object, not the cached one
+    assert.equal(afterEnv.status, beforeEnv.status); // same inputs: same verdict, honestly recomputed
+    assert.equal(afterEnv.provenance.inputHash, beforeEnv.provenance.inputHash);
+  });
+
+  it("rerunSolver refuses a recorded result and a solver that never ran", async () => {
+    const conv = await conversation(140);
+    const cfd = conv.rerunSolver("aero.cfd");
+    assert.equal(cfd.kind, "error");
+    assert.equal(cfd.error, "recorded_result");
+    const none = conv.rerunSolver("electrical.motor-thermal");
+    assert.equal(none.kind, "error");
+    assert.equal(none.error, "not_run");
+  });
+});
+
 describe("the routes (signed in, owner only)", () => {
   let server, port;
   before(async () => {
@@ -131,5 +271,31 @@ describe("the routes (signed in, owner only)", () => {
     const u = await call("POST", `/api/conkay/workbench/${id}/undo`, "u1");
     assert.equal(u.body.reply.matches, true);
     assert.equal(u.body.view.revision, 0);
+  });
+
+  it("the knob endpoint (A1): a bad value is 400 invalid_input; a good one returns the fit-check diff, the re-run solvers and the compact assembly", async () => {
+    const s = await call("POST", "/api/conkay/workbench", "u1", { prompt: "Design a four-seat electric car that holds 140 mph" });
+    assert.equal(s.body.stage, "designed");
+    const id = s.body.id;
+    const bad = await call("POST", `/api/conkay/workbench/${id}/knob`, "u1", { variable: "wheelbaseM", value: 9 });
+    assert.equal(bad.status, 400);
+    assert.equal(bad.body.ok, false);
+    assert.equal(bad.body.error, "invalid_input");
+    assert.equal(bad.body.field, "wheelbaseM");
+    assert.equal(bad.body.reason, "out_of_range");
+    assert.ok(bad.body.message);
+    const unk = await call("POST", `/api/conkay/workbench/${id}/knob`, "u1", { variable: "spoilerM", value: 1 });
+    assert.equal(unk.status, 400);
+    assert.equal(unk.body.error, "invalid_input");
+    assert.equal(unk.body.reason, "unknown_variable");
+    const ok = await call("POST", `/api/conkay/workbench/${id}/knob`, "u1", { variable: "wheelbaseM", value: 2.8 });
+    assert.equal(ok.status, 200);
+    assert.equal(ok.body.reply.kind, "parameter");
+    assert.ok(Array.isArray(ok.body.fitCheckDiff));
+    assert.ok(ok.body.rerun.includes("assembly.vehicle@VEH"), JSON.stringify(ok.body.rerun));
+    const wb = ok.body.assembly.components.find((c) => c.id === "BODY_SHELL").parameters.find((p) => p.id === "wheelbase");
+    assert.equal(wb.value, 2.8);
+    // the returned assembly is viewer-ready (HANDOFF-3 A2): meshes hydrated from the surface spec
+    assert.ok(ok.body.assembly.surface.mesh.positions.length > 0, "the knob response carries a drawable body mesh");
   });
 });

@@ -14,6 +14,7 @@
 import { knobsOf } from "./what-if.js";
 import { sectionProps } from "../structural/frame-fe.js";
 import { getMaterial } from "../materials/index.js";
+import { compactAssembly, withPartAnalyses } from "../assembly/build.js";
 
 export const WORKBENCH_VERSION = "1.1.0";
 
@@ -143,19 +144,65 @@ export function feaFrameOf(engine) {
   return null;
 }
 
+/**
+ * The current revision's assembly.vehicle result: its fit checks (id + status) and the compact assembly
+ * (assembly/build.js compactAssembly), or null when the design has no assembly run. Everything here is the
+ * solver's own output — the knob endpoint diffs two of these snapshots around an edit.
+ */
+export function assemblySnapshot(conv) {
+  const envs = conv?.current?.final?.envelopes;
+  if (!envs) return null;
+  const e = [...envs.values()].find((x) => x?.solver?.id === "assembly.vehicle");
+  const doc = e?.outputs?.assembly?.value;
+  if (!doc) return null;
+  const checks = (e.outputs?.fit?.value?.checks || doc.checks || []).map((c) => ({ id: c.id, status: c.status }));
+  return { checks, compact: compactAssembly(doc) };
+}
+
+/**
+ * An assembly document with each component's analysis links joined from THIS conversation's own
+ * envelopes (HANDOFF-3 A4): the runs that evaluated the part, their key outputs and receipts, or an
+ * honest not_run. Only this session's envelopes are ever passed to the join, so a receipt from
+ * another design cannot appear here.
+ */
+export function attachSessionAnalyses(conv, doc) {
+  const envs = conv?.current?.final?.envelopes;
+  if (!doc || !envs) return doc;
+  return withPartAnalyses(doc, [...envs.values()]);
+}
+
+/** Fit checks whose status flipped between two snapshots: [{ id, from, to }], from/to null when a check appears or vanishes. */
+export function fitCheckDiff(before, after) {
+  const b = new Map((before || []).map((c) => [c.id, c.status]));
+  const a = new Map((after || []).map((c) => [c.id, c.status]));
+  const out = [];
+  for (const [id, to] of a) { const from = b.has(id) ? b.get(id) : null; if (from !== to) out.push({ id, from, to }); }
+  for (const [id, from] of b) if (!a.has(id)) out.push({ id, from, to: null });
+  return out.sort((x, y) => x.id.localeCompare(y.id));
+}
+
 /** The Workbench view of a conversation's current design. */
 export function workbenchView(conv) {
   const cur = conv.current;
   const engine = cur.final.session.engine;
   const knobs = knobsOf(conv);
-  const knobKeys = { tailExtensionM: "node:BODY_SHELL/geometry.tailExtension", motorId: "node:ENGINE/" };
+  const knobKeys = {
+    tailExtensionM: ["node:BODY_SHELL/geometry.tailExtension"],
+    motorId: ["node:ENGINE/"],
+    wheelbaseM: ["node:VEH/props.vehicle", "node:TIRE_RL/position", "node:TIRE_RR/position"],
+    frontTrackM: ["node:TIRE_FL/position", "node:TIRE_FR/position"],
+    rearTrackM: ["node:TIRE_RL/position", "node:TIRE_RR/position"],
+    rideHeightM: ["node:VEH/props.vehicle.packaging"],
+    seatHPointXM: ["node:VEH/props.vehicle.packaging"],
+    seatHPointZM: ["node:VEH/props.vehicle.packaging"],
+  };
   const runs = [...engine.runs.entries()].filter(([, r]) => r.envelope);
   const ids = new Set(runs.map(([id]) => id));
   const edges = [];
   for (const [id, r] of runs) {
     for (const k of r.reads) {
       if (k.startsWith("result:") && ids.has(k.slice(7))) edges.push({ from: k.slice(7), to: id, kind: "result" });
-      for (const knob of knobs) if (k.startsWith(knobKeys[knob.variable] || "\u0000")) edges.push({ from: `knob:${knob.variable}`, to: id, kind: "reads" });
+      for (const knob of knobs) if ((knobKeys[knob.variable] || []).some((p) => k.startsWith(p))) edges.push({ from: `knob:${knob.variable}`, to: id, kind: "reads" });
     }
   }
   const dedup = [...new Map(edges.map((e) => [`${e.from}>${e.to}`, e])).values()];

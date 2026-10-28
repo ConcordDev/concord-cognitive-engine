@@ -4,7 +4,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { buildCarFromLibrary } from "../lib/conkay/compiler/car-from-library.js";
-import { assemblyFromIr, fitStatus } from "../lib/conkay/assembly/build.js";
+import { assemblyFromIr, fitStatus, partAnalyses, withPartAnalyses } from "../lib/conkay/assembly/build.js";
 import { partInsideEnvelope } from "../lib/conkay/assembly/surface.js";
 import { validateAssembly } from "../lib/conkay/assembly/schema.js";
 import { j941Centroid } from "../lib/conkay/assembly/j941.js";
@@ -272,6 +272,148 @@ describe("assembly of the library car", () => {
     const p = partial.checks.find((x) => x.id === "containment");
     assert.equal(p.status, "fail");
     assert.deepEqual(p.outside, [ids[0]]);
+  });
+});
+
+describe("check parts attribution (HANDOFF-3 A3)", () => {
+  const doc = car();
+  const ids = new Set(doc.components.map((c) => c.id));
+  const byId = (list, id) => list.find((c) => c.id === id);
+
+  it("every part a check names is a component in the same document", () => {
+    for (const c of doc.checks) for (const p of c.parts || []) {
+      assert.ok(ids.has(p), `${c.id} names ${p}, which is not a component`);
+    }
+    const ev = assemblyFromIr(buildCarFromLibrary(BRIEF, { config: { fuelType: "electric" } }).ir);
+    const evIds = new Set(ev.components.map((c) => c.id));
+    for (const c of ev.checks) for (const p of c.parts || []) {
+      assert.ok(evIds.has(p), `electric ${c.id} names ${p}, which is not a component`);
+    }
+  });
+
+  it("head clearance names the manikin it measured and the body it measured against", () => {
+    assert.deepEqual(byId(doc.checks, "head-M95").parts, ["OCC_SEAT_1_M95", "BODY_SHELL"]);
+    assert.deepEqual(byId(doc.checks, "head-F5").parts, ["OCC_SEAT_1_F5", "BODY_SHELL"]);
+    assert.deepEqual(byId(doc.checks, "head-M95-rear").parts, ["OCC_SEAT_3_M95", "BODY_SHELL"]);
+    // the stored clearance is the gap the check computed, in metres — the viewer displays it verbatim
+    assert.equal(byId(doc.checks, "head-M95").clearanceM, byId(doc.checks, "head-M95").valueM);
+  });
+
+  it("four-seats names exactly the seat components it counted", () => {
+    const four = byId(doc.checks, "four-seats");
+    assert.deepEqual(four.parts, four.seats);
+    assert.deepEqual(four.parts, ["SEAT_1", "SEAT_2", "SEAT_3", "SEAT_4"]);
+  });
+
+  it("wheel-footwell names both front tyres and the manikin whose foot it swept against", () => {
+    const wf = byId(doc.checks, "wheel-footwell");
+    assert.deepEqual(wf.parts, ["TIRE_FL", "TIRE_FR", "OCC_SEAT_1_F5"]);
+    assert.equal(typeof wf.clearanceM, "number");
+  });
+
+  it("containment names exactly the parts it found outside — the parts its own loop collected", () => {
+    const ev = assemblyFromIr(buildCarFromLibrary(BRIEF, { config: { fuelType: "electric" } }).ir);
+    const cont = byId(ev.checks, "containment");
+    assert.equal(cont.status, "fail");
+    assert.ok(cont.outside.length > 0);
+    assert.deepEqual(cont.parts, cont.outside);
+  });
+
+  it("cooling-power names the radiator component when the document carries one", () => {
+    assert.ok(ids.has("RADIATOR"));
+    assert.deepEqual(byId(doc.checks, "cooling-power").parts, ["RADIATOR"]);
+  });
+
+  it("geometricOnlyParts names real components, and the styled-loft body is among them", () => {
+    const geo = doc.verification.geometricOnlyParts;
+    assert.ok(Array.isArray(geo) && geo.length > 0);
+    for (const p of geo) assert.ok(ids.has(p), `geometricOnlyParts names ${p}, which is not a component`);
+    assert.equal(doc.surface.source, "styling"); // no cad.body solid in this build
+    assert.ok(geo.includes("BODY_SHELL"), "the viewer body loft is geometric only");
+    assert.ok(geo.includes("TRUNK") && geo.includes("FRUNK"), "the volume boxes the statement names");
+    assert.ok(!geo.includes("ENGINE"), "a library envelope the checks evaluate is not geometric only");
+  });
+});
+
+describe("part analyses join (HANDOFF-3 A4)", () => {
+  const doc = car();
+  const env = (id, target, status, outputs = {}, extra = {}) => ({
+    runId: `${id}@${target}`,
+    solver: { id, version: "9.9.9" },
+    target,
+    status,
+    outputs,
+    covers: extra.covers ?? [target],
+    ...(extra.reason ? { reason: extra.reason } : {}),
+    ...(extra.inputs ? { inputs: extra.inputs } : {}),
+    provenance: { computedAt: "2026-10-28T00:00:00.000Z", ...(extra.noHash ? {} : { inputHash: `hash-${id}` }) },
+  });
+
+  it("with no envelopes, every mapped solver is an honest not_run and unmapped parts get an empty list", () => {
+    const map = partAnalyses(doc, []);
+    assert.equal(map["RADIATOR"][0].solver, "fluid.cooling-opening");
+    assert.equal(map["RADIATOR"][0].status, "not_run");
+    assert.equal(map["RADIATOR"][0].receipt, null);
+    assert.deepEqual(map["ENGINE"].map((a) => a.solver), ["electrical.motor-thermal", "vehicle.required-power"]);
+    assert.ok(map["ENGINE"].every((a) => a.status === "not_run"));
+    assert.deepEqual(map["BODY_SHELL"].map((a) => a.solver), ["aero.shape", "aero.cfd"]);
+    assert.match(map["BODY_SHELL"][1].reason, /OpenFOAM runs on the GPU pod/);
+    assert.deepEqual(map["SEAT_1"], []);
+    const tub = doc.components.find((c) => c.role === "frame");
+    assert.deepEqual(map[tub.id].map((a) => a.solver), ["structure.frame"]);
+    assert.equal(map[tub.id][0].status, "not_run");
+  });
+
+  it("a frame run links to exactly the members its covers list, with its receipt and key outputs", () => {
+    const frameEnv = env("structure.frame", "CHASSIS", "WARN", {
+      "bending.maxVonMises": { value: 3.02e7, unit: "Pa" },
+      "bending.maxTranslation": { value: 0.0015, unit: "m" },
+      "stiffness.torsional": { value: 770804.5, unit: "N·m/rad" },
+      "stiffness.torsional.specific": { value: { tubMassKg: 90 } },
+    }, { covers: ["CHASSIS", "TUB_FLOOR_L", "TUB_FLOOR_R"] });
+    frameEnv.margins = [{ check: "yield", demand: 10, capacity: 20, utilization: 0.5 }, { check: "buckling", demand: 9, capacity: 10, utilization: 0.9 }];
+    const map = partAnalyses(doc, [frameEnv]);
+    const rec = map["TUB_FLOOR_L"][0];
+    assert.equal(rec.status, "warn");
+    assert.equal(rec.version, "9.9.9");
+    assert.equal(rec.receipt.runId, "structure.frame@CHASSIS");
+    assert.equal(rec.receipt.inputHash, "hash-structure.frame");
+    assert.equal(rec.ranAt, "2026-10-28T00:00:00.000Z");
+    assert.equal(rec.utilization, 0.9);
+    assert.deepEqual(rec.keyOutputs.map((o) => o.id), ["bending.maxVonMises", "bending.maxTranslation", "stiffness.torsional"]);
+    assert.equal(rec.keyOutputs[0].value, 3.02e7);
+    // a frame member the run did not cover was not solved by it
+    const uncovered = doc.components.find((c) => c.role === "frame" && c.id !== "TUB_FLOOR_L" && c.id !== "TUB_FLOOR_R");
+    assert.equal(map[uncovered.id][0].status, "not_run");
+    assert.match(map[uncovered.id][0].reason, /did not cover this member/);
+  });
+
+  it("cooling, required-power and aero records carry the envelope's own numbers and statuses", () => {
+    const map = partAnalyses(doc, [
+      env("fluid.cooling-opening", "RADIATOR", "PASS", { openingAreaM2: { value: 0.21, unit: "m^2" }, riseK: { value: 11.5, unit: "K" } }),
+      env("vehicle.required-power", "VEH", "PASS", { requiredPower: { value: 187000, unit: "W" } }),
+      env("electrical.motor-thermal", "ENGINE", "NOT_COMPUTED", {}, { reason: "no winding resistance on the motor node", noHash: true }),
+      env("aero.shape", "VEH", "PASS", { verdict: { value: "lower drag, slant clear" }, reportedCd: { value: 0.31 } }),
+      env("aero.cfd", "VEH", "PASS", { dragCoefficient: { value: 0.29 } }, { inputs: { run: { value: { importedAt: "2026-09-01T00:00:00.000Z" } } } }),
+    ]);
+    assert.equal(map["RADIATOR"][0].status, "pass");
+    assert.deepEqual(map["RADIATOR"][0].keyOutputs.map((o) => o.id), ["openingAreaM2", "riseK"]); // absent picks are dropped, never invented
+    const [motor, power] = map["ENGINE"];
+    assert.equal(motor.status, "not_computed");
+    assert.equal(motor.reason, "no winding resistance on the motor node");
+    assert.equal(motor.receipt.inputHash, null); // a NOT_COMPUTED envelope has no inputs hash; the record says so
+    assert.equal(power.status, "pass");
+    assert.deepEqual(power.keyOutputs, [{ id: "requiredPower", value: 187000, unit: "W" }]);
+    const [shape, cfd] = map["BODY_SHELL"];
+    assert.deepEqual(shape.keyOutputs, [{ id: "verdict", value: "lower drag, slant clear" }, { id: "reportedCd", value: 0.31 }]);
+    assert.equal(cfd.recordedAt, "2026-09-01T00:00:00.000Z");
+    assert.deepEqual(cfd.keyOutputs, [{ id: "dragCoefficient", value: 0.29 }]);
+  });
+
+  it("withPartAnalyses attaches without mutating the source document", () => {
+    const joined = withPartAnalyses(doc, []);
+    assert.equal(doc.components.find((c) => c.id === "ENGINE").analyses, undefined);
+    assert.equal(joined.components.find((c) => c.id === "ENGINE").analyses.length, 2);
   });
 });
 
