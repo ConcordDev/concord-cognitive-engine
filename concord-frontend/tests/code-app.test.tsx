@@ -33,6 +33,11 @@ beforeEach(() => {
 });
 
 describe('CodeApp', () => {
+  it('greets the signed-in user by name in the northstar header', () => {
+    render(<CodeApp />);
+    expect(screen.getByTestId('code-greeting').textContent).toBe('What are we building, ada');
+  });
+
   it('loads without console errors and does not render a second Run button', async () => {
     const errors: unknown[][] = [];
     const spy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {

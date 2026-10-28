@@ -1,5 +1,58 @@
 # code — capability map (Frontend Rebuild Program, Wave 3)
 
+> **Re-verified 2026-10-28 (HANDOFF-3 Workstream B, batch L4).** Every
+> row re-checked against main 31ac4719. State since the Wave 3/4
+> editions:
+>
+> - `server/domains/code.js` now registers **87 macros** (80 at Wave 3;
+>   the growth includes the analysis set — `complexityAnalysis`,
+>   `dependencyAudit`, `coverageAnalysis`, `changeRiskAssessment` —
+>   all surfaced in the frontend). **84 of 87 are FE-surfaced.** The
+>   three without a dedicated button, classified: `refactor-suggest`
+>   (honest relabel — a strict subset of the wired `inline-edit`, see
+>   the ledger below); `sandbox-exec` (the WASM executor — real and
+>   covered by `server/tests/wasm-code-exec.test.js` 20/20; the UI's
+>   Run path uses the gated `exec` + `exec-status` pair instead);
+>   `propose-verified-patch` (agent-surface: the chat agent route
+>   directs coding requests to it via `run_lens_action`, and its
+>   output feeds the governed push-proposal flow whose
+>   `push-proposal-*` macros ARE the FE surface).
+> - The Wave 4 project-picker unification is in place
+>   (`CodeProjectContext` shared by all three surfaces).
+> - The page is now a 4-line shell re-exporting `components/code/
+>   CodeApp.tsx` (151 LOC); the three surfaces (quick-script workspace,
+>   virtual-git workbench, advanced panel) are unchanged in structure.
+> - HANDOFF-3's known notes are closed with regression tests: the Run
+>   button's disabled state is driven by the real `code.exec-status`
+>   gate (`codeExecGate` + `tests/code-run-menu.test.tsx`,
+>   `code-exec-gate.test.ts`, and CodeApp's no-second-Run assertion),
+>   and snippet restore is pinned by
+>   `tests/code-editor-snippet-restore.test.tsx` (the panel reads the
+>   saved snippet before any write so the empty mount can't clobber
+>   it).
+> - Server suites verified locally: code-domain-parity 86/86,
+>   code-engine 14/14, code-exec-status 4/4, code-push-governance
+>   10/10, wasm-code-exec 20/20. `code-lsp-semantic` and
+>   `code-ast-complexity` need installed packages (typescript / the
+>   AST engine) — Mac-run.
+> - This pass adds the concept's serif greeting ("What are we
+>   building, Ramaj", `docs/lens-northstar/28-code-northstar-concept.jpg`)
+>   as the CodeApp header over the extras pill, addressed to the
+>   signed-in user, pinned in `tests/code-app.test.tsx`.
+>
+> **2026 competitor delta (VS Code web / Replit / Cursor):** editor,
+> file tree, full virtual git (stage/commit/branch/merge/stash/blame),
+> LSP-shaped hover/completions/diagnostics/references, step debugger,
+> search/replace across the project, snippets, run configs, extensions
+> catalog, Live Share, AI pair chat, inline edit, multi-file agent
+> review, codebase chat — all real. Concord-native ahead: governed
+> push proposals (verified patch → human-approved push) and the
+> exec-status honesty gate (Run says so when execution is disabled
+> instead of faking a run). Out of scope, with reason: Replit-style
+> one-click deployments (Concord's deploy pipeline is the platform's
+> own, not a per-user app host) and a package-manager UI (the sandbox
+> runs a vendored package set; installs are an operator concern).
+
 Reference apps: **VS Code** (editor, file tree, source control, terminal,
 run/debug, search, extensions) and **GitHub Copilot Chat / Cursor** (AI
 pair-chat, inline edit, multi-file agent review). Parity target: the only
