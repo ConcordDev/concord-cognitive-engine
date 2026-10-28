@@ -1,35 +1,5 @@
 # Goals Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
-> **Re-verification (HANDOFF-3 batch L7, 2026-10-28, against main e9791d4d):**
-> The Wave-3 audit below is kept as history; all seven of its findings
-> were fixed then and the fixes are intact. Current truth:
->
-> - **10/10 `domains/goals.js` macros are named in the frontend**
->   (fresh scan, zero unsurfaced), and the 12 inline agent-governance
->   macros remain surfaced through `AgentAutonomyPanel`, which the
->   page still mounts. The page (145 lines) is now a shell over
->   extracted panels (`GoalsListPanel`, `ChallengesPanel`,
->   `MilestonesPanel`, `OKRWorkspace`, `GoalsAnalyticsTools`,
->   `AgentAutonomyPanel`, `ProductivityFeed`) — the post-Wave-3 shape.
-> - The Wave-3 headline bug (New Goal silently creating invisible
->   agent-system proposals while the visible list stayed empty) stays
->   fixed: personal-goal creation flows through the panel's own
->   artifact create; the agent system keeps its separate, labeled
->   propose flow in `AgentAutonomyPanel`.
-> - **Shipped in this batch:** the concept's serif headline — "What
->   matters this quarter, {username}" — replacing the plain "Goals"
->   header (`data-testid="goals-greeting"`, `tests/goals-greeting.test.tsx`).
->   The concept's starter chips ("Review OKRs", "Set a weekly focus")
->   were already the page's real chips.
-> - Server suites run locally this pass: goals-domain-parity passes
->   (in the combined 122-pass calendar+goals run); `agent-goals.test.js`
->   cannot load in this sandbox (missing `better-sqlite3`) and is
->   Mac-run, listed in the PR.
-> - Competitor frame unchanged from the audit below (Lattice/Perdoo
->   OKR depth + Habitica-style personal tracking + the agent-governance
->   surface no competitor has); no new buildable gap found.
-
-
 > Derived, not asserted. Every number below has a reproduction command; every
 > classification is backed by a grep or a full read of the file it's about.
 
