@@ -56,6 +56,7 @@ import {
 } from '@/lib/world-lens/world-data-state';
 import { themeForWorldId, CONCORDIA_THEMES, sunDiskForWorld, buildingStyleForWorld } from '@/lib/world-lens/concordia-theme';
 import { DEFAULT_CAMERA_ZOOM } from '@/lib/world-lens/camera-zoom';
+import { cancelActiveSequence } from '@/lib/world-lens/cinematic-director';
 import { hudCornerStyle } from '@/lib/world-lens/hud-corner-registry';
 import { shouldTogglePhotoMode, resolvePhotoModeCanvas } from '@/lib/world-lens/photo-mode-key';
 import { weatherTypeToIcon } from '@/lib/world-lens/weather-icon';
@@ -2240,6 +2241,46 @@ export default function WorldOsSurface() {
       window.removeEventListener('concordia:cinematic-end', onCinematicEnd);
     };
   }, []);
+  // Cinematic transport state for the Camera Mode panel — previously the
+  // CameraControls mount below hardcoded cinematicPlaying:false /
+  // cinematicTime:0 / cinematicDuration:0, so the timeline could never
+  // show a playing sequence even though the director + scene wiring is
+  // live. Fed from the same director events as the mode switch above:
+  // cinematic-start carries the sequence duration; a 250ms ticker
+  // advances the elapsed time while playing; cinematic-end stops it.
+  const [cinematicPlaying, setCinematicPlaying] = useState(false);
+  const [cinematicTime, setCinematicTime] = useState(0);
+  const [cinematicDuration, setCinematicDuration] = useState(0);
+  const cinematicStartedAtRef = useRef<number | null>(null);
+  useEffect(() => {
+    function onStart(e: Event) {
+      const durationMs = (e as CustomEvent).detail?.durationMs;
+      cinematicStartedAtRef.current = performance.now();
+      setCinematicDuration(typeof durationMs === 'number' ? durationMs / 1000 : 0);
+      setCinematicTime(0);
+      setCinematicPlaying(true);
+    }
+    function onEnd() {
+      cinematicStartedAtRef.current = null;
+      setCinematicPlaying(false);
+    }
+    window.addEventListener('concordia:cinematic-start', onStart);
+    window.addEventListener('concordia:cinematic-end', onEnd);
+    return () => {
+      window.removeEventListener('concordia:cinematic-start', onStart);
+      window.removeEventListener('concordia:cinematic-end', onEnd);
+    };
+  }, []);
+  useEffect(() => {
+    if (!cinematicPlaying) return;
+    const id = window.setInterval(() => {
+      const startedAt = cinematicStartedAtRef.current;
+      if (startedAt == null) return;
+      const elapsed = (performance.now() - startedAt) / 1000;
+      setCinematicTime(cinematicDuration > 0 ? Math.min(elapsed, cinematicDuration) : elapsed);
+    }, 250);
+    return () => window.clearInterval(id);
+  }, [cinematicPlaying, cinematicDuration]);
   // Camera Mode panel's zoom slider — previously wired to a no-op onZoom
   // handler (CameraControls rendered a live-looking slider that did
   // nothing). Real state now, consumed by ConcordiaScene's cameraZoom prop
@@ -5613,15 +5654,16 @@ export default function WorldOsSurface() {
                 zoom: cameraZoom,
                 rotation: cameraRotation,
                 followTarget: 'avatar',
-                cinematicPlaying: false,
-                cinematicTime: 0,
-                cinematicDuration: 0,
+                cinematicPlaying,
+                cinematicTime,
+                cinematicDuration,
                 transitioning: false,
               }}
               onModeChange={(mode) => setCameraMode(mode as typeof cameraMode)}
               onZoom={setCameraZoom}
               onRotate={setCameraRotation}
               onTransition={() => {}}
+              onCinematicStop={() => cancelActiveSequence()}
             />
           </div>
           {/* HUD overlay — mode drives the top-bar label */}
