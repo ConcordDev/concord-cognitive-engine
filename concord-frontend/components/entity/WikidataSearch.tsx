@@ -5,6 +5,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Network, Loader2, ExternalLink, Search, GitMerge, Check } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { lensRun } from '@/lib/api/client';
+import { publicLookup, carryLookupMeta } from '@/lib/public-lookup';
+import { LookupNotice } from '@/components/common/LookupNotice';
 
 interface Match {
   id: string;
@@ -50,10 +52,11 @@ export function WikidataSearch() {
   const results = useQuery({
     queryKey: ['wikidata', query],
     queryFn: async () => {
-      const r = await fetch(`https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&format=json&language=en&type=item&limit=20&origin=*`);
-      if (!r.ok) throw new Error(`wikidata ${r.status}`);
-      const j = await r.json();
-      return (j.search || []) as Match[];
+      const j = await publicLookup<{ search?: Match[] }>('wikidata-search', { q: query });
+      // Keep the array tied to the lookup's freshness so the notice can show a cached-copy note.
+      const list = (j.search || []) as Match[];
+      carryLookupMeta(j, list);
+      return list;
     },
     enabled: query.length >= 2,
     staleTime: 30 * 60 * 1000,
@@ -99,7 +102,8 @@ export function WikidataSearch() {
         </div>
         <button type="submit" className="rounded border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-xs font-mono text-cyan-200 hover:bg-cyan-500/20">resolve</button>
       </form>
-      {results.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Wikidata unreachable.</div>}
+      {results.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Wikidata unavailable{results.error instanceof Error ? `: ${results.error.message}` : '.'}</div>}
+      <LookupNotice provider="wikidata" data={results.data} />
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
           <div className="text-[10px] uppercase tracking-wider text-zinc-400">Matches</div>

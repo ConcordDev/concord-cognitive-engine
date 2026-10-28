@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Palette, Loader2, Search, ExternalLink } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup } from '@/lib/public-lookup';
+import { LookupNotice } from '@/components/common/LookupNotice';
 
 interface WmImage { pageid: number; title: string; thumb?: string; imageinfo?: { url: string; width: number; height: number; descriptionshorturl?: string; extmetadata?: Record<string, { value: string }> } }
 
@@ -11,27 +13,14 @@ export function WikimediaArt() {
   const [query, setQuery] = useState('renaissance painting');
   const [hits, setHits] = useState<WmImage[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [lookup, setLookup] = useState<object | undefined>(undefined);
 
   const search = useMutation({
     mutationFn: async () => {
       setError(null);
-      const params = new URLSearchParams({
-        action: 'query',
-        generator: 'search',
-        gsrnamespace: '6',
-        gsrsearch: `filetype:bitmap ${query.trim()}`,
-        gsrlimit: '20',
-        prop: 'imageinfo|pageimages',
-        iiprop: 'url|size|extmetadata',
-        iiurlwidth: '320',
-        pithumbsize: '320',
-        format: 'json',
-        origin: '*',
-      });
       try {
-        const r = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`);
-        if (!r.ok) throw new Error(`wikimedia ${r.status}`);
-        const j = await r.json();
+        const j = await publicLookup<{ query?: { pages?: Record<string, unknown> } }>('commons-search', { q: query.trim() });
+        setLookup(j);
         const pages = j?.query?.pages || {};
         const list = Object.values(pages).map((p: unknown) => {
           const pg = p as { pageid: number; title: string; thumbnail?: { source: string }; imageinfo?: WmImage['imageinfo'][] };
@@ -43,7 +32,7 @@ export function WikimediaArt() {
           } as WmImage;
         });
         setHits(list);
-      } catch (e) { setHits([]); setError(e instanceof Error ? e.message : 'request failed'); }
+      } catch (e) { setHits([]); setLookup(undefined); setError(e instanceof Error ? e.message : 'request failed'); }
     },
   });
 
@@ -81,6 +70,7 @@ export function WikimediaArt() {
         </button>
       </form>
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
+      <LookupNotice provider="commons" data={lookup} />
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 max-h-[520px] overflow-y-auto">
         {hits.map((h) => (
           <a key={h.pageid} href={h.imageinfo?.descriptionshorturl || `https://commons.wikimedia.org/?curid=${h.pageid}`} target="_blank" rel="noopener noreferrer" className="group block rounded border border-zinc-800 bg-zinc-950 overflow-hidden hover:border-cyan-500/30">
