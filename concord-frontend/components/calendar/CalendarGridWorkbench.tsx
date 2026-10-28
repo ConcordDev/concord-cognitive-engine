@@ -71,6 +71,8 @@ export type ViewMode = 'month' | 'week' | 'day' | 'agenda';
 // Constants
 // ---------------------------------------------------------------------------
 
+const CALENDAR_COLORS = ['#4285f4', '#ea4335', '#34a853', '#fbbc04', '#a142f4', '#24c1e0', '#f538a0', '#f6911e'];
+
 const EVENT_TYPE_META: Record<EventType, { label: string; color: string }> = {
   release:   { label: 'Launches',        color: '#22c55e' },
   session:   { label: 'Work Sessions',   color: '#06b6d4' },
@@ -327,6 +329,10 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [calendars, setCalendars] = useState<BackendCalendar[]>([]);
+  const [showCalForm, setShowCalForm] = useState(false);
+  const [calForm, setCalForm] = useState({ name: '', color: '#34a853' });
+  const [calFormError, setCalFormError] = useState<string | null>(null);
+  const [confirmDeleteCalId, setConfirmDeleteCalId] = useState<string | null>(null);
 
   // Categories are the event-type filter (Launches/Work Sessions/Deadlines/…) —
   // a fixed, always-real set derived from EVENT_TYPE_META. (Previously this read
@@ -795,15 +801,34 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
     }
   };
 
-  const handleAddCalendar = async () => {
-    const name = typeof window !== 'undefined' ? window.prompt('New calendar name?') : null;
-    if (!name?.trim()) return;
+  // F3: the Add-calendar control opens an in-lens form. (It used to call
+  // window.prompt(), which never surfaces in embedded/automated browsers
+  // and reads as a dead button.)
+  const handleAddCalendar = () => { setCalFormError(null); setShowCalForm((v) => !v); };
+
+  const submitCalForm = async () => {
+    const name = calForm.name.trim();
+    if (!name) { setCalFormError('Give the calendar a name.'); return; }
     try {
-      const r = await lensRun({ domain: 'calendar', action: 'calendars-create', input: { name: name.trim() } });
+      const r = await lensRun({ domain: 'calendar', action: 'calendars-create', input: { name, color: calForm.color } });
       if (r.data.ok === false) throw new Error(r.data.error || 'Failed to create calendar');
+      setCalForm({ name: '', color: '#34a853' });
+      setShowCalForm(false);
+      setCalFormError(null);
       await fetchData();
     } catch (e) {
-      useUIStore.getState().addToast({ type: 'error', message: e instanceof Error ? e.message : 'Failed to create calendar' });
+      setCalFormError(e instanceof Error ? e.message : 'Failed to create calendar');
+    }
+  };
+
+  const deleteCalendar = async (cal: BackendCalendar) => {
+    try {
+      const r = await lensRun({ domain: 'calendar', action: 'calendars-delete', input: { id: cal.id } });
+      if (r.data.ok === false) throw new Error(r.data.error || 'Failed to delete calendar');
+      setConfirmDeleteCalId(null);
+      await fetchData();
+    } catch (e) {
+      useUIStore.getState().addToast({ type: 'error', message: e instanceof Error ? e.message : 'Failed to delete calendar' });
     }
   };
 
@@ -1409,29 +1434,59 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                   <Plus className="w-3.5 h-3.5" />
                 </button>
               </div>
+              {showCalForm && (
+                <div className="mb-3 space-y-2 rounded-lg border border-lattice-border bg-lattice-deep p-3">
+                  <input
+                    aria-label="New calendar name"
+                    value={calForm.name}
+                    onChange={(e) => setCalForm({ ...calForm, name: e.target.value })}
+                    placeholder="Calendar name"
+                    className="w-full bg-lattice-surface rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
+                  />
+                  <div className="flex items-center gap-1.5">
+                    {CALENDAR_COLORS.map((c) => (
+                      <button key={c} type="button" aria-label={`Colour ${c}`} onClick={() => setCalForm({ ...calForm, color: c })}
+                        className={cn('w-5 h-5 rounded-full border-2', calForm.color === c ? 'border-white' : 'border-transparent')} style={{ backgroundColor: c }} />
+                    ))}
+                  </div>
+                  {calFormError && <p className="text-xs text-rose-300">{calFormError}</p>}
+                  <div className="flex gap-2">
+                    <button onClick={() => void submitCalForm()} disabled={!calForm.name.trim()} className="flex-1 py-1.5 rounded bg-neon-cyan text-black text-xs font-semibold disabled:opacity-50">Create calendar</button>
+                    <button onClick={() => setShowCalForm(false)} className="flex-1 py-1.5 rounded border border-lattice-border text-xs">Cancel</button>
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 {calendars.length === 0 && (
                   <p className="text-xs text-gray-400 py-2">No calendars yet.</p>
                 )}
                 {calendars.map((cal) => (
-                  <button
-                    key={cal.id}
-                    onClick={() => toggleCalendarVisibility(cal)}
-                    className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-lattice-elevated transition-colors"
-                  >
-                    <div
-                      className={cn(
-                        'w-4 h-4 rounded flex items-center justify-center',
-                        cal.visible ? 'opacity-100' : 'opacity-30'
-                      )}
-                      style={{ backgroundColor: cal.color }}
+                  <div key={cal.id} className="group flex items-center gap-1">
+                    <button
+                      onClick={() => toggleCalendarVisibility(cal)}
+                      className="flex-1 flex items-center gap-3 p-2 rounded-lg hover:bg-lattice-elevated transition-colors"
                     >
-                      {cal.visible && <Check className="w-3 h-3 text-white" />}
-                    </div>
-                    <span className={cn('text-sm', !cal.visible && 'text-gray-400')}>
-                      {cal.name}
-                    </span>
-                  </button>
+                      <div
+                        className={cn(
+                          'w-4 h-4 rounded flex items-center justify-center',
+                          cal.visible ? 'opacity-100' : 'opacity-30'
+                        )}
+                        style={{ backgroundColor: cal.color }}
+                      >
+                        {cal.visible && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <span className={cn('text-sm', !cal.visible && 'text-gray-400')}>
+                        {cal.name}
+                      </span>
+                    </button>
+                    {!cal.isDefault && (
+                      confirmDeleteCalId === cal.id ? (
+                        <button onClick={() => void deleteCalendar(cal)} aria-label={`Confirm delete calendar ${cal.name}`} className="px-2 py-1 text-[11px] rounded bg-rose-500/15 text-rose-300">Delete?</button>
+                      ) : (
+                        <button onClick={() => setConfirmDeleteCalId(cal.id)} aria-label={`Delete calendar ${cal.name}`} title="Delete calendar (its events are removed too)" className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-rose-300"><Trash2 className="w-3.5 h-3.5" /></button>
+                      )
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
