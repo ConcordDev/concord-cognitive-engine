@@ -1565,7 +1565,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
       {/* Header — name heading, period label, quiet view switch */}
       <header className="flex items-end justify-between gap-4 px-8 pt-4 pb-5">
         <div className="min-w-0">
-          <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100" data-testid="calendar-greeting">Your week{user?.username ? `, ${user.username}` : ''}</h1>
+          <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">Calendar</h1>
           <div className="mt-1 flex items-center gap-1 text-[15px] text-zinc-400">
             <button
               type="button"
