@@ -777,7 +777,7 @@ function DashboardPanel() {
 
   const refresh = useCallback(async () => {
     setLoading(true); setErr(null);
-    const r = await lensRun<DashboardSummary>('calendar', 'calendar-dashboard-summary', {});
+    const r = await lensRun<DashboardSummary>('calendar', 'calendar-dashboard-summary', { tz: browserTimeZone() });
     if (r.data?.ok) setSummary(r.data.result || null);
     else setErr(r.data?.error || 'Could not load dashboard summary.');
     setLoading(false);
