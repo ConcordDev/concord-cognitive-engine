@@ -43701,6 +43701,46 @@ registerHeartbeat("news-feed-warm", {
   cost: "db", // network + a capped local-model summary; not CPU-class, so it also runs while idle
 });
 
+// Realtime data feeds (finance, crypto, news, weather, research, economy, WHO health and the
+// domain RSS feeds). Same move as news-feed-warm (#1657): the governorTick body returns early
+// while the host is idle or memory-paused (always on prod), so these only refreshed on the rare
+// busy tick and e.g. WHO health (every 100th tick) stayed "not_fetched_yet".
+// Cadence is unchanged: the registry fires every 5th tick on the same __bgTickCounter the old
+// REALTIME_DATA slot used, and tickRealTimeFeeds keeps each feed's own tickCount % everyTicks.
+// Upstream rate is never above the old schedule: every build goes through the feed-cache TTL
+// (+ per-key back-off) and the shared-http URL cache. The FIRST run after a restart passes
+// tick 0 so every feed is checked once (the old boot tick did the same); feeds still fresh in
+// the persisted cache are cache hits, not upstream calls. Fire-and-forget, one run at a time.
+let _realtimeFeedsRunning = false;
+let _realtimeFeedsFirstRunDone = false;
+function _runRealtimeFeeds(tickCount) {
+  if (_realtimeFeedsRunning) return;
+  _realtimeFeedsRunning = true;
+  const tick = _realtimeFeedsFirstRunDone ? tickCount : 0;
+  _realtimeFeedsFirstRunDone = true;
+  Promise.all([import("./emergent/realtime-feeds.js"), import("./emergent/event-to-dtu-bridge.js")])
+    .then(async ([{ tickRealTimeFeeds }, { bridgeEventToDTU }]) => {
+      // Bridge integration: feed data streams to the frontend AND persists as knowledge DTUs.
+      const feedBridge = (event) => bridgeEventToDTU(event, {
+        pipelineCommitDTU,
+        makeInternalCtx,
+        lookupDTU: (id) => STATE.dtus.get(id) || null,
+        updateDTU: (dtu) => { STATE.dtus.set(dtu.id, dtu); },
+        broadcastEvent: (type, data) => { try { realtimeEmit(type, data); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); } },
+        STATE,
+      });
+      await tickRealTimeFeeds(STATE, tick, realtimeEmit, callBrain, feedBridge);
+    })
+    .catch((e) => { structuredLog("warn", "governor_realtime_data_tick", { error: String(e?.message || e) }); })
+    .finally(() => { _realtimeFeedsRunning = false; });
+}
+registerHeartbeat("realtime-feeds", {
+  frequency: 5, // = TICK_FREQUENCIES.REALTIME_DATA, the old governorTick slot (~75 s)
+  handler: ({ tickCount } = {}) => { _runRealtimeFeeds(Number(tickCount) || 0); },
+  scope: "global",
+  cost: "db", // network + cache; not CPU-class, so it also runs on the idle path
+});
+
 // Shared heartbeat-registry dispatch for the normal, low-memory and idle
 // paths of governorTick, so they cannot drift (PR-5 remote orchestration).
 async function _dispatchHeartbeatRegistry(dispatchReason, extraCtx = {}) {
@@ -44409,26 +44449,8 @@ async function governorTick(reason="heartbeat") {
       // ── Phase 3: Real-Time Data Feeds + Lens Learning ──
       // ══════════════════════════════════════════════════════════════════════
 
-      // Real-time data feeds — every REALTIME_DATA ticks (~75s)
-      // Bridge integration: feed data streams to frontend AND persists as knowledge DTUs
-      if ((_tick % TICK_FREQUENCIES.REALTIME_DATA) === 0) {
-        try {
-          const { tickRealTimeFeeds } = await import("./emergent/realtime-feeds.js");
-          const { bridgeEventToDTU } = await import("./emergent/event-to-dtu-bridge.js");
-
-          // Build bridge callback with all dependencies injected
-          const feedBridge = (event) => bridgeEventToDTU(event, {
-            pipelineCommitDTU,
-            makeInternalCtx,
-            lookupDTU: (id) => STATE.dtus.get(id) || null,
-            updateDTU: (dtu) => { STATE.dtus.set(dtu.id, dtu); },
-            broadcastEvent: (type, data) => { try { realtimeEmit(type, data); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); } },
-            STATE,
-          });
-
-          await tickRealTimeFeeds(STATE, _tick, realtimeEmit, callBrain, feedBridge);
-        } catch (e) { structuredLog("warn", "governor_realtime_data_tick", { error: String(e?.message || e) }); }
-      }
+      // Real-time data feeds: run from the heartbeat registry ("realtime-feeds", see
+      // _runRealtimeFeeds), not here, so they also refresh while the host is idle or memory-paused.
 
       // Lens learning — every LENS_LEARNING ticks (~8 min), staggered across domains
       if ((_tick % TICK_FREQUENCIES.LENS_LEARNING) === 0 && _tick > 0) {
