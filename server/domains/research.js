@@ -2,8 +2,8 @@
 // Domain actions for research: citation network analysis, methodology scoring,
 // reproducibility assessment, and literature gap detection.
 
-import { guardAnonWrites } from "../lib/lens-authz.js";
-import { autoSource, publishAutoSourceSummary, buildSummaryPrompt } from "../lib/auto-source.js";
+import { guardAnonWrites, refuseAnonWrite } from "../lib/lens-authz.js";
+import { autoSource, publishAutoSourceSummary, buildSummaryPrompt, autoSourceEnabled, autoSourceUsage } from "../lib/auto-source.js";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { computeContentHash } from "../lib/dtu-protocol.js";
@@ -1736,9 +1736,19 @@ ${corpus}`;
   // action sets nothing about visibility itself: the lib writes public
   // citations and ONE private summary; only the summary's author can
   // publish it (auto-source-publish).
+  // Read-only status for the 9b button: enabled flag, caps and current usage.
+  registerLensAction("research", "auto-source-status", async (ctx) => {
+    const signedIn = !refuseAnonWrite(ctx);
+    const userId = signedIn ? researchActor(ctx) : null;
+    return { ok: true, result: { enabled: autoSourceEnabled(), signedIn, ...autoSourceUsage(userId) } };
+  });
+
   registerLensAction("research", "auto-source", async (ctx, _a, params = {}) => {
-    const enabled = process.env.CONCORD_AUTOSOURCE_ENABLED === "1" || process.env.CONCORD_AUTOSOURCE_ENABLED === "true";
-    if (!enabled) return { ok: false, status: 503, error: "auto_source_disabled" };
+    // Writes public citation DTUs: never for signed-out callers. ("auto-source"
+    // is not write-shaped by name, so guardAnonWrites alone would let it through.)
+    const no = refuseAnonWrite(ctx);
+    if (no) return no;
+    if (!autoSourceEnabled()) return { ok: false, status: 503, error: "auto_source_disabled" };
     const topic = String(params.topic || "").trim();
     if (!topic) return { ok: false, status: 400, error: "topic_required" };
     const userId = researchActor(ctx);
@@ -1772,6 +1782,8 @@ ${corpus}`;
   });
 
   registerLensAction("research", "auto-source-publish", async (ctx, _a, params = {}) => {
+    const no = refuseAnonWrite(ctx);
+    if (no) return no;
     const summaryId = String(params.summaryId || params.id || "");
     if (!summaryId) return { ok: false, status: 400, error: "summary_id_required" };
     const r = await publishAutoSourceSummary(

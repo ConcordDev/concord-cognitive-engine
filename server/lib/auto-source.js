@@ -34,7 +34,7 @@
 
 import { fetchPublicUrl } from "./public-fetch.js";
 import { buildCitationRecords, writeCitationDtus, normUrl } from "./research-mode.js";
-import { runAsFeedIngest } from "./feed-ingest-provenance.js";
+import { runAsFeedIngest, isQuarantined } from "./feed-ingest-provenance.js";
 import { hostTier, hostOf } from "./news-outlet-policy.js";
 import { getWikiSearch, getWikiSummary, getWikidataSearch, safeText } from "./public-lookup-sources.js";
 import { getGdelt, queryKey as gdeltQueryKey } from "./gdelt-source.js";
@@ -88,6 +88,26 @@ export function registrableDomain(host) {
 
 const _userHour = new Map(); // userId -> number[] (ms timestamps)
 const _globalDay = new Map(); // yyyy-mm-dd -> count
+
+/** CONCORD_AUTOSOURCE_ENABLED gate (default off). */
+export function autoSourceEnabled() {
+  const v = String(process.env.CONCORD_AUTOSOURCE_ENABLED || "").trim().toLowerCase();
+  return v === "1" || v === "true";
+}
+
+/** Current usage against the caps (per process; resets on restart). userId null => global only. */
+export function autoSourceUsage(userId, nowMs = Date.now()) {
+  const { perUserHourly, dailyCap } = autoSourceLimits();
+  const day = new Date(nowMs).toISOString().slice(0, 10);
+  const usedToday = _globalDay.get(day) || 0;
+  const out = { dailyCap, perUserHourly, usedToday, remainingToday: Math.max(0, dailyCap - usedToday) };
+  if (userId) {
+    const usedThisHour = (_userHour.get(userId) || []).filter((t) => t > nowMs - 3600_000).length;
+    out.usedThisHour = usedThisHour;
+    out.remainingThisHour = Math.max(0, perUserHourly - usedThisHour);
+  }
+  return out;
+}
 
 export function autoSourceLimits() {
   return {
@@ -435,8 +455,10 @@ export async function autoSource({ topic, lensDomain = null, userId = "anon" } =
 
 // ── publish ─────────────────────────────────────────────────────────────────
 
+// Only the server-set owner counts. meta.* (and authorId) can come from the
+// client's create payload, so they must never decide who may publish.
 function dtuOwnerId(d) {
-  return d?.meta?.userId || d?.ownerId || d?.owner_user_id || d?.creatorId || d?.authorId || d?.userId || null;
+  return d?.ownerId || d?.owner_user_id || null;
 }
 
 /** Flip a DTU's stored visibility (STATE row + dtus table, best-effort on both). */
@@ -466,6 +488,7 @@ export async function publishAutoSourceSummary({ summaryId, userId } = {}, deps 
   const owner = dtuOwnerId(summary);
   if (!owner || !userId || owner !== userId) return { ok: false, status: 403, error: "not_author" };
   if (summary.visibility === "public") return { ok: true, summaryId, alreadyPublished: true };
+  if (isQuarantined(summary)) return { ok: false, status: 403, error: "quarantined" };
   const ids = Array.isArray(summary.meta?.citationIds) ? summary.meta.citationIds : [];
   const missing = [];
   for (const id of ids) {

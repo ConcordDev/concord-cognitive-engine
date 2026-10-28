@@ -44,7 +44,7 @@ test("summary is private, grounded on >=2 sources, and publish is author-only wi
   assert.equal(summary.meta.citationIds.length, r.citationIds.length);
 
   const store = new Map();
-  store.set(r.summaryId, { id: r.summaryId, visibility: "private", meta: { kind: "auto-source", userId: "author-1", citationIds: r.citationIds } });
+  store.set(r.summaryId, { id: r.summaryId, ownerId: "author-1", visibility: "private", meta: { kind: "auto-source", userId: "author-1", citationIds: r.citationIds } });
   for (const id of r.citationIds) store.set(id, { id, visibility: "public", meta: { kind: "citation" } });
   const getDtu = async (id) => store.get(id) || null;
   const flips = [];
