@@ -27,6 +27,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/common/EmptyState';
+import { DataAttribution } from '@/components/common/DataAttribution';
 import { Skeleton, SkeletonTableRows } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -1184,7 +1185,7 @@ export function CryptoWalletWorkspace() {
                       </button>
                     ))}
                   </div>
-                  <span className="ml-auto text-[10px] text-gray-400">Powered by TradingView Lightweight Charts</span>
+                  <span className="ml-auto text-[10px] text-gray-400">Powered by TradingView Lightweight Charts · <DataAttribution provider="coingecko" /></span>
                 </div>
                 <CandleChart
                   candles={chartCandles}

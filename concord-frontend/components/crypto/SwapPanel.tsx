@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ArrowDownUp, Loader2, Settings, AlertTriangle, Ban } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { DataAttribution } from '@/components/common/DataAttribution';
 
 export interface SwappableToken {
   id: string;
@@ -199,6 +200,7 @@ export function SwapPanel({ tokens, defaultFromSymbol = 'CC', defaultToSymbol = 
         </div>
       )}
 
+      {quote && <DataAttribution provider="coingecko" className="px-1" />}
       {error && <p className="text-[10px] text-yellow-400">{error}</p>}
       {!fromBalanceOk && fromToken?.balance != null && (
         <p className="text-[10px] text-red-400">Insufficient {fromToken.symbol} balance ({fromToken.balance}).</p>

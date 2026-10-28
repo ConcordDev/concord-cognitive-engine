@@ -3,6 +3,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { requireOwner } from "../lib/lens-authz.js";
+import { getErApiLatest, ERAPI_ATTRIBUTION, ERAPI_ATTRIBUTION_URL } from "../lib/market-feed-sources.js";
 import { assertPayable } from "../lib/money-guards.js";
 import { bindWave1 } from "../lib/lens-input-schemas-wave1.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
@@ -3322,8 +3323,8 @@ Output the single best account code:`;
   // ── [M] Multi-currency with FX revaluation ─────────────────────────
   //
   // Base currency is USD. Users record foreign-currency accounts and
-  // refresh FX rates from a free keyless API (exchangerate.host /
-  // open.er-api.com). fx-revaluation computes the unrealized gain/loss
+  // refresh FX rates from a free keyless API (Exchange Rate API, via
+  // lib/market-feed-sources.js). fx-revaluation computes the unrealized gain/loss
   // on foreign-denominated account balances at current rates.
 
   function getCurrencyState(s, userId) {
@@ -3365,16 +3366,10 @@ Output the single best account code:`;
     const symbols = Array.isArray(params.symbols)
       ? params.symbols.map(x => String(x).toUpperCase()).filter(x => /^[A-Z]{3}$/.test(x))
       : [];
-    let mod;
-    try { mod = await import("../lib/external-fetch.js"); }
-    catch { return { ok: false, error: "external-fetch unavailable" }; }
-    let data;
-    try {
-      // open.er-api.com — free, keyless, no rate-limit registration.
-      data = await mod.cachedFetchJson(`https://open.er-api.com/v6/latest/${encodeURIComponent(cs.base)}`, { ttlMs: 3_600_000 });
-    } catch (e) {
-      return { ok: false, error: `FX rate fetch failed: ${e.message}` };
-    }
+    // Shared feed-cache read (lib/market-feed-sources.js): free, keyless; the provider updates once a day.
+    const fx = await getErApiLatest(cs.base);
+    if (!fx.ok) return { ok: false, error: `FX rate fetch failed: ${fx.reason}`, status: "unavailable", reason: fx.reason, lastOkAt: fx.lastOkAt };
+    const data = fx.data;
     const rates = data?.rates;
     if (!rates || typeof rates !== "object") return { ok: false, error: "FX provider returned no rates" };
     const updatedAt = nowIso();
@@ -3387,7 +3382,14 @@ Output the single best account code:`;
       count++;
     }
     saveAccountingState();
-    return { ok: true, result: { base: cs.base, updated: count, asOf: data?.time_last_update_utc || updatedAt } };
+    return {
+      ok: true,
+      result: {
+        base: cs.base, updated: count, asOf: data?.time_last_update_utc || updatedAt,
+        ...(fx.stale ? { stale: true, fetchedAt: fx.fetchedAt } : {}),
+        attribution: ERAPI_ATTRIBUTION, attributionUrl: ERAPI_ATTRIBUTION_URL,
+      },
+    };
   });
 
   registerLensAction("accounting", "fx-revaluation", (ctx, _a, params = {}) => {

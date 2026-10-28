@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { TrendingUp, Loader2, ExternalLink, DollarSign, Activity, Bitcoin } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { DataAttribution } from '@/components/common/DataAttribution';
 
 interface GlobalData {
   data?: {
@@ -100,6 +101,7 @@ export function MarketsPulse() {
         ))}
       </div>
       {(global.isPending || top.isPending) && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling CoinGecko…</div>}
+      <DataAttribution provider="coingecko" />
     </div>
   );
 }

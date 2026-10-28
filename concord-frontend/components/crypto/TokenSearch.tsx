@@ -5,6 +5,7 @@ import { Search, Star, StarOff, TrendingUp, TrendingDown } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { SkeletonTableRows } from '@/components/ui';
+import { DataAttribution } from '@/components/common/DataAttribution';
 
 export interface TokenSummary {
   id: string;
@@ -156,7 +157,7 @@ export function TokenSearch({ watchlist = [], onToggleWatch, onSelect, className
         )}
       </div>
       <footer className="px-3 py-2 border-t border-white/10 flex items-center justify-between text-[10px] text-gray-400">
-        <span>Page {page} · {visible.length} shown</span>
+        <span>Page {page} · {visible.length} shown · <DataAttribution provider="coingecko" /></span>
         <div className="flex items-center gap-2">
           <button
             disabled={page <= 1 || loading}

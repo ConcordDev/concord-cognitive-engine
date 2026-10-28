@@ -2,6 +2,7 @@
 // Domain actions for market analysis: trend analysis, competitor matrix, price elasticity.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { getYahooQuotes, getYahooChart } from "../lib/market-feed-sources.js";
 export default function registerMarketActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -390,18 +391,18 @@ export default function registerMarketActions(registerLensAction) {
     { sector: "Real Estate",            etf: "XLRE", topSymbols: ["AMT", "PLD", "CCI"] },
   ];
 
-  // Yahoo Finance quote endpoint — free, no API key, server-side fetch.
+  // Yahoo Finance quote endpoint — free, no API key, read through the shared feed-cache (lib/market-feed-sources.js).
   // v7 /quote now returns 401. markets.quote-history already reads the v8
   // chart endpoint successfully, so a refused v7 response falls back there.
   // A thrown fetch stays an error (the network never answered). Chart meta
   // often lacks market cap and trailing PE — those stay null.
   async function fetchYahooChartQuote(symbol) {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=5d&interval=1d`;
-    const r = await globalThis.fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (Concord-OS/1.0)" },
-    });
-    if (!r.ok) return null;
-    const data = await r.json();
+    const r = await getYahooChart(symbol, { range: "5d", interval: "1d" });
+    // An upstream answer that is not data (404 etc.) is "no quote"; a cache that could not reach Yahoo at all
+    // stays an error. Never a made-up price.
+    if (!r.ok && r.httpStatus) return null;
+    if (!r.ok) throw new Error(`yahoo finance unavailable: ${r.reason}`);
+    const data = r.data;
     const meta = data?.chart?.result?.[0]?.meta;
     if (!meta || meta.regularMarketPrice == null) return null;
     const price = meta.regularMarketPrice;
@@ -423,16 +424,11 @@ export default function registerMarketActions(registerLensAction) {
   }
 
   async function fetchYahooQuotesMkt(symbols) {
-    if (typeof globalThis.fetch !== "function") throw new Error("fetch unavailable");
-    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols.join(","))}`;
-    const r = await globalThis.fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (Concord-OS/1.0)" },
-    });
+    const r = await getYahooQuotes(symbols);
     if (r.ok) {
-      const data = await r.json();
-      return { quotes: data?.quoteResponse?.result || [], source: "yahoo-finance" };
+      return { quotes: r.data?.quoteResponse?.result || [], source: "yahoo-finance", ...(r.stale ? { stale: true, fetchedAt: r.fetchedAt } : {}) };
     }
-    if (r.status === 401 || r.status === 403) {
+    if (r.httpStatus === 401 || r.httpStatus === 403) {
       const quotes = [];
       for (const sym of symbols) {
         try {
@@ -447,7 +443,7 @@ export default function registerMarketActions(registerLensAction) {
       }
       return { quotes, source: "yahoo-finance-chart" };
     }
-    throw new Error(`yahoo finance ${r.status}`);
+    throw new Error(r.httpStatus ? `yahoo finance ${r.httpStatus}` : `yahoo finance unavailable: ${r.reason}`);
   }
 
   // Range → Yahoo Finance field. Yahoo returns 1D pct on

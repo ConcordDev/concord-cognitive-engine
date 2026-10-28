@@ -17,6 +17,7 @@
 // why "consistent with a cartel" is not proof of intent).
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { getYahooQuotes, getYahooChart } from "../lib/market-feed-sources.js";
 import { mixedNashEquilibria } from "../lib/game-theory/mixed-nash.js";
 import { replicatorDynamics } from "../lib/game-theory/replicator.js";
 import { analyzeMarketEquilibrium } from "../lib/game-theory/market-equilibrium.js";
@@ -198,18 +199,15 @@ export default function registerMarketsActions(registerLensAction) {
 
   // ── Yahoo Finance quote helper (free, no key, server-side) ──
   //
-  // Endpoint: query1.finance.yahoo.com/v7/finance/quote?symbols=ES%3DF,GC%3DF
+  // Yahoo v7 quote (ES=F, GC=F, ...), read through the shared feed-cache (lib/market-feed-sources.js).
   // Returns array of quotes with regularMarketPrice, regularMarketChange,
-  // bid, ask, marketState. Real data, refreshed in real time during market hours.
+  // bid, ask, marketState. Real data; a stale cache entry is served only inside its 15 min limit and
+  // otherwise this throws (callers return an honest error, never an invented quote).
 
   async function fetchYahooQuotes(symbols) {
-    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols.join(","))}`;
-    const r = await globalThis.fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (Concord-OS/1.0)" },
-    });
-    if (!r.ok) throw new Error(`yahoo finance ${r.status}`);
-    const data = await r.json();
-    return data?.quoteResponse?.result || [];
+    const r = await getYahooQuotes(symbols);
+    if (!r.ok) throw new Error(r.httpStatus ? `yahoo finance ${r.httpStatus}` : `yahoo finance unavailable: ${r.reason}`);
+    return r.data?.quoteResponse?.result || [];
   }
 
   // Map CME continuous symbols to Yahoo Finance tickers (e.g. ES → ES=F)
@@ -399,7 +397,7 @@ export default function registerMarketsActions(registerLensAction) {
   // Real bars for any Yahoo-listed symbol. Used by the bespoke quote-detail
   // chart pane (lightweight-charts) and the multi-symbol comparison view.
   //
-  // Endpoint: query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=1mo&interval=1d
+  // Yahoo v8 chart ({symbol}, range=1mo, interval=1d), read through the shared feed-cache.
   //
   // Valid ranges:    1d 5d 1mo 3mo 6mo 1y 2y 5y 10y ytd max
   // Valid intervals: 1m 2m 5m 15m 30m 60m 90m 1h 1d 5d 1wk 1mo 3mo
@@ -417,13 +415,12 @@ export default function registerMarketsActions(registerLensAction) {
       return { ok: false, error: "invalid interval" };
     }
     try {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`;
-      const r = await globalThis.fetch(url, {
-        headers: { "User-Agent": "Mozilla/5.0 (Concord-OS/1.0)" },
-      });
-      if (r.status === 404) return { ok: false, error: `symbol not found: ${symbol}` };
-      if (!r.ok) throw new Error(`yahoo finance ${r.status}`);
-      const data = await r.json();
+      const r = await getYahooChart(symbol, { range, interval });
+      if (!r.ok) {
+        if (r.httpStatus === 404) return { ok: false, error: `symbol not found: ${symbol}` };
+        throw new Error(r.httpStatus ? `yahoo finance ${r.httpStatus}` : `unavailable: ${r.reason}`);
+      }
+      const data = r.data;
       const result = data?.chart?.result?.[0];
       if (!result) return { ok: false, error: `no chart data for ${symbol}` };
       const ts = result.timestamp || [];
@@ -450,6 +447,7 @@ export default function registerMarketsActions(registerLensAction) {
           previousClose: meta.chartPreviousClose ?? null,
           regularMarketPrice: meta.regularMarketPrice ?? null,
           source: "yahoo-finance-chart",
+          ...(r.stale ? { stale: true, fetchedAt: r.fetchedAt } : {}),
         },
       };
     } catch (e) {

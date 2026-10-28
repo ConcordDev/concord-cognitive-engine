@@ -7,6 +7,10 @@
  * Admin can enable/disable, adjust intervals, and add custom feeds.
  */
 
+// The Yahoo chart + CoinGecko top-10 URLs are built by lib/market-feed-sources.js (the only module that names
+// those hosts); feed-manager reads them through that module's shared cache.
+import { yahooChartUrl, COINGECKO_TOP10_URL } from "./market-feed-sources.js";
+
 // ── FINANCE LENS ──────────────────────────────────────────────────────────────
 
 export const FINANCE_FEEDS = [
@@ -15,7 +19,7 @@ export const FINANCE_FEEDS = [
     name: "S&P 500 (Yahoo Finance)",
     domain: "finance",
     type: "json",
-    url: "https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=1d",
+    url: yahooChartUrl("^GSPC"),
     interval: 60000,
     parser: "yahoo-finance",
     tags: ["stocks", "market", "sp500", "live"],
@@ -27,7 +31,7 @@ export const FINANCE_FEEDS = [
     name: "NASDAQ (Yahoo Finance)",
     domain: "finance",
     type: "json",
-    url: "https://query1.finance.yahoo.com/v8/finance/chart/%5EIXIC?interval=1d&range=1d",
+    url: yahooChartUrl("^IXIC"),
     interval: 60000,
     parser: "yahoo-finance",
     tags: ["stocks", "market", "nasdaq", "live"],
@@ -39,7 +43,7 @@ export const FINANCE_FEEDS = [
     name: "DOW (Yahoo Finance)",
     domain: "finance",
     type: "json",
-    url: "https://query1.finance.yahoo.com/v8/finance/chart/%5EDJI?interval=1d&range=1d",
+    url: yahooChartUrl("^DJI"),
     interval: 60000,
     parser: "yahoo-finance",
     tags: ["stocks", "market", "dow", "live"],
@@ -51,7 +55,7 @@ export const FINANCE_FEEDS = [
     name: "Top Crypto (CoinGecko)",
     domain: "finance",
     type: "json",
-    url: "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,cardano,polkadot,ripple,dogecoin,chainlink,avalanche-2,polygon-ecosystem-token&vs_currencies=usd&include_24hr_change=true&include_market_cap=true",
+    url: COINGECKO_TOP10_URL,
     interval: 60000,
     parser: "coingecko",
     tags: ["crypto", "market", "live"],

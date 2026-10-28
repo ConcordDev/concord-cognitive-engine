@@ -1,6 +1,7 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerMarketsActions from "../domains/markets.js";
+import { _resetMarketFeedForTests } from "../lib/market-feed-sources.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -12,6 +13,7 @@ function call(name, ctx, params = {}) {
 
 before(() => { registerMarketsActions(register); });
 beforeEach(() => {
+  _resetMarketFeedForTests(); // Yahoo reads are cached (lib/market-feed-sources.js); each test mocks its own upstream answer
   globalThis._concordSTATE = { dtus: new Map() };
   globalThis._concordSaveStateDebounced = () => {};
   globalThis.fetch = async () => { throw new Error("network disabled"); };

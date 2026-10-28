@@ -4,7 +4,8 @@ import { hostTier } from '../lib/news-outlet-policy.js';
 import { summaryForItem, queueItemForSummary } from '../lib/news-summarizer.js';
 import { registerSource, hasSource, get as fcGet, peek as fcPeek, stats as fcStats } from '../lib/feed-cache.js';
 import { getForecast as getWeatherForecast } from '../lib/weather-feed-sources.js';
-import { getSharedText, yahooChartUrl, COINGECKO_TOP10_URL, NPR_TOP_URL, BBC_TOP_URL, WHO_DON_URL, WHO_DON_ITEM_BASE } from '../lib/shared-http.js';
+import { getSharedText, NPR_TOP_URL, BBC_TOP_URL, WHO_DON_URL, WHO_DON_ITEM_BASE } from '../lib/shared-http.js';
+import { getYahooChart, getMarketUpstream, COINGECKO_TOP10_URL } from '../lib/market-feed-sources.js';
 // server/emergent/realtime-feeds.js
 // Centralized real-time data fetching service — runs on heartbeat ticks,
 // pushes data via WebSocket (realtimeEmit).
@@ -256,8 +257,11 @@ async function buildFinance() {
   const quotes = [];
   for (const sym of symbols) {
     try {
-      const text = await sharedText(yahooChartUrl(sym), REALTIME_FEEDS["finance:ticker"].ttlMs);
-      const json = JSON.parse(text);
+      // Same cache entry feed-manager's index feeds and the markets lens read; allowStale:false because this
+      // payload is re-published as a fresh ticker (an unavailable symbol is skipped, never back-filled).
+      const r = await getYahooChart(sym, { range: "1d", interval: "1d", allowStale: false });
+      if (!r.ok) throw new Error(r.reason);
+      const json = r.data;
       const meta = json?.chart?.result?.[0]?.meta;
       if (meta) {
         quotes.push({
@@ -291,8 +295,10 @@ async function tickFinancialFeeds(STATE, realtimeEmit) {
 const REALTIME_COINS = ["bitcoin", "ethereum", "solana", "cardano", "polkadot"];
 
 async function buildCrypto() {
-  const text = await sharedText(COINGECKO_TOP10_URL, REALTIME_FEEDS["crypto:ticker"].ttlMs);
-  const data = JSON.parse(text);
+  // Same cache entry as feed-manager's finance-coingecko-top10 feed; fresh-only (see buildFinance).
+  const r = await getMarketUpstream(COINGECKO_TOP10_URL, { allowStale: false });
+  if (!r.ok) throw new Error(r.reason);
+  const data = r.data;
   const coins = Object.entries(data)
     .filter(([id]) => REALTIME_COINS.includes(id))
     .map(([id, info]) => ({
@@ -811,7 +817,12 @@ export function getRealtimeFeedStatus() {
     errors: Object.fromEntries(FEED_ERRORS),
     feeds: ["finance", "crypto", "news", "weather", "research", "economy", "health", "energy"],
     snapshots,
-    feedCache: { realtime: cs[REALTIME_SOURCE_ID] ?? null, sharedHttp: cs["shared-http"] ?? null },
+    feedCache: {
+      realtime: cs[REALTIME_SOURCE_ID] ?? null,
+      sharedHttp: cs["shared-http"] ?? null,
+      // finance:ticker / crypto:ticker read the market cache (lib/market-feed-sources.js), not shared-http.
+      market: { coingecko: cs["coingecko"] ?? null, yahooChart: cs["yahoo-chart"] ?? null },
+    },
     feedManager: feedManagerStatus,
   };
 }

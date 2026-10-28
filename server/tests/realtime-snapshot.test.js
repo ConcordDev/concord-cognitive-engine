@@ -10,9 +10,17 @@ import assert from "node:assert/strict";
 import express from "express";
 import { _resetFeedCacheForTests, configureFeedCache, get, flushPersist, loadPersisted } from "../lib/feed-cache.js";
 import {
-  __setSharedHttpFetchImpl, getSharedText, getSharedTextOrThrow, isSharedUpstream, sharedUpstreamUrls,
+  __setSharedHttpFetchImpl as setSharedTransport, getSharedText, getSharedTextOrThrow, isSharedUpstream, sharedUpstreamUrls,
   yahooChartUrl, COINGECKO_TOP10_URL, NPR_TOP_URL, BBC_WORLD_URL, WHO_DON_URL,
 } from "../lib/shared-http.js";
+import { setMarketTransportForTests, getMarketUpstream } from "../lib/market-feed-sources.js";
+
+// RSS/JSON text URLs go through shared-http; the Yahoo chart + CoinGecko URLs go through the market cache
+// (lib/market-feed-sources.js). One counting fake serves both so hit counts prove they share ONE fetch.
+function __setSharedHttpFetchImpl(fn) {
+  setSharedTransport(fn);
+  setMarketTransportForTests(fn);
+}
 import {
   tickRealTimeFeeds, getRealtimeSnapshot, getRealtimeFeedStatus, getRealtimeFeedData,
   ensureRealtimeSource, resolveFeedKey, REALTIME_FEEDS, __enableRealtimeTickForTests, __resetRealtimeFeedsForTests,
@@ -205,7 +213,7 @@ describe("realtime snapshot: cached data + metadata", () => {
     assert.equal(st.snapshots["news:update"].status, "unavailable");
     assert.equal(st.snapshots["energy:update"].reason, "requires_eia_api_key");
     assert.ok(st.cacheSize >= 2);
-    assert.ok(st.feedCache.realtime && st.feedCache.sharedHttp);
+    assert.ok(st.feedCache.realtime && st.feedCache.market.coingecko && st.feedCache.market.yahooChart);
     assert.ok(Array.isArray(st.feeds));
   });
 
@@ -312,9 +320,10 @@ describe("one upstream fetch shared across realtime-feeds, feed-manager and the 
     assert.equal(up.hits.get(yahooChartUrl("^GSPC")), 1, "feed-manager read the realtime-warmed entry");
     assert.equal(up.hits.get(COINGECKO_TOP10_URL), 1, "feed-manager read the realtime-warmed entry");
 
-    // 3) the same URL through the shared reader again: still one
-    const r = await getSharedText(yahooChartUrl("^GSPC"), { ttlMs: 60_000 });
-    assert.equal(r.status, "fresh");
+    // 3) the same URL through the market reader again: still one
+    const r = await getMarketUpstream(yahooChartUrl("^GSPC"));
+    assert.equal(r.ok, true);
+    assert.equal(r.stale, false);
     assert.equal(up.hits.get(yahooChartUrl("^GSPC")), 1);
   });
 
