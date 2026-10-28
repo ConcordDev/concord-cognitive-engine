@@ -16,6 +16,13 @@ import {
   registerSource, hasSource, get, pool, configureFeedCache, _resetFeedCacheForTests,
 } from "./feed-cache.js";
 import { getDedupKeyAndHash } from "./dedup-keys.js";
+import { isExcludedHost } from "./news-outlet-policy.js";
+
+// Excluded outlets (Al Jazeera, France 24, ABC AU, dead relays) never reach any caller,
+// even when GDELT indexes them: dropped on fetch and again on read (older cached pulls).
+function dropExcluded(articles) {
+  return (Array.isArray(articles) ? articles : []).filter((a) => !isExcludedHost(a?.url || a?.domain || ""));
+}
 
 export const GDELT_SOURCE_ID = "gdelt";
 
@@ -82,7 +89,7 @@ async function fetchGdelt(key, { signal } = {}) {
       throw new Error(r.status === 429 ? "rate_limited" : `GDELT ${r.status}`);
     }
     const data = await r.json();
-    const articles = Array.isArray(data?.articles) ? data.articles : [];
+    const articles = dropExcluded(data?.articles);
     _lastFailure = null;
     return articles;
   } catch (e) {
@@ -149,7 +156,7 @@ export async function getGdelt(key, { ttlMs, allowStale = true } = {}) {
   // Served from cache but the last upstream attempt failed: say why (honest degraded label).
   const degradedReason = r.stale && _lastFailure ? _lastFailure.reason : null;
   return {
-    articles: Array.isArray(r.data) ? r.data : [],
+    articles: dropExcluded(r.data),
     status: r.status, stale: !!r.stale,
     fetchedAt: iso(r.fetchedAt), lastOkAt: iso(r.fetchedAt),
     reason: degradedReason, degradedReason,
@@ -167,7 +174,7 @@ export async function getGdeltPool(key) {
     dedupeKey: (a) => getDedupKeyAndHash({ title: a?.title || "", sourceUrl: a?.url || "" }).hash,
   });
   return {
-    items: p.items,
+    items: dropExcluded(p.items),
     status: p.status === "unavailable" ? "unavailable" : p.status, // "fresh" | "stale" | "unavailable"
     fetchedAt: typeof p.fetchedAt === "number" ? new Date(p.fetchedAt).toISOString() : null,
     lastOkAt: typeof p.lastOkAt === "number" ? new Date(p.lastOkAt).toISOString() : null,

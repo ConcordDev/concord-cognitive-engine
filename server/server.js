@@ -44376,8 +44376,27 @@ async function governorTick(reason="heartbeat") {
             await fc.warmTick(_tick);
             // Concord summaries for summary-only outlets: background, small budget, skipped when the
             // utility brain isn't up. The outlet text is only the in-memory prompt input.
+            // While the utility brain is the small local fallback (GPU pod down) it also serves chat
+            // on this memory-pressed host: summarize at most 1 item per warm tick instead of 3.
+            // (also when utility shares chat's endpoint)
+            const _isLocalUrl = (u) => /^https?:\/\/(127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\])(:|\/|$)/.test(String(u || ""));
+            const _utilUrl = String(BRAIN?.utility?.url || "");
+            // "shared": utility runs on the local box or on the same endpoint chat (conscious) uses.
+            const _utilLocal = _isLocalUrl(_utilUrl) || (_utilUrl && _utilUrl === String(BRAIN?.conscious?.url || ""));
             await sum.runSummaryBatch({
-              ready: () => Boolean(BRAIN?.utility?.enabled),
+              max: _utilLocal ? 1 : 3,
+              // On the shared local model, yield to users: skip this tick if any brain call is
+              // already in flight on a local endpoint (chat first, summaries are background work).
+              ready: async () => {
+                if (!BRAIN?.utility?.enabled) return false;
+                if (!_utilLocal) return true;
+                try {
+                  const { getEndpointStats } = await import("./lib/brain-config.js");
+                  const busy = Object.values(getEndpointStats() || {}).flat()
+                    .some((e) => e && e.inflight > 0 && (_isLocalUrl(e.url) || String(e.url || "") === _utilUrl));
+                  return !busy;
+                } catch { return true; }
+              },
               llm: async (prompt, o = {}) => {
                 const r = await callBrain("utility", prompt, { system: o.system, maxTokens: o.maxTokens, temperature: o.temperature, timeout: 30000 });
                 return r?.ok ? r.content : "";

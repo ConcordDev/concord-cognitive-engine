@@ -33,7 +33,7 @@ let _stamps = [];              // timestamps of attempts inside the window
 let _now = () => Date.now();
 
 export function __resetSummarizerForTests({ now } = {}) {
-  _queue.clear(); _rejected.clear(); _stamps = [];
+  _queue.clear(); _rejected.clear(); _stamps = []; _running = false;
   _now = typeof now === "function" ? now : () => Date.now();
 }
 
@@ -98,8 +98,12 @@ const SYSTEM = "You write one-to-two sentence neutral news summaries. Use your o
  * (or a { content } object) and may throw; `ready()` false skips the whole run.
  * Never throws.
  */
+let _running = false; // warm ticks can overlap a slow batch: never run two batches at once
+
 export async function runSummaryBatch({ llm, ready, max = PER_CALL } = {}) {
   const out = { ran: false, reason: null, stored: 0, rejected: 0, attempted: 0 };
+  if (_running) { out.reason = "busy"; return out; }
+  _running = true;
   try {
     if (typeof llm !== "function") { out.reason = "no_llm"; return out; }
     if (typeof ready === "function" && !(await ready())) { out.reason = "brain_not_ready"; return out; }
@@ -132,6 +136,8 @@ export async function runSummaryBatch({ llm, ready, max = PER_CALL } = {}) {
     }
   } catch (e) {
     out.reason = `error: ${e?.message || e}`;
+  } finally {
+    _running = false;
   }
   return out;
 }

@@ -371,6 +371,19 @@ describe("news.headlines pool, rotation, dedupe, source labels", () => {
     assert.equal(matches[0].source, "BBC News");
   });
 
+  it("excluded outlets indexed by GDELT (Al Jazeera, France 24, ABC AU) never appear", async () => {
+    await primed({ gdelt: [
+      gdeltArticle("Excluded AJ story", "https://www.aljazeera.com/news/2026/10/27/x", "20261027T100000Z", "aljazeera.com"),
+      gdeltArticle("Excluded F24 story", "https://www.france24.com/en/x", "20261027T100000Z", "france24.com"),
+      gdeltArticle("Excluded ABC AU story", "https://www.abc.net.au/news/x", "20261027T100000Z", "abc.net.au"),
+      gdeltArticle("Allowed GDELT story here", "https://allowed.example.com/x", "20261027T100000Z", "allowed.example.com"),
+    ] });
+    const r = await call("headlines", { category: "top", limit: 50 });
+    const titles = r.result.headlines.map((h) => h.title);
+    assert.ok(titles.includes("Allowed GDELT story here"));
+    for (const t of ["Excluded AJ story", "Excluded F24 story", "Excluded ABC AU story"]) assert.equal(titles.includes(t), false, t);
+  });
+
   it("category switch shows that category's own pool", async () => {
     await primed();
     const tech = await call("headlines", { category: "tech", limit: 50 });
