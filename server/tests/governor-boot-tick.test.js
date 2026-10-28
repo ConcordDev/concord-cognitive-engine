@@ -17,6 +17,7 @@
 
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
+import { registerServerCleanExit } from "./lib/server-clean-exit.js";
 
 // Force the low-memory host profile before anything reads it. The env var
 // is checked on every shouldPauseHeavyBackground() call, so flipping it
@@ -25,6 +26,8 @@ process.env.CONCORD_LOW_MEMORY_HOST = "1";
 
 const { __TEST__ } = await import("../server.js");
 const { STATE, governorTick, MACROS, register } = __TEST__;
+// server.js keeps workers/intervals alive; tear them down so the file exits.
+registerServerCleanExit(() => __TEST__);
 const presenceIdle = await import("../lib/presence-idle.js");
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
