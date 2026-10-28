@@ -1004,10 +1004,21 @@ export default function registerCalendarActions(registerLensAction) {
     const day = String(params.day || new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
     const workStartHour = Number.isFinite(Number(params.workStartHour)) ? Number(params.workStartHour) : 9;
     const workEndHour = Number.isFinite(Number(params.workEndHour)) ? Number(params.workEndHour) : 18;
-    const dayStart = new Date(`${day}T00:00:00.000Z`);
-    if (isNaN(dayStart.getTime())) return { ok: false, error: "invalid day" };
-    const winStart = dayStart.getTime() + workStartHour * 3_600_000;
-    const winEnd = dayStart.getTime() + workEndHour * 3_600_000;
+    // Same zone treatment as availability-find (S2): with a zone the
+    // work window is wall-clock there; without one, legacy UTC framing.
+    const tz = isValidZoneName(params.tz) ? String(params.tz) : null;
+    let winStart, winEnd;
+    if (tz) {
+      const [yy, mm, dd] = day.split("-").map(Number);
+      if (!yy || !mm || !dd) return { ok: false, error: "invalid day" };
+      winStart = wallTimeInZoneToUtcMs(tz, yy, mm, dd, workStartHour, 0);
+      winEnd = wallTimeInZoneToUtcMs(tz, yy, mm, dd, workEndHour, 0);
+    } else {
+      const dayStart = new Date(`${day}T00:00:00.000Z`);
+      if (isNaN(dayStart.getTime())) return { ok: false, error: "invalid day" };
+      winStart = dayStart.getTime() + workStartHour * 3_600_000;
+      winEnd = dayStart.getTime() + workEndHour * 3_600_000;
+    }
     // Busy blocks for the day
     const busy = [];
     for (const e of listCal(s.events, userId)) {
@@ -1054,6 +1065,7 @@ export default function registerCalendarActions(registerLensAction) {
         proposals,
         scheduledCount: proposals.length,
         unscheduledCount: tasks.length - proposals.length,
+        tz: tz || "UTC",
         note: "Proposals only — call tasks-time-block to commit each one.",
       },
     };
