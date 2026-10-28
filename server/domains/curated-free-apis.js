@@ -288,7 +288,11 @@ export default function registerCuratedFreeApiMacros(register) {
       const data = await fetchJsonWithTimeout(url);
       // response_code: 0=success, 1=no results, 5=rate limit
       if (data.response_code !== 0) {
-        const codes = { 1: "no_results", 2: "invalid_param", 3: "token_not_found", 4: "token_empty", 5: "rate_limited" };
+        // response_code 5 is OpenTDB's own rate limit (an upstream fault, not
+        // the caller's): report it as upstream_rate_limited so /api/lens/run
+        // answers HTTP 200 { ok:false } and the panel shows "unavailable".
+        if (data.response_code === 5) return { ok: false, reason: "upstream_rate_limited", error: "upstream_rate_limited" };
+        const codes = { 1: "no_results", 2: "invalid_param", 3: "token_not_found", 4: "token_empty" };
         return { ok: false, reason: codes[data.response_code] || `code_${data.response_code}` };
       }
       const decode = (s) => decodeURIComponent(String(s || ""));
@@ -309,6 +313,11 @@ export default function registerCuratedFreeApiMacros(register) {
         questions,
       };
     } catch (e) {
+      // OpenTDB answers its rate limit with HTTP 429 (fetchJsonWithTimeout
+      // throws "HTTP 429"); that is an upstream rate limit, not an outage.
+      if (/\bHTTP 429\b/.test(String(e?.message || ""))) {
+        return { ok: false, reason: "upstream_rate_limited", error: "upstream_rate_limited" };
+      }
       return { ok: false, reason: "opentdb_unreachable", error: String(e?.message || e) };
     }
   }, { note: "live Open Trivia DB question batch" });

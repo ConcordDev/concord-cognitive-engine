@@ -12,7 +12,7 @@
 
 import { useState, useEffect } from 'react';
 import { Brain, RefreshCw, AlertTriangle, Check } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface TriviaQuestion {
@@ -26,12 +26,16 @@ interface TriviaQuestion {
 }
 
 async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
-  try {
-    const r = await api.post('/api/lens/run', { domain, name, input });
-    return r?.data as T;
-  } catch {
-    return null;
+  const r = await lensRun(domain, name, input);
+  if (!r.data.ok) {
+    // lensRun folds the handler's stable reason token into `error` when the
+    // body carries one (upstream_rate_limited, no_results, …); a raw upstream
+    // message (e.g. opentdb_unreachable's "HTTP 503" error text) is not a
+    // token, so fall back to the generic token the panel renders.
+    const err = r.data.error || '';
+    return { ok: false, reason: /^[a-z][a-z0-9_]*$/.test(err) ? err : 'fetch_failed' } as T;
   }
+  return (r.data.result ?? null) as T | null;
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -119,7 +123,10 @@ export function TriviaPanel({ className }: TriviaPanelProps) {
 
       {error && (
         <div className="px-3 py-3 text-xs text-rose-300/80">
-          <AlertTriangle className="inline w-3.5 h-3.5 mr-1" /> Trivia API unreachable ({error})
+          <AlertTriangle className="inline w-3.5 h-3.5 mr-1" />{' '}
+          {error === 'upstream_rate_limited'
+            ? 'Trivia unavailable right now (Open Trivia DB is rate-limiting); try again in a few seconds.'
+            : `Trivia API unreachable (${error})`}
         </div>
       )}
 
