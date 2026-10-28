@@ -27,7 +27,11 @@ export const COINGECKO_TOP10_URL =
 export const NPR_TOP_URL = "https://feeds.npr.org/1001/rss.xml";
 export const BBC_TOP_URL = "https://feeds.bbci.co.uk/news/rss.xml";
 export const BBC_WORLD_URL = "https://feeds.bbci.co.uk/news/world/rss.xml";
-export const WHO_DON_URL = "https://www.who.int/feeds/entity/don/en/rss.xml";
+// WHO retired the Disease Outbreak News RSS (feeds/entity/don/en/rss.xml now 404s). This is
+// WHO's official DON OData JSON API (the one who.int's own DON page reads): newest 5, headline +
+// date + item path only. WHO terms: headline + link + attribution, never the article body.
+export const WHO_DON_URL = "https://www.who.int/api/news/diseaseoutbreaknews?$orderby=PublicationDate%20desc&$top=5&$select=Title,PublicationDate,ItemDefaultUrl,DonId";
+export const WHO_DON_ITEM_BASE = "https://www.who.int/emergencies/disease-outbreak-news/item";
 
 const SHARED_URLS = new Set([
   ...["^GSPC", "^DJI", "^IXIC", "^RUT", "^VIX"].map(yahooChartUrl),

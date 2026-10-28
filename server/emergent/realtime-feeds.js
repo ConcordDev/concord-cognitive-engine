@@ -3,7 +3,7 @@ import logger from '../logger.js';
 import { hostTier } from '../lib/news-outlet-policy.js';
 import { summaryForItem, queueItemForSummary } from '../lib/news-summarizer.js';
 import { registerSource, hasSource, get as fcGet, peek as fcPeek, stats as fcStats } from '../lib/feed-cache.js';
-import { getSharedText, yahooChartUrl, COINGECKO_TOP10_URL, NPR_TOP_URL, BBC_TOP_URL, WHO_DON_URL } from '../lib/shared-http.js';
+import { getSharedText, yahooChartUrl, COINGECKO_TOP10_URL, NPR_TOP_URL, BBC_TOP_URL, WHO_DON_URL, WHO_DON_ITEM_BASE } from '../lib/shared-http.js';
 // server/emergent/realtime-feeds.js
 // Centralized real-time data fetching service — runs on heartbeat ticks,
 // pushes data via WebSocket (realtimeEmit).
@@ -480,10 +480,31 @@ async function tickEconomyFeeds(STATE, realtimeEmit) {
   if (payload) realtimeEmit("economy:update", payload);
 }
 
-// ── Health Alerts (WHO RSS — free; same upstream URL as feed-manager's WHO feed) ──
+// ── Health Alerts (WHO Disease Outbreak News — official DON JSON API, free) ──
+
+/** WHO DON OData JSON -> [{title, link, pubDate}] (headline + link + date only). */
+export function parseWhoDonJson(text) {
+  let json;
+  try { json = JSON.parse(text); } catch { throw new Error("who_don_bad_json"); }
+  const rows = Array.isArray(json?.value) ? json.value : [];
+  return rows.slice(0, 5).map((r) => {
+    const title = String(r?.Title || "").trim();
+    const path = String(r?.ItemDefaultUrl || "").trim();
+    const link = path ? `${WHO_DON_ITEM_BASE}/${path.replace(/^\/+/, "")}` : "";
+    const d = r?.PublicationDate ? new Date(r.PublicationDate) : null;
+    const pubDate = d && !Number.isNaN(d.getTime()) ? d.toUTCString() : "";
+    return { title, link, pubDate };
+  }).filter((a) => a.title && /^https:\/\/www\.who\.int\//.test(a.link));
+}
 
 async function buildHealth() {
   const text = await sharedText(WHO_DON_URL, REALTIME_FEEDS["health:update"].ttlMs);
+  if (/^\s*[{[]/.test(text)) {
+    const alerts = parseWhoDonJson(text);
+    if (alerts.length === 0) throw new Error("no_alerts");
+    return { ok: true, alerts, fetchedAt: new Date().toISOString() };
+  }
+  // RSS fallback (kept for a test double or a WHO RSS comeback).
   const items = text.match(/<item>[\s\S]*?<\/item>/g) || [];
   const alerts = items.slice(0, 5).map(item => {
     const title = item.match(/<title>(.*?)<\/title>/)?.[1] || "";

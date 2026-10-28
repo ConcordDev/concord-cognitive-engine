@@ -357,12 +357,17 @@ export async function checkRobotsTxt(url) {
     }
   }
 
-  // No usable robots.txt response — be conservative (skip the URL).
-  // The previous code returned `true` on a non-200 response (treating "no
-  // robots.txt" as "allowed"). That is correct under RFC 9309 only when the
-  // server literally returns 404 — for 5xx / network errors it's wrong.
-  // We now treat ALL failures as "unknown" and skip. This is the safer
-  // default for a politeness-first subsystem.
+  // RFC 9309 §2.3.1.3: a 4xx "unavailable" robots.txt means no rules, i.e. crawling is
+  // allowed. We honour that only for an explicit 404 / 410 (the file does not exist,
+  // e.g. feeds.npr.org), and cache it like a parsed file so the origin is asked once a day.
+  if (response && (response.status === 404 || response.status === 410)) {
+    const rules = parseRobotsTxt("");
+    robotsCache.set(domain, { rules, fetchedAt: Date.now() });
+    return isAllowedByRules(rules, url);
+  }
+
+  // Any other non-OK status (401/403/429, 5xx) or a network error / timeout (response
+  // null): stay conservative and skip the URL. This is a politeness-first subsystem.
   if (response && !response.ok) {
     console.warn('[entity-web-exploration] non-OK robots.txt, skipping URL', { domain, status: response.status });
   }
