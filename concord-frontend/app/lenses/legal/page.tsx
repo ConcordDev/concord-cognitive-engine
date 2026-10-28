@@ -59,6 +59,7 @@ import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 type Workbench = 'practice' | 'analyzer' | 'docket' | 'qa' | 'caselaw';
@@ -77,6 +78,7 @@ const WORKBENCH_TABS: {
 ];
 
 export default function LegalLensPage() {
+  const { user } = useAuth();
   useLensNav('legal');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('legal');
   const [workbench, setWorkbench] = useState<Workbench>('practice');
@@ -98,7 +100,7 @@ export default function LegalLensPage() {
       <div data-lens-theme="legal" className="relative min-h-full space-y-5 px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Legal</h1>
+            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl" data-testid="legal-greeting">The matter in front of you{user?.username ? `, ${user.username}` : ''}</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />

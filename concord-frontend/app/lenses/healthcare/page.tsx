@@ -29,6 +29,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useAuth } from '@/hooks/useAuth';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
@@ -49,6 +50,7 @@ const COMMANDS: { id: EpicNav; keys: string; description: string }[] = [
 ];
 
 export default function HealthcareLensPage() {
+  const { user } = useAuth();
   useLensNav('healthcare');
   useLensIdentity('healthcare');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('healthcare');
@@ -79,7 +81,7 @@ export default function HealthcareLensPage() {
 
         <header className="flex items-start justify-between gap-4 px-4 pt-2 lg:px-3">
           <div className="min-w-0">
-            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Healthcare</h1>
+            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl" data-testid="healthcare-greeting">Who is in front of you{user?.username ? `, ${user.username}` : ''}</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <HeartPulse className="h-4 w-4 text-blue-300" aria-hidden />

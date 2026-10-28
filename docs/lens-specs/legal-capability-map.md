@@ -1,4 +1,25 @@
-# Legal Lens — Capability Map (Frontend Rebuild Program, Wave 3)
+# Legal Lens — Capability Map (Frontend Rebuild Program, Wave 2)
+
+> **Re-verification (HANDOFF-3 batch L13, 2026-10-28, against main 02910bbb):**
+> The audit below is kept as history — its headline fix (the
+> fabricated parallel generic-CRUD system that was ~85% of the page,
+> removed in favor of the real Clio-parity backend) and the
+> `deadlineCalculator` closure (Case timeline projector) are verified
+> in place. Current truth:
+>
+> - **65/66 macros named in the frontend** (fresh scan). The one
+>   unnamed is `caseSummary`, a legacy artifact-shaped macro that
+>   reads `artifact.data.*` (parties/client/documents/timeEntries)
+>   from the retired generic-artifact model — superseded by the real
+>   matter surfaces over `s.matters` (matters dashboard, reports).
+>   Left registered and harmless, consistent with this map's
+>   treatment of the other legacy macros.
+> - **Shipped in this batch:** the concept's serif headline — "The
+>   matter in front of you, {username}" — as the page header
+>   (`data-testid="legal-greeting"`, `tests/legal-greeting.test.tsx`).
+> - Server suites run locally this pass: legal-domain-parity passes
+>   (in the combined 127-pass L13 run).
+
 
 > Derived, not asserted. Every number below has a reproduction command; every
 > classification is backed by a grep or a full read of the file it's about.

@@ -1,5 +1,30 @@
 # Healthcare Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **Re-verification (HANDOFF-3 batch L13, 2026-10-28, against main 02910bbb):**
+> The audit below is kept as history — its fixes (My Appointments
+> view, encounter Export action) are verified in place. Current truth:
+>
+> - **83/87 macros named in the frontend** (fresh scan). The 4
+>   unnamed are all granular list endpoints whose data the
+>   `patients-detail` composite already returns in one call:
+>   `allergies-list`, `problems-list`, `vitals-list` (this map's
+>   confirmed-not-a-defect trio) and `photo-notes-list` (same class —
+>   verified this pass: the composite returns `photoNotes` filtered
+>   and sorted identically; its write sibling `photo-notes-add` IS
+>   wired as the durable chart entry). The legacy superseded trio
+>   (`checkInteractions`, `soapAutoFill`, `generateSummary`) stays
+>   superseded by its wired successors.
+> - **Shipped in this batch:** the concept's serif headline — "Who
+>   is in front of you, {username}" — as the page header
+>   (`data-testid="healthcare-greeting"`, `tests/healthcare-greeting.test.tsx`).
+> - Server suites run locally this pass: healthcare-domain-parity
+>   passes 88/88 once the repo-root `content/` directory is present
+>   (the curated protocol library, `content/healthcare-protocols.json`,
+>   loads from there; a sparse checkout without it fails 8 protocol
+>   tests environmentally — full checkouts, including the Mac, are
+>   unaffected).
+
+
 > Derived, not asserted. Every number below has a reproduction command; every
 > classification is backed by a grep or a full read of the file it's about.
 >
