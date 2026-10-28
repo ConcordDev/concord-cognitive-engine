@@ -1,5 +1,50 @@
 # Graph Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **Re-verified 2026-10-28 (HANDOFF-3 Workstream B, batch L3).** Every
+> row re-checked against main 31ac4719. State since the Wave 3 edition:
+>
+> - `server/domains/graph.js` now registers **28 macros** (the 27 below
+>   plus `map-merge-nodes`, the 2026-07-16 closure of the deferred
+>   merge item) — and **all 28 are surfaced** in the frontend. The only
+>   by-design client-preferred row is `pathFind`: the server macro
+>   stays registered, the UI uses the strictly better client-side BFS
+>   pathfinder with live highlighting (Wave 3 classification, still
+>   true).
+> - The Wave 3 wiring fixes live on in their new homes after the page
+>   refactor: the analytics trio (`nodeAnalysis` / `clusterDetect` /
+>   `graphMetrics`) is called against the real loaded graph from
+>   `GraphBloomCanvas.tsx`; `MindMapBuilder.tsx` carries the
+>   Cross-links section (`edge-add`/`edge-delete`) and the
+>   `graph-dashboard` header stat; `GraphParityPanel.tsx` carries the
+>   Merge Nodes tab over `map-merge-nodes`.
+> - `app/lenses/graph/page.tsx` is a 107-line perspective shell
+>   (field | explore | maps | mindmap | genome | catalog + More). No
+>   unreferenced components in `components/graph/`.
+> - The `docs/lens-specs/graph.md` backlog (local graph, saved filters,
+>   group color rules, timeline scrubber, bidirectional DTU sync,
+>   auto-layouts, export as image/SVG) is fully shipped.
+> - Server suites verified locally: graph-algorithms 9/9,
+>   graph-domain-parity 18/18, graph-mindmap-domain-parity 8/8.
+>   `graph-routes-not-shadowed` imports express — Mac-run.
+> - This pass adds the concept's serif greeting ("How it connects,
+>   Ramaj", `docs/lens-northstar/16-graph-northstar-concept.jpg`) to
+>   GraphField's empty-lattice state, addressed to the signed-in user,
+>   with a new vitest (`tests/graph-field-empty.test.tsx`). The
+>   concept's "Find a node…" search and "+ Add node" already exist in
+>   GraphField over real endpoints.
+>
+> **2026 competitor delta (Obsidian graph view / Neo4j Bloom):**
+> force-directed lattice ✓, local/neighborhood graph ✓ (`local-graph`
+> + field centering), node search ✓, pathfinding ✓, clustering ✓
+> (connected components server-side + k-centroid coloring client-side),
+> saved filters ✓ (`filter-*`, the honest equivalent of Bloom's saved
+> searches), group color rules ✓, timeline ✓, export ✓. Concord-native
+> ahead: the graph IS the DTU lattice (provenance edges, merge with
+> lineage preserved) and mind maps sync back to DTUs. Out of scope,
+> with reason: a Cypher query language (a parser product of its own;
+> saved filters cover the use case), Bloom-style enterprise scene
+> persistence (maps + saved filters cover it).
+
 > Derived, not asserted. Every number below has a reproduction command; every
 > classification is backed by a grep or a full read of the file it's about.
 
