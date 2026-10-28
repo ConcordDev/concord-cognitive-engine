@@ -1,6 +1,6 @@
 // concord-jetbrains/build.gradle.kts
 //
-// IntelliJ Platform plugin scaffold. Consumes the concord-lsp via LSP4IJ
+// IntelliJ Platform plugin. Consumes the concord-lsp via LSP4IJ
 // so VS Code, JetBrains, and the web-editor variant all run identical
 // behaviour. Stays a thin shell — UI affordances + LSP wiring only.
 
@@ -40,5 +40,26 @@ tasks {
   patchPluginXml {
     sinceBuild.set("241")
     untilBuild.set("242.*")
+  }
+
+  // Bundle the compiled concord-lsp at the plugin root as lsp/, where
+  // ConcordLanguageServer looks for it (<pluginPath>/lsp/server.js).
+  // Prerequisite: build the server first —
+  //   npm --prefix ../concord-lsp ci && npm --prefix ../concord-lsp run compile
+  // Without out/ + node_modules the copy specs below silently match
+  // nothing and the LSP start fails visibly in the LSP4IJ console;
+  // the doFirst warning names the missing prerequisite at build time.
+  withType<org.jetbrains.intellij.tasks.PrepareSandboxTask>().configureEach {
+    doFirst {
+      if (!file("../concord-lsp/out/server.js").exists()) {
+        logger.warn(
+          "concord-lsp is not compiled (../concord-lsp/out/server.js missing): " +
+            "the plugin will bundle no language server. Run " +
+            "`npm --prefix ../concord-lsp ci && npm --prefix ../concord-lsp run compile` first."
+        )
+      }
+    }
+    from("../concord-lsp/out") { into("lsp") }
+    from("../concord-lsp/node_modules") { into("lsp/node_modules") }
   }
 }
