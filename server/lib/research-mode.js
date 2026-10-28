@@ -9,7 +9,7 @@
 const MAX_CITATIONS_PER_JOB = Number(process.env.CONCORD_RESEARCH_MAX_CITATIONS) || 30;
 const MAX_SEARCH_HITS_PER_CALL = 3;
 
-function normUrl(u) {
+export function normUrl(u) {
   try {
     const x = new URL(String(u));
     if (!/^https?:$/.test(x.protocol)) return null;
@@ -111,6 +111,101 @@ function macroCtx(db, session) {
   return { db, actor: { userId: session.user_id, role: "member", sessionId: session.id }, userId: session.user_id, reqMeta: { sessionId: session.id }, log: () => {} };
 }
 
+function hostOfUrl(u) {
+  try { return new URL(String(u)).hostname.replace(/^www\./, ""); } catch { return ""; }
+}
+
+/**
+ * Pure builder: turn tool calls (browse_url / web_search results) — or a list
+ * of pre-shaped candidates { title, url, kind?, excerpt?, text?, outlet?,
+ * published?, license? } — into citation DTU records for writeCitationDtus.
+ *
+ * Default (marathon) records carry the full page text in content/creti, as
+ * they always have: those DTUs are private. publicSafe records NEVER carry
+ * page text: title, canonical URL, host, dates, an excerpt capped at 300
+ * chars (or none at all when isRestrictedHost(url) is true), and the
+ * license/attribution string when the source provides one. publicSafe is
+ * what the auto-source flow writes publicly (lib/auto-source.js).
+ */
+export function buildCitationRecords(input, { goal = "", publicSafe = false, tag = "research", isRestrictedHost = null } = {}) {
+  const fromTools = Array.isArray(input) && input.some((c) => c && (c.tool === "browse_url" || c.tool === "web_search"));
+  const cands = fromTools
+    ? citationsFromToolCalls(input, goal)
+    : (Array.isArray(input) ? input : [])
+      .filter((c) => c && normUrl(c.url))
+      .map((c) => ({ ...c, url: normUrl(c.url), title: String(c.title || c.url).slice(0, 200), kind: c.kind || "page" }));
+  const retrievedAt = new Date().toISOString();
+  return cands.map((c) => {
+    const host = hostOfUrl(c.url);
+    if (publicSafe) {
+      const restricted = typeof isRestrictedHost === "function" ? !!isRestrictedHost(c.url) : false;
+      const excerpt = restricted ? "" : String(c.excerpt || "").replace(/\s+/g, " ").trim().slice(0, 300);
+      const body = `${c.title}\n${c.url}${excerpt ? `\n\n${excerpt}` : ""}`;
+      return {
+        title: `Source: ${c.title}`.slice(0, 200),
+        human: { summary: (excerpt || c.title).slice(0, 600), bullets: [c.url] },
+        content: body,
+        creti: body,
+        tags: ["citation", "web-source", tag, ...(host ? [host] : [])],
+        tier: "regular",
+        meta: {
+          kind: "citation", url: c.url, sourceKind: c.kind, retrievedAt,
+          ...(c.outlet ? { outlet: c.outlet } : {}),
+          ...(c.published ? { published: c.published } : {}),
+          ...(c.license ? { license: c.license } : {}),
+        },
+        entry: { url: c.url, title: c.title, kind: c.kind },
+      };
+    }
+    const body = `${c.title}\n${c.url}\n\n${c.kind === "page" ? (c.text || c.excerpt) : c.excerpt}`;
+    return {
+      title: `Source: ${c.title}`.slice(0, 200),
+      human: { summary: String(c.excerpt || "").slice(0, 600), bullets: [c.url] },
+      content: body,
+      creti: body,
+      tags: ["citation", "web-source", tag, ...(host ? [host] : [])],
+      tier: "regular",
+      meta: {
+        kind: "citation", url: c.url, sourceKind: c.kind, retrievedAt,
+        ...(c.outlet ? { outlet: c.outlet } : {}),
+        ...(c.published ? { published: c.published } : {}),
+      },
+      entry: { url: c.url, title: c.title, kind: c.kind, ...(c.kind === "page" ? { text: String(c.text || c.excerpt).slice(0, 4000) } : {}) },
+    };
+  });
+}
+
+/**
+ * Write citation records as DTUs via runMacro("dtu", "create", ...).
+ * visibility / source / extra meta are applied here, never taken from the
+ * records' callers. `limit` caps the number of SUCCESSFUL writes (the
+ * marathon room semantics). Returns the saved entries [{ id, url, title,
+ * kind, text? }]. A failed create is skipped, never fatal.
+ */
+export async function writeCitationDtus(records, runMacro, { visibility = "private", source = "agent_tool", meta = {}, ctx = null, limit = Infinity } = {}) {
+  if (typeof runMacro !== "function") return [];
+  const saved = [];
+  for (const rec of Array.isArray(records) ? records : []) {
+    if (saved.length >= limit) break;
+    try {
+      const r = await runMacro("dtu", "create", {
+        title: rec.title,
+        human: rec.human,
+        content: rec.content,
+        creti: rec.creti,
+        tags: rec.tags,
+        tier: rec.tier || "regular",
+        source,
+        visibility,
+        meta: { ...(rec.meta || {}), ...meta },
+      }, ctx);
+      const id = r?.id || r?.dtu?.id;
+      if (r?.ok && id) saved.push({ id, ...rec.entry });
+    } catch { /* skip this source */ }
+  }
+  return saved;
+}
+
 /**
  * Save new sources from this tick as citation DTUs. A page read upgrades a
  * search-hit citation of the same URL only by being saved first; duplicates
@@ -118,42 +213,32 @@ function macroCtx(db, session) {
  */
 export async function saveCitationDtus(db, session, toolCalls, runMacro) {
   if (!db || !session || typeof runMacro !== "function") return [];
-  const found = citationsFromToolCalls(toolCalls, session.goal || session.title || "");
-  if (!found.length) return [];
+  const records = buildCitationRecords(toolCalls, { goal: session.goal || session.title || "" });
+  if (!records.length) return [];
   const meta = readMeta(db, session.id);
   // URLs already saved as a fetched page. A URL saved only as a search hit
   // is saved again when the page is actually read (the upgrade).
   const prior = Array.isArray(meta.citations) ? meta.citations : [];
   const pageUrls = new Set(prior.filter((c) => c.kind === "page").map((c) => c.url));
   const have = new Set(Array.isArray(meta.citationUrls) ? meta.citationUrls : []);
-  let room = MAX_CITATIONS_PER_JOB - (Array.isArray(meta.citationDtuIds) ? meta.citationDtuIds.length : 0);
+  const room = MAX_CITATIONS_PER_JOB - (Array.isArray(meta.citationDtuIds) ? meta.citationDtuIds.length : 0);
   // Pages first: a page actually read is the better citation.
-  found.sort((a, b) => (a.kind === "page" ? 0 : 1) - (b.kind === "page" ? 0 : 1));
-  const saved = [];
-  for (const c of found) {
-    if (room <= 0) break;
-    if (pageUrls.has(c.url)) continue;
-    if (c.kind !== "page" && have.has(c.url)) continue;
-    have.add(c.url);
-    if (c.kind === "page") pageUrls.add(c.url);
-    const host = (() => { try { return new URL(c.url).hostname.replace(/^www\./, ""); } catch { return ""; } })();
-    const body = `${c.title}\n${c.url}\n\n${c.kind === "page" ? (c.text || c.excerpt) : c.excerpt}`;
-    try {
-      const r = await runMacro("dtu", "create", {
-        title: `Source: ${c.title}`.slice(0, 200),
-        human: { summary: c.excerpt.slice(0, 600), bullets: [c.url] },
-        content: body,
-        creti: body,
-        tags: ["citation", "web-source", "research", ...(host ? [host] : [])],
-        tier: "regular",
-        source: "agent_tool",
-        visibility: "private",
-        meta: { kind: "citation", url: c.url, sourceKind: c.kind, retrievedAt: new Date().toISOString(), marathonSessionId: session.id, ...(c.outlet ? { outlet: c.outlet } : {}), ...(c.published ? { published: c.published } : {}) },
-      }, macroCtx(db, session));
-      const id = r?.id || r?.dtu?.id;
-      if (r?.ok && id) { saved.push({ id, url: c.url, title: c.title, kind: c.kind, ...(c.kind === "page" ? { text: String(c.text || c.excerpt).slice(0, 4000) } : {}) }); room--; }
-    } catch { /* skip this source */ }
+  records.sort((a, b) => (a.entry.kind === "page" ? 0 : 1) - (b.entry.kind === "page" ? 0 : 1));
+  const picked = [];
+  for (const rec of records) {
+    if (pageUrls.has(rec.entry.url)) continue;
+    if (rec.entry.kind !== "page" && have.has(rec.entry.url)) continue;
+    have.add(rec.entry.url);
+    if (rec.entry.kind === "page") pageUrls.add(rec.entry.url);
+    picked.push(rec);
   }
+  const saved = await writeCitationDtus(picked, runMacro, {
+    visibility: "private",
+    source: "agent_tool",
+    meta: { marathonSessionId: session.id },
+    ctx: macroCtx(db, session),
+    limit: room,
+  });
   if (saved.length) {
     writeMetaPatch(db, session.id, (m) => ({
       ...m,
@@ -346,4 +431,4 @@ export async function createResearchReport(db, sessionId, runMacro, { planSummar
   return report;
 }
 
-export default { claimCheck, keyTerms, relevanceHits, citationsFromToolCalls, saveCitationDtus, createResearchReport, reportBody, cleanExcerpt };
+export default { claimCheck, keyTerms, relevanceHits, citationsFromToolCalls, buildCitationRecords, writeCitationDtus, saveCitationDtus, createResearchReport, reportBody, cleanExcerpt, normUrl };
