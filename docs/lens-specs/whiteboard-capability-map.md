@@ -1,5 +1,36 @@
 # Whiteboard Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **Re-verification (HANDOFF-3 batch L8, 2026-10-28, against main e9791d4d):**
+> The Wave-3 audit below is kept as history — including its headline
+> room:join fix, which is intact. Since that audit, every remaining
+> "unsurfaced" item in its table has been closed in code except the
+> superseded sync path:
+>
+> - `comments-delete` — WIRED since (CollabBoardSection.tsx, author-only
+>   delete on comments). The October harness note "whiteboard has no
+>   board delete" is likewise dead: `board-delete` is called from both
+>   `CollabBoardSection.tsx` and `WhiteboardWorkbench.tsx`.
+> - `shared-vote-cast` — WIRED since: `CollabBoardSection` passes
+>   `onVoteElement={isSharedBoard ? collab.castVote : undefined}` into
+>   `WhiteboardCanvas`, closing the "display exists, write path exists,
+>   click handler missing" gap this map named as the most concrete one.
+> - `vision` — closed 2026-07-12 (see the struck-through row below).
+> - Fresh scan: 53/54 macros are named in the frontend. The only
+>   unnamed one is `ops-since`, half of the `ops-apply`/`ops-since`
+>   op-log sync path this map already classified as superseded by the
+>   live `broadcast-scene` full-scene sync — dead-but-harmless backend
+>   code, disposition unchanged. `frame-update`/`embed-update`/
+>   `workspace-summary` remain unsurfaced low-priority conveniences
+>   (frames/embeds are delete-and-recreate; no stat strip was added).
+> - **Shipped in this batch:** the concept's serif headline — "Sketch
+>   it, {username}" — in `WhiteboardStudio`'s header (whose own comment
+>   already called the slot "Greeting + board switcher, over the canvas
+>   (north star 14)"), `data-testid="whiteboard-greeting"`,
+>   `tests/whiteboard-greeting.test.tsx`.
+> - Server suites run locally this pass: whiteboard-domain-parity
+>   passes (in the combined 98-pass L8 run).
+
+
 > Derived, not asserted. Reproduce the macro count:
 > `grep -c 'registerLensAction("whiteboard"' server/domains/whiteboard.js` → 54
 

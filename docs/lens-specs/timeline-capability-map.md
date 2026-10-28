@@ -1,5 +1,29 @@
 # Timeline Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **Re-verification (HANDOFF-3 batch L8, 2026-10-28, against main e9791d4d):**
+> The Wave-3 audit below is kept as history. Current truth:
+>
+> - All 21 macros are still present; the 17 personal-feed macros remain
+>   the lens, and the 4 legacy temporal-analysis macros
+>   (`criticalPath`/`ganttSchedule`/`temporalClustering`/`trendAnalysis`)
+>   keep the disposition below (orphaned by a domain-name collision,
+>   documented, not force-wired into a social wall).
+> - The Wave-3 privacy fix is intact and has since grown a real
+>   friend-graph input: `checkPostAccess` (domains/timeline.js:522) is
+>   wired into the id-addressed macros and now takes the request db.
+>   The `friends`-tier residual described below remains a documented
+>   engineering gap, not a silent one.
+> - **Concept note:** northstar 10's Gantt/milestone imagery depicts
+>   the Board family's Timeline perspective (shipped in the Board
+>   lens); this lens is the personal wall the audit below describes.
+>   The concept's headline is applied to this lens's header regardless
+>   — **shipped in this batch:** "When it lands, {username}"
+>   (`data-testid="timeline-greeting"`, `tests/timeline-greeting.test.tsx`).
+> - Server suites: timeline-domain-parity cannot load in the audit
+>   sandbox (its harness imports `better-sqlite3`) and is Mac-run;
+>   no timeline backend changed in this batch.
+
+
 > Derived, not asserted. Backend surface enumerated by reading
 > `server/domains/timeline.js` (949 LOC) in full and confirmed with
 > `grep -n 'registerLensAction("timeline"' server/domains/timeline.js` (21
