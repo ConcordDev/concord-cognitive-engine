@@ -13,7 +13,7 @@ import {
   Play, Timer, Loader2, AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { lensRun } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/common/EmptyState';
 import { Skeleton } from '@/components/ui';
 import { EventActionRail } from '@/components/calendar/EventActionRail';
@@ -359,6 +359,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   const [error, setError] = useState<{ message: string } | null>(null);
 
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [detailInvites, setDetailInvites] = useState<Array<{ id: string; guest: string; rsvp: string }>>([]);
   const [showEventModal, setShowEventModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
@@ -431,6 +432,20 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   }, [monthKey]);
 
   useEffect(() => { void Promise.resolve().then(fetchData); }, [fetchData]);
+
+  // RSVP state for the open event's invites (F6: shown on the detail,
+  // not only in the Sync & share tab).
+  useEffect(() => {
+    if (!showEventModal || !selectedEvent) { setDetailInvites([]); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await lensRun({ domain: 'calendar', action: 'invites-list', input: { eventId: selectedEvent.id } });
+        if (!cancelled) setDetailInvites(((r.data?.result as { invites?: Array<{ id: string; guest: string; rsvp: string }> } | null)?.invites) || []);
+      } catch { if (!cancelled) setDetailInvites([]); }
+    })();
+    return () => { cancelled = true; };
+  }, [showEventModal, selectedEvent]);
 
   // Debounced live conflict check while the composer is open.
   useEffect(() => {
@@ -614,11 +629,43 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
     setNewEvent({ ...newEvent, reminders: updated });
   };
 
-  const handleAddCollaborator = () => {
-    if (!collaboratorInput.trim()) return;
-    const tag = collaboratorInput.startsWith('@') ? collaboratorInput : `@${collaboratorInput}`;
-    setNewEvent({ ...newEvent, collaborators: [...(newEvent.collaborators || []), tag] });
-    setCollaboratorInput('');
+  const [collaboratorError, setCollaboratorError] = useState('');
+  const [validatingCollaborator, setValidatingCollaborator] = useState(false);
+
+  // F6: a collaborator chip used to accept ANY string and then not
+  // persist. Persistence is fixed server-side (events-update now honours
+  // attendees); here the add is validated against the real user
+  // directory (the same /api/social/users/search the message lens uses)
+  // so an unknown @handle is rejected inline instead of inviting nobody.
+  // Email-shaped entries are external guests and pass as-is.
+  const handleAddCollaborator = async () => {
+    const raw = collaboratorInput.trim();
+    if (!raw) return;
+    const existing = newEvent.collaborators || [];
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) {
+      if (existing.some((c) => c.toLowerCase() === raw.toLowerCase())) { setCollaboratorError('Already added.'); return; }
+      setNewEvent({ ...newEvent, collaborators: [...existing, raw] });
+      setCollaboratorInput('');
+      setCollaboratorError('');
+      return;
+    }
+    const handle = raw.startsWith('@') ? raw.slice(1) : raw;
+    if (!/^[A-Za-z0-9_.-]{2,}$/.test(handle)) { setCollaboratorError('Enter a @username or an email address.'); return; }
+    if (existing.some((c) => c.toLowerCase() === `@${handle}`.toLowerCase())) { setCollaboratorError('Already added.'); return; }
+    setValidatingCollaborator(true);
+    try {
+      const r = await api.get('/api/social/users/search', { params: { q: handle } });
+      const users = (r.data?.users ?? []) as Array<{ id: string; username: string; displayName: string }>;
+      const match = Array.isArray(users) ? users.find((u) => u.username.toLowerCase() === handle.toLowerCase()) : undefined;
+      if (!match) { setCollaboratorError(`No Concord user @${handle} — check the name, or invite by email instead.`); return; }
+      setNewEvent({ ...newEvent, collaborators: [...existing, `@${match.username}`] });
+      setCollaboratorInput('');
+      setCollaboratorError('');
+    } catch {
+      setCollaboratorError('Could not check the user directory just now — try again.');
+    } finally {
+      setValidatingCollaborator(false);
+    }
   };
 
   const handleRemoveCollaborator = (tag: string) => {
@@ -1859,6 +1906,19 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                   </div>
                 )}
 
+                {detailInvites.length > 0 && (
+                  <div className="flex items-center gap-3 text-gray-400">
+                    <Check className="w-5 h-5" />
+                    <div className="flex flex-wrap gap-1">
+                      {detailInvites.map((iv) => (
+                        <span key={iv.id} className="text-xs px-2 py-0.5 rounded-full bg-lattice-elevated text-gray-300">
+                          {iv.guest} · <span className="capitalize">{iv.rsvp}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {selectedEvent.recurrence && (
                   <div className="flex items-center gap-3 text-gray-400">
                     <Repeat className="w-5 h-5" />
@@ -2130,18 +2190,20 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                         type="text"
                         value={collaboratorInput}
                         onChange={(e) => setCollaboratorInput(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCollaborator(); } }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddCollaborator(); } }}
                         placeholder="@username"
                         className="w-full bg-lattice-deep rounded-lg pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
                       />
                     </div>
                     <button
-                      onClick={handleAddCollaborator}
-                      className="px-3 py-2 rounded-lg border border-lattice-border hover:bg-lattice-elevated text-sm"
+                      onClick={() => void handleAddCollaborator()}
+                      disabled={validatingCollaborator}
+                      className="px-3 py-2 rounded-lg border border-lattice-border hover:bg-lattice-elevated text-sm disabled:opacity-50"
                     >
-                      Add
+                      {validatingCollaborator ? 'Checking…' : 'Add'}
                     </button>
                   </div>
+                  {collaboratorError && <p className="text-[11px] text-rose-300 mt-1">{collaboratorError}</p>}
                   {(newEvent.collaborators || []).length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
                       {(newEvent.collaborators || []).map((c) => (
