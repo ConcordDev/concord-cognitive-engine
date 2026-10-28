@@ -761,7 +761,23 @@ export default function registerCalendarActions(registerLensAction) {
         }
       }
     }
-    return { ok: true, result: { hasConflict: conflicts.length > 0, conflicts } };
+    const result = { hasConflict: conflicts.length > 0, conflicts };
+    if (params.pairwise === true) {
+      // All overlapping occurrence pairs in the window (the standalone
+      // analyzer's view). Same occurrences, same expansion — one truth.
+      const sorted = [...conflicts].sort((a, b) => a.start.localeCompare(b.start));
+      const pairs = [];
+      for (let i = 0; i < sorted.length; i++) {
+        for (let j = i + 1; j < sorted.length; j++) {
+          if (sorted[j].start >= sorted[i].end) break;
+          if (sorted[i].eventId === sorted[j].eventId) continue;
+          const overlapMinutes = Math.round((Math.min(new Date(sorted[i].end).getTime(), new Date(sorted[j].end).getTime()) - new Date(sorted[j].start).getTime()) / 60000);
+          if (overlapMinutes > 0) pairs.push({ a: sorted[i], b: sorted[j], overlapMinutes });
+        }
+      }
+      result.pairs = pairs;
+    }
+    return { ok: true, result };
     } catch (e) { return handlerFailure(e); }
 });
 
@@ -775,10 +791,22 @@ export default function registerCalendarActions(registerLensAction) {
     const durationMin = Math.max(15, Math.min(480, Number(params.durationMin) || 30));
     const workStartHour = Number.isFinite(Number(params.workStartHour)) ? Number(params.workStartHour) : 9;
     const workEndHour = Number.isFinite(Number(params.workEndHour)) ? Number(params.workEndHour) : 18;
-    const dayStart = new Date(`${day}T00:00:00.000Z`);
-    if (isNaN(dayStart.getTime())) return { ok: false, error: "invalid day" };
-    const winStart = new Date(dayStart.getTime() + workStartHour * 3_600_000);
-    const winEnd = new Date(dayStart.getTime() + workEndHour * 3_600_000);
+    // With a zone, the work window is wall-clock in that zone (9 AM in
+    // New York is 13:00Z, not 09:00Z — the F1/F2 shifted-frame bug).
+    // Without one, the legacy UTC framing stands.
+    const tz = isValidZoneName(params.tz) ? String(params.tz) : null;
+    let winStart, winEnd;
+    if (tz) {
+      const [yy, mm, dd] = day.split("-").map(Number);
+      if (!yy || !mm || !dd) return { ok: false, error: "invalid day" };
+      winStart = new Date(wallTimeInZoneToUtcMs(tz, yy, mm, dd, workStartHour, 0));
+      winEnd = new Date(wallTimeInZoneToUtcMs(tz, yy, mm, dd, workEndHour, 0));
+    } else {
+      const dayStart = new Date(`${day}T00:00:00.000Z`);
+      if (isNaN(dayStart.getTime())) return { ok: false, error: "invalid day" };
+      winStart = new Date(dayStart.getTime() + workStartHour * 3_600_000);
+      winEnd = new Date(dayStart.getTime() + workEndHour * 3_600_000);
+    }
     // Collect busy blocks
     const busy = [];
     for (const e of listCal(s.events, userId)) {
@@ -796,7 +824,7 @@ export default function registerCalendarActions(registerLensAction) {
       cursor = Math.max(cursor, be);
     }
     if (winEnd.getTime() - cursor >= durMs) slots.push({ start: new Date(cursor).toISOString(), end: winEnd.toISOString() });
-    return { ok: true, result: { day, durationMin, freeSlots: slots, busyBlockCount: busy.length } };
+    return { ok: true, result: { day, durationMin, freeSlots: slots, busyBlockCount: busy.length, tz: tz || "UTC", windowStart: winStart.toISOString(), windowEnd: winEnd.toISOString() } };
     } catch (e) { return handlerFailure(e); }
 });
 
