@@ -16,7 +16,7 @@
 //
 // Macros:
 //   session-create / session-list / session-join / session-leave
-//   task-create / task-list / task-update-status
+//   task-create / task-list / task-claim / task-update-status
 //   annotation-add / annotations-list / annotation-resolve
 //   cobuild-summary
 
@@ -154,6 +154,35 @@ export default function registerCobuildActions(registerLensAction) {
         updatedAt: null,
       };
       sessionTasks(S, sessionId).set(task.id, task);
+      save();
+      return { ok: true, result: { task } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── task-claim (assign an unassigned task to the caller) ─────────
+  registerLensAction("cobuild", "task-claim", (ctx, _artifact, params = {}) => {
+    try {
+      const S = STATE();
+      const userId = aid(ctx);
+      const p = params || {};
+      const sessionId = String(p.sessionId || "");
+      if (!sessionId) return { ok: false, error: "sessionId required" };
+      const taskId = String(p.taskId || "");
+      if (!taskId) return { ok: false, error: "taskId required" };
+      const session = S.cobuildSessions.get(sessionId);
+      if (!session) return { ok: false, error: "session not found" };
+      // Only a member of the session may claim one of its tasks.
+      if (userId === "anon" || !Array.isArray(session.participants) || !session.participants.includes(userId)) {
+        return { ok: false, error: "not a participant" };
+      }
+      const task = sessionTasks(S, sessionId).get(taskId);
+      if (!task) return { ok: false, error: "task not found" };
+      if (task.assignee && task.assignee !== userId) {
+        return { ok: false, status: 409, error: "already_claimed", assignee: task.assignee };
+      }
+      if (task.assignee === userId) return { ok: true, unchanged: true, result: { task } };
+      task.assignee = userId;
+      task.updatedAt = new Date().toISOString();
       save();
       return { ok: true, result: { task } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }

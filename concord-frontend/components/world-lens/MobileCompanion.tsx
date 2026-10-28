@@ -23,6 +23,8 @@ interface QuickAction {
   label: string;
   icon: string;
   badge?: number;
+  /** No backend action yet: rendered disabled with a "Coming soon" label. */
+  comingSoon?: boolean;
 }
 
 interface PushPref {
@@ -48,8 +50,8 @@ const QUICK_ACTIONS: QuickAction[] = [
   { id: 'qa-2', label: 'View Citations', icon: '📜' },
   { id: 'qa-3', label: 'Manage Inventory', icon: '🎒' },
   { id: 'qa-4', label: 'Firm Board', icon: '📋' },
-  { id: 'qa-5', label: 'Marketplace', icon: '🛒' },
-  { id: 'qa-6', label: 'Royalties', icon: '💰' },
+  { id: 'qa-5', label: 'Marketplace', icon: '🛒', comingSoon: true },
+  { id: 'qa-6', label: 'Royalties', icon: '💰', comingSoon: true },
 ];
 
 // Notification-preference toggles. `id` maps to the companion domain's
@@ -298,12 +300,16 @@ export default function MobileCompanion() {
             <button
               key={action.id}
               onClick={() => { window.dispatchEvent(new CustomEvent('mobile-companion:quick-action', { detail: { actionId: action.id } })); }}
-              className="flex flex-col items-center gap-2 p-3 rounded-lg bg-white/5 active:bg-white/15 transition-colors relative"
+              disabled={action.comingSoon}
+              className="flex flex-col items-center gap-2 p-3 rounded-lg bg-white/5 active:bg-white/15 transition-colors relative disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <span className="text-2xl">{action.icon}</span>
               <span className="text-white/70 text-xs text-center leading-tight">
                 {action.label}
               </span>
+              {action.comingSoon && (
+                <span className="text-white/40 text-[10px] leading-none">Coming soon</span>
+              )}
               {action.badge !== undefined && (
                 <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-cyan-500 text-black text-[10px] font-bold flex items-center justify-center">
                   {action.badge}

@@ -13,6 +13,7 @@ describe("mobile quick-action", () => {
   let url;
 
   before(async () => {
+    globalThis._concordSTATE = {};
     db = new Database(":memory:");
     db.exec(`
       CREATE TABLE world_buildings (
@@ -89,14 +90,23 @@ describe("mobile quick-action", () => {
     assert.equal(r.status, 401);
   });
 
-  it("unwired actions are an honest 501 naming the action", async () => {
-    for (const a of ["quick-chat", "toggle-notifications", "manage-inventory"]) {
-      const r = await act(a);
-      assert.equal(r.status, 501);
-      assert.equal(r.body.error, "not_wired");
-      assert.equal(r.body.action, a);
-      assert.ok(r.body.missing);
-    }
+  it("toggle-notifications is retired and points at companion push-prefs-set", async () => {
+    const r = await act("toggle-notifications");
+    assert.equal(r.status, 410);
+    assert.equal(r.body.error, "retired");
+    assert.equal(r.body.use, "companion.push-prefs-set");
+    assert.equal(r.body.action, "toggle-notifications");
+    assert.equal(JSON.stringify(r.body).includes("memory per process"), false);
+  });
+
+  it("quick-chat without text is a 400 and manage-inventory reads", async () => {
+    const chat = await act("quick-chat");
+    assert.equal(chat.status, 400);
+    assert.equal(chat.body.error, "empty_text");
+    const inv = await act("manage-inventory");
+    assert.equal(inv.status, 200);
+    assert.deepEqual(inv.body.items, []);
+    assert.equal(Array.isArray(inv.body.slotNames), true);
   });
 
   it("unknown action is 400", async () => {

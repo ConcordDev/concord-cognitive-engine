@@ -232,8 +232,9 @@ describe("world sim infra reads stored counts", () => {
       user: "user-a",
       body: { action: "quick-chat" },
     });
-    assert.equal(chat.status, 501);
-    assert.equal(chat.body.reason, "action_not_wired");
+    // quick-chat is wired to the message lens now; no text is a 400, not a 501.
+    assert.equal(chat.status, 400);
+    assert.equal(chat.body.error, "empty_text");
     assert.equal(chat.body.action, "quick-chat");
 
     const plugins = await call("/api/world/sim/plugins/catalog");

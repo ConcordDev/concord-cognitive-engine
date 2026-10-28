@@ -13,6 +13,7 @@ import { getPoolStats as getMacroPoolStats } from "../workers/macro-pool.js";
 import { getPoolStats as getHeartbeatPoolStats } from "../workers/heartbeat-pool.js";
 import { podJobs } from "./pod-jobs.js";
 import { podJobsEnabled } from "../routes/pod-jobs.js";
+import { runLensAction, lensErrorStatus } from "./sim-lens-bridge.js";
 
 // runtime/event-bus.js keeps its last 500 events (RECENT_MAX); asking for
 // that many returns the whole ring.
@@ -610,34 +611,117 @@ export function readMobileDashboard(db, userId) {
 }
 
 const READ_ACTIONS = new Set(["check-builds", "view-citations"]);
-const UNWIRED_ACTIONS = {
-  "manage-inventory": "No inventory read is wired to this route; inventory changes are not run from here.",
-  "quick-chat": "Sending a chat message is a write and no chat send is wired to this route.",
-  "toggle-notifications": "Notification settings are only held in memory per process; this route does not change them.",
-};
+const WIRED_ACTIONS = ["manage-inventory", "quick-chat", "toggle-notifications"];
+const READ_OPS = new Set(["get", "read", "view", "list"]);
+const QUICK_CHAT_MAX = 4000;
+// Per-user send limit for quick-chat (sliding window, in memory per process).
+export const QUICK_CHAT_RATE = { max: 10, windowMs: 60_000 };
+const _quickChatSends = new Map(); // userId -> [timestamps]
+let _qcNow = () => Date.now();
+export function __resetQuickChatRateForTests({ now } = {}) {
+  _quickChatSends.clear();
+  _qcNow = typeof now === "function" ? now : () => Date.now();
+}
+function quickChatAllowed(userId) {
+  const t = _qcNow();
+  const recent = (_quickChatSends.get(userId) || []).filter((x) => t - x < QUICK_CHAT_RATE.windowMs);
+  if (recent.length >= QUICK_CHAT_RATE.max) {
+    _quickChatSends.set(userId, recent);
+    return { ok: false, retryAfterMs: QUICK_CHAT_RATE.windowMs - (t - recent[0]) };
+  }
+  recent.push(t);
+  _quickChatSends.set(userId, recent);
+  if (_quickChatSends.size > 5000) _quickChatSends.delete(_quickChatSends.keys().next().value);
+  return { ok: true };
+}
 
-// Answers read-only quick actions for the signed-in caller from stored rows.
-// Anything that would write, or has no backing read, stays an honest 501.
+// Sends text to a DM through the message lens action, so validation and
+// persistence are the ones the message lens uses. Finds the caller's existing DM
+// with the recipient, or creates it with channels-create.
+function quickChat(db, userId, body) {
+  const fail = (status, error, extra = {}) => ({ ok: false, status, error, action: "quick-chat", ...extra });
+  const text = typeof body?.text === "string" ? body.text.trim() : "";
+  if (!text) return fail(400, "empty_text");
+  if (text.length > QUICK_CHAT_MAX) return fail(400, "text_too_long", { max: QUICK_CHAT_MAX });
+  const to = typeof body?.toUserId === "string" ? body.toUserId.trim() : "";
+  if (!to) return fail(400, "recipient_required");
+  const me = String(userId);
+  if (to === me) return fail(400, "cannot_message_self");
+  if (!db) return fail(501, "not_wired", { reason: "no_database" });
+  const rl = quickChatAllowed(me);
+  if (!rl.ok) return fail(429, "rate_limited", { retryAfterMs: rl.retryAfterMs, limit: QUICK_CHAT_RATE.max, windowMs: QUICK_CHAT_RATE.windowMs });
+  let known;
+  try {
+    known = db.prepare("SELECT 1 AS n FROM users WHERE id = ?").get(to);
+  } catch {
+    return fail(501, "not_wired", { reason: "no_user_table" });
+  }
+  if (!known) return fail(404, "recipient_not_found");
+
+  const list = runLensAction("message", "channels-list", userId, {});
+  if (!list.ok) return fail(lensErrorStatus(list), list.error);
+  let channel = (list.result?.channels || []).find((c) => {
+    if (c.kind !== "dm" || c.archived || !Array.isArray(c.participants) || c.participants.length !== 2) return false;
+    const members = c.participants.map(String);
+    return members.includes(to) && members.includes(me);
+  });
+  if (!channel) {
+    const made = runLensAction("message", "channels-create", userId, {
+      name: `dm-${[me, to].sort().join("-")}`,
+      kind: "dm",
+      participants: [to],
+    });
+    if (!made.ok) return fail(lensErrorStatus(made), made.error);
+    channel = made.result.channel;
+  }
+  const sent = runLensAction("message", "messages-send", userId, { channelId: channel.id, body: text });
+  if (!sent.ok) return fail(lensErrorStatus(sent), sent.error);
+  return { ok: true, status: 200, action: "quick-chat", channelId: channel.id, message: sent.result.message };
+}
+
+// Read-only inventory view with the shape of world.inventory-get. Add, remove
+// and equip belong to the full world UI and are refused here.
+function manageInventory(userId, body) {
+  const op = body?.op ?? body?.operation ?? body?.mode;
+  const writeKeys = ["itemId", "item", "slot", "quantity"].some((k) => body?.[k] !== undefined);
+  if (writeKeys || (op !== undefined && !READ_OPS.has(String(op).toLowerCase()))) {
+    return {
+      ok: false,
+      status: 400,
+      error: "read_only",
+      action: "manage-inventory",
+      message: "Mobile shows the inventory only. Add, remove and equip are done in the world.",
+    };
+  }
+  const inv = runLensAction("world", "inventory-get", userId, {});
+  if (!inv.ok) return { ok: false, status: lensErrorStatus(inv), error: inv.error, action: "manage-inventory" };
+  return { ok: true, status: 200, action: "manage-inventory", ...inv.result };
+}
+
+// Answers quick actions for the signed-in caller. Reads come from stored rows;
+// chat and inventory delegate to the message and world lens actions.
 export function runQuickAction(db, userId, body) {
   if (!userId) return { ok: false, status: 401, error: "sign_in_required" };
   const action = typeof body?.action === "string" ? body.action : "";
-  if (!READ_ACTIONS.has(action) && !(action in UNWIRED_ACTIONS)) {
+  if (!READ_ACTIONS.has(action) && !WIRED_ACTIONS.includes(action)) {
     return {
       ok: false,
       status: 400,
       error: "unknown_action",
       action: action.slice(0, 40),
-      allowed: [...READ_ACTIONS, ...Object.keys(UNWIRED_ACTIONS)],
+      allowed: [...READ_ACTIONS, ...WIRED_ACTIONS],
     };
   }
-  if (!READ_ACTIONS.has(action)) {
+  if (action === "quick-chat") return quickChat(db, userId, body);
+  if (action === "manage-inventory") return manageInventory(userId, body);
+  if (action === "toggle-notifications") {
     return {
       ok: false,
-      status: 501,
-      error: "not_wired",
-      reason: "action_not_wired",
+      status: 410,
+      error: "retired",
       action,
-      missing: UNWIRED_ACTIONS[action],
+      use: "companion.push-prefs-set",
+      message: "Notification settings are saved per account by companion push-prefs-set; this route does not change them.",
     };
   }
   const read = action === "check-builds" ? readOwnBuildings(db, userId) : readOwnCitations(db, userId);
