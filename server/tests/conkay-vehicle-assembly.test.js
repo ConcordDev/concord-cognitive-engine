@@ -5,7 +5,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { buildCarFromLibrary } from "../lib/conkay/compiler/car-from-library.js";
 import { assemblyFromIr, fitStatus } from "../lib/conkay/assembly/build.js";
-import { partInsideEnvelope } from "../lib/conkay/assembly/surface.js";
+import { partInsideEnvelope, loftBody } from "../lib/conkay/assembly/surface.js";
 import { validateAssembly } from "../lib/conkay/assembly/schema.js";
 import { j941Centroid } from "../lib/conkay/assembly/j941.js";
 import { buildPackagingSheet } from "../lib/conkay/drawings/ga-drawing.js";
@@ -301,5 +301,56 @@ describe("chat summary", () => {
     const line = carChatSummary(session);
     assert.match(line, /Frame\/torsion/);
     assert.match(line, /Packaging fit: fail/);
+  });
+});
+
+describe("styling never moves the analysed solid (HANDOFF-3 A6)", () => {
+  it("the document is byte-stable in everything analysed — checks, components, parameters, spec", () => {
+    const doc = car();
+    const again = car();
+    assert.deepEqual(again.checks, doc.checks);
+    assert.deepEqual(
+      again.components.map((c) => [c.id, c.placement, c.half, c.parameters]),
+      doc.components.map((c) => [c.id, c.placement, c.half, c.parameters]),
+    );
+    assert.deepEqual(again.surface.spec, doc.surface.spec);
+    assert.deepEqual(again.wheel.spec, doc.wheel.spec);
+  });
+
+  it("a presentation resample leaves the design-defining spec fields and the skin's extents untouched", () => {
+    const doc = car();
+    const full = loftBody(doc.surface.spec);
+    const mobile = loftBody(doc.surface.spec, { quality: "mobile" });
+    // The resample really happened — a different tessellation of the same solid.
+    assert.notEqual(full.capped.triangles, mobile.capped.triangles);
+    // Every design-defining spec field is identical. Excluded are the sampling
+    // markers (quality, cageLevels) and the three values DERIVED from the sampled
+    // mesh — the limit-surface samples (limitCrown, limitWidth) and the
+    // highlightContinuity report. Analysis reads them only from the document's
+    // own full-quality loft: envelope verdicts and fit checks are computed once,
+    // in the document path, and a presentation resample is never fed back in.
+    const strip = (s) => { const { quality, cageLevels, highlightContinuity, limitCrown, limitWidth, ...rest } = s; return rest; };
+    assert.deepEqual(strip(mobile.spec), strip(full.spec));
+    // The limit samples still describe the same curve: across the stations both
+    // samplings share, the coarse one tracks the full one (measured on this car:
+    // mean |Δ| ≈ 0.002, worst ≈ 0.026 at the high-curvature tail).
+    const mobileCrown = new Map(mobile.spec.limitCrown.map((p) => [p.x, p.v]));
+    let shared = 0, maxD = 0, sumD = 0;
+    for (const p of full.spec.limitCrown) {
+      const mv = mobileCrown.get(p.x);
+      if (mv === undefined) continue;
+      shared++;
+      const d = Math.abs(mv - p.v);
+      if (d > maxD) maxD = d;
+      sumD += d;
+    }
+    assert.ok(shared >= 30, `only ${shared} shared crown stations`);
+    assert.ok(maxD < 0.03, `limit crown worst deviation ${maxD}`);
+    assert.ok(sumD / shared < 0.005, `limit crown mean deviation ${sumD / shared}`);
+    // Mesh bounds agree to sampling tolerance — the skin did not move.
+    for (let k = 0; k < 3; k++) {
+      assert.ok(Math.abs(full.bounds.min[k] - mobile.bounds.min[k]) < 0.002, `bounds.min[${k}]`);
+      assert.ok(Math.abs(full.bounds.max[k] - mobile.bounds.max[k]) < 0.002, `bounds.max[${k}]`);
+    }
   });
 });
