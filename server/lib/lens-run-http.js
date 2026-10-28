@@ -65,6 +65,25 @@ export function httpStatusForLensFailure(error, raw = {}) {
   // the missing_* validation family stay 422 below.
   if (e === "missing_api_key") return 200;
 
+  // Upstream outages are not client faults either (Phase-1 C2). A handler
+  // that flags its failure as an upstream problem — `upstream_unavailable`,
+  // the `<source>_unreachable` reason family the live-feed macros return
+  // (opentdb_unreachable, nasa_apod_unreachable, usda_unreachable, …), or
+  // an upstream `rate_limited` — gets the same HTTP 200 treatment as
+  // `missing_api_key`: the body still says { ok:false, reason }, panels
+  // render their honest "unavailable" state, and the browser does not log
+  // a 4xx resource error for a third-party outage. The check reads the
+  // reason channel as well as the error string, because most feed
+  // handlers put the exception text in `error` and the stable token in
+  // `reason`.
+  const reason = String(raw?.reason || "").trim().toLowerCase();
+  if (
+    e === "upstream_unavailable" || e.endsWith("_unreachable") || e === "rate_limited" ||
+    reason === "upstream_unavailable" || reason.endsWith("_unreachable") || reason === "rate_limited"
+  ) {
+    return 200;
+  }
+
   // Shared input validator. Must precede the invalid_* → 422 rule.
   // invalid_status / invalid_transition stay 422.
   if (e === "invalid_input") return 400;
