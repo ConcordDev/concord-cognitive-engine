@@ -130,7 +130,8 @@ export function checkQualityGate(dtu, opts = {}) {
 
   // Body length check
   const body = getBodyText(dtu);
-  if (!body || String(body).length < MIN_BODY_LEN) {
+  // headlineOnly: summary-only outlets (lib/news-outlet-policy.js) legitimately have no body text.
+  if (!opts.headlineOnly && (!body || String(body).length < MIN_BODY_LEN)) {
     return { ok: false, reason: 'body_too_short', details: { length: (body || '').length, min: MIN_BODY_LEN } };
   }
 
@@ -149,7 +150,7 @@ export function checkQualityGate(dtu, opts = {}) {
   }
 
   // Repetition check
-  const repCheck = checkRepetition(body, REPETITION_NGRAM, REPETITION_THRESHOLD);
+  const repCheck = opts.headlineOnly ? { repetitive: false } : checkRepetition(body, REPETITION_NGRAM, REPETITION_THRESHOLD);
   if (repCheck.repetitive) {
     return { ok: false, reason: 'repetitive', details: { gram: repCheck.gram, count: repCheck.count } };
   }

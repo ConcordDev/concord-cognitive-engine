@@ -50,6 +50,9 @@ function defaultConfig() {
     persistDebounceMs: 2000,
     log: (...a) => { try { console.warn("[feed-cache]", ...a); } catch { /* ignore */ } },
     logUpstream: (line) => { console.info(line); },
+    // () => boolean|Promise<boolean>: true when the event loop is clearly overloaded
+    // (warm fetches then skip a tick). undefined => the request-admission signal.
+    loadCheck: undefined,
   };
 }
 
@@ -104,6 +107,10 @@ export function registerSource(id, config = {}) {
     // Optional (key) => bool: only matching keys are written to the persist file (keeps user-claim queries off disk).
     persistFilter: typeof config.persistFilter === "function" ? config.persistFilter : null,
     serialize: !!config.serialize || config.budget?.minSpacingMs > 0,
+    // Per-KEY exponential back-off for sources whose keys are independent hosts
+    // (RSS): one dead feed must not open a source-wide breaker, but it also must
+    // not be re-fetched on every warm tick.
+    keyBackoff: !!config.keyBackoff,
     maxKeys: config.maxKeys > 0 ? config.maxKeys : DEFAULT_MAX_KEYS,
     poolSize: config.poolSize > 0 ? config.poolSize : DEFAULT_POOL_SIZE,
     fetcher: config.fetcher,
@@ -119,7 +126,7 @@ export function registerSource(id, config = {}) {
     lastStart: -Infinity, tail: Promise.resolve(),
     backoff: { fails: 0, until: 0, ms: 0 },
     st: { hits: 0, misses: 0, staleServed: 0, unavailable: 0 },
-    lastError: null, lastOkAt: null, warmAt: new Map(),
+    lastError: null, lastOkAt: null, warmAt: new Map(), keyFail: new Map(),
   };
   src.cfg = cfg;
   src.minute = { tokens: cfg.budget.perMin > 0 ? cfg.budget.perMin : Infinity, at: _cfg.now() };
@@ -199,8 +206,14 @@ function backoffActive(src) {
   return src.cfg.breaker && _cfg.now() < src.backoff.until;
 }
 
-function recordFailure(src, err) {
+function recordFailure(src, err, key) {
   src.lastError = { message: String(err?.message || err), at: _cfg.now() };
+  if (src.cfg.keyBackoff && key !== undefined) {
+    const prev = src.keyFail.get(key);
+    const fails = (prev?.fails || 0) + 1;
+    const ms = Math.min(BACKOFF_MAX_MS, BACKOFF_BASE_MS * 2 ** (fails - 1));
+    src.keyFail.set(key, { fails, until: _cfg.now() + ms, reason: src.lastError.message });
+  }
   if (!src.cfg.breaker) return;
   const b = src.backoff;
   b.fails++;
@@ -211,6 +224,7 @@ function recordFailure(src, err) {
 function recordSuccess(src, key, data) {
   const t = _cfg.now();
   src.backoff.fails = 0; src.backoff.ms = 0; src.backoff.until = 0;
+  src.keyFail.delete(key);
   src.lastOkAt = t;
   src.entries.delete(key); // re-insert so FIFO eviction order tracks recency
   src.entries.set(key, { data, fetchedAt: t });
@@ -263,7 +277,7 @@ function runUpstream(src, key, fetcher) {
       recordSuccess(src, key, data);
       return { ok: true, data };
     } catch (error) {
-      recordFailure(src, error);
+      recordFailure(src, error, key);
       return { ok: false, error };
     } finally {
       if (timer) clearTimeout(timer);
@@ -351,9 +365,14 @@ export async function getOrThrow(sourceId, key, o = {}) {
   return r.data;
 }
 
-export async function pool(sourceId, key, { cursor = 0, limit = 20, dedupeKey, allowStale = true } = {}) {
+export async function pool(sourceId, key, { cursor = 0, limit = 20, dedupeKey, allowStale = true, noFetch = false } = {}) {
   const src = _sources.get(sourceId);
-  const r = await get(sourceId, key, { allowStale });
+  // noFetch: read what warm ticks already cached; a user request never causes an upstream call.
+  const r = noFetch
+    ? (src
+        ? { status: freshness(src, key), reason: "not_warmed", lastOkAt: src.entries.get(key)?.fetchedAt ?? null }
+        : { status: "unavailable", reason: "unknown_source", lastOkAt: null })
+    : await get(sourceId, key, { allowStale });
   const hist = src?.poolHist.get(key) || [];
   if (!hist.length) {
     return { items: [], nextCursor: 0, fetchedAt: null, stale: false, status: "unavailable", reason: r.reason || "no_data", lastOkAt: r.lastOkAt ?? null };
@@ -380,6 +399,28 @@ export async function pool(sourceId, key, { cursor = 0, limit = 20, dedupeKey, a
   };
 }
 
+function freshness(src, key) {
+  const e = src.entries.get(key);
+  if (!e) return "unavailable";
+  return _cfg.now() - e.fetchedAt < src.cfg.ttlMs ? "fresh" : "stale";
+}
+
+/** Raw read of a cached entry, never fetches. -> { data, fetchedAt, stale } | null */
+export function peek(sourceId, key) {
+  const src = _sources.get(sourceId);
+  const e = src?.entries.get(key);
+  if (!e) return null;
+  return { data: e.data, fetchedAt: e.fetchedAt, stale: _cfg.now() - e.fetchedAt >= src.cfg.ttlMs };
+}
+
+/** Store a value for (source, key) without an upstream call (derived data that should persist with the cache file). */
+export function put(sourceId, key, data) {
+  const src = _sources.get(sourceId);
+  if (!src) return false;
+  recordSuccess(src, key, data);
+  return true;
+}
+
 function defaultDedupe(item) {
   if (item && typeof item === "object") {
     try {
@@ -392,10 +433,20 @@ function defaultDedupe(item) {
 }
 function safeJson(v) { try { return JSON.stringify(v); } catch { return String(v); } }
 
+/**
+ * Default warm gate. A warm fetch is ONE small HTTP request (budgets already cap
+ * upstream use), so it does not depend on user idleness or lowMemory
+ * (presence-idle.shouldRunHeavyMaintenance is always false on a low-memory host,
+ * which used to mean news was never preloaded). It only yields when the event
+ * loop is clearly overloaded: the load-shed signal from lib/request-admission.js
+ * (consecutive over-bar windows on the protected threshold).
+ */
 async function defaultShouldRun() {
   try {
-    const m = await import("./presence-idle.js");
-    return typeof m.shouldRunHeavyMaintenance === "function" ? !!m.shouldRunHeavyMaintenance() : true;
+    if (typeof _cfg.loadCheck === "function") return !(await _cfg.loadCheck());
+    const m = await import("./request-admission.js");
+    const strikes = m.getPressureStrikes?.()?.protected || 0;
+    return !(strikes >= (m.getShedStrikesRequired?.() || 3));
   } catch { return true; }
 }
 
@@ -412,18 +463,24 @@ export async function warmTick(tickNumber = 0, { shouldRun } = {}) {
     if (!w?.keys?.length) continue;
     const every = w.everyTicks > 0 ? w.everyTicks : 1;
     if (tickNumber % every !== 0) continue;
-    // Stalest due key first (never-fetched counts as oldest): each tick moves the least-fresh key.
-    let due; let dueAt = Infinity;
+    // Stalest due keys first (never-fetched counts as oldest). perCall > 1 lets a many-key
+    // source (RSS) cycle inside its TTL; the keys sit on different hosts and the source's own
+    // spacing/budget still serialize and cap them.
+    const perCall = w.perCall > 0 ? w.perCall : 1;
+    const dueKeys = [];
     for (const k of w.keys) {
       const e = src.entries.get(k);
       if (e && _cfg.now() - e.fetchedAt < src.cfg.ttlMs) continue;
-      const at = e ? e.fetchedAt : -Infinity;
-      if (at < dueAt) { due = k; dueAt = at; }
+      const kf = src.keyFail.get(k);
+      if (kf && kf.until > _cfg.now()) continue; // key is inside its own back-off window
+      dueKeys.push({ k, at: e ? e.fetchedAt : -Infinity });
     }
-    if (due === undefined) continue;
-    if (backoffActive(src)) continue; // don't queue warm fetches into an open breaker
-    const r = await get(src.id, due, { force: true, allowStale: true, reason: "warm" });
-    refreshed.push({ source: src.id, key: due, status: r.status, reason: r.reason });
+    dueKeys.sort((a, b) => a.at - b.at);
+    for (const { k: due } of dueKeys.slice(0, perCall)) {
+      if (backoffActive(src)) break; // don't queue warm fetches into an open breaker
+      const r = await get(src.id, due, { force: true, allowStale: true, reason: "warm" });
+      refreshed.push({ source: src.id, key: due, status: r.status, reason: r.reason });
+    }
   }
   return { ran: true, refreshed };
 }

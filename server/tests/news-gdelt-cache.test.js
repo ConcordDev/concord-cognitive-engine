@@ -224,9 +224,9 @@ describe("GDELT failure handling", () => {
     assert.equal(r.ok, true);
     assert.ok(elapsed < 500, `briefing took ${elapsed} ms`);
     assert.equal(r.result.degraded, true);
-    assert.equal(r.result.degradedReason, "budget_exceeded");
+    assert.equal(r.result.degradedReason, "warming");
     assert.deepEqual(r.result.topStories.bullets, []);
-    assert.equal(r.result.topStories.unavailableReason, "budget_exceeded");
+    assert.equal(r.result.topStories.unavailableReason, "warming");
     assert.equal(r.result.status, "unavailable");
     // Let the queued background fetches finish so they do not leak into the next test.
     await flush(400);

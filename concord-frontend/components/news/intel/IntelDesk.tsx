@@ -18,7 +18,7 @@
  * honest error/empty state — never fabricated headlines.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -45,7 +45,15 @@ import {
 
 type DeskMode = 'live' | 'reader';
 
-function relTime(iso: string): string {
+function hhmm(iso?: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function relTime(iso: string | null): string {
+  if (!iso) return 'time unknown';
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60_000);
   if (m < 1) return 'just now';
@@ -62,9 +70,15 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pullCount, setPullCount] = useState(0); // bumps to refresh the citation panel
 
+  // Rotation cursor per category. "Refresh feed" passes the server's nextCursor so the user
+  // pages the pooled last-N pulls (different/newer items) without any upstream call. A ref (not
+  // part of the query key) keeps the key stable per category; switching category shows that
+  // category's own pool and cursor.
+  const cursors = useRef<Partial<Record<NewsCategory, number>>>({});
+
   const feed = useQuery({
     queryKey: ['intel-headlines', category],
-    queryFn: () => fetchHeadlines(category, 40),
+    queryFn: () => fetchHeadlines(category, 40, cursors.current[category]),
     staleTime: 60_000,
     refetchInterval: 5 * 60_000, // GDELT re-indexes ~every 15m; poll gently
     retry: false,
@@ -82,6 +96,19 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
     [feed.data],
   );
   const feedError = feed.data && !feed.data.ok ? feed.data.error : null;
+  // Freshness metadata (absent on older responses => behaves exactly as before).
+  const meta = feed.data?.ok ? feed.data.result : undefined;
+  const asOf = hhmm(meta?.fetchedAt);
+  const sourceUnavailable = meta?.status === 'unavailable' && headlines.length === 0;
+  const lastUpdated = hhmm(meta?.lastOkAt);
+  const unavailableReason = meta?.reason || meta?.degradedReason || 'unknown';
+  const isWarming = unavailableReason === 'warming';
+
+  function refreshFeed() {
+    // Older servers return no nextCursor: then this is a plain refetch, exactly as before.
+    if (typeof meta?.nextCursor === 'number') cursors.current[category] = meta.nextCursor;
+    void feed.refetch();
+  }
   const isLive = feed.isSuccess && !!feed.data?.ok && !feed.isRefetching;
 
   // Source-attribution set — the journalism-tool "who is reporting this" view.
@@ -132,7 +159,7 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
       topic: h.category,
       summary: null,
       url: h.url,
-      publishedAt: h.publishedAt,
+      publishedAt: h.publishedAt ?? undefined,
     }).catch(() => { /* directory add is best-effort; the DTU pull already succeeded */ });
   }
 
@@ -155,14 +182,14 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
         <div className="flex items-center gap-3">
           <StatusDot
             state={feedError ? 'error' : feed.isFetching ? 'connecting' : isLive ? 'live' : 'idle'}
-            label={feedError ? 'Feed offline' : feed.isFetching ? 'Fetching' : isLive ? 'GDELT live' : 'Idle'}
+            label={feedError ? 'Feed offline' : feed.isFetching ? 'Fetching' : isLive ? 'Live' : 'Idle'}
             showLabel
           />
           <DensityToggle variant="segmented" showLabels={false} />
         </div>
       ) : undefined}
       cta={mode === 'live'
-        ? { label: feed.isFetching ? 'Fetching…' : 'Refresh feed', icon: RefreshCw, onClick: () => { void feed.refetch(); }, disabled: feed.isFetching, title: 'Refresh feed' }
+        ? { label: feed.isFetching ? 'Fetching…' : 'Refresh feed', icon: RefreshCw, onClick: refreshFeed, disabled: feed.isFetching, title: 'Refresh feed' }
         : undefined}
     >
     <div className="flex flex-col gap-4">
@@ -255,6 +282,14 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
               message={`Could not reach the GDELT news feed (${feedError}). This surface shows real headlines only — no placeholders. Retry when outbound network is available.`}
               onRetry={() => feed.refetch()}
             />
+          ) : sourceUnavailable ? (
+            <ErrorState
+              title={isWarming ? 'Warming up' : 'Source temporarily unavailable'}
+              message={isWarming
+                ? 'The first pull for this category is still in flight — headlines appear as soon as it lands. Real headlines only; nothing is substituted.'
+                : `Source temporarily unavailable — ${lastUpdated ? `last updated ${lastUpdated}` : 'no successful update yet'} (${unavailableReason}). Real headlines only — nothing is substituted.`}
+              onRetry={() => feed.refetch()}
+            />
           ) : visible.length === 0 ? (
             <EmptyState
               icon={<Newspaper className="h-8 w-8 text-zinc-600" />}
@@ -264,6 +299,19 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
             />
           ) : (
             <div className="space-y-2">
+              {(asOf || meta?.stale) && (
+                <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+                  {asOf && <span>as of {asOf}</span>}
+                  {meta?.stale && (
+                    <span
+                      className="rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-amber-300"
+                      title={meta.degradedReason ? `Refresh pending (${meta.degradedReason})` : 'Showing the last good copy while a refresh is pending'}
+                    >
+                      stale
+                    </span>
+                  )}
+                </div>
+              )}
               <AnimatePresence initial={false}>
                 {visible.map((h) => {
                   const isSel = selectedIds.has(h.id);
@@ -299,11 +347,22 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
                           {h.title || '(untitled)'}
                         </a>
                         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-zinc-500">
-                          <span className="font-medium text-zinc-400">{h.source || 'unknown'}</span>
+                          <span className="font-medium text-zinc-400" title={h.attribution || undefined}>{h.source || 'unknown'}</span>
                           {h.sourceCountry && <span className="uppercase">{h.sourceCountry}</span>}
                           <span>·</span>
-                          <span>{relTime(h.publishedAt)}</span>
+                          <span title={h.publishedAt || undefined}>{relTime(h.publishedAt)}</span>
                         </div>
+                        {/* Full-display outlets: the feed's own short snippet, unmodified. */}
+                        {h.contentPolicy === 'full' && h.snippet && (
+                          <p className="mt-1 line-clamp-3 text-[11px] text-zinc-400">{h.snippet}</p>
+                        )}
+                        {/* Summary-only outlets: ONLY Concord's own summary (never the outlet's text), labelled as such. */}
+                        {h.contentPolicy !== 'full' && h.summary && (
+                          <p className="mt-1 line-clamp-3 text-[11px] text-zinc-400">
+                            <span className="mr-1 rounded border border-cyan-500/30 bg-cyan-500/10 px-1 py-px text-[9px] uppercase tracking-wide text-cyan-300">Concord summary</span>
+                            {h.summary}
+                          </p>
+                        )}
                       </div>
                       <div className="flex shrink-0 flex-col items-center gap-1">
                         <button
@@ -323,11 +382,19 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
                         <SaveAsDtuButton
                           compact
                           confirm={false}
-                          apiSource="gdelt"
+                          apiSource={h.attribution?.startsWith('GDELT') === false ? 'news-rss' : 'gdelt'}
                           apiUrl={h.url}
                           title={h.title.slice(0, 100)}
-                          content={`Title: ${h.title}\nSource: ${h.source} (${h.sourceCountry || '—'})\nPublished: ${h.publishedAt}\nURL: ${h.url}\nCategory: ${h.category}`}
-                          extraTags={['news', 'gdelt', h.category, (h.sourceCountry || 'us').toLowerCase()]}
+                          content={[
+                            `Title: ${h.title}`,
+                            `Source: ${h.source}${h.sourceCountry ? ` (${h.sourceCountry})` : ''}`,
+                            `Published: ${h.publishedAt ?? 'unknown'}`,
+                            `URL: ${h.url}`,
+                            `Category: ${h.category}`,
+                            // only text we are allowed to keep: Concord's own summary (summary-only) or the short snippet (full)
+                            h.contentPolicy === 'full' ? (h.snippet ? `Snippet: ${h.snippet}` : '') : (h.summary ? `Concord summary: ${h.summary}` : ''),
+                          ].filter(Boolean).join('\n')}
+                          extraTags={['news', h.attribution?.startsWith('GDELT') === false ? 'rss' : 'gdelt', h.category, (h.sourceCountry || 'us').toLowerCase()]}
                           rawData={h}
                           onSaved={() => { setPullCount((n) => n + 1); addPulledHeadlineToDirectory(h); }}
                         />

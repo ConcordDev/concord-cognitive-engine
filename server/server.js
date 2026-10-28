@@ -2014,6 +2014,8 @@ import { assertByoCryptoReady } from "./lib/byo-crypto.js";
 import { prepareContext } from "./lib/context-orchestrator.js";
 import { platformProviderChat, platformProviderConfigured } from "./lib/platform-providers.js";
 import { cloudChatAvailable, cloudFallbackChat, llmReadyFor } from "./lib/llm-cloud-fallback.js";
+import { hostTier as _newsHostTier, isExcludedHost as _newsIsExcludedHost } from "./lib/news-outlet-policy.js";
+import { summaryForItem as _newsSummaryForItem, queueItemForSummary as _newsQueueItemForSummary } from "./lib/news-summarizer.js";
 // Brain self-training: log every brain call + consult the active model
 // from brain_active_models so daily-refresh swaps actually take effect.
 import { logBrainInteraction, resolveBrainInteraction } from "./lib/brain-training/interaction-log.js";
@@ -14050,8 +14052,6 @@ if (_publicFeedBackfillOn) {
   if (STATE.feeds.size === 0) {
     const seedFeeds = [
       // News / General
-      { id: "feed_seed_reuters", url: "https://feeds.reuters.com/reuters/topNews", domain: "news", name: "Reuters Top News", pollIntervalMs: 1800000 },
-      { id: "feed_seed_ap", url: "https://rsshub.app/apnews/topics/apf-topnews", domain: "news", name: "AP News", pollIntervalMs: 1800000 },
       { id: "feed_seed_bbc", url: "https://feeds.bbci.co.uk/news/rss.xml", domain: "news", name: "BBC News", pollIntervalMs: 1800000 },
       // Technology
       { id: "feed_seed_hn", url: "https://hnrss.org/frontpage", domain: "code", name: "Hacker News", pollIntervalMs: 3600000 },
@@ -14074,6 +14074,11 @@ if (_publicFeedBackfillOn) {
     }
     structuredLog("info", "seed_feeds_registered", { count: seedFeeds.length });
     saveStateDebounced();
+  }
+  // Drop already-persisted entries for dead relays / excluded outlets (feeds.reuters.com, rsshub.app, ...).
+  // Feed CONFIG only: no DTU is touched.
+  for (const [fid, sf] of [...STATE.feeds]) {
+    if (_newsIsExcludedHost(sf?.url)) STATE.feeds.delete(fid);
   }
 }
 
@@ -44360,9 +44365,25 @@ async function governorTick(reason="heartbeat") {
         // Shared feed-cache warm (GDELT news categories): fire-and-forget, at most one
         // upstream fetch per call, gated on idle/load, skipped on the read replica.
         // Never blocks or throws into the heartbeat.
-        import("./lib/gdelt-source.js")
-          .then((g) => { g.ensureGdeltSource(); return import("./lib/feed-cache.js"); })
-          .then((fc) => fc.warmTick(_tick))
+        // The gate no longer depends on idleness/lowMemory (a warm fetch is one small HTTP request,
+        // capped by per-source budgets): it only yields to a clearly overloaded event loop.
+        // News RSS sources (lib/news-sources.js) warm here too, a few staggered feeds per call.
+        Promise.all([import("./lib/gdelt-source.js"), import("./lib/news-sources.js"), import("./lib/news-summarizer.js")])
+          .then(async ([g, ns, sum]) => {
+            g.ensureGdeltSource();
+            ns.ensureNewsRssSource();
+            const fc = await import("./lib/feed-cache.js");
+            await fc.warmTick(_tick);
+            // Concord summaries for summary-only outlets: background, small budget, skipped when the
+            // utility brain isn't up. The outlet text is only the in-memory prompt input.
+            await sum.runSummaryBatch({
+              ready: () => Boolean(BRAIN?.utility?.enabled),
+              llm: async (prompt, o = {}) => {
+                const r = await callBrain("utility", prompt, { system: o.system, maxTokens: o.maxTokens, temperature: o.temperature, timeout: 30000 });
+                return r?.ok ? r.content : "";
+              },
+            });
+          })
           .catch((e) => { structuredLog("warn", "feed_cache_warm_tick", { error: String(e?.message || e) }); });
       }
 
@@ -61850,6 +61871,13 @@ async function pollFeeds() {
 
   for (const [feedId, feed] of STATE.feeds) {
     if (!feed.active) continue;
+    // Excluded outlets / dead relays are never fetched (persisted STATE.feeds entries included).
+    if (_newsIsExcludedHost(feed.url)) {
+      feed.active = false;
+      feed.autoDisabledAt = nowISO();
+      feed.autoDisableReason = "excluded_outlet";
+      continue;
+    }
 
     // Check if it's time to poll this feed
     const lastFetched = feed.lastFetchedAt ? new Date(feed.lastFetchedAt).getTime() : 0;
@@ -61949,11 +61977,22 @@ async function pollFeeds() {
         let feedDomain = feed.domain || "news";
         try { feedDomain = new URL(feed.url).hostname.replace(/^www\./, ""); } catch (_e) { /* use default */ }
 
+        // Outlet policy (lib/news-outlet-policy.js): outlets outside the full-display tier get
+        // headline + link + date + source + Concord's own summary ONLY, never the feed description.
+        const _restrictedOutlet = _newsHostTier(feed.url) !== "full";
+        const _concordSummary = _restrictedOutlet ? _newsSummaryForItem(item.title, item.link) : null;
+        if (_restrictedOutlet && !_concordSummary && item.description) {
+          _newsQueueItemForSummary({ title: item.title, url: item.link, description: item.description, source: feed.name });
+        }
+        const _bodyText = _restrictedOutlet ? (_concordSummary || "") : (item.description || "");
+
         const dtu = {
           id: uid("dtu"),
           title: item.title || "Feed Item",
-          creti: item.description || "",
-          content: `**Source:** ${feed.name}\n**Link:** ${item.link}\n\n---\n\n${item.description}`,
+          creti: _bodyText,
+          content: _restrictedOutlet
+            ? `**Source:** ${feed.name}\n**Link:** ${item.link}\n**Published:** ${item.pubDate || "unknown"}${_concordSummary ? `\n\n**Concord summary:** ${_concordSummary}` : ""}`
+            : `**Source:** ${feed.name}\n**Link:** ${item.link}\n\n---\n\n${item.description}`,
           tags: ["feed", feedDomain, "web-dtu"],
           tier: "regular",
           type: "feed_item",
@@ -61967,6 +62006,7 @@ async function pollFeeds() {
             articleUrl: item.link,
             publishedAt: item.pubDate,
             feedName: feed.name,
+            ...(_restrictedOutlet ? { contentPolicy: "summary-only", ...(_concordSummary ? { summaryBy: "concord" } : {}) } : {}),
           },
           createdAt: nowISO(),
           updatedAt: nowISO(),
@@ -61982,8 +62022,8 @@ async function pollFeeds() {
           ownerId: "system",
           title: item.title || "Feed Item",
           data: {
-            summary: (item.description || "").slice(0, 500),
-            description: item.description || "",
+            summary: _restrictedOutlet ? (_concordSummary || "") : (item.description || "").slice(0, 500),
+            ...(_restrictedOutlet ? { contentPolicy: "summary-only", ...(_concordSummary ? { summaryBy: "concord" } : {}) } : { description: item.description || "" }),
             source: feed.name || feedDomain,
             url: item.link || "",
             link: item.link || "",

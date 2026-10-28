@@ -1,5 +1,7 @@
 // @env-config-ok: feed source URLs — registry data
 import logger from '../logger.js';
+import { hostTier } from '../lib/news-outlet-policy.js';
+import { summaryForItem, queueItemForSummary } from '../lib/news-summarizer.js';
 // server/emergent/realtime-feeds.js
 // Centralized real-time data fetching service — runs on heartbeat ticks,
 // pushes data via WebSocket (realtimeEmit).
@@ -25,6 +27,22 @@ function safeFetch(url, opts = {}) {
   const t = setTimeout(() => ac.abort(), opts.timeout || FETCH_TIMEOUT);
   return fetch(url, { ...opts, signal: ac.signal })
     .finally(() => clearTimeout(t));
+}
+
+/**
+ * Outlet policy (lib/news-outlet-policy.js) for an RSS item's description text.
+ * Full-display outlets keep the (already stripped/truncated) description. Every other
+ * outlet gets Concord's own summary or "" — the outlet's text is used only as in-memory
+ * input to the summary queue and is never emitted, bridged or stored.
+ */
+function policySummary(feed, title, link, strippedDescription) {
+  if (hostTier(feed.url) === 'full') return strippedDescription;
+  try {
+    const have = summaryForItem(title, link);
+    if (have) return have;
+    if (strippedDescription) queueItemForSummary({ title, url: link, description: strippedDescription, source: feed.name });
+  } catch { /* summaries are optional */ }
+  return '';
 }
 
 function cacheGet(key, maxAgeMs = 60000) {
@@ -161,13 +179,13 @@ async function tickNewsFeeds(STATE, realtimeEmit) {
   if (cached) { realtimeEmit("news:update", cached); return; }
 
   const feeds = [
-    { name: "Reuters", url: "https://feeds.reuters.com/reuters/topNews" },
     { name: "BBC", url: "https://feeds.bbci.co.uk/news/rss.xml" },
     { name: "NPR", url: "https://feeds.npr.org/1001/rss.xml" },
   ];
 
   const articles = [];
   for (const feed of feeds) {
+    if (hostTier(feed.url) === "excluded") continue; // never fetched
     try {
       const res = await safeFetch(feed.url, { headers: { "User-Agent": "ConcordOS/1.0" } });
       if (res.ok) {
@@ -206,20 +224,24 @@ async function tickNewsFeeds(STATE, realtimeEmit) {
             if (next === stripped) break;
             stripped = next;
           }
-          const summary = stripped
+          const strippedSummary = stripped
             .replace(/[<>]/g, "")
             .replace(/&nbsp;/g, " ")
             .replace(/\s+/g, " ")
             .trim()
             .slice(0, 320);
           if (title) {
+            const cleanTitle = title.replace(/<!\[CDATA\[|\]\]>/g, "");
+            const full = hostTier(feed.url) === "full";
             articles.push({
               source: feed.name,
-              title: title.replace(/<!\[CDATA\[|\]\]>/g, ""),
+              title: cleanTitle,
               link,
               pubDate,
-              imageUrl,
-              summary,
+              // summary-only outlets: no outlet image/description, only Concord's own summary (or "")
+              imageUrl: full ? imageUrl : null,
+              summary: policySummary(feed, cleanTitle, link, strippedSummary),
+              contentPolicy: full ? "full" : "summary-only",
             });
           }
         }
@@ -467,6 +489,7 @@ async function _tickRssDomain(domain, feeds, eventName, bridgeType, realtimeEmit
 
   const articles = [];
   for (const feed of feeds) {
+    if (hostTier(feed.url) === "excluded") continue; // never fetched
     try {
       const res = await safeFetch(feed.url, { headers: { "User-Agent": "ConcordOS/1.0" } });
       if (!res.ok) continue;
@@ -504,8 +527,9 @@ async function _tickRssDomain(domain, feeds, eventName, bridgeType, realtimeEmit
           if (next === stripped) break;
           stripped = next;
         }
-        const summary = stripped.replace(/[<>]/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim().slice(0, 320);
-        if (title) articles.push({ source: feed.name, title, link, pubDate, summary });
+        const strippedSummary = stripped.replace(/[<>]/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim().slice(0, 320);
+        const summary = policySummary(feed, title, link, strippedSummary);
+        if (title) articles.push({ source: feed.name, title, link, pubDate, summary, contentPolicy: hostTier(feed.url) === "full" ? "full" : "summary-only" });
         if (articles.length >= maxTotal) break;
       }
       if (articles.length >= maxTotal) break;

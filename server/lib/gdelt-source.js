@@ -13,8 +13,9 @@
 
 import { fetchPublicUrl } from "./public-fetch.js";
 import {
-  registerSource, hasSource, get, configureFeedCache, _resetFeedCacheForTests,
+  registerSource, hasSource, get, pool, configureFeedCache, _resetFeedCacheForTests,
 } from "./feed-cache.js";
+import { getDedupKeyAndHash } from "./dedup-keys.js";
 
 export const GDELT_SOURCE_ID = "gdelt";
 
@@ -34,10 +35,15 @@ export const NEWS_CATEGORIES = Object.keys(CATEGORY_QUERIES);
 /** Shared GDELT budget: one upstream request per this many ms across ALL callers (Ramaj D1). */
 export const GDELT_BUDGET_EVERY_MS = 100_000;
 
+export const GDELT_TIMEOUT_MS = 20_000;
+
 const DEFAULTS = {
   ttlMs: 15 * 60 * 1000,
   staleMaxMs: 6 * 60 * 60 * 1000,
-  timeoutMs: 8000,
+  // GDELT live answers take ~10 s (measured 2026-10-27); 8 s aborted every request.
+  // User-facing callers (news.headlines / daily-briefing) cap their OWN wait at ~8 s and
+  // answer { reason:"warming" } while this fetch continues and fills the cache.
+  timeoutMs: GDELT_TIMEOUT_MS,
   minSpacingMs: 5000,
   everyMs: GDELT_BUDGET_EVERY_MS,
   backoffStartMs: 60 * 1000,
@@ -147,6 +153,24 @@ export async function getGdelt(key, { ttlMs, allowStale = true } = {}) {
     status: r.status, stale: !!r.stale,
     fetchedAt: iso(r.fetchedAt), lastOkAt: iso(r.fetchedAt),
     reason: degradedReason, degradedReason,
+  };
+}
+
+/**
+ * Deduped articles from the last few GDELT pulls of one key, newest pull first. Reads the
+ * cache only (never an upstream call). Used for the rotating news pool.
+ */
+export async function getGdeltPool(key) {
+  ensureSource();
+  const p = await pool(GDELT_SOURCE_ID, key, {
+    cursor: 0, limit: 100000, noFetch: true,
+    dedupeKey: (a) => getDedupKeyAndHash({ title: a?.title || "", sourceUrl: a?.url || "" }).hash,
+  });
+  return {
+    items: p.items,
+    status: p.status === "unavailable" ? "unavailable" : p.status, // "fresh" | "stale" | "unavailable"
+    fetchedAt: typeof p.fetchedAt === "number" ? new Date(p.fetchedAt).toISOString() : null,
+    lastOkAt: typeof p.lastOkAt === "number" ? new Date(p.lastOkAt).toISOString() : null,
   };
 }
 

@@ -82,7 +82,7 @@ export const REGISTRY = Object.freeze({
   markets:       { tier: TIER.REAL_LIVE, sources: ["finance-yahoo-sp500", "finance-coingecko-top10"], note: "live tickers" },
   market:        { tier: TIER.REAL_LIVE, sources: ["finance-yahoo-sp500", "finance-coingecko-top10"], note: "live tickers" },
   crypto:        { tier: TIER.REAL_LIVE, sources: ["finance-coingecko-top10"], note: "live crypto prices" },
-  news:          { tier: TIER.REAL_LIVE, sources: ["news-reuters-top", "news-bbc-world", "news-npr-top", "news-techcrunch", "news-arstechnica", "news-hackernews"], note: "live RSS aggregation" },
+  news:          { tier: TIER.REAL_LIVE, sources: ["news-bbc-world", "news-npr-top", "news-techcrunch", "news-arstechnica", "news-hackernews"], note: "live RSS aggregation" },
   sports:        { tier: TIER.REAL_LIVE, sources: ["sports-espn-top"], note: "live ESPN RSS" },
   weather:       { tier: TIER.REAL_LIVE, sources: ["weather-open-meteo-current", "weather-noaa-alerts"], note: "live weather + NOAA alerts" },
   goddess:       { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real Concordia ecosystem signals" },
