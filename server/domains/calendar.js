@@ -694,6 +694,9 @@ export default function registerCalendarActions(registerLensAction) {
     if (isValidZoneName(params.tz)) e.tz = String(params.tz);
     else if (params.tz === null) e.tz = null;
     if (Array.isArray(params.reminders)) e.reminders = params.reminders.map(r => Math.max(0, Number(r) || 0));
+    // F6: applyEventEdits used to ignore attendees entirely, so a
+    // collaborator edit silently kept the original list forever.
+    if (Array.isArray(params.attendees)) e.attendees = [...new Set(params.attendees.map(a => String(a).trim()).filter(Boolean))];
     if (params.recurrence === null) e.recurrence = null;
     else if (params.recurrence) {
       const next = normalizeRecurrence(params.recurrence);
