@@ -654,7 +654,7 @@ export default function registerCalendarActions(registerLensAction) {
         rec.overrides = { ...rec.overrides, [keyIso]: ov };
         e.recurrence = rec;
         saveCal();
-        return { ok: true, result: { event: e, scope } };
+        return { ok: true, result: { event: e, scope, occurrencesAffected: 1 } };
       }
       // "following": end the original series the moment before this occurrence,
       // and start a new series here carrying the edits.
@@ -662,6 +662,14 @@ export default function registerCalendarActions(registerLensAction) {
         // editing "following" from the very first occurrence is the whole series
       } else {
         const durationMs = new Date(e.end || e.start).getTime() - new Date(e.start).getTime();
+        // F10: a count-bounded series keeps its remaining count on the
+        // tail — dropping it turned "10 times" into an infinite series.
+        let tailCount = null;
+        if (rec.count != null) {
+          const before = expandOccurrences(e, new Date(e.start), new Date(key.getTime()))
+            .filter((o) => new Date(o.occurrenceStart).getTime() < key.getTime()).length;
+          tailCount = Math.max(0, rec.count - before);
+        }
         e.recurrence = { ...rec, count: null, until: new Date(key.getTime() - 1000).toISOString() };
         const seq = ensureSeqCal(s, userId);
         const tail = {
@@ -670,7 +678,7 @@ export default function registerCalendarActions(registerLensAction) {
           number: `EV-${String(seq.evt).padStart(6, '0')}`,
           start: keyIso,
           end: new Date(key.getTime() + durationMs).toISOString(),
-          recurrence: { ...rec, until: rec.until, count: null, exdates: rec.exdates.filter((d) => new Date(d) >= key), overrides: Object.fromEntries(Object.entries(rec.overrides).filter(([k]) => new Date(k) >= key)) },
+          recurrence: { ...rec, until: rec.until, count: tailCount, exdates: rec.exdates.filter((d) => new Date(d) >= key), overrides: Object.fromEntries(Object.entries(rec.overrides).filter(([k]) => new Date(k) >= key)) },
           createdAt: isoCal(),
         };
         seq.evt++;
@@ -706,11 +714,22 @@ export default function registerCalendarActions(registerLensAction) {
         if (prev && !Array.isArray(params.recurrence.exdates)) next.exdates = prev.exdates;
         if (prev && !params.recurrence.overrides) next.overrides = prev.overrides;
         if (!next.tz && isValidZoneName(params.tz)) next.tz = String(params.tz);
+        // A 'following' save re-sends the form's rule (which describes
+        // the pre-split series); the split's remaining count wins
+        // unless the client explicitly sets a new one.
+        if (scope === 'following' && next.count == null && prev && prev.count != null) next.count = prev.count;
         e.recurrence = next;
       }
     }
     saveCal();
-    return { ok: true, result: { event: e, scope } };
+    // F10: report how many occurrences this edit actually touched.
+    let occurrencesAffected = null;
+    if (e.recurrence) {
+      const from = new Date(e.start);
+      const horizon = new Date(from.getTime() + 10 * 365 * 86_400_000);
+      occurrencesAffected = expandOccurrences(e, from, horizon).length;
+    }
+    return { ok: true, result: { event: e, scope, occurrencesAffected } };
   }
 
   registerLensAction("calendar", "events-delete", (ctx, _a, params = {}) => {
