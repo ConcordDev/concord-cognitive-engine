@@ -2,6 +2,9 @@ import { describe, it, before, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import registerLogisticsActions from "../domains/logistics.js";
+import { __setPublicFetchTestTransport } from "../lib/public-fetch.js";
+import { configureFeedCache, _resetFeedCacheForTests } from "../lib/feed-cache.js";
+import { _resetGeoFeedForTests } from "../lib/geo-feed-sources.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -183,6 +186,13 @@ describe("logistics.rates-quote (carrier API or honest estimate)", () => {
   let prevShip;
   let prevEasy;
   beforeEach(() => {
+    // Geocoding runs through lib/geo-feed-sources (feed-cache + fetchPublicUrl):
+    // fresh cache per test, and the public-fetch transport hands off to the
+    // globalThis.fetch each test installs (no DNS, no egress).
+    _resetFeedCacheForTests();
+    _resetGeoFeedForTests();
+    configureFeedCache({ now: () => Date.now(), sleep: async () => {}, log: () => {}, logUpstream: null });
+    __setPublicFetchTestTransport((u, i) => globalThis.fetch(u, i));
     prevFetch = globalThis.fetch;
     prevShip = process.env.SHIPENGINE_API_KEY;
     prevEasy = process.env.EASYPOST_API_KEY;
@@ -190,6 +200,8 @@ describe("logistics.rates-quote (carrier API or honest estimate)", () => {
     delete process.env.EASYPOST_API_KEY;
   });
   afterEach(() => {
+    __setPublicFetchTestTransport(null);
+    _resetFeedCacheForTests();
     globalThis.fetch = prevFetch;
     if (prevShip == null) delete process.env.SHIPENGINE_API_KEY;
     else process.env.SHIPENGINE_API_KEY = prevShip;

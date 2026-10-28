@@ -12,6 +12,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { DTC_DATABASE } from "../lib/automotive-dtc.js";
+import { nominatimSearch } from "../lib/geo-feed-sources.js";
 import { needNums, notComputed } from "../lib/lens-inputs.js";
 
 const NHTSA_API_BASE = "https://vpic.nhtsa.dot.gov/api/vehicles";
@@ -1365,10 +1366,9 @@ export default function registerAutomotiveActions(registerLensAction) {
     const query = String(params.query || params.address || "").trim();
     if (!query) return { ok: false, error: "query (address or place) required" };
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(query)}`;
-      const r = await fetch(url, { headers: { 'User-Agent': 'concord-cognitive-engine/automotive-lens' } });
-      if (!r.ok) throw new Error(`nominatim ${r.status}`);
-      const data = await r.json();
+      const geo = await nominatimSearch(query, { limit: 5 });
+      if (!geo.ok) throw new Error(geo.error);
+      const data = geo.data;
       const matches = (Array.isArray(data) ? data : []).map(m => ({
         displayName: m.display_name,
         lat: Number(m.lat),

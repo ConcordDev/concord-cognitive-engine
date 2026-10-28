@@ -14,6 +14,8 @@
 // Each macro returns { ok, source, fetchedAt, ...data } or
 // { ok:false, reason }. Real data, real attribution.
 
+import { nominatimSearch } from "../lib/geo-feed-sources.js";
+
 const FETCH_TIMEOUT_MS = 8000;
 
 async function fetchJsonWithTimeout(url, opts = {}, timeoutMs = FETCH_TIMEOUT_MS) {
@@ -118,11 +120,10 @@ export default function registerFreeApiLiveMacros(register) {
     if (!q) return { ok: false, reason: "missing_query" };
     if (q.length > 200) return { ok: false, reason: "query_too_long" };
     const limit = Math.min(Math.max(Number(input.limit) || 5, 1), 20);
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=${limit}&addressdetails=1`;
     try {
-      const data = await fetchJsonWithTimeout(url, {
-        headers: { "User-Agent": "ConcordOS/5.0 (atlas-lens)" },
-      });
+      const geo = await nominatimSearch(q, { limit });
+      if (!geo.ok) return { ok: false, status: "unavailable", reason: geo.reason, lastOkAt: geo.lastOkAt, error: geo.error };
+      const data = geo.data;
       const results = (Array.isArray(data) ? data : []).map(r => ({
         placeId: r.place_id,
         displayName: r.display_name,

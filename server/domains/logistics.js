@@ -5,6 +5,10 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
 import { measuredPercent } from "../lib/measured-rate.js";
+import { nominatimSearch } from "../lib/geo-feed-sources.js";
+
+// route-optimize geocodes one stop per Nominatim request (1 req/s app-wide).
+const MAX_GEOCODED_STOPS = 10;
 export default function registerLogisticsActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -652,15 +656,19 @@ export default function registerLogisticsActions(registerLensAction) {
     // free no key, 1 req/sec courtesy limit) for each address.
     let coords = Array.isArray(params.coords) ? params.coords : null;
     if (!coords) {
+      // Nominatim allows 1 req/s app-wide, so geocoding is capped per call
+      // (checked before any fetch). Callers with more stops pass params.coords.
+      if (stops.length > MAX_GEOCODED_STOPS) {
+        return { ok: false, status: 400, error: `too many stops to geocode: ${stops.length} > ${MAX_GEOCODED_STOPS} — pass params.coords=[{lat,lng}...] to route more stops` };
+      }
       coords = [];
       try {
         for (const addr of stops) {
-          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&limit=1`;
-          const r = await fetch(url, { headers: { "User-Agent": "Concord-OS/1.0 (logistics-route-optimize)" } });
-          if (!r.ok) throw new Error(`nominatim ${r.status}`);
-          const data = await r.json();
-          if (!data?.[0]) throw new Error(`address not found: ${addr}`);
-          coords.push({ lat: Number(data[0].lat), lng: Number(data[0].lon) });
+          const geo = await nominatimSearch(addr, { limit: 1 });
+          if (!geo.ok) throw new Error(geo.error);
+          const hit = geo.data[0];
+          if (!hit) throw new Error(`address not found: ${addr}`);
+          coords.push({ lat: Number(hit.lat), lng: Number(hit.lon) });
         }
       } catch (e) {
         return { ok: false, error: `geocoding unreachable: ${e instanceof Error ? e.message : String(e)} — pass params.coords=[{lat,lng}...] to bypass geocoding` };
@@ -1045,12 +1053,10 @@ export default function registerLogisticsActions(registerLensAction) {
   // Same Nominatim lookup route-optimize uses. Miles are straight-line
   // between the two geocoded points, not a driving route and not a price.
   async function geocodeAddress(addr) {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&limit=1`;
-    const r = await fetch(url, { headers: { "User-Agent": "Concord-OS/1.0 (logistics-rates-quote)" } });
-    if (!r.ok) throw new Error(`nominatim ${r.status}`);
-    const data = await r.json();
-    const lat = Number(data?.[0]?.lat);
-    const lng = Number(data?.[0]?.lon);
+    const geo = await nominatimSearch(addr, { limit: 1 });
+    if (!geo.ok) throw new Error(geo.error);
+    const lat = Number(geo.data[0]?.lat);
+    const lng = Number(geo.data[0]?.lon);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error(`address not found: ${addr}`);
     return { lat, lng };
   }
