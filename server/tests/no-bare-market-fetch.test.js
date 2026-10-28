@@ -54,7 +54,7 @@ test("the market upstream hosts appear only in lib/market-feed-sources.js", () =
 
 test("the helper itself names every host, and fetches only through fetchPublicUrl", () => {
   const code = stripComments(fs.readFileSync(path.join(serverRoot, HELPER), "utf8"));
-  for (const host of HOSTS.filter((h) => !/query2|frankfurter\.dev/.test(h))) assert.ok(code.includes(host), host);
+  for (const host of HOSTS.filter((h) => !/query2|frankfurter\.app/.test(h))) assert.ok(code.includes(host), host);
   assert.match(code, /fetchPublicUrl\(/);
   assert.doesNotMatch(code, /(?<![\w.])fetch\(/, "no bare fetch() in the market helper");
   assert.doesNotMatch(code, /globalThis\.fetch/);

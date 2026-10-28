@@ -17,7 +17,7 @@
 // why "consistent with a cartel" is not proof of intent).
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
-import { getYahooQuotes, getYahooChart } from "../lib/market-feed-sources.js";
+import { getYahooQuotes, getYahooChart, getFrankfurterLatest, FRANKFURTER_ATTRIBUTION, FRANKFURTER_ATTRIBUTION_URL } from "../lib/market-feed-sources.js";
 import { mixedNashEquilibria } from "../lib/game-theory/mixed-nash.js";
 import { replicatorDynamics } from "../lib/game-theory/replicator.js";
 import { analyzeMarketEquilibrium } from "../lib/game-theory/market-equilibrium.js";
@@ -106,8 +106,8 @@ const FX_MAJORS = [
 
 // Note: prior versions of this file held a `FX_SAMPLE_MID` table with
 // hardcoded mid-prices. Per the "everything must be real" directive, that
-// table has been removed — `forex-quotes` now pulls live mid+bid+ask from
-// Yahoo Finance (free, server-side fetch, no key required).
+// table has been removed — `forex-quotes` now derives live mids from the
+// ECB reference rates via Frankfurter (free, no key; Yahoo v7 answers 401).
 
 // ──────────────────────────────────────────────────────────────
 // Registration
@@ -257,34 +257,31 @@ export default function registerMarketsActions(registerLensAction) {
     return { ok: true, result: { contracts, count: contracts.length, source: "yahoo-finance" } };
   });
 
-  // ── Forex pairs grid (Yahoo Finance, real bid/ask) ──
+  // ── Forex pairs grid (ECB reference rates via Frankfurter, feed-cached) ──
+  //
+  // Yahoo's v7 quote endpoint answers 401 to unauthenticated callers, so the
+  // grid runs on the free, no-key ECB feed instead (#1668's fx-frankfurter
+  // source). The ECB publishes reference MIDS only: bid/ask/spread are null
+  // and change is null — no spread or move is ever invented. Stock quotes
+  // stay on Yahoo (yahoo-quote / yahoo-chart are untouched).
 
   registerLensAction("markets", "forex-quotes", async (_ctx, _artifact, params = {}) => {
     const pairs = Array.isArray(params.pairs) && params.pairs.length > 0
       ? params.pairs.map((p) => String(p).toUpperCase())
       : FX_MAJORS.map((m) => m.pair);
-    // Yahoo uses e.g. EURUSD=X
-    const yahooSymbols = pairs.map((p) => `${p}=X`);
-    let quotes;
-    try {
-      quotes = await fetchYahooQuotes(yahooSymbols);
-    } catch (e) {
-      return { ok: false, error: `forex quote fetch failed: ${e?.message || "network"}` };
-    }
-    const byYahoo = new Map(quotes.map((q) => [q.symbol, q]));
-    const result = pairs.map((p) => {
-      const meta = FX_MAJORS.find((m) => m.pair === p);
-      if (!meta) return null;
-      const q = byYahoo.get(`${p}=X`);
-      if (!q || q.regularMarketPrice == null) return null;
-      const mid = q.regularMarketPrice;
-      // Only a real quoted bid/ask is reported; no spread is invented when Yahoo omits it.
-      const hasRealBidAsk = q.bid != null && q.ask != null && q.ask > q.bid;
-      const dp = p.includes("JPY") ? 3 : 5;
-      const bid = hasRealBidAsk ? round(q.bid, dp) : null;
-      const ask = hasRealBidAsk ? round(q.ask, dp) : null;
-      const spread = hasRealBidAsk ? round(q.ask - q.bid, dp) : null;
-      const spreadPips = hasRealBidAsk ? round((q.ask - q.bid) / meta.pip, 2) : null;
+    const wanted = pairs.map((p) => FX_MAJORS.find((m) => m.pair === p)).filter(Boolean);
+    if (wanted.length === 0) return { ok: true, result: { quotes: [], count: 0, source: "ecb-frankfurter" } };
+    // One USD-based fetch covers every major: rates[c] = units of c per 1 USD.
+    const symbols = [...new Set(wanted.flatMap((m) => [m.pair.slice(0, 3), m.pair.slice(3)]))].filter((c) => c !== "USD");
+    const r = await getFrankfurterLatest({ base: "USD", symbols });
+    if (!r.ok) return { ok: false, status: "unavailable", reason: r.reason, lastOkAt: r.lastOkAt ?? null };
+    const rates = { USD: 1, ...(r.data?.rates || {}) };
+    const result = wanted.map((meta) => {
+      const p = meta.pair;
+      const perUsdBase = rates[p.slice(0, 3)];
+      const perUsdQuote = rates[p.slice(3)];
+      if (!perUsdBase || !perUsdQuote) return null;
+      const mid = perUsdQuote / perUsdBase;
       const pipValue = p.endsWith("USD")
         ? meta.pip * 100_000
         : Math.round(meta.pip * 100_000 / mid * 100) / 100;
@@ -292,14 +289,25 @@ export default function registerMarketsActions(registerLensAction) {
         pair: p,
         name: meta.name,
         mid: round(mid, p.includes("JPY") ? 3 : 5),
-        bid, ask, spread, spreadPips,
+        bid: null, ask: null, spread: null, spreadPips: null,
         pipValue,
-        change: round(q.regularMarketChange ?? 0, p.includes("JPY") ? 3 : 5),
-        changePercent: round(q.regularMarketChangePercent ?? 0, 3),
-        bidAskSource: hasRealBidAsk ? "yahoo-real" : "unavailable",
+        change: null,
+        changePercent: null,
+        bidAskSource: "unavailable",
       };
     }).filter(Boolean);
-    return { ok: true, result: { quotes: result, count: result.length, source: "yahoo-finance" } };
+    return {
+      ok: true,
+      result: {
+        quotes: result,
+        count: result.length,
+        source: "ecb-frankfurter",
+        asOf: r.data?.date || null,
+        attribution: { text: FRANKFURTER_ATTRIBUTION, url: FRANKFURTER_ATTRIBUTION_URL },
+        ...(r.stale ? { stale: true } : {}),
+        ...(r.fetchedAt ? { fetchedAt: r.fetchedAt } : {}),
+      },
+    };
   });
 
   // ── Depth of book (real best bid/ask from Yahoo — single level) ──

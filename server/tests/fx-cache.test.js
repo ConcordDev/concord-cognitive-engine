@@ -68,7 +68,7 @@ test("finance.feed keeps its DTU source + public fields, and a second run is a c
   assert.equal(b.result.ingested, 0);
   assert.equal(b.result.skipped, 3);
   assert.equal(calls.length, 1, "ECB rates are cached for an hour");
-  assert.equal(calls[0].url, "https://api.frankfurter.app/latest?from=USD");
+  assert.equal(calls[0].url, "https://api.frankfurter.dev/v1/latest?from=USD");
 });
 
 test("finance.feed: upstream down is an honest error, nothing is ingested", async () => {
@@ -85,7 +85,7 @@ test("Frankfurter key sorts/validates symbols; ttl 1 h, stale up to 2 d", async 
   await getFrankfurterLatest({ base: "usd", symbols: ["gbp", "eur"] });
   await getFrankfurterLatest({ base: "USD", symbols: ["EUR", "GBP", "eur"] });
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].url, "https://api.frankfurter.app/latest?from=USD&to=EUR,GBP");
+  assert.equal(calls[0].url, "https://api.frankfurter.dev/v1/latest?from=USD&to=EUR,GBP");
   const bad = await getFrankfurterLatest({ base: "US", symbols: [] });
   assert.equal(bad.ok, false);
   assert.equal(bad.reason, "invalid_currency");

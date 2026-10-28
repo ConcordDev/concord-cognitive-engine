@@ -7,6 +7,7 @@ import {
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { SkeletonTableRows } from '@/components/ui';
+import { DataAttribution } from '@/components/common/DataAttribution';
 import PredictionDepthPanel from '@/components/markets/PredictionDepthPanel';
 
 export interface OptionsRow {
@@ -248,13 +249,16 @@ function FuturesTab() {
 
 function ForexTab() {
   const [quotes, setQuotes] = useState<ForexQuote[]>([]);
+  const [fxMeta, setFxMeta] = useState<{ asOf: string | null; stale: boolean }>({ asOf: null, stale: false });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
         const r = await api.post('/api/lens/run', { domain: 'markets', action: 'forex-quotes', input: {} });
-        setQuotes(((r.data as { result?: { quotes?: ForexQuote[] } }).result?.quotes) || []);
+        const result = (r.data as { result?: { quotes?: ForexQuote[]; asOf?: string | null; stale?: boolean } }).result;
+        setQuotes(result?.quotes || []);
+        setFxMeta({ asOf: result?.asOf || null, stale: !!result?.stale });
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
     })();
@@ -263,7 +267,7 @@ function ForexTab() {
   if (loading) return (
     <div className="p-3">
       <div className="border border-white/10 rounded overflow-hidden">
-        <SkeletonTableRows rows={6} columns={5} />
+        <SkeletonTableRows rows={6} columns={6} />
       </div>
     </div>
   );
@@ -273,12 +277,13 @@ function ForexTab() {
       <div className="border border-white/10 rounded overflow-hidden">
         <table className="w-full text-xs">
           <thead className="bg-black/40 text-gray-400 uppercase text-[10px]">
-            <tr><th className="text-left px-2 py-1">Pair</th><th className="text-right px-2 py-1">Bid</th><th className="text-right px-2 py-1">Ask</th><th className="text-right px-2 py-1">Spread</th><th className="text-right px-2 py-1">Pip value</th></tr>
+            <tr><th className="text-left px-2 py-1">Pair</th><th className="text-right px-2 py-1">Mid</th><th className="text-right px-2 py-1">Bid</th><th className="text-right px-2 py-1">Ask</th><th className="text-right px-2 py-1">Spread</th><th className="text-right px-2 py-1">Pip value</th></tr>
           </thead>
           <tbody>
             {quotes.map((q) => (
               <tr key={q.pair} className="border-t border-white/5">
                 <td className="px-2 py-1 font-mono text-cyan-300">{q.pair}<p className="text-[9px] text-gray-400 font-sans">{q.name}</p></td>
+                <td className="px-2 py-1 text-right font-mono tabular-nums text-gray-100">{q.mid ?? '—'}</td>
                 <td className="px-2 py-1 text-right font-mono tabular-nums text-gray-100" title={q.bid == null ? `No quoted bid; mid ${q.mid ?? '—'}` : undefined}>{q.bid ?? '—'}</td>
                 <td className="px-2 py-1 text-right font-mono tabular-nums text-gray-100" title={q.ask == null ? `No quoted ask; mid ${q.mid ?? '—'}` : undefined}>{q.ask ?? '—'}</td>
                 <td className="px-2 py-1 text-right text-gray-400">{q.spreadPips != null ? `${q.spreadPips}p` : 'n/a'}</td>
@@ -287,6 +292,13 @@ function ForexTab() {
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="mt-2 flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] text-gray-500">
+          ECB reference rate{fxMeta.asOf ? `, as of ${fxMeta.asOf}` : ''} — mid only, no quoted bid/ask.
+          {fxMeta.stale && <span className="text-amber-400/80"> Cached copy — live source unavailable.</span>}
+        </span>
+        <DataAttribution provider="frankfurter" />
       </div>
     </div>
   );
