@@ -26851,11 +26851,17 @@ register("dtu", "create", async (ctx, input) => {
   // knowledge: it keeps the personal-save bar instead of the public-promotion
   // bar, which every feed item (academic score 0) would fail.
   const _publicFeedItem = isPublicFeedSource(source) && dtu.visibility === "public" && !!currentFeedIngest();
+  // Phase 9a auto-source citations are the same kind of reference record
+  // (title + URL + short excerpt, built server-side by lib/auto-source.js) and
+  // fail the public-promotion bar the same way. Only inside the server-only
+  // auto-source ingest scope; a caller cannot open that scope or fake it.
+  const _autoSourceCitation = source === "auto-source" && dtu.visibility === "public" && currentFeedIngest()?.domain === "research" && currentFeedIngest()?.action === "auto-source";
   const gate = councilGate(dtu, {
     allowRewrite,
     userInitiated: isUserInitiated,
     promotePublic: _promotePublic,
     ...(_publicFeedItem ? { minScore: 1 } : {}),
+    ...(_autoSourceCitation ? { minScore: 1 } : {}),
     contentClass: dtu.contentClass,
     skipCouncilGate: input.skipCouncilGate === true && (actorRole === "owner" || actorRole === "founder" || ctx?.actor?.internal),
   });
@@ -26896,7 +26902,7 @@ register("dtu", "create", async (ctx, input) => {
     dtu.meta.skipAutoTag = true;
   }
 
-  const _commit = await pipelineCommitDTU(ctx, dtu, { op: 'dtu.create', allowRewrite: true, userInitiated: isUserInitiated, promotePublic: typeof _promotePublic !== 'undefined' && _promotePublic, contentClass: dtu.contentClass, ...(_publicFeedItem ? { minScore: 1 } : {}) });
+  const _commit = await pipelineCommitDTU(ctx, dtu, { op: 'dtu.create', allowRewrite: true, userInitiated: isUserInitiated, promotePublic: typeof _promotePublic !== 'undefined' && _promotePublic, contentClass: dtu.contentClass, ...(_publicFeedItem ? { minScore: 1 } : {}), ...(_autoSourceCitation ? { minScore: 1 } : {}) });
   if (!_commit || _commit.ok === false) {
     ctx.log("dtu.create.reject", `DTU not committed: ${title}`, { id: dtu.id, reason: _commit?.error });
     return {
