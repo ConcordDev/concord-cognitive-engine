@@ -89,49 +89,42 @@ describe("markets — futures board (Yahoo Finance live)", () => {
   });
 });
 
-describe("markets — forex quotes (Yahoo Finance live)", () => {
-  it("builds correct shape from mocked Yahoo response", async () => {
-    globalThis.fetch = async (url) => {
-      assert.match(url, /EURUSD%3DX/);
-      return {
-        ok: true,
-        json: async () => ({
-          quoteResponse: {
-            result: [
-              { symbol: "EURUSD=X", regularMarketPrice: 1.0875, bid: 1.0874, ask: 1.0876, regularMarketChange: 0.0003, regularMarketChangePercent: 0.028 },
-            ],
-          },
-        }),
-      };
-    };
+describe("markets — forex quotes (ECB via Frankfurter)", () => {
+  // Yahoo v7 answers 401 unauthenticated, so the grid derives mids from the
+  // ECB reference rates (one USD-based Frankfurter fetch). ECB publishes
+  // mids only: bid/ask/spread/change stay null, never invented.
+  const ecb = (rates) => async (url) => {
+    assert.match(String(url), /frankfurter\.dev/);
+    return { ok: true, json: async () => ({ amount: 1, base: "USD", date: "2026-10-27", rates }) };
+  };
+
+  it("builds correct shape from a mocked Frankfurter response", async () => {
+    globalThis.fetch = ecb({ EUR: 0.92 });
     const r = await call("forex-quotes", ctxA, { pairs: ["EURUSD"] });
     assert.equal(r.ok, true);
-    assert.equal(r.result.source, "yahoo-finance");
-    assert.equal(r.result.quotes[0].mid, 1.0875);
-    assert.equal(r.result.quotes[0].bidAskSource, "yahoo-real");
+    assert.equal(r.result.source, "ecb-frankfurter");
+    assert.equal(r.result.asOf, "2026-10-27");
+    assert.equal(r.result.attribution.text, "Rates: European Central Bank via Frankfurter");
+    assert.equal(r.result.quotes[0].mid, 1.08696); // 1 / 0.92
+    assert.equal(r.result.quotes[0].bidAskSource, "unavailable");
   });
 
-  it("USDJPY pip is 0.01 not 0.0001 (rates in tens/hundreds)", async () => {
-    globalThis.fetch = async () => ({
-      ok: true,
-      json: async () => ({
-        quoteResponse: { result: [{ symbol: "USDJPY=X", regularMarketPrice: 149.85, bid: 149.83, ask: 149.87 }] },
-      }),
-    });
+  it("USDJPY mid comes straight from the USD table (rates in tens/hundreds)", async () => {
+    globalThis.fetch = ecb({ JPY: 150.5 });
     const r = await call("forex-quotes", ctxA, { pairs: ["USDJPY"] });
-    assert.ok(r.result.quotes[0].bid > 1);
+    assert.equal(r.result.quotes[0].mid, 150.5);
+    assert.equal(r.result.quotes[0].pipValue, 6.64); // 0.01 pip on a 150.5 rate
   });
 
-  it("does not invent a bid/ask spread when Yahoo omits it", async () => {
-    globalThis.fetch = async () => ({
-      ok: true,
-      json: async () => ({ quoteResponse: { result: [{ symbol: "EURUSD=X", regularMarketPrice: 1.0875 }] } }),
-    });
+  it("never invents a bid/ask spread or a change from a reference mid", async () => {
+    globalThis.fetch = ecb({ EUR: 0.92 });
     const q = (await call("forex-quotes", ctxA, { pairs: ["EURUSD"] })).result.quotes[0];
-    assert.equal(q.mid, 1.0875);
+    assert.equal(q.mid, 1.08696);
     assert.equal(q.bid, null);
     assert.equal(q.ask, null);
+    assert.equal(q.spread, null);
     assert.equal(q.spreadPips, null);
+    assert.equal(q.change, null);
     assert.equal(q.bidAskSource, "unavailable");
   });
 });
