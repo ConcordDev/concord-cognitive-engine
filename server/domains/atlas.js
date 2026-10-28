@@ -14,6 +14,7 @@ function osmFetch(url, init = {}) {
 
 import { nominatimSearch, nominatimReverse, osmUserAgent } from "../lib/geo-feed-sources.js";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
+import { boundedNum, badNumber } from "../lib/finite-input.js";
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
@@ -612,12 +613,26 @@ export default function registerAtlasActions(registerLensAction) {
    * nominatim-reverse — Reverse geocode lat/lng → address.
    */
   registerLensAction("atlas", "nominatim-reverse", async (_ctx, _artifact, params = {}) => {
-    const lat = Number(params.latitude);
-    const lng = Number(params.longitude);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok: false, error: "latitude + longitude required" };
+    // Bad coordinates are an INPUT error (HTTP 400), not a geocoder outage:
+    // validate before any fetch and never wrap them as "unreachable".
+    if (params.latitude === undefined || params.latitude === null || params.latitude === "") {
+      return { ok: false, error: "invalid_input", field: "latitude", reason: "required", message: "latitude is required" };
+    }
+    if (params.longitude === undefined || params.longitude === null || params.longitude === "") {
+      return { ok: false, error: "invalid_input", field: "longitude", reason: "required", message: "longitude is required" };
+    }
+    const lat = boundedNum(params.latitude, { min: -90, max: 90 });
+    if (lat === null) return badNumber("latitude", "must be between -90 and 90");
+    const lng = boundedNum(params.longitude, { min: -180, max: 180 });
+    if (lng === null) return badNumber("longitude", "must be between -180 and 180");
     try {
       const geo = await nominatimReverse(lat, lng);
-      if (!geo.ok) return { ok: false, status: "unavailable", reason: geo.reason, lastOkAt: geo.lastOkAt, error: `nominatim unreachable: ${geo.error}` };
+      if (!geo.ok) {
+        // Backstop: the geo source's own range refusal is still an input
+        // error, never an upstream outage.
+        if (geo.reason === "bad_coordinates") return badNumber("latitude", "must be between -90 and 90");
+        return { ok: false, status: "unavailable", reason: geo.reason, lastOkAt: geo.lastOkAt, error: `nominatim unreachable: ${geo.error}` };
+      }
       const p = geo.data || {};
       if (p.error) return { ok: false, error: `nominatim: ${p.error}` };
       return {
