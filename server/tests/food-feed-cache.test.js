@@ -30,7 +30,9 @@ test("food.feed: one upstream call per category; page_size is fixed at 24 and li
   const r1 = await feed(macroCtx(), null, { limit: 5 });
   assert.equal(r1.ok, true);
   assert.equal(kit.calls.length, 1);
-  assert.match(kit.calls[0].url, new RegExp(`/category/${currentCat()}\\.json\\?page_size=24&`));
+  assert.match(kit.calls[0].url, /^https:\/\/search\.openfoodfacts\.org\/search\?/);
+  assert.ok(decodeURIComponent(kit.calls[0].url).includes(`categories_tags:"en:${currentCat()}"`));
+  assert.match(kit.calls[0].url, /page_size=24&/);
   assert.ok(!/page_size=5/.test(kit.calls[0].url));
   assert.equal(r1.result.ingested, 5);
 

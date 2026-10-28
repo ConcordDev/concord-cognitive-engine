@@ -17,18 +17,16 @@ beforeEach(async () => {
 });
 afterEach(() => teardownFoodFeedTest());
 
-test("off-product-search uses legacy cgi/search.pl (real full-text), never v2 /search", async () => {
+test("off-product-search uses Search-a-licious full-text search, never cgi/search.pl or v2 /search", async () => {
   const r = await actions.get("household.off-product-search")(ctx, null, { query: "Sourdough", pageSize: 12 });
   assert.equal(r.ok, true);
   assert.equal(kit.calls.length, 1);
   const u = kit.calls[0].url;
-  assert.match(u, /^https:\/\/world\.openfoodfacts\.org\/cgi\/search\.pl\?/);
-  assert.match(u, /search_terms=sourdough/);
-  assert.match(u, /search_simple=1/);
-  assert.match(u, /action=process/);
-  assert.match(u, /json=1/);
+  assert.match(u, /^https:\/\/search\.openfoodfacts\.org\/search\?/);
+  assert.match(u, /[?&]q=sourdough(&|$)/);
   assert.match(u, /page_size=12/);
   assert.ok(!/\/api\/v2\/search/.test(u));
+  assert.ok(!/cgi\/search\.pl/.test(u));
 });
 
 test("off-product-search keeps the BarcodeLookup result shape and adds freshness", async () => {
@@ -93,4 +91,13 @@ test("upstream failure => honest unavailable, nothing invented", async () => {
 test("no bare fetch in household.js", async () => {
   await actions.get("household.off-product-search")(ctx, null, { query: "tea" });
   assert.deepEqual(kit.bareFetch, []);
+});
+
+test("Search-a-licious hits (brands as an array) map to the same result shape", async () => {
+  kit = setupFoodFeedTest(() => res({ count: 7, hits: [{ code: "333", product_name: "Rye", brands: ["Acme", "Mill"], nutriscore_grade: "b" }] }));
+  const r = await actions.get("household.off-product-search")(ctx, null, { query: "rye" });
+  assert.equal(r.ok, true);
+  assert.equal(r.result.totalResults, 7);
+  assert.equal(r.result.products[0].barcode, "333");
+  assert.equal(r.result.products[0].brand, "Acme, Mill");
 });
