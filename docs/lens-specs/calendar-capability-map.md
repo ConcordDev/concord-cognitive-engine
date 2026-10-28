@@ -1,5 +1,43 @@
 # Calendar Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **Re-verification (HANDOFF-3 batch L7, 2026-10-28, against main e9791d4d):**
+> The Wave-3 audit below is kept as history. Current truth:
+>
+> - **53 macros now** (was 51). Fresh surfacing scan: 52 of 53 are named
+>   in the frontend. The one unsurfaced is `expandRecurring`, a tier-A
+>   scratch-pad calculator that was never wired — its job (recurrence
+>   expansion) is performed server-side inside `events-list` via
+>   `expandOccurrences`, and the other three tier-A calculators are
+>   surfaced in `ScheduleAnalyzer`/`CalendarActionPanel`. Honest
+>   relabel: a redundant scratch tool, not a missing feature.
+> - **INC-84 — fixed separately in PR #1712**
+>   (`fix/calendar-event-end-after-start`): `events-create` accepted a
+>   caller-supplied end before the start verbatim, and `events-update`
+>   applied start/end edits with no ordering check. All three write
+>   paths (create, `applyEventEdits`, "this"-scope overrides) now
+>   reject `end must be after start` violations (all-day events may end
+>   at their start instant), with a new 7-case suite
+>   (`calendar-event-range.test.js`, 106/106 across the calendar suites
+>   locally).
+> - Wave-3's five wirings (calendars-delete, dashboard tab,
+>   conflicts/availability tab, push-event form) and the page structure
+>   it produced are intact: `page.tsx` is a 129-line view shell (grid
+>   first, per northstar 08; the parity surfaces are one "More" pick
+>   away). The documented seam — the main grid persists through generic
+>   artifact CRUD while `GCalSection` uses the STATE engine — still
+>   stands as the named future unification, unchanged.
+> - **Shipped in this batch:** the concept's serif headline — "Your
+>   week, {username}" — as the grid workbench's header
+>   (`data-testid="calendar-greeting"`; the period label already serves
+>   as the concept's "October 2026" sub-line), with
+>   `tests/calendar-greeting.test.tsx`.
+> - Server suites run locally this pass: calendar-domain-parity,
+>   calendar-lens-macros, calendar-recurrence-scopes — all pass (122
+>   across the combined calendar+goals run; the one failure was
+>   `agent-goals.test.js` failing to load on this sandbox's missing
+>   `better-sqlite3`, Mac-run).
+
+
 > Derived, not asserted. Every macro below was enumerated by reading
 > `server/domains/calendar.js` (1554 LOC) in full — the entire backend
 > surface for this lens (no inline registrations elsewhere; confirmed via

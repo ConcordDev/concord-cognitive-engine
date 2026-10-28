@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -310,6 +311,7 @@ function toBackendEventParams(ev: CalendarEvent): Record<string, unknown> {
 // ---------------------------------------------------------------------------
 
 export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode } = {}) {
+  const { user } = useAuth();
 
   // State
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -1563,7 +1565,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
       {/* Header — name heading, period label, quiet view switch */}
       <header className="flex items-end justify-between gap-4 px-8 pt-4 pb-5">
         <div className="min-w-0">
-          <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">Calendar</h1>
+          <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100" data-testid="calendar-greeting">Your week{user?.username ? `, ${user.username}` : ''}</h1>
           <div className="mt-1 flex items-center gap-1 text-[15px] text-zinc-400">
             <button
               type="button"
