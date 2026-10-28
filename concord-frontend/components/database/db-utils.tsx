@@ -3,6 +3,19 @@
 import { CheckCircle, AlertCircle, XCircle } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+/**
+ * Mirrors server/lib/db-console.js DB_ADMIN_ROLES: /api/db/migrate and
+ * /api/db/sync are admin-only on the server (401 anon, 403 non-admin).
+ * The UI hides those actions for non-admins instead of letting a click
+ * fail with a misleading "session expired" toast. The server stays the
+ * real gate; this only controls what is rendered.
+ */
+export const DB_ADMIN_ROLES = ['owner', 'admin', 'founder', 'sovereign'] as const;
+
+export function canUseDbAdmin(user: { role?: string } | null | undefined): boolean {
+  return !!user?.role && (DB_ADMIN_ROLES as readonly string[]).includes(user.role);
+}
+
 export interface TableInfo {
   name: string;
   schema: string;
