@@ -49,6 +49,7 @@ import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-ta
 import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
 import { humanMacroAclDenial } from "./lib/macro-acl-human-gate.js";
 import { forumModDenial } from "./lib/forum-mod-gate.js";
+import { personaCreateDenial, personaModifyDenial, personaListVisible, personaPromptVisible, personaRosterPutDenial } from "./lib/persona-legacy-gate.js";
 import { lensUpdateDenial } from "./lib/lens-update-gate.js";
 import { applyBallot, findCommentInTree, countCommentTree, appendCommentTree, applyAward, toggleSavedBy } from "./lib/forum-interactions.js";
 import { marketplaceOwnerDenial, marketplaceBuyDenial } from "./lib/marketplace-action-gate.js";
@@ -45924,6 +45925,11 @@ register("council", "proposePromotion", (ctx, input = {}) => {
 if (!STATE.customPersonas) STATE.customPersonas = new Map();
 
 register("persona", "create", (ctx, input) => {
+  // SECURITY: a real signed-in user is required and becomes the
+  // persona's owner (lib/persona-legacy-gate.js). The personas.*
+  // alias copies this fn, so the guard covers both names.
+  const createDenial = personaCreateDenial(ctx);
+  if (createDenial) return createDenial;
   const { name, description, style, traits } = input;
   if (!name) return { ok: false, error: "Persona name required" };
 
@@ -45940,6 +45946,7 @@ register("persona", "create", (ctx, input) => {
     },
     traits: Array.isArray(traits) ? traits : [],
     systemPrompt: input.systemPrompt || "",
+    ownerId: ctx?.actor?.userId || ctx?.actor?.id || null,
     createdAt: nowISO(),
     updatedAt: nowISO(),
     usageCount: 0
@@ -45955,20 +45962,27 @@ register("persona", "create", (ctx, input) => {
 // line ~20086 (which used ctx.state.personas instead of
 // STATE.customPersonas). The earlier registration is dead through the
 // dispatcher but its function still runs for any direct callers.
-register("persona", "list", (_ctx, _input) => {
+register("persona", "list", (ctx, _input) => {
   const builtIn = [
     { id: "ethicist", name: "Ethicist", description: "Focuses on moral implications", builtin: true },
     { id: "engineer", name: "Engineer", description: "Practical, implementation-focused", builtin: true },
     { id: "historian", name: "Historian", description: "Historical context and precedent", builtin: true },
     { id: "economist", name: "Economist", description: "Economic analysis and trade-offs", builtin: true }
   ];
-  const custom = Array.from(STATE.customPersonas.values());
+  // SECURITY: members see the built-ins + their OWN custom personas
+  // only (admin/internal see all) — this list used to return every
+  // user's personas including their systemPrompt (persona-legacy-gate.js).
+  const custom = Array.from(STATE.customPersonas.values()).filter((p) => personaListVisible(ctx, p));
   return { ok: true, personas: [...builtIn, ...custom], builtInCount: builtIn.length, customCount: custom.length };
 }, { note: "intentional_shadow_ok" });
 
 register("persona", "update", (ctx, input) => {
   const persona = STATE.customPersonas.get(input.id);
   if (!persona) return { ok: false, error: "Persona not found" };
+  // SECURITY: owner, admin-class or internal only; legacy ownerless
+  // personas are admin-only (persona-legacy-gate.js).
+  const updateDenial = personaModifyDenial(ctx, persona);
+  if (updateDenial) return updateDenial;
 
   if (input.name) persona.name = normalizeText(input.name);
   if (input.description) persona.description = input.description;
@@ -45984,7 +45998,11 @@ register("persona", "update", (ctx, input) => {
 });
 
 register("persona", "delete", (ctx, input) => {
-  if (!STATE.customPersonas.has(input.id)) return { ok: false, error: "Persona not found" };
+  const persona = STATE.customPersonas.get(input.id);
+  if (!persona) return { ok: false, error: "Persona not found" };
+  // SECURITY: same ownership rule as update (persona-legacy-gate.js).
+  const deleteDenial = personaModifyDenial(ctx, persona);
+  if (deleteDenial) return deleteDenial;
   STATE.customPersonas.delete(input.id);
   saveStateDebounced();
   return { ok: true, deleted: input.id };
@@ -46018,6 +46036,12 @@ register("personas", "get", (ctx, input = {}) => {
   if (!id) return { ok: false, error: "missing_id" };
   const p = STATE.customPersonas.get(id);
   if (!p) return { ok: false, error: "persona_not_found" };
+  // SECURITY: same store, same rule as persona.list — another user's
+  // systemPrompt is never returned (persona-legacy-gate.js, Fix 9).
+  if (!personaPromptVisible(ctx, p)) {
+    const { systemPrompt: _omitted, ...rest } = p;
+    return { ok: true, persona: rest };
+  }
   return { ok: true, persona: p };
 }, { note: "Z4 thin wrapper" });
 
@@ -73504,6 +73528,13 @@ app.post("/api/personas/:id/ask", async (req, res) => {
 });
 
 app.put("/api/personas/:id", (req, res) => {
+  // SECURITY: this route mutates the GLOBAL agent persona roster
+  // (customInstructions/active/name every user's agent persona uses).
+  // It had no auth check at all — admin-class only now, checked before
+  // the roster lookup so members cannot probe roster ids
+  // (persona-legacy-gate.js, Fix 9).
+  const rosterDenial = personaRosterPutDenial(makeCtx(req));
+  if (rosterDenial) return res.status(rosterDenial.status).json(rosterDenial);
   const persona = Array.isArray(STATE.personas) ? STATE.personas.find(p => p.id === req.params.id) : null;
   if (!persona) return res.status(404).json({ ok: false, error: "Persona not found" });
   if (req.body.customInstructions !== undefined) persona.customInstructions = req.body.customInstructions;
