@@ -18,7 +18,7 @@ import {
   LayoutDashboard, CalendarSearch, Send,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { calendarDateKey } from '@/lib/calendar-date';
+import { browserTimeZone, calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
@@ -848,7 +848,7 @@ function ConflictsAvailabilityPanel() {
 
   async function findSlots() {
     setAvailBusy(true); setAvailErr(null); setSlots(null);
-    const r = await lensRun<{ freeSlots: FreeSlot[] }>('calendar', 'availability-find', { day, durationMin });
+    const r = await lensRun<{ freeSlots: FreeSlot[] }>('calendar', 'availability-find', { day, durationMin, tz: browserTimeZone() });
     setAvailBusy(false);
     if (r.data?.ok) setSlots(r.data.result?.freeSlots || []);
     else setAvailErr(r.data?.error || 'Could not find availability.');
