@@ -173,7 +173,7 @@ export default function TimelineLensPage() {
         <div className="px-8 pt-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl" data-testid="timeline-greeting">When it lands{user?.username ? `, ${user.username}` : ''}</h1>
+              <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Timeline</h1>
             </div>
             <div className="flex shrink-0 items-center gap-3 pt-2">
               <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
