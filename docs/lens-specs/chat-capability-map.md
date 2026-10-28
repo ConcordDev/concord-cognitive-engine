@@ -35,8 +35,8 @@ share links, and participant/topic analysis for group threads.
 | `prompt-create`/`delete`/`update`, `prompts-list` | saved prompt library (slash-command templates) | DESIGNED |
 | `thread-index` | write a thread's title/snippet/timestamp into the server-side search index | **UNSURFACED — the write-half of a real feature was entirely missing** | **FIXED THIS SESSION** |
 | `threads-search` | search the index `thread-index` populates | DESIGNED (`ThreadSearchOverlay.tsx`) — but always returned "0 threads indexed" | Now actually returns real hits |
-| `branches-list`/`branch-delete` | list/delete forked conversation branches | **UNSURFACED** | Still unsurfaced — genuine scoped gap (see checklist) |
-| `branch-fork` | fork a conversation at a message into a real server-persisted branch | **UNSURFACED — the consuming component (`BranchForkButton.tsx`) exists, is tested, but is never mounted anywhere** | Still unsurfaced this session — see checklist item 4 |
+| `branches-list`/`branch-delete` | list/delete forked conversation branches | **UNSURFACED** | Still unsurfaced — genuine scoped gap (see checklist) **[CORRECTED 2026-10-28: now wired — `branches-list`/`branch-delete` are called in `SyncedBranchesSection.tsx:31,43` and `branch-fork` in `BranchForkButton.tsx:52`, both mounted in `ChatWorkspacePanel.tsx` |.]**
+| `branch-fork` | fork a conversation at a message into a real server-persisted branch | **UNSURFACED — the consuming component (`BranchForkButton.tsx`) exists, is tested, but is never mounted anywhere** | Still unsurfaced this session — see checklist item 4 **[CORRECTED 2026-10-28: now wired — `BranchForkButton.tsx` is mounted in `ChatWorkspacePanel.tsx:2618` |.]**
 | `canvas-create`/`get`/`update`/`revert`/`delete`, `canvas-list` | collaborative canvas/document mode | DESIGNED |
 | `code-run`, `code-history` | in-thread code execution + history | DESIGNED |
 | `image-generate`, `image-history`, `image-delete` | in-thread image generation | DESIGNED |
@@ -135,3 +135,8 @@ two competing, confusing "fork" actions in an already load-bearing page.
   share page's 3 honest states (sign-in prompt / real content / invalid
   token error)
 - No backend changes — `server/domains/chat.js` was already complete
+
+
+---
+
+*Dispositions corrected 2026-10-28 (remaining-work audit, fix queue Q67): the rows marked CORRECTED above were listed as unsurfaced when this map was written; each is now wired in the frontend, at the file:line cited in the correction. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows U1–U7.*

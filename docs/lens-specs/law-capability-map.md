@@ -72,8 +72,8 @@ for the better.
 |---|---|---|
 | `check-compliance` | `{passed, violations[], checkedAt}` — real 4-rule keyword scan (`params.text` or `artifact.data.body`/title) | **DESIGNED** — `ComplianceScreener` (**first surface**; replaces a client-only 3-rule duplicate that called no macro) |
 | `analyze` | `{analysis:[{framework,status,risk,coverage,matchedKeywords,citationCount}], overallRisk, totalDrafts, totalCitations}` — real per-framework keyword-coverage scoring | **DESIGNED** — `FrameworkCoverage` (**first surface**; replaces 4 hardcoded, permanently-fixed-status tiles) |
-| `draft` | appends `{id,title,body,version,status}` to a **real persisted artifact's** `data.drafts[]` | **UNSURFACED** — see disposition below |
-| `cite` | appends `{id,source,text,relevance}` to a **real persisted artifact's** `data.citations[]` | **UNSURFACED** — see disposition below |
+| `draft` | appends `{id,title,body,version,status}` to a **real persisted artifact's** `data.drafts[]` | **UNSURFACED** — see disposition below **[CORRECTED 2026-10-28: now wired — `CaseFiles.tsx:206` (draft) and `:226` (cite) call these actions, pinned by `CaseFilesDraftsCitations.test.tsx`.]** |
+| `cite` | appends `{id,source,text,relevance}` to a **real persisted artifact's** `data.citations[]` | **UNSURFACED** — see disposition below **[CORRECTED 2026-10-28: now wired — `CaseFiles.tsx:206` (draft) and `:226` (cite) call these actions, pinned by `CaseFilesDraftsCitations.test.tsx`.]** |
 
 `draft`/`cite` mutate a real artifact in place — they only persist when
 called **id-scoped** (`useRunArtifact('law').mutateAsync({id, action,
@@ -183,7 +183,7 @@ review → approve → sign → track), parity is the target.
 | Version history / redline diff | **ALREADY REAL** — `contract-diff` (real line-level LCS), `ContractVersions` |
 | Playbook/template-driven drafting | **ALREADY REAL** — `playbook-*`, `ContractPlaybooks` |
 | Analytics dashboard (counts/value/expiring/unsigned) | **ALREADY REAL** (`contract-dashboard`) **+ CLOSED (2026-07-16, `bcf157bc`)** — deeper trend analytics now real via a separate `contract-trends` macro: cycle-time-to-signature, spend-by-counterparty-by-month, and renewal-rate-by-month, all derived from real contract/obligation fields, each bucket honestly reporting "not enough data" below a 2-period threshold rather than a misleading single-point line. |
-| Draft + citation logging per contract/matter | **BACKEND-CAPABLE-BUT-UNSURFACED** — `law.draft` / `law.cite` exist and mutate a real persisted artifact, but need per-artifact (id-scoped) wiring this rebuild did not build. Flagged as a scoped future task: a "Drafts & Citations" sub-panel on each `CaseFiles` entry using `useRunArtifact('law').mutateAsync({id, action:'draft'\|'cite', params})` — ~150-200 LOC, no backend work needed. Once wired, it would also make `FrameworkCoverage`'s `citationCount`/`documented` status meaningful per-case (today `FrameworkCoverage` always passes `citations:[] / drafts:[]` since there is no real per-case store to read them from yet — disclosed in the component's own header comment). |
+| Draft + citation logging per contract/matter | **BACKEND-CAPABLE-BUT-UNSURFACED** — `law.draft` / `law.cite` exist and mutate a real persisted artifact, but need per-artifact (id-scoped) wiring this rebuild did not build. **[CORRECTED 2026-10-28: now wired — the per-artifact wiring now exists in `CaseFiles.tsx:206,226`.]** Flagged as a scoped future task: a "Drafts & Citations" sub-panel on each `CaseFiles` entry using `useRunArtifact('law').mutateAsync({id, action:'draft'\|'cite', params})` — ~150-200 LOC, no backend work needed. Once wired, it would also make `FrameworkCoverage`'s `citationCount`/`documented` status meaningful per-case (today `FrameworkCoverage` always passes `citations:[] / drafts:[]` since there is no real per-case store to read them from yet — disclosed in the component's own header comment). |
 | Third-party integrations (Salesforce/DocuSign/Slack/etc.) | **Out of scope, not a gap to close here** — Concord's contract substrate is intentionally self-contained; connector work is tracked at the platform level (`docs/CONNECTORS_GO_LIVE.md`'s Track C), not per-lens. |
 | Real-time multi-party collaborative redlining (Word/Google Docs plugin) | ~~**GENUINELY MISSING**, large scope~~ **CLOSED (2026-07-17, `994db630`)** — the "large scope / new realtime substrate" premise was stale. Reuses the existing generic Yjs CRDT layer (additive `law:contract` scope) + collab presence/comment primitives — no new transport. `ContractRedline` binds the contract body to a shared `Y.Text` via the same `useYjsDoc` hook `CollabDocWorkspace` uses; redlines are collab comment threads; tracked-changes accept/reject is pure client review-state over the REAL `contract-diff` LCS engine (never a fabricated diff). `collab.js` reused, not modified. 22 tests. Word/Google-Docs *plugin* surface (an external client integration) remains honestly out of scope; the in-Concord collaborative redlining is now real. |
 
@@ -265,3 +265,8 @@ disposition above) are honestly disclosed, not silently dropped.
   `ObligationTracker.tsx`, `ContractRepositorySearch.tsx`, `LawFeed.tsx`,
   `ContractVersions.tsx`, `ClauseExtractor.tsx`, `ContractEsign.tsx`,
   `ApprovalWorkflow.tsx`, and (read-only, cross-lens) `components/legal/LegalCaseSearch.tsx`.
+
+
+---
+
+*Dispositions corrected 2026-10-28 (remaining-work audit, fix queue Q67): the rows marked CORRECTED above were listed as unsurfaced when this map was written; each is now wired in the frontend, at the file:line cited in the correction. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows U1–U7.*

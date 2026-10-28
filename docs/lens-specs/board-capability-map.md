@@ -1,7 +1,7 @@
 # Board Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
 Reproduce the macro list:
-`grep -c 'registerLensAction("board"' server/domains/board.js` → 37
+`grep -c 'registerLensAction("board"' server/domains/board.js` → 36
 
 ## Reference apps
 
@@ -74,3 +74,8 @@ this pass's scope — left as a recommendation for a future dedicated unit.
 - `npx tsc --noEmit -p .` — 0 errors project-wide.
 - `node scripts/verify-lens-backends.mjs` — `board` stays `WIRED`.
 - `node scripts/grade-ux-polish.mjs --honest` — `board`: `tier: "polished"`, `isGenericScaffold: false`.
+
+
+---
+
+*Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*

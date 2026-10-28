@@ -1,7 +1,7 @@
 # Projects Lens — Capability Map (Frontend Rebuild Program, Wave 2, batch 7)
 
 Reproduce the macro list:
-`grep -c 'registerLensAction("projects"' server/domains/projects.js` → 98 macros
+`grep -c 'registerLensAction("projects"' server/domains/projects.js` → 99 macros
 (plus 4 legacy generic-artifact macros — `ganttGenerate`, `riskMatrix`,
 `burndownCalc`, `stakeholderMap` — pre-dating the real per-entity model, see
 below). This is the largest single-domain macro surface touched this batch:
@@ -113,3 +113,8 @@ project-management UI** that pre-dates it:
   "polished"`, `isGenericScaffold: false`.
 - No lens-page-level or `Pj*`-panel test file exists for `/lenses/projects`
   (confirmed by search) — nothing to update.
+
+
+---
+
+*Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*
