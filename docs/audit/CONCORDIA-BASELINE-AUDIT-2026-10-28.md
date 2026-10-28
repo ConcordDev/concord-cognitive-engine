@@ -1,81 +1,133 @@
-# Concordia — Baseline & Import-Readiness Audit (B3-1)
+# Concordia — Full Workspace Audit & Trace (B3-1, expanded)
 
-- **Slice:** B3-1 (Builder 3 — Concordia & Game, Lane 1 Build)
+- **Slice:** B3-1 (Builder 3 — Concordia & Game, Lane 1 Build), expanded by Ramaj via the Overseer from a manifests-only audit to a full workspace trace. This version supersedes the first-pass doc in PR #1750 where the Mac trace corrected it (see §5, item C3).
 - **Date:** 2026-10-28
-- **Base:** audited at `origin/main` @ `ec2a846942251d5010b93a5143ea094db3f41995` (SEC-7, #1731). This doc's branch was cut from the next main head, `92e39c35ba6004cb2b8e3ff121f1511dc7e4f6f8` (SEC-9, #1732); the `unity-client` tree is byte-identical between the two heads (verified by diff), so every count below holds for the branch base.
-- **Method:** `git ls-tree -r` of `origin/main` (58,749 tracked paths under the Unity project) reconciled against the two on-disk Mixamo manifests and the asset folders verified on disk 2026-10-24. Docs only — no gameplay code, no imports, no merges, no deploys in this slice.
-- **Scope limit:** This audit covers the canonical repo copy on `origin/main`. Local-only, gitignored content on any one machine (see §2) is not visible from the repo and is flagged as unverified where it matters.
+- **Bases, each labeled where used:** repo state at `origin/main` @ `0ded08c1` (advanced during the day; unity-client tree verified byte-identical across `ec2a8469`→`92e39c35`); Mac state checked **live on Ramaj's MacBook Air, 2026-10-28 ~16:35 ET** via the files commands; VM disk state re-verified 2026-10-28. A readable full clone at `~/workspace/audits/concord-cognitive-engine/` sits at 2026-10-12 and was used for code reading, with headline wiring facts cross-checked against `origin/main`.
+- **Method:** `git ls-tree`/content reads on `origin/main`; on-disk counts for every asset folder and zip (central-directory counts, not doc claims); Mac directory listings and targeted searches (full-tree scans where counts are quoted); code greps for the wiring surface, spot-verified by hand. No gameplay code, no imports, no merges, no deploys in this slice.
 
-## 1. Unity project location
+## 0. The true map in eight lines
 
-Concordia lives in the **Living World Unity project**:
+1. Concordia's canonical project is the **Living World Unity project** at `apps/concordia-living-world/unity-client/` (Unity 6000.5.9f1) in `ConcordDev/concord-cognitive-engine`. The **live working copy is a Mac worktree, `aura-wt`** — it holds work that exists nowhere in git.
+2. The Mixamo **clips are imported — 110/110 — but only inside that Mac worktree** (`Assets/Concordia/Animations/Mixamo/`, with Unity `.meta` files). The **characters are imported nowhere**: 0/108 in git, 0/108 in the Mac project.
+3. Verified source copies of everything live on this VM (folders + zips + raw downloads) — the haul cannot be lost, but the *import* can be, until it is committed or archived.
+4. The in-project baseline (Quaternius/UAL, Kenney, GameIcons, Foozle, TinyRPG, ambientCG, PolyHaven) is real and tracked in git.
+5. The game already talks to Concord: a real WebSocket gateway (`/unity-ws`) carries scenes, kingdom state, server combat math, quests, gifting, and **2B NPC dialogue (local qwen3.5:2b)**. That wire exists in code on both sides and has tests.
+6. The **DTU wire does not exist in code**: no DTU persistence, no DTU items, no Concord Coin in-game. The in-game economy is a self-contained **sparks** simulation. The game's own bible says the same (MEMORY: MISSING; ECONOMY: "Platform CC ledger is a different product surface").
+7. There are **three** Concordia clients, not one: Unity (main), a TypeScript browser client in `apps/concordia-living-world/src/`, and the Godot world-lens client (`world-lens-godot/`) sharing the same gateway family.
+8. Everything below is the evidence, the contradictions, the gaps, and the ordered step plan B3 and Ramaj will work from.
 
-- Project root: `apps/concordia-living-world/unity-client/` in `ConcordDev/concord-cognitive-engine`
-- Plan: `docs/LIVING_SOCIETY_PLAN.md`
-- Unity version: **6000.5.9f1** (`ProjectSettings/ProjectVersion.txt`)
-- The copies under the various `handoff3/wt-*` worktrees are branch checkouts of this same project, not separate projects. `origin/main` is canonical.
-- All **1,272 FBX files** tracked in the repo are inside this `unity-client`; there are no FBX anywhere else in the repo.
+## 1. Traced map — the Unity project and its copies
 
-## 2. Mixamo haul vs. what's imported in-project
+| Copy | Location | State | Verified |
+|---|---|---|---|
+| Canonical (git) | `origin/main`: `apps/concordia-living-world/unity-client/` | 58,749 tracked paths; 1,272 FBX; 200 `.cs` files; Unity 6000.5.9f1; plan at `docs/LIVING_SOCIETY_PLAN.md` | ✅ ls-tree 2026-10-28 |
+| **Live working copy (Mac)** | `/Users/dutch/concord/aura-wt/apps/concordia-living-world/unity-client/` | Worktree created 2026-10-24 01:28 ET, modified through 2026-10-27 22:14 ET. Holds the Mixamo clip import and local-only `Models/Generated` (ORGANIC_MANIFEST.json, Sep 24–28) + `Models/Meshy` content that git does not have | ✅ Mac files API, live |
+| Mac main checkout | `/Users/dutch/concord/` | The repo the fleet works in; its `apps/` does not surface `concordia-living-world` at the path checked — Concordia work happens in `aura-wt` and `concord-wt/*` | ✅ Mac files API (one path probe + search; scan hit its 100k-entry limit, so "absent" is stated for the checked path, not the whole tree) |
+| VM full clone | `~/workspace/audits/concord-cognitive-engine/` | HEAD 2026-10-12 (INC-59 #1200) — **16 days stale**; still the most readable code copy. Its on-disk C# count under `unity-client/Assets` is **63,697 lines**, matching the claims audit's verified ~63,703 (2026-10-20) | ✅ git log + count |
+| VM sparse clone + worktrees | `~/workspace/audits/finance-lens-2026-10-26/repo-sparse`, `~/workspace/handoff3/wt-*` | Branch checkouts of the same repo (B1/B2 lanes), not separate projects; several are dirty with other lanes' work — B3 does not touch them | ✅ worktree list |
+| `/Users/dutch/Concordia` (Mac) | home folder | **A husk, not a project**: contains only `_research/disk-cleanup-audit.md` (2026-09-15). `AURA_BIND_NOW.md` already warns "do not point at /Users/dutch/Concordia (deleted/stale)" — confirmed accurate | ✅ Mac files API |
+| Asset staging (Mac) | `/Users/dutch/concordia-asset-staging/` | PolyHaven staging only (Sep 14–22), per AURA_BIND_NOW's note that the ~13 GB PolyHaven kit is staged outside Assets so Unity can boot | ✅ Mac files API |
 
-Verified source copies (Muse VM disk, counts re-checked 2026-10-28):
+Scenes on `origin/main`: exactly one real game scene, `Assets/Scenes/ConcordiaHub.unity`, plus `ConcordiaVisualBenchmark.unity` and 10 `InitTestScene*` test scenes.
 
-| Set | On disk | Manifest verdict |
-|---|---|---|
-| Animation clips | **110 FBX** in `~/workspace/concordia-mixamo-clips/` | MANIFEST.md "FINAL TALLY — hunt complete 2026-10-24: 110 FBX clips, 66 MB, all verified on disk" (FBX for Unity, Without Skin, 30 fps, In Place where offered; source character X Bot) |
-| Characters | **108 FBX** in `~/workspace/concordia-mixamo-characters/` | MANIFEST.md "SET COMPLETE (Oct 24): 108 files for Mixamo's 108 grid slots — 58 named + Ch01–Ch50 generic bodies, complete, no gaps/dupes" (T-pose, with skin/textures, no animation attached) |
+Inside the project (git): `Assets/Concordia/` carries Anim (2 locomotion controllers), FreePacks, PolyHaven, Models, Scripts (153 `.cs` in the Oct-12 clone), Generated, plus ~28 Aura plan docs under `Assets/.Aura/plans/` (combat kernel, locomotion kernel, runtime integration, first NPC quest hook, persistence gate, etc.) — the working plan lineage lives *inside* the project as `.Aura` docs.
 
-Reconciliation against `origin/main`'s `unity-client` (exact basename match, then normalized match ignoring case/spaces/underscores — both run):
+## 2. Traced map — asset holdings
 
-- **Clips imported: 0 of 110.** Explicit diff: all 110 clip filenames are absent from the project.
-- **Characters imported: 0 of 108.** Explicit diff: all 108 character filenames are absent from the project.
+### 2.1 Mixamo haul (VM — source of truth, all verified on disk 2026-10-28)
 
-This is **by design, not a loss**:
+| Holding | Location | State | Verification |
+|---|---|---|---|
+| 110 clips | `~/workspace/concordia-mixamo-clips/` + MANIFEST.md | Final tally in manifest: 110 FBX, hunt complete 2026-10-24. Spec: FBX for Unity, Without Skin, 30 fps, In Place where offered; source character X Bot. `Pushing`/`Pull_Heavy_Object` carry root motion (no In Place) | ✅ 110 FBX counted on disk |
+| 108 characters | `~/workspace/concordia-mixamo-characters/` + MANIFEST.md | 58 named + complete Ch01–Ch50 generic bodies, T-pose with skin/textures, no animation | ✅ 108 FBX counted on disk |
+| Clips zip | `~/workspace/concordia-mixamo-clips-complete.zip` (17 MB) | 110 FBX inside — matches folder | ✅ zip central directory |
+| Named-characters zip | `~/workspace/concordia-mixamo-characters-named.zip` (688 MB) | 58 FBX inside — matches | ✅ zip central directory |
+| Named split parts | `~/workspace/concordia-mixamo-characters-named-parts/` (7 parts, ~672 MB) | Upload parts for the named zip; the Muse-storage links **expired 2026-10-26** — parts are now just local duplicates of the named zip | ✅ listed |
+| All-in-one zip | `~/workspace/concordia-mixamo-characters-all.zip` (3.6 GB) | 108 FBX inside — matches. **Google Drive upload still blocked on Ramaj's Drive Allow/connect step** | ✅ zip central directory |
+| Raw downloads | `~/workspace/browser_downloads/` (7 session folders, 3.7 GB, 218 FBX) | The original browser downloads with `browser-download-…-x_bot_<name>` filenames — the rename-lineage sources of the final folders. `sess-147325693` (98 FBX, 3.0 GB) is the raw character download state *before* the final 10 characters landed — this is what the stale haul doc (§3) describes. Duplicative, but it is the only other copy of the character bytes besides the folder + zips | ✅ counted + name-lineage compared |
 
-- `unity-client/.gitignore` carries the rule: `# Mixamo / character FBX (~587MB). Restore locally from the kitchen tree.` — it ignores `Assets/Concordia/Models/**` (exception: `Models/README.txt`).
-- `Assets/Concordia/Models/README.txt` (committed) says the same: the local-only Mixamo/character FBX and the full Kenney kitchen are gitignored; "Copy those from the Mac kitchen if you have them."
+### 2.2 Import state (the part that changed vs the first pass)
 
-What *is* committed under `Assets/Concordia/Models/humans/`:
+- **Clips: IMPORTED on the Mac.** `/Users/dutch/concord/aura-wt/…/Assets/Concordia/Animations/Mixamo/` holds **110/110 FBX with Unity `.meta` files**, in two batches matching the haul runs (72 clips 2026-10-24 02:34 ET; the remaining 38 at 12:23 ET; import metas regenerated 12:32 ET). Full-folder search returned exactly 110 FBX / 226 entries.
+- **Characters: IMPORTED NOWHERE.** 0 in `origin/main`; 0 in the aura-wt project (full 64,616-entry Assets scan for a named character and a generic body: no hits); not in Mac Downloads. They exist only as VM source folders/zips/raw downloads.
+- **Nothing of the import is in git.** `origin/main` has **no `Assets/Concordia/Animations/` folder at all**. The `.gitignore` rule covers `Assets/Concordia/Models/**` (Mixamo/character FBX, ~587 MB, "restore locally from the kitchen tree") — but the clips were imported into `Animations/`, which that rule does **not** cover. So the clip import is simply **uncommitted worktree state**: one worktree accident away from loss, recoverable only because the VM source folders survive.
+- `Assets/Concordia/Models/` in aura-wt holds the same committed content as git (README, ATTRIBUTION, 5 Rocketbox FBX, Soldier.glb, Xbot.glb) plus local-only `Generated/` (organic/Meshy-generated models, ORGANIC_MANIFEST.json) and `Meshy/` folders.
 
-- `Soldier.glb` and `Xbot.glb` — GLB models already in the project (Xbot is the Mixamo X Bot *character as a GLB*; it is not one of the 218 haul FBX, and no haul clip FBX accompanies it).
-- 5 Rocketbox FBX (`Female_Adult_01/04`, `Male_Adult_01/05/08`) with textures.
+### 2.3 In-project baseline (git, from the first pass — still accurate)
 
-The only Mixamo-named code in the project is `Assets/Concordia/Scripts/MixamoAvatar.cs` — a procedural avatar controller that binds whatever prefab it is given (its header notes Soldier.glb already carries Idle/Walk/Run and jump is procedural). No Mixamo folder exists anywhere under `Assets/`.
+- `Assets/Concordia/FreePacks/AURA_MANIFEST.json` present (its `updated` field reads **2026-10-25**T13:00:14 — see contradiction C2); packs: Quaternius, KenneyUI, GameIcons, FoozleUI, TinyRPGUI, ambientCG, Fauna, Nature, VFX, Audio, Polish.
+- **Quaternius/UAL confirmed**: 66 FBX — `UAL1_Standard.fbx` + `UAL1_Standard_RM.fbx` (root-motion), RPG Characters (6 + 6 weapons), Ultimate Animated Character Pack (50). Locomotion controllers: `ConcordiaLocomotion.controller`, `SoldierLocomotion.controller`.
+- FBX concentrations: FreePacks/Props 472, PolyHaven/Models 345, FreePacks/Nature 329, Quaternius 66, Weapons 24, Fauna 17, Models/humans 5, Generated/Rig 2.
+- Manifest-vs-tracked counts differ for three packs (Quaternius 578 claimed vs 321 tracked; Fauna 165 vs 97; ambientCG 2,507 vs 2,499); eight packs match exactly. Consistent with local-only content on the authoring machine.
 
-**Unverified remainder:** whether the Mac/Aura local copy of the project currently has the haul FBX restored under `Assets/Concordia/Models/` cannot be determined from `origin/main` or from this VM — that content is local-only by design. The check is a Mac-side listing of that folder; it has not been run in this slice.
+## 3. Traced map — docs, plans, lore, quests
 
-**Wiring notes carried forward from the clips manifest:** `Pushing.fbx` and `Pull_Heavy_Object.fbx` were downloaded *without* "In Place" ticked and carry root motion; all other clips are In Place where Mixamo offered it.
+- **The two Mixamo goals** — `~/workspace/goals/concordia-mixamo-animation-clips/GOAL.md` (goal_4f70975f358b) and `~/workspace/goals/concordia-mixamo-character-set/GOAL.md` (goal_9685e3c570cf): both describe the haul as Muse-collected, disk-verified, manifest + zip — accurate for the VM holdings; neither records the Mac clip import (it happened in aura-wt, outside the goals' view).
+- **Haul doc** — `~/workspace/leads/mixamo-character-haul-verified-2026-10-24.md`: an *intermediate* snapshot (98 FBX, 56 named + 42 generic, still in browser_downloads) — stale vs the final 108. See C1.
+- **The "plan for Aura" (194 jobs)** — **the plan file itself was never located**: not in the VM repo clone, not in Mac `~/.zuko`, not in the Mac repo tree (searched 2026-10-23), and not found in today's sweep either. Its substance survives in three places: Ramaj's own 34-clip list (which superseded it), the ~28 `.Aura/plans/` docs inside the project, and `AURA_BIND_NOW.md` + `Assets/Concordia/AURA_*.txt` work orders in the project. Lineage verdict: the 194-job plan is a **missing source doc with living descendants**.
+- **Design bible** — `apps/concordia-living-world/bible/`: ~30 status docs (LORE, CHARACTERS, COMBAT, ECONOMY, MEMORY, NPC_BRAIN, NETWORK, …) in an honest LIVE/PARTIAL/MISSING/TARGET ledger style. Where sampled, they do **not** overclaim — MEMORY.md marks NPC memory MISSING and names the DTU substrate "not attached"; ECONOMY.md separates the sparks economy from the platform ledger.
+- **The contract** — `bible/UNITY_CONCORD_CONTRACT.md` (22 lines): its LIVE section matches verified code (ConcordClient → `/unity-ws`, 2B dialogue, honest `no_gateway` failure); its TARGET (Concord owns time/weather/NPC state/memory/factions/economy/combat math/quests/ecology/persistence) is partly met — combat math, quests, kingdom snapshot are server-side; memory, economy, persistence are not.
+- **LIVING_SOCIETY_PLAN** — `docs/LIVING_SOCIETY_PLAN.md`: the *server-side* society simulation plan (sparks flow graph, NPC labor, politics) — about the platform/TS world layer, not the Unity client. Names the same sparks economy the code implements.
+- **Gap reports** — `apps/concordia-living-world/CONCORDIA_SYSTEM_AUDIT.md`, `CONCORDIA_AAA_GAP_REPORT.md`, `REALISM_GAP_REPORT.md` sit on current `main` but describe a far weaker, prompt-and-strings state ("0 models loaded", "claims-vs-code GAP: LARGE"). They are **mixed-era historical docs**, contradicted by the Unity project beside them — do not cite them as current state. `HANDOFF.MAC.md` correctly identifies the Mac folder as the Unity project to open.
+- **Lore & quests (real, in code/content)** — `content/world/` holds **12 authored worlds** (concordia-hub "The Unburned Court", iron-reach, glass-desert, hollowmere, shattered-coast, verdant-expanse, cyber, tunya, and more); `content/quests/` holds 5 authored quest files (main-arc, onboarding, brackish-trust, sealed-record, faction-quests). Server quest authority (`server/lib/concordia/quest-authority.js`) serves these to connected clients. Unity-side lore lives in `Scripts/Canon.cs` and the bible.
 
-**Blocker (unchanged, Ramaj-only):** the 3.6 GB all-in-one characters zip (`~/workspace/concordia-mixamo-characters-all.zip`, 108 FBX verified) is built; its Google Drive upload still waits on Ramaj's Drive Allow/connect step.
+## 4. Traced map — the wiring surface (code vs docs)
 
-## 3. Quaternius / UAL baseline
+Traced by grep + hand-reading (Oct-12 clone, headline facts cross-checked on `origin/main`; spot-verified by B3).
 
-**Present — confirmed on `origin/main`.**
+**Wire 1 — Brain routes: EXISTS IN CODE.**
+`Assets/Concordia/Scripts/ConcordClient.cs` (2,413 lines) is a real WebSocket client to `wss://live.concordos.ai/unity-ws` (kitchen fallback `ws://127.0.0.1:5050/unity-ws`), auth-first, `{evt, data}` envelope. It exposes `LensRunAwait(domain, name, input)` — a live generic pipe to **any** Concord lens macro — and `AskTwoB(...)` for NPC dialogue. Server side: `server/lib/godot-gateway.js` (mounted for Unity via `mountUnityGateway` in `server/server.js`) handles ~27 event types incl. `lens:run` (real `runMacro`), `dialogue:request`, `kingdom:request`, `combat:dodge`, `dungeon:*`, `party:request`, `gift:give`, `agent:*`, WebRTC voice; tests exist (`unity-lens-run`, `unity-gateway-kingdom`, `godot-gateway`). NPC dialogue is composed by `server/lib/concordia-two-b.js` — local Ollama **qwen3.5:2b** with a deterministic fallback, never fabricated lines. Server also runs `combat:attack` damage math (rate-limited). **Limit:** the only lens domain the game actually calls today is `appearance`; no game system calls a solver/ConKay domain through the pipe. The in-Unity ConKay layer (`Scripts/ConKay/`) is local and explicitly read-only.
 
-- `Assets/Concordia/FreePacks/AURA_MANIFEST.json` exists (its `updated` field reads 2026-10-25T13:00:14; a second copy sits under `Assets/Concordia/PolyHaven/`).
-- **66 FBX** under `Assets/Concordia/FreePacks/Quaternius/`:
-  - Universal Animation Library Standard: `UAL1_Standard.fbx` **and** `UAL1_Standard_RM.fbx` (root-motion variant), under `Quaternius_Universal_Animation_Library_Standard/Universal Animation Library[Standard]/Unity/`.
-  - RPG Characters — Nov 2020: Cleric, Monk, Ranger, Rogue, Warrior, Wizard + 6 weapon FBX (staff ×2, bow, arrow, dagger, sword).
-  - Ultimate Animated Character Pack — Nov 2019: 50 FBX incl. BaseCharacter, Soldier_Male/Female, Knight_Male, Viking, Ninja, Zombie, Elf, Goblin, Witch, Wizard, Cow, Pug, and casual/profession bodies.
-- Locomotion controllers already in project: `Assets/Concordia/Anim/ConcordiaLocomotion.controller` and `SoldierLocomotion.controller`.
+**Wire 2 — MCP: EXISTS platform-side; NOT a game wire.**
+Server MCP is extensive (`server/lib/mcp-tools.js` etc.) with `run_lens_action`, `brain_route`, `conkay_solve`, DTU tools. `server/domains/concordia.js` registers only read-only presence capabilities (`concordia.status/.world/.simulation/.asset`). Unity has **no MCP client** (the `unity-mcp` package in its manifest is third-party *editor* tooling). ⚠️ **Name collision:** the MCP tools `concordia_assemble/verify/demonstrate` shell out to a Mac-local Python "integration organ" (`/Users/dutch/.local/bin/concordia.py`) — **not the game**; never cite them as game wiring.
 
-AURA manifest pack counts vs. files actually tracked on `origin/main`: KenneyUI 7,448 = 7,448; GameIcons 10,810 = 10,810; FoozleUI 1,015 = 1,015; TinyRPGUI 202 = 202; Nature 7,247 = 7,247; VFX 208 = 208; Audio 420 = 420; Polish 591 = 591. Three packs differ — Quaternius (manifest 578 vs. 321 tracked), Fauna (165 vs. 97), ambientCG (2,507 vs. 2,499) — consistent with local-only/gitignored content on the authoring machine; flagged here, not resolved.
+**Wire 3 — DTU persistence/continuity: DOCS ONLY.**
+Zero `DTU` references in Unity C# (Oct-12 clone) and zero in the server `concordia-*` libs (one stray mention each in the gateway file and, on Oct-28 main, in a new `ConstructionLedger.cs`). What actually persists: Unity state → **local JSON** (`GameplayCore/Persistence/ConcordiaPersistenceService.cs`, `concordia-unified-v1.json` in persistentDataPath); character look → local file/PlayerPrefs + the account DB via appearance macros storing into `avatars.appearance_json` / `users.appearance_json` (**not DTUs**); kingdom graph → derived server-side from authored `content/world` JSON, with stock/need/caravan floats explicitly **not** persisted server-side ("until a persist-sync exists"). The bible's MEMORY.md agrees: DTU substrate "not attached", status MISSING.
 
-Other in-project FBX concentrations, for orientation: FreePacks/Props 472, PolyHaven/Models 345, FreePacks/Nature 329, FreePacks/Weapons 24, FreePacks/Fauna 17, Generated/Rig 2 (`CX_Humanoid_Female/Male.fbx`).
+**Wire 4 — In-game DTU trades / Concord Coin: DOCS ONLY.**
+The in-game economy is **sparks**: NPC spark wallets and markets (`LoreNpcBinder.cs`, `TradeRouteTraffic.cs`), local GameplayCore trade contracts, server-authoritative item **gifting** via the gateway (`gift:give` → `server/lib/gifting.js`) — no coin, no fees, no marketplace. **Zero** "concordia" references exist in all of `server/economy/` (coin-service, fees, marketplace) — the cleanest gap signal in the repo. Founder-level wording that in-game trades ride the Concord Coin rails describes the design, not the code. Bible ECONOMY.md agrees ("Platform CC ledger is a different product surface").
 
-## 4. Honestly missing from Mixamo (parry / riposte / riding)
+**Server footprint, for scale:** `server/lib` holds a dedicated Concordia family (~2,987 lines: two-b, kingdom-snapshot, world-field, megaworld, organism, play, creatures, agent-body, npc-seeder, gait, session + `lib/concordia/` quest-authority/client-roles/neutral-zone); 53 domain files, 25 route files, and 304 test files mention concordia.
 
-Per the clips MANIFEST.md final NOT FOUND roll-up (2026-10-24, all runs searched): Mixamo genuinely has **no parry, no riposte/counter-stab, and no riding set (horse idle · ride · dismount)**. The same roll-up lists 15 further misses: thumbs down, hugging, high five, chopping wood, hammering, sawing, sweeping, reading a book, cooking/stirring a pot, eating, warhammer swing, playful child-like run, meditation floating pose, ritual chanting, throne sit.
+## 5. Contradictions register
 
-- **Riding route (as planned from the start):** mount/riding animation routes to **Unity's Animation Generator**, not Mixamo (clips manifest, final tally note). Mount *models* are a separate matter — the AURA manifest covers mounts via Quaternius farm-animal/horse packs in Fauna; a model existing is not a ride animation.
-- **Parry / riposte:** no sourced replacement exists yet in any manifest or doc checked. They remain an open gap for a future slice to source or build procedurally (MixamoAvatar.cs already does procedural combat posing, which is one candidate route — noted, not decided here).
+- **C1 — Haul doc vs final haul.** `mixamo-character-haul-verified-2026-10-24.md` (and the Knowledge Index line citing it for "verified counts") records 98 FBX / 56 named + 42 generic. Final verified state: **108 / 58 + 50**. The doc describes the raw-download intermediate state (`browser_downloads/sess-147325693`). The index line should be corrected or the doc superseded.
+- **C2 — AURA_MANIFEST date.** Memory records the FreePacks manifest as "dated 2026-09-25"; the file on current `main` carries `updated: 2026-10-25T13:00:14`. Either it was regenerated or the September date referred to an earlier copy — unresolved, flagged. (Its pack counts also exceed tracked files for Quaternius/Fauna/ambientCG — §2.3.)
+- **C3 — "0 imported" vs "110 imported" — both true, different locations.** First pass (repo-only) found 0/218; the Mac trace found clips 110/110 in aura-wt and characters 0/108 everywhere. Any future claim must name *which copy* it describes.
+- **C4 — In-repo gap reports vs the project beside them.** `CONCORDIA_SYSTEM_AUDIT.md` / `CONCORDIA_AAA_GAP_REPORT.md` describe a prompt-strings prototype with 0 models loaded; the same `apps/concordia-living-world/` contains a 63.7K-line Unity project with a working gateway client. The reports are historical.
+- **C5 — Founder economy claim vs code.** "In-game trades ride the same Concord Coin rails" (MEMORY.md) vs Wire 4: sparks only, zero economy-code contact. Design intent, not current fact — public wording must not present it as live.
+- **C6 — ".gitignore anticipates Models/; the import used Animations/."** The restore-from-kitchen design assumed `Models/`; Aura's import landed in `Animations/Mixamo/`, outside the ignore rule — so the import is neither committed nor intentionally ignored, just uncommitted.
+- **C7 — MCP name collision.** `concordia_*` MCP tools ≠ the game (Wire 2). A standing trap for any lane citing MCP evidence.
 
-## 5. Done-state check (against the B3-1 assignment)
+## 6. Gap list
 
-1. ✅ Unity project location in the assigned tree identified — §1 (`apps/concordia-living-world/unity-client`, canonical on `origin/main`).
-2. ✅ Written inventory reconciling in-project imports against both manifests — §2 (0/110 clips, 0/108 characters in `origin/main`, explicit diff, with the gitignore design that explains it and the one unverified local remainder named).
-3. ✅ Quaternius/UAL baseline confirmed present — §3 (UAL1_Standard + RM variant, RPG Characters, Ultimate Animated Character Pack; AURA_MANIFEST.json present).
-4. ✅ Parry/riposte/riding listed as Mixamo-absent, riding's Unity Animation Generator route noted — §4.
-5. ✅ Single inventory doc on its own branch off `origin/main`; tree otherwise clean; no merges, no deploys, no gameplay code.
+1. **Characters not imported anywhere** — 108 bodies exist only as VM sources. No NPC can use them yet.
+2. **Clip import is a single point of failure** — uncommitted, in one Mac worktree (aura-wt), on a machine with a known disk-pressure history.
+3. **Clips imported ≠ clips wired** — no evidence in this audit that Mixamo clips are bound into the locomotion/combat controllers (ConcordiaLocomotion predates the import and is UAL/Soldier-based). Wiring state must be verified in the editor, not assumed.
+4. **Parry / riposte unsourced** — Mixamo has none; no replacement sourced yet. Riding likewise unbuilt (Unity Animation Generator route untested).
+5. **DTU wire absent** — persistence, items, trades, coin: design only (Wires 3–4). NPC memory likewise missing (bible's own verdict).
+6. **Kingdom persist-sync missing** — server snapshot honestly serves empty stock/caravan arrays until Unity WorldMemory syncs.
+7. **Contract violation still open** — Unity `ConcordiaPlayer.HitScan` mutates dummy HP locally; the contract's TARGET says close local damage/travel (server combat math exists).
+8. **The 194-job Aura plan file is missing** — lineage survives only through descendants (§3).
+9. **Drive upload blocked** — the 3.6 GB all-in-one characters zip still waits on Ramaj's Drive Allow step; the split-part links are expired.
+10. **Stale docs in reach** — haul doc (98) and the gap reports (C4) will mislead any lane that reads them first; the Knowledge Index currently points at the stale haul doc.
+
+## 7. THE STEP PLAN — ordered slices, each with a verifiable done-state
+
+Dependency order: secure what exists → characters in → movement → combat → gaps (parry/riding) → NPCs → live gateway proof → persistence/DTU design gates → playable loop. No slice starts until the Overseer releases it; all under the usual ground rules (own branch off origin/main, PRs only, no merges/deploys).
+
+- **B3-2 — Secure the clip import.** Commit `Assets/Concordia/Animations/Mixamo/` (110 FBX + 110 `.meta`, ~70 MB) from aura-wt onto a B3 branch, or produce a verified archive in git if Ramaj prefers them untracked-but-backed-up. *Done: a fresh checkout (or the archive) contains exactly 110 FBX matching the manifest names; PR opened; the stale haul doc corrected in the same PR (98 → final-state note).* Kills gaps 2 + 10.
+- **B3-3 — Wiring-state verification (editor, read-only).** In aura-wt's Unity, inspect ConcordiaLocomotion + combat bindings: which animation source drives idle/walk/run and each combat verb today. *Done: a one-page binding table (verb → clip/controller state → source pack) added to this audit's folder; no changes made.* Resolves gap 3's unknown before any wiring slice is scoped.
+- **B3-4 — Character import, hero set.** Import 6 characters (X Bot + 5 chosen named) into the project under a recorded folder decision, rigs set to Humanoid, materials checked. *Done: 6 named FBX in-project with `.meta`, one of them skinned and idle-animated in the hub scene, screenshot/log evidence filed.*
+- **B3-5 — Character import, full set.** Remaining 102 characters in manifest order, batch-checked. *Done: 108/108 in-project; count + name diff against the characters manifest is empty.*
+- **B3-6 — Movement wiring.** Bind the Mixamo locomotion set (idle, walk, run/sprint, strafe L/R, backward, jump start/loop/land, crouch) into the player controller alongside or replacing UAL equivalents, per B3-3's table. *Done: each named clip referenced by the controller; a playmode proof note (SLICE-proof style, as the project already uses) records a full movement pass.*
+- **B3-7 — Combat wiring.** Bind sword combo, heavy slash, block idle/impact, dodge roll, backstep, hit reacts, knockdown, get-up, death to the existing combat events (server `combat:attack` math already authoritative). *Done: verb→clip binding table complete; playmode proof of one full fight exchange; local HitScan damage path closed or explicitly deferred by Ramaj (gap 7).*
+- **B3-8 — Parry/riposte decision paper.** Options with evidence: procedural posing (MixamoAvatar-style), Unity Animation Generator, or a licensed free pack. *Done: one-page options doc; Ramaj's pick recorded. No build in this slice.*
+- **B3-9 — Riding prototype.** Unity Animation Generator attempt at horse idle/ride/dismount on the Quaternius horse. *Done: generated clips exist in-project + a keep/reject verdict with reasons.*
+- **B3-10 — NPC population slice.** Spawn 5 named NPCs from imported characters on the NpcLife schedule, driven by Mixamo life clips (sit, talk, wave, work verbs). *Done: hub proof note — 5 NPCs visible on schedule, one full talk interaction using 2B dialogue.*
+- **B3-11 — Gateway live proof.** Run the Unity client against the live `/unity-ws`: auth → scene → kingdom → dialogue round-trips. *Done: dated log excerpts showing `hello`, `scene:request`/`kingdom:request` responses, and one `dialogue:request`→`dialogue:data` exchange with a real 2B line (or an honest failure record with the reason).*
+- **B3-12 — Persist-sync spec (design only).** Spec for syncing Unity WorldMemory floats (stock/need/caravans) to the server kingdom snapshot — the bible's named gap. *Done: spec doc with data shapes + conflict rule; Ramaj approves before any code slice exists.*
+- **B3-13 — DTU trade-loop spec (design only, gated).** Spec for the first in-game DTU item + trade via existing `lens:run` → economy macros, naming the fee path in `server/economy/fees.js` and the money-live gates owned by Legal/Finance lanes. *Done: spec doc; explicitly NO code until those gates pass (money is not live; platform principle: orgs/transactions, never user charges).*
+- **B3-14 — Playable-loop verification.** Fresh-character loop end-to-end: spawn → move (B3-6) → fight (B3-7) → talk (2B) → quest interact → gift → save/reload persistence check. *Done: dated checklist, pass/fail per step, failures converted into new slice proposals for the Overseer.*
 
 *Builder 3 — Concordia & Game. Coordination via Concord Overseer — Founder Office.*
