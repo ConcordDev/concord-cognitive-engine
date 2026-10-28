@@ -5,6 +5,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import vm from "node:vm";
 import { generatePollinationsImage } from "../lib/pollinations-image.js";
+import { reverifyReceipts } from "../lib/chat/reverify-receipts.js";
 
 export default function registerChatActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -1456,5 +1457,24 @@ export default function registerChatActions(registerLensAction) {
     arr.splice(idx, 1);
     saveChatState();
     return { ok: true, result: { deleted: id } };
+  });
+
+  // reverify-receipts — one-click re-verify of a stored reply's receipts
+  // (Product Chat F2/A6; §9 rule-2b closure). All logic lives in
+  // lib/chat/reverify-receipts.js (solver re-run on the stored question,
+  // source re-resolution, cited-DTU re-check, owner-gated like the
+  // messages read API). This wrapper only resolves the caller + db.
+  registerLensAction("chat", "reverify-receipts", async (ctx, _artifact, params = {}) => {
+    try {
+      const db = globalThis._concordSTATE?.db || globalThis._concordDB || null;
+      const actor = actorIdFor(ctx);
+      const { status, body } = await reverifyReceipts(db, {
+        userId: actor === "anon" ? null : actor,
+        sessionId: params.sessionId,
+        messageTs: params.messageTs,
+      });
+      if (!body.ok) return { ok: false, error: body.error || "reverify_failed", status };
+      return { ok: true, result: body };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 }

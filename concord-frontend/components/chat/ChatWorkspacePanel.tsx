@@ -88,7 +88,7 @@ import { ToolCallCard } from '@/components/chat/ToolCallCard';
 import { ChatArtifacts, type ChatArtifact } from '@/components/chat/ChatArtifacts';
 import { isReadAloudRequest, speakText, canSpeak } from '@/lib/chat/read-aloud';
 import ComputeBadge from '@/components/chat/ComputeBadge';
-import ReceiptsStrip from '@/components/chat/ReceiptsStrip';
+import ReceiptsStrip, { type ReverifyResult } from '@/components/chat/ReceiptsStrip';
 import { GenerationStatus } from '@/components/chat/GenerationStatus';
 import { firstReplyDone, markFirstReplyDone } from '@/lib/first-run';
 import BrainChip from '@/components/chat/BrainChip';
@@ -2455,7 +2455,20 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     sourced or computed, so an unchecked answer can never
                     look like a checked one. Detail surfaces stay below. */}
                 {message.role === 'assistant' && (
-                  <ReceiptsStrip message={message} />
+                  <ReceiptsStrip
+                    message={message}
+                    onReverify={
+                      selectedConversation
+                        ? async (): Promise<ReverifyResult | null> => {
+                            const r = await lensRun<ReverifyResult>('chat', 'reverify-receipts', {
+                              sessionId: selectedConversation,
+                              messageTs: message.timestamp,
+                            });
+                            return r.data?.result ?? null;
+                          }
+                        : undefined
+                    }
+                  />
                 )}
 
                 {/* Compute provenance (compute-preflight ground truth) */}

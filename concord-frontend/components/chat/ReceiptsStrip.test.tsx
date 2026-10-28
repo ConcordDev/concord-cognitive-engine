@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import ReceiptsStrip, { receiptVerdict } from './ReceiptsStrip';
+import ReceiptsStrip, { receiptVerdict, type ReverifyResult } from './ReceiptsStrip';
 
 // F2/S2 (Product Chat review 2026-10-28): every assistant reply carries a
 // receipts verdict in ConKay's vocabulary — sourced / computed / estimated
@@ -88,5 +88,39 @@ describe('ReceiptsStrip', () => {
     render(<ReceiptsStrip message={{ computed: { capabilities: [{ key: 'math.eval', description: 'exact arithmetic' }], engineCount: 2 } }} />);
     fireEvent.click(screen.getByRole('button'));
     expect(screen.getByText(/Solver check: exact arithmetic \(2 engines\)/)).toBeTruthy();
+  });
+
+  it('offers no re-verify control when no handler is wired', () => {
+    render(<ReceiptsStrip message={{}} />);
+    fireEvent.click(screen.getByRole('button'));
+    expect(screen.queryByTestId('receipts-reverify')).toBeNull();
+  });
+
+  it('re-verify runs the handler and renders the leg results', async () => {
+    const result: ReverifyResult = {
+      found: true,
+      verifiedAt: new Date(2000).toISOString(),
+      legs: [
+        { leg: 'solver', status: 'reproduced', detail: 'Re-ran symbolic.evaluate on the stored question — same result (408).' },
+        { leg: 'sources', status: 'all-resolve', detail: '1/1 cited source still resolve.' },
+      ],
+      summary: 'Re-ran symbolic.evaluate on the stored question — same result (408). 1/1 cited source still resolve.',
+    };
+    const onReverify = vi.fn(async () => result);
+    render(<ReceiptsStrip message={{ computed: { capabilities: [{ key: 'math.eval' }] } }} onReverify={onReverify} />);
+    fireEvent.click(screen.getByRole('button'));
+    fireEvent.click(screen.getByTestId('receipts-reverify'));
+    expect(await screen.findByTestId('receipts-reverify-result')).toBeTruthy();
+    expect(onReverify).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/solver:/)).toBeTruthy();
+    expect(screen.getByText(/sources:/)).toBeTruthy();
+  });
+
+  it('re-verify shows an honest error line when the record cannot be read', async () => {
+    const onReverify = vi.fn(async () => null);
+    render(<ReceiptsStrip message={{}} onReverify={onReverify} />);
+    fireEvent.click(screen.getByRole('button'));
+    fireEvent.click(screen.getByTestId('receipts-reverify'));
+    expect(await screen.findByTestId('receipts-reverify-error')).toBeTruthy();
   });
 });
