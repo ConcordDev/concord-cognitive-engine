@@ -35,8 +35,8 @@ interface PublicStats {
 }
 
 export default function AnomaliesPage() {
-  const viewLog = useArtifacts<{ at: string }>('world-creator/anomalies', { type: 'view-event', limit: 5 });
-  const recordView = useCreateArtifact<{ at: string }>('world-creator/anomalies');
+  const viewLog = useArtifacts<{ at: string }>('world-creator', { type: 'view-event', limit: 5 });
+  const recordView = useCreateArtifact<{ at: string }>('world-creator');
   void viewLog; void recordView;
   const [worldId, setWorldId] = useState('');
   const [worldAnomalies, setWorldAnomalies] = useState<Anomaly[]>([]);
