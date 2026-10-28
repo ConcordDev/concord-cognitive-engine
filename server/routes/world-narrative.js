@@ -126,14 +126,18 @@ export default function createWorldNarrativeRoutes({ requireAuth, requireAdmin, 
     // Generate fresh lore (first request or stale)
     const result = await buildLore(worldId);
     if (!result.ok) {
-      // Return stub so UI doesn't break while generation is warming up
-      return res.json({
-        ok: true,
-        lore: {
-          id: "lore_stub",
-          text: "The Oracle is consulting the ancient records. Check back shortly.",
-          generatedAt: new Date().toISOString(),
-        },
+      // Honest unavailable — the same shape POST /lore/refresh already
+      // uses for this failure. Previously this returned ok:true with a
+      // fabricated "lore_stub" entry, and the World Chronicle panel
+      // rendered the placeholder text as if it were the world's lore.
+      // LorePanel treats a non-OK response as its error state, so no
+      // client change is needed.
+      return res.status(503).json({
+        ok: false,
+        status: "unavailable",
+        reason: "lore_generation_unavailable",
+        error: result.error || "lore_generation_unavailable",
+        lore: null,
         cached: false,
       });
     }
