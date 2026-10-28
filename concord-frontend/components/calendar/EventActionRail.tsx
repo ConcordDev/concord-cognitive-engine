@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, lensRun } from '@/lib/api/client';
+import { browserTimeZone, calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { CalendarKeepMenu } from '@/components/calendar/CalendarKeepMenu';
 
@@ -201,11 +202,26 @@ export function EventActionRail({ event }: { event: EventLite }) {
         input: { start: event.startDate.toISOString(), end: event.endDate.toISOString(), excludeEventId: event.id },
       });
       if (r.data?.ok === false) { err(r.data?.error || 'Conflict check failed.'); return; }
-      const conflicts = (r.data?.result as { conflicts?: unknown[] } | undefined)?.conflicts ?? [];
+      const conflicts = (r.data?.result as { conflicts?: Array<{ eventId: string; title: string; start: string; end: string }> } | undefined)?.conflicts ?? [];
       if (conflicts.length === 0) {
         ok('No conflicts detected.');
       } else {
-        ok(`${conflicts.length} conflict${conflicts.length === 1 ? '' : 's'} flagged.`);
+        // F2: name the conflicting events (never a bare count), and offer
+        // the nearest free slot for this event's length (conflict-with-grace).
+        const fmt = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        const names = conflicts.map((c) => `${c.title} (${fmt(c.start)} – ${fmt(c.end)})`).join(', ');
+        let slotNote = '';
+        try {
+          const durationMin = Math.max(15, Math.round((event.endDate.getTime() - event.startDate.getTime()) / 60000));
+          const av = await lensRun({
+            domain: 'calendar',
+            action: 'availability-find',
+            input: { day: calendarDateKey(event.startDate), durationMin, tz: browserTimeZone() },
+          });
+          const free = (av.data?.result as { freeSlots?: Array<{ start: string; end: string }> } | undefined)?.freeSlots || [];
+          if (free.length > 0) slotNote = ` Nearest free slot: ${fmt(free[0].start)} – ${fmt(free[0].end)}.`;
+        } catch { /* the named conflicts are the answer; the slot is a bonus */ }
+        ok(`Conflicts with ${names}.${slotNote}`);
       }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
