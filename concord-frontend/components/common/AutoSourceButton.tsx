@@ -11,7 +11,7 @@
  * Honest states throughout: disabled, rate-limited, and not-enough-sources
  * are said plainly, and nothing claims to be saved when it wasn't.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2, Sparkles, Globe, Lock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,18 @@ interface AutoSourceResult {
   providersUsed?: string[];
 }
 
+/** research.auto-source-status (9a): server switch, caps and this user's usage. */
+interface AutoSourceStatus {
+  enabled: boolean;
+  signedIn: boolean;
+  dailyCap: number;
+  perUserHourly: number;
+  usedToday: number;
+  remainingToday: number;
+  usedThisHour?: number;
+  remainingThisHour?: number;
+}
+
 type Phase =
   | { kind: 'idle' }
   | { kind: 'running' }
@@ -34,6 +46,7 @@ type Phase =
   | { kind: 'error'; message: string };
 
 function runErrorMessage(data: { error?: string | null; reason?: string }): string {
+  if (data.error === 'auth_required') return 'Sign in to auto-source a topic.';
   if (data.error === 'auto_source_disabled') return 'Auto-source is not enabled on this server yet.';
   if (data.error === 'rate_limited' || data.reason === 'user_hourly_limit') return 'You have hit the auto-source limit (5 runs per hour). Try again later.';
   if (data.reason === 'global_daily_cap') return 'Auto-source has hit its daily limit for everyone. Try again tomorrow.';
@@ -60,6 +73,24 @@ export function AutoSourceButton({ topic, lensDomain, className }: { topic: stri
   const [publishNote, setPublishNote] = useState('');
 
   const trimmed = topic.trim();
+  // Server switch + caps, read up front so a disabled server shows a disabled
+  // button instead of failing after a click. null = still loading / unknown.
+  const [status, setStatus] = useState<AutoSourceStatus | null>(null);
+  const [statusTick, setStatusTick] = useState(0);
+  useEffect(() => {
+    let live = true;
+    lensRun<AutoSourceStatus>('research', 'auto-source-status', {})
+      .then((r) => { if (live) setStatus(r.data?.ok && r.data.result ? r.data.result : null); })
+      .catch(() => { if (live) setStatus(null); });
+    return () => { live = false; };
+  }, [statusTick]);
+
+  const blocked: string | null = !status ? null
+    : !status.enabled ? 'Auto-source is off on this server. Nothing will be gathered until an admin turns it on.'
+    : !status.signedIn ? 'Sign in to auto-source a topic.'
+    : status.remainingToday <= 0 ? 'Auto-source has hit its daily limit for everyone. Try again tomorrow.'
+    : status.remainingThisHour === 0 ? `You have used all ${status.perUserHourly} auto-source runs for this hour. Try again later.`
+    : null;
 
   async function run() {
     if (trimmed.length < 2) return;
@@ -100,6 +131,8 @@ export function AutoSourceButton({ topic, lensDomain, className }: { topic: stri
       });
     } catch {
       setPhase({ kind: 'error', message: 'Auto-source could not be reached. Nothing was saved.' });
+    } finally {
+      setStatusTick((t) => t + 1);
     }
   }
 
@@ -127,15 +160,22 @@ export function AutoSourceButton({ topic, lensDomain, className }: { topic: stri
           <button
             type="button"
             onClick={run}
-            disabled={phase.kind === 'running' || trimmed.length < 2}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-teal-500/40 bg-teal-500/15 text-xs text-teal-100 disabled:opacity-50"
+            disabled={phase.kind === 'running' || trimmed.length < 2 || !!blocked}
+            aria-disabled={!!blocked || undefined}
+            title={blocked || undefined}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-teal-500/40 bg-teal-500/15 text-xs text-teal-100 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {phase.kind === 'running' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-            {phase.kind === 'running' ? 'Gathering sources…' : 'Auto-source this topic'}
+            {phase.kind === 'running' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : blocked ? <Lock className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
+            {phase.kind === 'running' ? 'Gathering sources…' : status && !status.enabled ? 'Auto-source is off' : 'Auto-source this topic'}
           </button>
           <span className="text-[11px] text-gray-500">
-            Pulls public sources into Concord and drafts a cited summary for your review.
+            {blocked || 'Pulls public sources into Concord and drafts a cited summary for your review.'}
           </span>
+          {!blocked && status?.signedIn && typeof status.remainingThisHour === 'number' && (
+            <span className="text-[11px] text-gray-500" data-testid="auto-source-remaining">
+              {status.remainingThisHour} of {status.perUserHourly} runs left this hour
+            </span>
+          )}
         </div>
       )}
 

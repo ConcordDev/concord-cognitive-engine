@@ -34,3 +34,12 @@ test("the workbench mounts it only when search coverage is thin", () => {
   assert.match(workbench, /searched && hits\.length < 3/);
   assert.match(workbench, /<AutoSourceButton key=\{query\} topic=\{query\} lensDomain="research" \/>/);
 });
+
+test("the button reads auto-source-status up front and shows a clear disabled state while the server switch is off", () => {
+  assert.match(button, /lensRun<AutoSourceStatus>\('research', 'auto-source-status', \{\}\)/);
+  assert.match(button, /Auto-source is off on this server/);
+  assert.match(button, /disabled=\{phase\.kind === 'running' \|\| trimmed\.length < 2 \|\| !!blocked\}/);
+  assert.match(button, /Sign in to auto-source a topic/);
+  assert.ok(button.includes("auth_required"), "signed-out refusal is explained");
+  assert.match(button, /runs left this hour/);
+});
