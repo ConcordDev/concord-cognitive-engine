@@ -64,13 +64,33 @@ export function EnvelopeBudget({ monthlyIncome = 0 }: EnvelopeBudgetProps) {
     } catch (e) { console.error('[Envelopes] delete failed', e); }
   }
 
+  const [incomeError, setIncomeError] = useState('');
+
   async function saveIncome(value: number) {
+    // The server rejects a negative or non-finite income with a validation
+    // error (it is never clamped). Don't show a value that wasn't saved:
+    // validate up front, and roll back + show the server's message if the
+    // call still fails.
+    if (!Number.isFinite(value) || value < 0) {
+      setIncomeError('Monthly income must be 0 or more.');
+      return;
+    }
+    const prev = income;
     setIncome(value);
+    setIncomeError('');
     try {
-      await lensRun({
+      const r = await lensRun({
         domain: 'finance', action: 'monthly-income-set', input: { monthlyIncome: value },
       });
-    } catch (e) { console.error('[Income] save failed', e); }
+      const d = (r as { data?: { ok?: boolean; message?: string } }).data;
+      if (d && d.ok === false) {
+        setIncome(prev);
+        setIncomeError(d.message || 'That income was rejected by the server.');
+      }
+    } catch (e) {
+      setIncome(prev);
+      console.error('[Income] save failed', e);
+    }
   }
 
   const totalTarget = useMemo(() => envelopes.reduce((s, e) => s + e.monthlyTarget, 0), [envelopes]);
@@ -108,6 +128,9 @@ export function EnvelopeBudget({ monthlyIncome = 0 }: EnvelopeBudgetProps) {
         </span>
         {zeroBased && <span className="text-green-400 inline-flex items-center gap-1"><Check className="w-3 h-3" /> Zero-based!</span>}
       </div>
+      {incomeError && (
+        <p className="px-4 py-1.5 text-[11px] text-red-400 border-b border-white/5" role="alert">{incomeError}</p>
+      )}
 
       {creating && (
         <div className="p-3 border-b border-white/10 flex items-center gap-2">
