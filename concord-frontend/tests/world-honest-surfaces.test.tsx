@@ -72,6 +72,16 @@ describe('MobileCompanion', () => {
     expect(screen.getByTestId('companion-chat-not-supported')).toHaveTextContent(/not wired to any message service/);
     expect(screen.queryByPlaceholderText('Type a message...')).toBeNull();
   });
+
+  it('Marketplace and Royalties quick actions are live, not coming-soon stubs', () => {
+    render(<MobileCompanion />);
+    for (const label of ['Marketplace', 'Royalties']) {
+      const btn = screen.getByText(label).closest('button');
+      expect(btn).not.toBeNull();
+      expect(btn).not.toBeDisabled();
+    }
+    expect(screen.queryByText('Coming soon')).toBeNull();
+  });
 });
 
 describe('District editor starting canvas', () => {
