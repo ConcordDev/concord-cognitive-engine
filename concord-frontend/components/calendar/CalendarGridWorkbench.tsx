@@ -19,6 +19,7 @@ import { ErrorState } from '@/components/common/EmptyState';
 import { Skeleton } from '@/components/ui';
 import { EventActionRail } from '@/components/calendar/EventActionRail';
 import { eventIdFromResult, eventNotSavedSentence, eventOnCalendarSentence, eventSavedSentence, eventUpdatedSentence } from '@/components/calendar/calendarKeep';
+import { browserTimeZone, calendarDateKey, COMMON_TIME_ZONES, fromZonedInputValue, profileTimeZone, resolveCalendarTimeZone, toZonedInputValue, zoneAbbrev, zoneCityLabel } from '@/lib/calendar-date';
 import { RecurrenceEditor, RecurrenceScopeDialog, describeRecurrence, type RecurrenceScope, type UiRecurrence } from '@/components/calendar/RecurrenceEditor';
 import Link from 'next/link';
 
@@ -53,6 +54,8 @@ interface CalendarEvent {
   artworkColor?: string;
   /** Real calendar (calendars-list) this event lives on — multi-calendar support. */
   calendarId?: string;
+  /** IANA zone the event was authored in; instants render in the viewer's zone. */
+  tz?: string;
 }
 
 interface CalendarCategory {
@@ -150,6 +153,7 @@ interface BackendRecurrence {
   byDay?: string[];
   monthlyMode?: 'dayOfMonth' | 'nthWeekday';
   lastWeek?: boolean;
+  tz?: string | null;
 }
 
 interface BackendEvent {
@@ -166,6 +170,7 @@ interface BackendEvent {
   reminders: number[];
   attendees: string[];
   conferenceLink: string;
+  tz?: string | null;
   createdAt: string;
   occurrenceStart?: string;
   occurrenceEnd?: string;
@@ -266,6 +271,7 @@ function fromBackendEvent(e: BackendEvent): CalendarEvent {
     seriesEnd: new Date(e.end),
     artworkColor: meta.artworkColor,
     calendarId: e.calendarId,
+    tz: e.tz || e.recurrence?.tz || undefined,
   };
 }
 
@@ -289,16 +295,18 @@ function toBackendEventParams(ev: CalendarEvent): Record<string, unknown> {
     reminders: remindersToMinutes(ev.reminders),
     attendees: ev.collaborators || [],
     conferenceLink: ev.url || '',
+    tz: ev.tz || undefined,
     recurrence: ev.recurrence
       ? {
         freq: ev.recurrence.frequency,
         interval: ev.recurrence.interval,
-        until: ev.recurrence.endDate ? ev.recurrence.endDate.toISOString().slice(0, 10) : null,
+        until: ev.recurrence.endDate ? calendarDateKey(ev.recurrence.endDate, ev.tz || browserTimeZone()) : null,
         count: ev.recurrence.count || null,
         byDay: ev.recurrence.frequency === 'weekly' ? ev.recurrence.byDay : undefined,
         monthlyMode: ev.recurrence.frequency === 'monthly' ? ev.recurrence.monthlyMode : undefined,
         lastWeek: ev.recurrence.lastWeek,
         tzOffset: ev.startDate.getTimezoneOffset(),
+        tz: ev.tz || undefined,
       }
       : null,
   };
@@ -312,6 +320,7 @@ function toBackendEventParams(ev: CalendarEvent): Record<string, unknown> {
 
 export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode } = {}) {
   const { user } = useAuth();
+  const accountTz = resolveCalendarTimeZone(profileTimeZone(user));
 
   // State
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -368,6 +377,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
     collaborators: [],
     linkedProject: '',
     reminders: [],
+    tz: accountTz,
   });
 
 
@@ -590,6 +600,8 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
     setNewEvent({ ...newEvent, collaborators: (newEvent.collaborators || []).filter((c) => c !== tag) });
   };
 
+  const formTz = newEvent.tz || accountTz;
+
   const defaultNewEventForm = (): Partial<CalendarEvent> => ({
     title: '',
     description: '',
@@ -603,6 +615,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
     collaborators: [],
     linkedProject: '',
     reminders: [],
+    tz: accountTz,
   });
 
   /** "+ Event": a one-hour slot at 10:00 on the selected day. */
@@ -1718,6 +1731,11 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     <p className="text-sm">
                       {formatDateRange(new Date(selectedEvent.startDate), new Date(selectedEvent.endDate), selectedEvent.allDay)}
                     </p>
+                    {selectedEvent.tz && selectedEvent.tz !== browserTimeZone() && (
+                      <p className="text-xs text-gray-500 tabular-nums">
+                        {new Date(selectedEvent.startDate).toLocaleTimeString('en-US', { timeZone: selectedEvent.tz, hour: 'numeric', minute: '2-digit' })} {zoneAbbrev(selectedEvent.tz, new Date(selectedEvent.startDate))} in {zoneCityLabel(selectedEvent.tz)} · {new Date(selectedEvent.startDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} your time
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -1900,8 +1918,8 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     <label className="text-xs text-gray-400 mb-1 block">Start</label>
                     <input
                       type="datetime-local"
-                      value={newEvent.startDate?.toISOString().slice(0, 16) || ''}
-                      onChange={(e) => setNewEvent({ ...newEvent, startDate: new Date(e.target.value) })}
+                      value={newEvent.startDate ? toZonedInputValue(newEvent.startDate, formTz) : ''}
+                      onChange={(e) => { const d = fromZonedInputValue(e.target.value, formTz); if (d) setNewEvent({ ...newEvent, startDate: d }); }}
                       className="w-full bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
                     />
                   </div>
@@ -1909,11 +1927,33 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     <label className="text-xs text-gray-400 mb-1 block">End</label>
                     <input
                       type="datetime-local"
-                      value={newEvent.endDate?.toISOString().slice(0, 16) || ''}
-                      onChange={(e) => setNewEvent({ ...newEvent, endDate: new Date(e.target.value) })}
+                      value={newEvent.endDate ? toZonedInputValue(newEvent.endDate, formTz) : ''}
+                      onChange={(e) => { const d = fromZonedInputValue(e.target.value, formTz); if (d) setNewEvent({ ...newEvent, endDate: d }); }}
                       className="w-full bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">Time zone</label>
+                  <select
+                    aria-label="Event time zone"
+                    value={formTz}
+                    onChange={(e) => {
+                      const nextTz = e.target.value;
+                      setNewEvent({
+                        ...newEvent,
+                        tz: nextTz,
+                        startDate: newEvent.startDate ? fromZonedInputValue(toZonedInputValue(newEvent.startDate, formTz), nextTz) || newEvent.startDate : newEvent.startDate,
+                        endDate: newEvent.endDate ? fromZonedInputValue(toZonedInputValue(newEvent.endDate, formTz), nextTz) || newEvent.endDate : newEvent.endDate,
+                      });
+                    }}
+                    className="w-full bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
+                  >
+                    {Array.from(new Set([formTz, accountTz, ...COMMON_TIME_ZONES])).map((z) => (
+                      <option key={z} value={z}>{z.replace(/_/g, ' ')}</option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Live conflict check — real STATE-backed calendar.conflicts-check
