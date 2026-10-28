@@ -88,7 +88,9 @@ function pushNotice(heirUserId, notice) {
   S.inheritanceNotices.set(heirUserId, arr.slice(0, 100));
 }
 
+import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerInheritanceActions(registerLensAction) {
+  registerLensAction = saveAfterWrites(registerLensAction); // persist STATE after a successful write (lib/lens-save-on-write.js)
   // ── Estate overview ───────────────────────────────────────────────
   registerLensAction("inheritance", "estate_overview", (ctx) => {
     try {

@@ -112,8 +112,9 @@ function normTok(s) {
   return String(s || "").trim().toLowerCase().replace(/\s+/g, "_");
 }
 
+import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerCommonsenseActions(registerLensAction) {
-  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
+  registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * plausibilityCheck
    * Score statement plausibility using constraint satisfaction.

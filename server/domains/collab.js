@@ -13,8 +13,9 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { publicActor, presentOwnedId } from "../lib/public-actor.js";
 
+import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerCollabActions(registerLensAction) {
-  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
+  registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─────────────────────────────────────────────────────────────────
   //  Shared collaboration state
   // ─────────────────────────────────────────────────────────────────

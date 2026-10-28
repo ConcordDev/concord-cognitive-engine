@@ -180,7 +180,9 @@ async function composeReply(ctx, persona, userMessage, priorTurns) {
 
 // =========================================================================
 
+import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerPersonasActions(registerLensAction) {
+  registerLensAction = saveAfterWrites(registerLensAction); // persist STATE after a successful write (lib/lens-save-on-write.js)
   const reg = registerLensAction;
 
   // ---- create / author from scratch -------------------------------------

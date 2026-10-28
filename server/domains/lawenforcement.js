@@ -129,8 +129,9 @@ function haversineKm(a, b) {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerLawEnforcementActions(registerLensAction) {
-  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
+  registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
   // ======================================================================
   // ORIGINAL pure-compute analytics macros (preserved verbatim).
   // ======================================================================

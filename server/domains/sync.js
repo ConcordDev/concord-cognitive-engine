@@ -111,8 +111,9 @@ function ensureDevice(userId, deviceId, label) {
 
 const ALL_SCOPES = ["personal", "public", "artifacts", "shared", "drafts"];
 
+import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerSyncActions(registerLensAction) {
-  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
+  registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * register_device — create an experience-layer device record.
    * Mirrors the legacy dtu_sync.register_device but adds scopes/quota.

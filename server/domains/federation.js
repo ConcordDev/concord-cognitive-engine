@@ -83,7 +83,9 @@ function fingerprint(key) {
 
 const SYNC_CLASSES = ["dtu", "trust", "activity", "moderation", "media", "lineage"];
 
+import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerFederationActions(registerLensAction) {
+  registerLensAction = saveAfterWrites(registerLensAction); // persist STATE after a successful write (lib/lens-save-on-write.js)
   // ── peers — current federation peer list with trust scores ────────
   registerLensAction("federation", "peers", (ctx) => {
     try {

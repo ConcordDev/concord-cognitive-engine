@@ -29,8 +29,9 @@ export const SERVICE_LISTING_CAP = 200;
 export const SERVICE_ORDER_CAP = 200;
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerServiceMarketActions(registerLensAction) {
-  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
+  registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
   /* ---- STATE-backed stores (no migrations) ------------------------------ */
   function smStore() {
     if (!globalThis._concordSTATE) globalThis._concordSTATE = {};

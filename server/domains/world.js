@@ -46,8 +46,9 @@ export function loadStandingBuildings(db, worldId) {
   return db.prepare("SELECT id, name, building_type, material, floors, health_pct, state FROM world_buildings WHERE world_id = ? AND state != 'collapsed' LIMIT 2000").all(worldId);
 }
 
+import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerWorldActions(registerLensAction) {
-  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
+  registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("world", "countryCompare", (ctx, artifact, _params) => {
     const countries = artifact.data?.countries || [];
     if (countries.length < 2) return { ok: true, result: { message: "Provide 2+ countries with metrics to compare." } };

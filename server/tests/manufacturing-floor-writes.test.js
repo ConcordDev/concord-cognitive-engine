@@ -118,7 +118,8 @@ describe("manufacturing floor writes (INC-62)", () => {
     const t1 = "2026-10-11T12:10:00.000Z";
     // Readings before registration are stored, but the board stays empty.
     call("iot-reading-ingest", acct1, { machineId: "CNC-01", machineState: "running", cycleCount: 0, at: t0 });
-    assert.equal(saves, 0);
+    // The stored reading is persisted by one coalesced save (lib/lens-save-on-write.js), no more.
+    assert.equal(saves, 1);
     assert.deepEqual(call("oee-status", acct1, {}).result.machines, []);
 
     call("machine-register", acct1, { machineId: "CNC-01", name: "Haas", idealCycleTime: 1 });

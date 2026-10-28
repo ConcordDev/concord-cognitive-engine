@@ -8,8 +8,9 @@ import {
   setMemberRole, getOrgMembers, getOrgsForUser,
 } from "../lib/world-organizations.js";
 
+import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerCommandCenterActions(registerLensAction) {
-  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
+  registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * situationReport
    * Generate a situation report from multiple data feeds.

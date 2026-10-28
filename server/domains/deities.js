@@ -12,8 +12,9 @@
 // { ok: boolean, result?, error? } — never throws.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerDeitiesActions(registerLensAction) {
-  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
+  registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── Shared state helpers ─────────────────────────────────────────────
   function getDeitiesState() {
     const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});

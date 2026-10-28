@@ -22,7 +22,9 @@ function requireAdminRole(ctx) {
   return { ok: false, error: "Insufficient permissions: admin role required" };
 }
 
+import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerAdminActions(registerLensAction) {
+  registerLensAction = saveAfterWrites(registerLensAction); // persist STATE after a successful write (lib/lens-save-on-write.js)
   /**
    * auditLog
    * Analyze audit log entries for anomalies — detect unusual access patterns
