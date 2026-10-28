@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence } from 'framer-motion';
 import { ShieldAlert, Loader2, ExternalLink, AlertOctagon, Zap } from 'lucide-react';
+import { lensRun } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { AdvisoryActionMenu } from '@/components/security/AdvisoryActionMenu';
 
