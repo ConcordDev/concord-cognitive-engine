@@ -1,7 +1,7 @@
 // server/domains/fashion.js
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
-import { cachedFetchJson } from "../lib/external-fetch.js";
+import { openMeteoJson } from "../lib/weather-feed-sources.js";
 import { listFriends, areFriends } from "../lib/friendships.js";
 
 export default function registerFashionActions(registerLensAction) {
@@ -624,8 +624,11 @@ export default function registerFashionActions(registerLensAction) {
       return { ok: false, error: "lat and lon required" };
     }
     try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&current=temperature_2m,weather_code,precipitation&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max&temperature_unit=celsius&forecast_days=7&timezone=auto`;
-      const data = await cachedFetchJson(url, { ttlMs: 30 * 60 * 1000 });
+      const data = await openMeteoJson({ lat, lon, params: {
+        current: "temperature_2m,weather_code,precipitation",
+        daily: "temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max",
+        temperature_unit: "celsius", forecast_days: 7, timezone: "auto",
+      } });
       const cur = data?.current || {};
       const d = data?.daily || {};
       const days = (d.time || []).map((date, i) => ({

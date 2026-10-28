@@ -28,6 +28,7 @@ import { hostTier, isExcludedHost } from "./news-outlet-policy.js";
 import { summaryForItem, queueItemForSummary } from "./news-summarizer.js";
 import { normalizeTagList } from "./dtu-tags.js";
 import { trackFeedJob } from "../emergent/feed.js";
+import { getForecast as getWeatherForecast } from "./weather-feed-sources.js";
 import { isSharedUpstream, getSharedTextOrThrow, responseLike } from "./shared-http.js";
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -518,7 +519,8 @@ async function fetchFeed(feedSource) {
     return { items: [], errors: ["backoff"] };
   }
   // G2 — robots.txt politeness (reuses the entity-web-exploration check, 24h-cached).
-  if (!(await robotsAllows(feedSource.url))) {
+  // A weather-descriptor feed reads the shared weather cache (its own SSRF-guarded, budgeted path), not feedSource.url.
+  if (!feedSource.weather && !(await robotsAllows(feedSource.url))) {
     health.lastError = "robots_disallow";
     return { items: [], errors: ["robots_disallow"] };
   }
@@ -526,7 +528,14 @@ async function fetchFeed(feedSource) {
   try {
     health.lastAttempt = Date.now();
     let res;
-    if (isSharedUpstream(feedSource.url)) {
+    if (feedSource.weather) {
+      const wx = await getWeatherForecast(feedSource.weather);
+      if (!wx.ok) {
+        // Nothing truthful to ingest this cycle; not a feed fault, so it must not count toward auto-disable.
+        return { items: [], errors: [`weather_${wx.reason}`] };
+      }
+      res = responseLike({ text: JSON.stringify(wx.data), contentType: "application/json" });
+    } else if (isSharedUpstream(feedSource.url)) {
       // Same upstream URL that realtime-feeds / the news pool also poll: read through the shared
       // feed-cache so it is fetched once. A read younger than half this feed's interval is a hit.
       const ttlMs = Math.min(10 * 60_000, Math.max(30_000, Math.floor((feedSource.interval || 60_000) / 2)));

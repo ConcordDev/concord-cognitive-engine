@@ -16,6 +16,7 @@ import {
 const TREFLE_BASE = "https://trefle.io/api/v1";
 
 import { needNums, notComputed, advisory } from "../lib/lens-inputs.js";
+import { getForecast } from "../lib/weather-feed-sources.js";
 
 export default function registerLandscapingActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -627,11 +628,9 @@ export default function registerLandscapingActions(registerLensAction) {
       return { ok: false, error: "valid lat/lon required" };
     }
     try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-        `&daily=temperature_2m_min,temperature_2m_max&forecast_days=16&timezone=auto`;
-      const r = await fetch(url);
-      if (!r.ok) return { ok: false, error: `open-meteo ${r.status}` };
-      const data = await r.json();
+      const wx = await getForecast({ lat, lon, params: { daily: "temperature_2m_min,temperature_2m_max", forecast_days: 16, timezone: "auto" } });
+      if (!wx.ok) return { ok: false, error: `open-meteo ${wx.reason}`, status: "unavailable", reason: wx.reason, lastOkAt: wx.lastOkAt };
+      const data = wx.data;
       const mins = data?.daily?.temperature_2m_min || [];
       const maxs = data?.daily?.temperature_2m_max || [];
       if (!mins.length) return { ok: false, error: "no climate data for location" };

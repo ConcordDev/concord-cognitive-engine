@@ -199,8 +199,9 @@ describe("loadAirQuality", () => {
     assert.equal(pm.unit, "µg/m³");
     assert.equal(pm.aqi, null);
     const aq = new URL(urls.find((u) => u.includes("air-quality-api.open-meteo.com")));
-    assert.equal(aq.searchParams.get("latitude"), "37.7509");
-    assert.equal(aq.searchParams.get("longitude"), "-122.4156");
+    // The shared weather cache keys on coordinates rounded to 2 dp (~1 km), so the upstream sees 37.75.
+    assert.equal(aq.searchParams.get("latitude"), "37.75");
+    assert.equal(aq.searchParams.get("longitude"), "-122.42");
     assert.equal(aq.searchParams.get("current"), "us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,ozone");
     assert.equal(urls.some((u) => u.includes("airnow")), false);
     assert.equal(r.secondary, undefined);
@@ -330,7 +331,8 @@ describe("loadUsWeather", () => {
       const u = String(url);
       calls.push({ url: u, headers: init?.headers || {} });
       if (u.includes("geocoding-api.open-meteo.com")) {
-        return json(u.includes("London") ? londonGeocode() : sfGeocode());
+        // geocode names are lower-cased by the shared cache key
+        return json(/london/i.test(u) ? londonGeocode() : sfGeocode());
       }
       if (u.includes("api.weather.gov/points/")) {
         if (extra?.pointsStatus) return json({ detail: "not found" }, extra.pointsStatus);

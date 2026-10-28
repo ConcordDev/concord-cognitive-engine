@@ -2027,6 +2027,7 @@ import { hashPasswordOffThread, verifyPasswordOffThread, terminatePasswordWorker
 import { v6ContractOnly as _v6ContractOnly, jsonOnlyReply as _jsonOnlyReply } from "./lib/chat-v6-contract.js";
 import { stripGovernanceLeak, visibleChatReply, createGovernanceLeakFilter } from "./lib/chat-governance-leak.js";
 import { extractWeatherLocation as _extractWeatherLocation } from "./lib/chat/weather-location.js";
+import { getForecast, geocodePlace, OPEN_METEO_ATTRIBUTION } from "./lib/weather-feed-sources.js";
 import { routeComputeQuestion as _routeComputeQuestion, composeRoutedReply as _composeRoutedReply } from "./lib/chat/compute-router.js";
 import { normalizeComputeCall as _normalizeComputeCall, formatArithmeticAnswer as _formatArithmeticAnswer, arithmeticQuestion as _arithmeticQuestion } from "./lib/chat-compute-normalize.js";
 import { isOperator as _isOperatorActor } from "./lib/runtime/operator-gate.js";
@@ -37804,76 +37805,47 @@ function getTimeInfo(timeZone = "America/New_York") {
   return { nowISO, timeZone, localTime, epochMs: now.getTime() };
 }
 
-const _WEATHER_CACHE = new Map(); // key -> { ts:number, data:any }
-// Hostname allowlist for the weather/geocoding _fetchJson helper.
-// Explicit allowlist (rather than a deny-list-style SSRF check)
-// satisfies CodeQL's taint tracker, which doesn't recognize the
-// canonical _ssrfValidate as a sanitizer.
-const _FETCH_JSON_ALLOWED_HOSTS = new Set([
-  "api.open-meteo.com",
-  "geocoding-api.open-meteo.com",
-  "api.weatherapi.com",
-  "api.openweathermap.org",
-]);
-async function _fetchJson(url) {
-  // Belt-and-suspenders: explicit hostname allowlist + the canonical
-  // wave-3 SSRF guard. The allowlist closes CodeQL's
-  // js/server-side-request-forgery flow; the SSRF guard catches the
-  // edge case where one of the allowed hosts resolves to a private
-  // IP via DNS rebinding.
-  let parsed;
-  try { parsed = new URL(url); }
-  catch { throw new Error("fetch_invalid_url"); }
-  if (!_FETCH_JSON_ALLOWED_HOSTS.has(parsed.hostname)) {
-    throw new Error(`fetch_host_not_allowed:${parsed.hostname}`);
-  }
-  const ssrfCheck = await _ssrfValidate(url);
-  if (!ssrfCheck.ok) throw new Error(`fetch_blocked_ssrf:${ssrfCheck.error}`);
-  const safeUrl = parsed.toString();
-  const r = await fetch(safeUrl, { method: "GET", headers: { "accept":"application/json" }, signal: AbortSignal.timeout(10000) });
-  if (!r.ok) throw new Error(`fetch_failed:${r.status}`);
-  return r.json();
-}
-function _cacheGet(key, ttlMs) {
-  const ent = _WEATHER_CACHE.get(key);
-  if (!ent) return null;
-  if ((Date.now() - ent.ts) > ttlMs) return null;
-  return ent.data;
-}
-function _cacheSet(key, data) { _WEATHER_CACHE.set(key, { ts: Date.now(), data }); }
-
+// Weather: every Open-Meteo read goes through lib/weather-feed-sources.js (shared feed-cache,
+// SSRF-guarded, budgeted, stale-on-error), so chat, domains, ticks and the REST route share one entry
+// per (rounded location, params) instead of each keeping its own cache.
 async function getWeather(locationStr, opts={}) {
   const location = String(locationStr || "").trim() || "Poughkeepsie, NY";
   const timeZone = String(opts.timeZone || "America/New_York");
-  const ttlMs = clamp(Number(opts.ttlMs || (10*60*1000)), 60*1000, 60*60*1000); // 1m..1h
-
-  const key = `wx:${location}:${timeZone}`;
-  const cached = _cacheGet(key, ttlMs);
-  if (cached) return { ok:true, cached:true, ...cached };
 
   // Geocode via Open-Meteo geocoding (no key).
-  const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=en&format=json`;
-  const geo = await _fetchJson(geoUrl);
-  const hit = geo?.results?.[0];
+  const geo = await geocodePlace(location);
+  if (!geo.ok) return { ok:false, error:"weather_unavailable", reason: geo.reason, lastOkAt: geo.lastOkAt, location };
+  const hit = geo.data?.results?.[0];
   if (!hit) return { ok:false, error:"location_not_found", location };
 
   const lat = hit.latitude, lon = hit.longitude;
   const label = [hit.name, hit.admin1, hit.country].filter(Boolean).join(", ");
 
   // Forecast via Open-Meteo (current + hourly + daily)
-  const wxUrl =
-    `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}` +
-    `&current=temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m` +
-    `&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m` +
-    `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,weather_code` +
-    `&timezone=${encodeURIComponent(timeZone)}`;
+  const wx = await getForecast({ lat, lon, params: {
+    current: "temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m",
+    hourly: "temperature_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m",
+    daily: "temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,weather_code",
+    timezone: timeZone,
+  } });
+  if (!wx.ok) return { ok:false, error:"weather_unavailable", reason: wx.reason, lastOkAt: wx.lastOkAt, location };
 
-  const wx = await _fetchJson(wxUrl);
-
-  const out = { location: label, lat, lon, timeZone, forecast: wx };
-  _cacheSet(key, out);
-  return { ok:true, cached:false, ...out };
+  return { ok:true, cached: wx.stale || false, ...(wx.stale ? { stale:true } : {}), fetchedAt: wx.fetchedAt, location: label, lat, lon, timeZone, forecast: wx.data };
 }
+
+// Real-world point forecast for the browser widgets (forecast + desert lenses). The browser never talks to
+// Open-Meteo itself: it asks here and gets the shared cache entry. Presets keep the upstream param set closed.
+const _REAL_WEATHER_PRESETS = {
+  week: { current: "temperature_2m,relative_humidity_2m,weather_code", daily: "temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code,wind_speed_10m_max", forecast_days: 7 },
+  current: { current: "temperature_2m,relative_humidity_2m,wind_speed_10m,apparent_temperature,is_day,weather_code" },
+};
+register("forecast", "realWeather", async (_ctx, input = {}) => {
+  const preset = _REAL_WEATHER_PRESETS[String(input.preset || "week")];
+  if (!preset) return { ok:false, error:"bad_preset", presets:Object.keys(_REAL_WEATHER_PRESETS) };
+  const wx = await getForecast({ lat: input.lat, lon: input.lon, params: preset });
+  if (!wx.ok) return { ok:false, status:"unavailable", reason: wx.reason, lastOkAt: wx.lastOkAt, error: wx.error, attribution: OPEN_METEO_ATTRIBUTION };
+  return { ok:true, data: wx.data, fetchedAt: wx.fetchedAt, stale: wx.stale, attribution: OPEN_METEO_ATTRIBUTION };
+}, { summary:"Real-world forecast at a lat/lon (Open-Meteo via the shared feed cache). preset: week | current." });
 
 register("verify","conflictCheck", (ctx, input) => {
   const dtu = input?.dtu || null;
@@ -69556,11 +69528,6 @@ _unrefInTest(setInterval(() => {
   const stale24h = new Date(now - 24 * 60 * 60 * 1000).toISOString();
   const stale7d = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
   let cleaned = 0;
-
-  // Weather cache: evict entries older than 1 hour
-  for (const [key, entry] of _WEATHER_CACHE) {
-    if (now - entry.ts > 3600000) { _WEATHER_CACHE.delete(key); cleaned++; }
-  }
 
   // Council submit tracker: evict expired rate-limit windows
   for (const [userId, tracker] of _councilSubmitTracker) {

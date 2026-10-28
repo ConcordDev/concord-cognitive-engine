@@ -7,6 +7,7 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerLandscapingActions from "../domains/landscaping.js";
+import { _resetWeatherFeedForTests } from "../lib/weather-feed-sources.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) {
@@ -26,6 +27,7 @@ beforeEach(() => {
   globalThis._concordSTATE = { dtus: new Map() };
   globalThis._concordSaveStateDebounced = () => {};
   globalThis.fetch = async () => { throw new Error("network disabled"); };
+  _resetWeatherFeedForTests(); // the shared weather cache outlives a test; start each one cold
 });
 
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };

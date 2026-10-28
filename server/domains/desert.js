@@ -12,10 +12,8 @@
 // Pure-compute macros for budgets, sizing, classification.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
-import { cachedFetchJson } from "../lib/external-fetch.js";
+import { openMeteoJson } from "../lib/weather-feed-sources.js";
 import { needNums, notComputed } from "../lib/lens-inputs.js";
-
-const OPEN_METEO = "https://api.open-meteo.com/v1/forecast";
 
 export default function registerDesertActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -288,13 +286,12 @@ export default function registerDesertActions(registerLensAction) {
   }
 
   async function fetchDesertWeather(lat, lng) {
-    const url =
-      `${OPEN_METEO}?latitude=${lat}&longitude=${lng}` +
-      `&current=temperature_2m,relative_humidity_2m,wind_speed_10m,apparent_temperature` +
-      `&hourly=uv_index,temperature_2m,relative_humidity_2m,wind_speed_10m` +
-      `&daily=uv_index_max,temperature_2m_max,temperature_2m_min,sunrise,sunset` +
-      `&forecast_days=3&timezone=auto`;
-    return cachedFetchJson(url, { ttlMs: 10 * 60 * 1000 });
+    return openMeteoJson({ lat, lon: lng, params: {
+      current: "temperature_2m,relative_humidity_2m,wind_speed_10m,apparent_temperature",
+      hourly: "uv_index,temperature_2m,relative_humidity_2m,wind_speed_10m",
+      daily: "uv_index_max,temperature_2m_max,temperature_2m_min,sunrise,sunset",
+      forecast_days: 3, timezone: "auto",
+    } });
   }
 
   function shapeWeatherAlert(data, lat, lng, name) {

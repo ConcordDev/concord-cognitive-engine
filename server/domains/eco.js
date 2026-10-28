@@ -4,6 +4,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
+import { openMeteoJson } from "../lib/weather-feed-sources.js";
 
 export default function registerEcoActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -550,8 +551,12 @@ export default function registerEcoActions(registerLensAction) {
     const lng = Number(params.lng);
     if (!isFinite(lat) || !isFinite(lng)) return { ok: false, error: "lat, lng required" };
     try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,precipitation,relative_humidity_2m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,uv_index_max&forecast_days=7&timezone=auto`;
-      const r = await safeFetchJson(url);
+      const r = await openMeteoJson({ lat, lon: lng, params: {
+        current: "temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m",
+        hourly: "temperature_2m,precipitation,relative_humidity_2m",
+        daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,uv_index_max",
+        forecast_days: 7, timezone: "auto",
+      } });
       const daily = (r.daily?.time || []).map((d, i) => ({
         date: d,
         high: r.daily.temperature_2m_max[i],
@@ -601,8 +606,7 @@ export default function registerEcoActions(registerLensAction) {
     const lng = Number(params.lng);
     if (!isFinite(lat) || !isFinite(lng)) return { ok: false, error: "lat, lng required" };
     try {
-      const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone`;
-      const r = await safeFetchJson(url);
+      const r = await openMeteoJson({ kind: "air", lat, lon: lng, params: { current: "us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone" } });
       const cur = r.current || {};
       const aqi = Number(cur.us_aqi) || 0;
       const cat = categoriseAqi(aqi);
@@ -1248,9 +1252,14 @@ If unsure, fall back to coarser ranks. Always include at least one suggestion ev
     if (!isFinite(lat) || !isFinite(lng)) return { ok: false, error: "lat, lng required" };
     const label = params.label ? String(params.label).slice(0, 80) : null;
     try {
-      const aqUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=us_aqi,pm2_5,pm10,ozone&hourly=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen&forecast_days=1`;
-      const wxUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=uv_index_max&forecast_days=1&timezone=auto`;
-      const [aq, wx] = await Promise.all([safeFetchJson(aqUrl), safeFetchJson(wxUrl)]);
+      const [aq, wx] = await Promise.all([
+        openMeteoJson({ kind: "air", lat, lon: lng, params: {
+          current: "us_aqi,pm2_5,pm10,ozone",
+          hourly: "alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen",
+          forecast_days: 1,
+        } }),
+        openMeteoJson({ lat, lon: lng, params: { daily: "uv_index_max", forecast_days: 1, timezone: "auto" } }),
+      ]);
       const cur = aq.current || {};
       const aqi = Number(cur.us_aqi) || 0;
       const uv = Number(wx.daily?.uv_index_max?.[0]) || 0;

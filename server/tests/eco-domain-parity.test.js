@@ -9,6 +9,7 @@ import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 
 import registerEcoActions from "../domains/eco.js";
+import { _resetWeatherFeedForTests } from "../lib/weather-feed-sources.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -24,6 +25,7 @@ beforeEach(() => {
   globalThis._concordSTATE = { dtus: new Map(), ecoLens: { biodiversity: new Map(), actionLog: new Map() } };
   globalThis._concordSaveStateDebounced = () => {};
   globalThis.fetch = async () => { throw new Error("network disabled in tests"); };
+  _resetWeatherFeedForTests(); // the shared weather cache outlives a test; start each one cold
 });
 
 const userA = "user_a";
