@@ -1,5 +1,23 @@
 # Message Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **Re-verification (HANDOFF-3 batch L16a, 2026-10-28, against main 02910bbb):**
+> The audit below is kept as history — its defects (including the
+> snooze/unsnooze DESIGNED wiring) are verified in place. Current
+> truth:
+>
+> - **69/70 macros named in the frontend** (fresh scan). The one
+>   unnamed is `index-message`, the manual re-index entry point for
+>   the shared indexing core (`indexMessageEntry`) that every
+>   message-creation path already runs internally — the capability
+>   is exercised on every send; the standalone macro is a utility
+>   surface for re-indexing, not a missing UI feature.
+> - **Shipped in this batch:** the concept's serif headline — "Who
+>   wrote, {username}" — as the page header
+>   (`data-testid="message-greeting"`, `tests/message-greeting.test.tsx`).
+> - Server suites run locally this pass: message-domain-parity
+>   passes (in the combined 103-pass L16a run).
+
+
 > Derived, not asserted. Every number below has a reproduction command; every
 > classification is backed by a grep or a full read of the file it's about.
 > This unit continues a prior attempt that died to a worktree-cleanup

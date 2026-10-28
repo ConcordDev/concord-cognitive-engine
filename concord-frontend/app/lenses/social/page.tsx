@@ -351,7 +351,7 @@ export default function SocialHubPage() {
 
             <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
               <div className="min-w-0">
-                <h1 className="mb-3 mt-1 font-vault text-3xl leading-tight text-zinc-100 sm:mb-5 sm:text-5xl">Social</h1>
+                <h1 className="mb-3 mt-1 font-vault text-3xl leading-tight text-zinc-100 sm:mb-5 sm:text-5xl" data-testid="social-greeting">What's moving{me?.user?.username ? `, ${me.user.username}` : ''}</h1>
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2 pt-2 sm:gap-3">
                 <PushEnableButton />

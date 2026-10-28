@@ -1,5 +1,24 @@
 # Social Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **Re-verification (HANDOFF-3 batch L16a, 2026-10-28, against main 02910bbb):**
+> The audit below is kept as history. Current truth:
+>
+> - **26/27 macros named in the frontend** (fresh scan). The one
+>   unnamed is the `deletePost` macro — and post deletion IS wired,
+>   through its REST twin: the feed's post menu dispatches
+>   `DELETE /api/social/post/:id` (author-only; served in server.js
+>   and in `routes/social-core.js` over the same layer function the
+>   macro wraps). The capability is reachable; the macro is the
+>   lens-action spelling of the same operation.
+> - **Shipped in this batch:** the concept's serif headline —
+>   "What's moving, {username}" — as the page header
+>   (`data-testid="social-greeting"`, `tests/social-greeting.test.tsx`).
+>   The username comes from the page's existing `useCurrentUser`
+>   session query — no new hook was added.
+> - Server suites run locally this pass: social-domain-parity
+>   passes (in the combined 103-pass L16a run).
+
+
 > Derived, not asserted. Every number below has a reproduction command; every
 > classification is backed by a grep or a full read of the file it's about.
 

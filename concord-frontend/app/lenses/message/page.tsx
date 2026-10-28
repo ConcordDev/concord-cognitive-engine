@@ -20,6 +20,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { InboxPanel } from '@/components/message/InboxPanel';
 import { WorkbenchPanel } from '@/components/message/WorkbenchPanel';
@@ -43,6 +44,7 @@ const PANELS: Record<MessageView, ComponentType> = {
 };
 
 export default function MessageLensPage() {
+  const { user } = useAuth();
   useLensNav('message');
   useLensIdentity('message');
   const { isLive, lastUpdated } = useRealtimeLens('message');
@@ -86,7 +88,7 @@ export default function MessageLensPage() {
       <div data-lens-theme="message" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Messages</h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl" data-testid="message-greeting">Who wrote{user?.username ? `, ${user.username}` : ''}</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
