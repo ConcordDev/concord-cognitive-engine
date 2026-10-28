@@ -374,6 +374,53 @@ export default function registerCalendarActions(registerLensAction) {
   const WEEKDAYS = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
   const DAY_MS = 86_400_000;
 
+  // ── Time zones (S1: one true time) ─────────────────────────────
+  // An event stores a true UTC instant (start/end ISO strings) plus the
+  // IANA zone it was authored in (event.tz, mirrored onto its recurrence
+  // rule). Recurrence expansion walks the series in the AUTHOR's wall
+  // clock and converts each occurrence's wall time to an instant with
+  // the offset in force ON THAT DATE — a fixed creation-time offset
+  // drifts the whole series by an hour across a DST change.
+
+  function isValidZoneName(tz) {
+    if (typeof tz !== "string" || !tz || tz.length > 64) return false;
+    try { new Intl.DateTimeFormat("en-US", { timeZone: tz }); return true; } catch { return false; }
+  }
+
+  const _zonePartsFmt = new Map();
+  function zonePartsAt(tz, utcMs) {
+    let fmt = _zonePartsFmt.get(tz);
+    if (!fmt) {
+      fmt = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz, hourCycle: "h23",
+        year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", second: "2-digit",
+      });
+      _zonePartsFmt.set(tz, fmt);
+    }
+    const parts = {};
+    for (const p of fmt.formatToParts(new Date(utcMs))) {
+      if (p.type !== "literal") parts[p.type] = Number(p.value);
+    }
+    return parts; // { year, month, day, hour, minute, second } in tz
+  }
+
+  /** Offset (wall − UTC) of `tz` at the instant `utcMs`, in ms. */
+  function zoneOffsetMsAt(tz, utcMs) {
+    const p = zonePartsAt(tz, utcMs);
+    const wallAsUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+    return wallAsUtc - Math.floor(utcMs / 1000) * 1000;
+  }
+
+  /** UTC instant (ms) for a wall-clock time in `tz`. */
+  function wallTimeInZoneToUtcMs(tz, year, month, day, hour, minute, second = 0) {
+    const wallAsUtc = Date.UTC(year, month - 1, day, hour, minute, second);
+    let utc = wallAsUtc - zoneOffsetMsAt(tz, wallAsUtc);
+    const refined = wallAsUtc - zoneOffsetMsAt(tz, utc);
+    if (refined !== utc) utc = refined; // transition-adjacent: settle on the offset in force at the result
+    return utc;
+  }
+
   function normalizeRecurrence(raw) {
     if (!raw || typeof raw !== "object" || !["daily", "weekly", "monthly", "yearly"].includes(raw.freq)) return null;
     const byDay = Array.isArray(raw.byDay) ? [...new Set(raw.byDay.map((d) => String(d).toUpperCase()).filter((d) => WEEKDAYS.includes(d)))] : [];
@@ -388,6 +435,11 @@ export default function registerCalendarActions(registerLensAction) {
       // Minutes UTC − local (Date#getTimezoneOffset) of the author, so weekday
       // and day-of-month rules follow their wall clock, not UTC.
       tzOffset: Number.isFinite(Number(raw.tzOffset)) ? Math.max(-840, Math.min(840, Math.round(Number(raw.tzOffset)))) : 0,
+      // IANA zone the series was authored in. When present, expansion
+      // converts each occurrence's wall time with the offset in force on
+      // that occurrence's own date (DST-correct); tzOffset above remains
+      // the fallback for rules written before zones were stored.
+      tz: isValidZoneName(raw.tz) ? String(raw.tz) : (isValidZoneName(raw.timeZone) ? String(raw.timeZone) : null),
       exdates: Array.isArray(raw.exdates) ? raw.exdates.map(String) : [],
       overrides: raw.overrides && typeof raw.overrides === "object" ? raw.overrides : {},
     };
@@ -456,17 +508,45 @@ export default function registerCalendarActions(registerLensAction) {
       if (start <= rangeEnd && end >= rangeStart) return [{ ...event, occurrenceStart: event.start, occurrenceEnd: event.end || event.start, occurrenceKey: event.start }];
       return [];
     }
-    const untilMs = rec.until ? new Date(rec.until).getTime() + (rec.until.length <= 10 ? DAY_MS - 1 : 0) : Infinity;
+    // Series generation happens on a wall-clock timeline (pseudo-UTC Dates
+    // carrying the author's wall fields); each candidate is then mapped to
+    // a true instant. With a stored zone the mapping uses the offset in
+    // force on the candidate's own date, so a 2 PM series stays 2 PM wall
+    // clock across a DST change. Without one, the legacy fixed creation
+    // offset applies, exactly as before.
+    const tz = rec.tz && isValidZoneName(rec.tz) ? rec.tz : null;
+    let seriesAnchor;
+    let toInstant;
+    if (tz) {
+      const w = zonePartsAt(tz, start.getTime());
+      seriesAnchor = new Date(Date.UTC(w.year, w.month - 1, w.day, w.hour, w.minute, w.second));
+      toInstant = (localStart) => new Date(wallTimeInZoneToUtcMs(tz,
+        localStart.getUTCFullYear(), localStart.getUTCMonth() + 1, localStart.getUTCDate(),
+        localStart.getUTCHours(), localStart.getUTCMinutes(), localStart.getUTCSeconds()));
+    } else {
+      const shift = rec.tzOffset * 60_000;
+      seriesAnchor = new Date(start.getTime() - shift);
+      toInstant = (localStart) => new Date(localStart.getTime() + shift);
+    }
+    // A date-only `until` names a wall-clock day in the series' own frame:
+    // in the zone path it is compared to the candidate's wall date (an
+    // instant comparison would cut the last day early east of UTC and
+    // late west of it). The legacy path keeps its instant comparison.
+    const untilWallKey = tz && rec.until && rec.until.length <= 10 ? rec.until : null;
+    const untilMs = rec.until && !untilWallKey ? new Date(rec.until).getTime() + (rec.until.length <= 10 ? DAY_MS - 1 : 0) : Infinity;
     const maxCount = rec.count || Infinity;
     const ex = new Set(rec.exdates.map((d) => new Date(d).toISOString()));
     const out = [];
     let emitted = 0;
     let guard = 0;
-    const shift = rec.tzOffset * 60_000;
-    for (const localStart of seriesStarts(new Date(start.getTime() - shift), rec)) {
-      const occStart = new Date(localStart.getTime() + shift);
+    for (const localStart of seriesStarts(seriesAnchor, rec)) {
       if (++guard > 20000) break;
       if (emitted >= maxCount) break;
+      if (untilWallKey) {
+        const wallKey = `${localStart.getUTCFullYear()}-${String(localStart.getUTCMonth() + 1).padStart(2, "0")}-${String(localStart.getUTCDate()).padStart(2, "0")}`;
+        if (wallKey > untilWallKey) break;
+      }
+      const occStart = toInstant(localStart);
       if (occStart.getTime() > untilMs) break;
       if (occStart.getTime() > rangeEnd.getTime() + Math.max(0, durationMs)) break;
       emitted++;
@@ -525,6 +605,8 @@ export default function registerCalendarActions(registerLensAction) {
     let calendarId = String(params.calendarId || "");
     if (!calendars.find(c => c.id === calendarId)) calendarId = (calendars.find(c => c.isDefault) || calendars[0]).id;
     const recurrence = normalizeRecurrence(params.recurrence);
+    const tz = isValidZoneName(params.tz) ? String(params.tz) : null;
+    if (recurrence && !recurrence.tz && tz) recurrence.tz = tz;
     const seq = ensureSeqCal(s, userId);
     const event = {
       id: uidCal('evt'),
@@ -534,6 +616,7 @@ export default function registerCalendarActions(registerLensAction) {
       description: String(params.description || ""),
       location: String(params.location || ""),
       start, end,
+      tz,
       allDay: Boolean(params.allDay),
       recurrence,
       reminders: Array.isArray(params.reminders) ? params.reminders.map(r => Math.max(0, Number(r) || 0)) : [10],
@@ -608,6 +691,8 @@ export default function registerCalendarActions(registerLensAction) {
       if (cal) e.calendarId = cal.id;
     }
     if (typeof params.allDay === 'boolean') e.allDay = params.allDay;
+    if (isValidZoneName(params.tz)) e.tz = String(params.tz);
+    else if (params.tz === null) e.tz = null;
     if (Array.isArray(params.reminders)) e.reminders = params.reminders.map(r => Math.max(0, Number(r) || 0));
     if (params.recurrence === null) e.recurrence = null;
     else if (params.recurrence) {
@@ -617,6 +702,7 @@ export default function registerCalendarActions(registerLensAction) {
         const prev = normalizeRecurrence(e.recurrence);
         if (prev && !Array.isArray(params.recurrence.exdates)) next.exdates = prev.exdates;
         if (prev && !params.recurrence.overrides) next.overrides = prev.overrides;
+        if (!next.tz && isValidZoneName(params.tz)) next.tz = String(params.tz);
         e.recurrence = next;
       }
     }
