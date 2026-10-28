@@ -180,7 +180,12 @@ describe("SEC-MACRO-ACL matrix drift (source)", () => {
 
 describe("SEC-MACRO-ACL wiring in runMacro (source)", () => {
   const runMacroStart = source.indexOf("async function runMacro(");
-  const callIdx = source.indexOf("const _aclDenied = humanMacroAclDenial({", runMacroStart);
+  const runMacroBody = source.slice(
+    runMacroStart,
+    source.indexOf("isHeavy(domain, name)", runMacroStart)
+  );
+  const callNeedle = "globalThis.humanMacroAclDenial({ ctx: _aclCtx, domain, name })";
+  const callIdx = source.indexOf(callNeedle, runMacroStart);
   const c2Idx = source.indexOf("inLatticeReality(", runMacroStart);
   const heavyIdx = source.indexOf("isHeavy(domain, name)", runMacroStart);
 
@@ -188,12 +193,38 @@ describe("SEC-MACRO-ACL wiring in runMacro (source)", () => {
     assert.ok(source.includes(`import { humanMacroAclDenial } from "./lib/macro-acl-human-gate.js";`));
   });
 
-  it("runMacro calls humanMacroAclDenial with the MACRO ACL maps", () => {
+  it("runMacro never references MACRO_ACL/MACRO_ACL_DOMAIN directly (TDZ boot crash)", () => {
+    // runMacro is invoked by top-level bootstrap code long before the
+    // module-level `const MACRO_ACL = new Map()` declarations execute; any
+    // direct reference is a temporal-dead-zone ReferenceError that escapes as
+    // an unhandled rejection (prod crash loop). Comments may mention the
+    // maps; code may not.
+    const bodyCode = runMacroBody
+      .split("\n")
+      .filter(line => !line.trim().startsWith("//"))
+      .join("\n");
+    assert.equal(bodyCode.match(/\bMACRO_ACL(_DOMAIN)?\b/g), null,
+      "runMacro must reach the ACL maps only via globalThis.humanMacroAclDenial");
+  });
+
+  it("runMacro calls the human ACL hook inside the gate", () => {
     assert.ok(runMacroStart > 0);
-    assert.ok(callIdx > runMacroStart, "humanMacroAclDenial call not found inside runMacro");
-    const call = source.slice(callIdx, source.indexOf("});", callIdx) + 3);
-    assert.ok(call.includes("macroAcl: MACRO_ACL"));
-    assert.ok(call.includes("macroAclDomain: MACRO_ACL_DOMAIN"));
+    assert.ok(callIdx > runMacroStart, "globalThis.humanMacroAclDenial({ ctx: _aclCtx, domain, name }) call not found inside runMacro");
+  });
+
+  it("the hook is installed after the maps are declared, right after canRunMacro activation, and passes both maps", () => {
+    const mapsIdx = source.indexOf("const MACRO_ACL_DOMAIN = new Map()");
+    const activateIdx = source.indexOf("globalThis.canRunMacro = _canRunMacro;");
+    const hookIdx = source.indexOf("globalThis.humanMacroAclDenial = ");
+    assert.ok(mapsIdx > 0, "MACRO_ACL_DOMAIN map declaration not found");
+    assert.ok(activateIdx > 0, "globalThis.canRunMacro activation not found");
+    assert.ok(hookIdx > mapsIdx, "hook must be installed after the maps are declared (initialized)");
+    assert.ok(hookIdx > activateIdx && hookIdx - activateIdx < 400,
+      "hook must be installed within 400 chars after globalThis.canRunMacro = _canRunMacro;");
+    const hookLine = source.slice(hookIdx, source.indexOf("\n", hookIdx));
+    assert.ok(hookLine.includes("=> humanMacroAclDenial("), "hook must delegate to humanMacroAclDenial");
+    assert.ok(hookLine.includes("macroAcl: MACRO_ACL"), "hook must pass the per-macro map");
+    assert.ok(hookLine.includes("macroAclDomain: MACRO_ACL_DOMAIN"), "hook must pass the per-domain map");
   });
 
   it("the call is guarded by MACROS.get(domain)?.has(name)", () => {
@@ -207,8 +238,9 @@ describe("SEC-MACRO-ACL wiring in runMacro (source)", () => {
   });
 
   it("the call passes runMacro's resolved actor when ctx has none", () => {
-    const call = source.slice(callIdx, source.indexOf("});", callIdx) + 3);
-    assert.ok(call.includes("ctx: ctx?.actor ? ctx : { ...(ctx || {}), actor }"));
+    assert.ok(runMacroBody.includes("const _aclCtx = ctx?.actor ? ctx : { ...(ctx || {}), actor };"),
+      "gate must resolve the same actor canRunMacro would have seen");
+    assert.ok(callNeedle.includes("ctx: _aclCtx"), "hook call must pass the resolved ctx");
   });
 
   it("the gate runs before inLatticeReality and the isHeavy worker-pool dispatch", () => {

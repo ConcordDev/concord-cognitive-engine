@@ -15704,15 +15704,27 @@ async function runMacro(domain, name, input, ctx) {
   // covers the callers that skipped canRunMacro above (non-human callers
   // already went through the full matrix), and uses the same resolved
   // `actor` canRunMacro would have seen (ctx without an actor = internal).
+  // TDZ (prod boot crash): MACRO_ACL / MACRO_ACL_DOMAIN are module-level
+  // `const`s declared far below this function, and top-level bootstrap code
+  // calls runMacro before those declarations execute — referencing them
+  // directly here threw "Cannot access 'MACRO_ACL' before initialization"
+  // into an unhandled rejection. The gate reaches them ONLY via the
+  // globalThis.humanMacroAclDenial hook, installed after both maps are
+  // initialized (see the globalThis.canRunMacro install site). Until the
+  // hook exists, fail closed (503 acl_not_ready) for real human HTTP
+  // requests; internal boot ticks pass through.
   if (
     !_sovereignOnlyDomains.has(domain) &&
     (safeReadBypass || _isAuthenticatedUser || _isHumanRequest) &&
     MACROS.get(domain)?.has(name)
   ) {
-    const _aclDenied = humanMacroAclDenial({
-      ctx: ctx?.actor ? ctx : { ...(ctx || {}), actor },
-      domain, name, macroAcl: MACRO_ACL, macroAclDomain: MACRO_ACL_DOMAIN,
-    });
+    const _aclCtx = ctx?.actor ? ctx : { ...(ctx || {}), actor };
+    let _aclDenied = null;
+    if (typeof globalThis.humanMacroAclDenial === "function") {
+      _aclDenied = globalThis.humanMacroAclDenial({ ctx: _aclCtx, domain, name });
+    } else if (_isHumanRequest && !(_aclCtx.internal === true || _aclCtx.actor?.internal === true)) {
+      _aclDenied = { ok: false, error: "server starting: macro ACL not ready", status: 503, code: "acl_not_ready" };
+    }
     if (_aclDenied) return _aclDenied;
   }
 
@@ -39716,6 +39728,10 @@ allowMacro("lens", "export", _ACL_PUB);
 
 // Activate macro ACL enforcement
 globalThis.canRunMacro = _canRunMacro;
+// SEC-MACRO-ACL: runMacro must not touch the MACRO_ACL consts directly (TDZ —
+// see the note in runMacro); it reaches them only through this hook, which is
+// safe here because both maps above are already initialized.
+globalThis.humanMacroAclDenial = ({ ctx, domain, name }) => humanMacroAclDenial({ ctx, domain, name, macroAcl: MACRO_ACL, macroAclDomain: MACRO_ACL_DOMAIN });
 
 // Attach ctx.actor for every request
 app.use((req, res, next) => {
