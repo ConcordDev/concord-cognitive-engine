@@ -16,7 +16,18 @@ import {
   getAssemblyHistory,
   transformPart,
 } from '../lib/conkay/assembly-store.js';
-import { applyMate, solveMateTransform, MATE_TYPES } from '../lib/conkay/assembly-mates.js';
+import { applyMate, solveMateTransform, MATE_TYPES, eulerToMatrix, solveAlignAxisRotation } from '../lib/conkay/assembly-mates.js';
+
+function axisDir(rot, axis) {
+  const R = eulerToMatrix(rot);
+  const u = axis === 'x' ? [1, 0, 0] : axis === 'y' ? [0, 1, 0] : [0, 0, 1];
+  const col = u[0] === 1 ? 0 : u[1] === 1 ? 1 : 2;
+  return [R[0][col], R[1][col], R[2][col]];
+}
+function assertParallel(a, b, msg) {
+  const dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  assert.ok(Math.abs(dot) > 1 - 1e-9, `${msg}: axis dirs not parallel (dot=${dot})`);
+}
 
 describe('conkay mates v2 kinematic solve', () => {
   it('exposes distance + align_axis', () => {
@@ -49,7 +60,7 @@ describe('conkay mates v2 kinematic solve', () => {
     assert.deepEqual(out.position, { x: 3, y: 2.2, z: 7 });
   });
 
-  it('align_axis clears twist rotations and aligns orthogonals', () => {
+  it('align_axis aligns orthogonals and SOLVES orientation onto the reference axis (Q44)', () => {
     const out = solveMateTransform({
       type: 'align_axis',
       axis: 'y',
@@ -57,10 +68,32 @@ describe('conkay mates v2 kinematic solve', () => {
       drive: 'b',
       aPos: { x: 1, y: 0, z: 2 },
       bPos: { x: 9, y: 9, z: 9 },
+      aRot: { x: 0, y: 0, z: 0 },
       bRot: { x: 10, y: 20, z: 30 },
     });
     assert.deepEqual(out.position, { x: 1, y: 0.5, z: 2 });
-    assert.deepEqual(out.rotation, { x: 0, y: 20, z: 0 });
+    // The old stub zeroed x/z and kept y — instead the solved Y axis
+    // must end up parallel to the reference's Y axis (identity here).
+    assertParallel(axisDir(out.rotation, 'y'), [0, 1, 0], 'identity ref');
+  });
+
+  it('align_axis follows a rotated reference, preserves spin-only orientations, handles opposites', () => {
+    // Reference rotated 90° about Z: its X axis points along world Y.
+    // An unrotated driven part must be solved to a z≈90 rotation.
+    const onto = solveAlignAxisRotation({ axis: 'x', refRot: { x: 0, y: 0, z: 90 }, drivenRot: { x: 0, y: 0, z: 0 } });
+    assert.ok(Math.abs(onto.z - 90) < 1e-6 && Math.abs(onto.x) < 1e-6 && Math.abs(onto.y) < 1e-6, JSON.stringify(onto));
+    // Spinning about the free axis doesn't move it: already aligned → unchanged.
+    const spin = solveAlignAxisRotation({ axis: 'z', refRot: { x: 0, y: 0, z: 0 }, drivenRot: { x: 0, y: 0, z: 90 } });
+    assert.deepEqual(spin, { x: 0, y: 0, z: 90 });
+    // Opposite axes (driven flipped 180° about X, aligning -Y to +Y) still solve.
+    const opp = solveAlignAxisRotation({ axis: 'y', refRot: { x: 0, y: 0, z: 0 }, drivenRot: { x: 180, y: 0, z: 0 } });
+    assertParallel(axisDir(opp, 'y'), [0, 1, 0], 'opposite');
+    // Arbitrary pair, every axis: solved direction matches the reference's.
+    for (const axis of ['x', 'y', 'z']) {
+      const refRot = { x: 25, y: -40, z: 130 };
+      const solved = solveAlignAxisRotation({ axis, refRot, drivenRot: { x: -70, y: 15, z: 55 } });
+      assertParallel(axisDir(solved, axis), axisDir(refRot, axis), `axis ${axis}`);
+    }
   });
 
   it('applyMate drive=b moves B not A', () => {

@@ -1,6 +1,11 @@
 // server/lib/conkay/assembly-mates.js
 // Wave 3→v2 — kinematic mates that solve for B given A (distance / axis offset / align_axis).
-// Honesty: kinematic stubs — NOT an industrial constraint solver / OCC / CAD kernel.
+// Honesty: kinematic mates — NOT an industrial constraint solver / OCC / CAD kernel.
+// align_axis orientation is a real solve (Q44/A#27): the driven part is
+// rotated by the minimal rotation that makes its free axis parallel to
+// the reference part's free axis, preserving its spin about that axis
+// as far as the geometry allows. Stored Euler triples are degrees in
+// the platform viewer's convention, R = Rz·Ry·Rx (THREE.Euler 'XYZ').
 
 import {
   getPart,
@@ -31,6 +36,91 @@ function axisUnit(axis) {
   if (axis === 'y') return { x: 0, y: 1, z: 0 };
   if (axis === 'z') return { x: 0, y: 0, z: 1 };
   return { x: 1, y: 0, z: 0 };
+}
+
+// ── Euler (degrees, R = Rz·Ry·Rx) ↔ rotation matrix ─────────────────
+const DEG = Math.PI / 180;
+export function eulerToMatrix(rot) {
+  const { x, y, z } = vec(rot);
+  const cx = Math.cos(x * DEG), sx = Math.sin(x * DEG);
+  const cy = Math.cos(y * DEG), sy = Math.sin(y * DEG);
+  const cz = Math.cos(z * DEG), sz = Math.sin(z * DEG);
+  // R = Rz * Ry * Rx
+  return [
+    [cz * cy, cz * sy * sx - sz * cx, cz * sy * cx + sz * sx],
+    [sz * cy, sz * sy * sx + cz * cx, sz * sy * cx - cz * sx],
+    [-sy, cy * sx, cy * cx],
+  ];
+}
+
+export function matrixToEuler(R) {
+  const round = (n) => {
+    const r = Math.round(n * 1e6) / 1e6;
+    return Object.is(r, -0) ? 0 : r;
+  };
+  const sy = Math.max(-1, Math.min(1, -R[2][0]));
+  const y = Math.asin(sy) / DEG;
+  let x, z;
+  if (Math.abs(Math.cos(y * DEG)) > 1e-9) {
+    x = Math.atan2(R[2][1], R[2][2]) / DEG;
+    z = Math.atan2(R[1][0], R[0][0]) / DEG;
+  } else {
+    // Gimbal lock: fold everything into x.
+    z = 0;
+    x = Math.atan2(-R[0][1], R[1][1]) / DEG;
+  }
+  return { x: round(x), y: round(y), z: round(z) };
+}
+
+function matVec(R, v) {
+  return {
+    x: R[0][0] * v.x + R[0][1] * v.y + R[0][2] * v.z,
+    y: R[1][0] * v.x + R[1][1] * v.y + R[1][2] * v.z,
+    z: R[2][0] * v.x + R[2][1] * v.y + R[2][2] * v.z,
+  };
+}
+function matMul(A, B) {
+  const out = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
+    out[r][c] = A[r][0] * B[0][c] + A[r][1] * B[1][c] + A[r][2] * B[2][c];
+  }
+  return out;
+}
+
+/**
+ * Solve align_axis orientation: rotate the driven part by the minimal
+ * rotation Q that takes its free-axis direction onto the reference
+ * part's free-axis direction, then express Q·R_driven back as an
+ * Euler triple. Already-aligned parts are returned unchanged;
+ * opposite axes rotate 180° about a perpendicular axis.
+ */
+export function solveAlignAxisRotation({ axis = 'x', refRot, drivenRot }) {
+  const u = axisUnit(axis);
+  const Rref = eulerToMatrix(refRot || {});
+  const Rdrv = eulerToMatrix(drivenRot || {});
+  const d = matVec(Rdrv, u);
+  const t = matVec(Rref, u);
+  const dot = Math.max(-1, Math.min(1, d.x * t.x + d.y * t.y + d.z * t.z));
+  if (dot > 1 - 1e-12) return vec(drivenRot); // already aligned
+  let qAxis, qAngle;
+  if (dot < -1 + 1e-12) {
+    // Opposite directions: 180° about any axis perpendicular to d.
+    const ref = Math.abs(d.x) < 0.9 ? { x: 1, y: 0, z: 0 } : { x: 0, y: 1, z: 0 };
+    qAxis = { x: d.y * ref.z - d.z * ref.y, y: d.z * ref.x - d.x * ref.z, z: d.x * ref.y - d.y * ref.x };
+    qAngle = Math.PI;
+  } else {
+    qAxis = { x: d.y * t.z - d.z * t.y, y: d.z * t.x - d.x * t.z, z: d.x * t.y - d.y * t.x };
+    qAngle = Math.acos(dot);
+  }
+  const len = Math.hypot(qAxis.x, qAxis.y, qAxis.z) || 1;
+  const kx = qAxis.x / len, ky = qAxis.y / len, kz = qAxis.z / len;
+  const c = Math.cos(qAngle), s = Math.sin(qAngle), ic = 1 - c;
+  const Q = [
+    [c + kx * kx * ic, kx * ky * ic - kz * s, kx * kz * ic + ky * s],
+    [ky * kx * ic + kz * s, c + ky * ky * ic, ky * kz * ic - kx * s],
+    [kz * kx * ic - ky * s, kz * ky * ic + kx * s, c + kz * kz * ic],
+  ];
+  return matrixToEuler(matMul(Q, Rdrv));
 }
 
 /**
@@ -97,8 +187,9 @@ export function applyMate(db, assemblyId, spec) {
 
   // Reference = grounded; driven = solved
   const refPos = drive === 'b' ? aPos : bPos;
+  const refRot = drive === 'b' ? aRot : bRot;
   const drivenPos = drive === 'b' ? { ...bPos } : { ...aPos };
-  const drivenRot = drive === 'b' ? { ...bRot } : { ...aRot };
+  let drivenRot = drive === 'b' ? { ...bRot } : { ...aRot };
   const drivenId = drive === 'b' ? b.id : a.id;
 
   const u = axisUnit(axis);
@@ -119,23 +210,14 @@ export function applyMate(db, assemblyId, spec) {
     drivenPos.z = refPos.z + u.z * offset;
   } else if (type === 'aligned' || type === 'align_axis') {
     // Align orthogonal axes to reference; leave free axis (optionally offset).
-    // align_axis also zeros rotation about the free axis toward identity (euler stub).
     for (const ax of ['x', 'y', 'z']) {
       if (ax !== axis) drivenPos[ax] = refPos[ax];
     }
     if (offset) drivenPos[axis] = refPos[axis] + offset;
     if (type === 'align_axis') {
-      // Euler stub: clear rotations that would twist off the free axis.
-      if (axis === 'x') {
-        drivenRot.y = 0;
-        drivenRot.z = 0;
-      } else if (axis === 'y') {
-        drivenRot.x = 0;
-        drivenRot.z = 0;
-      } else {
-        drivenRot.x = 0;
-        drivenRot.y = 0;
-      }
+      // Solve orientation for real (Q44): minimal rotation aligning
+      // the driven part's free axis onto the reference's free axis.
+      drivenRot = solveAlignAxisRotation({ axis, refRot, drivenRot });
     }
   }
 
@@ -179,8 +261,9 @@ export function solveMateTransform({ type, axis = 'x', offset = 0, drive = 'b', 
   const off = Number.isFinite(Number(offset)) ? Number(offset) : 0;
   const d = String(drive || 'b').toLowerCase() === 'a' ? 'a' : 'b';
   const ref = vec(d === 'b' ? aPos : bPos);
+  const refRot = vec(d === 'b' ? aRot : bRot);
   const driven = vec(d === 'b' ? bPos : aPos);
-  const rot = vec(d === 'b' ? bRot : aRot);
+  let rot = vec(d === 'b' ? bRot : aRot);
   const u = axisUnit(ax);
   if (t === 'fixed') {
     driven.x = ref.x; driven.y = ref.y; driven.z = ref.z;
@@ -198,9 +281,7 @@ export function solveMateTransform({ type, axis = 'x', offset = 0, drive = 'b', 
     }
     if (off) driven[ax] = ref[ax] + off;
     if (t === 'align_axis') {
-      if (ax === 'x') { rot.y = 0; rot.z = 0; }
-      else if (ax === 'y') { rot.x = 0; rot.z = 0; }
-      else { rot.x = 0; rot.y = 0; }
+      rot = solveAlignAxisRotation({ axis: ax, refRot, drivenRot: rot });
     }
   } else {
     return { ok: false, error: 'unsupported_mate' };
