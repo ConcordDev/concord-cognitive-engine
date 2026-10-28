@@ -43833,6 +43833,10 @@ async function governorTick(reason="heartbeat") {
   // on a 16 GB CI runner). Consolidation uses the same isIdle() signal, not
   // that helper, so a small host with users still compresses.
   if (reason !== "boot" && presenceIdle.isIdle()) {
+    // This tick runs: bump the liveness counter up front. The registry
+    // sub-branch below used to be the only bump on this path, so an idle
+    // low-memory host (orchestration paused) never counted its ticks.
+    STATE.__bgTickCounter = (STATE.__bgTickCounter || 0) + 1;
     // Quiet room: skip autogen/dream/jobs. A due consolidation cycle still
     // runs so a restart during idle does not drop the wall-clock pass.
     try {
@@ -43856,7 +43860,6 @@ async function governorTick(reason="heartbeat") {
       if (g.mode === "killed" || g.breaker.state === "open") {
         registry = g.mode === "killed" ? "governor_killed" : "governor_open";
       } else {
-        STATE.__bgTickCounter = (STATE.__bgTickCounter || 0) + 1;
         _governorTickRunning = true;
         try {
           await _dispatchHeartbeatRegistry("idle", { skipCosts: ["cpu"] });
@@ -43886,7 +43889,12 @@ async function governorTick(reason="heartbeat") {
     // Low-memory is a flag, not a return. The old return sat above jobs,
     // the queue, and consolidation, so a 16GB host never compressed and
     // user-awaited background jobs stalled. Autogen/dream/ingest still pause.
-    const lowMemoryPause = reason !== "boot" && shouldPauseHeavyBackground();
+    // The boot tick follows the same rule: it used to bypass the pause, so on
+    // a low-memory host the first tick after a restart ran the LLM-heavy
+    // autogen/dream/evolution set, held _governorTickRunning for minutes,
+    // starved every interval tick (tick_already_running) and left
+    // __bgTickCounter at 0 until kernelTick was finally reached.
+    const lowMemoryPause = shouldPauseHeavyBackground();
 
     // 1) Deterministic + bounded growth engines
     if (!lowMemoryPause && s.autogenEnabled)  { try { await runMacro("system","autogen",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_autogen_heartbeat"); } }
@@ -43908,10 +43916,10 @@ async function governorTick(reason="heartbeat") {
       include: ["jobs", "queue", "system"],
     });
     if (lowMemoryPause) {
-      // The liveness counter was bumped above, but the real __bgTickCounter
-      // increment lives in kernelTick — which this path returns before
-      // reaching. Increment it here so the tick counter never freezes on a
-      // low-memory host.
+      // The real __bgTickCounter increment lives in kernelTick — which this
+      // path returns before reaching. Bump it at the top of the branch so a
+      // low-memory tick counts from the moment it runs, not after the
+      // consolidation/registry work below.
       STATE.__bgTickCounter = (STATE.__bgTickCounter || 0) + 1;
       // Users are present (the idle return already left). Compression follows
       // isIdle(), so this host still consolidates unless
@@ -92908,6 +92916,9 @@ export const __TEST__ = Object.freeze({
   makeInternalCtx,
   makeCtx,
   MACROS,
+  // Governor heartbeat test surface (tests/governor-boot-tick.test.js) —
+  // lets a test drive one tick directly and observe the liveness counter.
+  governorTick,
   // Orchestrated Invariant Engine — path-3 surface. LENS_ACTIONS holds the
   // registerLensAction handlers (super-lens domain modules + inline) that the
   // bare runMacro/MACROS path cannot see; dispatchLensRun drives them through
