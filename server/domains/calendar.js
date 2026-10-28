@@ -1837,7 +1837,7 @@ export default function registerCalendarActions(registerLensAction) {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const now = Date.now();
     const list = listCal(s.events, aidCal(ctx))
-      .filter(e => e.eventCategory && ['working-location', 'out-of-office', 'focus-time'].includes(e.eventCategory))
+      .filter(e => !e.deletedAt && e.eventCategory && ['working-location', 'out-of-office', 'focus-time'].includes(e.eventCategory))
       .filter(e => params.includeAll === true || new Date(e.end || e.start).getTime() >= now)
       .sort((a, b) => a.start.localeCompare(b.start));
     return { ok: true, result: { statusEvents: list, count: list.length } };
