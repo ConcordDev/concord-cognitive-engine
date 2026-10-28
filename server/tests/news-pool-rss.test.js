@@ -26,6 +26,7 @@ import {
 } from "../lib/news-summarizer.js";
 import { parseRSS, isRestrictedFeedItem, initFeedManager, registerFeed, forceTick } from "../lib/feed-manager.js";
 import { checkQualityGate } from "../lib/ingest-quality.js";
+import { __setSharedHttpFetchImpl } from "../lib/shared-http.js";
 import { forceActive } from "../lib/presence-idle.js";
 
 const ACTIONS = new Map();
@@ -523,8 +524,11 @@ describe("feed-manager DTUs from restricted outlets", () => {
     process.env.CONCORD_FEED_ROBOTS_CHECK = "0";
     const xml = `<rss><channel><item><title>Regional council approves a brand new transit plan today</title><link>https://feeds.bbci.co.uk/news/x-1</link><pubDate>Tue, 20 Oct 2026 10:00:00 GMT</pubDate><description>${DESC_SENTINEL} ${"long outlet article text ".repeat(30)}</description></item></channel></rss>`;
     globalThis.fetch = async () => ({ ok: true, status: 200, headers: { get: () => "application/xml" }, text: async () => xml, json: async () => ({}) });
+    // BBC top is a shared upstream (realtime-feeds / news pool / feed-manager): feed-manager reads it
+    // through lib/shared-http.js, whose transport is injected here (no network).
+    __setSharedHttpFetchImpl(async () => ({ ok: true, status: 200, headers: { get: () => "application/xml" }, text: async () => xml }));
     registerFeed({ id: "t_bbc_restricted", name: "BBC News", url: "https://feeds.bbci.co.uk/news/rss.xml", type: "rss", domain: "news", enabled: false });
-    await forceTick("t_bbc_restricted");
+    try { await forceTick("t_bbc_restricted"); } finally { __setSharedHttpFetchImpl(null); }
     const made = [...dtus.values()].filter((d) => d.meta?.feedId === "t_bbc_restricted");
     assert.equal(made.length, 1, "restricted headline-only DTU is created");
     const d = made[0];

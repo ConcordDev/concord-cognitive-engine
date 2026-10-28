@@ -111,6 +111,9 @@ export function registerSource(id, config = {}) {
     // (RSS): one dead feed must not open a source-wide breaker, but it also must
     // not be re-fetched on every warm tick.
     keyBackoff: !!config.keyBackoff,
+    // Also gate get() on the per-key back-off window (not just warmTick), so a dead key is
+    // not re-fetched by every caller. Opt-in: existing sources behave exactly as before.
+    gateKeyBackoff: !!config.gateKeyBackoff,
     maxKeys: config.maxKeys > 0 ? config.maxKeys : DEFAULT_MAX_KEYS,
     poolSize: config.poolSize > 0 ? config.poolSize : DEFAULT_POOL_SIZE,
     fetcher: config.fetcher,
@@ -308,6 +311,10 @@ async function resolve(src, key, { allowStale = true, force = false, ttlMs, fetc
   }
 
   if (backoffActive(src)) return staleOk ? useStale() : unavailable(src, key, "upstream_backoff");
+  if (src.cfg.gateKeyBackoff && !force) {
+    const kf = src.keyFail.get(key);
+    if (kf && kf.until > _cfg.now()) return staleOk ? useStale() : unavailable(src, key, "key_backoff");
+  }
   if (!takeBudget(src)) return staleOk ? useStale() : unavailable(src, key, "budget_exhausted");
 
   src.st.misses++;

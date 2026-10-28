@@ -15,6 +15,7 @@
 // (feeds.reuters.com, rsshub.app) are not in the registry at all.
 
 import { fetchPublicUrl } from "./public-fetch.js";
+import { getSharedTextOrThrow } from "./shared-http.js";
 import { registerSource, hasSource, pool, peek, configureFeedCache } from "./feed-cache.js";
 import { hostTier, applyOutletPolicy, plainText } from "./news-outlet-policy.js";
 import { queueForSummary, summaryFor, itemHash } from "./news-summarizer.js";
@@ -187,9 +188,16 @@ async function fetchNewsFeed(feedId, { signal } = {}) {
   if (!feed || !isFeedEnabled(feed)) throw new Error("feed_not_enabled");
   if (!(await robotsAllows(feed.url))) throw new Error("robots_disallow");
   if (feed.kind === "hn") return fetchHackerNews(feed, signal);
-  const r = await guardedFetch(feed.url, signal);
-  if (!r.ok) throw new Error(`${feed.name} ${r.status}`);
-  const text = await r.text();
+  let text;
+  if (_fetchImpl) {
+    const r = await guardedFetch(feed.url, signal);
+    if (!r.ok) throw new Error(`${feed.name} ${r.status}`);
+    text = await r.text();
+  } else {
+    // Production path: read through the URL-keyed shared cache, so a feed URL that realtime-feeds
+    // or feed-manager also polls (BBC / NPR) is fetched once. Half the pool TTL = reuse window.
+    text = (await getSharedTextOrThrow(feed.url, { ttlMs: Math.floor(NEWS_RSS_TTL_MS / 2) })).text;
+  }
   return parseNewsFeed(text, feed); // throws on unparseable => honest failure, nothing cached
 }
 

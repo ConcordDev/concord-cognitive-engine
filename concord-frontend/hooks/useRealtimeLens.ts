@@ -3,6 +3,30 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSocket } from './useSocket';
 import { useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api/client';
+
+/**
+ * Freshness of the snapshot loaded from GET /api/realtime/feed/:event on mount (the same
+ * payload the socket event carries, plus metadata). `unavailable` is an honest "nothing
+ * cached" (with `lastOkAt` when there was ever data) — never placeholder data.
+ */
+export interface RealtimeSnapshotMeta {
+  event: string;
+  status: 'fresh' | 'stale' | 'unavailable';
+  stale: boolean;
+  fetchedAt: string | null;
+  reason?: string | null;
+  lastOkAt?: string | null;
+}
+
+// Socket events that have a REST snapshot (server/emergent/realtime-feeds.js REALTIME_FEEDS).
+// Other computed `${domain}:update` events (chat, graph, ...) have none, so the hook never asks.
+const SNAPSHOT_EVENTS = new Set([
+  'finance:ticker', 'crypto:ticker', 'news:update', 'weather:update', 'research:update',
+  'economy:update', 'health:update', 'energy:update', 'legal:update', 'government:update',
+  'realestate:update', 'aviation:update', 'insurance:update', 'manufacturing:update',
+  'logistics:update', 'retail:update', 'fitness:update', 'agriculture:update', 'education:update',
+]);
 
 interface RealtimeData {
   [key: string]: unknown;
@@ -59,6 +83,13 @@ interface UseRealtimeLensResult {
    */
   hasReceivedData: boolean;
   lastUpdated: string | null;
+  /**
+   * Metadata of the on-mount snapshot (null until it loads, or when this domain has no snapshot
+   * endpoint). `snapshot.stale` / `status: 'unavailable'` let a consumer show "as of HH:MM",
+   * a stale badge, or "source temporarily unavailable". A live socket push supersedes it
+   * (`snapshot.status` becomes 'fresh').
+   */
+  snapshot: RealtimeSnapshotMeta | null;
   clearAlerts: () => void;
 }
 
@@ -138,6 +169,48 @@ export function useRealtimeLens(domain: string): UseRealtimeLensResult {
   const alertIdCounter = useRef(0);
 
   const events = useMemo(() => DOMAIN_EVENTS[domain] || [`${domain}:update`], [domain]);
+  const [snapshot, setSnapshot] = useState<RealtimeSnapshotMeta | null>(null);
+  // Set once any live socket payload lands, so a slower snapshot response can't overwrite newer data.
+  const gotLive = useRef(false);
+
+  // Snapshot on mount: a fresh page shows the latest cached payload immediately instead of
+  // waiting up to several minutes for the next heartbeat push. One request per snapshot-capable
+  // event, once per mount/domain; the socket listeners below keep it live afterwards.
+  useEffect(() => {
+    gotLive.current = false;
+    setSnapshot(null);
+    const wanted = events.filter(e => SNAPSHOT_EVENTS.has(e));
+    if (!wanted.length) return;
+    let cancelled = false;
+    (async () => {
+      for (const event of wanted) {
+        try {
+          const r = await api.get(`/api/realtime/feed/${encodeURIComponent(event)}`);
+          if (cancelled) return;
+          const body = r.data as {
+            status?: RealtimeSnapshotMeta['status']; stale?: boolean; fetchedAt?: string;
+            reason?: string; lastOkAt?: string | null; data?: RealtimeData | null;
+          };
+          const status = body.status ?? 'unavailable';
+          const meta: RealtimeSnapshotMeta = {
+            event, status, stale: !!body.stale, fetchedAt: body.fetchedAt ?? null,
+            reason: body.reason ?? null, lastOkAt: body.lastOkAt ?? null,
+          };
+          if (gotLive.current) continue; // a socket push already delivered something newer
+          if ((status === 'fresh' || status === 'stale') && body.data) {
+            setLatestData(body.data);
+            setLastUpdated(body.fetchedAt || body.data.fetchedAt || null);
+            setSnapshot(meta);
+            break; // first event with data wins (same precedence as socket order)
+          }
+          setSnapshot(prev => prev ?? meta);
+        } catch {
+          // Snapshot is best-effort: the socket path is unchanged, and no data is invented.
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [domain, events]);
 
   useEffect(() => {
     if (!socket || !isConnected) return;
@@ -146,9 +219,11 @@ export function useRealtimeLens(domain: string): UseRealtimeLensResult {
 
     for (const event of events) {
       const handler = (data: RealtimeData) => {
+        gotLive.current = true;
         setHasReceivedData(true);
         setLatestData(data);
         setLastUpdated(data.fetchedAt || new Date().toISOString());
+        setSnapshot({ event, status: 'fresh', stale: false, fetchedAt: data.fetchedAt || null });
 
         // Invalidate TanStack Query cache for this domain
         queryClient.invalidateQueries({ queryKey: [domain] });
@@ -211,6 +286,7 @@ export function useRealtimeLens(domain: string): UseRealtimeLensResult {
     // claim — may be honestly false with no error.
     hasReceivedData,
     lastUpdated,
+    snapshot,
     clearAlerts,
   };
 }
