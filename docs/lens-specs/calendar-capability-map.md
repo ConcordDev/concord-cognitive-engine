@@ -42,9 +42,10 @@
 > RSVP state shows in the detail. S7 dashboard counts real calendar
 > days/weeks in the user's zone. S8 reminders fire at their nominal
 > time (never ~29 min early), with upcoming/missed states, snooze, an
-> in-lens banner, and correct copy; surfacing in the global
-> Notifications bell has no calendar write path (platform decision,
-> flagged). S9 Scheduler bench rebuilt on real events/tasks — the
+> in-lens banner, and correct copy; and fired reminders also land in the global
+> Notifications bell through the platform substrate
+> (createNotification — B2's scoping found the sanctioned path;
+> exactly once per materialization, S8 completion). S9 Scheduler bench rebuilt on real events/tasks — the
 > paste-JSON textareas and the '.slice' crash class are gone. S10
 > recurring edit honours scope incl. count preservation on splits;
 > the until off-by-one is fixed. S11 quick-add parses noon/midnight/
