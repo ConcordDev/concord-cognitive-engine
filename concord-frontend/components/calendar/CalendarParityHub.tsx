@@ -35,6 +35,7 @@ interface Share {
 }
 interface Reminder {
   id: string; eventTitle: string; occurrenceStart: string; offsetMin: number;
+  fireAt?: string; missed?: boolean; snoozedUntil?: string | null;
 }
 interface StatusEvent {
   id: string; title: string; eventCategory: string; start: string;
@@ -369,7 +370,7 @@ function RemindersPanel() {
   const check = useCallback(async () => {
     setChecking(true);
     const r = await lensRun<{ pending: Reminder[]; firedNow: number }>(
-      'calendar', 'reminders-due', { lookAheadMin: 60 },
+      'calendar', 'reminders-due', {},
     );
     setChecking(false);
     if (r.data?.ok) {
@@ -384,6 +385,10 @@ function RemindersPanel() {
     await lensRun('calendar', 'reminders-acknowledge', { id });
     await check();
   }
+  async function snooze(id: string) {
+    await lensRun('calendar', 'reminders-acknowledge', { id, snoozeMin: 10 });
+    await check();
+  }
   async function ackAll() {
     await lensRun('calendar', 'reminders-acknowledge', { all: true });
     await check();
@@ -395,8 +400,8 @@ function RemindersPanel() {
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <p className="text-xs text-gray-400 flex-1">
-          Reminders fire automatically as each event approaches (checked every minute,
-          60-minute look-ahead window).
+          Reminders appear at their set time — never early. One that came due
+          while you were away is marked missed, not dropped.
         </p>
         <button onClick={check} disabled={checking}
           className="px-2 py-1 rounded text-[11px] bg-lattice-elevated hover:bg-lattice-border text-gray-200 inline-flex items-center gap-1 disabled:opacity-50">
@@ -425,9 +430,16 @@ function RemindersPanel() {
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-white truncate">{r.eventTitle}</p>
                 <p className="text-[10px] text-gray-400">
-                  starts <span className="tabular-nums">{fmt(r.occurrenceStart)} · {r.offsetMin} min</span> reminder
+                  due <span className="tabular-nums">{r.fireAt ? fmt(r.fireAt) : fmt(r.occurrenceStart)}</span>
+                  {' · '}starts <span className="tabular-nums">{fmt(r.occurrenceStart)}</span>
+                  {' · '}{r.offsetMin} min before
+                  {r.missed && <span className="ml-1 rounded bg-rose-500/20 px-1 py-px text-rose-300">missed</span>}
                 </p>
               </div>
+              <button onClick={() => snooze(r.id)}
+                className="px-2 py-1 rounded text-[11px] bg-lattice-elevated hover:bg-lattice-border text-gray-200">
+                Snooze 10m
+              </button>
               <button onClick={() => ack(r.id)}
                 className="px-2 py-1 rounded text-[11px] bg-lattice-elevated hover:bg-lattice-border text-gray-200 inline-flex items-center gap-1">
                 <Check className="w-3 h-3" /> Dismiss
