@@ -2,36 +2,30 @@
 
 /**
  * ScheduleAnalyzer — schedule conflict + availability surface for the
- * calendar lens. Pulls the user's REAL events via
- * useLensData<CalendarEvent>('calendar', 'event') — same source as
- * the main lens grid. No seed defaults.
+ * calendar lens, over the user's REAL saved calendar.
  *
- * Backend (no changes): calendar.detectConflicts +
- * calendar.findAvailability.
- *
- * The lens already exposes a full CRUD editor for events. This panel
- * is read-only analysis — pick a date, see conflicts (across all
- * events the user has) and free slots for that day.
+ * F2 (one conflict truth): this panel used to read the generic artifact
+ * store (useLensData 'calendar'/'event') and feed the scratch-pad
+ * detectConflicts/findAvailability calculators, so it analysed a store
+ * the real calendar never writes to and reported "add 2+ events" while
+ * events existed. It now reads the same STATE-backed engine as every
+ * other surface: calendar.events-list for the census,
+ * calendar.conflicts-check (pairwise) for conflicts, and
+ * calendar.availability-find (zone-aware) for free slots.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { CalendarClock, Loader2, AlertCircle, Clock, CalendarX } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
-import { calendarDateKey } from '@/lib/calendar-date';
-import { useLensData } from '@/lib/hooks/use-lens-data';
+import { browserTimeZone, calendarDateKey, fromZonedInputValue } from '@/lib/calendar-date';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { Skeleton } from '@/components/ui';
 
-interface CalendarEventArtifact {
-  title?: string;
-  startDate?: string | Date;
-  endDate?: string | Date;
-  allDay?: boolean;
-}
-
-interface ConflictResult { totalEvents?: number; conflicts?: Array<{ event1: string; event2: string; overlapMinutes: number }>; conflictCount?: number; conflictFree?: boolean }
-interface AvailabilityResult { date?: string; workHours?: string; eventsToday?: number; availableSlots?: Array<{ start: string; end: string; minutes: number }>; totalFreeMinutes?: number }
+interface ConflictRow { eventId: string; title: string; start: string; end: string }
+interface ConflictPair { a: ConflictRow; b: ConflictRow; overlapMinutes: number }
+interface ConflictsResult { conflicts?: ConflictRow[]; pairs?: ConflictPair[] }
+interface AvailabilityResult { freeSlots?: Array<{ start: string; end: string }>; busyBlockCount?: number; tz?: string }
 
 async function callCal<T>(action: string, input: Record<string, unknown>): Promise<T | null> {
   try {
@@ -46,35 +40,47 @@ async function callCal<T>(action: string, input: Record<string, unknown>): Promi
   } catch { return null; }
 }
 
-function toIso(d: string | Date | undefined): string | null {
-  if (!d) return null;
-  const date = typeof d === 'string' ? new Date(d) : d;
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString().slice(0, 19);
-}
+const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
 export function ScheduleAnalyzer() {
-  const { items: events, isLoading } = useLensData<CalendarEventArtifact>('calendar', 'event', { seed: [] });
   const today = calendarDateKey();
   const [date, setDate] = useState(today);
   const [workStart, setWorkStart] = useState(9);
   const [workEnd, setWorkEnd] = useState(17);
   const [slot, setSlot] = useState(30);
-  const [conflicts, setConflicts] = useState<ConflictResult | null>(null);
+  const [conflicts, setConflicts] = useState<ConflictsResult | null>(null);
   const [availability, setAvailability] = useState<AvailabilityResult | null>(null);
+  const [eventCount, setEventCount] = useState<number | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
-  const realEvents = useMemo(() => events.map((e) => {
-    const d = e.data;
-    return { name: d.title || e.title, start: toIso(d.startDate), end: toIso(d.endDate) };
-  }).filter((e): e is { name: string; start: string; end: string } => !!(e.start && e.end)), [events]);
-
-  const eventsOnDate = useMemo(() => realEvents.filter((e) => e.start.slice(0, 10) === date), [realEvents, date]);
+  // Census from the real store (a wide window around today).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const now = new Date();
+      const rangeStart = new Date(now.getFullYear(), now.getMonth() - 6, 1).toISOString();
+      const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 7, 1).toISOString();
+      const r = await callCal<{ events?: unknown[]; count?: number }>('events-list', { rangeStart, rangeEnd });
+      if (cancelled) return;
+      if (r && Array.isArray(r.events)) { setEventCount(r.events.length); setLoadError(false); }
+      else { setEventCount(null); setLoadError(true); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const analyze = useMutation({
     mutationFn: async () => {
+      const tz = browserTimeZone();
+      const dayStart = fromZonedInputValue(`${date}T00:00`, tz);
+      const dayEnd = fromZonedInputValue(`${date}T23:59`, tz);
+      if (!dayStart || !dayEnd) return { c: null, a: null };
       const [c, a] = await Promise.all([
-        callCal<ConflictResult>('detectConflicts', { artifact: { data: { events: realEvents } } }),
-        callCal<AvailabilityResult>('findAvailability', { artifact: { data: { events: realEvents, date, workStartHour: workStart, workEndHour: workEnd, slotMinutes: slot } } }),
+        callCal<ConflictsResult>('conflicts-check', {
+          start: dayStart.toISOString(), end: dayEnd.toISOString(), pairwise: true,
+        }),
+        callCal<AvailabilityResult>('availability-find', {
+          day: date, durationMin: slot, workStartHour: workStart, workEndHour: workEnd, tz,
+        }),
       ]);
       setConflicts(c);
       setAvailability(a);
@@ -82,7 +88,7 @@ export function ScheduleAnalyzer() {
     },
   });
 
-  if (isLoading) {
+  if (eventCount === null && !loadError) {
     return (
       <div className="space-y-3" role="status" aria-live="polite" aria-busy="true">
         <span className="sr-only">Loading calendar events</span>
@@ -102,15 +108,33 @@ export function ScheduleAnalyzer() {
     );
   }
 
-  if (realEvents.length < 2) {
+  if (loadError) {
     return (
-      <div className="rounded-xl border border-dashed border-lattice-border bg-lattice-deep p-8 text-center">
-        <CalendarX className="mx-auto h-8 w-8 text-gray-600" />
-        <div className="mt-3 text-sm text-gray-300">Add 2+ calendar events to analyze.</div>
-        <div className="mt-1 text-xs text-gray-400">Use the lens's "New event" button above. This panel will then detect overlapping events and surface free slots in your work day.</div>
+      <div className="rounded-xl border border-rose-500/25 bg-rose-500/5 p-8 text-center">
+        <AlertCircle className="mx-auto h-8 w-8 text-rose-400" />
+        <div className="mt-3 text-sm text-gray-200">Could not load your calendar events.</div>
+        <div className="mt-1 text-xs text-gray-400">The analyzer reads the same saved events as the grid — nothing to analyze until they load.</div>
       </div>
     );
   }
+
+  if (eventCount === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-lattice-border bg-lattice-deep p-8 text-center">
+        <CalendarX className="mx-auto h-8 w-8 text-gray-600" />
+        <div className="mt-3 text-sm text-gray-300">Your calendar is empty.</div>
+        <div className="mt-1 text-xs text-gray-400">Add an event with the lens's "New event" button above — this panel then checks it for conflicts and finds free slots in your work day.</div>
+      </div>
+    );
+  }
+
+  const pairs = conflicts?.pairs || [];
+  const slots = (availability?.freeSlots || []).map((s) => ({
+    start: s.start,
+    end: s.end,
+    minutes: Math.round((new Date(s.end).getTime() - new Date(s.start).getTime()) / 60000),
+  }));
+  const totalFreeMinutes = slots.reduce((sum, s) => sum + s.minutes, 0);
 
   return (
     <div className="space-y-4">
@@ -118,17 +142,17 @@ export function ScheduleAnalyzer() {
         <div className="flex items-center gap-2">
           <CalendarClock className="h-5 w-5 text-indigo-400" />
           <h2 className="text-sm font-semibold text-white">Schedule analyzer</h2>
-          <span className="rounded bg-lattice-elevated px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-gray-400">calendar.detectConflicts + findAvailability</span>
-          <span className="text-[10px] text-gray-400">· {realEvents.length} real events</span>
+          <span className="rounded bg-lattice-elevated px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-gray-400">calendar.conflicts-check + availability-find</span>
+          <span className="text-[10px] text-gray-400">· {eventCount} real events</span>
         </div>
         {(conflicts || availability) && (
           <SaveAsDtuButton
             compact
             apiSource="concord-calendar-schedule"
-            title={`Schedule analysis — ${date} (${realEvents.length} events, ${eventsOnDate.length} on this date)`}
-            content={`Date: ${date}\nWork hours: ${workStart}:00 – ${workEnd}:00\nTotal events analysed: ${realEvents.length}\n\nConflicts (${conflicts?.conflictCount ?? 0}):\n${(conflicts?.conflicts || []).map((c) => `  ${c.event1} ↔ ${c.event2} (${c.overlapMinutes} min)`).join('\n') || '  None'}\n\nFree slots on ${date} (${availability?.totalFreeMinutes ?? 0} min total):\n${(availability?.availableSlots || []).map((s) => `  ${s.start} – ${s.end} (${s.minutes} min)`).join('\n') || '  None'}`}
+            title={`Schedule analysis — ${date} (${eventCount} events)`}
+            content={`Date: ${date}\nWork hours: ${workStart}:00 – ${workEnd}:00\nTotal events analysed: ${eventCount}\n\nConflicts (${pairs.length}):\n${pairs.map((p) => `  ${p.a.title} ↔ ${p.b.title} (${p.overlapMinutes} min)`).join('\n') || '  None'}\n\nFree slots on ${date} (${totalFreeMinutes} min total):\n${slots.map((s) => `  ${fmtTime(s.start)} – ${fmtTime(s.end)} (${s.minutes} min)`).join('\n') || '  None'}`}
             extraTags={['calendar', 'schedule', date]}
-            rawData={{ date, workStart, workEnd, slot, eventCount: realEvents.length, conflicts, availability }}
+            rawData={{ date, workStart, workEnd, slot, eventCount, conflicts, availability }}
           />
         )}
       </header>
@@ -153,16 +177,16 @@ export function ScheduleAnalyzer() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-3">
-          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-gray-400"><AlertCircle className="h-3 w-3" />Conflicts (all events)</div>
+          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-gray-400"><AlertCircle className="h-3 w-3" />Conflicts on {date}</div>
           {!conflicts && <div className="text-[11px] text-gray-400">Analyze to detect.</div>}
-          {conflicts && conflicts.conflictFree && <div className="text-[11px] text-emerald-300">No conflicts across your {realEvents.length} events.</div>}
-          {conflicts && !conflicts.conflictFree && conflicts.conflicts && (
+          {conflicts && pairs.length === 0 && <div className="text-[11px] text-emerald-300">No conflicts on this date.</div>}
+          {conflicts && pairs.length > 0 && (
             <div className="space-y-1.5 text-[11px]">
-              <div className="text-gray-400">{conflicts.conflictCount} conflict{conflicts.conflictCount === 1 ? '' : 's'} across {conflicts.totalEvents} events</div>
-              {conflicts.conflicts.map((c, i) => (
+              <div className="text-gray-400">{pairs.length} conflict{pairs.length === 1 ? '' : 's'} on this date</div>
+              {pairs.map((p, i) => (
                 <div key={i} className="rounded border border-rose-500/30 bg-rose-500/10 px-2 py-1.5">
-                  <div className="text-white">{c.event1} <span className="text-rose-300">↔</span> {c.event2}</div>
-                  <div className="font-mono text-[10px] text-rose-300 tabular-nums">{c.overlapMinutes} min overlap</div>
+                  <div className="text-white">{p.a.title} <span className="text-rose-300">↔</span> {p.b.title}</div>
+                  <div className="font-mono text-[10px] text-rose-300 tabular-nums">{fmtTime(p.a.start)} – {fmtTime(p.b.end)} · {p.overlapMinutes} min overlap</div>
                 </div>
               ))}
             </div>
@@ -173,11 +197,11 @@ export function ScheduleAnalyzer() {
           {!availability && <div className="text-[11px] text-gray-400">Analyze to scan.</div>}
           {availability && (
             <div className="space-y-1.5 text-[11px]">
-              <div className="text-gray-400">{availability.totalFreeMinutes} min free across {availability.availableSlots?.length || 0} slot{availability.availableSlots?.length === 1 ? '' : 's'} ({availability.workHours}) · {eventsOnDate.length} event{eventsOnDate.length === 1 ? '' : 's'} on this date</div>
-              {availability.availableSlots?.length === 0 && <div className="text-amber-300">No free slots in work hours.</div>}
-              {availability.availableSlots?.map((s, i) => (
+              <div className="text-gray-400">{totalFreeMinutes} min free across {slots.length} slot{slots.length === 1 ? '' : 's'} ({workStart}:00 – {workEnd}:00)</div>
+              {slots.length === 0 && <div className="text-amber-300">No free slots in work hours.</div>}
+              {slots.map((s, i) => (
                 <div key={i} className="flex items-center justify-between rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5">
-                  <span className="font-mono tabular-nums text-white">{s.start} – {s.end}</span>
+                  <span className="font-mono tabular-nums text-white">{fmtTime(s.start)} – {fmtTime(s.end)}</span>
                   <span className="font-mono tabular-nums text-[10px] text-emerald-200">{s.minutes} min</span>
                 </div>
               ))}
