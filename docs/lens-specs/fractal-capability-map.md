@@ -1,4 +1,21 @@
-# Fractal Lens — Capability Map (Frontend Rebuild Program, Wave 2 batch 6)
+# Fractal Lens — Capability Map (Frontend Rebuild Program, Wave 3)
+
+> **Re-verification (HANDOFF-3 batch L10, 2026-10-28, against main 0bd898fc):**
+> The audit below is kept as history. Current truth:
+>
+> - **15/15 macros named in the frontend** (fresh scan, zero
+>   unsurfaced) — including the three analysis macros
+>   (`fractalDimension`/`selfSimilarity`/`complexityMeasure`) whose
+>   wiring this rebuild added via the "Analyze Current View" panel,
+>   verified still present.
+> - **Shipped in this batch:** the concept's serif headline — "One
+>   image, {username}" — as the page header
+>   (`data-testid="fractal-greeting"`, `tests/fractal-greeting.test.tsx`).
+>   (The concept labels this lens "Visuals" in its rail; the lens's
+>   own name stays Fractal.)
+> - Server suites run locally this pass: fractal-domain-parity
+>   passes (in the combined 109-pass L10 run).
+
 
 > Derived, not asserted. Reproduce the macro list:
 > `grep -c 'registerLensAction("fractal"' server/domains/fractal.js` → 15

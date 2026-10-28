@@ -807,7 +807,7 @@ export function MusicWorkspace() {
     <div className="lens-music flex flex-col h-full overflow-hidden" data-lens-theme="music">
       {/* Top Navigation */}
       <header className="flex-shrink-0 px-8 pt-6">
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Music</h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl" data-testid="music-greeting">What are we hearing{authUser?.username ? `, ${authUser.username}` : ''}</h1>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <nav className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1 no-scrollbar" aria-label="Music views">
             {[

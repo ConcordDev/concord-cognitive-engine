@@ -1,4 +1,26 @@
-# art — Capability Map (Frontend Rebuild Program, Wave 3)
+# Art Lens — Capability Map (Frontend Rebuild Program, Wave 3)
+
+> **Re-verification (HANDOFF-3 batch L10, 2026-10-28, against main 0bd898fc):**
+> The audit below is kept as history; its fixed defects (timelapse
+> capture, lasso stub, stroke-batch, symmetry-mirror) are intact.
+> Current truth:
+>
+> - **73/73 macros named in the frontend** (fresh scan, zero
+>   unsurfaced).
+> - **Fake content found and fixed separately in PR #1717**
+>   (`fix/art-featured-honest-empty`): `ArtMarketDesk`'s Featured
+>   Artwork grid rendered eight fabricated artworks with invented
+>   titles ("Neon Dreams", "Digital Horizons", …) whenever the real
+>   catalogue was empty — the REMAINING-WORK-AUDIT's confirmed
+>   fake-content row. It now shows an honest empty state
+>   ("No artwork featured yet."), with a regression test
+>   (`tests/art-featured-empty.test.tsx`).
+> - **Shipped in this batch:** the concept's serif headline — "Make
+>   a mark, {username}" — as the page header
+>   (`data-testid="art-greeting"`, `tests/art-greeting.test.tsx`).
+> - Server suites run locally this pass: art-domain-parity passes
+>   (in the combined 109-pass L10 run).
+
 
 > Derived, not asserted. Reproduce the macro list:
 > `grep -c 'registerLensAction("art"' server/domains/art.js` → 71

@@ -1,5 +1,55 @@
 # Music lens — capability map (backfill, 2026-07-11)
 
+> **Re-verification (HANDOFF-3 batch L10, 2026-10-28, against main 0bd898fc):**
+> The audit below is kept as history. Its headline — "3 fake-data spots
+> are STILL LIVE" — is **stale**: a later rebuild moved the lens into
+> `components/music/MusicWorkspace.tsx`, and all three spots are
+> verified FIXED in current code:
+>
+> 1. **Revenue dashboard** — now a real query:
+>    `MusicWorkspace.tsx` ("Revenue Dashboard: real creator earnings
+>    (GET /api/creator/dashboard)") with loading/error states. The
+>    hardcoded `$15,840.00`-style cards and fabricated "Recent
+>    Transactions" are gone (no hits in the tree).
+> 2. **Upload waveform** — uploads are really decoded
+>    (`decoded.waveformPeaks` → `realWaveformPeaks` in the workspace's
+>    upload flow); `NowPlayingBar` renders peaks only when the track
+>    carries them. No `Math.random()` waveform remains in the music
+>    frontend. (The old 0:00/0:00 playback complaint has the same
+>    root: duration now flows from the decoded upload / track
+>    metadata into the player store.)
+> 3. **SessionView** — invoked with the user's own library: cells are
+>    real tracks assigned via an empty-slot picker, clips/scenes are
+>    persisted session state, and launch/mute/solo/rename handlers
+>    are all wired to the same playback engine as the rest of the
+>    lens ("nothing here is decorative" — the component's own
+>    comment, and the code bears it out).
+>
+> Fresh surfacing scan: **78/79 domain macros named in the frontend.**
+> The one unsurfaced is `publish-as-stem` — the write half of the
+> adaptive-music bridge (music.js:1855ff): its read half
+> (`list-published-stems`) is wired in
+> `components/world/AdaptiveMusicBridge.tsx`, but no Studio DAW
+> export (or any other UI) calls the publish macro, so authored
+> stems can never land through the product today. A genuine missing
+> feature (the bridge's step 2), recorded for the fix queue — not
+> papered over here.
+>
+> **Shipped in this batch:** the concept's serif headline — "What are
+> we hearing, {username}" — as the MusicWorkspace header
+> (`data-testid="music-greeting"`). No new FE test: the workspace has
+> no existing mount harness (its tests are unit/mode level), and the
+> change is a header text swap in the shell — Mac tsc + live walk
+> cover it (see the PR's "Couldn't run here").
+>
+> Server suites run locally this pass: music-domain-parity,
+> music-collab-playlist, art/fractal parity below — 109 pass in the
+> combined L10 run. Five music failures are live-network ingestion
+> tests (iTunes/LRCLIB fetches; no egress in the audit sandbox) and
+> `music-publish-as-stem.test.js` cannot load here (missing
+> `better-sqlite3`) — all Mac-run, none touched by this batch.
+
+
 ## What this lens actually is
 
 An Apple-Music/Spotify-parity streaming app over the `music` domain
