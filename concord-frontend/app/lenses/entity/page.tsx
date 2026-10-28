@@ -17,6 +17,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { SwarmRegistryPanel } from '@/components/entity/SwarmRegistryPanel';
 import { MindsPanel } from '@/components/entity/MindsPanel';
@@ -41,6 +42,7 @@ const PANELS: Record<Exclude<EntityView, 'registry'>, ComponentType> = {
 };
 
 export default function EntityLensPage() {
+  const { user } = useAuth();
   useLensNav('entity');
   useLensIdentity('entity');
   const reduceMotion = useReducedMotion();
@@ -80,7 +82,7 @@ export default function EntityLensPage() {
 
       <DepthBadge lensId="entity" size="sm" className="ml-2" />
       <div data-lens-theme="entity" className="relative min-h-full px-8 pb-10 pt-6">
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Entities</h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl" data-testid="entity-greeting">Who is in the graph{user?.username ? `, ${user.username}` : ''}</h1>
 
         <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Entity views">
           {VIEWS.map((v) => {

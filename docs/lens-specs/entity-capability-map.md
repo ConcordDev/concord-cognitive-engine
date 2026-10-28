@@ -1,5 +1,33 @@
 # Entity Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **Re-verification (HANDOFF-3 batch L9a, 2026-10-28, against main e9791d4d):**
+> The Wave-3 audit below is kept as history, including its three
+> confirmed defects (dead-wired Terminal, unreachable legacy analysis
+> macros, ManifestActionBar's six nonexistent macro names) — all
+> fixed then and verified still fixed. Current truth:
+>
+> - **18/18 domain macros are named in the frontend** (fresh scan,
+>   zero unsurfaced). The workbench's Analyze tab (Duplicates /
+>   Graph Analytics / Schema Validation) remains the live surface
+>   for the three legacy analysis macros.
+> - The two `server.js` macros keep their dispositions: `terminal`
+>   is wired through `runDomain` (the Wave-3 fix) and honestly
+>   reports `ENABLE_TERMINAL_EXEC` being off by default;
+>   `terminal_approve` remains deliberately unsurfaced — it is a
+>   council approval action with no pending-request listing anywhere
+>   in the backend, so an approval UI would be a new governance
+>   feature, not a reachability fix (finding #5 below).
+> - The page still hosts two distinct real systems (the swarm/worldmodel
+>   console and the knowledge-graph workbench) under one "entity"
+>   label, as documented below; splitting them is a product decision,
+>   not taken here.
+> - **Shipped in this batch:** the concept's serif headline — "Who is
+>   in the graph, {username}" — as the page header
+>   (`data-testid="entity-greeting"`, `tests/entity-greeting.test.tsx`).
+> - Server suites run locally this pass: entity-domain-parity passes
+>   (in the combined 41-pass L9a run).
+
+
 > Derived, not asserted. Every number below has a reproduction command; every
 > classification is backed by a grep or a full read of the file it's about.
 

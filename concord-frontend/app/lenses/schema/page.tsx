@@ -18,6 +18,7 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { SchemaRepos } from '@/components/schema/SchemaRepos';
 import { SchemaWorkbench, SCHEMA_TOOL_TABS, type SchemaTab } from '@/components/schema/SchemaWorkbench';
@@ -31,6 +32,7 @@ const NAV: { id: View; label: string; icon: React.ComponentType<{ className?: st
 ];
 
 export default function SchemaLensPage() {
+  const { user } = useAuth();
   useLensNav('schema');
   useLensIdentity('schema');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('schema');
@@ -62,7 +64,7 @@ export default function SchemaLensPage() {
       <div data-lens-theme="schema" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Schema</h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl" data-testid="schema-greeting">The shape of the data{user?.username ? `, ${user.username}` : ''}</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

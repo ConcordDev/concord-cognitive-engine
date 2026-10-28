@@ -1,5 +1,29 @@
 # Schema Lens — Capability Map (Frontend Rebuild Program, Wave 2, batch 7)
 
+> **Re-verification (HANDOFF-3 batch L9a, 2026-10-28, against main e9791d4d):**
+> The Wave-2 audit below is kept as history. Current truth:
+>
+> - 13 macros; fresh surfacing scan: **12/13 named in the frontend.**
+>   The one unnamed is `schemaValidate`, which carries this map's
+>   standing honest disposition — subsumed by the richer Conformance
+>   tab (`conformanceCheck`: registered-schema validation plus
+>   per-field presence/null/type stats). No second, weaker validator
+>   was built; disposition unchanged.
+> - The Wave-2 rebuild is intact: the duplicate generic scaffold is
+>   still gone (the page is header → RealtimeDataPanel →
+>   SchemaWorkbench → SchemaRepos), and the Diff + Evolution tabs it
+>   added to the workbench are the live surfaces for `schemaDiff` /
+>   `schemaEvolution`.
+> - Note for the security queue (SEC Fix 8): `schema.apply` is a
+>   `server.js` macro, not one of this domain's 13 — it is handled
+>   there, not by this lens.
+> - **Shipped in this batch:** the concept's serif headline — "The
+>   shape of the data, {username}" — as the page header
+>   (`data-testid="schema-greeting"`, `tests/schema-greeting.test.tsx`).
+> - Server suites run locally this pass: schema-domain-parity passes
+>   (in the combined 41-pass L9a run).
+
+
 Reproduce the macro list:
 `grep -n 'registerLensAction("schema"' server/domains/schema.js` → 13 macros:
 `schemaValidate`, `schemaDiff`, `schemaEvolution`, `registryCreate`, `registryList`,
