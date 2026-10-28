@@ -97,6 +97,68 @@ function NodePropsEditor({ mapId, node, onSaved }: {
     </div>
   );
 }
+/**
+ * NodeBranch — one tree row (node + its "+ branch" input + children).
+ *
+ * This component MUST stay at module level (F2): it was previously
+ * declared inside MindMapBuilder's render body, so every render
+ * created a new component type and React remounted the whole branch
+ * subtree on each keystroke. The "+ branch" input lost focus after
+ * the first character, later keystrokes landed on the document, and
+ * the page's single-key view shortcuts (the "2" in "PR2…") switched
+ * the lens to Explorer — maps could never grow past one node. As a
+ * stable module-level component the input keeps focus while typing.
+ */
+function NodeBranch({ node, depth, mapId, kidsOf, branchText, onBranchText, onAddBranch, onDeleteNode, propsOpen, onToggleProps, onPropsSaved }: {
+  node: GNode;
+  depth: number;
+  mapId: string;
+  kidsOf: (nodeId: string) => GNode[];
+  branchText: Record<string, string>;
+  onBranchText: (nodeId: string, value: string) => void;
+  onAddBranch: (nodeId: string) => void;
+  onDeleteNode: (nodeId: string) => void;
+  propsOpen: Record<string, boolean>;
+  onToggleProps: (nodeId: string) => void;
+  onPropsSaved: () => Promise<void>;
+}) {
+  const kids = kidsOf(node.id);
+  return (
+    <div className={cn(depth > 0 && 'ml-4 pl-3 border-l border-zinc-800')}>
+      <div className="group flex items-center gap-1.5 py-0.5">
+        <span className={cn('w-1.5 h-1.5 rounded-full', node.central ? 'bg-violet-400' : 'bg-zinc-500')} />
+        <span className={cn('text-xs', node.central ? 'font-bold text-violet-200' : 'text-zinc-200')}>{node.label}</span>
+        {node.props && Object.keys(node.props).length > 0 && (
+          <span className="text-[10px] text-zinc-500">{Object.keys(node.props).length} propert{Object.keys(node.props).length === 1 ? 'y' : 'ies'}</span>
+        )}
+        <button type="button" aria-label={`Properties of ${node.label}`} aria-expanded={!!propsOpen[node.id]}
+          onClick={() => onToggleProps(node.id)}
+          className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-zinc-200 text-[10px]">
+          Properties
+        </button>
+        {!node.central && (
+          <button aria-label="Delete" onClick={() => onDeleteNode(node.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+        )}
+      </div>
+      {propsOpen[node.id] && (
+        <NodePropsEditor mapId={mapId} node={node} onSaved={onPropsSaved} />
+      )}
+      {kids.map(k => (
+        <NodeBranch key={k.id} node={k} depth={depth + 1} mapId={mapId} kidsOf={kidsOf}
+          branchText={branchText} onBranchText={onBranchText} onAddBranch={onAddBranch}
+          onDeleteNode={onDeleteNode} propsOpen={propsOpen} onToggleProps={onToggleProps}
+          onPropsSaved={onPropsSaved} />
+      ))}
+      <div className="flex gap-1 ml-3 my-0.5">
+        <input value={branchText[node.id] || ''} onChange={e => onBranchText(node.id, e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') onAddBranch(node.id); }}
+          placeholder="+ branch" className="w-32 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-[11px] text-zinc-300" />
+        <button aria-label="Branch" onClick={() => onAddBranch(node.id)} className="text-zinc-600 hover:text-violet-300"><GitBranch className="w-3 h-3" /></button>
+      </div>
+    </div>
+  );
+}
+
 interface Metrics { nodeCount: number; edgeCount: number; avgDegree: number; mostConnected: { label: string; degree: number } | null; isolatedNodes: number }
 
 export function MindMapBuilder() {
@@ -124,6 +186,7 @@ export function MindMapBuilder() {
   const [orphans, setOrphans] = useState<GNode[] | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [importFmt, setImportFmt] = useState<'csv' | 'json'>('csv');
+  const [importTarget, setImportTarget] = useState<'new' | 'active'>('new');
   const [importTitle, setImportTitle] = useState('');
   const [importText, setImportText] = useState('');
   const [importResult, setImportResult] = useState<{ ok: boolean; text: string; errors: { row: number; error: string }[] } | null>(null);
@@ -230,20 +293,28 @@ export function MindMapBuilder() {
   }
 
   // graph.map-import — CSV of nodes or a JSON document; per-row errors
-  // come back from the server and are shown, never swallowed.
+  // come back from the server and are shown, never swallowed. The
+  // import can land in a new map or merge into the open one (labels
+  // that already exist merge — counted in the result, not duplicated).
   async function runImport() {
     setImportResult(null);
+    const intoActive = importTarget === 'active' && !!active;
     const r = await lensRun('graph', 'map-import', {
-      format: importFmt, title: importTitle.trim() || undefined, content: importText,
+      format: importFmt, title: intoActive ? undefined : (importTitle.trim() || undefined),
+      mapId: intoActive ? active?.id : undefined, content: importText,
     });
     if (!r.data?.ok) {
       setImportResult({ ok: false, text: r.data?.error || 'Import failed.', errors: (r.data as { errors?: { row: number; error: string }[] })?.errors || [] });
       return;
     }
-    const res = r.data.result as { map: GMap; imported: { nodes: number; edges: number }; errors: { row: number; error: string }[] };
+    const res = r.data.result as { map: GMap; imported: { nodes: number; edges: number }; merged?: number; skipped?: { edges: number }; errors: { row: number; error: string }[] };
+    const extras = [
+      res.merged ? `${res.merged} existing node${res.merged === 1 ? '' : 's'} merged` : '',
+      res.skipped?.edges ? `${res.skipped.edges} duplicate link${res.skipped.edges === 1 ? '' : 's'} skipped` : '',
+    ].filter(Boolean).join('; ');
     setImportResult({
       ok: true,
-      text: `Imported ${res.imported.nodes} nodes and ${res.imported.edges} links into "${res.map.title}".`,
+      text: `Imported ${res.imported.nodes} nodes and ${res.imported.edges} links into "${res.map.title}".${extras ? ` ${extras}.` : ''}`,
       errors: res.errors || [],
     });
     setImportText('');
@@ -273,7 +344,18 @@ export function MindMapBuilder() {
         edges: active.edges.map((e) => ({ source: e.from, target: e.to })), from: pathFrom, to: pathTo, directed: false,
       });
       const res = r.data?.result;
-      setPathResult(res ? { found: !!res.path, path: res.path, message: res.message } : { found: false, path: null, message: r.data?.error || 'Path search failed.' });
+      if (!res) {
+        setPathResult({ found: false, path: null, message: 'Path search failed — please try again.' });
+      } else if (res.path) {
+        setPathResult({ found: true, path: res.path });
+      } else {
+        // Never surface the macro's parameter instructions ("Provide
+        // artifact.data.edges…") in the UI — translate the outcome into
+        // what the user can do next (S8).
+        setPathResult({ found: false, path: null, message: active.edges.length === 0
+          ? 'This map has no links yet — add a branch or a cross-link first.'
+          : 'These ideas are not connected yet.' });
+      }
     } finally { setPathBusy(false); }
   };
 
@@ -286,39 +368,9 @@ export function MindMapBuilder() {
     ? { map: active, metrics }
     : { map: null, metrics: null };
 
-  function NodeBranch({ node, depth }: { node: GNode; depth: number }) {
-    if (!active) return null;
-    const kids = childrenOf(node.id);
-    return (
-      <div className={cn(depth > 0 && 'ml-4 pl-3 border-l border-zinc-800')}>
-        <div className="group flex items-center gap-1.5 py-0.5">
-          <span className={cn('w-1.5 h-1.5 rounded-full', node.central ? 'bg-violet-400' : 'bg-zinc-500')} />
-          <span className={cn('text-xs', node.central ? 'font-bold text-violet-200' : 'text-zinc-200')}>{node.label}</span>
-          {node.props && Object.keys(node.props).length > 0 && (
-            <span className="text-[10px] text-zinc-500">{Object.keys(node.props).length} propert{Object.keys(node.props).length === 1 ? 'y' : 'ies'}</span>
-          )}
-          <button type="button" aria-label={`Properties of ${node.label}`} aria-expanded={!!propsOpen[node.id]}
-            onClick={() => setPropsOpen((p) => ({ ...p, [node.id]: !p[node.id] }))}
-            className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-zinc-200 text-[10px]">
-            Properties
-          </button>
-          {!node.central && (
-            <button aria-label="Delete" onClick={() => delNode(node.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
-          )}
-        </div>
-        {propsOpen[node.id] && active && (
-          <NodePropsEditor mapId={active.id} node={node} onSaved={async () => { await reload(); await refresh(); }} />
-        )}
-        {kids.map(k => <NodeBranch key={k.id} node={k} depth={depth + 1} />)}
-        <div className="flex gap-1 ml-3 my-0.5">
-          <input value={addParent[node.id] || ''} onChange={e => setAddParent({ ...addParent, [node.id]: e.target.value })}
-            onKeyDown={e => { if (e.key === 'Enter') void addNode(node.id); }}
-            placeholder="+ branch" className="w-32 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-[11px] text-zinc-300" />
-          <button aria-label="Branch" onClick={() => addNode(node.id)} className="text-zinc-600 hover:text-violet-300"><GitBranch className="w-3 h-3" /></button>
-        </div>
-      </div>
-    );
-  }
+  // NodeBranch lives at module level (see its doc comment): declaring
+  // it here remounted the branch tree on every keystroke and threw
+  // focus to the document — the F2 page-switch bug.
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
@@ -393,18 +445,27 @@ export function MindMapBuilder() {
               <div className="flex flex-wrap items-center gap-1.5">
                 <select value={importFmt} onChange={(e) => setImportFmt(e.target.value as 'csv' | 'json')} aria-label="Import format"
                   className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-[11px] text-zinc-300">
-                  <option value="csv">CSV — one node per row (label,notes)</option>
+                  <option value="csv">CSV — nodes (label,notes), optional edges section</option>
                   <option value="json">JSON — nodes + edges by label</option>
                 </select>
-                <input value={importTitle} onChange={(e) => setImportTitle(e.target.value)} placeholder="New map title" aria-label="Import map title"
-                  className="w-36 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-[11px] text-zinc-300" />
+                {active && (
+                  <select value={importTarget} onChange={(e) => setImportTarget(e.target.value as 'new' | 'active')} aria-label="Import destination"
+                    className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-[11px] text-zinc-300">
+                    <option value="new">New map</option>
+                    <option value="active">Into “{active.title}”</option>
+                  </select>
+                )}
+                {importTarget === 'new' && (
+                  <input value={importTitle} onChange={(e) => setImportTitle(e.target.value)} placeholder="New map title" aria-label="Import map title"
+                    className="w-36 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-[11px] text-zinc-300" />
+                )}
                 <button type="button" onClick={() => void runImport()} disabled={!importText.trim()}
                   className="px-2 py-0.5 rounded bg-violet-600 text-[11px] text-white hover:bg-violet-500 disabled:opacity-30">
                   Import
                 </button>
               </div>
               <textarea value={importText} onChange={(e) => setImportText(e.target.value)} rows={5} aria-label="Import content"
-                placeholder={importFmt === 'csv' ? 'label,notes\nAlpha,first node\nBeta,second node' : '{"nodes":[{"label":"Alpha"},{"label":"Beta"}],"edges":[{"fromLabel":"Alpha","toLabel":"Beta","label":"links"}]}'}
+                placeholder={importFmt === 'csv' ? 'label,notes\nAlpha,first node\nBeta,second node\nedges\nfrom,to,label\nAlpha,Beta,links' : '{"nodes":[{"label":"Alpha"},{"label":"Beta"}],"edges":[{"fromLabel":"Alpha","toLabel":"Beta","label":"links"}]}'}
                 className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] font-mono text-zinc-200" />
               {importResult && (
                 <div className="text-[11px]">
@@ -437,7 +498,16 @@ export function MindMapBuilder() {
             </div>
           )}
           <div className="bg-zinc-900/40 border border-zinc-800 rounded-lg p-3">
-            {active.nodes.filter(n => n.central).map(c => <NodeBranch key={c.id} node={c} depth={0} />)}
+            {active.nodes.filter(n => n.central).map(c => (
+              <NodeBranch key={c.id} node={c} depth={0} mapId={active.id} kidsOf={childrenOf}
+                branchText={addParent}
+                onBranchText={(id, v) => setAddParent((prev) => ({ ...prev, [id]: v }))}
+                onAddBranch={(id) => void addNode(id)}
+                onDeleteNode={(id) => void delNode(id)}
+                propsOpen={propsOpen}
+                onToggleProps={(id) => setPropsOpen((p) => ({ ...p, [id]: !p[id] }))}
+                onPropsSaved={async () => { await reload(); await refresh(); }} />
+            ))}
           </div>
 
           {/* Cross-links — graph.edge-add/edge-delete, independent of the tree branches above */}

@@ -10,8 +10,8 @@
 >
 > Backend inventory: `server/domains/graph.js` now registers **34
 > macros** (28 before this rework + map-update, edge-update,
-> map-import, map-orphans, map-undo-delete, and node-update's typed
-> properties). Maps are per-user STATE-backed; heavy analytics
+> map-import, map-orphans, map-undo-delete, verify-dtu, and
+> node-update's typed properties). Maps are per-user STATE-backed; heavy analytics
 > (clusterDetect, graphMetrics, layout) run server-side, off the
 > browser's main thread by construction.
 
@@ -20,9 +20,10 @@
 | Create a map, then rename / describe it | **Yes** — `map-update` + inline editor in the Mind Map Builder (this rework) | | |
 | Add nodes and edges; edit an edge's label AND type, persisted | **Yes** — `edge-update`; `edge-add` takes a type; edges render their type chip (this rework) | | |
 | Typed node properties (Bloom inspector) | **Yes** — `node-update` props merge (string/number/boolean, null removes a key) + the per-node Properties editor (this rework) | | |
-| Import nodes/edges (Kumu) | **Yes** — `map-import`: CSV (label,notes) and JSON (nodes + edges by label), per-row errors reported and shown, 500-node / 512KB caps (this rework) | | XLSX/spreadsheet-file import |
+| Import nodes/edges (Kumu) | **Yes** — `map-import`: CSV (label,notes + an edges section) and JSON (nodes + edges by label), per-row errors reported and shown, 1,000-node / 1,000-edge row caps, optional target map (re-import merges instead of duplicating) (this rework) | | XLSX/spreadsheet-file import |
 | Orphan / unlinked-node view (Obsidian) | **Yes** — `map-orphans` (computed from the real edge list) + the builder's Unlinked panel (this rework) | | |
 | Undo a node/edge deletion | **Yes** — deletes stash into a bounded per-map trash; `map-undo-delete` restores a node with its edges, an edge when both endpoints live (this rework) | | |
+| Verify a DTU's integrity from its dialog | **Yes** — `verify-dtu` runs the dtu-integrity hash + signature chain and reports verified / tampered / not-yet-anchored; DTU Sync validates the id at link time (this rework) | | |
 | Local graph centred on a node, depth slider | **Yes** — `local-graph` + the field/explore views (pre-existing, verified in L3) | | |
 | Search a node and centre on it | **Yes** — field search + recenter (pre-existing) | | |
 | Saved filters — save, list, re-apply, delete | **Yes** — `filter-save/list/apply/delete` wired in the parity panel (pre-existing) | | |

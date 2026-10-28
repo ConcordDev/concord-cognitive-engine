@@ -15,7 +15,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { conkayWorkspaceHref } from '@/lib/conkay/workspace-link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { dtuCreatedAt, dtuFullContent } from '@/lib/dtu/display';
 import { useUIStore } from '@/store/ui';
 import type { DTU } from '@/lib/api/generated-types';
@@ -35,6 +35,7 @@ import {
   Crown,
   Ghost,
   Copy,
+  Check,
   ChevronRight,
   Download,
   DollarSign,
@@ -270,8 +271,33 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
     staleTime: 60_000,
   });
 
+  const [idCopied, setIdCopied] = useState(false);
   const handleCopyId = () => {
     navigator.clipboard.writeText(dtuId);
+    setIdCopied(true);
+    window.setTimeout(() => setIdCopied(false), 1600);
+  };
+
+  // Integrity verification (F9): the badge's verify control runs the
+  // real chain check (graph.verify-dtu → lib/dtu-integrity) and the
+  // result — verified / tampered / not-yet-anchored — is shown, never
+  // just the invitation text.
+  const [verifyResult, setVerifyResult] = useState<{ status: 'verified' | 'tampered' | 'unanchored'; checkedAt: string } | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [verifyBusy, setVerifyBusy] = useState(false);
+  const handleVerify = async (id: string) => {
+    setVerifyBusy(true);
+    setVerifyError(null);
+    try {
+      const r = await lensRun('graph', 'verify-dtu', { dtuId: id });
+      if (r.data?.ok && r.data.result) {
+        setVerifyResult({ status: r.data.result.status as 'verified' | 'tampered' | 'unanchored', checkedAt: r.data.result.checkedAt as string });
+      } else {
+        setVerifyError(r.data?.error || 'Verification is unavailable right now.');
+      }
+    } finally {
+      setVerifyBusy(false);
+    }
   };
 
   const [sharecopied, setShareCopied] = useState(false);
@@ -356,8 +382,9 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                 </h2>
                 <div className="flex items-center gap-2 text-xs text-gray-400">
                   <span className="font-mono truncate">{dtuId.slice(0, 20)}...</span>
-                  <button onClick={handleCopyId} className="hover:text-white" title="Copy ID">
-                    <Copy className="w-3 h-3" />
+                  <button onClick={handleCopyId} className="hover:text-white inline-flex items-center gap-1" title="Copy ID" aria-live="polite">
+                    {idCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    {idCopied && <span className="text-[10px] text-emerald-400">Copied</span>}
                   </button>
                   <TierBadge tier={dtu?.tier || 'regular'} showRegular size="sm" />
                   <ScopeBadge scope={(dtu?.meta?.scope as string) || 'local'} />
@@ -820,11 +847,26 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                   <DTUIntegrityBadge
                     dtuId={dtu.id}
                     status={
-                      (dtu.meta?.integrityStatus as 'verified' | 'unverified' | 'tampered') ||
-                      'unverified'
+                      verifyResult
+                        ? (verifyResult.status === 'unanchored' ? 'unverified' : verifyResult.status)
+                        : ((dtu.meta?.integrityStatus as 'verified' | 'unverified' | 'tampered') || 'unverified')
                     }
                     contentHash={dtu.meta?.contentHash as string}
+                    onVerify={(id) => void handleVerify(id)}
                   />
+                  {(verifyResult || verifyError || verifyBusy) && (
+                    <p className="text-xs text-gray-400 -mt-1" role="status">
+                      {verifyBusy
+                        ? 'Checking the integrity chain…'
+                        : verifyError
+                          ? verifyError
+                          : verifyResult?.status === 'verified'
+                            ? 'Integrity verified — content hash and signature match the anchored record.'
+                            : verifyResult?.status === 'tampered'
+                              ? 'Integrity check failed — this DTU’s content no longer matches its anchored hash.'
+                              : 'Checked: this DTU has no integrity record yet, so there is nothing to verify against.'}
+                    </p>
+                  )}
 
                   {/* Royalty Earnings Summary */}
                   {cascadeData?.ok &&

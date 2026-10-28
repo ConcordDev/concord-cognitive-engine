@@ -4,6 +4,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
+import { initIntegrityTable, createIntegritySystem } from "../lib/dtu-integrity.js";
 export default function registerGraphActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -627,11 +628,11 @@ export default function registerGraphActions(registerLensAction) {
   const gphClean = (v, max = 600) => String(v == null ? "" : v).trim().slice(0, max);
   const gphMaps = (s, userId) => { if (!s.maps.has(userId)) s.maps.set(userId, []); return s.maps.get(userId); };
 
-  // Minimal CSV reader for map-import: header row names the columns
-  // (label required, notes optional); quoted fields may carry commas
-  // and doubled quotes. Returns row objects or null without a label
-  // column.
-  function parseCsvNodeRows(text) {
+  // Minimal CSV reader for map-import. Quoted fields may carry
+  // commas and doubled quotes. Records keep their 1-based record
+  // number (the header is record 1) so per-row errors can cite the
+  // row the user sees in their file.
+  function parseCsvRecords(text) {
     const rows = [];
     let row = [], field = "", inQ = false;
     const pushField = () => { row.push(field); field = ""; };
@@ -648,22 +649,89 @@ export default function registerGraphActions(registerLensAction) {
       else if (c !== "\r") field += c;
     }
     if (field.length || row.length) pushRow();
-    const clean = rows.filter((r) => r.some((cell) => String(cell).trim() !== ""));
-    if (!clean.length) return null;
-    const header = clean[0].map((h) => String(h).trim().toLowerCase());
+    return rows;
+  }
+
+  // CSV import shape: a node section headed by a row naming the
+  // columns (label required, notes optional), optionally followed by
+  // an edge section — a row whose only cell is "edges", then a header
+  // row (from,to required; label,type optional), then edge rows whose
+  // endpoints resolve by node label. Returns { nodeRows, edgeRows }
+  // or null without a label column.
+  function parseCsvImport(text) {
+    const records = parseCsvRecords(text)
+      .map((cells, i) => ({ cells, row: i + 1 }))
+      .filter(({ cells }) => cells.some((cell) => String(cell).trim() !== ""));
+    if (!records.length) return null;
+    const header = records[0].cells.map((h) => String(h).trim().toLowerCase());
     const li = header.indexOf("label");
     if (li < 0) return null;
     const ni = header.indexOf("notes");
-    return clean.slice(1).map((r) => ({ label: r[li] ?? "", notes: ni >= 0 ? (r[ni] ?? "") : "" }));
+    const nodeRows = [];
+    const edgeRows = [];
+    let mode = "nodes";
+    let edgeCols = null;
+    for (const rec of records.slice(1)) {
+      const first = String(rec.cells[0] ?? "").trim().toLowerCase();
+      if (mode === "nodes" && rec.cells.length === 1 && first === "edges") { mode = "edgeHeader"; continue; }
+      if (mode === "edgeHeader") {
+        const h = rec.cells.map((c) => String(c).trim().toLowerCase());
+        edgeCols = { from: h.indexOf("from"), to: h.indexOf("to"), label: h.indexOf("label"), type: h.indexOf("type") };
+        if (edgeCols.from < 0 || edgeCols.to < 0) return null;
+        mode = "edges";
+        continue;
+      }
+      if (mode === "edges") {
+        edgeRows.push({
+          from: rec.cells[edgeCols.from] ?? "", to: rec.cells[edgeCols.to] ?? "",
+          label: edgeCols.label >= 0 ? (rec.cells[edgeCols.label] ?? "") : "",
+          type: edgeCols.type >= 0 ? (rec.cells[edgeCols.type] ?? "") : "",
+          __row: rec.row,
+        });
+      } else {
+        nodeRows.push({ label: rec.cells[li] ?? "", notes: ni >= 0 ? (rec.cells[ni] ?? "") : "", __row: rec.row });
+      }
+    }
+    return { nodeRows, edgeRows };
   }
 
   // Bounded per-map trash for undo: deletes stash what they removed
   // (a node plus the edges that touched it, or a single edge) and
-  // map-undo-delete restores the most recent entry.
+  // map-undo-delete restores the most recent entry. Bounded to the
+  // last 10 deletions per map (the §9 re-review checkpoint figure).
   function gphTrash(m, entry) {
     if (!Array.isArray(m.trash)) m.trash = [];
     m.trash.unshift({ ...entry, at: new Date().toISOString() });
-    if (m.trash.length > 20) m.trash.length = 20;
+    if (m.trash.length > 10) m.trash.length = 10;
+  }
+
+  // Shared typed-property sanitizer for the Bloom-style inspector
+  // (node-add initial props + node-update merges). Discipline (the §9
+  // re-review checkpoint): props must be a plain object; at most 32
+  // keys on the node after the merge — an over-cap call is REJECTED,
+  // never silently truncated; keys are cleaned (64) and must be
+  // non-empty; values are scalars only (string cleaned to 500, finite
+  // number, boolean) or null, which deletes the key under merge
+  // semantics. A bad value errors NAMING the key. Returns { props }
+  // or { error }.
+  function gphSanitizeProps(rawProps, existing) {
+    if (typeof rawProps !== "object" || rawProps === null || Array.isArray(rawProps)) {
+      return { error: "props must be an object of typed values" };
+    }
+    const next = { ...(existing || {}) };
+    for (const [k, v] of Object.entries(rawProps)) {
+      const key = gphClean(k, 64);
+      if (!key) return { error: "props keys must be non-empty" };
+      if (v === null) { delete next[key]; continue; }
+      if (typeof v === "string") next[key] = gphClean(v, 500);
+      else if (typeof v === "number" && Number.isFinite(v)) next[key] = v;
+      else if (typeof v === "boolean") next[key] = v;
+      else return { error: `property "${key}" must be a string, number or boolean` };
+    }
+    if (Object.keys(next).length > 32) {
+      return { error: "props are capped at 32 keys per node" };
+    }
+    return { props: next };
   }
 
   registerLensAction("graph", "map-create", (ctx, _a, params = {}) => {
@@ -706,65 +774,89 @@ export default function registerGraphActions(registerLensAction) {
       if (deg.has(e.from)) deg.set(e.from, deg.get(e.from) + 1);
       if (deg.has(e.to)) deg.set(e.to, deg.get(e.to) + 1);
     }
-    const orphans = m.nodes.filter((n) => deg.get(n.id) === 0);
+    // The central node is excluded by stated choice: it is degree-0
+    // on a fresh map but it is the root anchor, not an orphan (the §9
+    // re-review checkpoint — a fresh map reports zero orphans).
+    const orphans = m.nodes.filter((n) => deg.get(n.id) === 0 && !n.central);
     return { ok: true, result: { orphans, count: orphans.length, nodeCount: m.nodes.length } };
   });
 
-  // map-import — build a real map from a CSV of nodes (header:
-  // label,notes) or a JSON document ({nodes:[{label,notes}],
-  // edges:[{fromLabel,toLabel,label,type}]}). Bad rows are reported
-  // per-row and skipped; the good rows still land. Caps keep one file
-  // from swamping the store: 500 nodes, 512KB.
+  // map-import — build a real map from a CSV (node section headed
+  // label[,notes], optional "edges" section headed from,to[,label,
+  // type]) or a JSON document ({nodes:[{label,notes}], edges:
+  // [{fromLabel,toLabel,label,type}]}). With params.mapId the import
+  // lands in that existing map instead of a new one. Bad rows are
+  // reported per-row and skipped; the good rows still land; a node
+  // whose label already exists (in the file or the target map) is
+  // MERGED — counted, never duplicated, never an error. Caps keep
+  // one file from swamping the store: 1,000 node rows + 1,000 edge
+  // rows per call, whole-call error over cap, never truncation.
   registerLensAction("graph", "map-import", (ctx, _a, params = {}) => {
     const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const format = String(params.format || "").toLowerCase();
     if (!["csv", "json"].includes(format)) return { ok: false, error: "format must be csv or json" };
     const content = String(params.content == null ? "" : params.content);
     if (!content.trim()) return { ok: false, error: "import content required" };
-    if (content.length > 512000) return { ok: false, error: "import too large (512KB max)" };
+    if (content.length > 3000000) return { ok: false, error: "import too large (3MB max)" };
     let nodeRows = null;
     let edgeRows = [];
     if (format === "json") {
       let doc = null;
       try { doc = JSON.parse(content); } catch (e) { return { ok: false, error: `invalid JSON: ${e.message}` }; }
       if (!doc || !Array.isArray(doc.nodes)) return { ok: false, error: 'JSON must be an object with a "nodes" array' };
-      nodeRows = doc.nodes;
-      edgeRows = Array.isArray(doc.edges) ? doc.edges : [];
+      nodeRows = doc.nodes.map((r, i) => ({ ...(r || {}), __row: i + 1 }));
+      edgeRows = (Array.isArray(doc.edges) ? doc.edges : []).map((r, i) => ({ ...(r || {}), __row: i + 1 }));
     } else {
-      nodeRows = parseCsvNodeRows(content);
-      if (!nodeRows) return { ok: false, error: "CSV needs a header row with a label column" };
+      const parsed = parseCsvImport(content);
+      if (!parsed) return { ok: false, error: "CSV needs a header row with a label column" };
+      nodeRows = parsed.nodeRows;
+      edgeRows = parsed.edgeRows;
     }
-    if (nodeRows.length > 500) return { ok: false, error: "import is capped at 500 nodes per file" };
+    if (nodeRows.length > 1000) return { ok: false, error: "import is capped at 1000 nodes per file" };
+    if (edgeRows.length > 1000) return { ok: false, error: "import is capped at 1000 edges per file" };
+    const targetId = params.mapId || params.id;
+    let map = null;
+    if (targetId) {
+      map = findMap(s, ctx, targetId);
+      if (!map) return { ok: false, error: "map not found" };
+    } else {
+      map = {
+        id: gphId("mp"),
+        title: gphClean(params.title, 160) || "Imported map",
+        description: gphClean(params.description, 2000) || "",
+        nodes: [], edges: [], createdAt: new Date().toISOString(), importedFrom: format,
+      };
+    }
     const errors = [];
-    const map = {
-      id: gphId("mp"),
-      title: gphClean(params.title, 160) || "Imported map",
-      description: gphClean(params.description, 2000) || "",
-      nodes: [], edges: [], createdAt: new Date().toISOString(), importedFrom: format,
-    };
-    const byLabel = new Map();
-    nodeRows.forEach((r, i) => {
-      const rowNo = format === "csv" ? i + 2 : i + 1;
+    const byLabel = new Map(map.nodes.map((n) => [String(n.label).trim().toLowerCase(), n]));
+    let nodesAdded = 0;
+    let nodesMerged = 0;
+    nodeRows.forEach((r) => {
       const label = gphClean(r && (r.label != null ? r.label : r.name), 240);
-      if (!label) { errors.push({ row: rowNo, error: "node label required" }); return; }
+      if (!label) { errors.push({ row: r.__row, error: "node label required" }); return; }
       const key = label.toLowerCase();
-      if (byLabel.has(key)) { errors.push({ row: rowNo, error: `duplicate label "${label}" — skipped` }); return; }
+      if (byLabel.has(key)) { nodesMerged++; return; }
       const node = { id: gphId("nd"), label, notes: gphClean(r.notes, 2000) || "", central: map.nodes.length === 0 };
       map.nodes.push(node);
       byLabel.set(key, node);
+      nodesAdded++;
     });
-    if (!map.nodes.length) return { ok: false, error: "no valid nodes to import", errors };
-    edgeRows.forEach((r, i) => {
+    if (!nodeRows.length && !edgeRows.length) return { ok: false, error: "no valid nodes to import", errors };
+    if (!targetId && nodesAdded === 0) return { ok: false, error: "no valid nodes to import", errors };
+    let edgesAdded = 0;
+    let edgesSkipped = 0;
+    edgeRows.forEach((r) => {
       const from = byLabel.get(String(r && (r.fromLabel != null ? r.fromLabel : r.from) || "").trim().toLowerCase());
       const to = byLabel.get(String(r && (r.toLabel != null ? r.toLabel : r.to) || "").trim().toLowerCase());
-      if (!from || !to) { errors.push({ row: i + 1, error: "edge references an unknown node label" }); return; }
-      if (from.id === to.id) { errors.push({ row: i + 1, error: "an edge cannot connect a node to itself" }); return; }
-      if (map.edges.some((e) => e.from === from.id && e.to === to.id)) { errors.push({ row: i + 1, error: "duplicate edge — skipped" }); return; }
+      if (!from || !to) { errors.push({ row: r.__row, error: "edge references an unknown node label" }); return; }
+      if (from.id === to.id) { errors.push({ row: r.__row, error: "an edge cannot connect a node to itself" }); return; }
+      if (map.edges.some((e) => e.from === from.id && e.to === to.id)) { edgesSkipped++; return; }
       map.edges.push({ id: gphId("ed"), from: from.id, to: to.id, label: gphClean(r.label, 80) || "", type: gphClean(r.type, 40) || "" });
+      edgesAdded++;
     });
-    gphMaps(s, gphActor(ctx)).push(map);
+    if (!targetId) gphMaps(s, gphActor(ctx)).push(map);
     saveGraph();
-    return { ok: true, result: { map, imported: { nodes: map.nodes.length, edges: map.edges.length }, errors } };
+    return { ok: true, result: { map, imported: { nodes: nodesAdded, edges: edgesAdded }, merged: nodesMerged, skipped: { edges: edgesSkipped }, errors } };
   });
 
   registerLensAction("graph", "map-list", (ctx, _a, _params = {}) => {
@@ -801,6 +893,14 @@ export default function registerGraphActions(registerLensAction) {
     const label = gphClean(params.label, 240);
     if (!label) return { ok: false, error: "node label required" };
     const node = { id: gphId("nd"), label, notes: gphClean(params.notes, 2000) || "", central: false };
+    // Optional initial typed properties, through the same sanitizer
+    // node-update uses — validated BEFORE the node lands, so a bad
+    // props payload never leaves a half-created node behind.
+    if (params.props != null) {
+      const clean = gphSanitizeProps(params.props, {});
+      if (clean.error) return { ok: false, error: clean.error };
+      if (Object.keys(clean.props).length) node.props = clean.props;
+    }
     m.nodes.push(node);
     let edge = null;
     if (params.parentId) {
@@ -823,23 +923,13 @@ export default function registerGraphActions(registerLensAction) {
     if (params.label != null) node.label = gphClean(params.label, 240) || node.label;
     if (params.notes != null) node.notes = gphClean(params.notes, 2000);
     // Typed properties (Bloom-style inspector): params.props merges
-    // into node.props; values must be string/number/boolean; a key set
-    // to null is removed. Capped at 32 keys per call.
+    // into node.props through the shared sanitizer — scalar values
+    // only, a key set to null is removed, over-cap or non-scalar
+    // input is rejected (naming the key), never truncated.
     if (params.props != null) {
-      if (typeof params.props !== "object" || Array.isArray(params.props)) {
-        return { ok: false, error: "props must be an object of typed values" };
-      }
-      const next = { ...(node.props || {}) };
-      for (const [k, v] of Object.entries(params.props).slice(0, 32)) {
-        const key = String(k).slice(0, 64);
-        if (!key) continue;
-        if (v === null) { delete next[key]; continue; }
-        if (!["string", "number", "boolean"].includes(typeof v)) {
-          return { ok: false, error: `property "${key}" must be a string, number or boolean` };
-        }
-        next[key] = typeof v === "string" ? v.slice(0, 500) : v;
-      }
-      node.props = next;
+      const clean = gphSanitizeProps(params.props, node.props);
+      if (clean.error) return { ok: false, error: clean.error };
+      node.props = clean.props;
     }
     saveGraph();
     return { ok: true, result: { node } };
@@ -918,7 +1008,16 @@ export default function registerGraphActions(registerLensAction) {
         return { ok: false, error: "cannot restore that edge — an endpoint node is gone" };
       }
       m.trash.shift();
-      if (!m.edges.some((e) => e.id === t.edge.id)) m.edges.push(t.edge);
+      // Never mint a duplicate directed pair: edge-add forbids them,
+      // so if the same (from,to) was re-created while this edge sat
+      // in the trash, the connection already stands — the entry is
+      // consumed and the standing edge is reported instead.
+      const standing = m.edges.find((e) => e.from === t.edge.from && e.to === t.edge.to);
+      if (standing) {
+        saveGraph();
+        return { ok: true, result: { restored: "edge", edge: standing, alreadyPresent: true } };
+      }
+      m.edges.push(t.edge);
       saveGraph();
       return { ok: true, result: { restored: "edge", edge: t.edge } };
     }
@@ -927,7 +1026,8 @@ export default function registerGraphActions(registerLensAction) {
     const ids = new Set(m.nodes.map((n) => n.id));
     let restoredEdges = 0;
     for (const e of t.edges || []) {
-      if (ids.has(e.from) && ids.has(e.to) && !m.edges.some((x) => x.id === e.id)) {
+      const pairStands = m.edges.some((x) => x.from === e.from && x.to === e.to);
+      if (ids.has(e.from) && ids.has(e.to) && !pairStands) {
         m.edges.push(e);
         restoredEdges++;
       }
@@ -1494,9 +1594,58 @@ export default function registerGraphActions(registerLensAction) {
     if (!node) return { ok: false, error: "node not found" };
     const dtuId = gphClean(params.dtuId, 80);
     if (!dtuId) return { ok: false, error: "dtuId required" };
+    // Validate at link time (F9): a bogus id used to link happily and
+    // only failed later, at sync time. When the DTU store is readable,
+    // reject a nonexistent DTU right here. Duck-typed, mirroring
+    // sync-to-dtu's store access; when the store is unavailable the
+    // link proceeds — validation degrades, it does not fabricate.
+    const linkState = globalThis._concordSTATE;
+    if (typeof linkState?.dtus?.get === "function" && !linkState.dtus.get(dtuId)) {
+      return { ok: false, error: "That DTU doesn't exist — check the id and try again." };
+    }
     node.dtuId = dtuId;
     saveGraph();
     return { ok: true, result: { nodeId: node.id, dtuId } };
+  });
+
+  /**
+   * verify-dtu — run the real DTU integrity check (lib/dtu-integrity)
+   * for one DTU and report its honest state (F9): "verified" (hash +
+   * signature chain match), "tampered" (a check failed), or
+   * "unanchored" (no integrity record exists yet — the third state,
+   * never dressed up as verified). The integrity system is otherwise
+   * only constructed into app.locals at startup and never called;
+   * this builds it from the same STATE.db handle startup uses.
+   * params: { dtuId }
+   */
+  let gphIntegritySystem = null;
+  registerLensAction("graph", "verify-dtu", (ctx, _a, params = {}) => {
+    const STATE = globalThis._concordSTATE;
+    const dtuId = gphClean(params.dtuId, 80);
+    if (!dtuId) return { ok: false, error: "dtuId required" };
+    if (typeof STATE?.dtus?.get !== "function") return { ok: false, error: "DTU store unavailable" };
+    const dtu = STATE.dtus.get(dtuId);
+    if (!dtu) return { ok: false, error: "DTU not found" };
+    const db = STATE.db || globalThis._concordDB;
+    if (!db) return { ok: false, error: "integrity store unavailable" };
+    try {
+      if (!gphIntegritySystem) {
+        initIntegrityTable(db);
+        gphIntegritySystem = createIntegritySystem(db);
+      }
+      const v = gphIntegritySystem.verify(dtu);
+      if (!v || !v.ok) return { ok: false, error: "integrity check unavailable" };
+      const status = v.isValid ? "verified" : (v.reason === "no_integrity_record" ? "unanchored" : "tampered");
+      return { ok: true, result: {
+        dtuId, status, isValid: !!v.isValid,
+        contentMatch: v.contentMatch ?? null,
+        signatureValid: v.signatureValid ?? null,
+        contentHash: v.contentHash || null,
+        checkedAt: new Date().toISOString(),
+      } };
+    } catch (_e) {
+      return { ok: false, error: "integrity check failed" };
+    }
   });
 
   /**

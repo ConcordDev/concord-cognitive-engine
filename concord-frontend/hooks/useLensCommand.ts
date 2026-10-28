@@ -128,6 +128,20 @@ export function useLensCommand(commands: LensCommand[], options: UseLensCommandO
         c.keys === fired || c.keys.replace(/\s+/g, '') === fired
       );
       if (matched && (matched.enabled ?? true)) {
+        // Per-command form-field discipline: enableOnFormTags below is
+        // an aggregate over the whole lens (one binding), so when ANY
+        // command is `global`, react-hotkeys-hook lets EVERY command
+        // fire from inside form fields — and the preventDefault then
+        // swallows the typed character. That is how typing "Alpha"
+        // into the Explorer's Add Node field lost its "p" (the
+        // pathfinder shortcut) and its spaces (the pause shortcut) and
+        // came out "Alha". A non-global command must never fire — or
+        // eat a keystroke — while the user is typing; `global` is the
+        // documented opt-in for firing from form fields.
+        const target = event.target as HTMLElement | null;
+        const tag = target?.tagName;
+        const inFormField = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || !!target?.isContentEditable;
+        if (inFormField && !matched.global) return;
         event.preventDefault();
         liveActions.current.get(matched.namespacedId)?.();
       }

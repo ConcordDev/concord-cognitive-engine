@@ -210,6 +210,25 @@ describe('MindMapBuilder rework flows', () => {
     expect(screen.getByRole('status').textContent).toContain('Restored');
   });
 
+  it('typing a branch name keeps focus in the builder and grows the map (F2)', async () => {
+    await openSeeded();
+    const input = screen.getAllByPlaceholderText('+ branch')[0] as HTMLInputElement;
+    input.focus();
+    fireEvent.change(input, { target: { value: 'PR2 Branch One' } });
+    // The F2 bug remounted the branch tree on every keystroke (the row
+    // component was declared inside the render body), throwing focus
+    // to the document where the page's digit shortcuts switched the
+    // lens to Explorer. The input node must survive the change, still
+    // focused, with the typed text intact.
+    expect(screen.getAllByPlaceholderText('+ branch')[0]).toBe(input);
+    expect(document.activeElement).toBe(input);
+    expect(input.value).toBe('PR2 Branch One');
+    expect(screen.getByText('Mind Map Builder')).toBeTruthy();
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(screen.getAllByText('PR2 Branch One').length).toBeGreaterThan(0));
+    expect(lensRunMock.mock.calls.some((c) => c[1] === 'node-add' && (c[2] as { label?: string }).label === 'PR2 Branch One')).toBe(true);
+  });
+
   it('edits a cross-link label and type through edge-update', async () => {
     await openSeeded();
     fireEvent.click(screen.getByRole('button', { name: 'Edit link' }));
