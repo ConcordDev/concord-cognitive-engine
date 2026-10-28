@@ -13,6 +13,7 @@ import {
   CheckSquare, Square, Trash2, Clock, X, Zap, ListTodo,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { browserTimeZone } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
 interface CalendarMeta { id: string; number: string; name: string; color: string; visible: boolean; isDefault: boolean }
@@ -89,21 +90,41 @@ export function GCalSection() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  const [parsedPreview, setParsedPreview] = useState<{
+    title: string; start: string; end: string;
+    recurrence?: { freq: string; interval: number } | null; conferenceLink?: string; durationMin: number;
+  } | null>(null);
+
+  // F11: quick-add used to save sight-unseen (and alert() on failure,
+  // which never surfaces embedded). Now: parse → show the parse →
+  // confirm → save, with errors inline.
   async function quickAddSubmit() {
     if (!quickAdd.trim()) return;
     setQuickBusy(true);
     try {
-      const p = await lensRun({ domain: 'calendar', action: 'nl-parse-event', input: { text: quickAdd.trim() } });
+      const p = await lensRun({ domain: 'calendar', action: 'nl-parse-event', input: { text: quickAdd.trim(), tz: browserTimeZone() } });
       const parsed = p.data?.result?.parsed;
-      if (!parsed) { alert('Could not parse that.'); return; }
+      if (!parsed) { setRailError('Could not parse that — try adding a day or time.'); return; }
+      setRailError(null);
+      setParsedPreview(parsed);
+    } catch (err) { console.error('[GCal] quickAdd', err); setRailError('Quick add failed — try again.'); }
+    finally { setQuickBusy(false); }
+  }
+
+  async function confirmQuickAdd() {
+    if (!parsedPreview) return;
+    setQuickBusy(true);
+    try {
       const r = await lensRun({ domain: 'calendar', action: 'events-create', input: {
-        title: parsed.title, start: parsed.start, end: parsed.end,
-        recurrence: parsed.recurrence || undefined, conferenceLink: parsed.conferenceLink || undefined,
+        title: parsedPreview.title, start: parsedPreview.start, end: parsedPreview.end,
+        recurrence: parsedPreview.recurrence || undefined, conferenceLink: parsedPreview.conferenceLink || undefined,
+        tz: browserTimeZone(),
       } });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      if (r.data?.ok === false) { setRailError(r.data?.error || 'Could not save that event.'); return; }
+      setParsedPreview(null);
       setQuickAdd('');
       await refresh();
-    } catch (err) { console.error('[GCal] quickAdd', err); }
+    } catch (err) { console.error('[GCal] quickAdd confirm', err); setRailError('Could not save that event.'); }
     finally { setQuickBusy(false); }
   }
 
@@ -470,6 +491,22 @@ export function GCalSection() {
             {quickBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Add'}
           </button>
         </div>
+        {parsedPreview && (
+          <div className="px-4 py-2 bg-blue-500/[0.06] border-b border-blue-500/20 flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] text-blue-200 tabular-nums">
+              {new Date(parsedPreview.start).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              {' · '}
+              {new Date(parsedPreview.start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+              {' – '}
+              {new Date(parsedPreview.end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+              {parsedPreview.recurrence ? ` · repeats ${parsedPreview.recurrence.freq}` : ''}
+              {' · '}
+            </span>
+            <span className="text-[11px] text-white font-medium flex-1 truncate">{parsedPreview.title}</span>
+            <button onClick={() => void confirmQuickAdd()} disabled={quickBusy} className="px-2 py-0.5 text-[11px] rounded bg-blue-500 text-white font-semibold hover:bg-blue-400 disabled:opacity-40">Add event</button>
+            <button onClick={() => setParsedPreview(null)} className="px-2 py-0.5 text-[11px] rounded border border-white/15 text-gray-300">Cancel</button>
+          </div>
+        )}
 
         {/* AI proposals banner */}
         {proposals && proposals.length > 0 && (
