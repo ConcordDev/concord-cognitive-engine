@@ -114,7 +114,9 @@ function normalizeSeverity(sev) {
   return SEVERITY_RANK[v] != null ? v : 'unknown';
 }
 
+import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerSentinelActions(register) {
+  register = saveAfterWrites(register); // persist STATE after a successful write (lib/lens-save-on-write.js)
   // Legacy-convention shim: adapt canonical register(ctx, input) → the
   // verified (ctx, artifact, params) handler bodies below, unchanged.
   const registerLensAction = (domain, action, handler, spec) =>

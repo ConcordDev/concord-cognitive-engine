@@ -3,8 +3,9 @@
 // goal decomposition, and progress forecasting.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerGoalsActions(registerLensAction) {
-  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
+  registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * okrScoring
    * Score OKR progress with weighted key result completion, confidence-adjusted

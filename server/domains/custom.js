@@ -136,8 +136,9 @@ function defaultPropsFor(type) {
   return props;
 }
 
+import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerCustomActions(registerLensAction) {
-  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
+  registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
   // ════════════════════════════════════════════════════════════════════════
   // Pure-compute macros (operate on the artifact) — preserved from v1.
   // ════════════════════════════════════════════════════════════════════════

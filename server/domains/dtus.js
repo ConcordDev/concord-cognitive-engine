@@ -181,8 +181,9 @@ function normalizeDtu(d) {
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
+import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerDtusActions(registerLensAction) {
-  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
+  registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * lineageAnalysis
    * Trace the full lineage of a DTU — parent chain, child forks, depth,

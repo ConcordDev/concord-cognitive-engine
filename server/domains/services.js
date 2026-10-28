@@ -1,8 +1,9 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
+import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerServicesActions(registerLensAction) {
-  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
+  registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("services", "scheduleOptimize", (ctx, artifact, _params) => {
     const appointments = artifact.data?.appointments || [artifact.data];
     const sorted = [...appointments].sort((a, b) => {

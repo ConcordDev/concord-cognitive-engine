@@ -142,8 +142,9 @@ function specFor(transport) {
 
 // ── Module registration ─────────────────────────────────────────────────────
 
+import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerMeshActions(register) {
-  register = guardAnonWrites(register); // anonymous callers can read, not write (lib/lens-authz.js)
+  register = saveAfterWrites(guardAnonWrites(register)); // anonymous callers can read, not write (lib/lens-authz.js)
   // Legacy-convention shim: adapt canonical register(ctx, input) → the
   // verified (ctx, artifact, params) handler bodies below, unchanged.
   const registerLensAction = (domain, action, handler, spec) =>

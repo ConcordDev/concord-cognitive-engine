@@ -5,8 +5,9 @@ import { newShareToken, isStrongShareToken } from "../lib/share-token.js";
 // Domain actions for documentation management: readability scoring,
 // cross-reference analysis, and semantic version diffing.
 
+import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerDocsActions(registerLensAction) {
-  registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
+  registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * readabilityScore
    * Compute readability metrics: Flesch-Kincaid, Gunning Fog, Coleman-Liau,
