@@ -8463,7 +8463,7 @@ function authMiddleware(req, res, next) {
     // here so the Gate-1 GET bypass parity holds for both names.
     "/api/studio", "/api/artistry", "/api/creative-commerce",
     // Misc
-    "/api/heal", "/api/cache", "/api/redis", "/api/efficiency",
+    "/api/heal", "/api/cache", "/api/efficiency", // "/api/redis" removed: admin-only
     "/api/model-optimizer", "/api/lens-items", "/api/mobile",
     "/api/global", "/api/sovereign", "/api/autotag",
     "/api/ml", "/api/preview-action", "/api/undo", // "/api/db" removed: admin-only (lib/db-console.js)
@@ -15576,7 +15576,8 @@ async function runMacro(domain, name, input, ctx) {
     // "/api/creative-commerce" mirrors "/api/artistry" (WAVE4 dual-mount
     // alias — same handlers, second address; see the alias-mount block
     // right after the /api/artistry route registrations).
-    "/api/redis", "/api/lenses", "/api/studio", "/api/artistry", "/api/creative-commerce", "/api/rbac",
+    // "/api/redis" removed: admin-only
+    "/api/lenses", "/api/studio", "/api/artistry", "/api/creative-commerce", "/api/rbac",
     "/api/compliance", "/api/voice", "/api/visual", "/api/autocrawl",
     "/api/autogen", "/api/dream", "/api/evolution", "/api/synthesize",
     "/api/utility", "/api/swarm", "/api/forge",
@@ -60141,6 +60142,7 @@ async function initRedis() {
 }
 
 register("redis", "get", async (ctx, input) => {
+  const denied = dbMacroDenied(ctx); if (denied) return denied;
   const { key } = input;
   if (!redisClient) return runMacro("cache", "get", { key }, ctx);
   try { const value = await redisClient.get(REDIS_CONFIG.prefix + key); if (!value) return { ok: false, miss: true }; return { ok: true, data: JSON.parse(value) }; }
@@ -60148,6 +60150,7 @@ register("redis", "get", async (ctx, input) => {
 });
 
 register("redis", "set", async (ctx, input) => {
+  const denied = dbMacroDenied(ctx); if (denied) return denied;
   const { key, data, ttl } = input;
   if (!redisClient) return runMacro("cache", "set", { key, data, ttl }, ctx);
   try { await redisClient.setEx(REDIS_CONFIG.prefix + key, ttl || REDIS_CONFIG.ttl, JSON.stringify(data)); return { ok: true, key, cached: true, backend: "redis" }; }
@@ -60155,6 +60158,7 @@ register("redis", "set", async (ctx, input) => {
 });
 
 register("redis", "del", async (ctx, input) => {
+  const denied = dbMacroDenied(ctx); if (denied) return denied;
   const { key, pattern } = input;
   if (!redisClient) return runMacro("cache", "invalidate", { key, pattern }, ctx);
   try {
@@ -60164,7 +60168,8 @@ register("redis", "del", async (ctx, input) => {
   } catch (e) { return { ok: false, error: e.message }; }
 });
 
-register("redis", "stats", async (_ctx, _input) => {
+register("redis", "stats", async (ctx, _input) => {
+  const denied = dbMacroDenied(ctx); if (denied) return denied;
   if (!redisClient) return { ok: true, enabled: false, fallback: "in-memory" };
   try { const info = await redisClient.info("memory"); const keyCount = await redisClient.dbSize(); return { ok: true, enabled: true, keys: keyCount, info: info.slice(0, 500) }; }
   catch (e) { return { ok: false, error: e.message }; }
@@ -60172,7 +60177,7 @@ register("redis", "stats", async (_ctx, _input) => {
 
 // Database lens endpoints — admin-only + read-only console (lib/db-console.js).
 registerDbConsoleRoutes(app, { requireRole, getDb: () => db, runMacro, makeCtx });
-app.get("/api/redis/stats", async (req, res) => res.json(await runMacro("redis", "stats", {}, makeCtx(req))));
+app.get("/api/redis/stats", requireRole("owner","admin","founder","sovereign"), async (req, res) => res.json(await runMacro("redis", "stats", {}, makeCtx(req))));
 
 _unrefInTest(setTimeout(async () => {
   if (PG_CONFIG.enabled) { const pg = await initPostgres(); if (pg.ok) await runMigrations(); }
