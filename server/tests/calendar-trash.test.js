@@ -73,3 +73,18 @@ describe("soft delete + trash", () => {
     assert.equal(remaining.length, 3);
   });
 });
+
+
+describe("status events and the trash", () => {
+  it("a deleted status block leaves status-events-list", () => {
+    const c = call("status-event-create", {
+      kind: "out-of-office", detail: "Trip",
+      start: "2026-11-02T00:00:00.000Z", end: "2026-11-03T00:00:00.000Z", allDay: true,
+    });
+    assert.equal(c.ok, true);
+    const listed = () => call("status-events-list", { includeAll: true }).result.statusEvents;
+    assert.equal(listed().some((e) => e.id === c.result.event.id), true);
+    call("events-delete", { id: c.result.event.id });
+    assert.equal(listed().some((e) => e.id === c.result.event.id), false);
+  });
+});
