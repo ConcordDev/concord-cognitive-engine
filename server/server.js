@@ -43634,6 +43634,72 @@ async function runHeartbeatModule(name, fn) {
   }
 }
 
+// News feed-cache warm (GDELT + vetted RSS + Concord summaries). Runs from the heartbeat
+// registry, NOT the kernel-tick body: that body is skipped whenever the room is idle or the
+// host is in the low-memory profile (always true on the prod Mac), which left news warmed
+// only once at boot. The registry runs on the idle, low-memory and normal paths alike.
+// Fire-and-forget: one warm call at a time, at most one upstream fetch per source per key
+// budget, gated on load inside feed-cache.warmTick, skipped on the read replica.
+let _newsWarmRunning = false;
+function _runNewsFeedWarm(_tick) {
+  if (_newsWarmRunning) return;
+  _newsWarmRunning = true;
+  Promise.all([import("./lib/gdelt-source.js"), import("./lib/news-sources.js"), import("./lib/news-summarizer.js")])
+    .then(async ([g, ns, sum]) => {
+      g.ensureGdeltSource();
+      ns.ensureNewsRssSource();
+      const fc = await import("./lib/feed-cache.js");
+      await fc.warmTick(_tick);
+      // One read-only audit per process: how many existing DTUs hold article text from
+      // restricted/excluded outlets. Counts only (ids are capped), never edits a DTU.
+      if (!globalThis.__restrictedDtuAuditDone && STATE?.dtus) {
+        globalThis.__restrictedDtuAuditDone = true;
+        try {
+          const pol = await import("./lib/news-outlet-policy.js");
+          const vals = typeof STATE.dtus.values === "function" ? STATE.dtus.values() : Object.values(STATE.dtus);
+          const a = pol.countRestrictedFullTextDtus(vals);
+          structuredLog("info", "restricted_fulltext_dtu_audit", { count: a.count, examined: a.examined, byHost: a.byHost, sampleIds: a.ids.slice(0, 20) });
+        } catch (e) { structuredLog("warn", "restricted_fulltext_dtu_audit_failed", { error: String(e?.message || e) }); }
+      }
+      // Concord summaries for summary-only outlets: background, small budget, skipped when the
+      // utility brain isn't up. The outlet text is only the in-memory prompt input.
+      // While the utility brain is the small local fallback (GPU pod down) it also serves chat
+      // on this memory-pressed host: summarize at most 1 item per warm tick instead of 3.
+      // (also when utility shares chat's endpoint)
+      const _isLocalUrl = (u) => /^https?:\/\/(127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\])(:|\/|$)/.test(String(u || ""));
+      const _utilUrl = String(BRAIN?.utility?.url || "");
+      // "shared": utility runs on the local box or on the same endpoint chat (conscious) uses.
+      const _utilLocal = _isLocalUrl(_utilUrl) || (_utilUrl && _utilUrl === String(BRAIN?.conscious?.url || ""));
+      await sum.runSummaryBatch({
+        max: _utilLocal ? 1 : 3,
+        // On the shared local model, yield to users: skip this tick if any brain call is
+        // already in flight on a local endpoint (chat first, summaries are background work).
+        ready: async () => {
+          if (!BRAIN?.utility?.enabled) return false;
+          if (!_utilLocal) return true;
+          try {
+            const { getEndpointStats } = await import("./lib/brain-config.js");
+            const busy = Object.values(getEndpointStats() || {}).flat()
+              .some((e) => e && e.inflight > 0 && (_isLocalUrl(e.url) || String(e.url || "") === _utilUrl));
+            return !busy;
+          } catch { return true; }
+        },
+        llm: async (prompt, o = {}) => {
+          const r = await callBrain("utility", prompt, { system: o.system, maxTokens: o.maxTokens, temperature: o.temperature, timeout: 30000 });
+          return r?.ok ? r.content : "";
+        },
+      });
+    })
+    .catch((e) => { structuredLog("warn", "feed_cache_warm_tick", { error: String(e?.message || e) }); })
+    .finally(() => { _newsWarmRunning = false; });
+}
+registerHeartbeat("news-feed-warm", {
+  frequency: 5, // ~75 s at the 15 s heartbeat (same cadence as the old REALTIME_DATA slot)
+  handler: ({ tickCount } = {}) => { _runNewsFeedWarm(Number(tickCount) || 0); },
+  scope: "global",
+  cost: "db", // network + a capped local-model summary; not CPU-class, so it also runs while idle
+});
+
 // Shared heartbeat-registry dispatch for the normal, low-memory and idle
 // paths of governorTick, so they cannot drift (PR-5 remote orchestration).
 async function _dispatchHeartbeatRegistry(dispatchReason, extraCtx = {}) {
@@ -44361,60 +44427,6 @@ async function governorTick(reason="heartbeat") {
 
           await tickRealTimeFeeds(STATE, _tick, realtimeEmit, callBrain, feedBridge);
         } catch (e) { structuredLog("warn", "governor_realtime_data_tick", { error: String(e?.message || e) }); }
-
-        // Shared feed-cache warm (GDELT news categories): fire-and-forget, at most one
-        // upstream fetch per call, gated on idle/load, skipped on the read replica.
-        // Never blocks or throws into the heartbeat.
-        // The gate no longer depends on idleness/lowMemory (a warm fetch is one small HTTP request,
-        // capped by per-source budgets): it only yields to a clearly overloaded event loop.
-        // News RSS sources (lib/news-sources.js) warm here too, a few staggered feeds per call.
-        Promise.all([import("./lib/gdelt-source.js"), import("./lib/news-sources.js"), import("./lib/news-summarizer.js")])
-          .then(async ([g, ns, sum]) => {
-            g.ensureGdeltSource();
-            ns.ensureNewsRssSource();
-            const fc = await import("./lib/feed-cache.js");
-            await fc.warmTick(_tick);
-            // One read-only audit per process: how many existing DTUs hold article text from
-            // restricted/excluded outlets. Counts only (ids are capped), never edits a DTU.
-            if (!globalThis.__restrictedDtuAuditDone && STATE?.dtus) {
-              globalThis.__restrictedDtuAuditDone = true;
-              try {
-                const pol = await import("./lib/news-outlet-policy.js");
-                const vals = typeof STATE.dtus.values === "function" ? STATE.dtus.values() : Object.values(STATE.dtus);
-                const a = pol.countRestrictedFullTextDtus(vals);
-                structuredLog("info", "restricted_fulltext_dtu_audit", { count: a.count, examined: a.examined, byHost: a.byHost, sampleIds: a.ids.slice(0, 20) });
-              } catch (e) { structuredLog("warn", "restricted_fulltext_dtu_audit_failed", { error: String(e?.message || e) }); }
-            }
-            // Concord summaries for summary-only outlets: background, small budget, skipped when the
-            // utility brain isn't up. The outlet text is only the in-memory prompt input.
-            // While the utility brain is the small local fallback (GPU pod down) it also serves chat
-            // on this memory-pressed host: summarize at most 1 item per warm tick instead of 3.
-            // (also when utility shares chat's endpoint)
-            const _isLocalUrl = (u) => /^https?:\/\/(127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\])(:|\/|$)/.test(String(u || ""));
-            const _utilUrl = String(BRAIN?.utility?.url || "");
-            // "shared": utility runs on the local box or on the same endpoint chat (conscious) uses.
-            const _utilLocal = _isLocalUrl(_utilUrl) || (_utilUrl && _utilUrl === String(BRAIN?.conscious?.url || ""));
-            await sum.runSummaryBatch({
-              max: _utilLocal ? 1 : 3,
-              // On the shared local model, yield to users: skip this tick if any brain call is
-              // already in flight on a local endpoint (chat first, summaries are background work).
-              ready: async () => {
-                if (!BRAIN?.utility?.enabled) return false;
-                if (!_utilLocal) return true;
-                try {
-                  const { getEndpointStats } = await import("./lib/brain-config.js");
-                  const busy = Object.values(getEndpointStats() || {}).flat()
-                    .some((e) => e && e.inflight > 0 && (_isLocalUrl(e.url) || String(e.url || "") === _utilUrl));
-                  return !busy;
-                } catch { return true; }
-              },
-              llm: async (prompt, o = {}) => {
-                const r = await callBrain("utility", prompt, { system: o.system, maxTokens: o.maxTokens, temperature: o.temperature, timeout: 30000 });
-                return r?.ok ? r.content : "";
-              },
-            });
-          })
-          .catch((e) => { structuredLog("warn", "feed_cache_warm_tick", { error: String(e?.message || e) }); });
       }
 
       // Lens learning — every LENS_LEARNING ticks (~8 min), staggered across domains
