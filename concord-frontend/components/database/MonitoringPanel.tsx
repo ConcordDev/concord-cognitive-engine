@@ -47,7 +47,6 @@ export function MonitoringPanel() {
   // a bare 403 dressed up as a session error.
   const migrateMutation = useMutation({
     mutationFn: () => api.post('/api/db/migrate', {}),
-    enabled: isDbAdmin,
     onError: (err) => {
       console.error('Migration failed:', err instanceof Error ? err.message : err);
     },
@@ -55,7 +54,6 @@ export function MonitoringPanel() {
 
   const syncMutation = useMutation({
     mutationFn: () => api.post('/api/db/sync', { batchSize: 100 }),
-    enabled: isDbAdmin,
     onError: (err) => {
       console.error('Sync failed:', err instanceof Error ? err.message : err);
     },
