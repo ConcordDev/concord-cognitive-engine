@@ -35,6 +35,7 @@ import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import RoyaltyCascadeViz from '@/components/visualizations/RoyaltyCascadeViz';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { AudioPreviewBar } from './ItemCard';
 import { BrowsePanel } from './BrowsePanel';
@@ -65,6 +66,7 @@ const PANELS: Record<MarketplaceTabId, ComponentType> = {
 };
 
 export function MarketplaceApp() {
+  const { user } = useAuth();
   const m = useMarketplace();
   const reduceMotion = useReducedMotion();
   const {
@@ -119,7 +121,7 @@ export function MarketplaceApp() {
       <div className="lens-marketplace relative min-h-full space-y-5 px-8 pb-28 pt-6" data-lens-theme="marketplace">
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Marketplace</h1>
+            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl" data-testid="marketplace-greeting">What's for sale{user?.username ? `, ${user.username}` : ''}</h1>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

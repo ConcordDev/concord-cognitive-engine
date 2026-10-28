@@ -1,5 +1,21 @@
 # Marketplace Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **Re-verification (HANDOFF-3 batch L14, 2026-10-28, against main 02910bbb):**
+> The audit below is kept as history (its checkout defects — the
+> typeMap media-kind break among them — were fixed in its pass).
+> Current truth:
+>
+> - **59/59 macros named in the frontend** (fresh scan). No
+>   unsurfaced remainder. Purchase/auth gates were not touched in
+>   this batch, per the handoff.
+> - **Shipped in this batch:** the concept's serif headline —
+>   "What's for sale, {username}" — as the app header in
+>   `MarketplaceApp` (`data-testid="marketplace-greeting"`,
+>   `tests/marketplace-greeting.test.tsx`).
+> - Server suites run locally this pass: marketplace-domain-parity
+>   passes (in the combined 136-pass L14 run).
+
+
 > Derived, not asserted. Every number below has a reproduction command; every
 > classification is backed by a grep or a full read of the file it's about.
 > This unit picks up after an earlier attempt died mid-audit (worktree

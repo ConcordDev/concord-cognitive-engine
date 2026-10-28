@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, ChevronRight, Trash2 } from 'lucide-react';
+import { Loader2, Plus, ChevronRight, Trash2, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
@@ -34,6 +34,8 @@ export function CrtPipelinePanel({ onChange }: { onChange: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', format: 'video', scheduledDate: '' });
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ title: '', format: 'video', scheduledDate: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -68,6 +70,23 @@ export function CrtPipelinePanel({ onChange }: { onChange: () => void }) {
   };
   const del = async (id: string) => {
     await lensRun('creator', 'content-delete', { id });
+    await refresh();
+  };
+
+  const startEdit = (c: Content) => {
+    setEditId(c.id);
+    setEditForm({ title: c.title, format: c.format, scheduledDate: c.scheduledDate || '' });
+    setError(null);
+  };
+
+  const saveEdit = async (id: string) => {
+    if (!editForm.title.trim()) { setError('Content title is required.'); return; }
+    const r = await lensRun('creator', 'content-update', {
+      id, title: editForm.title.trim(), format: editForm.format, scheduledDate: editForm.scheduledDate,
+    });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Failed to update content.'); return; }
+    setEditId(null);
+    setError(null);
     await refresh();
   };
 
@@ -109,21 +128,51 @@ export function CrtPipelinePanel({ onChange }: { onChange: () => void }) {
               <ul className="space-y-1.5">
                 {stageItems.map((c) => (
                   <li key={c.id} className="bg-zinc-900 border border-zinc-800 rounded-lg p-2">
-                    <p className="text-xs text-zinc-100">{c.title}</p>
-                    <p className="text-[10px] text-zinc-400 capitalize">{c.format}{c.platform && ` · ${c.platform}`}</p>
-                    <div className="flex items-center gap-1 mt-1.5">
-                      {stage.id !== 'published' && (
-                        <button type="button" onClick={() => advance(c.id)}
-                          className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">
-                          Advance <ChevronRight className="w-3 h-3" />
-                        </button>
-                      )}
-                      <div className="flex-1" />
-                      <button aria-label="Delete" type="button" onClick={() => del(c.id)} className="text-zinc-600 hover:text-rose-400">
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                    <CreatorKeepMenu item={c} />
+                    {editId === c.id ? (
+                      <div className="space-y-1.5">
+                        <input aria-label="Content title" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                          className="w-full bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-xs text-zinc-100" />
+                        <div className="flex gap-1">
+                          <select aria-label="Content format" value={editForm.format} onChange={(e) => setEditForm({ ...editForm, format: e.target.value })}
+                            className="flex-1 bg-zinc-950 border border-zinc-700 rounded px-1 py-1 text-[10px] text-zinc-100 capitalize">
+                            {FORMATS.map((f) => <option key={f} value={f}>{f}</option>)}
+                          </select>
+                          <input aria-label="Scheduled date" type="date" value={editForm.scheduledDate} onChange={(e) => setEditForm({ ...editForm, scheduledDate: e.target.value })}
+                            className="flex-1 bg-zinc-950 border border-zinc-700 rounded px-1 py-1 text-[10px] text-zinc-100" />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button type="button" onClick={() => void saveEdit(c.id)}
+                            className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded">
+                            <Check className="w-3 h-3" /> Save
+                          </button>
+                          <button type="button" onClick={() => setEditId(null)}
+                            className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">
+                            <X className="w-3 h-3" /> Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-xs text-zinc-100">{c.title}</p>
+                        <p className="text-[10px] text-zinc-400 capitalize">{c.format}{c.platform && ` · ${c.platform}`}</p>
+                        <div className="flex items-center gap-1 mt-1.5">
+                          {stage.id !== 'published' && (
+                            <button type="button" onClick={() => advance(c.id)}
+                              className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">
+                              Advance <ChevronRight className="w-3 h-3" />
+                            </button>
+                          )}
+                          <div className="flex-1" />
+                          <button aria-label="Edit" type="button" onClick={() => startEdit(c)} className="text-zinc-600 hover:text-zinc-300">
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                          <button aria-label="Delete" type="button" onClick={() => del(c.id)} className="text-zinc-600 hover:text-rose-400">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <CreatorKeepMenu item={c} />
+                      </>
+                    )}
                   </li>
                 ))}
                 {stageItems.length === 0 && <li className="text-[10px] text-zinc-400 italic px-1">Empty</li>}

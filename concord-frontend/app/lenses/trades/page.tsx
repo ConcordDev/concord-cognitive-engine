@@ -11,7 +11,7 @@
  */
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { useCallback, useMemo, useState, type ComponentType } from 'react';
+import { useCallback, useState, type ComponentType } from 'react';
 import {
   HardHat,
   Hammer,
@@ -41,6 +41,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useAuth } from '@/hooks/useAuth';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { cn } from '@/lib/utils';
@@ -152,6 +153,7 @@ const PANELS: Record<TradesView, ComponentType> = {
 };
 
 export default function TradesLensPage() {
+  const { user } = useAuth();
   useLensNav('trades');
   useLensIdentity('trades');
   const reduceMotion = useReducedMotion();
@@ -179,11 +181,6 @@ export default function TradesLensPage() {
     : GROUPS
         .map((group) => ({ ...group, items: group.items.filter((item) => item.id !== 'feed') }))
         .filter((group) => group.items.length > 0);
-  const activeLabel = useMemo(
-    () => groups.flatMap((g) => g.items).find((t) => t.id === active)?.label ?? active,
-    [active, groups],
-  );
-
   return (
     <LensShell lensId="trades" asMain={false}>
 
@@ -194,7 +191,7 @@ export default function TradesLensPage() {
         </a>
         <header className="mb-5 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Trades &amp; Construction · {activeLabel}</h1>
+            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl" data-testid="trades-greeting">The job on the board{user?.username ? `, ${user.username}` : ''}</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />

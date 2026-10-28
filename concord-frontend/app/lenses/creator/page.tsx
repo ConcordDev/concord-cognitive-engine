@@ -13,16 +13,17 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
+import { useAuth } from '@/hooks/useAuth';
 import KnowledgeEntrepreneurBadge from '@/components/creator/KnowledgeEntrepreneurBadge';
-import { CreatorNav, CREATOR_COMMANDS, CREATOR_VIEW_LABELS } from '@/components/creator/CreatorNav';
+import { CreatorNav, CREATOR_COMMANDS } from '@/components/creator/CreatorNav';
 import { CreatorProvider, useCreator } from '@/components/creator/CreatorProvider';
 import { CreatorWorkPane } from '@/components/creator/CreatorWorkPane';
 import type { CreatorView } from '@/components/creator/types';
 
 function CreatorChrome() {
   const { view, setView, me, refreshAll } = useCreator();
+  const { user } = useAuth();
   useLensIdentity('creator');
-  const activeLabel = CREATOR_VIEW_LABELS[view] ?? 'Creator Studio';
   useLensCommand(
     CREATOR_COMMANDS.map((c) => ({
       id: c.id,
@@ -40,7 +41,7 @@ function CreatorChrome() {
       <div data-lens-theme="creator" className="relative min-h-full px-8 pb-28 pt-6">
         <header className="mb-5 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Creator Studio · {activeLabel}</h1>
+            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl" data-testid="creator-greeting">What you made{user?.username ? `, ${user.username}` : ''}</h1>
             <p className="mt-2 text-[13px] text-zinc-500">Pipeline, listings, audience, and the royalty cascade, in one desk.</p>
             {me?.userId && <KnowledgeEntrepreneurBadge userId={me.userId} />}
           </div>

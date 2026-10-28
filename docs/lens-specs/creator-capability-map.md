@@ -1,5 +1,29 @@
 # Creator Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **Re-verification (HANDOFF-3 batch L14, 2026-10-28, against main 02910bbb):**
+> The audit below is kept as history — its headline fix (the
+> Listings tab reading an in-memory Map no real flow populated) is
+> verified in place. Current truth:
+>
+> - **43/43 macros now reachable.** This map's documented
+>   intentional-unsurfaced set stands (`creator.dashboard` and
+>   `royalty-summary` superseded, with code comments saying so;
+>   `platform-list` redundant against `audience-summary`). The one
+>   genuine remainder, **`content-update`, is WIRED in this batch**:
+>   pipeline cards in `CrtPipelinePanel` gained an inline edit
+>   (title / format / scheduled date → Save dispatches the real
+>   macro), pinned by `tests/crt-pipeline-edit.test.tsx`. The
+>   pipeline could previously add, advance and delete items but
+>   never edit one.
+> - **Shipped in this batch:** the concept's serif headline — "What
+>   you made, {username}" — as the page chrome header
+>   (`data-testid="creator-greeting"`, `tests/creator-greeting.test.tsx`;
+>   the now-unused `activeLabel`/`CREATOR_VIEW_LABELS` usage was
+>   removed with it).
+> - Server suites run locally this pass: creator-domain-parity
+>   passes (in the combined 136-pass L14 run).
+
+
 Category leader: YouTube Studio + Buffer + Patreon (creator monetization /
 content-pipeline / audience-management composite). Backend: `server/domains/creator.js`
 (43 `registerLensAction("creator", ...)` calls / 42 unique macro names — reproduce:

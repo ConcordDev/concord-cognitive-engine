@@ -1,4 +1,24 @@
-# Trades lens — capability map (Wave 3, Frontend Rebuild Program)
+# Trades Lens — Capability Map (Frontend Rebuild Program, Wave 3)
+
+> **Re-verification (HANDOFF-3 batch L14, 2026-10-28, against main 02910bbb):**
+> The audit below is kept as history. Current truth:
+>
+> - **All 61 macros reachable.** The fresh quoted-string scan names
+>   56; the remaining 5 are verified wired by other means:
+>   `quotes-send`/`quotes-accept`/`quotes-reject` are dispatched
+>   through the template action `` `quotes-${act}` `` in
+>   `QuotesPanel.tsx` (this map's own note), and
+>   `job-photos-add`/`job-photos-list` are the granular pair behind
+>   the ProjectDeskPanel Photos sub-view (photo entries render and
+>   can be added there through the desk's data path).
+> - **Shipped in this batch:** the concept's serif headline — "The
+>   job on the board, {username}" — as the page header
+>   (`data-testid="trades-greeting"`, `tests/trades-greeting.test.tsx`;
+>   the now-unused `activeLabel` memo and `useMemo` import were
+>   removed with it).
+> - Server suites run locally this pass: trades-domain-parity
+>   passes (in the combined 136-pass L14 run).
+
 
 Audited 2026-07-10. Backend: `server/domains/trades.js` (61 macros, no
 shadowing re-registration in `server.js` — confirmed by
