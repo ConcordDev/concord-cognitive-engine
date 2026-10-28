@@ -6,6 +6,8 @@
 // { ok:true, value, unit, provenance } or { ok:false, reason }. API keys are
 // read from env and never echoed in provenance.
 
+import { openMeteoJson } from "./weather-feed-sources.js";
+
 async function getJson(url) {
   const r = await globalThis.fetch(url);
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -49,12 +51,14 @@ export async function eiaRetailPrice(state, sector = "RES") {
 export async function openMeteoDailyForecast(lat, lng, days = 7) {
   const la = Number(lat), lo = Number(lng);
   if (!(Number.isFinite(la) && Math.abs(la) <= 90 && Number.isFinite(lo) && Math.abs(lo) <= 180)) return { ok: false, reason: "valid lat/lng required" };
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&daily=temperature_2m_max,precipitation_sum&temperature_unit=fahrenheit&precipitation_unit=inch&forecast_days=${Math.max(1, Math.min(16, days))}&timezone=auto`;
   try {
-    const data = await getJson(url);
+    const data = await openMeteoJson({ lat: la, lon: lo, params: {
+      daily: "temperature_2m_max,precipitation_sum", temperature_unit: "fahrenheit", precipitation_unit: "inch",
+      forecast_days: Math.max(1, Math.min(16, days)), timezone: "auto",
+    } });
     const d = data?.daily || {};
     const out = (d.time || []).map((t, i) => ({ date: t, highTemp: d.temperature_2m_max?.[i] ?? null, precipInches: d.precipitation_sum?.[i] ?? null }));
-    return { ok: true, value: out, provenance: { source: "Open-Meteo forecast API", url, lat: la, lng: lo } };
+    return { ok: true, value: out, provenance: { source: "Open-Meteo forecast API", url: "https://open-meteo.com/", lat: la, lng: lo } };
   } catch (e) {
     return { ok: false, reason: `Open-Meteo unavailable: ${e instanceof Error ? e.message : String(e)}` };
   }

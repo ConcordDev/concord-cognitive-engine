@@ -3,7 +3,7 @@
 // growth metrics tracking, and habit pattern analysis.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
-import { cachedFetchJson } from "../lib/external-fetch.js";
+import { openMeteoJson } from "../lib/weather-feed-sources.js";
 import { createHash } from "node:crypto";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
@@ -1168,9 +1168,7 @@ export default function registerReflectionActions(registerLensAction) {
     let weatherFetched = false;
     if (params.fetchWeather) {
       try {
-        const data = await cachedFetchJson(
-          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code`,
-          { ttlMs: 600000 });
+        const data = await openMeteoJson({ lat, lon, params: { current: "temperature_2m,weather_code" } });
         const code = data?.current?.weather_code;
         const CODE_MAP = { 0: "clear", 1: "sunny", 2: "cloudy", 3: "cloudy", 45: "foggy", 48: "foggy",
           51: "rainy", 61: "rainy", 63: "rainy", 65: "rainy", 71: "snowy", 73: "snowy", 75: "snowy",

@@ -3,6 +3,7 @@ import logger from '../logger.js';
 import { hostTier } from '../lib/news-outlet-policy.js';
 import { summaryForItem, queueItemForSummary } from '../lib/news-summarizer.js';
 import { registerSource, hasSource, get as fcGet, peek as fcPeek, stats as fcStats } from '../lib/feed-cache.js';
+import { getForecast as getWeatherForecast } from '../lib/weather-feed-sources.js';
 import { getSharedText, yahooChartUrl, COINGECKO_TOP10_URL, NPR_TOP_URL, BBC_TOP_URL, WHO_DON_URL, WHO_DON_ITEM_BASE } from '../lib/shared-http.js';
 // server/emergent/realtime-feeds.js
 // Centralized real-time data fetching service — runs on heartbeat ticks,
@@ -399,11 +400,14 @@ function weatherPoint(STATE) {
 
 async function buildWeather() {
   const { lat, lon } = weatherPoint(_STATE);
-  const text = await sharedText(
-    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,wind_speed_10m,precipitation,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=auto`,
-    REALTIME_FEEDS["weather:update"].ttlMs,
-  );
-  const data = JSON.parse(text);
+  // Same shared weather cache the lens domains and the chat route read: one upstream call per place per TTL.
+  const wx = await getWeatherForecast({ lat, lon, params: {
+    current: "temperature_2m,apparent_temperature,wind_speed_10m,precipitation,weather_code",
+    daily: "temperature_2m_max,temperature_2m_min,precipitation_sum",
+    timezone: "auto",
+  } });
+  if (!wx.ok) throw new Error(`weather_unavailable:${wx.reason}`);
+  const data = wx.data;
   return {
     ok: true,
     current: data.current,

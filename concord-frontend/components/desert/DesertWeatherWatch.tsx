@@ -3,6 +3,7 @@
 import { useQueries } from '@tanstack/react-query';
 import { Sun, Loader2, Thermometer, Droplets, Wind, ExternalLink } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { lensRun } from '@/lib/api/client';
 
 interface CurrentWeather {
   temperature_2m: number;
@@ -37,9 +38,10 @@ export function DesertWeatherWatch() {
     queries: DESERTS.map((d) => ({
       queryKey: ['open-meteo', d.id],
       queryFn: async () => {
-        const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${d.lat}&longitude=${d.lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,apparent_temperature,is_day,weather_code`);
-        if (!r.ok) throw new Error(`open-meteo ${r.status}`);
-        return (await r.json()) as MeteoResponse;
+        // The browser never calls the weather provider: the server answers from its shared, cached feed.
+        const r = await lensRun<{ ok: boolean; data: MeteoResponse }>('forecast', 'realWeather', { lat: d.lat, lon: d.lon, preset: 'current' });
+        if (!r.data.ok || !r.data.result?.data) throw new Error(r.data.error || 'weather unavailable');
+        return r.data.result.data;
       },
       staleTime: 5 * 60 * 1000,
       refetchInterval: 5 * 60 * 1000,
@@ -64,7 +66,7 @@ export function DesertWeatherWatch() {
           <SaveAsDtuButton
             compact
             apiSource="open-meteo-desert"
-            apiUrl="https://api.open-meteo.com/v1/forecast"
+            apiUrl="https://open-meteo.com/"
             title={`Desert weather snapshot — ${loaded.length} sites, avg ${avgTemp.toFixed(1)}°C`}
             content={loaded.map(({ d, q }) => {
               const c = q.data!.current!;
@@ -99,7 +101,7 @@ export function DesertWeatherWatch() {
                 <span className="font-mono text-[10px] text-zinc-400">{d.lat.toFixed(1)}°, {d.lon.toFixed(1)}°</span>
               </div>
               {q.isPending && <div className="mt-2 flex items-center gap-1 text-[10px] text-zinc-400"><Loader2 className="h-3 w-3 animate-spin" /> live…</div>}
-              {q.isError && <div className="mt-2 text-[10px] text-rose-400">unreachable</div>}
+              {q.isError && <div className="mt-2 text-[10px] text-rose-400">temporarily unavailable</div>}
               {c && (
                 <div className="mt-2 grid grid-cols-3 gap-1.5 text-[11px]">
                   <div className="flex items-center gap-1"><Thermometer className="h-3 w-3 text-rose-400" /><span className="font-mono text-zinc-100">{c.temperature_2m.toFixed(1)}°C</span></div>
@@ -113,7 +115,7 @@ export function DesertWeatherWatch() {
       </div>
       <p className="flex items-center gap-1 text-[10px] text-zinc-400">
         <ExternalLink className="h-3 w-3" />
-        Powered by Open-Meteo. Polls every 5 min.
+        <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" className="underline decoration-dotted">Weather data by Open-Meteo.com</a>&nbsp;(CC BY 4.0). Refreshes every 5 min.
       </p>
     </div>
   );

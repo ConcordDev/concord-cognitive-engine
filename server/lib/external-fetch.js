@@ -11,7 +11,7 @@
 //   const data = await cachedFetchJson(url, { ttlMs: 600000 });
 //
 //   registerLiveFeed(register, "weather", "live", async (input) => {
-//     return cachedFetchJson(`https://api.open-meteo.com/...`);
+//     return cachedFetchJson(`https://data.example.org/live.json`);
 //   });
 
 // SECURITY (2026-07-27): every fetch below goes through the SSRF guard.

@@ -17,6 +17,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { openMeteoJson } from "../lib/weather-feed-sources.js";
 // Wave-4 gap-closure (travel-capability-map.md #2): Gmail inbox auto-sync
 // reuses the same SSRF-guarded connector read path domains/gmail.js already
 // rides (readGmailMessages/readGmailMessage — see that file's `guard()` for
@@ -1221,10 +1222,10 @@ export default function registerTravelActions(registerLensAction) {
       return { ok: false, error: "lat / lng required" };
     }
     try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}`
-        + `&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code`
-        + `&forecast_days=16&timezone=auto`;
-      const data = await cachedFetchJson(url, { ttlMs: 30 * 60 * 1000 });
+      const data = await openMeteoJson({ lat, lon: lng, params: {
+        daily: "temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code",
+        forecast_days: 16, timezone: "auto",
+      } });
       const d = data?.daily;
       if (!d?.time) return { ok: false, error: "open-meteo returned no forecast" };
       const WMO = {

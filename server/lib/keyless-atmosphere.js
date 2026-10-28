@@ -4,7 +4,7 @@
 // operator API keys Concord cannot rely on. The default path uses:
 //
 //   Air quality  Open-Meteo Air Quality API (CAMS model, no key)
-//                https://air-quality-api.open-meteo.com/v1/air-quality
+//                (see lib/weather-feed-sources.js for the endpoint)
 //   ZIP → lat/lon zippopotam.us, then Open-Meteo geocoding if that misses
 //   US weather   api.weather.gov (points → forecast, forecastHourly,
 //                observation stations, alerts). User-Agent required.
@@ -15,34 +15,32 @@
 // upstream accepts it, AirNow monitor readings are attached as `secondary`.
 // A missing or rejected key never blocks the Open-Meteo reading.
 //
-// Timeouts are 8s. Successful JSON is cached in memory for 10 minutes.
+// Timeouts are 8s. Reads go through lib/weather-feed-sources.js (shared feed-cache, 10 min TTL).
 // Failures are not cached and never invent a number.
 
-import { fetchPublicUrl } from "./public-fetch.js";
+import {
+  atmosphereJson, getForecast, geocodePlace as geocodeName,
+  setWeatherTransportForTests, setWeatherTimeoutForTests, clearWeatherCaches,
+} from "./weather-feed-sources.js";
 
 export const ATMOSPHERE_TIMEOUT_MS = 8000;
 export const ATMOSPHERE_CACHE_TTL_MS = 10 * 60 * 1000;
 export const DEFAULT_NWS_USER_AGENT = "ConcordOS (concord-os.org, contact@concord-os.org)";
 
-const MAX_CACHE = 200;
 const AQ_CURRENT = "us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,ozone";
-
-const _cache = new Map();
-let _testFetch = null;
-let _timeoutMs = ATMOSPHERE_TIMEOUT_MS;
 
 /** Test-only transport. Pass null to restore the guarded fetch. */
 export function setAtmosphereFetchForTests(fn) {
-  _testFetch = typeof fn === "function" ? fn : null;
+  setWeatherTransportForTests(fn);
 }
 
 /** Test-only timeout. Pass null/undefined to restore 8s. */
 export function __setAtmosphereTimeoutForTests(ms) {
-  _timeoutMs = Number.isFinite(ms) && ms > 0 ? ms : ATMOSPHERE_TIMEOUT_MS;
+  setWeatherTimeoutForTests(Number.isFinite(ms) && ms > 0 ? ms : ATMOSPHERE_TIMEOUT_MS);
 }
 
 export function clearAtmosphereCache() {
-  _cache.clear();
+  clearWeatherCaches();
 }
 
 export function nwsUserAgent() {
@@ -58,46 +56,10 @@ export function nwsHeaders() {
   };
 }
 
-function remember(url, data) {
-  if (_cache.size >= MAX_CACHE) {
-    const oldest = _cache.keys().next().value;
-    if (oldest !== undefined) _cache.delete(oldest);
-  }
-  _cache.set(url, { data, expiresAt: Date.now() + ATMOSPHERE_CACHE_TTL_MS });
-}
-
+// Every upstream read goes through lib/weather-feed-sources.js (shared feed-cache: one entry
+// per URL, 10 min TTL for NWS/AirNow/OpenWeatherMap, stale-on-error, SSRF-guarded fetch).
 async function fetchJson(url, headers) {
-  const hit = _cache.get(url);
-  if (hit && hit.expiresAt > Date.now()) return hit.data;
-
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), _timeoutMs);
-  try {
-    const init = { headers: headers || {}, signal: ctrl.signal };
-    const response = _testFetch
-      ? await _testFetch(url, init)
-      : await fetchPublicUrl(url, init);
-    if (!response || response.ok !== true) {
-      const status = Number(response?.status) || 0;
-      const err = new Error(`HTTP ${status || "error"}`);
-      err.status = status;
-      throw err;
-    }
-    const data = await response.json();
-    remember(url, data);
-    return data;
-  } catch (e) {
-    if (e?.code === "timeout") throw e;
-    const aborted = e?.name === "AbortError" || e?.code === "ABORT_ERR";
-    if (aborted) {
-      const err = new Error(`timed out after ${_timeoutMs}ms`);
-      err.code = "timeout";
-      throw err;
-    }
-    throw e;
-  } finally {
-    clearTimeout(timer);
-  }
+  return atmosphereJson(url, headers);
 }
 
 function numOrNull(v) {
@@ -165,14 +127,8 @@ export async function geocodeUsZip(zip) {
   } catch (e) {
     if (e?.code === "timeout") throw e;
   }
-  const url = new URL("https://geocoding-api.open-meteo.com/v1/search");
-  url.searchParams.set("name", z);
-  url.searchParams.set("count", "1");
-  url.searchParams.set("countryCode", "US");
-  url.searchParams.set("language", "en");
-  url.searchParams.set("format", "json");
   try {
-    const geo = await fetchJson(url.toString());
+    const geo = await geocodeJson(z, { countryCode: "US" });
     const hit = Array.isArray(geo?.results) ? geo.results[0] : null;
     const lat = numOrNull(hit?.latitude);
     const lon = numOrNull(hit?.longitude);
@@ -195,13 +151,20 @@ export async function geocodeUsZip(zip) {
   throw err;
 }
 
+// Open-Meteo geocoding through the shared cache; throws like fetchJson did (code "timeout" kept).
+async function geocodeJson(name, opts) {
+  const r = await geocodeName(name, opts);
+  if (!r.ok) {
+    const err = new Error(r.reason);
+    err.reason = r.reason;
+    if (/timed out|timeout/i.test(String(r.reason))) err.code = "timeout";
+    throw err;
+  }
+  return r.data;
+}
+
 async function geocodePlace(name) {
-  const url = new URL("https://geocoding-api.open-meteo.com/v1/search");
-  url.searchParams.set("name", name);
-  url.searchParams.set("count", "1");
-  url.searchParams.set("language", "en");
-  url.searchParams.set("format", "json");
-  const geo = await fetchJson(url.toString());
+  const geo = await geocodeJson(name);
   const hit = Array.isArray(geo?.results) ? geo.results[0] : null;
   const lat = numOrNull(hit?.latitude);
   const lon = numOrNull(hit?.longitude);
@@ -221,13 +184,15 @@ async function geocodePlace(name) {
   };
 }
 
-function aqUrl(lat, lon) {
-  const u = new URL("https://air-quality-api.open-meteo.com/v1/air-quality");
-  u.searchParams.set("latitude", String(lat));
-  u.searchParams.set("longitude", String(lon));
-  u.searchParams.set("current", AQ_CURRENT);
-  u.searchParams.set("timezone", "auto");
-  return u.toString();
+async function fetchAirQuality(lat, lon) {
+  const r = await getForecast({ kind: "air", lat, lon, params: { current: AQ_CURRENT, timezone: "auto" } });
+  if (!r.ok) {
+    const err = new Error(r.reason);
+    err.reason = r.reason;
+    if (/timed out|timeout/i.test(String(r.reason))) err.code = "timeout";
+    throw err;
+  }
+  return r.data;
 }
 
 function airNowKey() {
@@ -312,7 +277,7 @@ export async function loadAirQuality(input = {}) {
 
   let aq;
   try {
-    aq = await fetchJson(aqUrl(lat, lon));
+    aq = await fetchAirQuality(lat, lon);
   } catch (e) {
     return failFrom(e, "upstream_unreachable");
   }

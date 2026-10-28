@@ -209,7 +209,9 @@ export const WEATHER_FEEDS = [
     name: "Open-Meteo Current Weather",
     domain: "weather",
     type: "json",
-    url: "https://api.open-meteo.com/v1/forecast?latitude=40.7&longitude=-74.0&current=temperature_2m,apparent_temperature,wind_speed_10m,precipitation,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=auto",
+    // Fetched through lib/weather-feed-sources.js (the shared weather cache); url is the provider's site, for attribution.
+    url: "https://open-meteo.com/",
+    weather: { lat: 40.7, lon: -74.0, params: { current: "temperature_2m,apparent_temperature,wind_speed_10m,precipitation,weather_code", daily: "temperature_2m_max,temperature_2m_min,precipitation_sum", timezone: "auto" } },
     interval: 1800000,
     parser: "open-meteo",
     tags: ["weather", "forecast", "current"],

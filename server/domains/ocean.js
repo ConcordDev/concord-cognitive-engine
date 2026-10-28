@@ -13,10 +13,10 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { nwsHeaders } from "../lib/keyless-atmosphere.js";
+import { openMeteoJson } from "../lib/weather-feed-sources.js";
 
 const NOAA_TIDES_BASE = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter";
 const NOAA_MDAPI_BASE = "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi";
-const OPEN_METEO_MARINE = "https://marine-api.open-meteo.com/v1/marine";
 const NDBC_REALTIME = "https://www.ndbc.noaa.gov/data/realtime2";
 
 import { needNums, optNum, notComputed } from "../lib/lens-inputs.js";
@@ -32,16 +32,15 @@ export default function registerOceanActions(registerLensAction) {
     const have = needNums(d, ["waveHeightMeters>0", "wavePeriodSeconds>0"]);
     if (!have.missing.length || !(Number.isFinite(lat) && Math.abs(lat) <= 90 && Number.isFinite(lon) && Math.abs(lon) <= 180)) return waveAnalysisSync(ctx, artifact, params);
     return (async () => {
-      const url = `${OPEN_METEO_MARINE}?latitude=${lat}&longitude=${lon}&current=wave_height,wave_period&timezone=GMT`;
       try {
-        const data = await cachedFetchJson(url, { ttlMs: 30 * 60 * 1000 });
+        const data = await openMeteoJson({ kind: "marine", lat, lon, params: { current: "wave_height,wave_period", timezone: "GMT" } });
         const c = data?.current || {};
         const filled = { ...d };
         if (have.missing.includes("waveHeightMeters") && Number.isFinite(c.wave_height)) filled.waveHeightMeters = c.wave_height;
         if (have.missing.includes("wavePeriodSeconds") && Number.isFinite(c.wave_period)) filled.wavePeriodSeconds = c.wave_period;
         const r = waveAnalysisSync(ctx, { ...artifact, data: filled }, params);
         if (r.result?.status === "NOT_COMPUTED") return r;
-        return { ...r, result: { ...r.result, provenance: { source: "Open-Meteo Marine API", url, observed: c.time || null, lat, lon } } };
+        return { ...r, result: { ...r.result, provenance: { source: "Open-Meteo Marine API", url: "https://open-meteo.com/", observed: c.time || null, lat, lon } } };
       } catch (e) {
         return notComputed(have.missing, `Open-Meteo Marine unavailable: ${e instanceof Error ? e.message : String(e)}`, { source: "open-meteo-marine" });
       }
@@ -461,9 +460,8 @@ export default function registerOceanActions(registerLensAction) {
       "swell_wave_height", "swell_wave_direction", "swell_wave_period",
       "wind_wave_height", "wind_wave_period", "sea_surface_temperature",
     ].join(",");
-    const url = `${OPEN_METEO_MARINE}?latitude=${lat}&longitude=${lon}&hourly=${vars}&forecast_days=7&timezone=GMT`;
     try {
-      const data = await cachedFetchJson(url, { ttlMs: 30 * 60 * 1000 });
+      const data = await openMeteoJson({ kind: "marine", lat, lon, params: { hourly: vars, forecast_days: 7, timezone: "GMT" } });
       const h = data?.hourly || {};
       const times = h.time || [];
       const series = times.slice(0, hours).map((t, i) => ({
@@ -558,12 +556,10 @@ export default function registerOceanActions(registerLensAction) {
     }
     if (lat == null || lon == null) return { ok: false, error: "spotId with lat/lon, or explicit lat/lon required" };
     const vars = ["wave_height", "wave_period", "swell_wave_height", "swell_wave_period", "wind_wave_height"].join(",");
-    const marineUrl = `${OPEN_METEO_MARINE}?latitude=${lat}&longitude=${lon}&hourly=${vars}&forecast_days=1&timezone=GMT`;
-    const windUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=wind_speed_10m&forecast_days=1&timezone=GMT`;
     try {
       const [marine, wind] = await Promise.all([
-        cachedFetchJson(marineUrl, { ttlMs: 30 * 60 * 1000 }),
-        cachedFetchJson(windUrl, { ttlMs: 30 * 60 * 1000 }),
+        openMeteoJson({ kind: "marine", lat, lon, params: { hourly: vars, forecast_days: 1, timezone: "GMT" } }),
+        openMeteoJson({ lat, lon, params: { hourly: "wind_speed_10m", forecast_days: 1, timezone: "GMT" } }),
       ]);
       const mh = marine?.hourly || {};
       const wh = wind?.hourly || {};
@@ -693,8 +689,7 @@ export default function registerOceanActions(registerLensAction) {
    */
   registerLensAction("ocean", "sea-surface-temp", async (_ctx, _a, params = {}) => {
     const fetchSst = async (lat, lon) => {
-      const url = `${OPEN_METEO_MARINE}?latitude=${lat}&longitude=${lon}&hourly=sea_surface_temperature&forecast_days=1&timezone=GMT`;
-      const data = await cachedFetchJson(url, { ttlMs: 60 * 60 * 1000 });
+      const data = await openMeteoJson({ kind: "marine", lat, lon, params: { hourly: "sea_surface_temperature", forecast_days: 1, timezone: "GMT" } });
       const h = data?.hourly || {};
       const temps = (h.sea_surface_temperature || []).filter((v) => Number.isFinite(v));
       const now = new Date().getUTCHours();

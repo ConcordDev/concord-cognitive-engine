@@ -1,4 +1,5 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { getForecast } from "../lib/weather-feed-sources.js";
 import { needNums, notComputed } from "../lib/lens-inputs.js";
 
 export default function registerAviationActions(registerLensAction) {
@@ -1613,11 +1614,9 @@ export default function registerAviationActions(registerLensAction) {
     const windsAloft = [];
     try {
       const vars = levels.map((l) => `windspeed_${l.hpa}hPa,winddirection_${l.hpa}hPa,temperature_${l.hpa}hPa`).join(",");
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=${vars}&forecast_days=1&windspeed_unit=kn`;
-      const r = await globalThis.fetch(url);
-      if (r && r.ok) {
-        const data = await r.json();
-        const h = data?.hourly || {};
+      const wx = await getForecast({ lat, lon: lng, params: { hourly: vars, forecast_days: 1, windspeed_unit: "kn" } });
+      if (wx.ok) {
+        const h = wx.data?.hourly || {};
         const idx = 0; // current hour
         for (const l of levels) {
           windsAloft.push({

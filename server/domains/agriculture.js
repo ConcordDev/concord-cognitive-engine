@@ -2,7 +2,7 @@
 // Domain actions for agriculture: crop rotation, yield analysis, equipment, irrigation.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
-import { cachedFetchJson } from "../lib/external-fetch.js";
+import { getForecast, openMeteoJson } from "../lib/weather-feed-sources.js";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
 
 import { optNum, notComputed, requireList } from "../lib/lens-inputs.js";
@@ -830,10 +830,13 @@ export default function registerAgricultureActions(registerLensAction) {
       return { ok: false, error: "lat/lng required" };
     }
     try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=temperature_2m,precipitation,relative_humidity_2m,soil_moisture_0_to_1cm,soil_temperature_0cm&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,et0_fao_evapotranspiration&forecast_days=7&timezone=auto`;
-      const r = await globalThis.fetch(url);
-      if (!r.ok) return { ok: false, error: `weather api ${r.status}` };
-      const data = await r.json();
+      const wx = await getForecast({ lat, lon: lng, params: {
+        hourly: "temperature_2m,precipitation,relative_humidity_2m,soil_moisture_0_to_1cm,soil_temperature_0cm",
+        daily: "temperature_2m_max,temperature_2m_min,precipitation_sum,et0_fao_evapotranspiration",
+        forecast_days: 7, timezone: "auto",
+      } });
+      if (!wx.ok) return { ok: false, error: `weather api ${wx.reason}`, status: "unavailable", reason: wx.reason, lastOkAt: wx.lastOkAt };
+      const data = wx.data;
       return {
         ok: true,
         result: {
@@ -1475,8 +1478,11 @@ export default function registerAgricultureActions(registerLensAction) {
       const end = today.toISOString().slice(0, 10);
       const startD = new Date(today.getTime() - 29 * 86400000);
       const start = startD.toISOString().slice(0, 10);
-      const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${start}&end_date=${end}&daily=shortwave_radiation_sum,temperature_2m_mean,soil_moisture_0_to_7cm_mean,precipitation_sum&timezone=auto`;
-      const data = await cachedFetchJson(url, { ttlMs: 6 * 60 * 60 * 1000 });
+      const data = await openMeteoJson({ kind: "archive", lat, lon: lng, params: {
+        start_date: start, end_date: end,
+        daily: "shortwave_radiation_sum,temperature_2m_mean,soil_moisture_0_to_7cm_mean,precipitation_sum",
+        timezone: "auto",
+      } });
       const days = data?.daily?.time || [];
       if (days.length === 0) return { ok: false, error: "no satellite data returned" };
       const rad = data.daily.shortwave_radiation_sum || [];
@@ -1735,8 +1741,10 @@ export default function registerAgricultureActions(registerLensAction) {
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok: false, error: "lat/lng required" };
     const horizonHours = Math.max(12, Math.min(168, Math.round(Number(params.horizonHours) || 72)));
     try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=temperature_2m,wind_speed_10m,precipitation,precipitation_probability,relative_humidity_2m&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=7&timezone=auto`;
-      const data = await cachedFetchJson(url, { ttlMs: 30 * 60 * 1000 });
+      const data = await openMeteoJson({ lat, lon: lng, params: {
+        hourly: "temperature_2m,wind_speed_10m,precipitation,precipitation_probability,relative_humidity_2m",
+        temperature_unit: "fahrenheit", wind_speed_unit: "mph", forecast_days: 7, timezone: "auto",
+      } });
       const times = data?.hourly?.time || [];
       if (times.length === 0) return { ok: false, error: "no forecast returned" };
       const temp = data.hourly.temperature_2m || [];

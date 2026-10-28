@@ -509,10 +509,11 @@ export function stats() {
   return out;
 }
 
-export function clearSource(sourceId) {
+export function clearSource(sourceId, { resetBackoff = false } = {}) {
   const src = _sources.get(sourceId);
   if (!src) return;
   src.entries.clear(); src.poolHist.clear(); src.inflight.clear();
+  if (resetBackoff) { src.keyFail.clear(); src.backoff = { fails: 0, until: 0, ms: 0 }; src.lastError = null; }
 }
 
 // ── persistence (opt-in per source; never headers or keys, only data) ───────

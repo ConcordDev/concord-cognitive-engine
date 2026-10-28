@@ -9,7 +9,7 @@
 //   • NASA NeoWs (Near Earth Objects): api.nasa.gov/neo/rest/v1/feed — uses NASA_API_KEY.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
-import { cachedFetchJson } from "../lib/external-fetch.js";
+import { openMeteoJson } from "../lib/weather-feed-sources.js";
 
 const NASA_API_BASE = "https://api.nasa.gov";
 const ISS_API_BASE = "https://api.wheretheiss.at/v1/satellites/25544";
@@ -1401,12 +1401,10 @@ export default function registerAstronomyActions(registerLensAction) {
   registerLensAction("astronomy", "observing-forecast", async (_ctx, _a, params = {}) => {
     const obs = parseObserver(params);
     if (!obs) return { ok: false, error: "latitude and longitude required" };
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${obs.latitude}`
-      + `&longitude=${obs.longitude}`
-      + `&hourly=cloud_cover,visibility,relative_humidity_2m,temperature_2m`
-      + `&forecast_days=3&timezone=UTC`;
     try {
-      const data = await cachedFetchJson(url, { ttlMs: 30 * 60 * 1000 });
+      const data = await openMeteoJson({ lat: obs.latitude, lon: obs.longitude, params: {
+        hourly: "cloud_cover,visibility,relative_humidity_2m,temperature_2m", forecast_days: 3, timezone: "UTC",
+      } });
       const h = data.hourly || {};
       const times = h.time || [];
       const hours = times.map((t, i) => {
