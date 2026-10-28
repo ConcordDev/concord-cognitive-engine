@@ -18,7 +18,7 @@ import {
   LayoutDashboard, CalendarSearch, Send,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { browserTimeZone, calendarDateKey } from '@/lib/calendar-date';
+import { browserTimeZone, calendarDateKey, fromZonedInputValue, shiftDateKey, toZonedInputValue, zonedWallTimeToUtc } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
@@ -39,7 +39,7 @@ interface Reminder {
 }
 interface StatusEvent {
   id: string; title: string; eventCategory: string; start: string;
-  end: string; blocksAvailability: boolean;
+  end: string; blocksAvailability: boolean; allDay?: boolean;
 }
 interface CalEvent { id: string; title: string; start: string; conferenceLink?: string }
 interface Invite {
@@ -461,7 +461,7 @@ function StatusPanel() {
   const [err, setErr] = useState<string | null>(null);
   const [form, setForm] = useState({
     kind: 'working-location', detail: '',
-    start: new Date().toISOString().slice(0, 16),
+    start: toZonedInputValue(new Date(), browserTimeZone()),
     end: '', allDay: false,
   });
 
@@ -474,14 +474,43 @@ function StatusPanel() {
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  async function removeStatus(id: string) {
+    // Two-step inline confirm; the delete is soft (F12) — the block
+    // leaves this list at once and sits in the Trash tab.
+    if (confirmDeleteId !== id) { setConfirmDeleteId(id); return; }
+    setConfirmDeleteId(null);
+    await lensRun('calendar', 'events-delete', { id });
+    await refresh();
+  }
+
   async function create() {
     setErr(null);
     if (!form.start) { setErr('Start date/time required.'); return; }
+    const tz = browserTimeZone();
+    let startIso: string;
+    let endIso: string | undefined;
+    if (form.allDay) {
+      // F13: "All day" means the calendar day in the user's zone —
+      // zoned midnight to zoned midnight, whatever time was picked.
+      const dateKey = form.start.slice(0, 10);
+      const [y, m, d] = dateKey.split('-').map(Number);
+      if (!y || !m || !d) { setErr('Start date required.'); return; }
+      startIso = zonedWallTimeToUtc(tz, { year: y, month: m, day: d, hour: 0, minute: 0, second: 0 }).toISOString();
+      const nk = shiftDateKey(dateKey, 1).split('-').map(Number);
+      endIso = zonedWallTimeToUtc(tz, { year: nk[0], month: nk[1], day: nk[2], hour: 0, minute: 0, second: 0 }).toISOString();
+    } else {
+      const s = fromZonedInputValue(form.start, tz);
+      if (!s) { setErr('Start date/time required.'); return; }
+      startIso = s.toISOString();
+      const e = form.end ? fromZonedInputValue(form.end, tz) : null;
+      endIso = e ? e.toISOString() : undefined;
+    }
     const r = await lensRun('calendar', 'status-event-create', {
       kind: form.kind,
       detail: form.detail.trim(),
-      start: new Date(form.start).toISOString(),
-      end: form.end ? new Date(form.end).toISOString() : undefined,
+      start: startIso,
+      end: endIso,
       allDay: form.allDay,
     });
     if (r.data?.ok) { setForm({ ...form, detail: '' }); await refresh(); }
@@ -544,12 +573,19 @@ function StatusPanel() {
               <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-white truncate">{e.title}</p>
-                <p className="text-[10px] text-gray-400 tabular-nums">{fmt(e.start)} → {fmt(e.end)}</p>
+                <p className="text-[10px] text-gray-400 tabular-nums">{e.allDay
+                  ? `All day · ${new Date(e.start).toLocaleDateString('en-US', { timeZone: browserTimeZone(), month: 'short', day: 'numeric' })}`
+                  : `${fmt(e.start)} → ${fmt(e.end)}`}</p>
               </div>
               <span className={cn('text-[10px] px-1.5 py-0.5 rounded',
                 e.blocksAvailability ? 'bg-rose-600/20 text-rose-300' : 'bg-lattice-border/40 text-gray-300')}>
                 {e.blocksAvailability ? 'blocks availability' : 'visible only'}
               </span>
+              <button onClick={() => void removeStatus(e.id)}
+                className={cn('px-2 py-1 rounded text-[11px] shrink-0', confirmDeleteId === e.id ? 'bg-rose-600 text-white font-semibold' : 'text-rose-300 hover:bg-rose-500/10')}
+                aria-label={confirmDeleteId === e.id ? `Confirm delete ${e.title}` : `Delete ${e.title}`}>
+                {confirmDeleteId === e.id ? 'Delete?' : <Trash2 className="w-3.5 h-3.5" />}
+              </button>
             </li>
           ))}
         </ul>
