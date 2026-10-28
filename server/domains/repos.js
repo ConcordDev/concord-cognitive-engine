@@ -8,6 +8,7 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import vm from "node:vm";
 import { cachedFetchJson, fetchJsonWithTimeout } from "../lib/external-fetch.js";
 import { analyzeSourceComplexity } from "../lib/code-ast-complexity.js";
+import { githubTopicSearch } from "../lib/github-feed-sources.js";
 
 const GITHUB_API_REPOS = "https://api.github.com";
 
@@ -648,6 +649,27 @@ export default function registerReposActions(registerLensAction) {
       ? { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" }
       : { Accept: "application/vnd.github+json" };
   }
+
+  /**
+   * github-topic-search — top repositories for a topic, served from the shared
+   * feed-cache (one upstream request per topic per 6h for ALL visitors). The topic
+   * must be one of the allowlisted literals the lens components offer; anything
+   * else is rejected without a fetch. Sort is fixed to stars desc.
+   *
+   * params: { topic, perPage?: 1-25 }
+   */
+  registerLensAction("repos", "github-topic-search", async (_ctx, _artifact, params = {}) => {
+    try {
+      const r = await githubTopicSearch({ topic: params.topic, perPage: params.perPage });
+      if (r.ok) {
+        return { ok: true, result: { topic: String(params.topic).trim().toLowerCase(), items: r.items, count: r.items.length, stale: r.stale, fetchedAt: r.fetchedAt, source: "github-api" } };
+      }
+      if (r.status === "invalid_topic") return { ok: false, status: 400, error: "topic not allowed", reason: r.reason };
+      return { ok: false, status: "unavailable", error: "github unavailable", reason: r.reason, lastOkAt: r.lastOkAt ?? null };
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
 
   /**
    * github-commits-recent — Real recent commits for a repo. Author,
