@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Sigma, Loader2, ExternalLink, MessageSquare, ArrowUp, CheckCircle } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup, carryLookupMeta } from '@/lib/public-lookup';
+import { LookupNotice } from '@/components/common/LookupNotice';
 
 interface Question { question_id: number; title: string; link: string; score: number; answer_count: number; view_count: number; is_answered: boolean; tags: string[]; accepted_answer_id?: number; }
 
@@ -22,10 +24,10 @@ export function MathStackFeed() {
   const questions = useQuery({
     queryKey: ['math-stack', tag],
     queryFn: async () => {
-      const r = await fetch(`https://api.stackexchange.com/2.3/questions?tagged=${tag}&order=desc&sort=votes&site=math&pagesize=25`);
-      if (!r.ok) throw new Error(`stackex ${r.status}`);
-      const j = await r.json();
-      return (j.items || []) as Question[];
+      const j = await publicLookup<{ items?: Question[] }>('se-search', { site: 'math', tagged: tag, sort: 'votes' });
+      const items = (j.items || []) as Question[];
+      carryLookupMeta(j, items);
+      return items;
     },
     staleTime: 30 * 60 * 1000,
   });
@@ -39,10 +41,11 @@ export function MathStackFeed() {
         <div className="flex items-center gap-2"><Sigma className="h-5 w-5 text-violet-400" /><h2 className="text-sm font-semibold text-white">Real-world math Q&amp;A</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">math.stackexchange.com · {tag}</span></div>
         <div className="flex items-center gap-2">
           <select value={tag} onChange={(e) => setTag(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{TAGS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select>
-          {list.length > 0 && <SaveAsDtuButton compact apiSource="math-stackexchange" apiUrl={`https://api.stackexchange.com/2.3/questions?tagged=${tag}&site=math`} title={`math.SE — ${tag} (${list.length})`} content={list.slice(0, 20).map((q, i) => `${i + 1}. [${q.score}↑ · ${q.answer_count}A${q.is_answered ? ' ✓' : ''}] ${q.title}\n   ${q.link}`).join('\n\n')} extraTags={['math', 'stackexchange', tag]} rawData={{ tag, questions: list }} />}
+          {list.length > 0 && <SaveAsDtuButton compact apiSource="math-stackexchange" apiUrl={`https://math.stackexchange.com/questions/tagged/${tag}`} title={`math.SE — ${tag} (${list.length})`} content={list.slice(0, 20).map((q, i) => `${i + 1}. [${q.score}↑ · ${q.answer_count}A${q.is_answered ? ' ✓' : ''}] ${q.title}\n   ${q.link}`).join('\n\n')} extraTags={['math', 'stackexchange', tag]} rawData={{ tag, questions: list }} />}
         </div>
       </header>
-      {questions.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Stack Exchange unreachable.</div>}
+      {questions.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Stack Exchange unavailable right now — nothing is being shown in its place.</div>}
+      <LookupNotice provider="stackexchange" data={questions.data} />
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Questions</div><div className="mt-0.5 font-mono text-lg text-violet-300">{list.length}</div></div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Answered</div><div className="mt-0.5 font-mono text-lg text-emerald-300">{answered}</div></div>

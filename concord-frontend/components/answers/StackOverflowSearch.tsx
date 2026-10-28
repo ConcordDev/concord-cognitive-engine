@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { MessageCircleQuestion, Loader2, Search, ExternalLink, ThumbsUp, CheckCircle2 } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { publicLookup } from '@/lib/public-lookup';
+import { LookupNotice } from '@/components/common/LookupNotice';
 
 interface SoQuestion {
   question_id: number;
@@ -34,18 +36,16 @@ export function StackOverflowSearch() {
   const [site, setSite] = useState('stackoverflow');
   const [hits, setHits] = useState<SoQuestion[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [noticeData, setNoticeData] = useState<unknown>(null);
 
   const search = useMutation({
     mutationFn: async () => {
       setError(null);
-      const url = `https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=relevance&q=${encodeURIComponent(query)}&site=${site}&pagesize=20&filter=!9_bDDxJY5`;
       try {
-        const r = await fetch(url);
-        if (!r.ok) throw new Error(`stackexchange ${r.status}`);
-        const j = await r.json();
-        if (j.error_id) throw new Error(j.error_message || 'Stack Exchange error');
+        const j = await publicLookup<{ items?: SoQuestion[] }>('se-search', { site, q: query, sort: 'relevance' });
         setHits(j.items || []);
-      } catch (e) { setHits([]); setError(e instanceof Error ? e.message : 'request failed'); }
+        setNoticeData(j);
+      } catch (e) { setHits([]); setNoticeData(null); setError('Stack Exchange is unavailable right now — nothing is being shown in its place.'); }
     },
   });
 
@@ -55,13 +55,13 @@ export function StackOverflowSearch() {
         <div className="flex items-center gap-2">
           <MessageCircleQuestion className="h-5 w-5 text-cyan-400" />
           <h2 className="text-sm font-semibold text-white">Stack Exchange answers</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">api.stackexchange.com 2.3 · no key</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">Stack Exchange · via Concord server</span>
         </div>
         {hits.length > 0 && (
           <SaveAsDtuButton
             compact
             apiSource="stackexchange"
-            apiUrl={`https://api.stackexchange.com/2.3/search/advanced?q=${encodeURIComponent(query)}&site=${site}`}
+            apiUrl={`https://${site}.stackexchange.com/search?q=${encodeURIComponent(query)}`}
             title={`${SITES.find((s) => s.id === site)?.label} answers — "${query}" (${hits.length})`}
             content={hits.slice(0, 25).map((q, i) => `${i + 1}. ${q.title} [${q.score}↑ · ${q.answer_count} ans${q.is_answered ? ' · ✓ accepted' : ''}]\n   ${q.link}\n   tags: ${q.tags.join(', ')}`).join('\n\n')}
             extraTags={['answers', 'stackexchange', site]}
@@ -83,6 +83,7 @@ export function StackOverflowSearch() {
         </button>
       </form>
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
+      {noticeData != null && <LookupNotice provider="stackexchange" data={noticeData} />}
       <div className="space-y-1 max-h-96 overflow-y-auto">
         {hits.map((q) => (
           <a key={q.question_id} href={q.link} target="_blank" rel="noopener noreferrer" className="block rounded border border-zinc-800 bg-zinc-950 p-2.5 hover:border-cyan-500/30">
