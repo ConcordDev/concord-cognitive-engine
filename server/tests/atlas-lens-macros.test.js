@@ -296,7 +296,8 @@ describe("atlas external-IO — validation-rejection happens BEFORE any fetch", 
   it("nominatim-reverse rejects non-numeric lat/lng without a fetch", async () => {
     const r = await call("nominatim-reverse", ctxA, { latitude: "x", longitude: "y" });
     assert.equal(r.ok, false);
-    assert.match(r.error, /latitude \+ longitude required/);
+    assert.equal(r.error, "invalid_input");
+    assert.equal(r.field, "latitude");
     assert.equal(fetchCalls, 0);
   });
 

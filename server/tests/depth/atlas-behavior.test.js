@@ -599,7 +599,8 @@ describe("atlas — network-backed macros: pre-fetch validation-rejection branch
   it("nominatim-reverse: non-numeric latitude/longitude is rejected before any network call", async () => {
     const r = await lensRun("atlas", "nominatim-reverse", { params: { latitude: "north", longitude: 10 } });
     assert.equal(r.result.ok, false);
-    assert.match(r.result.error, /latitude \+ longitude required/);
+    assert.equal(r.result.error, "invalid_input");
+    assert.equal(r.result.field, "latitude");
   });
 
   // ── overpass-poi ──

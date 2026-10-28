@@ -106,8 +106,11 @@ describe("atlas.nominatim-reverse", () => {
     __setPublicFetchTestTransport(async () => { calls++; return { ok: true, json: async () => ({}) }; });
     const r = await call("atlas.nominatim-reverse", ctxA, { latitude: 999, longitude: 999 });
     assert.equal(r.ok, false);
-    assert.equal(r.status, "unavailable");
-    assert.equal(r.reason, "bad_coordinates");
+    // Bad coordinates are an input error (400), never an upstream outage.
+    assert.equal(r.error, "invalid_input");
+    assert.equal(r.field, "latitude");
+    assert.equal(r.reason, "out_of_range");
+    assert.equal(r.status, undefined);
     assert.equal(calls, 0);
   });
 });
