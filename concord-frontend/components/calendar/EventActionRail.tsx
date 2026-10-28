@@ -127,22 +127,30 @@ export function EventActionRail({ event }: { event: EventLite }) {
       dtuLine,
     ].filter(Boolean).join('\n');
 
-    let sentCount = 0;
-    for (const recipient of event.collaborators!) {
-      try {
-        const r = await api.post('/api/social/dm', {
-          toUserId: recipient,
-          content: body,
-        });
-        const sentOk = r.data?.ok !== false;
-        setInviteStatus(prev => ({ ...prev, [recipient]: sentOk ? 'sent' : 'failed' }));
-        if (sentOk) sentCount++;
-      } catch {
-        setInviteStatus(prev => ({ ...prev, [recipient]: 'failed' }));
-      }
+    // F6: invites are calendar invites now — invites-send records them
+    // against the event (guests mirrored onto its attendees for the .ics)
+    // and invite-rsvp tracks the responses, visible on the event detail
+    // and in Sync & share → Guest RSVP. (This used to DM the raw
+    // "@handle" strings as user ids, which could never land.)
+    void body;
+    try {
+      const r = await lensRun({
+        domain: 'calendar',
+        action: 'invites-send',
+        input: { eventId: event.id, guests: event.collaborators! },
+      });
+      if (r.data?.ok === false) throw new Error(r.data.error || 'Could not send invites');
+      const sentMap: Record<string, InviteState> = {};
+      for (const c of event.collaborators!) sentMap[c] = 'sent';
+      setInviteStatus(sentMap);
+      ok(`Invites sent to ${collabCount} collaborator${collabCount === 1 ? '' : 's'} — RSVPs will show here and on the event.`);
+    } catch (e) {
+      const failMap: Record<string, InviteState> = {};
+      for (const c of event.collaborators!) failMap[c] = 'failed';
+      setInviteStatus(failMap);
+      err(pickMessage(e));
     }
     setBusy(null);
-    ok(`Sent ${sentCount} of ${collabCount} invite${collabCount === 1 ? '' : 's'}.`);
   }
 
   async function scheduleReminder() {
@@ -242,6 +250,9 @@ export function EventActionRail({ event }: { event: EventLite }) {
             end: event.endDate.toISOString(),
             location: event.location,
             url: event.url,
+            // ATTENDEE lines for the guests who are email addresses
+            // (ical-export writes them; @handles have no mailbox).
+            attendeeEmails: (event.collaborators ?? []).filter((c) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c)),
           }],
         },
       });
