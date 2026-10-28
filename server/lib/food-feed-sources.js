@@ -22,6 +22,10 @@ const DAY = 24 * HOUR;
 export const OFF_CATEGORIES = ["snacks", "beverages", "breakfasts", "cheeses", "pastas", "chocolates"];
 export const OFF_CATEGORY_PAGE_SIZE = 24;
 const OFF_BASE = "https://world.openfoodfacts.org";
+// OFF serves list/search pages (cgi/search.pl, /api/v2/search, /category/*.json)
+// only to signed-in users now (anonymous callers get a 503 "not available to
+// anonymous users" page). Search-a-licious is OFF's official public search API.
+const OFF_SEARCH_BASE = process.env.CONCORD_OFF_SEARCH_BASE || "https://search.openfoodfacts.org";
 const FDC_BASE = "https://api.nal.usda.gov/fdc/v1";
 const OFF_FIELDS_LIST = "code,product_name,brands,nutriscore_grade,categories,nova_group,ecoscore_grade,image_url,quantity,countries_tags";
 const OFF_FIELDS_PRODUCT = "product_name,brands,quantity,categories,ingredients_text,allergens_tags,additives_tags,nutriscore_grade,ecoscore_grade,nova_group,nutriments,serving_size,image_url,image_nutrition_url,image_ingredients_url,countries_tags";
@@ -48,9 +52,14 @@ const norm = (s) => String(s ?? "").replace(/\|/g, " ").trim().toLowerCase().rep
 
 // ── fetchers (key, { signal }) -> JSON-serializable data ────────────────────
 
+// Search-a-licious returns brands as an array; the legacy API used a string.
+const joinList = (v) => (Array.isArray(v) ? v.filter(Boolean).join(", ") : v);
+// Search-a-licious answers { hits, count }; the legacy API answered { products, count }.
+const offHits = (data) => (Array.isArray(data?.hits) ? data.hits : Array.isArray(data?.products) ? data.products : []);
+
 function offListItem(p) {
   return {
-    code: p.code, product_name: p.product_name, brands: p.brands,
+    code: p.code, product_name: p.product_name, brands: joinList(p.brands),
     nutriscore_grade: p.nutriscore_grade, categories: p.categories,
     nova_group: p.nova_group, ecoscore_grade: p.ecoscore_grade,
     image_url: p.image_url, quantity: p.quantity, countries_tags: p.countries_tags,
@@ -58,18 +67,19 @@ function offListItem(p) {
 }
 
 async function fetchOffCategory(slug, { signal }) {
-  const url = `${OFF_BASE}/category/${encodeURIComponent(slug)}.json?page_size=${OFF_CATEGORY_PAGE_SIZE}&fields=${OFF_FIELDS_LIST}`;
+  const q = encodeURIComponent(`categories_tags:"en:${slug}"`);
+  const url = `${OFF_SEARCH_BASE}/search?q=${q}&page_size=${OFF_CATEGORY_PAGE_SIZE}&fields=${OFF_FIELDS_LIST}`;
   const { data } = await getJson(url, { headers: offHeaders() }, signal, "openfoodfacts");
-  return { products: (Array.isArray(data?.products) ? data.products : []).map(offListItem) };
+  return { products: offHits(data).map(offListItem) };
 }
 
-// key: "terms|page|pageSize". Legacy cgi/search.pl does real full-text search;
-// the v2 /search endpoint ignores search_terms.
+// key: "terms|page|pageSize". Full-text search via Search-a-licious (the legacy
+// cgi/search.pl and v2 /search now refuse anonymous callers).
 async function fetchOffSearch(key, { signal }) {
   const [terms, page, pageSize] = key.split("|");
-  const url = `${OFF_BASE}/cgi/search.pl?search_terms=${encodeURIComponent(terms)}&search_simple=1&action=process&json=1&page=${page}&page_size=${pageSize}&fields=${OFF_FIELDS_LIST}`;
+  const url = `${OFF_SEARCH_BASE}/search?q=${encodeURIComponent(terms)}&page=${page}&page_size=${pageSize}&fields=${OFF_FIELDS_LIST}`;
   const { data } = await getJson(url, { headers: offHeaders() }, signal, "openfoodfacts");
-  return { products: (Array.isArray(data?.products) ? data.products : []).map(offListItem), count: data?.count ?? null };
+  return { products: offHits(data).map(offListItem), count: data?.count ?? null };
 }
 
 async function fetchOffProduct(barcode, { signal }) {

@@ -103,7 +103,7 @@ describe("household.off-product-search", () => {
       return { ok: true, json: async () => ({ count: 42, products: [{ code: "111", product_name: "Bread", brands: "Acme", nutriscore_grade: "b" }] }) };
     };
     const r = await call("household.off-product-search", ctxA, { query: "bread" });
-    assert.match(capturedUrl, /search_terms=bread/);
+    assert.match(capturedUrl, /search\.openfoodfacts\.org\/search\?q=bread&/);
     assert.equal(r.result.products[0].barcode, "111");
     assert.equal(r.result.totalResults, 42);
   });

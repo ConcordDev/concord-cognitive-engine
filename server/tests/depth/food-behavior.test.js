@@ -840,7 +840,7 @@ describe("food network macros — routed through the SSRF-guarded fetchPublicUrl
   it("feed ingests Open Food Facts products into DTUs via the guarded transport", async () => {
     const ctx = await depthCtx(`food-feed-${randomUUID()}`);
     __setPublicFetchTestTransport(async (url) => {
-      assert.match(url, /world\.openfoodfacts\.org\/category\//);
+      assert.match(url, /search\.openfoodfacts\.org\/search\?q=categories_tags/);
       return {
         ok: true,
         json: async () => ({

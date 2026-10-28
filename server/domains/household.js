@@ -555,7 +555,7 @@ export default function registerHouseholdActions(registerLensAction) {
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.max(1, Math.min(100, Number(params.pageSize) || 20));
     try {
-      // feed-cache source "openfoodfacts-search": legacy cgi/search.pl (real full-text
+      // feed-cache source "openfoodfacts-search": OFF Search-a-licious (real full-text
       // search; the v2 endpoint ignores search_terms), cached per normalized query+page.
       const hit = await getOffSearch({ query, page, pageSize });
       if (!hit.ok) return { ok: false, status: "unavailable", reason: hit.reason, lastOkAt: hit.lastOkAt, error: `open food facts unavailable: ${hit.reason}` };
