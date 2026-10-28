@@ -1,5 +1,56 @@
 # World lens — capability map (backfill, summary-level, 2026-07-11)
 
+> **Re-verification (HANDOFF-3 batch L6, 2026-10-28, against main e9791d4d):**
+> The summary below is kept as history; its scope note still stands (this
+> lens's ~270 components were not individually re-audited — CLAUDE.md
+> remains the maintained architecture source). What changed / was
+> verified this pass:
+>
+> - **Entry structure changed.** `app/lenses/world/page.tsx` is now a
+>   27-line shell over `components/world/WorldUnityShell.tsx` — "Unity
+>   viewport first": full-bleed Concordia WebGL (env `UNITY_WEBGL_URL`
+>   or `/unity-client/`) with an honest unbuilt state when no WebGL
+>   export exists. The ~7.6k-LOC `WorldOsSurface` remains reachable as
+>   the Advanced OS tools surface (Menu → Advanced OS tools, or
+>   `?surface=os`). The Unity client itself is out of scope for this
+>   batch, per the handoff.
+> - **Fabricated building citations — REMOVED in this batch.** Clicking
+>   any building in `WorldOsSurface` generated three mock citations
+>   (invented DTU ids `comp-concrete-found-v2` / `mat-usb-a` /
+>   `infra-water-1`, invented creators `@engineer_jane` /
+>   `@materials_lab` / `@civil_sara`) and the Inspector rendered them
+>   as real provenance — the REMAINING-WORK-AUDIT's WorldOsSurface
+>   mock-citations row. The handler now sets an empty list (the
+>   Inspector's Citations section renders only when non-empty); a real
+>   per-DTU citation lookup is not wired into this surface yet, and the
+>   code comment says so.
+> - **Fabricated lore — fixed separately in PR #1710**
+>   (`fix/world-lore-honest-unavailable`): `GET
+>   /api/world/narrative/lore` returned `ok:true` with a `lore_stub`
+>   placeholder that the World Chronicle panel rendered as lore; it now
+>   returns 503 `lore_generation_unavailable`, matching the refresh
+>   endpoint's existing pattern.
+> - **Concept art (52-world): immersion, not a headline.** The concept
+>   is a near-chromeless full-screen world ("The world is the screen")
+>   with only a hub chip — the Unity-first shell matches that direction.
+>   Deliberate liberty: NO serif greeting was added to this lens,
+>   unlike the other batches — the concept has no headline, and adding
+>   one would fight the art direction.
+> - **Domain collision re-verified:** `grep -c "lensRun('world'"`
+>   on the lens page is still 0; `domains/world.js` (geopolitical data)
+>   remains unrelated to this lens. `/api/worlds/` call sites in
+>   `WorldOsSurface`: 11, as below.
+> - **`docs/lens-specs/world.md` backlog:** all 8 items are marked
+>   shipped (in-world building editor, inventory/equipment UI, party
+>   play, minimap + fast travel, mounts UX, combat depth, LOD/streaming,
+>   photo mode) with a ~95% parity claim vs Roblox/Genshin. Kept as
+>   history — spot-verified structurally this pass, not re-audited
+>   feature by feature.
+> - **Server suites run locally this pass:** cross-world-effectiveness
+>   + cross-world-effectiveness-rules — 15/15 pass. The concordia-*
+>   suites boot the server and are Mac-run (listed in the PR).
+
+
 ## Scope note
 
 This is a **summary-level backfill**, not an exhaustive re-audit. `/lenses/world`
