@@ -63,7 +63,7 @@ test("markets: staking category + 24h/7d changes when the panel asks", async () 
   route = () => res([]);
   await call("coingecko-markets", { category: "proof-of-stake", changes: true });
   const u = new URL(calls[0].url);
-  assert.equal(u.searchParams.get("category"), "proof-of-stake");
+  assert.equal(u.searchParams.get("category"), "proof-of-stake-pos");
   assert.equal(u.searchParams.get("price_change_percentage"), "24h,7d");
 });
 

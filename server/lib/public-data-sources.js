@@ -141,7 +141,7 @@ async function fetchEonet(key, { signal }) {
 async function fetchGutendex(key, { signal }) {
   const [, mode, term] = JSON.parse(key);
   const qs = mode === "search" ? `search=${enc(term)}` : `topic=${enc(term)}&sort=popular`;
-  return rawJson(`https://gutendex.com/books?${qs}`, signal, "gutendex");
+  return rawJson(`https://gutendex.com/books/?${qs}`, signal, "gutendex");
 }
 async function fetchSketchfab(key, { signal }) {
   const [, q, dl] = JSON.parse(key);

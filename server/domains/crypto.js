@@ -418,14 +418,16 @@ export default function registerCryptoActions(registerLensAction) {
    * from cache. Upstream failure => honest unavailable, never a fallback list.
    */
   const CG_VS_CURRENCIES = new Set(["usd", "eur", "btc", "eth"]);
-  const CG_CATEGORIES = new Set(["proof-of-stake"]);
+  // widget-facing name -> CoinGecko category_id (from /coins/categories/list; "proof-of-stake" alone 404s upstream)
+  const CG_CATEGORIES = new Map([["proof-of-stake", "proof-of-stake-pos"]]);
   registerLensAction("crypto", "coingecko-markets", async (_ctx, _artifact, params = {}) => {
     const vs = String(params.vs || "usd").toLowerCase();
     if (!CG_VS_CURRENCIES.has(vs)) return { ok: false, status: 400, error: "invalid_vs_currency" };
     const category = params.category == null ? "" : String(params.category);
     if (category !== "" && !CG_CATEGORIES.has(category)) return { ok: false, status: 400, error: "invalid_category" };
+    const cgCategory = category ? CG_CATEGORIES.get(category) : "";
     const perPage = Math.max(1, Math.min(30, Math.trunc(Number(params.perPage)) || 20));
-    const path = `/coins/markets?vs_currency=${vs}${category ? `&category=${category}` : ""}&order=market_cap_desc&per_page=${perPage}&page=1${params.changes === true ? "&price_change_percentage=24h,7d" : ""}`;
+    const path = `/coins/markets?vs_currency=${vs}${cgCategory ? `&category=${cgCategory}` : ""}&order=market_cap_desc&per_page=${perPage}&page=1${params.changes === true ? "&price_change_percentage=24h,7d" : ""}`;
     try {
       const read = await cgRead(path);
       return { ok: true, result: { coins: Array.isArray(read.data) ? read.data : [], source: "coingecko", ...cgFreshness(read) } };
