@@ -1,9 +1,9 @@
 /**
  * GraphField (the Graph lens's default "field" perspective) — empty-state
  * contract. With an empty lattice the view renders an honest empty field:
- * the northstar concept greeting ("How it connects, Ramaj" —
- * docs/lens-northstar/16-graph-northstar-concept.jpg) addressed to the
- * signed-in user, over the plain "no nodes yet" cue. No fabricated nodes.
+ * the plain "no nodes yet" cue and nothing invented — no greeting
+ * headline (removed in the #1706 rework; the concept art is direction,
+ * not copy) and no fabricated nodes.
  *
  * Only the network boundary is mocked: apiHelpers.graph.force resolves a
  * real empty graph in the exact envelope the component consumes.
@@ -43,15 +43,15 @@ beforeAll(() => {
 });
 
 describe('GraphField — empty lattice', () => {
-  it('greets the signed-in user by name over the honest empty cue', async () => {
+  it('shows the honest empty cue with no greeting headline', async () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const utils = render(
       <QueryClientProvider client={qc}>
         <GraphField />
       </QueryClientProvider>,
     );
-    const greeting = await utils.findByTestId('graph-empty-greeting');
-    expect(greeting.textContent).toBe('How it connects, Ramaj');
-    expect(utils.getByText(/The lattice has no nodes yet/i)).toBeInTheDocument();
+    expect(await utils.findByText(/The lattice has no nodes yet/i)).toBeInTheDocument();
+    expect(utils.queryByTestId('graph-empty-greeting')).toBeNull();
+    expect(utils.queryByText(/How it connects/i)).toBeNull();
   });
 });

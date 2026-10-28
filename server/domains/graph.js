@@ -627,22 +627,150 @@ export default function registerGraphActions(registerLensAction) {
   const gphClean = (v, max = 600) => String(v == null ? "" : v).trim().slice(0, max);
   const gphMaps = (s, userId) => { if (!s.maps.has(userId)) s.maps.set(userId, []); return s.maps.get(userId); };
 
+  // Minimal CSV reader for map-import: header row names the columns
+  // (label required, notes optional); quoted fields may carry commas
+  // and doubled quotes. Returns row objects or null without a label
+  // column.
+  function parseCsvNodeRows(text) {
+    const rows = [];
+    let row = [], field = "", inQ = false;
+    const pushField = () => { row.push(field); field = ""; };
+    const pushRow = () => { pushField(); rows.push(row); row = []; };
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQ) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; } else inQ = false;
+        } else field += c;
+      } else if (c === '"') inQ = true;
+      else if (c === ",") pushField();
+      else if (c === "\n") pushRow();
+      else if (c !== "\r") field += c;
+    }
+    if (field.length || row.length) pushRow();
+    const clean = rows.filter((r) => r.some((cell) => String(cell).trim() !== ""));
+    if (!clean.length) return null;
+    const header = clean[0].map((h) => String(h).trim().toLowerCase());
+    const li = header.indexOf("label");
+    if (li < 0) return null;
+    const ni = header.indexOf("notes");
+    return clean.slice(1).map((r) => ({ label: r[li] ?? "", notes: ni >= 0 ? (r[ni] ?? "") : "" }));
+  }
+
+  // Bounded per-map trash for undo: deletes stash what they removed
+  // (a node plus the edges that touched it, or a single edge) and
+  // map-undo-delete restores the most recent entry.
+  function gphTrash(m, entry) {
+    if (!Array.isArray(m.trash)) m.trash = [];
+    m.trash.unshift({ ...entry, at: new Date().toISOString() });
+    if (m.trash.length > 20) m.trash.length = 20;
+  }
+
   registerLensAction("graph", "map-create", (ctx, _a, params = {}) => {
     const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const title = gphClean(params.title, 160);
     if (!title) return { ok: false, error: "map title required" };
     // a fresh map starts with a central node
     const central = { id: gphId("nd"), label: title, notes: "", central: true };
-    const map = { id: gphId("mp"), title, nodes: [central], edges: [], createdAt: new Date().toISOString() };
+    const map = { id: gphId("mp"), title, description: gphClean(params.description, 2000) || "", nodes: [central], edges: [], createdAt: new Date().toISOString() };
     gphMaps(s, gphActor(ctx)).push(map);
     saveGraph();
     return { ok: true, result: { map } };
   });
 
+  // map-update — rename or describe a map (the create/read/delete set
+  // shipped without it, so a map's title was fixed at creation).
+  registerLensAction("graph", "map-update", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = findMap(s, ctx, params.id);
+    if (!m) return { ok: false, error: "map not found" };
+    if (params.title != null) {
+      const t = gphClean(params.title, 160);
+      if (!t) return { ok: false, error: "map title required" };
+      m.title = t;
+    }
+    if (params.description != null) m.description = gphClean(params.description, 2000);
+    m.updatedAt = new Date().toISOString();
+    saveGraph();
+    return { ok: true, result: { map: m } };
+  });
+
+  // map-orphans — nodes with no edges at all: the unlinked-node view
+  // (Obsidian's orphan ritual). Computed from the real edge list.
+  registerLensAction("graph", "map-orphans", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = findMap(s, ctx, params.id || params.mapId);
+    if (!m) return { ok: false, error: "map not found" };
+    const deg = new Map(m.nodes.map((n) => [n.id, 0]));
+    for (const e of m.edges) {
+      if (deg.has(e.from)) deg.set(e.from, deg.get(e.from) + 1);
+      if (deg.has(e.to)) deg.set(e.to, deg.get(e.to) + 1);
+    }
+    const orphans = m.nodes.filter((n) => deg.get(n.id) === 0);
+    return { ok: true, result: { orphans, count: orphans.length, nodeCount: m.nodes.length } };
+  });
+
+  // map-import — build a real map from a CSV of nodes (header:
+  // label,notes) or a JSON document ({nodes:[{label,notes}],
+  // edges:[{fromLabel,toLabel,label,type}]}). Bad rows are reported
+  // per-row and skipped; the good rows still land. Caps keep one file
+  // from swamping the store: 500 nodes, 512KB.
+  registerLensAction("graph", "map-import", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const format = String(params.format || "").toLowerCase();
+    if (!["csv", "json"].includes(format)) return { ok: false, error: "format must be csv or json" };
+    const content = String(params.content == null ? "" : params.content);
+    if (!content.trim()) return { ok: false, error: "import content required" };
+    if (content.length > 512000) return { ok: false, error: "import too large (512KB max)" };
+    let nodeRows = null;
+    let edgeRows = [];
+    if (format === "json") {
+      let doc = null;
+      try { doc = JSON.parse(content); } catch (e) { return { ok: false, error: `invalid JSON: ${e.message}` }; }
+      if (!doc || !Array.isArray(doc.nodes)) return { ok: false, error: 'JSON must be an object with a "nodes" array' };
+      nodeRows = doc.nodes;
+      edgeRows = Array.isArray(doc.edges) ? doc.edges : [];
+    } else {
+      nodeRows = parseCsvNodeRows(content);
+      if (!nodeRows) return { ok: false, error: "CSV needs a header row with a label column" };
+    }
+    if (nodeRows.length > 500) return { ok: false, error: "import is capped at 500 nodes per file" };
+    const errors = [];
+    const map = {
+      id: gphId("mp"),
+      title: gphClean(params.title, 160) || "Imported map",
+      description: gphClean(params.description, 2000) || "",
+      nodes: [], edges: [], createdAt: new Date().toISOString(), importedFrom: format,
+    };
+    const byLabel = new Map();
+    nodeRows.forEach((r, i) => {
+      const rowNo = format === "csv" ? i + 2 : i + 1;
+      const label = gphClean(r && (r.label != null ? r.label : r.name), 240);
+      if (!label) { errors.push({ row: rowNo, error: "node label required" }); return; }
+      const key = label.toLowerCase();
+      if (byLabel.has(key)) { errors.push({ row: rowNo, error: `duplicate label "${label}" — skipped` }); return; }
+      const node = { id: gphId("nd"), label, notes: gphClean(r.notes, 2000) || "", central: map.nodes.length === 0 };
+      map.nodes.push(node);
+      byLabel.set(key, node);
+    });
+    if (!map.nodes.length) return { ok: false, error: "no valid nodes to import", errors };
+    edgeRows.forEach((r, i) => {
+      const from = byLabel.get(String(r && (r.fromLabel != null ? r.fromLabel : r.from) || "").trim().toLowerCase());
+      const to = byLabel.get(String(r && (r.toLabel != null ? r.toLabel : r.to) || "").trim().toLowerCase());
+      if (!from || !to) { errors.push({ row: i + 1, error: "edge references an unknown node label" }); return; }
+      if (from.id === to.id) { errors.push({ row: i + 1, error: "an edge cannot connect a node to itself" }); return; }
+      if (map.edges.some((e) => e.from === from.id && e.to === to.id)) { errors.push({ row: i + 1, error: "duplicate edge — skipped" }); return; }
+      map.edges.push({ id: gphId("ed"), from: from.id, to: to.id, label: gphClean(r.label, 80) || "", type: gphClean(r.type, 40) || "" });
+    });
+    gphMaps(s, gphActor(ctx)).push(map);
+    saveGraph();
+    return { ok: true, result: { map, imported: { nodes: map.nodes.length, edges: map.edges.length }, errors } };
+  });
+
   registerLensAction("graph", "map-list", (ctx, _a, _params = {}) => {
     const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const maps = gphMaps(s, gphActor(ctx)).map((m) => ({
-      id: m.id, title: m.title, nodeCount: m.nodes.length, edgeCount: m.edges.length, createdAt: m.createdAt,
+      id: m.id, title: m.title, description: m.description || "", nodeCount: m.nodes.length, edgeCount: m.edges.length, createdAt: m.createdAt,
     }));
     return { ok: true, result: { maps, count: maps.length } };
   });
@@ -694,6 +822,25 @@ export default function registerGraphActions(registerLensAction) {
     if (!node) return { ok: false, error: "node not found" };
     if (params.label != null) node.label = gphClean(params.label, 240) || node.label;
     if (params.notes != null) node.notes = gphClean(params.notes, 2000);
+    // Typed properties (Bloom-style inspector): params.props merges
+    // into node.props; values must be string/number/boolean; a key set
+    // to null is removed. Capped at 32 keys per call.
+    if (params.props != null) {
+      if (typeof params.props !== "object" || Array.isArray(params.props)) {
+        return { ok: false, error: "props must be an object of typed values" };
+      }
+      const next = { ...(node.props || {}) };
+      for (const [k, v] of Object.entries(params.props).slice(0, 32)) {
+        const key = String(k).slice(0, 64);
+        if (!key) continue;
+        if (v === null) { delete next[key]; continue; }
+        if (!["string", "number", "boolean"].includes(typeof v)) {
+          return { ok: false, error: `property "${key}" must be a string, number or boolean` };
+        }
+        next[key] = typeof v === "string" ? v.slice(0, 500) : v;
+      }
+      node.props = next;
+    }
     saveGraph();
     return { ok: true, result: { node } };
   });
@@ -705,10 +852,12 @@ export default function registerGraphActions(registerLensAction) {
     const node = m.nodes.find((n) => n.id === params.nodeId);
     if (!node) return { ok: false, error: "node not found" };
     if (node.central) return { ok: false, error: "cannot delete the central node" };
+    const removedEdges = m.edges.filter((e) => e.from === params.nodeId || e.to === params.nodeId);
     m.nodes = m.nodes.filter((n) => n.id !== params.nodeId);
     m.edges = m.edges.filter((e) => e.from !== params.nodeId && e.to !== params.nodeId);
+    gphTrash(m, { kind: "node", node: { ...node }, edges: removedEdges });
     saveGraph();
-    return { ok: true, result: { deleted: params.nodeId } };
+    return { ok: true, result: { deleted: params.nodeId, undoable: true } };
   });
 
   registerLensAction("graph", "edge-add", (ctx, _a, params = {}) => {
@@ -720,8 +869,22 @@ export default function registerGraphActions(registerLensAction) {
     if (!from || !to) return { ok: false, error: "both nodes must exist" };
     if (from.id === to.id) return { ok: false, error: "an edge cannot connect a node to itself" };
     if (m.edges.some((e) => e.from === from.id && e.to === to.id)) return { ok: false, error: "edge already exists" };
-    const edge = { id: gphId("ed"), from: from.id, to: to.id, label: gphClean(params.label, 80) || "" };
+    const edge = { id: gphId("ed"), from: from.id, to: to.id, label: gphClean(params.label, 80) || "", type: gphClean(params.type, 40) || "" };
     m.edges.push(edge);
+    saveGraph();
+    return { ok: true, result: { edge } };
+  });
+
+  // edge-update — edit an edge's label or type (add/delete shipped
+  // without it, so a typo'd label meant delete + recreate).
+  registerLensAction("graph", "edge-update", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = findMap(s, ctx, params.mapId);
+    if (!m) return { ok: false, error: "map not found" };
+    const edge = m.edges.find((e) => e.id === params.edgeId);
+    if (!edge) return { ok: false, error: "edge not found" };
+    if (params.label != null) edge.label = gphClean(params.label, 80);
+    if (params.type != null) edge.type = gphClean(params.type, 40);
     saveGraph();
     return { ok: true, result: { edge } };
   });
@@ -732,9 +895,45 @@ export default function registerGraphActions(registerLensAction) {
     if (!m) return { ok: false, error: "map not found" };
     const i = m.edges.findIndex((e) => e.id === params.edgeId);
     if (i < 0) return { ok: false, error: "edge not found" };
-    m.edges.splice(i, 1);
+    const [removed] = m.edges.splice(i, 1);
+    gphTrash(m, { kind: "edge", edge: { ...removed } });
     saveGraph();
-    return { ok: true, result: { deleted: params.edgeId } };
+    return { ok: true, result: { deleted: params.edgeId, undoable: true } };
+  });
+
+  // map-undo-delete — restore the most recent node/edge deletion on
+  // this map. A node comes back with the edges that touched it (when
+  // their other endpoint still exists); an edge comes back only when
+  // both endpoints still exist. The trash entry is consumed only on
+  // success, so a failed restore can be retried after fixing the map.
+  registerLensAction("graph", "map-undo-delete", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = findMap(s, ctx, params.id || params.mapId);
+    if (!m) return { ok: false, error: "map not found" };
+    const t = Array.isArray(m.trash) ? m.trash[0] : null;
+    if (!t) return { ok: false, error: "nothing to undo" };
+    if (t.kind === "edge") {
+      const ids = new Set(m.nodes.map((n) => n.id));
+      if (!ids.has(t.edge.from) || !ids.has(t.edge.to)) {
+        return { ok: false, error: "cannot restore that edge — an endpoint node is gone" };
+      }
+      m.trash.shift();
+      if (!m.edges.some((e) => e.id === t.edge.id)) m.edges.push(t.edge);
+      saveGraph();
+      return { ok: true, result: { restored: "edge", edge: t.edge } };
+    }
+    m.trash.shift();
+    if (!m.nodes.some((n) => n.id === t.node.id)) m.nodes.push(t.node);
+    const ids = new Set(m.nodes.map((n) => n.id));
+    let restoredEdges = 0;
+    for (const e of t.edges || []) {
+      if (ids.has(e.from) && ids.has(e.to) && !m.edges.some((x) => x.id === e.id)) {
+        m.edges.push(e);
+        restoredEdges++;
+      }
+    }
+    saveGraph();
+    return { ok: true, result: { restored: "node", node: t.node, restoredEdges } };
   });
 
   /**

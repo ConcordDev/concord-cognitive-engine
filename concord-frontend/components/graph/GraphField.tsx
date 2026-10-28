@@ -23,7 +23,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Search, X } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
-import { useAuth } from '@/hooks/useAuth';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 import { DTUDetailView } from '@/components/dtu/DTUDetailView';
 import { cn } from '@/lib/utils';
@@ -128,7 +127,6 @@ const RING: Record<string, string> = { hyper: '#2dd4bf', mega: '#a78bfa' };
 const short = (s: string, n = 26) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
 export function GraphField() {
-  const { user } = useAuth();
   const qc = useQueryClient();
   const [centerId, setCenterId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -255,10 +253,7 @@ export function GraphField() {
           </p>
         ) : placed.length === 0 ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-            <p data-testid="graph-empty-greeting" className="font-vault text-3xl text-zinc-100">
-              How it connects{user?.username ? `, ${user.username}` : ''}
-            </p>
-            <p className="mt-3 text-[14px] text-zinc-500">
+            <p className="text-[14px] text-zinc-500">
               The lattice has no nodes yet. Add one to start.
             </p>
           </div>

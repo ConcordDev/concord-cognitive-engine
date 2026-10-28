@@ -1,191 +1,46 @@
-# Graph Lens — Capability Map (Frontend Rebuild Program, Wave 3)
+# Graph Lens — Capability Map (three-column, LENS REWORK format)
 
-> **Re-verified 2026-10-28 (HANDOFF-3 Workstream B, batch L3).** Every
-> row re-checked against main 31ac4719. State since the Wave 3 edition:
+> Reworked 2026-10-28 (PR #1706 rework). Competitor frame per the
+> Research inventory filed 2026-10-28 (Obsidian Graph View on top,
+> Kumu for import/export, Neo4j Bloom for inspector/analytics) and the
+> rework handoff's 13-flow acceptance list. New/changed rows are
+> marked "(this rework)" and are behaviour-tested in this PR; per the
+> Concord Standard they count as closed only on Product Review 2's
+> live pass / re-review, not on this document's say-so.
 >
-> - `server/domains/graph.js` now registers **28 macros** (the 27 below
->   plus `map-merge-nodes`, the 2026-07-16 closure of the deferred
->   merge item) — and **all 28 are surfaced** in the frontend. The only
->   by-design client-preferred row is `pathFind`: the server macro
->   stays registered, the UI uses the strictly better client-side BFS
->   pathfinder with live highlighting (Wave 3 classification, still
->   true).
-> - The Wave 3 wiring fixes live on in their new homes after the page
->   refactor: the analytics trio (`nodeAnalysis` / `clusterDetect` /
->   `graphMetrics`) is called against the real loaded graph from
->   `GraphBloomCanvas.tsx`; `MindMapBuilder.tsx` carries the
->   Cross-links section (`edge-add`/`edge-delete`) and the
->   `graph-dashboard` header stat; `GraphParityPanel.tsx` carries the
->   Merge Nodes tab over `map-merge-nodes`.
-> - `app/lenses/graph/page.tsx` is a 107-line perspective shell
->   (field | explore | maps | mindmap | genome | catalog + More). No
->   unreferenced components in `components/graph/`.
-> - The `docs/lens-specs/graph.md` backlog (local graph, saved filters,
->   group color rules, timeline scrubber, bidirectional DTU sync,
->   auto-layouts, export as image/SVG) is fully shipped.
-> - Server suites verified locally: graph-algorithms 9/9,
->   graph-domain-parity 18/18, graph-mindmap-domain-parity 8/8.
->   `graph-routes-not-shadowed` imports express — Mac-run.
-> - This pass adds the concept's serif greeting ("How it connects,
->   Ramaj", `docs/lens-northstar/16-graph-northstar-concept.jpg`) to
->   GraphField's empty-lattice state, addressed to the signed-in user,
->   with a new vitest (`tests/graph-field-empty.test.tsx`). The
->   concept's "Find a node…" search and "+ Add node" already exist in
->   GraphField over real endpoints.
->
-> **2026 competitor delta (Obsidian graph view / Neo4j Bloom):**
-> force-directed lattice ✓, local/neighborhood graph ✓ (`local-graph`
-> + field centering), node search ✓, pathfinding ✓, clustering ✓
-> (connected components server-side + k-centroid coloring client-side),
-> saved filters ✓ (`filter-*`, the honest equivalent of Bloom's saved
-> searches), group color rules ✓, timeline ✓, export ✓. Concord-native
-> ahead: the graph IS the DTU lattice (provenance edges, merge with
-> lineage preserved) and mind maps sync back to DTUs. Out of scope,
-> with reason: a Cypher query language (a parser product of its own;
-> saved filters cover the use case), Bloom-style enterprise scene
-> persistence (maps + saved filters cover it).
+> Backend inventory: `server/domains/graph.js` now registers **34
+> macros** (28 before this rework + map-update, edge-update,
+> map-import, map-orphans, map-undo-delete, and node-update's typed
+> properties). Maps are per-user STATE-backed; heavy analytics
+> (clusterDetect, graphMetrics, layout) run server-side, off the
+> browser's main thread by construction.
 
-> Derived, not asserted. Every number below has a reproduction command; every
-> classification is backed by a grep or a full read of the file it's about.
+| Feature (Obsidian / Kumu / Bloom) | 1. Have, and works live | 2. Have in backend, not surfaced or broken | 3. Missing |
+|---|---|---|---|
+| Create a map, then rename / describe it | **Yes** — `map-update` + inline editor in the Mind Map Builder (this rework) | | |
+| Add nodes and edges; edit an edge's label AND type, persisted | **Yes** — `edge-update`; `edge-add` takes a type; edges render their type chip (this rework) | | |
+| Typed node properties (Bloom inspector) | **Yes** — `node-update` props merge (string/number/boolean, null removes a key) + the per-node Properties editor (this rework) | | |
+| Import nodes/edges (Kumu) | **Yes** — `map-import`: CSV (label,notes) and JSON (nodes + edges by label), per-row errors reported and shown, 500-node / 512KB caps (this rework) | | XLSX/spreadsheet-file import |
+| Orphan / unlinked-node view (Obsidian) | **Yes** — `map-orphans` (computed from the real edge list) + the builder's Unlinked panel (this rework) | | |
+| Undo a node/edge deletion | **Yes** — deletes stash into a bounded per-map trash; `map-undo-delete` restores a node with its edges, an edge when both endpoints live (this rework) | | |
+| Local graph centred on a node, depth slider | **Yes** — `local-graph` + the field/explore views (pre-existing, verified in L3) | | |
+| Search a node and centre on it | **Yes** — field search + recenter (pre-existing) | | |
+| Saved filters — save, list, re-apply, delete | **Yes** — `filter-save/list/apply/delete` wired in the parity panel (pre-existing) | | |
+| Colour group rules | **Yes** — `group-rules-set/get` wired (pre-existing) | | |
+| Cluster detection + metrics with progress/timeout path | **Yes** — `clusterDetect` / `graphMetrics` / `map-metrics` run server-side (no main-thread blocking); the panels show busy state while they run (pre-existing wiring; server-side execution is this lens's answer to the worker requirement) | | |
+| Merge two nodes, lineage kept | **Yes** — `map-merge-nodes`: edges re-pointed and deduped, losing node's notes + mergedFrom provenance recorded on the survivor (pre-existing, server-verified) | | |
+| Export the view | **Yes** — `export-view` produces real SVG + JSON server-side; PNG added as a client raster of that same SVG (this rework) | | |
+| Path between two nodes | **Yes** — `pathFind` + the builder's "How are these connected?" (pre-existing) | | |
+| Save a map as a DTU / draft it in Thread | **Yes** — the map report menu's read-back-verified Keep chain (pre-existing) | | |
+| Physics controls (forces, arrows, label toggles) | | **Present in the field/explore views; persistence of view settings across reload is not proven** — Product's live pass settles this row | |
+| Sharing / collaborating on a map | | **Backend boundary, not a UI gap** — maps live in the owner's STATE with no ACL; cross-account access is an access-model change (NEEDS-RAMAJ), not built here | |
+| Real-time co-editing (Kumu's known weakness too) | | | **Missing** |
+| Presentations / published views (Kumu) | | | **Missing** |
 
-## Backend surface
+**Counts: 19 rows mapped — 15 have-and-works (6 of them added by this
+rework), 2 have-in-backend-unsurfaced-or-unproven, 2 missing.**
 
-```
-grep -c 'registerLensAction("graph"' server/domains/graph.js
-```
-→ **27** macros in `server/domains/graph.js`: 4 analysis macros
-(`nodeAnalysis`, `pathFind`, `clusterDetect`, `graphMetrics` — real graph
-algorithms: Brandes' betweenness centrality, BFS closeness, connected-
-components fragmentation, density/diameter/clustering coefficient) plus 23
-"mind map" macros (`map-*`, `node-*`, `edge-*`, `map-metrics`,
-`graph-dashboard`, `local-graph`, `filter-*`, `group-rules-*`, `timeline`,
-`layout`, `sync-to-dtu`, `link-node-dtu`, `export-view`).
-
-**A second, disjoint macro cluster is registered inline in `server.js`**
-(`grep -n 'register("graph"\|registerLensAction("graph"' server/server.js`
-→ 7 hits): `register("graph","query"/"visualData"/"forceGraph", ...)` (the
-`MACROS` registry — real, DTU-graph-backed) and
-`registerLensAction("graph","query"/"cluster"/"analyze"/"merge", ...)` (the
-`LENS_ACTIONS` registry — a SEPARATE generic node/edge sandbox, distinct
-from both the `MACROS` version and from `domains/graph.js`'s macros of
-similar names). `node scripts/lens-unsurfaced.mjs --lens graph` only scans
-`domains/graph.js` and reported `2/27 never referenced` (`edge-add`,
-`graph-dashboard`) — it cannot see this inline cluster at all, so its
-"2 unsurfaced" number understated the real gap.
-
-## Which registry actually answers a call matters here
-
-`runMacro(domain, name, ...)` (used by the `/api/graph/*` REST routes) reads
-**only** `MACROS.get(domain).get(name)` — confirmed by reading `runMacro`'s
-body (`server.js:11678`ish, `const d = MACROS.get(domain); const m =
-d.get(name);`, no `LENS_ACTIONS` fallback). `/api/lens/run` (used by
-`lensRun()` in the frontend) prefers `LENS_ACTIONS` and falls back to
-`MACROS`. So:
-- `apiHelpers.graph.query/visual/force` → `/api/graph/*` → `runMacro` →
-  the **`MACROS`** `graph.query`/`visualData`/`forceGraph` — the REAL,
-  DTU-graph-backed implementations (`GRAPH_INDEX` built from `STATE.dtus`).
-  These are genuinely wired (confirmed: `page.tsx` calls all three via
-  `useQuery`) and power the actual force-directed DTU visualization.
-- The `registerLensAction("graph","query"/"cluster"/"analyze"/"merge", ...)`
-  block is a **completely different, unreachable-by-REST** toolkit — only
-  callable via `lensRun('graph', 'query'|'cluster'|'analyze'|'merge', ...)`,
-  which nothing in the frontend does (confirmed: no `'cluster'`/`'analyze'`/
-  `'merge'` action-name string anywhere in `app/lenses/graph/` or
-  `components/graph/`).
-
-## Classification (before this pass)
-
-1. **`nodeAnalysis`/`clusterDetect`/`graphMetrics` — real, dead-wired.**
-   `page.tsx`'s "Graph Analytics Actions" panel called these via
-   `useRunArtifact('graph').mutate({ id: graphArtifacts[0]?.id, action,
-   params: {} })` against a `useLensData('graph', 'graph-data', ...)`
-   artifact type. **Nothing anywhere creates a `graph-data` artifact** (no
-   creation form; `createEntity` in the same file only makes `'entity'`-
-   type artifacts) — `graphArtifacts[0]?.id` was permanently `undefined`,
-   so all three buttons were permanently disabled in any real deployment.
-   Meanwhile the lens already has a real, live 500-node DTU graph loaded
-   for the main visualization (`apiHelpers.dtus.paginated` + `graph.visual`
-   + `graph.force`) that these exact algorithms could run against.
-2. **`pathFind` — real, dead-wired, AND redundant with a better existing
-   feature.** Same broken artifact-gating as above, but this lens also has
-   a fully-working, real, **client-side** BFS pathfinder (`findPath`,
-   `page.tsx:536`) with click-to-select start/end nodes and live path
-   highlighting on the canvas — strictly superior UX to the disabled
-   button. No fix needed beyond removing the dead duplicate button.
-3. **`edge-add` (confirmed genuinely unsurfaced by the script) /
-   `edge-delete` (not flagged, but equally unreachable) —
-   `MindMapBuilder.tsx`'s `node-add` only ever creates a tree edge
-   (parent→branch); there was no way to add a manual cross-link between two
-   already-placed nodes (Obsidian/XMind's "free edge" concept, which the
-   component's own header comment already claims: "a central topic with
-   branch nodes and **free edges**"), and no way to view or delete any
-   edge on its own.
-4. **`graph-dashboard` (confirmed genuinely unsurfaced) —** a small
-   "maps/nodes/edges across all your mind maps" summary macro with zero
-   caller.
-5. **`registerLensAction("graph","query"/"cluster"/"analyze", ...)`** (the
-   server.js inline block) — genuinely redundant with, respectively: the
-   live node search bar, the client-side k-centroid cluster-coloring view
-   (`assignClusters`, a different but complementary analysis to
-   `clusterDetect`'s connected-components), and the now-fixed
-   `graphMetrics`/`nodeAnalysis`. Not worth building a third UI for.
-6. **`registerLensAction("graph","merge", ...)`** — a real, unique
-   capability (merge two nodes, redirect their edges, dedupe) with no
-   analog anywhere else — but it operates on the SAME ungrounded
-   `graph-data` artifact sandbox as items 1-2, and (unlike those) can't be
-   honestly redirected at the real DTU graph: its mutation
-   (`artifact.data = {...}; saveStateDebounced();`) only persists against a
-   real, saved artifact, and running it as a virtual artifact (no
-   persisted id) would silently discard the "merge" with nothing to show
-   for it — wiring it against the real graph would be a fake success, not
-   a real fix. **Disposition: GENUINELY MISSING, deferred** — a real "merge
-   two DTUs" feature needs backend work this pass didn't do (dedup +
-   lineage transfer touching `STATE.dtus` directly, not the artifact
-   sandbox); documented here rather than faked.
-
-## What changed
-
-- **`concord-frontend/app/lenses/graph/page.tsx`** — `handleGraphAction`
-  rewritten to call `nodeAnalysis`/`clusterDetect`/`graphMetrics` directly
-  via `lensRun('graph', action, { nodes, edges })` against the real,
-  currently-loaded DTU graph (`graphVisualData`/`graphForceData` — already
-  fetched for the visualization) instead of the permanently-empty
-  `graph-data` artifact. `POST /api/lens/run` builds a virtual artifact
-  whose `.data` **is** the input body (confirmed at `server.js:39566`), so
-  no persisted artifact is needed. Removed the redundant, permanently-dead
-  `pathFind` button + its now-unreachable result-render branch (the real
-  capability lives in the Pathfinder panel).
-- **`concord-frontend/components/graph/MindMapBuilder.tsx`** — added a
-  "Cross-links" section (list of all edges with delete + a from/to/label
-  form calling `edge-add`), and a one-line `{maps} maps · {nodes} nodes ·
-  {edges} edges` header stat sourced from `graph-dashboard`.
-
-## Verification
-
-- `server/tests/graph-domain-parity.test.js`,
-  `server/tests/graph-mindmap-domain-parity.test.js` — 26/26 pass
-  unmodified (no backend macro changed; this was a frontend-wiring-only
-  fix).
-
-## Left alone, with reason
-
-- **`GraphParityPanel.tsx` (648 lines)** — read in full; covers ALL of
-  `filter-*`, `group-rules-*`, `timeline`, `layout`, `sync-to-dtu`,
-  `link-node-dtu`, `export-view`, `local-graph` with real `lensRun` calls.
-  No defect found.
-- **`GraphRepos.tsx`** — real, small, no defect found.
-- **`graph.query`/`cluster`/`analyze` (server.js inline)** — left
-  unreferenced by design; redundant with existing real features (see
-  classification item 5).
-- ~~**`graph.merge`** — genuinely missing real wiring~~ **CLOSED (2026-07-16,
-  `b2877e49`)**: new `map-merge-nodes` macro operates on the real persisted
-  map via `findMap`, exactly like every other mutating macro in this file —
-  never the transient `artifact.data` scratch object the old sandbox
-  `graph.merge` used (left completely untouched, so nothing that calls it
-  today is affected). Every edge touching the losing node is re-pointed
-  onto the survivor (never dropped), self-loops from re-pointing are
-  removed, and duplicate edges are deduplicated using the same directed
-  `(from,to)` uniqueness rule `edge-add` already enforces. The losing
-  node's own data is folded into the survivor with recorded provenance,
-  never silently discarded. New destructive-confirm "Merge Nodes" tab in
-  `GraphParityPanel.tsx`.
+Deliberately NOT built (stated, not faked): map sharing (access-model
+change, NEEDS-RAMAJ); a Web Worker for layout/metrics (the compute
+already runs server-side — a worker would duplicate it); XLSX import
+(CSV/JSON cover the acceptance flows).
