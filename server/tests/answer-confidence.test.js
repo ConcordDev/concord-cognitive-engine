@@ -5,7 +5,7 @@
 import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 
-const { answerConfidence, LOW_CONFIDENCE_REASON } = await import("../lib/answer-confidence.js");
+const { answerConfidence, LOW_CONFIDENCE_REASON, SMALL_MODEL_FACT_GUARD, smallModelPromptSuffix } = await import("../lib/answer-confidence.js");
 const { getLocalUnifiedModel } = await import("../lib/brain-config.js");
 
 const LOW = { answerConfidence: "low", answerConfidenceReason: LOW_CONFIDENCE_REASON };
@@ -77,6 +77,38 @@ describe("answerConfidence — backup-model labelling", () => {
   it("no source and no provider -> null", () => {
     assert.equal(answerConfidence({ model: SMALL }), null);
     assert.equal(answerConfidence(), null);
+  });
+});
+
+describe("smallModelPromptSuffix — factual guard for backup-model calls", () => {
+  it("the called model is the small local model -> guard suffix", () => {
+    assert.equal(smallModelPromptSuffix(SMALL), `\n\n${SMALL_MODEL_FACT_GUARD}`);
+  });
+
+  it("tag-less and differently-cased names still match", () => {
+    assert.equal(smallModelPromptSuffix("concord-utility-2b"), `\n\n${SMALL_MODEL_FACT_GUARD}`);
+    assert.equal(smallModelPromptSuffix("Concord-Utility-2B:LATEST"), `\n\n${SMALL_MODEL_FACT_GUARD}`);
+  });
+
+  it("a pod-served model -> no suffix", () => {
+    assert.equal(smallModelPromptSuffix("qwen3:30b"), "");
+  });
+
+  it("missing/unknown model -> no suffix (never guessed at)", () => {
+    assert.equal(smallModelPromptSuffix(null), "");
+    assert.equal(smallModelPromptSuffix(""), "");
+    assert.equal(smallModelPromptSuffix("unknown"), "");
+  });
+
+  it("BRAIN_LOCAL_UNIFIED_MODEL unset -> no suffix", () => {
+    delete process.env.BRAIN_LOCAL_UNIFIED_MODEL;
+    assert.equal(smallModelPromptSuffix(SMALL), "");
+  });
+
+  it("the guard text demands explicit quantities and admits uncertainty", () => {
+    assert.match(SMALL_MODEL_FACT_GUARD, /Only state numbers/);
+    assert.match(SMALL_MODEL_FACT_GUARD, /explicitly/);
+    assert.match(SMALL_MODEL_FACT_GUARD, /not sure/);
   });
 });
 

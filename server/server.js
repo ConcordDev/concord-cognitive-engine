@@ -2000,7 +2000,7 @@ async function _dtuSidecarListCall(args) {
   return dtuSidecar.list(args);
 }
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, getActiveBrainConfig, getSystemStatus, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish, resolveBrainModel } from "./lib/brain-config.js";
-import { answerConfidence } from "./lib/answer-confidence.js";
+import { answerConfidence, smallModelPromptSuffix } from "./lib/answer-confidence.js";
 import { authenticatedBrainStatus, brainStatusForViewer, denyAnonymousBrainRead, mountBrainStatusRoute } from "./lib/brain-status-public.js";
 import { installOllamaRequestGuard } from "./lib/ollama-request-guard.js";
 // Every brain request: num_ctx pinned per model (so ollama loads each model
@@ -30319,7 +30319,7 @@ ${_operatorV6Block}` : "";
     if (_chatTodayLine) messages = [{ role: "system", content: _chatTodayLine }, ...messages];
     if (_conversationalChat) messages = withChatToneReminder(messages);
     const _llmSpan = startSpan("llm.chat", { mode, sessionId, promptLength: prompt.length });
-    _selfContSystem = system + _selfContBlock;
+    _selfContSystem = system + _selfContBlock + smallModelPromptSuffix(brainModel);
     const r = await ctx.llm.chat({
       system: _selfContSystem, messages, temperature: _llmTemp, maxTokens: _selfContFirstTokens(_llmMaxTokens),
       dtuRefs: _dtuTitles,
@@ -30405,7 +30405,7 @@ ${_operatorV6Block}` : "";
         voice_exemplars: _voiceExemplarsForPrompt(),
         moodColor: _chatMoodColor,
       }) + _toolSystemPrompt + _lensHintSuffix + _currentTurnAnchor, mode);
-      _selfContSystem = _directSystem + _selfContBlock;
+      _selfContSystem = _directSystem + _selfContBlock + smallModelPromptSuffix(brainModel);
       const _directMessages = [
         { role: "system", content: _selfContSystem },
         ...(_chatMemory.text ? [{ role: "system", content: _chatMemory.text }] : []),
@@ -57872,7 +57872,9 @@ function initChatSocketHandlers(io) {
                 lensRecommendation = detectLensRecommendation(prompt, streamResult.content, lens);
               } catch (_e) { logger.debug("server", "silent catch", { error: _e?.message }); }
 
-              // Emit complete with full response
+              // Emit complete with full response. The low-confidence tag rides
+              // the payload itself (same call that tags the saved session
+              // message above) so the rail can label the reply it renders.
               socket.emit("chat:complete", {
                 sessionId,
                 response: streamResult.content,
@@ -57880,6 +57882,7 @@ function initChatSocketHandlers(io) {
                 sources: [],
                 dtuId: null,
                 streamed: true,
+                ...(answerConfidence({ source: "ollama-stream", model: streamResult.model }) || {}),
               });
 
               saveStateDebounced();
@@ -58000,13 +58003,18 @@ function initChatSocketHandlers(io) {
           lensRecommendation = detectLensRecommendation(prompt, result?.reply || "", lens);
         } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
 
-        // Emit complete
+        // Emit complete. chat.respond already tags backup-model answers at
+        // the top level of its result; forward the tag so this path labels
+        // the reply the same way the streaming path does.
         socket.emit("chat:complete", {
           sessionId,
           response: result?.reply || result?.content || "No response generated.",
           lensRecommendation,
           sources: result?.meta?.sources || [],
           dtuId: result?.meta?.dtuId || null,
+          ...(result?.answerConfidence
+            ? { answerConfidence: result.answerConfidence, answerConfidenceReason: result.answerConfidenceReason }
+            : {}),
         });
 
         ack?.({ ok: true });

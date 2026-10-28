@@ -40,3 +40,26 @@ export function answerConfidence({ source, provider, model } = {}) {
   if (_normalizeModelTag(answered) !== _normalizeModelTag(small)) return null;
   return { answerConfidence: "low", answerConfidenceReason: LOW_CONFIDENCE_REASON };
 }
+
+// One-line factual guard appended to the system prompt when the small local
+// backup model is the one about to answer: small models invent plausible
+// numbers, so the prompt tells it to only state quantities it is sure of and
+// to give the quantity explicitly. Exported as a constant so the prompt text
+// is testable and identical on every path that uses it.
+export const SMALL_MODEL_FACT_GUARD =
+  "You are the small local backup model answering while the main brain is offline. Only state numbers, dates or quantities you are sure of, and always give the quantity explicitly (write \"3 items\", not \"a few\"). If you are not sure of a number, say you are not sure instead of estimating.";
+
+/**
+ * The prompt suffix for a call that `model` will answer: the fact guard when
+ * `model` is the small local backup model, otherwise an empty string.
+ * @param {string|null|undefined} model
+ * @returns {string} "" or "\n\n" + SMALL_MODEL_FACT_GUARD
+ */
+export function smallModelPromptSuffix(model) {
+  const small = getLocalUnifiedModel();
+  if (!small) return "";
+  const called = String(model ?? "").trim();
+  if (!called || UNKNOWN_MODELS.has(called.toLowerCase())) return "";
+  if (_normalizeModelTag(called) !== _normalizeModelTag(small)) return "";
+  return `\n\n${SMALL_MODEL_FACT_GUARD}`;
+}
