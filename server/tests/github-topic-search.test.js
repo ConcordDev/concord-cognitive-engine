@@ -170,14 +170,7 @@ function walk(d, out = []) {
 
 // Phase 8a-2 (second half, alphabetically by path) is still to be converted; this list only
 // shrinks. When it is empty the assertion below becomes "no component calls it at all".
-const PENDING_8A2 = new Set([
-  "ops/OpsRepos.tsx", "platform/PlatformRepos.tsx", "productivity/ProductivityRepos.tsx", "projects/ProjectMgmtRepos.tsx",
-  "queue/QueueRepos.tsx", "questmarket/BountiesFeed.tsx", "robotics/RoboticsRepos.tsx", "sandbox/SandboxRepos.tsx",
-  "schema/SchemaRepos.tsx", "sim/SimRepos.tsx", "sponsorship/SponsorRepos.tsx", "srs/SrsRepos.tsx",
-  "studio/StudioRepos.tsx", "sub-worlds/MetaverseRepos.tsx", "sync/SyncRepos.tsx", "telecommunications/TelcoRepos.tsx",
-  "temporal/TemporalRepos.tsx", "tools/ToolsRepos.tsx", "transfer/TransferRepos.tsx", "ux-suite/UxRepos.tsx",
-  "voice/VoiceRepos.tsx", "whiteboard/WhiteboardRepos.tsx",
-]);
+const PENDING_8A2 = new Set([]);
 
 test("static: converted components no longer fetch GitHub topic search from the browser", () => {
   const offenders = walk(COMPONENTS)
