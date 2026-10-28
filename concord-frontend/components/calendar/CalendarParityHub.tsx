@@ -123,6 +123,7 @@ function SyncPanel() {
   const [err, setErr] = useState<string | null>(null);
   const [form, setForm] = useState({ provider: 'ics', label: '', icsUrl: '', direction: 'two-way' });
   const [pushOpenId, setPushOpenId] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
   const [pushForm, setPushForm] = useState({ title: '', start: '', end: '' });
   const [pushBusy, setPushBusy] = useState(false);
   const [pushResult, setPushResult] = useState<{ id: string; ok: boolean; msg: string } | null>(null);
@@ -136,15 +137,18 @@ function SyncPanel() {
 
   async function connect() {
     setErr(null);
+    setNote(null);
     if (!form.label.trim()) { setErr('Account label required.'); return; }
     if (!/^https?:\/\//i.test(form.icsUrl.trim())) { setErr('A valid https iCal feed URL is required.'); return; }
     setBusy('connect');
-    const r = await lensRun('calendar', 'accounts-connect', {
+    const r = await lensRun<{ validatedEventCount?: number }>('calendar', 'accounts-connect', {
       provider: form.provider, label: form.label.trim(),
       icsUrl: form.icsUrl.trim(), direction: form.direction,
     });
     setBusy(null);
     if (r.data?.ok) {
+      const n = r.data.result?.validatedEventCount;
+      setNote(`Connected — the feed was checked first and holds ${n ?? 0} event${n === 1 ? '' : 's'}. Sync pulls them into a dedicated calendar.`);
       setForm({ provider: 'ics', label: '', icsUrl: '', direction: 'two-way' });
       await refresh();
     } else { setErr(r.data?.error || 'Could not connect account.'); }
@@ -160,6 +164,12 @@ function SyncPanel() {
     setBusy(id);
     await lensRun('calendar', 'accounts-disconnect', { id });
     setBusy(null);
+    // F14: disconnect clears the panel's residual state — a stale sync
+    // error or push result for a gone account must not linger.
+    setErr(null);
+    setNote(null);
+    setPushResult((p) => (p && p.id === id ? null : p));
+    setPushOpenId((p) => (p === id ? null : p));
     await refresh();
   }
 
@@ -194,6 +204,7 @@ function SyncPanel() {
         Connect an external Google, Outlook or Apple calendar by its public/secret
         iCal feed URL. Sync pulls live events into a dedicated calendar.
       </p>
+      {note && <p className="text-xs text-emerald-300">{note}</p>}
       <div className="bg-lattice-elevated/70 border border-lattice-border rounded-lg p-3 grid sm:grid-cols-2 gap-2">
         <input value={form.label} onChange={e => setForm({ ...form, label: e.target.value })}
           placeholder="Account label (e.g. Work Google)"
