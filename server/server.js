@@ -53053,21 +53053,34 @@ registerUniversalLensActions();
   // /api/lens/run builds virtualArtifact={id:null}; without a resolvable id these
   // handlers used to return fabricated ok:true (shareUrl …/null, rate avg 5).
   // Require a concrete artifact id (Map lookup or the live object from lens.run).
-  function _requirePersistedLensArtifact(artifact, params = {}) {
+  // IDOR guard: mode "write" = lens.update's rule (owner/admin, or social-domain /
+  // anon-owned artifact); mode "read" = _lensArtifactVisible (social engagement
+  // and duplicate-source). Refusals look like a missing artifact so private ids
+  // are not confirmed to exist.
+  function _requirePersistedLensArtifact(ctx, artifact, params = {}, mode = "write") {
     const paramId = params?.id || params?.artifactId || null;
+    let found = null;
     if (paramId && STATE.lensArtifacts?.has?.(paramId)) {
-      return { ok: true, artifact: STATE.lensArtifacts.get(paramId) };
+      found = STATE.lensArtifacts.get(paramId);
+    } else if (artifact?.id && typeof artifact.id === "string" && artifact.id !== "null") {
+      found = STATE.lensArtifacts?.get?.(artifact.id) || artifact;
     }
-    if (artifact?.id && typeof artifact.id === "string" && artifact.id !== "null") {
-      const stored = STATE.lensArtifacts?.get?.(artifact.id);
-      return { ok: true, artifact: stored || artifact };
-    }
-    return { ok: false, error: "artifact id required" };
+    if (!found) return { ok: false, error: "artifact id required" };
+    const allowed = mode === "read"
+      ? _lensArtifactVisible(ctx, found)
+      // Write = owner or admin. Social-domain artifacts are NOT exempt here (unlike
+      // lens.update's content edits): save/publish/archive/lock/pin/... over someone
+      // else's forum or marketplace post is takeover, not collaboration. Unowned
+      // (anon/system) artifacts keep lens.update's open rule.
+      : (!found.ownerId || found.ownerId === "anon"
+          || _lensIsOwnerActor(ctx, found) || _lensIsAdminActor(ctx));
+    if (!allowed) return { ok: false, error: "artifact not found" };
+    return { ok: true, artifact: found };
   }
 
   const COMMON_ACTIONS = {
     save: (ctx, artifact, params) => {
-      const resolved = _requirePersistedLensArtifact(artifact, params);
+      const resolved = _requirePersistedLensArtifact(ctx, artifact, params, "write");
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
       if (params && typeof params === "object") {
@@ -53080,7 +53093,7 @@ registerUniversalLensActions();
       return { ok: true, saved: true, version: artifact.version };
     },
     publish: (ctx, artifact, params) => {
-      const resolved = _requirePersistedLensArtifact(artifact, params);
+      const resolved = _requirePersistedLensArtifact(ctx, artifact, params, "write");
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
       artifact.meta = { ...artifact.meta, status: "published", visibility: "public" };
@@ -53089,7 +53102,7 @@ registerUniversalLensActions();
       return { ok: true, published: true, visibility: "public" };
     },
     archive: (ctx, artifact, params) => {
-      const resolved = _requirePersistedLensArtifact(artifact, params);
+      const resolved = _requirePersistedLensArtifact(ctx, artifact, params, "write");
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
       artifact.meta = { ...artifact.meta, status: "archived" };
@@ -53099,20 +53112,26 @@ registerUniversalLensActions();
     },
     duplicate: (ctx, artifact, params) => {
       // INC-SWEEP research F6 — reject empty/virtual source (no "Copy of undefined").
-      const resolved = _requirePersistedLensArtifact(artifact, params);
+      const resolved = _requirePersistedLensArtifact(ctx, artifact, params, "read");
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
       if (!artifact.title && !artifact.data) {
         return { ok: false, error: "artifact id required" };
       }
       const copy = { ...structuredClone(artifact), id: uid("lart"), title: `Copy of ${artifact.title || "untitled"}`, createdAt: nowISO(), updatedAt: nowISO(), version: 1 };
+      // The copy belongs to the caller, never the source owner; starts private.
+      const callerId = ctx?.actor?.userId || "anon";
+      copy.ownerId = callerId;
+      copy.createdBy = callerId;
+      if (copy.createdByUser !== undefined) copy.createdByUser = callerId;
+      copy.meta = { ...copy.meta, visibility: "private", ...(copy.meta?.status === "published" ? { status: "draft" } : {}) };
       STATE.lensArtifacts.set(copy.id, copy);
       _lensDomainIndexAdd(copy.domain, copy.id);
       saveStateDebounced();
       return { ok: true, artifact: copy };
     },
     pin: (ctx, artifact, params) => {
-      const resolved = _requirePersistedLensArtifact(artifact, params);
+      const resolved = _requirePersistedLensArtifact(ctx, artifact, params, "write");
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
       artifact.meta = { ...artifact.meta, pinned: !artifact.meta?.pinned };
@@ -53121,7 +53140,7 @@ registerUniversalLensActions();
       return { ok: true, pinned: artifact.meta.pinned };
     },
     star: (ctx, artifact, params) => {
-      const resolved = _requirePersistedLensArtifact(artifact, params);
+      const resolved = _requirePersistedLensArtifact(ctx, artifact, params, "write");
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
       artifact.meta = { ...artifact.meta, starred: !artifact.meta?.starred };
@@ -53130,7 +53149,7 @@ registerUniversalLensActions();
       return { ok: true, starred: artifact.meta.starred };
     },
     lock: (ctx, artifact, params) => {
-      const resolved = _requirePersistedLensArtifact(artifact, params);
+      const resolved = _requirePersistedLensArtifact(ctx, artifact, params, "write");
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
       artifact.meta = { ...artifact.meta, locked: !artifact.meta?.locked };
@@ -53139,7 +53158,7 @@ registerUniversalLensActions();
       return { ok: true, locked: artifact.meta.locked };
     },
     like: (ctx, artifact, params) => {
-      const resolved = _requirePersistedLensArtifact(artifact, params);
+      const resolved = _requirePersistedLensArtifact(ctx, artifact, params, "read");
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
       if (!artifact.data) artifact.data = {};
@@ -53149,7 +53168,7 @@ registerUniversalLensActions();
       return { ok: true, likes: artifact.data.likes };
     },
     dislike: (ctx, artifact, params) => {
-      const resolved = _requirePersistedLensArtifact(artifact, params);
+      const resolved = _requirePersistedLensArtifact(ctx, artifact, params, "read");
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
       if (!artifact.data) artifact.data = {};
@@ -53159,7 +53178,7 @@ registerUniversalLensActions();
       return { ok: true, dislikes: artifact.data.dislikes };
     },
     comment: (ctx, artifact, params) => {
-      const resolved = _requirePersistedLensArtifact(artifact, params);
+      const resolved = _requirePersistedLensArtifact(ctx, artifact, params, "read");
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
       // INC-SWEEP research F5 — blank comment is a validation refusal, not a save.
@@ -53180,7 +53199,7 @@ registerUniversalLensActions();
       return { ok: true, comment, totalComments: artifact.data.comments.length };
     },
     share: (ctx, artifact, params) => {
-      const resolved = _requirePersistedLensArtifact(artifact, params);
+      const resolved = _requirePersistedLensArtifact(ctx, artifact, params, "read");
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
       artifact.data = { ...artifact.data, shares: (artifact.data?.shares || 0) + 1 };
@@ -53189,7 +53208,7 @@ registerUniversalLensActions();
       return { ok: true, shares: artifact.data.shares, shareUrl: `/lenses/${artifact.domain}/${artifact.id}` };
     },
     repost: (ctx, artifact, params) => {
-      const resolved = _requirePersistedLensArtifact(artifact, params);
+      const resolved = _requirePersistedLensArtifact(ctx, artifact, params, "read");
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
       artifact.data = { ...artifact.data, reposts: (artifact.data?.reposts || 0) + 1 };
@@ -53198,7 +53217,7 @@ registerUniversalLensActions();
       return { ok: true, reposts: artifact.data.reposts };
     },
     bookmark: (ctx, artifact, params) => {
-      const resolved = _requirePersistedLensArtifact(artifact, params);
+      const resolved = _requirePersistedLensArtifact(ctx, artifact, params, "read");
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
       artifact.meta = { ...artifact.meta, bookmarked: !artifact.meta?.bookmarked };
@@ -53207,7 +53226,7 @@ registerUniversalLensActions();
       return { ok: true, bookmarked: artifact.meta.bookmarked };
     },
     vote: (ctx, artifact, params) => {
-      const resolved = _requirePersistedLensArtifact(artifact, params);
+      const resolved = _requirePersistedLensArtifact(ctx, artifact, params, "read");
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
       if (!artifact.data) artifact.data = {};
@@ -53219,7 +53238,7 @@ registerUniversalLensActions();
       return { ok: true, score: artifact.data.score, voteCount: artifact.data.voteCount };
     },
     rate: (ctx, artifact, params) => {
-      const resolved = _requirePersistedLensArtifact(artifact, params);
+      const resolved = _requirePersistedLensArtifact(ctx, artifact, params, "read");
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
       // INC-SWEEP research F4 — never default a fabricated 5-star rating.
@@ -53240,7 +53259,7 @@ registerUniversalLensActions();
       return { ok: true, averageRating: artifact.data.averageRating, totalRatings: artifact.data.ratings.length };
     },
     tag: (ctx, artifact, params) => {
-      const resolved = _requirePersistedLensArtifact(artifact, params);
+      const resolved = _requirePersistedLensArtifact(ctx, artifact, params, "write");
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
       const newTags = Array.isArray(params?.tags) ? params.tags : [params?.tag].filter(Boolean);
@@ -53250,7 +53269,7 @@ registerUniversalLensActions();
       return { ok: true, tags: artifact.meta.tags };
     },
     assign: (ctx, artifact, params) => {
-      const resolved = _requirePersistedLensArtifact(artifact, params);
+      const resolved = _requirePersistedLensArtifact(ctx, artifact, params, "write");
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
       // INC-SWEEP research F3 — assignee on the wire is a public label.
@@ -53264,7 +53283,7 @@ registerUniversalLensActions();
       return { ok: true, assignee: artifact.data.assignee };
     },
     status: (ctx, artifact, params) => {
-      const resolved = _requirePersistedLensArtifact(artifact, params);
+      const resolved = _requirePersistedLensArtifact(ctx, artifact, params, "write");
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
       const newStatus = params?.status || params?.state;
@@ -53276,7 +53295,7 @@ registerUniversalLensActions();
       return { ok: true, status: artifact.meta?.status };
     },
     priority: (ctx, artifact, params) => {
-      const resolved = _requirePersistedLensArtifact(artifact, params);
+      const resolved = _requirePersistedLensArtifact(ctx, artifact, params, "write");
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
       if (params?.priority === undefined || params?.priority === null || params?.priority === "") {
@@ -53288,7 +53307,7 @@ registerUniversalLensActions();
       return { ok: true, priority: artifact.data.priority };
     },
     move: (ctx, artifact, params) => {
-      const resolved = _requirePersistedLensArtifact(artifact, params);
+      const resolved = _requirePersistedLensArtifact(ctx, artifact, params, "write");
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
       const newColumn = params?.column || params?.status || params?.to;
