@@ -219,7 +219,13 @@ export default function registerSrsActions(registerLensAction) {
     const arr = srsList(s.decks, userId);
     const i = arr.findIndex((d) => d.id === params.id);
     if (i < 0) return { ok: false, error: "deck not found" };
-    arr.splice(i, 1);
+    // S2: subdecks move up to the deleted deck's parent — orphaning
+    // them (a parentId pointing nowhere) would drop them from the
+    // deck tree entirely, a silent loss worse than the delete itself.
+    const [removed] = arr.splice(i, 1);
+    for (const d of arr) {
+      if (d.parentId === params.id) d.parentId = removed.parentId || null;
+    }
     s.cards.set(userId, srsList(s.cards, userId).filter((c) => c.deckId !== params.id));
     saveSrs();
     return { ok: true, result: { deleted: params.id } };
@@ -624,9 +630,17 @@ export default function registerSrsActions(registerLensAction) {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const deck = srsList(s.decks, srsActor(ctx)).find((d) => d.id === params.deckId);
     if (!deck) return { ok: false, error: "deck not found" };
+    // S2: rename rides deck options (the review's done-state: a name
+    // field in deck options). Validated like deck-create; an absent
+    // name leaves the deck's name untouched.
+    if (params.name !== undefined) {
+      const name = srsClean(params.name, 120);
+      if (!name) return { ok: false, error: "deck name required" };
+      deck.name = name;
+    }
     deck.options = normaliseOptions({ ...(deck.options || {}), ...(params.options || {}) });
     saveSrs();
-    return { ok: true, result: { deckId: deck.id, options: deck.options } };
+    return { ok: true, result: { deckId: deck.id, name: deck.name, options: deck.options } };
   });
 
   // ─── [M] Sub-decks / deck hierarchy + filtered decks ──────────────
