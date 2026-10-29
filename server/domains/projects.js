@@ -101,6 +101,59 @@ export default function registerProjectsActions(registerLensAction) {
   }
 
   // ── Projects ────────────────────────────────────────────────────────
+  // S13 (F20): starter templates + the sample project. A starter is a
+  // small set of real issues seeded in the same call that creates the
+  // project, so a first project already demonstrates the loop
+  // (backlog → in progress → done) instead of opening empty.
+  const PJ_STARTERS = {
+    launch: [
+      { title: "Decide what success looks like", status: "done", points: 1 },
+      { title: "Build the launch checklist", status: "in_progress", points: 3 },
+      { title: "Write the launch announcement", status: "todo", points: 2 },
+      { title: "Publish day: ship it", status: "backlog", points: 1 },
+    ],
+    triage: [
+      { title: "Set up the triage queue", status: "done", points: 1 },
+      { title: "Review the oldest open bug", status: "in_progress", points: 2 },
+      { title: "Label the incoming issues", status: "todo", points: 1 },
+      { title: "Write the escalation rule", status: "backlog", points: 2 },
+    ],
+    content: [
+      { title: "Pick the series theme", status: "done", points: 1 },
+      { title: "Draft episode one", status: "in_progress", points: 3 },
+      { title: "Record episode one", status: "todo", points: 2 },
+      { title: "Publish and share episode one", status: "backlog", points: 1 },
+    ],
+  };
+  const PJ_SAMPLE_TASKS = [
+    { title: "Start here: this is an issue — click it to open the detail", status: "todo", points: 1 },
+    { title: "Drag issues across the Board to change their status", status: "in_progress", points: 1 },
+    { title: "A finished issue lands here, and goals count it automatically", status: "done", points: 1 },
+    { title: "Everything here is yours: edit it, move it, or delete the whole sample", status: "backlog", points: 0 },
+  ];
+  function pjSeedTasks(s, userId, project, defs) {
+    const arr = pjListB(s.tasks, userId);
+    const seeded = [];
+    for (const d of defs) {
+      project.seq += 1;
+      const task = {
+        id: pjId("tsk"), projectId: project.id,
+        ref: `${project.key}-${project.seq}`,
+        title: d.title, description: null, type: "task",
+        status: d.status || "backlog", priority: "none",
+        assigneeId: null, sprintId: null, milestoneId: null, parentId: null,
+        labels: [], customFields: {}, points: d.points || 0,
+        startDate: null, dueDate: null,
+        rank: arr.filter((x) => x.projectId === project.id).length,
+        createdAt: pjNow(), updatedAt: pjNow(),
+        completedAt: d.status === "done" ? pjNow() : null,
+      };
+      arr.push(task);
+      seeded.push(task);
+    }
+    return seeded;
+  }
+
   registerLensAction("projects", "project-create", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
@@ -156,8 +209,38 @@ export default function registerProjectsActions(registerLensAction) {
       createdAt: pjNow(), updatedAt: pjNow(),
     };
     pjListB(s.projects, pjAid(ctx)).push(project);
+    const starter = params.template ? PJ_STARTERS[String(params.template)] : null;
+    const seeded = starter ? pjSeedTasks(s, userId, project, starter) : [];
     savePjState();
-    return { ok: true, result: { project } };
+    return { ok: true, result: { project, seeded: seeded.length } };
+  });
+
+  // The worked example for the first-run empty state (F20): created
+  // once per account, clearly labelled, and it is a real project —
+  // the user can edit or delete it like any other.
+  registerLensAction("projects", "project-create-sample", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const mine = pjListB(s.projects, userId);
+    const existing = mine.find((p) => p.sample);
+    if (existing) return { ok: true, result: { project: existing, created: false } };
+    const normKey = (k) => String(k || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    let key = "SMP";
+    if (mine.some((p) => normKey(p.key) === key)) {
+      let n = 2; key = `SMP${n}`;
+      while (mine.some((p) => normKey(p.key) === key) && n < 99) { n += 1; key = `SMP${n}`; }
+    }
+    const project = {
+      id: pjId("prj"), name: "Sample — how Projects works", key,
+      description: "A worked example: real issues in a real project. Edit anything, or delete the whole sample when you're done looking.",
+      color: "indigo", status: "started", health: "on_track", leadId: null,
+      startDate: null, targetDate: null, archived: false, sample: true,
+      seq: 0, createdAt: pjNow(), updatedAt: pjNow(),
+    };
+    mine.push(project);
+    pjSeedTasks(s, userId, project, PJ_SAMPLE_TASKS);
+    savePjState();
+    return { ok: true, result: { project, created: true } };
   });
 
   registerLensAction("projects", "project-list", (ctx, _a, params = {}) => {
@@ -657,7 +740,21 @@ export default function registerProjectsActions(registerLensAction) {
     const userId = pjAid(ctx);
     const sprint = (s.sprints.get(userId) || []).find((sp) => sp.id === params.id);
     if (!sprint) return { ok: false, error: "sprint not found" };
-    if (sprint.status === "completed") return { ok: true, unchanged: true, result: { id: sprint.id, status: "completed", carriedOver: 0 } };
+    // D1 (the Receipt): the settlement is computed BEFORE rollover,
+    // from the sprint as it actually finished — the numbers Reports
+    // reconciles from, stated once, in the open.
+    const inSprint = (s.tasks.get(userId) || []).filter((x) => x.sprintId === sprint.id);
+    const doneTasks = inSprint.filter((x) => x.status === "done");
+    const pointsTotal = inSprint.reduce((a, x) => a + (x.points || 0), 0);
+    const pointsDone = doneTasks.reduce((a, x) => a + (x.points || 0), 0);
+    const receipt = {
+      sprintId: sprint.id, sprintName: sprint.name,
+      issuesDone: doneTasks.length, issuesTotal: inSprint.length,
+      pointsDone, pointsTotal,
+      settledInFull: pointsTotal > 0 && pointsDone === pointsTotal,
+      carriedOver: 0,
+    };
+    if (sprint.status === "completed") return { ok: true, unchanged: true, result: { id: sprint.id, status: "completed", carriedOver: 0, receipt } };
     sprint.status = "completed";
     // carry unfinished tasks back to the backlog (Linear-style cycle rollover)
     let carried = 0;
@@ -666,8 +763,14 @@ export default function registerProjectsActions(registerLensAction) {
         if (t.sprintId === sprint.id && t.status !== "done") { t.sprintId = null; carried += 1; }
       }
     }
+    receipt.carriedOver = carried;
+    // The receipt is kept: one entry on every settled issue's feed
+    // (and therefore in the project Activity stream), with the full
+    // settlement line — it survives reload because it IS the record.
+    const line = `Sprint "${sprint.name}" settled: ${receipt.issuesDone}/${receipt.issuesTotal} issues, ${pointsDone}/${pointsTotal} points${receipt.settledInFull ? " — settled in full" : ""}${carried ? `; ${carried} carried over` : ""}`;
+    for (const t of doneTasks) pjLog(s, userId, t.id, "sprint_receipt", line);
     savePjState();
-    return { ok: true, result: { id: sprint.id, status: "completed", carriedOver: carried } };
+    return { ok: true, result: { id: sprint.id, status: "completed", carriedOver: carried, receipt } };
   });
 
   registerLensAction("projects", "sprint-burndown", (ctx, _a, params = {}) => {
