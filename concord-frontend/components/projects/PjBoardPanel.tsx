@@ -43,7 +43,13 @@ const TYPE_COLOR: Record<string, string> = {
   epic: 'text-violet-400', chore: 'text-gray-400',
 };
 
-export function PjBoardPanel({ projectId, onChange }: { projectId: string; onChange: () => void }) {
+export function PjBoardPanel({ projectId, onChange, openTaskRequest, onOpenTaskRequestHandled }: {
+  projectId: string;
+  onChange: () => void;
+  // S5 (F6): the command palette asks the board to open an issue.
+  openTaskRequest?: string | null;
+  onOpenTaskRequestHandled?: () => void;
+}) {
   const [columns, setColumns] = useState<Column[]>([]);
   const [swimlanes, setSwimlanes] = useState<{ key: string; label: string; columns: Column[] }[]>([]);
   const [wip, setWip] = useState<Record<string, number>>({});
@@ -56,6 +62,13 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
   const [form, setForm] = useState({ title: '', type: 'task', priority: 'none' });
   const [openTask, setOpenTask] = useState<string | null>(null);
   const [swimlaneError, setSwimlaneError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (openTaskRequest && meta) {
+      setOpenTask(openTaskRequest);
+      onOpenTaskRequestHandled?.();
+    }
+  }, [openTaskRequest, meta, onOpenTaskRequestHandled]);
 
   const refresh = useCallback(async () => {
     setLoading(true);

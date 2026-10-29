@@ -65,6 +65,45 @@ export function ProjectsSection() {
   const [confirming, setConfirming] = useState<'archive' | 'delete' | null>(null);
   const [dupOpen, setDupOpen] = useState(false);
   const [dupForm, setDupForm] = useState({ name: '', key: '' });
+  const [cmdPending, setCmdPending] = useState(false);
+  const [boardOpenRequest, setBoardOpenRequest] = useState<string | null>(null);
+
+  // S5 (F6): the lens advertises "Search projects & issues … ⌘K" — so
+  // while this lens is mounted, ⌘K belongs to its own palette. The
+  // global palette listens on document (bubble phase); a capture-phase
+  // window listener runs first. Outside this lens nothing changes.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        e.stopPropagation();
+        setTab('collab');
+        setCmdPending(true);
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, []);
+
+  useEffect(() => {
+    if (tab === 'collab' && cmdPending) {
+      window.dispatchEvent(new Event('projects:open-command'));
+      setCmdPending(false);
+    }
+  }, [tab, cmdPending]);
+
+  const jumpToProject = useCallback((pid: string) => {
+    setClosedIds((prev) => prev.filter((x) => x !== pid));
+    setActiveProject(pid);
+    setTab('board');
+  }, []);
+
+  const openTaskFromPalette = useCallback((pid: string, taskId: string) => {
+    setClosedIds((prev) => prev.filter((x) => x !== pid));
+    setActiveProject(pid);
+    setBoardOpenRequest(taskId);
+    setTab('board');
+  }, []);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   const openComposer = useCallback(() => {
@@ -323,14 +362,14 @@ export function ProjectsSection() {
                 })}
               </nav>
               <div className="p-4">
-                {tab === 'board' && <PjBoardPanel projectId={activeProject} onChange={refreshDash} />}
+                {tab === 'board' && <PjBoardPanel projectId={activeProject} onChange={refreshDash} openTaskRequest={boardOpenRequest} onOpenTaskRequestHandled={() => setBoardOpenRequest(null)} />}
                 {tab === 'backlog' && <PjBacklogPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'timeline' && <PjTimelinePanel projectId={activeProject} />}
                 {tab === 'sprints' && <PjSprintsPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'reports' && <PjReportsPanel projectId={activeProject} project={project} dashboard={dash} />}
                 {tab === 'planning' && <PjPlanningPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'team' && <PjTeamPanel projectId={activeProject} onChange={refreshDash} />}
-                {tab === 'collab' && <PjCollabPanel projectId={activeProject} onChange={refreshDash} />}
+                {tab === 'collab' && <PjCollabPanel projectId={activeProject} onChange={refreshDash} onJumpToProject={jumpToProject} onOpenTask={openTaskFromPalette} />}
                 {tab === 'settings' && <PjSettingsPanel projectId={activeProject} project={project} onProjectSaved={refreshProjects} onChange={refreshDash} />}
                 {tab === 'portfolio' && <PjPortfolioPanel onLifecycle={refreshProjects} />}
               </div>
