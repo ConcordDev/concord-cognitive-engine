@@ -48,6 +48,40 @@ Ramaj's §8 Q2 team-model call). S1 (lifecycle) notes:
   pinned by `server/tests/projects-lifecycle.test.js`.
 - Frontend behaviour: `concord-frontend/tests/projects-lifecycle.test.tsx`.
 
+S11 (activity + notifications, F15/F16) notes:
+
+- F15: `activity-list` hard-required a taskId, so any global call
+  filtered on taskId === "undefined" and the feed read "No activity
+  yet" forever. Without a taskId it now returns the account's
+  stream (newest first, optional projectId scope, rows enriched
+  with the issue's ref/title/project). The lens gained an Activity
+  tab rendering that stream grouped by issue. The per-issue call
+  is byte-for-byte the original shape. Tests:
+  `server/tests/projects-activity.test.js` (1 pass / 2 fail against
+  the original domain — the cross-user test passes vacuously there,
+  since the old stream was empty for everyone).
+- F16 is NEEDS-CROSS-LENS, stated plainly: the top-bar bell is
+  `components/social/NotificationBell` reading the SOCIAL store
+  (`/api/social/notifications`) — platform chrome outside the
+  Projects file set. The Projects store the Collab inbox reads
+  (`notifications-list` / mark-read / clear) is single and working;
+  converging the bell onto one store is a shell/social slice for
+  the Overseer to route, not something this PR can do without
+  reaching into another lens's surface.
+
+S10 (key uniqueness, F13) notes:
+
+- Project keys are unique per account, because issue refs (PR4-1)
+  are built from them. An explicitly requested key that is taken is
+  rejected, naming the holder project and suggesting the next free
+  key (PR4 → PR42); an auto-derived key uniquifies silently. A
+  duplicate project name returns a distinct `duplicate_name` code:
+  the create dialog shows "A project named X already exists" with a
+  Create-anyway action that retries with explicit confirmation —
+  unconfirmed, nothing is created. Tests:
+  `server/tests/projects-keys.test.js` (1 pass / 3 fail against the
+  original domain).
+
 S9 (goal reconcile, F12) notes:
 
 - A goal whose metric names a system measure ("Tasks done",
