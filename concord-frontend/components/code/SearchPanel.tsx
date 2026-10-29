@@ -76,10 +76,15 @@ export function SearchPanel({
       }
       const res = r.data?.result;
       const changedPaths = Array.isArray(res?.changed) ? (res.changed as Array<{ path: string }>).map(c => c.path) : [];
+      if (changedPaths.length > 0) onReplaced?.(changedPaths);
+      // Regenerate results BEFORE setting the success notice: runSearch
+      // clears the notice on entry, so a notice set first is erased
+      // before it ever renders (the count this slice exists to report
+      // never appeared — caught by code-replace-all in the recipe env,
+      // 2026-10-29; the same ordering on main predates this rework).
+      await runSearch();
       setNoticeKind('ok');
       setNotice(`Replaced ${res?.totalReplacements || 0} occurrence(s) across ${res?.filesChanged || 0} file(s) — saved.`);
-      if (changedPaths.length > 0) onReplaced?.(changedPaths);
-      await runSearch();
     } catch (e) {
       console.error('[Replace] failed', e);
       setNoticeKind('error');
@@ -117,9 +122,11 @@ export function SearchPanel({
       const r = await lensRun({ domain: 'code', action: 'rename-symbol', input: { projectId, from: q.trim(), to: replacement.trim() } });
       if (r.data?.ok === false) { setNoticeKind('error'); setNotice(r.data?.error || 'Rename failed.'); return; }
       const res = r.data?.result;
+      // Same ordering rule as runReplace: runRefs clears the notice on
+      // entry, so the confirmation is set after it returns.
+      await runRefs();
       setNoticeKind('ok');
       setNotice(`Renamed ${res?.totalOccurrences || 0} occurrence(s) in ${res?.filesChanged || 0} file(s).`);
-      await runRefs();
     } catch (e) { console.error('[Rename] failed', e); }
     finally { setLoading(false); }
   }
