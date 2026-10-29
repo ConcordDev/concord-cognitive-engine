@@ -1482,7 +1482,10 @@ interface DependencyAuditResult {
   totalDependencies: number; healthScore: number; healthGrade: string;
   depth: { max: number; avgDepth: number };
   duplicates: { versionConflicts: number };
-  vulnerabilities: { total: number; affectedDeps: number };
+  // total/affectedDeps are null when the live OSV check was requested
+  // but unreachable — unknown, never a printed 0 (re-pass checkpoint 3).
+  vulnerabilities: { total: number | null; affectedDeps: number | null; source?: string; checked?: boolean; unreachable?: boolean };
+  dependencyList?: Array<{ name: string; version: string; vulnerabilities: number | null; advisories: string[] }>;
   freshness: { avgScore: number; criticalUpdates: number; stalePackages: number };
   licenses: { risks: Array<{ license: string; count: number }> };
 }
@@ -1493,6 +1496,8 @@ function AnalysisTab({ repoId }: { repoId: string }) {
   const [ranOnce, setRanOnce] = useState(false);
   const [filesCapped, setFilesCapped] = useState(false);
   const [complexity, setComplexity] = useState<ComplexityResult | null>(null);
+  const [cxError, setCxError] = useState<string | null>(null);
+  const [cxMeta, setCxMeta] = useState<{ matched: number; unreadable: number }>({ matched: 0, unreadable: 0 });
   const [commits, setCommits] = useState<CommitAnalysisResult | null>(null);
   const [deps, setDeps] = useState<DependencyAuditResult | null>(null);
   const [noPackageJson, setNoPackageJson] = useState(false);
@@ -1512,13 +1517,21 @@ function AnalysisTab({ repoId }: { repoId: string }) {
       setFilesCapped(flat.length > COMPLEXITY_FILE_CAP);
       const capped = flat.slice(0, COMPLEXITY_FILE_CAP);
       const sourceFiles: Array<{ path: string; content: string }> = [];
+      let unreadable = 0;
       for (const f of capped) {
         const fr = await runX<FileContent>('file-read', { repoId, path: f.path });
-        if (!fr.ok || !fr.data) continue;
+        if (!fr.ok || !fr.data) { unreadable++; continue; }
         sourceFiles.push({ path: f.path, content: fr.data.content });
       }
+      // The card renders the macro's ACTUAL outcome (re-pass
+      // checkpoint 3): a failed call shows its message, never the
+      // empty-state text — "No files to analyze" over a repo full of
+      // files was the silent wrong answer, whatever the server's
+      // reason (e.g. its parser package not loading).
+      setCxMeta({ matched: flat.length, unreadable });
       const cx = await runX<ComplexityResult>('codeComplexity', { sourceFiles });
-      setComplexity(cx.ok ? cx.data : null);
+      if (cx.ok) { setComplexity(cx.data); setCxError(null); }
+      else { setComplexity(null); setCxError(cx.error); }
       if (!cx.ok && cx.error) setErr(cx.error);
 
       // 2) Commit-pattern analysis — real commit-graph, field-mapped to the
@@ -1549,7 +1562,10 @@ function AnalysisTab({ repoId }: { repoId: string }) {
             const dependencies = Object.entries(depEntries).map(([name, version]) => ({ name, version: String(version) }));
             if (dependencies.length === 0) { setNoPackageJson(true); setDeps(null); }
             else {
-              const da = await runX<DependencyAuditResult>('dependencyAudit', { dependencies });
+              // liveVulnCheck: the audit asks the same OSV.dev source
+              // the Security tab scans with, so the two tabs' counts
+              // agree by construction (re-pass checkpoint 3).
+              const da = await runX<DependencyAuditResult>('dependencyAudit', { dependencies, liveVulnCheck: true });
               setDeps(da.ok ? da.data : null);
               setNoPackageJson(false);
             }
@@ -1598,7 +1614,15 @@ function AnalysisTab({ repoId }: { repoId: string }) {
           <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
             <h4 className="mb-2 text-xs font-semibold text-white">Code complexity</h4>
             {!complexity ? (
-              <p className="text-[11px] text-zinc-400">No files to analyze.</p>
+              cxError ? (
+                <p className="text-[11px] text-amber-400">{cxError}</p>
+              ) : cxMeta.matched === 0 ? (
+                <p className="text-[11px] text-zinc-400">No JS/TS files in this repo — the complexity engine parses JavaScript and TypeScript only.</p>
+              ) : cxMeta.unreadable >= cxMeta.matched ? (
+                <p className="text-[11px] text-amber-400">{cxMeta.matched} JS/TS file(s) are in this repo, but none could be read, so there was nothing to send for analysis.</p>
+              ) : (
+                <p className="text-[11px] text-zinc-400">No files to analyze.</p>
+              )
             ) : complexity.message ? (
               <p className="text-[11px] text-zinc-400">{complexity.message}</p>
             ) : (
@@ -1660,11 +1684,34 @@ function AnalysisTab({ repoId }: { repoId: string }) {
             ) : !deps ? (
               <p className="text-[11px] text-zinc-400">No dependency data.</p>
             ) : (
-              <div className="grid grid-cols-4 gap-2">
-                <StatBox label="Deps" value={deps.totalDependencies} />
-                <StatBox label="Health" value={`${deps.healthScore} (${deps.healthGrade})`} tone={deps.healthScore < 60 ? 'bad' : 'good'} />
-                <StatBox label="Version conflicts" value={deps.duplicates.versionConflicts} tone={deps.duplicates.versionConflicts > 0 ? 'bad' : 'good'} />
-                <StatBox label="Vulnerable" value={deps.vulnerabilities.affectedDeps} tone={deps.vulnerabilities.affectedDeps > 0 ? 'bad' : 'good'} />
+              <div className="space-y-2">
+                <div className="grid grid-cols-4 gap-2">
+                  <StatBox label="Deps" value={deps.totalDependencies} />
+                  <StatBox label="Health" value={`${deps.healthScore} (${deps.healthGrade})`} tone={deps.healthScore < 60 ? 'bad' : 'good'} />
+                  <StatBox label="Version conflicts" value={deps.duplicates.versionConflicts} tone={deps.duplicates.versionConflicts > 0 ? 'bad' : 'good'} />
+                  <StatBox label="Vulnerable" value={deps.vulnerabilities.affectedDeps ?? 'unknown'} tone={(deps.vulnerabilities.affectedDeps ?? 0) > 0 ? 'bad' : 'good'} />
+                </div>
+                {deps.vulnerabilities.unreachable ? (
+                  <p className="text-[10px] text-amber-400">Vulnerability check: OSV.dev could not be reached at audit time — the counts are unknown, not zero.</p>
+                ) : deps.vulnerabilities.checked ? (
+                  <p className="text-[10px] text-zinc-500">Vulnerability data: OSV.dev, queried live at audit time — the same source the Security tab scans with.</p>
+                ) : null}
+                {deps.dependencyList && deps.dependencyList.length > 0 && (
+                  <div>
+                    {deps.dependencyList.map((d) => (
+                      <div key={d.name} className="flex items-center justify-between border-t border-zinc-800/60 py-1 text-[11px] first:border-0">
+                        <span className="truncate font-mono text-zinc-200">{d.name}@{d.version}</span>
+                        {d.vulnerabilities === null ? (
+                          <span className="shrink-0 text-zinc-500">vulnerabilities unknown</span>
+                        ) : d.vulnerabilities === 0 ? (
+                          <span className="shrink-0 text-zinc-500">no known advisories</span>
+                        ) : (
+                          <span className="shrink-0 text-rose-300">{d.vulnerabilities} advisor{d.vulnerabilities === 1 ? 'y' : 'ies'}: {d.advisories.join(', ')}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
