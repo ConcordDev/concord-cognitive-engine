@@ -1,5 +1,22 @@
 # Whiteboard Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **Rework (PR #1714, B7 build pair with Product Review 4, 2026-10-28):**
+> this PR is now Whiteboard's alone — the L8 batch's SRS and Timeline
+> greeting changes, greeting tests and capability-map updates were
+> reverted to main as split mechanics (they travel with their own PRs).
+> All three lenses' greeting headlines and greeting tests are removed;
+> prior headers restored.
+>
+> **Frozen review of record:** Product Review 4's whiteboard.md
+> (2026-10-28) — tier REDESIGN until the P0 slices land; 152 features
+> inventoried, 43 failed. Three-column map vs Miro (40 features):
+> **works-live 11 · backend-broken/unsurfaced 15 · missing 14**
+> (frozen §5d counts — re-scoring belongs to Review 4's re-pass).
+> Build order: S0 split → S1 one board store → S3 honest save →
+> S2 delete → S4 inline edit → S5–S16 → D1–D6. Builder updates are
+> appended below as slices land; the Wave-3 audit text further down
+> is history, not current truth.
+
 > **Re-verification (HANDOFF-3 batch L8, 2026-10-28, against main e9791d4d):**
 > The Wave-3 audit below is kept as history — including its headline
 > room:join fix, which is intact. Since that audit, every remaining
