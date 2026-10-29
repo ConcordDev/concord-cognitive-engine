@@ -67,4 +67,17 @@ test("a beam ask with no span, load or section asks for inputs instead of design
   assert.ok(r.result.missing.length >= 3);
   const some = await run("size a steel beam, 4 m span");
   assert.notEqual(some.key, "conkay_design.needs-inputs", "any real input keeps the existing path");
+
+test("a footbridge beam brief is a beam, not a truss (live harness case normal.beam-footbridge)", async () => {
+  const { detectDomain } = await import("../lib/conkay/chat/brief-parser.js");
+  const t = "Size a simply supported A36 steel footbridge beam: 4 m span, 10 kN at midspan, 60 mm wide, safety factor 2, deflection limit span/360, use R10 preferred depths.";
+  assert.equal(detectDomain(t), "beam");
+  assert.equal(detectDomain("a bridge girder 12 m long"), "beam");
+  assert.equal(detectDomain("design a footbridge 12 m long"), "truss", "a plain footbridge stays a truss");
+  assert.equal(detectDomain("pratt truss footbridge, simply supported beam ends"), "truss", "an explicit truss stays a truss");
+  const p = parseChatBrief(t);
+  const { solveBeam } = await import("../lib/conkay/chat/structures.js");
+  const beam = solveBeam(p.ir);
+  assert.equal(Math.round(beam.section.depthM * 1000), 125);
+  assert.equal(beam.governs, "deflection");
 });
