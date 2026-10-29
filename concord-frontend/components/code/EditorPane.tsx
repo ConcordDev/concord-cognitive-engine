@@ -28,6 +28,7 @@ export function EditorPane({
   onOpenChange,
   onContentSaved,
   renameSignal,
+  replaceSignal,
 }: {
   projectId: string | null;
   openPath: string | null;
@@ -38,6 +39,13 @@ export function EditorPane({
    *  relabeled in place instead of being treated as a new file (which would leave
    *  a stale tab pointed at the now-deleted old path). */
   renameSignal?: { from: string; to: string; nonce: number } | null;
+  /** Set after a successful project-wide replace: open tabs for these
+   *  paths are re-read from the server store (the replace already
+   *  saved there) so the editor shows the change instead of a stale
+   *  buffer that would overwrite it on the next sync. Tabs with
+   *  unsaved user edits are left alone — the user's buffer wins until
+   *  they save or discard. */
+  replaceSignal?: { paths: string[]; nonce: number } | null;
 }) {
   const [files, setFiles] = useState<OpenFile[]>([]);
   const [loadingFile, setLoadingFile] = useState(false);
@@ -109,6 +117,26 @@ export function EditorPane({
     setFiles(prev => prev.map(f => f.path === renameSignal.from ? { ...f, path: renameSignal.to } : f));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fires once per nonce, not per renameSignal identity
   }, [renameSignal?.nonce]);
+
+  // Reconcile open tabs after a project-wide replace (S6).
+  useEffect(() => {
+    if (!replaceSignal || !projectId) return;
+    const targets = files.filter(f => replaceSignal.paths.includes(f.path) && !f.modified);
+    if (targets.length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      for (const t of targets) {
+        try {
+          const r = await lensRun({ domain: 'code', action: 'files-read', input: { projectId, path: t.path } });
+          if (cancelled || r.data?.ok === false) continue;
+          const content = String(r.data?.result?.content ?? '');
+          setFiles(prev => prev.map(f => f.path === t.path && !f.modified ? { ...f, content, original: content, modified: false } : f));
+        } catch { /* a tab that fails to reconcile keeps its buffer; the store still holds the replace */ }
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires once per replace nonce
+  }, [replaceSignal?.nonce]);
 
   const active = files.find(f => f.path === openPath);
 

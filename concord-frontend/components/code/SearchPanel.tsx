@@ -17,8 +17,16 @@ interface Hit { file: string; line: number; column: number; preview: string }
 interface Ref { path: string; line: number; snippet: string }
 
 export function SearchPanel({
-  projectId, onOpen,
-}: { projectId: string | null; onOpen: (path: string, line: number) => void }) {
+  projectId, onOpen, onReplaced,
+}: {
+  projectId: string | null;
+  onOpen: (path: string, line: number) => void;
+  /** S6 (F5): after a successful project replace, the changed paths —
+   *  the caller reconciles any open editor tabs from the server store,
+   *  because the replace writes there directly and a stale tab buffer
+   *  would otherwise hide (and later overwrite) the change. */
+  onReplaced?: (paths: string[]) => void;
+}) {
   const [mode, setMode] = useState<'text' | 'refs'>('text');
   const [q, setQ] = useState('');
   const [replacement, setReplacement] = useState('');
@@ -28,6 +36,7 @@ export function SearchPanel({
   const [refs, setRefs] = useState<Ref[]>([]);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [noticeKind, setNoticeKind] = useState<'ok' | 'error'>('ok');
 
   async function runSearch() {
     if (!projectId || q.trim().length < 1) return;
@@ -44,10 +53,22 @@ export function SearchPanel({
     setLoading(true); setNotice(null);
     try {
       const r = await lensRun({ domain: 'code', action: 'replace-project', input: { projectId, query: q, replacement, ...opts } });
+      if (r.data?.ok === false) {
+        setNoticeKind('error');
+        setNotice(`Replace failed: ${r.data?.error || 'the server refused'}. Nothing was changed.`);
+        return;
+      }
       const res = r.data?.result;
-      setNotice(`Replaced ${res?.totalReplacements || 0} occurrence(s) across ${res?.filesChanged || 0} file(s).`);
+      const changedPaths = Array.isArray(res?.changed) ? (res.changed as Array<{ path: string }>).map(c => c.path) : [];
+      setNoticeKind('ok');
+      setNotice(`Replaced ${res?.totalReplacements || 0} occurrence(s) across ${res?.filesChanged || 0} file(s) — saved.`);
+      if (changedPaths.length > 0) onReplaced?.(changedPaths);
       await runSearch();
-    } catch (e) { console.error('[Replace] failed', e); }
+    } catch (e) {
+      console.error('[Replace] failed', e);
+      setNoticeKind('error');
+      setNotice('Replace failed: the request did not complete. Nothing was changed.');
+    }
     finally { setLoading(false); }
   }
 
@@ -66,8 +87,9 @@ export function SearchPanel({
     setLoading(true); setNotice(null);
     try {
       const r = await lensRun({ domain: 'code', action: 'rename-symbol', input: { projectId, from: q.trim(), to: replacement.trim() } });
-      if (r.data?.ok === false) { setNotice(r.data?.error || 'Rename failed.'); return; }
+      if (r.data?.ok === false) { setNoticeKind('error'); setNotice(r.data?.error || 'Rename failed.'); return; }
       const res = r.data?.result;
+      setNoticeKind('ok');
       setNotice(`Renamed ${res?.totalOccurrences || 0} occurrence(s) in ${res?.filesChanged || 0} file(s).`);
       await runRefs();
     } catch (e) { console.error('[Rename] failed', e); }
@@ -130,7 +152,7 @@ export function SearchPanel({
         )}
       </div>
 
-      {notice && <div className="px-3 py-1.5 text-[11px] text-emerald-300 bg-emerald-500/10 border-b border-white/5">{notice}</div>}
+      {notice && <div className={cn('px-3 py-1.5 text-[11px] border-b border-white/5', noticeKind === 'error' ? 'text-rose-300 bg-rose-500/10' : 'text-emerald-300 bg-emerald-500/10')}>{notice}</div>}
 
       <div className="flex-1 overflow-y-auto">
         {loading ? (

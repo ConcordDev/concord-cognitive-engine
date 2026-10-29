@@ -35,6 +35,10 @@ export function CodeWorkbenchSection() {
   // (from, to) here so an open editor tab is relabeled in place — see EditorPane's
   // renameSignal handling.
   const [renameSignal, setRenameSignal] = useState<{ from: string; to: string; nonce: number } | null>(null);
+  // Replace bridge (S6): SearchPanel's project replace writes to the
+  // server store; EditorPane reconciles open tabs from that store so
+  // the change is visible and a stale buffer can't overwrite it.
+  const [replaceSignal, setReplaceSignal] = useState<{ paths: string[]; nonce: number } | null>(null);
 
   // openFile carries an optional line so Problems / Outline / Search rows
   // jump straight to the offending position.
@@ -99,7 +103,7 @@ export function CodeWorkbenchSection() {
               <OutlinePanel projectId={projectId} path={openPath} onOpen={openFile} />
             </>
           )}
-          {nav === 'search'   && <SearchPanel projectId={projectId} onOpen={openFile} />}
+          {nav === 'search'   && <SearchPanel projectId={projectId} onOpen={openFile} onReplaced={(paths) => { setReplaceSignal({ paths, nonce: Date.now() }); void refreshStatus(); }} />}
           {nav === 'git'      && <GitPanel projectId={projectId} onChanged={refreshStatus} />}
           {nav === 'agent'    && <AgentComposerPanel projectId={projectId} />}
           {nav === 'debug'    && <RunPanel projectId={projectId} onOpen={openFile} />}
@@ -114,6 +118,7 @@ export function CodeWorkbenchSection() {
           onOpenChange={(p) => { setOpenPath(p); setOpenLine(null); }}
           onContentSaved={refreshStatus}
           renameSignal={renameSignal}
+          replaceSignal={replaceSignal}
         />
       }
       statusRight={
