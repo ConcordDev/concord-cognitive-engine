@@ -746,7 +746,7 @@ export default function registerWhiteboardActions(registerLensAction) {
 
   // Tiny BFS clusterer over text similarity (token overlap). Deterministic without brain.
   function clusterShapesByText(shapes, maxThemes = 6) {
-    const stickies = shapes.filter(sh => sh.kind === 'sticky' && (sh.text || '').trim());
+    const stickies = shapes.filter(sh => (sh.kind === 'sticky' || sh.type === 'notecard') && (sh.text || '').trim());
     if (stickies.length < 2) return [];
     function tokens(t) { return new Set(String(t || '').toLowerCase().split(/[\s,.;:!?]+/).filter(w => w.length >= 3)); }
     const tokSets = new Map(stickies.map(sh => [sh.id, tokens(sh.text)]));
@@ -786,7 +786,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     const lookup = findBoardForUser(s, userId, boardId);
     if (!lookup) return { ok: false, error: "board not found" };
     const shapes = Array.isArray(lookup.board.scene?.elements) ? lookup.board.scene.elements : [];
-    const stickies = shapes.filter(sh => sh.kind === 'sticky');
+    const stickies = shapes.filter(sh => sh.kind === 'sticky' || sh.type === 'notecard');
     if (stickies.length < 2) return { ok: true, result: { clusters: [], source: 'deterministic', message: "Need at least 2 sticky notes to cluster." } };
 
     const deterministic = clusterShapesByText(shapes);
@@ -824,8 +824,8 @@ export default function registerWhiteboardActions(registerLensAction) {
     if (!lookup) return { ok: false, error: "board not found" };
     const shapes = Array.isArray(lookup.board.scene?.elements) ? lookup.board.scene.elements : [];
     if (shapes.length === 0) return { ok: true, result: { summary: "(board is empty)", actionItems: [], source: 'deterministic' } };
-    const stickies = shapes.filter(sh => sh.kind === 'sticky' && sh.text);
-    const frames = shapes.filter(sh => sh.kind === 'rect' || sh.kind === 'frame');
+    const stickies = shapes.filter(sh => (sh.kind === 'sticky' || sh.type === 'notecard') && sh.text);
+    const frames = shapes.filter(sh => sh.kind === 'rect' || sh.kind === 'frame' || sh.type === 'rectangle' || sh.type === 'section');
     const transcript = stickies.map(sh => `· ${sh.text}`).join('\n');
 
     function deterministic() {
@@ -841,6 +841,9 @@ export default function registerWhiteboardActions(registerLensAction) {
     const brain = ctx?.llm?.chat;
     const base = deterministic();
     if (typeof brain !== 'function') return { ok: true, result: { ...base, source: 'deterministic' } };
+    // An empty transcript gives the brain nothing to summarize — it
+    // answers with fragments. The deterministic summary is the truth.
+    if (!transcript.trim()) return { ok: true, result: { ...base, source: 'deterministic' } };
     try {
       const r = await brain({
         messages: [
