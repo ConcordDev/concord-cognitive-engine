@@ -78,7 +78,7 @@
     "@gltf-transform/core": "^4.4.2",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@redis/client": "^1.6.0",
-    "@sentry/node": "^10.69.0",
+    "@sentry/node": "^11.9.0",
     "@socket.io/redis-adapter": "^8.3.0",
     "acorn": "^8.16.0",
     "adm-zip": "^0.6.1",
