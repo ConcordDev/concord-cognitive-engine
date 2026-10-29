@@ -1,0 +1,18 @@
+[Unit]
+Description=Concord Lean 4 check service
+After=network.target
+
+[Service]
+WorkingDirectory=/root/lean/lean-check-service
+Environment=LEAN_SERVICE_PORT=11437
+Environment=LEAN_PROJECT_DIR=/root/lean/concord_verify
+EnvironmentFile=-/root/lean/lean-check.env
+ExecStart=/usr/bin/env node service.mjs
+Restart=on-failure
+RestartSec=3
+# the service binds 127.0.0.1 only; it is reached through the SSH tunnel
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
