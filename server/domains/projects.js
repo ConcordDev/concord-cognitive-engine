@@ -36,6 +36,22 @@ export default function registerProjectsActions(registerLensAction) {
   const pjClean = (v, max = 400) => String(v == null ? "" : v).trim().slice(0, max);
   const pjPick = (v, allowed, dflt) => (allowed.includes(String(v)) ? String(v) : dflt);
   const pjDay = (v) => pjClean(v, 10).slice(0, 10);
+  // Strict write-path date check (F7): a PROVIDED date must be a real
+  // calendar date with a four-digit year. Returns "" when absent, the
+  // day when valid, and null when provided-but-not-storable — callers
+  // reject with a named error instead of silently storing a corrupted
+  // year (the year-0002 bug) or substituting a default.
+  function pjDayStrict(v) {
+    if (v == null || v === "") return "";
+    const d = pjDay(v);
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
+    if (!m) return null;
+    const y = Number(m[1]), mo = Number(m[2]), da = Number(m[3]);
+    if (y < 1000 || mo < 1 || mo > 12 || da < 1 || da > 31) return null;
+    const dt = new Date(Date.UTC(y, mo - 1, da));
+    if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== da) return null;
+    return d;
+  }
   const PJ_DAY = 86400000;
 
   const PJ_STATUSES = ["backlog", "todo", "in_progress", "in_review", "done"];
@@ -89,6 +105,8 @@ export default function registerProjectsActions(registerLensAction) {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = pjClean(params.name, 160);
     if (!name) return { ok: false, error: "project name required" };
+    if (pjDayStrict(params.startDate) === null) return { ok: false, error: "invalid start date — use a real date with a four-digit year" };
+    if (pjDayStrict(params.targetDate) === null) return { ok: false, error: "invalid target date — use a real date with a four-digit year" };
     const project = {
       id: pjId("prj"), name,
       key: (pjClean(params.key, 6) || name.replace(/[^A-Za-z]/g, "").slice(0, 4) || "PRJ").toUpperCase(),
@@ -97,8 +115,8 @@ export default function registerProjectsActions(registerLensAction) {
       status: pjPick(params.status, PJ_PROJECT_STATUS, "planned"),
       health: pjPick(params.health, PJ_HEALTH, "on_track"),
       leadId: null,
-      startDate: pjDay(params.startDate) || null,
-      targetDate: pjDay(params.targetDate) || null,
+      startDate: pjDayStrict(params.startDate) || null,
+      targetDate: pjDayStrict(params.targetDate) || null,
       archived: false,
       seq: 0,
       createdAt: pjNow(), updatedAt: pjNow(),
@@ -185,8 +203,16 @@ export default function registerProjectsActions(registerLensAction) {
     if (params.color != null) project.color = pjClean(params.color, 16) || project.color;
     if (params.status != null) project.status = pjPick(params.status, PJ_PROJECT_STATUS, project.status);
     if (params.health != null) project.health = pjPick(params.health, PJ_HEALTH, project.health);
-    if (params.startDate != null) project.startDate = pjDay(params.startDate) || null;
-    if (params.targetDate != null) project.targetDate = pjDay(params.targetDate) || null;
+    if (params.startDate != null) {
+      const d = pjDayStrict(params.startDate);
+      if (d === null) return { ok: false, error: "invalid start date — use a real date with a four-digit year" };
+      project.startDate = d || null;
+    }
+    if (params.targetDate != null) {
+      const d = pjDayStrict(params.targetDate);
+      if (d === null) return { ok: false, error: "invalid target date — use a real date with a four-digit year" };
+      project.targetDate = d || null;
+    }
     if (params.leadId !== undefined) {
       const l = params.leadId ? String(params.leadId) : null;
       project.leadId = (l && (s.members.get(userId) || []).some((m) => m.id === l)) ? l : null;
@@ -257,6 +283,8 @@ export default function registerProjectsActions(registerLensAction) {
     if (!project) return { ok: false, error: "project not found" };
     const title = pjClean(params.title, 240);
     if (!title) return { ok: false, error: "task title required" };
+    if (pjDayStrict(params.startDate) === null) return { ok: false, error: "invalid start date — use a real date with a four-digit year" };
+    if (pjDayStrict(params.dueDate) === null) return { ok: false, error: "invalid due date — use a real date with a four-digit year" };
     let assigneeId = params.assigneeId ? String(params.assigneeId) : null;
     if (assigneeId) {
       const member = (s.members.get(userId) || []).find((m) => m.id === assigneeId);
@@ -293,8 +321,8 @@ export default function registerProjectsActions(registerLensAction) {
         ? [...new Set(params.labels.map((l) => pjClean(l, 30)).filter(Boolean))].slice(0, 12) : [],
       customFields: {},
       points: Math.max(0, Math.round(pjNum(params.points))),
-      startDate: pjDay(params.startDate) || null,
-      dueDate: pjDay(params.dueDate) || null,
+      startDate: pjDayStrict(params.startDate),
+      dueDate: pjDayStrict(params.dueDate),
       rank: siblings.length,
       createdAt: pjNow(), updatedAt: pjNow(), completedAt: null,
     };
@@ -358,8 +386,16 @@ export default function registerProjectsActions(registerLensAction) {
     if (params.type != null) task.type = pjPick(params.type, PJ_TYPES, task.type);
     if (params.priority != null) task.priority = pjPick(params.priority, PJ_PRIORITIES, task.priority);
     if (params.points != null) task.points = Math.max(0, Math.round(pjNum(params.points)));
-    if (params.startDate != null) task.startDate = pjDay(params.startDate) || null;
-    if (params.dueDate != null) task.dueDate = pjDay(params.dueDate) || null;
+    if (params.startDate != null) {
+      const d = pjDayStrict(params.startDate);
+      if (d === null) return { ok: false, error: "invalid start date — use a real date with a four-digit year" };
+      task.startDate = d || null;
+    }
+    if (params.dueDate != null) {
+      const d = pjDayStrict(params.dueDate);
+      if (d === null) return { ok: false, error: "invalid due date — use a real date with a four-digit year" };
+      task.dueDate = d || null;
+    }
     if (Array.isArray(params.labels)) {
       task.labels = [...new Set(params.labels.map((l) => pjClean(l, 30)).filter(Boolean))].slice(0, 12);
     }
@@ -489,10 +525,16 @@ export default function registerProjectsActions(registerLensAction) {
     if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
     const name = pjClean(params.name, 120);
     if (!name) return { ok: false, error: "sprint name required" };
+    const startIn = pjDayStrict(params.startDate);
+    const endIn = pjDayStrict(params.endDate);
+    if (startIn === null) return { ok: false, error: "invalid sprint start date — use a real date with a four-digit year" };
+    if (endIn === null) return { ok: false, error: "invalid sprint end date — use a real date with a four-digit year" };
+    const startDate = startIn || pjDay(pjNow());
+    const endDate = endIn || new Date(Date.now() + 14 * PJ_DAY).toISOString().slice(0, 10);
+    if (endDate < startDate) return { ok: false, error: "sprint end date is before its start date — fix the dates; no sprint was created" };
     const sprint = {
       id: pjId("spr"), projectId: String(params.projectId), name,
-      startDate: pjDay(params.startDate) || pjDay(pjNow()),
-      endDate: pjDay(params.endDate) || new Date(Date.now() + 14 * PJ_DAY).toISOString().slice(0, 10),
+      startDate, endDate,
       status: "active", createdAt: pjNow(),
     };
     pjListB(s.sprints, userId).push(sprint);
@@ -717,9 +759,10 @@ export default function registerProjectsActions(registerLensAction) {
     if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
     const name = pjClean(params.name, 120);
     if (!name) return { ok: false, error: "milestone name required" };
+    if (pjDayStrict(params.dueDate) === null) return { ok: false, error: "invalid milestone due date — use a real date with a four-digit year" };
     const milestone = {
       id: pjId("mil"), projectId: String(params.projectId), name,
-      dueDate: pjDay(params.dueDate) || null,
+      dueDate: pjDayStrict(params.dueDate),
       status: "open", createdAt: pjNow(),
     };
     pjListB(s.milestones, userId).push(milestone);
