@@ -103,7 +103,6 @@ import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
 import { chatContextPool, makeChatMayUse } from "./lib/chat/context-pool.js";
-import { chatProgress as _chatProgress, withToolProgress as _chatWithToolProgress, readOllamaChatStream as _readOllamaChatStream } from "./lib/chat/progress.js";
 import { filterVisibleSearchHits, materializeIndexedHits, searchCandidateLimit } from "./lib/dtu-search-hits.js";
 import { handleArchaeology, handleSubstrateDiff, handleTimeCrystalDetect } from "./lib/knowledge-archaeology.js";
 import { artifactDtuForViewer, publicArtifactRef } from "./lib/artifact-access.js";
@@ -1969,7 +1968,7 @@ import {
 import { serverError, configureHttpErrorLogger, httpStatusLogLevel, opensRepairSignal } from "./lib/http-errors.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
 import configureMiddleware from "./middleware/index.js";
-import { createCsrfMiddleware, PUBLIC_PROOF_COMMENT_RE, INGEST_WEBHOOK_RE } from "./middleware/csrf.js";
+import { createCsrfMiddleware, PUBLIC_PROOF_COMMENT_RE, INGEST_WEBHOOK_RE, DEBUG_INGEST_RE } from "./middleware/csrf.js";
 import { readReplicaGate } from "./lib/read-replica-allowlist.js";
 import { createLLMQueue } from "./lib/llm-queue.js";
 import { bindNpcCoalescerQueue } from "./lib/npc-prompt-coalescer.js";
@@ -2150,10 +2149,10 @@ import createEmergentRouter from "./routes/emergent.js";
 import registerOperationRoutes from "./routes/operations.js";
 import createQualiaRouter from "./routes/qualia.js";
 import createSovereignRouter from "./routes/sovereign.js";
+import createDebugIngestRouter from "./routes/debug-ingest.js";
 import createSovereignEmergentRouter from "./routes/sovereign-emergent.js";
 import { createUserDispatchRouter } from "./routes/user-dispatch.js";
 import createFederationRouter from "./routes/federation.js";
-import { createMarketingTrackRouter } from "./routes/marketing-track.js";
 import registerOAuthRoutes from "./routes/oauth.js";
 import registerConnectorOAuthRoutes from "./routes/connector-oauth.js";
 import { mountDxOAuth } from "./routes/dx-oauth.js";
@@ -8692,16 +8691,15 @@ function authMiddleware(req, res, next) {
   // widened to any other action or envelope.
   if (req.method === "GET" && /^\/api\/esign\/[^/]+$/.test(req.path)) return next();
   if (req.method === "POST" && /^\/api\/esign\/[^/]+\/sign$/.test(req.path)) return next();
-  // Marketing email beacons (routes/marketing-track.js) — an email client
-  // fetches the open pixel and follows click redirects with no session.
-  // GET-only, exact shape. The open beacon always returns the same 1×1 GIF
-  // (no send-id probing); the click beacon only redirects to a link recorded
-  // in that send at send time, so it is not an open redirector.
-  if (req.method === "GET" && /^\/api\/marketing\/track\/(open|click)\/[^/]+$/.test(req.path)) return next();
   // INC-72: inbound ingest webhook. The 32-hex token in the path is the only
   // credential; the handler resolves it to exactly one user's endpoint and can
   // only append records to that user's webhook inbox.
   if (req.method === "POST" && INGEST_WEBHOOK_RE.test(req.path)) return next();
+  // Debug lens Sentry-compatible ingest (exact route, never a prefix).
+  // The cdi_ ingest key in the X-Sentry-Auth header is the only
+  // credential; it resolves server-side to exactly one project of one
+  // user and can only append grouped error issues there.
+  if (req.method === "POST" && DEBUG_INGEST_RE.test(req.path)) return next();
 
   // Animation public share viewer (Wave 4 gap closure,
   // `docs/lens-specs/animation-capability-map.md` checklist item 17) — an
@@ -8944,6 +8942,9 @@ function productionWriteAuthMiddleware(req, res, next) {
   if (method === "POST" && PUBLIC_PROOF_COMMENT_RE.test(req.path)) return next();
   // INC-72: token-scoped inbound ingest webhook (exact route, not a prefix).
   if (method === "POST" && INGEST_WEBHOOK_RE.test(req.path)) return next();
+  // Debug lens Sentry-compatible ingest: key-scoped (exact route, not a
+  // prefix) — the cdi_ key is verified in the handler before any write.
+  if (method === "POST" && DEBUG_INGEST_RE.test(req.path)) return next();
   // POST /api/receipts/verify checks an Ed25519 signature and writes nothing.
   // Exact path, not a prefix, so no other route under /api/receipts/ is opened.
   // Rate limit: write.receipt-verify. See routes/receipts.js.
@@ -10231,6 +10232,10 @@ function botGuardMiddleware(req, res, next) {
   // INC-72: inbound ingest webhooks are sent by external automation (Zapier,
   // cron jobs, curl). The 32-hex token in the exact route is the credential.
   if (req.method === "POST" && INGEST_WEBHOOK_RE.test(req.path)) return next();
+  // Debug lens Sentry-compatible ingest: external error reporters
+  // (Sentry SDKs, curl harnesses) are automated clients by design; the
+  // cdi_ key in the X-Sentry-Auth header is the credential.
+  if (req.method === "POST" && DEBUG_INGEST_RE.test(req.path)) return next();
   const ua = req.headers["user-agent"] || "";
   if (!ua || _BOT_UA_RE.test(ua)) {
     return res.status(403).json({
@@ -29794,7 +29799,6 @@ Available tools:
   "physics.beamDeflection" with {loadLbs:1000,lengthFt:20,modulusE:29000000,momentI:200}, "quantum.simulateCircuit" with {qubits:2,gates:[{"type":"H","target":0},{"type":"CNOT","control":0,"target":1}]},
   "engineering.columnBuckling" with {loadLbs:50000,lengthFt:12,area:8.25,momentI:82.8,elasticModulus:29000000},
   "statistics.linearRegression" with {x:[1,2,3],y:[2,4,6]}, "chemistry.gibbsFreeEnergy" with {deltaH:-286,deltaS:-163,tempK:298}
-- dtu_search: Search the knowledge base (DTUs) the user can see. Read-only. Use it BEFORE citing any DTU; only the ids and titles it returns may be cited. Params: {"query": "search terms", "limit": 8}
 - browse_url: Fetch and read any web page. Params: {"url": "https://...", "selector": "optional css selector"}
   Use when the user pastes a URL or asks about a specific web page.
 - create_dtu: Create a new DTU (Decision/Thought Unit) from the conversation. Params: {"title": "DTU title", "summary": "brief summary", "tags": ["tag1", "tag2"]}
@@ -29985,20 +29989,12 @@ ${_operatorV6Block}` : "";
             const { loadComputeModule } = await import("./lib/compute/index.js");
             const mod = await loadComputeModule(modName);
             if (!mod) return { tool: call.tool, ok: false, error: `Unknown compute module: ${modName}` };
-            if (typeof mod[fnName] !== "function") {
-              const { closestComputeKeys: _closest } = await import("./lib/chat/compute-si.js");
-              return { tool: call.tool, ok: false, error: `Unknown function ${fnName} in ${modName}`, closestKeys: await _closest(computeKey).catch(() => []) };
-            }
-            const { runChatCompute: _runChatCompute } = await import("./lib/chat/compute-si.js");
-            const computeResult = _runChatCompute(computeKey, mod, fnName, computeInput);
+            if (typeof mod[fnName] !== "function") return { tool: call.tool, ok: false, error: `Unknown function ${fnName} in ${modName}` };
+            const computeResult = mod[fnName](computeInput);
             return { tool: call.tool, ok: true, key: computeKey, result: computeResult };
           } catch (_ce) {
             return { tool: call.tool, ok: false, error: `Compute error: ${_ce?.message}` };
           }
-        }
-        case "dtu_search": {
-          const { dispatchChatDtuSearch: _dtuSearch } = await import("./lib/chat-tool-surface.js");
-          return _dtuSearch(runMacro, _toolCtx, call.params);
         }
         case "browse_url": {
           const { url: browseUrl = "", selector: browseSelector } = call.params;
@@ -30097,8 +30093,7 @@ ${_operatorV6Block}` : "";
       if (_gate && _gate.ok === false) {
         result = { tool: call.tool, ok: false, error: _gate.reason || "csl_rejected" };
       } else {
-        // running/done reach a streaming client as the call really starts and ends
-        result = await _chatWithToolProgress(ctx, call, () => _executeToolCall(call));
+        result = await _executeToolCall(call);
       }
       if (_gate) {
         result.cslRouted = !!_gate.cslRouted;
@@ -30347,7 +30342,6 @@ ${_operatorV6Block}` : "";
     if (_chatTodayLine) messages = [{ role: "system", content: _chatTodayLine }, ...messages];
     if (_conversationalChat) messages = withChatToneReminder(messages);
     const _llmSpan = startSpan("llm.chat", { mode, sessionId, promptLength: prompt.length });
-    _chatProgress(ctx, { stage: "thinking", label: "Thinking" });
     _selfContSystem = system + _selfContBlock + smallModelPromptSuffix(brainModel);
     const r = await ctx.llm.chat({
       system: _selfContSystem, messages, temperature: _llmTemp, maxTokens: _selfContFirstTokens(_llmMaxTokens),
@@ -30596,24 +30590,19 @@ ${_operatorV6Block}` : "";
           const _fuAc = new AbortController();
           const _fuTimeout = setTimeout(() => _fuAc.abort(), 120000);
           const _fuStart = Date.now();
-          // A streaming client gets the answer's tokens as the brain writes them.
-          const _fuStream = typeof ctx?.chatToken === "function";
-          _chatProgress(ctx, { stage: "writing", label: "Writing the answer" });
           const _fuRes = await fetch(`${brainUrl}/api/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               model: brainModel,
               messages: [{ role: "system", content: _followUpSystem }, ..._followUpMessages],
-              stream: _fuStream,
+              stream: false,
               think: false,
               options: { temperature: 0.4, num_predict: _chatMaxTokens }
             }),
             signal: _fuAc.signal
-          }).finally(() => { if (!_fuStream) clearTimeout(_fuTimeout); });
-          const _fuJson = _fuStream && _fuRes.ok
-            ? await _readOllamaChatStream(_fuRes, ctx.chatToken).catch(() => ({})).finally(() => clearTimeout(_fuTimeout))
-            : await _fuRes.json().catch(() => ({}));
+          }).finally(() => clearTimeout(_fuTimeout));
+          const _fuJson = await _fuRes.json().catch(() => ({}));
           const _fuElapsed = Date.now() - _fuStart;
           BRAIN.conscious.stats.requests++;
           BRAIN.conscious.stats.totalMs += _fuElapsed;
@@ -30875,20 +30864,6 @@ ${_operatorV6Block}` : "";
         finalReply = _g.text;
         _dtuRefsRemoved = _g.removed;
         ctx.log("chat", "Removed DTU references that were not retrieved", { sessionId, count: _g.removed.length });
-      }
-    } catch { /* guard optional */ }
-  }
-
-  // Figures with units must trace to a tool result or the user's message (lib/chat/numeric-trace.js).
-  let _untracedNumbers = [];
-  if (!_lockedReply && llmUsed && typeof finalReply === "string" && finalReply && _toolCallsExecuted.length) {
-    try {
-      const { guardNumericTrace: _guardNumericTrace } = await import("./lib/chat/numeric-trace.js");
-      const _nt = _guardNumericTrace(finalReply, _toolCallsExecuted, { prompt });
-      if (_nt.untraced.length) {
-        finalReply = _nt.text;
-        _untracedNumbers = _nt.untraced;
-        ctx.log("chat", "Flagged figures not traceable to a tool result", { sessionId, count: _nt.untraced.length });
       }
     } catch { /* guard optional */ }
   }
@@ -31169,7 +31144,6 @@ ${_operatorV6Block}` : "";
     ...(_answerTag || {}),
     ...(_selfContMeta ? { selfContinuation: _selfContMeta } : {}),
     ...(_dtuRefsRemoved.length ? { dtuRefsRemoved: _dtuRefsRemoved } : {}),
-    ...(_untracedNumbers.length ? { untracedNumbers: _untracedNumbers } : {}),
     ...(_imageTurn?.artifact ? { artifact: _imageTurn.artifact } : {}),
     ...(_turnArtifacts.length ? { artifacts: _turnArtifacts } : {}),
     ...(_aiUnavailable ? {
@@ -41030,9 +41004,9 @@ app.use("/api/emergent", createEmergentRouter({ makeCtx, runMacro }));
 app.use("/api/qualia", createQualiaRouter());
 app.use("/api/sovereign", createSovereignRouter({ STATE, makeCtx, runMacro, saveStateDebounced })); // includes /api/sovereign/dashboard, /pulse, /decree, /audit, /eval
 app.use("/api/sovereign-emergent", createSovereignEmergentRouter({ STATE }));
+app.use("/api/debug", createDebugIngestRouter()); // Sentry-compatible envelope ingest (POST /api/debug/ingest/:projectId/envelope, cdi_ key auth)
 app.use("/api", createUserDispatchRouter({ STATE })); // non-sovereign user action dispatch (POST /api/run)
 app.use("/api/federation", createFederationRouter({ db }));
-app.use("/api/marketing/track", createMarketingTrackRouter()); // public email beacons (open pixel + click redirect); handlers are probe/redirect-safe by design — see routes/marketing-track.js
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PROMOTION PIPELINE — HTTP routes for council voting UI

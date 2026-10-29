@@ -14,6 +14,7 @@ import {
   createRateLimiter,
 } from "../lib/sentry-envelope.js";
 import { gzipSync } from "node:zlib";
+import { DEBUG_INGEST_RE } from "../middleware/csrf.js";
 import { createIngestHandler } from "../lib/debug-ingest-handler.js";
 import registerDebugActions, { debugIngest } from "../domains/debug.js";
 
@@ -345,5 +346,24 @@ describe("debug ingest — the endpoint handler's status taxonomy", () => {
     const capped = h.handle({ projectId: pid, authHeader: authFor(key), body });
     assert.equal(capped.status, 429);
     assert.ok(Number(capped.headers["Retry-After"]) > 0);
+  });
+});
+
+describe("the gate exemption is the exact route, never a prefix", () => {
+  it("DEBUG_INGEST_RE matches only the envelope route", () => {
+    assert.equal(DEBUG_INGEST_RE.test("/api/debug/ingest/proj_lx2_abc123/envelope"), true);
+    assert.equal(DEBUG_INGEST_RE.test("/api/debug/ingest/proj_lx2_abc123/envelope/"), true);
+    // Nothing else under /api/debug/ — or anywhere else — is opened.
+    for (const p of [
+      "/api/debug/ingest",
+      "/api/debug/ingest/proj_x/envelope/extra",
+      "/api/debug/ingest/a/b/envelope",
+      "/api/debug/ingest//envelope",
+      "/api/debug/ingestx/envelope",
+      "/api/debug/other",
+      "/api/lens/run",
+    ]) {
+      assert.equal(DEBUG_INGEST_RE.test(p), false, p);
+    }
   });
 });
