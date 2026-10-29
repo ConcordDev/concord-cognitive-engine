@@ -5,11 +5,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Globe, Users, Lock, ImagePlus, Film, X, AtSign, Loader2 } from 'lucide-react';
+import { Globe, Users, Lock, ImagePlus, Film, X, AtSign, Loader2, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import type { Privacy, MediaItem, MediaKind } from './types';
+import { uploadTimelineFile, mediaUrlError, probeImageUrl, UPLOAD_ACCEPT } from './uploadMedia';
 
 const PRIVACY: { id: Privacy; icon: typeof Globe; label: string }[] = [
   { id: 'public', icon: Globe, label: 'Public' },
@@ -111,11 +112,43 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
     onError: () => useUIStore.getState().addToast({ type: 'error', message: 'Post failed' }),
   });
 
-  const addMedia = () => {
-    if (!mediaDraft.trim()) return;
-    setMedia((m) => [...m, { kind: mediaKind, url: mediaDraft.trim() }]);
+  // S-TL-3: uploads + honest URL attach (F14). A pasted link is shape-
+  // checked, and a photo link must actually load, before it attaches —
+  // a refusal lands here as a stated reason, never a broken tile.
+  const [mediaError, setMediaError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const addMedia = async () => {
+    const url = mediaDraft.trim();
+    if (!url) return;
+    const shapeError = mediaUrlError(url);
+    if (shapeError) { setMediaError(shapeError); return; }
+    if (mediaKind === 'photo') {
+      const loads = await probeImageUrl(url);
+      if (!loads) {
+        setMediaError("That link didn't load as an image — check the URL, or upload the file instead.");
+        return;
+      }
+    }
+    setMediaError(null);
+    setMedia((m) => [...m, { kind: mediaKind, url }]);
     setMediaDraft('');
     setShowMediaInput(false);
+  };
+
+  const onFilePicked = async (file: File | null) => {
+    if (!file) return;
+    setUploading(true);
+    setMediaError(null);
+    const result = await uploadTimelineFile(file);
+    setUploading(false);
+    if (result.ok) {
+      setMedia((m) => [...m, result.item]);
+      setShowMediaInput(false);
+    } else {
+      setMediaError(result.error);
+    }
   };
   const addTag = () => {
     const t = tagDraft.trim();
@@ -178,26 +211,48 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
         </div>
       )}
 
-      {/* Media input */}
+      {/* Media input — upload a file or paste a link (S-TL-3) */}
       {showMediaInput && (
-        <div className="flex gap-2">
-          <select
-            value={mediaKind}
-            onChange={(e) => setMediaKind(e.target.value as MediaKind)}
-            className="bg-[#3a3b3c] text-white text-xs rounded px-2 outline-none"
-          >
-            <option value="photo">Photo</option>
-            <option value="video">Video</option>
-          </select>
-          <input
-            value={mediaDraft}
-            onChange={(e) => setMediaDraft(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addMedia()}
-            placeholder="Media URL"
-            autoFocus
-            className="flex-1 bg-[#3a3b3c] rounded px-3 py-1.5 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
-          />
-          <button onClick={addMedia} className="px-3 py-1.5 rounded bg-blue-600 text-white text-xs">Add</button>
+        <div className="space-y-1.5">
+          <div className="flex gap-2">
+            <select
+              value={mediaKind}
+              onChange={(e) => setMediaKind(e.target.value as MediaKind)}
+              className="bg-[#3a3b3c] text-white text-xs rounded px-2 outline-none"
+            >
+              <option value="photo">Photo</option>
+              <option value="video">Video</option>
+            </select>
+            <input
+              value={mediaDraft}
+              onChange={(e) => setMediaDraft(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addMedia()}
+              placeholder="Media URL"
+              autoFocus
+              className="flex-1 bg-[#3a3b3c] rounded px-3 py-1.5 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <button onClick={addMedia} className="px-3 py-1.5 rounded bg-blue-600 text-white text-xs">Add</button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="px-3 py-1.5 rounded bg-[#3a3b3c] text-white text-xs inline-flex items-center gap-1.5 hover:bg-[#4a4b4c] disabled:opacity-50"
+            >
+              {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+              Upload file
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={UPLOAD_ACCEPT}
+              className="hidden"
+              onChange={(e) => {
+                void onFilePicked(e.target.files?.[0] ?? null);
+                e.target.value = '';
+              }}
+            />
+          </div>
+          <p className="text-[11px] text-gray-500">Images (JPEG, PNG, GIF, WebP, SVG) or video (MP4, WebM), up to 10 MB — or paste a link; links are checked before they attach.</p>
+          {mediaError && <p className="text-[11px] text-rose-300">{mediaError}</p>}
         </div>
       )}
 

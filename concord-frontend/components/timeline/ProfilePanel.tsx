@@ -4,12 +4,13 @@
 // ProfilePanel — cover photo, bio and "About" section.
 // Wires timeline.profile-get and profile-update.
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Briefcase, GraduationCap, MapPin, Heart, Link2, Pencil, Loader2, Camera, Check } from 'lucide-react';
+import { Briefcase, GraduationCap, MapPin, Heart, Link2, Pencil, Loader2, Camera, Check, Upload } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import type { Profile } from './types';
+import { uploadTimelineFile, mediaUrlError, UPLOAD_ACCEPT } from './uploadMedia';
 
 interface ProfileResult {
   profile: Profile;
@@ -23,7 +24,31 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
   const [editing, setEditing] = useState(false);
   const [bio, setBio] = useState('');
   const [coverUrl, setCoverUrl] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [about, setAbout] = useState<Profile['about']>(EMPTY_ABOUT);
+  // S-TL-3: cover/avatar file uploads on the shared artifact path.
+  const [uploadingFor, setUploadingFor] = useState<'cover' | 'avatar' | null>(null);
+  const uploadTarget = useRef<'cover' | 'avatar'>('cover');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const pickFor = (target: 'cover' | 'avatar') => {
+    uploadTarget.current = target;
+    fileInputRef.current?.click();
+  };
+
+  const onFilePicked = async (file: File | null) => {
+    if (!file) return;
+    const target = uploadTarget.current;
+    setUploadingFor(target);
+    const result = await uploadTimelineFile(file);
+    setUploadingFor(null);
+    if (result.ok) {
+      if (target === 'cover') setCoverUrl(result.item.url);
+      else setAvatarUrl(result.item.url);
+    } else {
+      useUIStore.getState().addToast({ type: 'error', message: result.error });
+    }
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ['timeline-profile'],
@@ -37,12 +62,13 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
     if (data?.profile) {
       setBio(data.profile.bio || '');
       setCoverUrl(data.profile.coverUrl || '');
+      setAvatarUrl(data.profile.avatarUrl || '');
       setAbout({ ...EMPTY_ABOUT, ...data.profile.about });
     }
   }, [data]);
 
   const saveMutation = useMutation({
-    mutationFn: () => lensRun('timeline', 'profile-update', { bio, coverUrl, about }),
+    mutationFn: () => lensRun('timeline', 'profile-update', { bio, coverUrl, avatarUrl, about }),
     onSuccess: (r) => {
       if (r.data.ok) {
         qc.invalidateQueries({ queryKey: ['timeline-profile'] });
@@ -78,7 +104,11 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
         {profile?.coverUrl && (
           <img src={profile.coverUrl} alt="cover" className="w-full h-full object-cover" />
         )}
-        <div className="absolute -bottom-8 left-4 w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 border-4 border-[#242526]" />
+        <div className="absolute -bottom-8 left-4 w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 border-4 border-[#242526] overflow-hidden">
+          {profile?.avatarUrl && (
+            <img src={profile.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+          )}
+        </div>
       </div>
 
       <div className="pt-10 px-4 pb-4">
@@ -102,11 +132,50 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
             <label className="text-[11px] text-gray-400 flex items-center gap-1">
               <Camera className="w-3 h-3" /> Cover photo URL
             </label>
+            <div className="flex gap-2">
+              <input
+                value={coverUrl}
+                onChange={(e) => setCoverUrl(e.target.value)}
+                placeholder="https://…"
+                className="flex-1 bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <button
+                onClick={() => pickFor('cover')}
+                disabled={uploadingFor !== null}
+                className="px-3 py-2 rounded bg-[#3a3b3c] text-white text-xs inline-flex items-center gap-1.5 hover:bg-[#4a4b4c] disabled:opacity-50"
+              >
+                {uploadingFor === 'cover' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                Upload
+              </button>
+            </div>
+            <label className="text-[11px] text-gray-400 flex items-center gap-1">
+              <Camera className="w-3 h-3" /> Avatar photo URL
+            </label>
+            <div className="flex gap-2">
+              <input
+                value={avatarUrl}
+                onChange={(e) => setAvatarUrl(e.target.value)}
+                placeholder="https://…"
+                className="flex-1 bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <button
+                onClick={() => pickFor('avatar')}
+                disabled={uploadingFor !== null}
+                className="px-3 py-2 rounded bg-[#3a3b3c] text-white text-xs inline-flex items-center gap-1.5 hover:bg-[#4a4b4c] disabled:opacity-50"
+              >
+                {uploadingFor === 'avatar' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                Upload
+              </button>
+            </div>
             <input
-              value={coverUrl}
-              onChange={(e) => setCoverUrl(e.target.value)}
-              placeholder="https://…"
-              className="w-full bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+              ref={fileInputRef}
+              type="file"
+              accept={UPLOAD_ACCEPT}
+              className="hidden"
+              onChange={(e) => {
+                void onFilePicked(e.target.files?.[0] ?? null);
+                e.target.value = '';
+              }}
             />
             <label className="text-[11px] text-gray-400">Bio</label>
             <textarea
@@ -126,7 +195,20 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
               />
             ))}
             <button
-              onClick={() => saveMutation.mutate()}
+              onClick={() => {
+                // F14 honesty on the profile too: a cover/avatar link
+                // that can never load is refused here, in words.
+                for (const [label, url] of [['Cover', coverUrl], ['Avatar', avatarUrl]] as const) {
+                  if (url.trim()) {
+                    const err = mediaUrlError(url);
+                    if (err) {
+                      useUIStore.getState().addToast({ type: 'error', message: `${label}: ${err}` });
+                      return;
+                    }
+                  }
+                }
+                saveMutation.mutate();
+              }}
               disabled={saveMutation.isPending}
               className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium disabled:opacity-50 inline-flex items-center gap-1.5"
             >

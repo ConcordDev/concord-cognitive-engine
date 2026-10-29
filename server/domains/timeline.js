@@ -487,6 +487,27 @@ export default function registerTimelineActions(registerLensAction) {
   const PRIVACY_KINDS = ["public", "friends", "private"];
   const MEDIA_KINDS = ["photo", "video"];
 
+  // Media URLs (S-TL-3 / F14): an item may point at an uploaded
+  // artifact (its stream path) or at an absolute http(s) URL. Anything
+  // else — a bare word, a javascript:/data: URL, a malformed string —
+  // can never render, and attaching it silently was F14's broken-image
+  // publish. The macros refuse the attach with this reason instead.
+  // Returns null when the URL is usable.
+  const tlMediaUrlError = (url) => {
+    const u = String(url || "");
+    if (/^\/api\/artifact\/[A-Za-z0-9_.:-]+\/stream$/.test(u)) return null;
+    try {
+      const parsed = new URL(u);
+      if (parsed.protocol === "http:" || parsed.protocol === "https:") return null;
+    } catch { /* not a URL at all — fall through */ }
+    return `Media URL can't be used: ${u.slice(0, 80) || "(empty)"} — paste an http(s) link or upload the file instead.`;
+  };
+  // The post-create media mapping, shared by post-update (S-TL-2).
+  const tlMapMedia = (media) => (Array.isArray(media) ? media : [])
+    .filter((m) => m && MEDIA_KINDS.includes(String(m.kind)))
+    .slice(0, 12)
+    .map((m) => ({ kind: String(m.kind), url: tlClean(m.url, 1000), caption: tlClean(m.caption, 200) }));
+
   // Find a post by id across all users' feeds — returns { ownerId, post } | null.
   function findPost(s, postId) {
     for (const [ownerId, posts] of s.posts.entries()) {
@@ -550,9 +571,13 @@ export default function registerTimelineActions(registerLensAction) {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const content = tlClean(params.content, 5000);
-    const media = Array.isArray(params.media) ? params.media : [];
+    const media = tlMapMedia(params.media);
     if (!content && media.length === 0) {
       return { ok: false, error: "Post needs content or media." };
+    }
+    for (const m of media) {
+      const urlError = tlMediaUrlError(m.url);
+      if (urlError) return { ok: false, error: urlError };
     }
     const privacy = PRIVACY_KINDS.includes(String(params.privacy))
       ? String(params.privacy) : "private";
@@ -564,10 +589,7 @@ export default function registerTimelineActions(registerLensAction) {
       id: tlId("pst"),
       authorId: tlAid(ctx),
       content,
-      media: media
-        .filter((m) => m && MEDIA_KINDS.includes(String(m.kind)))
-        .slice(0, 12)
-        .map((m) => ({ kind: String(m.kind), url: tlClean(m.url, 1000), caption: tlClean(m.caption, 200) })),
+      media,
       privacy,
       citedDtuId,
       taggedUserIds: Array.isArray(params.taggedUserIds)
@@ -618,10 +640,11 @@ export default function registerTimelineActions(registerLensAction) {
     }
     if (params.media !== undefined) {
       if (!Array.isArray(params.media)) return { ok: false, error: "media must be a list." };
-      next.media = params.media
-        .filter((m) => m && MEDIA_KINDS.includes(String(m.kind)))
-        .slice(0, 12)
-        .map((m) => ({ kind: String(m.kind), url: tlClean(m.url, 1000), caption: tlClean(m.caption, 200) }));
+      next.media = tlMapMedia(params.media);
+      for (const m of next.media) {
+        const urlError = tlMediaUrlError(m.url);
+        if (urlError) return { ok: false, error: urlError };
+      }
     }
     // A shared post's payload lives in sharedFrom; it may legitimately
     // keep empty content and media. Any other post must carry one of them.
@@ -951,6 +974,10 @@ export default function registerTimelineActions(registerLensAction) {
       const kind = String(m && m.kind);
       const url = tlClean(m && m.url, 1000);
       if (!MEDIA_KINDS.includes(kind) || !url) continue;
+      // F14: a kind-valid item with an unusable URL refuses the whole
+      // attach with the reason — never a silent skip into a broken tile.
+      const urlError = tlMediaUrlError(url);
+      if (urlError) return { ok: false, error: urlError };
       const item = { id: tlId("med"), kind, url, caption: tlClean(m.caption, 200), at: tlNow() };
       album.media.push(item);
       added.push(item);

@@ -236,6 +236,57 @@ describe("S-TL-2 timeline.comment-update", () => {
   });
 });
 
+// ── S-TL-3: media URL honesty (F14) ────────────────────────────────────
+// Uploaded media arrives as an artifact stream path; linked media as
+// an absolute http(s) URL. Anything else is refused at attach time
+// with a stated reason — no silent broken-image publishes.
+describe("S-TL-3 timeline media URL honesty (F14)", () => {
+  it("accepts an artifact stream path and an https URL", () => {
+    const me = asUser("mu_ok");
+    const a = call("post-create", me, {
+      content: "uploaded", privacy: "public",
+      media: [{ kind: "photo", url: "/api/artifact/artifact_abc123/stream" }],
+    });
+    assert.equal(a.ok, true);
+    const b = call("post-create", me, {
+      content: "linked", privacy: "public",
+      media: [{ kind: "video", url: "https://cdn.example.com/clip.mp4" }],
+    });
+    assert.equal(b.ok, true);
+  });
+
+  it("refuses a bare word, a javascript: URL, and a data: URL at post-create — nothing is published", () => {
+    const me = asUser("mu_bad");
+    for (const url of ["notaurl", "javascript:alert(1)", "data:image/png;base64,AAAA"]) {
+      const r = call("post-create", me, {
+        content: "x", privacy: "public", media: [{ kind: "photo", url }],
+      });
+      assert.equal(r.ok, false, url);
+      assert.match(r.error, /Media URL can't be used/);
+    }
+    const feed = call("feed-list", me, {});
+    assert.equal(feed.result.total, 0);
+  });
+
+  it("refuses an unusable URL on post-update and album-add-media too", () => {
+    const me = asUser("mu_more");
+    const post = call("post-create", me, { content: "clean", privacy: "public" }).result.post;
+    const upd = call("post-update", me, {
+      postId: post.id, media: [{ kind: "photo", url: "htp:/broken" }],
+    });
+    assert.equal(upd.ok, false);
+    assert.match(upd.error, /Media URL can't be used/);
+    const album = call("album-create", me, { name: "Pics" }).result.album;
+    const add = call("album-add-media", me, {
+      albumId: album.id, media: [{ kind: "photo", url: "still not a url" }],
+    });
+    assert.equal(add.ok, false);
+    assert.match(add.error, /Media URL can't be used/);
+    const list = call("album-list", me, {});
+    assert.equal(list.result.albums[0].media.length, 0);
+  });
+});
+
 // ── S-TL-2: friends-tier regression lock ───────────────────────────────
 // The prep audit found the friends-tier gate already fixed on main
 // (checkPostAccess via areFriends, fail-closed, oracle-safe). This

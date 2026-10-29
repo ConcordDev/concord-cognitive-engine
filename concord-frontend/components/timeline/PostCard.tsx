@@ -10,7 +10,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ThumbsUp, Heart, Laugh, Frown, Angry, MessageCircle, Share2, Bookmark,
-  Globe, Users, Lock, Film, Trash2, Repeat2, Pencil, History, Loader2,
+  Globe, Users, Lock, Trash2, Repeat2, Pencil, History, Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { lensRun } from '@/lib/api/client';
@@ -239,9 +239,7 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
           {post.media.map((m, i) => (
             <div key={m.id ?? `${m.url}-${i}`} className="bg-[#18191a] aspect-video overflow-hidden relative">
               {m.kind === 'video' ? (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Film className="w-10 h-10 text-gray-600" />
-                </div>
+                <video src={m.url} controls preload="metadata" className="w-full h-full object-cover" />
               ) : (
                 <img src={m.url} alt={m.caption || 'post media'} className="w-full h-full object-cover" />
               )}

@@ -4,13 +4,14 @@
 // AlbumsPanel — media albums view. Wires timeline.album-list, album-create,
 // album-add-media. Photo/video URLs are user-supplied (free uploads by design).
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { LayoutGrid, Plus, Film, ImagePlus, Loader2, X } from 'lucide-react';
+import { LayoutGrid, Plus, Film, ImagePlus, Loader2, X, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import type { Album, MediaItem, MediaKind } from './types';
+import { uploadTimelineFile, mediaUrlError, probeImageUrl, UPLOAD_ACCEPT } from './uploadMedia';
 
 interface AlbumListResult {
   albums: Album[];
@@ -51,21 +52,56 @@ export function AlbumsPanel() {
   });
 
   const addMediaMutation = useMutation({
-    mutationFn: (albumId: string) =>
+    mutationFn: (vars: { albumId: string; kind: MediaKind; url: string }) =>
       lensRun('timeline', 'album-add-media', {
-        albumId,
-        media: [{ kind: mediaKind, url: mediaUrl, caption: mediaCaption }],
+        albumId: vars.albumId,
+        media: [{ kind: vars.kind, url: vars.url, caption: mediaCaption }],
       }),
     onSuccess: (r) => {
       if (r.data.ok) {
         qc.invalidateQueries({ queryKey: ['timeline-albums'] });
         setMediaUrl('');
         setMediaCaption('');
+        setMediaError(null);
       } else {
         useUIStore.getState().addToast({ type: 'error', message: r.data.error || 'Could not add media' });
       }
     },
   });
+
+  // S-TL-3: uploads + honest URL attach (F14), same rules as the composer.
+  const [mediaError, setMediaError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const addByUrl = async (albumId: string) => {
+    const url = mediaUrl.trim();
+    if (!url) return;
+    const shapeError = mediaUrlError(url);
+    if (shapeError) { setMediaError(shapeError); return; }
+    if (mediaKind === 'photo') {
+      const loads = await probeImageUrl(url);
+      if (!loads) {
+        setMediaError("That link didn't load as an image — check the URL, or upload the file instead.");
+        return;
+      }
+    }
+    setMediaError(null);
+    addMediaMutation.mutate({ albumId, kind: mediaKind, url });
+  };
+
+  const onFilePicked = async (albumId: string, file: File | null) => {
+    if (!file) return;
+    setUploading(true);
+    setMediaError(null);
+    const result = await uploadTimelineFile(file);
+    setUploading(false);
+    if (result.ok) {
+      addMediaMutation.mutate({ albumId, kind: result.item.kind, url: result.item.url });
+    } else {
+      setMediaError(result.error);
+    }
+  };
 
   const albums = data?.albums ?? [];
   const active = albums.find((a) => a.id === openAlbum);
@@ -177,9 +213,7 @@ export function AlbumsPanel() {
                   {active.media.map((m: MediaItem) => (
                     <div key={m.id ?? m.url} className="aspect-square bg-[#3a3b3c] rounded overflow-hidden relative group">
                       {m.kind === 'video' ? (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Film className="w-8 h-8 text-gray-400" />
-                        </div>
+                        <video src={m.url} controls preload="metadata" className="w-full h-full object-cover" />
                       ) : (
                         <img src={m.url} alt={m.caption || 'photo'} className="w-full h-full object-cover" />
                       )}
@@ -229,14 +263,34 @@ export function AlbumsPanel() {
                   className="flex-1 bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <button
-                  onClick={() => addMediaMutation.mutate(active.id)}
+                  onClick={() => void addByUrl(active.id)}
                   disabled={!mediaUrl.trim() || addMediaMutation.isPending}
                   className="px-4 py-2 rounded bg-blue-600 text-white text-xs font-medium disabled:opacity-40 inline-flex items-center gap-1.5"
                 >
                   {addMediaMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Add
                 </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading || addMediaMutation.isPending}
+                  className="px-4 py-2 rounded bg-[#3a3b3c] text-white text-xs font-medium disabled:opacity-40 inline-flex items-center gap-1.5 hover:bg-[#4a4b4c]"
+                >
+                  {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                  Upload file
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={UPLOAD_ACCEPT}
+                  className="hidden"
+                  onChange={(e) => {
+                    void onFilePicked(active.id, e.target.files?.[0] ?? null);
+                    e.target.value = '';
+                  }}
+                />
               </div>
+              <p className="text-[11px] text-gray-500">Uploads: images or MP4/WebM video, up to 10 MB. Links are checked before they attach.</p>
+              {mediaError && <p className="text-[11px] text-rose-300">{mediaError}</p>}
             </div>
           </div>
         </div>
