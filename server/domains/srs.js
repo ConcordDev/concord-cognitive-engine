@@ -219,10 +219,23 @@ export default function registerSrsActions(registerLensAction) {
     const arr = srsList(s.decks, userId);
     const i = arr.findIndex((d) => d.id === params.id);
     if (i < 0) return { ok: false, error: "deck not found" };
-    arr.splice(i, 1);
+    const [removed] = arr.splice(i, 1);
+    // Q19: never orphan sub-decks. Children are reparented to the
+    // deleted deck's own parent (children of a root become roots) —
+    // NOT cascade-deleted: their cards are the user's study data, and
+    // silently destroying them on a parent delete is a data-loss
+    // incident, not a cleanup. The reparenting is reported in the
+    // result so it is visible, never silent.
+    let reparented = 0;
+    for (const d of arr) {
+      if (d.parentId === removed.id) {
+        d.parentId = removed.parentId ?? null;
+        reparented++;
+      }
+    }
     s.cards.set(userId, srsList(s.cards, userId).filter((c) => c.deckId !== params.id));
     saveSrs();
-    return { ok: true, result: { deleted: params.id } };
+    return { ok: true, result: { deleted: params.id, reparented, newParentId: removed.parentId ?? null } };
   });
 
   // Parse {{c1::answer}} cloze markup → list of generated sub-cards.
