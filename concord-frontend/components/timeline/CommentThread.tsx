@@ -10,8 +10,9 @@ import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import {
   MessageCircle, CornerDownRight, Trash2, Loader2, Pencil, History,
-  ThumbsUp, Heart, Laugh, Frown, Angry, Smile,
+  ThumbsUp, Heart, Laugh, Frown, Angry, Smile, Flag,
 } from 'lucide-react';
+import { ReportDialog } from './ReportDialog';
 import { cn } from '@/lib/utils';
 import type { Comment, ReactionKind } from './types';
 import { timeAgo, exactTime } from './timeFormat';
@@ -60,6 +61,8 @@ function CommentNode({
   const [showHistory, setShowHistory] = useState(false);
   // S-TL-6: the comment reaction picker.
   const [showPicker, setShowPicker] = useState(false);
+  // S-TL-9: report someone else's comment (F12).
+  const [reporting, setReporting] = useState(false);
   const mine = comment.isMine || (comment.authorId != null && comment.authorId === viewerId);
   const myReaction = comment.userReaction ? REACTIONS.find((r) => r.id === comment.userReaction) : null;
 
@@ -147,6 +150,15 @@ function CommentNode({
               >
                 {busyId === comment.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
                 Delete
+              </button>
+            )}
+            {!mine && (
+              <button
+                onClick={() => setReporting(true)}
+                className="hover:text-amber-400 inline-flex items-center gap-1"
+              >
+                <Flag className="w-3 h-3" />
+                Report
               </button>
             )}
           </div>
@@ -239,6 +251,15 @@ function CommentNode({
           busyId={busyId}
         />
       ))}
+      {reporting && (
+        <ReportDialog
+          targetType="comment"
+          targetId={comment.id}
+          postId={postId}
+          authorName={comment.displayName || 'Member'}
+          onClose={() => setReporting(false)}
+        />
+      )}
     </div>
   );
 }

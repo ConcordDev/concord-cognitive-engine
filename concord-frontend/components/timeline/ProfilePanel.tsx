@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Briefcase, GraduationCap, MapPin, Heart, Link2, Pencil, Loader2, Camera, Check, Upload, Eye, X } from 'lucide-react';
+import { Briefcase, GraduationCap, MapPin, Heart, Link2, Pencil, Loader2, Camera, Check, Upload, Eye, X, ShieldCheck } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import type { Profile, FeedPost } from './types';
@@ -84,6 +84,42 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
       setAbout({ ...EMPTY_ABOUT, ...data.profile.about });
     }
   }, [data]);
+
+  // S-TL-9: your safety lists — who you've muted/blocked, and the undo
+  // path for both verbs (they're applied from post cards).
+  const { data: safety } = useQuery({
+    queryKey: ['timeline-safety'],
+    queryFn: async () => {
+      const r = await lensRun<{ muted: { userId: string; displayName: string }[]; blocked: { userId: string; displayName: string }[] }>(
+        'timeline', 'safety-lists', {},
+      );
+      return r.data.result ?? { muted: [], blocked: [] };
+    },
+  });
+  const unmuteMutation = useMutation({
+    mutationFn: (userId: string) => lensRun('timeline', 'user-unmute', { userId }),
+    onSuccess: (r) => {
+      if (r.data.ok) {
+        qc.invalidateQueries({ queryKey: ['timeline-safety'] });
+        qc.invalidateQueries({ queryKey: ['timeline-feed'] });
+        useUIStore.getState().addToast({ type: 'success', message: 'Unmuted — their posts are back in your feed' });
+      } else {
+        useUIStore.getState().addToast({ type: 'error', message: r.data.error || 'Unmute failed' });
+      }
+    },
+  });
+  const unblockMutation = useMutation({
+    mutationFn: (userId: string) => lensRun('timeline', 'user-unblock', { userId }),
+    onSuccess: (r) => {
+      if (r.data.ok) {
+        qc.invalidateQueries({ queryKey: ['timeline-safety'] });
+        qc.invalidateQueries({ queryKey: ['timeline-feed'] });
+        useUIStore.getState().addToast({ type: 'success', message: 'Unblocked — you can see each other again (friendship is not restored)' });
+      } else {
+        useUIStore.getState().addToast({ type: 'error', message: r.data.error || 'Unblock failed' });
+      }
+    },
+  });
 
   const saveMutation = useMutation({
     mutationFn: () => lensRun('timeline', 'profile-update', { displayName, bio, coverUrl, avatarUrl, about }),
@@ -361,6 +397,63 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
         </div>
       </div>
     )}
+
+    {/* S-TL-9: safety — your muted/blocked lists and the undo path. */}
+    <div className="bg-[#242526] rounded-lg overflow-hidden mt-3">
+      <div className="px-4 py-3 border-b border-gray-700">
+        <p className="text-sm text-white inline-flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-green-400" />
+          Safety — muted &amp; blocked
+        </p>
+        <p className="text-[11px] text-gray-400 mt-1">
+          Mute and block are applied from a person&apos;s posts. Muting only changes your feed; blocking hides both of you from each other and ends the friendship.
+        </p>
+      </div>
+      <div className="p-4 space-y-4">
+        <div>
+          <p className="text-xs font-semibold text-gray-300 mb-2">Muted</p>
+          {(safety?.muted ?? []).length === 0 ? (
+            <p className="text-xs text-gray-500">You haven&apos;t muted anyone.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {(safety?.muted ?? []).map((p) => (
+                <div key={p.userId} className="flex items-center justify-between gap-2 text-sm">
+                  <span className="text-gray-200">{p.displayName}</span>
+                  <button
+                    onClick={() => unmuteMutation.mutate(p.userId)}
+                    disabled={unmuteMutation.isPending}
+                    className="px-3 py-1 rounded-full text-xs text-gray-300 bg-[#3a3b3c] hover:bg-[#4a4b4c] disabled:opacity-40"
+                  >
+                    Unmute
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-gray-300 mb-2">Blocked</p>
+          {(safety?.blocked ?? []).length === 0 ? (
+            <p className="text-xs text-gray-500">You haven&apos;t blocked anyone.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {(safety?.blocked ?? []).map((p) => (
+                <div key={p.userId} className="flex items-center justify-between gap-2 text-sm">
+                  <span className="text-gray-200">{p.displayName}</span>
+                  <button
+                    onClick={() => unblockMutation.mutate(p.userId)}
+                    disabled={unblockMutation.isPending}
+                    className="px-3 py-1 rounded-full text-xs text-gray-300 bg-[#3a3b3c] hover:bg-[#4a4b4c] disabled:opacity-40"
+                  >
+                    Unblock
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
     </>
   );
 }

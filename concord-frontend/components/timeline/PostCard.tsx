@@ -11,7 +11,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ThumbsUp, Heart, Laugh, Frown, Angry, MessageCircle, Share2, Bookmark,
   Globe, Users, Lock, Trash2, Repeat2, Pencil, History, Loader2,
+  Flag, VolumeX, Ban,
 } from 'lucide-react';
+import { ReportDialog } from './ReportDialog';
 import { cn } from '@/lib/utils';
 import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -45,6 +47,9 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
   const [draftPrivacy, setDraftPrivacy] = useState<Privacy>('private');
   // S-TL-8: the reply gate is editable with the post.
   const [draftReplyGate, setDraftReplyGate] = useState<ReplyGate>('anyone');
+  // S-TL-9: safety verbs on other people's posts.
+  const [reporting, setReporting] = useState(false);
+  const [confirmBlock, setConfirmBlock] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
   const reactMutation = useMutation({
@@ -56,6 +61,34 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
       const action = (r.data.result as { action?: string } | undefined)?.action;
       if (r.data.ok && (action === 'added' || action === 'changed')) {
         useUIStore.getState().addToast({ type: 'success', message: 'Reaction added' });
+      }
+    },
+  });
+
+  // S-TL-9: mute/block the author from their post. The undo path for
+  // both lives on your profile's safety section.
+  const authorName = post.authorDisplayName || 'Member';
+  const muteMutation = useMutation({
+    mutationFn: () => lensRun('timeline', 'user-mute', { userId: post.authorId }),
+    onSuccess: (r) => {
+      if (r.data.ok) {
+        qc.invalidateQueries({ queryKey: ['timeline-feed'] });
+        useUIStore.getState().addToast({ type: 'success', message: `Muted ${authorName} — their posts leave your feed. Undo from your profile.` });
+      } else {
+        useUIStore.getState().addToast({ type: 'error', message: r.data.error || 'Mute failed' });
+      }
+    },
+  });
+
+  const blockMutation = useMutation({
+    mutationFn: () => lensRun('timeline', 'user-block', { userId: post.authorId }),
+    onSuccess: (r) => {
+      if (r.data.ok) {
+        setConfirmBlock(false);
+        qc.invalidateQueries({ queryKey: ['timeline-feed'] });
+        useUIStore.getState().addToast({ type: 'success', message: `Blocked ${authorName} — you won't see each other here. Undo from your profile.` });
+      } else {
+        useUIStore.getState().addToast({ type: 'error', message: r.data.error || 'Block failed' });
       }
     },
   });
@@ -157,6 +190,56 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
               aria-label="Delete post"
             >
               <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+        {/* S-TL-9: safety verbs on someone else's post (F12) */}
+        {!isOwner && !confirmBlock && (
+          <div className="flex items-center">
+            <button
+              onClick={() => setReporting(true)}
+              className="p-2 rounded-full hover:bg-[#3a3b3c] text-gray-400 hover:text-amber-400"
+              aria-label="Report post"
+              title="Report this post"
+            >
+              <Flag className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => muteMutation.mutate()}
+              disabled={muteMutation.isPending}
+              className="p-2 rounded-full hover:bg-[#3a3b3c] text-gray-400 hover:text-white"
+              aria-label={`Mute ${authorName}`}
+              title={`Mute ${authorName} — their posts leave your feed`}
+            >
+              <VolumeX className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setConfirmBlock(true)}
+              className="p-2 rounded-full hover:bg-[#3a3b3c] text-gray-400 hover:text-red-400"
+              aria-label={`Block ${authorName}`}
+              title={`Block ${authorName}`}
+            >
+              <Ban className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+        {!isOwner && confirmBlock && (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-gray-300">
+              Block {authorName}? You won&apos;t see each other&apos;s posts, and the friendship ends.
+            </span>
+            <button
+              onClick={() => blockMutation.mutate()}
+              disabled={blockMutation.isPending}
+              className="px-3 py-1.5 rounded-full bg-red-600 text-white font-medium disabled:opacity-40"
+            >
+              Block
+            </button>
+            <button
+              onClick={() => setConfirmBlock(false)}
+              className="px-3 py-1.5 rounded-full text-gray-300 hover:bg-[#3a3b3c]"
+            >
+              Cancel
             </button>
           </div>
         )}
@@ -396,6 +479,14 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
         {showBreakdown && <ReactionBreakdown postId={post.id} onClose={() => setShowBreakdown(false)} />}
         {showShare && <ShareModal post={post} onClose={() => setShowShare(false)} />}
       </AnimatePresence>
+      {reporting && (
+        <ReportDialog
+          targetType="post"
+          targetId={post.id}
+          authorName={authorName}
+          onClose={() => setReporting(false)}
+        />
+      )}
     </article>
   );
 }

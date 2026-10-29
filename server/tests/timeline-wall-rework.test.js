@@ -14,7 +14,7 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerTimelineActions from "../domains/timeline.js";
-import { sendFriendRequest, acceptFriendRequest } from "../lib/friendships.js";
+import { sendFriendRequest, acceptFriendRequest, areFriends } from "../lib/friendships.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -37,6 +37,16 @@ function makeFriendDb() {
   function execute(sql, args, mode) {
     if (sql.startsWith("SELECT * FROM friendships WHERE id =")) {
       return mode === "all" ? [] : rows.get(args[0]) || null;
+    }
+    if (sql.startsWith("SELECT requester_id, addressee_id FROM friendships WHERE status = 'blocked'")) {
+      const [a, b] = args;
+      const out = [];
+      for (const r of rows.values()) {
+        if (r.status === "blocked" && (r.requester_id === a || r.addressee_id === b)) {
+          out.push({ requester_id: r.requester_id, addressee_id: r.addressee_id });
+        }
+      }
+      return out;
     }
     if (sql.startsWith("SELECT * FROM friendships WHERE (requester_id = ? AND addressee_id = ?)")) {
       const [a, b, c, d] = args;
@@ -602,6 +612,102 @@ describe("S-TL-8 timeline reply gates (B11)", () => {
     assert.equal(tryComment(stranger, post.id).ok, false);
     assert.equal(call("post-update", ada, { postId: post.id, replyGate: "vip" }).ok, false);
     assert.equal(call("post-update", stranger, { postId: post.id, replyGate: "anyone" }).ok, false, "not the author");
+  });
+});
+
+// ── S-TL-9: safety verbs — report / block / mute (F12) ─────────────────
+describe("S-TL-9 timeline safety verbs (F12)", () => {
+  const ada = asUser("sf_ada");
+  const bob = asUser("sf_bob");
+  const feedIds = (ctx) => call("feed-list", ctx, { limit: 50 }).result.posts.map((p) => p.id);
+
+  it("report files into the moderation queue with an honest what-happens-next; duplicates don't stack", () => {
+    const post = call("post-create", bob, { content: "questionable", privacy: "public" }).result.post;
+    const r = call("report", ada, { targetType: "post", targetId: post.id, reason: "Spam" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.duplicate, false);
+    assert.match(r.result.nextSteps, /moderation queue/);
+    assert.match(r.result.nextSteps, /not told who reported/);
+    const queue = globalThis._concordSTATE.timelineLens.reports;
+    assert.equal(queue.length, 1);
+    assert.equal(queue[0].targetAuthorId, "sf_bob");
+    assert.equal(queue[0].status, "open");
+    const again = call("report", ada, { targetType: "post", targetId: post.id, reason: "Spam again" });
+    assert.equal(again.result.duplicate, true);
+    assert.equal(globalThis._concordSTATE.timelineLens.reports.length, 1);
+  });
+
+  it("report refuses: no reason, unknown target, your own content, content you can't see", () => {
+    const post = call("post-create", bob, { content: "x", privacy: "public" }).result.post;
+    assert.equal(call("report", ada, { targetType: "post", targetId: post.id, reason: " " }).ok, false);
+    assert.equal(call("report", ada, { targetType: "post", targetId: "pst_nope", reason: "Spam" }).error, "Post not found.");
+    assert.equal(call("report", bob, { targetType: "post", targetId: post.id, reason: "Spam" }).error, "You can't report your own post.");
+    const priv = call("post-create", bob, { content: "secret", privacy: "private" }).result.post;
+    assert.equal(call("report", ada, { targetType: "post", targetId: priv.id, reason: "Spam" }).error, "Post not found.");
+    assert.equal(call("report", ada, { targetType: "widget", targetId: post.id, reason: "Spam" }).ok, false);
+  });
+
+  it("report works on comments, scoped or unscoped, and refuses your own", () => {
+    const post = call("post-create", bob, { content: "host", privacy: "public" }).result.post;
+    const comment = call("comment-add", bob, { postId: post.id, text: "bad comment" }).result.comment;
+    assert.equal(call("report", ada, { targetType: "comment", targetId: comment.id, postId: post.id, reason: "Harassment" }).ok, true);
+    const other = call("post-create", bob, { content: "host2", privacy: "public" }).result.post;
+    const c2 = call("comment-add", bob, { postId: other.id, text: "bad comment 2" }).result.comment;
+    assert.equal(call("report", ada, { targetType: "comment", targetId: c2.id, reason: "Harassment" }).ok, true, "unscoped search finds it");
+    assert.equal(call("report", bob, { targetType: "comment", targetId: comment.id, reason: "x" }).error, "You can't report your own comment.");
+  });
+
+  it("block hides both directions in the feed and severs the friendship; unblock restores visibility", () => {
+    befriend("sf_ada", "sf_bob");
+    const bobsPost = call("post-create", bob, { content: "bob public", privacy: "public" }).result.post;
+    const adasPost = call("post-create", ada, { content: "ada public", privacy: "public" }).result.post;
+    assert.ok(feedIds(ada).includes(bobsPost.id));
+    assert.equal(call("user-block", ada, { userId: "sf_bob" }).ok, true);
+    assert.equal(areFriends(friendDb, "sf_ada", "sf_bob"), false, "block severs the friendship");
+    assert.ok(!feedIds(ada).includes(bobsPost.id), "blocker no longer sees them");
+    assert.ok(!feedIds(bob).includes(adasPost.id), "blocked person no longer sees the blocker");
+    assert.equal(call("user-block", ada, { userId: "sf_ada" }).ok, false, "no self-block");
+    assert.equal(call("user-unblock", ada, { userId: "sf_bob" }).ok, true);
+    assert.ok(feedIds(ada).includes(bobsPost.id), "unblock restores visibility");
+    assert.equal(call("user-unblock", ada, { userId: "sf_bob" }).error, "That person isn't blocked.");
+  });
+
+  it("block needs the friend graph — no db, an honest refusal, nothing half-done", () => {
+    const noDb = { actor: { userId: "sf_ada" }, userId: "sf_ada", db: null };
+    const r = call("user-block", noDb, { userId: "sf_bob" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /Friend graph unavailable/);
+  });
+
+  it("mute hides the person from YOUR feed and threads only; they still see you; unmute restores", () => {
+    const bobsPost = call("post-create", bob, { content: "bob again", privacy: "public" }).result.post;
+    const adasPost = call("post-create", ada, { content: "ada again", privacy: "public" }).result.post;
+    const bobsComment = call("comment-add", bob, { postId: adasPost.id, text: "bob was here" }).result.comment;
+    const reply = call("comment-add", ada, { postId: adasPost.id, text: "reply to bob", parentId: bobsComment.id }).result.comment;
+    assert.equal(call("user-mute", ada, { userId: "sf_bob" }).ok, true);
+    assert.equal(call("user-mute", ada, { userId: "sf_bob" }).ok, true, "mute is idempotent");
+    assert.ok(!feedIds(ada).includes(bobsPost.id));
+    assert.ok(feedIds(bob).includes(adasPost.id), "the muted person still sees the muter");
+    const thread = call("comment-list", ada, { postId: adasPost.id }).result;
+    assert.equal(thread.total, 0, "muted author's comment and the reply inside its thread are both hidden");
+    assert.ok(reply.id, "fixture sanity");
+    const bobsView = call("comment-list", bob, { postId: adasPost.id }).result;
+    assert.equal(bobsView.total, 2, "the muted person still sees the whole thread");
+    assert.equal(call("user-unmute", ada, { userId: "sf_bob" }).ok, true);
+    assert.ok(feedIds(ada).includes(bobsPost.id));
+    assert.equal(call("comment-list", ada, { postId: adasPost.id }).result.total, 2);
+  });
+
+  it("safety-lists names who you've muted and blocked — the undo surface", () => {
+    call("user-mute", ada, { userId: "sf_bob" });
+    const lists = call("safety-lists", ada, {}).result;
+    assert.deepEqual(lists.muted.map((m) => m.userId), ["sf_bob"]);
+    call("user-block", ada, { userId: "sf_bob" });
+    const lists2 = call("safety-lists", ada, {}).result;
+    assert.deepEqual(lists2.blocked.map((b) => b.userId), ["sf_bob"]);
+    assert.equal(typeof lists2.blocked[0].displayName, "string");
+    const bobsLists = call("safety-lists", bob, {}).result;
+    assert.deepEqual(bobsLists.blocked.map((b) => b.userId), ["sf_ada"], "the pair shows from both sides");
   });
 });
 

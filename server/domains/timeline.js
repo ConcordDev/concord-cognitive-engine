@@ -6,7 +6,7 @@
 // authoritative, server-verified source for "are these two users friends",
 // as opposed to a client-supplied assertion. See checkPostAccess() below.
 import { guardAnonWrites } from "../lib/lens-authz.js";
-import { areFriends } from "../lib/friendships.js";
+import { areFriends, blockUser, unblockUser, isBlocked, listBlocked } from "../lib/friendships.js";
 import { presentOwnedId } from "../lib/public-actor.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 
@@ -465,9 +465,12 @@ export default function registerTimelineActions(registerLensAction) {
     // albums:   Map<userId, Album[]>         — media albums + their media items
     // profiles: Map<userId, Profile>         — cover photo / bio / about
     // notifs:   Map<userId, Notification[]>  — reaction/comment/tag alerts
-    for (const k of ["posts", "comments", "reactions", "commentReactions", "albums", "profiles", "notifs"]) {
+    // mutes:    Map<userId, userId[]>        — S-TL-9: people this user muted
+    // reports:  Report[]                     — S-TL-9: the moderation queue
+    for (const k of ["posts", "comments", "reactions", "commentReactions", "albums", "profiles", "notifs", "mutes"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
+    if (!Array.isArray(s.reports)) s.reports = [];
     return s;
   }
   function saveTlState() {
@@ -518,6 +521,17 @@ export default function registerTimelineActions(registerLensAction) {
     if (gate === "mentioned") return (post.taggedUserIds || []).includes(actorId);
     const db = ctx?.db || globalThis._concordSTATE?.db;
     return db ? areFriends(db, post.authorId, actorId) === true : false;
+  };
+
+  // Safety verbs (S-TL-9, F12): personal, user-invoked containment —
+  // no lists, no account-wide switches. A block lives in the friend
+  // graph (one row per pair, covering both directions); a mute is the
+  // viewer's own list in tlState and affects only their surfaces.
+  const tlDb = (ctx) => ctx?.db || globalThis._concordSTATE?.db || null;
+  const tlMutedBy = (s, viewerId) => new Set(s.mutes.get(viewerId) || []);
+  const tlBlockedEither = (ctx, a, b) => {
+    const db = tlDb(ctx);
+    return db ? isBlocked(db, a, b) : false;
   };
 
   // Media URLs (S-TL-3 / F14): an item may point at an uploaded
@@ -770,10 +784,17 @@ export default function registerTimelineActions(registerLensAction) {
       return friendCache.get(ownerId);
     };
     const onlyAuthor = params.authorId ? tlClean(params.authorId, 64) : null;
+    // S-TL-9: the viewer's containment — muted and blocked authors
+    // never reach this viewer's feed. Skipped under View As: a preview
+    // lists only the caller's own posts, and containment belongs to
+    // the caller, not the stand-in.
+    const mutedSet = viewAs ? new Set() : tlMutedBy(s, viewerId);
     let all = [];
     for (const [ownerId, posts] of s.posts.entries()) {
       if (onlyAuthor && ownerId !== onlyAuthor) continue;
       if (viewAs && ownerId !== viewerId) continue;
+      if (!viewAs && ownerId !== viewerId &&
+          (mutedSet.has(ownerId) || tlBlockedEither(ctx, viewerId, ownerId))) continue;
       for (const p of posts) {
         const visible =
           ownerId === effectiveViewer ||
@@ -863,7 +884,28 @@ export default function registerTimelineActions(registerLensAction) {
     if (!postId) return { ok: false, error: "postId required." };
     const { blocked } = checkPostAccess(s, postId, tlAid(ctx), ctx?.db);
     if (blocked) return { ok: false, error: "Post not found." };
-    const flat = [...(s.comments.get(postId) || [])];
+    let flat = [...(s.comments.get(postId) || [])];
+    // S-TL-9: the viewer's containment applies inside threads too —
+    // a muted/blocked author's comments are dropped, and replies
+    // inside their threads go with them (no orphaned roots).
+    const commentViewer = tlAid(ctx);
+    const mutedForComments = tlMutedBy(s, commentViewer);
+    const hiddenAuthor = (authorId) =>
+      authorId !== commentViewer &&
+      (mutedForComments.has(authorId) || tlBlockedEither(ctx, commentViewer, authorId));
+    const dropped = new Set();
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const c of flat) {
+        if (dropped.has(c.id)) continue;
+        if (hiddenAuthor(c.authorId) || (c.parentId && dropped.has(c.parentId))) {
+          dropped.add(c.id);
+          grew = true;
+        }
+      }
+    }
+    if (dropped.size > 0) flat = flat.filter((c) => !dropped.has(c.id));
     flat.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     const byId = new Map(flat.map((c) => [c.id, { ...c, replies: [] }]));
     const roots = [];
@@ -1449,5 +1491,147 @@ export default function registerTimelineActions(registerLensAction) {
     s.reactions.delete(postId);
     saveTlState();
     return { ok: true, result: { removed: true } };
+  });
+
+  // ── Safety verbs (S-TL-9, F12) ───────────────────────────────────────
+  // Report files into the lens's moderation queue (tlState.reports).
+  // A report hides nothing by itself — it is a private signal to
+  // moderation, and the response says exactly that (nextSteps), so the
+  // surface never promises an outcome the system doesn't deliver.
+  registerLensAction("timeline", "report", (ctx, _a, params = {}) => {
+  try {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const reporterId = tlAid(ctx);
+    const targetType = String(params.targetType || "");
+    const targetId = tlClean(params.targetId, 64);
+    const reason = tlClean(params.reason, 1000);
+    if (!["post", "comment"].includes(targetType) || !targetId) {
+      return { ok: false, error: "Say what you're reporting." };
+    }
+    if (!reason) return { ok: false, error: "Give a reason — it goes to moderation with the report." };
+    let targetAuthorId = null;
+    if (targetType === "post") {
+      const { found, blocked } = checkPostAccess(s, targetId, reporterId, ctx?.db);
+      if (!found || blocked) return { ok: false, error: "Post not found." };
+      targetAuthorId = found.post.authorId;
+    } else {
+      // Comments live in per-post lists; postId scopes the search when
+      // the caller knows it (the thread surface always does).
+      const scope = params.postId ? [tlClean(params.postId, 64)] : [...s.comments.keys()];
+      let comment = null;
+      let hostPostId = null;
+      for (const pid of scope) {
+        const hit = (s.comments.get(pid) || []).find((c) => c.id === targetId);
+        if (hit) { comment = hit; hostPostId = pid; break; }
+      }
+      if (!comment) return { ok: false, error: "Comment not found." };
+      const { blocked } = checkPostAccess(s, hostPostId, reporterId, ctx?.db);
+      if (blocked) return { ok: false, error: "Comment not found." };
+      targetAuthorId = comment.authorId;
+    }
+    if (targetAuthorId === reporterId) {
+      return { ok: false, error: `You can't report your own ${targetType}.` };
+    }
+    const nextSteps = "Saved to the moderation queue with your reason. The author is not told who reported — reports are private. A report doesn't hide anything by itself; if you don't want to see this person, mute or block them.";
+    const existing = s.reports.find((r) =>
+      r.reporterId === reporterId && r.targetType === targetType &&
+      r.targetId === targetId && r.status === "open");
+    if (existing) return { ok: true, result: { report: existing, duplicate: true, nextSteps } };
+    const report = {
+      id: tlId("rpt"), reporterId, targetType, targetId, targetAuthorId,
+      reason, status: "open", createdAt: tlNow(),
+    };
+    s.reports.push(report);
+    saveTlState();
+    return { ok: true, result: { report, duplicate: false, nextSteps } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  // Block: the friend-graph row for the pair becomes 'blocked' — it
+  // severs any friendship and hides both directions in the feed.
+  registerLensAction("timeline", "user-block", (ctx, _a, params = {}) => {
+  try {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const actorId = tlAid(ctx);
+    const targetId = tlClean(params.userId, 64);
+    if (!targetId) return { ok: false, error: "userId required." };
+    if (targetId === actorId) return { ok: false, error: "You can't block yourself." };
+    const db = tlDb(ctx);
+    if (!db) return { ok: false, error: "Friend graph unavailable — blocking needs it." };
+    const r = blockUser(db, actorId, targetId);
+    if (!r.ok) return { ok: false, error: "Couldn't block that person." };
+    return { ok: true, result: { userId: targetId, blocked: true, displayName: tlPersonName(ctx, s, targetId) } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  registerLensAction("timeline", "user-unblock", (ctx, _a, params = {}) => {
+  try {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const actorId = tlAid(ctx);
+    const targetId = tlClean(params.userId, 64);
+    if (!targetId) return { ok: false, error: "userId required." };
+    const db = tlDb(ctx);
+    if (!db) return { ok: false, error: "Friend graph unavailable — unblocking needs it." };
+    const r = unblockUser(db, actorId, targetId);
+    if (!r.ok) return { ok: false, error: "That person isn't blocked." };
+    return { ok: true, result: { userId: targetId, blocked: false, displayName: tlPersonName(ctx, s, targetId) } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  // Mute: the viewer's own list — their surfaces stop showing the
+  // person; nothing else changes (no severing, the other side is
+  // not told and can still see the muter).
+  registerLensAction("timeline", "user-mute", (ctx, _a, params = {}) => {
+  try {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const actorId = tlAid(ctx);
+    const targetId = tlClean(params.userId, 64);
+    if (!targetId) return { ok: false, error: "userId required." };
+    if (targetId === actorId) return { ok: false, error: "You can't mute yourself." };
+    const list = tlList(s.mutes, actorId);
+    if (!list.includes(targetId)) list.push(targetId);
+    saveTlState();
+    return { ok: true, result: { userId: targetId, muted: true, displayName: tlPersonName(ctx, s, targetId) } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  registerLensAction("timeline", "user-unmute", (ctx, _a, params = {}) => {
+  try {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const actorId = tlAid(ctx);
+    const targetId = tlClean(params.userId, 64);
+    if (!targetId) return { ok: false, error: "userId required." };
+    const list = tlList(s.mutes, actorId);
+    const next = list.filter((id) => id !== targetId);
+    if (next.length !== list.length) {
+      s.mutes.set(actorId, next);
+      saveTlState();
+    }
+    return { ok: true, result: { userId: targetId, muted: false, displayName: tlPersonName(ctx, s, targetId) } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  // The profile surface's safety section: who you've muted/blocked,
+  // with names — the undo path for both verbs.
+  registerLensAction("timeline", "safety-lists", (ctx, _a, _params = {}) => {
+  try {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const actorId = tlAid(ctx);
+    const db = tlDb(ctx);
+    const named = (id) => ({ userId: id, displayName: tlPersonName(ctx, s, id) || "Member" });
+    return {
+      ok: true,
+      result: {
+        muted: (s.mutes.get(actorId) || []).map(named),
+        blocked: (db ? listBlocked(db, actorId) : []).map(named),
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 }

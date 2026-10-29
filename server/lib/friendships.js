@@ -142,3 +142,31 @@ export function areFriends(db, a, b) {
   const row = _findRow(db, a, b);
   return !!(row && row.status === "accepted");
 }
+
+/** True when the pair's row is blocked — a block covers both
+ * directions, whichever party set it. */
+export function isBlocked(db, a, b) {
+  if (!db || !a || !b) return false;
+  const row = _findRow(db, a, b);
+  return !!(row && row.status === "blocked");
+}
+
+/** Undo a block. Deletes the pair row: the two accounts go back to
+ * strangers — a block already ended any friendship, so there is
+ * nothing to restore. */
+export function unblockUser(db, callerUserId, otherUserId) {
+  const row = _findRow(db, callerUserId, otherUserId);
+  if (!row || row.status !== "blocked") return { ok: false, error: "not_blocked" };
+  db.prepare(`DELETE FROM friendships WHERE id = ?`).run(row.id);
+  return { ok: true };
+}
+
+/** Ids of everyone in a blocked pair with this user (either party). */
+export function listBlocked(db, userId) {
+  if (!db || !userId) return [];
+  const rows = db.prepare(`
+    SELECT requester_id, addressee_id FROM friendships
+    WHERE status = 'blocked' AND (requester_id = ? OR addressee_id = ?)
+  `).all(userId, userId);
+  return rows.map(r => (r.requester_id === userId ? r.addressee_id : r.requester_id));
+}
