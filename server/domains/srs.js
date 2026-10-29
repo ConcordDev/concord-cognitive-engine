@@ -126,6 +126,7 @@ export default function registerSrsActions(registerLensAction) {
     if (!(s.cards instanceof Map)) s.cards = new Map();       // userId -> Array<card>
     if (!(s.reviewLog instanceof Map)) s.reviewLog = new Map(); // userId -> Array<review>
     if (!(s.media instanceof Map)) s.media = new Map();       // userId -> Array<media>
+  if (!(s.undoLog instanceof Map)) s.undoLog = new Map();     // userId -> Array<undo entry> (S9)
     return s;
   }
   function saveSrs() {
@@ -198,18 +199,7 @@ export default function registerSrsActions(registerLensAction) {
   registerLensAction("srs", "deck-list", (ctx, _a, _params = {}) => {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = srsActor(ctx);
-    const decks = srsList(s.decks, userId).map((d) => {
-      const cs = cardsForDeck(s, userId, d.id);
-      const newCount = cs.filter((c) => c.state === "new").length;
-      const dueCount = cs.filter(isDue).length;
-      return {
-        ...d,
-        cardCount: cs.length,
-        newCount,
-        dueCount,
-        studyCount: Math.min(NEW_PER_DAY, newCount) + dueCount,
-      };
-    });
+    const decks = srsList(s.decks, userId).map((d) => ({ ...d, ...deckCounts(s, userId, d) }));
     return { ok: true, result: { decks, count: decks.length } };
   });
 
@@ -387,15 +377,15 @@ export default function registerSrsActions(registerLensAction) {
   function studyableCard(c) {
     return !c.suspended && !c.buried;
   }
-  // Resolve the cards a deck draws from. Filtered decks pull from the
-  // whole collection matched by their saved query; regular decks draw
-  // their own cards plus all descendant sub-deck cards.
-  function studyPool(s, userId, deck) {
+  // The deck's full card set, before studyability: filtered decks
+  // match their saved query across the collection; regular decks
+  // draw their own cards plus all descendant sub-deck cards. Study
+  // and every count read from this one definition (S5/S8).
+  function poolCardsAll(s, userId, deck) {
     const all = srsList(s.cards, userId);
     if (deck.filtered) {
       const q = (deck.filterQuery || "").toLowerCase().trim();
       return all.filter((c) => {
-        if (!studyableCard(c)) return false;
         if (!q) return true;
         if (q.startsWith("tag:")) return (c.tags || []).includes(q.slice(4));
         if (q.startsWith("is:due")) return isDue(c);
@@ -412,7 +402,31 @@ export default function registerSrsActions(registerLensAction) {
         if (d.parentId && ids.has(d.parentId) && !ids.has(d.id)) { ids.add(d.id); grew = true; }
       }
     }
-    return all.filter((c) => ids.has(c.deckId) && studyableCard(c));
+    return all.filter((c) => ids.has(c.deckId));
+  }
+  function studyPool(s, userId, deck) {
+    return poolCardsAll(s, userId, deck).filter(studyableCard);
+  }
+  // The one counting rule (S8): cardCount is the pool size; new/due
+  // count studyable cards only; studyCount is what a session can
+  // still serve today under the deck's caps — the same arithmetic
+  // study-next runs, so the surfaces cannot disagree.
+  function deckCounts(s, userId, deck) {
+    const all = poolCardsAll(s, userId, deck);
+    const usable = all.filter(studyableCard);
+    const opts = normaliseOptions(deck.options || {});
+    const today = new Date().toISOString().slice(0, 10);
+    const poolDeckIds = new Set(all.map((c) => c.deckId));
+    const log = srsList(s.reviewLog, userId);
+    const reviewsToday = log.filter((r) => poolDeckIds.has(r.deckId) && !r.wasNew && (r.at || "").slice(0, 10) === today).length;
+    const introducedToday = usable.filter((c) => (c.introducedAt || "").slice(0, 10) === today).length;
+    const stepDue = usable.filter((c) => c.inSteps && isDue(c)).length;
+    const reviewDue = usable.filter((c) => !c.inSteps && isDue(c)).length;
+    const newCount = usable.filter((c) => c.state === "new").length;
+    const studyCount = stepDue
+      + (reviewsToday < opts.reviewsPerDay ? reviewDue : 0)
+      + Math.max(0, Math.min(opts.newPerDay - introducedToday, newCount));
+    return { cardCount: all.length, newCount, dueCount: stepDue + reviewDue, studyCount };
   }
 
   // study-next — the next card to study from a deck. Order:
@@ -582,6 +596,8 @@ export default function registerSrsActions(registerLensAction) {
     let scheduler = opts.scheduler;
     if (params.scheduler === "sm2" || params.scheduler === "fsrs") scheduler = params.scheduler;
 
+    // S9: snapshot for study-undo, before anything mutates.
+    const undoBefore = { state: card.state, due: card.due, interval: card.interval, reps: card.reps, lapses: card.lapses, ease: card.ease, stability: card.stability, difficulty: card.difficulty, inSteps: !!card.inSteps, stepIndex: card.stepIndex || 0, introducedAt: card.introducedAt || null, lastReviewedAt: card.lastReviewedAt || null };
     const wasNew = card.state === "new";
     const preGradeReps = card.reps || 0;
     const outcome = gradeOutcome(card, rating, { ...opts, scheduler });
@@ -612,7 +628,11 @@ export default function registerSrsActions(registerLensAction) {
     }
     if (!card.introducedAt) card.introducedAt = srsNow();
     card.lastReviewedAt = srsNow();
-    srsList(s.reviewLog, userId).push({ cardId: card.id, deckId: card.deckId, rating, scheduler, wasNew, at: srsNow() });
+    const logEntry = { cardId: card.id, deckId: card.deckId, rating, scheduler, wasNew, at: srsNow() };
+    srsList(s.reviewLog, userId).push(logEntry);
+    const undoArr = srsList(s.undoLog, userId);
+    undoArr.push({ cardId: card.id, before: undoBefore, logEntry, at: srsNow() });
+    if (undoArr.length > 50) undoArr.splice(0, undoArr.length - 50);
     saveSrs();
     return { ok: true, result: {
       card, scheduler, intervalLabel: intervalLabel(outcome),
@@ -643,6 +663,34 @@ export default function registerSrsActions(registerLensAction) {
       };
     }
     return { ok: true, result: { cardId: card.id, scheduler: opts.scheduler, previews } };
+  });
+
+  // study-undo — reverse the most recent grade (S9): restore the
+  // card's pre-grade scheduling exactly and remove the review it
+  // logged, so study stats stay honest.
+  registerLensAction("srs", "study-undo", (ctx, _a, params = {}) => {
+    const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = srsActor(ctx);
+    const undoArr = srsList(s.undoLog, userId);
+    let idx = -1;
+    for (let i = undoArr.length - 1; i >= 0; i--) {
+      if (!params.cardId || undoArr[i].cardId === params.cardId) { idx = i; break; }
+    }
+    if (idx < 0) return { ok: false, error: "nothing to undo" };
+    const [entry] = undoArr.splice(idx, 1);
+    const card = srsList(s.cards, userId).find((c) => c.id === entry.cardId);
+    if (!card) return { ok: false, error: "card not found" };
+    Object.assign(card, entry.before);
+    const log = srsList(s.reviewLog, userId);
+    const li = entry.logEntry ? log.indexOf(entry.logEntry) : -1;
+    if (li >= 0) log.splice(li, 1);
+    else {
+      for (let i = log.length - 1; i >= 0; i--) {
+        if (log[i].cardId === entry.cardId) { log.splice(i, 1); break; }
+      }
+    }
+    saveSrs();
+    return { ok: true, result: { card, undoneCardId: entry.cardId } };
   });
 
   registerLensAction("srs", "study-stats", (ctx, _a, params = {}) => {
@@ -690,8 +738,9 @@ export default function registerSrsActions(registerLensAction) {
       result: {
         decks: decks.length,
         totalCards: cards.length,
-        newCards: cards.filter((c) => c.state === "new").length,
-        dueCards: cards.filter(isDue).length,
+        newCards: cards.filter((c) => c.state === "new" && studyableCard(c)).length,
+        dueCards: cards.filter((c) => studyableCard(c) && isDue(c)).length,
+        buriedCards: cards.filter((c) => c.buried).length,
         matureCards: cards.filter((c) => c.interval >= 21).length,
         suspendedCards: cards.filter((c) => c.suspended).length,
         reviewsLogged: srsList(s.reviewLog, userId).length,
@@ -720,9 +769,16 @@ export default function registerSrsActions(registerLensAction) {
       if (!name) return { ok: false, error: "deck name required" };
       deck.name = name;
     }
+    // S5: a filtered deck's query is editable in the same panel.
+    if (params.filterQuery !== undefined) {
+      if (!deck.filtered) return { ok: false, error: "only filtered decks have a filter query" };
+      const q = srsClean(params.filterQuery, 200);
+      if (!q) return { ok: false, error: "filter query required (e.g. tag:hard, is:due)" };
+      deck.filterQuery = q;
+    }
     deck.options = normaliseOptions({ ...(deck.options || {}), ...(params.options || {}) });
     saveSrs();
-    return { ok: true, result: { deckId: deck.id, name: deck.name, options: deck.options } };
+    return { ok: true, result: { deckId: deck.id, name: deck.name, filterQuery: deck.filterQuery || null, options: deck.options } };
   });
 
   // ─── [M] Sub-decks / deck hierarchy + filtered decks ──────────────
@@ -731,12 +787,17 @@ export default function registerSrsActions(registerLensAction) {
     const userId = srsActor(ctx);
     const decks = srsList(s.decks, userId);
     const decorate = (d) => {
-      const own = cardsForDeck(s, userId, d.id);
+      // Tree rows count the node's OWN cards (children render as
+      // their own rows) — except filtered decks, whose own cards ARE
+      // their query matches. Definitions match deckCounts (S8):
+      // new/due count studyable cards only.
+      const own = d.filtered ? poolCardsAll(s, userId, d) : cardsForDeck(s, userId, d.id);
+      const usable = own.filter(studyableCard);
       return {
         ...d,
         ownCardCount: own.length,
-        dueCount: own.filter(isDue).length,
-        newCount: own.filter((c) => c.state === "new").length,
+        dueCount: usable.filter(isDue).length,
+        newCount: usable.filter((c) => c.state === "new").length,
         children: decks.filter((c) => c.parentId === d.id).map(decorate),
       };
     };
@@ -820,15 +881,19 @@ export default function registerSrsActions(registerLensAction) {
     const ids = Array.isArray(params.ids) ? params.ids : (params.id ? [params.id] : []);
     if (ids.length === 0) return { ok: false, error: "id or ids required" };
     const cards = srsList(s.cards, srsActor(ctx));
-    let n = 0;
+    // S6: count only cards whose flag actually changes — a banner
+    // may only ever claim verified state changes.
+    let n = 0, unchanged = 0;
     for (const card of cards.filter((c) => ids.includes(c.id))) {
-      card.suspended = params.suspended != null ? !!params.suspended : !card.suspended;
+      const target = params.suspended != null ? !!params.suspended : !card.suspended;
+      if (card.suspended === target) { unchanged++; continue; }
+      card.suspended = target;
       if (card.suspended) card.buried = false;
       n++;
     }
-    if (n === 0) return { ok: false, error: "no matching cards" };
+    if (n === 0 && unchanged === 0) return { ok: false, error: "no matching cards" };
     saveSrs();
-    return { ok: true, result: { updated: n } };
+    return { ok: true, result: { updated: n, unchanged } };
   });
 
   registerLensAction("srs", "card-bury", (ctx, _a, params = {}) => {
@@ -836,14 +901,17 @@ export default function registerSrsActions(registerLensAction) {
     const ids = Array.isArray(params.ids) ? params.ids : (params.id ? [params.id] : []);
     if (ids.length === 0) return { ok: false, error: "id or ids required" };
     const cards = srsList(s.cards, srsActor(ctx));
-    let n = 0;
+    // S6: same honesty rule as suspend — count real changes only.
+    let n = 0, unchanged = 0;
     for (const card of cards.filter((c) => ids.includes(c.id))) {
-      card.buried = params.buried != null ? !!params.buried : !card.buried;
+      const target = params.buried != null ? !!params.buried : !card.buried;
+      if (card.buried === target) { unchanged++; continue; }
+      card.buried = target;
       n++;
     }
-    if (n === 0) return { ok: false, error: "no matching cards" };
+    if (n === 0 && unchanged === 0) return { ok: false, error: "no matching cards" };
     saveSrs();
-    return { ok: true, result: { updated: n } };
+    return { ok: true, result: { updated: n, unchanged } };
   });
 
   // bulk-edit — apply tag add/remove or deck move to many cards at once.
@@ -921,6 +989,15 @@ export default function registerSrsActions(registerLensAction) {
       clozeText: c.clozeText || null, fields: c.fields || null,
       frontTemplate: c.frontTemplate || null, backTemplate: c.backTemplate || null,
       occlusions: c.occlusions || null, image: c.image || null,
+      // S7: the scheduling block — what import restores from.
+      scheduling: {
+        state: c.state, interval: c.interval, reps: c.reps, lapses: c.lapses,
+        ease: c.ease, stability: c.stability, difficulty: c.difficulty,
+        due: c.due, lastReviewedAt: c.lastReviewedAt || null,
+        introducedAt: c.introducedAt || null,
+        inSteps: !!c.inSteps, stepIndex: c.stepIndex || 0,
+        suspended: !!c.suspended, buried: !!c.buried,
+      },
     }));
     const bundle = {
       format: "concord-srs/v1",
@@ -929,7 +1006,7 @@ export default function registerSrsActions(registerLensAction) {
       cards,
       cardCount: cards.length,
     };
-    return { ok: true, result: { bundle, filename: `${deck.name.replace(/[^\w-]+/g, "_")}.apkg.json` } };
+    return { ok: true, result: { bundle, filename: `${deck.name.replace(/[^\w-]+/g, "_")}.srs.json` } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -958,7 +1035,7 @@ export default function registerSrsActions(registerLensAction) {
       const front = srsClean(raw.front, 2000);
       const back = srsClean(raw.back, 4000);
       if (!front || !back) continue;
-      cardsArr.push({
+      const card = {
         id: srsId("cd"), deckId: deck.id, front, back,
         tags: Array.isArray(raw.tags) ? raw.tags.map((t) => srsClean(t, 30)).filter(Boolean).slice(0, 8) : [],
         ease: 2.5, interval: 0, reps: 0, lapses: 0, stability: 0, difficulty: 0,
@@ -971,7 +1048,26 @@ export default function registerSrsActions(registerLensAction) {
         clozeText: raw.clozeText || null, fields: raw.fields || null,
         frontTemplate: raw.frontTemplate || null, backTemplate: raw.backTemplate || null,
         occlusions: raw.occlusions || null, image: raw.image || null,
-      });
+      };
+      // S7: scheduling survives import — from the bundle's
+      // scheduling block, or flat fields on hand-written bundles.
+      const sch = (raw.scheduling && typeof raw.scheduling === "object") ? raw.scheduling : raw;
+      if (["new", "learning", "review", "relearning"].includes(sch.state)) card.state = sch.state;
+      if (Number.isFinite(+sch.interval)) card.interval = Math.max(0, Math.min(36500, Math.round(+sch.interval)));
+      if (Number.isFinite(+sch.reps)) card.reps = Math.max(0, Math.round(+sch.reps));
+      if (Number.isFinite(+sch.lapses)) card.lapses = Math.max(0, Math.round(+sch.lapses));
+      if (Number.isFinite(+sch.ease)) card.ease = Math.max(1.3, Math.min(3, +sch.ease));
+      if (Number.isFinite(+sch.stability)) card.stability = Math.max(0, +sch.stability);
+      if (Number.isFinite(+sch.difficulty)) card.difficulty = Math.max(0, +sch.difficulty);
+      if (sch.due && !Number.isNaN(Date.parse(sch.due))) card.due = new Date(sch.due).toISOString();
+      else if (card.interval > 0 && card.state !== "new") card.due = new Date(Date.now() + card.interval * 86400000).toISOString();
+      if (sch.lastReviewedAt && !Number.isNaN(Date.parse(sch.lastReviewedAt))) card.lastReviewedAt = new Date(sch.lastReviewedAt).toISOString();
+      if (sch.introducedAt && !Number.isNaN(Date.parse(sch.introducedAt))) card.introducedAt = new Date(sch.introducedAt).toISOString();
+      if (typeof sch.inSteps === "boolean") card.inSteps = sch.inSteps;
+      if (Number.isFinite(+sch.stepIndex)) card.stepIndex = Math.max(0, Math.round(+sch.stepIndex));
+      if (typeof sch.suspended === "boolean") card.suspended = sch.suspended;
+      if (typeof sch.buried === "boolean") card.buried = sch.buried;
+      cardsArr.push(card);
       imported++;
     }
     saveSrs();
