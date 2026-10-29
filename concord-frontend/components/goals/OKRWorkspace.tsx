@@ -51,6 +51,10 @@ interface RecurringGoal {
   id: string; title: string; cadence: string; category: string | null;
   nextDue: string; occurrences: number;
 }
+interface Occurrence {
+  id: string; recurringId: string; title: string; category: string | null;
+  occurrence: number; dueAt: string;
+}
 interface ChartPoint { date: string; progress: number; }
 interface SeriesPoint { id: string; source: 'checkin' | 'manual'; date: string; progress: number; }
 interface TrendPoint extends Record<string, unknown> { date: string; progress: number; ideal: number; }
@@ -505,6 +509,8 @@ function TemplatesTab() {
   const [cadence, setCadence] = useState('weekly');
   const [category, setCategory] = useState('');
   const [busy, setBusy] = useState(false);
+  const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
+  const [appliedNote, setAppliedNote] = useState('');
 
   const loadTemplates = useCallback(async () => {
     const r = await lensRun('goals', 'templates', { op: 'list' });
@@ -514,12 +520,30 @@ function TemplatesTab() {
     const r = await lensRun('goals', 'templates', { op: 'recurring-list' });
     if (r.data?.ok && r.data.result) setRecurring(r.data.result.recurringGoals || []);
   }, []);
-  useEffect(() => { loadTemplates(); loadRecurring(); }, [loadTemplates, loadRecurring]);
+  const loadOccurrences = useCallback(async () => {
+    const r = await lensRun('goals', 'templates', { op: 'occurrences-list' });
+    if (r.data?.ok && r.data.result) setOccurrences(r.data.result.occurrences || []);
+  }, []);
+  useEffect(() => { loadTemplates(); loadRecurring(); loadOccurrences(); }, [loadTemplates, loadRecurring, loadOccurrences]);
 
-  const applyTemplate = (t: GoalTemplate) => {
-    setTitle(t.name);
-    setCadence(t.cadence === 'once' ? 'weekly' : t.cadence);
-    setCategory(t.category);
+  // S6 (F6): "Use template" creates the structure the card promises —
+  // it no longer merely pre-fills a form for something else.
+  const applyTemplate = async (t: GoalTemplate) => {
+    setBusy(true);
+    setAppliedNote('');
+    const r = await lensRun('goals', 'templates', { op: 'apply', templateId: t.id });
+    setBusy(false);
+    if (r.data?.ok && r.data.result) {
+      const obj = r.data.result.objective;
+      const rec = r.data.result.recurring;
+      setAppliedNote(
+        `Created objective "${obj.title}" with ${obj.keyResults.length} key results — find it in the Alignment Tree.` +
+        (rec ? ` A ${rec.cadence} recurring goal was created too.` : ''),
+      );
+      void loadRecurring();
+    } else {
+      setAppliedNote(r.data?.error || 'That template could not be applied.');
+    }
   };
 
   const createRecurring = async () => {
@@ -543,7 +567,10 @@ function TemplatesTab() {
 
   const runDue = async () => {
     const r = await lensRun('goals', 'templates', { op: 'recurring-run-due' });
-    if (r.data?.ok && r.data.result) setRecurring(r.data.result.recurringGoals || []);
+    if (r.data?.ok && r.data.result) {
+      setRecurring(r.data.result.recurringGoals || []);
+      if (r.data.result.occurrences) setOccurrences(r.data.result.occurrences);
+    }
   };
 
   return (
@@ -567,6 +594,8 @@ function TemplatesTab() {
           {templates.length === 0 && <EmptyMsg text="No templates available." />}
         </div>
       </div>
+
+      {appliedNote && <p className="text-[11px] text-cyan-300" role="status">{appliedNote}</p>}
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
         <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">New recurring goal</p>
@@ -610,6 +639,20 @@ function TemplatesTab() {
           {recurring.length === 0 && <EmptyMsg text="No recurring goals yet." />}
         </div>
       </div>
+
+      {occurrences.length > 0 && (
+        <div>
+          <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">Occurrences</p>
+          <div className="space-y-1.5">
+            {occurrences.map((o) => (
+              <div key={o.id} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
+                <span className="text-xs text-white">{o.title}</span>
+                <span className="text-[10px] text-zinc-400">#{o.occurrence} · due {o.dueAt.slice(0, 10)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
