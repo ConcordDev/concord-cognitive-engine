@@ -161,7 +161,7 @@ export const MCP_TOOLS = [
   },
   {
     name: "csl_proofs_run",
-    description: "Run CSL proof obligations (Z3-via-WASM) against a payload. Returns pass/fail per obligation. Note: some obligations are env-flagged (dev-only).",
+    description: "Run CSL proof obligations against a payload (the payload is the turn context: content/expectedHash, saleAmount, turnText, migrationColumnsBefore/After, macroResult...). Returns a per-obligation verdict — proven/refuted with its verifier (z3 or deterministic), or an honest not_applicable/proof_skipped. Obligation names: dtuMintIntegrity, macroLockSafety, citationCascadeIntegrity, memoryBudgetCompliance, schemaMigrationSafety, intentRoutingCorrectness (snake_case accepted).",
     inputSchema: jsonSchema({
       obligations: arrayProp("List of obligation names to run", { type: "string" }),
       payload: textProp("JSON payload to evaluate")
@@ -1149,13 +1149,61 @@ export async function cslProofsRun(db, args) {
   if (obligations.length === 0) return { ok: false, error: "obligations array is required" };
   if (obligations.length > 10) return { ok: false, error: "max 10 obligations per call" };
 
-  // We can't actually run Z3 here without the proof obligation module loaded.
-  // Return placeholder results.
-  const results = obligations.map(name => ({
-    obligation: name,
-    status: "not_loaded",
-    note: "Proof obligations require csl-proof-obligations.js to be loaded in the same process. Use this endpoint for status checks only."
-  }));
+  // The payload IS the turn context the obligations evaluate (Q33):
+  // its fields flow straight through (content / expectedHash,
+  // saleAmount / generationChoices, turnText / reachedCsl,
+  // migrationColumnsBefore / After, macroResult / context / turnId,
+  // forceViolation for the checkers' own catch-capability proofs),
+  // the raw string stays available as `payload` (dtuMintIntegrity's
+  // content fallback), and the tool's db serves memoryBudgetCompliance.
+  let parsed = {};
+  if (typeof payload === "string") {
+    try { parsed = JSON.parse(payload); } catch { return { ok: false, error: "payload must be valid JSON" }; }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return { ok: false, error: "payload must be a JSON object" };
+  } else if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    parsed = payload;
+  } else {
+    return { ok: false, error: "payload must be a JSON object" };
+  }
+  const turnContext = { ...parsed, db, payload: typeof payload === "string" ? payload : JSON.stringify(payload) };
+
+  // Run the REAL obligations (lib/csl-proof-obligations.js — the same
+  // checks csl-core runs per turn; each computes a deterministic
+  // ground-truth verdict and routes its claim through proveClaim when
+  // a Z3 runner is wired). This replaced a placeholder that returned
+  // status "not_loaded" for every obligation. Names resolve by exact
+  // PROOF_OBLIGATIONS key or snake_case; unknown names get an honest
+  // per-item error naming the valid set — never a fake verdict.
+  const { PROOF_OBLIGATIONS } = await import("./csl-proof-obligations.js");
+  const validNames = Object.keys(PROOF_OBLIGATIONS);
+  const resolveName = (name) => {
+    if (typeof name !== "string") return null;
+    if (PROOF_OBLIGATIONS[name]) return name;
+    const camel = name.replace(/_([a-z])/g, (_m, c) => c.toUpperCase());
+    return PROOF_OBLIGATIONS[camel] ? camel : null;
+  };
+
+  const results = [];
+  for (const name of obligations) {
+    const key = resolveName(name);
+    if (!key) {
+      results.push({ obligation: name, status: "unknown_obligation", note: `valid obligations: ${validNames.join(", ")}` });
+      continue;
+    }
+    const r = await PROOF_OBLIGATIONS[key](turnContext);
+    results.push({
+      obligation: key,
+      // proven / refuted carry the verifier that produced the verdict
+      // (z3 when a runner is wired, otherwise the deterministic check);
+      // a null sat surfaces the obligation's own honest status
+      // (not_applicable / proof_skipped) instead of a fabricated one.
+      status: r.sat === true ? "proven" : r.sat === false ? "refuted" : (r.error || "proof_skipped"),
+      sat: r.sat ?? null,
+      verifier: r.model?.verifier ?? null,
+      model: r.model ?? null,
+      ...(r.error ? { error: r.error } : {}),
+    });
+  }
   return { ok: true, results, payload_size: String(payload).length };
 }
 
