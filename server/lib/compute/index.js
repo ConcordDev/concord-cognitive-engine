@@ -13,14 +13,16 @@
  *   const mod = await loadComputeModule('symbolic');
  */
 
-export * as logic from './formal-logic.js';
-export * as symbolic from './symbolic-math.js';
-export * as numerical from './numerical.js';
-export * as engineering from './engineering-compute.js';
-export * as physics from './physics-compute.js';
-export * as statistics from './statistics-compute.js';
-export * as chemistry from './chemistry-compute.js';
-export * as quantum from './quantum-compute.js';
+import * as logic from './formal-logic.js';
+import * as symbolic from './symbolic-math.js';
+import * as numerical from './numerical.js';
+import * as engineering from './engineering-compute.js';
+import * as physics from './physics-compute.js';
+import * as statistics from './statistics-compute.js';
+import * as chemistry from './chemistry-compute.js';
+import * as quantum from './quantum-compute.js';
+
+export { logic, symbolic, numerical, engineering, physics, statistics, chemistry, quantum };
 
 /**
  * Lazy-load a compute module by name.
@@ -58,8 +60,21 @@ export async function loadComputeModule(name) {
   }
 }
 
+const MODULE_NAMESPACES = {
+  logic, symbolic, numerical, engineering, physics, statistics, chemistry, quantum,
+};
+
+/** Exported function names of one compute module (what /run can call). */
+export function listComputeModuleFunctions(name) {
+  const ns = MODULE_NAMESPACES[name];
+  if (!ns) return [];
+  return Object.keys(ns).filter((k) => typeof ns[k] === 'function').sort();
+}
+
 /**
- * List the compute modules available to the engine.
+ * List the compute modules available to the engine. Each entry carries
+ * its real exported function names so callers (e.g. the Debug Compute
+ * panel) can offer only functions that exist.
  */
 export function listComputeModules() {
   return [
@@ -103,5 +118,5 @@ export function listComputeModules() {
       description:
         'Quantum circuit statevector simulation: H/CNOT/Phase gates, Bell states, circuit depth, entropy, measurement',
     },
-  ];
+  ].map((m) => ({ ...m, functions: listComputeModuleFunctions(m.name) }));
 }
