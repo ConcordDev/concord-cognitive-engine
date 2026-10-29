@@ -283,6 +283,22 @@ describe('PjCollabPanel', () => {
     expect(onJumpToProject).toHaveBeenCalledWith('proj-2');
   });
 
+  it('keeps the command bar open when Space is typed in its input — phrase search works (F22)', async () => {
+    mockLoad({ 'command-search': ok({ commands: [], results: [] }) });
+    renderPanel();
+    await waitFor(() => expect(screen.getByText(/Search projects & issues/)).toBeInTheDocument());
+    fireEvent.click(screen.getByText(/Search projects & issues/));
+    const dialogInput = await screen.findByPlaceholderText('Type to search or create…');
+    // A real spacebar keystroke: keydown on the input, the character
+    // lands, keyup. The palette must survive its own search field.
+    fireEvent.keyDown(dialogInput, { key: ' ' });
+    fireEvent.change(dialogInput, { target: { value: 'fix bug' } });
+    fireEvent.keyUp(dialogInput, { key: ' ' });
+    expect(screen.getByPlaceholderText('Type to search or create…')).toBeInTheDocument();
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('projects', 'command-search', { query: 'fix bug' }));
+    expect(screen.getByPlaceholderText('Type to search or create…')).toBeInTheDocument();
+  });
+
   it('closes the command bar on Escape and on backdrop click', async () => {
     mockLoad({ 'command-search': ok({ commands: [], results: [] }) });
     renderPanel();
