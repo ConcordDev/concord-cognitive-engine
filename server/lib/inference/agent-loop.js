@@ -49,8 +49,11 @@ async function dispatchTool(call, dispatchCtx) {
       const result = await dispatchCtx.dispatch(call.name, call.args);
       return typeof result === "string" ? result : JSON.stringify(result);
     }
-    // No dispatcher available — return informative stub
-    return JSON.stringify({ tool: call.name, status: "dispatched", note: "no_dispatcher_configured" });
+    // No dispatcher available — the call did NOT run. Report that
+    // honestly, in the same error shape a failed dispatch returns:
+    // claiming "dispatched" here reinjects a success the model then
+    // narrates to the user for a tool that never executed (Q13 / A#33).
+    return JSON.stringify({ tool: call.name, ok: false, error: "no_dispatcher_configured" });
   } catch (err) {
     return JSON.stringify({ tool: call.name, error: err?.message || "dispatch_failed" });
   }
