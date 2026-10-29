@@ -178,19 +178,48 @@ export function EditorPane({
     } catch (e) { console.error('[Editor] save', e); }
   }
 
+  // S11 (F11): an inline edit is a PROPOSAL until the user accepts it.
+  // The old flow applied the model's output to the buffer the moment
+  // it arrived — no diff, no checkpoint, on the one AI edit path that
+  // worked. Now: the proposal renders as a diff with Accept/Reject;
+  // Reject leaves the buffer byte-identical; Accept applies it as one
+  // edit (one undo step) with the instruction kept as its receipt.
+  const [inlineProposal, setInlineProposal] = useState<{ original: string; edited: string; instruction: string } | null>(null);
+  const [inlineError, setInlineError] = useState('');
+
   async function runInlineEdit() {
     if (!active || !selection.trim() || !inlineInstruction.trim()) return;
     setInlineLoading(true);
+    setInlineError('');
     try {
       const r = await lensRun({ domain: 'code', action: 'inline-edit', input: { code: selection, instruction: inlineInstruction, language: active.language } });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      if (r.data?.ok === false) { setInlineError(r.data?.error || 'Inline edit failed.'); return; }
       const edited = String(r.data?.result?.edited || '');
-      const updated = active.content.replace(selection, edited);
-      updateContent(active.path, updated);
-      setShowInlineEdit(false);
-      setInlineInstruction('');
-    } catch (e) { console.error('[Editor] inline-edit', e); }
+      if (!edited || edited === selection) { setInlineError('The model proposed no change for that instruction.'); return; }
+      setInlineProposal({ original: selection, edited, instruction: inlineInstruction.trim() });
+    } catch (e) {
+      console.error('[Editor] inline-edit', e);
+      setInlineError('Inline edit failed: the request did not complete.');
+    }
     finally { setInlineLoading(false); }
+  }
+
+  function acceptInlineEdit() {
+    if (!active || !inlineProposal) return;
+    if (!active.content.includes(inlineProposal.original)) {
+      setInlineError('The text changed since this proposal was made — reject it and run ⌘K again.');
+      return;
+    }
+    updateContent(active.path, active.content.replace(inlineProposal.original, inlineProposal.edited));
+    setInlineProposal(null);
+    setInlineInstruction('');
+    setShowInlineEdit(false);
+  }
+
+  function rejectInlineEdit() {
+    // The buffer was never touched — rejecting is just closing.
+    setInlineProposal(null);
+    setInlineError('');
   }
 
   async function format() {
@@ -358,20 +387,38 @@ export function EditorPane({
             </button>
           </div>
           {showInlineEdit && (
-            <div className="px-3 py-2 border-b border-white/10 bg-blue-500/[0.06] flex items-center gap-2">
-              <Sparkles className="w-3 h-3 text-blue-400" />
-              <input
-                value={inlineInstruction}
-                onChange={e => setInlineInstruction(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && runInlineEdit()}
-                placeholder={`Inline edit ${selection.length} chars: e.g. rename foo to bar`}
-                autoFocus
-                className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-blue-500/30 rounded text-white"
-              />
-              <button onClick={runInlineEdit} disabled={inlineLoading || !inlineInstruction.trim()} className="px-2 py-1 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1">
-                {inlineLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}Edit
-              </button>
-              <button onClick={() => setShowInlineEdit(false)} className="text-gray-400 hover:text-white text-[10px]">esc</button>
+            <div className="px-3 py-2 border-b border-white/10 bg-blue-500/[0.06]">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-3 h-3 text-blue-400" />
+                <input
+                  value={inlineInstruction}
+                  onChange={e => setInlineInstruction(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && runInlineEdit()}
+                  placeholder="Inline edit: e.g. rename foo to bar"
+                  autoFocus
+                  className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-blue-500/30 rounded text-white"
+                />
+                <span className="text-[10px] text-gray-400 shrink-0">{selection.length} chars selected</span>
+                <button onClick={runInlineEdit} disabled={inlineLoading || !inlineInstruction.trim()} className="px-2 py-1 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1">
+                  {inlineLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}Propose edit
+                </button>
+                <button onClick={() => { setShowInlineEdit(false); setInlineProposal(null); setInlineError(''); }} className="text-gray-400 hover:text-white text-[10px]">esc</button>
+              </div>
+              {inlineError && <div role="alert" className="mt-1.5 text-[11px] text-rose-300">{inlineError}</div>}
+              {inlineProposal && (
+                <div className="mt-2 rounded border border-white/10 overflow-hidden">
+                  <div className="px-2 py-1 text-[10px] text-gray-300 bg-white/[0.03] border-b border-white/10">
+                    Proposed change for “{inlineProposal.instruction}” — nothing is applied until you accept.
+                  </div>
+                  <pre className="px-2 py-1.5 text-[11px] font-mono whitespace-pre-wrap bg-rose-500/[0.07] text-rose-200 line-through decoration-rose-400/50">{inlineProposal.original}</pre>
+                  <pre className="px-2 py-1.5 text-[11px] font-mono whitespace-pre-wrap bg-emerald-500/[0.07] text-emerald-200">{inlineProposal.edited}</pre>
+                  <div className="px-2 py-1.5 flex items-center gap-1.5 bg-white/[0.02] border-t border-white/10">
+                    <button onClick={acceptInlineEdit} className="px-2 py-0.5 text-[11px] rounded bg-emerald-500/80 text-white font-semibold hover:bg-emerald-400">Accept</button>
+                    <button onClick={rejectInlineEdit} className="px-2 py-0.5 text-[11px] rounded bg-white/10 text-gray-200 hover:bg-white/15">Reject</button>
+                    <span className="text-[10px] text-gray-500">Reject leaves the file exactly as it is.</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {explainOpen && (
