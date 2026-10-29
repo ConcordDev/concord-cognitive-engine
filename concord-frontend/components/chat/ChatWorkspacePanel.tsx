@@ -1312,6 +1312,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             mode: aiMode.id,
             sessionId: activeSessionId,
             clientTurnId: userMsg.id,
+            // The server assembly gates its lens grounding on input.lens —
+            // send the domain context as the lens it names (R1, A19/A20).
+            ...(domainContext ? { lens: domainContext } : {}),
             ...(systemPrompt ? { systemPrompt } : {}),
             ...(attachmentMeta.length > 0 ? { attachments: attachmentMeta } : {}),
           }),
@@ -1324,18 +1327,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           // Assigned inside the SSE parser callback; the cast keeps TS from narrowing it to null.
           let finalOut = null as Record<string, unknown> | null;
           let gotDone = false;
-          // Live status and a preview of the answer while the turn runs. Only the
-          // checked `chunk` text becomes the reply; it replaces any preview.
-          let preview = '';
           const sse = createSseParser((data) => {
-            const progress = data.progress as { label?: unknown } | undefined;
-            if (progress && typeof progress.label === 'string' && !accumulated && !preview) {
-              setStreamingContent(`*${progress.label}…*`);
-            }
-            if (typeof data.token === 'string' && data.token && !accumulated) {
-              preview += data.token;
-              setStreamingContent(preview);
-            }
             if (typeof data.chunk === 'string' && data.chunk) {
               accumulated += data.chunk;
               setStreamingContent(accumulated);
@@ -1441,6 +1433,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               mode: aiMode.id,
               sessionId: activeSessionId,
               clientTurnId: userMsg.id,
+              ...(domainContext ? { lens: domainContext } : {}),
               ...(systemPrompt ? { systemPrompt } : {}),
               ...(attachmentMeta.length > 0 ? { attachments: attachmentMeta } : {}),
             },

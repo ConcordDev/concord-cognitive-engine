@@ -101,9 +101,9 @@ import cors from "cors";
 import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
+import { buildAnalyticsGroundingBlock } from "./lib/lens-grounding.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
 import { chatContextPool, makeChatMayUse } from "./lib/chat/context-pool.js";
-import { chatProgress as _chatProgress, withToolProgress as _chatWithToolProgress, readOllamaChatStream as _readOllamaChatStream } from "./lib/chat/progress.js";
 import { filterVisibleSearchHits, materializeIndexedHits, searchCandidateLimit } from "./lib/dtu-search-hits.js";
 import { handleArchaeology, handleSubstrateDiff, handleTimeCrystalDetect } from "./lib/knowledge-archaeology.js";
 import { artifactDtuForViewer, publicArtifactRef } from "./lib/artifact-access.js";
@@ -28298,6 +28298,23 @@ const _mentionsSelf = Array.from(_selfTokens).some(t => _pLow.includes(t));
     if (!sess_pre.crossDomainContext) sess_pre.crossDomainContext = {};
   }
 
+  // Analytics grounding (R1, Review 4 A19/A20): when this conversation is on
+  // the Analytics lens, compose the account facts from the surface's own
+  // stores and append them to the system prompt at both assembly paths
+  // below. This assembly never reads a client-supplied systemPrompt, so the
+  // grounding must be injected here — the seam where the prompt is built.
+  // Lens-gated and best-effort: any failure leaves the turn exactly as it
+  // was (the block itself carries the decline instruction when reads fail).
+  let _analyticsGrounding = "";
+  if ((currentLens || sess_pre.currentLens) === "analytics") {
+    try {
+      _analyticsGrounding = await buildAnalyticsGroundingBlock({
+        runMacro, ctx, STATE,
+        userId: ctx?.actor?.userId || input?.userId || null,
+      });
+    } catch (_groundErr) { _analyticsGrounding = ""; }
+  }
+
   // Session-adaptive style vector (mutable)
   const styleSignal = input.styleSignal || null; // {kind:'like'|'dislike'} or {field,dir,amount}
   let styleVec = getSessionStyleVector(sessionId);
@@ -29794,7 +29811,6 @@ Available tools:
   "physics.beamDeflection" with {loadLbs:1000,lengthFt:20,modulusE:29000000,momentI:200}, "quantum.simulateCircuit" with {qubits:2,gates:[{"type":"H","target":0},{"type":"CNOT","control":0,"target":1}]},
   "engineering.columnBuckling" with {loadLbs:50000,lengthFt:12,area:8.25,momentI:82.8,elasticModulus:29000000},
   "statistics.linearRegression" with {x:[1,2,3],y:[2,4,6]}, "chemistry.gibbsFreeEnergy" with {deltaH:-286,deltaS:-163,tempK:298}
-- dtu_search: Search the knowledge base (DTUs) the user can see. Read-only. Use it BEFORE citing any DTU; only the ids and titles it returns may be cited. Params: {"query": "search terms", "limit": 8}
 - browse_url: Fetch and read any web page. Params: {"url": "https://...", "selector": "optional css selector"}
   Use when the user pastes a URL or asks about a specific web page.
 - create_dtu: Create a new DTU (Decision/Thought Unit) from the conversation. Params: {"title": "DTU title", "summary": "brief summary", "tags": ["tag1", "tag2"]}
@@ -29996,10 +30012,6 @@ ${_operatorV6Block}` : "";
             return { tool: call.tool, ok: false, error: `Compute error: ${_ce?.message}` };
           }
         }
-        case "dtu_search": {
-          const { dispatchChatDtuSearch: _dtuSearch } = await import("./lib/chat-tool-surface.js");
-          return _dtuSearch(runMacro, _toolCtx, call.params);
-        }
         case "browse_url": {
           const { url: browseUrl = "", selector: browseSelector } = call.params;
           if (!browseUrl.startsWith("http")) {
@@ -30097,8 +30109,7 @@ ${_operatorV6Block}` : "";
       if (_gate && _gate.ok === false) {
         result = { tool: call.tool, ok: false, error: _gate.reason || "csl_rejected" };
       } else {
-        // running/done reach a streaming client as the call really starts and ends
-        result = await _chatWithToolProgress(ctx, call, () => _executeToolCall(call));
+        result = await _executeToolCall(call);
       }
       if (_gate) {
         result.cslRouted = !!_gate.cslRouted;
@@ -30335,7 +30346,7 @@ ${_operatorV6Block}` : "";
       voice_exemplars: _voiceExemplarsForPrompt(),
       moodColor: _chatMoodColor,
       actor: ctx?.actor || null,
-    }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : "") + _currentTurnAnchor, mode);
+    }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : "") + (_analyticsGrounding ? ("\n\n" + _analyticsGrounding) : "") + _currentTurnAnchor, mode);
     const _userContent = _computeGroundTruth
       ? `${_computeGroundTruth.groundTruthBlock}\n\n${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`
       : `${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`;
@@ -30347,7 +30358,6 @@ ${_operatorV6Block}` : "";
     if (_chatTodayLine) messages = [{ role: "system", content: _chatTodayLine }, ...messages];
     if (_conversationalChat) messages = withChatToneReminder(messages);
     const _llmSpan = startSpan("llm.chat", { mode, sessionId, promptLength: prompt.length });
-    _chatProgress(ctx, { stage: "thinking", label: "Thinking" });
     _selfContSystem = system + _selfContBlock + smallModelPromptSuffix(brainModel);
     const r = await ctx.llm.chat({
       system: _selfContSystem, messages, temperature: _llmTemp, maxTokens: _selfContFirstTokens(_llmMaxTokens),
@@ -30433,7 +30443,7 @@ ${_operatorV6Block}` : "";
         styleHints: buildStyleHints(styleVec),
         voice_exemplars: _voiceExemplarsForPrompt(),
         moodColor: _chatMoodColor,
-      }) + _toolSystemPrompt + _lensHintSuffix + _currentTurnAnchor, mode);
+      }) + _toolSystemPrompt + _lensHintSuffix + (_analyticsGrounding ? ("\n\n" + _analyticsGrounding) : "") + _currentTurnAnchor, mode);
       _selfContSystem = _directSystem + _selfContBlock + smallModelPromptSuffix(brainModel);
       const _directMessages = [
         { role: "system", content: _selfContSystem },
@@ -30596,24 +30606,19 @@ ${_operatorV6Block}` : "";
           const _fuAc = new AbortController();
           const _fuTimeout = setTimeout(() => _fuAc.abort(), 120000);
           const _fuStart = Date.now();
-          // A streaming client gets the answer's tokens as the brain writes them.
-          const _fuStream = typeof ctx?.chatToken === "function";
-          _chatProgress(ctx, { stage: "writing", label: "Writing the answer" });
           const _fuRes = await fetch(`${brainUrl}/api/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               model: brainModel,
               messages: [{ role: "system", content: _followUpSystem }, ..._followUpMessages],
-              stream: _fuStream,
+              stream: false,
               think: false,
               options: { temperature: 0.4, num_predict: _chatMaxTokens }
             }),
             signal: _fuAc.signal
-          }).finally(() => { if (!_fuStream) clearTimeout(_fuTimeout); });
-          const _fuJson = _fuStream && _fuRes.ok
-            ? await _readOllamaChatStream(_fuRes, ctx.chatToken).catch(() => ({})).finally(() => clearTimeout(_fuTimeout))
-            : await _fuRes.json().catch(() => ({}));
+          }).finally(() => clearTimeout(_fuTimeout));
+          const _fuJson = await _fuRes.json().catch(() => ({}));
           const _fuElapsed = Date.now() - _fuStart;
           BRAIN.conscious.stats.requests++;
           BRAIN.conscious.stats.totalMs += _fuElapsed;
@@ -30875,20 +30880,6 @@ ${_operatorV6Block}` : "";
         finalReply = _g.text;
         _dtuRefsRemoved = _g.removed;
         ctx.log("chat", "Removed DTU references that were not retrieved", { sessionId, count: _g.removed.length });
-      }
-    } catch { /* guard optional */ }
-  }
-
-  // Figures with units must trace to a tool result or the user's message (lib/chat/numeric-trace.js).
-  let _untracedNumbers = [];
-  if (!_lockedReply && llmUsed && typeof finalReply === "string" && finalReply && _toolCallsExecuted.length) {
-    try {
-      const { guardNumericTrace: _guardNumericTrace } = await import("./lib/chat/numeric-trace.js");
-      const _nt = _guardNumericTrace(finalReply, _toolCallsExecuted, { prompt });
-      if (_nt.untraced.length) {
-        finalReply = _nt.text;
-        _untracedNumbers = _nt.untraced;
-        ctx.log("chat", "Flagged figures not traceable to a tool result", { sessionId, count: _nt.untraced.length });
       }
     } catch { /* guard optional */ }
   }
@@ -31169,7 +31160,6 @@ ${_operatorV6Block}` : "";
     ...(_answerTag || {}),
     ...(_selfContMeta ? { selfContinuation: _selfContMeta } : {}),
     ...(_dtuRefsRemoved.length ? { dtuRefsRemoved: _dtuRefsRemoved } : {}),
-    ...(_untracedNumbers.length ? { untracedNumbers: _untracedNumbers } : {}),
     ...(_imageTurn?.artifact ? { artifact: _imageTurn.artifact } : {}),
     ...(_turnArtifacts.length ? { artifacts: _turnArtifacts } : {}),
     ...(_aiUnavailable ? {
@@ -58085,6 +58075,28 @@ function initChatSocketHandlers(io) {
               }
             } catch (_e) { /* context building is best-effort */ }
 
+            // Analytics grounding (R1, Review 4 A19/A20): on the Analytics
+            // lens, label the retrieved DTU material as conversation context
+            // (not account data) and append the grounded account facts,
+            // composed server-side from the surface's own stores — this
+            // streaming assembly builds its prompt here, so this is the seam.
+            // Lens-gated and best-effort, exactly like the context build above.
+            let _streamGrounding = '';
+            if (lens === 'analytics') {
+              try {
+                _streamGrounding = await buildAnalyticsGroundingBlock({
+                  runMacro, ctx: { actor: { userId: socket.data?.userId || null }, userId: socket.data?.userId || null },
+                  STATE, userId: socket.data?.userId || null,
+                });
+              } catch (_groundErr) { _streamGrounding = ''; }
+              if (_streamGrounding && _streamDtuContext) {
+                _streamDtuContext = _streamDtuContext.replace(
+                  'Relevant knowledge from your substrate:',
+                  'Relevant knowledge from your substrate (conversation context — retrieved material, NOT account data):',
+                );
+              }
+            }
+
             // Build system prompt for streaming
             const _streamConsciousParams = getConsciousParams({ exchange_count: (_streamSess.messages || []).length });
             const _streamStyleVec = getSessionStyleVector(sessionId);
@@ -58093,7 +58105,7 @@ function initChatSocketHandlers(io) {
               dtu_count: STATE.dtus?.size || 0,
               domain_count: Object.keys(STATE.domains || {}).length,
               lens: lens || "general",
-              context: _streamDtuContext + (_webContext ? `\n\nWeb search results (use to inform your answer, cite sources naturally):\n${_webContext}` : ""),
+              context: _streamDtuContext + (_webContext ? `\n\nWeb search results (use to inform your answer, cite sources naturally):\n${_webContext}` : "") + (_streamGrounding ? `\n\n${_streamGrounding}` : ""),
               conversation_history: (_streamSess.messages || []).slice(-20),
               personality_state: getPersonality(STATE),
               active_wants: _activeWantsForPrompt(),
