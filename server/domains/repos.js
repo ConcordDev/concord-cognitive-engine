@@ -481,14 +481,23 @@ export default function registerReposActions(registerLensAction) {
    * Audit dependency tree — depth analysis, duplicate detection, vulnerability
    * surface area, and update freshness scoring.
    * artifact.data.dependencies = [{ name, version, latestVersion?, lastUpdated?, depth?, children?: [string], vulnerabilities?: number, license?, size?: number }]
+   *
+   * Live vulnerability check (Review 2 re-pass, checkpoint 3): the
+   * arithmetic below counts vulnerabilities from the caller-supplied
+   * per-dep `vulnerabilities` field — which the Analysis tab never
+   * supplies, so the tab printed "0 VULNERABLE" while the Security
+   * tab's OSV scan found real alerts on the same manifest (F6 in new
+   * form: two surfaces disagreeing on one repo). When the caller
+   * passes `liveVulnCheck: true` AND supplied no vulnerability data
+   * of its own, the dispatcher below first enriches the deps from
+   * the SAME osvScanDependencies helper the security scan uses —
+   * agreement by construction — and the result says which source its
+   * counts came from. If OSV is unreachable the counts come back
+   * null (unknown), never a fabricated 0. Callers that supply their
+   * own counts (the pinned contract tests) take the synchronous path
+   * unchanged and never trigger a network call.
    */
-  registerLensAction("repos", "dependencyAudit", (ctx, artifact, params = {}) => {
-  try {
-    const dependencies = artifact.data?.dependencies || params.dependencies || params.input?.dependencies || [];
-    if (dependencies.length === 0) {
-      return { ok: true, result: { message: "No dependencies to audit." } };
-    }
-
+  function rpAuditCompute(dependencies, params, vulnMeta) {
     const r = (v) => Math.round(v * 10000) / 10000;
     const now = params.referenceTime ? new Date(params.referenceTime).getTime() : Date.now();
 
@@ -531,6 +540,7 @@ export default function registerReposActions(registerLensAction) {
       name: d.name,
       version: d.version,
       vulnerabilities: parseInt(d.vulnerabilities),
+      advisories: Array.isArray(d.advisories) ? d.advisories : [],
       depth: parseInt(d.depth) || 0,
       riskScore: (parseInt(d.vulnerabilities) || 0) * (1 / (1 + (parseInt(d.depth) || 0))),
     })).sort((a, b) => b.riskScore - a.riskScore);
@@ -624,11 +634,23 @@ export default function registerReposActions(registerLensAction) {
           details: duplicates.slice(0, 10),
         },
         vulnerabilities: {
-          total: totalVulnerabilities,
-          affectedDeps: vulnDeps.length,
+          // When the live OSV check was requested but unreachable,
+          // the counts are UNKNOWN (null) — never a printed 0 the
+          // Security tab would contradict.
+          total: vulnMeta.unreachable ? null : totalVulnerabilities,
+          affectedDeps: vulnMeta.unreachable ? null : vulnDeps.length,
           surfaceArea: r(vulnSurfaceArea),
+          source: vulnMeta.source,
+          checked: vulnMeta.checked,
+          ...(vulnMeta.unreachable ? { unreachable: true } : {}),
           details: vulnDetails.slice(0, 10),
         },
+        dependencyList: dependencies.map((d) => ({
+          name: d.name,
+          version: d.version,
+          vulnerabilities: vulnMeta.unreachable ? null : (parseInt(d.vulnerabilities) || 0),
+          advisories: Array.isArray(d.advisories) ? d.advisories : [],
+        })),
         freshness: {
           avgScore: r(avgFreshness),
           criticalUpdates: freshnessScores.filter(f => f.updateUrgency === "critical").length,
@@ -644,8 +666,43 @@ export default function registerReposActions(registerLensAction) {
         healthGrade: healthScore >= 90 ? "A" : healthScore >= 75 ? "B" : healthScore >= 60 ? "C" : healthScore >= 40 ? "D" : "F",
       },
     };
+  }
+
+  registerLensAction("repos", "dependencyAudit", (ctx, artifact, params = {}) => {
+    const dependencies = artifact.data?.dependencies || params.dependencies || params.input?.dependencies || [];
+    if (dependencies.length === 0) {
+      return { ok: true, result: { message: "No dependencies to audit." } };
+    }
+    const callerSuppliedVulns = dependencies.some((d) => d && d.vulnerabilities != null);
+    if (params.liveVulnCheck === true && !callerSuppliedVulns) {
+      // Async path ONLY for the explicit live check; every other
+      // caller keeps the historical synchronous return.
+      return (async () => {
+        try {
+          const depVersions = {};
+          for (const d of dependencies) if (d?.name) depVersions[d.name] = String(d.version || "");
+          const osv = await osvScanDependencies(depVersions);
+          if (osv.unreachable) {
+            return rpAuditCompute(dependencies, params, { source: "osv.dev", checked: false, unreachable: true });
+          }
+          const byPkg = new Map();
+          for (const a of osv.dependabot) {
+            const e = byPkg.get(a.package) || { count: 0, ids: [] };
+            e.count++; e.ids.push(a.osvId);
+            byPkg.set(a.package, e);
+          }
+          const enriched = dependencies.map((d) => {
+            const e = byPkg.get(d?.name);
+            return { ...d, vulnerabilities: e ? e.count : 0, advisories: e ? e.ids : [] };
+          });
+          return rpAuditCompute(enriched, params, { source: "osv.dev", checked: true });
+        } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+      })();
+    }
+    try {
+      return rpAuditCompute(dependencies, params, { source: "caller-supplied", checked: false });
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-});
+  });
 
   function ghHeaders() {
     const token = process.env.GITHUB_TOKEN;
@@ -970,22 +1027,50 @@ export default function registerReposActions(registerLensAction) {
     let cur = bySha.get(sha);
     if (!cur) return null;
     const guard = new Set();
+    // A commit may carry a `baseline`: the full file tree AT that
+    // commit, stamped by rpAnchorLegacyHead for a legacy default head
+    // (see below). The fold starts from the baseline and applies only
+    // the change-commits that came after it — the baseline is where
+    // pre-snapshot history becomes knowable again.
+    let baseline = null;
     while (cur) {
       if (guard.has(cur.sha)) return null; // corrupt cycle — refuse, don't loop
       guard.add(cur.sha);
+      if (cur.baseline && typeof cur.baseline === "object") { baseline = cur.baseline; break; }
       if (!cur.changes || typeof cur.changes !== "object") return null;
       chain.push(cur);
       const parentSha = (cur.parents || [])[0];
       cur = parentSha ? bySha.get(parentSha) : null;
       if (parentSha && !cur) return null; // dangling parent — history incomplete
     }
-    const snap = new Map();
+    const snap = new Map(baseline ? Object.entries(baseline) : []);
     for (let k = chain.length - 1; k >= 0; k--) {
       for (const [path, content] of Object.entries(chain[k].changes)) {
         if (content === null) snap.delete(path); else snap.set(path, content);
       }
     }
     return snap;
+  }
+  // Legacy healing (Review 2 re-pass, checkpoint 1): a repo created
+  // before commits recorded `changes` deltas can never fold — every
+  // branch forked from its head inherits the un-foldable chain, so
+  // file view and commits on ANY branch of such a repo refused with
+  // history_unrecorded while main survived on the repo.files
+  // fallback. But at the default branch's CURRENT head the tree is
+  // knowable exactly: repo.files IS that head's tree, by the mirror
+  // invariant. Stamp it onto the head commit as its `baseline`, once,
+  // and every chain through that commit — branches forked before or
+  // after the stamp, PRs based on it — folds from there. Returns true
+  // when it stamped (callers persist). Commits deeper than the head
+  // stay unrecorded: that history is genuinely unrecoverable, and the
+  // surfaces keep saying so.
+  function rpAnchorLegacyHead(repo) {
+    const def = repo.branches.find((b) => b.name === repo.defaultBranch);
+    if (!def || !def.head) return false;
+    const head = rpCommitMap(repo).get(def.head);
+    if (!head || head.changes || head.baseline) return false;
+    head.baseline = Object.fromEntries((repo.files || []).map((f) => [f.path, f.content || ""]));
+    return true;
   }
   function rpMergeBase(repo, shaA, shaB) {
     if (!shaA || !shaB) return null;
@@ -1124,7 +1209,14 @@ export default function registerReposActions(registerLensAction) {
   function rpBranchTree(repo, branchName) {
     const branch = repo.branches.find((b) => b.name === branchName);
     if (!branch) return null;
-    const snap = rpSnapshotAt(repo, branch.head);
+    let snap = rpSnapshotAt(repo, branch.head);
+    if (!snap && rpAnchorLegacyHead(repo)) {
+      // The chain may have become foldable by anchoring the default
+      // head (the branch's chain passes through it) — retry once
+      // before declaring this branch's history unrecorded.
+      rpSave();
+      snap = rpSnapshotAt(repo, branch.head);
+    }
     if (snap) return snap;
     if (branchName === repo.defaultBranch) {
       return new Map((repo.files || []).map((f) => [f.path, f.content || ""]));
@@ -1178,7 +1270,7 @@ export default function registerReposActions(registerLensAction) {
       if (!repo.branches.some((b) => b.name === branchName)) return { ok: false, error: "branch not found" };
       const tree = rpBranchTree(repo, branchName);
       if (!tree) {
-        return { ok: false, error: "history_unrecorded", message: `The branch "${branchName}" predates recorded file snapshots, so its tree can't be reconstructed. New commits on it will record snapshots from here on.` };
+        return { ok: false, error: "history_unrecorded", message: `The branch "${branchName}" predates recorded file snapshots, so its tree can't be reconstructed.` };
       }
       const files = rpFilesFromSnapshot(tree);
       return {
@@ -1200,6 +1292,7 @@ export default function registerReposActions(registerLensAction) {
       if (!path) return { ok: false, error: "path required" };
       // Read at a commit (params.sha), on a branch (params.branch), or
       // on the default branch — always from recorded snapshots.
+      if (rpAnchorLegacyHead(repo)) rpSave();
       let content;
       let atCommit = null;
       if (params.sha) {
@@ -1319,16 +1412,29 @@ export default function registerReposActions(registerLensAction) {
       const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
       if (!repo) return { ok: false, error: "repo not found" };
-      const branches = repo.branches.map((b) => ({
-        name: b.name, head: b.head, protected: !!b.protected,
-        isDefault: b.name === repo.defaultBranch,
-        // Truthful count: commits reachable from this branch's head
-        // through the parent chain — the commits this branch actually
-        // holds (Review F1/F10; a label count is how main's commits
-        // once wore a feature branch's name and vice versa).
-        commits: rpAncestry(repo, b.head).size,
-        createdAt: b.createdAt,
-      }));
+      const defBranch = repo.branches.find((b) => b.name === repo.defaultBranch);
+      const defAncestry = defBranch ? rpAncestry(repo, defBranch.head) : new Set();
+      const branches = repo.branches.map((b) => {
+        const anc = rpAncestry(repo, b.head);
+        return {
+          name: b.name, head: b.head, protected: !!b.protected,
+          isDefault: b.name === repo.defaultBranch,
+          // Truthful count (Review 2 re-pass, adjacent wrongness):
+          // the default branch reports its total history; every other
+          // branch reports its AHEAD count — commits reachable from
+          // its head that the default branch does not have, i.e. the
+          // branch's OWN commits. The first build reported raw
+          // ancestry size, so a branch forked mid-history "had"
+          // main's earlier commits (pass-1 branches read 3 and 5
+          // against their own empty histories) — a number matching
+          // nothing. (Pass 1's label count was the opposite error:
+          // main's commits wearing a feature branch's name.)
+          commits: b.name === repo.defaultBranch
+            ? anc.size
+            : [...anc].filter((sha) => !defAncestry.has(sha)).length,
+          createdAt: b.createdAt,
+        };
+      });
       return { ok: true, result: { branches, tags: repo.tags, defaultBranch: repo.defaultBranch } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
@@ -1479,6 +1585,7 @@ export default function registerReposActions(registerLensAction) {
       const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
       if (!repo) return { ok: false, error: "repo not found" };
+      if (rpAnchorLegacyHead(repo)) rpSave();
       const sha = rpClean(params.sha, 60);
       const commit = repo.commits.find((c) => c.sha === sha);
       if (!commit) return { ok: false, error: "commit not found" };
@@ -1638,6 +1745,7 @@ export default function registerReposActions(registerLensAction) {
       if (!repo) return { ok: false, error: "repo not found" };
       const title = rpClean(params.title, 200);
       if (!title) return { ok: false, error: "title required" };
+      if (rpAnchorLegacyHead(repo)) rpSave();
       const head = rpClean(params.head, 80);
       const base = rpClean(params.base, 80) || repo.defaultBranch;
       if (!head) return { ok: false, error: "head branch required" };
@@ -1687,6 +1795,7 @@ export default function registerReposActions(registerLensAction) {
       if (!repo) return { ok: false, error: "repo not found" };
       const pull = repo.pulls.find((p) => p.number === rpNum(params.number, -1));
       if (!pull) return { ok: false, error: "pull not found" };
+      if (rpAnchorLegacyHead(repo)) rpSave();
       // S2: the diff is what the head branch introduces relative to
       // the merge-base — computed from recorded snapshots, per file,
       // with real line counts. S3: the same three-way check the merge
@@ -1817,6 +1926,7 @@ export default function registerReposActions(registerLensAction) {
       if (!repo) return { ok: false, error: "repo not found" };
       const pull = repo.pulls.find((p) => p.number === rpNum(params.number, -1));
       if (!pull) return { ok: false, error: "pull not found" };
+      if (rpAnchorLegacyHead(repo)) rpSave();
       if (pull.state !== "open") return { ok: false, error: `pull is ${pull.state}` };
       if (pull.reviews.some((rv) => rv.verdict === "request-changes")) {
         return { ok: false, error: "changes requested — cannot merge" };
