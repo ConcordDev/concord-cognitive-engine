@@ -129,7 +129,8 @@ describe('Projects identity — Settings ▸ Project (F5)', () => {
     expect(callsTo('project-duplicate')[0].params).toMatchObject({ id: 'p1', name: 'Apollo (copy)' });
     await waitFor(() => expect(screen.getByLabelText('Close Apollo (copy)')).toBeTruthy());
     fireEvent.click(screen.getByText('Settings'));
-    await screen.findByText(/Duplicated from/);
-    expect(screen.getByText(/APO/)).toBeTruthy();
+    const citation = await screen.findByText(/Duplicated from/);
+    expect(citation.textContent).toContain('APO');
+    expect(citation.textContent).toContain('Apollo');
   });
 });
