@@ -38,17 +38,22 @@ export function PjTeamPanel({ projectId, onChange }: { projectId: string; onChan
     if (!form.name.trim()) { setError('Member name is required.'); return; }
     const r = await lensRun('projects', 'member-add', { projectId, name: form.name.trim(), role: form.role.trim() });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    // S12 (F18): the new member renders in the same interaction (the
+    // macro returns it); the refetch reconciles its workload count.
+    const m = (r.data?.result as { member?: Member } | null)?.member;
+    if (m) setMembers((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, { ...m, assigned: 0 }]));
     setForm({ name: '', role: '' });
     setError(null);
     await refresh();
   };
 
   const del = async (id: string) => {
+    setMembers((prev) => prev.filter((x) => x.id !== id));
     await lensRun('projects', 'member-delete', { id });
     await refresh();
   };
 
-  if (loading) {
+  if (loading && members.length === 0) {
     return (
       <div className="rounded-lg border border-lattice-border bg-lattice-surface/70 overflow-hidden" aria-busy="true">
         <SkeletonTableRows rows={5} columns={4} />
@@ -65,7 +70,7 @@ export function PjTeamPanel({ projectId, onChange }: { projectId: string; onChan
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
       <section className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-lattice-surface/70 border border-lattice-border rounded-xl p-3">
-        <input placeholder="Member name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+        <input placeholder="Member name" value={form.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); setError(null); }}
           className="bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
         <input placeholder="Role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}
           className="bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
