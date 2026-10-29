@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Plus, KanbanSquare, ListChecks, CalendarRange, Repeat, BarChart3,
-  Flag, Users, Settings2, Briefcase, Radio, History, Inbox,
+  Flag, Users, Settings2, Briefcase, Radio, History, Inbox, ListTodo,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,7 @@ import { PjSettingsPanel } from './PjSettingsPanel';
 import { PjPortfolioPanel } from './PjPortfolioPanel';
 import { PjCollabPanel } from './PjCollabPanel';
 import { PjActivityPanel } from './PjActivityPanel';
+import { PjMyWorkPanel } from './PjMyWorkPanel';
 import { ProjectsKeepMenu } from './ProjectsKeepMenu';
 
 interface Project {
@@ -37,8 +38,9 @@ interface Dash {
   name: string; totalTasks: number; done: number; completionPct: number;
   overdue: number; activeSprints: number; openMilestones: number; members: number;
 }
-type TabId = 'board' | 'backlog' | 'timeline' | 'sprints' | 'reports' | 'planning' | 'team' | 'collab' | 'activity' | 'settings' | 'portfolio';
+type TabId = 'mywork' | 'board' | 'backlog' | 'timeline' | 'sprints' | 'reports' | 'planning' | 'team' | 'collab' | 'activity' | 'settings' | 'portfolio';
 const TABS: { id: TabId; label: string; icon: typeof KanbanSquare }[] = [
+  { id: 'mywork', label: 'My Work', icon: ListTodo },
   { id: 'board', label: 'Board', icon: KanbanSquare },
   { id: 'backlog', label: 'Backlog', icon: ListChecks },
   { id: 'timeline', label: 'Timeline', icon: CalendarRange },
@@ -108,6 +110,7 @@ export function ProjectsSection() {
     setTab('board');
   }, []);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const landedRef = useRef(false);
 
   const openComposer = useCallback(() => {
     setComposerOpen(true);
@@ -134,6 +137,17 @@ export function ProjectsSection() {
     setProjects(list);
     setActiveProject((prev) => (list.some((p) => p.id === prev) ? prev : list[0]?.id || ''));
     setLoading(false);
+    // D3 landing: exactly once per mount, if the caller has open work
+    // assigned to them, My Work is the landing view (the morning
+    // surface). The decision runs before the panels render, so it
+    // never yanks a tab the user picked.
+    if (!landedRef.current) {
+      landedRef.current = true;
+      if (list.length > 0) {
+        const mine = await lensRun('projects', 'my-work', {});
+        if ((mine.data?.result?.count || 0) > 0) setTab('mywork');
+      }
+    }
   }, []);
 
   const refreshDash = useCallback(async () => {
@@ -476,6 +490,7 @@ export function ProjectsSection() {
                 </div>
               )}
               <div className="p-4">
+                {tab === 'mywork' && <PjMyWorkPanel onOpenTask={openTaskFromPalette} />}
                 {tab === 'board' && <PjBoardPanel projectId={activeProject} onChange={refreshDash} openTaskRequest={boardOpenRequest} onOpenTaskRequestHandled={() => setBoardOpenRequest(null)} />}
                 {tab === 'backlog' && <PjBacklogPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'timeline' && <PjTimelinePanel projectId={activeProject} />}
