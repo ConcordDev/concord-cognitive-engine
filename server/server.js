@@ -50,7 +50,7 @@ import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
 import { humanMacroAclDenial } from "./lib/macro-acl-human-gate.js";
 import { forumModDenial } from "./lib/forum-mod-gate.js";
 import { personaCreateDenial, personaModifyDenial, personaListVisible, personaPromptVisible, personaRosterPutDenial } from "./lib/persona-legacy-gate.js";
-import { lensUpdateDenial } from "./lib/lens-update-gate.js";
+import { lensUpdateDenial, lensOwnerlessDenial, isOwnerlessArtifact } from "./lib/lens-update-gate.js";
 import { applyBallot, findCommentInTree, countCommentTree, appendCommentTree, applyAward, toggleSavedBy } from "./lib/forum-interactions.js";
 import { marketplaceOwnerDenial, marketplaceBuyDenial } from "./lib/marketplace-action-gate.js";
 import { threadModerationDenial, threadDeleteNodeDenial } from "./lib/thread-node-gate.js";
@@ -49097,14 +49097,32 @@ register("lens", "update", async (ctx, input={}) => {
   // The gate (lib/lens-update-gate.js) now applies to every owned
   // artifact: owner, admin, internal callers, and — on social domains
   // only — moderator-class roles (the forum post lock is a moderator
-  // action riding this path) may update. The ownerless/anon clause is
-  // unchanged here on purpose; ownerless artifacts are Fix 10.
-  if (artifact.ownerId && artifact.ownerId !== "anon") {
+  // action riding this path) may update.
+  // SECURITY (Fix 10): the owned-artifact clause itself was the second
+  // hole — it only ran when ownerId was a concrete user id, so
+  // artifacts with no owner (missing, "anon", "anonymous", "system",
+  // or marketplace artifacts with no owner fields at all) were
+  // writable by ANY signed-in member. Ownerless artifacts now take
+  // the ownerless gate: admin/internal only, plus moderators on
+  // social domains; AUTH_MODE=public (solo local-first) is exempt.
+  // createdBy/createdByUser count as ownership (see
+  // isOwnerlessArtifact), so a createdBy-only artifact stays on the
+  // owned path and its creator can still update it.
+  const _lensIsSocialDomain = LENS_SOCIAL_DOMAINS.has(artifact.domain);
+  if (isOwnerlessArtifact(artifact)) {
+    const ownerlessDenial = lensOwnerlessDenial({
+      ctx,
+      isAdmin: _lensIsAdminActor(ctx),
+      isSocialDomain: _lensIsSocialDomain,
+      authMode: AUTH_MODE,
+    });
+    if (ownerlessDenial) return ownerlessDenial;
+  } else {
     const updateDenial = lensUpdateDenial({
       ctx,
       isOwner: _lensIsOwnerActor(ctx, artifact),
       isAdmin: _lensIsAdminActor(ctx),
-      isSocialDomain: LENS_SOCIAL_DOMAINS.has(artifact.domain),
+      isSocialDomain: _lensIsSocialDomain,
     });
     if (updateDenial) return updateDenial;
   }
@@ -50769,7 +50787,25 @@ app.post("/api/lens/:domain/:id/publish", async (req, res) => {
     const ctx = makeCtx(req);
     const artifact = STATE.lensArtifacts.get(req.params.id);
     if (!artifact) return res.status(404).json({ ok: false, error: "not found" });
-    if (artifact.ownerId && artifact.ownerId !== "anon" && artifact.ownerId !== ctx.actor?.userId) {
+    // SECURITY (Fix 10): the old check only ran when ownerId was a
+    // concrete user id, so ownerless/"anon"/"system" artifacts — and
+    // artifacts owned only via createdBy — could be published
+    // (visibility flipped to "published") by anyone. Ownerless
+    // artifacts now publish admin/internal-only (moderators on social
+    // domains; AUTH_MODE=public exempt), via the same gate as
+    // lens.update. Owned artifacts keep this route's historical
+    // owner-only rule (no admin widening): _lensIsOwnerActor, which
+    // also matches createdBy/createdByUser.
+    if (isOwnerlessArtifact(artifact)) {
+      const ownerlessDenial = lensOwnerlessDenial({
+        ctx,
+        isAdmin: _lensIsAdminActor(ctx),
+        isSocialDomain: LENS_SOCIAL_DOMAINS.has(artifact.domain),
+        authMode: AUTH_MODE,
+        forbiddenError: "not your artifact",
+      });
+      if (ownerlessDenial) return res.status(ownerlessDenial.status).json({ ok: false, error: ownerlessDenial.error });
+    } else if (!_lensIsOwnerActor(ctx, artifact) && ctx?.internal !== true && ctx?.actor?.internal !== true) {
       return res.status(403).json({ ok: false, error: "not your artifact" });
     }
     artifact.meta = artifact.meta || {};
