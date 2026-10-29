@@ -41,37 +41,27 @@ interface FeedResult {
   total: number;
 }
 
-const TAB_IDS: Tab[] = ['roadmap', 'feed', 'timeline', 'albums', 'memories', 'notifications', 'profile'];
+const TAB_IDS: Tab[] = ['feed', 'timeline', 'albums', 'memories', 'notifications', 'roadmap', 'profile'];
 
-// S-TL-1 (F1/F10): the wall is the front door. A fresh visit lands on
-// Feed; an explicit ?tab= wins; otherwise the lens restores the view
-// you last left — it remembers where you were instead of resetting
-// you to the Roadmap every time.
-const LAST_VIEW_KEY = 'concord.timeline.lastView';
-
+// S-TL-1 (F1/F10) + the founder's Roadmap ruling (2026-10-29): Feed is
+// Timeline's front door and Roadmap is demoted to a tab. A cold open
+// lands on Feed and a reload returns to Feed — the old reset-to-
+// Roadmap on every mount was part of the defect. An explicit ?tab=
+// deep link is still honoured. (An earlier cut restored the last-
+// viewed tab from localStorage; the ruling superseded it.)
 function tabFromParam(): Tab | null {
   if (typeof window === 'undefined') return null;
   const value = new URLSearchParams(window.location.search).get('tab');
   return TAB_IDS.includes(value as Tab) ? (value as Tab) : null;
 }
 
-function tabFromStorage(): Tab | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const value = window.localStorage.getItem(LAST_VIEW_KEY);
-    return TAB_IDS.includes(value as Tab) ? (value as Tab) : null;
-  } catch {
-    return null;
-  }
-}
-
 const TABS: { id: Tab; label: string; keys: string; hint: string; icon: typeof LayoutList }[] = [
-  { id: 'roadmap', label: 'Roadmap', keys: 'g r', hint: 'Milestones and goals on a week ruler', icon: CalendarRange },
   { id: 'feed', label: 'Feed', keys: 'g f', hint: 'Your posts, reactions and comments', icon: LayoutList },
   { id: 'timeline', label: 'Post history', keys: 'g t', hint: 'Every post on an axis, colored by audience', icon: GitBranch },
   { id: 'albums', label: 'Albums', keys: 'g a', hint: 'Media albums', icon: LayoutGrid },
   { id: 'memories', label: 'Memories', keys: 'g m', hint: 'What you posted on this day before', icon: Clock },
   { id: 'notifications', label: 'Alerts', keys: 'g n', hint: 'Reactions, comments and mentions', icon: Bell },
+  { id: 'roadmap', label: 'Roadmap', keys: 'g r', hint: 'Milestones and goals on a week ruler', icon: CalendarRange },
   { id: 'profile', label: 'Profile', keys: 'g p', hint: 'Your profile and stats', icon: UserCircle },
 ];
 
@@ -92,13 +82,8 @@ export default function TimelineLensPage() {
   const [tab, setTab] = useState<Tab>('feed');
   useEffect(() => {
     const fromParam = tabFromParam();
-    if (fromParam) { setTab(fromParam); return; }
-    const fromStorage = tabFromStorage();
-    if (fromStorage) setTab(fromStorage);
+    if (fromParam) setTab(fromParam);
   }, []);
-  useEffect(() => {
-    try { window.localStorage.setItem(LAST_VIEW_KEY, tab); } catch { /* storage unavailable */ }
-  }, [tab]);
   const [limit, setLimit] = useState(30);
   const [search, setSearch] = useState('');
 
