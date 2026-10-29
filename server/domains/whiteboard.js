@@ -425,7 +425,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     if (s.frames) s.frames.delete(id);
     if (s.timers) s.timers.delete(id);
     if (s.votes) s.votes.delete(id);
-    if (s.comments) s.comments.get(userId)?.delete(id);
+    if (s.comments) s.comments.delete(id);
     saveWhiteboardState();
     return { ok: true, result: { deleted: id, permanent: true } };
   });
@@ -729,7 +729,7 @@ export default function registerWhiteboardActions(registerLensAction) {
   // ═══════════════════════════════════════════════════════════════
 
   function ensureCommentsBucket(s) {
-    if (!s.comments) s.comments = new Map(); // userId -> Map<boardId, Map<elementId, Array<Comment>>>
+    if (!s.comments) s.comments = new Map(); // boardId -> Map<elementId, Array<Comment>>
     return s.comments;
   }
 
@@ -1744,14 +1744,11 @@ export default function registerWhiteboardActions(registerLensAction) {
     }
     const cBucket = ensureCommentsBucket(s);
     let openCommentCount = 0;
-    // The bucket is keyed userId -> boardId -> elementId; reading the
-    // board id at the top level silently counted nothing.
-    const userComments = cBucket.get(userId);
-    if (userComments) {
-      for (const b of liveBoards) {
-        const elementMap = userComments.get(b.id);
-        if (elementMap) for (const list of elementMap.values()) openCommentCount += list.filter(c => !c.resolved).length;
-      }
+    // (The bucket is keyed by boardId — every comments-* macro reads
+    // and writes it that way; only live boards' comments count here.)
+    for (const b of liveBoards) {
+      const elementMap = cBucket.get(b.id);
+      if (elementMap) for (const list of elementMap.values()) openCommentCount += list.filter(c => !c.resolved).length;
     }
     return {
       ok: true,
