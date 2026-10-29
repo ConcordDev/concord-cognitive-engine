@@ -11,6 +11,10 @@ export function ProjectSwitcher({ value, onChange, onCreated, onDeleted }: { val
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // S3: project delete confirms IN the panel, never via window.confirm
+  // (native-dialog dead-control class — F2's silent no-op signature).
+  const [confirming, setConfirming] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const [draft, setDraft] = useState({ name: '', description: '', scaffold: 'node-ts' as 'node-ts' | '' });
 
   useEffect(() => { refresh(); }, []);
@@ -26,15 +30,18 @@ export function ProjectSwitcher({ value, onChange, onCreated, onDeleted }: { val
 
   async function remove() {
     if (!value) return;
-    const proj = list.find(p => p.id === value);
-    if (!confirm(`Delete project "${proj?.name || value}"? This removes all its files and git history — it cannot be undone.`)) return;
     setDeleting(true);
+    setDeleteError('');
     try {
       const r = await lensRun({ domain: 'code', action: 'projects-delete', input: { id: value } });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      if (r.data?.ok === false) { setDeleteError(r.data?.error || 'The server refused the delete.'); return; }
+      setConfirming(false);
       await refresh();
       onDeleted?.();
-    } catch (e) { console.error('[Projects] delete', e); }
+    } catch (e) {
+      console.error('[Projects] delete', e);
+      setDeleteError('The delete request failed.');
+    }
     finally { setDeleting(false); }
   }
 
@@ -82,7 +89,7 @@ export function ProjectSwitcher({ value, onChange, onCreated, onDeleted }: { val
             {list.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
           <button
-            onClick={remove}
+            onClick={() => { setDeleteError(''); setConfirming(true); }}
             disabled={!value || deleting}
             title="Delete this project"
             aria-label="Delete this project"
@@ -91,6 +98,20 @@ export function ProjectSwitcher({ value, onChange, onCreated, onDeleted }: { val
             {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
           </button>
         </div>
+      )}
+      {confirming && value && (
+        <div className="mt-2 p-2 rounded bg-rose-500/10 border border-rose-500/30 text-[11px]">
+          <p className="text-rose-100">Delete project “{list.find(p => p.id === value)?.name || value}” permanently? All its files and git history go with it — this cannot be undone.</p>
+          <div className="mt-1.5 flex items-center gap-2">
+            <button onClick={remove} disabled={deleting} className="px-2 py-1 rounded bg-rose-600 text-white font-bold hover:bg-rose-500 disabled:opacity-40">
+              {deleting ? 'Deleting…' : 'Delete project'}
+            </button>
+            <button onClick={() => setConfirming(false)} className="px-2 py-1 rounded border border-white/15 text-gray-300 hover:bg-white/[0.05]">Cancel</button>
+          </div>
+        </div>
+      )}
+      {deleteError && (
+        <div role="alert" className="mt-2 px-2 py-1.5 rounded bg-rose-500/10 border border-rose-500/30 text-[11px] text-rose-200">{deleteError}</div>
       )}
     </div>
   );
