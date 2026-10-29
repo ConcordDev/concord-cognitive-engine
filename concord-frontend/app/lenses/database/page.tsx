@@ -10,7 +10,7 @@
 import { useCallback, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
-  Database, Plus, Plug, Terminal, Table2, Layers, PenLine, Key, BarChart3, History, FolderGit2,
+  Database, Plus, Plug, Terminal, Table2, Layers, PenLine, Key, BarChart3, History, FolderGit2, Sparkles,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -32,6 +32,7 @@ import { DesignerPanel } from '@/components/database/DesignerPanel';
 import { IndexesPanel } from '@/components/database/IndexesPanel';
 import { MonitoringPanel } from '@/components/database/MonitoringPanel';
 import { HistoryPanel } from '@/components/database/HistoryPanel';
+import { AnalysisPanel } from '@/components/database/AnalysisPanel';
 import { ProjectsPanel } from '@/components/database/ProjectsPanel';
 
 export type DbView =
@@ -43,6 +44,7 @@ export type DbView =
   | 'indexes'
   | 'monitor'
   | 'history'
+  | 'analysis'
   | 'projects';
 
 const TABS: { id: DbView; label: string; icon: typeof Database; keys: string }[] = [
@@ -54,6 +56,7 @@ const TABS: { id: DbView; label: string; icon: typeof Database; keys: string }[]
   { id: 'indexes', label: 'Indexes', icon: Key, keys: 'i' },
   { id: 'monitor', label: 'Monitoring', icon: BarChart3, keys: 'o' },
   { id: 'history', label: 'History', icon: History, keys: 'h' },
+  { id: 'analysis', label: 'Analysis', icon: Sparkles, keys: 'a' },
   { id: 'projects', label: 'Projects', icon: FolderGit2, keys: 'p' },
 ];
 
@@ -149,6 +152,7 @@ export default function DatabaseLensPage() {
             {active === 'indexes' && <IndexesPanel />}
             {active === 'monitor' && <MonitoringPanel />}
             {active === 'history' && <HistoryPanel onLoadQuery={loadSql} />}
+            {active === 'analysis' && <AnalysisPanel />}
             {active === 'projects' && <ProjectsPanel />}
           </motion.div>
         </AnimatePresence>

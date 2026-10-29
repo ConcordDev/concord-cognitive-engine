@@ -1,13 +1,15 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useLensData } from '@/lib/hooks/use-lens-data';
 import { Table2, Search, Columns, Key, Link2, Eye, List } from 'lucide-react';
 import { formatBytes, type TableInfo } from './db-utils';
+import { useWorkspaceTables } from './use-workspace-tables';
 
 export function TableBrowserPanel({ onQueryTable }: { onQueryTable?: (sql: string) => void }) {
-  const { items: tableItems } = useLensData('database', 'table', { noSeed: true });
-  const tables: TableInfo[] = useMemo(() => tableItems?.map(i => i.data as unknown as TableInfo) ?? [], [tableItems]);
+  // S6: reads the workspace store (the Live Client's datasets), not the
+  // lens-data bucket nothing wrote to.
+  const { tables: wsTables } = useWorkspaceTables();
+  const tables: TableInfo[] = wsTables;
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [tableFilter, setTableFilter] = useState('');
 
@@ -39,6 +41,11 @@ export function TableBrowserPanel({ onQueryTable }: { onQueryTable?: (sql: strin
           />
         </div>
         <div className="space-y-1 max-h-[500px] overflow-y-auto">
+          {tables.length === 0 && (
+            <p className="text-xs text-gray-400 py-3">
+              No tables yet. Tables are the datasets in your workspace connections — create one in the Live Client and it appears here. Workspace copies only; no remote server is contacted.
+            </p>
+          )}
           {filteredTables.map(t => (
             <button
               key={t.name}

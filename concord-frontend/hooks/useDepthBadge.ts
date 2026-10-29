@@ -62,6 +62,15 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Lab & arcade sim',
     caption: 'Simulated: Design Lab forecasts and mini-game practice XP. Profile XP, quests, and achievements are your real activity.',
   },
+  /**
+   * Database connections are workspace copies held by Concord — no
+   * remote server is contacted, so the generic REAL_LIVE line ("polled
+   * live from an external source") is false for this lens (F14).
+   */
+  database: {
+    label: 'Workspace',
+    caption: 'Your workspace store: connections and datasets live in Concord’s workspace, not on a remote database server.',
+  },
 };
 
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {
