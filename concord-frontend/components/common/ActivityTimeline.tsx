@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react';
 import { useLensTool } from '@/lib/lens-dock';
 import { useQuery } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
+import { api } from '@/lib/api/client';
 import { Clock, X, User, Bot, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SkeletonTimeline } from '@/components/common/Skeleton';
@@ -24,18 +24,46 @@ function ActivityTimeline({ domain }: ActivityTimelineProps) {
   const [filter, setFilter] = useState<'all' | 'user' | 'system'>('all');
   useLensTool('activity', useCallback(() => setIsOpen((o) => !o), []));
 
+  // S15: read the platform event log — the same source the Guide's
+  // Recent Activity reads (/api/events/paginated) — filtered to
+  // this lens's objects. This panel previously listed lens
+  // ARTIFACTS as if they were activity and showed "No activity
+  // yet" after full working sessions.
   const { data, isLoading } = useQuery({
     queryKey: ['activity-timeline', domain],
     queryFn: () =>
-      apiHelpers.lens
-        .list(domain, { limit: 20 })
+      api
+        .get('/api/events/paginated', { params: { limit: 50 } })
         .then((r) => r.data)
         .catch(() => ({ items: [] })),
     staleTime: 30000,
     enabled: isOpen,
   });
 
-  const items = (data?.items || []) as Array<Record<string, unknown>>;
+  type RawEvent = {
+    id?: string; type?: string; action?: string; message?: string;
+    entityType?: string; timestamp?: string; meta?: Record<string, unknown>;
+  };
+  const belongsToLens = (e: RawEvent): boolean => {
+    if (e.type === domain || e.entityType === domain) return true;
+    if (e.meta?.domain === domain || e.meta?.lens === domain) return true;
+    // DTU events for this lens's objects: lens DTUs are titled
+    // "<Lens>: <name>" (a whiteboard board DTU is "Whiteboard: …").
+    const title = e.meta?.title;
+    return e.type === 'dtu' && typeof title === 'string'
+      && title.toLowerCase().startsWith(`${domain.toLowerCase()}:`);
+  };
+  const items = ((data?.items || []) as RawEvent[])
+    .filter(belongsToLens)
+    .map((e) => ({
+      id: e.id,
+      title: e.message || `${e.type || 'event'} ${e.action || ''}`.trim(),
+      updatedAt: e.timestamp,
+      // The user's own DTU work and sign-ins are "You"; the rest is
+      // system activity. (The event log has no per-row source field;
+      // this matches how the Guide presents the same events.)
+      source: e.type === 'dtu' || e.type === 'auth' ? 'user' : 'system',
+    })) as Array<Record<string, unknown>>;
   const filtered = items.filter((item) => {
     if (filter === 'all') return true;
     const source = (item.source as string) || 'user';

@@ -15,6 +15,7 @@ import { lensRun } from '@/lib/api/client';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { WhiteboardCanvas, Shape } from './WhiteboardCanvas';
 import { WhiteboardCollabPanel } from './WhiteboardCollabPanel';
+import { commitDeletedBoard } from './boardOwner';
 import { WhiteboardWorkspaceSummary } from './WhiteboardWorkspaceSummary';
 import { useWhiteboardCollab, WhiteboardOp } from '@/hooks/useWhiteboardCollab';
 import { useAuth } from '@/hooks/useAuth';
@@ -47,7 +48,7 @@ function diffShapesToOps(prev: Shape[], next: Shape[]): WhiteboardOp[] {
   return ops;
 }
 
-interface BoardMeta { id: string; title: string; createdAt: string; updatedAt: string; elementCount: number }
+interface BoardMeta { id: string; title: string; createdAt: string; updatedAt: string; elementCount: number; origin?: string }
 interface Cluster { theme: string; memberIds: string[]; size: number }
 interface SummaryResult { summary: string; actionItems: Array<{ text: string; owner: string | null }>; source: string }
 interface Comment { id: string; elementId: string; authorId: string; authorName: string; body: string; createdAt: string; resolved: boolean }
@@ -64,11 +65,16 @@ const TEMPLATE_KINDS = [
 export function CollabBoardSection() {
   const { user } = useAuth();
   const [boards, setBoards] = useState<BoardMeta[]>([]);
+  const [canvasNote, setCanvasNote] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string; isCanvas: boolean } | null>(null);
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeShapes, setActiveShapes] = useState<Shape[]>([]);
   const [activeTitle, setActiveTitle] = useState<string>('');
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [aiTab, setAITab] = useState<'cluster' | 'summarize' | 'generate' | 'comments' | 'export' | 'collab'>('cluster');
   const [clusters, setClusters] = useState<Cluster[] | null>(null);
@@ -78,6 +84,7 @@ export function CollabBoardSection() {
   const [genPrompt, setGenPrompt] = useState('');
   const [genKind, setGenKind] = useState<typeof TEMPLATE_KINDS[number]['id']>('brainstorm');
   const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
   const [showAI, setShowAI] = useState(true);
   // True when `activeId` refers to a shared board (a separate identity space
@@ -136,16 +143,25 @@ export function CollabBoardSection() {
       const r = await lensRun({ domain: 'whiteboard', action: 'board-list', input: {} });
       const list = (r.data?.result?.boards || []) as BoardMeta[];
       setBoards(list);
-      if (!activeId && list.length > 0) openBoard(list[0].id);
+      const firstCollab = list.find((b) => b.origin !== 'canvas');
+      if (!activeId && firstCollab) openBoard(firstCollab.id);
     } catch (e) { console.error('[Board] boards', e); }
     finally { setLoading(false); }
   }
 
   async function openBoard(id: string) {
+    // S1: canvas boards live in the main canvas (sketch element model);
+    // loading one into this Shape editor would mangle it. Tag + explain.
+    const meta = boards.find((b) => b.id === id);
+    if (meta?.origin === 'canvas') {
+      setCanvasNote(`"${meta.title}" is a canvas board — it opens in the main canvas (the Boards menu, top left), not the collab editor.`);
+      return;
+    }
+    setCanvasNote(null);
     try {
       const r = await lensRun({ domain: 'whiteboard', action: 'board-load', input: { id } });
       const b = r.data?.result?.board;
-      if (!b) { alert('board not found'); return; }
+      if (!b) { setCanvasNote('That board could not be loaded — it may have been deleted. Pick another from the list.'); return; }
       setActiveId(id);
       setActiveTitle(b.title || 'Untitled');
       setActiveShapes(Array.isArray(b.scene?.elements) ? b.scene.elements as Shape[] : []);
@@ -184,14 +200,38 @@ export function CollabBoardSection() {
     } catch (e) { console.error('[Board] create', e); }
   }
 
+  // S2: two-step inline confirm (native confirm() never surfaces in
+  // embedded browsers), soft delete now, hard commit after the Undo
+  // window lapses — the same pattern as the Studio and the Workbench.
   async function deleteBoard(id: string) {
-    if (!confirm('Delete this board?')) return;
+    const meta = boards.find((b) => b.id === id);
+    if (confirmDeleteId !== id) { setConfirmDeleteId(id); return; }
+    setConfirmDeleteId(null);
     try {
       await lensRun({ domain: 'whiteboard', action: 'board-delete', input: { id } });
       if (activeId === id) { setActiveId(null); setActiveShapes([]); setActiveTitle(''); }
       await refreshBoards();
       bumpSummary();
+      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+      const pending = { id, title: meta?.title || 'Board', isCanvas: meta?.origin === 'canvas' };
+      setPendingDelete(pending);
+      deleteTimerRef.current = setTimeout(() => {
+        setPendingDelete(null);
+        void commitDeletedBoard(pending.id, pending.isCanvas);
+      }, 12000);
     } catch (e) { console.error('[Board] delete', e); }
+  }
+
+  async function undoDeleteBoard() {
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    const pending = pendingDelete;
+    setPendingDelete(null);
+    if (!pending) return;
+    try {
+      await lensRun({ domain: 'whiteboard', action: 'board-restore', input: { id: pending.id } });
+    } catch (e) { console.error('[Board] restore', e); }
+    await refreshBoards();
+    bumpSummary();
   }
 
   async function duplicateBoard() {
@@ -212,15 +252,26 @@ export function CollabBoardSection() {
     // write into the PRIVATE board map under the shared board's id instead.
     if (isSharedBoard) { setDirty(false); return; }
     setSaving(true);
+    setSaveError(null);
     try {
-      await lensRun({ domain: 'whiteboard', action: 'board-save', input: {
+      const r = await lensRun({ domain: 'whiteboard', action: 'board-save', input: {
         id: activeId,
         title: activeTitle || 'Untitled',
         scene: { elements: activeShapes, appState: {} },
       } });
+      // S11: only a verified ok clears the indicator. A server
+      // refusal (ok:false) previously cleared dirty too — the header
+      // said "saved" while nothing had persisted.
+      if (r.data?.ok === false) {
+        setSaveError(`Save failed: ${String(r.data?.error || 'server refused')} — changes are still unsaved.`);
+        return;
+      }
       setDirty(false);
       bumpSummary(); // elementCount/stickyCount are computed from the persisted scene
-    } catch (e) { console.error('[Board] save', e); }
+    } catch (e) {
+      console.error('[Board] save', e);
+      setSaveError('Save failed — changes are still unsaved.');
+    }
     finally { setSaving(false); }
   }
 
@@ -277,9 +328,10 @@ export function CollabBoardSection() {
   async function runGenerate() {
     if (!genPrompt.trim()) return;
     setGenerating(true);
+    setGenError(null);
     try {
       const r = await lensRun({ domain: 'whiteboard', action: 'ai-generate-board', input: { prompt: genPrompt.trim(), kind: genKind } });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      if (r.data?.ok === false) { setGenError(String(r.data?.error || 'Generate failed.')); return; }
       const scene = r.data?.result?.scene;
       const elements = (scene?.elements || []) as Shape[];
       // Create a new board with the generated scene.
@@ -299,7 +351,7 @@ export function CollabBoardSection() {
     if (!activeId) return;
     try {
       const r = await lensRun({ domain: 'whiteboard', action: 'board-export-json', input: { boardId: activeId } });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      if (r.data?.ok === false) { setCanvasNote(`Export failed: ${String(r.data?.error || 'unknown error')}`); return; }
       const blob = new Blob([JSON.stringify(r.data?.result?.export, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -320,7 +372,18 @@ export function CollabBoardSection() {
   async function addComment(elementId: string, body: string) {
     if (!activeId || !body.trim()) return;
     try {
-      await lensRun({ domain: 'whiteboard', action: 'comments-add', input: { boardId: activeId, elementId, body: body.trim() } });
+      const r = await lensRun({ domain: 'whiteboard', action: 'comments-add', input: { boardId: activeId, elementId, body: body.trim(), authorName: user?.username || undefined } });
+      // S12: render the comment the server just created right away.
+      // The follow-up list read can lag (read replicas), which hid
+      // the first post until a second one landed and refreshed.
+      const created = r.data?.result?.comment as Comment | undefined;
+      if (created && created.id) {
+        setComments((prev) => {
+          const list = prev[elementId] || [];
+          if (list.some((c) => c.id === created.id)) return prev;
+          return { ...prev, [elementId]: [...list, created] };
+        });
+      }
       await refreshComments(activeId);
       bumpSummary(); // openCommentCount changed
     } catch (e) { console.error('[Board] add comment', e); }
@@ -377,17 +440,29 @@ export function CollabBoardSection() {
                 <div className="truncate text-white">{b.title}</div>
                 <div className="text-[10px] text-gray-400 tabular-nums">{b.elementCount} elements · {b.updatedAt.slice(0, 10)}</div>
               </div>
-              <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); deleteBoard(b.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
+              {b.origin === 'canvas' && <span className="shrink-0 rounded bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-sky-300">Canvas</span>}
+              {confirmDeleteId === b.id ? (
+                <button aria-label="Confirm delete" onClick={(e) => { e.stopPropagation(); void deleteBoard(b.id); }} className="shrink-0 rounded bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-medium text-rose-300">Delete?</button>
+              ) : (
+                <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(b.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300 hover:bg-white/[0.06] rounded"><Trash2 className="w-3.5 h-3.5" /></button>
+              )}
             </li>
           ))}
         </ul>
+        {pendingDelete && (
+          <p className="flex items-center justify-between gap-2 border-t border-white/10 px-3 py-2 text-[11px] text-zinc-300" role="status">
+            <span>Board “{pendingDelete.title}” deleted. Permanent delete lives in the Workbench Trash.</span>
+            <button type="button" onClick={() => { void undoDeleteBoard(); }} className="shrink-0 font-medium text-teal-300 hover:text-teal-200">Undo</button>
+          </p>
+        )}
+        {canvasNote && <p className="border-t border-white/10 px-3 py-2 text-[11px] leading-snug text-sky-300">{canvasNote}</p>}
       </aside>
 
       {/* Center: canvas + chrome */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {activeId ? (
           <>
-            <header className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
+            <header className="relative z-10 bg-lattice-deep px-3 py-2 border-b border-white/10 flex items-center gap-2">
               {isSharedBoard ? (
                 <span className="text-sm font-semibold text-white flex-1 max-w-[400px] truncate">{activeTitle}</span>
               ) : (
@@ -402,6 +477,7 @@ export function CollabBoardSection() {
               )}
               <span className="text-[10px] text-gray-400 tabular-nums">{activeShapes.length} elements</span>
               {!isSharedBoard && dirty && <span className="text-[10px] text-amber-300">● unsaved</span>}
+              {!isSharedBoard && saveError && <span className="text-[10px] text-rose-300" role="status">{saveError}</span>}
               <BoardTimer boardId={activeId} />
               {!isSharedBoard && (
                 <button onClick={save} disabled={saving || !dirty} className="px-2 py-1 text-[11px] rounded border border-white/15 text-gray-300 hover:bg-white/[0.05] disabled:opacity-40 inline-flex items-center gap-1">
@@ -483,7 +559,7 @@ export function CollabBoardSection() {
                 <SummarizeTab summary={summary} loading={summarizing} onRun={runSummarize} active={!!activeId} />
               )}
               {aiTab === 'generate' && (
-                <GenerateTab prompt={genPrompt} setPrompt={setGenPrompt} kind={genKind} setKind={setGenKind} loading={generating} onRun={runGenerate} />
+                <GenerateTab prompt={genPrompt} setPrompt={setGenPrompt} kind={genKind} setKind={setGenKind} loading={generating} onRun={runGenerate} error={genError} />
               )}
               {aiTab === 'comments' && (
                 <CommentsTab activeId={activeId} shapes={activeShapes} comments={comments} currentUserId={user?.id ?? null} onAdd={addComment} onResolve={resolveComment} onDelete={deleteComment} />
@@ -632,7 +708,7 @@ function SummarizeTab({ summary, loading, onRun, active }: { summary: SummaryRes
   );
 }
 
-function GenerateTab({ prompt, setPrompt, kind, setKind, loading, onRun }: { prompt: string; setPrompt: (s: string) => void; kind: typeof TEMPLATE_KINDS[number]['id']; setKind: (k: typeof TEMPLATE_KINDS[number]['id']) => void; loading: boolean; onRun: () => void }) {
+function GenerateTab({ prompt, setPrompt, kind, setKind, loading, onRun, error }: { prompt: string; setPrompt: (s: string) => void; kind: typeof TEMPLATE_KINDS[number]['id']; setKind: (k: typeof TEMPLATE_KINDS[number]['id']) => void; loading: boolean; onRun: () => void; error: string | null }) {
   return (
     <div className="space-y-2">
       <p className="text-gray-400">Generate a starter board from a prompt. Creates a new board — won't overwrite the current one.</p>
@@ -646,6 +722,7 @@ function GenerateTab({ prompt, setPrompt, kind, setKind, loading, onRun }: { pro
         rows={4}
         className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white"
       />
+      {error && <p className="text-[11px] text-rose-300" role="status">{error}</p>}
       <button onClick={onRun} disabled={loading || !prompt.trim()} className="w-full px-3 py-1.5 text-xs rounded bg-pink-500 text-white font-bold hover:bg-pink-400 disabled:opacity-40 inline-flex items-center justify-center gap-1">
         {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}Generate board
       </button>

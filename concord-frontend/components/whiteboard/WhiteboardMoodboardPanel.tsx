@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Image as ImageIcon, LayoutGrid, PenTool, Plus, X } from 'lucide-react';
+import { Image as ImageIcon, LayoutGrid, PenTool, Pencil, Plus, X } from 'lucide-react';
 import { COLORS, DEFAULT_MOOD_ZONES, type MoodZone } from './whiteboard-model';
 
 const QUICK_COLORS = ['#1a1a2e', '#16213e', '#0f3460', '#533483', '#e94560', '#f5c518', '#06d6a0', '#118ab2', '#073b4c', '#ef476f', '#ffd166', '#6c5ce7'];
@@ -12,16 +12,39 @@ export function WhiteboardMoodboardPanel() {
   const [moodInput, setMoodInput] = useState('');
   const [moodTarget, setMoodTarget] = useState<string | null>(null);
   const [moodKind, setMoodKind] = useState<'text' | 'color' | 'audio' | 'image'>('text');
+  const [moodEdit, setMoodEdit] = useState<{ zoneId: string; idx: number } | null>(null);
+  // E-WB-2 Full House: once every zone holds something, the header
+  // gains one serif line for the session. Real state only.
+  const [fullHouseSeen, setFullHouseSeen] = useState(false);
+  useEffect(() => {
+    if (moodZones.every((z) => z.items.length > 0)) setFullHouseSeen(true);
+  }, [moodZones]);
 
   const addMoodItem = () => {
     if (!moodTarget || !moodInput.trim()) return;
-    setMoodZones((prev) => prev.map((z) =>
-      z.id === moodTarget
-        ? { ...z, items: [...z.items, { kind: moodKind, value: moodInput.trim() }] }
-        : z
-    ));
+    setMoodZones((prev) => prev.map((z) => {
+      if (z.id !== moodTarget) return z;
+      // S16: edit mode saves in place; otherwise the item appends.
+      if (moodEdit && moodEdit.zoneId === z.id) {
+        const items = z.items.map((it, i) => (i === moodEdit.idx ? { kind: moodKind, value: moodInput.trim() } : it));
+        return { ...z, items };
+      }
+      return { ...z, items: [...z.items, { kind: moodKind, value: moodInput.trim() }] };
+    }));
     setMoodInput('');
     setMoodTarget(null);
+    setMoodEdit(null);
+  };
+  const startMoodEdit = (zoneId: string, idx: number, item: { kind: 'text' | 'color' | 'audio' | 'image'; value: string }) => {
+    setMoodTarget(zoneId);
+    setMoodKind(item.kind);
+    setMoodInput(item.value);
+    setMoodEdit({ zoneId, idx });
+  };
+  const closeMoodDialog = () => {
+    setMoodTarget(null);
+    setMoodEdit(null);
+    setMoodInput('');
   };
   const removeMoodItem = (zoneId: string, idx: number) => {
     setMoodZones((prev) => prev.map((z) => z.id === zoneId ? { ...z, items: z.items.filter((_, i) => i !== idx) } : z));
@@ -33,6 +56,7 @@ export function WhiteboardMoodboardPanel() {
         <LayoutGrid className="w-5 h-5 text-neon-pink" />
         <span className="text-sm font-semibold">Moodboard</span>
         <span className="text-xs text-gray-400">Click a zone to add inspiration items</span>
+        {fullHouseSeen && <span className="font-serif text-sm italic text-amber-200">Every zone has something. That&rsquo;s a mood.</span>}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 max-w-6xl mx-auto">
         {moodZones.map((zone) => (
@@ -41,7 +65,7 @@ export function WhiteboardMoodboardPanel() {
               {zone.label}
               <button
                 type="button"
-                onClick={() => { setMoodTarget(zone.id); setMoodKind('text'); }}
+                onClick={() => { setMoodEdit(null); setMoodInput(''); setMoodTarget(zone.id); setMoodKind('text'); }}
                 className="ml-auto w-6 h-6 rounded bg-lattice-bg text-gray-400 hover:text-white flex items-center justify-center"
                 aria-label="Add"
               >
@@ -68,14 +92,24 @@ export function WhiteboardMoodboardPanel() {
                       <span className="text-xs text-gray-300">{item.value}</span>
                     </div>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => removeMoodItem(zone.id, idx)}
-                    className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white items-center justify-center text-[9px] hidden group-hover:flex"
-                    aria-label="Close"
-                  >
-                    <X className="w-2.5 h-2.5" />
-                  </button>
+                  <span className="absolute -top-1.5 -right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                    <button
+                      type="button"
+                      onClick={() => startMoodEdit(zone.id, idx, item)}
+                      className="w-4 h-4 rounded-full bg-zinc-700 text-white flex items-center justify-center"
+                      aria-label="Edit item"
+                    >
+                      <Pencil className="w-2.5 h-2.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeMoodItem(zone.id, idx)}
+                      className="w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center"
+                      aria-label="Delete item"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </span>
                 </div>
               ))}
               {zone.items.length === 0 && (
@@ -114,8 +148,8 @@ export function WhiteboardMoodboardPanel() {
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
               className="bg-lattice-surface border border-lattice-border rounded-lg p-5 w-80">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-sm">Add to {moodZones.find((z) => z.id === moodTarget)?.label}</h3>
-                <button type="button" onClick={() => setMoodTarget(null)} aria-label="Close"><X className="w-5 h-5" /></button>
+                <h3 className="font-semibold text-sm">{moodEdit ? 'Edit item' : `Add to ${moodZones.find((z) => z.id === moodTarget)?.label}`}</h3>
+                <button type="button" onClick={closeMoodDialog} aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
               <div className="flex gap-2 mb-3">
                 {(['text', 'audio', 'image', 'color'] as const).map((k) => (
@@ -154,7 +188,7 @@ export function WhiteboardMoodboardPanel() {
               )}
               <div className="flex gap-2">
                 <button type="button" onClick={addMoodItem} disabled={!moodInput.trim()} className="flex-1 py-2 bg-neon-pink text-black rounded-lg text-sm font-medium disabled:opacity-40">Add</button>
-                <button type="button" onClick={() => setMoodTarget(null)} className="flex-1 py-2 bg-lattice-bg rounded-lg text-sm">Cancel</button>
+                <button type="button" onClick={closeMoodDialog} className="flex-1 py-2 bg-lattice-bg rounded-lg text-sm">Cancel</button>
               </div>
             </motion.div>
           </motion.div>

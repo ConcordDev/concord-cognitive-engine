@@ -471,6 +471,129 @@ function EmbedsTab({ boardId }: { boardId: string }) {
   );
 }
 
+/* ── S16: the export plan becomes a file ──────────────────────────
+   SVG is the exact render, with the plan embedded as <metadata>
+   (the export's receipt). PNG rasterizes that SVG at the plan's
+   pixel size and carries the plan in a tEXt chunk. PDF wraps the
+   raster on a single page sized to the content bounds, with the
+   plan in its info dictionary. */
+function escXml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function wrapLines(text: string, maxChars: number): string[] {
+  const words = String(text || '').split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let cur = '';
+  for (const w of words) {
+    if ((cur + ' ' + w).trim().length > maxChars && cur) { lines.push(cur); cur = w; }
+    else cur = (cur + ' ' + w).trim();
+  }
+  if (cur) lines.push(cur);
+  return lines.slice(0, 6);
+}
+function shapeToSvg(s: Shape, all: Shape[]): string {
+  const color = s.color || '#7dd3fc';
+  const w = s.w || (s.kind === 'sticky' ? 120 : s.kind === 'embed' ? 200 : s.kind === 'frame' ? 240 : 40);
+  const h = s.h || (s.kind === 'sticky' ? 80 : s.kind === 'embed' ? 120 : s.kind === 'frame' ? 180 : 30);
+  if (s.kind === 'rect') return `<rect x="${s.x}" y="${s.y}" width="${w}" height="${h}" fill="none" stroke="${color}" stroke-width="2"/>`;
+  if (s.kind === 'sticky') {
+    const lines = wrapLines(s.text || '', Math.max(4, Math.floor((w - 16) / 7.5)));
+    const tspans = lines.map((ln, i) => `<tspan x="${s.x + 8}" dy="${i === 0 ? 0 : 18}">${escXml(ln)}</tspan>`).join('');
+    return `<rect x="${s.x}" y="${s.y}" width="${w}" height="${h}" fill="${s.color || '#fef08a'}"/><text x="${s.x + 8}" y="${s.y + 20}" font-family="system-ui, sans-serif" font-size="14" fill="#1a1a1a">${tspans}</text>`;
+  }
+  if (s.kind === 'stroke') {
+    if (!s.points || s.points.length < 2) return '';
+    const pts = s.points.map((p) => `${p.x},${p.y}`).join(' ');
+    return `<polyline points="${pts}" fill="none" stroke="${s.color || '#fff'}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }
+  if (s.kind === 'frame') {
+    return `<rect x="${s.x}" y="${s.y}" width="${w}" height="${h}" fill="none" stroke="${color}" stroke-width="1.5" stroke-dasharray="6 4"/><text x="${s.x + 4}" y="${s.y - 6}" font-family="system-ui, sans-serif" font-size="12" fill="${color}">${escXml(s.label || s.text || 'Frame')}</text>`;
+  }
+  if (s.kind === 'connector') {
+    const from = all.find((e) => e.id === s.fromId);
+    const to = all.find((e) => e.id === s.toId);
+    if (!from || !to) return '';
+    const c = (e: Shape) => ({ x: e.x + (e.w || (e.kind === 'sticky' ? 120 : 40)) / 2, y: e.y + (e.h || (e.kind === 'sticky' ? 80 : 30)) / 2 });
+    const a = c(from), b = c(to);
+    const ang = Math.atan2(b.y - a.y, b.x - a.x), ah = 9;
+    const p1 = `${b.x - ah * Math.cos(ang - Math.PI / 7)},${b.y - ah * Math.sin(ang - Math.PI / 7)}`;
+    const p2 = `${b.x - ah * Math.cos(ang + Math.PI / 7)},${b.y - ah * Math.sin(ang + Math.PI / 7)}`;
+    const label = s.label ? `<text x="${(a.x + b.x) / 2 + 4}" y="${(a.y + b.y) / 2 - 4}" font-family="system-ui, sans-serif" font-size="11" fill="#cbd5e1">${escXml(s.label)}</text>` : '';
+    return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${color}" stroke-width="2"/><polygon points="${b.x},${b.y} ${p1} ${p2}" fill="${color}"/>${label}`;
+  }
+  if (s.kind === 'embed') {
+    const url = s.url ? `<text x="${s.x + 8}" y="${s.y + 38}" font-family="system-ui, sans-serif" font-size="10" fill="#94a3b8">${escXml(s.url.slice(0, 60))}</text>` : '';
+    return `<rect x="${s.x}" y="${s.y}" width="${w}" height="${h}" fill="rgba(30,41,59,0.85)" stroke="${color}" stroke-width="1.5"/><text x="${s.x + 8}" y="${s.y + 20}" font-family="system-ui, sans-serif" font-size="12" fill="#7dd3fc">${escXml('🔗 ' + (s.label || 'Embed'))}</text>${url}`;
+  }
+  return '';
+}
+function buildExportSvg(shapes: Shape[], plan: RasterPlan): string {
+  const b = plan.bounds!;
+  const ordered = [...shapes].sort((x, y) => (x.kind === 'frame' ? 0 : x.kind === 'connector' ? 1 : 2) - (y.kind === 'frame' ? 0 : y.kind === 'connector' ? 1 : 2));
+  const body = ordered.map((s) => shapeToSvg(s, shapes)).join('');
+  const receipt = escXml(JSON.stringify({ format: plan.format, scale: plan.scale, bounds: plan.bounds, pixelDimensions: plan.pixelDimensions, elementCount: plan.elementCount }));
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${b.width}" height="${b.height}" viewBox="${b.x} ${b.y} ${b.width} ${b.height}"><metadata>${receipt}</metadata><rect x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}" fill="#0b0f14"/>${body}</svg>`;
+}
+const CRC_TABLE = (() => {
+  const table = new Int32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    table[n] = c;
+  }
+  return table;
+})();
+function crc32(bytes: Uint8Array): number {
+  let c = 0xffffffff;
+  for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+async function pngWithReceipt(pngBlob: Blob, receiptJson: string): Promise<Blob> {
+  const buf = new Uint8Array(await pngBlob.arrayBuffer());
+  const keyword = new TextEncoder().encode('Comment');
+  const value = new TextEncoder().encode(receiptJson);
+  const data = new Uint8Array(keyword.length + 1 + value.length);
+  data.set(keyword, 0); data.set(value, keyword.length + 1);
+  const type = new TextEncoder().encode('tEXt');
+  const chunk = new Uint8Array(12 + data.length);
+  const dv = new DataView(chunk.buffer);
+  dv.setUint32(0, data.length);
+  chunk.set(type, 4); chunk.set(data, 8);
+  const crcInput = new Uint8Array(4 + data.length);
+  crcInput.set(type, 0); crcInput.set(data, 4);
+  dv.setUint32(8 + data.length, crc32(crcInput));
+  // Insert after IHDR (8-byte signature + 25-byte IHDR chunk).
+  const out = new Uint8Array(buf.length + chunk.length);
+  out.set(buf.subarray(0, 33), 0);
+  out.set(chunk, 33);
+  out.set(buf.subarray(33), 33 + chunk.length);
+  return new Blob([out.buffer as ArrayBuffer], { type: 'image/png' });
+}
+function buildPdf(jpeg: Uint8Array, imgW: number, imgH: number, pageW: number, pageH: number, plan: RasterPlan): Blob {
+  const enc = new TextEncoder();
+  const parts: Array<Uint8Array | string> = [];
+  const offsets: number[] = [];
+  let size = 0;
+  const push = (p: Uint8Array | string) => { const bytes = typeof p === 'string' ? enc.encode(p) : p; parts.push(bytes); size += bytes.length; };
+  const startObj = (n: number) => { offsets[n] = size; push(`${n} 0 obj\n`); };
+  push('%PDF-1.4\n');
+  startObj(1); push('<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+  startObj(2); push('<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
+  startObj(3); push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`);
+  startObj(4); push(`<< /Type /XObject /Subtype /Image /Width ${imgW} /Height ${imgH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`);
+  push(jpeg); push('\nendstream\nendobj\n');
+  const content = `q ${pageW} 0 0 ${pageH} 0 0 cm /Im0 Do Q`;
+  startObj(5); push(`<< /Length ${content.length} >>\nstream\n${content}\nendstream\nendobj\n`);
+  const receipt = `Whiteboard export — format ${plan.format} @ ${plan.scale}x, bounds ${plan.bounds?.width}x${plan.bounds?.height}, elements ${plan.elementCount}`;
+  startObj(6); push(`<< /Title (Concord Whiteboard export) /Subject (${receipt.replace(/([()\\])/g, '\\$1')}) >>\nendobj\n`);
+  const xrefAt = size;
+  let xref = `xref\n0 7\n0000000000 65535 f \n`;
+  for (let n = 1; n <= 6; n++) xref += `${String(offsets[n]).padStart(10, '0')} 00000 n \n`;
+  push(xref);
+  push(`trailer\n<< /Size 7 /Root 1 0 R /Info 6 0 R >>\nstartxref\n${xrefAt}\n%%EOF`);
+  return new Blob(parts.map((p) => (typeof p === 'string' ? enc.encode(p) : p)) as BlobPart[], { type: 'application/pdf' });
+}
+
 /* ── Raster export plan ──────────────────────────────────────────── */
 interface RasterPlan {
   format: string; scale: number; empty?: boolean; message?: string;
@@ -483,6 +606,8 @@ function ExportTab({ boardId }: { boardId: string }) {
   const [scale, setScale] = useState(2);
   const [plan, setPlan] = useState<RasterPlan | null>(null);
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [dlError, setDlError] = useState<string | null>(null);
 
   async function computePlan() {
     setLoading(true); setPlan(null);
@@ -490,6 +615,61 @@ function ExportTab({ boardId }: { boardId: string }) {
       const r = await lensRun({ domain: 'whiteboard', action: 'export-raster-plan', input: { boardId, format, scale } });
       if (r.data?.ok) setPlan(r.data.result as RasterPlan);
     } finally { setLoading(false); }
+  }
+
+
+  async function downloadWithPlan() {
+    if (!plan || !plan.bounds || !plan.pixelDimensions) return;
+    setDownloading(true);
+    setDlError(null);
+    try {
+      const loaded = await lensRun({ domain: 'whiteboard', action: 'board-load', input: { id: boardId } });
+      const shapes = (loaded.data?.result?.board?.scene?.elements || []) as Shape[];
+      if (shapes.length === 0) { setDlError('The board is empty — nothing to download.'); return; }
+      const svg = buildExportSvg(shapes, plan);
+      const save = (blob: Blob, ext: string) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `whiteboard-export.${ext}`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      };
+      if (plan.format === 'svg') {
+        save(new Blob([svg], { type: 'image/svg+xml' }), 'svg');
+        return;
+      }
+      // Rasterize the SVG at the plan's exact pixel size.
+      const img = new Image();
+      const svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('render failed'));
+        img.src = svgUrl;
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = plan.pixelDimensions.width;
+      canvas.height = plan.pixelDimensions.height;
+      const cctx = canvas.getContext('2d');
+      if (!cctx) { setDlError('Canvas is unavailable in this browser.'); return; }
+      cctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(svgUrl);
+      if (plan.format === 'png') {
+        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+        if (!blob) { setDlError('PNG render failed.'); return; }
+        const receipt = JSON.stringify({ format: plan.format, scale: plan.scale, bounds: plan.bounds, pixelDimensions: plan.pixelDimensions, elementCount: plan.elementCount });
+        save(await pngWithReceipt(blob, receipt), 'png');
+        return;
+      }
+      // PDF: single page sized to the content bounds (the plan's
+      // page tiling stays plan information; the file is the whole
+      // board on one page at the planned scale).
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      const jpeg = Uint8Array.from(atob(dataUrl.split(',')[1]), (ch) => ch.charCodeAt(0));
+      save(buildPdf(jpeg, canvas.width, canvas.height, plan.bounds.width, plan.bounds.height, plan), 'pdf');
+    } catch (e) {
+      console.error('[Board] export download', e);
+      setDlError('Download failed — the render could not be produced.');
+    } finally { setDownloading(false); }
   }
 
   return (
@@ -522,6 +702,15 @@ function ExportTab({ boardId }: { boardId: string }) {
           )}
         </div>
       )}
+      {plan && !plan.empty && plan.bounds && plan.pixelDimensions && (
+        <div className="space-y-1">
+          <button onClick={downloadWithPlan} disabled={downloading}
+            className="w-full px-3 py-1.5 text-xs rounded bg-emerald-500 text-white font-bold hover:bg-emerald-400 disabled:opacity-40 inline-flex items-center justify-center gap-1">
+            {downloading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}Download {plan.format.toUpperCase()} @ {plan.scale}× with this plan
+          </button>
+          {dlError && <p className="text-[11px] text-rose-300" role="status">{dlError}</p>}
+        </div>
+      )}
     </div>
   );
 }
@@ -532,6 +721,9 @@ function SharedTab({ activeBoardId, onOpenShared }: { activeBoardId: string | nu
   const [loading, setLoading] = useState(true);
   const [tally, setTally] = useState<{ boardId: string; rows: Array<{ elementId: string; count: number }>; total: number } | null>(null);
   const [leavingId, setLeavingId] = useState<string | null>(null);
+  const [joinId, setJoinId] = useState('');
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [joining, setJoining] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -542,6 +734,22 @@ function SharedTab({ activeBoardId, onOpenShared }: { activeBoardId: string | nu
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+
+  async function joinById() {
+    const id = joinId.trim();
+    if (!id) return;
+    setJoining(true);
+    setJoinError(null);
+    try {
+      const r = await lensRun({ domain: 'whiteboard', action: 'join-shared', input: { id } });
+      if (r.data?.ok === false) { setJoinError(String(r.data?.error || 'Could not join that board.')); return; }
+      const board = r.data?.result?.board as { id: string; title: string } | undefined;
+      setJoinId('');
+      await refresh();
+      if (board && onOpenShared) onOpenShared(board.id, board.title);
+    } finally { setJoining(false); }
+  }
 
   async function leave(id: string) {
     setLeavingId(id);
@@ -562,6 +770,15 @@ function SharedTab({ activeBoardId, onOpenShared }: { activeBoardId: string | nu
   return (
     <div className="space-y-2">
       <p className="text-gray-400">Boards someone shared with you, or that you promoted from a private board via the session workbench's Share action. Opening one joins its live room — edits broadcast to every participant in real time.</p>
+      <div className="flex items-center gap-1.5">
+        <input type="text" value={joinId} onChange={(e) => setJoinId(e.target.value)} placeholder="Shared board ID — join by ID"
+          className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+        <button type="button" onClick={joinById} disabled={joining || !joinId.trim()}
+          className="px-2.5 py-1.5 text-xs rounded bg-sky-500 text-white font-bold hover:bg-sky-400 disabled:opacity-40 inline-flex items-center gap-1">
+          {joining ? <Loader2 className="w-3 h-3 animate-spin" /> : <ExternalLink className="w-3 h-3" />}Join
+        </button>
+      </div>
+      {joinError && <p className="text-[11px] text-rose-300" role="status">{joinError}</p>}
       {loading ? (
         <div className="space-y-1.5" aria-busy="true">
           <Skeleton variant="block" height={46} />
