@@ -85,34 +85,6 @@ export function steerMessage() {
   return msg;
 }
 
-/**
- * @deprecated Inert compatibility stub — DO NOT call. Removed for real
- * 2026-07-25 (command-injection fix, authorized edit to a PROTECTED path):
- * this used to run a command STRING through `execSync` (a shell), the exact
- * sink shape the `command-injection` detector flags at
- * `server/lib/detectors/command-injection-detector.js`. Every real caller in
- * scripts/autoloop/*.mjs is migrated to `runArgv` (argv form, no shell) or a
- * small Node reimplementation of the one or two calls that needed genuine
- * shell features — see the `runArgv` doc comment above for the ledger.
- *
- * The name stays exported, as a throwing stub rather than deleted outright,
- * because `scripts/autoloop/guard.mjs` — PROTECTED, and this task is
- * explicitly NOT authorized to edit it — still has a dead
- * `import { run } from "./lib.mjs"` left over from an earlier pass; it never
- * calls `run()`, but ESM raises a hard link-time
- * "does not provide an export named 'run'" error the instant the name
- * disappears, which would crash the anti-gaming gate on every commit. That
- * would be strictly worse than an unused, throwing export. Whoever next
- * cleans up guard.mjs's dead import should delete this stub in the same
- * commit.
- */
-export function run() {
-  throw new Error(
-    "lib.mjs#run() was removed 2026-07-25 (command-injection fix) — use runArgv(file, args) instead. " +
-    "If you hit this, a caller was not migrated; do not resurrect a shell-string helper to fix it."
-  );
-}
-
 export const C = { g: "\x1b[32m", r: "\x1b[31m", y: "\x1b[33m", b: "\x1b[34m", dim: "\x1b[2m", rst: "\x1b[0m" };
 export const ok = (s) => `${C.g}${s}${C.rst}`;
 export const bad = (s) => `${C.r}${s}${C.rst}`;
