@@ -229,6 +229,7 @@ function DecksTab({
   const [newParent, setNewParent] = useState('');
   const [filterName, setFilterName] = useState('');
   const [filterQuery, setFilterQuery] = useState('tag:hard');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   async function createDeck() {
     if (!newDeck.trim()) return;
@@ -253,11 +254,19 @@ function DecksTab({
     if (r.data?.ok) flash('Filtered deck created.');
     else if (r.data?.error) flash(r.data.error);
   }
-  async function deleteDeck(id: string) {
-    if (!confirm('Delete this deck and all its cards?')) return;
-    await lensRun('srs', 'deck-delete', { id });
-    if (active === id) setActive(null);
+  async function deleteDeck(n: DeckTreeNode) {
+    // S2: the old gate was a native confirm(), which never surfaces
+    // in the embedded browser — the click returned before the
+    // (working) deck-delete macro ever ran. Inline two-step instead:
+    // the first click arms the row and states the card fate; the
+    // second click deletes.
+    if (confirmDeleteId !== n.id) { setConfirmDeleteId(n.id); return; }
+    setConfirmDeleteId(null);
+    const r = await lensRun('srs', 'deck-delete', { id: n.id });
+    if (!r.data?.ok) { flash(r.data?.error || 'Could not delete that deck.'); return; }
+    if (active === n.id) setActive(null);
     await refreshDecks();
+    flash('Deck deleted.');
   }
   async function moveDeck(id: string, parentId: string) {
     const r = await lensRun('srs', 'deck-move', { id, parentId });
@@ -288,10 +297,18 @@ function DecksTab({
             {' · '}<span className="text-emerald-400">{n.dueCount} due</span>
           </p>
         </button>
-        <button onClick={() => deleteDeck(n.id)}
-          className="opacity-0 group-hover:opacity-100 p-1 text-rose-400" aria-label="Delete deck">
-          <Trash2 className="w-3 h-3" />
-        </button>
+        {confirmDeleteId === n.id ? (
+          <span className="flex items-center gap-1">
+            <span className="text-[10px] text-rose-300">Delete this deck and its {n.ownCardCount} card{n.ownCardCount === 1 ? '' : 's'}?{n.children.length > 0 ? ' Subdecks move up a level.' : ''}</span>
+            <button onClick={() => void deleteDeck(n)} className="px-1.5 py-0.5 text-[11px] font-medium text-rose-300 hover:bg-rose-500/10 rounded">Delete</button>
+            <button onClick={() => setConfirmDeleteId(null)} className="px-1.5 py-0.5 text-[11px] text-zinc-400 hover:bg-white/[0.05] rounded">Cancel</button>
+          </span>
+        ) : (
+          <button onClick={() => setConfirmDeleteId(n.id)}
+            className="opacity-0 group-hover:opacity-100 p-1 text-rose-400" aria-label="Delete deck">
+            <Trash2 className="w-3 h-3" />
+          </button>
+        )}
       </div>
       {n.children.map(c => renderNode(c, depth + 1))}
     </div>
@@ -390,6 +407,7 @@ function DeckOptionsPanel({
 }) {
   const [opts, setOpts] = useState<DeckOptions>(() => deck.options ?? ({} as DeckOptions));
   const [stepsText, setStepsText] = useState((deck.options?.learningSteps || []).join(' '));
+  const [nameText, setNameText] = useState(deck.name);
 
   useEffect(() => {
     let stale = false;
@@ -407,6 +425,7 @@ function DeckOptionsPanel({
       .filter(n => Number.isFinite(n) && n > 0);
     const r = await lensRun('srs', 'deck-options-update', {
       deckId: deck.id,
+      name: nameText.trim() && nameText.trim() !== deck.name ? nameText.trim() : undefined,
       options: {
         newPerDay: opts.newPerDay,
         reviewsPerDay: opts.reviewsPerDay,
@@ -422,6 +441,12 @@ function DeckOptionsPanel({
       <p className="text-xs font-bold text-zinc-100 flex items-center gap-1.5">
         <Settings2 className="w-3.5 h-3.5 text-purple-400" />{deck.name} — Options
       </p>
+
+      <label className="block">
+        <span className="text-[10px] text-zinc-400 uppercase tracking-wide">Deck name</span>
+        <input value={nameText} onChange={e => setNameText(e.target.value)} maxLength={120}
+          className="mt-1 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+      </label>
 
       <label className="block">
         <span className="text-[10px] text-zinc-400 uppercase tracking-wide">Scheduler</span>
