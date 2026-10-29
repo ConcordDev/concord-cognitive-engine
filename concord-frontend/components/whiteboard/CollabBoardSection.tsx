@@ -160,7 +160,7 @@ export function CollabBoardSection() {
     try {
       const r = await lensRun({ domain: 'whiteboard', action: 'board-load', input: { id } });
       const b = r.data?.result?.board;
-      if (!b) { alert('board not found'); return; }
+      if (!b) { setCanvasNote('That board could not be loaded — it may have been deleted. Pick another from the list.'); return; }
       setActiveId(id);
       setActiveTitle(b.title || 'Untitled');
       setActiveShapes(Array.isArray(b.scene?.elements) ? b.scene.elements as Shape[] : []);
@@ -339,7 +339,7 @@ export function CollabBoardSection() {
     if (!activeId) return;
     try {
       const r = await lensRun({ domain: 'whiteboard', action: 'board-export-json', input: { boardId: activeId } });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      if (r.data?.ok === false) { setCanvasNote(`Export failed: ${String(r.data?.error || 'unknown error')}`); return; }
       const blob = new Blob([JSON.stringify(r.data?.result?.export, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
