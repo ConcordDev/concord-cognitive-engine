@@ -15,6 +15,7 @@ import { lensRun } from '@/lib/api/client';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { WhiteboardCanvas, Shape } from './WhiteboardCanvas';
 import { WhiteboardCollabPanel } from './WhiteboardCollabPanel';
+import { commitDeletedBoard } from './boardOwner';
 import { WhiteboardWorkspaceSummary } from './WhiteboardWorkspaceSummary';
 import { useWhiteboardCollab, WhiteboardOp } from '@/hooks/useWhiteboardCollab';
 import { useAuth } from '@/hooks/useAuth';
@@ -65,6 +66,9 @@ export function CollabBoardSection() {
   const { user } = useAuth();
   const [boards, setBoards] = useState<BoardMeta[]>([]);
   const [canvasNote, setCanvasNote] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string; isCanvas: boolean } | null>(null);
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeShapes, setActiveShapes] = useState<Shape[]>([]);
   const [activeTitle, setActiveTitle] = useState<string>('');
@@ -194,14 +198,38 @@ export function CollabBoardSection() {
     } catch (e) { console.error('[Board] create', e); }
   }
 
+  // S2: two-step inline confirm (native confirm() never surfaces in
+  // embedded browsers), soft delete now, hard commit after the Undo
+  // window lapses — the same pattern as the Studio and the Workbench.
   async function deleteBoard(id: string) {
-    if (!confirm('Delete this board?')) return;
+    const meta = boards.find((b) => b.id === id);
+    if (confirmDeleteId !== id) { setConfirmDeleteId(id); return; }
+    setConfirmDeleteId(null);
     try {
       await lensRun({ domain: 'whiteboard', action: 'board-delete', input: { id } });
       if (activeId === id) { setActiveId(null); setActiveShapes([]); setActiveTitle(''); }
       await refreshBoards();
       bumpSummary();
+      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+      const pending = { id, title: meta?.title || 'Board', isCanvas: meta?.origin === 'canvas' };
+      setPendingDelete(pending);
+      deleteTimerRef.current = setTimeout(() => {
+        setPendingDelete(null);
+        void commitDeletedBoard(pending.id, pending.isCanvas);
+      }, 12000);
     } catch (e) { console.error('[Board] delete', e); }
+  }
+
+  async function undoDeleteBoard() {
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    const pending = pendingDelete;
+    setPendingDelete(null);
+    if (!pending) return;
+    try {
+      await lensRun({ domain: 'whiteboard', action: 'board-restore', input: { id: pending.id } });
+    } catch (e) { console.error('[Board] restore', e); }
+    await refreshBoards();
+    bumpSummary();
   }
 
   async function duplicateBoard() {
@@ -388,10 +416,20 @@ export function CollabBoardSection() {
                 <div className="text-[10px] text-gray-400 tabular-nums">{b.elementCount} elements · {b.updatedAt.slice(0, 10)}</div>
               </div>
               {b.origin === 'canvas' && <span className="shrink-0 rounded bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-sky-300">Canvas</span>}
-              <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); deleteBoard(b.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
+              {confirmDeleteId === b.id ? (
+                <button aria-label="Confirm delete" onClick={(e) => { e.stopPropagation(); void deleteBoard(b.id); }} className="shrink-0 rounded bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-medium text-rose-300">Delete?</button>
+              ) : (
+                <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(b.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300 hover:bg-white/[0.06] rounded"><Trash2 className="w-3.5 h-3.5" /></button>
+              )}
             </li>
           ))}
         </ul>
+        {pendingDelete && (
+          <p className="flex items-center justify-between gap-2 border-t border-white/10 px-3 py-2 text-[11px] text-zinc-300" role="status">
+            <span>Board “{pendingDelete.title}” deleted. Permanent delete lives in the Workbench Trash.</span>
+            <button type="button" onClick={() => { void undoDeleteBoard(); }} className="shrink-0 font-medium text-teal-300 hover:text-teal-200">Undo</button>
+          </p>
+        )}
         {canvasNote && <p className="border-t border-white/10 px-3 py-2 text-[11px] leading-snug text-sky-300">{canvasNote}</p>}
       </aside>
 
