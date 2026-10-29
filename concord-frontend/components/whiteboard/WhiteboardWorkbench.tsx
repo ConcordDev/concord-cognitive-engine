@@ -91,6 +91,8 @@ function BoardsTab() {
   const [showTrash, setShowTrash] = useState(false);
   const [trashBoards, setTrashBoards] = useState<Board[]>([]);
   const [confirmForeverId, setConfirmForeverId] = useState<string | null>(null);
+  const [importNote, setImportNote] = useState<string | null>(null);
+  const importFileRef = useRef<HTMLInputElement | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -109,6 +111,29 @@ function BoardsTab() {
       setCreating(false); setTitle('');
       await refresh();
     } catch (e) { console.error(e); }
+  };
+
+  // D5: JSON import round-trip — a board exported with board-export-json
+  // (or a raw { elements } / { scene } snapshot) becomes a new board.
+  const importJson = async (file: File) => {
+    try {
+      const parsed = JSON.parse(await file.text()) as {
+        board?: { title?: string; scene?: { elements?: unknown[] } };
+        elements?: unknown[];
+        scene?: { elements?: unknown[] };
+      };
+      const els = parsed.board?.scene?.elements || parsed.elements || parsed.scene?.elements;
+      if (!Array.isArray(els)) {
+        setImportNote('That file does not look like a whiteboard export.');
+        return;
+      }
+      const base = parsed.board?.title || file.name.replace(/\.json$/i, '');
+      await lensRun({ domain: 'whiteboard', action: 'board-save', input: { title: base + ' (imported)', scene: { elements: els, appState: {} } } });
+      setImportNote('Imported ' + els.length + ' elements as a new board.');
+      await refresh();
+    } catch {
+      setImportNote('Import failed - the file could not be read as JSON.');
+    }
   };
 
   const loadTrash = useCallback(async () => {
@@ -173,6 +198,13 @@ function BoardsTab() {
         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-sky-500/30 bg-sky-500/10 text-xs text-sky-200">
         <Plus className="w-3 h-3" /> New board
       </button>
+      <button type="button" onClick={() => importFileRef.current?.click()}
+        className="ml-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-white/15 bg-white/[0.04] text-xs text-zinc-200">
+        <Upload className="w-3 h-3" /> Import JSON
+      </button>
+      <input ref={importFileRef} type="file" accept="application/json,.json" className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) void importJson(f); e.target.value = ''; }} />
+      {importNote && <p className="text-[11px] text-zinc-400">{importNote}</p>}
       {creating && (
         <div className="rounded border border-sky-500/30 bg-sky-500/5 p-3 space-y-2">
           <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
