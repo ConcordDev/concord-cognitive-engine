@@ -61734,7 +61734,9 @@ app.get("/api/cli/help", (req, res) => {
   res.type("text/plain").send(generateCLIHelp());
 });
 
-app.get("/api/cli/stats", (req, res) => {
+// Operator telemetry (corpus/session/macro counts) — same operator gate as
+// POST /api/cli; the help route above stays public (static documentation).
+app.get("/api/cli/stats", requireRole("owner", "admin"), (req, res) => {
   res.json({ ok: true, stats: getCLIStats() });
 });
 
