@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Loader2, Plus, Trash2, X, CandlestickChart, Globe, TrendingUp, TrendingDown,
-  Flame, Wallet, Send, RefreshCw, Check,
+  Flame, Wallet, Send, RefreshCw, Check, Pencil,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -326,6 +326,8 @@ export function WalletsPanel() {
   const [wallets, setWallets] = useState<WalletRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [wForm, setWForm] = useState({ name: '', kind: 'hot' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', kind: 'hot' });
   const [sForm, setSForm] = useState({ symbol: '', qty: '', toAddress: '', networkFeeUsd: '' });
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -348,6 +350,17 @@ export function WalletsPanel() {
   }
   async function delWallet(id: string) {
     await lensRun({ domain: 'crypto', action: 'wallet-delete', input: { id } });
+    await refresh();
+  }
+  function startEdit(w: WalletRow) {
+    setEditingId(w.id);
+    setEditForm({ name: w.name, kind: w.kind });
+  }
+  async function saveEdit(id: string) {
+    if (!editForm.name.trim()) return;
+    const r = await lensRun({ domain: 'crypto', action: 'wallet-rename', input: { id, name: editForm.name.trim(), kind: editForm.kind } });
+    if (r.data?.ok === false) { setNotice(r.data?.error || 'Rename failed.'); return; }
+    setEditingId(null);
     await refresh();
   }
   async function send() {
@@ -390,12 +403,34 @@ export function WalletsPanel() {
             {wallets.map((w) => (
               <div key={w.id} className="px-3 py-2 flex items-center gap-2">
                 <Wallet className="w-3.5 h-3.5 text-blue-400" />
-                <span className="text-xs text-white font-medium">{w.name}</span>
-                <span className="text-[9px] uppercase px-1 rounded bg-white/10 text-gray-400">{w.kind}</span>
-                <div className="flex-1" />
-                <button aria-label="Delete" type="button" onClick={() => delWallet(w.id)} className="text-gray-400 hover:text-rose-300">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                {editingId === w.id ? (
+                  <>
+                    <input aria-label="Wallet name" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      className="flex-1 min-w-0 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                    <select aria-label="Wallet kind" value={editForm.kind} onChange={(e) => setEditForm({ ...editForm, kind: e.target.value })}
+                      className="px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white capitalize">
+                      {WALLET_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
+                    </select>
+                    <button aria-label="Save" type="button" disabled={!editForm.name.trim()} onClick={() => saveEdit(w.id)} className="text-gray-400 hover:text-emerald-300 disabled:opacity-40">
+                      <Check className="w-3.5 h-3.5" />
+                    </button>
+                    <button aria-label="Cancel" type="button" onClick={() => setEditingId(null)} className="text-gray-400 hover:text-white">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-xs text-white font-medium">{w.name}</span>
+                    <span className="text-[9px] uppercase px-1 rounded bg-white/10 text-gray-400">{w.kind}</span>
+                    <div className="flex-1" />
+                    <button aria-label="Rename" type="button" onClick={() => startEdit(w)} className="text-gray-400 hover:text-blue-300">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button aria-label="Delete" type="button" onClick={() => delWallet(w.id)} className="text-gray-400 hover:text-rose-300">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                )}
               </div>
             ))}
           </div>

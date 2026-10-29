@@ -38,7 +38,10 @@ describe("universal entity schema", () => {
     });
     const v = validateEntity(full);
     assert.deepEqual(v.errors, []);
-    assert.ok(v.warnings.some((w) => /chemistry.*stub/.test(w)), "a stub extension is reported, not silently passed");
+    assert.deepEqual(v.warnings, [], "all disciplines are implemented (Q43) — no stub warnings remain");
+    // And chemistry now validates for real: a bad phase is an error.
+    const badChem = entity({ extensions: { chemistry: { formula: "CaCO3", phase: "chunky" } } });
+    assert.ok(validateEntity(badChem).errors.some((e) => /phase/.test(e)), "invalid chemistry data is rejected");
   });
 
   it("rejects bad shapes: unknown kind, missing identity, extra fields, bad id", () => {
@@ -48,10 +51,10 @@ describe("universal entity schema", () => {
     assert.ok(validateEntity(entity({ id: "Not An Id" })).errors.some((e) => /does not match/.test(e)));
   });
 
-  it("the materials extension is implemented and the other disciplines are stubs", () => {
+  it("all twelve discipline extensions are implemented and validate (Q43)", () => {
     const ext = Object.fromEntries(listExtensions().map((e) => [e.name, e.status]));
     assert.equal(ext.materials, "implemented");
-    for (const d of ["chemistry", "fluids", "recipes", "engineering", "math", "electronics", "biology", "energy", "agriculture", "geology", "software"]) assert.equal(ext[d], "stub", d);
+    for (const d of ["chemistry", "fluids", "recipes", "engineering", "math", "electronics", "biology", "energy", "agriculture", "geology", "software"]) assert.equal(ext[d], "implemented", d);
     const bad = entity({ composition: { basis: "mass", ingredients: [{ id: "a", name: "A", amount: { value: 100, unit: "%" } }] }, extensions: { materials: { polymerClass: "thermoplastic", constituents: [], mixingOrder: null, processingTemperatures: [], coolingProfile: null, curingProfile: "2 h at 120 °C" } } });
     assert.ok(validateEntity(bad).errors.some((e) => /thermoplastic has no curing profile/.test(e)));
   });

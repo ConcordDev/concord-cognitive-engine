@@ -8,12 +8,16 @@
 import { Router } from 'express';
 import { getReasoningSession, listReasoningSessions } from '../lib/reasoning/ongoing-shadow.js';
 import { executeReasoningWithCrystallization } from '../lib/reasoning/continuation.js';
+import { selectBrain } from '../lib/inference/router.js';
+import { infer } from '../lib/inference/index.js';
 
 /**
- * @param {{ STATE: object }} deps
+ * @param {{ STATE: object, selectBrain?: Function, infer?: Function }} deps
+ *   selectBrain/infer are injectable for tests; production uses the real
+ *   inference stack (the same selectBrain + infer that serve chat).
  * @returns {Router}
  */
-export function createReasoningRouter({ STATE } = {}) {
+export function createReasoningRouter({ STATE, selectBrain: selectBrainDep = selectBrain, infer: inferDep = infer } = {}) {
   const router = Router();
 
   // GET /api/reasoning/sessions — list recent reasoning sessions
@@ -80,15 +84,25 @@ export function createReasoningRouter({ STATE } = {}) {
       return res.status(400).json({ ok: false, error: 'intent is required' });
     }
 
-    try {
-      // Minimal stub — full wiring requires selectBrain from server.js context.
-      // When called from the sovereign/agent dispatch, brain + inferFn are injected.
-      const brain = STATE?.BRAIN?.[brainRole] || STATE?.brains?.[brainRole];
-      const inferFn = STATE?.infer;
+    const callerId = `reasoning:route:${req.user?.id || 'anon'}`;
 
-      if (!brain || !inferFn) {
-        return res.status(503).json({ ok: false, error: 'Brain not available for standalone reasoning' });
+    try {
+      // Brain + infer resolution (Q30): injected wiring wins — the
+      // sovereign/agent dispatch can still supply its own brain handle
+      // and infer function via STATE. Otherwise select for real:
+      // previously this route ONLY worked when a caller injected
+      // STATE.BRAIN / STATE.infer, which no production registration
+      // does (server.js passes just { STATE }), so /execute 503'd for
+      // every real request. selectBrain returns the handle runAgentLoop
+      // consumes (handle.chat), and lib/inference's infer(req, db)
+      // matches the crystallizer's inferFn contract exactly
+      // ({ role, intent, history, callerId } -> { finalText }); its db
+      // use is fail-safe, so STATE?.db may be undefined.
+      let brain = STATE?.BRAIN?.[brainRole] || STATE?.brains?.[brainRole];
+      if (!brain) {
+        ({ handle: brain } = await selectBrainDep(brainRole, { callerId }));
       }
+      const inferFn = STATE?.infer || ((r) => inferDep(r, STATE?.db));
 
       const result = await executeReasoningWithCrystallization({
         intent,
@@ -97,7 +111,7 @@ export function createReasoningRouter({ STATE } = {}) {
         inferFn,
         commitShadowDTU: async (_dtu) => ({ ok: true }),
         userId: req.user?.id,
-        callerId: `reasoning:route:${req.user?.id || 'anon'}`,
+        callerId,
         brainRole,
         modelName,
         maxSteps: Math.min(maxSteps, 20),
@@ -112,6 +126,11 @@ export function createReasoningRouter({ STATE } = {}) {
         crystallizations: result.crystallizations,
       });
     } catch (err) {
+      // selectBrain throws this when the (conscious) brain is genuinely
+      // down — that's an availability answer (503), not a server fault.
+      if (err?.code === 'conscious_brain_unavailable') {
+        return res.status(503).json({ ok: false, error: err.message, code: err.code });
+      }
       res.status(500).json({ ok: false, error: err?.message || 'Reasoning execution failed' });
     }
   });
