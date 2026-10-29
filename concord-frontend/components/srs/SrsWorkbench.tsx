@@ -294,7 +294,7 @@ function DecksTab({
           </p>
           <p className="text-[10px] text-zinc-400">
             {n.ownCardCount} cards · <span className="text-sky-400">{n.newCount} new</span>
-            {' · '}<span className="text-emerald-400">{n.dueCount} due</span>
+            {' · '}<span className="text-emerald-400">{n.dueCount} due</span>{n.filtered && n.filterQuery && (<span className="text-zinc-500">{' · '}{n.filterQuery}</span>)}
           </p>
         </button>
         {confirmDeleteId === n.id ? (
@@ -408,6 +408,7 @@ function DeckOptionsPanel({
   const [opts, setOpts] = useState<DeckOptions>(() => deck.options ?? ({} as DeckOptions));
   const [stepsText, setStepsText] = useState((deck.options?.learningSteps || []).join(' '));
   const [nameText, setNameText] = useState(deck.name);
+  const [filterText, setFilterText] = useState(deck.filterQuery || '');
 
   useEffect(() => {
     let stale = false;
@@ -426,6 +427,7 @@ function DeckOptionsPanel({
     const r = await lensRun('srs', 'deck-options-update', {
       deckId: deck.id,
       name: nameText.trim() && nameText.trim() !== deck.name ? nameText.trim() : undefined,
+      filterQuery: deck.filtered ? (filterText.trim() || undefined) : undefined,
       options: {
         newPerDay: opts.newPerDay,
         reviewsPerDay: opts.reviewsPerDay,
@@ -447,6 +449,15 @@ function DeckOptionsPanel({
         <input value={nameText} onChange={e => setNameText(e.target.value)} maxLength={120}
           className="mt-1 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
       </label>
+
+      {deck.filtered && (
+        <label className="block">
+          <span className="text-[10px] text-zinc-400 uppercase tracking-wide">Filter query</span>
+          <input value={filterText} onChange={e => setFilterText(e.target.value)} maxLength={200}
+            placeholder="tag:hard"
+            className="mt-1 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+        </label>
+      )}
 
       <label className="block">
         <span className="text-[10px] text-zinc-400 uppercase tracking-wide">Scheduler</span>
@@ -819,29 +830,40 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
   }
   const ids = () => [...selected];
 
+  // S6: banners report the macro's verified counts — never the
+  // selection size for an action that may have changed nothing.
   async function bulkSuspend(suspended: boolean) {
     if (selected.size === 0) return;
-    await lensRun('srs', 'card-suspend', { ids: ids(), suspended });
-    flash(`${selected.size} card(s) ${suspended ? 'suspended' : 'unsuspended'}.`);
+    const r = await lensRun('srs', 'card-suspend', { ids: ids(), suspended });
+    const updated = r.data?.result?.updated ?? 0;
+    const unchanged = r.data?.result?.unchanged ?? 0;
+    if (!r.data?.ok) flash(r.data?.error || 'Could not update those cards.');
+    else if (updated > 0) flash(updated + ' card(s) ' + (suspended ? 'suspended' : 'unsuspended') + (unchanged ? ' — ' + unchanged + ' already were.' : '.'));
+    else flash('No change — the selected card(s) were already ' + (suspended ? 'suspended' : 'unsuspended') + '.');
     setSelected(new Set());
     await refresh();
   }
-  async function bulkBury() {
+  async function bulkBury(buried: boolean) {
     if (selected.size === 0) return;
-    await lensRun('srs', 'card-bury', { ids: ids(), buried: true });
-    flash(`${selected.size} card(s) buried.`);
+    const r = await lensRun('srs', 'card-bury', { ids: ids(), buried });
+    const updated = r.data?.result?.updated ?? 0;
+    const unchanged = r.data?.result?.unchanged ?? 0;
+    if (!r.data?.ok) flash(r.data?.error || 'Could not update those cards.');
+    else if (updated > 0) flash(updated + ' card(s) ' + (buried ? 'buried' : 'unburied') + (unchanged ? ' — ' + unchanged + ' already were.' : '.'));
+    else flash('No change — the selected card(s) were already ' + (buried ? 'buried' : 'unburied') + '.');
     setSelected(new Set());
     await refresh();
   }
   async function bulkApply() {
     if (selected.size === 0) return;
     const addTags = bulkTags.split(',').map(t => t.trim()).filter(Boolean);
-    await lensRun('srs', 'card-bulk-edit', {
+    const r = await lensRun('srs', 'card-bulk-edit', {
       ids: ids(),
       addTags: addTags.length ? addTags : undefined,
       moveToDeckId: bulkDeck || undefined,
     });
-    flash(`${selected.size} card(s) updated.`);
+    if (r.data?.ok) flash((r.data.result?.updated ?? 0) + ' card(s) updated.');
+    else flash(r.data?.error || 'Could not update those cards.');
     setSelected(new Set()); setBulkTags(''); setBulkDeck('');
     await refresh();
   }
@@ -933,9 +955,13 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
             className="px-2 py-1 text-[11px] rounded bg-zinc-700 hover:bg-zinc-600 text-white">
             Unsuspend
           </button>
-          <button onClick={bulkBury}
+          <button onClick={() => bulkBury(true)}
             className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded bg-zinc-700 hover:bg-zinc-600 text-white">
             <EyeOff className="w-3 h-3" />Bury
+          </button>
+          <button onClick={() => bulkBury(false)}
+            className="px-2 py-1 text-[11px] rounded bg-zinc-700 hover:bg-zinc-600 text-white">
+            Unbury
           </button>
           <input value={bulkTags} onChange={e => setBulkTags(e.target.value)}
             placeholder="add tags"
@@ -1056,6 +1082,7 @@ function StudyTab({
   const [nextLabel, setNextLabel] = useState<string | null>(null);
   const [previews, setPreviews] = useState<Record<string, string> | null>(null);
   const [lastGrade, setLastGrade] = useState<string | null>(null);
+  const [canUndo, setCanUndo] = useState(false);
 
   const deckId = active || decks[0]?.id;
   const deck = decks.find(d => d.id === deckId);
@@ -1077,6 +1104,31 @@ function StudyTab({
   }, []);
   useEffect(() => { if (deckId) void Promise.resolve().then(() => fetchNext(deckId)); }, [deckId, fetchNext]);
 
+  // S9: undo the last grade (button + Ctrl+Z). The key handler
+  // exempts form fields — keystrokes belong to the field (S1).
+  const undo = useCallback(async () => {
+    const r = await lensRun('srs', 'study-undo', {});
+    if (r.data?.ok) {
+      setLastGrade(null);
+      setCanUndo(false);
+      setDone(d => Math.max(0, d - 1));
+      if (deckId) await fetchNext(deckId);
+      await refreshDecks();
+    }
+  }, [deckId, fetchNext, refreshDecks]);
+  useEffect(() => {
+    if (!canUndo) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z') return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      e.preventDefault();
+      void undo();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [canUndo, undo]);
+
   async function rate(rating: string) {
     if (!card || !deckId) return;
     const r = await lensRun('srs', 'study-answer', { cardId: card.id, rating });
@@ -1085,6 +1137,7 @@ function StudyTab({
       const label = r.data.result?.intervalLabel as string | undefined;
       setNextLabel(label ?? null);
       if (label) setLastGrade(card.front + ' · ' + rating + ' · back in ' + label);
+      setCanUndo(true);
       setDone(d => d + 1);
     }
     await fetchNext(deckId);
@@ -1106,7 +1159,7 @@ function StudyTab({
           className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200">
           {decks.map(d => (
             <option key={d.id} value={d.id}>
-              {d.name} ({d.studyCount} due)
+              {d.name} ({d.studyCount} to study)
             </option>
           ))}
         </select>
@@ -1116,8 +1169,13 @@ function StudyTab({
         <span className="ml-auto text-[11px] text-zinc-400">{done} studied this session</span>
       </div>
 
-      {lastGrade && (
-        <p className="text-[11px] text-zinc-500">{lastGrade}</p>
+      {(lastGrade || canUndo) && (
+        <div className="flex items-center gap-3">
+          {lastGrade && <p className="text-[11px] text-zinc-500">{lastGrade}</p>}
+          {canUndo && (
+            <button onClick={() => void undo()} className="text-[11px] text-purple-300 hover:text-purple-200">Undo grade</button>
+          )}
+        </div>
       )}
 
       {card ? (
@@ -1370,7 +1428,7 @@ function Stat({
   );
 }
 
-// ═══ TRANSFER TAB — deck import / export (.apkg.json bundles) ═════════
+// ═══ TRANSFER TAB — deck import / export (.srs.json bundles) ═════════
 function TransferTab({
   decks, refreshDecks, flash,
 }: {
@@ -1390,7 +1448,7 @@ function TransferTab({
       const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = filename || 'deck.apkg.json';
+      a.href = url; a.download = filename || 'deck.srs.json';
       a.click();
       URL.revokeObjectURL(url);
       flash('Deck exported.');
@@ -1434,10 +1492,10 @@ function TransferTab({
         </select>
         <button onClick={doExport} disabled={busy || !exportDeck}
           className="w-full px-2 py-1.5 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold disabled:opacity-40 inline-flex items-center justify-center gap-1.5">
-          <Download className="w-3.5 h-3.5" />Download .apkg.json bundle
+          <Download className="w-3.5 h-3.5" />Download .srs.json bundle
         </button>
         <p className="text-[10px] text-zinc-400">
-          Exports all cards, tags, media references, and deck options as a portable shared-deck bundle.
+          Exports cards, tags, media references, deck options, and scheduling history as a Concord bundle (.srs.json). It is not an Anki .apkg file — Anki cannot open it.
         </p>
       </div>
 
