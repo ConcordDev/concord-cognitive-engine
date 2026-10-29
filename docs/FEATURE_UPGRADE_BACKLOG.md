@@ -60,7 +60,7 @@ heartbeat module that does the integration on a background tick.
 | `ingest.listWebhookRecords` | `server/domains/ingest.js` | Returns webhook delivery log. **False positive.** |
 | `observer.compose_report` | `server/server.js:70621` | Composes a report from observed events; the upstream observation IS the integration. **False positive.** |
 | `offline.swManifest` | `server/domains/offline.js:591` | Returns service-worker manifest; integration surface is the SW itself, not a fetch. **False positive.** |
-| `offline.mergeResolve`, `replicationPush`, `syncCheckpoint`, `backoffSchedule`, `replicationPull` | `server/domains/offline.js` | All five are sync-protocol helpers — the integration is the protocol itself (offline-first sync IS the feature). **Spec downgrade candidates** if prose overstates to "live cloud sync." |
+| `offline.mergeResolve`, `replicationPush`, `syncCheckpoint`, `backoffSchedule`, `replicationPull` | `server/domains/offline.js` | All five are sync-protocol helpers — the integration is the protocol itself (offline-first sync IS the feature). **Spec downgrade candidates** if prose overstates to "live cloud sync." **Downgrade EXECUTED 2026-10-28** (founder decision; remaining-work audit Q68): the offline spec prose in `docs/lens-specs/offline-capability-map.md` and `docs/lens-specs/offline.md` is scoped to personal local synchronization — protocol description kept, cloud implication removed. |
 | `space.launch-countdown` | `server/domains/space.js` | Computes countdown from cached launch data — the API ingest lives in `space.live_launches_upcoming`. **False positive at this granularity.** |
 
 ### CRUD-WHERE-WORKFLOW-CLAIMED (9)
