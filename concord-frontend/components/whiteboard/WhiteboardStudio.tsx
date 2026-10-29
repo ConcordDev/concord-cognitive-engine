@@ -83,6 +83,8 @@ export function WhiteboardStudio({
   const [selectedWbId, setSelectedWbId] = useState<string | null>(null);
   const [boardMode, setBoardMode] = useState<BoardMode>('canvas');
   const [showModeMenu, setShowModeMenu] = useState(false);
+  const [copyNote, setCopyNote] = useState<{ text: string; ok: boolean } | null>(null);
+  const copyNoteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showInspector, setShowInspector] = useState(false);
   const [moreTools, setMoreTools] = useState(false);
 
@@ -886,11 +888,16 @@ export function WhiteboardStudio({
   // template with another user / paste-to-import.
   const exportClipboardJSON = useCallback(async () => {
     const snapshot = { elements, dimensions, exportedAt: new Date().toISOString() };
+    // S16: a copy the user can't verify is a dead end — confirm it
+    // (and report failure instead of swallowing it).
+    if (copyNoteTimerRef.current) clearTimeout(copyNoteTimerRef.current);
     try {
       await navigator.clipboard.writeText(JSON.stringify(snapshot, null, 2));
+      setCopyNote({ text: 'Copied — board JSON is on your clipboard.', ok: true });
     } catch {
-      console.warn('[Whiteboard] clipboard write failed');
+      setCopyNote({ text: 'Copy failed — the browser blocked clipboard access.', ok: false });
     }
+    copyNoteTimerRef.current = setTimeout(() => setCopyNote(null), 2600);
   }, [elements, dimensions]);
 
   /* ---------- canvas render ---------- */
@@ -1243,6 +1250,7 @@ export function WhiteboardStudio({
         </div>
         <div className="pointer-events-auto relative flex items-center gap-4 pt-1 text-[13px]">
           {saveMutation.isPending && <span className="text-zinc-600">Saving…</span>}
+          {copyNote && <span className={copyNote.ok ? 'text-teal-300' : 'text-rose-300'} role="status">{copyNote.text}</span>}
           <button type="button" onClick={() => setShowModeMenu((v) => !v)} className="text-zinc-500 transition-colors hover:text-zinc-200" aria-haspopup="menu" aria-expanded={showModeMenu}>
             {selectedWbId ? boardName(boardListItems.find((b) => b.id === selectedWbId)?.title ?? selectedWb?.whiteboard?.title) : 'Boards'}
             {boardMode !== 'canvas' && ` · ${MODE_LABELS[boardMode]}`} ▾
