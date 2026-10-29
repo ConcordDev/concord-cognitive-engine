@@ -39919,16 +39919,18 @@ import { minorAgentScheduler } from "./emergent/minor-agent-scheduler.js";
 minorAgentScheduler.db = db;
 minorAgentScheduler.realtimeEmit = realtimeEmit;
 // Initialize agents for existing emergents after a short delay to avoid blocking boot
-if (!_isReadReplicaEnv()) _unrefInTest(setTimeout(async () => {
-  try {
-    const emergentsMap = STATE?.__emergent?.emergents;
-    await minorAgentScheduler.initialize(emergentsMap);
-    minorAgentScheduler.start();
-    structuredLog("info", "minor_agent_scheduler_started", { agents: minorAgentScheduler.size });
-  } catch (e) {
-    structuredLog("warn", "minor_agent_scheduler_failed", { error: e.message });
-  }
-}, 5000));
+if (!_isReadReplicaEnv()) {
+  _unrefInTest(setTimeout(async () => {
+    try {
+      const emergentsMap = STATE?.__emergent?.emergents;
+      await minorAgentScheduler.initialize(emergentsMap);
+      minorAgentScheduler.start();
+      structuredLog("info", "minor_agent_scheduler_started", { agents: minorAgentScheduler.size });
+    } catch (e) {
+      structuredLog("warn", "minor_agent_scheduler_failed", { error: e.message });
+    }
+  }, 5000));
+}
 
 import { register as registerHook } from "./lib/agentic/hooks.js";
 import { checkSovereigntyInvariants } from "./grc/sovereignty-invariants.js";
@@ -41653,9 +41655,27 @@ function _pluginGalleryAuthorReputation(authorId) {
 // These endpoints let external tools (Claude Code etc.) query the DTU store
 // via a minimal MCP-shaped HTTP API.
 import { MCP_TOOLS, callMCPTool } from "./lib/mcp-tools.js";
+import { MCP_TOOLS_LOCAL_OR_REAL_AUTH } from "./lib/mcp-local-guard.js";
 
 app.get("/mcp/tools", (_req, res) => {
-  res.json({ ok: true, tools: MCP_TOOLS });
+  // Per-tool tier marking (discovery-fixes spec §2): each tool's `auth`
+  // is COMPUTED here from the enforcement sets themselves — the
+  // real-auth set defined below and the local-or-real set in
+  // lib/mcp-local-guard.js — so the published marking is derived from
+  // the gates and cannot drift from them. "real" = a real resolved user
+  // is required; "local" = on-host caller or real auth; "anonymous" =
+  // callable under the public MCP bypass, by design.
+  res.json({
+    ok: true,
+    tools: MCP_TOOLS.map((t) => ({
+      ...t,
+      auth: MCP_TOOLS_REQUIRE_REAL_AUTH.has(t.name)
+        ? "real"
+        : MCP_TOOLS_LOCAL_OR_REAL_AUTH.has(t.name)
+          ? "local"
+          : "anonymous",
+    })),
+  });
 });
 
 // reflect_invoke/reflect_rescan are the one part of the MCP tool surface
@@ -93418,6 +93438,5 @@ export const __TEST__ = Object.freeze({
   searchArchivedDtus,
   formatDtuHitsForPrompt,
   _consoRejected,
-  governorTick,
 });
 // Test commit

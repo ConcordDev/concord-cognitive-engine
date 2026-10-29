@@ -88,6 +88,22 @@ function arrayProp(desc, items) { return { type: "array", description: desc, ite
 function boolProp(desc, def) { return { type: "boolean", description: desc, default: def }; }
 function enumProp(desc, values) { return { type: "string", enum: values, description: desc }; }
 
+// Organ tools (browser / sentinel / trace / incident / research /
+// opportunity / proactive / economic / initiative / capability / a2a /
+// experience / concordia) are forwarded opaquely to their Python organs
+// by organCall — the JS handler reads no args itself. Their schemas are
+// therefore built ONLY from evidence in the record: arguments the organs'
+// own error messages name, filters the tools' published descriptions
+// name, and arguments in-repo callers pass. additionalProperties stays
+// true so an organ argument this list does not know about is never
+// rejected client-side; `required` is set only where the evidence shows
+// the organ cannot act without the argument.
+function organSchema(properties, required) {
+  const s = jsonSchema(properties, required);
+  s.additionalProperties = true;
+  return s;
+}
+
 export const MCP_TOOLS = [
   // ── AGENT RUNTIME HEARTBEAT ────────────────────────────────────────────
   {
@@ -196,12 +212,12 @@ export const MCP_TOOLS = [
   // ── LENS ──────────────────────────────────────────────────────────────
   {
     name: "lens_list",
-    description: "List all available lenses (UI surfaces). Returns lens id + name + tags + action types.",
+    description: "DTU-corpus lens statistics: the lens_ids that hold at least one DTU, top 50 by DTU count, as { id, dtuCount }. Zero-DTU lens_ids are absent. `count` is the number of lens_ids returned and `truncated` is true when the top-50 cap cuts the full set of lens_ids that hold DTUs. This is the DTU classification registry — it is not the product lens directory (268 lenses) and returns no names, tags, or action types.",
     inputSchema: SCHEMA_DESCRIPTION_BASE
   },
   {
     name: "lens_manifest",
-    description: "Get the manifest for a specific lens. Returns its full action set + schemas.",
+    description: "DTU sample for one DTU-classification lens_id: the lens_id's true DTU count (`dtuCount`, a COUNT(*) over the corpus) plus up to 10 sample DTUs (`sample`, with `sampleSize` naming the rows actually returned). Returns no actions and no schemas. Ids come from lens_list; an id outside that registry returns dtuCount 0 and an empty sample, not an error — 0 means 'no DTUs classified under this id,' not 'no such lens.'",
     inputSchema: jsonSchema({ lens_id: textProp("Lens id") }, ["lens_id"])
   },
 
@@ -496,8 +512,10 @@ export const MCP_TOOLS = [
     description: "Compile task-relevant MCP tool subset from the full universe (hand + reflected macros). Bounds context by relevance score.",
     inputSchema: jsonSchema({
       task: textProp("Task description or intent"),
+      intent: textProp("Alias for task"),
       budget: intProp("Max tools to return (default 12)", 12),
       include_reflected: boolProp("Include reflected macro tools (default true)", true),
+      always_include: arrayProp("Tool names to always include", { type: "string" }),
     }, ["task"])
   },
   {
@@ -555,22 +573,42 @@ export const MCP_TOOLS = [
   {
     name: "breakdown_decompose",
     description: "Sprint 60+ Breakdown Structuring: decompose a big request (book, app, report) into N ordered subtasks. Returns structured JSON array of subtasks ready for parallel dispatch.",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: jsonSchema({
+      request: textProp("The big request to decompose"),
+      unit: textProp("Unit to split into (default 'chapter')"),
+      count: intProp("Number of subtasks (default 10)", 10),
+      userId: textProp("Optional user id for minted DTUs"),
+    }, ["request"])
   },
   {
     name: "breakdown_dispatch",
     description: "Sprint 60+ Breakdown Structuring: dispatch N subtasks in PARALLEL through brain fleet. Each subtask = focused 2-4k token turn. Output mints ordered DTUs.",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: jsonSchema({
+      subtasks: { type: ["array", "string"], description: "Subtasks from breakdown_decompose (array of subtask objects, or a JSON string of one)", items: { type: "object" } },
+      request: textProp("Original request (context for each subtask)"),
+      unit: textProp("Unit label (default 'chapter')"),
+      userId: textProp("Optional user id for minted DTUs"),
+    }, ["subtasks"])
   },
   {
     name: "breakdown_stitch",
     description: "Sprint 60+ Breakdown Structuring: deterministically stitch ordered DTU bodies into one compiled text. No LLM involved.",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: jsonSchema({
+      dtuIds: arrayProp("Ordered DTU ids to stitch", { type: "string" }),
+      title: textProp("Compiled document title (optional)"),
+    }, ["dtuIds"])
   },
   {
     name: "breakdown_build",
     description: "Sprint 60+ Breakdown Structuring: ONE-SHOT factory. Decompose, parallel dispatch, mint DTUs, stitch, render to PDF/ZIP/MD. Returns real file artifact.",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: jsonSchema({
+      request: textProp("The big request to build"),
+      unit: textProp("Unit to split into (default 'chapter')"),
+      count: intProp("Number of subtasks (default 10)", 10),
+      format: textProp("Artifact format (default 'md')"),
+      title: textProp("Artifact title (optional)"),
+      userId: textProp("Optional user id"),
+    }, ["request"])
   },
   {
     name: "browser_check_coins",
@@ -615,22 +653,22 @@ export const MCP_TOOLS = [
   {
     name: "trace_lookup",
     description: "Trace Fabric: lookup traces by id (F3 organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ id: textProp("Trace id to look up — without it the organ defaults to the call's own in-flight trace") }, ["id"])
   },
   {
     name: "trace_recent",
     description: "Trace Fabric: get recent traces (F3 organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ limit: intProp("Max traces to return", 20) })
   },
   {
     name: "trace_tool_history",
     description: "Trace Fabric: get tool invocation history (F3 organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ tool_name: textProp("Tool name to return invocation history for") })
   },
   {
     name: "trace_root_cause",
     description: "Trace Fabric: identify root cause of a failure (F3 organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ trace_id: textProp("Trace to find the root cause of (domains/trace-fabric.js: 'For a given trace_id, find originating event + walk parent_trace_id chain')") })
   },
   {
     name: "trace_backfill",
@@ -640,7 +678,9 @@ export const MCP_TOOLS = [
   {
     name: "incident_watch",
     description: "Incident Engine: detect and report active incidents (B organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: jsonSchema({
+      since_minutes: intProp("Look-back window in minutes (default 10)", 10),
+    })
   },
   {
     name: "incident_active",
@@ -650,7 +690,7 @@ export const MCP_TOOLS = [
   {
     name: "incident_history",
     description: "Incident Engine: get incident history (B organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ limit: intProp("Max incidents to return (lib/mission-templates.js passes 10)") })
   },
   {
     name: "incident_classify",
@@ -665,7 +705,7 @@ export const MCP_TOOLS = [
   {
     name: "research_filter",
     description: "Research Frontier: filter signals by novelty/value (D organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ since_minutes: intProp("Look-back window in minutes (in-repo callers in lib/mission-templates.js pass it)") })
   },
   {
     name: "research_invoke",
@@ -685,32 +725,32 @@ export const MCP_TOOLS = [
   {
     name: "research_get",
     description: "Research Frontier: get full finding details (D organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ id: textProp("Finding id") }, ["id"])
   },
   {
     name: "opportunity_scan",
     description: "Opportunity Engine: scan upstream signals + propose opportunities (C organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ since_minutes: intProp("Look-back window in minutes (in-repo callers in lib/mission-templates.js pass it)") })
   },
   {
     name: "opportunity_list",
     description: "Opportunity Engine: list proposals with filters (C organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ status: textProp("Filter by proposal status"), limit: intProp("Max proposals to return", 20) })
   },
   {
     name: "opportunity_get",
     description: "Opportunity Engine: get proposal details (C organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ id: textProp("Proposal id") }, ["id"])
   },
   {
     name: "opportunity_approve",
     description: "Opportunity Engine: approve a proposal (C organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ id: textProp("Proposal id to approve") }, ["id"])
   },
   {
     name: "opportunity_reject",
     description: "Opportunity Engine: reject a proposal (C organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ id: textProp("Proposal id to reject") }, ["id"])
   },
   {
     name: "proactive_predict",
@@ -720,17 +760,17 @@ export const MCP_TOOLS = [
   {
     name: "proactive_list_predictions",
     description: "Proactive Engine: list predictions with horizon/kind/outcome filters (C.5 organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ horizon: textProp("Filter by horizon"), kind: textProp("Filter by prediction kind"), outcome: textProp("Filter by outcome"), limit: intProp("Max predictions to return", 20) })
   },
   {
     name: "proactive_list_reminders",
     description: "Proactive Engine: list reminders with status filter (C.5 organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ status: textProp("Filter by reminder status") })
   },
   {
     name: "proactive_dismiss_reminder",
     description: "Proactive Engine: dismiss a reminder (C.5 organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ id: textProp("Reminder id to dismiss") })
   },
   {
     name: "proactive_calibration",
@@ -750,7 +790,7 @@ export const MCP_TOOLS = [
   {
     name: "economic_costs",
     description: "Economic Controller: per-organ cost attribution for window (E organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ window: textProp("Attribution window") })
   },
   {
     name: "economic_pnl",
@@ -770,32 +810,32 @@ export const MCP_TOOLS = [
   {
     name: "initiative_compose",
     description: "Initiative Engine: read approved opportunities + proactive predictions, compose into initiatives (F organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ since_minutes: intProp("Look-back window in minutes (in-repo callers in lib/mission-templates.js pass it)") })
   },
   {
     name: "initiative_list",
     description: "Initiative Engine: list initiatives with filters (F organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ status: textProp("Filter by initiative status"), limit: intProp("Max initiatives to return", 20) })
   },
   {
     name: "initiative_get",
     description: "Initiative Engine: get full initiative details (F organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ id: textProp("Initiative id") }, ["id"])
   },
   {
     name: "initiative_validate",
     description: "Initiative Engine: validate a specific initiative (F organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ id: textProp("Initiative id to validate") }, ["id"])
   },
   {
     name: "initiative_submit",
     description: "Initiative Engine: submit initiative to F0 authority gate (F organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ id: textProp("Initiative id to submit") })
   },
   {
     name: "initiative_record_execution",
     description: "Initiative Engine: operator records execution outcome for a submitted initiative (F organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ id: textProp("Initiative id the outcome belongs to"), outcome: textProp("Execution outcome") })
   },
   {
     name: "capability_mine",
@@ -815,12 +855,12 @@ export const MCP_TOOLS = [
   {
     name: "capability_list_templates",
     description: "Capability Forge: list templates with status filter (F.5 organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ status: textProp("Filter by template status") })
   },
   {
     name: "capability_register",
     description: "Capability Forge: operator approves/rejects a template (deploy risk, F0-gated) (F.5 organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ id: textProp("Template id"), decision: textProp("Approval decision (approve/reject)") })
   },
   {
     name: "a2a_send",
@@ -830,17 +870,17 @@ export const MCP_TOOLS = [
   {
     name: "a2a_list_messages",
     description: "A2A Boundary: list sent messages with status/sender/recipient filters (G organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ status: textProp("Filter by delivery status"), sender: textProp("Filter by sender"), recipient: textProp("Filter by recipient") })
   },
   {
     name: "a2a_get_message",
     description: "A2A Boundary: get full message details including delivery history (G organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: Object.assign(organSchema({ id: textProp("Message id"), message_id: textProp("Message id (alias the organ also accepts)") }), { "x-anyOfRequired": [["id", "message_id"]] })
   },
   {
     name: "a2a_ack",
     description: "A2A Boundary: operator/recipient acknowledges a delivered message (G organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ id: textProp("Message id to acknowledge") })
   },
   {
     name: "a2a_list_routes",
@@ -855,12 +895,12 @@ export const MCP_TOOLS = [
   {
     name: "experience_compress",
     description: "Experience-to-Learning: scan all organ DBs and create compressed chunks (H organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ since_minutes: intProp("Look-back window in minutes (in-repo callers in lib/mission-templates.js pass it)") })
   },
   {
     name: "experience_distill",
     description: "Experience-to-Learning: group chunks and find recurring patterns (H organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ since_minutes: intProp("Look-back window in minutes (in-repo callers in lib/mission-templates.js pass it)") })
   },
   {
     name: "experience_consolidate",
@@ -875,7 +915,7 @@ export const MCP_TOOLS = [
   {
     name: "experience_get_memory",
     description: "Experience-to-Learning: get full memory + lineage (H organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ id: textProp("Memory id") }, ["id"])
   },
   {
     name: "experience_stats",
@@ -1285,7 +1325,20 @@ export async function lensList(db, args) {
     const rows = db.prepare(
       `SELECT DISTINCT lens_id, COUNT(*) AS dtus FROM dtus WHERE lens_id IS NOT NULL AND lens_id != 'unknown' GROUP BY lens_id ORDER BY dtus DESC LIMIT 50`
     ).all();
-    return { ok: true, lenses: rows.map(r => ({ id: r.lens_id, dtuCount: r.dtus })), count: rows.length };
+    const totalRow = db.prepare(
+      `SELECT COUNT(DISTINCT lens_id) AS c FROM dtus WHERE lens_id IS NOT NULL AND lens_id != 'unknown'`
+    ).get();
+    const totalLensIds = totalRow?.c ?? rows.length;
+    return {
+      ok: true,
+      lenses: rows.map(r => ({ id: r.lens_id, dtuCount: r.dtus })),
+      // Basis label: `count` is the number of lens_ids returned below —
+      // the lens_ids that hold at least one DTU (top 50 by DTU count).
+      // `truncated` is true when the top-50 cap cuts that set.
+      count: rows.length,
+      truncated: totalLensIds > rows.length,
+      basis: "lens_ids with at least one DTU, top 50 by DTU count",
+    };
   } catch (e) {
     return { ok: false, error: "DB query failed: " + String(e?.message || e) };
   }
@@ -1295,13 +1348,20 @@ export async function lensManifest(db, args) {
   const lensId = String(args?.lens_id || "").trim();
   if (!lensId) return { ok: false, error: "lens_id is required" };
   try {
+    // dtuCount is the lens_id's TRUE DTU count (COUNT(*) over the corpus),
+    // never the sample length — the sample is capped at 10 rows and its
+    // size is reported separately as sampleSize.
+    const countRow = db.prepare(
+      `SELECT COUNT(*) AS c FROM dtus WHERE lens_id = ?`
+    ).get(lensId);
     const dtus = db.prepare(
       `SELECT id, title, tier, type FROM dtus WHERE lens_id = ? ORDER BY created_at DESC LIMIT 10`
     ).all(lensId);
     return {
       ok: true,
       lens_id: lensId,
-      dtuCount: dtus.length,
+      dtuCount: countRow?.c ?? 0,
+      sampleSize: dtus.length,
       sample: dtus
     };
   } catch (e) {
@@ -2342,8 +2402,51 @@ export const ORGANS = {
 async function browserOrganCall(db, args, STATE, toolName) {
   return organCall(ORGANS.BROWSER_ORGAN, toolName, args, "browser-organ");
 }
+const LOOPBACK_URL_RE = /https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?[^\s"']*/gi;
+const LOOPBACK_URL_ONLY_RE = /^https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?(?:\/[^\s"']*)?$/;
+const LOOPBACK_HOSTPORT_RE = /\b(?:127\.0\.0\.1|localhost):\d+\b/g;
+
+/**
+ * Discovery-fixes spec §4: strip internal endpoint URLs (loopback Ollama
+ * addressing) from a payload, deep-walking objects and arrays. A value
+ * that IS a loopback URL is dropped (object key) or removed (array
+ * entry); a loopback URL embedded in longer text is replaced inline.
+ * Everything else — aggregate health, online states, model identifiers —
+ * passes through untouched.
+ */
+export function trimInternalEndpointUrls(value) {
+  if (typeof value === "string") {
+    return value.replace(LOOPBACK_URL_RE, "[internal endpoint]").replace(LOOPBACK_HOSTPORT_RE, "[internal endpoint]");
+  }
+  if (Array.isArray(value)) {
+    const out = [];
+    for (const item of value) {
+      if (typeof item === "string" && LOOPBACK_URL_ONLY_RE.test(item.trim())) continue;
+      out.push(trimInternalEndpointUrls(item));
+    }
+    return out;
+  }
+  if (value && typeof value === "object") {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) {
+      if (typeof v === "string" && LOOPBACK_URL_ONLY_RE.test(v.trim())) continue;
+      out[k] = trimInternalEndpointUrls(v);
+    }
+    return out;
+  }
+  return value;
+}
+
 async function sentinelOrganCall(db, args, STATE, toolName) {
-  return organCall(ORGANS.SENTINEL, toolName, args, "sentinel-organ");
+  const result = await organCall(ORGANS.SENTINEL, toolName, args, "sentinel-organ");
+  // sentinel_watch / sentinel_health_snapshot are anonymous-by-design
+  // aggregate surfaces whose organ payload carries per-brain internal
+  // endpoint URLs. Trim those (spec §4) — aggregate health, brain online
+  // states, and model identifiers may stay. Not a gate change.
+  if (toolName === "sentinel_watch" || toolName === "sentinel_health_snapshot") {
+    return trimInternalEndpointUrls(result);
+  }
+  return result;
 }
 async function traceFabricCall(db, args, STATE, toolName) {
   return organCall(ORGANS.TRACE_FABRIC, toolName, args, "trace-fabric");
@@ -2438,7 +2541,46 @@ try {
   );
 } catch { /* ignore */ }
 
+/**
+ * Required-argument validation (discovery-fixes spec §3). Reads the
+ * tool's OWN published inputSchema, so the published contract and the
+ * enforcement can never drift apart: a field listed in `required` (or in
+ * an `x-anyOfRequired` group, where any one of the group satisfies it)
+ * must be present and non-empty — empty string and empty array count as
+ * missing, matching the handlers' own checks. Error phrasing matches the
+ * handlers' existing "<field> is required" shape.
+ *
+ * Ordering (spec §3 clause): on the HTTP path this runs INSIDE
+ * callMCPTool, which /mcp/call reaches only after its real-auth gate and
+ * local guard, and dispatchMCP reaches only after AuthGate
+ * authorization — gate → validation → dispatch. An anonymous caller of a
+ * gated tool therefore still receives the gate's refusal, never a
+ * validation error that would reveal the tool's arguments.
+ */
+export function validateMcpToolArgs(toolName, args) {
+  const def = MCP_TOOLS.find((t) => t.name === toolName);
+  if (!def) return null; // unknown tools keep the dispatcher's "Unknown tool" error
+  const a = args || {};
+  const missing = (field) => {
+    const v = a[field];
+    return v === undefined || v === null
+      || (typeof v === "string" && v.trim() === "")
+      || (Array.isArray(v) && v.length === 0);
+  };
+  for (const field of def.inputSchema?.required || []) {
+    if (missing(field)) return { ok: false, error: `${field} is required` };
+  }
+  for (const group of def.inputSchema?.["x-anyOfRequired"] || []) {
+    if (Array.isArray(group) && group.length > 0 && group.every(missing)) {
+      return { ok: false, error: `${group.join(" or ")} is required` };
+    }
+  }
+  return null;
+}
+
 export async function callMCPTool(db, toolName, args, STATE, callCtx = null) {
+  const validationError = validateMcpToolArgs(toolName, args);
+  if (validationError) return validationError;
   switch (toolName) {
     // === Agent runtime heartbeat (lib/agent-runtime.js) ===
     // Ticked every 60s by launchd com.concord.entity-heartbeat. These cases
