@@ -16902,6 +16902,16 @@ register("goals", "abandon", (ctx, input = {}) => {
   return abandonGoal(goalId, reason);
 }, { public: false });
 
+register("goals", "delete", (ctx, input = {}) => {
+  enforceEthosInvariant("goals_delete");
+  ensureGoalSystem();
+
+  const goalId = String(input.goalId || input.id || "");
+  if (!goalId) return { ok: false, error: "goalId required" };
+
+  return deleteGoal(goalId);
+}, { public: false });
+
 register("goals", "list", (ctx, input = {}) => {
   try {
   enforceEthosInvariant("goals_list");
@@ -79842,6 +79852,30 @@ function abandonGoal(goalId, reason = "user_requested") {
 
   saveStateDebounced();
   return { ok: true, goal };
+}
+
+function deleteGoal(goalId) {
+  ensureGoalSystem();
+  const goal = STATE.goals.registry.get(goalId);
+  if (!goal) return { ok: false, error: "Goal not found" };
+
+  // S1/S7 (Review 5 F1): agent goals and system proposals were
+  // undeletable — the registry had no removal path at all. Removal is
+  // total and stated: registry entry, active-set membership, any
+  // pending proposal-queue entry, and the completed-history record
+  // all go, and the response names the removed goal so the deletion
+  // is never silent. Dependents keep the id in deps.requiredGoals:
+  // activation already refuses on a missing dependency and names it,
+  // so a deleted dependency blocks loudly instead of passing silently.
+  STATE.goals.registry.delete(goalId);
+  STATE.goals.active.delete(goalId);
+  if (STATE.queues && Array.isArray(STATE.queues.goalProposals)) {
+    STATE.queues.goalProposals = STATE.queues.goalProposals.filter(p => p.id !== goalId);
+  }
+  STATE.goals.completed = STATE.goals.completed.filter(c => c.id !== goalId);
+
+  saveStateDebounced();
+  return { ok: true, deleted: true, goal: { id: goal.id, title: goal.title, state: goal.state } };
 }
 
 function generateAutoGoalProposals(_ctx = {}) {

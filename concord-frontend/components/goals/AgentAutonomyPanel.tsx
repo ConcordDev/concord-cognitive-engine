@@ -4,10 +4,10 @@
  * AgentAutonomyPanel — surfaces Concord's own self-directed goal system.
  *
  * This is a genuinely separate backend cluster from the personal-OKR macros
- * in server/domains/goals.js: 12 macros registered inline in server.js under
+ * in server/domains/goals.js: 13 macros registered inline in server.js under
  * the "GOAL SYSTEM MACROS" comment block (register("goals", "status"|"list"|
  * "get"|"propose"|"evaluate"|"approve"|"activate"|"progress"|"complete"|
- * "abandon"|"auto_propose"|"config", ...)), exposed via REST at /api/goals*
+ * "abandon"|"delete"|"auto_propose"|"config", ...)), exposed via REST at /api/goals*
  * (server/routes/domain.js) and consumed here through apiHelpers.goals.
  *
  * It is Concord's autonomous knowledge-work goal loop: the agent (or a user)
@@ -29,7 +29,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiHelpers } from '@/lib/api/client';
 import {
   ShieldCheck, Sparkles, Loader2, ChevronDown, ChevronUp, RefreshCw,
-  CheckCircle2, XCircle, PlayCircle, Gavel, Plus, AlertTriangle, Bot,
+  CheckCircle2, XCircle, PlayCircle, Gavel, Plus, AlertTriangle, Bot, Trash2,
 } from 'lucide-react';
 
 // --------------- Types (mirror the server GOAL_* shapes) ---------------
@@ -91,6 +91,7 @@ export function AgentAutonomyPanel() {
   const [proposePriority, setProposePriority] = useState(0.5);
   const [busy, setBusy] = useState(false);
   const [autoProposeResult, setAutoProposeResult] = useState<{ generated: number; proposals: { title: string }[] } | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -112,6 +113,27 @@ export function AgentAutonomyPanel() {
   }, [stateFilter]);
 
   useEffect(() => { load(); }, [load]);
+
+  const runDelete = useCallback(async (id: string) => {
+    setBusy(true);
+    setActionError(null);
+    try {
+      const res = await apiHelpers.goals.remove(id);
+      const body = (res as { data?: { ok?: boolean; error?: string } })?.data;
+      if (body && body.ok === false) {
+        setActionError(body.error || 'Delete rejected.');
+      } else {
+        setConfirmDeleteId(null);
+        setExpandedId(null);
+        setDetail(null);
+      }
+      await load();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Delete failed.');
+    } finally {
+      setBusy(false);
+    }
+  }, [load]);
 
   const toggleExpand = useCallback(async (id: string) => {
     if (expandedId === id) { setExpandedId(null); setDetail(null); return; }
@@ -403,6 +425,14 @@ export function AgentAutonomyPanel() {
                         )}
                         {!['completed', 'abandoned'].includes(g.state) && (
                           <button disabled={busy} onClick={() => runAction(() => apiHelpers.goals.abandon(g.id, 'user_requested'), g.id)} className={btnCls}><XCircle className="h-3 w-3" /> Abandon</button>
+                        )}
+                        {confirmDeleteId === g.id ? (
+                          <>
+                            <button disabled={busy} onClick={() => runDelete(g.id)} className={btnCls}><Trash2 className="h-3 w-3" /> Confirm delete</button>
+                            <button disabled={busy} onClick={() => setConfirmDeleteId(null)} className={btnCls}>Cancel</button>
+                          </>
+                        ) : (
+                          <button disabled={busy} onClick={() => setConfirmDeleteId(g.id)} className={btnCls}><Trash2 className="h-3 w-3" /> Delete</button>
                         )}
                       </div>
                     </>
