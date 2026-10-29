@@ -259,6 +259,41 @@ test("S7/F6: the Analysis engines answer from lens params, not only artifacts", 
   assert.match(empty.result.message, /No modules/);
 });
 
+test("follow-up/audit: vulnerability counts name their source; the live check is opt-in (re-pass checkpoint 3)", async () => {
+  // Unflagged + no caller data: the audit must NOT dress its counts
+  // as an OSV check it never ran — source is caller-supplied and
+  // every dependency is named in dependencyList.
+  const plain = await run("dependencyAudit", U1, { dependencies: [{ name: "lodash", version: "4.17.20" }] });
+  assert.equal(plain.ok, true);
+  assert.equal(plain.result.vulnerabilities.source, "caller-supplied");
+  assert.equal(plain.result.vulnerabilities.checked, false);
+  assert.deepEqual(plain.result.dependencyList.map((d) => d.name), ["lodash"]);
+
+  // Caller-supplied counts are honoured exactly (the pinned contract
+  // path) and never trigger enrichment, even with the flag set.
+  const supplied = await run("dependencyAudit", U1, {
+    liveVulnCheck: true,
+    dependencies: [{ name: "lodash", version: "4.17.20", vulnerabilities: 5, advisories: ["GHSA-test"] }],
+  });
+  assert.equal(supplied.ok, true);
+  assert.equal(supplied.result.vulnerabilities.total, 5);
+  assert.equal(supplied.result.vulnerabilities.source, "caller-supplied");
+  assert.deepEqual(supplied.result.dependencyList[0].advisories, ["GHSA-test"]);
+
+  // Flagged live path with nothing OSV can query (an unparseable
+  // version is filtered before any request — no network is touched):
+  // the check reports itself as run against OSV and counts 0 only
+  // because there was nothing to ask about.
+  const live = await run("dependencyAudit", U1, {
+    liveVulnCheck: true,
+    dependencies: [{ name: "workspace-only", version: "workspace:*" }],
+  });
+  assert.equal(live.ok, true);
+  assert.equal(live.result.vulnerabilities.source, "osv.dev");
+  assert.equal(live.result.vulnerabilities.checked, true);
+  assert.equal(live.result.vulnerabilities.total, 0);
+});
+
 test("follow-up/legacy: a pre-snapshot repo heals at its default head — branch view, commit, PR diff (re-pass checkpoint 1)", async () => {
   // Hand-build a pre-snapshot repo directly in state: two legacy
   // commits (no `changes` on either), repo.files mirroring the head's

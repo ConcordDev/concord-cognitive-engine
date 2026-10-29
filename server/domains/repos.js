@@ -481,14 +481,23 @@ export default function registerReposActions(registerLensAction) {
    * Audit dependency tree — depth analysis, duplicate detection, vulnerability
    * surface area, and update freshness scoring.
    * artifact.data.dependencies = [{ name, version, latestVersion?, lastUpdated?, depth?, children?: [string], vulnerabilities?: number, license?, size?: number }]
+   *
+   * Live vulnerability check (Review 2 re-pass, checkpoint 3): the
+   * arithmetic below counts vulnerabilities from the caller-supplied
+   * per-dep `vulnerabilities` field — which the Analysis tab never
+   * supplies, so the tab printed "0 VULNERABLE" while the Security
+   * tab's OSV scan found real alerts on the same manifest (F6 in new
+   * form: two surfaces disagreeing on one repo). When the caller
+   * passes `liveVulnCheck: true` AND supplied no vulnerability data
+   * of its own, the dispatcher below first enriches the deps from
+   * the SAME osvScanDependencies helper the security scan uses —
+   * agreement by construction — and the result says which source its
+   * counts came from. If OSV is unreachable the counts come back
+   * null (unknown), never a fabricated 0. Callers that supply their
+   * own counts (the pinned contract tests) take the synchronous path
+   * unchanged and never trigger a network call.
    */
-  registerLensAction("repos", "dependencyAudit", (ctx, artifact, params = {}) => {
-  try {
-    const dependencies = artifact.data?.dependencies || params.dependencies || params.input?.dependencies || [];
-    if (dependencies.length === 0) {
-      return { ok: true, result: { message: "No dependencies to audit." } };
-    }
-
+  function rpAuditCompute(dependencies, params, vulnMeta) {
     const r = (v) => Math.round(v * 10000) / 10000;
     const now = params.referenceTime ? new Date(params.referenceTime).getTime() : Date.now();
 
@@ -531,6 +540,7 @@ export default function registerReposActions(registerLensAction) {
       name: d.name,
       version: d.version,
       vulnerabilities: parseInt(d.vulnerabilities),
+      advisories: Array.isArray(d.advisories) ? d.advisories : [],
       depth: parseInt(d.depth) || 0,
       riskScore: (parseInt(d.vulnerabilities) || 0) * (1 / (1 + (parseInt(d.depth) || 0))),
     })).sort((a, b) => b.riskScore - a.riskScore);
@@ -624,11 +634,23 @@ export default function registerReposActions(registerLensAction) {
           details: duplicates.slice(0, 10),
         },
         vulnerabilities: {
-          total: totalVulnerabilities,
-          affectedDeps: vulnDeps.length,
+          // When the live OSV check was requested but unreachable,
+          // the counts are UNKNOWN (null) — never a printed 0 the
+          // Security tab would contradict.
+          total: vulnMeta.unreachable ? null : totalVulnerabilities,
+          affectedDeps: vulnMeta.unreachable ? null : vulnDeps.length,
           surfaceArea: r(vulnSurfaceArea),
+          source: vulnMeta.source,
+          checked: vulnMeta.checked,
+          ...(vulnMeta.unreachable ? { unreachable: true } : {}),
           details: vulnDetails.slice(0, 10),
         },
+        dependencyList: dependencies.map((d) => ({
+          name: d.name,
+          version: d.version,
+          vulnerabilities: vulnMeta.unreachable ? null : (parseInt(d.vulnerabilities) || 0),
+          advisories: Array.isArray(d.advisories) ? d.advisories : [],
+        })),
         freshness: {
           avgScore: r(avgFreshness),
           criticalUpdates: freshnessScores.filter(f => f.updateUrgency === "critical").length,
@@ -644,8 +666,43 @@ export default function registerReposActions(registerLensAction) {
         healthGrade: healthScore >= 90 ? "A" : healthScore >= 75 ? "B" : healthScore >= 60 ? "C" : healthScore >= 40 ? "D" : "F",
       },
     };
+  }
+
+  registerLensAction("repos", "dependencyAudit", (ctx, artifact, params = {}) => {
+    const dependencies = artifact.data?.dependencies || params.dependencies || params.input?.dependencies || [];
+    if (dependencies.length === 0) {
+      return { ok: true, result: { message: "No dependencies to audit." } };
+    }
+    const callerSuppliedVulns = dependencies.some((d) => d && d.vulnerabilities != null);
+    if (params.liveVulnCheck === true && !callerSuppliedVulns) {
+      // Async path ONLY for the explicit live check; every other
+      // caller keeps the historical synchronous return.
+      return (async () => {
+        try {
+          const depVersions = {};
+          for (const d of dependencies) if (d?.name) depVersions[d.name] = String(d.version || "");
+          const osv = await osvScanDependencies(depVersions);
+          if (osv.unreachable) {
+            return rpAuditCompute(dependencies, params, { source: "osv.dev", checked: false, unreachable: true });
+          }
+          const byPkg = new Map();
+          for (const a of osv.dependabot) {
+            const e = byPkg.get(a.package) || { count: 0, ids: [] };
+            e.count++; e.ids.push(a.osvId);
+            byPkg.set(a.package, e);
+          }
+          const enriched = dependencies.map((d) => {
+            const e = byPkg.get(d?.name);
+            return { ...d, vulnerabilities: e ? e.count : 0, advisories: e ? e.ids : [] };
+          });
+          return rpAuditCompute(enriched, params, { source: "osv.dev", checked: true });
+        } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+      })();
+    }
+    try {
+      return rpAuditCompute(dependencies, params, { source: "caller-supplied", checked: false });
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-});
+  });
 
   function ghHeaders() {
     const token = process.env.GITHUB_TOKEN;
