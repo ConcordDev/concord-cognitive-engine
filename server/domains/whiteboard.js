@@ -325,10 +325,13 @@ export default function registerWhiteboardActions(registerLensAction) {
     if (!isSafePathSegment(id)) {
       return { ok: false, error: "board id must contain only letters, digits, '.', '_' or '-'" };
     }
-    const title = String(params.title || "Untitled board").slice(0, 80);
-    const scene = params.scene && typeof params.scene === "object" ? params.scene : { elements: [], appState: {} };
     if (!s.boards.has(userId)) s.boards.set(userId, new Map());
     const existing = s.boards.get(userId).get(id);
+    // S3: a save that carries no scene/title is a metadata write (the
+    // kept-DTU linkage below) — it must not erase the stored canvas or
+    // rename the board to the default. New boards still get defaults.
+    const title = params.title != null ? String(params.title || "Untitled board").slice(0, 80) : (existing?.title || "Untitled board");
+    const scene = params.scene && typeof params.scene === "object" ? params.scene : (existing?.scene || { elements: [], appState: {} });
     const board = {
       id, title, scene,
       // S1 (one board store): main-canvas boards mirror into this store
@@ -337,6 +340,13 @@ export default function registerWhiteboardActions(registerLensAction) {
       // model) while every list, Analyze macro and summary reads them.
       origin: typeof params.origin === "string" ? params.origin : (existing?.origin || "collab"),
       dtuId: typeof params.dtuId === "string" ? params.dtuId : (existing?.dtuId || null),
+      // S3 (honest save): the kept report DTU is a version chain on the
+      // board record — the linkage persists here, not in a component,
+      // so Thread/publish gates survive view switches and reloads.
+      keptDtuId: typeof params.keptDtuId === "string" ? params.keptDtuId : (existing?.keptDtuId || null),
+      keptVersion: Number.isFinite(params.keptVersion) ? params.keptVersion : (existing?.keptVersion || 0),
+      keptAt: typeof params.keptAt === "string" ? params.keptAt : (existing?.keptAt || null),
+      keptSceneHash: typeof params.keptSceneHash === "string" ? params.keptSceneHash : (existing?.keptSceneHash || null),
       createdAt: existing?.createdAt || nowIsoWb(),
       updatedAt: nowIsoWb(),
     };
