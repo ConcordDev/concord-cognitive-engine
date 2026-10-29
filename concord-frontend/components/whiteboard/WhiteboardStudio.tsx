@@ -133,7 +133,7 @@ export function WhiteboardStudio({
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [imageData, setImageData] = useState('');
   const [imageName, setImageName] = useState('');
-  const [imageError, setImageError] = useState<string | null>(null);
+  const [dialogError, setDialogError] = useState<string | null>(null);
   const [imageTick, setImageTick] = useState(0);
   const imageCacheRef = useRef(new Map<string, HTMLImageElement>());
   const [noteText, setNoteText] = useState('');
@@ -403,14 +403,14 @@ export function WhiteboardStudio({
 
   const handleImageFile = async (file: File | null | undefined) => {
     if (!file) return;
-    setImageError(null);
+    setDialogError(null);
     try {
       const data = await fileToEmbeddedImage(file);
       setImageData(data);
       setImageName(file.name);
       if (!imageLabel.trim()) setImageLabel(file.name.replace(/\.[^.]+$/, ''));
     } catch (err) {
-      setImageError(err instanceof Error ? err.message : 'That file could not be read as an image.');
+      setDialogError(err instanceof Error ? err.message : 'That file could not be read as an image.');
     }
   };
 
@@ -524,9 +524,9 @@ export function WhiteboardStudio({
 
     if (tool === 'text') { setTextInput(''); setTextPosition({ x, y }); return; }
     if (tool === 'dtu') { setShowDtuPicker(true); setTextPosition({ x, y }); return; }
-    if (tool === 'audio') { setAudioClipName(''); setAudioClipDur(30); setShowAudioDialog(true); setTextPosition({ x, y }); return; }
-    if (tool === 'image') { setImageLabel(''); setImageUrlInput(''); setImageData(''); setImageName(''); setImageError(null); setShowImageDialog(true); setTextPosition({ x, y }); return; }
-    if (tool === 'notecard') { setNoteText(''); setShowNoteDialog(true); setTextPosition({ x, y }); return; }
+    if (tool === 'audio') { setAudioClipName(''); setAudioClipDur(30); setDialogError(null); setShowAudioDialog(true); setTextPosition({ x, y }); return; }
+    if (tool === 'image') { setImageLabel(''); setImageUrlInput(''); setImageData(''); setImageName(''); setDialogError(null); setShowImageDialog(true); setTextPosition({ x, y }); return; }
+    if (tool === 'notecard') { setNoteText(''); setDialogError(null); setShowNoteDialog(true); setTextPosition({ x, y }); return; }
     if (tool === 'section') { setShowSectionDialog(true); setTextPosition({ x, y }); return; }
 
     pushUndo();
@@ -712,37 +712,41 @@ export function WhiteboardStudio({
   };
 
   const addAudioPin = () => {
-    if (!textPosition || !audioClipName.trim()) return;
+    if (!textPosition) return;
+    if (!audioClipName.trim()) { setDialogError('Give the clip a name first.'); return; }
+    if (!Number.isFinite(audioClipDur) || audioClipDur < 1 || audioClipDur > 3600) { setDialogError('Duration needs to be between 1 and 3600 seconds.'); return; }
     pushUndo();
     setElements(prev => [...prev, {
       id: uid(), type: 'audio', x: textPosition.x, y: textPosition.y,
-      clipName: audioClipName, duration: audioClipDur, playing: false,
+      clipName: audioClipName, duration: Math.round(audioClipDur), playing: false,
       stroke: '#00d4ff', fill: 'rgba(0, 212, 255, 0.08)', strokeWidth: 2, width: 220, height: 72,
     }]);
-    setAudioClipName(''); setAudioClipDur(30); setShowAudioDialog(false); setTextPosition(null); setTool('select');
+    setAudioClipName(''); setAudioClipDur(30); setDialogError(null); setShowAudioDialog(false); setTextPosition(null); setTool('select');
   };
 
   const addImagePin = () => {
     const url = imageData || imageUrlInput.trim();
-    if (!textPosition || (!url && !imageLabel.trim())) return;
+    if (!textPosition) return;
+    if (!url && !imageLabel.trim()) { setDialogError('Add an image (upload or link) or at least a label first.'); return; }
     pushUndo();
     setElements(prev => [...prev, {
       id: uid(), type: 'image', x: textPosition.x, y: textPosition.y,
       imageLabel: imageLabel.trim() || imageName.replace(/\.[^.]+$/, '') || 'Image', imageUrl: url, stroke: '#f59e0b', fill: 'rgba(245, 158, 11, 0.08)',
       strokeWidth: 2, width: 200, height: 150,
     }]);
-    setImageLabel(''); setImageUrlInput(''); setImageData(''); setImageName(''); setImageError(null); setShowImageDialog(false); setTextPosition(null); setTool('select');
+    setImageLabel(''); setImageUrlInput(''); setImageData(''); setImageName(''); setDialogError(null); setShowImageDialog(false); setTextPosition(null); setTool('select');
   };
 
   const addNoteCard = () => {
-    if (!textPosition || !noteText.trim()) return;
+    if (!textPosition) return;
+    if (!noteText.trim()) { setDialogError('Write the note first.'); return; }
     pushUndo();
     setElements(prev => [...prev, {
       id: uid(), type: 'notecard', x: textPosition.x, y: textPosition.y,
       text: noteText, cardColor: noteColor, stroke: noteColor, fill: noteColor + '22',
       strokeWidth: 2, width: 180, height: 100,
     }]);
-    setNoteText(''); setShowNoteDialog(false); setTextPosition(null); setTool('select');
+    setNoteText(''); setDialogError(null); setShowNoteDialog(false); setTextPosition(null); setTool('select');
   };
 
   const addSectionMarker = () => {
@@ -1458,10 +1462,11 @@ export function WhiteboardStudio({
                           onChange={e => setAudioClipName(e.target.value)} autoFocus
                           className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded text-sm mb-3" />
                         <label className="text-xs text-gray-400">Duration (seconds)</label>
-                        <input type="number" value={audioClipDur} onChange={e => setAudioClipDur(clamp(+e.target.value, 1, 3600))}
+                        <input type="number" value={audioClipDur} onChange={e => setAudioClipDur(+e.target.value)} min={1} max={3600}
                           className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded text-sm mb-4" />
+                        {dialogError && <p className="text-[11px] text-rose-300 mb-3" role="status">{dialogError}</p>}
                         <div className="flex gap-2">
-                          <button type="button" onClick={addAudioPin} disabled={!audioClipName.trim()} className="flex-1 py-2 bg-neon-cyan text-black rounded-lg text-sm font-medium disabled:opacity-40">Place Pin</button>
+                          <button type="button" onClick={addAudioPin} className="flex-1 py-2 bg-neon-cyan text-black rounded-lg text-sm font-medium disabled:opacity-40">Place Pin</button>
                           <button type="button" onClick={() => { setShowAudioDialog(false); setTextPosition(null); }} className="flex-1 py-2 bg-lattice-bg rounded-lg text-sm">Cancel</button>
                         </div>
                       </motion.div>
@@ -1493,10 +1498,10 @@ export function WhiteboardStudio({
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={imageData || imageUrlInput.trim()} alt="Reference preview" className="w-full h-28 object-cover rounded border border-lattice-border mb-3" />
                         )}
-                        {imageError && <p className="text-[11px] text-rose-300 mb-3" role="status">{imageError}</p>}
+                        {dialogError && <p className="text-[11px] text-rose-300 mb-3" role="status">{dialogError}</p>}
                         <p className="text-[11px] text-gray-500 mb-4">Uploaded images are embedded in the board (max 1024px) so they travel with it. You can also drop an image file straight onto the canvas.</p>
                         <div className="flex gap-2">
-                          <button type="button" onClick={addImagePin} disabled={!imageLabel.trim() && !imageData && !imageUrlInput.trim()} className="flex-1 py-2 bg-amber-500 text-black rounded-lg text-sm font-medium disabled:opacity-40">Place Pin</button>
+                          <button type="button" onClick={addImagePin} className="flex-1 py-2 bg-amber-500 text-black rounded-lg text-sm font-medium">Place Pin</button>
                           <button type="button" onClick={() => { setShowImageDialog(false); setTextPosition(null); }} className="flex-1 py-2 bg-lattice-bg rounded-lg text-sm">Cancel</button>
                         </div>
                       </motion.div>
@@ -1525,8 +1530,9 @@ export function WhiteboardStudio({
                               style={{ backgroundColor: c }} />
                           ))}
                         </div>
+                        {dialogError && <p className="text-[11px] text-rose-300 mb-3" role="status">{dialogError}</p>}
                         <div className="flex gap-2">
-                          <button type="button" onClick={addNoteCard} disabled={!noteText.trim()} className="flex-1 py-2 bg-yellow-500 text-black rounded-lg text-sm font-medium disabled:opacity-40">Place Card</button>
+                          <button type="button" onClick={addNoteCard} className="flex-1 py-2 bg-yellow-500 text-black rounded-lg text-sm font-medium disabled:opacity-40">Place Card</button>
                           <button type="button" onClick={() => { setShowNoteDialog(false); setTextPosition(null); }} className="flex-1 py-2 bg-lattice-bg rounded-lg text-sm">Cancel</button>
                         </div>
                       </motion.div>
