@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, CheckCircle2 } from 'lucide-react';
+import { Plus, CheckCircle2, Pencil, Trash2 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { KeepRecordActions } from '@/components/lens/KeepRecordActions';
@@ -31,8 +31,19 @@ export function GoalsListPanel() {
   const [newSubtasks, setNewSubtasks] = useState('');
   const [newXp] = useState(200); // XP still recorded on the goal; no picker in the north-star form
   const [newPriority, setNewPriority] = useState<Goal['priority']>('medium');
+  // S1 lifecycle state (F1): inline edit form + two-step delete + undo.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editCategory, setEditCategory] = useState<Goal['category']>('Career');
+  const [editPriority, setEditPriority] = useState<Goal['priority']>('medium');
+  const [editTargetDate, setEditTargetDate] = useState('');
+  const [editSteps, setEditSteps] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [undoGoal, setUndoGoal] = useState<{ title: string; data: Record<string, unknown> } | null>(null);
+  const [deleteError, setDeleteError] = useState('');
 
-  const { isLoading, isError, error, refetch, items: goalItems, create: createGoalItem, update: updateGoalItem } = useLensData<Record<string, unknown>>('goals', 'goal', {
+  const { isLoading, isError, error, refetch, items: goalItems, create: createGoalItem, update: updateGoalItem, remove: removeGoalItem } = useLensData<Record<string, unknown>>('goals', 'goal', {
     seed: GOALS_FALLBACK.map(g => ({ title: g.title, data: g as unknown as Record<string, unknown> })),
   });
 
@@ -96,6 +107,66 @@ export function GoalsListPanel() {
     updateGoalItem(goalId, { data: { ...goal, status: 'completed', progress: 1 } as unknown as Record<string, unknown> }).catch((err) => console.error('Failed to complete goal:', err instanceof Error ? err.message : err));
   };
 
+  // S1 (F1): the namesake object gets its lifecycle — edit + delete.
+  const startEdit = (goal: Goal) => {
+    setEditingId(goal.id);
+    setEditTitle(goal.title);
+    setEditDescription(goal.description || '');
+    setEditCategory(goal.category);
+    setEditPriority(goal.priority);
+    setEditTargetDate(goal.targetDate || '');
+    setEditSteps((goal.subtasks || []).map((st) => st.label).join('\n'));
+    setConfirmDeleteId(null);
+  };
+
+  const saveEdit = (goal: Goal) => {
+    if (!editTitle.trim()) return;
+    // Steps edited as lines; a step that keeps its label keeps its
+    // done flag, so editing a title never silently resets progress.
+    const oldByLabel = new Map((goal.subtasks || []).map((st) => [st.label, st.done]));
+    const subtasks = editSteps.split('\n').map((s) => s.trim()).filter(Boolean)
+      .map((label, i) => ({ id: `st-${i}`, label, done: oldByLabel.get(label) ?? false }));
+    const doneCount = subtasks.filter((st) => st.done).length;
+    const progress = goal.status === 'completed' ? 1
+      : subtasks.length > 0 ? Math.round((doneCount / subtasks.length) * 100) / 100 : 0;
+    updateGoalItem(goal.id, {
+      title: editTitle.trim(),
+      data: {
+        ...goal, title: editTitle.trim(), description: editDescription,
+        category: editCategory, priority: editPriority, targetDate: editTargetDate,
+        subtasks, progress,
+      } as unknown as Record<string, unknown>,
+    }).then(() => setEditingId(null))
+      .catch((err) => console.error('Failed to edit goal:', err instanceof Error ? err.message : err));
+  };
+
+  // Delete is two-step and recoverable: the snapshot re-creates the
+  // goal on Undo. The generic store has no trash, so the restored
+  // goal is a new artifact carrying the same content.
+  const deleteGoal = (goal: Goal) => {
+    setDeleteError('');
+    removeGoalItem(goal.id).then(() => {
+      setUndoGoal({
+        title: goal.title,
+        data: {
+          title: goal.title, description: goal.description, category: goal.category,
+          progress: goal.progress, priority: goal.priority, targetDate: goal.targetDate,
+          subtasks: goal.subtasks, xp: goal.xp, milestones: goal.milestones, status: goal.status,
+        } as unknown as Record<string, unknown>,
+      });
+      setConfirmDeleteId(null);
+      if (expandedGoal === goal.id) setExpandedGoal(null);
+    }).catch(() => setDeleteError('Could not delete that goal — it is still in your list.'));
+  };
+
+  const undoDelete = () => {
+    if (!undoGoal) return;
+    const snap = undoGoal;
+    setUndoGoal(null);
+    createGoalItem({ title: snap.title, data: snap.data })
+      .catch(() => setDeleteError('Undo failed — the goal was not restored.'));
+  };
+
   const handleCreateGoal = () => { createGoalMutation.mutate(); };
 
   if (isLoading) {
@@ -132,6 +203,18 @@ export function GoalsListPanel() {
         ))}
       </div>
 
+      {(undoGoal || deleteError) && (
+        <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-[13px] text-zinc-300" role="status">
+          {deleteError
+            ? <span className="text-rose-300">{deleteError}</span>
+            : <span>Deleted "{undoGoal?.title}".</span>}
+          {undoGoal && (
+            <button type="button" onClick={undoDelete} className="text-teal-300 hover:text-teal-200">Undo</button>
+          )}
+          <button type="button" onClick={() => { setUndoGoal(null); setDeleteError(''); }} className="ml-auto text-zinc-500 hover:text-zinc-300">Dismiss</button>
+        </div>
+      )}
+
       <AnimatePresence>
         {showCreate && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
@@ -160,6 +243,36 @@ export function GoalsListPanel() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {editingId && (() => {
+        const goal = goals.find((g) => g.id === editingId);
+        if (!goal) return null;
+        return (
+          <div className="space-y-3 rounded-2xl border border-teal-400/25 bg-white/[0.02] p-5">
+            <p className="text-[13px] font-medium text-zinc-200">Edit goal</p>
+            <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} aria-label="Edit goal title" className={`${field} font-vault text-[18px]`} />
+            <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="What does success look like? (optional)" aria-label="Edit goal description" className={`${field} h-16 resize-none`} />
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+              <select value={editCategory} onChange={(e) => setEditCategory(e.target.value as Goal['category'])} className={field} aria-label="Edit category">
+                {['Career', 'Health', 'Learning', 'Creative', 'Financial', 'Personal'].map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <select value={editPriority} onChange={(e) => setEditPriority(e.target.value as Goal['priority'])} className={field} aria-label="Edit priority">
+                <option value="low">Low priority</option>
+                <option value="medium">Medium priority</option>
+                <option value="high">High priority</option>
+              </select>
+              <input type="date" value={editTargetDate} onChange={(e) => setEditTargetDate(e.target.value)} className={field} aria-label="Edit target date" />
+            </div>
+            {/* Plain textarea on purpose: the edit path must not pass
+                through the drafted-text layer while F2 is open. */}
+            <textarea value={editSteps} onChange={(e) => setEditSteps(e.target.value)} placeholder="Steps, one per line — progress follows them" aria-label="Edit steps" className={`${field} h-16 resize-none`} />
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setEditingId(null)} className="rounded-lg px-3 py-2 text-[13px] text-zinc-400 hover:text-zinc-100">Cancel</button>
+              <button type="button" onClick={() => saveEdit(goal)} disabled={!editTitle.trim()} className="rounded-lg bg-teal-400 px-4 py-2 text-[13px] font-medium text-black hover:bg-teal-300 disabled:opacity-50">Save changes</button>
+            </div>
+          </div>
+        );
+      })()}
 
       {filteredGoals.map((goal, i) => {
         const isExpanded = expandedGoal === goal.id;
@@ -211,6 +324,22 @@ export function GoalsListPanel() {
                         Mark complete
                       </button>
                     )}
+                    <div className="flex flex-wrap items-center gap-2 pt-2">
+                      <button type="button" onClick={() => startEdit(goal)} className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-3 py-1.5 text-[13px] text-zinc-300 hover:bg-white/5">
+                        <Pencil className="h-3.5 w-3.5" /> Edit goal
+                      </button>
+                      {confirmDeleteId === goal.id ? (
+                        <>
+                          <button type="button" onClick={() => deleteGoal(goal)} className="rounded-lg bg-rose-500/90 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-rose-400">Confirm delete</button>
+                          <button type="button" onClick={() => setConfirmDeleteId(null)} className="text-[13px] text-zinc-400 hover:text-zinc-200">Cancel</button>
+                          <span className="text-[12px] text-zinc-500">You can undo after deleting.</span>
+                        </>
+                      ) : (
+                        <button type="button" onClick={() => setConfirmDeleteId(goal.id)} className="inline-flex items-center gap-1 rounded-lg border border-rose-400/30 px-3 py-1.5 text-[13px] text-rose-300 hover:bg-rose-400/10">
+                          <Trash2 className="h-3.5 w-3.5" /> Delete goal
+                        </button>
+                      )}
+                    </div>
                     <div className="pt-3">
                       <KeepRecordActions key={kept?.body} record={kept} />
                     </div>
