@@ -48,6 +48,37 @@ Ramaj's §8 Q2 team-model call). S1 (lifecycle) notes:
   pinned by `server/tests/projects-lifecycle.test.js`.
 - Frontend behaviour: `concord-frontend/tests/projects-lifecycle.test.tsx`.
 
+S9 (goal reconcile, F12) notes:
+
+- A goal whose metric names a system measure ("Tasks done",
+  "Points done"/"points", "Issues closed" — matched on normalized
+  metric text, so goals typed before this slice count too) now
+  computes its current value live in `goal-list` from project state
+  and returns `countedRefs` — the exact issues behind the number,
+  shown under the goal. Typing a value into a system goal is
+  refused ("its value cannot be typed; complete issues to move
+  it"); target edits still work. Other metrics stay manual and are
+  labelled "manual" in Planning; the create form offers the three
+  system metrics as "counted live" choices plus a custom manual
+  metric. Tests: `server/tests/projects-goals.test.js` (0 pass / 4
+  fail against the original domain).
+
+S8 (constraints, F10/F11) notes:
+
+- WIP limits and blocked-by relations were display-only; both are
+  now enforced in the domain at every status-write path (task-create,
+  task-update, task-move-status, task-bulk-update, triage-accept). A
+  WIP refusal names the limit and column; bulk moves are gated as a
+  group (the column must fit all incoming). A blocked issue cannot
+  move to In Progress/Done while a blocker is incomplete — unless the
+  caller overrides, which writes an "override" receipt (with the
+  blocker refs) into the issue's Activity. The task detail surfaces
+  refusals with a "Move anyway — recorded in Activity" action; Board
+  drags and Backlog bulk moves surface the refusal text. Automation
+  rules (the project's own engine) still act directly, as before.
+  Tests: `server/tests/projects-constraints.test.js` (1 pass / 5
+  fail against the original domain).
+
 S7 (typing + focus integrity, F8/F9) notes:
 
 - The garble mechanism, hand-found: custom-field inputs bound
