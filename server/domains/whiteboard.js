@@ -8,6 +8,7 @@
 // faction match. Marketplace canon picks winners.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { createArtifactAcl, registerArtifactOwnerResolver } from "../lib/artifact-acl.js";
 import fs from "node:fs";
 import * as fsp from "node:fs/promises";
 import path from "node:path";
@@ -225,6 +226,53 @@ export default function registerWhiteboardActions(registerLensAction) {
     return b.participants;
   }
   function wbActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  // ── S14 follow-up: platform ACL adoption (kind "whiteboard-board") ──
+  // Membership and permission levels for boards live in the ONE
+  // platform model (server/lib/artifact-acl.js, PR #1789) — never a
+  // lens-local shape. The domain registers the kind's owner resolver
+  // and reaches a manager over the app's SQLite handle, resolved the
+  // way lib/public-actor.js resolves it (ctx.db, then STATE.db, then
+  // the process global), so grants land in the same artifact_grants
+  // table the platform manager reads.
+  const WB_BOARD_KIND = "whiteboard-board";
+  function wbBoardOwner(boardId) {
+    const s = getWhiteboardState();
+    if (!s || !boardId) return null;
+    for (const [uid, map] of s.boards) {
+      if (map.get(boardId)) return uid;
+    }
+    const shared = s.sharedBoards.get(boardId);
+    if (shared) return shared.ownerId || null;
+    return null;
+  }
+  registerArtifactOwnerResolver(WB_BOARD_KIND, (id) => wbBoardOwner(String(id || "")));
+  let _wbAcl = null;
+  let _wbAclDb = null;
+  function wbAcl(ctx) {
+    const db = ctx?.db || globalThis._concordSTATE?.db || globalThis._concordDB || null;
+    if (!db) return null;
+    if (_wbAcl && _wbAclDb === db) return _wbAcl;
+    try { _wbAcl = createArtifactAcl(db, {}); _wbAclDb = db; } catch (_e) { return null; }
+    return _wbAcl;
+  }
+  function wbUsername(ctx, userId) {
+    const db = ctx?.db || globalThis._concordSTATE?.db || globalThis._concordDB || null;
+    if (!db || !userId) return null;
+    try {
+      const row = db.prepare("SELECT username FROM users WHERE id = ?").get(userId);
+      return row?.username ? String(row.username) : null;
+    } catch (_e) { return null; }
+  }
+  // Mutating call sites that resolve a board through findBoardForUser
+  // refuse a view-only grantee with the reason stated; owners, shared
+  // participants and edit grantees pass (null = no refusal).
+  function wbWriteRefusal(lookup) {
+    if (lookup && lookup.scope === "granted" && lookup.level !== "edit") {
+      return { ok: false, error: "This board is shared with you view-only — editing needs an edit grant from the owner." };
+    }
+    return null;
+  }
+
   function nextWbId(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
   function nowIsoWb() { return new Date().toISOString(); }
 
@@ -326,8 +374,24 @@ export default function registerWhiteboardActions(registerLensAction) {
     if (!isSafePathSegment(id)) {
       return { ok: false, error: "board id must contain only letters, digits, '.', '_' or '-'" };
     }
-    if (!s.boards.has(userId)) s.boards.set(userId, new Map());
-    const existing = s.boards.get(userId).get(id);
+    // S14 follow-up: saving an id that belongs to someone else's
+    // board goes through the platform ACL — an edit grantee writes
+    // the owner's board, a view grantee is refused as read-only, and
+    // no grant means the board does not exist to the caller (never a
+    // silent same-id copy in the caller's own map).
+    let targetUserId = userId;
+    if (params.id && !s.boards.get(userId)?.has(id)) {
+      const ownerId = wbBoardOwner(id);
+      if (ownerId && ownerId !== userId) {
+        const acl = wbAcl(ctx);
+        const level = acl ? acl.levelFor(WB_BOARD_KIND, id, userId) : null;
+        if (level === "edit") targetUserId = ownerId;
+        else if (level === "view") return { ok: false, error: "This board is shared with you view-only — the owner can raise your access to edit." };
+        else return { ok: false, error: "not found" };
+      }
+    }
+    if (!s.boards.has(targetUserId)) s.boards.set(targetUserId, new Map());
+    const existing = s.boards.get(targetUserId).get(id);
     // S3: a save that carries no scene/title is a metadata write (the
     // kept-DTU linkage below) — it must not erase the stored canvas or
     // rename the board to the default. New boards still get defaults.
@@ -355,9 +419,9 @@ export default function registerWhiteboardActions(registerLensAction) {
       createdAt: existing?.createdAt || nowIsoWb(),
       updatedAt: nowIsoWb(),
     };
-    s.boards.get(userId).set(id, board);
+    s.boards.get(targetUserId).set(id, board);
     saveWhiteboardState();
-    return { ok: true, result: { board } };
+    return { ok: true, result: targetUserId === userId ? { board } : { board, access: { level: "edit", ownerId: targetUserId } } };
   });
 
   registerLensAction("whiteboard", "board-load", (ctx, _artifact, params = {}) => {
@@ -366,8 +430,15 @@ export default function registerWhiteboardActions(registerLensAction) {
     const userId = wbActor(ctx);
     const id = String(params.id || "");
     const map = s.boards.get(userId);
-    if (!map || !map.has(id) || map.get(id).deletedAt) return { ok: false, error: "not found" };
-    return { ok: true, result: { board: map.get(id) } };
+    if (map && map.has(id) && !map.get(id).deletedAt) return { ok: true, result: { board: map.get(id) } };
+    // S14 follow-up: a platform-ACL grantee loads the owner's board
+    // with their level attached; everyone else keeps the plain
+    // "not found" — a board they cannot see does not exist to them.
+    const lookup = findBoardForUser(s, userId, id);
+    if (lookup && lookup.scope === 'granted') {
+      return { ok: true, result: { board: lookup.board, access: { level: lookup.level, ownerId: lookup.ownerId } } };
+    }
+    return { ok: false, error: "not found" };
   });
 
   registerLensAction("whiteboard", "board-delete", (ctx, _artifact, params = {}) => {
@@ -449,6 +520,81 @@ export default function registerWhiteboardActions(registerLensAction) {
     map.set(id, board);
     saveWhiteboardState();
     return { ok: true, result: { board } };
+  });
+
+
+  // ── S14 follow-up: platform-ACL membership (invite / access / revoke) ──
+  // The share dialog's real sharing: the owner grants a named account
+  // view or edit on THIS board through the platform model; the access
+  // list is the model's grant list; revoke is the model's revoke.
+  // ACL denial codes become sentences here, at the surface.
+  function wbAclErrorText(code) {
+    switch (code) {
+      case "not_owner": return "Only the board's owner can change who has access.";
+      case "artifact_not_found": return "Board not found.";
+      case "self_grant": return "You already own this board.";
+      case "invalid_level": return "Access level must be 'view' or 'edit'.";
+      case "no_active_grant": return "That person has no access to revoke.";
+      case "invalid_input": return "A person and a board are required.";
+      default: return "Sharing is unavailable right now.";
+    }
+  }
+
+  registerLensAction("whiteboard", "board-grant", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const acl = wbAcl(ctx); if (!acl) return { ok: false, error: "Sharing is unavailable right now." };
+    const boardId = String(params.boardId || params.id || "");
+    const r = acl.grant({ kind: WB_BOARD_KIND, id: boardId, granteeId: String(params.granteeId || ""), level: String(params.level || ""), byUserId: userId });
+    if (!r.ok) return { ok: false, error: wbAclErrorText(r.error) };
+    return { ok: true, result: { grant: { granteeId: r.grant.granteeId, username: wbUsername(ctx, r.grant.granteeId), level: r.grant.level, grantedAt: r.grant.createdAt }, updated: !!r.updated } };
+  });
+
+  registerLensAction("whiteboard", "board-revoke", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const acl = wbAcl(ctx); if (!acl) return { ok: false, error: "Sharing is unavailable right now." };
+    const boardId = String(params.boardId || params.id || "");
+    const granteeId = String(params.granteeId || "");
+    const r = acl.revoke({ kind: WB_BOARD_KIND, id: boardId, granteeId, byUserId: userId });
+    if (!r.ok) return { ok: false, error: wbAclErrorText(r.error) };
+    return { ok: true, result: { revoked: true, granteeId } };
+  });
+
+  registerLensAction("whiteboard", "board-access", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const acl = wbAcl(ctx); if (!acl) return { ok: false, error: "Sharing is unavailable right now." };
+    const boardId = String(params.boardId || params.id || "");
+    const level = acl.levelFor(WB_BOARD_KIND, boardId, userId);
+    if (!level) return { ok: false, error: "Board not found." };
+    const out = { level, ownerId: wbBoardOwner(boardId) };
+    if (level === "owner") {
+      const listed = acl.listGrants(WB_BOARD_KIND, boardId, userId);
+      out.grants = (listed.ok ? listed.grants : []).map((g) => ({
+        granteeId: g.granteeId, username: wbUsername(ctx, g.granteeId), level: g.level, grantedAt: g.createdAt,
+      }));
+    }
+    return { ok: true, result: out };
+  });
+
+  registerLensAction("whiteboard", "board-shared-with-me", (ctx, _artifact, _params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const acl = wbAcl(ctx); if (!acl) return { ok: true, result: { boards: [] } };
+    const listed = acl.listSharedWith(userId);
+    const boards = [];
+    for (const g of listed.ok ? listed.grants : []) {
+      if (g.artifactKind !== WB_BOARD_KIND) continue;
+      const board = s.boards.get(g.ownerId)?.get(g.artifactId) || s.sharedBoards.get(g.artifactId) || null;
+      if (!board || board.deletedAt) continue;
+      boards.push({
+        id: g.artifactId, title: board.title || "Untitled board",
+        ownerId: g.ownerId, ownerName: wbUsername(ctx, g.ownerId),
+        level: g.level, updatedAt: board.updatedAt || null,
+      });
+    }
+    return { ok: true, result: { boards } };
   });
 
   // ── Meeting timer (Miro-shape, board-scoped) ──
@@ -789,6 +935,19 @@ export default function registerWhiteboardActions(registerLensAction) {
     if (shared && (shared.ownerId === userId || wbParticipants(shared).has(userId))) {
       return { board: shared, scope: 'shared' };
     }
+    // S14 follow-up: a platform-ACL grant on someone else's personal
+    // board is visibility too — reads see the board through this one
+    // gate like every other surface, and mutating call sites check
+    // the level (wbWriteRefusal) before writing.
+    const acl = wbAcl(null);
+    if (acl) {
+      const level = acl.levelFor(WB_BOARD_KIND, boardId, userId);
+      if (level === 'view' || level === 'edit') {
+        const ownerId = wbBoardOwner(boardId);
+        const board = ownerId ? s.boards.get(ownerId)?.get(boardId) : null;
+        if (board && !board.deletedAt) return { board, scope: 'granted', level, ownerId };
+      }
+    }
     return null;
   }
 
@@ -1030,6 +1189,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     if (!boardId || !elementId || !body) return { ok: false, error: "boardId + elementId + body required" };
     const lookup = findBoardForUser(s, userId, boardId);
     if (!lookup) return { ok: false, error: "board not found" };
+    const wbRefusal = wbWriteRefusal(lookup); if (wbRefusal) return wbRefusal;
     const cBucket = ensureCommentsBucket(s);
     if (!cBucket.has(boardId)) cBucket.set(boardId, new Map());
     const elementMap = cBucket.get(boardId);
@@ -1055,6 +1215,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     const id = String(params.id || "");
     const lookup = findBoardForUser(s, userId, boardId);
     if (!lookup) return { ok: false, error: "board not found" };
+    const wbRefusal = wbWriteRefusal(lookup); if (wbRefusal) return wbRefusal;
     const cBucket = ensureCommentsBucket(s);
     const elementMap = cBucket.get(boardId);
     if (!elementMap) return { ok: false, error: "comment not found" };
@@ -1185,6 +1346,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     const boardId = String(params.boardId || "");
     const lookup = findBoardForUser(s, userId, boardId);
     if (!lookup) return { ok: false, error: "board not found" };
+    const wbRefusal = wbWriteRefusal(lookup); if (wbRefusal) return wbRefusal;
     const ops = Array.isArray(params.ops) ? params.ops : [];
     if (ops.length === 0) return { ok: false, error: "ops array required" };
     const remoteClock = Number(params.knownClock) || 0;
