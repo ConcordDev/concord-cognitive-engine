@@ -64,6 +64,24 @@ function serialiseBoardToBlueprintJson(scene, themeOverrides) {
 
 export default function registerWhiteboardActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
+  // S1 (one board store): the Analyze macros historically read only the
+  // artifact envelope, so they reported zeros for every board whose
+  // canvas lives in the board store (main-canvas boards are DTUs whose
+  // scenes mirror into this store under their DTU id). Resolve elements
+  // board-first: any id the caller carries (params.boardId, the
+  // artifact's own board link, the artifact id) that names a stored
+  // board wins — including an honestly empty board — and the artifact
+  // payload is only the fallback for calls with no board behind them.
+  function resolveAnalyzeElements(s, userId, artifact, params) {
+    const candidates = [params?.boardId, artifact?.data?.boardId, artifact?.data?.whiteboardId, artifact?.id];
+    for (const cand of candidates) {
+      if (typeof cand !== "string" || !cand) continue;
+      const hit = findBoardForUser(s, userId, cand);
+      if (hit) return Array.isArray(hit.board.scene?.elements) ? hit.board.scene.elements : [];
+    }
+    return artifact?.data?.elements || [];
+  }
+
   registerLensAction("whiteboard", "vision", async (ctx, artifact, _params) => {
     const { imageB64, imageUrl } = artifact.data || {};
     if (!imageB64 && !imageUrl) return { ok: false, error: "imageB64 or imageUrl required" };
@@ -71,7 +89,8 @@ export default function registerWhiteboardActions(registerLensAction) {
     return imageUrl ? callVisionUrl(imageUrl, prompt) : callVision(imageB64, prompt);
   });
   registerLensAction("whiteboard", "shapeDetect", (ctx, artifact, _params) => {
-    const elements = artifact.data?.elements || [];
+    const s = getWhiteboardState();
+    const elements = s ? resolveAnalyzeElements(s, wbActor(ctx), artifact, _params) : (artifact.data?.elements || []);
     if (elements.length === 0) return { ok: true, result: { message: "Add whiteboard elements to analyze shapes." } };
     const classified = elements.map((el, i) => {
       const x = parseFloat(el.x) || 0, y = parseFloat(el.y) || 0;
@@ -88,7 +107,8 @@ export default function registerWhiteboardActions(registerLensAction) {
   });
 
   registerLensAction("whiteboard", "layoutOptimize", (ctx, artifact, _params) => {
-    const elements = artifact.data?.elements || [];
+    const s = getWhiteboardState();
+    const elements = s ? resolveAnalyzeElements(s, wbActor(ctx), artifact, _params) : (artifact.data?.elements || []);
     const gridSize = parseInt(artifact.data?.gridSize) || 20;
     if (elements.length === 0) return { ok: true, result: { message: "Add elements to optimize layout." } };
     const overlaps = [];
@@ -112,7 +132,8 @@ export default function registerWhiteboardActions(registerLensAction) {
   });
 
   registerLensAction("whiteboard", "clusterGroup", (ctx, artifact, _params) => {
-    const elements = artifact.data?.elements || [];
+    const s = getWhiteboardState();
+    const elements = s ? resolveAnalyzeElements(s, wbActor(ctx), artifact, _params) : (artifact.data?.elements || []);
     const threshold = parseFloat(artifact.data?.threshold) || 100;
     if (elements.length === 0) return { ok: true, result: { message: "Add elements to detect clusters." } };
     const positions = elements.map((el, i) => ({
@@ -151,7 +172,8 @@ export default function registerWhiteboardActions(registerLensAction) {
   });
 
   registerLensAction("whiteboard", "exportPrep", (ctx, artifact, _params) => {
-    const elements = artifact.data?.elements || [];
+    const s = getWhiteboardState();
+    const elements = s ? resolveAnalyzeElements(s, wbActor(ctx), artifact, _params) : (artifact.data?.elements || []);
     const layers = artifact.data?.layers || [{ name: "default", elements: elements.map((_, i) => `el-${i}`) }];
     if (elements.length === 0) return { ok: true, result: { message: "Add elements to prepare for export." } };
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -309,6 +331,12 @@ export default function registerWhiteboardActions(registerLensAction) {
     const existing = s.boards.get(userId).get(id);
     const board = {
       id, title, scene,
+      // S1 (one board store): main-canvas boards mirror into this store
+      // under their DTU id with origin 'canvas'; the tag is what lets the
+      // Collab list keep them out of the Shape editor (different element
+      // model) while every list, Analyze macro and summary reads them.
+      origin: typeof params.origin === "string" ? params.origin : (existing?.origin || "collab"),
+      dtuId: typeof params.dtuId === "string" ? params.dtuId : (existing?.dtuId || null),
       createdAt: existing?.createdAt || nowIsoWb(),
       updatedAt: nowIsoWb(),
     };
