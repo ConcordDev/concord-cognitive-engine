@@ -163,8 +163,12 @@ import {
 import {
   buildDTUConversationContext, getArtifactDTUs, getDTUArtifact,
   checkEmergentLensAccess, executeEmergentLensAction,
+  applyEmergentLensProposal,
   getLensIntegrationMetrics,
 } from "./lens-integration.js";
+import {
+  GOVERNANCE_ROLES, listLensProposals, decideLensProposal,
+} from "../lib/emergent-proposals.js";
 
 // ── Shadow Graph Upgrade ──────────────────────────────────────────────────────
 
@@ -1497,6 +1501,35 @@ function init({ register, STATE, helpers }) {
   register("emergent", "lens.integrationMetrics", (_ctx) => {
     return getLensIntegrationMetrics();
   }, { description: "Get lens integration metrics", public: true });
+
+  register("emergent", "lens.proposals", (_ctx, input = {}) => {
+    const role = _ctx?.actor?.role || null;
+    if (!GOVERNANCE_ROLES.has(role)) return { ok: false, error: "not_governance_role" };
+    const proposals = listLensProposals(STATE, { status: input.status });
+    return { ok: true, proposals, count: proposals.length };
+  }, { description: "List emergent lens-action proposals in the governance queue (governance roles only)", public: false });
+
+  register("emergent", "lens.decideProposal", (_ctx, input = {}) => {
+    const actor = _ctx?.actor || {};
+    const decided = decideLensProposal(STATE, input.proposalId, {
+      decision: input.decision,
+      decidedBy: actor.userId || null,
+      decidedByRole: actor.role || null,
+    });
+    if (!decided.ok) return decided;
+    // On approval, apply immediately when the caller supplies a macro
+    // runner (the established input._runMacro injection pattern). With
+    // no runner the proposal rests at "approved" — a visible, applicable
+    // state, never a silent drop.
+    if (decided.proposal.status === "approved" && typeof input._runMacro === "function") {
+      const applied = applyEmergentLensProposal(STATE, input.proposalId, {
+        runMacro: input._runMacro,
+        makeCtx: typeof input._makeCtx === "function" ? input._makeCtx : undefined,
+      });
+      return { ...decided, applied };
+    }
+    return decided;
+  }, { description: "Approve or reject an emergent lens-action proposal (human governance roles only; emergents can never decide)", public: false });
 
   // ══════════════════════════════════════════════════════════════════════════
   // SHADOW GRAPH — unified access, activation, conversation, promotion
