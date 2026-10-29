@@ -9,7 +9,7 @@ import { Globe, Users, Lock, ImagePlus, Film, X, AtSign, Loader2, Upload } from 
 import { cn } from '@/lib/utils';
 import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
-import type { Privacy, MediaItem, MediaKind } from './types';
+import type { Privacy, MediaItem, MediaKind, ReplyGate } from './types';
 import { uploadTimelineFile, mediaUrlError, probeImageUrl, UPLOAD_ACCEPT } from './uploadMedia';
 
 const PRIVACY: { id: Privacy; icon: typeof Globe; label: string }[] = [
@@ -29,12 +29,22 @@ interface ComposerDraft {
   privacy: Privacy;
   media: MediaItem[];
   tags: string[];
+  replyGate?: ReplyGate;
 }
+
+const REPLY_GATES: { id: ReplyGate; label: string }[] = [
+  { id: 'anyone', label: 'Anyone' },
+  { id: 'friends', label: 'Friends' },
+  { id: 'mentioned', label: 'Mentioned' },
+  { id: 'none', label: 'No one' },
+];
 
 export function PostComposer({ onPosted }: { onPosted?: () => void }) {
   const qc = useQueryClient();
   const [content, setContent] = useState('');
   const [privacy, setPrivacy] = useState<Privacy>('private');
+  // S-TL-8: who may reply to this post.
+  const [replyGate, setReplyGate] = useState<ReplyGate>('anyone');
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [mediaDraft, setMediaDraft] = useState('');
@@ -58,6 +68,9 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
       if (draft.privacy === 'public' || draft.privacy === 'friends' || draft.privacy === 'private') {
         setPrivacy(draft.privacy);
       }
+      if (draft.replyGate === 'anyone' || draft.replyGate === 'friends' || draft.replyGate === 'mentioned' || draft.replyGate === 'none') {
+        setReplyGate(draft.replyGate);
+      }
       if (hasMedia) {
         setMedia((draft.media as MediaItem[]).filter((m) => m && typeof m.url === 'string' && (m.kind === 'photo' || m.kind === 'video')));
       }
@@ -73,15 +86,16 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
   useEffect(() => {
     if (skipFirstPersist.current) { skipFirstPersist.current = false; return; }
     try {
-      const draft: ComposerDraft = { content, privacy, media, tags };
+      const draft: ComposerDraft = { content, privacy, media, tags, replyGate };
       window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch { /* storage unavailable */ }
-  }, [content, privacy, media, tags]);
+  }, [content, privacy, media, tags, replyGate]);
 
   const discardDraft = () => {
     setContent('');
     setMedia([]);
     setTags([]);
+    setReplyGate('anyone');
     setDraftRestored(false);
     try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   };
@@ -95,6 +109,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
         privacy,
         media,
         taggedUserIds: tags,
+        replyGate,
       }),
     onSuccess: (r) => {
       if (r.data.ok) {
@@ -103,6 +118,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
         setContent('');
         setMedia([]);
         setTags([]);
+        setReplyGate('anyone');
         setDraftRestored(false);
         onPosted?.();
         // D2/M7: publishing was silent.
@@ -324,6 +340,27 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
       {privacy === 'public' && (
         <p className="text-[11px] text-amber-400/80">Public posts are visible to everyone and NPCs.</p>
       )}
+      {/* S-TL-8: who may reply to this post */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="text-[11px] text-gray-400 inline-flex items-center gap-1">
+          <Lock className="w-3.5 h-3.5" /> Who can reply:
+        </span>
+        {REPLY_GATES.map((g) => (
+          <button
+            key={g.id}
+            onClick={() => setReplyGate(g.id)}
+            className={cn(
+              'px-2.5 py-1 rounded-full text-[11px]',
+              replyGate === g.id ? 'bg-blue-600 text-white' : 'bg-[#3a3b3c] text-gray-300 hover:bg-[#4a4b4c]',
+            )}
+          >
+            {g.label}
+          </button>
+        ))}
+        {replyGate === 'mentioned' && (
+          <span className="text-[11px] text-gray-500">People you tag in this post.</span>
+        )}
+      </div>
     </div>
   );
 }

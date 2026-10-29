@@ -15,7 +15,7 @@ import {
 import { cn } from '@/lib/utils';
 import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
-import type { FeedPost, Privacy, ReactionKind } from './types';
+import type { FeedPost, Privacy, ReactionKind, ReplyGate } from './types';
 import { timeAgo, exactTime } from './timeFormat';
 import { CommentThread } from './CommentThread';
 import { ReactionBreakdown } from './ReactionBreakdown';
@@ -43,6 +43,8 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
   const [editing, setEditing] = useState(false);
   const [draftContent, setDraftContent] = useState('');
   const [draftPrivacy, setDraftPrivacy] = useState<Privacy>('private');
+  // S-TL-8: the reply gate is editable with the post.
+  const [draftReplyGate, setDraftReplyGate] = useState<ReplyGate>('anyone');
   const [showHistory, setShowHistory] = useState(false);
 
   const reactMutation = useMutation({
@@ -72,9 +74,10 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
 
   const updateMutation = useMutation({
     mutationFn: () => {
-      const vars: { postId: string; content?: string; privacy?: Privacy } = { postId: post.id };
+      const vars: { postId: string; content?: string; privacy?: Privacy; replyGate?: ReplyGate } = { postId: post.id };
       if (draftContent !== post.content) vars.content = draftContent;
       if (draftPrivacy !== post.privacy) vars.privacy = draftPrivacy;
+      if (draftReplyGate !== (post.replyGate ?? 'anyone')) vars.replyGate = draftReplyGate;
       return lensRun('timeline', 'post-update', vars);
     },
     onSuccess: (r) => {
@@ -91,6 +94,7 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
   const startEditing = () => {
     setDraftContent(post.content);
     setDraftPrivacy(post.privacy);
+    setDraftReplyGate(post.replyGate ?? 'anyone');
     setEditing(true);
   };
 
@@ -181,6 +185,18 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
               <option value="friends">Friends</option>
               <option value="private">Only me</option>
             </select>
+            <label className="text-xs text-gray-400" htmlFor={`replygate-${post.id}`}>Replies</label>
+            <select
+              id={`replygate-${post.id}`}
+              value={draftReplyGate}
+              onChange={(e) => setDraftReplyGate(e.target.value as ReplyGate)}
+              className="bg-[#3a3b3c] rounded-full px-2 py-1 text-xs text-white outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="anyone">Anyone</option>
+              <option value="friends">Friends</option>
+              <option value="mentioned">Mentioned</option>
+              <option value="none">No one</option>
+            </select>
             <div className="flex-1" />
             <button
               onClick={() => setEditing(false)}
@@ -190,7 +206,7 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
             </button>
             <button
               onClick={() => updateMutation.mutate()}
-              disabled={updateMutation.isPending || (draftContent === post.content && draftPrivacy === post.privacy)}
+              disabled={updateMutation.isPending || (draftContent === post.content && draftPrivacy === post.privacy && draftReplyGate === (post.replyGate ?? 'anyone'))}
               className="px-3 py-1.5 rounded-full bg-blue-600 text-white text-xs font-medium disabled:opacity-40 inline-flex items-center gap-1"
             >
               {updateMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
@@ -254,6 +270,17 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
         <div className="mx-4 my-2 border border-gray-700 rounded-lg p-3 bg-[#18191a]">
           <p className="text-xs font-semibold text-gray-300 mb-1">{post.sharedFrom.authorDisplayName || 'Member'}</p>
           <p className="text-sm text-gray-400">{post.sharedFrom.content || '(media post)'}</p>
+        </div>
+      )}
+
+      {/* S-TL-8: a limited reply gate is stated on the card, not
+          discovered by failing to comment. */}
+      {post.replyGate && post.replyGate !== 'anyone' && (
+        <div className="px-4 pb-1 text-[11px] text-gray-500 inline-flex items-center gap-1">
+          <Lock className="w-3 h-3" />
+          {post.replyGate === 'friends' && 'Replies limited to friends'}
+          {post.replyGate === 'mentioned' && 'Replies limited to people mentioned in this post'}
+          {post.replyGate === 'none' && 'Replies are off for this post'}
         </div>
       )}
 

@@ -501,6 +501,24 @@ export default function registerTimelineActions(registerLensAction) {
   const REACTION_KINDS = ["like", "love", "haha", "sad", "angry"];
   const PRIVACY_KINDS = ["public", "friends", "private"];
   const MEDIA_KINDS = ["photo", "video"];
+  // Per-post reply gates (S-TL-8, §5d B11): who may comment. Posts
+  // stored before gates existed have no field and read as 'anyone'.
+  const REPLY_GATES = ["anyone", "friends", "mentioned", "none"];
+  const tlReplyGate = (post) =>
+    REPLY_GATES.includes(post?.replyGate) ? post.replyGate : "anyone";
+  // The post's author always may reply. 'friends' resolves through
+  // the real friend graph (fails closed without a db handle);
+  // 'mentioned' means the people tagged in the post.
+  const tlCanReply = (ctx, post, actorId) => {
+    if (!post) return false;
+    if (post.authorId === actorId) return true;
+    const gate = tlReplyGate(post);
+    if (gate === "anyone") return true;
+    if (gate === "none") return false;
+    if (gate === "mentioned") return (post.taggedUserIds || []).includes(actorId);
+    const db = ctx?.db || globalThis._concordSTATE?.db;
+    return db ? areFriends(db, post.authorId, actorId) === true : false;
+  };
 
   // Media URLs (S-TL-3 / F14): an item may point at an uploaded
   // artifact (its stream path) or at an absolute http(s) URL. Anything
@@ -611,6 +629,12 @@ export default function registerTimelineActions(registerLensAction) {
     }
     const privacy = PRIVACY_KINDS.includes(String(params.privacy))
       ? String(params.privacy) : "private";
+    // S-TL-8: an unknown reply gate is refused, not silently mapped —
+    // the author learns before publishing, like post-update's privacy.
+    if (params.replyGate !== undefined && !REPLY_GATES.includes(String(params.replyGate))) {
+      return { ok: false, error: "Unknown reply setting." };
+    }
+    const replyGate = params.replyGate !== undefined ? String(params.replyGate) : "anyone";
     // A lens may attach a DTU it already created. The id is stored only when
     // it looks like an id, so a post never pretends to cite a missing record.
     const rawCite = tlClean(params.citedDtuId, 80);
@@ -621,6 +645,7 @@ export default function registerTimelineActions(registerLensAction) {
       content,
       media,
       privacy,
+      replyGate,
       citedDtuId,
       taggedUserIds: Array.isArray(params.taggedUserIds)
         ? params.taggedUserIds.map((u) => tlClean(u, 64)).filter(Boolean).slice(0, 20)
@@ -660,13 +685,19 @@ export default function registerTimelineActions(registerLensAction) {
       return { ok: false, error: "Post not found or not yours." };
     }
     const post = found.post;
-    const next = { content: post.content, media: post.media, privacy: post.privacy };
+    const next = { content: post.content, media: post.media, privacy: post.privacy, replyGate: post.replyGate };
     if (params.content !== undefined) next.content = tlClean(params.content, 5000);
     if (params.privacy !== undefined) {
       if (!PRIVACY_KINDS.includes(String(params.privacy))) {
         return { ok: false, error: "Unknown privacy setting." };
       }
       next.privacy = String(params.privacy);
+    }
+    if (params.replyGate !== undefined) {
+      if (!REPLY_GATES.includes(String(params.replyGate))) {
+        return { ok: false, error: "Unknown reply setting." };
+      }
+      next.replyGate = String(params.replyGate);
     }
     if (params.media !== undefined) {
       if (!Array.isArray(params.media)) return { ok: false, error: "media must be a list." };
@@ -697,6 +728,9 @@ export default function registerTimelineActions(registerLensAction) {
       post.privacy = next.privacy;
       post.editedAt = at;
     }
+    // S-TL-8: the reply gate is metadata, not a content version — it
+    // applies without an edit-history entry.
+    if (next.replyGate !== post.replyGate) post.replyGate = next.replyGate;
     saveTlState();
     return { ok: true, result: { post, edited: changed } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -796,6 +830,10 @@ export default function registerTimelineActions(registerLensAction) {
     const actorId = tlAid(ctx);
     const { found, blocked } = checkPostAccess(s, postId, actorId, ctx?.db);
     if (!found || blocked) return { ok: false, error: "Post not found." };
+    // S-TL-8: the post's reply gate (the author always may reply).
+    if (!tlCanReply(ctx, found.post, actorId)) {
+      return { ok: false, error: "The author limited who can reply to this post." };
+    }
     const parentId = params.parentId ? tlClean(params.parentId, 64) : null;
     const list = tlList(s.comments, postId);
     if (parentId && !list.some((c) => c.id === parentId)) {

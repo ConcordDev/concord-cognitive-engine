@@ -548,6 +548,63 @@ describe("S-TL-7 timeline view-as (§5d #6)", () => {
   });
 });
 
+// ── S-TL-8: per-post reply gating (§5d B11) ────────────────────────────
+describe("S-TL-8 timeline reply gates (B11)", () => {
+  const ada = asUser("rg_ada");
+  const friend = asUser("rg_friend");
+  const stranger = asUser("rg_stranger");
+  const tagged = asUser("rg_tagged");
+  befriend("rg_ada", "rg_friend");
+
+  const tryComment = (ctx, postId, text = "hi") => call("comment-add", ctx, { postId, text });
+
+  it("an unknown gate is refused at create; the default is anyone", () => {
+    assert.equal(call("post-create", ada, { content: "x", privacy: "public", replyGate: "subscribers" }).ok, false);
+    const open = call("post-create", ada, { content: "open", privacy: "public" }).result.post;
+    assert.equal(open.replyGate, "anyone");
+    assert.equal(tryComment(stranger, open.id).ok, true);
+  });
+
+  it("friends gate: friends and the author may reply, strangers get the stated refusal", () => {
+    const post = call("post-create", ada, { content: "gated", privacy: "public", replyGate: "friends" }).result.post;
+    assert.equal(tryComment(friend, post.id).ok, true);
+    const refused = tryComment(stranger, post.id);
+    assert.equal(refused.ok, false);
+    assert.equal(refused.error, "The author limited who can reply to this post.");
+    assert.equal(tryComment(ada, post.id).ok, true, "the author always may");
+  });
+
+  it("mentioned gate: only tagged people (and the author) may reply — friendship does not substitute", () => {
+    const post = call("post-create", ada, {
+      content: "mentioned only", privacy: "public", replyGate: "mentioned", taggedUserIds: ["rg_tagged"],
+    }).result.post;
+    assert.equal(tryComment(tagged, post.id).ok, true);
+    assert.equal(tryComment(friend, post.id).ok, false);
+    assert.equal(tryComment(ada, post.id).ok, true);
+  });
+
+  it("none gate: only the author may reply, and nested replies are gated too", () => {
+    const post = call("post-create", ada, { content: "closed", privacy: "public", replyGate: "none" }).result.post;
+    assert.equal(tryComment(friend, post.id).ok, false);
+    const own = tryComment(ada, post.id, "author note");
+    assert.equal(own.ok, true);
+    const nested = call("comment-add", friend, { postId: post.id, text: "nested", parentId: own.result.comment.id });
+    assert.equal(nested.ok, false);
+  });
+
+  it("the gate is adjustable via post-update without an edit-history entry; unknown values refused", () => {
+    const post = call("post-create", ada, { content: "adjustable", privacy: "public" }).result.post;
+    assert.equal(tryComment(stranger, post.id).ok, true);
+    const upd = call("post-update", ada, { postId: post.id, replyGate: "none" });
+    assert.equal(upd.ok, true);
+    assert.equal(upd.result.edited, false, "a gate change is not a content edit");
+    assert.equal((upd.result.post.editHistory || []).length, 0);
+    assert.equal(tryComment(stranger, post.id).ok, false);
+    assert.equal(call("post-update", ada, { postId: post.id, replyGate: "vip" }).ok, false);
+    assert.equal(call("post-update", stranger, { postId: post.id, replyGate: "anyone" }).ok, false, "not the author");
+  });
+});
+
 // ── S-TL-2: friends-tier regression lock ───────────────────────────────
 // The prep audit found the friends-tier gate already fixed on main
 // (checkPostAccess via areFriends, fail-closed, oracle-safe). This

@@ -2,6 +2,8 @@
 // `timeline` domain macros (server/domains/timeline.js).
 
 export type Privacy = 'public' | 'friends' | 'private';
+/** S-TL-8: who may reply to a post (§5d B11). */
+export type ReplyGate = 'anyone' | 'friends' | 'mentioned' | 'none';
 export type ReactionKind = 'like' | 'love' | 'haha' | 'sad' | 'angry';
 export type MediaKind = 'photo' | 'video';
 
@@ -46,6 +48,8 @@ export interface FeedPost {
   citedDtuId?: string | null;
   /** S-TL-6: how many times this post has been shared (F9). */
   shareCount?: number;
+  /** S-TL-8: who may reply; absent on older posts means 'anyone'. */
+  replyGate?: ReplyGate;
   sharedFrom: SharedFrom | null;
   createdAt: string;
   /** S-TL-2: set when the post has been edited; editHistory holds the
