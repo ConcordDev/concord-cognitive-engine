@@ -715,6 +715,9 @@ function SharedTab({ activeBoardId, onOpenShared }: { activeBoardId: string | nu
   const [loading, setLoading] = useState(true);
   const [tally, setTally] = useState<{ boardId: string; rows: Array<{ elementId: string; count: number }>; total: number } | null>(null);
   const [leavingId, setLeavingId] = useState<string | null>(null);
+  const [joinId, setJoinId] = useState('');
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [joining, setJoining] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -725,6 +728,22 @@ function SharedTab({ activeBoardId, onOpenShared }: { activeBoardId: string | nu
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+
+  async function joinById() {
+    const id = joinId.trim();
+    if (!id) return;
+    setJoining(true);
+    setJoinError(null);
+    try {
+      const r = await lensRun({ domain: 'whiteboard', action: 'join-shared', input: { id } });
+      if (r.data?.ok === false) { setJoinError(String(r.data?.error || 'Could not join that board.')); return; }
+      const board = r.data?.result?.board as { id: string; title: string } | undefined;
+      setJoinId('');
+      await refresh();
+      if (board && onOpenShared) onOpenShared(board.id, board.title);
+    } finally { setJoining(false); }
+  }
 
   async function leave(id: string) {
     setLeavingId(id);
@@ -745,6 +764,15 @@ function SharedTab({ activeBoardId, onOpenShared }: { activeBoardId: string | nu
   return (
     <div className="space-y-2">
       <p className="text-gray-400">Boards someone shared with you, or that you promoted from a private board via the session workbench's Share action. Opening one joins its live room — edits broadcast to every participant in real time.</p>
+      <div className="flex items-center gap-1.5">
+        <input type="text" value={joinId} onChange={(e) => setJoinId(e.target.value)} placeholder="Shared board ID — join by ID"
+          className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+        <button type="button" onClick={joinById} disabled={joining || !joinId.trim()}
+          className="px-2.5 py-1.5 text-xs rounded bg-sky-500 text-white font-bold hover:bg-sky-400 disabled:opacity-40 inline-flex items-center gap-1">
+          {joining ? <Loader2 className="w-3 h-3 animate-spin" /> : <ExternalLink className="w-3 h-3" />}Join
+        </button>
+      </div>
+      {joinError && <p className="text-[11px] text-rose-300" role="status">{joinError}</p>}
       {loading ? (
         <div className="space-y-1.5" aria-busy="true">
           <Skeleton variant="block" height={46} />
