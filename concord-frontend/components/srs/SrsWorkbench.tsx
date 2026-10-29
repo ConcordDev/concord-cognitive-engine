@@ -7,7 +7,7 @@
  *  - FSRS scheduler (per-deck option) + SM-2 study loop
  *  - Rich card types: basic / cloze / image-occlusion / templated
  *  - Media in cards: images + audio + browser TTS
- *  - Deck import / export (.apkg.json shared-deck bundle)
+ *  - Deck import / export (.srs.json shared-deck bundle)
  *  - Per-deck options: new/day, review caps, learning steps, scheduler
  *  - Card browser: search, filter, bulk edit, tags, suspend/bury
  *  - Review heatmap / streak calendar + forecast graph
