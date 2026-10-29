@@ -103,6 +103,7 @@ import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
 import { chatContextPool, makeChatMayUse } from "./lib/chat/context-pool.js";
+import { chatProgress as _chatProgress, withToolProgress as _chatWithToolProgress, readOllamaChatStream as _readOllamaChatStream } from "./lib/chat/progress.js";
 import { filterVisibleSearchHits, materializeIndexedHits, searchCandidateLimit } from "./lib/dtu-search-hits.js";
 import { handleArchaeology, handleSubstrateDiff, handleTimeCrystalDetect } from "./lib/knowledge-archaeology.js";
 import { artifactDtuForViewer, publicArtifactRef } from "./lib/artifact-access.js";
@@ -30080,7 +30081,8 @@ ${_operatorV6Block}` : "";
       if (_gate && _gate.ok === false) {
         result = { tool: call.tool, ok: false, error: _gate.reason || "csl_rejected" };
       } else {
-        result = await _executeToolCall(call);
+        // running/done reach a streaming client as the call really starts and ends
+        result = await _chatWithToolProgress(ctx, call, () => _executeToolCall(call));
       }
       if (_gate) {
         result.cslRouted = !!_gate.cslRouted;
@@ -30329,6 +30331,7 @@ ${_operatorV6Block}` : "";
     if (_chatTodayLine) messages = [{ role: "system", content: _chatTodayLine }, ...messages];
     if (_conversationalChat) messages = withChatToneReminder(messages);
     const _llmSpan = startSpan("llm.chat", { mode, sessionId, promptLength: prompt.length });
+    _chatProgress(ctx, { stage: "thinking", label: "Thinking" });
     _selfContSystem = system + _selfContBlock + smallModelPromptSuffix(brainModel);
     const r = await ctx.llm.chat({
       system: _selfContSystem, messages, temperature: _llmTemp, maxTokens: _selfContFirstTokens(_llmMaxTokens),
@@ -30577,19 +30580,24 @@ ${_operatorV6Block}` : "";
           const _fuAc = new AbortController();
           const _fuTimeout = setTimeout(() => _fuAc.abort(), 120000);
           const _fuStart = Date.now();
+          // A streaming client gets the answer's tokens as the brain writes them.
+          const _fuStream = typeof ctx?.chatToken === "function";
+          _chatProgress(ctx, { stage: "writing", label: "Writing the answer" });
           const _fuRes = await fetch(`${brainUrl}/api/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               model: brainModel,
               messages: [{ role: "system", content: _followUpSystem }, ..._followUpMessages],
-              stream: false,
+              stream: _fuStream,
               think: false,
               options: { temperature: 0.4, num_predict: _chatMaxTokens }
             }),
             signal: _fuAc.signal
-          }).finally(() => clearTimeout(_fuTimeout));
-          const _fuJson = await _fuRes.json().catch(() => ({}));
+          }).finally(() => { if (!_fuStream) clearTimeout(_fuTimeout); });
+          const _fuJson = _fuStream && _fuRes.ok
+            ? await _readOllamaChatStream(_fuRes, ctx.chatToken).catch(() => ({})).finally(() => clearTimeout(_fuTimeout))
+            : await _fuRes.json().catch(() => ({}));
           const _fuElapsed = Date.now() - _fuStart;
           BRAIN.conscious.stats.requests++;
           BRAIN.conscious.stats.totalMs += _fuElapsed;
