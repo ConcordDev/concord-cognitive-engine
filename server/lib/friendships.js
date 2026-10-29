@@ -75,18 +75,22 @@ export function unfriend(db, callerUserId, otherUserId) {
   return { ok: true };
 }
 
-/** Block. Bidirectional — neither side can send a new request after. */
+/** Block. Bidirectional — neither side can send a new request after.
+ * Records blocked_by (migration 493): requester/addressee describe
+ * the original friend request's direction, which is NOT who set the
+ * block — an addressee blocking their requester is the ordinary case.
+ * Only the recorded blocker may lift the block (see unblockUser). */
 export function blockUser(db, callerUserId, otherUserId) {
   const row = _findRow(db, callerUserId, otherUserId);
   if (row) {
-    db.prepare(`UPDATE friendships SET status = 'blocked', responded_at = unixepoch() WHERE id = ?`).run(row.id);
+    db.prepare(`UPDATE friendships SET status = 'blocked', blocked_by = ?, responded_at = unixepoch() WHERE id = ?`).run(callerUserId, row.id);
     return { ok: true, id: row.id };
   }
   const id = crypto.randomUUID();
   db.prepare(`
-    INSERT INTO friendships (id, requester_id, addressee_id, status, responded_at)
-    VALUES (?, ?, ?, 'blocked', unixepoch())
-  `).run(id, callerUserId, otherUserId);
+    INSERT INTO friendships (id, requester_id, addressee_id, status, blocked_by, responded_at)
+    VALUES (?, ?, ?, 'blocked', ?, unixepoch())
+  `).run(id, callerUserId, otherUserId, callerUserId);
   return { ok: true, id };
 }
 
@@ -151,22 +155,36 @@ export function isBlocked(db, a, b) {
   return !!(row && row.status === "blocked");
 }
 
-/** Undo a block. Deletes the pair row: the two accounts go back to
- * strangers — a block already ended any friendship, so there is
- * nothing to restore. */
+/** Undo a block. Only the blocker may lift it — the blocked party
+ * cannot unilaterally restore contact the blocker severed (GB-0045).
+ * Deletes the pair row: the two accounts go back to strangers — a
+ * block already ended any friendship, so there is nothing to restore.
+ * Rows blocked before blocked_by was recorded carry NULL: who set
+ * those is unprovable, so either party may lift them; every block set
+ * since records its blocker and is restricted to them. */
 export function unblockUser(db, callerUserId, otherUserId) {
   const row = _findRow(db, callerUserId, otherUserId);
   if (!row || row.status !== "blocked") return { ok: false, error: "not_blocked" };
+  if (row.blocked_by && row.blocked_by !== callerUserId) return { ok: false, error: "not_blocker" };
   db.prepare(`DELETE FROM friendships WHERE id = ?`).run(row.id);
   return { ok: true };
 }
 
-/** Ids of everyone in a blocked pair with this user (either party). */
-export function listBlocked(db, userId) {
+/** Blocked pairs involving this user, with who set each block
+ * (blockedBy null on rows blocked before it was recorded). */
+export function listBlockPairs(db, userId) {
   if (!db || !userId) return [];
   const rows = db.prepare(`
-    SELECT requester_id, addressee_id FROM friendships
+    SELECT requester_id, addressee_id, blocked_by FROM friendships
     WHERE status = 'blocked' AND (requester_id = ? OR addressee_id = ?)
   `).all(userId, userId);
-  return rows.map(r => (r.requester_id === userId ? r.addressee_id : r.requester_id));
+  return rows.map(r => ({
+    otherUserId: r.requester_id === userId ? r.addressee_id : r.requester_id,
+    blockedBy: r.blocked_by || null,
+  }));
+}
+
+/** Ids of everyone in a blocked pair with this user (either party). */
+export function listBlocked(db, userId) {
+  return listBlockPairs(db, userId).map(p => p.otherUserId);
 }

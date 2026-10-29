@@ -48,6 +48,16 @@ function makeFriendDb() {
       }
       return out;
     }
+    if (sql.startsWith("SELECT requester_id, addressee_id, blocked_by FROM friendships WHERE status = 'blocked'")) {
+      const [a, b] = args;
+      const out = [];
+      for (const r of rows.values()) {
+        if (r.status === "blocked" && (r.requester_id === a || r.addressee_id === b)) {
+          out.push({ requester_id: r.requester_id, addressee_id: r.addressee_id, blocked_by: r.blocked_by ?? null });
+        }
+      }
+      return out;
+    }
     if (sql.startsWith("SELECT * FROM friendships WHERE (requester_id = ? AND addressee_id = ?)")) {
       const [a, b, c, d] = args;
       for (const r of rows.values()) {
@@ -62,6 +72,7 @@ function makeFriendDb() {
       const status = sql.includes("'blocked'") ? "blocked" : "pending";
       rows.set(id, {
         id, requester_id: requesterId, addressee_id: addresseeId, status,
+        blocked_by: status === "blocked" ? args[3] : null,
         created_at: 1, responded_at: status === "blocked" ? 1 : null,
       });
       return { changes: 1 };
@@ -77,8 +88,8 @@ function makeFriendDb() {
       return { changes: row ? 1 : 0 };
     }
     if (sql.startsWith("UPDATE friendships SET status = 'blocked'")) {
-      const row = rows.get(args[0]);
-      if (row) { row.status = "blocked"; row.responded_at = 2; }
+      const row = rows.get(args[1]);
+      if (row) { row.status = "blocked"; row.blocked_by = args[0]; row.responded_at = 2; }
       return { changes: row ? 1 : 0 };
     }
     if (sql.startsWith("DELETE FROM friendships")) {
@@ -672,6 +683,33 @@ describe("S-TL-9 timeline safety verbs (F12)", () => {
     assert.equal(call("user-unblock", ada, { userId: "sf_bob" }).error, "That person isn't blocked.");
   });
 
+  it("GB-0045: the blocked party cannot lift the block; only the blocker can", () => {
+    const carol = asUser("ub_carol");
+    const dan = asUser("ub_dan");
+    befriend("ub_carol", "ub_dan");
+    const dansPost = call("post-create", dan, { content: "dan public", privacy: "public" }).result.post;
+    assert.equal(call("user-block", carol, { userId: "ub_dan" }).ok, true);
+    // Dan, the blocked party, tries to unblock himself: refused, with
+    // the real reason named — and the block fully stands.
+    const lift = call("user-unblock", dan, { userId: "ub_carol" });
+    assert.equal(lift.ok, false);
+    assert.equal(lift.error, "Only the person who set this block can undo it.");
+    assert.ok(!feedIds(carol).includes(dansPost.id), "still hidden after the refused lift");
+    assert.ok(!feedIds(dan).includes(
+      call("post-create", carol, { content: "carol public", privacy: "public" }).result.post.id,
+    ), "still hidden both directions");
+    // The safety lists agree: dan's own blocked list is empty (he set
+    // no block); carol's lists dan.
+    assert.deepEqual(call("safety-lists", dan, {}).result.blocked, []);
+    assert.deepEqual(
+      call("safety-lists", carol, {}).result.blocked.map((p) => p.userId),
+      ["ub_dan"],
+    );
+    // The blocker lifts it; strangers again.
+    assert.equal(call("user-unblock", carol, { userId: "ub_dan" }).ok, true);
+    assert.ok(feedIds(carol).includes(dansPost.id));
+  });
+
   it("block needs the friend graph — no db, an honest refusal, nothing half-done", () => {
     const noDb = { actor: { userId: "sf_ada" }, userId: "sf_ada", db: null };
     const r = call("user-block", noDb, { userId: "sf_bob" });
@@ -707,7 +745,8 @@ describe("S-TL-9 timeline safety verbs (F12)", () => {
     assert.deepEqual(lists2.blocked.map((b) => b.userId), ["sf_bob"]);
     assert.equal(typeof lists2.blocked[0].displayName, "string");
     const bobsLists = call("safety-lists", bob, {}).result;
-    assert.deepEqual(bobsLists.blocked.map((b) => b.userId), ["sf_ada"], "the pair shows from both sides");
+    assert.deepEqual(bobsLists.blocked.map((b) => b.userId), [],
+      "GB-0045: the blocked party's list holds only blocks THEY set — ada's block of bob is not bob's to see here or lift");
   });
 });
 

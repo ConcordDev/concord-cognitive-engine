@@ -6,7 +6,7 @@
 // authoritative, server-verified source for "are these two users friends",
 // as opposed to a client-supplied assertion. See checkPostAccess() below.
 import { guardAnonWrites } from "../lib/lens-authz.js";
-import { areFriends, blockUser, unblockUser, isBlocked, listBlocked } from "../lib/friendships.js";
+import { areFriends, blockUser, unblockUser, isBlocked, listBlockPairs } from "../lib/friendships.js";
 import { presentOwnedId } from "../lib/public-actor.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 
@@ -1610,7 +1610,13 @@ export default function registerTimelineActions(registerLensAction) {
     const db = tlDb(ctx);
     if (!db) return { ok: false, error: "Friend graph unavailable — unblocking needs it." };
     const r = unblockUser(db, actorId, targetId);
-    if (!r.ok) return { ok: false, error: "That person isn't blocked." };
+    if (!r.ok) {
+      // Name the real reason: a blocked party trying to lift someone
+      // else's block is not the same state as "isn't blocked."
+      return r.error === "not_blocker"
+        ? { ok: false, error: "Only the person who set this block can undo it." }
+        : { ok: false, error: "That person isn't blocked." };
+    }
     return { ok: true, result: { userId: targetId, blocked: false, displayName: tlPersonName(ctx, s, targetId) } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
@@ -1663,7 +1669,13 @@ export default function registerTimelineActions(registerLensAction) {
       ok: true,
       result: {
         muted: (s.mutes.get(actorId) || []).map(named),
-        blocked: (db ? listBlocked(db, actorId) : []).map(named),
+        // This list is the viewer's own undo surface: only blocks they
+        // set (or legacy rows with no recorded blocker) belong here.
+        // A pair the OTHER party blocked them in is not theirs to lift
+        // and listing it as "your blocks" would mislabel it.
+        blocked: (db ? listBlockPairs(db, actorId) : [])
+          .filter((p) => !p.blockedBy || p.blockedBy === actorId)
+          .map((p) => named(p.otherUserId)),
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
