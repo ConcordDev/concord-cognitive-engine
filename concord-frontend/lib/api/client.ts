@@ -2084,6 +2084,10 @@ export const apiHelpers = {
   lens: {
     list: (domain: string, params?: { type?: string; search?: string; tags?: string; status?: string; limit?: number; offset?: number }) =>
       api.get(`/api/lens/${domain}`, { params }),
+    // Q79: the export read — artifacts (scaffolding excluded) merged with
+    // the domain's state-resident records when it has an export provider.
+    exportList: (domain: string, params?: { limit?: number }) =>
+      api.get(`/api/lens/${domain}/export`, { params }),
     get: (domain: string, id: string) =>
       api.get(`/api/lens/${domain}/${id}`),
     create: (domain: string, data: { type: string; title?: string; data?: Record<string, unknown>; meta?: Record<string, unknown> }) =>
