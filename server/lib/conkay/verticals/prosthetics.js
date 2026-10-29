@@ -6,6 +6,36 @@ import fs from 'fs';
 import path from 'path';
 import { createHash } from 'crypto';
 
+/**
+ * Request-path limits. Slicing costs O(triangles × layers) and runs
+ * synchronously on the caller's thread, so the HTTP routes reject work
+ * past these bounds (400) instead of blocking the event loop.
+ * The default socket is 480 triangles × 600 layers.
+ */
+export const SLICER_LIMITS = Object.freeze({
+  maxSegments: 256,
+  maxStacks: 256,
+  maxLayers: 2000,
+  minLayerHeight: 0.05,
+  // ~0.5 s of slicing on the dev Mac (32k triangles × 600 layers measured 0.45 s).
+  maxTriangleLayers: 20_000_000,
+});
+
+/**
+ * Validate socket mesh resolution before any allocation.
+ * Returns null when acceptable, else { code, error }.
+ */
+export function checkSocketParams({ segments = 24, stacks = 10 } = {}) {
+  const okInt = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
+  if (!okInt(segments, 3, SLICER_LIMITS.maxSegments) || !okInt(stacks, 1, SLICER_LIMITS.maxStacks)) {
+    return {
+      code: 'SOCKET_TOO_LARGE',
+      error: `segments must be an integer 3..${SLICER_LIMITS.maxSegments} and stacks 1..${SLICER_LIMITS.maxStacks}`,
+    };
+  }
+  return null;
+}
+
 /** Parametric residual-limb socket (synthetic) as triangle mesh. */
 export function buildParametricSocket({
   height = 120,
@@ -226,7 +256,9 @@ export function emitBioprintToolpath(mesh, {
   const pos = mesh?.positions || [];
   const idx = mesh?.indices || [];
   if (pos.length < 9 || idx.length < 3) return { ok: false, error: 'empty_mesh', code: 'NO_MESH' };
-  fs.mkdirSync(outDir, { recursive: true });
+  if (!(Number.isFinite(layerHeight) && layerHeight >= SLICER_LIMITS.minLayerHeight)) {
+    return { ok: false, error: `layerHeight must be a number >= ${SLICER_LIMITS.minLayerHeight} mm`, code: 'BAD_LAYER_HEIGHT' };
+  }
   let minY = Infinity;
   let maxY = -Infinity;
   for (let i = 0; i < pos.length; i += 3) {
@@ -234,6 +266,17 @@ export function emitBioprintToolpath(mesh, {
   }
   const height = Math.max(layerHeight, maxY - minY);
   const layers = Math.max(1, Math.ceil(height / layerHeight));
+  const triangles = Math.floor(idx.length / 3);
+  if (layers > SLICER_LIMITS.maxLayers || triangles * layers > SLICER_LIMITS.maxTriangleLayers) {
+    return {
+      ok: false,
+      error: `slice too large: ${triangles} triangles × ${layers} layers (limits: ${SLICER_LIMITS.maxLayers} layers, ${SLICER_LIMITS.maxTriangleLayers} triangle-layers)`,
+      code: 'SLICE_TOO_LARGE',
+      triangles,
+      layers,
+    };
+  }
+  fs.mkdirSync(outDir, { recursive: true });
   // mm of filament per mm of toolpath travel: bead cross-section
   // (layerHeight × lineWidth) over filament cross-section.
   const filamentArea = Math.PI * (filamentDiameter / 2) ** 2;
