@@ -76,9 +76,11 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   const [imported, setImported] = useState<Set<string>>(new Set());
+  const [duplicates, setDuplicates] = useState<Set<string>>(new Set());
   const [resolvedWork, setResolvedWork] = useState<ResolvedWork | null>(null);
   const [resolveError, setResolveError] = useState<string | null>(null);
   const [resolvedImported, setResolvedImported] = useState(false);
+  const [resolvedDuplicate, setResolvedDuplicate] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchData = useCallback(async (q: string) => {
@@ -93,7 +95,7 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
       setLoading(true);
       setError(null);
       setWorks([]); setTotal(0);
-      setResolvedWork(null); setResolveError(null); setResolvedImported(false);
+      setResolvedWork(null); setResolveError(null); setResolvedImported(false); setResolvedDuplicate(false);
       try {
         const r = await lensRun('research', 'academic-resolve-import', { identifier: doi, preview: true });
         const work = r.data?.result?.work as ResolvedWork | undefined;
@@ -144,7 +146,15 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
           source: 'crossref',
         },
       });
-      if (r.data?.ok) setImported((prev) => new Set(prev).add(w.doi));
+      if (r.data?.ok) {
+        // S3 (F8): a duplicate files nothing — say "Already in
+        // library", never a false "Imported".
+        if ((r.data.result as { duplicate?: boolean } | null)?.duplicate) {
+          setDuplicates((prev) => new Set(prev).add(w.doi));
+        } else {
+          setImported((prev) => new Set(prev).add(w.doi));
+        }
+      }
     } catch { /* button stays enabled on failure */ }
   }, []);
 
@@ -152,7 +162,13 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
     if (!resolvedWork) return;
     try {
       const r = await lensRun('research', 'academic-import', { work: resolvedWork });
-      if (r.data?.ok) setResolvedImported(true);
+      if (r.data?.ok) {
+        if ((r.data.result as { duplicate?: boolean } | null)?.duplicate) {
+          setResolvedDuplicate(true);
+        } else {
+          setResolvedImported(true);
+        }
+      }
     } catch { /* button stays enabled on failure */ }
   }, [resolvedWork]);
 
@@ -225,11 +241,11 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
             <button
               type="button"
               onClick={() => void importResolved()}
-              disabled={resolvedImported}
+              disabled={resolvedImported || resolvedDuplicate}
               className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded border border-violet-500/30 bg-violet-500/10 text-[10px] text-violet-200 disabled:opacity-50 mt-0.5"
             >
               <BookmarkPlus className="w-2.5 h-2.5" />
-              {resolvedImported ? 'Imported' : 'Add to library'}
+              {resolvedImported ? 'Imported' : resolvedDuplicate ? 'Already in library' : 'Add to library'}
             </button>
           </div>
         </div>
@@ -288,11 +304,11 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
                     <button
                       type="button"
                       onClick={() => void importWork(w)}
-                      disabled={imported.has(w.doi)}
+                      disabled={imported.has(w.doi) || duplicates.has(w.doi)}
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-violet-500/30 bg-violet-500/10 text-[10px] text-violet-200 disabled:opacity-50"
                     >
                       <BookmarkPlus className="w-2.5 h-2.5" />
-                      {imported.has(w.doi) ? 'Imported' : 'Add to library'}
+                      {imported.has(w.doi) ? 'Imported' : duplicates.has(w.doi) ? 'Already in library' : 'Add to library'}
                     </button>
                   )}
                 </div>

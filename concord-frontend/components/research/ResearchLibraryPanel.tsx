@@ -5,7 +5,7 @@
  * reference detail showing citations, annotations and related items.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, Plus, BookMarked, ChevronLeft, ChevronDown, Trash2, Copy, FileText, ExternalLink, Pencil, Link2, X, Tag, Highlighter } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -106,6 +106,8 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  const [duplicateNote, setDuplicateNote] = useState<Reference | null>(null);
+  const hasLoadedRef = useRef(false);
   const [selected, setSelected] = useState<Reference | null>(null);
   const [citations, setCitations] = useState<{ apa: string; mla: string; bibtex: string; chicago?: string } | null>(null);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
@@ -117,12 +119,20 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
   const [related, setRelated] = useState<Reference[]>([]);
   const [relateQuery, setRelateQuery] = useState('');
 
+  // S3 (F6): the library is loaded whole and the search box filters it
+  // client-side, live — the note search's model (a local, exact filter),
+  // not a server round-trip per keystroke. The old wiring re-ran
+  // reference-list on every keystroke with setLoading(true) up front,
+  // and the render below swaps the WHOLE panel (search input included)
+  // for a spinner while loading — the input unmounted on the first
+  // keystroke, focus died with it, and racing responses could restore a
+  // stale list, so in the live surface the box accepted text and the
+  // list never filtered. Filtering locally removes that whole chain:
+  // no fetch, no unmount, no race. The server-side reference-list query
+  // stays for other consumers.
   const refresh = useCallback(async () => {
-    setLoading(true);
-    const params: Record<string, string> = {};
-    if (query.trim()) params.query = query.trim();
-    if (activeTag) params.tag = activeTag;
-    const r = await lensRun('research', 'reference-list', params);
+    if (!hasLoadedRef.current) setLoading(true);
+    const r = await lensRun('research', 'reference-list', {});
     if (r.data?.ok === false) {
       setLoadError(r.data?.error || 'Could not load the library.');
       setLoading(false);
@@ -130,8 +140,24 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
     }
     setLoadError(null);
     setReferences(r.data?.result?.references || []);
+    hasLoadedRef.current = true;
     setLoading(false);
-  }, [query, activeTag]);
+  }, []);
+
+  // Case-insensitive substring over title / authors / journal / DOI /
+  // tags — the same field set reference-list's query matches server-side.
+  const visibleReferences = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return references.filter((r) => {
+      if (activeTag && !r.tags.includes(activeTag)) return false;
+      if (!q) return true;
+      return r.title.toLowerCase().includes(q)
+        || (r.authors || '').toLowerCase().includes(q)
+        || (r.journal || '').toLowerCase().includes(q)
+        || (r.doi || '').toLowerCase().includes(q)
+        || r.tags.some((t) => t.includes(q));
+    });
+  }, [references, query, activeTag]);
 
   const refreshTags = useCallback(async () => {
     const r = await lensRun<{ tags: TagCount[] }>('research', 'tag-list', {});
@@ -236,6 +262,19 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
       tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    // S3 (F8): reference-add passes the same duplicate gate as imports.
+    // On a hit nothing was filed — say so, keep the form open, and offer
+    // the existing record instead of silently "adding" a twin.
+    const dupRef = (r.data?.result as { duplicate?: boolean; reference?: Reference } | undefined)?.duplicate
+      ? (r.data?.result as { reference?: Reference }).reference
+      : undefined;
+    if (dupRef) {
+      setDuplicateNote(dupRef);
+      setError(null);
+      await refresh(); await refreshTags(); onChange();
+      return;
+    }
+    setDuplicateNote(null);
     setForm({ title: '', authors: '', year: '', type: 'article', journal: '', doi: '', tags: '' });
     setShowAdd(false); setError(null);
     await refresh(); await refreshTags(); onChange();
@@ -255,7 +294,11 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
       );
       return;
     }
-    setImportMsg(`Imported "${ref.title}" via ${ref.source ? sourceLabel(ref.source) : 'the scholarly record'}.`);
+    if ((r.data?.result as { duplicate?: boolean } | undefined)?.duplicate) {
+      setImportMsg(`Already in your library: "${ref.title}" is already filed.`);
+    } else {
+      setImportMsg(`Imported "${ref.title}" via ${ref.source ? sourceLabel(ref.source) : 'the scholarly record'}.`);
+    }
     setIdentifier('');
     await refresh(); await refreshTags(); onChange();
   };
@@ -456,7 +499,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
       <div className="flex gap-2">
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search title, author, journal…"
           className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100" />
-        <button type="button" onClick={() => setShowAdd((v) => !v)}
+        <button type="button" onClick={() => { setDuplicateNote(null); setShowAdd((v) => !v); }}
           className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg">
           <Plus className="w-3.5 h-3.5" /> Add
         </button>
@@ -503,6 +546,14 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={add}
             className="col-span-2 bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Add reference</button>
+          {duplicateNote && (
+            <div className="col-span-2 flex items-center gap-2 text-[11px] text-amber-300 bg-amber-950/30 border border-amber-900/40 rounded-lg px-2 py-1.5">
+              <span className="flex-1">Already in your library: &ldquo;{duplicateNote.title}&rdquo; is already filed — nothing new was added.</span>
+              <button type="button"
+                onClick={() => { setShowAdd(false); setDuplicateNote(null); void openRef(duplicateNote); }}
+                className="underline hover:text-amber-200 shrink-0">Open it</button>
+            </div>
+          )}
           <div className="col-span-2 border-t border-zinc-800 pt-2">
             <p className="text-[11px] text-zinc-400 mb-1.5">…or add by identifier — a DOI, an arXiv ID, or a doi.org / arxiv.org link, resolved from the scholarly record:</p>
             <div className="flex gap-2">
@@ -525,9 +576,19 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
         <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No references. Add papers and books to build your library.
         </div>
+      ) : visibleReferences.length === 0 ? (
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
+          {query.trim()
+            ? `No references match "${query.trim()}".`
+            : 'No references carry the selected tag.'}
+        </div>
       ) : (
+        <>
+        {(query.trim() || activeTag) && (
+          <p className="text-[11px] text-zinc-500">Showing {visibleReferences.length} of {references.length} references</p>
+        )}
         <ul className="space-y-2">
-          {references.map((r) => (
+          {visibleReferences.map((r) => (
             <li key={r.id} className="flex items-start justify-between bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
               <button type="button" onClick={() => openRef(r)} className="text-left flex items-start gap-2 min-w-0">
                 <BookMarked className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
@@ -555,6 +616,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
             </li>
           ))}
         </ul>
+        </>
       )}
     </div>
   );
