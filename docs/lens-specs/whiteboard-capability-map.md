@@ -17,6 +17,30 @@
 > appended below as slices land; the Wave-3 audit text further down
 > is history, not current truth.
 
+> **Builder update — S1+S3+S2 landed (B7, 2026-10-28):**
+> - **S1 (one board store):** canvas boards mirror into the domain
+>   board store under their DTU id (`origin: 'canvas'`); board-list
+>   counts both element models; the four Analyze macros resolve
+>   elements board-first (the Inspector previously fed them an empty
+>   artifact shadow — the zeros' frontend half); the Collab list
+>   tags canvas boards and never loads one into the Shape editor.
+> - **S3 (honest save):** the kept report DTU is a version chain on
+>   the board record (`keptDtuId/keptVersion/keptAt/keptSceneHash`) —
+>   DTUs are provenance-locked, so versions replace in-place edits;
+>   the Keep menu hydrates the linkage on mount, never re-mints an
+>   unchanged board, and shows a persistent kept line. Metadata-only
+>   board-saves no longer erase scene/title; the Studio autosave
+>   persists an emptied board.
+> - **S2 (delete):** board-delete is soft via `deletedAt` (one funnel:
+>   list/load/duplicate/Analyze); new macros `board-restore`,
+>   `boards-trash-list`, `board-delete-permanent` (57 total). The
+>   native `confirm()` gates are gone from both lists and the owner
+>   menu: inline two-step + 12s Undo window, then the hard commit
+>   (REST DTU delete for canvas boards). The Workbench has the Trash
+>   view. (Audit correction: the REST PATCH/DELETE whiteboard routes
+>   DO exist in server.js — the stale route inventory that suggested
+>   otherwise is not current; the owner macros were always real.)
+
 > **Re-verification (HANDOFF-3 batch L8, 2026-10-28, against main e9791d4d):**
 > The Wave-3 audit below is kept as history — including its headline
 > room:join fix, which is intact. Since that audit, every remaining
