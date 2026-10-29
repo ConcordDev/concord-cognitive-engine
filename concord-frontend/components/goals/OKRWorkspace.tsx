@@ -66,6 +66,7 @@ interface ChartStats {
 interface Reminder {
   id: string; goalId: string | null; label: string; kind: string;
   cadence: string; dueAt: string; done: boolean; firedCount: number;
+  firedAt?: string | null;
 }
 interface DepEdge { id: string; from: string; to: string; kind: string; }
 interface DepResult {
@@ -827,7 +828,7 @@ function ChartsTab() {
 
 function RemindersTab() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [stats, setStats] = useState<{ total: number; pending: number; overdue: number } | null>(null);
+  const [stats, setStats] = useState<{ total: number; pending: number; overdue: number; fired: number } | null>(null);
   const [label, setLabel] = useState('');
   const [dueAt, setDueAt] = useState('');
   const [kind, setKind] = useState('review');
@@ -878,7 +879,7 @@ function RemindersTab() {
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 md:grid-cols-3">
         <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Reminder label" className={`${inputCls} md:col-span-3`} />
-        <input value={dueAt} onChange={(e) => setDueAt(e.target.value)} type="date" className={inputCls} />
+        <input value={dueAt} onChange={(e) => setDueAt(e.target.value)} type="datetime-local" className={inputCls} aria-label="Due date and time" />
         <select value={kind} onChange={(e) => setKind(e.target.value)} className={inputCls}>
           {['review', 'checkin', 'deadline'].map((k) => <option key={k} value={k}>{k}</option>)}
         </select>
@@ -893,11 +894,12 @@ function RemindersTab() {
       </div>
 
       {stats && stats.total > 0 && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           {[
             { label: 'Total', value: stats.total, cls: 'text-cyan-300' },
             { label: 'Pending', value: stats.pending, cls: 'text-amber-300' },
             { label: 'Overdue', value: stats.overdue, cls: 'text-red-300' },
+            { label: 'Fired', value: stats.fired, cls: 'text-violet-300' },
           ].map((s) => (
             <div key={s.label} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-center">
               <div className={`font-mono text-base ${s.cls}`}>{s.value}</div>
@@ -918,7 +920,8 @@ function RemindersTab() {
               <div className="min-w-0 flex-1">
                 <span className={`text-xs ${rm.done ? 'text-zinc-400 line-through' : 'text-white'}`}>{rm.label}</span>
                 <span className="ml-2 text-[10px] text-zinc-400">
-                  {rm.kind} · {rm.cadence} · due {rm.dueAt.slice(0, 10)}
+                  {rm.kind} · {rm.cadence} · due {rm.dueAt.slice(0, 16).replace('T', ' ')}
+                  {rm.goalId && ` · ${rm.goalId}`}
                   {rm.firedCount > 0 && ` · fired ${rm.firedCount}×`}
                 </span>
               </div>
