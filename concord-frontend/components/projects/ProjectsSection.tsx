@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Plus, KanbanSquare, ListChecks, CalendarRange, Repeat, BarChart3,
-  Flag, Users, Settings2, Briefcase, Radio,
+  Flag, Users, Settings2, Briefcase, Radio, History,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -24,6 +24,7 @@ import { PjTeamPanel } from './PjTeamPanel';
 import { PjSettingsPanel } from './PjSettingsPanel';
 import { PjPortfolioPanel } from './PjPortfolioPanel';
 import { PjCollabPanel } from './PjCollabPanel';
+import { PjActivityPanel } from './PjActivityPanel';
 import { ProjectsKeepMenu } from './ProjectsKeepMenu';
 
 interface Project {
@@ -35,7 +36,7 @@ interface Dash {
   name: string; totalTasks: number; done: number; completionPct: number;
   overdue: number; activeSprints: number; openMilestones: number; members: number;
 }
-type TabId = 'board' | 'backlog' | 'timeline' | 'sprints' | 'reports' | 'planning' | 'team' | 'collab' | 'settings' | 'portfolio';
+type TabId = 'board' | 'backlog' | 'timeline' | 'sprints' | 'reports' | 'planning' | 'team' | 'collab' | 'activity' | 'settings' | 'portfolio';
 const TABS: { id: TabId; label: string; icon: typeof KanbanSquare }[] = [
   { id: 'board', label: 'Board', icon: KanbanSquare },
   { id: 'backlog', label: 'Backlog', icon: ListChecks },
@@ -45,6 +46,7 @@ const TABS: { id: TabId; label: string; icon: typeof KanbanSquare }[] = [
   { id: 'planning', label: 'Planning', icon: Flag },
   { id: 'team', label: 'Team', icon: Users },
   { id: 'collab', label: 'Collab', icon: Radio },
+  { id: 'activity', label: 'Activity', icon: History },
   { id: 'settings', label: 'Settings', icon: Settings2 },
   { id: 'portfolio', label: 'Portfolio', icon: Briefcase },
 ];
@@ -142,12 +144,29 @@ export function ProjectsSection() {
   useEffect(() => { void refreshProjects(); }, [refreshProjects]);
   useEffect(() => { void refreshDash(); }, [refreshDash]);
 
-  const addProject = async () => {
+  const [dupNameWarn, setDupNameWarn] = useState(false);
+  const addProject = async (confirmDuplicateName = false) => {
     if (!form.name.trim()) { setError('Project name is required.'); return; }
-    const r = await lensRun('projects', 'project-create', { name: form.name.trim(), key: form.key.trim() });
-    if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    const r = await lensRun('projects', 'project-create', {
+      name: form.name.trim(), key: form.key.trim(),
+      ...(confirmDuplicateName ? { confirmDuplicateName: true } : {}),
+    });
+    if (r.data?.ok === false) {
+      // S10 (F13): a duplicate name is a warning the user confirms
+      // in place; a duplicate key is refused outright (its message
+      // names the holder project and the next free key).
+      if ((r.data as { code?: string } | null)?.code === 'duplicate_name') {
+        setDupNameWarn(true);
+        setError(null);
+        return;
+      }
+      setDupNameWarn(false);
+      setError(r.data?.error || 'Failed');
+      return;
+    }
     const createdId = (r.data?.result as { project?: { id?: string } } | null)?.project?.id;
     setForm({ name: '', key: '' });
+    setDupNameWarn(false);
     setComposerOpen(false);
     setError(null);
     await refreshProjects();
@@ -270,10 +289,19 @@ export function ProjectsSection() {
                   onSubmit={(e) => { e.preventDefault(); void addProject(); }}
                 >
                   <h2 className="text-sm font-semibold text-zinc-100">New project</h2>
-                  <input ref={nameInputRef} aria-label="New project name" placeholder="New project name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  <input ref={nameInputRef} aria-label="New project name" placeholder="New project name" value={form.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); setDupNameWarn(false); }}
                     className="w-full bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
-                  <input aria-label="Project key" placeholder="KEY" value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })}
+                  <input aria-label="Project key" placeholder="KEY" value={form.key} onChange={(e) => { setForm({ ...form, key: e.target.value }); setDupNameWarn(false); }}
                     className="w-full bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white uppercase" />
+                  {dupNameWarn && (
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-amber-300 bg-amber-950/40 border border-amber-900/50 rounded-lg px-3 py-2">
+                      <span>A project named “{form.name.trim()}” already exists.</span>
+                      <button type="button" onClick={() => void addProject(true)}
+                        className="px-2 py-0.5 bg-amber-900 hover:bg-amber-800 text-amber-100 rounded">
+                        Create anyway
+                      </button>
+                    </div>
+                  )}
                   <div className="flex justify-end gap-2">
                     <button type="button" onClick={() => setComposerOpen(false)}
                       className="px-3 py-1.5 text-xs text-zinc-300">
@@ -370,6 +398,7 @@ export function ProjectsSection() {
                 {tab === 'planning' && <PjPlanningPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'team' && <PjTeamPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'collab' && <PjCollabPanel projectId={activeProject} onChange={refreshDash} onJumpToProject={jumpToProject} onOpenTask={openTaskFromPalette} />}
+                {tab === 'activity' && <PjActivityPanel projectId={activeProject} />}
                 {tab === 'settings' && <PjSettingsPanel projectId={activeProject} project={project} onProjectSaved={refreshProjects} onChange={refreshDash} />}
                 {tab === 'portfolio' && <PjPortfolioPanel onLifecycle={refreshProjects} />}
               </div>
