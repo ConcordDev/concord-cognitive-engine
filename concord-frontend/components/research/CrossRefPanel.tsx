@@ -24,6 +24,12 @@ interface CrossRefWork {
   subjects: string[];
   citationCount: number | null;
   url: string | null;
+  // S8 (F9) quality signals — present only on the research domain's
+  // crossref-search results; the Paper lens's live_crossref works don't
+  // carry them and render exactly as before.
+  exactTitleMatch?: boolean;
+  duplicatesCollapsed?: number;
+  metadataComplete?: boolean;
 }
 
 // The normalised work shape `research.academic-resolve-import` returns
@@ -72,6 +78,7 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
   const [query, setQuery] = useState('');
   const [works, setWorks] = useState<CrossRefWork[]>([]);
   const [total, setTotal] = useState(0);
+  const [collapsed, setCollapsed] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
@@ -85,7 +92,7 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
 
   const fetchData = useCallback(async (q: string) => {
     if (!q.trim()) {
-      setWorks([]); setTotal(0); setResolvedWork(null); setResolveError(null); return;
+      setWorks([]); setTotal(0); setCollapsed(0); setResolvedWork(null); setResolveError(null); return;
     }
     // DOI-shaped query (research lens only — the resolver macro lives in
     // the research domain): resolve the exact work instead of keyword
@@ -94,7 +101,7 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
     if (doi) {
       setLoading(true);
       setError(null);
-      setWorks([]); setTotal(0);
+      setWorks([]); setTotal(0); setCollapsed(0);
       setResolvedWork(null); setResolveError(null); setResolvedImported(false); setResolvedDuplicate(false);
       try {
         const r = await lensRun('research', 'academic-resolve-import', { identifier: doi, preview: true });
@@ -116,6 +123,28 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
     setLoading(true);
     setError(null);
     setResolvedWork(null); setResolveError(null);
+    // S8 (F9): the research lens searches through the domain's own
+    // crossref-search macro — a deep query.title pool, duplicate
+    // deposits collapsed, canonical (exact-title, most complete)
+    // records ranked first, quality signals on each record. The shared
+    // live_crossref handler also serves the Paper lens and is
+    // untouched; the Paper path below runs exactly as before.
+    if (domain === 'research') {
+      try {
+        const r = await lensRun('research', 'crossref-search', { query: q, limit: 15 });
+        const res = r.data?.result as { works?: CrossRefWork[]; total?: number; collapsedCount?: number } | undefined;
+        if (r.data?.ok && res) {
+          setWorks(res.works || []);
+          setTotal(res.total || 0);
+          setCollapsed(res.collapsedCount || 0);
+          setUpdatedAt(Math.floor(Date.now() / 1000));
+        } else setError(r.data?.error || 'fetch_failed');
+      } catch {
+        setError('fetch_failed');
+      }
+      setLoading(false);
+      return;
+    }
     const r = await runMacro<{ ok: boolean; works?: CrossRefWork[]; total?: number; fetchedAt?: number; reason?: string }>(
       domain, 'live_crossref', { query: q, limit: 15 },
     );
@@ -261,7 +290,7 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
 
       {works.length > 0 && (
         <ul className="divide-y divide-zinc-800/40 max-h-[600px] overflow-y-auto">
-          {works.map((w) => (
+          {works.map((w, i) => (
             <li key={w.doi} className="px-3 py-2.5 text-xs">
               <div className="flex items-start gap-2">
                 <Quote className="w-3 h-3 text-zinc-400 shrink-0 mt-0.5" aria-hidden="true" />
@@ -273,6 +302,16 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
                   >
                     {w.title || w.doi}
                   </a>
+                  {i === 0 && w.exactTitleMatch && (
+                    <span className="ml-2 align-middle rounded bg-violet-500/15 border border-violet-500/30 px-1 py-px text-[9px] font-mono uppercase tracking-wide text-violet-200">
+                      Best match
+                    </span>
+                  )}
+                  {w.metadataComplete === false && (
+                    <span className="ml-2 align-middle rounded bg-zinc-800 px-1 py-px text-[9px] font-mono uppercase tracking-wide text-zinc-400">
+                      Partial metadata
+                    </span>
+                  )}
                   <div className="text-[10px] text-zinc-400 mt-0.5 font-mono">
                     {w.publishedYear ? `${w.publishedYear} · ` : ''}
                     {w.containerTitle || w.publisher || ''}
@@ -287,6 +326,11 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
                   )}
                   {w.subjects.length > 0 && (
                     <div className="text-[10px] text-zinc-400 mt-0.5 truncate">{w.subjects.slice(0, 3).join(' · ')}</div>
+                  )}
+                  {(w.duplicatesCollapsed ?? 0) > 0 && (
+                    <div className="text-[10px] text-amber-300/70 mt-0.5">
+                      +{w.duplicatesCollapsed} near-identical Crossref {w.duplicatesCollapsed === 1 ? 'deposit' : 'deposits'} collapsed into this record
+                    </div>
                   )}
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0 mt-0.5">
@@ -319,7 +363,7 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
       )}
 
       <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
-        Source: CrossRef · {total > 0 && `${total.toLocaleString()} total · `}{updatedAt && new Date(updatedAt * 1000).toLocaleTimeString()}
+        Source: CrossRef · {total > 0 && `${total.toLocaleString()} total · `}{collapsed > 0 && `${collapsed} duplicate ${collapsed === 1 ? 'deposit' : 'deposits'} collapsed · `}{updatedAt && new Date(updatedAt * 1000).toLocaleTimeString()}
       </footer>
     </section>
   );
