@@ -70,6 +70,7 @@ import { budgetLeftMs, raceDeadline } from "./chat/gen-budget.js";
 import { fallThroughDtuGet } from "./chat/dtu-get-fallthrough.js";
 import { guardPlaybackClaim as _guardPlaybackClaimRaw, historyHasSong } from "./chat/playback-honesty.js";
 import { guardFeaClaim } from "./chat/fea-honesty.js";
+import { guardNumericTrace } from "./chat/numeric-trace.js";
 import { textbookNeedsWeb } from "./chat/textbook-fallback.js";
 import { todayLine } from "./chat/today.js";
 import {
@@ -104,6 +105,7 @@ const ECHOED_TOOL_RESULT_RE = /^\s*\[TOOL_RESULT:/;
 const TOOL_REQUIRED_PARAMS = {
   web_search:        ["query"],
   run_compute:       ["key", "input"],
+  dtu_search:        ["query"],
   list_recipes:      [],
   run_recipe:        ["recipe", "inputs"],
   conkay_design:     ["text"],
@@ -302,6 +304,8 @@ Available tools (with one working example each):
   Example: [TOOL_CALL: {"tool": "web_search", "params": {"query": "concord cognitive engine"}}]
 - run_compute: Run a math/physics/chemistry/quantum/engineering calculation. Params: {"key": "module.function", "input": {...}}. Physics/chemistry/engineering functions take a named-field object (e.g. physics.ohmsLaw -> {"voltage":12,"resistance":4}). Symbolic math (symbolic.differentiate / integrate / simplify / solve / expand / evaluate) takes {"expression": "...", "variable": "x"}.
   Example: [TOOL_CALL: {"tool": "run_compute", "params": {"key": "symbolic.integrate", "input": {"expression": "x^2", "variable": "x"}}}]
+- dtu_search: Search the knowledge base (DTUs) the user can see. Read-only. Use it BEFORE citing any DTU; only ids and titles it returns may be cited. Params: {"query": "search terms", "limit": 8}
+  Example: [TOOL_CALL: {"tool": "dtu_search", "params": {"query": "heat pump efficiency"}}]
 - list_recipes: List tested multi-step recipes (beam sizing, column buckling, unit conversion, material comparison, wall conduction, pipe flow) and their inputs. Check this FIRST for an engineering calculation. Params: {"query": "what you want to do"}
   Example: [TOOL_CALL: {"tool": "list_recipes", "params": {"query": "size a beam"}}]
 - run_recipe: Run a recipe in SI; returns the result, pass/fail checks and a receipt. Quote only numbers from its result. Params: {"recipe": "beam_sizing", "inputs": {"spanM": 4, "loadN": 10000, "widthM": "60 mm", "material": "steel-a36", "safetyFactor": 2}}
@@ -1210,6 +1214,10 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           ...(lead ? { artifact: lead } : {}),
           ...(artifacts.length ? { artifacts } : {}),
         };
+      }
+      case "dtu_search": {
+        const { dispatchChatDtuSearch } = await import("./chat-tool-surface.js");
+        return dispatchChatDtuSearch(runMacro, ctx, call.params);
       }
       case "list_recipes":
       case "run_recipe": {
@@ -2804,6 +2812,9 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
 
   // A failed FEA run is never reported as a pass (INC-128).
   finalAnswer = guardFeaClaim(finalAnswer, allToolCalls);
+  // Figures with units must trace to a tool result or the user's own message.
+  const _numTrace = guardNumericTrace(finalAnswer, allToolCalls, { prompt: message });
+  finalAnswer = _numTrace.text;
   // A streamed follow-up once called an 880 mm layout "2.7 m tall".
   finalAnswer = alignReplyToBbox(finalAnswer, specBbox(allToolCalls));
   finalAnswer = ensureDesignSummary(finalAnswer, allToolCalls);
@@ -2816,6 +2827,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     ok: true,
     answer: finalAnswer,
     ...(linksRemoved.length ? { linksRemoved } : {}),
+    ...(_numTrace.untraced.length ? { untracedNumbers: _numTrace.untraced } : {}),
     ...(selfContinuation ? { selfContinuation } : {}),
     toolCalls: allToolCalls,
     artifacts: allArtifacts,
