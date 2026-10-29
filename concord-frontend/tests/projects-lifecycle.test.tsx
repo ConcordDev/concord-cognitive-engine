@@ -148,10 +148,15 @@ describe('Projects lifecycle — archive and delete ask first (F1/F14)', () => {
 });
 
 describe('Projects lifecycle — archived projects in Portfolio (F1)', () => {
-  it('marks archived rows and restores one back to active', async () => {
+  it('keeps archived rows behind a toggle, marks them, and restores one back to active', async () => {
     render(<ProjectsSection />);
     await screen.findByText('APO');
     fireEvent.click(screen.getByText('Portfolio'));
+    // F2: archived projects are not in the default listing — the
+    // heading count and the visible rows describe the same set.
+    await screen.findByText('Show archived (1)');
+    expect(screen.queryByText('Old Relic')).toBeNull();
+    fireEvent.click(screen.getByText('Show archived (1)'));
     await screen.findByText('Old Relic');
     expect(screen.getByText('Archived')).toBeTruthy();
     fireEvent.click(screen.getByText('Restore'));
@@ -164,6 +169,7 @@ describe('Projects lifecycle — archived projects in Portfolio (F1)', () => {
     render(<ProjectsSection />);
     await screen.findByText('APO');
     fireEvent.click(screen.getByText('Portfolio'));
+    fireEvent.click(await screen.findByText('Show archived (1)'));
     await screen.findByText('Old Relic');
     // The header carries its own Delete button; the archived row's is last.
     const deleteButtons = screen.getAllByText('Delete');

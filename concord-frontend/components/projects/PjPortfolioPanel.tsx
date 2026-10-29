@@ -30,6 +30,7 @@ export function PjPortfolioPanel({ onLifecycle }: { onLifecycle?: () => void }) 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -85,6 +86,11 @@ export function PjPortfolioPanel({ onLifecycle }: { onLifecycle?: () => void }) 
   }
 
   const active = projects.filter((p) => !p.archived);
+  const archivedCount = projects.length - active.length;
+  // F2: the heading count and the visible rows must describe the same
+  // set — archived projects sit behind an explicit toggle by default,
+  // and carry their Archived marker when shown.
+  const visible = showArchived ? projects : active;
 
   return (
     <div className="space-y-4">
@@ -105,13 +111,21 @@ export function PjPortfolioPanel({ onLifecycle }: { onLifecycle?: () => void }) 
       </div>
 
       <h3 className="flex items-center gap-1 text-xs font-semibold text-gray-300">
-        <Briefcase className="w-3.5 h-3.5 text-indigo-400" /> All projects (<span className="tabular-nums">{active.length}</span> active)
+        <Briefcase className="w-3.5 h-3.5 text-indigo-400" /> All projects (<span className="tabular-nums">{active.length}</span> active{archivedCount > 0 && <>, <span className="tabular-nums">{archivedCount}</span> archived</>})
+        {archivedCount > 0 && (
+          <button type="button" onClick={() => setShowArchived((v) => !v)}
+            className="ml-2 px-2 py-0.5 text-[11px] font-normal bg-lattice-elevated hover:bg-lattice-border text-gray-300 rounded-lg">
+            {showArchived ? 'Hide archived' : `Show archived (${archivedCount})`}
+          </button>
+        )}
       </h3>
       {projects.length === 0 ? (
         <p className="text-[11px] text-gray-400 italic py-6 text-center">No projects yet.</p>
+      ) : visible.length === 0 ? (
+        <p className="text-[11px] text-gray-400 italic py-6 text-center">No active projects — everything here is archived. Use Show archived to see it.</p>
       ) : (
         <ul className="space-y-1.5">
-          {projects.map((p) => (
+          {visible.map((p) => (
             <li key={p.id} className={cn('bg-lattice-surface/70 border border-lattice-border rounded-xl p-3', p.archived && 'opacity-50')}>
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-[10px] font-mono text-indigo-400">{p.key}</span>

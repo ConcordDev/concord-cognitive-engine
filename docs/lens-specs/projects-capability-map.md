@@ -48,6 +48,24 @@ Ramaj's §8 Q2 team-model call). S1 (lifecycle) notes:
   pinned by `server/tests/projects-lifecycle.test.js`.
 - Frontend behaviour: `concord-frontend/tests/projects-lifecycle.test.tsx`.
 
+S5 (⌘K content search, F6) notes:
+
+- `command-search` already existed and Collab's palette already
+  called it — the finding's break was downstream: results rendered as
+  inert divs (no click, no Enter, no keyboard selection), the search
+  was scoped to the current project while the bar promises "projects
+  & issues", and the palette existed only on the Collab tab while the
+  global lens palette took ⌘K everywhere else in the lens.
+- Now: results are buttons with arrow-key selection and Enter; a task
+  result jumps to its project and opens the issue on the Board
+  (PjBoardPanel takes an open-task request), a project result jumps
+  to the project; the search call is unscoped (results carry their
+  projectId); ProjectsSection claims ⌘K in the capture phase while
+  the lens is mounted (the global palette listens on document,
+  bubble phase) and routes to Collab's palette. The repo's Collab
+  test was updated for the unscoped call and gained jump coverage;
+  substrate pinned by `server/tests/projects-search.test.js`.
+
 S3 (Portfolio truth, F2/F3 remainder) notes:
 
 - Chip-close semantics landed with S1 (× deselects; reopenable in one
