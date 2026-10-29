@@ -303,56 +303,114 @@ function TemplatesTab() {
 }
 
 function VotingTab() {
+  // S8: pickers fed by real boards/elements replace the raw id text
+  // fields — you can only vote on something that exists (and the
+  // server now enforces the same rule).
+  const [boards, setBoards] = useState<Board[]>([]);
   const [boardId, setBoardId] = useState('');
+  const [elements, setElements] = useState<Array<{ id: string; label: string }>>([]);
   const [elementId, setElementId] = useState('');
   const [tally, setTally] = useState<{ elementId: string; count: number }[]>([]);
   const [total, setTotal] = useState(0);
+  const [note, setNote] = useState<string | null>(null);
 
-  const refresh = async () => {
-    if (!boardId) return;
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await lensRun({ domain: 'whiteboard', action: 'board-list', input: {} });
+        const list = ((r.data as { result?: { boards?: Board[] } }).result?.boards || []) as Board[];
+        setBoards(list);
+        if (list.length > 0) setBoardId((prev) => prev || list[0].id);
+      } catch (e) { console.error(e); }
+    })();
+  }, []);
+
+  const refresh = useCallback(async (forBoard: string, els: Array<{ id: string; label: string }>) => {
+    if (!forBoard) return;
     try {
-      const r = await lensRun({ domain: 'whiteboard', action: 'vote-tally', input: { boardId } });
+      const r = await lensRun({ domain: 'whiteboard', action: 'vote-tally', input: { boardId: forBoard } });
       const data = (r.data as { result?: { tally?: typeof tally; total?: number } }).result;
       setTally(data?.tally || []);
       setTotal(data?.total || 0);
+      void els;
     } catch (e) { console.error(e); }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!boardId) { setElements([]); setElementId(''); setTally([]); setTotal(0); return; }
+    (async () => {
+      try {
+        const r = await lensRun({ domain: 'whiteboard', action: 'board-load', input: { id: boardId } });
+        const raw = ((r.data as { result?: { board?: { scene?: { elements?: Array<{ id?: string; kind?: string; type?: string; text?: string }> } } } }).result?.board?.scene?.elements || []);
+        const els = raw.filter((el) => el && el.id).map((el) => ({
+          id: String(el.id),
+          label: (el.text && el.text.trim()) ? el.text.trim().slice(0, 48) : `${el.kind || el.type || 'element'} · ${String(el.id).slice(0, 8)}`,
+        }));
+        setElements(els);
+        setElementId((prev) => (els.some((e) => e.id === prev) ? prev : (els[0]?.id || '')));
+        await refresh(boardId, els);
+      } catch (e) { console.error(e); }
+    })();
+  }, [boardId, refresh]);
 
   const vote = async () => {
     if (!boardId || !elementId) return;
+    setNote(null);
     try {
-      await lensRun({ domain: 'whiteboard', action: 'vote-cast', input: { boardId, elementId } });
-      await refresh();
+      const r = await lensRun({ domain: 'whiteboard', action: 'vote-cast', input: { boardId, elementId } });
+      if ((r.data as { ok?: boolean })?.ok === false) {
+        setNote(String((r.data as { error?: string }).error || 'Vote failed.'));
+        return;
+      }
+      await refresh(boardId, elements);
     } catch (e) { console.error(e); }
   };
+
+  const labelFor = (id: string) => elements.find((e) => e.id === id)?.label || id;
 
   return (
     <div className="p-3 space-y-3">
       <p className="text-[11px] text-gray-400">Cast votes on board elements. Dedupes per voter per element.</p>
-      <div className="grid grid-cols-2 gap-2">
-        <input type="text" value={boardId} onChange={(e) => setBoardId(e.target.value)}
-          placeholder="boardId" className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
-        <input type="text" value={elementId} onChange={(e) => setElementId(e.target.value)}
-          placeholder="elementId" className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
-      </div>
-      <div className="flex gap-2">
-        <button type="button" onClick={vote} disabled={!boardId || !elementId}
-          className="px-3 py-1 rounded-md border border-sky-500/40 bg-sky-500/15 text-xs text-sky-100 disabled:opacity-40">
-          <ThumbsUp className="w-3 h-3 inline" /> Vote
-        </button>
-        <button type="button" onClick={refresh} disabled={!boardId}
-          className="px-3 py-1 rounded-md border border-white/10 text-xs text-gray-400 disabled:opacity-40">
-          Tally
-        </button>
-      </div>
+      {boards.length === 0 ? (
+        <p className="text-[11px] text-gray-500">No boards yet — create one and it will appear here.</p>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <select value={boardId} onChange={(e) => setBoardId(e.target.value)} aria-label="Board"
+              className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100">
+              {boards.map((b) => (
+                <option key={b.id} value={b.id}>{b.title} ({b.elementCount ?? 0})</option>
+              ))}
+            </select>
+            <select value={elementId} onChange={(e) => setElementId(e.target.value)} aria-label="Element" disabled={elements.length === 0}
+              className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 disabled:opacity-40">
+              {elements.length === 0 && <option value="">No elements on this board</option>}
+              {elements.map((el) => (
+                <option key={el.id} value={el.id}>{el.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex gap-2 items-center">
+            <button type="button" onClick={vote} disabled={!boardId || !elementId}
+              className="px-3 py-1 rounded-md border border-sky-500/40 bg-sky-500/15 text-xs text-sky-100 disabled:opacity-40">
+              <ThumbsUp className="w-3 h-3 inline" /> Vote
+            </button>
+            <button type="button" onClick={() => void refresh(boardId, elements)} disabled={!boardId}
+              className="px-3 py-1 rounded-md border border-white/10 text-xs text-gray-400 disabled:opacity-40">
+              Tally
+            </button>
+            {note && <span className="text-[11px] text-rose-300" role="status">{note}</span>}
+          </div>
+        </>
+      )}
 
       {tally.length > 0 && (
         <div className="rounded border border-sky-500/20 bg-sky-500/5 p-3">
           <p className="text-[10px] uppercase text-gray-400 mb-2 tabular-nums">{total} total votes</p>
-          {tally.map((t) => (
-            <div key={t.elementId} className="flex justify-between text-xs font-mono py-1 border-b border-white/5">
-              <span className="text-gray-300 truncate">{t.elementId}</span>
-              <span className="text-sky-300 tabular-nums">×{t.count}</span>
+          {tally.map((row) => (
+            <div key={row.elementId} className="flex justify-between text-xs py-1 border-b border-white/5">
+              <span className="text-gray-300 truncate">{labelFor(row.elementId)}</span>
+              <span className="text-sky-300 tabular-nums">×{row.count}</span>
             </div>
           ))}
         </div>
@@ -360,5 +418,4 @@ function VotingTab() {
     </div>
   );
 }
-
 export default WhiteboardWorkbench;
