@@ -32,7 +32,7 @@ import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import {
   Play, FileCode, Terminal, FolderTree, Plus, X,
   ChevronRight, ChevronDown, File, Folder, FolderOpen,
-  Sparkles, RefreshCw, Copy,
+  Sparkles, RefreshCw, Copy, Check,
   Download, Zap, Waves, SlidersHorizontal,
   Loader2, BookOpen,
   Save, Maximize2, Minimize2, Layers,
@@ -180,6 +180,30 @@ function isUserCodeDtu(d: CodeDtuLike, userId?: string | null): boolean {
   return true;
 }
 
+/**
+ * S15 (F15): copy that actually copies — the Clipboard API silently
+ * no-ops (undefined or permission-denied) in non-secure contexts; fall
+ * back to a textarea + execCommand, and report honestly either way.
+ */
+export async function copyTextRobust(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(text); return true; }
+    throw new Error('clipboard API unavailable');
+  } catch {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch { return false; }
+  }
+}
+
 export function CodeEditorWorkspacePanel({ onOpenExtras }: {
   /** S13 (F12): deep-links to the named Advanced panel tab —
    *  'debugger' | 'liveshare' | 'extensions'. Undefined opens the
@@ -221,6 +245,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
     { id: 'main', name: 'untitled.js', language: 'javascript', content: '', isDirty: false, scriptType: 'snippet' },
   ]);
   const [activeTabId, setActiveTabId] = useState('main');
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [scriptOutput, setScriptOutput] = useState<{ log: string; visualization: string } | null>(null);
   const [consoleLog, setConsoleLog] = useState<string[]>([]);
   const [activeScriptType, setActiveScriptType] = useState<ScriptType>('snippet');
@@ -1196,20 +1221,23 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
       {/* Real-time Enhancement Toolbar */}
       <div className="flex items-center gap-2 whitespace-nowrap">
         <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <VisionAnalyzeButton
-          domain="code"
-          prompt="Analyze this code screenshot or error image. Identify the programming language, describe what the code does, spot any bugs or issues, and suggest fixes."
-          onResult={(res) => {
-            const comment = `// Vision Analysis Suggestion:\n// ${res.analysis.replace(/\n/g, '\n// ')}\n\n`;
-            updateTabContent(comment + (activeTab?.content || ''));
-          }}
-        />
         {realtimeAlerts.length > 0 && (
           <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
             {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
           </span>
         )}
       </div>
+      {/* S15 (F15): the Vision button gets its own block — inside the
+          nowrap toolbar row its result panel was squeezed into the flex
+          row and never visibly rendered. */}
+      <VisionAnalyzeButton
+        domain="code"
+        prompt="Analyze this code screenshot or error image. Identify the programming language, describe what the code does, spot any bugs or issues, and suggest fixes."
+        onResult={(res) => {
+          const comment = `// Vision Analysis Suggestion:\n// ${res.analysis.replace(/\n/g, '\n// ')}\n\n`;
+          updateTabContent(comment + (activeTab?.content || ''));
+        }}
+      />
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
@@ -1727,9 +1755,15 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
                     <Save className="w-4 h-4" />
                   </button>
                   <button className="p-1 rounded hover:bg-lattice-elevated text-gray-400" title="Copy to clipboard"
-                    onClick={() => navigator.clipboard?.writeText(activeTab.content)}>
-                    <Copy className="w-4 h-4" />
+                    onClick={async () => {
+                      const okCopy = await copyTextRobust(activeTab.content);
+                      setCopyState(okCopy ? 'copied' : 'failed');
+                      window.setTimeout(() => setCopyState('idle'), 2000);
+                    }}>
+                    {copyState === 'copied' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                   </button>
+                  {copyState === 'copied' && <span className="text-[10px] text-emerald-400">Copied</span>}
+                  {copyState === 'failed' && <span className="text-[10px] text-rose-400">Copy failed — select the code and copy manually</span>}
                   <button className="p-1 rounded hover:bg-lattice-elevated text-gray-400" title="Download file"
                     onClick={() => {
                       const blob = new Blob([activeTab.content], { type: 'text/plain' });

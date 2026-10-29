@@ -2875,15 +2875,18 @@ Rules:
     if (!state.extensions.has(userId)) state.extensions.set(userId, []);
     return state.extensions.get(userId);
   }
+  // S15 (F15): every entry states its ACTUAL effect. An extension whose
+  // effect the editor cannot produce says so in its `effect` note rather
+  // than implying otherwise; todo-highlight is wired for real.
   const EXTENSION_CATALOG = [
-    { id: "prettier-fmt", name: "Prettier Formatter", kind: "formatter", description: "Opinionated multi-language code formatter." },
-    { id: "eslint-lint", name: "ESLint", kind: "linter", description: "Pluggable JavaScript / TypeScript linter." },
-    { id: "todo-highlight", name: "TODO Highlight", kind: "decorator", description: "Highlights TODO / FIXME / HACK comments inline." },
-    { id: "bracket-rainbow", name: "Rainbow Brackets", kind: "decorator", description: "Colorizes matching bracket pairs." },
-    { id: "py-language", name: "Python Language Pack", kind: "language", description: "Adds Python syntax + outline support." },
-    { id: "rust-language", name: "Rust Language Pack", kind: "language", description: "Adds Rust syntax + outline support." },
-    { id: "git-lens-ext", name: "GitLens", kind: "git", description: "Inline blame annotations and history." },
-    { id: "code-snippets-js", name: "JavaScript Snippet Pack", kind: "snippet-pack", description: "Common JS / Node snippets." },
+    { id: "prettier-fmt", name: "Prettier Formatter", kind: "formatter", description: "Opinionated multi-language code formatter." , effect: "Formats via the editor's Format Document action; this entry tracks the preference, the formatting itself is the editor's."},
+    { id: "eslint-lint", name: "ESLint", kind: "linter", description: "Pluggable JavaScript / TypeScript linter." , effect: "Diagnostics come from the built-in TypeScript engine and heuristics (Problems panel), not from ESLint itself."},
+    { id: "todo-highlight", name: "TODO Highlight", kind: "decorator", description: "Highlights TODO / FIXME / HACK comments inline." , effect: "Applies in the editor: TODO / FIXME / HACK keywords are highlighted inline while enabled."},
+    { id: "bracket-rainbow", name: "Rainbow Brackets", kind: "decorator", description: "Colorizes matching bracket pairs." , effect: "Bracket pair colourisation is built into the editor and always on; this entry tracks the preference only."},
+    { id: "py-language", name: "Python Language Pack", kind: "language", description: "Adds Python syntax + outline support." , effect: "Python highlighting and outline are built into the editor; this entry tracks the preference only."},
+    { id: "rust-language", name: "Rust Language Pack", kind: "language", description: "Adds Rust syntax + outline support." , effect: "Rust highlighting is built into the editor; this entry tracks the preference only."},
+    { id: "git-lens-ext", name: "GitLens", kind: "git", description: "Inline blame annotations and history." , effect: "No inline blame yet — history lives in the Git panel. Installing records the preference only."},
+    { id: "code-snippets-js", name: "JavaScript Snippet Pack", kind: "snippet-pack", description: "Common JS / Node snippets." , effect: "Snippets are available from the Snippets library; this entry tracks the preference only."},
   ];
 
   registerLensAction("code", "extensions-catalog", (_ctx, _a, _p = {}) => {

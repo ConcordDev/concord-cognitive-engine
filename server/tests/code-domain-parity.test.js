@@ -1159,4 +1159,17 @@ describe("code — run configs + bookmarks", () => {
     call("bookmark-delete", ctxC, { projectId: p.id, id: b.id });
     assert.equal(call("bookmark-list", ctxC, { projectId: p.id }).result.bookmarks.length, 0);
   });
+
+  // ── S15 (F15): the extension catalog states each entry's real effect;
+  // an extension whose effect the editor cannot produce says so.
+  test('S15 extensions catalog: every entry carries an honest effect note', () => {
+    const catalog = call('extensions-catalog', ctxC, {});
+    assert.equal(catalog.ok, true);
+    assert.ok(catalog.result.catalog.length >= 8);
+    for (const e of catalog.result.catalog) {
+      assert.ok(typeof e.effect === 'string' && e.effect.length > 10, `${e.id} must state its actual effect`);
+    }
+    const todo = catalog.result.catalog.find((e) => e.id === 'todo-highlight');
+    assert.match(todo.effect, /Applies in the editor/);
+  });
 });

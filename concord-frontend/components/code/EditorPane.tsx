@@ -53,7 +53,7 @@ export function EditorPane({
   const [inlineInstruction, setInlineInstruction] = useState('');
   const [inlineLoading, setInlineLoading] = useState(false);
   const [selection, setSelection] = useState<string>('');
-  const editorRef = useRef<{ revealLineInCenter?: (n: number) => void; setPosition?: (p: { lineNumber: number; column: number }) => void; focus?: () => void } | null>(null);
+  const editorRef = useRef<{ revealLineInCenter?: (n: number) => void; setPosition?: (p: { lineNumber: number; column: number }) => void; focus?: () => void; getAction?: (id: string) => { run: () => Promise<void> } | null } | null>(null);
 
   // code.explain — a deterministic/brain-backed one-click explanation of the
   // current selection (or whole file when nothing is selected), distinct from
@@ -224,12 +224,37 @@ export function EditorPane({
 
   async function format() {
     if (!active) return;
+    // S15 (F15): the toolbar button runs the editor's OWN Format
+    // Document — the same formatter as the context menu, which actually
+    // reindents. The format-code macro only normalizes whitespace and
+    // left badly-indented files byte-identical; it stays as the
+    // fallback for when no editor instance is mounted.
+    const action = editorRef.current?.getAction?.('editor.action.formatDocument');
+    if (action) { await action.run(); return; }
     try {
       const r = await lensRun({ domain: 'code', action: 'format-code', input: { code: active.content, language: active.language } });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      if (r.data?.ok === false) { setInlineError(r.data?.error || 'Format failed.'); return; }
       const formatted = String(r.data?.result?.formatted || '');
-      updateContent(active.path, formatted);
+      if (formatted) updateContent(active.path, formatted);
     } catch (e) { console.error('[Editor] format', e); }
+  }
+
+  /** S15 (F15): glyph-margin click toggles a bookmark on that line —
+   *  the gesture the Bookmarks panel has always named. The macros
+   *  (bookmark-add/list/delete) were real; only the gesture was missing. */
+  async function toggleBookmarkAtLine(lineNumber: number) {
+    if (!active || !projectId) return;
+    try {
+      const list = await lensRun({ domain: 'code', action: 'bookmark-list', input: { projectId } });
+      const existing = ((list.data?.result?.bookmarks as Array<{ id: string; path: string; line: number }> | undefined) || [])
+        .find((b) => b.path === active.path && b.line === lineNumber);
+      if (existing) {
+        await lensRun({ domain: 'code', action: 'bookmark-delete', input: { projectId, id: existing.id } });
+      } else {
+        const lineText = (active.content.split('\n')[lineNumber - 1] || '').trim().slice(0, 60);
+        await lensRun({ domain: 'code', action: 'bookmark-add', input: { projectId, path: active.path, line: lineNumber, label: lineText } });
+      }
+    } catch { /* the panel re-reads on open; a failed toggle stays silent rather than fake */ }
   }
 
   async function explain() {
@@ -519,6 +544,7 @@ export function EditorPane({
                 language={active.language}
                 semantic={projectId ? { projectId, path: active.path, run: runCodeMacro } : undefined}
                 onEditorReady={(ed) => { editorRef.current = ed as typeof editorRef.current; }}
+                onGutterLineClick={(line) => { void toggleBookmarkAtLine(line); }}
                 onSelectionChange={(sel: { text: string } | string | null) => {
                   const text = typeof sel === 'string' ? sel : (sel?.text || '');
                   setSelection(text);

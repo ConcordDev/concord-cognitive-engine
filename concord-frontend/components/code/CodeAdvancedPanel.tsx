@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { useYjsDoc } from '@/lib/hooks/useYjsDoc';
+import { notifyExtensionsChanged } from '@/lib/code-extensions';
 import { useYjsAwareness } from '@/hooks/useYjsAwareness';
 import { useAuth } from '@/hooks/useAuth';
 import * as Y from 'yjs';
@@ -533,7 +534,7 @@ function CodebaseChatTab({ projectId, files }: { projectId: string; files: FileR
 
 // ── 5. Extensions / plugin system ──────────────────────────────────────────
 function ExtensionsTab() {
-  type Ext = { id: string; name: string; kind: string; description: string; enabled?: boolean; installedAt?: string };
+  type Ext = { id: string; name: string; kind: string; description: string; effect?: string; enabled?: boolean; installedAt?: string };
   const [catalog, setCatalog] = useState<Ext[]>([]);
   const [installed, setInstalled] = useState<Ext[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
@@ -545,7 +546,12 @@ function ExtensionsTab() {
         lensRun('code', 'extensions-list', {}),
       ]);
       if (c.data?.ok) setCatalog((c.data.result?.catalog || []) as Ext[]);
-      if (l.data?.ok) setInstalled((l.data.result?.extensions || []) as Ext[]);
+      if (l.data?.ok) {
+        const list = (l.data.result?.extensions || []) as Ext[];
+        setInstalled(list);
+        // S15: open editors re-apply their extension effects.
+        notifyExtensionsChanged(list);
+      }
     } catch { /* best effort */ }
   }, []);
 
@@ -585,6 +591,7 @@ function ExtensionsTab() {
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-gray-200 truncate">{e.name}</p>
                   <p className="text-[10px] text-gray-400">{e.kind}</p>
+                  {e.effect && <p className="text-[10px] text-gray-500">{e.effect}</p>}
                 </div>
                 <button onClick={() => toggle(e.id, !e.enabled)} disabled={busy === e.id}
                   className={`p-1.5 rounded ${e.enabled ? 'text-green-400 hover:bg-green-500/10' : 'text-gray-600 hover:bg-white/5'}`}
@@ -609,6 +616,7 @@ function ExtensionsTab() {
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-gray-200 truncate">{e.name}</p>
                 <p className="text-[10px] text-gray-400 truncate">{e.description}</p>
+                {e.effect && <p className="text-[10px] text-gray-500">{e.effect}</p>}
               </div>
               <button onClick={() => install(e.id)} disabled={busy === e.id}
                 className="flex items-center gap-1 px-2.5 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-bold disabled:opacity-40">
