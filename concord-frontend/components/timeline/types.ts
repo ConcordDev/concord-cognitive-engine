@@ -44,6 +44,8 @@ export interface FeedPost {
   taggedUserIds: string[];
   /** Set when another lens sent a saved DTU onto this post. */
   citedDtuId?: string | null;
+  /** S-TL-6: how many times this post has been shared (F9). */
+  shareCount?: number;
   sharedFrom: SharedFrom | null;
   createdAt: string;
   /** S-TL-2: set when the post has been edited; editHistory holds the
@@ -69,6 +71,10 @@ export interface Comment {
    *  the texts it replaced, newest last. */
   editedAt?: string | null;
   editHistory?: { text: string; editedAt: string }[];
+  /** S-TL-6: comment reactions (F9), same shape as post reactions. */
+  reactionCounts?: Record<ReactionKind, number>;
+  reactionTotal?: number;
+  userReaction?: ReactionKind | null;
   replies: Comment[];
 }
 

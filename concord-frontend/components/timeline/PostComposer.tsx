@@ -105,6 +105,8 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
         setTags([]);
         setDraftRestored(false);
         onPosted?.();
+        // D2/M7: publishing was silent.
+        useUIStore.getState().addToast({ type: 'success', message: 'Post published' });
       } else {
         useUIStore.getState().addToast({ type: 'error', message: r.data.error || 'Post failed' });
       }

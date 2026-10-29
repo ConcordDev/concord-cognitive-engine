@@ -7,9 +7,14 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { lensRun } from '@/lib/api/client';
-import { MessageCircle, CornerDownRight, Trash2, Loader2, Pencil, History } from 'lucide-react';
+import { useUIStore } from '@/store/ui';
+import {
+  MessageCircle, CornerDownRight, Trash2, Loader2, Pencil, History,
+  ThumbsUp, Heart, Laugh, Frown, Angry, Smile,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { Comment } from './types';
+import type { Comment, ReactionKind } from './types';
+import { timeAgo, exactTime } from './timeFormat';
 
 interface CommentThreadProps {
   postId: string;
@@ -17,15 +22,14 @@ interface CommentThreadProps {
   viewerId: string;
 }
 
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const h = Math.floor(diff / 3600000);
-  if (h < 1) return 'just now';
-  if (h < 24) return `${h}h`;
-  const d = Math.floor(h / 24);
-  if (d < 7) return `${d}d`;
-  return new Date(iso).toLocaleDateString();
-}
+// S-TL-6: comments react with the same 5-kind picker as posts (F9).
+const REACTIONS: { id: ReactionKind; icon: typeof ThumbsUp; color: string; label: string }[] = [
+  { id: 'like', icon: ThumbsUp, color: 'text-blue-500', label: 'Like' },
+  { id: 'love', icon: Heart, color: 'text-red-500', label: 'Love' },
+  { id: 'haha', icon: Laugh, color: 'text-yellow-500', label: 'Haha' },
+  { id: 'sad', icon: Frown, color: 'text-yellow-500', label: 'Sad' },
+  { id: 'angry', icon: Angry, color: 'text-orange-500', label: 'Angry' },
+];
 
 function CommentNode({
   comment,
@@ -35,6 +39,7 @@ function CommentNode({
   onReply,
   onDelete,
   onEdit,
+  onReact,
   busyId,
 }: {
   comment: Comment;
@@ -44,6 +49,7 @@ function CommentNode({
   onReply: (parentId: string, text: string) => void;
   onDelete: (commentId: string) => void;
   onEdit: (commentId: string, text: string) => void;
+  onReact: (commentId: string, kind: ReactionKind) => void;
   busyId: string | null;
 }) {
   const [replying, setReplying] = useState(false);
@@ -52,7 +58,10 @@ function CommentNode({
   const [editing, setEditing] = useState(false);
   const [editDraft, setEditDraft] = useState('');
   const [showHistory, setShowHistory] = useState(false);
+  // S-TL-6: the comment reaction picker.
+  const [showPicker, setShowPicker] = useState(false);
   const mine = comment.isMine || (comment.authorId != null && comment.authorId === viewerId);
+  const myReaction = comment.userReaction ? REACTIONS.find((r) => r.id === comment.userReaction) : null;
 
   const submit = () => {
     if (!draft.trim()) return;
@@ -99,7 +108,15 @@ function CommentNode({
             )}
           </div>
           <div className="flex items-center gap-3 mt-0.5 ml-2 text-[11px] text-gray-400">
-            <span>{timeAgo(comment.createdAt)}</span>
+            <span title={exactTime(comment.createdAt)}>{timeAgo(comment.createdAt)}</span>
+            <button
+              onClick={() => setShowPicker((p) => !p)}
+              className={cn('hover:text-white font-medium inline-flex items-center gap-1', myReaction && myReaction.color)}
+              aria-expanded={showPicker}
+            >
+              {myReaction ? <myReaction.icon className="w-3 h-3" /> : <Smile className="w-3 h-3" />}
+              {myReaction ? myReaction.label : 'React'}
+            </button>
             <button onClick={() => setReplying((r) => !r)} className="hover:text-white font-medium">
               Reply
             </button>
@@ -133,6 +150,48 @@ function CommentNode({
               </button>
             )}
           </div>
+          {/* S-TL-6: reaction picker + counts (F9) */}
+          {showPicker && (
+            <div className="flex gap-1 mt-1 ml-2 p-1 bg-[#242526] rounded-full border border-gray-700 w-fit">
+              {REACTIONS.map((r) => {
+                const Icon = r.icon;
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => { onReact(comment.id, r.id); setShowPicker(false); }}
+                    title={r.label}
+                    className={cn(
+                      'p-1.5 rounded-full hover:bg-[#3a3b3c] hover:scale-125 transition-all',
+                      comment.userReaction === r.id && 'bg-[#3a3b3c]',
+                    )}
+                  >
+                    <Icon className={cn('w-4 h-4', r.color)} />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {(comment.reactionTotal ?? 0) > 0 && (
+            <div className="flex items-center gap-1 mt-1 ml-2">
+              {REACTIONS.filter((r) => (comment.reactionCounts?.[r.id] ?? 0) > 0).map((r) => {
+                const Icon = r.icon;
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => onReact(comment.id, r.id)}
+                    title={`${r.label} — click to toggle yours`}
+                    className={cn(
+                      'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[#3a3b3c] text-[10px]',
+                      comment.userReaction === r.id ? 'text-white ring-1 ring-blue-500' : 'text-gray-300',
+                    )}
+                  >
+                    <Icon className={cn('w-3 h-3', r.color)} />
+                    {comment.reactionCounts?.[r.id]}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {showHistory && comment.editHistory && comment.editHistory.length > 0 && (
             <div className="mt-1 ml-2 rounded-lg border border-gray-700 bg-[#242526] px-3 py-2 space-y-1.5 max-w-md">
               <p className="text-[11px] font-semibold text-gray-300">Edit history</p>
@@ -176,6 +235,7 @@ function CommentNode({
           onReply={onReply}
           onDelete={onDelete}
           onEdit={onEdit}
+          onReact={onReact}
           busyId={busyId}
         />
       ))}
@@ -204,7 +264,31 @@ export function CommentThread({ postId, viewerId }: CommentThreadProps) {
   const addMutation = useMutation({
     mutationFn: (vars: { text: string; parentId?: string }) =>
       lensRun('timeline', 'comment-add', { postId, text: vars.text, parentId: vars.parentId }),
-    onSuccess: invalidate,
+    onSuccess: (r) => {
+      if (r.data.ok) {
+        invalidate();
+        // D2/M7: commenting was silent.
+        useUIStore.getState().addToast({ type: 'success', message: 'Comment posted' });
+      } else {
+        useUIStore.getState().addToast({ type: 'error', message: r.data.error || 'Could not post comment' });
+      }
+    },
+  });
+
+  const reactMutation = useMutation({
+    mutationFn: (vars: { commentId: string; kind: ReactionKind }) =>
+      lensRun('timeline', 'comment-react', { postId, commentId: vars.commentId, kind: vars.kind }),
+    onSuccess: (r) => {
+      if (r.data.ok) {
+        qc.invalidateQueries({ queryKey: ['timeline-comments', postId] });
+        const action = (r.data.result as { action?: string } | undefined)?.action;
+        if (action === 'added' || action === 'changed') {
+          useUIStore.getState().addToast({ type: 'success', message: 'Reaction added' });
+        }
+      } else {
+        useUIStore.getState().addToast({ type: 'error', message: r.data.error || 'Could not react' });
+      }
+    },
   });
 
   const deleteMutation = useMutation({
@@ -254,6 +338,7 @@ export function CommentThread({ postId, viewerId }: CommentThreadProps) {
               setBusyId(id);
               updateMutation.mutate({ commentId: id, text });
             }}
+            onReact={(commentId, kind) => reactMutation.mutate({ commentId, kind })}
             busyId={busyId}
           />
         ))

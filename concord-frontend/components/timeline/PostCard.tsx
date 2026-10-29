@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import type { FeedPost, Privacy, ReactionKind } from './types';
+import { timeAgo, exactTime } from './timeFormat';
 import { CommentThread } from './CommentThread';
 import { ReactionBreakdown } from './ReactionBreakdown';
 import { ShareModal } from './ShareModal';
@@ -30,16 +31,6 @@ const REACTIONS: { id: ReactionKind; icon: typeof ThumbsUp; color: string; label
 ];
 
 const PRIVACY_ICON = { public: Globe, friends: Users, private: Lock } as const;
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const h = Math.floor(diff / 3600000);
-  if (h < 1) return 'Just now';
-  if (h < 24) return `${h}h`;
-  const d = Math.floor(h / 24);
-  if (d < 7) return `${d}d`;
-  return new Date(iso).toLocaleDateString();
-}
 
 export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string }) {
   const qc = useQueryClient();
@@ -56,7 +47,15 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
 
   const reactMutation = useMutation({
     mutationFn: (kind: ReactionKind) => lensRun('timeline', 'react', { postId: post.id, kind }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['timeline-feed'] }),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ['timeline-feed'] });
+      // D2/M7: reacting was silent — confirm the add/change (a toggle
+      // off is its own visible state change).
+      const action = (r.data.result as { action?: string } | undefined)?.action;
+      if (r.data.ok && (action === 'added' || action === 'changed')) {
+        useUIStore.getState().addToast({ type: 'success', message: 'Reaction added' });
+      }
+    },
   });
 
   const deleteMutation = useMutation({
@@ -112,7 +111,7 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
           <div>
             <h3 className="font-semibold text-white text-sm">{isOwner ? 'You' : (post.authorDisplayName || 'Member')}</h3>
             <div className="flex items-center gap-1.5 text-xs text-gray-400">
-              <span>{timeAgo(post.createdAt)}</span>
+              <span title={exactTime(post.createdAt)}>{timeAgo(post.createdAt)}</span>
               <span>·</span>
               <PrivacyIcon className="w-3 h-3" />
               {post.editedAt && (
@@ -281,6 +280,9 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
           <button onClick={() => setShowComments((c) => !c)} className="hover:underline">
             {post.commentCount} comments
           </button>
+          {(post.shareCount ?? 0) > 0 && (
+            <span>{post.shareCount} share{post.shareCount === 1 ? '' : 's'}</span>
+          )}
         </div>
       </div>
 

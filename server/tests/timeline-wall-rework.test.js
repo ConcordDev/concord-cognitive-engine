@@ -442,6 +442,68 @@ describe("S-TL-5 timeline albums (F6)", () => {
   });
 });
 
+// ── S-TL-6: comment reactions, share counts, Memories heading ─────────
+describe("S-TL-6 timeline small completions (F9/F18)", () => {
+  const ada = asUser("sc_ada");
+  const bob = asUser("sc_bob");
+  const stranger = asUser("sc_stranger");
+
+  it("comment reactions toggle like post reactions and present on the thread", () => {
+    const post = call("post-create", ada, { content: "host post", privacy: "public" }).result.post;
+    const comment = call("comment-add", bob, { postId: post.id, text: "nice" }).result.comment;
+    const added = call("comment-react", ada, { postId: post.id, commentId: comment.id, kind: "love" });
+    assert.equal(added.result.action, "added");
+    assert.equal(added.result.counts.love, 1);
+    // The comment author is notified, mirroring post reactions.
+    const notifs = call("notifications-list", bob, {});
+    assert.ok(notifs.result.notifications.some((n) => n.type === "reaction" && n.commentId === comment.id));
+    const thread = call("comment-list", bob, { postId: post.id });
+    assert.equal(thread.result.thread[0].reactionCounts.love, 1);
+    assert.equal(thread.result.thread[0].reactionTotal, 1);
+    assert.equal(thread.result.thread[0].userReaction, null, "bob has not reacted");
+    const mine = call("comment-list", ada, { postId: post.id });
+    assert.equal(mine.result.thread[0].userReaction, "love");
+    const changed = call("comment-react", ada, { postId: post.id, commentId: comment.id, kind: "haha" });
+    assert.equal(changed.result.action, "changed");
+    assert.equal(changed.result.counts.love, 0);
+    assert.equal(changed.result.counts.haha, 1);
+    const removed = call("comment-react", ada, { postId: post.id, commentId: comment.id, kind: "haha" });
+    assert.equal(removed.result.action, "removed");
+    assert.equal(removed.result.total, 0);
+  });
+
+  it("comment-react refuses unknown kinds, missing comments, and viewers without post access", () => {
+    const post = call("post-create", ada, { content: "friends only", privacy: "friends" }).result.post;
+    const comment = call("comment-add", ada, { postId: post.id, text: "mine" }).result.comment;
+    assert.equal(call("comment-react", stranger, { postId: post.id, commentId: comment.id, kind: "like" }).ok, false);
+    assert.equal(call("comment-react", ada, { postId: post.id, commentId: comment.id, kind: "wow" }).ok, false);
+    const missing = call("comment-react", ada, { postId: post.id, commentId: "cmt_nope", kind: "like" });
+    assert.equal(missing.ok, false);
+    assert.match(missing.error, /Comment not found/);
+  });
+
+  it("shares increment the ORIGINAL post's shareCount; the shared copy starts at zero", () => {
+    const post = call("post-create", ada, { content: "traveler", privacy: "public" }).result.post;
+    call("share-post", bob, { postId: post.id, privacy: "public" });
+    call("share-post", stranger, { postId: post.id, privacy: "public" });
+    const feed = call("feed-list", ada, {});
+    assert.equal(feed.result.posts.find((p) => p.id === post.id).shareCount, 2);
+    const copy = feed.result.posts.find((p) => p.sharedFrom?.postId === post.id && p.authorId === "sc_bob");
+    assert.equal(copy.shareCount || 0, 0);
+  });
+
+  it("the Memories heading names the picked day exactly (F18), and bad months are refused", () => {
+    const r1 = call("memories", ada, { date: "2020-10-29" });
+    assert.equal(r1.ok, true);
+    assert.equal(r1.result.onThisDay, "October 29");
+    const r2 = call("memories", ada, { date: "2026-01-01" });
+    assert.equal(r2.result.onThisDay, "January 1");
+    const r3 = call("memories", ada, { date: "2026-12-31" });
+    assert.equal(r3.result.onThisDay, "December 31");
+    assert.equal(call("memories", ada, { date: "2026-13-01" }).ok, false);
+  });
+});
+
 // ── S-TL-2: friends-tier regression lock ───────────────────────────────
 // The prep audit found the friends-tier gate already fixed on main
 // (checkPostAccess via areFriends, fail-closed, oracle-safe). This

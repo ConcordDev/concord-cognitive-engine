@@ -461,10 +461,11 @@ export default function registerTimelineActions(registerLensAction) {
     // posts:    Map<userId, Post[]>          — feed posts authored by the user
     // comments: Map<postId, Comment[]>       — flat list, nested via parentId
     // reactions:Map<postId, Reaction[]>      — one row per (userId, post)
+    // commentReactions: Map<commentId, Reaction[]> — S-TL-6, same shape
     // albums:   Map<userId, Album[]>         — media albums + their media items
     // profiles: Map<userId, Profile>         — cover photo / bio / about
     // notifs:   Map<userId, Notification[]>  — reaction/comment/tag alerts
-    for (const k of ["posts", "comments", "reactions", "albums", "profiles", "notifs"]) {
+    for (const k of ["posts", "comments", "reactions", "commentReactions", "albums", "profiles", "notifs"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     return s;
@@ -479,7 +480,20 @@ export default function registerTimelineActions(registerLensAction) {
   const tlAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const presentComment = (ctx, viewer, c) => {
     const replies = Array.isArray(c?.replies) ? c.replies.map((r) => presentComment(ctx, viewer, r)) : c?.replies;
-    return presentOwnedId(ctx, viewer, { ...c, replies }, "authorId", { label: "Member" });
+    // S-TL-6: comments carry their reaction summary, like posts do.
+    const s = getTlState();
+    const list = s?.commentReactions?.get(c.id) || [];
+    const reactionCounts = REACTION_KINDS.reduce((acc, k) => {
+      acc[k] = list.filter((r) => r.kind === k).length;
+      return acc;
+    }, {});
+    const mine = list.find((r) => r.userId === viewer);
+    return presentOwnedId(ctx, viewer, {
+      ...c, replies,
+      reactionCounts,
+      reactionTotal: list.length,
+      userReaction: mine ? mine.kind : null,
+    }, "authorId", { label: "Member" });
   };
   const tlList = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
   const tlClean = (v, max = 2000) => String(v == null ? "" : v).trim().slice(0, max);
@@ -891,6 +905,51 @@ export default function registerTimelineActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  // S-TL-6: reactions on comments (F9) — the same 5 kinds and toggle
+  // semantics as post reactions, gated by access to the parent post.
+  registerLensAction("timeline", "comment-react", (ctx, _a, params = {}) => {
+  try {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const postId = tlClean(params.postId, 64);
+    const commentId = tlClean(params.commentId, 64);
+    const kind = String(params.kind || "like");
+    if (!postId || !commentId) return { ok: false, error: "postId and commentId required." };
+    if (!REACTION_KINDS.includes(kind)) return { ok: false, error: "Unknown reaction kind." };
+    const actorId = tlAid(ctx);
+    const { found, blocked } = checkPostAccess(s, postId, actorId, ctx?.db);
+    if (!found || blocked) return { ok: false, error: "Post not found." };
+    const comment = (s.comments.get(postId) || []).find((c) => c.id === commentId);
+    if (!comment) return { ok: false, error: "Comment not found." };
+    const list = tlList(s.commentReactions, commentId);
+    const existing = list.findIndex((r) => r.userId === actorId);
+    let action;
+    if (existing >= 0) {
+      if (list[existing].kind === kind) {
+        list.splice(existing, 1);
+        action = "removed";
+      } else {
+        list[existing] = { userId: actorId, kind, at: tlNow() };
+        action = "changed";
+      }
+    } else {
+      list.push({ userId: actorId, kind, at: tlNow() });
+      action = "added";
+      // Mirror post reactions: the comment's author hears about it.
+      pushNotif(s, comment.authorId, actorId, "reaction", { postId, commentId, kind });
+    }
+    const counts = REACTION_KINDS.reduce((acc, k) => {
+      acc[k] = list.filter((r) => r.kind === k).length;
+      return acc;
+    }, {});
+    saveTlState();
+    return {
+      ok: true,
+      result: { action, kind, counts, total: list.length, userReaction: action === "removed" ? null : kind },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
   // Full "who reacted" breakdown for a post.
   registerLensAction("timeline", "reactions-breakdown", (ctx, _a, params = {}) => {
   try {
@@ -961,6 +1020,9 @@ export default function registerTimelineActions(registerLensAction) {
       createdAt: tlNow(),
     };
     tlList(s.posts, actorId).unshift(shared);
+    // S-TL-6: the original carries its share count (F9) — the author's
+    // only signal that the post travelled.
+    found.post.shareCount = (found.post.shareCount || 0) + 1;
     pushNotif(s, found.post.authorId, actorId, "share", { postId: found.post.id });
     saveTlState();
     return { ok: true, result: { post: shared } };
@@ -1204,11 +1266,34 @@ export default function registerTimelineActions(registerLensAction) {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = tlAid(ctx);
-    const ref = params.date ? new Date(params.date) : new Date();
-    if (isNaN(ref.getTime())) return { ok: false, error: "Invalid date." };
-    const refMonth = ref.getMonth();
-    const refDay = ref.getDate();
-    const refYear = ref.getFullYear();
+    // F18: a picked date arrives as "YYYY-MM-DD" and must be read as
+    // that calendar day. `new Date("2026-10-29")` parses as UTC
+    // midnight, so local getters west of UTC reported the PREVIOUS
+    // day — the heading read "October 28" for a picked 29th, and the
+    // match ran against the wrong day too. Parse the components.
+    const MONTH_NAMES = ["January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"];
+    let refMonth; let refDay; let refYear;
+    const picked = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(params.date || ""));
+    if (picked) {
+      refYear = Number(picked[1]);
+      refMonth = Number(picked[2]) - 1;
+      refDay = Number(picked[3]);
+      if (refMonth < 0 || refMonth > 11 || refDay < 1 || refDay > 31) {
+        return { ok: false, error: "Invalid date." };
+      }
+    } else if (params.date) {
+      const ref = new Date(params.date);
+      if (isNaN(ref.getTime())) return { ok: false, error: "Invalid date." };
+      refMonth = ref.getMonth();
+      refDay = ref.getDate();
+      refYear = ref.getFullYear();
+    } else {
+      const ref = new Date();
+      refMonth = ref.getMonth();
+      refDay = ref.getDate();
+      refYear = ref.getFullYear();
+    }
     const posts = s.posts.get(userId) || [];
     const memories = [];
     for (const p of posts) {
@@ -1229,7 +1314,9 @@ export default function registerTimelineActions(registerLensAction) {
       result: {
         memories,
         count: memories.length,
-        onThisDay: `${ref.toLocaleString("en-US", { month: "long" })} ${refDay}`,
+        // From the parsed components — the heading names the picked
+        // day in every timezone (F18).
+        onThisDay: `${MONTH_NAMES[refMonth]} ${refDay}`,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }

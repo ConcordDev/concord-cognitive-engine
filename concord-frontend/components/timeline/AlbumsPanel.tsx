@@ -47,6 +47,8 @@ export function AlbumsPanel() {
         setNewName('');
         setNewDesc('');
         setNewPrivacy('private');
+        // D2/M7: album creation was silent.
+        useUIStore.getState().addToast({ type: 'success', message: 'Album created' });
       } else {
         useUIStore.getState().addToast({ type: 'error', message: r.data.error || 'Could not create album' });
       }
