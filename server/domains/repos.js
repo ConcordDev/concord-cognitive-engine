@@ -1355,16 +1355,29 @@ export default function registerReposActions(registerLensAction) {
       const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
       if (!repo) return { ok: false, error: "repo not found" };
-      const branches = repo.branches.map((b) => ({
-        name: b.name, head: b.head, protected: !!b.protected,
-        isDefault: b.name === repo.defaultBranch,
-        // Truthful count: commits reachable from this branch's head
-        // through the parent chain — the commits this branch actually
-        // holds (Review F1/F10; a label count is how main's commits
-        // once wore a feature branch's name and vice versa).
-        commits: rpAncestry(repo, b.head).size,
-        createdAt: b.createdAt,
-      }));
+      const defBranch = repo.branches.find((b) => b.name === repo.defaultBranch);
+      const defAncestry = defBranch ? rpAncestry(repo, defBranch.head) : new Set();
+      const branches = repo.branches.map((b) => {
+        const anc = rpAncestry(repo, b.head);
+        return {
+          name: b.name, head: b.head, protected: !!b.protected,
+          isDefault: b.name === repo.defaultBranch,
+          // Truthful count (Review 2 re-pass, adjacent wrongness):
+          // the default branch reports its total history; every other
+          // branch reports its AHEAD count — commits reachable from
+          // its head that the default branch does not have, i.e. the
+          // branch's OWN commits. The first build reported raw
+          // ancestry size, so a branch forked mid-history "had"
+          // main's earlier commits (pass-1 branches read 3 and 5
+          // against their own empty histories) — a number matching
+          // nothing. (Pass 1's label count was the opposite error:
+          // main's commits wearing a feature branch's name.)
+          commits: b.name === repo.defaultBranch
+            ? anc.size
+            : [...anc].filter((sha) => !defAncestry.has(sha)).length,
+          createdAt: b.createdAt,
+        };
+      });
       return { ok: true, result: { branches, tags: repo.tags, defaultBranch: repo.defaultBranch } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });

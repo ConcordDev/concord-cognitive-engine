@@ -41,9 +41,12 @@ test("S1/R3: a branch holds work — main does not move, the branch count does",
   const repoId = await freshRepo("s1-repo");
   const before = await run("branch-list", U1, { repoId });
   const mainBefore = before.result.branches.find((b) => b.name === "main");
-  assert.equal(mainBefore.commits, 1); // the initial commit, by ancestry
+  assert.equal(mainBefore.commits, 1); // the initial commit (the default branch reports its total)
 
   await run("branch-create", U1, { repoId, name: "feature" });
+  const atBirth = await run("branch-list", U1, { repoId });
+  assert.equal(atBirth.result.branches.find((b) => b.name === "feature").commits, 0,
+    "a new branch has no commits OF ITS OWN (re-pass item 4: ahead-count semantics)");
   const save1 = await run("file-save", U1, { repoId, branch: "feature", path: "README.md", content: "# demo\n\nEdited on the branch.\n", message: "branch edit" });
   assert.equal(save1.ok, true, JSON.stringify(save1));
   assert.equal(save1.result.branch, "feature");
@@ -55,7 +58,7 @@ test("S1/R3: a branch holds work — main does not move, the branch count does",
   const main = after.result.branches.find((b) => b.name === "main");
   const feature = after.result.branches.find((b) => b.name === "feature");
   assert.equal(main.commits, 1, "main must not gain the branch's commits");
-  assert.equal(feature.commits, 3, "feature = initial + its own two commits");
+  assert.equal(feature.commits, 2, "feature reports its OWN two commits (ahead of main), not the shared ancestry");
 
   const mainReadme = await run("file-read", U1, { repoId, path: "README.md" });
   assert.match(mainReadme.result.content, /A Concord repository/);
