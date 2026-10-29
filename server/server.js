@@ -39919,16 +39919,18 @@ import { minorAgentScheduler } from "./emergent/minor-agent-scheduler.js";
 minorAgentScheduler.db = db;
 minorAgentScheduler.realtimeEmit = realtimeEmit;
 // Initialize agents for existing emergents after a short delay to avoid blocking boot
-if (!_isReadReplicaEnv()) _unrefInTest(setTimeout(async () => {
-  try {
-    const emergentsMap = STATE?.__emergent?.emergents;
-    await minorAgentScheduler.initialize(emergentsMap);
-    minorAgentScheduler.start();
-    structuredLog("info", "minor_agent_scheduler_started", { agents: minorAgentScheduler.size });
-  } catch (e) {
-    structuredLog("warn", "minor_agent_scheduler_failed", { error: e.message });
-  }
-}, 5000));
+if (!_isReadReplicaEnv()) {
+  _unrefInTest(setTimeout(async () => {
+    try {
+      const emergentsMap = STATE?.__emergent?.emergents;
+      await minorAgentScheduler.initialize(emergentsMap);
+      minorAgentScheduler.start();
+      structuredLog("info", "minor_agent_scheduler_started", { agents: minorAgentScheduler.size });
+    } catch (e) {
+      structuredLog("warn", "minor_agent_scheduler_failed", { error: e.message });
+    }
+  }, 5000));
+}
 
 import { register as registerHook } from "./lib/agentic/hooks.js";
 import { checkSovereigntyInvariants } from "./grc/sovereignty-invariants.js";
@@ -93436,6 +93438,5 @@ export const __TEST__ = Object.freeze({
   searchArchivedDtus,
   formatDtuHitsForPrompt,
   _consoRejected,
-  governorTick,
 });
 // Test commit
