@@ -415,8 +415,12 @@ export default function registerSrsActions(registerLensAction) {
     return all.filter((c) => ids.has(c.deckId) && studyableCard(c));
   }
 
-  // study-next — the next card to study from a deck: due review cards
-  // first, then up to the deck's newPerDay limit of new cards.
+  // study-next — the next card to study from a deck. Order:
+  // learning-step cards whose step has come due (never capped —
+  // they are mid-lesson), then due reviews until the deck's
+  // reviewsPerDay is spent, then new cards until newPerDay have
+  // been introduced today (S4: the caps govern; the review log and
+  // introducedAt are the counters, and the result reports them).
   registerLensAction("srs", "study-next", (ctx, _a, params = {}) => {
   try {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -424,18 +428,25 @@ export default function registerSrsActions(registerLensAction) {
     const deck = srsList(s.decks, userId).find((d) => d.id === params.deckId);
     if (!deck) return { ok: true, result: { card: null, remaining: 0 } };
     const cs = studyPool(s, userId, deck);
-    if (cs.length === 0) return { ok: true, result: { card: null, remaining: 0 } };
-    const opts = deck.options || defaultDeckOptions();
-    const newCap = deck.filtered ? 9999 : opts.newPerDay;
+    const opts = normaliseOptions(deck.options || {});
+    const today = new Date().toISOString().slice(0, 10);
+    const poolDeckIds = new Set(cs.map((c) => c.deckId));
+    const log = srsList(s.reviewLog, userId);
+    const reviewsToday = log.filter((r) => poolDeckIds.has(r.deckId) && !r.wasNew && (r.at || "").slice(0, 10) === today).length;
+    const introducedToday = cs.filter((c) => (c.introducedAt || "").slice(0, 10) === today).length;
+    const caps = { newPerDay: opts.newPerDay, reviewsPerDay: opts.reviewsPerDay, introducedToday, reviewsToday };
+    if (cs.length === 0) return { ok: true, result: { card: null, remaining: 0, caps } };
     const due = cs.filter(isDue).sort((a, b) => a.due.localeCompare(b.due));
-    if (due.length > 0) {
-      return { ok: true, result: { card: due[0], remaining: due.length + Math.min(newCap, cs.filter((c) => c.state === "new").length) } };
-    }
+    const stepDue = due.filter((c) => c.inSteps);
+    const reviewDue = due.filter((c) => !c.inSteps);
     const fresh = cs.filter((c) => c.state === "new");
-    if (fresh.length > 0) {
-      return { ok: true, result: { card: fresh[0], remaining: Math.min(newCap, fresh.length) } };
-    }
-    return { ok: true, result: { card: null, remaining: 0 } };
+    const newAllowed = Math.max(0, opts.newPerDay - introducedToday);
+    const reviewAllowed = reviewsToday < opts.reviewsPerDay ? reviewDue.length : 0;
+    const remaining = stepDue.length + reviewAllowed + Math.min(newAllowed, fresh.length);
+    if (stepDue.length > 0) return { ok: true, result: { card: stepDue[0], remaining, caps } };
+    if (reviewAllowed > 0) return { ok: true, result: { card: reviewDue[0], remaining, caps } };
+    if (fresh.length > 0 && newAllowed > 0) return { ok: true, result: { card: fresh[0], remaining, caps } };
+    return { ok: true, result: { card: null, remaining: 0, caps } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -507,6 +518,57 @@ export default function registerSrsActions(registerLensAction) {
     };
   }
 
+  // ─── S3: one pure grading core for answers AND previews ─────────
+  // SM-2 outcome for a grade, without mutating the card (factored
+  // out of study-answer so previews compute the identical numbers).
+  function sm2Schedule(card, rating) {
+    let ease = card.ease || 2.5;
+    const reps = card.reps || 0;
+    const interval0 = card.interval || 0;
+    let interval;
+    if (rating === "again") { ease = Math.max(1.3, ease - 0.2); interval = 1; }
+    else if (rating === "hard") { ease = Math.max(1.3, ease - 0.15); interval = reps === 0 ? 1 : Math.max(1, Math.round(interval0 * 1.2)); }
+    else if (rating === "easy") { ease = ease + 0.15; interval = reps === 0 ? 4 : Math.round(interval0 * ease * 1.3); }
+    else { interval = reps === 0 ? 1 : reps === 1 ? 6 : Math.round(interval0 * ease); }
+    return { interval, ease: Math.round(ease * 100) / 100 };
+  }
+
+  // The full outcome of grading `card` with `rating` under the deck
+  // options: Again (re)enters the learning steps at step 0; a card
+  // inside the steps walks them on Good, repeats on Hard, and
+  // graduates on Easy or on the final Good. Everything else
+  // graduates immediately at the scheduler's day interval. Pure:
+  // study-answer applies it, study-preview only reads it — the
+  // promise on the button and the schedule applied are one code path.
+  function gradeOutcome(card, rating, opts) {
+    const scheduler = opts.scheduler || "fsrs";
+    const steps = Array.isArray(opts.learningSteps) && opts.learningSteps.length ? opts.learningSteps : [1, 10];
+    let sched;
+    if (scheduler === "fsrs") {
+      const r = fsrsSchedule(card, rating);
+      sched = { interval: r.interval, stability: r.stability, difficulty: r.difficulty };
+    } else {
+      const r = sm2Schedule(card, rating);
+      sched = { interval: r.interval, ease: r.ease };
+    }
+    if (rating === "again") {
+      return { kind: "step", minutes: steps[0], stepIndex: 0, sched };
+    }
+    if (card.inSteps) {
+      const idx = Math.min(card.stepIndex || 0, steps.length - 1);
+      if (rating === "hard") return { kind: "step", minutes: steps[idx], stepIndex: idx, sched };
+      if (rating === "good" && idx + 1 < steps.length) {
+        return { kind: "step", minutes: steps[idx + 1], stepIndex: idx + 1, sched };
+      }
+    }
+    return { kind: "graduate", interval: Math.max(1, Math.min(36500, sched.interval)), sched };
+  }
+
+  function intervalLabel(outcome) {
+    if (outcome.kind === "step") return outcome.minutes + "m";
+    return Math.round(outcome.interval) + "d";
+  }
+
   // study-answer — apply the deck-configured scheduler (FSRS or SM-2).
   registerLensAction("srs", "study-answer", (ctx, _a, params = {}) => {
   try {
@@ -516,52 +578,72 @@ export default function registerSrsActions(registerLensAction) {
     if (!card) return { ok: false, error: "card not found" };
     const rating = ["again", "hard", "good", "easy"].includes(params.rating) ? params.rating : "good";
     const deck = srsList(s.decks, userId).find((d) => d.id === card.deckId);
-    let scheduler = (deck?.options?.scheduler) || "fsrs";
+    const opts = normaliseOptions(deck?.options || {});
+    let scheduler = opts.scheduler;
     if (params.scheduler === "sm2" || params.scheduler === "fsrs") scheduler = params.scheduler;
 
-    let interval, reps = card.reps, lapses = card.lapses;
+    const wasNew = card.state === "new";
+    const preGradeReps = card.reps || 0;
+    const outcome = gradeOutcome(card, rating, { ...opts, scheduler });
+    // Scheduler state always advances, steps included (FSRS
+    // post-lapse stability is what the card graduates with later).
     if (scheduler === "fsrs") {
-      const r = fsrsSchedule(card, rating);
-      card.stability = r.stability;
-      card.difficulty = r.difficulty;
-      interval = r.interval;
-      if (r.lapsed) { lapses += 1; card.state = "relearning"; }
-      else { reps += 1; card.state = interval >= 21 ? "review" : "learning"; }
+      card.stability = outcome.sched.stability;
+      card.difficulty = outcome.sched.difficulty;
     } else {
-      // modern SM-2
-      let ease = card.ease || 2.5;
-      interval = card.interval;
-      if (rating === "again") {
-        ease = Math.max(1.3, ease - 0.2);
-        interval = 1;
-        lapses += 1;
-        card.state = "learning";
-      } else {
-        if (rating === "hard") {
-          ease = Math.max(1.3, ease - 0.15);
-          interval = reps === 0 ? 1 : Math.max(1, Math.round(interval * 1.2));
-        } else if (rating === "easy") {
-          ease = ease + 0.15;
-          interval = reps === 0 ? 4 : Math.round(interval * ease * 1.3);
-        } else {
-          interval = reps === 0 ? 1 : reps === 1 ? 6 : Math.round(interval * ease);
-        }
-        reps += 1;
-        card.state = interval >= 21 ? "review" : "learning";
-      }
-      card.ease = Math.round(ease * 100) / 100;
+      card.ease = outcome.sched.ease;
     }
-    interval = Math.max(1, Math.min(36500, interval));
-    card.interval = interval;
-    card.reps = reps;
-    card.lapses = lapses;
-    card.due = new Date(Date.now() + interval * 86400000).toISOString();
+    // S3: reps counts every grade (the old FSRS lapse path left a
+    // graded card at Reps 0); a lapse is an Again on a card that
+    // has been graded before.
+    card.reps = preGradeReps + 1;
+    if (rating === "again" && preGradeReps > 0) card.lapses = (card.lapses || 0) + 1;
+    card.interval = outcome.kind === "graduate" ? outcome.interval : Math.max(1, Math.min(36500, outcome.sched.interval));
+    if (outcome.kind === "step") {
+      card.inSteps = true;
+      card.stepIndex = outcome.stepIndex;
+      card.due = new Date(Date.now() + outcome.minutes * 60000).toISOString();
+      card.state = scheduler === "fsrs" ? "relearning" : "learning";
+    } else {
+      card.inSteps = false;
+      card.stepIndex = 0;
+      card.due = new Date(Date.now() + outcome.interval * 86400000).toISOString();
+      card.state = outcome.interval >= 21 ? "review" : "learning";
+    }
+    if (!card.introducedAt) card.introducedAt = srsNow();
     card.lastReviewedAt = srsNow();
-    srsList(s.reviewLog, userId).push({ cardId: card.id, deckId: card.deckId, rating, scheduler, at: srsNow() });
+    srsList(s.reviewLog, userId).push({ cardId: card.id, deckId: card.deckId, rating, scheduler, wasNew, at: srsNow() });
     saveSrs();
-    return { ok: true, result: { card, nextReviewInDays: interval, scheduler } };
+    return { ok: true, result: {
+      card, scheduler, intervalLabel: intervalLabel(outcome),
+      nextReviewInDays: outcome.kind === "graduate" ? outcome.interval : null,
+      nextReviewInMinutes: outcome.kind === "step" ? outcome.minutes : null,
+    } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // study-preview — the promise on the grade buttons: what each
+  // rating will schedule for this card, computed by the same pure
+  // core study-answer applies. No state changes.
+  registerLensAction("srs", "study-preview", (ctx, _a, params = {}) => {
+    const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = srsActor(ctx);
+    const card = srsList(s.cards, userId).find((c) => c.id === params.cardId);
+    if (!card) return { ok: false, error: "card not found" };
+    const deck = srsList(s.decks, userId).find((d) => d.id === card.deckId);
+    const opts = normaliseOptions(deck?.options || {});
+    if (params.scheduler === "sm2" || params.scheduler === "fsrs") opts.scheduler = params.scheduler;
+    const previews = {};
+    for (const rating of ["again", "hard", "good", "easy"]) {
+      const o = gradeOutcome(card, rating, opts);
+      previews[rating] = {
+        label: intervalLabel(o), kind: o.kind,
+        minutes: o.kind === "step" ? o.minutes : null,
+        days: o.kind === "graduate" ? Math.round(o.interval) : null,
+      };
+    }
+    return { ok: true, result: { cardId: card.id, scheduler: opts.scheduler, previews } };
+  });
 
   registerLensAction("srs", "study-stats", (ctx, _a, params = {}) => {
   try {
