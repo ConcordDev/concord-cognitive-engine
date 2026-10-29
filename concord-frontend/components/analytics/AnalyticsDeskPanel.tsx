@@ -5,11 +5,12 @@
  * and stats strip. Extracted from analytics/page.tsx consolidation.
  */
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   TrendingUp, Users, Coins, FileText, Quote, Heart, Loader2,
-  Star, Zap, PieChart as PieChartIcon, Clock,
+  Star, Zap, PieChart as PieChartIcon, Clock, ChevronDown,
 } from 'lucide-react';
 import { cn, formatNumber } from '@/lib/utils';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -41,10 +42,15 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
 
   const userId = profileData?.userId;
 
+  // DTUs mode lists every DTU the account owns (F5): the page size grows via
+  // "Show more" so the list stays complete past the first 100.
+  const [dtuLimit, setDtuLimit] = useState(100);
+  const [selectedDtuId, setSelectedDtuId] = useState<string | null>(null);
+
   const { data: dtusData } = useQuery({
-    queryKey: ['my-dtus-analytics'],
+    queryKey: ['my-dtus-analytics', dtuLimit],
     queryFn: async () => {
-      const res = await apiHelpers.dtus.myDtus({ limit: 100, offset: 0 });
+      const res = await apiHelpers.dtus.myDtus({ limit: dtuLimit, offset: 0 });
       return res.data as { dtus?: DTUSummary[]; items?: DTUSummary[]; total?: number };
     },
     enabled: !!userId,
@@ -95,9 +101,27 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8);
 
-  const topDTUs = [...dtus]
-    .sort((a, b) => (b.citationCount || 0) - (a.citationCount || 0))
-    .slice(0, 5);
+  // Ranking basis (stated on the DTUs tab, F5): citations, highest first;
+  // ties break to the newest DTU, then by title. No truncation — the tab
+  // lists every DTU the query returned.
+  const rankedDTUs = [...dtus].sort((a, b) => {
+    const byCitations = (b.citationCount || 0) - (a.citationCount || 0);
+    if (byCitations !== 0) return byCitations;
+    const aTime = Date.parse(a.timestamp || a.createdAt || '') || 0;
+    const bTime = Date.parse(b.timestamp || b.createdAt || '') || 0;
+    if (bTime !== aTime) return bTime - aTime;
+    return (a.title || a.id).localeCompare(b.title || b.id);
+  });
+  const selectedDtu = selectedDtuId
+    ? rankedDTUs.find((d) => d.id === selectedDtuId) || null
+    : null;
+  const selectedRank = selectedDtu ? rankedDTUs.indexOf(selectedDtu) : -1;
+  const selectedLens = selectedDtu
+    ? selectedDtu.domain || selectedDtu.meta?.lens || null
+    : null;
+  const selectedCreated = selectedDtu
+    ? selectedDtu.timestamp || selectedDtu.createdAt || null
+    : null;
 
   if (profileError) {
     return (
@@ -253,43 +277,121 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
             animate={{ opacity: 1, y: 0 }}
             className="p-5 rounded-xl bg-lattice-deep border border-lattice-border"
           >
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-2 mb-1">
               <Star className="w-4 h-4 text-yellow-400" />
-              <h3 className="text-sm font-semibold text-white">Top Performing DTUs</h3>
+              <h3 className="text-sm font-semibold text-white">Your DTUs</h3>
             </div>
-            {topDTUs.length > 0 ? (
+            <p className="text-xs text-gray-400 mb-4">
+              Ranked by citations, highest first — ties go to the newest DTU, then by title.
+              {' '}Showing {rankedDTUs.length} of {totalDTUs}. Select a DTU for its detail.
+            </p>
+            {rankedDTUs.length > 0 ? (
               <div className="space-y-2">
-                {topDTUs.map((dtu, idx) => (
-                  <div
-                    key={dtu.id}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-lattice-surface border border-lattice-border"
-                  >
-                    <span className={cn('text-sm font-bold w-6 text-center', idx < 3 ? 'text-neon-cyan' : 'text-gray-400')}>
-                      {idx + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white truncate">
-                        {dtu.title || dtu.summary || dtu.id.slice(0, 24)}
-                      </p>
-                      <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
-                        {dtu.tier && <span className="capitalize">{dtu.tier}</span>}
-                        {(dtu.tags || []).slice(0, 2).map((t) => (
-                          <span key={t} className="text-neon-cyan/60">#{t}</span>
-                        ))}
+                {rankedDTUs.map((dtu, idx) => {
+                  const isSelected = dtu.id === selectedDtuId;
+                  return (
+                    <button
+                      key={dtu.id}
+                      type="button"
+                      onClick={() => setSelectedDtuId(isSelected ? null : dtu.id)}
+                      aria-expanded={isSelected}
+                      className={cn(
+                        'flex w-full items-center gap-3 p-3 rounded-lg bg-lattice-surface border text-left transition-colors',
+                        isSelected
+                          ? 'border-neon-cyan/60'
+                          : 'border-lattice-border hover:border-white/25',
+                      )}
+                    >
+                      <span className={cn('text-sm font-bold w-6 text-center', idx < 3 ? 'text-neon-cyan' : 'text-gray-400')}>
+                        {idx + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-white truncate">
+                          {dtu.title || dtu.summary || dtu.id.slice(0, 24)}
+                        </p>
+                        <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
+                          {dtu.tier && <span className="capitalize">{dtu.tier}</span>}
+                          {(dtu.tags || []).slice(0, 2).map((t) => (
+                            <span key={t} className="text-neon-cyan/60">#{t}</span>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="flex items-center gap-1 text-sm font-bold text-neon-green">
-                        <Quote className="w-3.5 h-3.5" />
-                        {dtu.citationCount || 0}
+                      <div className="text-right flex-shrink-0">
+                        <div className="flex items-center gap-1 text-sm font-bold text-neon-green">
+                          <Quote className="w-3.5 h-3.5" />
+                          {dtu.citationCount || 0}
+                        </div>
+                        <div className="text-[10px] text-gray-400">citations</div>
                       </div>
-                      <div className="text-[10px] text-gray-400">citations</div>
-                    </div>
-                  </div>
-                ))}
+                      <ChevronDown
+                        className={cn('w-4 h-4 flex-shrink-0 text-gray-500 transition-transform', isSelected && 'rotate-180')}
+                      />
+                    </button>
+                  );
+                })}
               </div>
             ) : (
               <p className="text-sm text-gray-400 text-center py-8">No DTUs yet</p>
+            )}
+            {selectedDtu && (
+              <div
+                data-testid="dtu-detail"
+                className="mt-4 rounded-lg border border-neon-cyan/30 bg-lattice-surface p-4"
+              >
+                <p className="text-sm font-semibold text-white">
+                  {selectedDtu.title || selectedDtu.summary || selectedDtu.id}
+                </p>
+                <p className="mt-0.5 break-all font-mono text-[11px] text-gray-500">{selectedDtu.id}</p>
+                {selectedDtu.summary && selectedDtu.title && (
+                  <p className="mt-2 text-sm text-gray-300">{selectedDtu.summary}</p>
+                )}
+                <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-wide text-gray-500">Rank</dt>
+                    <dd className="text-gray-200">
+                      #{selectedRank + 1} of {rankedDTUs.length} by citations
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-wide text-gray-500">Citations</dt>
+                    <dd className="text-gray-200">{selectedDtu.citationCount || 0}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-wide text-gray-500">Tier</dt>
+                    <dd className="text-gray-200 capitalize">{selectedDtu.tier || 'regular'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-wide text-gray-500">Lens</dt>
+                    <dd className="text-gray-200">{selectedLens || 'Not recorded on this DTU'}</dd>
+                  </div>
+                  {selectedCreated && (
+                    <div>
+                      <dt className="text-[10px] uppercase tracking-wide text-gray-500">Created</dt>
+                      <dd className="text-gray-200">{new Date(selectedCreated).toLocaleDateString()}</dd>
+                    </div>
+                  )}
+                </dl>
+                {(selectedDtu.tags || []).length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {(selectedDtu.tags || []).map((t) => (
+                      <span key={t} className="rounded bg-white/5 px-2 py-0.5 text-xs text-neon-cyan/80">
+                        #{t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {rankedDTUs.length < totalDTUs && (
+              <div className="mt-4 text-center">
+                <button
+                  type="button"
+                  onClick={() => setDtuLimit((limit) => limit + 100)}
+                  className="rounded-full border border-white/15 px-4 py-1.5 text-sm text-gray-200 transition-colors hover:border-neon-cyan/50 hover:text-white"
+                >
+                  Show more DTUs ({rankedDTUs.length} of {totalDTUs})
+                </button>
+              </div>
             )}
           </motion.div>
 

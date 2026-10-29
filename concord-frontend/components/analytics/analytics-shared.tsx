@@ -29,6 +29,12 @@ export interface DTUSummary {
   citationCount?: number;
   tags?: string[];
   tier?: string;
+  // Carried by the /api/dtus/mine payload (full DTU records): the lens a DTU
+  // belongs to is `domain`, falling back to `meta.lens` (server/lib/art-dtu-filter.js).
+  domain?: string;
+  meta?: { lens?: string };
+  timestamp?: string;
+  createdAt?: string;
 }
 
 export type AnalyticsView =
