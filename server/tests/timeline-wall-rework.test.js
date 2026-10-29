@@ -778,6 +778,45 @@ describe("S-TL-10 timeline feed filters + search (F13/F17)", () => {
   });
 });
 
+// ── S-TL-11: sharing never silently widens (F16, P1) ───────────────────
+describe("S-TL-11 timeline share audience cap (F16)", () => {
+  const ada = asUser("sh_ada");
+  const bob = asUser("sh_bob");
+  const carol = asUser("sh_carol");
+  befriend("sh_ada", "sh_bob");
+  const bobsPosts = () => call("feed-list", bob, { limit: 50, authorId: "sh_bob" }).result.posts;
+
+  it("with no audience named, the share takes the ORIGINAL's tier", () => {
+    const pub = call("post-create", ada, { content: "pub", privacy: "public" }).result.post;
+    assert.equal(call("share-post", bob, { postId: pub.id }).result.post.privacy, "public");
+    const fr = call("post-create", ada, { content: "fr", privacy: "friends" }).result.post;
+    assert.equal(call("share-post", bob, { postId: fr.id }).result.post.privacy, "friends");
+    const priv = call("post-create", ada, { content: "priv", privacy: "private" }).result.post;
+    assert.equal(call("share-post", ada, { postId: priv.id }).result.post.privacy, "private", "own private share stays private");
+  });
+
+  it("widening is refused without an explicit confirmation — and nothing is shared", () => {
+    const fr = call("post-create", ada, { content: "friends only", privacy: "friends" }).result.post;
+    const before = bobsPosts().length;
+    const refused = call("share-post", bob, { postId: fr.id, privacy: "public" });
+    assert.equal(refused.ok, false);
+    assert.match(refused.error, /make a Friends post public/);
+    assert.match(refused.error, /Confirm the wider audience/);
+    assert.equal(bobsPosts().length, before, "a refused widening creates nothing");
+    const confirmed = call("share-post", bob, { postId: fr.id, privacy: "public", confirmWiden: true });
+    assert.equal(confirmed.ok, true);
+    assert.equal(confirmed.result.post.privacy, "public");
+  });
+
+  it("narrowing never needs confirmation; unknown tiers are refused; access guards intact", () => {
+    const pub = call("post-create", ada, { content: "wide", privacy: "public" }).result.post;
+    assert.equal(call("share-post", bob, { postId: pub.id, privacy: "private" }).result.post.privacy, "private");
+    assert.equal(call("share-post", bob, { postId: pub.id, privacy: "everyone" }).ok, false);
+    const fr = call("post-create", ada, { content: "friends post", privacy: "friends" }).result.post;
+    assert.equal(call("share-post", carol, { postId: fr.id, privacy: "friends" }).ok, false, "a non-friend still can't share a friends post at all");
+  });
+});
+
 // ── S-TL-2: friends-tier regression lock ───────────────────────────────
 // The prep audit found the friends-tier gate already fixed on main
 // (checkPostAccess via areFriends, fail-closed, oracle-safe). This

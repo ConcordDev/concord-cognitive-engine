@@ -1120,8 +1120,26 @@ export default function registerTimelineActions(registerLensAction) {
       const confirmedFriend = ctx?.db ? areFriends(ctx.db, found.ownerId, actorId) : false;
       if (!confirmedFriend) return { ok: false, error: "Cannot share a friends-only post." };
     }
-    const privacy = PRIVACY_KINDS.includes(String(params.privacy))
-      ? String(params.privacy) : "friends";
+    // S-TL-11 (F16): a share never silently widens. No audience param
+    // means the original's own tier (the old default was "friends"
+    // regardless — itself a silent change for public/private posts).
+    // A wider tier is refused unless the caller confirms the widening
+    // explicitly (confirmWiden — the share dialog states the
+    // consequence and only sends it after the user agrees). Narrowing
+    // never needs confirmation. An unknown tier is refused, not mapped.
+    const PRIVACY_RANK = { private: 0, friends: 1, public: 2 };
+    const TIER_LABEL = { private: "Only me", friends: "Friends", public: "Public" };
+    let privacy;
+    if (params.privacy === undefined) {
+      privacy = found.post.privacy;
+    } else if (!PRIVACY_KINDS.includes(String(params.privacy))) {
+      return { ok: false, error: "Unknown privacy setting." };
+    } else {
+      privacy = String(params.privacy);
+      if (PRIVACY_RANK[privacy] > PRIVACY_RANK[found.post.privacy] && params.confirmWiden !== true) {
+        return { ok: false, error: `That would make a ${TIER_LABEL[found.post.privacy]} post ${privacy}. Confirm the wider audience to share it that way.` };
+      }
+    }
     const shared = {
       id: tlId("pst"),
       authorId: actorId,
