@@ -36,3 +36,10 @@ test("failed tools and fenced echoes are ignored", () => {
   assert.equal(guardNumericTrace("999 MPa", [{ tool: "run_compute", ok: false, result: { x: 1 } }]).untraced.length, 0);
   assert.deepEqual(guardNumericTrace("```\nsigma = 111 MPa\n```\nDone, 25 MPa.", beam).untraced, []);
 });
+
+test("a big result (recipe receipt with many steps) cannot make an invented figure trace by coincidence", () => {
+  const steps = Array.from({ length: 60 }, (_, i) => ({ id: `s${i}`, output: { v: (i + 1) * 1.37, w: 3 + i * 2.9 } }));
+  const recipe = { tool: "run_recipe", ok: true, result: { depthM: 0.125, sigmaPa: 25e6 }, steps, receipt: { steps, inputs: { a: 4, b: 10000 } } };
+  assert.deepEqual(guardNumericTrace("The stress is 25 MPa at 0.125 m.", [recipe]).untraced, []);
+  assert.deepEqual(guardNumericTrace("The stress is 111 MPa.", [recipe]).untraced, ["111 MPa"]);
+});
