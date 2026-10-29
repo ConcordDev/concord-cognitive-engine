@@ -44,7 +44,8 @@ async function main() {
   // 1. Chat tool enumeration vs the declared surface.
   const surface = await import("../../server/lib/chat-tool-surface.js").catch(() => null);
   const rep = await httpJson(base, "GET", "/api/chat/tools", H);
-  const live = new Map((rep.json.tools || []).map((t) => [t.name, t]));
+  const agentListed = rep.json.paths?.agent?.tools || [];
+  const live = new Map([...(rep.json.tools || []), ...agentListed].map((t) => [t.name, t]));
   const declared = surface ? [...surface.CHAT_RESPOND_TOOLS, ...surface.AGENT_LOOP_TOOLS] : [];
   const names = new Set([...live.keys(), ...declared.map((t) => t.name)]);
   for (const name of [...names].sort()) {

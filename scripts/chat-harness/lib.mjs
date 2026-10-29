@@ -89,7 +89,7 @@ export function classify(c, r) {
   }
   if ((r.untracedNumbers || []).length && !e.allowUntraced) return confused("untraced_number", `flagged: ${r.untracedNumbers.slice(0, 3).map((n) => n.text || n).join(", ")}`);
   if (e.noInvention) {
-    const dtuIds = text.match(/\bDTU[-_ ]?[A-Za-z0-9]{3,}\b/g) || [];
+    const dtuIds = text.match(/\bDTU[-_ ]?[A-Za-z0-9]*\d[A-Za-z0-9]*\b/g) || [];
     if (dtuIds.length) return fail("hallucinated_citation", `cites ${dtuIds.slice(0, 3).join(", ")}`);
   }
   return { verdict: "PASS", reason: null, why: "ok" };
@@ -124,7 +124,9 @@ export function renderSummary(rows, meta = {}) {
   const tools = rows.filter((r) => r.group === "tool-reach");
   if (tools.length) {
     lines.push("", "Tool reachability:");
-    for (const r of tools) lines.push(`  ${r.status_label || r.verdict}  ${r.id}${r.why && r.why !== "ok" ? " — " + r.why : ""}`);
+    const counts = tools.reduce((m, r) => ((m[r.status_label || r.verdict] = (m[r.status_label || r.verdict] || 0) + 1), m), {});
+    lines.push("  " + Object.entries(counts).map(([k, n]) => `${k}: ${n}`).join("   "));
+    for (const r of tools.filter((x) => x.status_label !== "REACHABLE")) lines.push(`  ${r.status_label || r.verdict}  ${r.id}${r.why && r.why !== "ok" ? " — " + r.why : ""}`);
   }
   return lines.join("\n") + "\n";
 }

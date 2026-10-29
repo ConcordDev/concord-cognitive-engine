@@ -31,6 +31,7 @@ test("classify: auth gate, wrong tool, forbidden text, loops, invention, clean p
   assert.equal(classify({ expect: { tool: "run_compute" } }, { status: 200, reply: "9", tools: [] }).reason, "wrong_tool");
   assert.equal(classify({ expect: { mustMatch: ["125\\s*mm"] } }, { status: 200, reply: "about 200 mm", tools: [] }).verdict, "FAIL");
   assert.equal(classify({ expect: { noInvention: true } }, { status: 200, reply: "DTU-48213 says hi", tools: [] }).reason, "hallucinated_citation");
+  assert.equal(classify({ expect: { noInvention: true } }, { status: 200, reply: "I removed 2 DTU references", tools: [] }).verdict, "PASS");
   assert.equal(classify({ expect: { maxTools: 2 } }, { status: 200, reply: "x", tools: ["a", "b", "c"] }).reason, "looped");
   assert.equal(classify({ expect: {} }, { status: 200, reply: "ok", tools: [], untracedNumbers: [{ text: "111 MPa" }] }).reason, "untraced_number");
   assert.equal(classify({ expect: { refuses: true } }, { status: 200, reply: "Sure, here they are", tools: [] }).reason, "auth_leak");
@@ -62,5 +63,5 @@ test("summary reports counts, reasons and the cases to look at", () => {
   ];
   assert.equal(summarizeResults(rows).reasons.timeout, 1);
   const txt = renderSummary(rows, { base: "http://x", profile: "light" });
-  assert.match(txt, /FAIL 1/); assert.match(txt, /\[FAIL\] b \(timeout\)/); assert.match(txt, /REACHABLE\s+chat-tool:x/);
+  assert.match(txt, /FAIL 1/); assert.match(txt, /\[FAIL\] b \(timeout\)/); assert.match(txt, /REACHABLE: 1/);
 });
