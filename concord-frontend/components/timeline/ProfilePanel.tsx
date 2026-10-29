@@ -6,11 +6,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Briefcase, GraduationCap, MapPin, Heart, Link2, Pencil, Loader2, Camera, Check, Upload } from 'lucide-react';
+import { Briefcase, GraduationCap, MapPin, Heart, Link2, Pencil, Loader2, Camera, Check, Upload, Eye, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
-import type { Profile } from './types';
+import type { Profile, FeedPost } from './types';
 import { uploadTimelineFile, mediaUrlError, UPLOAD_ACCEPT } from './uploadMedia';
+import { timeAgo, exactTime } from './timeFormat';
 
 interface ProfileResult {
   profile: Profile;
@@ -19,10 +20,23 @@ interface ProfileResult {
 
 const EMPTY_ABOUT = { work: '', education: '', location: '', relationship: '', website: '' };
 
-export function ProfilePanel({ viewerId: _viewerId }: { viewerId: string }) {
-  // _viewerId: the signed-in viewer's id — S-TL-7's View As preview
-  // consumes it (the heading itself now shows the resolved name).
+export function ProfilePanel({ viewerId }: { viewerId: string }) {
   const qc = useQueryClient();
+  // S-TL-7: View As — preview your own wall as Public or as a specific
+  // person. The server computes access for the stand-in; the preview
+  // below is read-only by construction (no action controls render).
+  const [viewAs, setViewAs] = useState<string | null>(null);
+  const [personId, setPersonId] = useState('');
+  const { data: preview, isLoading: previewLoading } = useQuery({
+    queryKey: ['timeline-viewas', viewAs],
+    queryFn: async () => {
+      const r = await lensRun<{ posts: FeedPost[]; total: number; viewAs: { as: string; label: string } | null }>(
+        'timeline', 'feed-list', { viewAs, limit: 50 },
+      );
+      return r.data.result ?? { posts: [], total: 0, viewAs: null };
+    },
+    enabled: viewAs !== null,
+  });
   const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
@@ -102,6 +116,7 @@ export function ProfilePanel({ viewerId: _viewerId }: { viewerId: string }) {
   ];
 
   return (
+    <>
     <div className="bg-[#242526] rounded-lg overflow-hidden">
       {/* Cover */}
       <div className="h-40 bg-gradient-to-br from-blue-600 to-purple-700 relative">
@@ -134,6 +149,43 @@ export function ProfilePanel({ viewerId: _viewerId }: { viewerId: string }) {
           >
             <Pencil className="w-3.5 h-3.5" /> {editing ? 'Cancel' : 'Edit profile'}
           </button>
+        </div>
+
+        {/* S-TL-7: View As controls */}
+        <div className="mt-3 flex items-center gap-2 flex-wrap text-xs">
+          <span className="inline-flex items-center gap-1 text-gray-400">
+            <Eye className="w-3.5 h-3.5" /> View your wall as:
+          </span>
+          {viewAs === null ? (
+            <>
+              <button
+                onClick={() => setViewAs('public')}
+                className="px-2.5 py-1 rounded-full bg-[#3a3b3c] text-gray-200 hover:bg-[#4a4b4c]"
+              >
+                Public
+              </button>
+              <input
+                value={personId}
+                onChange={(e) => setPersonId(e.target.value)}
+                placeholder="A person's user ID…"
+                className="bg-[#3a3b3c] rounded-full px-3 py-1 text-xs text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500 w-44"
+              />
+              <button
+                onClick={() => { if (personId.trim() && personId.trim() !== viewerId) setViewAs(personId.trim()); }}
+                disabled={!personId.trim()}
+                className="px-2.5 py-1 rounded-full bg-[#3a3b3c] text-gray-200 hover:bg-[#4a4b4c] disabled:opacity-40"
+              >
+                That person
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setViewAs(null)}
+              className="px-2.5 py-1 rounded-full bg-blue-600 text-white inline-flex items-center gap-1"
+            >
+              <X className="w-3 h-3" /> Back to your view
+            </button>
+          )}
         </div>
 
         {editing ? (
@@ -257,5 +309,58 @@ export function ProfilePanel({ viewerId: _viewerId }: { viewerId: string }) {
         )}
       </div>
     </div>
+
+    {/* S-TL-7: the View As preview — read-only by construction. */}
+    {viewAs !== null && (
+      <div className="bg-[#242526] rounded-lg overflow-hidden mt-3">
+        <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
+          <p className="text-sm text-white inline-flex items-center gap-2">
+            <Eye className="w-4 h-4 text-blue-400" />
+            Viewing as <span className="font-semibold">{preview?.viewAs?.label || (viewAs === 'public' ? 'Public' : 'Member')}</span>
+          </p>
+          <span className="text-[11px] text-gray-400">Read-only preview</span>
+        </div>
+        <div className="p-4 space-y-3">
+          {previewLoading ? (
+            <div className="flex items-center gap-2 text-xs text-gray-400 py-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading their view…
+            </div>
+          ) : (
+            <>
+              {((data?.stats.posts ?? 0) - (preview?.total ?? 0)) > 0 && (
+                <p className="text-xs text-amber-300">
+                  {(data?.stats.posts ?? 0) - (preview?.total ?? 0)} of your posts are hidden from this view.
+                </p>
+              )}
+              {(preview?.posts ?? []).length === 0 ? (
+                <p className="text-sm text-gray-400">This viewer sees none of your posts.</p>
+              ) : (
+                (preview?.posts ?? []).map((p) => (
+                  <article key={p.id} className="border border-gray-700 rounded-lg p-3 bg-[#18191a]">
+                    <p className="text-[11px] text-gray-400" title={exactTime(p.createdAt)}>
+                      {timeAgo(p.createdAt)} · {p.privacy === 'public' ? 'Public' : p.privacy === 'friends' ? 'Friends' : 'Only me'}
+                    </p>
+                    {p.content && <p className="text-sm text-gray-200 whitespace-pre-wrap mt-1">{p.content}</p>}
+                    {p.media?.length > 0 && (
+                      <div className="flex gap-2 mt-2">
+                        {p.media.slice(0, 4).map((m, i) => (
+                          m.kind === 'video'
+                            ? <video key={m.id ?? i} src={m.url} controls preload="metadata" className="w-20 h-20 object-cover rounded" />
+                            : <img key={m.id ?? i} src={m.url} alt={m.caption || 'post media'} className="w-20 h-20 object-cover rounded" />
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-[11px] text-gray-500 mt-2">
+                      {p.reactionTotal} reactions · {p.commentCount} comments · {p.shareCount ?? 0} shares
+                    </p>
+                  </article>
+                ))
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    )}
+    </>
   );
 }

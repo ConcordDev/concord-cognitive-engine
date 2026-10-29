@@ -710,6 +710,18 @@ export default function registerTimelineActions(registerLensAction) {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const viewerId = tlAid(ctx);
+    // S-TL-7 (View As, §5d #6): the caller previews THEIR OWN wall as
+    // someone else — 'public' (a stranger) or a specific userId. Only
+    // the caller's own posts are listed and every access decision is
+    // computed for the stand-in, so the preview can reveal nothing the
+    // stand-in could not already see of the caller.
+    const viewAsRaw = params.viewAs ? String(params.viewAs) : null;
+    const viewAs = !viewAsRaw
+      ? null
+      : viewAsRaw === "public"
+        ? { id: null, label: "Public" }
+        : { id: tlClean(viewAsRaw, 64), label: null };
+    const effectiveViewer = viewAs ? viewAs.id : viewerId;
     // Optional client filter: when sent, friends-tier posts are limited to
     // these owners. It can only narrow — access itself is decided below by
     // the server-side friend graph (fails closed without a db handle).
@@ -718,16 +730,19 @@ export default function registerTimelineActions(registerLensAction) {
       : null;
     const friendCache = new Map();
     const isFriend = (ownerId) => {
-      if (!friendCache.has(ownerId)) friendCache.set(ownerId, ctx?.db ? areFriends(ctx.db, ownerId, viewerId) : false);
+      if (!friendCache.has(ownerId)) {
+        friendCache.set(ownerId, ctx?.db && effectiveViewer ? areFriends(ctx.db, ownerId, effectiveViewer) : false);
+      }
       return friendCache.get(ownerId);
     };
     const onlyAuthor = params.authorId ? tlClean(params.authorId, 64) : null;
     let all = [];
     for (const [ownerId, posts] of s.posts.entries()) {
       if (onlyAuthor && ownerId !== onlyAuthor) continue;
+      if (viewAs && ownerId !== viewerId) continue;
       for (const p of posts) {
         const visible =
-          ownerId === viewerId ||
+          ownerId === effectiveViewer ||
           p.privacy === "public" ||
           (p.privacy === "friends" && (!claimed || claimed.has(ownerId)) && isFriend(ownerId));
         if (!visible) continue;
@@ -736,7 +751,7 @@ export default function registerTimelineActions(registerLensAction) {
           acc[k] = reactions.filter((r) => r.kind === k).length;
           return acc;
         }, {});
-        const mine = reactions.find((r) => r.userId === viewerId);
+        const mine = reactions.find((r) => r.userId === effectiveViewer);
         all.push({
           ...p,
           // S-TL-4: people render as names, not UUIDs (F5).
@@ -757,7 +772,15 @@ export default function registerTimelineActions(registerLensAction) {
     const offset = Math.max(0, tlNum(params.offset, 0));
     return {
       ok: true,
-      result: { posts: all.slice(offset, offset + limit), total: all.length },
+      result: {
+        posts: all.slice(offset, offset + limit),
+        total: all.length,
+        // S-TL-7: echo the preview stand-in (name resolved) so the
+        // surface can label whose eyes these are.
+        viewAs: viewAs
+          ? { as: viewAsRaw, label: viewAs.label || tlPersonName(ctx, s, viewAs.id) || "Member" }
+          : null,
+      },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
@@ -1213,6 +1236,10 @@ export default function registerTimelineActions(registerLensAction) {
     try {
       username = lookupUserIdentity(ctx?.db || globalThis._concordSTATE?.db, userId).username || null;
     } catch { /* identity lookup is best-effort */ }
+    // S-TL-7: profile-get accepts the same viewAs stand-in as
+    // feed-list and echoes it for the preview surface's label. The
+    // profile fields themselves are not audience-gated in this lens.
+    const viewAsRaw = params.viewAs ? String(params.viewAs) : null;
     return {
       ok: true,
       result: {
@@ -1221,6 +1248,14 @@ export default function registerTimelineActions(registerLensAction) {
           posts: posts.length,
           albums: (s.albums.get(userId) || []).length,
         },
+        viewAs: viewAsRaw
+          ? {
+              as: viewAsRaw,
+              label: viewAsRaw === "public"
+                ? "Public"
+                : tlPersonName(ctx, s, tlClean(viewAsRaw, 64)) || "Member",
+            }
+          : null,
       },
     };
   });

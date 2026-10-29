@@ -504,6 +504,50 @@ describe("S-TL-6 timeline small completions (F9/F18)", () => {
   });
 });
 
+// ── S-TL-7: View As — preview your own wall through someone else's eyes ─
+describe("S-TL-7 timeline view-as (§5d #6)", () => {
+  const ada = asUser("va_ada");
+  const bob = asUser("va_bob");
+  const carol = asUser("va_carol");
+  befriend("va_ada", "va_bob");
+
+  it("public sees only public; a friend sees public+friends; private stays hidden from both", () => {
+    call("post-create", ada, { content: "va public", privacy: "public" });
+    call("post-create", ada, { content: "va friends", privacy: "friends" });
+    call("post-create", ada, { content: "va private", privacy: "private" });
+    call("post-create", bob, { content: "bob public", privacy: "public" });
+    const contents = (r) => r.result.posts.map((p) => p.content).sort();
+    const asPublic = call("feed-list", ada, { viewAs: "public" });
+    assert.deepEqual(contents(asPublic), ["va public"]);
+    assert.equal(asPublic.result.viewAs.label, "Public");
+    const asBob = call("feed-list", ada, { viewAs: "va_bob" });
+    assert.deepEqual(contents(asBob), ["va friends", "va public"]);
+    const asCarol = call("feed-list", ada, { viewAs: "va_carol" });
+    assert.deepEqual(contents(asCarol), ["va public"], "a non-friend person is a stranger to the wall");
+    const asSelf = call("feed-list", ada, { viewAs: "va_ada" });
+    assert.deepEqual(contents(asSelf), ["va friends", "va private", "va public"]);
+  });
+
+  it("the preview only ever shows the CALLER's wall — bob previewing sees his own posts, not ada's", () => {
+    call("post-create", ada, { content: "ada public", privacy: "public" });
+    call("post-create", bob, { content: "bob public", privacy: "public" });
+    const bobsView = call("feed-list", bob, { viewAs: "public" });
+    assert.deepEqual(bobsView.result.posts.map((p) => p.content), ["bob public"]);
+    // And without viewAs the ordinary mixed feed is unchanged.
+    const normal = call("feed-list", carol, {});
+    assert.ok(normal.result.posts.some((p) => p.content === "ada public"));
+    assert.equal(normal.result.viewAs, null);
+  });
+
+  it("profile-get echoes the stand-in with a resolved label", () => {
+    const r = call("profile-get", ada, { viewAs: "va_bob" });
+    assert.equal(r.result.viewAs.as, "va_bob");
+    const pub = call("profile-get", ada, { viewAs: "public" });
+    assert.equal(pub.result.viewAs.label, "Public");
+    assert.equal(call("profile-get", ada, {}).result.viewAs, null);
+  });
+});
+
 // ── S-TL-2: friends-tier regression lock ───────────────────────────────
 // The prep audit found the friends-tier gate already fixed on main
 // (checkPostAccess via areFriends, fail-closed, oracle-safe). This
