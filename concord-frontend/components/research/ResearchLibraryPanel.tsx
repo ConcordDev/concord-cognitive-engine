@@ -335,7 +335,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
   const [duplicateNote, setDuplicateNote] = useState<Reference | null>(null);
   const hasLoadedRef = useRef(false);
   const [selected, setSelected] = useState<Reference | null>(null);
-  const [citations, setCitations] = useState<{ apa: string; mla: string; bibtex: string; chicago?: string } | null>(null);
+  const [citations, setCitations] = useState<{ apa: string; mla: string; bibtex: string; chicago?: string; vancouver?: string } | null>(null);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [annForm, setAnnForm] = useState({ page: '', quote: '', text: '' });
   const [pdfs, setPdfs] = useState<PdfAttachment[]>([]);
@@ -419,11 +419,16 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
     const p = await lensRun<{ pdfs: PdfAttachment[] }>('research', 'reference-pdfs', { referenceId: ref.id });
     setPdfs(p.data?.result?.pdfs || []);
     await loadRelated(ref.id);
-    // reference-detail only returns apa/mla/bibtex — fetch chicago via cite-format
-    // so all four citation styles this domain supports are actually reachable.
+    // Fetch chicago + vancouver via cite-format as well, so every
+    // citation style this domain supports is actually reachable here
+    // (reference-detail's own citations object also carries them now).
     const chi = await lensRun<{ citation: string }>('research', 'cite-format', { id: ref.id, style: 'chicago' });
     if (chi.data?.ok !== false) {
       setCitations((prev) => (prev ? { ...prev, chicago: chi.data?.result?.citation } : prev));
+    }
+    const van = await lensRun<{ citation: string }>('research', 'cite-format', { id: ref.id, style: 'vancouver' });
+    if (van.data?.ok !== false) {
+      setCitations((prev) => (prev ? { ...prev, vancouver: van.data?.result?.citation } : prev));
     }
   }, [loadRelated]);
 
@@ -673,7 +678,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
         {citations && (
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-1.5">
             <h4 className="text-xs font-semibold text-zinc-300">Citations</h4>
-            {(['apa', 'mla', 'chicago', 'bibtex'] as const).filter((style) => citations[style]).map((style) => (
+            {(['apa', 'mla', 'chicago', 'vancouver', 'bibtex'] as const).filter((style) => citations[style]).map((style) => (
               <div key={style} className="flex items-start gap-2">
                 <span className="text-[10px] uppercase text-zinc-400 w-12 shrink-0 pt-0.5">{style}</span>
                 <code className="flex-1 text-[10px] text-zinc-400 break-all whitespace-pre-wrap">{citations[style]}</code>

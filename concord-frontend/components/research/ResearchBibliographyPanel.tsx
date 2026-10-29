@@ -14,7 +14,7 @@ import { ErrorState } from '@/components/ui';
 interface Reference { id: string; title: string; authors: string | null; year: number | null; status: string }
 interface Collection { id: string; name: string }
 
-const STYLES = ['apa', 'mla', 'chicago', 'bibtex'];
+const STYLES = ['apa', 'mla', 'chicago', 'vancouver', 'bibtex'];
 
 export function ResearchBibliographyPanel({ onChange }: { onChange: () => void }) {
   const [queue, setQueue] = useState<Reference[]>([]);
