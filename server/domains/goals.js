@@ -614,7 +614,8 @@ export default function registerGoalsActions(registerLensAction) {
         reminders: new Map(),  // userId -> Array<reminder>
         deps: new Map(),
         chartPoints: new Map(), // userId -> Array<manual chart point> (S4)
-        occurrences: new Map(), // userId -> Array<occurrence> (S6)       // userId -> Array<{ from, to, kind }>
+        occurrences: new Map(), // userId -> Array<occurrence> (S6)
+        trash: new Map(),       // userId -> Array<soft-deleted item> (S10)       // userId -> Array<{ from, to, kind }>
         seq: new Map(),        // userId -> { obj, chk, team, rec, rem, dep }
       };
     }
@@ -631,7 +632,7 @@ export default function registerGoalsActions(registerLensAction) {
   }
 
   function nextSeq(s, userId, key) {
-    if (!s.seq.has(userId)) s.seq.set(userId, { obj: 1, chk: 1, team: 1, rec: 1, rem: 1, dep: 1, cp: 1, occ: 1 });
+    if (!s.seq.has(userId)) s.seq.set(userId, { obj: 1, chk: 1, team: 1, rec: 1, rem: 1, dep: 1, cp: 1, occ: 1, tr: 1 });
     const seq = s.seq.get(userId);
     if (seq[key] == null) seq[key] = 1; // states persisted before a kind existed
     const n = seq[key]++;
@@ -679,6 +680,37 @@ export default function registerGoalsActions(registerLensAction) {
   function withProgress(s, userId, objectives) {
     return objectives.map((o) => ({ ...o, ...deriveProgress(s, userId, objectives, o, new Set()) }));
   }
+  // --- S10: one delete standard (F11) -------------------------------
+  // Every OKR-substrate remove is a SOFT delete: the item moves to
+  // the caller's trash with its list position, and the owning macro's
+  // 'restore' op splices it back in place. Kind-checked, so a
+  // trashId from one surface cannot restore into another.
+  function trashItem(s, userId, kind, item, index, extra) {
+    const trash = ensureList(s.trash, userId);
+    const entry = {
+      trashId: `tr_${nextSeq(s, userId, "tr")}`,
+      kind, item, index, extra: extra || null,
+      deletedAt: new Date().toISOString(),
+    };
+    trash.push(entry);
+    if (trash.length > 50) trash.splice(0, trash.length - 50);
+    return entry.trashId;
+  }
+
+  function takeTrash(s, userId, kind, trashId) {
+    const trash = s.trash.get(userId) || [];
+    const i = trash.findIndex((e) => e.trashId === trashId && e.kind === kind);
+    if (i === -1) return null;
+    return trash.splice(i, 1)[0];
+  }
+
+  function restoreItem(s, userId, kind, trashId, list) {
+    const entry = takeTrash(s, userId, kind, trashId);
+    if (!entry) return null;
+    list.splice(Math.min(entry.index, list.length), 0, entry.item);
+    return entry.item;
+  }
+
 
 
   // --- Built-in goal templates by category (structure only, no sample user data) ---
@@ -748,6 +780,7 @@ export default function registerGoalsActions(registerLensAction) {
     const userId = actId(ctx);
     const list = ensureList(s.objectives, userId);
     const op = params.op || "list";
+    let lastTrashId = null;
 
     if (op === "upsert") {
       if (!params.title || typeof params.title !== "string") {
@@ -781,9 +814,20 @@ export default function registerGoalsActions(registerLensAction) {
     } else if (op === "remove") {
       const idx = list.findIndex((o) => o.id === params.id);
       if (idx === -1) return { ok: false, error: "objective not found" };
-      list.splice(idx, 1);
-      // Orphan children -> promote to root
-      for (const o of list) if (o.parentId === params.id) o.parentId = null;
+      const [removedObj] = list.splice(idx, 1);
+      // Orphan children -> promote to root (restore re-links them)
+      const promotedChildren = [];
+      for (const o of list) if (o.parentId === params.id) { o.parentId = null; promotedChildren.push(o.id); }
+      lastTrashId = trashItem(s, userId, "objective", removedObj, idx, { promotedChildren });
+      save();
+    } else if (op === "restore") {
+      const entry = takeTrash(s, userId, "objective", params.trashId);
+      if (!entry) return { ok: false, error: "nothing to restore" };
+      list.splice(Math.min(entry.index, list.length), 0, entry.item);
+      for (const childId of entry.extra?.promotedChildren || []) {
+        const child = list.find((o) => o.id === childId);
+        if (child && child.parentId === null) child.parentId = entry.item.id;
+      }
       save();
     }
 
@@ -813,6 +857,7 @@ export default function registerGoalsActions(registerLensAction) {
       result: {
         tree: roots,
         flat: enriched,
+        trashId: lastTrashId,
         stats: {
           objectiveCount: list.length,
           rootCount: roots.length,
@@ -838,6 +883,7 @@ export default function registerGoalsActions(registerLensAction) {
     const userId = actId(ctx);
     const list = ensureList(s.checkins, userId);
     const op = params.op || "list";
+    let lastTrashId = null;
 
     if (op === "add") {
       if (!params.goalId) return { ok: false, error: "goalId required" };
@@ -860,7 +906,13 @@ export default function registerGoalsActions(registerLensAction) {
     } else if (op === "remove") {
       const idx = list.findIndex((c) => c.id === params.id);
       if (idx === -1) return { ok: false, error: "check-in not found" };
-      list.splice(idx, 1);
+      const [removedChk] = list.splice(idx, 1);
+      lastTrashId = trashItem(s, userId, "checkin", removedChk, idx);
+      save();
+    } else if (op === "restore") {
+      if (!restoreItem(s, userId, "checkin", params.trashId, list)) {
+        return { ok: false, error: "nothing to restore" };
+      }
       save();
     }
 
@@ -885,6 +937,7 @@ export default function registerGoalsActions(registerLensAction) {
       result: {
         checkins: sorted,
         objectiveProgress,
+        trashId: lastTrashId,
         stats: {
           count: sorted.length,
           avgConfidence: confValues.length
@@ -948,6 +1001,7 @@ export default function registerGoalsActions(registerLensAction) {
       return { ok: false, error: "team goal not found" };
     }
 
+    let lastTrashId = null;
     if (op === "update") {
       if (params.title) g.title = params.title;
       if (params.description != null) g.description = params.description;
@@ -969,11 +1023,18 @@ export default function registerGoalsActions(registerLensAction) {
       recompute(g);
       save();
     } else if (op === "remove") {
-      list.splice(list.indexOf(g), 1);
+      const idx = list.indexOf(g);
+      list.splice(idx, 1);
+      lastTrashId = trashItem(s, userId, "team", g, idx);
+      save();
+    } else if (op === "restore") {
+      if (!restoreItem(s, userId, "team", params.trashId, list)) {
+        return { ok: false, error: "nothing to restore" };
+      }
       save();
     }
 
-    return { ok: true, result: { teamGoal: g || null, teamGoals: list } };
+    return { ok: true, result: { teamGoal: g || null, teamGoals: list, trashId: lastTrashId } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -1068,7 +1129,16 @@ export default function registerGoalsActions(registerLensAction) {
     if (op === "recurring-remove") {
       const idx = list.findIndex((r) => r.id === params.id);
       if (idx === -1) return { ok: false, error: "recurring goal not found" };
-      list.splice(idx, 1);
+      const [removedRec] = list.splice(idx, 1);
+      const trashId = trashItem(s, userId, "recurring", removedRec, idx);
+      save();
+      return { ok: true, result: { recurringGoals: list, trashId } };
+    }
+
+    if (op === "restore") {
+      if (!restoreItem(s, userId, "recurring", params.trashId, list)) {
+        return { ok: false, error: "nothing to restore" };
+      }
       save();
       return { ok: true, result: { recurringGoals: list } };
     }
@@ -1204,6 +1274,7 @@ export default function registerGoalsActions(registerLensAction) {
       if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = actId(ctx);
       const manual = ensureList(s.chartPoints, userId);
+      let opTrashId = null;
 
       if (params.op === "add-point") {
         if (!params.goalId) return { ok: false, error: "goalId required" };
@@ -1222,7 +1293,13 @@ export default function registerGoalsActions(registerLensAction) {
       } else if (params.op === "remove-point") {
         const idx = manual.findIndex((pt) => pt.id === params.id);
         if (idx === -1) return { ok: false, error: "manual point not found" };
-        manual.splice(idx, 1);
+        const [removedPt] = manual.splice(idx, 1);
+        opTrashId = trashItem(s, userId, "chartPoint", removedPt, idx);
+        save();
+      } else if (params.op === "restore-point") {
+        if (!restoreItem(s, userId, "chartPoint", params.trashId, manual)) {
+          return { ok: false, error: "nothing to restore" };
+        }
         save();
       } else if (params.op !== "series") {
         return { ok: false, error: "unknown op" };
@@ -1231,7 +1308,7 @@ export default function registerGoalsActions(registerLensAction) {
       const goalId = params.goalId || null;
       const points = objectiveSeriesPoints(s, userId, goalId);
       const result = chartFromHistory(points, params.target, params.targetDate);
-      return { ok: true, result: { ...result, goalId, points } };
+      return { ok: true, result: { ...result, goalId, points, trashId: opTrashId } };
     }
 
     const history = (Array.isArray(params.history) && params.history.length
@@ -1319,11 +1396,14 @@ export default function registerGoalsActions(registerLensAction) {
       return { ok: true, result: { reminder: rem, reminders: list } };
     }
 
+    let lastTrash = null;
     if (["remove", "complete"].includes(op)) {
       const rem = list.find((r) => r.id === params.id);
       if (!rem) return { ok: false, error: "reminder not found" };
       if (op === "remove") {
-        list.splice(list.indexOf(rem), 1);
+        const idx = list.indexOf(rem);
+        list.splice(idx, 1);
+        lastTrash = trashItem(s, userId, "reminder", rem, idx);
       } else {
         if (rem.cadence !== "once" && cadenceDays[rem.cadence]) {
           rem.dueAt = new Date(new Date(rem.dueAt).getTime() + cadenceDays[rem.cadence] * 86400000).toISOString();
@@ -1333,7 +1413,15 @@ export default function registerGoalsActions(registerLensAction) {
         }
       }
       save();
-      return { ok: true, result: { reminders: list } };
+      return { ok: true, result: { reminders: list, trashId: lastTrash } };
+    }
+
+    if (op === "restore") {
+      if (!restoreItem(s, userId, "reminder", params.trashId, list)) {
+        return { ok: false, error: "nothing to restore" };
+      }
+      save();
+      // fall through to the list response below
     }
 
     if (op === "due") {
@@ -1378,6 +1466,7 @@ export default function registerGoalsActions(registerLensAction) {
     const userId = actId(ctx);
     const list = ensureList(s.deps, userId);
     const op = params.op || "list";
+    let lastTrashId = null;
 
     if (op === "link") {
       const { from, to } = params;
@@ -1414,7 +1503,13 @@ export default function registerGoalsActions(registerLensAction) {
     } else if (op === "unlink") {
       const idx = list.findIndex((e) => e.from === params.from && e.to === params.to);
       if (idx === -1) return { ok: false, error: "dependency not found" };
-      list.splice(idx, 1);
+      const [removedEdge] = list.splice(idx, 1);
+      lastTrashId = trashItem(s, userId, "dep", removedEdge, idx);
+      save();
+    } else if (op === "restore") {
+      if (!restoreItem(s, userId, "dep", params.trashId, list)) {
+        return { ok: false, error: "nothing to restore" };
+      }
       save();
     }
 
@@ -1433,6 +1528,7 @@ export default function registerGoalsActions(registerLensAction) {
       ok: true,
       result: {
         edges: list,
+        trashId: lastTrashId,
         blockedGoals: [...blockedSet],
         readyGoals: [...allNodes].filter((n) => !blockedSet.has(n)),
         blockersByGoal: blockers,
