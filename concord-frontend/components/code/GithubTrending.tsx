@@ -20,6 +20,38 @@ interface Repo {
   owner: { login: string; avatar_url: string };
 }
 
+// S9 (F9): the crash that white-screened the whole lens was
+// `undefined.toLocaleString()` — one repo item whose counts arrived
+// missing or mistyped took down every surface. Counts are coerced at
+// the data boundary; a row without a name is dropped, never rendered.
+function num(v: unknown): number {
+  const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN;
+  return Number.isFinite(n) ? n : 0;
+}
+
+function normalizeRepo(raw: unknown, idx: number): Repo | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const fullName = typeof r.full_name === 'string' ? r.full_name : '';
+  if (!fullName) return null;
+  return {
+    id: typeof r.id === 'number' ? r.id : idx,
+    full_name: fullName,
+    description: typeof r.description === 'string' ? r.description : undefined,
+    html_url: typeof r.html_url === 'string' ? r.html_url : `https://github.com/${fullName}`,
+    stargazers_count: num(r.stargazers_count),
+    forks_count: num(r.forks_count),
+    watchers_count: num(r.watchers_count),
+    language: typeof r.language === 'string' ? r.language : undefined,
+    topics: Array.isArray(r.topics) ? r.topics.filter((t): t is string => typeof t === 'string') : undefined,
+    pushed_at: typeof r.pushed_at === 'string' ? r.pushed_at : '',
+    owner: {
+      login: typeof (r.owner as { login?: unknown } | null)?.login === 'string' ? (r.owner as { login: string }).login : fullName.split('/')[0] || '',
+      avatar_url: typeof (r.owner as { avatar_url?: unknown } | null)?.avatar_url === 'string' ? (r.owner as { avatar_url: string }).avatar_url : '',
+    },
+  };
+}
+
 const LANGUAGES = ['any', 'TypeScript', 'JavaScript', 'Python', 'Rust', 'Go', 'C++', 'Java', 'Swift', 'Ruby'];
 const WINDOWS = [
   { id: 'day', label: 'today', days: 1 },
@@ -37,8 +69,9 @@ export function GithubTrending() {
       const days = WINDOWS.find((w) => w.id === window)?.days ?? 7;
       const res = await lensRun('repos', 'github-trending', { sinceDays: days, lang: language !== 'any' ? language : undefined });
       if (!res.data?.ok) throw new Error(res.data?.reason || res.data?.error || 'github_unavailable');
-      const out = res.data.result as { items?: Repo[]; stale?: boolean; fetchedAt?: number } | null;
-      return { items: (out?.items || []).slice(0, 20), stale: !!out?.stale, fetchedAt: out?.fetchedAt ?? null };
+      const out = res.data.result as { items?: unknown[]; stale?: boolean; fetchedAt?: number } | null;
+      const items = (out?.items || []).map((raw, i) => normalizeRepo(raw, i)).filter((r): r is Repo => r !== null).slice(0, 20);
+      return { items, stale: !!out?.stale, fetchedAt: out?.fetchedAt ?? null };
     },
     staleTime: 5 * 60 * 1000,
   });
