@@ -25,7 +25,13 @@ export interface PiperPlaybackHandle {
   cancel: () => void;
   /** Promise that resolves on natural end or cancel. */
   ended: Promise<void>;
-  /** Sample the amplitude envelope at a given playback time (seconds). 0..1. */
+  /**
+   * Sample mouth-sync level at a given playback time (seconds). 0..1.
+   * Piper: the real amplitude envelope of the decoded audio. Web Speech:
+   * a speech-ACTIVITY level derived from utterance events (start / word
+   * boundary / end) — the Web Speech API exposes no audio amplitude, so
+   * no amplitude is fabricated for it (see createSpeechActivityEnvelope).
+   */
   getEnvelopeAt: (seconds: number) => number;
   /** Source path: 'piper' or 'web-speech'. Lets callers know which path won. */
   source: 'piper' | 'web-speech';
@@ -161,6 +167,48 @@ async function playPiperBuffer(audioBase64: string, options: { onStart?: () => v
   };
 }
 
+/**
+ * Speech-activity envelope for the Web Speech fallback.
+ *
+ * The Web Speech API gives no access to the synthesized audio, so there
+ * is NO amplitude signal to report — the previous implementation
+ * fabricated one (a 4Hz sine "lip flap"), which the remaining-work audit
+ * flagged (B#14) as synthetic data in a slot consumers read as a real
+ * envelope. This replaces it with an honest activity level driven only
+ * by real utterance events:
+ *   - not speaking                       -> 0
+ *   - speaking, fresh word boundary      -> 0.75, decaying to 0.3
+ *     (utterance.onboundary, Chromium-family browsers)
+ *   - speaking, no boundary events       -> 0.3 steady ("voice active")
+ * The constants are presentation levels for three real states, not
+ * measurements; Piper remains the only path with a true envelope.
+ */
+export interface SpeechActivityEnvelope {
+  start: () => void;
+  boundary: () => void;
+  stop: () => void;
+  sample: (nowMs: number) => number;
+}
+
+export function createSpeechActivityEnvelope(): SpeechActivityEnvelope {
+  let speaking = false;
+  let boundarySeen = false;
+  let lastBoundaryAt = 0;
+  return {
+    start: () => { speaking = true; },
+    boundary: () => { boundarySeen = true; lastBoundaryAt = Date.now(); },
+    stop: () => { speaking = false; },
+    sample: (nowMs: number) => {
+      if (!speaking) return 0;
+      if (!boundarySeen) return 0.3;
+      const dt = Math.max(0, nowMs - lastBoundaryAt);
+      if (dt <= 120) return 0.75;
+      if (dt >= 400) return 0.3;
+      return 0.75 - ((dt - 120) / 280) * 0.45; // decay 0.75 -> 0.3 across 120..400ms
+    },
+  };
+}
+
 function speakWithWebSpeech(
   text: string,
   profile: PiperVoiceProfile,
@@ -182,9 +230,11 @@ function speakWithWebSpeech(
   let endResolve: () => void = () => {};
   const ended = new Promise<void>((r) => { endResolve = r; });
 
-  utterance.onstart = () => { try { options.onStart?.(); } catch { /* ok */ } };
-  utterance.onend = () => { if (!cancelled) { try { options.onEnd?.(); } catch { /* ok */ } } endResolve(); };
-  utterance.onerror = () => { try { options.onEnd?.(); } catch { /* ok */ } endResolve(); };
+  const activity = createSpeechActivityEnvelope();
+  utterance.onstart = () => { activity.start(); try { options.onStart?.(); } catch { /* ok */ } };
+  utterance.onboundary = () => { activity.boundary(); };
+  utterance.onend = () => { activity.stop(); if (!cancelled) { try { options.onEnd?.(); } catch { /* ok */ } } endResolve(); };
+  utterance.onerror = () => { activity.stop(); try { options.onEnd?.(); } catch { /* ok */ } endResolve(); };
 
   window.speechSynthesis.cancel(); // clear any in-flight utterance
   window.speechSynthesis.speak(utterance);
@@ -194,15 +244,15 @@ function speakWithWebSpeech(
     cancel: () => {
       if (cancelled) return;
       cancelled = true;
+      activity.stop();
       try { window.speechSynthesis.cancel(); } catch { /* ok */ }
       endResolve();
     },
     ended,
-    // Web Speech doesn't expose audio amplitude — return a square-wave
-    // approximation so the mouth still flaps.
-    getEnvelopeAt: (seconds: number) => {
-      // 4Hz mouth flap, ~0.5 average amplitude
-      return 0.4 + 0.4 * Math.abs(Math.sin(seconds * 8));
-    },
+    // Web Speech exposes no audio amplitude — report the event-driven
+    // speech-activity level instead of a fabricated waveform (B#14).
+    // The seconds argument is the caller's playback clock; utterance
+    // events are wall-clock, so sampling uses Date.now().
+    getEnvelopeAt: () => activity.sample(Date.now()),
   };
 }

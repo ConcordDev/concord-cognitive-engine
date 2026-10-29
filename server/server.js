@@ -41690,6 +41690,7 @@ const MCP_TOOLS_REQUIRE_REAL_AUTH = new Set([
   // data — real auth only; the public corpus reads (dtu_*/atlas_*/lens_*)
   // and aggregate status tools stay anonymous by design.
   "browser_check_coins",
+  "browser_check_rate_limits",
   "vault_stats",
   "vault_read",
   "vault_inbox",
@@ -61733,7 +61734,9 @@ app.get("/api/cli/help", (req, res) => {
   res.type("text/plain").send(generateCLIHelp());
 });
 
-app.get("/api/cli/stats", (req, res) => {
+// Operator telemetry (corpus/session/macro counts) — same operator gate as
+// POST /api/cli; the help route above stays public (static documentation).
+app.get("/api/cli/stats", requireRole("owner", "admin"), (req, res) => {
   res.json({ ok: true, stats: getCLIStats() });
 });
 
@@ -66602,7 +66605,11 @@ app.delete("/api/workspaces/:id/templates/:templateId", (req, res) => {
 });
 
 // ---- Wave 15: Ecosystem Endpoints ----
-app.post("/api/cli", asyncHandler(async (req, res) => {
+// The CLI commands operate on the whole corpus unscoped (full export,
+// backup creation, tagging and creating DTUs), so the route is an operator
+// surface: owner/admin only, with sovereign passing via requireRole. There
+// is no member-facing CLI surface.
+app.post("/api/cli", requireRole("owner", "admin"), asyncHandler(async (req, res) => {
   const result = await executeCLICommand(req.body?.command || "");
   res.json(result);
 }));
