@@ -385,8 +385,15 @@ export default function registerGoalsActions(registerLensAction) {
    */
   registerLensAction("goals", "progressForecast", (ctx, artifact, params) => {
   try {
-    const history = artifact.data?.history || [];
-    const target = artifact.data?.target ?? 100;
+    // S5: with a goalId, the forecast reads the objective's real
+    // series — the same points the chart draws (S4) — in true
+    // chronological order, so "current" is the LATEST point.
+    let history = params.history || artifact.data?.history || [];
+    if (params.goalId) {
+      const s = getGoalsState();
+      if (s) history = objectiveSeriesPoints(s, actId(ctx), params.goalId);
+    }
+    const target = params.target ?? artifact.data?.target ?? 100;
     const confidenceLevel = params.confidenceLevel || 0.95;
 
     if (history.length < 2) {
@@ -434,6 +441,45 @@ export default function registerGoalsActions(registerLensAction) {
     // For simplicity, use z-values for common confidence levels
     const zValues = { 0.90: 1.645, 0.95: 1.96, 0.99: 2.576 };
     const z = zValues[confidenceLevel] || 1.96;
+
+    // Degenerate spread: every point on one day. A slope cannot be
+    // fit, and calling a rising series "stalled" (the old denom-0
+    // path) is exactly the F4 lie — refuse honestly instead.
+    if (denom === 0) {
+      const firstP = ys[0];
+      const lastP = ys[ys.length - 1];
+      return {
+        ok: true,
+        result: {
+          regression: null,
+          currentState: {
+            progress: lastP,
+            target,
+            remaining: Math.round((target - lastP) * 100) / 100,
+            daysElapsed: 0,
+            percentComplete: Math.round((lastP / target) * 10000) / 100,
+          },
+          forecast: {
+            estimatedCompletionDays: null,
+            estimatedCompletionDate: null,
+            daysRemainingBest: null,
+            daysRemainingWorst: null,
+            confidenceLevel,
+            onTrack: null,
+            reason: `All ${n} data points fall on a single day \u2014 a forecast needs check-ins on different days.`,
+          },
+          velocity: {
+            current: 0,
+            average: 0,
+            trend: lastP > firstP ? "improving" : lastP < firstP ? "declining" : "flat",
+            history: [],
+          },
+          forecastCurve: [],
+          pace: null,
+          dataPoints: n,
+        },
+      };
+    }
 
     // Forecast: when does progress reach target?
     let forecastDays = null;
@@ -532,8 +578,10 @@ export default function registerGoalsActions(registerLensAction) {
           daysRemainingBest: daysRemainingLower,
           daysRemainingWorst: daysRemainingUpper,
           confidenceLevel,
+          reason: null,
           onTrack: forecastDays !== null && forecastDays <= daysElapsed * 3,
         },
+        pace: chartFromHistory(sorted, target, undefined).stats.pace ?? null,
         velocity: {
           current: r(slope),
           average: r(avgVelocity),
@@ -999,6 +1047,24 @@ export default function registerGoalsActions(registerLensAction) {
     return { ok: true, result: { recurringGoals: list } };
   });
 
+  // The objective's progress series — check-ins + manual points, one
+  // source for charts (S4) and the forecast (S5), in true chronological
+  // order (date, then creation time), so "latest" is well-defined.
+  function objectiveSeriesPoints(s, userId, goalId) {
+    const checkinPoints = (s.checkins.get(userId) || [])
+      .filter((c) => c.goalId === goalId && c.progress != null)
+      .map((c) => ({
+        id: c.id, source: "checkin",
+        date: c.period || (c.createdAt || "").slice(0, 10),
+        progress: c.progress, createdAt: c.createdAt || "",
+      }));
+    const manualPoints = (s.chartPoints.get(userId) || [])
+      .filter((pt) => pt.goalId === goalId)
+      .map((pt) => ({ id: pt.id, source: "manual", date: pt.date, progress: pt.progress, createdAt: pt.createdAt || "" }));
+    return [...checkinPoints, ...manualPoints]
+      .sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.createdAt || "").localeCompare(b.createdAt || ""));
+  }
+
   /**
    * chartFromHistory — the one chart computation (S4 refactor of the
    * former progressChart body; arithmetic unchanged).
@@ -1047,7 +1113,10 @@ export default function registerGoalsActions(registerLensAction) {
         remaining: Math.round((target - last.progress) * 100) / 100,
         velocityPerDay: velocity,
         varianceFromIdeal: variance,
-        pace: variance >= 0 ? "ahead" : variance > -10 ? "on_track" : "behind",
+        // Pace is unjudgeable on a single point or a single day —
+        // null there, so no surface can dress a guess as a verdict.
+        pace: (sorted.length < 2 || last.t === first) ? null
+          : variance >= 0 ? "ahead" : variance > -10 ? "on_track" : "behind",
       },
     };
   }
@@ -1100,18 +1169,7 @@ export default function registerGoalsActions(registerLensAction) {
       }
 
       const goalId = params.goalId || null;
-      const checkinPoints = (s.checkins.get(userId) || [])
-        .filter((c) => c.goalId === goalId && c.progress != null)
-        .map((c) => ({
-          id: c.id, source: "checkin",
-          date: c.period || (c.createdAt || "").slice(0, 10),
-          progress: c.progress, createdAt: c.createdAt || "",
-        }));
-      const manualPoints = manual
-        .filter((pt) => pt.goalId === goalId)
-        .map((pt) => ({ id: pt.id, source: "manual", date: pt.date, progress: pt.progress, createdAt: pt.createdAt || "" }));
-      const points = [...checkinPoints, ...manualPoints]
-        .sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.createdAt || "").localeCompare(b.createdAt || ""));
+      const points = objectiveSeriesPoints(s, userId, goalId);
       const result = chartFromHistory(points, params.target, params.targetDate);
       return { ok: true, result: { ...result, goalId, points } };
     }
