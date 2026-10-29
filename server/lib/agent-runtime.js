@@ -348,14 +348,6 @@ async function readAuthority(entity_id) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Phase 2+ placeholder generators
-// ─────────────────────────────────────────────────────────────────────────────
-
-function phase2Stub(layer, reason = "phase2") {
-  return { status: "unavailable", reason, layer };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 //  rt_snapshot  — the contract's center of gravity
 // ─────────────────────────────────────────────────────────────────────────────
 
