@@ -39,6 +39,7 @@ import { WhiteboardArrangementPanel } from './WhiteboardArrangementPanel';
 import { WhiteboardCreateForm } from './WhiteboardCreateForm';
 import { WhiteboardKeepMenu } from './WhiteboardKeepMenu';
 import { BoardOwnerMenu } from './BoardOwnerMenu';
+import { commitDeletedBoard } from './boardOwner';
 import { axiosStatus } from './boardOwner';
 import {
   type BoardMode,
@@ -126,6 +127,19 @@ export function WhiteboardStudio({
     queryFn: () => apiHelpers.whiteboard.list().then(r => r.data),
   });
 
+  // S2: trashed board ids (domain store) — the Studio's REST list hides
+  // a board the moment it is deleted, before the DTU commit lands.
+  const { data: trashData } = useQuery({
+    queryKey: ['whiteboard-trash'],
+    queryFn: async () => {
+      const r = await lensRun({ domain: 'whiteboard', action: 'boards-trash-list', input: {} });
+      return r.data;
+    },
+  });
+  const trashedBoardIds = new Set<string>(
+    (((trashData?.result?.boards as Array<{ id: string }> | undefined) ?? []).map((b) => b.id)),
+  );
+
   const { data: selectedWb, isError: isError3, error: error3, refetch: refetch3,} = useQuery({
     queryKey: ['whiteboard', selectedWbId],
     queryFn: async () => {
@@ -144,9 +158,10 @@ export function WhiteboardStudio({
 
   // Sidebar board list: prefer the real whiteboard.list() result; fall back to
   // the lens-artifact record only when the server list is genuinely empty.
-  const boardListItems: Record<string, unknown>[] = (whiteboards?.whiteboards && whiteboards.whiteboards.length > 0)
+  const boardListItems: Record<string, unknown>[] = ((whiteboards?.whiteboards && whiteboards.whiteboards.length > 0)
     ? whiteboards.whiteboards
-    : boardArtifacts.map(a => ({ id: a.id, title: a.title, elementCount: 0 }));
+    : boardArtifacts.map(a => ({ id: a.id, title: a.title, elementCount: 0 })))
+    .filter((b) => !trashedBoardIds.has(String(b.id)));
 
   // North star: the canvas is the page, so open the most recent board instead
   // of an empty "select a board" screen (render-time adjust, once).
@@ -195,6 +210,8 @@ export function WhiteboardStudio({
 
   /* Hydrate canvas from the selected board payload (render-time adjust, not an effect). */
   const [hydratedId, setHydratedId] = useState<string | null>(null);
+  const [pendingBoardDelete, setPendingBoardDelete] = useState<{ id: string; title: string } | null>(null);
+  const boardDeleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   if (selectedWbId !== hydratedId) {
     if (!selectedWbId) {
       setHydratedId(null);
@@ -244,6 +261,44 @@ export function WhiteboardStudio({
     return () => { if (mirrorTimerRef.current) clearTimeout(mirrorTimerRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [elements, selectedWbId, hydratedId, showGrid]);
+
+  /* S2: deleting the open board is a window, not an instant. The board
+     record soft-deletes immediately (every list hides the board); the
+     DTU delete commits only when the Undo window lapses. */
+  const handleBoardDeleted = async () => {
+    const id = selectedWbId;
+    if (!id) return;
+    const title = boardName(boardListItems.find((b) => b.id === id)?.title ?? selectedWb?.whiteboard?.title);
+    setShowModeMenu(false);
+    setSelectedWbId(null);
+    try {
+      await lensRun({ domain: 'whiteboard', action: 'board-delete', input: { id } });
+    } catch { /* a never-mirrored board has no record to trash; the DTU commit still runs */ }
+    queryClient.invalidateQueries({ queryKey: ['whiteboard-trash'] });
+    queryClient.invalidateQueries({ queryKey: ['whiteboards'] });
+    if (boardDeleteTimerRef.current) clearTimeout(boardDeleteTimerRef.current);
+    setPendingBoardDelete({ id, title });
+    boardDeleteTimerRef.current = setTimeout(() => {
+      setPendingBoardDelete(null);
+      void commitDeletedBoard(id, true).then(() => {
+        queryClient.invalidateQueries({ queryKey: ['whiteboards'] });
+        queryClient.invalidateQueries({ queryKey: ['whiteboard-trash'] });
+      });
+    }, 12000);
+  };
+
+  const undoBoardDelete = async () => {
+    if (boardDeleteTimerRef.current) clearTimeout(boardDeleteTimerRef.current);
+    const pending = pendingBoardDelete;
+    setPendingBoardDelete(null);
+    if (!pending) return;
+    try {
+      await lensRun({ domain: 'whiteboard', action: 'board-restore', input: { id: pending.id } });
+    } catch { /* nothing to restore */ }
+    queryClient.invalidateQueries({ queryKey: ['whiteboard-trash'] });
+    queryClient.invalidateQueries({ queryKey: ['whiteboards'] });
+    setSelectedWbId(pending.id);
+  };
 
 
   /* resize — the canvas container mounts only once a board is open, so observe
@@ -916,7 +971,7 @@ export function WhiteboardStudio({
                       boardId={selectedWbId}
                       title={boardName(boardListItems.find((b) => b.id === selectedWbId)?.title ?? selectedWb?.whiteboard?.title)}
                       onRenamed={() => { queryClient.invalidateQueries({ queryKey: ['whiteboards'] }); queryClient.invalidateQueries({ queryKey: ['whiteboard', selectedWbId] }); queryClient.invalidateQueries({ queryKey: ['lens', 'whiteboard'] }); }}
-                      onDeleted={() => { setSelectedWbId(null); setShowModeMenu(false); queryClient.invalidateQueries({ queryKey: ['whiteboards'] }); queryClient.invalidateQueries({ queryKey: ['lens', 'whiteboard'] }); }}
+                      onDeleted={() => { void handleBoardDeleted(); }}
                     />
                   </>
                 )}
@@ -1184,6 +1239,13 @@ export function WhiteboardStudio({
       </div>
 
       {showInspector && <WhiteboardInspector boardId={selectedWbId ?? undefined} />}
+
+      {pendingBoardDelete && (
+        <div className="pointer-events-auto absolute bottom-8 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-white/10 bg-[#1c1c1c] px-3 py-2 shadow-2xl" role="status">
+          <span className="text-[12px] text-zinc-300">Board “{pendingBoardDelete.title}” deleted.</span>
+          <button type="button" onClick={() => { void undoBoardDelete(); }} className="text-[12px] font-medium text-teal-300 hover:text-teal-200">Undo</button>
+        </div>
+      )}
 
       {selectedWbId && boardMode === 'canvas' && (
         <div className="pointer-events-auto absolute bottom-8 left-1/2 z-20 -translate-x-1/2">
