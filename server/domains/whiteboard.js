@@ -512,6 +512,13 @@ export default function registerWhiteboardActions(registerLensAction) {
     const boardId = String(params.boardId || "");
     const elementId = String(params.elementId || "");
     if (!boardId || !elementId) return { ok: false, error: "boardId and elementId required" };
+    // S8: a vote must land on a real element of a real board the
+    // caller can see — any id pair tallied before (a vote on a fake
+    // board/element counted in the review).
+    const voteLookup = findBoardForUser(s, userId, boardId);
+    if (!voteLookup) return { ok: false, error: "board not found" };
+    const voteElements = Array.isArray(voteLookup.board.scene?.elements) ? voteLookup.board.scene.elements : [];
+    if (!voteElements.some((el) => el && el.id === elementId)) return { ok: false, error: "element not found on this board" };
     if (!s.votes.has(userId)) s.votes.set(userId, new Map());
     const boardVotes = s.votes.get(userId);
     if (!boardVotes.has(boardId)) boardVotes.set(boardId, new Map());
@@ -529,7 +536,12 @@ export default function registerWhiteboardActions(registerLensAction) {
     const boardId = String(params.boardId || "");
     const boardVotes = s.votes.get(userId)?.get(boardId);
     if (!boardVotes) return { ok: true, result: { tally: [], total: 0 } };
+    // S8: prune phantom entries (elements voted on before cast-side
+    // validation existed, or since removed from the scene).
+    const tallyLookup = findBoardForUser(s, userId, boardId);
+    const liveIds = tallyLookup ? new Set((Array.isArray(tallyLookup.board.scene?.elements) ? tallyLookup.board.scene.elements : []).map((el) => el?.id)) : new Set();
     const tally = Array.from(boardVotes.entries())
+      .filter(([elementId]) => liveIds.has(elementId))
       .map(([elementId, voters]) => ({ elementId, count: voters.size }))
       .sort((a, b) => b.count - a.count);
     const total = tally.reduce((s2, t) => s2 + t.count, 0);
