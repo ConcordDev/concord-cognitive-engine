@@ -887,6 +887,21 @@ export default function registerGoalsActions(registerLensAction) {
 
     if (op === "add") {
       if (!params.goalId) return { ok: false, error: "goalId required" };
+      // S11 (F12): entered values are stored faithfully or refused
+      // with a stated error — never silently clamped to a different
+      // number than the user typed (150 no longer becomes 100).
+      if (params.progress != null) {
+        const p = Number(params.progress);
+        if (!Number.isFinite(p) || p < 0 || p > 100) {
+          return { ok: false, error: "progress must be between 0 and 100" };
+        }
+      }
+      if (params.confidence != null) {
+        const c = Number(params.confidence);
+        if (!Number.isFinite(c) || c < 0 || c > 1) {
+          return { ok: false, error: "confidence must be between 0 and 1" };
+        }
+      }
       const confidence = Math.max(0, Math.min(1, Number(params.confidence) || 0));
       const allowed = ["on_track", "at_risk", "off_track"];
       const status = allowed.includes(params.status) ? params.status
@@ -896,7 +911,7 @@ export default function registerGoalsActions(registerLensAction) {
         goalId: params.goalId,
         status,
         confidence,
-        progress: params.progress != null ? Math.max(0, Math.min(100, Number(params.progress))) : null,
+        progress: params.progress != null ? Number(params.progress) : null, // validated above (S11)
         note: typeof params.note === "string" ? params.note.slice(0, 1000) : "",
         period: params.period || new Date().toISOString().slice(0, 10),
         createdAt: new Date().toISOString(),
