@@ -59,3 +59,17 @@ test("a part with no width still falls through to the legacy solver", async () =
   assert.equal(r.ok, true);
   assert.notEqual(r.key, "conkay_design.beam-size");
 });
+
+test("a footbridge beam brief is a beam, not a truss (live harness case normal.beam-footbridge)", async () => {
+  const { detectDomain } = await import("../lib/conkay/chat/brief-parser.js");
+  const t = "Size a simply supported A36 steel footbridge beam: 4 m span, 10 kN at midspan, 60 mm wide, safety factor 2, deflection limit span/360, use R10 preferred depths.";
+  assert.equal(detectDomain(t), "beam");
+  assert.equal(detectDomain("a bridge girder 12 m long"), "beam");
+  assert.equal(detectDomain("design a footbridge 12 m long"), "truss", "a plain footbridge stays a truss");
+  assert.equal(detectDomain("pratt truss footbridge, simply supported beam ends"), "truss", "an explicit truss stays a truss");
+  const p = parseChatBrief(t);
+  const { solveBeam } = await import("../lib/conkay/chat/structures.js");
+  const beam = solveBeam(p.ir);
+  assert.equal(Math.round(beam.section.depthM * 1000), 125);
+  assert.equal(beam.governs, "deflection");
+});
