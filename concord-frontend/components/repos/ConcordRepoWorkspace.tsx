@@ -135,28 +135,42 @@ export function ConcordRepoWorkspace() {
   // tab can check a branch out into the Code view (Review S1).
   const [currentBranch, setCurrentBranch] = useState<string>('main');
   const [loading, setLoading] = useState(true);
+  const [loadedOnce, setLoadedOnce] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [listErr, setListErr] = useState<string | null>(null);
+  const [listNotice, setListNotice] = useState<string | null>(null);
 
   // Repo create
   const [newRepoName, setNewRepoName] = useState('');
 
+  // Only the FIRST load gates the view behind the spinner. Later
+  // refreshes (a Settings save, a delete) must not unmount the open
+  // repo view: unmounting destroyed every tab's local state — which
+  // is why a Settings save's own success banner never survived to be
+  // seen in the follow-up re-pass (receipts round, PR #1837).
   const loadRepos = useCallback(async () => {
-    setLoading(true);
+    if (!loadedOnce) setLoading(true);
     const res = await runX<{ repos: RepoSummary[] }>('repo-list', {});
     if (res.ok) { setRepos(res.data?.repos || []); setListErr(null); }
     else { setListErr(res.error); }
     setLoading(false);
-  }, []);
+    setLoadedOnce(true);
+  }, [loadedOnce]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadRepos(); }, []);
 
   const createRepo = async () => {
     if (!newRepoName.trim()) return;
+    const name = newRepoName.trim();
     setBusy('create-repo');
-    const r = await runX('repo-create', { name: newRepoName.trim(), description: 'A Concord repository' });
-    if (r.ok) { setNewRepoName(''); setListErr(null); await loadRepos(); }
+    setListNotice(null);
+    const r = await runX('repo-create', { name, description: 'A Concord repository' });
+    if (r.ok) {
+      setNewRepoName(''); setListErr(null);
+      setListNotice(`Created "${name}" — seeded with the starter tree (README.md, package.json, src/). Open it below to start editing.`);
+      await loadRepos();
+    }
     else { setListErr(r.error); }
     setBusy(null);
   };
@@ -205,6 +219,11 @@ export function ConcordRepoWorkspace() {
       )}
 
       <ErrorBanner err={listErr} />
+      {listNotice && !activeRepo && (
+        <p className="flex items-center gap-1.5 rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-[10px] text-green-300">
+          <CheckCircle className="h-3 w-3 shrink-0" /> {listNotice}
+        </p>
+      )}
 
       {loading && (
         <div className="flex items-center gap-2 text-xs text-zinc-400">
@@ -223,7 +242,7 @@ export function ConcordRepoWorkspace() {
           {repos.map((r) => (
             <button
               key={r.id}
-              onClick={() => { setActiveRepo(r); setTab('code'); setCurrentBranch(r.defaultBranch || 'main'); }}
+              onClick={() => { setActiveRepo(r); setTab('code'); setCurrentBranch(r.defaultBranch || 'main'); setListNotice(null); }}
               className="block w-full rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-left hover:border-cyan-500/40"
             >
               <div className="flex items-center gap-2">
@@ -295,7 +314,7 @@ export function ConcordRepoWorkspace() {
             <SettingsTab
               repo={activeRepo}
               onUpdated={(r) => { setActiveRepo(r); void loadRepos(); }}
-              onDeleted={() => { setActiveRepo(null); void loadRepos(); }}
+              onDeleted={(name) => { setActiveRepo(null); setListNotice(`Deleted "${name}" — the repo and its history are gone.`); void loadRepos(); }}
             />
           )}
         </div>
@@ -539,6 +558,10 @@ function BranchesTab({ repoId, onCheckout }: { repoId: string; onCheckout: (name
   } | null>(null);
   const [newBranch, setNewBranch] = useState('');
   const [newTag, setNewTag] = useState('');
+  // Tag receipts also render inside the Tags panel itself: the tab-top
+  // banner alone was missed in the follow-up re-pass (tag delete read
+  // as silent), so the outcome shows where the action happened.
+  const [tagNote, setTagNote] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -572,9 +595,10 @@ function BranchesTab({ repoId, onCheckout }: { repoId: string; onCheckout: (name
   const createTag = async () => {
     if (!newTag.trim()) return;
     setBusy('tag'); setErr(null);
-    const r = await runX('tag-create', { repoId, name: newTag.trim() });
+    const name = newTag.trim();
+    const r = await runX('tag-create', { repoId, name });
     setBusy(null);
-    if (r.ok) { setNewTag(''); await load(); } else { setErr(r.error); }
+    if (r.ok) { setNewTag(''); setTagNote(`Tag "${name}" created at the current tip.`); setNotice(`Tag "${name}" created at the current tip.`); await load(); } else { setErr(r.error); }
   };
   const deleteBranch = async (name: string) => {
     setBusy(`del-branch-${name}`); setErr(null); setNotice(null);
@@ -586,7 +610,7 @@ function BranchesTab({ repoId, onCheckout }: { repoId: string; onCheckout: (name
     setBusy(`del-tag-${name}`); setErr(null);
     const r = await runX('tag-delete', { repoId, name });
     setBusy(null);
-    if (r.ok) { setNotice(`Tag "${name}" deleted.`); await load(); } else { setErr(r.error); }
+    if (r.ok) { setTagNote(`Tag "${name}" deleted.`); setNotice(`Tag "${name}" deleted.`); await load(); } else { setErr(r.error); }
   };
   const openCommit = async (sha: string) => {
     const r = await runX('commit-detail', { repoId, sha });
@@ -636,6 +660,11 @@ function BranchesTab({ repoId, onCheckout }: { repoId: string; onCheckout: (name
               <button onClick={createTag} disabled={busy === 'tag'} className="rounded bg-green-600 px-1.5 py-0.5 text-[10px] text-white disabled:opacity-50">+</button>
             </div>
           </div>
+          {tagNote && (
+            <p className="mb-1 flex items-center gap-1.5 rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-[10px] text-green-300">
+              <CheckCircle className="h-3 w-3 shrink-0" /> {tagNote}
+            </p>
+          )}
           {tags.length === 0 && <p className="text-[11px] text-zinc-400">No tags yet.</p>}
           {tags.map((t) => (
             <div key={t.name} className="flex items-center gap-1.5 border-t border-zinc-800/60 py-1 text-[11px]">
@@ -873,7 +902,15 @@ function PullsTab({ repoId }: { repoId: string }) {
     setBusy('review'); setErr(null);
     const r = await runX('pull-review', { repoId, number: detail.pull.number, verdict, body: reviewBody });
     setBusy(null);
-    if (r.ok) { setReviewBody(''); await openDetail(detail.pull.number); } else { setErr(r.error); }
+    if (r.ok) {
+      setReviewBody('');
+      setNotice(verdict === 'approve'
+        ? 'Review recorded — you approved this pull request.'
+        : verdict === 'request-changes'
+          ? 'Review recorded — changes requested on this pull request.'
+          : 'Review recorded — comment posted as a review.');
+      await openDetail(detail.pull.number);
+    } else { setErr(r.error); }
   };
   const merge = async () => {
     if (!detail) return;
@@ -1372,7 +1409,7 @@ function InsightsTab({ repoId }: { repoId: string }) {
 function SettingsTab({ repo, onUpdated, onDeleted }: {
   repo: RepoSummary;
   onUpdated: (r: RepoSummary) => void;
-  onDeleted: () => void;
+  onDeleted: (name: string) => void;
 }) {
   const [name, setName] = useState(repo.name);
   const [description, setDescription] = useState(repo.description || '');
@@ -1398,7 +1435,7 @@ function SettingsTab({ repo, onUpdated, onDeleted }: {
     setBusy('delete'); setErr(null);
     const r = await runX('repo-delete', { repoId: repo.id, confirmName });
     setBusy(null);
-    if (r.ok) { onDeleted(); } else { setErr(r.error); }
+    if (r.ok) { onDeleted(repo.name); } else { setErr(r.error); }
   };
 
   return (
