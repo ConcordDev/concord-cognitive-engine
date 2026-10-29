@@ -2152,6 +2152,7 @@ import createSovereignRouter from "./routes/sovereign.js";
 import createSovereignEmergentRouter from "./routes/sovereign-emergent.js";
 import { createUserDispatchRouter } from "./routes/user-dispatch.js";
 import createFederationRouter from "./routes/federation.js";
+import { createMarketingTrackRouter } from "./routes/marketing-track.js";
 import registerOAuthRoutes from "./routes/oauth.js";
 import registerConnectorOAuthRoutes from "./routes/connector-oauth.js";
 import { mountDxOAuth } from "./routes/dx-oauth.js";
@@ -8690,6 +8691,12 @@ function authMiddleware(req, res, next) {
   // widened to any other action or envelope.
   if (req.method === "GET" && /^\/api\/esign\/[^/]+$/.test(req.path)) return next();
   if (req.method === "POST" && /^\/api\/esign\/[^/]+\/sign$/.test(req.path)) return next();
+  // Marketing email beacons (routes/marketing-track.js) — an email client
+  // fetches the open pixel and follows click redirects with no session.
+  // GET-only, exact shape. The open beacon always returns the same 1×1 GIF
+  // (no send-id probing); the click beacon only redirects to a link recorded
+  // in that send at send time, so it is not an open redirector.
+  if (req.method === "GET" && /^\/api\/marketing\/track\/(open|click)\/[^/]+$/.test(req.path)) return next();
   // INC-72: inbound ingest webhook. The 32-hex token in the path is the only
   // credential; the handler resolves it to exactly one user's endpoint and can
   // only append records to that user's webhook inbox.
@@ -29976,8 +29983,12 @@ ${_operatorV6Block}` : "";
             const { loadComputeModule } = await import("./lib/compute/index.js");
             const mod = await loadComputeModule(modName);
             if (!mod) return { tool: call.tool, ok: false, error: `Unknown compute module: ${modName}` };
-            if (typeof mod[fnName] !== "function") return { tool: call.tool, ok: false, error: `Unknown function ${fnName} in ${modName}` };
-            const computeResult = mod[fnName](computeInput);
+            if (typeof mod[fnName] !== "function") {
+              const { closestComputeKeys: _closest } = await import("./lib/chat/compute-si.js");
+              return { tool: call.tool, ok: false, error: `Unknown function ${fnName} in ${modName}`, closestKeys: await _closest(computeKey).catch(() => []) };
+            }
+            const { runChatCompute: _runChatCompute } = await import("./lib/chat/compute-si.js");
+            const computeResult = _runChatCompute(computeKey, mod, fnName, computeInput);
             return { tool: call.tool, ok: true, key: computeKey, result: computeResult };
           } catch (_ce) {
             return { tool: call.tool, ok: false, error: `Compute error: ${_ce?.message}` };
@@ -40993,6 +41004,7 @@ app.use("/api/sovereign", createSovereignRouter({ STATE, makeCtx, runMacro, save
 app.use("/api/sovereign-emergent", createSovereignEmergentRouter({ STATE }));
 app.use("/api", createUserDispatchRouter({ STATE })); // non-sovereign user action dispatch (POST /api/run)
 app.use("/api/federation", createFederationRouter({ db }));
+app.use("/api/marketing/track", createMarketingTrackRouter()); // public email beacons (open pixel + click redirect); handlers are probe/redirect-safe by design — see routes/marketing-track.js
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PROMOTION PIPELINE — HTTP routes for council voting UI
