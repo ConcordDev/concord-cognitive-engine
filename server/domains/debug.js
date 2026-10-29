@@ -9,6 +9,8 @@
 // breach detection), time-series metric charts, and release tracking.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { createNotification } from "../emergent/social-layer.js";
+import { registerHeartbeat } from "../emergent/heartbeat-registry.js";
 export default function registerDebugActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── Per-user observability state ───────────────────────────────
@@ -22,6 +24,7 @@ export default function registerDebugActions(registerLensAction) {
     if (!(d.alertRules instanceof Map)) d.alertRules = new Map();// userId -> Array<rule>
     if (!(d.metrics instanceof Map)) d.metrics = new Map();      // userId -> Array<sample>
     if (!(d.releases instanceof Map)) d.releases = new Map();    // userId -> Array<release>
+    if (!(d.monitors instanceof Map)) d.monitors = new Map();    // userId -> Array<monitor>
     return d;
   }
   function saveDebug() {
@@ -77,6 +80,7 @@ export default function registerDebugActions(registerLensAction) {
       const list = dbgList(s.issues, dbgActor(ctx));
       const now = new Date().toISOString();
       let issue = list.find((i) => i.fingerprint === fp);
+      let regressedNow = false;
       if (issue) {
         issue.count += 1;
         issue.lastSeen = now;
@@ -86,7 +90,7 @@ export default function registerDebugActions(registerLensAction) {
         if (stack) issue.stack = stack;
         issue.occurrenceTimes = [...(issue.occurrenceTimes || []), now].slice(-200);
         // A new occurrence reopens a resolved issue (regression).
-        if (issue.status === "resolved") { issue.status = "open"; issue.regressed = true; }
+        if (issue.status === "resolved") { issue.status = "open"; issue.regressed = true; regressedNow = true; }
       } else {
         issue = {
           id: dbgId("issue"),
@@ -105,7 +109,14 @@ export default function registerDebugActions(registerLensAction) {
         list.push(issue);
       }
       saveDebug();
-      return { ok: true, result: { issue, isNew: issue.count === 1 } };
+      // Alert rules of kind issue/regression reach the owner through
+      // Concord notifications (S6). Each event fires at most once per
+      // rule: creation happens once, and regressedNow is true only on
+      // the resolved→open transition, never on repeat occurrences.
+      const isNew = issue.count === 1;
+      if (isNew) fireIssueRules(s, dbgActor(ctx), "issue", issue);
+      if (regressedNow) fireIssueRules(s, dbgActor(ctx), "regression", issue);
+      return { ok: true, result: { issue, isNew } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -400,8 +411,45 @@ export default function registerDebugActions(registerLensAction) {
   });
 
   // ─── FEATURE: Alert rules ───────────────────────────────────────
+  // Delivery (S6): a fired rule reaches its owner as a Concord
+  // notification — the bell is the one channel every account has.
+  // Delivery is best-effort and never fails the macro that fired it.
+  // M4 discipline: the notification names the rule and what changed,
+  // and dedupe is structural — metric rules notify only on the
+  // ok→alerting transition (not on every breaching sample), issue
+  // rules on creation, regression rules on the reopen transition.
+  function deliverAlert(userId, rule, content) {
+    try {
+      if (!userId || userId === "anon" || userId === "anonymous") return false;
+      const r = createNotification(globalThis._concordSTATE, {
+        userId,
+        type: "debug_alert",
+        content,
+      });
+      return !!r?.ok;
+    } catch { return false; }
+  }
+
+  function fireIssueRules(s, userId, kind, issue) {
+    const rules = dbgList(s.alertRules, userId).filter(
+      (r) => r.enabled && (r.kind || "metric") === kind,
+    );
+    for (const rule of rules) {
+      const what = kind === "regression"
+        ? `Regression — ${issue.type}: ${issue.message} recurred after being resolved.`
+        : `New issue — ${issue.type}: ${issue.message}`;
+      if (deliverAlert(userId, rule, `Debug alert "${rule.name}": ${what}`)) {
+        rule.triggerCount = (rule.triggerCount || 0) + 1;
+        rule.lastTriggeredAt = new Date().toISOString();
+      }
+    }
+    if (rules.length) saveDebug();
+  }
+
   function evaluateRules(s, userId, metric, value) {
-    const rules = dbgList(s.alertRules, userId).filter((r) => r.metric === metric && r.enabled);
+    const rules = dbgList(s.alertRules, userId).filter(
+      (r) => (r.kind || "metric") === "metric" && r.metric === metric && r.enabled,
+    );
     const breaches = [];
     for (const rule of rules) {
       let breached = false;
@@ -415,6 +463,7 @@ export default function registerDebugActions(registerLensAction) {
       }
       const now = new Date().toISOString();
       if (breached) {
+        const wasAlerting = rule.state === "alerting";
         rule.triggerCount = (rule.triggerCount || 0) + 1;
         rule.lastTriggeredAt = now;
         rule.lastValue = value;
@@ -423,6 +472,10 @@ export default function registerDebugActions(registerLensAction) {
           ruleId: rule.id, name: rule.name, metric, value,
           op: rule.op, threshold: rule.threshold, severity: rule.severity, at: now,
         });
+        if (!wasAlerting) {
+          deliverAlert(userId, rule,
+            `Debug alert "${rule.name}": ${metric} is ${value} (${rule.op} ${rule.threshold}).`);
+        }
       } else if (rule.state === "alerting") {
         rule.state = "ok";
         rule.lastValue = value;
@@ -437,15 +490,17 @@ export default function registerDebugActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     try {
       const name = dbgClean(params.name, 120);
-      const metric = dbgClean(params.metric, 60);
-      const threshold = dbgNum(params.threshold);
       if (!name) return { ok: false, error: "rule name required" };
-      if (!metric) return { ok: false, error: "metric required" };
-      if (threshold == null) return { ok: false, error: "numeric threshold required" };
-      if (!ALERT_OPS.includes(params.op)) return { ok: false, error: "op must be one of " + ALERT_OPS.join(" ") };
+      // kind: "metric" (threshold over a metric series), "issue" (a new
+      // issue arrives), "regression" (a resolved issue recurs). The
+      // channel is Concord notifications — the one channel every
+      // account has; the field is stored so the surface can say so.
+      const kind = ["metric", "issue", "regression"].includes(params.kind) ? params.kind : "metric";
       const rule = {
         id: dbgId("alert"),
-        name, metric, op: params.op, threshold,
+        name,
+        kind,
+        channel: "notifications",
         severity: ["critical", "warning", "info"].includes(params.severity) ? params.severity : "warning",
         enabled: params.enabled !== false,
         state: "ok",
@@ -454,9 +509,34 @@ export default function registerDebugActions(registerLensAction) {
         lastValue: null,
         createdAt: new Date().toISOString(),
       };
+      if (kind === "metric") {
+        const metric = dbgClean(params.metric, 60);
+        const threshold = dbgNum(params.threshold);
+        if (!metric) return { ok: false, error: "metric required" };
+        if (threshold == null) return { ok: false, error: "numeric threshold required" };
+        if (!ALERT_OPS.includes(params.op)) return { ok: false, error: "op must be one of " + ALERT_OPS.join(" ") };
+        Object.assign(rule, { metric, op: params.op, threshold });
+      }
       dbgList(s.alertRules, dbgActor(ctx)).push(rule);
       saveDebug();
       return { ok: true, result: { rule } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // Prove the channel without waiting for an error: deliver a test
+  // notification through the exact path a real firing uses.
+  registerLensAction("debug", "alert-test", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const rule = dbgList(s.alertRules, dbgActor(ctx)).find((r) => r.id === params.id);
+      if (!rule) return { ok: false, error: "rule not found" };
+      const delivered = deliverAlert(dbgActor(ctx), rule,
+        `Test notification from Debug alert rule "${rule.name}" — this is the channel a real firing uses.`);
+      if (!delivered) return { ok: false, error: "notification delivery failed" };
+      return { ok: true, result: { delivered: true, channel: rule.channel || "notifications" } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -590,9 +670,12 @@ export default function registerDebugActions(registerLensAction) {
    * Parse and analyze application logs for patterns, error rates, and anomalies.
    * artifact.data.logs = [{ timestamp, level, message, source?, context? }]
    */
-  registerLensAction("debug", "logAnalysis", (ctx, artifact, _params) => {
+  registerLensAction("debug", "logAnalysis", (ctx, artifact, params = {}) => {
   try {
-    const logs = artifact.data?.logs || [];
+    // Input arrives on the artifact (desk path) or as params (the
+    // lensRun path the Debug UI's input panels use — pasted logs,
+    // workspace data). Same dual-shape contract as the database quartet.
+    const logs = artifact?.data?.logs || params.logs || params.input?.logs || [];
     if (logs.length === 0) return { ok: true, result: { message: "No logs to analyze." } };
 
     // Level distribution
@@ -697,9 +780,9 @@ export default function registerDebugActions(registerLensAction) {
    * Cluster errors by similarity to identify unique error classes.
    * artifact.data.errors = [{ message, stack?, count?, firstSeen?, lastSeen?, source? }]
    */
-  registerLensAction("debug", "errorCluster", (ctx, artifact, _params) => {
+  registerLensAction("debug", "errorCluster", (ctx, artifact, params = {}) => {
   try {
-    const errors = artifact.data?.errors || [];
+    const errors = artifact?.data?.errors || params.errors || params.input?.errors || [];
     if (errors.length === 0) return { ok: true, result: { message: "No errors to cluster." } };
 
     // Normalize error messages for grouping
@@ -812,9 +895,9 @@ export default function registerDebugActions(registerLensAction) {
    * Analyze performance traces to find bottlenecks.
    * artifact.data.traces = [{ name, startMs, endMs, parent?, metadata? }]
    */
-  registerLensAction("debug", "performanceProfile", (ctx, artifact, _params) => {
+  registerLensAction("debug", "performanceProfile", (ctx, artifact, params = {}) => {
   try {
-    const traces = artifact.data?.traces || [];
+    const traces = artifact?.data?.traces || params.traces || params.input?.traces || [];
     if (traces.length === 0) return { ok: true, result: { message: "No traces." } };
 
     const r = v => Math.round(v * 100) / 100;
@@ -912,9 +995,9 @@ export default function registerDebugActions(registerLensAction) {
    * Parse and analyze stack traces to extract root causes and common frames.
    * artifact.data.stackTraces = [{ error, stack, timestamp?, context? }]
    */
-  registerLensAction("debug", "stackTraceAnalysis", (ctx, artifact, _params) => {
+  registerLensAction("debug", "stackTraceAnalysis", (ctx, artifact, params = {}) => {
   try {
-    const traces = artifact.data?.stackTraces || [];
+    const traces = artifact?.data?.stackTraces || params.stackTraces || params.input?.stackTraces || [];
     if (traces.length === 0) return { ok: true, result: { message: "No stack traces." } };
 
     const parsed = traces.map(t => {
@@ -1008,4 +1091,192 @@ export default function registerDebugActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // ─── FEATURE: Uptime monitors (S11) ─────────────────────────────
+  // The one monitoring feature whose feed is ours: Concord probes a
+  // registered URL itself — no DSN, no SDK, no inbound endpoint.
+  // Checks run on the platform heartbeat (due-ness by wall clock per
+  // monitor) and on demand via monitor-check. Down/recovery
+  // transitions notify through the same channel as alert rules.
+  const MONITOR_BLOCKED_HOSTS = new Set(["169.254.169.254", "metadata.google.internal"]);
+
+  function monitorUrlOk(raw) {
+    let u;
+    try { u = new URL(raw); } catch { return { ok: false, error: "invalid URL" }; }
+    if (u.protocol !== "http:" && u.protocol !== "https:") return { ok: false, error: "only http(s) URLs can be monitored" };
+    if (MONITOR_BLOCKED_HOSTS.has(u.hostname)) return { ok: false, error: "that host cannot be monitored" };
+    return { ok: true, url: u.toString() };
+  }
+
+  async function runMonitorCheck(s, userId, monitor) {
+    const started = Date.now();
+    let outcome;
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 5000);
+      try {
+        const res = await fetch(monitor.url, { method: "GET", redirect: "follow", signal: ctrl.signal });
+        outcome = { ok: res.status >= 200 && res.status < 400, statusCode: res.status, error: null };
+      } finally { clearTimeout(timer); }
+    } catch (e) {
+      outcome = { ok: false, statusCode: null, error: String(e?.name === "AbortError" ? "timeout after 5s" : e?.message || e).slice(0, 160) };
+    }
+    const entry = {
+      at: new Date().toISOString(),
+      ok: outcome.ok,
+      statusCode: outcome.statusCode,
+      latencyMs: Date.now() - started,
+      error: outcome.error,
+    };
+    const prev = monitor.status;
+    monitor.status = outcome.ok ? "up" : "down";
+    monitor.lastCheckedAt = entry.at;
+    monitor.lastStatusCode = outcome.statusCode;
+    monitor.lastLatencyMs = entry.latencyMs;
+    monitor.lastError = outcome.error;
+    monitor.history = [...(monitor.history || []), entry].slice(-50);
+    if (prev !== monitor.status && prev !== undefined) {
+      if (monitor.status === "down") {
+        deliverAlert(userId, monitor,
+          `Debug monitor "${monitor.name}": ${monitor.url} is DOWN (${outcome.error || `HTTP ${outcome.statusCode}`}).`);
+      } else if (prev === "down") {
+        deliverAlert(userId, monitor,
+          `Debug monitor "${monitor.name}": ${monitor.url} recovered (HTTP ${outcome.statusCode}).`);
+      }
+    }
+    saveDebug();
+    return entry;
+  }
+
+  registerLensAction("debug", "monitor-create", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const check = monitorUrlOk(dbgClean(params.url, 500));
+      if (!check.ok) return { ok: false, error: check.error };
+      const interval = Math.max(1, Math.min(1440, Math.round(dbgNum(params.intervalMinutes) ?? 5)));
+      const monitor = {
+        id: dbgId("mon"),
+        name: dbgClean(params.name, 120) || check.url,
+        url: check.url,
+        intervalMinutes: interval,
+        enabled: params.enabled !== false,
+        status: "unknown",
+        lastCheckedAt: null,
+        lastStatusCode: null,
+        lastLatencyMs: null,
+        lastError: null,
+        history: [],
+        createdAt: new Date().toISOString(),
+      };
+      dbgList(s.monitors, dbgActor(ctx)).push(monitor);
+      saveDebug();
+      return { ok: true, result: { monitor } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("debug", "monitor-list", (ctx, _a, _params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const monitors = dbgList(s.monitors, dbgActor(ctx));
+      return {
+        ok: true,
+        result: {
+          monitors,
+          count: monitors.length,
+          down: monitors.filter((m) => m.status === "down").length,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("debug", "monitor-update", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const monitor = dbgList(s.monitors, dbgActor(ctx)).find((m) => m.id === params.id);
+      if (!monitor) return { ok: false, error: "monitor not found" };
+      if (params.name != null) monitor.name = dbgClean(params.name, 120) || monitor.name;
+      if (params.url != null) {
+        const check = monitorUrlOk(dbgClean(params.url, 500));
+        if (!check.ok) return { ok: false, error: check.error };
+        monitor.url = check.url;
+      }
+      if (params.intervalMinutes != null) {
+        const n = dbgNum(params.intervalMinutes);
+        if (n != null) monitor.intervalMinutes = Math.max(1, Math.min(1440, Math.round(n)));
+      }
+      if (params.enabled != null) monitor.enabled = !!params.enabled;
+      saveDebug();
+      return { ok: true, result: { monitor } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("debug", "monitor-delete", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const arr = dbgList(s.monitors, dbgActor(ctx));
+      const i = arr.findIndex((m) => m.id === params.id);
+      if (i < 0) return { ok: false, error: "monitor not found" };
+      arr.splice(i, 1);
+      saveDebug();
+      return { ok: true, result: { deleted: params.id } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("debug", "monitor-check", async (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const userId = dbgActor(ctx);
+      const all = dbgList(s.monitors, userId);
+      const targets = params.id ? all.filter((m) => m.id === params.id) : all.filter((m) => m.enabled);
+      if (params.id && targets.length === 0) return { ok: false, error: "monitor not found" };
+      const results = [];
+      for (const m of targets.slice(0, 10)) {
+        results.push({ monitorId: m.id, ...(await runMonitorCheck(s, userId, m)) });
+      }
+      return { ok: true, result: { checked: results.length, results } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // Background probing on the platform heartbeat: a monitor is due
+  // when its own interval has elapsed since its last check. Bounded
+  // per tick; a failure here must never break domain registration.
+  try {
+    registerHeartbeat("debug-uptime-monitors", {
+      frequency: 6,
+      scope: "global",
+      lowPriority: true,
+      cost: "cpu",
+      handler: async () => {
+        const s = getDebugState();
+        if (!s) return;
+        const now = Date.now();
+        let budget = 20;
+        for (const [userId, monitors] of s.monitors.entries()) {
+          for (const m of monitors) {
+            if (budget <= 0) return;
+            if (!m.enabled) continue;
+            const last = m.lastCheckedAt ? new Date(m.lastCheckedAt).getTime() : 0;
+            if (now - last < m.intervalMinutes * 60000) continue;
+            budget -= 1;
+            await runMonitorCheck(s, userId, m);
+          }
+        }
+      },
+    });
+  } catch { /* heartbeat registry unavailable — on-demand checks still work */ }
 }
