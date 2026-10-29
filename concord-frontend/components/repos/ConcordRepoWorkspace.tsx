@@ -349,6 +349,7 @@ function CodeTab({ repoId, branch, onBranchChange }: {
     if (!path) return;
     setFile({ path, content: '', language: 'Text', lineCount: 0 });
     setDraft('');
+    setCommitMsg(`Add ${path}`);
     setEditing(true);
     setIsNewFile(true);
     setErr(null);
@@ -362,7 +363,15 @@ function CodeTab({ repoId, branch, onBranchChange }: {
       'file-save',
       {
         repoId, branch, path: file.path, content: draft,
-        message: commitMsg || `${isNewFile ? 'Add' : 'Update'} ${file.path}`,
+        // S6, live form (Review 2 re-pass, checkpoint 5d): send the
+        // message EXACTLY as it stands in the box. The suggestion is
+        // prefilled into the input when editing starts (visible,
+        // editable, deletable) — an earlier build silently
+        // substituted it for an emptied box here, which defeated the
+        // server's empty-message guard: the user's blank committed
+        // "successfully" under words they never typed. An emptied
+        // box now reaches the server and its refusal surfaces below.
+        message: commitMsg,
         ...(confirmEmptyArmed ? { confirmEmpty: true } : {}),
       },
     );
@@ -478,7 +487,7 @@ function CodeTab({ repoId, branch, onBranchChange }: {
                     </>
                   ) : (
                     <>
-                      <button onClick={() => setEditing(true)} className="rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800">Edit</button>
+                      <button onClick={() => { setCommitMsg(`Update ${file.path}`); setEditing(true); }} className="rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800">Edit</button>
                       {!isNewFile && (
                         <button
                           onClick={deleteFile}
