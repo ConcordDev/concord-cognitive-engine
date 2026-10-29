@@ -373,6 +373,9 @@ export function AgentAutonomyPanel() {
                           <Gavel className="h-3 w-3" /> Awaiting founder approval
                         </div>
                       )}
+                      {detail.deps?.blockedBy && detail.deps.blockedBy.length > 0 && (
+                        <p className="text-[10px] text-orange-300">Blocked by: {detail.deps.blockedBy.join(', ')}</p>
+                      )}
                       {detail.meta?.abandonReason && (
                         <p className="text-[10px] text-zinc-500">Abandoned: {detail.meta.abandonReason}</p>
                       )}
@@ -384,7 +387,13 @@ export function AgentAutonomyPanel() {
                           <button disabled={busy} onClick={() => runAction(() => apiHelpers.goals.approve(g.id), g.id)} className={btnCls}><Gavel className="h-3 w-3" /> Approve (founder)</button>
                         )}
                         {g.state === 'approved' && (
-                          <button disabled={busy} onClick={() => runAction(() => apiHelpers.goals.activate(g.id), g.id)} className={btnCls}><PlayCircle className="h-3 w-3" /> Activate</button>
+                          status && status.activeCount >= (status.config?.maxActiveGoals ?? 5) ? (
+                            <span className="flex items-center gap-1.5 text-[10px] text-amber-300">
+                              <AlertTriangle className="h-3 w-3" /> At capacity ({status.activeCount}/{status.config?.maxActiveGoals ?? 5} active) — complete or abandon an active goal first.
+                            </span>
+                          ) : (
+                            <button disabled={busy} onClick={() => runAction(() => apiHelpers.goals.activate(g.id), g.id)} className={btnCls}><PlayCircle className="h-3 w-3" /> Activate</button>
+                          )
                         )}
                         {g.state === 'active' && (
                           <>
