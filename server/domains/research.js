@@ -23,9 +23,29 @@ export default function registerResearchActions(registerLensAction) {
    * artifact.data.papers = [{ id, title, authors?, year?, citations?: string[],
    *   references?: string[], abstract?, keywords? }]
    */
-  registerLensAction("research", "citationNetwork", (ctx, artifact, _params) => {
+  registerLensAction("research", "citationNetwork", (ctx, artifact, params = {}) => {
   try {
-    const papers = artifact.data?.papers || [];
+    let papers = artifact.data?.papers || [];
+    let libraryMode = false;
+    if (papers.length === 0 && params?.fromLibrary) {
+      // S5 (F3): the Research Analysis rail used to run this macro through
+      // /api/lens/research/{id}/run with the id of the first DTU in the
+      // platform feed — an artifact that endpoint could not resolve
+      // ("not found"), and whose data was never the user's library in the
+      // first place. Library mode builds the paper set from the caller's
+      // own references instead: related-reference links are the citation
+      // edges, tags are the keywords. Artifact mode is unchanged.
+      const s = getResearchState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const refs = s.references.get(rfAid(ctx)) || [];
+      const inLibrary = new Set(refs.map((r) => r.id));
+      papers = refs.map((r) => ({
+        id: r.id, title: r.title, year: r.year,
+        references: (r.relatedIds || []).filter((id) => inLibrary.has(id)),
+        keywords: r.tags || [],
+      }));
+      libraryMode = true;
+    }
     if (papers.length === 0) return { ok: true, result: { message: "No papers." } };
 
     const paperMap = {};
@@ -112,18 +132,30 @@ export default function registerResearchActions(registerLensAction) {
       .sort((a, b) => (b.year || 0) - (a.year || 0))
       .slice(0, 5);
 
-    return {
-      ok: true, result: {
-        totalPapers: papers.length,
-        hIndex,
-        rankedPapers: ranked.slice(0, 15),
-        foundationalWorks: foundational.map(p => ({ id: p.id, title: p.title, year: p.year, citations: p.inDegree })),
-        frontierWorks: frontier.map(p => ({ id: p.id, title: p.title, year: p.year, references: p.outDegree })),
-        topicClusters,
-        yearDistribution: yearDist,
-        networkDensity: n > 1 ? Math.round(ranked.reduce((s, p) => s + p.outDegree, 0) / (n * (n - 1)) * 10000) / 10000 : 0,
-      },
+    const result = {
+      totalPapers: papers.length,
+      hIndex,
+      rankedPapers: ranked.slice(0, 15),
+      foundationalWorks: foundational.map(p => ({ id: p.id, title: p.title, year: p.year, citations: p.inDegree })),
+      frontierWorks: frontier.map(p => ({ id: p.id, title: p.title, year: p.year, references: p.outDegree })),
+      topicClusters,
+      yearDistribution: yearDist,
+      networkDensity: n > 1 ? Math.round(ranked.reduce((s, p) => s + p.outDegree, 0) / (n * (n - 1)) * 10000) / 10000 : 0,
     };
+    if (libraryMode) {
+      // Name what the network was computed from (S5's naming rule) and say
+      // plainly when the library carries no links to compute over.
+      const pairs = new Set();
+      for (const p of papers) {
+        for (const ref of p.references || []) pairs.add([p.id, ref].sort().join("|"));
+      }
+      result.source = "library";
+      result.linkCount = pairs.size;
+      if (pairs.size === 0) {
+        result.message = "No related-reference links in your library yet — link related references from a reference's detail view and the network is computed from those links.";
+      }
+    }
+    return { ok: true, result };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -1013,7 +1045,7 @@ export default function registerResearchActions(registerLensAction) {
   function getResearchStateExt() {
     const s = getResearchState();
     if (!s) return null;
-    for (const k of ["snapshots", "canvases", "pdfs", "reviews"]) {
+    for (const k of ["snapshots", "canvases", "pdfs", "reviews", "analyses"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     return s;
@@ -1935,43 +1967,46 @@ ${corpus}`;
     }
   });
 
+  // S5 (F3): the three library-analysis cores live outside their macro
+  // handlers so the analyze-library job runs the SAME code the macros
+  // expose — one implementation, two callers, no drift.
+  function evaluateSourceResult(s, userId, id) {
+    const ref = findRef(s, userId, id);
+    if (!ref) return { ok: false, error: "reference not found" };
+    const signals = [];
+    if (ref.doi) signals.push("has_doi");
+    if (ref.journal) signals.push("has_venue");
+    if (ref.year) signals.push("has_year");
+    if (ref.abstract) signals.push("has_abstract");
+    if (ref.authors) signals.push("has_authors");
+    const credibility =
+      signals.length >= 4 ? "high" : signals.length >= 2 ? "moderate" : "low";
+    return {
+      ok: true,
+      result: {
+        referenceId: ref.id,
+        title: ref.title,
+        credibility,
+        signals,
+        status: ref.status,
+        source: "library",
+      },
+    };
+  }
+
   registerLensAction("research", "evaluate-source", (ctx, _a, params = {}) => {
     try {
       const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const id = params.id || params.referenceId || params.sourceId;
       if (!id) return { ok: false, error: "reference id required" };
-      const ref = findRef(s, rfAid(ctx), id);
-      if (!ref) return { ok: false, error: "reference not found" };
-      const signals = [];
-      if (ref.doi) signals.push("has_doi");
-      if (ref.journal) signals.push("has_venue");
-      if (ref.year) signals.push("has_year");
-      if (ref.abstract) signals.push("has_abstract");
-      if (ref.authors) signals.push("has_authors");
-      const credibility =
-        signals.length >= 4 ? "high" : signals.length >= 2 ? "moderate" : "low";
-      return {
-        ok: true,
-        result: {
-          referenceId: ref.id,
-          title: ref.title,
-          credibility,
-          signals,
-          status: ref.status,
-          source: "library",
-        },
-      };
+      return evaluateSourceResult(s, rfAid(ctx), id);
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
   });
 
-  registerLensAction("research", "find-gaps", (ctx, _a, params = {}) => {
-    try {
-      const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
-      const userId = rfAid(ctx);
+  function findGapsResult(s, userId, topic) {
       const refs = [...(s.references.get(userId) || [])];
-      const topic = rfClean(params.topic || params.query || "", 200);
       if (refs.length === 0 && !topic) {
         return { ok: false, error: "references or topic required" };
       }
@@ -2009,17 +2044,20 @@ ${corpus}`;
           source: "library",
         },
       };
+  }
+
+  registerLensAction("research", "find-gaps", (ctx, _a, params = {}) => {
+    try {
+      const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const topic = rfClean(params.topic || params.query || "", 200);
+      return findGapsResult(s, rfAid(ctx), topic);
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
   });
 
-  registerLensAction("research", "match-questions", (ctx, _a, params = {}) => {
-    try {
-      const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
-      const question = rfClean(params.question || params.query || params.text || "", 500);
+  function matchQuestionsResult(s, userId, question) {
       if (!question) return { ok: false, error: "question required" };
-      const userId = rfAid(ctx);
       const refs = [...(s.references.get(userId) || [])];
       if (refs.length === 0) {
         return { ok: false, error: "references required", reason: "no_references" };
@@ -2049,6 +2087,129 @@ ${corpus}`;
           source: "library",
         },
       };
+  }
+
+  registerLensAction("research", "match-questions", (ctx, _a, params = {}) => {
+    try {
+      const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const question = rfClean(params.question || params.query || params.text || "", 500);
+      return matchQuestionsResult(s, rfAid(ctx), question);
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
+
+  // ── S5 (F3) — "Analyze library": a user-triggered background job over
+  // the three library-analysis cores above. Before this slice the lens
+  // had NO library analysis at all: "Analyze" ran `generate` (a question
+  // template that never reads the library) and Deep Research scans DTUs.
+  // The job follows the house pattern (Deep Research's pending state):
+  // analyze-library files a job record and returns immediately; the work
+  // completes off the request path; the surface polls analysis-get.
+  // Every output names the items it read — itemsRead lists each
+  // reference, evaluations carry titles, gap entries resolve their
+  // reference ids to titles, matches carry titles. An analysis that
+  // names none of its inputs fails §7 S5 by definition.
+  function runLibraryAnalysis(s, userId, job) {
+    try {
+      const refs = [...(s.references.get(userId) || [])];
+      const titleOf = (id) => (findRef(s, userId, id) || {}).title || id;
+      const evaluations = refs.map((r) => {
+        const out = evaluateSourceResult(s, userId, r.id);
+        return out.ok ? out.result : { referenceId: r.id, title: r.title, error: out.error };
+      });
+      const gapsOut = findGapsResult(s, userId, job.question || "");
+      const gaps = gapsOut.ok ? gapsOut.result : null;
+      if (gaps) {
+        for (const g of gaps.gaps || []) {
+          if (g.kind === "missing_abstract" && Array.isArray(g.referenceIds)) {
+            g.references = g.referenceIds.map((id) => ({ id, title: titleOf(id) }));
+          }
+        }
+      }
+      let matches = null;
+      if (job.question) {
+        const m = matchQuestionsResult(s, userId, job.question);
+        matches = m.ok ? m.result : null;
+      }
+      job.status = "complete";
+      job.completedAt = rfNow();
+      job.result = {
+        question: job.question,
+        itemsRead: refs.map((r) => ({ id: r.id, title: r.title, year: r.year ?? null })),
+        evaluations,
+        gaps,
+        matches,
+        source: "library",
+      };
+    } catch (e) {
+      job.status = "failed";
+      job.error = String(e?.message || e);
+      job.completedAt = rfNow();
+    }
+    saveResearchState();
+  }
+
+  registerLensAction("research", "analyze-library", (ctx, _a, params = {}) => {
+    try {
+      const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = rfAid(ctx);
+      const refs = s.references.get(userId) || [];
+      if (refs.length === 0) {
+        return { ok: false, error: "references required", reason: "no_references" };
+      }
+      const job = {
+        id: rfId("analysis"),
+        status: "running",
+        question: rfClean(params.question || params.topic || "", 500) || null,
+        itemCount: refs.length,
+        createdAt: rfNow(),
+        completedAt: null,
+        result: null,
+        error: null,
+      };
+      const list = rfListB(s.analyses, userId);
+      list.unshift(job);
+      while (list.length > 10) list.pop();
+      saveResearchState();
+      // Background completion: the caller gets the pending job now and
+      // polls analysis-get — the same pending-state contract Deep
+      // Research's surface uses.
+      setTimeout(() => { try { runLibraryAnalysis(s, userId, job); } catch (_e) { /* recorded on the job */ } }, 0);
+      return {
+        ok: true,
+        result: {
+          job: {
+            id: job.id, status: job.status, question: job.question,
+            itemCount: job.itemCount, createdAt: job.createdAt,
+          },
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("research", "analysis-get", (ctx, _a, params = {}) => {
+    try {
+      const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const list = (s.analyses instanceof Map && s.analyses.get(rfAid(ctx))) || [];
+      const job = list.find((j) => j.id === String(params.id || ""));
+      if (!job) return { ok: false, error: "analysis not found" };
+      return { ok: true, result: { job } };
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("research", "analysis-list", (ctx, _a, _params = {}) => {
+    try {
+      const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const list = ((s.analyses instanceof Map && s.analyses.get(rfAid(ctx))) || []).map((j) => ({
+        id: j.id, status: j.status, question: j.question,
+        itemCount: j.itemCount, createdAt: j.createdAt, completedAt: j.completedAt,
+      }));
+      return { ok: true, result: { analyses: list, count: list.length } };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
