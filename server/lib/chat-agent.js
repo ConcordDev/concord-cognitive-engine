@@ -104,6 +104,7 @@ const ECHOED_TOOL_RESULT_RE = /^\s*\[TOOL_RESULT:/;
 const TOOL_REQUIRED_PARAMS = {
   web_search:        ["query"],
   run_compute:       ["key", "input"],
+  get_live_data:     ["kind"],
   conkay_design:     ["text"],
   conkay_solve:      ["solver_id"],
   conkay_solver_list: [],
@@ -300,6 +301,7 @@ Available tools (with one working example each):
   Example: [TOOL_CALL: {"tool": "web_search", "params": {"query": "concord cognitive engine"}}]
 - run_compute: Run a math/physics/chemistry/quantum/engineering calculation. Params: {"key": "module.function", "input": {...}}. Physics/chemistry/engineering functions take a named-field object (e.g. physics.ohmsLaw -> {"voltage":12,"resistance":4}). Symbolic math (symbolic.differentiate / integrate / simplify / solve / expand / evaluate) takes {"expression": "...", "variable": "x"}.
   Example: [TOOL_CALL: {"tool": "run_compute", "params": {"key": "symbolic.integrate", "input": {"expression": "x^2", "variable": "x"}}}]
+- get_live_data: Read-only live data with source, timestamp and licence. kind "compound" (PubChem: formula, molar mass, CAS; optional property density|boiling_point|melting_point) or kind "fx" (ECB reference rates). Cite the source and retrievedAt. Params: {"kind": "compound", "name": "ethanol", "property": "boiling_point"} or {"kind": "fx", "base": "EUR", "symbols": ["USD"]}
 - conkay_design: Size or check a structural part (beam, cantilever, I-beam, bracket, shaft, column) from a plain-language spec. For a robot (base, torso, arms, head...) or an everyday CAD object (phone stand, truss, gearbox, shelf, table, chair, enclosure) it returns a concept 3D assembly with its parts list instead. This is the tool for "make a 3D/CAD model of X", STL and printable-part asks. Runs the deterministic hand calc and FEA and checks the stated safety factor (pass/fail with margin). If the user asked for one sub-assembly (torso, arm, head, leg, hand, or a single part), set "scope" to that part so only that sub-assembly is built. Params: {"text": "the design in words, with span, load, material, supports and safety factor", "scope": "torso"}
   Example: [TOOL_CALL: {"tool": "conkay_design", "params": {"text": "steel cantilever beam 2 m long, 10 kN at the tip, safety factor of 2"}}]
 - conkay_ir_schema: Worked Design IR example + contract hints before conkay_solve. Params: {}
@@ -1200,6 +1202,10 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           ...(lead ? { artifact: lead } : {}),
           ...(artifacts.length ? { artifacts } : {}),
         };
+      }
+      case "get_live_data": {
+        const { getLiveData } = await import("./chat/live-data.js");
+        return getLiveData(ctx, call.params);
       }
       case "conkay_design": {
         // Deterministic ConKay sizing check: parse → hand calc + FEA → safety

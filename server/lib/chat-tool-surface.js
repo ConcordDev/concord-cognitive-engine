@@ -36,6 +36,19 @@ export const CHAT_RESPOND_TOOLS = Object.freeze([
     operatorOnly: false,
   },
   {
+    name: "get_live_data",
+    description: "Read-only live data with source, timestamp and licence: kind compound (PubChem: formula, molar mass, CAS, density/boiling/melting point) or fx (ECB reference rates). Cite the source.",
+    params: {
+      kind: { type: "string", required: true, description: "compound | fx" },
+      name: { type: "string", required: false, description: "compound name (kind compound)" },
+      property: { type: "string", required: false, description: "density | boiling_point | melting_point (kind compound)" },
+      base: { type: "string", required: false, description: "base currency code (kind fx)" },
+      symbols: { type: "array", required: false, description: "currency codes (kind fx)" },
+    },
+    requiresOptIn: false,
+    operatorOnly: false,
+  },
+  {
     name: "browse_url",
     description: "Fetch and read a public web page.",
     params: {
@@ -163,6 +176,7 @@ export const CHAT_RESPOND_TOOLS = Object.freeze([
 export const AGENT_LOOP_TOOLS = Object.freeze([
   { name: "web_search", description: "Live web search via expert_mode.web_search.", params: { query: { type: "string", required: true } } },
   { name: "run_compute", description: "Deterministic compute module.function.", params: { key: { type: "string", required: true }, input: { type: "object", required: true } } },
+  { name: "get_live_data", description: "Live data with source, timestamp and licence (PubChem compounds, ECB fx rates). Signed-in users only.", params: { kind: { type: "string", required: true } } },
   { name: "conkay_design", description: "ConKay sizing check: hand calc + FEA + safety-factor pass/fail from a plain-language spec.", params: { text: { type: "string", required: true } } },
   { name: "conkay_solve", description: "Run one ConKay solver against a Design IR (MCP bridge).", params: { solver_id: { type: "string", required: true }, ir: { type: "object", required: false } } },
   { name: "conkay_solver_list", description: "List ConKay solvers (MCP bridge).", params: { domain: { type: "string", required: false } } },
