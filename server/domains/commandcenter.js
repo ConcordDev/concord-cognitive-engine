@@ -9,6 +9,7 @@ import {
 } from "../lib/world-organizations.js";
 
 import { saveAfterWrites } from "../lib/lens-save-on-write.js";
+import { sendPush } from "../lib/push.js";
 export default function registerCommandCenterActions(registerLensAction) {
   registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -514,17 +515,32 @@ export default function registerCommandCenterActions(registerLensAction) {
   // called when a macro was actually invoked with a real orgId — the
   // per-operator path never touches this. This is the REAL close for
   // "shared incident visibility": the whole team sees the update live.
-  // Real SMS/phone paging (Twilio etc.) is intentionally NOT implemented
-  // here — that requires an external provider + account credentials this
-  // codebase does not have. This function only ever fans out an in-Concord
-  // realtime event to members already viewing the lens; it never claims an
-  // SMS/phone page was sent.
+  // Paging decision (founder, 2026-10-28): SMS/phone paging (Twilio etc.)
+  // is DECLINED — permanently. Paging rides Concord's own channels only:
+  // this realtime fan-out (members viewing the lens) plus Web Push to the
+  // on-call operator's registered devices via pageViaPush below
+  // (server/lib/push.js — Concord's free, encrypted push architecture,
+  // $0 runtime cost). Nothing here ever claims an SMS/phone page was sent.
   function emitOrgRealtime(event, payload, orgId) {
     if (!orgId) return;
     try {
       const fn = globalThis._concordRealtimeEmit || globalThis.realtimeEmit;
       if (typeof fn === "function") fn(event, payload, { orgId });
     } catch (_e) { /* realtime is best-effort */ }
+  }
+
+  // Web Push page to one user's registered devices (see the paging
+  // decision above). Best-effort and fire-and-forget: never throws, never
+  // blocks the calling macro's result, and a user with no registered
+  // devices is a silent no-op (sendPush returns sent: 0). The
+  // globalThis hook mirrors emitOrgRealtime's pattern and lets tests
+  // capture pages without a push provider.
+  function pageViaPush(ctx, userId, { title, body, data } = {}) {
+    if (!userId || !ctx?.db) return;
+    try {
+      const fn = globalThis._concordSendPush || sendPush;
+      Promise.resolve(fn(ctx.db, { userId, title, body, data })).catch(() => {});
+    } catch (_e) { /* paging is best-effort */ }
   }
 
   // ---------------------------------------------------------------------------
@@ -572,6 +588,18 @@ export default function registerCommandCenterActions(registerLensAction) {
             orgId: scope.orgId, ruleId: rule.id, name: rule.name, severity: rule.severity, metric, value,
           }, scope.orgId);
         }
+        // Page the human (Web Push — see pageViaPush): the resolved
+        // on-call operator for an org scope, the rule owner for a solo
+        // scope. An alert can fire from automated ingestion while nobody
+        // is viewing the lens; the realtime event alone would miss them.
+        const pageTarget = scope.scope === "org"
+          ? (resolveOnCallAt(ccState().onCall.get(scope.orgId) || null, Date.now())?.userId || null)
+          : scope.userId;
+        pageViaPush(ctx, pageTarget, {
+          title: `Alert fired: ${rule.name}`,
+          body: `${metric} = ${value} (${rule.comparator} ${rule.threshold})`,
+          data: { kind: "command-center-alert", ruleId: rule.id, orgId: scope.orgId || null },
+        });
       }
     }
     return {
@@ -885,6 +913,16 @@ export default function registerCommandCenterActions(registerLensAction) {
     incidents.set(incident.id, incident);
     if (scope.scope === "org") {
       emitOrgRealtime("command-center:incident-opened", { orgId: scope.orgId, incident }, scope.orgId);
+    }
+    // Page the on-call operator stamped at open time (Web Push — see
+    // pageViaPush). No schedule resolved -> onCallAt is null and nobody
+    // is paged; the realtime fan-out above still reached the team.
+    if (incident.onCallAt) {
+      pageViaPush(ctx, incident.onCallAt, {
+        title: `Incident opened: ${incident.title}`,
+        body: `Severity ${incident.severity} — you are on call.`,
+        data: { kind: "command-center-incident", incidentId: incident.id, orgId: scope.orgId },
+      });
     }
     return { ok: true, result: { incident } };
   });
@@ -1248,16 +1286,17 @@ export default function registerCommandCenterActions(registerLensAction) {
   // becomes team-shared the moment it is called with that org's id as
   // params.orgId; nothing below is required to use the per-operator path.
   //
-  // GATED HALF, DOCUMENTED HONESTLY: real SMS/phone paging (e.g. Twilio)
-  // needs an external provider + account credentials this codebase does not
-  // have, so it is intentionally NOT implemented. What IS real and wired:
-  // (a) a deterministic on-call resolver computed from an actual schedule
-  // against the actual wall clock (resolveOnCallAt, below — no RNG, no
-  // fabricated "who's on call"), and (b) real-time in-Concord fan-out to
-  // every team member's session via emitOrgRealtime when an incident opens/
-  // updates or an alert fires. Nothing here ever claims an SMS/phone page
-  // was sent — only that the team, and the resolved on-call operator, saw
-  // it live inside Concord.
+  // PAGING, DOCUMENTED HONESTLY (founder decision 2026-10-28): SMS/phone
+  // paging (Twilio etc.) is DECLINED — no carrier provider, ever. What IS
+  // real and wired: (a) a deterministic on-call resolver computed from an
+  // actual schedule against the actual wall clock (resolveOnCallAt,
+  // below — no RNG, no fabricated "who's on call"), (b) real-time
+  // in-Concord fan-out to every team member's session via emitOrgRealtime
+  // when an incident opens/updates or an alert fires, and (c) Web Push
+  // pages to the resolved on-call operator's registered devices via
+  // pageViaPush (server/lib/push.js) on alert fire and incident open, so
+  // the page lands even when nobody is viewing the lens. Nothing here
+  // ever claims an SMS/phone page was sent.
   // ---------------------------------------------------------------------------
 
   const MIN_SHIFT_HOURS = 1, MAX_SHIFT_HOURS = 24 * 30; // 1 hour .. 30 days
