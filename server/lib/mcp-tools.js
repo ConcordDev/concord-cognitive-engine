@@ -313,7 +313,7 @@ export const MCP_TOOLS = [
   // search the discovered arsenal, and invoke any reflected macro.
   {
     name: "reflect_search",
-    description: "Search the auto-discovered macro arsenal (8,688+ tools). Returns matching tool names + descriptions. Use this to discover what Concord can do without manual tool listing.",
+    description: "Search the auto-discovered macro arsenal. Returns one page of matching tool names + descriptions: `returned` is the number of matches in this page, `totalMatches` (also reported as `count`) is the full match total for the query before paging, `truncated` is true when the page is not the whole match set, and `totalAvailable` is the total number of generated reflected tools. Limit defaults to 20, maximum 100. Use this to discover what Concord can do without manual tool listing.",
     inputSchema: jsonSchema({
       query: textProp("Free-text search query (matches tool name, description, file)"),
       limit: intProp("Max results (default 20, max 100)", 20)
@@ -329,7 +329,7 @@ export const MCP_TOOLS = [
   },
   {
     name: "reflect_stats",
-    description: "Get reflection factory stats: macros discovered, domains, scan duration, last scan time. Useful for verifying the boot pass worked.",
+    description: "Get reflection factory stats: scan duration, last scan time, and counts with their denominators stated. `macros` / `exports` / `routes` are discovered in source, pre-cap (full source-list lengths); `discoveredTotal` is their sum. `generatedTotal` is the number of tools generated and available for dispatch, post-cap and post-dedup; `total` is a deprecated alias of `generatedTotal`. `cap` is the generation cap the boot pass ran with, and `capped` is true when discoveredTotal exceeds generatedTotal. `registrySize` is the number of distinct macro domains in the registry. Useful for verifying the boot pass worked.",
     inputSchema: SCHEMA_DESCRIPTION_BASE
   },
   {
@@ -1753,11 +1753,17 @@ export async function reflectSearch(db, args) {
   const limit = Math.min(100, Math.max(1, Number(args?.limit) || 20));
   if (!query) return { ok: false, error: "query is required" };
 
-  const matches = REFLECTED_TOOLS.filter(t =>
+  // The match total is computed BEFORE the page slice. `count` previously
+  // reported the page length, so a truncated page certified itself
+  // complete (MCP lane Addendum 1: Timeline's 21st macro is hidden by the
+  // 20-result default page). `count` now means the match total — the same
+  // value as `totalMatches`; the page size is reported as `returned`.
+  const allMatches = REFLECTED_TOOLS.filter(t =>
     t.name.toLowerCase().includes(query) ||
     t.description.toLowerCase().includes(query) ||
     (t._meta?.file || "").toLowerCase().includes(query)
-  ).slice(0, limit);
+  );
+  const matches = allMatches.slice(0, limit);
 
   return {
     ok: true,
@@ -1769,7 +1775,10 @@ export async function reflectSearch(db, args) {
       domain: t._meta?.domain,
       kind: t._meta?.kind,
     })),
-    count: matches.length,
+    count: allMatches.length,
+    returned: matches.length,
+    totalMatches: allMatches.length,
+    truncated: allMatches.length > matches.length,
     totalAvailable: REFLECTED_TOOLS.length,
   };
 }
@@ -1789,7 +1798,7 @@ export async function reflectStats(db, args) {
   return {
     ok: true,
     ...getReflectionStats(),
-    note: "Reflection factory auto-discovers macros from server/domains/ on boot."
+    note: "Reflection factory auto-discovers macros from server/domains/ on boot. Denominators: macros/exports/routes are discovered in source, pre-cap; discoveredTotal is their sum; generatedTotal (total is its deprecated alias) is the post-cap, post-dedup count of tools generated and available for dispatch; cap is the generation cap the pass ran with; registrySize is the number of distinct macro domains in the registry."
   };
 }
 
