@@ -591,6 +591,43 @@ export default function registerGoalsActions(registerLensAction) {
       try { globalThis._concordSaveStateDebounced(); } catch { /* non-fatal */ }
     }
   }
+  // --- S3: one progress core (F3/F7) --------------------------------
+  // An objective's progress is its latest check-in's progress. With no
+  // check-ins of its own, a parent's progress is the mean of its
+  // children's progress (the stated roll-up rule). With neither, the
+  // objective has no progress (null) — surfaces show nothing rather
+  // than a fabricated 0. Charts (S4) and the forecast (S5) read this
+  // same core, so the lens cannot disagree with itself.
+  function latestCheckinProgress(s, userId, goalId) {
+    const entries = (s.checkins.get(userId) || []).filter(
+      (c) => c.goalId === goalId && c.progress != null,
+    );
+    if (!entries.length) return null;
+    const seqNum = (c) => Number(String(c.id).replace(/^chk_/, "")) || 0;
+    entries.sort((a, b) =>
+      (a.createdAt || "").localeCompare(b.createdAt || "") || seqNum(a) - seqNum(b));
+    return entries[entries.length - 1].progress;
+  }
+
+  function deriveProgress(s, userId, objectives, obj, seen) {
+    if (seen.has(obj.id)) return { progress: null, progressSource: null }; // parent-cycle guard
+    seen.add(obj.id);
+    const own = latestCheckinProgress(s, userId, obj.id);
+    if (own != null) return { progress: own, progressSource: "checkin" };
+    const childValues = objectives
+      .filter((o) => o.parentId === obj.id)
+      .map((o) => deriveProgress(s, userId, objectives, o, seen))
+      .filter((r) => r.progress != null)
+      .map((r) => r.progress);
+    if (!childValues.length) return { progress: null, progressSource: null };
+    const mean = childValues.reduce((a, b) => a + b, 0) / childValues.length;
+    return { progress: Math.round(mean * 100) / 100, progressSource: "rollup" };
+  }
+
+  function withProgress(s, userId, objectives) {
+    return objectives.map((o) => ({ ...o, ...deriveProgress(s, userId, objectives, o, new Set()) }));
+  }
+
 
   // --- Built-in goal templates by category (structure only, no sample user data) ---
   const GOAL_TEMPLATES = [
@@ -698,8 +735,9 @@ export default function registerGoalsActions(registerLensAction) {
       save();
     }
 
-    // Build tree
-    const byId = new Map(list.map((o) => [o.id, { ...o, children: [] }]));
+    // Build tree (nodes carry S3 derived progress)
+    const enriched = withProgress(s, userId, list);
+    const byId = new Map(enriched.map((o) => [o.id, { ...o, children: [] }]));
     const roots = [];
     for (const node of byId.values()) {
       if (node.parentId && byId.has(node.parentId)) {
@@ -715,12 +753,13 @@ export default function registerGoalsActions(registerLensAction) {
       ok: true,
       result: {
         tree: roots,
-        flat: list,
+        flat: enriched,
         stats: {
           objectiveCount: list.length,
           rootCount: roots.length,
           maxDepth: roots.length ? Math.max(...roots.map(depth)) : 0,
           keyResultsLinked: krTotal,
+          progressCount: enriched.filter((o) => o.progress != null).length,
           teams: [...new Set(list.map((o) => o.team).filter(Boolean))],
         },
       },
@@ -776,10 +815,17 @@ export default function registerGoalsActions(registerLensAction) {
     const counts = { on_track: 0, at_risk: 0, off_track: 0 };
     for (const c of sorted) counts[c.status] = (counts[c.status] || 0) + 1;
 
+    const _objectives = s.objectives.get(userId) || [];
+    const _target = params.goalId ? _objectives.find((o) => o.id === params.goalId) : null;
+    const objectiveProgress = _target
+      ? deriveProgress(s, userId, _objectives, _target, new Set())
+      : null;
+
     return {
       ok: true,
       result: {
         checkins: sorted,
+        objectiveProgress,
         stats: {
           count: sorted.length,
           avgConfidence: confValues.length
