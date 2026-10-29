@@ -83,6 +83,7 @@ export function CollabBoardSection() {
   const [genPrompt, setGenPrompt] = useState('');
   const [genKind, setGenKind] = useState<typeof TEMPLATE_KINDS[number]['id']>('brainstorm');
   const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
   const [showAI, setShowAI] = useState(true);
   // True when `activeId` refers to a shared board (a separate identity space
@@ -315,9 +316,10 @@ export function CollabBoardSection() {
   async function runGenerate() {
     if (!genPrompt.trim()) return;
     setGenerating(true);
+    setGenError(null);
     try {
       const r = await lensRun({ domain: 'whiteboard', action: 'ai-generate-board', input: { prompt: genPrompt.trim(), kind: genKind } });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      if (r.data?.ok === false) { setGenError(String(r.data?.error || 'Generate failed.')); return; }
       const scene = r.data?.result?.scene;
       const elements = (scene?.elements || []) as Shape[];
       // Create a new board with the generated scene.
@@ -533,7 +535,7 @@ export function CollabBoardSection() {
                 <SummarizeTab summary={summary} loading={summarizing} onRun={runSummarize} active={!!activeId} />
               )}
               {aiTab === 'generate' && (
-                <GenerateTab prompt={genPrompt} setPrompt={setGenPrompt} kind={genKind} setKind={setGenKind} loading={generating} onRun={runGenerate} />
+                <GenerateTab prompt={genPrompt} setPrompt={setGenPrompt} kind={genKind} setKind={setGenKind} loading={generating} onRun={runGenerate} error={genError} />
               )}
               {aiTab === 'comments' && (
                 <CommentsTab activeId={activeId} shapes={activeShapes} comments={comments} currentUserId={user?.id ?? null} onAdd={addComment} onResolve={resolveComment} onDelete={deleteComment} />
@@ -682,7 +684,7 @@ function SummarizeTab({ summary, loading, onRun, active }: { summary: SummaryRes
   );
 }
 
-function GenerateTab({ prompt, setPrompt, kind, setKind, loading, onRun }: { prompt: string; setPrompt: (s: string) => void; kind: typeof TEMPLATE_KINDS[number]['id']; setKind: (k: typeof TEMPLATE_KINDS[number]['id']) => void; loading: boolean; onRun: () => void }) {
+function GenerateTab({ prompt, setPrompt, kind, setKind, loading, onRun, error }: { prompt: string; setPrompt: (s: string) => void; kind: typeof TEMPLATE_KINDS[number]['id']; setKind: (k: typeof TEMPLATE_KINDS[number]['id']) => void; loading: boolean; onRun: () => void; error: string | null }) {
   return (
     <div className="space-y-2">
       <p className="text-gray-400">Generate a starter board from a prompt. Creates a new board — won't overwrite the current one.</p>
@@ -696,6 +698,7 @@ function GenerateTab({ prompt, setPrompt, kind, setKind, loading, onRun }: { pro
         rows={4}
         className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white"
       />
+      {error && <p className="text-[11px] text-rose-300" role="status">{error}</p>}
       <button onClick={onRun} disabled={loading || !prompt.trim()} className="w-full px-3 py-1.5 text-xs rounded bg-pink-500 text-white font-bold hover:bg-pink-400 disabled:opacity-40 inline-flex items-center justify-center gap-1">
         {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}Generate board
       </button>
