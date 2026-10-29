@@ -32,7 +32,28 @@ export function DTUExportButton({
     if (exporting) return;
     setExporting(true);
     try {
-      const payload = prepare ? await prepare() : data;
+      let payload = prepare ? await prepare() : data;
+      // Q16: an empty payload must never be wrapped in a .dtu and
+      // presented as an export. Dozens of call sites pass data={{}}
+      // with no prepare; when the resolved payload is empty, load the
+      // lens's real export rows (Q79's export read) and export those —
+      // and if the lens genuinely has no data, refuse honestly instead
+      // of downloading an empty file.
+      const isEmpty = payload == null || (typeof payload === 'object' && Object.keys(payload).length === 0);
+      if (isEmpty) {
+        try {
+          const res = await api.get(`/api/lens/${domain}/export`, { params: { limit: 1000 } });
+          const rows = Array.isArray(res.data?.artifacts) ? res.data.artifacts : [];
+          if (rows.length === 0) {
+            addToast({ type: 'error', message: 'Nothing to export yet — this lens has no saved data.' });
+            return;
+          }
+          payload = { source: 'lens-export', domain, exportedAt: new Date().toISOString(), items: rows };
+        } catch {
+          addToast({ type: 'error', message: 'Export failed — could not load this lens\u2019s data.' });
+          return;
+        }
+      }
       const response = await api.post(
         `/api/lens/${domain}/export-dtu`,
         { data: payload, title: title || `${domain} export`, tags: tags || [domain, 'export'] },
