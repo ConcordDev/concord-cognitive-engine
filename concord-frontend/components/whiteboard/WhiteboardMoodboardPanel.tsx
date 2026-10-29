@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Image as ImageIcon, LayoutGrid, PenTool, Pencil, Plus, X } from 'lucide-react';
 import { COLORS, DEFAULT_MOOD_ZONES, type MoodZone } from './whiteboard-model';
@@ -13,6 +13,12 @@ export function WhiteboardMoodboardPanel() {
   const [moodTarget, setMoodTarget] = useState<string | null>(null);
   const [moodKind, setMoodKind] = useState<'text' | 'color' | 'audio' | 'image'>('text');
   const [moodEdit, setMoodEdit] = useState<{ zoneId: string; idx: number } | null>(null);
+  // E-WB-2 Full House: once every zone holds something, the header
+  // gains one serif line for the session. Real state only.
+  const [fullHouseSeen, setFullHouseSeen] = useState(false);
+  useEffect(() => {
+    if (moodZones.every((z) => z.items.length > 0)) setFullHouseSeen(true);
+  }, [moodZones]);
 
   const addMoodItem = () => {
     if (!moodTarget || !moodInput.trim()) return;
@@ -50,6 +56,7 @@ export function WhiteboardMoodboardPanel() {
         <LayoutGrid className="w-5 h-5 text-neon-pink" />
         <span className="text-sm font-semibold">Moodboard</span>
         <span className="text-xs text-gray-400">Click a zone to add inspiration items</span>
+        {fullHouseSeen && <span className="font-serif text-sm italic text-amber-200">Every zone has something. That&rsquo;s a mood.</span>}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 max-w-6xl mx-auto">
         {moodZones.map((zone) => (
