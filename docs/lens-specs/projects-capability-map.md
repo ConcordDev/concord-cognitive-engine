@@ -48,6 +48,85 @@ Ramaj's §8 Q2 team-model call). S1 (lifecycle) notes:
   pinned by `server/tests/projects-lifecycle.test.js`.
 - Frontend behaviour: `concord-frontend/tests/projects-lifecycle.test.tsx`.
 
+D1 + D4 (receipt + settle) and D2 (triage front door) notes:
+
+- D1: `sprint-complete` now computes the settlement BEFORE
+  rollover (issues and points, done of total — the numbers
+  report-velocity reconciles from), returns it as `receipt`, and
+  keeps it: one `sprint_receipt` activity entry on every settled
+  issue, so it lives in the per-issue feeds and the S11 Activity
+  stream and survives reload. Re-completing an already-completed
+  sprint writes no second receipt. The DTU-id half of D1 rides the
+  chrome save flow (see F17, NEEDS-CROSS-LENS) — the receipt here
+  is the lens-side kept record.
+- D4: the Sprints panel renders the receipt as a stamped card on
+  completion (250 ms settle-in, static under
+  prefers-reduced-motion), and completed sprint cards carry the
+  settlement figures; velocity is already derived live by
+  `report-velocity`, so it lands in Reports in the same beat by
+  construction. The E-PJ-1 egg ships: a completed sprint whose
+  every point is done shows the "Settled in full." stamp on its
+  card (and in its receipt). Tests:
+  `server/tests/projects-receipts.test.js` (0 pass / 2 fail
+  against the original domain).
+- D2: the section shows a triage header banner whenever the open
+  project has un-triaged issues ("N issues need triage" +
+  Review triage → the Collab tab), rechecked on project/tab
+  change so emptying the queue clears it. The intake room itself
+  was already verified working (Collab triage inbox); D2 is the
+  door, not a rebuild.
+- D3 stays parked with S4 on Ramaj's §8 Q2 call.
+
+S13 (first-run, F20) notes:
+
+- The zero-project landing no longer says "Nothing in the
+  substrate." It states what a project is in one sentence, names
+  the loop (issues → board → goals/reports → DTU), and offers the
+  sample project beside New project. The sample is a REAL project
+  (`project-create-sample`, idempotent per account, `sample: true`,
+  SMP key uniquified) with four teaching issues across the
+  statuses — labelled in the list and by a banner in its header,
+  editable and deletable like any project. The create dialog gained
+  a starter row (Blank / Product launch / Bug triage / Content
+  series): `project-create` accepts `template` and seeds four
+  starter issues in the same call (one already Done, so a system
+  goal counts 1 from minute one). Tests:
+  `server/tests/projects-starters.test.js` (0 pass / 3 fail against
+  the original domain).
+
+S14 (label honesty, F21) notes:
+
+- The Backlog rank chevrons were aria-labelled "Collapse" /
+  "Expand" while doing rank reorder; they are now "Move up" /
+  "Move down" (label + tooltip). The Board's new-task bar now
+  submits on Enter, matching every comparable surface (the related
+  mismatch recorded inside F21).
+
+S12 (state freshness, F17/F18/F19) notes:
+
+- F18 BUILT (the in-lens half): the lens's own writes now render in
+  the same interaction. The project header's status/health selects
+  apply the patch to local state immediately (refetch reconciles,
+  and Portfolio — fed from the same list — is right on first
+  entry); Team adds append the returned member at once, the panel
+  no longer blanks to a skeleton on refresh, and a stale
+  "Member name is required." dies as soon as the user types;
+  Settings rule/template deletes remove the row in the same click
+  (the refetch restores it if the delete actually failed).
+- F17 NEEDS-CROSS-LENS: the review's own inventory (§2b #79/#80)
+  files "Save project as DTU" / "Draft in Thread" / the saved-state
+  indicator under **Lens chrome**, not this lens's components — no
+  Projects component contains them (grepped). The indicator must
+  read a persisted {dtuId, savedAt} record; the save itself happens
+  in chrome's generic DTU flow, which no Projects macro sees. If
+  the office wants the record held by the lens, B10 will add a
+  `project-note-dtu-save` write + `project-get` read in one small
+  slice — the chrome wiring is the external half.
+- F19 NEEDS-CROSS-LENS by the review's own routing: its spec names
+  "the platform-chrome slice family that carries Studio's S12" as
+  the home for one-connection-source status signs. No Projects
+  component renders the banner, badge, or sidebar dot.
+
 S11 (activity + notifications, F15/F16) notes:
 
 - F15: `activity-list` hard-required a taskId, so any global call
