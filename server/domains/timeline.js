@@ -968,6 +968,27 @@ export default function registerTimelineActions(registerLensAction) {
 });
 
   // ── Media albums ───────────────────────────────────────────────────────
+  // Per-album audience (S-TL-5 / F6): the same three tiers as posts.
+  // An album stored before tiers existed has no privacy field and is
+  // treated as private — owner-only — never silently public.
+  const tlAlbumPrivacy = (album) =>
+    PRIVACY_KINDS.includes(album?.privacy) ? album.privacy : "private";
+  const tlCanViewAlbum = (ctx, album, viewerId) => {
+    if (!album) return false;
+    if (album.ownerId === viewerId) return true;
+    const privacy = tlAlbumPrivacy(album);
+    if (privacy === "public") return true;
+    if (privacy === "friends") {
+      const db = ctx?.db || globalThis._concordSTATE?.db;
+      return db ? areFriends(db, album.ownerId, viewerId) === true : false;
+    }
+    return false;
+  };
+  // Owner-only lookup shared by the album lifecycle verbs: another
+  // user's album is indistinguishable from a missing one.
+  const tlOwnAlbum = (s, userId, albumId) =>
+    (s.albums.get(userId) || []).find((a) => a.id === albumId) || null;
+
   registerLensAction("timeline", "album-create", (ctx, _a, params = {}) => {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
@@ -978,6 +999,7 @@ export default function registerTimelineActions(registerLensAction) {
       ownerId: tlAid(ctx),
       name,
       description: tlClean(params.description, 500),
+      privacy: PRIVACY_KINDS.includes(String(params.privacy)) ? String(params.privacy) : "private",
       coverUrl: tlClean(params.coverUrl, 1000) || null,
       media: [],
       createdAt: tlNow(),
@@ -1017,8 +1039,13 @@ export default function registerTimelineActions(registerLensAction) {
   registerLensAction("timeline", "album-list", (ctx, _a, params = {}) => {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = params.ownerId ? tlClean(params.ownerId, 64) : tlAid(ctx);
-    const albums = [...(s.albums.get(userId) || [])];
+    const viewerId = tlAid(ctx);
+    const userId = params.ownerId ? tlClean(params.ownerId, 64) : viewerId;
+    // S-TL-5: listing someone else's albums returns only the albums
+    // whose audience includes the viewer — previously any caller could
+    // enumerate any owner's albums in full.
+    const albums = [...(s.albums.get(userId) || [])]
+      .filter((a) => tlCanViewAlbum(ctx, a, viewerId));
     albums.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return {
       ok: true,
@@ -1028,6 +1055,83 @@ export default function registerTimelineActions(registerLensAction) {
         totalMedia: albums.reduce((n, a) => n + a.media.length, 0),
       },
     };
+  });
+
+  // S-TL-5: albums are finished objects — rename / retier (F6).
+  registerLensAction("timeline", "album-update", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tlAid(ctx);
+    const album = tlOwnAlbum(s, userId, tlClean(params.albumId, 64));
+    if (!album) return { ok: false, error: "Album not found." };
+    if (params.name !== undefined) {
+      const name = tlClean(params.name, 120);
+      if (!name) return { ok: false, error: "Album name can't be empty." };
+      album.name = name;
+    }
+    if (params.description !== undefined) {
+      album.description = tlClean(params.description, 500);
+    }
+    if (params.privacy !== undefined) {
+      // Unknown tiers are refused, never silently narrowed (post-update rule).
+      if (!PRIVACY_KINDS.includes(String(params.privacy))) {
+        return { ok: false, error: "Unknown privacy." };
+      }
+      album.privacy = String(params.privacy);
+    }
+    saveTlState();
+    return { ok: true, result: { album } };
+  });
+
+  // S-TL-5: delete (F6). The album and its media list go together; the
+  // caller confirms on the surface with the item count named.
+  registerLensAction("timeline", "album-delete", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tlAid(ctx);
+    const albumId = tlClean(params.albumId, 64);
+    const mine = s.albums.get(userId) || [];
+    const album = mine.find((a) => a.id === albumId);
+    if (!album) return { ok: false, error: "Album not found." };
+    s.albums.set(userId, mine.filter((a) => a.id !== albumId));
+    saveTlState();
+    return { ok: true, result: { deleted: true, albumId, name: album.name, mediaCount: album.media.length } };
+  });
+
+  // S-TL-5: remove one item (F6). If the removed item was the cover,
+  // the cover falls to the first remaining item (or clears).
+  registerLensAction("timeline", "album-remove-media", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tlAid(ctx);
+    const album = tlOwnAlbum(s, userId, tlClean(params.albumId, 64));
+    if (!album) return { ok: false, error: "Album not found." };
+    const mediaId = tlClean(params.mediaId, 64);
+    const item = album.media.find((m) => m.id === mediaId);
+    if (!item) return { ok: false, error: "Media not found in this album." };
+    album.media = album.media.filter((m) => m.id !== mediaId);
+    if (album.coverUrl === item.url) {
+      album.coverUrl = album.media.length > 0 ? album.media[0].url : null;
+    }
+    saveTlState();
+    return { ok: true, result: { album, removed: mediaId } };
+  });
+
+  // S-TL-5: explicit cover choice (F6) — replaces the implicit
+  // first-photo-becomes-cover behaviour as the only path (the implicit
+  // default stays for a coverless album's first add).
+  registerLensAction("timeline", "album-set-cover", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tlAid(ctx);
+    const album = tlOwnAlbum(s, userId, tlClean(params.albumId, 64));
+    if (!album) return { ok: false, error: "Album not found." };
+    const mediaId = tlClean(params.mediaId, 64);
+    const item = album.media.find((m) => m.id === mediaId);
+    if (!item) return { ok: false, error: "Media not found in this album." };
+    album.coverUrl = item.url;
+    saveTlState();
+    return { ok: true, result: { album, coverUrl: album.coverUrl } };
   });
 
   // ── Profile: cover photo, bio, about ──────────────────────────────────

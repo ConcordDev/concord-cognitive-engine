@@ -373,6 +373,75 @@ describe("S-TL-4 timeline names (F5/F7)", () => {
   });
 });
 
+// ── S-TL-5: albums finished as objects + per-album audience (F6) ──────
+describe("S-TL-5 timeline albums (F6)", () => {
+  const ada = asUser("al_ada");
+  const friend = asUser("al_friend");
+  const stranger = asUser("al_stranger");
+  befriend("al_ada", "al_friend");
+
+  const mkAlbum = (ctx, name, privacy) =>
+    call("album-create", ctx, { name, privacy }).result.album;
+  const addPhoto = (ctx, albumId, url) =>
+    call("album-add-media", ctx, { albumId, media: [{ kind: "photo", url }] });
+
+  it("album audiences gate album-list per viewer: owner all, friend public+friends, stranger public only", () => {
+    mkAlbum(ada, "Pub", "public");
+    mkAlbum(ada, "Fri", "friends");
+    mkAlbum(ada, "Pri", "private");
+    const invalid = mkAlbum(ada, "Bogus tier", "everyone");
+    assert.equal(invalid.privacy, "private", "unknown tier at create falls back to private");
+    const names = (r) => r.result.albums.map((a) => a.name).sort();
+    assert.deepEqual(names(call("album-list", ada, {})), ["Bogus tier", "Fri", "Pri", "Pub"]);
+    assert.deepEqual(names(call("album-list", friend, { ownerId: "al_ada" })), ["Fri", "Pub"]);
+    assert.deepEqual(names(call("album-list", stranger, { ownerId: "al_ada" })), ["Pub"]);
+  });
+
+  it("album-update renames and re-tiers for the owner only; unknown tier and empty name refused", () => {
+    const album = mkAlbum(ada, "Old name", "private");
+    const upd = call("album-update", ada, { albumId: album.id, name: "New name", privacy: "friends", description: "d" });
+    assert.equal(upd.ok, true);
+    assert.equal(upd.result.album.name, "New name");
+    assert.equal(upd.result.album.privacy, "friends");
+    assert.equal(call("album-update", stranger, { albumId: album.id, name: "Hijack" }).ok, false);
+    const badTier = call("album-update", ada, { albumId: album.id, privacy: "everyone" });
+    assert.equal(badTier.ok, false);
+    assert.match(badTier.error, /Unknown privacy/);
+    assert.equal(call("album-update", ada, { albumId: album.id, name: "  " }).ok, false);
+    const after = call("album-list", ada, {}).result.albums.find((a) => a.id === album.id);
+    assert.equal(after.name, "New name", "refused edits changed nothing");
+    assert.equal(after.privacy, "friends");
+  });
+
+  it("set-cover and remove-media behave: cover falls back when its item is removed", () => {
+    const album = mkAlbum(ada, "Pics", "private");
+    addPhoto(ada, album.id, "https://x.test/1.jpg");
+    addPhoto(ada, album.id, "https://x.test/2.jpg");
+    let cur = call("album-list", ada, {}).result.albums.find((a) => a.id === album.id);
+    assert.equal(cur.coverUrl, "https://x.test/1.jpg", "first add is the implicit cover");
+    const [m1, m2] = cur.media;
+    const set = call("album-set-cover", ada, { albumId: album.id, mediaId: m2.id });
+    assert.equal(set.result.album.coverUrl, "https://x.test/2.jpg");
+    assert.equal(call("album-set-cover", stranger, { albumId: album.id, mediaId: m1.id }).ok, false);
+    assert.equal(call("album-set-cover", ada, { albumId: album.id, mediaId: "nope" }).ok, false);
+    const rm = call("album-remove-media", ada, { albumId: album.id, mediaId: m2.id });
+    assert.equal(rm.result.album.coverUrl, "https://x.test/1.jpg", "cover fell back to the remaining item");
+    const rmLast = call("album-remove-media", ada, { albumId: album.id, mediaId: m1.id });
+    assert.equal(rmLast.result.album.coverUrl, null);
+    assert.equal(rmLast.result.album.media.length, 0);
+  });
+
+  it("album-delete removes the album for the owner only and reports what went with it", () => {
+    const album = mkAlbum(ada, "Doomed", "public");
+    addPhoto(ada, album.id, "https://x.test/d.jpg");
+    assert.equal(call("album-delete", stranger, { albumId: album.id }).ok, false);
+    const del = call("album-delete", ada, { albumId: album.id });
+    assert.equal(del.ok, true);
+    assert.equal(del.result.mediaCount, 1);
+    assert.equal(call("album-list", ada, {}).result.albums.some((a) => a.id === album.id), false);
+  });
+});
+
 // ── S-TL-2: friends-tier regression lock ───────────────────────────────
 // The prep audit found the friends-tier gate already fixed on main
 // (checkPostAccess via areFriends, fail-closed, oracle-safe). This

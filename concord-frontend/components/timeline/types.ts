@@ -77,6 +77,9 @@ export interface Album {
   ownerId: string;
   name: string;
   description: string;
+  /** S-TL-5: per-album audience; albums stored before tiers existed
+   *  arrive without it and are treated as private by the server. */
+  privacy?: Privacy;
   coverUrl: string | null;
   media: MediaItem[];
   createdAt: string;
