@@ -970,22 +970,50 @@ export default function registerReposActions(registerLensAction) {
     let cur = bySha.get(sha);
     if (!cur) return null;
     const guard = new Set();
+    // A commit may carry a `baseline`: the full file tree AT that
+    // commit, stamped by rpAnchorLegacyHead for a legacy default head
+    // (see below). The fold starts from the baseline and applies only
+    // the change-commits that came after it — the baseline is where
+    // pre-snapshot history becomes knowable again.
+    let baseline = null;
     while (cur) {
       if (guard.has(cur.sha)) return null; // corrupt cycle — refuse, don't loop
       guard.add(cur.sha);
+      if (cur.baseline && typeof cur.baseline === "object") { baseline = cur.baseline; break; }
       if (!cur.changes || typeof cur.changes !== "object") return null;
       chain.push(cur);
       const parentSha = (cur.parents || [])[0];
       cur = parentSha ? bySha.get(parentSha) : null;
       if (parentSha && !cur) return null; // dangling parent — history incomplete
     }
-    const snap = new Map();
+    const snap = new Map(baseline ? Object.entries(baseline) : []);
     for (let k = chain.length - 1; k >= 0; k--) {
       for (const [path, content] of Object.entries(chain[k].changes)) {
         if (content === null) snap.delete(path); else snap.set(path, content);
       }
     }
     return snap;
+  }
+  // Legacy healing (Review 2 re-pass, checkpoint 1): a repo created
+  // before commits recorded `changes` deltas can never fold — every
+  // branch forked from its head inherits the un-foldable chain, so
+  // file view and commits on ANY branch of such a repo refused with
+  // history_unrecorded while main survived on the repo.files
+  // fallback. But at the default branch's CURRENT head the tree is
+  // knowable exactly: repo.files IS that head's tree, by the mirror
+  // invariant. Stamp it onto the head commit as its `baseline`, once,
+  // and every chain through that commit — branches forked before or
+  // after the stamp, PRs based on it — folds from there. Returns true
+  // when it stamped (callers persist). Commits deeper than the head
+  // stay unrecorded: that history is genuinely unrecoverable, and the
+  // surfaces keep saying so.
+  function rpAnchorLegacyHead(repo) {
+    const def = repo.branches.find((b) => b.name === repo.defaultBranch);
+    if (!def || !def.head) return false;
+    const head = rpCommitMap(repo).get(def.head);
+    if (!head || head.changes || head.baseline) return false;
+    head.baseline = Object.fromEntries((repo.files || []).map((f) => [f.path, f.content || ""]));
+    return true;
   }
   function rpMergeBase(repo, shaA, shaB) {
     if (!shaA || !shaB) return null;
@@ -1124,7 +1152,14 @@ export default function registerReposActions(registerLensAction) {
   function rpBranchTree(repo, branchName) {
     const branch = repo.branches.find((b) => b.name === branchName);
     if (!branch) return null;
-    const snap = rpSnapshotAt(repo, branch.head);
+    let snap = rpSnapshotAt(repo, branch.head);
+    if (!snap && rpAnchorLegacyHead(repo)) {
+      // The chain may have become foldable by anchoring the default
+      // head (the branch's chain passes through it) — retry once
+      // before declaring this branch's history unrecorded.
+      rpSave();
+      snap = rpSnapshotAt(repo, branch.head);
+    }
     if (snap) return snap;
     if (branchName === repo.defaultBranch) {
       return new Map((repo.files || []).map((f) => [f.path, f.content || ""]));
@@ -1178,7 +1213,7 @@ export default function registerReposActions(registerLensAction) {
       if (!repo.branches.some((b) => b.name === branchName)) return { ok: false, error: "branch not found" };
       const tree = rpBranchTree(repo, branchName);
       if (!tree) {
-        return { ok: false, error: "history_unrecorded", message: `The branch "${branchName}" predates recorded file snapshots, so its tree can't be reconstructed. New commits on it will record snapshots from here on.` };
+        return { ok: false, error: "history_unrecorded", message: `The branch "${branchName}" predates recorded file snapshots, so its tree can't be reconstructed.` };
       }
       const files = rpFilesFromSnapshot(tree);
       return {
@@ -1200,6 +1235,7 @@ export default function registerReposActions(registerLensAction) {
       if (!path) return { ok: false, error: "path required" };
       // Read at a commit (params.sha), on a branch (params.branch), or
       // on the default branch — always from recorded snapshots.
+      if (rpAnchorLegacyHead(repo)) rpSave();
       let content;
       let atCommit = null;
       if (params.sha) {
@@ -1479,6 +1515,7 @@ export default function registerReposActions(registerLensAction) {
       const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
       if (!repo) return { ok: false, error: "repo not found" };
+      if (rpAnchorLegacyHead(repo)) rpSave();
       const sha = rpClean(params.sha, 60);
       const commit = repo.commits.find((c) => c.sha === sha);
       if (!commit) return { ok: false, error: "commit not found" };
@@ -1638,6 +1675,7 @@ export default function registerReposActions(registerLensAction) {
       if (!repo) return { ok: false, error: "repo not found" };
       const title = rpClean(params.title, 200);
       if (!title) return { ok: false, error: "title required" };
+      if (rpAnchorLegacyHead(repo)) rpSave();
       const head = rpClean(params.head, 80);
       const base = rpClean(params.base, 80) || repo.defaultBranch;
       if (!head) return { ok: false, error: "head branch required" };
@@ -1687,6 +1725,7 @@ export default function registerReposActions(registerLensAction) {
       if (!repo) return { ok: false, error: "repo not found" };
       const pull = repo.pulls.find((p) => p.number === rpNum(params.number, -1));
       if (!pull) return { ok: false, error: "pull not found" };
+      if (rpAnchorLegacyHead(repo)) rpSave();
       // S2: the diff is what the head branch introduces relative to
       // the merge-base — computed from recorded snapshots, per file,
       // with real line counts. S3: the same three-way check the merge
@@ -1817,6 +1856,7 @@ export default function registerReposActions(registerLensAction) {
       if (!repo) return { ok: false, error: "repo not found" };
       const pull = repo.pulls.find((p) => p.number === rpNum(params.number, -1));
       if (!pull) return { ok: false, error: "pull not found" };
+      if (rpAnchorLegacyHead(repo)) rpSave();
       if (pull.state !== "open") return { ok: false, error: `pull is ${pull.state}` };
       if (pull.reviews.some((rv) => rv.verdict === "request-changes")) {
         return { ok: false, error: "changes requested — cannot merge" };

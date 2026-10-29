@@ -256,15 +256,31 @@ test("S7/F6: the Analysis engines answer from lens params, not only artifacts", 
   assert.match(empty.result.message, /No modules/);
 });
 
-test("legacy repos (no snapshots) degrade honestly, never fabricate", async () => {
-  // Hand-build a pre-snapshot repo directly in state.
+test("follow-up/legacy: a pre-snapshot repo heals at its default head — branch view, commit, PR diff (re-pass checkpoint 1)", async () => {
+  // Hand-build a pre-snapshot repo directly in state: two legacy
+  // commits (no `changes` on either), repo.files mirroring the head's
+  // tree, plus a legacy side branch pointing at the OLDER commit —
+  // forked mid-history, which stays unanchorable. This is the
+  // fixture class whose absence let #1808 ship: every #1808 fixture
+  // was born on snapshot-era code, so the fold never met a legacy
+  // commit until Review 2 ran it live on an 8-commit legacy repo.
   const s = globalThis._concordSTATE.reposLens;
   const legacy = {
     id: "repo_legacy", name: "legacy-repo", description: "", language: "TypeScript",
     isPrivate: false, stars: 0, defaultBranch: "main", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z",
-    files: [{ path: "README.md", type: "file", content: "# legacy\n", size: 9 }],
-    branches: [{ name: "main", head: "abc1234", protected: true, createdAt: "2026-01-01T00:00:00Z" }],
-    tags: [], commits: [{ sha: "abc1234", message: "old", author: "you", branch: "main", parents: [], date: "2026-01-01T00:00:00Z", additions: 1, deletions: 0, files: ["README.md"] }],
+    files: [
+      { path: "README.md", type: "file", content: "# legacy\n\nhead state\n", size: 20 },
+      { path: "src/index.ts", type: "file", content: "export const v = 2;\n", size: 20 },
+    ],
+    branches: [
+      { name: "main", head: "legacyc2", protected: true, createdAt: "2026-01-01T00:00:00Z" },
+      { name: "old-side", head: "legacyc1", protected: false, createdAt: "2026-01-01T00:00:00Z" },
+    ],
+    tags: [],
+    commits: [
+      { sha: "legacyc1", message: "old 1", author: "you", branch: "main", parents: [], date: "2026-01-01T00:00:00Z", additions: 1, deletions: 0, files: ["README.md"] },
+      { sha: "legacyc2", message: "old 2", author: "you", branch: "main", parents: ["legacyc1"], date: "2026-01-02T00:00:00Z", additions: 1, deletions: 0, files: ["README.md"] },
+    ],
     issues: [], pulls: [], workflowRuns: [], securityAlerts: [],
   };
   if (!s.repos) s.repos = new Map();
@@ -272,12 +288,60 @@ test("legacy repos (no snapshots) degrade honestly, never fabricate", async () =
   list.push(legacy);
   s.repos.set("user-1", list);
 
-  const read = await run("file-read", U1, { repoId: "repo_legacy", path: "README.md" });
-  assert.equal(read.ok, true, "default-branch legacy reads fall back to the stored tree");
-  assert.equal(read.result.content, "# legacy\n");
-  const atSha = await run("file-read", U1, { repoId: "repo_legacy", path: "README.md", sha: "abc1234" });
-  assert.equal(atSha.ok, false);
-  assert.equal(atSha.error, "history_unrecorded");
+  // Counts (item 4): main reports its total (2); the side branch has
+  // no commits of its own → 0 ahead, not its inherited prefix.
+  const bl = await run("branch-list", U1, { repoId: "repo_legacy" });
+  assert.equal(bl.result.branches.find((b) => b.name === "main").commits, 2);
+  assert.equal(bl.result.branches.find((b) => b.name === "old-side").commits, 0);
+
+  // What stays honest: the mid-history branch and the older commit
+  // are genuinely unrecoverable, and the surfaces still say so.
+  const sideTree = await run("file-tree", U1, { repoId: "repo_legacy", branch: "old-side" });
+  assert.equal(sideTree.ok, false);
+  assert.equal(sideTree.error, "history_unrecorded");
+  const atOldSha = await run("file-read", U1, { repoId: "repo_legacy", path: "README.md", sha: "legacyc1" });
+  assert.equal(atOldSha.ok, false);
+  assert.equal(atOldSha.error, "history_unrecorded");
+
+  // The checkpoint-1 motion exactly: create a branch TODAY on the
+  // legacy repo, view its files, commit on it.
+  const bc = await run("branch-create", U1, { repoId: "repo_legacy", name: "repass-feature" });
+  assert.equal(bc.ok, true, JSON.stringify(bc));
+  const tree = await run("file-tree", U1, { repoId: "repo_legacy", branch: "repass-feature" });
+  assert.equal(tree.ok, true, "branch file view must render on a healed legacy repo");
+  assert.equal(tree.result.fileCount, 2);
+  const read = await run("file-read", U1, { repoId: "repo_legacy", branch: "repass-feature", path: "README.md" });
+  assert.match(read.result.content, /head state/);
+  const save = await run("file-save", U1, { repoId: "repo_legacy", branch: "repass-feature", path: "README.md", content: "# legacy\n\nbranch state\n", message: "branch edit on legacy repo" });
+  assert.equal(save.ok, true, JSON.stringify(save));
+
+  const bl2 = await run("branch-list", U1, { repoId: "repo_legacy" });
+  assert.equal(bl2.result.branches.find((b) => b.name === "main").commits, 2, "main's total must not move");
+  assert.equal(bl2.result.branches.find((b) => b.name === "repass-feature").commits, 1, "the branch's own commit counts as 1 ahead");
+  const mainRead = await run("file-read", U1, { repoId: "repo_legacy", path: "README.md" });
+  assert.match(mainRead.result.content, /head state/, "main's tree is untouched by the branch commit");
+
+  // The PR the re-pass could not get (its #6 showed the
+  // predates-snapshots message on a branch created that day): the
+  // diff computes, because the merge-base IS the anchored head.
+  const pr = await run("pull-create", U1, { repoId: "repo_legacy", title: "legacy branch work", head: "repass-feature", base: "main" });
+  assert.equal(pr.ok, true, JSON.stringify(pr));
+  const detail = await run("pull-detail", U1, { repoId: "repo_legacy", number: pr.result.pull.number });
+  assert.equal(detail.ok, true);
+  assert.ok(detail.result.diff, "diff must compute on a healed legacy repo");
+  assert.equal(detail.result.diff.fileCount, 1);
+  const readme = detail.result.diff.files.find((f) => f.path === "README.md");
+  assert.equal(readme.additions, 1);
+  assert.equal(readme.deletions, 1);
+  assert.deepEqual(detail.result.conflicts, []);
+
+  // The anchored head itself is readable at its sha (its tree IS the
+  // recorded mirror); deeper legacy history stays unrecorded.
+  const atHead = await run("file-read", U1, { repoId: "repo_legacy", path: "README.md", sha: "legacyc2" });
+  assert.equal(atHead.ok, true);
+  assert.match(atHead.result.content, /head state/);
+  const defRead = await run("file-read", U1, { repoId: "repo_legacy", path: "README.md" });
+  assert.equal(defRead.ok, true, "default-branch legacy reads still serve the stored tree");
 });
 
 test("anon writes are refused; per-user isolation holds", async () => {
