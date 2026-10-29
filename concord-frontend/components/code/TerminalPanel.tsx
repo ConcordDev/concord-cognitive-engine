@@ -192,7 +192,15 @@ export function TerminalPanel({ open, onClose, activeCode, activeLanguage, activ
    */
   const runCode = useCallback(async (code: string, language: string, filename: string, started: number) => {
     if (isLocallyRunnable(language)) {
-      const outcome = await runLocalScript({ code, language });
+      const outcome = await runLocalScript({
+        code,
+        language,
+        onStatus: (phase) => {
+          if (phase === 'loading-runtime') {
+            appendLine({ kind: 'system', text: 'Loading the Python runtime — first Python run only; this can take several seconds…', ts: Date.now() });
+          }
+        },
+      });
       const { result } = outcome;
       if (result.supported === false) {
         appendLine({ kind: 'stderr', text: `That didn’t run — ${result.stderr || 'this language is not runnable.'} Nothing was executed.`, ts: Date.now() });
@@ -201,6 +209,9 @@ export function TerminalPanel({ open, onClose, activeCode, activeLanguage, activ
       if (result.stdout) appendLine({ kind: 'stdout', text: String(result.stdout), ts: Date.now() });
       if (result.stderr) appendLine({ kind: 'stderr', text: String(result.stderr), ts: Date.now() });
       if (!result.stdout && !result.stderr && !outcome.timedOut) appendLine({ kind: 'result', text: '(no output)', ts: Date.now() });
+      if (outcome.loadedRuntime) {
+        appendLine({ kind: 'system', text: `Python runtime loaded${outcome.runtimeLoadMs ? ` in ${(outcome.runtimeLoadMs / 1000).toFixed(1)}s` : ''} — later Python runs skip this.`, ts: Date.now() });
+      }
       if (outcome.timedOut) {
         appendLine({ kind: 'result', text: '[stopped — the code did not finish in time; output above is partial]', ts: Date.now() });
       } else {

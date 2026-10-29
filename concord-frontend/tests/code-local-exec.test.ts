@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   isLocallyRunnable,
   localRunUnsupportedReason,
+  resetPythonSessionForTests,
   runLocalScript,
 } from '@/components/code/localExec';
 
@@ -18,13 +19,45 @@ class FakeWorker {
   onerror: ((ev: { message: string }) => void) | null = null;
   terminated = false;
   postedCode = '';
+  url = '';
+  private listeners = new Map<string, Set<(ev: { data: unknown }) => void>>();
 
-  constructor() { FakeWorker.instances.push(this); }
+  constructor(url?: URL | string) {
+    this.url = String(url || '');
+    FakeWorker.instances.push(this);
+  }
+
+  addEventListener(type: string, fn: (ev: { data: unknown }) => void) {
+    if (!this.listeners.has(type)) this.listeners.set(type, new Set());
+    this.listeners.get(type)!.add(fn);
+    if (type === 'message') this.onmessage = fn;
+  }
+  removeEventListener(type: string, fn: (ev: { data: unknown }) => void) {
+    this.listeners.get(type)?.delete(fn);
+  }
+
+  get isPython() { return this.url.includes('python-exec'); }
+  private pyReady = false;
 
   postMessage(msg: { type: string; id: number; code: string }) {
     this.postedCode = msg.code;
     const id = msg.id;
     const emit = (data: unknown) => queueMicrotask(() => this.onmessage?.({ data }));
+    if (this.isPython) {
+      if (!this.pyReady) {
+        emit({ type: 'loading', id });
+        queueMicrotask(() => { this.pyReady = true; emit({ type: 'ready', id, loadMs: 1234 }); });
+        queueMicrotask(() => queueMicrotask(() => {
+          if (msg.code.includes('PYTHROW')) { emit({ type: 'stderr', id, text: 'Traceback: ValueError
+' }); emit({ type: 'done', id, exitCode: 1 }); }
+          else { emit({ type: 'stdout', id, text: 'py-hello\n' }); emit({ type: 'done', id, exitCode: 0 }); }
+        }));
+        return;
+      }
+      if (msg.code.includes('PYTHROW')) { emit({ type: 'stderr', id, text: 'Traceback: ValueError\n' }); emit({ type: 'done', id, exitCode: 1 }); }
+      else { emit({ type: 'stdout', id, text: 'py-hello\n' }); emit({ type: 'done', id, exitCode: 0 }); }
+      return;
+    }
     if (msg.code.includes('HANG')) {
       emit({ type: 'stdout', id, text: 'partial line\n' });
       return; // never done — the main-thread clock must end this run
@@ -45,25 +78,27 @@ const realWorker = globalThis.Worker;
 
 beforeEach(() => {
   FakeWorker.instances = [];
+  resetPythonSessionForTests();
   globalThis.Worker = FakeWorker as unknown as typeof Worker;
 });
 afterEach(() => {
+  resetPythonSessionForTests();
   globalThis.Worker = realWorker;
   vi.restoreAllMocks();
 });
 
 describe('advertised language scope', () => {
   it('runs exactly the JS/TS family locally', () => {
-    for (const lang of ['javascript', 'typescript', 'js', 'ts', 'mjs', 'cjs', 'JavaScript', ' TS ']) {
+    for (const lang of ['javascript', 'typescript', 'js', 'ts', 'mjs', 'cjs', 'JavaScript', ' TS ', 'python', 'py']) {
       expect(isLocallyRunnable(lang)).toBe(true);
     }
-    for (const lang of ['python', 'py', 'jsx', 'tsx', 'ruby', '', null, undefined]) {
+    for (const lang of ['jsx', 'tsx', 'ruby', '', null, undefined]) {
       expect(isLocallyRunnable(lang)).toBe(false);
     }
   });
 
   it('gives user-word reasons for languages it does not run', () => {
-    expect(localRunUnsupportedReason('python')).toMatch(/does not run Python yet/);
+    expect(localRunUnsupportedReason('python')).toBeNull();
     expect(localRunUnsupportedReason('tsx')).toMatch(/does not run JSX/);
     expect(localRunUnsupportedReason('ruby')).toMatch(/runs JavaScript and TypeScript/);
     expect(localRunUnsupportedReason('javascript')).toBeNull();
@@ -102,11 +137,30 @@ describe('runLocalScript', () => {
     expect(FakeWorker.instances[0].postedCode).not.toContain(': number');
   });
 
-  it('refuses Python honestly without ever starting a worker', async () => {
-    const outcome = await runLocalScript({ code: 'print("hi")', language: 'python' });
-    expect(outcome.ranLocally).toBe(false);
-    expect(outcome.result.supported).toBe(false);
-    expect(outcome.result.stderr).toMatch(/does not run Python yet/);
-    expect(FakeWorker.instances.length).toBe(0);
+  it('loads the Python runtime once, reports the load, then reuses the warm worker', async () => {
+    const phases: string[] = [];
+    const first = await runLocalScript({
+      code: 'print("py-hello")', language: 'python',
+      onStatus: (phase) => phases.push(phase),
+    });
+    expect(first.ranLocally).toBe(true);
+    expect(first.result.stdout).toBe('py-hello\n');
+    expect(first.result.exitCode).toBe(0);
+    expect(first.loadedRuntime).toBe(true);
+    expect(first.runtimeLoadMs).toBe(1234);
+    expect(phases).toEqual(['loading-runtime', 'running']);
+    expect(FakeWorker.instances.length).toBe(1);
+
+    const second = await runLocalScript({ code: 'print("py-hello")', language: 'python' });
+    expect(second.result.exitCode).toBe(0);
+    expect(second.loadedRuntime).toBeUndefined();
+    expect(FakeWorker.instances.length).toBe(1); // same warm worker, no second cold load
+    expect(FakeWorker.instances[0].terminated).toBe(false);
+  });
+
+  it('reports a Python exception as exit 1 with its traceback', async () => {
+    const outcome = await runLocalScript({ code: 'PYTHROW raise ValueError()', language: 'python' });
+    expect(outcome.result.exitCode).toBe(1);
+    expect(outcome.result.stderr).toContain('ValueError');
   });
 });

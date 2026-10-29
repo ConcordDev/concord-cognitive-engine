@@ -497,6 +497,9 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
   // to null whenever the active tab changes so a stale report can never
   // be saved against a different file.
   const [runResult, setRunResult] = useState<CodeExecResult | null>(null);
+  // Honest loading state (M6): set while the Python runtime cold-loads,
+  // so a multi-second first Python run never looks like a hang.
+  const [runNotice, setRunNotice] = useState('');
   const [runElapsedMs, setRunElapsedMs] = useState<number | undefined>(undefined);
   useEffect(() => { setRunResult(null); setRunElapsedMs(undefined); }, [activeTabId]);
 
@@ -508,8 +511,16 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
       // server call below serves only the languages the local runner
       // does not claim, and refuses honestly for normal accounts.
       if (isLocallyRunnable(activeTab.language)) {
-        const outcome = await runLocalScript({ code: activeTab.content, language: activeTab.language });
-        return { data: { result: outcome.result }, elapsedMs: outcome.elapsedMs, timedOut: outcome.timedOut, local: true as const };
+        const outcome = await runLocalScript({
+          code: activeTab.content,
+          language: activeTab.language,
+          onStatus: (phase) => {
+            if (phase === 'loading-runtime') {
+              setRunNotice('Loading the Python runtime — first Python run only; on a slow device this can take several seconds…');
+            }
+          },
+        });
+        return { data: { result: outcome.result }, elapsedMs: outcome.elapsedMs, timedOut: outcome.timedOut, local: true as const, loadedRuntime: outcome.loadedRuntime === true, runtimeLoadMs: outcome.runtimeLoadMs };
       }
       const started = performance.now();
       const res = await api.post('/api/lens/run', {
@@ -521,9 +532,10 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
           scriptType: activeTab.scriptType || activeScriptType,
         },
       });
-      return { data: res.data, elapsedMs: Math.round(performance.now() - started), timedOut: false, local: false as const };
+      return { data: res.data, elapsedMs: Math.round(performance.now() - started), timedOut: false, local: false as const, loadedRuntime: false, runtimeLoadMs: undefined as number | undefined };
     },
-    onSuccess: ({ data, elapsedMs, timedOut, local }) => {
+    onSuccess: ({ data, elapsedMs, timedOut, local, loadedRuntime, runtimeLoadMs }) => {
+      setRunNotice('');
       // code.exec returns { result: { stdout, stderr, exitCode, supported } },
       // not a bare string/.content — read the real shape. No fake fallback:
       // when the sandbox refuses (supported:false) the output panel says so,
@@ -537,10 +549,13 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
       const exitCode = Number.isFinite(result?.exitCode) ? Number(result?.exitCode) : null;
       if (!supported) {
         const lang = activeTab.language || 'this language';
-        const reason = stderr || `The sandbox does not run ${lang}.`;
+        const reason = stderr || `Concord does not run ${lang} here.`;
         setScriptOutput({ log: reason, visualization: '' });
       } else {
         const lines: string[] = [];
+        if (loadedRuntime) {
+          lines.push(`[Python runtime loaded in ${runtimeLoadMs ? `${(runtimeLoadMs / 1000).toFixed(1)}s` : 'a few seconds'} — later Python runs skip this]`);
+        }
         if (stdout) lines.push(stdout);
         if (stderr) lines.push(stderr);
         if (timedOut) {
@@ -560,6 +575,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
       setOutputTab('output');
     },
     onError: (error: Record<string, unknown>) => {
+      setRunNotice('');
       // No fake fallback. A failed run is a failed run — the screen says
       // so and offers no DTU. The prior behaviour invented a "[Code Engine]
       // Running… [OK] Execution complete" string on every error, which
@@ -1232,6 +1248,9 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
             )}
             {runScriptMutation.isPending ? 'Running…' : !localRun && execOff ? 'Execution disabled' : 'Run'}
           </button>
+          {runScriptMutation.isPending && runNotice && (
+            <span role="status" className="text-[11px] text-gray-400 animate-pulse">{runNotice}</span>
+          )}
 
           <button
             onClick={() => setShowForge(!showForge)}
