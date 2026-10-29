@@ -864,13 +864,13 @@ function ChartsTab() {
             <span key={pt.id} className="flex items-center gap-1 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300">
               {pt.date}: {pt.progress}% · {pt.source}
               {pt.source === 'manual' && (
-                {confirmPointId === pt.id ? (
+                confirmPointId === pt.id ? (
                   <ConfirmDelete onConfirm={() => removePoint(pt)} onCancel={() => setConfirmPointId(null)} />
                 ) : (
                   <button aria-label="Delete" onClick={() => setConfirmPointId(pt.id)} className="text-zinc-400 hover:text-red-400">
                     <Trash2 className="h-3 w-3" />
                   </button>
-                )}
+                )
               )}
             </span>
           ))}
