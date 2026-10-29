@@ -30,11 +30,12 @@ export function CodeWorkbenchSection() {
       try { localStorage.setItem(`concord.code.openPath.${projectId}`, openPath); } catch { /* storage unavailable */ }
     }
   }, [projectId, openPath]);
+  const [restoredPath, setRestoredPath] = useState<string | null>(null);
   useEffect(() => {
     if (projectId && !openPath) {
       try {
         const saved = localStorage.getItem(`concord.code.openPath.${projectId}`);
-        if (saved) setOpenPath(saved);
+        if (saved) { setOpenPath(saved); setRestoredPath(saved); }
       } catch { /* storage unavailable */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- restore once per project arrival
@@ -89,6 +90,7 @@ export function CodeWorkbenchSection() {
   // jump straight to the offending position. In a split, explorer and
   // panel clicks target the first pane.
   const openFile = useCallback((path: string, line?: number) => {
+    setRestoredPath(null);
     setOpenPath(path);
     setOpenLine(line ?? null);
     setPanePaths(prev => (prev.length > 0 ? [path, ...prev.slice(1)] : prev));
@@ -176,6 +178,7 @@ export function CodeWorkbenchSection() {
                   if (i === 0) { setOpenPath(p); setOpenLine(null); }
                 }}
                 onContentSaved={refreshStatus}
+                returnHighlight={i === 0 && !!restoredPath && path === restoredPath}
                 renameSignal={renameSignal}
                 replaceSignal={replaceSignal}
               />
@@ -187,7 +190,8 @@ export function CodeWorkbenchSection() {
           projectId={projectId}
           openPath={openPath}
           openLine={openLine}
-          onOpenChange={(p) => { setOpenPath(p); setOpenLine(null); }}
+          returnHighlight={!!restoredPath && openPath === restoredPath}
+          onOpenChange={(p) => { setRestoredPath(null); setOpenPath(p); setOpenLine(null); }}
           onContentSaved={refreshStatus}
           renameSignal={renameSignal}
           replaceSignal={replaceSignal}

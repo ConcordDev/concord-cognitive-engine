@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { File, FilePlus, Loader2, Trash2, Pencil } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { QuietSuccessEdge } from './delight';
 
 interface FileNode { path: string; language: string; size: number; modifiedAt: string }
 
@@ -31,6 +32,7 @@ export function FileExplorer({
   const [deleteError, setDeleteError] = useState('');
   const armTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
+  const [renameFlash, setRenameFlash] = useState(0);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable closure; only projectId should retrigger
@@ -106,6 +108,7 @@ export function FileExplorer({
     try {
       const r = await lensRun({ domain: 'code', action: 'files-rename', input: { projectId, from, to } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
+      setRenameFlash((n) => n + 1);
       await refresh();
       onChanged?.();
       if (activePath === from) onRenamed?.(from, to);
@@ -117,7 +120,8 @@ export function FileExplorer({
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden relative">
+      <QuietSuccessEdge flashKey={renameFlash} />
       <div className="px-2 py-1.5 border-b border-white/10 flex items-center gap-2">
         <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Files</span>
         <span className="text-[10px] text-gray-400">{tree.length}</span>

@@ -16,6 +16,7 @@
  */
 
 import { useState } from 'react';
+import { QuietSuccessEdge } from './delight';
 import {
   Code, Activity, Box, ShieldCheck, GitCommit, Save,
   Sparkles, Send, Globe, Wand2,
@@ -58,6 +59,7 @@ export function CodeActionPanel() {
   const [reviewer, setReviewer] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
+  const [successFlash, setSuccessFlash] = useState(0);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
   const [complexityResult, setComplexityResult] = useState<ComplexityResult | null>(null);
@@ -124,7 +126,7 @@ export function CodeActionPanel() {
       // The macro returns { id, snapshot } — snapshotId is read as a
       // fallback for other producers, never as the only door (S12).
       const snapId = r.result?.snapshotId ?? r.result?.id;
-      if (r.ok && snapId) { setSnapshotId(snapId); done('snapshot', `Snapshot ${snapId.slice(0, 8)}…`); }
+      if (r.ok && snapId) { setSnapshotId(snapId); setSuccessFlash((n) => n + 1); done('snapshot', `Snapshot ${snapId.slice(0, 8)}…`); }
       else err(r.error ?? 'snapshot failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -134,7 +136,7 @@ export function CodeActionPanel() {
     setBusy('snippet'); setFeedback(null);
     try {
       const r = await callMacro<{ id?: string }>('snippets-save', { name: snippetName.trim(), code: snippetCode, language });
-      if (r.ok && r.result?.id) { setSavedSnippetId(r.result.id); done('snippet', `Snippet saved ${r.result.id.slice(0, 8)}…`); }
+      if (r.ok && r.result?.id) { setSavedSnippetId(r.result.id); setSuccessFlash((n) => n + 1); done('snippet', `Snippet saved ${r.result.id.slice(0, 8)}…`); }
       else err(r.error ?? 'snippet save failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -264,7 +266,8 @@ export function CodeActionPanel() {
   ];
 
   return (
-    <div className="rounded-lg border border-cyan-500/20 bg-zinc-950/60 p-3 space-y-3">
+    <div className="rounded-lg border border-cyan-500/20 bg-zinc-950/60 p-3 space-y-3 relative">
+      <QuietSuccessEdge flashKey={successFlash} />
       <header className="flex items-center gap-2 border-b border-cyan-500/10 pb-2">
         <Code className="h-4 w-4 text-cyan-400" />
         <h3 className="text-sm font-semibold text-white">Code review workbench</h3>

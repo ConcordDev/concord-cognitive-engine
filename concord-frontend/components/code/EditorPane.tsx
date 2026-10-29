@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Sparkles, Loader2, Save, Wand2, MessageSquareText, FlaskConical, History, X } from 'lucide-react';
+import { Sparkles, Loader2, Save, Wand2, MessageSquareText, FlaskConical, History, X, Fingerprint } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { lensRun } from '@/lib/api/client';
 import { validateGeneratedTests } from './testGenContract';
 import { runGeneratedTests } from './localExec';
 import type { TestSummary } from './testHarness';
 import { EditorTabs } from './CodeWorkbenchShell';
+import { QuietSuccessEdge, ReturnFadeEdge, summarizeProvenance, DELIGHT_CSS } from './delight';
 
 const MonacoWrapper = dynamic(() => import('./MonacoWrapper'), { ssr: false });
 
@@ -27,6 +28,7 @@ export function EditorPane({
   openLine,
   onOpenChange,
   onContentSaved,
+  returnHighlight,
   renameSignal,
   replaceSignal,
 }: {
@@ -38,6 +40,9 @@ export function EditorPane({
   /** Set by the caller after a successful files-rename so an already-open tab is
    *  relabeled in place instead of being treated as a new file (which would leave
    *  a stale tab pointed at the now-deleted old path). */
+  /** S20 (D3/M8): this pane's file was restored by a return — render
+   *  the one soft teal edge fade. Absent on a first-ever open. */
+  returnHighlight?: boolean;
   renameSignal?: { from: string; to: string; nonce: number } | null;
   /** Set after a successful project-wide replace: open tabs for these
    *  paths are re-read from the server store (the replace already
@@ -181,8 +186,10 @@ export function EditorPane({
   async function save() {
     if (!active || !projectId) return;
     try {
-      await lensRun({ domain: 'code', action: 'files-write', input: { projectId, path: active.path, content: active.content } });
+      const saveRes = await lensRun({ domain: 'code', action: 'files-write', input: { projectId, path: active.path, content: active.content } });
+      if (saveRes.data?.ok === false) { setInlineError(saveRes.data?.error || 'Save failed.'); return; }
       setFiles(prev => prev.map(f => f.path === active.path ? { ...f, original: f.content, modified: false } : f));
+      setSaveFlash((n) => n + 1);
       onContentSaved?.();
     } catch (e) { console.error('[Editor] save', e); }
   }
@@ -194,6 +201,33 @@ export function EditorPane({
   // Reject leaves the buffer byte-identical; Accept applies it as one
   // edit (one undo step) with the instruction kept as its receipt.
   const [inlineProposal, setInlineProposal] = useState<{ original: string; edited: string; instruction: string } | null>(null);
+  // S19 (D2/M7): a confirmed save flashes the editor edge teal once.
+  const [saveFlash, setSaveFlash] = useState(0);
+  // S21 (D4/M2): the provenance face — real records only (git log +
+  // DTU snapshot list + the content's own SHA-256).
+  const [showProvenance, setShowProvenance] = useState(false);
+  const [provState, setProvState] = useState<{ hash: string | null; lastCommit: { number?: string; message: string; committedAt: string } | null; snapshotCount: number; hasHistory: boolean } | null>(null);
+
+  async function loadProvenance() {
+    if (!active || !projectId) return;
+    let hash: string | null = null;
+    try {
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(active.content));
+      hash = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    } catch { hash = null; }
+    try {
+      const [logR, snapR] = await Promise.all([
+        lensRun({ domain: 'code', action: 'git-log', input: { projectId } }),
+        lensRun({ domain: 'code', action: 'snapshots-list', input: {} }),
+      ]);
+      const log = (logR.data?.result?.log || []) as Array<{ id: string; number?: string; message: string; committedAt: string; paths: string[] }>;
+      const snapshots = (snapR.data?.result?.snapshots || []) as Array<{ files?: Array<{ name: string }> }>;
+      const sum = summarizeProvenance(log, snapshots, active.path);
+      setProvState({ hash, lastCommit: sum.lastCommit, snapshotCount: sum.snapshotCount, hasHistory: sum.hasHistory });
+    } catch {
+      setProvState({ hash, lastCommit: null, snapshotCount: 0, hasHistory: false });
+    }
+  }
   const [inlineError, setInlineError] = useState('');
 
   async function runInlineEdit() {
@@ -415,11 +449,45 @@ export function EditorPane({
                 <History className="w-3 h-3" />Blame
               </button>
             )}
+            <button onClick={() => { const next = !showProvenance; setShowProvenance(next); if (next) void loadProvenance(); }} className="px-1.5 py-0.5 rounded border border-white/15 text-gray-300 hover:bg-white/[0.05] inline-flex items-center gap-1" title="Provenance — this file's hash, last commit, snapshots, rights" aria-expanded={showProvenance}>
+              <Fingerprint className="w-3 h-3" />Provenance
+            </button>
             <button onClick={format} className="px-1.5 py-0.5 rounded border border-white/15 text-gray-300 hover:bg-white/[0.05]" title="Format file">format</button>
             <button onClick={save} disabled={!active.modified} className="px-1.5 py-0.5 rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1" title="Save (⌘S)">
               <Save className="w-3 h-3" />Save
             </button>
           </div>
+          {showProvenance && (
+            <div className="concord-flip-in px-3 py-2.5 border-b border-teal-500/20 bg-teal-500/[0.04] text-[11px]" style={{ animation: 'concord-flip-in 280ms ease-out' }}>
+              <style>{DELIGHT_CSS}</style>
+              {!provState ? (
+                <span className="text-gray-400 italic">Reading this file's records…</span>
+              ) : (
+                <div className="space-y-1">
+                  <div className="font-serif italic text-[12px] text-teal-200/90">{active.path} — provenance</div>
+                  {!provState.hasHistory && (
+                    <div className="text-gray-300">No history yet — this file hasn't been committed or snapshotted. Its first commit starts the record.</div>
+                  )}
+                  <div className="flex gap-2">
+                    <span className="text-gray-500 w-24 shrink-0">Content hash</span>
+                    <span className="font-mono text-gray-200" title={provState.hash || undefined}>{provState.hash ? `${provState.hash.slice(0, 16)}…` : 'unavailable in this browser context'}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-gray-500 w-24 shrink-0">Last commit</span>
+                    <span className="text-gray-200">{provState.lastCommit ? `${provState.lastCommit.number || ''} ${provState.lastCommit.message} · ${provState.lastCommit.committedAt.slice(0, 16).replace('T', ' ')}` : 'never committed'}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-gray-500 w-24 shrink-0">Snapshots</span>
+                    <span className="text-gray-200">{provState.snapshotCount} DTU snapshot{provState.snapshotCount === 1 ? '' : 's'} bundle this file</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-gray-500 w-24 shrink-0">Rights</span>
+                    <span className="text-gray-200">Yours — a private project file. Per-DTU rights (see / post / derive) attach when you mint or snapshot this work as a DTU.</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {showInlineEdit && (
             <div className="px-3 py-2 border-b border-white/10 bg-blue-500/[0.06]">
               <div className="flex items-center gap-2">
@@ -546,7 +614,9 @@ export function EditorPane({
           {loadingFile ? (
             <div className="flex-1 flex items-center justify-center text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
           ) : (
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden relative">
+              <QuietSuccessEdge flashKey={saveFlash} />
+              {returnHighlight && <ReturnFadeEdge />}
               <MonacoWrapper
                 value={active.content}
                 onChange={(value) => updateContent(active.path, value || '')}

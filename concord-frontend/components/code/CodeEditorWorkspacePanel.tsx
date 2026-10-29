@@ -5,6 +5,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { SafeCard } from '@/components/common/SafeCard';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { QuickScriptProjectBadge } from '@/components/code/QuickScriptProjectBadge';
+import { RunStamp, UnfurlPre, QuietSuccessEdge } from '@/components/code/delight';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -531,6 +532,9 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
   // so a multi-second first Python run never looks like a hang.
   const [runNotice, setRunNotice] = useState('');
   const [runElapsedMs, setRunElapsedMs] = useState<number | undefined>(undefined);
+  const [lastRun, setLastRun] = useState<{ elapsedMs: number; exitCode: number | null; timedOut: boolean; supported: boolean } | null>(null);
+  const [runNonce, setRunNonce] = useState(0);
+  const [saveFlash, setSaveFlash] = useState(0);
   useEffect(() => { setRunResult(null); setRunElapsedMs(undefined); }, [activeTabId]);
 
   const runScriptMutation = useMutation({
@@ -573,6 +577,9 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
       const result = (data?.result as CodeExecResult | undefined) || null;
       setRunResult(result);
       setRunElapsedMs(elapsedMs);
+      // S18 (D1): the run stamp + unfurl key on THIS run's real figures.
+      setLastRun({ elapsedMs, exitCode: Number.isFinite(result?.exitCode) ? Number(result?.exitCode) : null, timedOut, supported: result?.supported !== false });
+      setRunNonce((n) => n + 1);
       const supported = result?.supported !== false;
       const stdout = String(result?.stdout || '').trim();
       const stderr = String(result?.stderr || '').trim();
@@ -612,6 +619,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
       // claimed success the sandbox never produced.
       setRunResult(null);
       setRunElapsedMs(undefined);
+      setLastRun(null);
       const msg = String(error?.message || 'Run failed');
       setScriptOutput({ log: `Run failed: ${msg}`, visualization: '' });
       setConsoleLog((prev) => [
@@ -648,6 +656,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
         meta: { tags: ['script', tab.scriptType], status: 'active' },
       });
       setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, isDirty: false } : t));
+      setSaveFlash((n) => n + 1);
       void refetch();
     } catch (err) {
       console.error('[Code] Save failed:', err);
@@ -1777,6 +1786,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
                 </div>
               </div>
               <div className="flex-1 relative">
+                <QuietSuccessEdge flashKey={saveFlash} />
                 {/* SafeCard isolates Monaco load failures (sandbox network
                     egress can block its CDN). Page stays up even if the
                     editor can't initialise. */}
@@ -1896,6 +1906,9 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
                             Console
                           </button>
                         </div>
+                        {lastRun && scriptOutput && (
+                          <RunStamp facts={lastRun} />
+                        )}
                         <button
                           onClick={() => setShowOutput(false)}
                           className="p-1 rounded hover:bg-lattice-elevated text-gray-400"
@@ -1915,7 +1928,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
                             <div className="space-y-4">
                               <div>
                                 <h4 className="text-xs font-semibold text-gray-400 uppercase mb-2">Script Log</h4>
-                                <pre className="font-mono text-xs text-green-400 whitespace-pre-wrap bg-lattice-deep rounded-lg p-3 border border-lattice-border">{scriptOutput.log}</pre>
+                                <UnfurlPre text={scriptOutput.log} runKey={runNonce} className="font-mono text-xs text-green-400 whitespace-pre-wrap bg-lattice-deep rounded-lg p-3 border border-lattice-border" />
                               </div>
                               {scriptOutput.visualization && (
                               <div>
