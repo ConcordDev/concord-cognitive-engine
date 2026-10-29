@@ -50,7 +50,7 @@ import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
 import { humanMacroAclDenial } from "./lib/macro-acl-human-gate.js";
 import { forumModDenial } from "./lib/forum-mod-gate.js";
 import { personaCreateDenial, personaModifyDenial, personaListVisible, personaPromptVisible, personaRosterPutDenial } from "./lib/persona-legacy-gate.js";
-import { lensUpdateDenial } from "./lib/lens-update-gate.js";
+import { lensUpdateDenial, lensOwnerlessDenial, isOwnerlessArtifact } from "./lib/lens-update-gate.js";
 import { applyBallot, findCommentInTree, countCommentTree, appendCommentTree, applyAward, toggleSavedBy } from "./lib/forum-interactions.js";
 import { marketplaceOwnerDenial, marketplaceBuyDenial } from "./lib/marketplace-action-gate.js";
 import { threadModerationDenial, threadDeleteNodeDenial } from "./lib/thread-node-gate.js";
@@ -39919,16 +39919,18 @@ import { minorAgentScheduler } from "./emergent/minor-agent-scheduler.js";
 minorAgentScheduler.db = db;
 minorAgentScheduler.realtimeEmit = realtimeEmit;
 // Initialize agents for existing emergents after a short delay to avoid blocking boot
-if (!_isReadReplicaEnv()) _unrefInTest(setTimeout(async () => {
-  try {
-    const emergentsMap = STATE?.__emergent?.emergents;
-    await minorAgentScheduler.initialize(emergentsMap);
-    minorAgentScheduler.start();
-    structuredLog("info", "minor_agent_scheduler_started", { agents: minorAgentScheduler.size });
-  } catch (e) {
-    structuredLog("warn", "minor_agent_scheduler_failed", { error: e.message });
-  }
-}, 5000));
+if (!_isReadReplicaEnv()) {
+  _unrefInTest(setTimeout(async () => {
+    try {
+      const emergentsMap = STATE?.__emergent?.emergents;
+      await minorAgentScheduler.initialize(emergentsMap);
+      minorAgentScheduler.start();
+      structuredLog("info", "minor_agent_scheduler_started", { agents: minorAgentScheduler.size });
+    } catch (e) {
+      structuredLog("warn", "minor_agent_scheduler_failed", { error: e.message });
+    }
+  }, 5000));
+}
 
 import { register as registerHook } from "./lib/agentic/hooks.js";
 import { checkSovereigntyInvariants } from "./grc/sovereignty-invariants.js";
@@ -41653,9 +41655,27 @@ function _pluginGalleryAuthorReputation(authorId) {
 // These endpoints let external tools (Claude Code etc.) query the DTU store
 // via a minimal MCP-shaped HTTP API.
 import { MCP_TOOLS, callMCPTool } from "./lib/mcp-tools.js";
+import { MCP_TOOLS_LOCAL_OR_REAL_AUTH } from "./lib/mcp-local-guard.js";
 
 app.get("/mcp/tools", (_req, res) => {
-  res.json({ ok: true, tools: MCP_TOOLS });
+  // Per-tool tier marking (discovery-fixes spec §2): each tool's `auth`
+  // is COMPUTED here from the enforcement sets themselves — the
+  // real-auth set defined below and the local-or-real set in
+  // lib/mcp-local-guard.js — so the published marking is derived from
+  // the gates and cannot drift from them. "real" = a real resolved user
+  // is required; "local" = on-host caller or real auth; "anonymous" =
+  // callable under the public MCP bypass, by design.
+  res.json({
+    ok: true,
+    tools: MCP_TOOLS.map((t) => ({
+      ...t,
+      auth: MCP_TOOLS_REQUIRE_REAL_AUTH.has(t.name)
+        ? "real"
+        : MCP_TOOLS_LOCAL_OR_REAL_AUTH.has(t.name)
+          ? "local"
+          : "anonymous",
+    })),
+  });
 });
 
 // reflect_invoke/reflect_rescan are the one part of the MCP tool surface
@@ -41686,6 +41706,103 @@ const MCP_TOOLS_REQUIRE_REAL_AUTH = new Set([
   "conkay_solver_list",
   "conkay_ir_schema",
   "conkay_compile_brief",
+  // Tools that return operator, account, vault, financial, or personal
+  // data — real auth only; the public corpus reads (dtu_*/atlas_*/lens_*)
+  // and aggregate status tools stay anonymous by design.
+  "browser_check_coins",
+  "browser_check_rate_limits",
+  "vault_stats",
+  "vault_read",
+  "vault_inbox",
+  "vault_backlog",
+  "a2a_list_routes",
+  "a2a_list_messages",
+  "a2a_get_message",
+  "economic_snapshot",
+  "economic_budget",
+  "economic_costs",
+  "economic_pnl",
+  "economic_attribution",
+  "economic_check",
+  "experience_list_memories",
+  "experience_get_memory",
+  "experience_stats",
+  "proactive_list_predictions",
+  "proactive_list_reminders",
+  "proactive_calibration",
+  "trace_recent",
+  "trace_lookup",
+  "trace_tool_history",
+  "incident_watch",
+  "incident_active",
+  "incident_history",
+  "sentinel_review_alerts",
+  "sentinel_gate_diff",
+  "research_findings",
+  "research_pending",
+  "research_get",
+  "opportunity_list",
+  "opportunity_get",
+  "initiative_list",
+  "initiative_get",
+  "capability_list_patterns",
+  "capability_list_templates",
+  "dila_status",
+  "dila_workers",
+  "concordia_list_assemblies",
+  // Tools that write state or act on the operator's behalf — real auth only.
+  "vault_write",
+  "vault_done",
+  "vault_broadcast",
+  "vault_compress",
+  "a2a_send",
+  "a2a_ack",
+  "a2a_check_delivery",
+  "dila_dispatch",
+  "dila_compress",
+  "repo_graph_index",
+  "repo_graph_link_dtu",
+  "trace_record",
+  "trace_backfill",
+  "incident_recover",
+  "opportunity_approve",
+  "opportunity_reject",
+  "proactive_dismiss_reminder",
+  "initiative_submit",
+  "initiative_record_execution",
+  "capability_register",
+  // Model/pipeline compute — the reflect_rescan rationale applies:
+  // unauthenticated compute is a resource-exhaustion surface.
+  "csl_proofs_run",
+  "csl_classify",
+  "csl_compress",
+  "dtu_compress",
+  "dhtp_detect",
+  "dhtp_compress",
+  "memory_benchmark_run",
+  "substrate_invoke_oracles",
+  "dtu_retrieval_eval",
+  "breakdown_decompose",
+  "breakdown_dispatch",
+  "breakdown_stitch",
+  "breakdown_build",
+  "trace_root_cause",
+  "incident_classify",
+  "research_filter",
+  "research_invoke",
+  "opportunity_scan",
+  "proactive_predict",
+  "initiative_compose",
+  "initiative_validate",
+  "capability_mine",
+  "capability_generate_template",
+  "experience_compress",
+  "experience_distill",
+  "experience_consolidate",
+  "dila_repair",
+  "concordia_assemble",
+  "concordia_verify",
+  "concordia_demonstrate",
 ]);
 
 app.post("/mcp/call", express.json({ limit: "1mb" }), asyncHandler(async (req, res) => {
@@ -49097,14 +49214,32 @@ register("lens", "update", async (ctx, input={}) => {
   // The gate (lib/lens-update-gate.js) now applies to every owned
   // artifact: owner, admin, internal callers, and — on social domains
   // only — moderator-class roles (the forum post lock is a moderator
-  // action riding this path) may update. The ownerless/anon clause is
-  // unchanged here on purpose; ownerless artifacts are Fix 10.
-  if (artifact.ownerId && artifact.ownerId !== "anon") {
+  // action riding this path) may update.
+  // SECURITY (Fix 10): the owned-artifact clause itself was the second
+  // hole — it only ran when ownerId was a concrete user id, so
+  // artifacts with no owner (missing, "anon", "anonymous", "system",
+  // or marketplace artifacts with no owner fields at all) were
+  // writable by ANY signed-in member. Ownerless artifacts now take
+  // the ownerless gate: admin/internal only, plus moderators on
+  // social domains; AUTH_MODE=public (solo local-first) is exempt.
+  // createdBy/createdByUser count as ownership (see
+  // isOwnerlessArtifact), so a createdBy-only artifact stays on the
+  // owned path and its creator can still update it.
+  const _lensIsSocialDomain = LENS_SOCIAL_DOMAINS.has(artifact.domain);
+  if (isOwnerlessArtifact(artifact)) {
+    const ownerlessDenial = lensOwnerlessDenial({
+      ctx,
+      isAdmin: _lensIsAdminActor(ctx),
+      isSocialDomain: _lensIsSocialDomain,
+      authMode: AUTH_MODE,
+    });
+    if (ownerlessDenial) return ownerlessDenial;
+  } else {
     const updateDenial = lensUpdateDenial({
       ctx,
       isOwner: _lensIsOwnerActor(ctx, artifact),
       isAdmin: _lensIsAdminActor(ctx),
-      isSocialDomain: LENS_SOCIAL_DOMAINS.has(artifact.domain),
+      isSocialDomain: _lensIsSocialDomain,
     });
     if (updateDenial) return updateDenial;
   }
@@ -50769,7 +50904,25 @@ app.post("/api/lens/:domain/:id/publish", async (req, res) => {
     const ctx = makeCtx(req);
     const artifact = STATE.lensArtifacts.get(req.params.id);
     if (!artifact) return res.status(404).json({ ok: false, error: "not found" });
-    if (artifact.ownerId && artifact.ownerId !== "anon" && artifact.ownerId !== ctx.actor?.userId) {
+    // SECURITY (Fix 10): the old check only ran when ownerId was a
+    // concrete user id, so ownerless/"anon"/"system" artifacts — and
+    // artifacts owned only via createdBy — could be published
+    // (visibility flipped to "published") by anyone. Ownerless
+    // artifacts now publish admin/internal-only (moderators on social
+    // domains; AUTH_MODE=public exempt), via the same gate as
+    // lens.update. Owned artifacts keep this route's historical
+    // owner-only rule (no admin widening): _lensIsOwnerActor, which
+    // also matches createdBy/createdByUser.
+    if (isOwnerlessArtifact(artifact)) {
+      const ownerlessDenial = lensOwnerlessDenial({
+        ctx,
+        isAdmin: _lensIsAdminActor(ctx),
+        isSocialDomain: LENS_SOCIAL_DOMAINS.has(artifact.domain),
+        authMode: AUTH_MODE,
+        forbiddenError: "not your artifact",
+      });
+      if (ownerlessDenial) return res.status(ownerlessDenial.status).json({ ok: false, error: ownerlessDenial.error });
+    } else if (!_lensIsOwnerActor(ctx, artifact) && ctx?.internal !== true && ctx?.actor?.internal !== true) {
       return res.status(403).json({ ok: false, error: "not your artifact" });
     }
     artifact.meta = artifact.meta || {};
@@ -61601,7 +61754,9 @@ app.get("/api/cli/help", (req, res) => {
   res.type("text/plain").send(generateCLIHelp());
 });
 
-app.get("/api/cli/stats", (req, res) => {
+// Operator telemetry (corpus/session/macro counts) — same operator gate as
+// POST /api/cli; the help route above stays public (static documentation).
+app.get("/api/cli/stats", requireRole("owner", "admin"), (req, res) => {
   res.json({ ok: true, stats: getCLIStats() });
 });
 
@@ -66470,7 +66625,11 @@ app.delete("/api/workspaces/:id/templates/:templateId", (req, res) => {
 });
 
 // ---- Wave 15: Ecosystem Endpoints ----
-app.post("/api/cli", asyncHandler(async (req, res) => {
+// The CLI commands operate on the whole corpus unscoped (full export,
+// backup creation, tagging and creating DTUs), so the route is an operator
+// surface: owner/admin only, with sovereign passing via requireRole. There
+// is no member-facing CLI surface.
+app.post("/api/cli", requireRole("owner", "admin"), asyncHandler(async (req, res) => {
   const result = await executeCLICommand(req.body?.command || "");
   res.json(result);
 }));
@@ -93279,6 +93438,5 @@ export const __TEST__ = Object.freeze({
   searchArchivedDtus,
   formatDtuHitsForPrompt,
   _consoRejected,
-  governorTick,
 });
 // Test commit
