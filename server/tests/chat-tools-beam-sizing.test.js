@@ -59,3 +59,12 @@ test("a part with no width still falls through to the legacy solver", async () =
   assert.equal(r.ok, true);
   assert.notEqual(r.key, "conkay_design.beam-size");
 });
+
+test("a beam ask with no span, load or section asks for inputs instead of designing (live harness case edge.missing-inputs)", async () => {
+  const r = await run("Size the beam.");
+  assert.equal(r.ok, false);
+  assert.equal(r.key, "conkay_design.needs-inputs");
+  assert.ok(r.result.missing.length >= 3);
+  const some = await run("size a steel beam, 4 m span");
+  assert.notEqual(some.key, "conkay_design.needs-inputs", "any real input keeps the existing path");
+});
