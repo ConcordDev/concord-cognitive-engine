@@ -61,6 +61,15 @@ export function PjTaskDetail({
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
   const [comment, setComment] = useState('');
+  // S7 (F8/F9): title, description and custom-field text values are
+  // LOCAL DRAFTS, committed on blur/Enter. They used to bind straight
+  // to server state (custom fields saved per keystroke, then a refresh
+  // snapped the input back to the server's string mid-typing — "PR4
+  // field value" stored as "Rfeae"), and a sibling field's save
+  // refresh replaced the whole detail object, wiping drafts and focus.
+  const [titleDraft, setTitleDraft] = useState('');
+  const [descDraft, setDescDraft] = useState('');
+  const [fieldDrafts, setFieldDrafts] = useState<Record<string, string>>({});
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [att, setAtt] = useState({ name: '', url: '' });
   const [uploading, setUploading] = useState(false);
@@ -72,9 +81,20 @@ export function PjTaskDetail({
   const [itgLink, setItgLink] = useState({ integrationId: '', url: '', label: '', ciStatus: 'passed' });
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  const draftTaskRef = useRef<string | null>(null);
   const refresh = useCallback(async () => {
     const r = await lensRun('projects', 'task-detail', { id: taskId });
-    setDetail((r.data?.result as Detail | null) || null);
+    const d = (r.data?.result as Detail | null) || null;
+    setDetail(d);
+    // Drafts sync from the server ONLY when a different task opens —
+    // a same-task refresh (a sibling field just saved) must never
+    // overwrite what the user is typing (F8/F9).
+    if (d && draftTaskRef.current !== taskId) {
+      draftTaskRef.current = taskId;
+      setTitleDraft(d.task.title);
+      setDescDraft(d.task.description || '');
+      setFieldDrafts({});
+    }
     setLoading(false);
   }, [taskId]);
 
@@ -92,8 +112,22 @@ export function PjTaskDetail({
     return () => { stale = true; };
   }, [projectId]);
 
+  const [patchError, setPatchError] = useState<string | null>(null);
+  const [blockedPatch, setBlockedPatch] = useState<Record<string, unknown> | null>(null);
   const patch = async (p: Record<string, unknown>) => {
-    await lensRun('projects', 'task-update', { id: taskId, ...p });
+    const r = await lensRun('projects', 'task-update', { id: taskId, ...p });
+    if (r.data?.ok === false) {
+      // S8: a refused change (WIP limit, blocked-by) names itself; a
+      // blocked move can be overridden here — the domain records the
+      // override in this issue's Activity.
+      const msg = r.data?.error || 'That change was refused.';
+      setPatchError(msg);
+      setBlockedPatch(/blocked by/.test(msg) ? p : null);
+      await refresh();
+      return;
+    }
+    setPatchError(null);
+    setBlockedPatch(null);
     await refresh();
     onChange();
   };
@@ -101,6 +135,13 @@ export function PjTaskDetail({
   const setField = async (fieldId: string, value: string) => {
     await lensRun('projects', 'task-set-field', { taskId, fieldId, value });
     await refresh();
+  };
+
+  const commitFieldDraft = async (fieldId: string) => {
+    const v = fieldDrafts[fieldId];
+    if (v === undefined) return;
+    setFieldDrafts((prev) => { const next = { ...prev }; delete next[fieldId]; return next; });
+    await setField(fieldId, v);
   };
 
   const addSubtask = async () => {
@@ -221,13 +262,26 @@ export function PjTaskDetail({
         </div>
 
         <div className="p-4 space-y-3">
-          <input value={t.title} onChange={(e) => setDetail({ ...detail, task: { ...t, title: e.target.value } })}
-            onBlur={(e) => patch({ title: e.target.value })}
+          <input value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)}
+            onBlur={(e) => { if (e.target.value !== t.title) void patch({ title: e.target.value }); }}
             className="w-full bg-lattice-surface border border-lattice-border rounded-lg px-3 py-2 text-sm font-semibold text-white" />
-          <textarea value={t.description || ''} placeholder="Description"
-            onChange={(e) => setDetail({ ...detail, task: { ...t, description: e.target.value } })}
-            onBlur={(e) => patch({ description: e.target.value })}
+          <textarea value={descDraft} placeholder="Description"
+            onChange={(e) => setDescDraft(e.target.value)}
+            onBlur={(e) => { if (e.target.value !== (t.description || '')) void patch({ description: e.target.value }); }}
             rows={3} className="w-full bg-lattice-surface border border-lattice-border rounded-lg px-3 py-2 text-xs text-white resize-y" />
+
+          {patchError && (
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-rose-300 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">
+              <span>{patchError}</span>
+              {blockedPatch && (
+                <button type="button"
+                  onClick={() => void patch({ ...blockedPatch, overrideBlocked: true })}
+                  className="px-2 py-0.5 bg-rose-900 hover:bg-rose-800 text-rose-100 rounded">
+                  Move anyway — recorded in Activity
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Field grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -311,10 +365,17 @@ export function PjTaskDetail({
                       <option value="">—</option>
                       {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
                     </select>
-                  ) : (
-                    <input type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
+                  ) : f.type === 'date' ? (
+                    <input type="date"
                       value={String(t.customFields[f.id] ?? '')}
                       onChange={(e) => setField(f.id, e.target.value)} className={selCls} />
+                  ) : (
+                    <input type={f.type === 'number' ? 'number' : 'text'}
+                      value={fieldDrafts[f.id] ?? String(t.customFields[f.id] ?? '')}
+                      onChange={(e) => setFieldDrafts((prev) => ({ ...prev, [f.id]: e.target.value }))}
+                      onBlur={() => void commitFieldDraft(f.id)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                      className={selCls} />
                   )}
                 </Field>
               ))}

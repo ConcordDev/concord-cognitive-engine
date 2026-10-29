@@ -5,7 +5,7 @@
  * optional swimlane grouping. Cards open the full PjTaskDetail editor.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -70,8 +70,12 @@ export function PjBoardPanel({ projectId, onChange, openTaskRequest, onOpenTaskR
     }
   }, [openTaskRequest, meta, onOpenTaskRequestHandled]);
 
+  const loadedOnceRef = useRef(false);
   const refresh = useCallback(async () => {
-    setLoading(true);
+    // S7 (F9): only the FIRST load blanks the board. A re-fetch after a
+    // save used to swap the whole board (and the open task detail) for
+    // a skeleton — unmounting the field the user was typing in.
+    if (!loadedOnceRef.current) setLoading(true);
     const [b, w, g, list] = await Promise.all([
       lensRun('projects', 'board', { projectId }),
       lensRun('projects', 'wip-list', { projectId }),
@@ -98,6 +102,7 @@ export function PjBoardPanel({ projectId, onChange, openTaskRequest, onOpenTaskR
     } else {
       setSwimlaneError(null);
     }
+    loadedOnceRef.current = true;
     setLoading(false);
     onChange();
   }, [projectId, groupBy, onChange]);
@@ -116,7 +121,11 @@ export function PjBoardPanel({ projectId, onChange, openTaskRequest, onOpenTaskR
   };
 
   const moveStatus = async (id: string, status: string) => {
-    await lensRun('projects', 'task-move-status', { id, status });
+    // S8: a refused move (WIP limit, blocked-by) says why — the card
+    // simply stays in its column and the reason shows.
+    const r = await lensRun('projects', 'task-move-status', { id, status });
+    if (r.data?.ok === false) { setError(r.data?.error || 'That move was refused.'); }
+    else setError(null);
     await refresh();
   };
 

@@ -5,7 +5,7 @@
  * bulk operations and rank ordering.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Save, Trash2, ChevronUp, ChevronDown, Play, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -41,6 +41,7 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
   const [openTask, setOpenTask] = useState<string | null>(null);
   const [viewName, setViewName] = useState('');
   const [bulk, setBulk] = useState({ status: '', priority: '' });
+  const [bulkError, setBulkError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<string | null>(null);
   const [metaError, setMetaError] = useState<string | null>(null);
 
@@ -61,7 +62,9 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
     setViews(v.data?.result?.views || []);
   }, [projectId]);
 
+  const refreshSeq = useRef(0);
   const refresh = useCallback(async () => {
+    const seq = ++refreshSeq.current;
     setLoading(true);
     setActiveView(null);
     const params: Record<string, string> = { projectId, sort: filters.sort };
@@ -71,6 +74,9 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
     if (filters.type) params.type = filters.type;
     if (filters.query) params.query = filters.query;
     const r = await lensRun('projects', 'task-list', params);
+    // S7 (F8): a slower earlier response must not land after a newer
+    // one and resurrect a list the user has already typed past.
+    if (seq !== refreshSeq.current) return;
     if (r.data?.ok === false) {
       setLoadError(r.data?.error || 'Could not load issues.');
       setLoading(false);
@@ -120,8 +126,12 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
     if (bulk.status) patch.status = bulk.status;
     if (bulk.priority) patch.priority = bulk.priority;
     if (Object.keys(patch).length) {
-      await lensRun('projects', 'task-bulk-update', { ids: [...selected], patch });
+      // S8: a gated bulk move is refused as a unit and says why; the
+      // selection stays so the user can act on the reason.
+      const r = await lensRun('projects', 'task-bulk-update', { ids: [...selected], patch });
+      if (r.data?.ok === false) { setBulkError(r.data?.error || 'That bulk change was refused.'); return; }
     }
+    setBulkError(null);
     setBulk({ status: '', priority: '' });
     setSelected(new Set());
     await refresh();
@@ -139,17 +149,6 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
     await lensRun('projects', 'task-rank', { id, toIndex: Math.max(0, idx + dir) });
     await refresh();
   };
-
-  if (loading && !tasks.length) {
-    return (
-      <div className="space-y-3" aria-busy="true">
-        <Skeleton variant="block" height={76} className="rounded-xl" />
-        <div className="rounded-lg border border-lattice-border bg-lattice-surface/70 overflow-hidden">
-          <SkeletonTableRows rows={8} columns={6} />
-        </div>
-      </div>
-    );
-  }
 
   if (loadError) {
     return <ErrorState message={loadError} onRetry={refresh} />;
@@ -232,6 +231,7 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
           </select>
           <button type="button" onClick={applyBulk}
             className="text-[11px] px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">Apply</button>
+          {bulkError && <span className="text-[11px] text-rose-300">{bulkError}</span>}
           <button type="button" onClick={bulkDelete}
             className="text-[11px] px-2.5 py-1 bg-lattice-elevated hover:bg-rose-900 text-gray-200 rounded-lg">Delete</button>
           <button type="button" onClick={() => setSelected(new Set())}
@@ -240,7 +240,13 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
       )}
 
       {/* List */}
-      {tasks.length === 0 ? (
+      {loading && !tasks.length ? (
+        <div className="space-y-3" aria-busy="true">
+          <div className="rounded-lg border border-lattice-border bg-lattice-surface/70 overflow-hidden">
+            <SkeletonTableRows rows={8} columns={6} />
+          </div>
+        </div>
+      ) : tasks.length === 0 ? (
         <p className="text-[11px] text-gray-400 italic py-6 text-center">No issues match these filters.</p>
       ) : (
         <ul className="space-y-1">
