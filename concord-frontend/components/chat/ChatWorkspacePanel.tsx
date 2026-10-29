@@ -1324,7 +1324,18 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           // Assigned inside the SSE parser callback; the cast keeps TS from narrowing it to null.
           let finalOut = null as Record<string, unknown> | null;
           let gotDone = false;
+          // Live status and a preview of the answer while the turn runs. Only the
+          // checked `chunk` text becomes the reply; it replaces any preview.
+          let preview = '';
           const sse = createSseParser((data) => {
+            const progress = data.progress as { label?: unknown } | undefined;
+            if (progress && typeof progress.label === 'string' && !accumulated && !preview) {
+              setStreamingContent(`*${progress.label}…*`);
+            }
+            if (typeof data.token === 'string' && data.token && !accumulated) {
+              preview += data.token;
+              setStreamingContent(preview);
+            }
             if (typeof data.chunk === 'string' && data.chunk) {
               accumulated += data.chunk;
               setStreamingContent(accumulated);
