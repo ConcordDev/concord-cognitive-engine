@@ -572,6 +572,100 @@ export default function registerProjectsActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  // ── Duplicate — a structural copy that cites its source ────────────
+  // Copies the project's structure (members, labels, custom fields,
+  // sprints, milestones, tasks with their hierarchy/assignments, task
+  // relations, views, rules, templates, risks, goals, WIP limits) under
+  // a new id and key. History is NOT copied — comments, attachments and
+  // activity are the original's receipts, and a copy starts clean; nor
+  // are integrations, SLA policies or the triage inbox (external
+  // connections and other people's submissions). The copy records its
+  // provenance in `duplicatedFrom`, which is the citation surfaces show.
+  registerLensAction("projects", "project-duplicate", (ctx, _a, params = {}) => {
+  try {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const src = (s.projects.get(userId) || []).find((p) => p.id === params.id);
+    if (!src) return { ok: false, error: "project not found" };
+    const name = pjClean(params.name, 120) || `${src.name} (copy)`;
+    let key = params.key ? pjClean(params.key, 6).toUpperCase().replace(/[^A-Z0-9]/g, "") : "";
+    if (!key) {
+      const base = (name.replace(/[^A-Za-z]/g, "").slice(0, 4) || "PRJ").toUpperCase();
+      const taken = new Set((s.projects.get(userId) || []).map((p) => p.key));
+      key = base;
+      for (let n = 2; taken.has(key) && n < 100; n += 1) key = `${base.slice(0, 4)}${n}`;
+    }
+    const copy = {
+      ...src,
+      id: pjId("prj"), name, key,
+      seq: 0, archived: false,
+      createdAt: pjNow(), updatedAt: pjNow(),
+      duplicatedFrom: { projectId: src.id, name: src.name, key: src.key, at: pjNow() },
+    };
+    pjListB(s.projects, userId).push(copy);
+    const cloneInto = (store, remap) => {
+      const out = [];
+      for (const row of (s[store].get(userId) || []).filter((r) => r.projectId === src.id)) {
+        const c = remap({ ...row });
+        if (c) { out.push(c); pjListB(s[store], userId).push(c); }
+      }
+      return out;
+    };
+    const memberMap = new Map(), fieldMap = new Map(), sprintMap = new Map(), mileMap = new Map();
+    cloneInto("members", (m) => { const id = pjId("mem"); memberMap.set(m.id, id); return { ...m, id, projectId: copy.id }; });
+    cloneInto("labels", (l) => ({ ...l, id: pjId("lbl"), projectId: copy.id }));
+    cloneInto("customFields", (f) => { const id = pjId("fld"); fieldMap.set(f.id, id); return { ...f, id, projectId: copy.id }; });
+    cloneInto("sprints", (sp) => { const id = pjId("spr"); sprintMap.set(sp.id, id); return { ...sp, id, projectId: copy.id }; });
+    cloneInto("milestones", (m) => { const id = pjId("mil"); mileMap.set(m.id, id); return { ...m, id, projectId: copy.id }; });
+    const taskMap = new Map();
+    const srcTasks = (s.tasks.get(userId) || []).filter((x) => x.projectId === src.id);
+    for (const tsk of srcTasks) taskMap.set(tsk.id, pjId("tsk"));
+    const copiedTasks = [];
+    for (const tsk of srcTasks) {
+      copy.seq += 1;
+      const fields = {};
+      for (const [fid, v] of Object.entries(tsk.customFields || {})) {
+        if (fieldMap.has(fid)) fields[fieldMap.get(fid)] = v;
+      }
+      const c = {
+        ...tsk,
+        id: taskMap.get(tsk.id), projectId: copy.id,
+        ref: `${copy.key}-${copy.seq}`,
+        parentId: tsk.parentId ? (taskMap.get(tsk.parentId) || null) : null,
+        sprintId: tsk.sprintId ? (sprintMap.get(tsk.sprintId) || null) : null,
+        milestoneId: tsk.milestoneId ? (mileMap.get(tsk.milestoneId) || null) : null,
+        assigneeId: tsk.assigneeId ? (memberMap.get(tsk.assigneeId) || null) : null,
+        customFields: fields,
+      };
+      copiedTasks.push(c); pjListB(s.tasks, userId).push(c);
+    }
+    let relationCount = 0;
+    for (const r of (s.relations.get(userId) || [])) {
+      if (taskMap.has(r.fromTaskId) && taskMap.has(r.toTaskId)) {
+        pjListB(s.relations, userId).push({ ...r, id: pjId("rel"),
+          fromTaskId: taskMap.get(r.fromTaskId), toTaskId: taskMap.get(r.toTaskId) });
+        relationCount += 1;
+      }
+    }
+    cloneInto("views", (v) => ({ ...v, id: pjId("view"), projectId: copy.id }));
+    cloneInto("rules", (r) => {
+      const c = { ...r, id: pjId("rule"), projectId: copy.id };
+      if (c.action === "set_assignee" && memberMap.has(c.actionValue)) c.actionValue = memberMap.get(c.actionValue);
+      if (c.action === "set_sprint" && sprintMap.has(c.actionValue)) c.actionValue = sprintMap.get(c.actionValue);
+      return c;
+    });
+    cloneInto("templates", (x) => ({ ...x, id: pjId("tpl"), projectId: copy.id }));
+    cloneInto("risks", (x) => ({ ...x, id: pjId("rsk"), projectId: copy.id }));
+    cloneInto("goals", (g) => ({ ...g, id: pjId("goal"), projectId: copy.id,
+      milestoneId: g.milestoneId ? (mileMap.get(g.milestoneId) || null) : null }));
+    cloneInto("wip", (w) => ({ ...w, id: pjId("wip"), projectId: copy.id }));
+    savePjState();
+    return { ok: true, result: { project: copy, copied: {
+      tasks: copiedTasks.length, relations: relationCount,
+      members: memberMap.size, sprints: sprintMap.size, milestones: mileMap.size } } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
   // ── Members ─────────────────────────────────────────────────────────
   registerLensAction("projects", "member-add", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
