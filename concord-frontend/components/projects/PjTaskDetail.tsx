@@ -70,6 +70,7 @@ export function PjTaskDetail({
   const [subtaskTitle, setSubtaskTitle] = useState('');
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [itgLink, setItgLink] = useState({ integrationId: '', url: '', label: '', ciStatus: 'passed' });
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const refresh = useCallback(async () => {
     const r = await lensRun('projects', 'task-detail', { id: taskId });
@@ -486,10 +487,24 @@ export function PjTaskDetail({
             </ul>
           </Section>
 
-          <button type="button" onClick={() => lensRun('projects', 'task-delete', { id: taskId }).then(() => { onChange(); onClose(); })}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-lattice-elevated hover:bg-rose-900 text-gray-200 rounded-lg">
-            <Trash2 className="w-3.5 h-3.5" /> Delete issue
-          </button>
+          {confirmDelete ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-rose-900/50 bg-rose-950/40 px-2.5 py-2">
+              <span className="text-[11px] text-rose-200">
+                Delete {detail.task.ref} “{detail.task.title}” for good? Its comments, attachments and activity go with it.
+              </span>
+              <button type="button" onClick={() => lensRun('projects', 'task-delete', { id: taskId }).then(() => { onChange(); onClose(); })}
+                className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium bg-rose-600 hover:bg-rose-500 text-white rounded-lg">
+                <Trash2 className="w-3.5 h-3.5" /> Delete issue
+              </button>
+              <button type="button" onClick={() => setConfirmDelete(false)}
+                className="px-2 py-1 text-[11px] text-zinc-300">Cancel</button>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setConfirmDelete(true)}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-lattice-elevated hover:bg-rose-900 text-gray-200 rounded-lg">
+              <Trash2 className="w-3.5 h-3.5" /> Delete issue
+            </button>
+          )}
         </div>
       </div>
     </div>

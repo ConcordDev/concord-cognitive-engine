@@ -57,6 +57,8 @@ export function ProjectsSection() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', key: '' });
   const [composerOpen, setComposerOpen] = useState(false);
+  const [closedIds, setClosedIds] = useState<string[]>([]);
+  const [confirming, setConfirming] = useState<'archive' | 'delete' | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   const openComposer = useCallback(() => {
@@ -107,12 +109,34 @@ export function ProjectsSection() {
     if (createdId) setActiveProject(createdId);
   };
 
-  const delProject = async (id: string) => {
-    await lensRun('projects', 'project-delete', { id });
+  // Chip × is a deselect, never a delete (Review 4, F3): the project
+  // stays in Portfolio and reopens in one click from the closed row.
+  const closeChip = (id: string) => {
+    setClosedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  };
+
+  const reopenProject = (id: string) => {
+    setClosedIds((prev) => prev.filter((x) => x !== id));
+    setActiveProject(id);
+  };
+
+  const deleteProject = async (id: string) => {
+    const r = await lensRun('projects', 'project-delete', { id });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not delete the project.'); return; }
+    setError(null);
+    setConfirming(null);
+    setClosedIds((prev) => prev.filter((x) => x !== id));
     await refreshProjects();
   };
 
-  const project = projects.find((p) => p.id === activeProject) || null;
+  const openProjects = projects.filter((p) => !closedIds.includes(p.id));
+  const closedProjects = projects.filter((p) => closedIds.includes(p.id));
+  const project = openProjects.find((p) => p.id === activeProject) || openProjects[0] || null;
+
+  useEffect(() => {
+    const want = project?.id || '';
+    if (want !== activeProject) setActiveProject(want);
+  }, [project, activeProject]);
 
   const updateProject = async (patch: Record<string, unknown>) => {
     if (!project) return;
@@ -122,7 +146,10 @@ export function ProjectsSection() {
 
   const archiveProject = async () => {
     if (!project) return;
-    await lensRun('projects', 'project-archive', { id: project.id, archived: true });
+    const r = await lensRun('projects', 'project-archive', { id: project.id, archived: true });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not archive the project.'); return; }
+    setError(null);
+    setConfirming(null);
     await refreshProjects();
   };
 
@@ -146,16 +173,29 @@ export function ProjectsSection() {
         <>
           <div className="px-4 py-3 border-b border-lattice-border space-y-2">
             <div className="flex flex-wrap items-center gap-1.5">
-              {projects.map((p) => (
+              {openProjects.map((p) => (
                 <span key={p.id} className={cn('flex items-center gap-1.5 text-[11px] pl-2.5 pr-1.5 py-1 rounded-lg',
-                  activeProject === p.id ? 'bg-indigo-600 text-white' : 'bg-lattice-elevated text-gray-300')}>
+                  project?.id === p.id ? 'bg-indigo-600 text-white' : 'bg-lattice-elevated text-gray-300')}>
                   <button type="button" onClick={() => setActiveProject(p.id)}>
                     <span className="font-mono opacity-70">{p.key}</span> {p.name}
                   </button>
-                  <button type="button" onClick={() => delProject(p.id)} className="text-gray-300/70 hover:text-rose-200">×</button>
+                  <button type="button" onClick={() => closeChip(p.id)} aria-label={`Close ${p.name}`}
+                    title="Close — the project stays in Portfolio"
+                    className="text-gray-300/70 hover:text-white">×</button>
                 </span>
               ))}
             </div>
+            {closedProjects.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-gray-400">
+                <span>Closed:</span>
+                {closedProjects.map((p) => (
+                  <button key={p.id} type="button" onClick={() => reopenProject(p.id)}
+                    className="px-2 py-0.5 rounded-lg bg-lattice-elevated text-gray-300 hover:text-white">
+                    + {p.name}
+                  </button>
+                ))}
+              </div>
+            )}
             {composerOpen && (
               <div
                 className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4"
@@ -189,8 +229,12 @@ export function ProjectsSection() {
             )}
           </div>
 
-          {!activeProject || !project ? (
-            <p className="text-[11px] text-gray-400 italic px-4 py-8 text-center">Nothing in the substrate. Use New project to start one.</p>
+          {!project ? (
+            projects.length === 0 ? (
+              <p className="text-[11px] text-gray-400 italic px-4 py-8 text-center">Nothing in the substrate. Use New project to start one.</p>
+            ) : (
+              <p className="text-[11px] text-gray-400 italic px-4 py-8 text-center">No project open. Reopen one from the Closed row above, or start a new project.</p>
+            )
           ) : (
             <>
               <ProjectsKeepMenu project={project} />
@@ -203,9 +247,29 @@ export function ProjectsSection() {
                   className="bg-lattice-void border border-lattice-border rounded-lg px-2 py-1 text-[11px] text-white">
                   {HEALTH.map((h) => <option key={h} value={h}>{h.replace(/_/g, ' ')}</option>)}
                 </select>
-                <button type="button" onClick={archiveProject}
+                <button type="button" onClick={() => setConfirming('archive')}
                   className="text-[11px] px-2 py-1 bg-lattice-elevated hover:bg-lattice-border text-gray-300 rounded-lg">Archive</button>
+                <button type="button" onClick={() => setConfirming('delete')}
+                  className="text-[11px] px-2 py-1 bg-lattice-elevated hover:bg-rose-900 text-rose-200 rounded-lg">Delete</button>
               </div>
+              {confirming === 'archive' && (
+                <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-lattice-border">
+                  <span className="text-[11px] text-amber-200">Archive “{project.name}”? It leaves the switcher; you can restore it from Portfolio.</span>
+                  <button type="button" onClick={archiveProject}
+                    className="px-2 py-1 text-[11px] font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">Archive project</button>
+                  <button type="button" onClick={() => setConfirming(null)}
+                    className="px-2 py-1 text-[11px] text-zinc-300">Cancel</button>
+                </div>
+              )}
+              {confirming === 'delete' && (
+                <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-lattice-border">
+                  <span className="text-[11px] text-rose-200">Delete “{project.name}” for good? Its issues, sprints and everything in it are deleted. Copies you saved as DTUs are separate and are not deleted.</span>
+                  <button type="button" onClick={() => void deleteProject(project.id)}
+                    className="px-2 py-1 text-[11px] font-medium bg-rose-600 hover:bg-rose-500 text-white rounded-lg">Delete project</button>
+                  <button type="button" onClick={() => setConfirming(null)}
+                    className="px-2 py-1 text-[11px] text-zinc-300">Cancel</button>
+                </div>
+              )}
               <nav className="mx-4 mt-3 inline-flex max-w-[calc(100%-2rem)] items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Project views">
                 {TABS.map((t) => {
                   const Icon = t.icon;
@@ -230,7 +294,7 @@ export function ProjectsSection() {
                 {tab === 'team' && <PjTeamPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'collab' && <PjCollabPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'settings' && <PjSettingsPanel projectId={activeProject} onChange={refreshDash} />}
-                {tab === 'portfolio' && <PjPortfolioPanel />}
+                {tab === 'portfolio' && <PjPortfolioPanel onLifecycle={refreshProjects} />}
               </div>
             </>
           )}

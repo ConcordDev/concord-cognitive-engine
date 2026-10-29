@@ -20,9 +20,33 @@
 > - **Shipped in this batch:** the concept's serif headline —
 >   "What's in flight, {username}" — as the page header
 >   (`data-testid="projects-greeting"`, `tests/projects-greeting.test.tsx`).
+>   **Removed in the Review 4 rework (B10, 2026-10-28):** the greeting
+>   and its test are out per the Lens Rework rules; the page header is
+>   the plain "Projects" title again.
 > - Server suites run locally this pass: projects-domain-parity
 >   passes (in the combined 82-pass L12 run).
 
+
+## Rework — Product Review 4 (projects.md), B10, 2026-10-28
+
+Review of record: `~/workspace/your_files/concord-product/lens-reviews/projects.md`
+(97 features, 24 failed; slices S1–S14 + D1–D4 in its §7; S4 parked on
+Ramaj's §8 Q2 team-model call). S1 (lifecycle) notes:
+
+- The lifecycle macros were already in the domain — `project-delete`
+  (with cascade) and `project-archive` in both directions were among
+  the macros above — but no surface called delete, and archive was
+  called one-way only. They are surfaced now: labelled Archive and
+  Delete with named confirmations in the project header, and Restore
+  + Delete for archived projects in Portfolio.
+- The chip × previously called `project-delete` directly — a close
+  gesture that silently deleted the project (Review 4's missing
+  "PR4 Close Test"); it is a deselect now, reopenable in one click.
+- `project-delete`'s cascade now also clears the task-scoped stores
+  (comments, attachments, activity, relations) and the lazily created
+  project-scoped stores (integrations, SLA policies, notifications);
+  pinned by `server/tests/projects-lifecycle.test.js`.
+- Frontend behaviour: `concord-frontend/tests/projects-lifecycle.test.tsx`.
 
 Reproduce the macro list:
 `grep -c 'registerLensAction("projects"' server/domains/projects.js` → 98 macros

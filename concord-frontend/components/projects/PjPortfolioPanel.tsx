@@ -24,11 +24,13 @@ const STATUS_COLOR: Record<string, string> = {
   completed: 'text-emerald-400', canceled: 'text-rose-400',
 };
 
-export function PjPortfolioPanel() {
+export function PjPortfolioPanel({ onLifecycle }: { onLifecycle?: () => void }) {
   const [projects, setProjects] = useState<PProject[]>([]);
   const [byHealth, setByHealth] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -45,6 +47,23 @@ export function PjPortfolioPanel() {
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  const restoreProject = async (id: string) => {
+    const r = await lensRun('projects', 'project-archive', { id, archived: false });
+    if (r.data?.ok === false) { setActionError(r.data?.error || 'Could not restore the project.'); return; }
+    setActionError(null);
+    await refresh();
+    onLifecycle?.();
+  };
+
+  const deleteProject = async (id: string) => {
+    const r = await lensRun('projects', 'project-delete', { id });
+    if (r.data?.ok === false) { setActionError(r.data?.error || 'Could not delete the project.'); return; }
+    setActionError(null);
+    setConfirmDeleteId(null);
+    await refresh();
+    onLifecycle?.();
+  };
 
   if (loading) {
     return (
@@ -69,6 +88,7 @@ export function PjPortfolioPanel() {
 
   return (
     <div className="space-y-4">
+      {actionError && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{actionError}</div>}
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-lattice-surface/70 border border-lattice-border rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-emerald-300 tabular-nums">{byHealth.on_track || 0}</p>
@@ -106,6 +126,30 @@ export function PjPortfolioPanel() {
                 </div>
                 <span className="text-[10px] text-gray-400 tabular-nums">{p.doneTasks}/{p.totalTasks} · {p.points}pt</span>
               </div>
+              {p.archived && (
+                <div className="mt-2 space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-wide text-amber-300 border border-amber-800/60 bg-amber-950/40 rounded px-1.5 py-0.5">Archived</span>
+                    <button type="button" onClick={() => void restoreProject(p.id)}
+                      className="text-[11px] px-2 py-1 bg-lattice-elevated hover:bg-lattice-border text-gray-200 rounded-lg">Restore</button>
+                    {confirmDeleteId !== p.id && (
+                      <button type="button" onClick={() => setConfirmDeleteId(p.id)}
+                        className="text-[11px] px-2 py-1 bg-lattice-elevated hover:bg-rose-900 text-gray-200 rounded-lg">Delete</button>
+                    )}
+                  </div>
+                  {confirmDeleteId === p.id && (
+                    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-rose-900/50 bg-rose-950/40 px-2.5 py-2">
+                      <span className="text-[11px] text-rose-200">
+                        Delete “{p.name}” for good? Its issues, sprints and everything in it are deleted. Copies you saved as DTUs are separate and are not deleted.
+                      </span>
+                      <button type="button" onClick={() => void deleteProject(p.id)}
+                        className="px-2 py-1 text-[11px] font-medium bg-rose-600 hover:bg-rose-500 text-white rounded-lg">Delete project</button>
+                      <button type="button" onClick={() => setConfirmDeleteId(null)}
+                        className="px-2 py-1 text-[11px] text-zinc-300">Cancel</button>
+                    </div>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ul>
