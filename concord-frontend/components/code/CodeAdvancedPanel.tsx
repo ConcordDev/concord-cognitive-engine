@@ -1029,7 +1029,9 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
         )}
       </div>
       {/* Shared awareness — breakpoints from peers + shared terminal. */}
-      <SharedDebugTerminalTile code={session.code} />
+      <SharedDebugTerminalTile code={session.code} onTerminalLine={(data) => {
+        setOps(prev => [...prev, { seq: -Date.now(), kind: 'terminal', actor: 'you', path: data.slice(0, 80), at: new Date().toISOString() }].slice(-100));
+      }} />
       <div className="rounded-lg border border-white/10 bg-[#161b22] p-3">
         <p className="text-[10px] uppercase text-gray-400 mb-2">Session activity ({ops.length})</p>
         {ops.length === 0 ? (
@@ -1060,7 +1062,12 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
 // server/lib/code-liveshare-bus.js). Pure pub-sub: the server doesn't
 // run debuggers or PTYs, it just relays state between participants so
 // each client sees what the others have set / executed.
-function SharedDebugTerminalTile({ code }: { code: string }) {
+export function SharedDebugTerminalTile({ code, onTerminalLine }: {
+  code: string;
+  /** S14 (F14): a sent line is also recorded in the session activity
+   *  feed (the parent's op log), so it survives in the session record. */
+  onTerminalLine?: (data: string) => void;
+}) {
   type Bp = { path: string; line: number; fromPeerId?: string };
   type TermLine = { kind: 'in' | 'out'; data: string; from: string; at: number };
   const [breakpoints, setBreakpoints] = useState<Bp[]>([]);
@@ -1128,10 +1135,17 @@ function SharedDebugTerminalTile({ code }: { code: string }) {
 
   const sendInput = useCallback(() => {
     const s = socketRef.current as { emit: (e: string, p: unknown) => void } | null;
-    if (!s || !terminalInput.trim()) return;
-    s.emit('liveshare:terminal:input', { code, terminalId, data: terminalInput + '\n' });
+    if (!terminalInput.trim()) return;
+    const data = terminalInput + '\n';
+    // S14 (F14): the bus relays with socket.to(room) — the sender is
+    // excluded by design, so a sent line never came back and the
+    // sender's panel sat at "0 lines" forever. Echo locally first
+    // (the sender's own view is the verifiable record), then relay.
+    setTerminalLog(prev => [...prev, { kind: 'in' as const, data, from: 'you', at: Date.now() }].slice(-200));
+    onTerminalLine?.(terminalInput);
+    if (s) s.emit('liveshare:terminal:input', { code, terminalId, data });
     setTerminalInput('');
-  }, [code, terminalInput]);
+  }, [code, terminalInput, onTerminalLine]);
 
   return (
     <div className="rounded-lg border border-white/10 bg-[#161b22] p-3 space-y-3">

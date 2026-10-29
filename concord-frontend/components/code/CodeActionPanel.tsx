@@ -174,12 +174,31 @@ export function CodeActionPanel() {
     ].filter(Boolean).join('\n');
     try {
       const messageId = await dmRecall.run(async () => {
-        const r = await api.post('/api/social/dm', { toUserId: reviewer.trim(), content: body });
+        // S14 (F14): the DM route resolves recipients by user id only,
+        // so a typed username always landed on "recipient not found".
+        // Resolve through the platform's own username lookup first
+        // (the same one the social surfaces use); fall back to the
+        // raw value when it is already an id.
+        const typed = reviewer.trim();
+        let toUserId = typed;
+        try {
+          const look = await api.get(`/api/social/users/by-username/${encodeURIComponent(typed)}`);
+          const foundId = (look.data as { user?: { id?: string } })?.user?.id;
+          if (look.data?.ok !== false && foundId) toUserId = String(foundId);
+        } catch { /* not a username — treat the input as a user id */ }
+        const r = await api.post('/api/social/dm', { toUserId, content: body });
         if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
         return r.data?.message?.id as string;
       });
       if (messageId) { ok(`Sent to ${reviewer.trim()}. 60s to recall.`); setReviewer(''); }
-    } catch (e) { err(pickMessage(e)); }
+    } catch (e) {
+      const msg = pickMessage(e);
+      // One specific reason, stated once — never the raw duplicated
+      // server string.
+      err(/recipient not found/i.test(msg)
+        ? `No user matches "${reviewer.trim()}" — check the username, or use their user id.`
+        : msg);
+    }
     finally { setBusy(null); }
   }
   async function actPublish() {
@@ -257,7 +276,7 @@ export function CodeActionPanel() {
           {['javascript', 'typescript', 'python', 'go', 'rust', 'java', 'ruby', 'c', 'cpp', 'sql'].map(l => <option key={l} value={l}>{l}</option>)}
         </select>
         <input type="text" value={snapshotMsg} onChange={(e) => setSnapshotMsg(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Snapshot message" />
-        <input type="text" value={reviewer} onChange={(e) => setReviewer(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Reviewer user id" />
+        <input type="text" value={reviewer} onChange={(e) => setReviewer(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Reviewer username or user id" />
       </div>
       <div className="flex items-center gap-2 flex-wrap">
         <RecallSlot ctl={dmRecall} />
