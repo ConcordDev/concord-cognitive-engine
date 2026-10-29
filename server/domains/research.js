@@ -1360,11 +1360,12 @@ export default function registerResearchActions(registerLensAction) {
   });
 
   // ── Import a search result straight into the reference library ──────
-  registerLensAction("research", "academic-import", (ctx, _a, params = {}) => {
-    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const w = params.work || params;
-    const title = rfClean(w.title, 400);
-    if (!title) return { ok: false, error: "title required" };
+  // The single ref construction every import path persists through
+  // (academic-import, academic-resolve-import). `source` records where
+  // the metadata came from (S1: the record names its source).
+  function importWorkToLibrary(s, ctx, w, tags) {
+    const title = rfClean(w?.title, 400);
+    if (!title) return null;
     const authors = Array.isArray(w.authors) ? w.authors.join(", ") : rfClean(w.authors, 400);
     const ref = {
       id: rfId("ref"), title,
@@ -1375,7 +1376,8 @@ export default function registerResearchActions(registerLensAction) {
       doi: rfClean(w.doi, 120) || null,
       url: rfClean(w.url || w.openAccessUrl, 500) || null,
       abstract: rfClean(w.abstract, 4000) || null,
-      tags: normTags(params.tags),
+      source: rfClean(w.source, 40).toLowerCase() || null,
+      tags: normTags(tags),
       status: "to_read",
       relatedIds: [],
       citationCount: Number.isFinite(Number(w.citationCount)) ? Number(w.citationCount) : null,
@@ -1383,7 +1385,156 @@ export default function registerResearchActions(registerLensAction) {
     };
     rfListB(s.references, rfAid(ctx)).push(ref);
     saveResearchState();
+    return ref;
+  }
+
+  registerLensAction("research", "academic-import", (ctx, _a, params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const w = params.work || params;
+    if (!rfClean(w?.title, 400)) return { ok: false, error: "title required" };
+    const ref = importWorkToLibrary(s, ctx, w, params.tags);
+    if (!ref) return { ok: false, error: "title required" };
     return { ok: true, result: { reference: ref } };
+  });
+
+  // ── Resolve an identifier (DOI / arXiv ID / paper URL) and import ───
+  // S1 (F1): until this macro the lens had no identifier resolution
+  // anywhere — every scholarly macro was keyword-search-only, and a DOI
+  // typed into CrossRef search was treated as keywords. Crossref's
+  // single-work endpoint is tried first; OpenAlex answers when Crossref
+  // has no record. Unknown identifier → honest 'not_found', no record.
+  const SCHOLARLY_UA = "ConcordOS/5.0 (+https://concord-os.org; mailto:hello@concord-os.org)";
+
+  // Parse the identifier forms S1 covers. Arbitrary publisher URLs are
+  // NOT resolvable without fetch-and-scrape and return null here, so
+  // the caller can say so honestly instead of guessing.
+  function parseScholarlyIdentifier(raw) {
+    let v = String(raw || "").trim();
+    if (!v) return null;
+    v = v.replace(/^doi:\s*/i, "");
+    const arxivUrl = v.match(/^https?:\/\/(?:www\.)?arxiv\.org\/(?:abs|pdf)\/([0-9]{4}\.[0-9]{4,5}(?:v\d+)?|[a-z-]+\/\d{7}(?:v\d+)?)(?:\.pdf)?\/?$/i);
+    if (arxivUrl) return { kind: "arxiv", id: arxivUrl[1] };
+    const doiUrl = v.match(/^https?:\/\/(?:dx\.)?doi\.org\/(10\.\d{4,9}\/\S+)$/i);
+    if (doiUrl) return { kind: "doi", doi: doiUrl[1].replace(/[).,;]+$/, "") };
+    if (/^10\.\d{4,9}\/\S+$/.test(v)) return { kind: "doi", doi: v.replace(/[).,;]+$/, "") };
+    if (/^(?:arxiv:)?([0-9]{4}\.[0-9]{4,5}(?:v\d+)?)$/i.test(v)) return { kind: "arxiv", id: v.replace(/^arxiv:/i, "") };
+    if (/^[a-z-]+\/\d{7}(?:v\d+)?$/i.test(v)) return { kind: "arxiv", id: v };
+    return null;
+  }
+
+  // Crossref GET /works/{doi} returns one `message` object (not items[])
+  // with the same fields live_crossref maps for its list. Local mapper —
+  // scholarly-apis.js serves the Paper lens too and stays untouched.
+  function mapCrossrefWorkMessage(msg) {
+    if (!msg || typeof msg !== "object") return null;
+    const abstract = typeof msg.abstract === "string"
+      ? msg.abstract.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 4000) || null
+      : null;
+    return {
+      id: msg.URL || (msg.DOI ? `https://doi.org/${msg.DOI}` : null),
+      title: (msg.title || [])[0] || null,
+      authors: (msg.author || []).slice(0, 50).map((a) =>
+        [a.given, a.family].filter(Boolean).join(" ") || a.name || "Unknown"),
+      year: msg["published-print"]?.["date-parts"]?.[0]?.[0]
+        || msg["published-online"]?.["date-parts"]?.[0]?.[0]
+        || msg.issued?.["date-parts"]?.[0]?.[0] || null,
+      venue: (msg["container-title"] || [])[0] || null,
+      doi: msg.DOI || null,
+      citationCount: typeof msg["is-referenced-by-count"] === "number" ? msg["is-referenced-by-count"] : null,
+      openAccessUrl: (msg.link || []).find((l) => /pdf/i.test(l?.["content-type"] || ""))?.URL || null,
+      url: msg.URL || (msg.DOI ? `https://doi.org/${msg.DOI}` : null),
+      abstract,
+      source: "crossref",
+    };
+  }
+
+  // Both resolvers return null on a definitive miss (HTTP 404, or a
+  // payload with no work in it) and throw on transport/upstream
+  // failure — the caller only reports 'not_found' when at least one
+  // source actually answered.
+  async function fetchCrossrefWork(doi) {
+    try {
+      const data = await cachedFetchJson(
+        `https://api.crossref.org/works/${encodeURIComponent(doi)}`,
+        { ttlMs: 60 * 60 * 1000, timeoutMs: 9000, opts: { headers: { "User-Agent": SCHOLARLY_UA } } },
+      );
+      return mapCrossrefWorkMessage(data?.message);
+    } catch (e) {
+      if (/HTTP 404/.test(String(e?.message || e))) return null;
+      throw e;
+    }
+  }
+
+  async function fetchOpenAlexWorkByDoi(doi) {
+    const mailto = process.env.OPENALEX_MAILTO || "hello@concord-os.org";
+    let data;
+    try {
+      data = await cachedFetchJson(
+        `https://api.openalex.org/works/doi:${encodeURIComponent(doi)}?mailto=${encodeURIComponent(mailto)}`,
+        { ttlMs: 60 * 60 * 1000, timeoutMs: 9000 },
+      );
+    } catch (e) {
+      if (/HTTP 404/.test(String(e?.message || e))) return null;
+      throw e;
+    }
+    if (!data || typeof data !== "object" || (!data.id && !data.display_name)) return null;
+    return mapOpenAlexWork(data);
+  }
+
+  async function fetchArxivWork(id) {
+    const xml = await (await fetch(
+      `http://export.arxiv.org/api/query?id_list=${encodeURIComponent(id)}`,
+      { signal: AbortSignal.timeout(9000) },
+    )).text();
+    return mapArxivWork(xml)[0] || null;
+  }
+
+  registerLensAction("research", "academic-resolve-import", async (ctx, _a, params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const raw = String(params.identifier || params.query || "").trim();
+    if (!raw) return { ok: false, error: "identifier required" };
+    const parsed = parseScholarlyIdentifier(raw);
+    if (!parsed) {
+      return { ok: false, error: "unsupported_identifier",
+        message: "That doesn't look like a DOI, an arXiv ID, or a doi.org / arxiv.org link — those are the identifiers this library can resolve." };
+    }
+    let work = null;
+    let hardFailures = 0;
+    let sourcesTried = 0;
+    if (parsed.kind === "arxiv") {
+      sourcesTried = 1;
+      try { work = await fetchArxivWork(parsed.id); }
+      catch { hardFailures = 1; }
+    } else {
+      sourcesTried = 2;
+      try { work = await fetchCrossrefWork(parsed.doi); }
+      catch { hardFailures += 1; }
+      if (!work) {
+        try { work = await fetchOpenAlexWorkByDoi(parsed.doi); }
+        catch { hardFailures += 1; }
+      }
+    }
+    if (!work) {
+      if (hardFailures >= sourcesTried) {
+        return { ok: false, error: "resolve failed: scholarly APIs unreachable" };
+      }
+      return { ok: false, error: "not_found",
+        message: parsed.kind === "arxiv"
+          ? "No paper found for that arXiv ID."
+          : "No reference found for that identifier in Crossref or OpenAlex." };
+    }
+    if (!rfClean(work.title, 400)) {
+      return { ok: false, error: "not_found",
+        message: "The identifier resolved but carries no title metadata to file." };
+    }
+    // preview: resolve-only (the CrossRef panel's DOI lookup shows the
+    // exact work first; filing happens on the user's explicit import).
+    if (params.preview) {
+      return { ok: true, result: { reference: null, work, source: work.source || null } };
+    }
+    const ref = importWorkToLibrary(s, ctx, work, params.tags);
+    if (!ref) return { ok: false, error: "title required" };
+    return { ok: true, result: { reference: ref, work, source: work.source || null } };
   });
 
   // ── LLM literature review — comparison table across many papers ─────

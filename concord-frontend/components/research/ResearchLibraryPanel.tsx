@@ -14,7 +14,11 @@ import { ErrorState } from '@/components/ui';
 interface Reference {
   id: string; title: string; authors: string | null; year: number | null;
   type: string; journal: string | null; doi: string | null; tags: string[]; status: string;
+  source?: string | null;
 }
+
+const SOURCE_LABEL: Record<string, string> = { crossref: 'Crossref', openalex: 'OpenAlex', arxiv: 'arXiv' };
+const sourceLabel = (s: string) => SOURCE_LABEL[s] || s;
 interface Annotation { id: string; page: number | null; quote: string | null; text: string | null; color: string }
 interface LibraryAnnotation extends Annotation { referenceId: string }
 interface PdfAttachment { id: string; referenceId: string; url: string; filename: string; pages: number | null }
@@ -98,6 +102,10 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
   const [tags, setTags] = useState<TagCount[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ title: '', authors: '', year: '', type: 'article', journal: '', doi: '', tags: '' });
+  const [identifier, setIdentifier] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Reference | null>(null);
   const [citations, setCitations] = useState<{ apa: string; mla: string; bibtex: string; chicago?: string } | null>(null);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
@@ -232,6 +240,25 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
     setShowAdd(false); setError(null);
     await refresh(); await refreshTags(); onChange();
   };
+  const addByIdentifier = async () => {
+    const id = identifier.trim();
+    if (!id) { setImportError('Paste a DOI, an arXiv ID, or a doi.org / arxiv.org link.'); setImportMsg(null); return; }
+    setImporting(true); setImportMsg(null); setImportError(null);
+    const r = await lensRun('research', 'academic-resolve-import', { identifier: id });
+    setImporting(false);
+    const ref = r.data?.result?.reference as Reference | undefined;
+    if (r.data?.ok === false || !ref) {
+      setImportError(
+        r.data?.error === 'not_found'
+          ? 'No reference found for that identifier.'
+          : (r.data?.message || r.data?.error || 'Could not resolve that identifier.'),
+      );
+      return;
+    }
+    setImportMsg(`Imported "${ref.title}" via ${ref.source ? sourceLabel(ref.source) : 'the scholarly record'}.`);
+    setIdentifier('');
+    await refresh(); await refreshTags(); onChange();
+  };
   const del = async (id: string) => { await lensRun('research', 'reference-delete', { id }); await refresh(); await refreshTags(); onChange(); };
   const setStatus = async (ref: Reference, status: string) => {
     await lensRun('research', 'reference-set-status', { id: ref.id, status });
@@ -297,6 +324,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
               <p className="text-xs text-zinc-400">
                 {selected.authors || 'Unknown'}{selected.year ? ` · ${selected.year}` : ''}
                 {selected.journal ? ` · ${selected.journal}` : ''} · {selected.type}
+                {selected.source ? ` · via ${sourceLabel(selected.source)}` : ''}
               </p>
               <div className="flex gap-1 mt-2">
                 {['to_read', 'reading', 'read'].map((st) => (
@@ -475,6 +503,21 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={add}
             className="col-span-2 bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Add reference</button>
+          <div className="col-span-2 border-t border-zinc-800 pt-2">
+            <p className="text-[11px] text-zinc-400 mb-1.5">…or add by identifier — a DOI, an arXiv ID, or a doi.org / arxiv.org link, resolved from the scholarly record:</p>
+            <div className="flex gap-2">
+              <input placeholder="10.1038/nature16961 or 1706.03762" value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') void addByIdentifier(); }}
+                className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <button type="button" onClick={addByIdentifier} disabled={importing || !identifier.trim()}
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-zinc-100 rounded-lg border border-zinc-700">
+                {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Import'}
+              </button>
+            </div>
+            {importMsg && <p className="text-[11px] text-emerald-300 mt-1.5">{importMsg}</p>}
+            {importError && <p className="text-[11px] text-rose-300 mt-1.5">{importError}</p>}
+          </div>
         </div>
       )}
 
@@ -492,6 +535,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
                   <p className="text-sm font-semibold text-zinc-100">{r.title}</p>
                   <p className="text-[11px] text-zinc-400 truncate">
                     {r.authors || 'Unknown'}{r.year ? ` · ${r.year}` : ''}{r.journal ? ` · ${r.journal}` : ''}
+                    {r.source ? ` · via ${sourceLabel(r.source)}` : ''}
                   </p>
                   {r.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">
