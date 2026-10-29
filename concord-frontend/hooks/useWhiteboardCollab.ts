@@ -125,6 +125,10 @@ export function useWhiteboardCollab({
   // already applied — mirrors the server's foldOps LWW-per-element contract
   // so a stale/out-of-order op is dropped instead of clobbering a newer edit.
   const opsClockRef = useRef(0);
+  // S10: join-shared answers { shared: false } for the caller's own
+  // unshared board — remember it and stop broadcasting into a room
+  // that doesn't exist (the calls were pure error noise before).
+  const knownUnsharedRef = useRef(false);
   const lastOpClockByElementRef = useRef<Map<string, number>>(new Map());
 
   // A new board resets both — clocks/edit history from one board must never
@@ -132,6 +136,7 @@ export function useWhiteboardCollab({
   useEffect(() => {
     opsClockRef.current = 0;
     lastOpClockByElementRef.current = new Map();
+    knownUnsharedRef.current = false;
   }, [boardId]);
 
   // Join on mount, leave on unmount.
@@ -144,6 +149,7 @@ export function useWhiteboardCollab({
           domain: 'whiteboard', action: 'join-shared', input: { id: boardId },
         });
         if (cancelled) return;
+        if (res.data?.result?.shared === false) { knownUnsharedRef.current = true; return; }
         const remoteScene = res.data?.result?.board?.scene;
         if (remoteScene) {
           setState((prev) => ({ ...prev, remoteScene, remoteSceneUpdateCount: prev.remoteSceneUpdateCount + 1 }));
@@ -325,7 +331,7 @@ export function useWhiteboardCollab({
 
   // Debounced scene push.
   const broadcastScene = useCallback((scene: unknown) => {
-    if (!boardId || !enabled) return;
+    if (!boardId || !enabled || knownUnsharedRef.current) return;
     pendingSceneRef.current = scene;
     if (sceneDebounceRef.current) clearTimeout(sceneDebounceRef.current);
     sceneDebounceRef.current = setTimeout(() => {
@@ -362,7 +368,7 @@ export function useWhiteboardCollab({
 
   // Rate-limited cursor push.
   const broadcastCursor = useCallback((x: number, y: number) => {
-    if (!boardId || !enabled) return;
+    if (!boardId || !enabled || knownUnsharedRef.current) return;
     const now = Date.now();
     if (now - lastCursorPushRef.current >= cursorThrottleMs) {
       lastCursorPushRef.current = now;
