@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   TrendingUp, Users, Coins, FileText, Quote, Heart, Loader2,
@@ -21,6 +21,18 @@ import {
   type DeskMode, type DTUSummary, type Transaction, type TransactionSummary,
   LENS_COLORS, StatCard, RevenueBar, TierBreakdown,
 } from '@/components/analytics/analytics-shared';
+
+// First-paint honesty (F7): a block whose query has never resolved shows a
+// loading row — never a numeric value and never its empty-state text, both
+// of which would state something the surface does not yet know.
+function PendingRow({ label }: { label: string }) {
+  return (
+    <div className="flex items-center justify-center gap-2 py-8 text-sm text-gray-400">
+      <Loader2 className="w-4 h-4 animate-spin text-neon-cyan" />
+      {label}
+    </div>
+  );
+}
 
 export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
   const {
@@ -54,6 +66,10 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
       return res.data as { dtus?: DTUSummary[]; items?: DTUSummary[]; total?: number };
     },
     enabled: !!userId,
+    // "Show more" grows the page under a new query key; keep the resolved
+    // page on screen while the larger one loads instead of blanking back
+    // to a pending state (F7 applies to re-paints too).
+    placeholderData: keepPreviousData,
   });
 
   const { data: txData } = useQuery({
@@ -82,6 +98,17 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
     },
     enabled: !!userId,
   });
+
+  // First-paint honesty (F7): each aggregate below derives from one query.
+  // Until that query has resolved once, the surface does not hold the value
+  // and must not paint the fallback zero — cards render Platform's dash
+  // ('—', the in-lens precedent) and blocks render a loading row. A RESOLVED
+  // zero is a true value and paints as 0; the dash means "not known yet",
+  // never "zero".
+  const dtusPending = dtusData === undefined;
+  const txPending = txData === undefined;
+  const followersPending = followersData === undefined;
+  const socialPending = socialAnalytics === undefined;
 
   const dtus = dtusData?.dtus || dtusData?.items || [];
   const totalDTUs = dtusData?.total || dtus.length;
@@ -147,14 +174,14 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <StatCard label="Total DTUs" value={totalDTUs} icon={FileText} color="text-neon-blue" />
+        <StatCard label="Total DTUs" value={dtusPending ? '—' : totalDTUs} icon={FileText} color="text-neon-blue" />
         <StatCard label="Citations" value={totalCitations} icon={Quote} color="text-neon-green" />
-        <StatCard label="Followers" value={followerCount} icon={Users} color="text-neon-purple" />
-        <StatCard label="Total CC" value={revenue.total} icon={Coins} color="text-yellow-400" />
-        <StatCard label="Posts" value={totalPosts} icon={Heart} color="text-neon-pink" />
+        <StatCard label="Followers" value={followersPending ? '—' : followerCount} icon={Users} color="text-neon-purple" />
+        <StatCard label="Total CC" value={txPending ? '—' : revenue.total} icon={Coins} color="text-yellow-400" />
+        <StatCard label="Posts" value={socialPending ? '—' : totalPosts} icon={Heart} color="text-neon-pink" />
         <StatCard
           label="Engagement"
-          value={`${engagementRate.toFixed(1)}%`}
+          value={socialPending ? '—' : `${engagementRate.toFixed(1)}%`}
           icon={TrendingUp}
           color="text-neon-cyan"
           raw
@@ -174,17 +201,27 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
               <Coins className="w-4 h-4 text-yellow-400" />
               <h3 className="text-sm font-semibold text-white">Revenue Breakdown</h3>
             </div>
-            <div className="space-y-4">
-              <RevenueBar label="Royalties" amount={revenue.royaltyTotal} total={revenue.total} color="bg-neon-purple" />
-              <RevenueBar label="Direct Sales" amount={revenue.salesTotal} total={revenue.total} color="bg-neon-cyan" />
-            </div>
-            <div className="mt-4 pt-4 border-t border-lattice-border flex items-center justify-between">
-              <span className="text-sm text-gray-400">Total Revenue</span>
-              <span className="text-lg font-bold text-yellow-400">{formatNumber(revenue.total)} CC</span>
-            </div>
+            {txPending ? (
+              <PendingRow label="Loading revenue…" />
+            ) : (
+              <>
+                <div className="space-y-4">
+                  <RevenueBar label="Royalties" amount={revenue.royaltyTotal} total={revenue.total} color="bg-neon-purple" />
+                  <RevenueBar label="Direct Sales" amount={revenue.salesTotal} total={revenue.total} color="bg-neon-cyan" />
+                </div>
+                <div className="mt-4 pt-4 border-t border-lattice-border flex items-center justify-between">
+                  <span className="text-sm text-gray-400">Total Revenue</span>
+                  <span className="text-lg font-bold text-yellow-400">{formatNumber(revenue.total)} CC</span>
+                </div>
+              </>
+            )}
           </motion.div>
 
-          {lensBreakdown.length > 0 ? (
+          {dtusPending ? (
+            <div className="border border-dashed border-white/10 rounded-lg">
+              <PendingRow label="Loading distribution…" />
+            </div>
+          ) : lensBreakdown.length > 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -223,7 +260,11 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
             </div>
           )}
 
-          {txData?.transactions && txData.transactions.length > 0 ? (
+          {txPending ? (
+            <div className="border border-dashed border-white/10 rounded-lg">
+              <PendingRow label="Loading transactions…" />
+            </div>
+          ) : txData?.transactions && txData.transactions.length > 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -283,9 +324,13 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
             </div>
             <p className="text-xs text-gray-400 mb-4">
               Ranked by citations, highest first — ties go to the newest DTU, then by title.
-              {' '}Showing {rankedDTUs.length} of {totalDTUs}. Select a DTU for its detail.
+              {dtusPending
+                ? ' Loading your DTUs…'
+                : ` Showing ${rankedDTUs.length} of ${totalDTUs}. Select a DTU for its detail.`}
             </p>
-            {rankedDTUs.length > 0 ? (
+            {dtusPending ? (
+              <PendingRow label="Loading your DTUs…" />
+            ) : rankedDTUs.length > 0 ? (
               <div className="space-y-2">
                 {rankedDTUs.map((dtu, idx) => {
                   const isSelected = dtu.id === selectedDtuId;
@@ -405,7 +450,11 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
               <Zap className="w-4 h-4 text-neon-blue" />
               <h3 className="text-sm font-semibold text-white">DTU Tier Breakdown</h3>
             </div>
-            <TierBreakdown dtus={dtus} />
+            {dtusPending ? (
+              <PendingRow label="Loading tier breakdown…" />
+            ) : (
+              <TierBreakdown dtus={dtus} />
+            )}
           </motion.div>
         </div>
       )}

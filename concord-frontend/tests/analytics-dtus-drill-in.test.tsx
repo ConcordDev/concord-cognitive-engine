@@ -183,7 +183,12 @@ describe('analytics DTUs tab — drill-in detail (F5)', () => {
     const row = await screen.findByRole('button', { name: /PR4 PR4 Projects Review/ });
     fireEvent.click(row);
     await screen.findByTestId('dtu-detail');
-    fireEvent.click(row);
+    // Re-query before the second click: the repo-standard framer-motion
+    // Proxy mock gives motion.* a fresh component identity per render, so
+    // the subtree remounts on the selection state change and the originally
+    // captured node is detached — a user clicks the row on screen, and so
+    // does this test.
+    fireEvent.click(screen.getByRole('button', { name: /PR4 PR4 Projects Review/ }));
     await waitFor(() => expect(screen.queryByTestId('dtu-detail')).toBeNull());
   });
 });

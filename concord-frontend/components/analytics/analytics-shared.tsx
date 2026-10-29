@@ -88,7 +88,7 @@ export function StatCard({
     >
       <Icon className={cn('w-4 h-4 mb-2', color)} />
       <div className={cn('text-2xl font-bold', color)}>
-        {raw ? value : formatNumber(value as number)}
+        {raw ? value : value === '—' ? '—' : formatNumber(value as number)}
       </div>
       <div className="text-xs text-gray-400 mt-1">{label}</div>
     </motion.div>
