@@ -63,6 +63,44 @@ const LAST_BOARD_KEY = 'concord:whiteboard:last';
 /** Boards are stored as "Whiteboard: <name>" DTUs; show just the name. */
 const boardName = (t: unknown) => String(t ?? 'Board').replace(/^Whiteboard:\s*/, '') || 'Board';
 
+/* D5: export receipts — provenance (board DTU, element count, export
+ * time) rides inside the exported file. CRC32 + a PNG tEXt chunk
+ * carry it in PNGs; SVG exports use a <metadata> element instead. */
+const WB_CRC_TABLE = (() => {
+  const table = new Int32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    table[n] = c;
+  }
+  return table;
+})();
+const wbCrc32 = (bytes: Uint8Array) => {
+  let c = 0xffffffff;
+  for (let i = 0; i < bytes.length; i++) c = WB_CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+};
+const wbPngWithReceipt = (png: Uint8Array, receiptJson: string): Uint8Array => {
+  const enc = new TextEncoder();
+  const keyword = enc.encode('concord-whiteboard');
+  const chunkData = new Uint8Array(keyword.length + 1 + enc.encode(receiptJson).length);
+  chunkData.set(keyword, 0);
+  chunkData[keyword.length] = 0;
+  chunkData.set(enc.encode(receiptJson), keyword.length + 1);
+  const chunk = new Uint8Array(12 + chunkData.length);
+  const dv = new DataView(chunk.buffer);
+  dv.setUint32(0, chunkData.length);
+  chunk.set(enc.encode('tEXt'), 4);
+  chunk.set(chunkData, 8);
+  dv.setUint32(8 + chunkData.length, wbCrc32(chunk.subarray(4, 8 + chunkData.length)));
+  // IHDR is the first chunk: 8-byte signature + 25 bytes.
+  const out = new Uint8Array(png.length + chunk.length);
+  out.set(png.subarray(0, 33), 0);
+  out.set(chunk, 33);
+  out.set(png.subarray(33), 33 + chunk.length);
+  return out;
+};
+
 /* ================================================================== */
 export function WhiteboardStudio({
   workbenchOpen,
@@ -84,6 +122,15 @@ export function WhiteboardStudio({
   const [boardMode, setBoardMode] = useState<BoardMode>('canvas');
   const [showModeMenu, setShowModeMenu] = useState(false);
   const [copyNote, setCopyNote] = useState<{ text: string; ok: boolean } | null>(null);
+  // D1/D2/D3/D4/E-WB-1: strip linkage, save flash, settle, ceremony, egg.
+  const [stripInfo, setStripInfo] = useState<{ keptVersion?: number; keptAt?: string } | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [saveFlash, setSaveFlash] = useState(false);
+  const [settle, setSettle] = useState<{ id: string; t0: number } | null>(null);
+  const [, setSettleTick] = useState(0);
+  const [presentIdx, setPresentIdx] = useState<number | null>(null);
+  const [ceremonyBusy, setCeremonyBusy] = useState(false);
+  const [eggLine, setEggLine] = useState<{ text: string; x: number; y: number } | null>(null);
   const copyNoteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showInspector, setShowInspector] = useState(false);
   const [moreTools, setMoreTools] = useState(false);
@@ -199,6 +246,68 @@ export function WhiteboardStudio({
     try { window.localStorage.setItem(LAST_BOARD_KEY, selectedWbId); } catch { /* storage unavailable */ }
   }, [selectedWbId]);
 
+  // D1: the strip reads the domain mirror record for the kept-DTU
+  // linkage (version + kept time) the S3 save model maintains.
+  useEffect(() => {
+    setStripInfo(null);
+    setLastSavedAt(null);
+    setPresentIdx(null);
+    if (!selectedWbId) return;
+    let cancelled = false;
+    void lensRun({ domain: 'whiteboard', action: 'board-load', input: { id: selectedWbId } })
+      .then((r) => {
+        if (cancelled) return;
+        const rec = (r.data as { result?: { board?: { keptVersion?: number; keptAt?: string } } }).result?.board;
+        setStripInfo(rec ? { keptVersion: rec.keptVersion, keptAt: rec.keptAt } : null);
+      })
+      .catch(() => { /* mirror is best-effort; the strip still shows canvas truth */ });
+    return () => { cancelled = true; };
+  }, [selectedWbId]);
+
+  // D2: the M7 flash is a single beat, then gone.
+  useEffect(() => {
+    if (!saveFlash) return;
+    const tm = setTimeout(() => setSaveFlash(false), 260);
+    return () => clearTimeout(tm);
+  }, [saveFlash]);
+
+  // D3: rAF-drive the 140ms settle, then release it.
+  useEffect(() => {
+    if (!settle) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setSettle(null); return; }
+    let raf = 0;
+    const step = () => {
+      if (performance.now() - settle.t0 >= 150) { setSettle(null); return; }
+      setSettleTick((v) => v + 1);
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [settle]);
+
+  // E-WB-1: the typeset line fades after a few seconds.
+  useEffect(() => {
+    if (!eggLine) return;
+    const tm = setTimeout(() => setEggLine(null), 3200);
+    return () => clearTimeout(tm);
+  }, [eggLine]);
+
+  // D4: Present walks the board's section frames as slides — each
+  // step centres the frame and the workspace beneath it.
+  const sectionFrames = elements.filter((el) => el.type === 'section');
+  useEffect(() => {
+    if (presentIdx === null) return;
+    const sec = sectionFrames[presentIdx];
+    if (!sec) return;
+    const targetZoom = Math.min(1.5, Math.max(0.4, (dimensions.width - 80) / (sec.width || 336)));
+    setZoom(targetZoom);
+    setOffset({
+      x: dimensions.width / 2 - (sec.x + (sec.width || 336) / 2) * targetZoom,
+      y: 60 - sec.y * targetZoom,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presentIdx]);
+
   const { data: dtus, isError: isError4, error: error4, refetch: refetch4,} = useQuery({
     queryKey: ['dtus-whiteboard'],
     queryFn: () => apiHelpers.dtus.paginated({ limit: 100 }).then(r => r.data),
@@ -223,7 +332,11 @@ export function WhiteboardStudio({
 
   const saveMutation = useMutation({
     mutationFn: (data: { elements: Element[] }) => apiHelpers.whiteboard.update(selectedWbId!, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['whiteboard', selectedWbId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['whiteboard', selectedWbId] });
+      setLastSavedAt(new Date().toISOString());
+      setSaveFlash(true);
+    },
     onError: (err) => {
       console.error('Failed to save whiteboard:', err instanceof Error ? err.message : err);
     },
@@ -651,6 +764,32 @@ export function WhiteboardStudio({
       if (n.width && n.width < 0) { n.x += n.width; n.width = Math.abs(n.width); }
       if (n.height && n.height < 0) { n.y += n.height; n.height = Math.abs(n.height); }
       setElements(prev => [...prev, n]);
+      setSettle({ id: n.id, t0: performance.now() });
+      // E-WB-1 The Long Line: a freehand stroke spanning the visible
+      // canvas edge-to-edge typesets its really-measured length.
+      if (n.type === 'freehand' && n.points && n.points.length > 2) {
+        let len = 0;
+        let minX = Infinity;
+        let maxX = -Infinity;
+        for (let i = 0; i < n.points.length; i++) {
+          const pt = n.points[i];
+          if (pt.x < minX) minX = pt.x;
+          if (pt.x > maxX) maxX = pt.x;
+          if (i > 0) {
+            const prev = n.points[i - 1];
+            len += Math.hypot(pt.x - prev.x, pt.y - prev.y);
+          }
+        }
+        const visibleW = dimensions.width / zoom;
+        if (maxX - minX >= 0.9 * visibleW) {
+          const last = n.points[n.points.length - 1];
+          setEggLine({
+            text: Math.round(len).toLocaleString('en-US') + ' px of line. Committed.',
+            x: last.x * zoom + offset.x,
+            y: last.y * zoom + offset.y,
+          });
+        }
+      }
     }
     setCurrentElement(null);
   };
@@ -802,13 +941,62 @@ export function WhiteboardStudio({
     setSelectedElement(prev => (prev ? turn(prev as Element) : prev));
   };
 
-  const exportCanvas = () => {
+  // D4: a ceremony starts a new board whose main canvas carries named
+  // section frames with the session's date. Present walks them.
+  const CEREMONIES: Record<string, { label: string; frames: string[] }> = {
+    retro: { label: 'Retro', frames: ['Went well', 'To improve', 'Actions'] },
+    planning: { label: 'Planning', frames: ['Today', 'This week', 'Later', 'Risks'] },
+    brainstorm: { label: 'Brainstorm', frames: ['Ideas', 'Wild cards', 'Questions'] },
+  };
+  const startCeremony = async (kind: string) => {
+    const c = CEREMONIES[kind];
+    if (!c || ceremonyBusy) return;
+    setCeremonyBusy(true);
+    try {
+      const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+      const res = await apiHelpers.whiteboard.create({ title: c.label + ' - ' + dateLabel, linkedDtus: [] });
+      const id = (res.data as { dtuId?: string }).dtuId;
+      if (!id) return;
+      const frames: Element[] = c.frames.map((label, i) => {
+        const preset = SECTION_PRESETS[i % SECTION_PRESETS.length];
+        return {
+          id: uid(), type: 'section', x: 60 + i * 400, y: 80,
+          sectionType: preset.type, text: label, bars: 14,
+          stroke: preset.color, fill: preset.color + '18', strokeWidth: 2,
+          width: 336, height: 56,
+        } as Element;
+      });
+      await apiHelpers.whiteboard.update(id, { elements: frames });
+      queryClient.invalidateQueries({ queryKey: ['whiteboards'] });
+      queryClient.invalidateQueries({ queryKey: ['lens', 'whiteboard'] });
+      setSelectedWbId(id);
+      setBoardMode('canvas');
+    } catch (err) {
+      console.error('Failed to start ceremony:', err instanceof Error ? err.message : err);
+    } finally {
+      setCeremonyBusy(false);
+      setShowModeMenu(false);
+    }
+  };
+
+  // D5: every export carries its provenance receipt.
+  const exportReceipt = () => JSON.stringify({
+    format: 'concord-whiteboard/receipt', board: selectedWbId,
+    elements: elements.length, exportedAt: new Date().toISOString(),
+  });
+
+  const exportCanvas = async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const res = await fetch(canvas.toDataURL('image/png'));
+    const raw = new Uint8Array(await res.arrayBuffer());
+    const stamped = wbPngWithReceipt(raw, exportReceipt());
+    const url = URL.createObjectURL(new Blob([stamped.buffer as ArrayBuffer], { type: 'image/png' }));
     const link = document.createElement('a');
     link.download = `whiteboard-${new Date().toISOString().slice(0, 10)}.png`;
-    link.href = canvas.toDataURL('image/png');
+    link.href = url;
     link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
   };
 
   // Vector export — produces an SVG of the current board.  Vector form
@@ -827,6 +1015,7 @@ export function WhiteboardStudio({
     parts.push(`<?xml version="1.0" encoding="UTF-8"?>`);
     parts.push(`<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`);
     parts.push(`<rect width="${w}" height="${h}" fill="#0f0f1a"/>`);
+    parts.push(`<metadata>${esc(exportReceipt())}</metadata>`);
     // Arrowhead marker
     parts.push(`<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>`);
     for (const el of elements) {
@@ -1130,7 +1319,25 @@ export function WhiteboardStudio({
       ctx.restore();
     };
 
-    elements.forEach(el => drawEl(el));
+    elements.forEach(el => {
+      // D3 (M3 The Settle): a just-committed element lands with a
+      // 140ms ease — a breath of overscale decaying to rest.
+      if (settle && el.id === settle.id) {
+        const p = Math.min(1, (performance.now() - settle.t0) / 140);
+        const s = 1 + 0.05 * (1 - p) * (1 - p);
+        const b = elementBBox(el);
+        const cx = b.x + b.width / 2;
+        const cy = b.y + b.height / 2;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(s, s);
+        ctx.translate(-cx, -cy);
+        drawEl(el);
+        ctx.restore();
+      } else {
+        drawEl(el);
+      }
+    });
     if (currentElement && tool !== 'select') {
       ctx.globalAlpha = 0.7; drawEl(currentElement, true); ctx.globalAlpha = 1;
     }
@@ -1146,7 +1353,7 @@ export function WhiteboardStudio({
       ctx.strokeRect(mx, my, mw, mh);
     }
     ctx.restore();
-  }, [elements, currentElement, selectedElement, selectedIds, marquee, dimensions, zoom, offset, showGrid, tool, boardMode, imageTick]);
+  }, [elements, currentElement, selectedElement, selectedIds, marquee, dimensions, zoom, offset, showGrid, tool, boardMode, imageTick, settle]);
 
   /* ---------- duplicate selected ---------- */
   const duplicateSelected = useCallback(() => {
@@ -1280,6 +1487,11 @@ export function WhiteboardStudio({
                 <button type="button" role="menuitem" onClick={() => { setShowModeMenu(false); onWorkbenchOpen(); }} className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06]">Templates &amp; voting</button>
                 <button type="button" role="menuitem" onClick={() => { setShowModeMenu(false); setShowInspector((v) => !v); }} className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06]">{showInspector ? 'Hide' : 'Show'} analyze &amp; collab</button>
                 <button type="button" role="menuitem" onClick={() => setShowGrid((g) => !g)} className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06]">{showGrid ? 'Hide' : 'Show'} grid</button>
+                <div className="my-1 border-t border-white/[0.06]" />
+                <p className="px-2.5 pb-1 pt-1 text-[11px] uppercase tracking-wider text-zinc-600">Start a ceremony</p>
+                {Object.entries(CEREMONIES).map(([kind, c]) => (
+                  <button key={kind} type="button" role="menuitem" disabled={ceremonyBusy} onClick={() => { void startCeremony(kind); }} className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06] disabled:opacity-40">{c.label}</button>
+                ))}
                 {selectedWbId && (
                   <>
                     <div className="my-1 border-t border-white/[0.06]" />
@@ -1301,15 +1513,51 @@ export function WhiteboardStudio({
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {selectedWbId && boardMode === 'canvas' && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-white/[0.06] px-4 py-1.5 text-[11px] text-zinc-400">
+            <span className="text-[12px] font-medium text-zinc-200">{boardName(boardListItems.find((b) => String(b.id) === selectedWbId)?.title)}</span>
+            <span className="tabular-nums">{elements.length} element{elements.length === 1 ? '' : 's'}</span>
+            {stripInfo?.keptVersion ? (
+              <span>Kept as DTU - v{stripInfo.keptVersion}{stripInfo.keptAt ? ' - ' + new Date(stripInfo.keptAt).toLocaleString() : ''}</span>
+            ) : (
+              <span>Not kept as a DTU yet</span>
+            )}
+            <span>{lastSavedAt ? 'Saved ' + new Date(lastSavedAt).toLocaleTimeString() : 'Not saved yet this session'}</span>
+            {elements.length >= 200 && (
+              <span className="text-amber-300/90">Large board: {elements.length} elements. Rendering stays live; the count is here so growth is visible, not a surprise.</span>
+            )}
+            {sectionFrames.length > 0 && (
+              <span className="ml-auto flex items-center gap-1">
+                {presentIdx === null ? (
+                  <button type="button" onClick={() => setPresentIdx(0)} className="rounded border border-white/15 px-2 py-0.5 text-[11px] text-zinc-200 hover:bg-white/[0.06]">Present</button>
+                ) : (
+                  <>
+                    <button type="button" disabled={presentIdx <= 0} onClick={() => setPresentIdx((v) => (v === null ? v : v - 1))} className="rounded border border-white/15 px-2 py-0.5 text-[11px] text-zinc-200 hover:bg-white/[0.06] disabled:opacity-40">Prev</button>
+                    <span className="tabular-nums">Frame {presentIdx + 1} of {sectionFrames.length}</span>
+                    <button type="button" disabled={presentIdx >= sectionFrames.length - 1} onClick={() => setPresentIdx((v) => (v === null ? v : v + 1))} className="rounded border border-white/15 px-2 py-0.5 text-[11px] text-zinc-200 hover:bg-white/[0.06] disabled:opacity-40">Next</button>
+                    <button type="button" onClick={() => setPresentIdx(null)} className="rounded border border-white/15 px-2 py-0.5 text-[11px] text-zinc-200 hover:bg-white/[0.06]">Exit</button>
+                  </>
+                )}
+              </span>
+            )}
+          </div>
+        )}
         {selectedWbId ? (
           <>
             {boardMode === 'canvas' && (
-              <div ref={containerRef} className="flex-1 relative overflow-hidden">
+              <div ref={containerRef} className={'flex-1 relative overflow-hidden transition-[box-shadow] duration-200 ' + (saveFlash ? 'ring-2 ring-inset ring-teal-400/70' : '')}>
                 <canvas ref={canvasRef} className={`h-full w-full ${tool === 'select' ? 'cursor-default' : 'cursor-crosshair'}`}
                   style={{ width: dimensions.width, height: dimensions.height }}
                   onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
                   onMouseLeave={handleMouseUp} onWheel={handleWheel} onDoubleClick={handleDoubleClick}
                   onDragOver={e => e.preventDefault()} onDrop={handleCanvasDrop} />
+
+                {selectedIds.length > 1 && (
+                  <div className="absolute bottom-4 left-4 z-10 rounded-full border border-white/10 bg-[#121212]/90 px-2.5 py-1 text-[11px] tabular-nums text-zinc-200">{selectedIds.length} selected</div>
+                )}
+                {eggLine && (
+                  <div className="pointer-events-none absolute z-20 font-serif text-[15px] italic text-zinc-100 transition-opacity duration-700 motion-reduce:transition-none" style={{ left: eggLine.x + 10, top: eggLine.y - 28 }}>{eggLine.text}</div>
+                )}
 
                 {/* Floating tool rail */}
                 <div className="absolute left-6 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-1 rounded-2xl border border-white/[0.08] bg-[#121212]/90 p-1.5 backdrop-blur">
