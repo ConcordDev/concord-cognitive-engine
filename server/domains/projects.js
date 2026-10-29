@@ -103,13 +103,47 @@ export default function registerProjectsActions(registerLensAction) {
   // ── Projects ────────────────────────────────────────────────────────
   registerLensAction("projects", "project-create", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
     const name = pjClean(params.name, 160);
     if (!name) return { ok: false, error: "project name required" };
     if (pjDayStrict(params.startDate) === null) return { ok: false, error: "invalid start date — use a real date with a four-digit year" };
     if (pjDayStrict(params.targetDate) === null) return { ok: false, error: "invalid target date — use a real date with a four-digit year" };
+    // S10 (F13): the key is the identifier issue refs are built from
+    // (PR4-1 …), so it is unique per account. An explicitly requested
+    // key that is taken is rejected, naming the holder and suggesting
+    // the next free key; an auto-derived key uniquifies silently. A
+    // duplicate NAME is allowed only as an explicit, confirmed choice.
+    const mine = pjListB(s.projects, userId);
+    const normKey = (k) => String(k || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const keyTaken = (k) => mine.find((p) => normKey(p.key) === k);
+    const nextFreeKey = (base) => {
+      let n = 2;
+      let cand = base.slice(0, 5) + n;
+      while (keyTaken(cand) && n < 99) { n += 1; cand = base.slice(0, 6 - String(n).length) + n; }
+      return cand;
+    };
+    let key = (pjClean(params.key, 6) || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (key) {
+      const holder = keyTaken(key);
+      if (holder) {
+        const suggestion = nextFreeKey(key);
+        return { ok: false, code: "duplicate_key", suggestion,
+          error: `project key ${key} is already used by "${holder.name}" — issue refs like ${key}-1 must resolve to one project. Try ${suggestion}.` };
+      }
+    } else {
+      key = (name.replace(/[^A-Za-z]/g, "").slice(0, 4) || "PRJ").toUpperCase();
+      if (keyTaken(key)) key = nextFreeKey(key);
+    }
+    if (params.confirmDuplicateName !== true) {
+      const dup = mine.find((p) => p.name.toLowerCase() === name.toLowerCase());
+      if (dup) {
+        return { ok: false, code: "duplicate_name",
+          error: `a project named "${name}" already exists — create another with the same name only if that's really what you want` };
+      }
+    }
     const project = {
       id: pjId("prj"), name,
-      key: (pjClean(params.key, 6) || name.replace(/[^A-Za-z]/g, "").slice(0, 4) || "PRJ").toUpperCase(),
+      key,
       description: pjClean(params.description, 1000) || null,
       color: pjClean(params.color, 16) || "indigo",
       status: pjPick(params.status, PJ_PROJECT_STATUS, "planned"),
@@ -1129,9 +1163,32 @@ export default function registerProjectsActions(registerLensAction) {
   // ── Activity log ────────────────────────────────────────────────────
   registerLensAction("projects", "activity-list", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const activity = (s.activity.get(pjAid(ctx)) || [])
-      .filter((a) => a.taskId === String(params.taskId))
-      .sort((a, b) => b.at.localeCompare(a.at));
+    const userId = pjAid(ctx);
+    const all = s.activity.get(userId) || [];
+    // With a taskId this is the per-issue feed (unchanged). WITHOUT
+    // one it is the project/account stream (S11 — F15): the global
+    // Activity surface called this macro with no taskId and the old
+    // filter (taskId === "undefined") matched nothing, so the feed
+    // read "No activity yet" forever while per-issue feeds filled.
+    // Stream rows are enriched with the issue's ref/title/project so
+    // a global surface can render receipts without a second lookup.
+    if (params.taskId) {
+      const activity = all
+        .filter((a) => a.taskId === String(params.taskId))
+        .sort((a, b) => b.at.localeCompare(a.at));
+      return { ok: true, result: { activity, count: activity.length } };
+    }
+    const taskById = new Map((s.tasks.get(userId) || []).map((x) => [x.id, x]));
+    const limit = Math.max(1, Math.min(200, Math.round(pjNum(params.limit, 50))));
+    const activity = all
+      .map((a) => {
+        const task = taskById.get(a.taskId);
+        return { ...a, taskRef: task ? task.ref : null, taskTitle: task ? task.title : null,
+          projectId: task ? task.projectId : null };
+      })
+      .filter((a) => (params.projectId ? a.projectId === String(params.projectId) : true))
+      .sort((a, b) => b.at.localeCompare(a.at))
+      .slice(0, limit);
     return { ok: true, result: { activity, count: activity.length } };
   });
 
