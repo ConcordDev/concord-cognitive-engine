@@ -16698,6 +16698,36 @@ register("tools","web_search", (ctx, input={}) => {
 
 // ===== GOAL SYSTEM MACROS =====
 
+// S7 (Review 5 F8): the status header stats are DERIVED from the
+// registry at read time. The stored record was a set of cumulative
+// event counters incremented by hand at some call sites and never
+// decremented — evaluateGoal transitions PROPOSED -> APPROVED /
+// ABANDONED without touching any counter, so an evaluated goal read
+// APPROVED 0 in the header beside its APPROVED card, and an abandoned
+// goal stayed counted as proposed forever. Counting current states
+// cannot drift from the cards the panel lists. Field names are the
+// ones the panel already reads; avgCompletionTime is still carried
+// from the stored record (it is a duration average, not a count).
+function deriveGoalStats(goalsState) {
+  const stats = {
+    proposed: 0, evaluating: 0, approved: 0, active: 0,
+    paused: 0, completed: 0, abandoned: 0, blocked: 0,
+    total: 0,
+    avgCompletionTime: goalsState?.stats?.avgCompletionTime || 0
+  };
+  const known = ["proposed", "evaluating", "approved", "active",
+    "paused", "completed", "abandoned", "blocked"];
+  const registry = goalsState?.registry;
+  if (registry && typeof registry.values === "function") {
+    for (const g of registry.values()) {
+      if (!g) continue;
+      stats.total++;
+      if (known.includes(g.state)) stats[g.state]++;
+    }
+  }
+  return stats;
+}
+
 register("goals", "status", (ctx, _input = {}) => {
   try {
   enforceEthosInvariant("goals_status");
@@ -16722,7 +16752,7 @@ register("goals", "status", (ctx, _input = {}) => {
     active: activeGoals,
     activeCount: activeGoals.length,
     proposalCount,
-    stats: ctx.state.goals.stats,
+    stats: deriveGoalStats(ctx.state.goals),
     config: ctx.state.goals.config,
     invariants: GOAL_INVARIANTS
   };
