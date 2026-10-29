@@ -193,7 +193,7 @@ export class DesignConversation {
     // a design-variable edit, applied to the live graph
     const session = cur.final.session;
     const reads = new Map([...session.engine.runs].map(([id, run]) => [id, new Set(run.reads)]));
-    const r = session.edit(w.ops);
+    const r = await session.editAsync(w.ops);
     if (!r.ok) return { kind: "error", error: r.error };
     const settled = await session.settle();
     const after = envMap(session);
@@ -226,7 +226,7 @@ export class DesignConversation {
     const prev = this.current;
     if (rev.kind === "parameter") {
       // reverse the edit on the session it was applied to (even if the orchestrator then moved on to a rebuild)
-      const r = rev.editedSession.edit(rev.inverse);
+      const r = await rev.editedSession.editAsync(rev.inverse);
       if (!r.ok) return { ok: false, error: r.error };
       await rev.editedSession.settle();
       prev.final = { ...prev.final, envelopes: envMap(rev.editedSession) };
