@@ -105,6 +105,7 @@ export default function registerDebugActions(registerLensAction) {
       metrics: count(s.metrics),
       alerts: count(s.alertRules),
       releases: count(s.releases),
+      ingestKeys: count(s.ingestKeys),
     };
   }
 
@@ -187,7 +188,7 @@ export default function registerDebugActions(registerLensAction) {
         return { ok: false, error: "the default project can't be deleted — it holds everything recorded before projects" };
       }
       const counts = dbgProjectCounts(s, userId, project.id, def.id);
-      const total = counts.issues + counts.traces + counts.metrics + counts.alerts + counts.releases;
+      const total = counts.issues + counts.traces + counts.metrics + counts.alerts + counts.releases + counts.ingestKeys;
       if (total > 0 && params.confirm !== true) {
         return {
           ok: false,
@@ -202,6 +203,7 @@ export default function registerDebugActions(registerLensAction) {
         if (next.length !== arr.length) map.set(userId, next);
       };
       purge(s.issues); purge(s.traces); purge(s.metrics); purge(s.alertRules); purge(s.releases);
+      purge(s.ingestKeys); // a deleted project's keys die with it — no orphaned credentials
       list.splice(idx, 1);
       saveDebug();
       return { ok: true, result: { deleted: project.id, name: project.name, removed: counts } };

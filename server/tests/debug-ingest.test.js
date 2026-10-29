@@ -13,6 +13,8 @@ import {
   parseSentryAuthHeader,
   createRateLimiter,
 } from "../lib/sentry-envelope.js";
+import { gzipSync } from "node:zlib";
+import { createIngestHandler } from "../lib/debug-ingest-handler.js";
 import registerDebugActions, { debugIngest } from "../domains/debug.js";
 
 const ACTIONS = new Map();
@@ -209,6 +211,18 @@ describe("debug ingest — keys and the shared core", () => {
     debugIngest.touchKey("ing_ada", result.keyRecord.id); // must not throw post-revoke
   });
 
+  it("deleting a project cascades its ingest keys — no orphaned credentials", () => {
+    const pid = call("project-create", ada, { name: "Keyed" }).result.project.id;
+    const { result } = call("ingest-key-create", ada, { projectId: pid });
+    assert.ok(debugIngest.verifyKey(result.key));
+    const refused = call("project-delete", ada, { id: pid });
+    assert.equal(refused.ok, false);
+    assert.equal(refused.counts.ingestKeys, 1, "a lone key still counts as held data");
+    const done = call("project-delete", ada, { id: pid, confirm: true });
+    assert.equal(done.result.removed.ingestKeys, 1);
+    assert.equal(debugIngest.verifyKey(result.key), null);
+  });
+
   it("events ingested through the core group per project, exactly like the macro", () => {
     const pid = mkProjectId(ada);
     const other = call("project-create", ada, { name: "Worker" }).result.project.id;
@@ -231,5 +245,105 @@ describe("debug ingest — keys and the shared core", () => {
     });
     assert.equal(viaMacro.result.issue.id, first.result.issue.id);
     assert.equal(viaMacro.result.issue.count, 3);
+  });
+});
+
+describe("debug ingest — the endpoint handler's status taxonomy", () => {
+  const authFor = (key) => `Sentry sentry_version=7, sentry_key=${key}, sentry_client=test/1.0`;
+
+  function setup() {
+    const pid = call("project-list", ada, {}).result.defaultProjectId;
+    const { result } = call("ingest-key-create", ada, { projectId: pid });
+    return { pid, key: result.key, keyId: result.keyRecord.id };
+  }
+
+  it("503 while the domain hooks are unregistered", () => {
+    const h = createIngestHandler({ ingest: {} });
+    assert.equal(h.handle({ projectId: "p", body: Buffer.alloc(0) }).status, 503);
+  });
+
+  it("401 is one body for missing, unknown, and revoked keys", () => {
+    const { pid, key, keyId } = setup();
+    const h = createIngestHandler({ ingest: debugIngest });
+    const body = envelopeBody([[{ type: "event" }, sampleEvent()]]);
+    const missing = h.handle({ projectId: pid, body });
+    const unknown = h.handle({ projectId: pid, authHeader: authFor("cdi_" + "f".repeat(64)), body });
+    assert.equal(missing.status, 401);
+    assert.equal(unknown.status, 401);
+    assert.deepEqual(missing.json, unknown.json);
+    call("ingest-key-revoke", ada, { id: keyId });
+    const revoked = h.handle({ projectId: pid, authHeader: authFor(key), body });
+    assert.equal(revoked.status, 401);
+    assert.deepEqual(revoked.json, missing.json);
+  });
+
+  it("a valid post lands the event as a grouped issue in the key's project (A2)", () => {
+    const { pid, key } = setup();
+    const h = createIngestHandler({ ingest: debugIngest });
+    const out = h.handle({
+      projectId: pid, authHeader: authFor(key),
+      body: envelopeBody([[{ type: "event" }, sampleEvent()]]),
+    });
+    assert.equal(out.status, 200);
+    assert.equal(out.json.ingested, 1);
+    assert.equal(out.json.id, "9ec79c33ec9942ab8353589fcb04e3c2");
+    const list = call("issue-list", ada, { projectId: pid }).result;
+    assert.equal(list.count, 1);
+    assert.match(list.issues[0].message, /Cannot read properties/);
+    const keys = call("ingest-key-list", ada, { projectId: pid }).result.keys;
+    assert.ok(keys[0].lastUsedAt, "the post stamps the key's last-used time");
+  });
+
+  it("scope mismatch is a 400; malformed payloads are named 400s (A8)", () => {
+    const { pid, key } = setup();
+    const h = createIngestHandler({ ingest: debugIngest });
+    const body = envelopeBody([[{ type: "event" }, sampleEvent()]]);
+    const wrongProject = h.handle({ projectId: "proj_other", authHeader: authFor(key), body });
+    assert.equal(wrongProject.status, 400);
+    assert.match(wrongProject.json.error, /not scoped/);
+    const garbage = h.handle({ projectId: pid, authHeader: authFor(key), body: Buffer.from("hello") });
+    assert.equal(garbage.status, 400);
+    const noId = h.handle({
+      projectId: pid, authHeader: authFor(key),
+      body: envelopeBody([[{ type: "event" }, { message: "no id here" }]]),
+    });
+    assert.equal(noId.status, 400);
+    assert.match(noId.json.error, /event_id/);
+    assert.equal(call("issue-list", ada, { projectId: pid }).result.count, 0, "nothing half-landed");
+  });
+
+  it("non-event items are acknowledged, not ingested; gzip bodies inflate", () => {
+    const { pid, key } = setup();
+    const h = createIngestHandler({ ingest: debugIngest });
+    const sessionOnly = h.handle({
+      projectId: pid, authHeader: authFor(key),
+      body: envelopeBody([[{ type: "session" }, { sid: "s" }]]),
+    });
+    assert.equal(sessionOnly.status, 200);
+    assert.deepEqual(
+      { ingested: sessionOnly.json.ingested, ignored: sessionOnly.json.ignored },
+      { ingested: 0, ignored: 1 },
+    );
+    const gz = h.handle({
+      projectId: pid, authHeader: authFor(key), contentEncoding: "gzip",
+      body: gzipSync(envelopeBody([[{ type: "event" }, sampleEvent()]])),
+    });
+    assert.equal(gz.status, 200);
+    const badGzip = h.handle({
+      projectId: pid, authHeader: authFor(key), contentEncoding: "gzip",
+      body: Buffer.from("not gzip at all"),
+    });
+    assert.equal(badGzip.status, 400);
+    assert.match(badGzip.json.error, /gzip/);
+  });
+
+  it("the per-key cap answers 429 with Retry-After", () => {
+    const { pid, key } = setup();
+    const h = createIngestHandler({ ingest: debugIngest, limit: 1 });
+    const body = envelopeBody([[{ type: "event" }, sampleEvent()]]);
+    assert.equal(h.handle({ projectId: pid, authHeader: authFor(key), body }).status, 200);
+    const capped = h.handle({ projectId: pid, authHeader: authFor(key), body });
+    assert.equal(capped.status, 429);
+    assert.ok(Number(capped.headers["Retry-After"]) > 0);
   });
 });
