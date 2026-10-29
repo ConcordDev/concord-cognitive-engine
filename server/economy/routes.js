@@ -212,7 +212,11 @@ export function registerEconomyRoutes(app, db, opts = {}) {
         from,
         to,
         amount,
-        type: req.body.type || "TRANSFER",
+        // User transfers are ALWAYS "TRANSFER". The ledger type drives
+        // fees (ROYALTY_PAYOUT pays 0) and withdrawal eligibility, so it
+        // is never caller-controlled: system types are minted only by
+        // system writers (marketplace, royalty cascade), never here.
+        type: "TRANSFER",
         metadata: req.body.metadata || {},
         requestId: ctx.requestId,
         ip: ctx.ip,
