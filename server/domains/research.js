@@ -890,6 +890,25 @@ export default function registerResearchActions(registerLensAction) {
   });
 
   // ── Annotations ─────────────────────────────────────────────────────
+  // S4 (F2): a structured anchor for reader-created annotations — the
+  // page a passage sits on, plus the passage's character offsets within
+  // that page's text. Offsets are null in this build: the platform has
+  // no PDF text layer yet (no pdf.js in the frontend bundle, no text
+  // extraction server-side — see server/domains/document.js's own
+  // header), so nothing can measure them honestly. The shape is fixed
+  // now so a text layer fills the same fields with no data migration.
+  function cleanAnchor(raw) {
+    if (!raw || typeof raw !== "object") return null;
+    const pg = (v) => { if (v == null) return null; const n = Math.round(Number(v)); return Number.isFinite(n) && n >= 1 ? n : null; };
+    const off = (v) => { if (v == null) return null; const n = Math.round(Number(v)); return Number.isFinite(n) && n >= 0 ? n : null; };
+    const page = pg(raw.page);
+    let startOffset = off(raw.startOffset);
+    let endOffset = off(raw.endOffset);
+    if (startOffset != null && endOffset != null && endOffset < startOffset) { startOffset = null; endOffset = null; }
+    if (page == null && startOffset == null && endOffset == null) return null;
+    return { page, startOffset, endOffset };
+  }
+
   registerLensAction("research", "annotation-add", (ctx, _a, params = {}) => {
     const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = rfAid(ctx);
@@ -897,10 +916,15 @@ export default function registerResearchActions(registerLensAction) {
     const text = rfClean(params.text, 2000);
     const quote = rfClean(params.quote, 2000);
     if (!text && !quote) return { ok: false, error: "text or quote required" };
+    const anchor = cleanAnchor(params.anchor);
     const annotation = {
       id: rfId("ann"), referenceId: String(params.referenceId),
-      page: Math.max(0, Math.round(rfNum(params.page))) || null,
+      // An explicit page param wins; an anchor's page fills in when the
+      // caller (the reader) only supplied the anchor, so the existing
+      // page-sorted lists and "(p.N)" surfaces keep working unchanged.
+      page: (Math.max(0, Math.round(rfNum(params.page))) || null) ?? anchor?.page ?? null,
       quote: quote || null, text: text || null,
+      ...(anchor ? { anchor } : {}),
       color: ["yellow", "green", "blue", "pink", "purple"].includes(String(params.color).toLowerCase())
         ? String(params.color).toLowerCase() : "yellow",
       createdAt: rfNow(),
@@ -1243,7 +1267,13 @@ export default function registerResearchActions(registerLensAction) {
     const url = rfClean(params.url, 1000);
     const filename = rfClean(params.filename, 240);
     if (!url) return { ok: false, error: "url required" };
-    if (!/^https?:\/\//i.test(url)) return { ok: false, error: "url must be http(s)" };
+    // S4 (F2): a platform-artifact path is the uploaded-file form — the
+    // upload endpoint (POST /api/artifact/upload) stores the file and it
+    // is served, ACL-gated, from /api/artifact/:dtuId/stream. Only that
+    // exact prefix is allowed through; other relative URLs stay refused.
+    if (!/^https?:\/\//i.test(url) && !url.startsWith("/api/artifact/")) {
+      return { ok: false, error: "url must be http(s) or a platform artifact path" };
+    }
     const attachment = {
       id: rfId("pdf"),
       referenceId: ref.id,
@@ -1279,6 +1309,87 @@ export default function registerResearchActions(registerLensAction) {
     if (ref && !stillHas) ref.hasPdf = false;
     saveResearchState();
     return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Resolve a readable PDF for a reference (S4, F2) ──────────────────
+  // The reader's front door: given a library reference, answer with the
+  // PDF the in-app reader should render, or an honest no-PDF answer.
+  // Ladder, most-authoritative first:
+  //  (1) a PDF the user attached to this reference — a platform-artifact
+  //      URL (/api/artifact/…) is an upload and is named as one;
+  //  (2) arXiv — the ID is derivable locally from an arXiv DOI or an
+  //      arxiv.org URL on the record, no network needed;
+  //  (3) the record's own URL when it already points at a .pdf;
+  //  (4) Unpaywall's best_oa_location.url_for_pdf for the record's DOI.
+  // There is no `live_unpaywall` macro to compose with — scholarly-
+  // apis.js (read-verified for this slice) registers only live_crossref
+  // / live_openalex / live_datamuse / live_dictionary — so the call is
+  // made here via cachedFetchJson, the same pattern academic-search and
+  // academic-resolve-import already use in this domain, and scholarly-
+  // apis.js stays untouched. Honesty discipline follows S1: an
+  // Unpaywall 404 (it has no record of the DOI) or a no-OA answer is a
+  // definitive `no_open_access_pdf`; a transport failure is reported as
+  // `lookup_failed`, never dressed up as "no open copy exists".
+  function deriveArxivId(ref) {
+    const m = normDoiKey(ref?.doi).match(/^10\.48550\/arxiv\.(.+)$/);
+    if (m) return m[1];
+    const parsed = parseScholarlyIdentifier(ref?.url || "");
+    return parsed?.kind === "arxiv" ? parsed.id : null;
+  }
+
+  registerLensAction("research", "reference-pdf", async (ctx, _a, params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const ref = findRef(s, userId, params.referenceId || params.id);
+    if (!ref) return { ok: false, error: "reference not found" };
+    const base = { referenceId: ref.id, title: ref.title };
+    const atts = (s.pdfs.get(userId) || [])
+      .filter((p) => p.referenceId === ref.id)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    if (atts.length) {
+      const att = atts[0];
+      return { ok: true, result: { ...base,
+        pdfUrl: att.url, source: att.url.startsWith("/api/artifact/") ? "upload" : "attached",
+        filename: att.filename, attachmentId: att.id, pages: att.pages ?? null } };
+    }
+    const arxivId = deriveArxivId(ref);
+    if (arxivId) {
+      return { ok: true, result: { ...base,
+        pdfUrl: `https://arxiv.org/pdf/${arxivId}.pdf`, source: "arxiv",
+        filename: `${arxivId}.pdf`, attachmentId: null, pages: null } };
+    }
+    if (ref.url && /\.pdf($|[?#])/i.test(ref.url)) {
+      return { ok: true, result: { ...base,
+        pdfUrl: ref.url, source: "direct",
+        filename: ref.url.split("/").pop() || "document.pdf", attachmentId: null, pages: null } };
+    }
+    if (ref.doi) {
+      const email = process.env.UNPAYWALL_EMAIL || process.env.OPENALEX_MAILTO || "hello@concord-os.org";
+      try {
+        const data = await cachedFetchJson(
+          `https://api.unpaywall.org/v2/${encodeURIComponent(normDoiKey(ref.doi))}?email=${encodeURIComponent(email)}`,
+          { ttlMs: 60 * 60 * 1000, timeoutMs: 9000, opts: { headers: { "User-Agent": SCHOLARLY_UA } } },
+        );
+        const pdfUrl = data?.best_oa_location?.url_for_pdf
+          || (data?.oa_locations || []).find((l) => l?.url_for_pdf)?.url_for_pdf || null;
+        if (pdfUrl) {
+          return { ok: true, result: { ...base,
+            pdfUrl, source: "unpaywall",
+            filename: pdfUrl.split("/").pop() || "document.pdf", attachmentId: null, pages: null } };
+        }
+        return { ok: true, result: { ...base, pdfUrl: null, source: null, reason: "no_open_access_pdf",
+          message: "No open-access PDF was found for this reference. Attach or upload a PDF to read it here." } };
+      } catch (e) {
+        if (/HTTP 404/.test(String(e?.message || e))) {
+          return { ok: true, result: { ...base, pdfUrl: null, source: null, reason: "no_open_access_pdf",
+            message: "No open-access PDF was found for this reference. Attach or upload a PDF to read it here." } };
+        }
+        return { ok: true, result: { ...base, pdfUrl: null, source: null, reason: "lookup_failed",
+          message: "The open-access lookup didn't answer, so this paper may still have an open PDF. Attach or upload a PDF to read it here." } };
+      }
+    }
+    return { ok: true, result: { ...base, pdfUrl: null, source: null, reason: "no_open_access_pdf",
+      message: "No PDF is attached and this reference has no DOI or arXiv ID to look up an open copy. Attach or upload a PDF to read it here." } };
   });
 
   // ── Live academic search — OpenAlex / arXiv (free, keyless) ─────────
