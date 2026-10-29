@@ -4,6 +4,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { saveAfterWrites } from "../lib/lens-save-on-write.js";
+import { createNotification } from "../emergent/social-layer.js";
 export default function registerGoalsActions(registerLensAction) {
   registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -1233,6 +1234,43 @@ export default function registerGoalsActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  // S8 (F9): a reminder FIRES when it is observed due — the list/due
+  // reads run this pass. Firing is a real event: a bell entry through
+  // the shared notification path, firedCount/firedAt recorded on the
+  // reminder, recurring reminders advanced to their next due time.
+  // A given due instance never fires twice (firedForDueAt guard), and
+  // manual completion no longer masquerades as firing.
+  function fireDueReminders(s, userId) {
+    const list = s.reminders.get(userId) || [];
+    const now = Date.now();
+    const cadenceDays = { daily: 1, weekly: 7, monthly: 30 };
+    let changed = false;
+    for (const rem of list) {
+      if (rem.done) continue;
+      if (new Date(rem.dueAt).getTime() > now) continue;
+      if (rem.firedForDueAt === rem.dueAt) continue;
+      rem.firedForDueAt = rem.dueAt;
+      rem.firedCount = (rem.firedCount || 0) + 1;
+      rem.firedAt = new Date(now).toISOString();
+      try {
+        createNotification(globalThis._concordSTATE, {
+          userId,
+          type: "goal_reminder",
+          fromUserId: null,
+          postId: null,
+          content: `Reminder: ${rem.label}${rem.goalId ? ` (${rem.goalId})` : ""}`,
+        });
+      } catch { /* the bell is best-effort; the firing itself is recorded above */ }
+      if (rem.cadence !== "once" && cadenceDays[rem.cadence]) {
+        let next = new Date(rem.dueAt).getTime();
+        while (next <= now) next += cadenceDays[rem.cadence] * 86400000;
+        rem.dueAt = new Date(next).toISOString();
+      }
+      changed = true;
+    }
+    if (changed) save();
+  }
+
   /**
    * reminder
    * Reminders + scheduled review prompts for goals.
@@ -1265,6 +1303,8 @@ export default function registerGoalsActions(registerLensAction) {
         dueAt: due.toISOString(),
         done: false,
         firedCount: 0,
+        firedAt: null,
+        firedForDueAt: null,
         createdAt: new Date().toISOString(),
       };
       list.push(rem);
@@ -1278,7 +1318,6 @@ export default function registerGoalsActions(registerLensAction) {
       if (op === "remove") {
         list.splice(list.indexOf(rem), 1);
       } else {
-        rem.firedCount += 1;
         if (rem.cadence !== "once" && cadenceDays[rem.cadence]) {
           rem.dueAt = new Date(new Date(rem.dueAt).getTime() + cadenceDays[rem.cadence] * 86400000).toISOString();
           rem.done = false;
@@ -1291,13 +1330,15 @@ export default function registerGoalsActions(registerLensAction) {
     }
 
     if (op === "due") {
+      fireDueReminders(s, userId);
       const now = Date.now();
       const due = list.filter((r) => !r.done && new Date(r.dueAt).getTime() <= now)
         .sort((a, b) => (a.dueAt || "").localeCompare(b.dueAt || ""));
       return { ok: true, result: { due, count: due.length } };
     }
 
-    // list
+    // list (observing the list is what fires due reminders — S8)
+    fireDueReminders(s, userId);
     const sorted = [...list].sort((a, b) => (a.dueAt || "").localeCompare(b.dueAt || ""));
     return {
       ok: true,
@@ -1305,8 +1346,11 @@ export default function registerGoalsActions(registerLensAction) {
         reminders: sorted,
         stats: {
           total: sorted.length,
-          pending: sorted.filter((r) => !r.done).length,
+          // Pending and overdue are mutually exclusive (F9): a
+          // reminder is one or the other, never both.
+          pending: sorted.filter((r) => !r.done && new Date(r.dueAt).getTime() > Date.now()).length,
           overdue: sorted.filter((r) => !r.done && new Date(r.dueAt).getTime() <= Date.now()).length,
+          fired: sorted.reduce((a, r) => a + (r.firedCount || 0), 0),
         },
       },
     };
