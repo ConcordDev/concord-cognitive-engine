@@ -330,6 +330,7 @@ function CheckinsTab() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [objProgress, setObjProgress] = useState<{ progress: number | null; progressSource: string | null } | null>(null);
+  const [addError, setAddError] = useState('');
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [undo, setUndo] = useState<{ trashId: string; label: string } | null>(null);
 
@@ -354,7 +355,10 @@ function CheckinsTab() {
       setCheckins(r.data.result.checkins || []);
       setStats(r.data.result.stats || null);
       setObjProgress(r.data.result.objectiveProgress || null);
+      setAddError('');
       setNote(''); setProgress('');
+    } else {
+      setAddError(r.data?.error || 'That check-in was not saved.');
     }
   };
 
@@ -399,6 +403,7 @@ function CheckinsTab() {
         </button>
       </div>
 
+      {addError && <p className="text-[11px] text-rose-300" role="alert">{addError}</p>}
       {undo && <UndoStrip label={undo.label} onUndo={undoRemove} onDismiss={() => setUndo(null)} />}
       {objProgress?.progress != null && (
         <p className="text-[11px] text-cyan-300" role="status">
