@@ -39,7 +39,10 @@ export function detectDomain(text) {
   if (/\bsentinel\b|\bm1\b/.test(t) && /\b(knee|hip|ankle|actuator|bracket|mount|link|part)\b/.test(t)) return "sentinel-part";
   if (/\btruss\b|\bwarren\b|\bpratt\b|\bhowe\b/.test(t)) return "truss";
   // A bridge / footbridge / pedestrian bridge is designed as a planar truss (Pratt unless named); a "beam bridge" stays a beam.
-  if (BRIDGE_RE.test(t) && !/\b(?:beam|girder)\s+bridge\b/.test(t)) return "truss";
+  // A "footbridge beam", "bridge girder", or a simply supported bridge beam is the member itself, not a truss.
+  const bridgeMember = /\b(?:beam|girder)s?\s+(?:foot)?bridge\b|\b(?:foot)?bridge\s+(?:beam|girder)s?\b/.test(t)
+    || (/\bsimply[- ]supported\b/.test(t) && /\b(?:beam|girder)\b/.test(t));
+  if (BRIDGE_RE.test(t) && !bridgeMember) return "truss";
   if (/\bbracket\b|\bcantilever(?:ed)?\s+plate\b/.test(t)) return "bracket";
   if (/\bbeam\b|\bjoist\b|\bgirder\b/.test(t)) return "beam";
   if (/\b(car|vehicle|sedan|coupe|hatchback|suv|ev|roadster|supercar)\b/.test(t)) return "car";
