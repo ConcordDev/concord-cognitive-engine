@@ -87,6 +87,7 @@ export function WhiteboardStudio({
   const [tool, setTool] = useState<Tool>('select');
   const [elements, setElements] = useState<Element[]>([]);
   const [selectedElement, setSelectedElement] = useState<Element | null>(null);
+  const [editingElement, setEditingElement] = useState<{ id: string; draft: string } | null>(null);
   const [viewingDtuId, setViewingDtuId] = useState<string | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentElement, setCurrentElement] = useState<Element | null>(null);
@@ -371,11 +372,11 @@ export function WhiteboardStudio({
       return;
     }
 
-    if (tool === 'text') { setTextPosition({ x, y }); return; }
+    if (tool === 'text') { setTextInput(''); setTextPosition({ x, y }); return; }
     if (tool === 'dtu') { setShowDtuPicker(true); setTextPosition({ x, y }); return; }
-    if (tool === 'audio') { setShowAudioDialog(true); setTextPosition({ x, y }); return; }
-    if (tool === 'image') { setShowImageDialog(true); setTextPosition({ x, y }); return; }
-    if (tool === 'notecard') { setShowNoteDialog(true); setTextPosition({ x, y }); return; }
+    if (tool === 'audio') { setAudioClipName(''); setAudioClipDur(30); setShowAudioDialog(true); setTextPosition({ x, y }); return; }
+    if (tool === 'image') { setImageLabel(''); setShowImageDialog(true); setTextPosition({ x, y }); return; }
+    if (tool === 'notecard') { setNoteText(''); setShowNoteDialog(true); setTextPosition({ x, y }); return; }
     if (tool === 'section') { setShowSectionDialog(true); setTextPosition({ x, y }); return; }
 
     pushUndo();
@@ -448,7 +449,27 @@ export function WhiteboardStudio({
     });
     if (clicked?.type === 'dtu' && clicked.dtuId) {
       setViewingDtuId(clicked.dtuId);
+      return;
     }
+    // S4: text-bearing elements edit in place — double-click opens an
+    // editor over the element instead of sending the user to a dialog.
+    if (clicked && (clicked.type === 'text' || clicked.type === 'notecard')) {
+      setSelectedElement(clicked);
+      setEditingElement({ id: clicked.id, draft: clicked.text || '' });
+    }
+  };
+
+  const commitInlineEdit = () => {
+    if (!editingElement) return;
+    const { id, draft } = editingElement;
+    setEditingElement(null);
+    const target = elements.find((el) => el.id === id);
+    // An emptied draft is a cancel, never a silent erase.
+    if (!target || !draft.trim() || draft === (target.text || '')) return;
+    pushUndo();
+    setElements((prev) => prev.map((el) => (el.id === id
+      ? { ...el, text: draft, width: el.type === 'text' ? Math.max(60, draft.length * 12) : el.width }
+      : el)));
   };
 
   const handleWheel = (e: React.WheelEvent) => {
@@ -466,7 +487,7 @@ export function WhiteboardStudio({
       text: textInput, stroke: strokeColor, fill: strokeColor, strokeWidth: 1,
       width: textInput.length * 12, height: 24,
     }]);
-    setTextInput(''); setTextPosition(null);
+    setTextInput(''); setTextPosition(null); setTool('select');
   };
 
   const addDtu = (dtu: Record<string, unknown>) => {
@@ -478,7 +499,7 @@ export function WhiteboardStudio({
       dtuTitle: ((dtu.title as string) || (dtu.content as string)?.slice(0, 30)) as string,
       stroke: '#a855f7', fill: 'rgba(168, 85, 247, 0.1)', strokeWidth: 2, width: 200, height: 80,
     }]);
-    setShowDtuPicker(false); setTextPosition(null);
+    setShowDtuPicker(false); setTextPosition(null); setTool('select');
   };
 
   const addAudioPin = () => {
@@ -489,7 +510,7 @@ export function WhiteboardStudio({
       clipName: audioClipName, duration: audioClipDur, playing: false,
       stroke: '#00d4ff', fill: 'rgba(0, 212, 255, 0.08)', strokeWidth: 2, width: 220, height: 72,
     }]);
-    setAudioClipName(''); setAudioClipDur(30); setShowAudioDialog(false); setTextPosition(null);
+    setAudioClipName(''); setAudioClipDur(30); setShowAudioDialog(false); setTextPosition(null); setTool('select');
   };
 
   const addImagePin = () => {
@@ -500,7 +521,7 @@ export function WhiteboardStudio({
       imageLabel, imageUrl: '', stroke: '#f59e0b', fill: 'rgba(245, 158, 11, 0.08)',
       strokeWidth: 2, width: 160, height: 160,
     }]);
-    setImageLabel(''); setShowImageDialog(false); setTextPosition(null);
+    setImageLabel(''); setShowImageDialog(false); setTextPosition(null); setTool('select');
   };
 
   const addNoteCard = () => {
@@ -511,7 +532,7 @@ export function WhiteboardStudio({
       text: noteText, cardColor: noteColor, stroke: noteColor, fill: noteColor + '22',
       strokeWidth: 2, width: 180, height: 100,
     }]);
-    setNoteText(''); setShowNoteDialog(false); setTextPosition(null);
+    setNoteText(''); setShowNoteDialog(false); setTextPosition(null); setTool('select');
   };
 
   const addSectionMarker = () => {
@@ -523,7 +544,7 @@ export function WhiteboardStudio({
       stroke: sectionChoice.color, fill: sectionChoice.color + '18',
       strokeWidth: 2, width: sectionChoice.bars * 24, height: 56,
     }]);
-    setShowSectionDialog(false); setTextPosition(null);
+    setShowSectionDialog(false); setTextPosition(null); setTool('select');
   };
 
   const toggleAudioPlay = (id: string) => {
@@ -1095,6 +1116,31 @@ export function WhiteboardStudio({
                     </motion.div>
                   )}
                 </AnimatePresence>
+
+                {editingElement && (() => {
+                  const el = elements.find((e) => e.id === editingElement.id);
+                  if (!el) return null;
+                  return (
+                    <textarea
+                      autoFocus
+                      aria-label="Edit element text"
+                      value={editingElement.draft}
+                      onChange={(e) => setEditingElement({ id: el.id, draft: e.target.value })}
+                      onBlur={commitInlineEdit}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') setEditingElement(null);
+                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) commitInlineEdit();
+                      }}
+                      className="absolute z-30 resize-none rounded-lg border border-cyan-400/60 bg-zinc-900/95 p-2 text-[13px] leading-snug text-zinc-100 shadow-2xl outline-none"
+                      style={{
+                        left: el.x * zoom + offset.x,
+                        top: el.y * zoom + offset.y,
+                        width: Math.max(150, (el.width || 180) * zoom),
+                        minHeight: Math.max(44, (el.height || 60) * zoom),
+                      }}
+                    />
+                  );
+                })()}
 
                 <AnimatePresence>
                   {showAudioDialog && (
