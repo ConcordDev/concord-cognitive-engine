@@ -26,6 +26,7 @@ import { retrieveRelevantFiles, candidatesFromLocalFiles, candidatesFromGitHubTr
 // macro wrappers only.
 import codePushGovernance from "../lib/code-push-governance.js";
 import { createHash } from "node:crypto";
+import { analyzeSourceComplexity } from "../lib/code-ast-complexity.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
 
@@ -169,8 +170,45 @@ export default function registerCodeActions(registerLensAction) {
    * module. Reads `artifact.data.modules: [{ name, lines, functions, branches,
    * loops, nestingDepth, dependencies? }]`.
    */
-  registerLensAction("code", "complexityAnalysis", (ctx, artifact, _params) => {
+  registerLensAction("code", "complexityAnalysis", (ctx, artifact, params = {}) => {
   try {
+    // S12 (F13): the review workbench sends { code, language } — the
+    // original artifact-only contract read artifact.data.modules and
+    // answered every panel call with an empty module list, which the
+    // panel rendered as "Cyclomatic: —". When raw code arrives (in
+    // params or in the artifact), analyze THAT with the AST engine
+    // and return the flat numbers the panel's card renders.
+    const rawCode = typeof params?.code === "string" ? params.code
+      : typeof artifact?.data?.code === "string" ? artifact.data.code
+      : typeof artifact?.code === "string" ? artifact.code : null;
+    if (rawCode && rawCode.trim()) {
+      const language = String(params?.language || artifact?.data?.language || "javascript");
+      const ext = language === "typescript" ? "ts" : language === "python" ? "py" : "js";
+      const ast = analyzeSourceComplexity(`snippet.${ext}`, rawCode);
+      let branches = 0, loops = 0, maxNesting = 0, fnCount = 0;
+      let source = "ast";
+      if (ast) {
+        for (const fn of ast.functions) {
+          branches += fn.branches || 0;
+          loops += fn.loops || 0;
+          maxNesting = Math.max(maxNesting, fn.nesting || 0);
+          if (fn.name && fn.name !== "<module>") fnCount++;
+        }
+      } else {
+        // Lexical fallback (AST engine unavailable): count decision
+        // points by keyword — labelled, never passed off as AST.
+        source = "lexical";
+        branches = (rawCode.match(/\b(if|catch|case)\b|&&|\|\||\?/g) || []).length;
+        loops = (rawCode.match(/\b(for|while|do)\b/g) || []).length;
+        fnCount = (rawCode.match(/\bfunction\b|=>/g) || []).length;
+      }
+      const cyclomatic = 1 + branches + loops;
+      const nestingPenalty = maxNesting > 0 ? (maxNesting * (maxNesting + 1)) / 2 : 0;
+      const cognitive = Math.round(branches + loops * 2 + nestingPenalty);
+      const lines = rawCode.split("\n").length;
+      const risk = cyclomatic >= 20 ? "high" : cyclomatic >= 10 ? "medium" : "low";
+      return { ok: true, result: { cyclomatic, cognitive, lines, functions: fnCount, risk, source, perFunction: ast ? ast.functions : [] } };
+    }
     const modules = artifact.data?.modules || [];
     if (modules.length === 0) {
       return { ok: true, result: { modules: [], message: "No modules to analyze." } };
@@ -233,8 +271,29 @@ export default function registerCodeActions(registerLensAction) {
   /**
    * dependencyAudit — License + version + circular dependency check.
    */
-  registerLensAction("code", "dependencyAudit", (ctx, artifact, _params) => {
+  registerLensAction("code", "dependencyAudit", (ctx, artifact, params = {}) => {
   try {
+    // S12: raw-code callers (the workbench) get the dependency list
+    // parsed from the source itself. Version/vulnerability verdicts
+    // need a registry — those counts come back null with the reason
+    // attached, never invented.
+    const rawDepCode = typeof params?.code === "string" ? params.code
+      : typeof artifact?.data?.code === "string" ? artifact.data.code : null;
+    if (rawDepCode && rawDepCode.trim() && !artifact.data?.dependencies) {
+      const specifiers = new Set();
+      for (const m of rawDepCode.matchAll(/(?:import[^"']*from\s*|import\s*|require\(\s*)["']([^"']+)["']/g)) {
+        const spec = m[1];
+        if (spec.startsWith(".") || spec.startsWith("/")) continue;
+        const pkg = spec.startsWith("@") ? spec.split("/").slice(0, 2).join("/") : spec.split("/")[0];
+        if (pkg) specifiers.add(pkg);
+      }
+      const dependencies = [...specifiers].map(name => ({ name }));
+      return { ok: true, result: {
+        total: dependencies.length, outdated: null, security: null, riskScore: null,
+        dependencies,
+        note: "Parsed from the source's imports. Outdated and security counts need a registry lookup — not derivable from source alone.",
+      } };
+    }
     const deps = requireList(artifact.data?.dependencies, "dependencies");
     if (!Array.isArray(deps)) return deps;
     if (deps.length === 0) {
@@ -316,10 +375,16 @@ export default function registerCodeActions(registerLensAction) {
   /**
    * coverageAnalysis — Statement/branch/function coverage from instrumented runs.
    */
-  registerLensAction("code", "coverageAnalysis", (ctx, artifact, _params) => {
+  registerLensAction("code", "coverageAnalysis", (ctx, artifact, params = {}) => {
   try {
     const coverage = artifact.data?.coverage || [];
     if (coverage.length === 0) {
+      // S12: a caller holding only source text (the workbench) must
+      // not receive an empty-but-ok result the panel renders as 0% —
+      // coverage is measured by running code, not by reading it.
+      if (typeof params?.code === "string" && params.code.trim()) {
+        return { ok: false, error: "Coverage needs run data: it is measured by executing the code with instrumentation, and cannot be derived from source text alone." };
+      }
       return { ok: true, result: { files: [], message: "No coverage data available." } };
     }
 
@@ -437,7 +502,11 @@ export default function registerCodeActions(registerLensAction) {
    * snippets-save — Persist a code snippet as a kind=code_snippet DTU.
    */
   registerLensAction("code", "snippets-save", (ctx, _artifact, params = {}) => {
-    const title = String(params.title || "").trim();
+    // S12 (F13): the workbench sends `name`; the macro only read
+    // `title`, so a filled form still failed "title and code are
+    // required". Accept both — the error now fires only when neither
+    // carries a value.
+    const title = String(params.title || params.name || "").trim();
     const code = String(params.code || "");
     const language = String(params.language || "plaintext");
     if (!title || !code) {
@@ -509,7 +578,15 @@ export default function registerCodeActions(registerLensAction) {
    */
   registerLensAction("code", "commit-snapshot", (ctx, _artifact, params = {}) => {
     const message = String(params.message || "").trim();
-    const files = Array.isArray(params.files) ? params.files : [];
+    let files = Array.isArray(params.files) ? params.files : [];
+    // S12 (F13): the workbench sends a single { code, language } —
+    // wrap it as the one-file commit it is instead of answering
+    // "no files in commit" to a form holding code.
+    if (files.length === 0 && typeof params.code === "string" && params.code.trim()) {
+      const language = String(params.language || "plaintext");
+      const ext = language === "typescript" ? "ts" : language === "javascript" ? "js" : language === "python" ? "py" : "txt";
+      files = [{ name: String(params.name || `snippet.${ext}`), language, content: params.code }];
+    }
     if (!message) return { ok: false, error: "message required" };
     if (files.length === 0) return { ok: false, error: "no files in commit" };
     const STATE = globalThis._concordSTATE;

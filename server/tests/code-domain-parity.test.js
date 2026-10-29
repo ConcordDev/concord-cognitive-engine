@@ -506,6 +506,50 @@ describe("code — virtual git", () => {
   });
 });
 
+describe("code — workbench macro contracts (S12)", () => {
+  const SCORE = "function pr3Score(a, b) { if (a > b) { return a; } else if (a < b) { return -b; } for (let i = 0; i < 3; i++) { if (i === 2) return i; } return 0; }";
+
+  it("complexityAnalysis returns numeric cyclomatic + cognitive for raw code", () => {
+    const r = call("complexityAnalysis", ctxC, { code: SCORE, language: "javascript" });
+    assert.equal(r.ok, true);
+    assert.equal(typeof r.result.cyclomatic, "number");
+    assert.ok(r.result.cyclomatic > 1, "branches counted");
+    assert.equal(typeof r.result.cognitive, "number");
+    assert.ok(["low", "medium", "high"].includes(r.result.risk));
+    assert.ok(r.result.functions >= 1);
+  });
+
+  it("snippets-save accepts the workbench's `name` field", () => {
+    const r = call("snippets-save", ctxC, { name: "wb-snippet", code: "const x = 1;", language: "javascript" });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.id);
+    assert.equal(call("snippets-save", ctxC, { code: "x" }).ok, false);
+  });
+
+  it("commit-snapshot wraps a single {code} payload as a one-file commit", () => {
+    const r = call("commit-snapshot", ctxC, { code: SCORE, message: "wb snap", language: "javascript" });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.id);
+    assert.equal(r.result.snapshot.fileCount, 1);
+    assert.equal(call("commit-snapshot", ctxC, { message: "x" }).ok, false);
+  });
+
+  it("dependencyAudit parses imports from raw code and refuses to invent verdicts", () => {
+    const r = call("dependencyAudit", ctxC, { code: "import React from 'react';\nimport { x } from './local';\nconst p = require('@scope/pkg/sub');" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.total, 2);
+    assert.equal(r.result.outdated, null);
+    assert.equal(r.result.security, null);
+    assert.match(r.result.note, /registry/);
+  });
+
+  it("coverageAnalysis fails honestly for source-only calls", () => {
+    const r = call("coverageAnalysis", ctxC, { code: SCORE });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /run data/);
+  });
+});
+
 describe("code — agent tasks (Composer parity)", () => {
   it("agent-task-start builds a deterministic plan without brain", async () => {
     const proj = call("projects-create", ctxC, { name: "X" }).result.project;

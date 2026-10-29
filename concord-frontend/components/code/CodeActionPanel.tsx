@@ -47,7 +47,7 @@ function pickMessage(e: unknown): string {
 }
 
 interface ComplexityResult { cyclomatic?: number; cognitive?: number; lines?: number; functions?: number; risk?: string }
-interface DepsResult { total?: number; outdated?: number; security?: number; riskScore?: number }
+interface DepsResult { total?: number; outdated?: number | null; security?: number | null; riskScore?: number | null; note?: string }
 interface CoverageResult { coveragePct?: number; uncoveredLines?: number; totalLines?: number; band?: string }
 
 export function CodeActionPanel() {
@@ -69,7 +69,16 @@ export function CodeActionPanel() {
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
 
+  // S12 (F13): results accumulate. The old single feedback slot meant
+  // every new analysis erased the previous action's detail line; now
+  // each action keeps its own line in the activity list below, and the
+  // banner is reserved for the latest outcome + all errors.
+  const [activity, setActivity] = useState<Array<{ id: ActionId; text: string }>>([]);
   const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
+  const done = (id: ActionId, text: string) => {
+    ok(text);
+    setActivity(prev => [{ id, text }, ...prev.filter(a => a.id !== id)].slice(0, 9));
+  };
   const err = (text: string) => setFeedback({ kind: 'err', text });
   const ready = snippetCode.trim().length > 0;
 
@@ -82,7 +91,7 @@ export function CodeActionPanel() {
     setBusy('complexity'); setFeedback(null);
     try {
       const r = await callMacro<ComplexityResult>('complexityAnalysis', { code: snippetCode, language });
-      if (r.ok && r.result) { setComplexityResult(r.result); pipe.publish('code.complexity', r.result, { label: `Cyclomatic ${r.result.cyclomatic ?? '?'}` }); ok(`Cyclomatic: ${r.result.cyclomatic ?? '—'}.`); }
+      if (r.ok && r.result) { setComplexityResult(r.result); pipe.publish('code.complexity', r.result, { label: `Cyclomatic ${r.result.cyclomatic ?? '?'}` }); done('complexity', `Cyclomatic: ${r.result.cyclomatic ?? '—'} · cognitive ${r.result.cognitive ?? '—'} · risk ${r.result.risk ?? '—'}.`); }
       else err(r.error ?? 'complexity failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -92,7 +101,7 @@ export function CodeActionPanel() {
     setBusy('deps'); setFeedback(null);
     try {
       const r = await callMacro<DepsResult>('dependencyAudit', { code: snippetCode, language });
-      if (r.ok && r.result) { setDepsResult(r.result); pipe.publish('code.deps', r.result, { label: `Deps ${r.result.total ?? 0}` }); ok(`Deps: ${r.result.total ?? 0}, ${r.result.outdated ?? 0} outdated.`); }
+      if (r.ok && r.result) { setDepsResult(r.result); pipe.publish('code.deps', r.result, { label: `Deps ${r.result.total ?? 0}` }); done('deps', `Deps: ${r.result.total ?? 0} imported${r.result.outdated != null ? `, ${r.result.outdated} outdated` : ''}.`); }
       else err(r.error ?? 'deps failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -102,7 +111,7 @@ export function CodeActionPanel() {
     setBusy('coverage'); setFeedback(null);
     try {
       const r = await callMacro<CoverageResult>('coverageAnalysis', { code: snippetCode, language });
-      if (r.ok && r.result) { setCoverageResult(r.result); pipe.publish('code.coverage', r.result, { label: `Coverage ${r.result.coveragePct ?? 0}%` }); ok(`Coverage: ${r.result.coveragePct ?? 0}%.`); }
+      if (r.ok && r.result) { setCoverageResult(r.result); pipe.publish('code.coverage', r.result, { label: `Coverage ${r.result.coveragePct ?? 0}%` }); done('coverage', `Coverage: ${r.result.coveragePct ?? 0}%.`); }
       else err(r.error ?? 'coverage failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -111,8 +120,11 @@ export function CodeActionPanel() {
     if (!ready) { err('Paste code.'); return; }
     setBusy('snapshot'); setFeedback(null);
     try {
-      const r = await callMacro<{ snapshotId?: string }>('commit-snapshot', { code: snippetCode, message: snapshotMsg || 'manual snapshot', language });
-      if (r.ok && r.result?.snapshotId) { setSnapshotId(r.result.snapshotId); ok(`Snapshot ${r.result.snapshotId.slice(0, 8)}…`); }
+      const r = await callMacro<{ snapshotId?: string; id?: string }>('commit-snapshot', { code: snippetCode, message: snapshotMsg || 'manual snapshot', language });
+      // The macro returns { id, snapshot } — snapshotId is read as a
+      // fallback for other producers, never as the only door (S12).
+      const snapId = r.result?.snapshotId ?? r.result?.id;
+      if (r.ok && snapId) { setSnapshotId(snapId); done('snapshot', `Snapshot ${snapId.slice(0, 8)}…`); }
       else err(r.error ?? 'snapshot failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -122,7 +134,7 @@ export function CodeActionPanel() {
     setBusy('snippet'); setFeedback(null);
     try {
       const r = await callMacro<{ id?: string }>('snippets-save', { name: snippetName.trim(), code: snippetCode, language });
-      if (r.ok && r.result?.id) { setSavedSnippetId(r.result.id); ok(`Snippet saved ${r.result.id.slice(0, 8)}…`); }
+      if (r.ok && r.result?.id) { setSavedSnippetId(r.result.id); done('snippet', `Snippet saved ${r.result.id.slice(0, 8)}…`); }
       else err(r.error ?? 'snippet save failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -206,7 +218,14 @@ export function CodeActionPanel() {
         '', 'Code:', snippetCode.slice(0, 3000),
       ].filter(Boolean).join(' ');
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      if (r.data?.ok === false) { err(r.data?.error || 'Agent failed.'); return; }
+      // S12: the agent's text lands under several envelope shapes;
+      // read them all before concluding it "returned empty".
+      const inner = (r.data?.result ?? {}) as Record<string, unknown>;
+      const nested = (inner.result ?? {}) as Record<string, unknown>;
+      const reply = inner.reply ?? inner.summary ?? inner.output ?? inner.text ?? inner.response ?? inner.message
+        ?? nested.reply ?? nested.summary ?? nested.output ?? nested.text
+        ?? (typeof inner === 'string' ? inner : null);
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('3 refactors ready.'); }
       else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); }
@@ -280,8 +299,9 @@ export function CodeActionPanel() {
         {depsResult && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold flex items-center gap-1.5"><Box className="w-3 h-3" /> Dependencies</div>
-            <div className="text-[11px] text-zinc-300 mt-1">{depsResult.total} total · <span className="text-amber-300">{depsResult.outdated} outdated</span> · <span className="text-rose-300">{depsResult.security} security</span></div>
+            <div className="text-[11px] text-zinc-300 mt-1">{depsResult.total ?? 0} total · <span className="text-amber-300">{depsResult.outdated ?? '—'} outdated</span> · <span className="text-rose-300">{depsResult.security ?? '—'} security</span></div>
             {depsResult.riskScore != null && <div className="text-[10px] text-zinc-400">risk score {depsResult.riskScore}</div>}
+            {depsResult.note && <div className="text-[10px] text-zinc-400 mt-0.5">{depsResult.note}</div>}
           </div>
         )}
         {coverageResult && (
@@ -294,6 +314,17 @@ export function CodeActionPanel() {
           </div>
         )}
       </div>
+
+      {activity.length > 0 && (
+        <div className="rounded-md border border-white/10 bg-white/[0.02] px-3 py-2">
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">Results — kept per action</div>
+          <ul className="space-y-0.5">
+            {activity.map(a => (
+              <li key={a.id} className="text-[11px] text-zinc-300"><span className="text-zinc-500 font-mono mr-1.5">{a.id}</span>{a.text}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {agentReply && (
         <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-3 max-h-96 overflow-y-auto">
