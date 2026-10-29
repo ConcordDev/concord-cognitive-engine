@@ -47,7 +47,7 @@ function diffShapesToOps(prev: Shape[], next: Shape[]): WhiteboardOp[] {
   return ops;
 }
 
-interface BoardMeta { id: string; title: string; createdAt: string; updatedAt: string; elementCount: number }
+interface BoardMeta { id: string; title: string; createdAt: string; updatedAt: string; elementCount: number; origin?: string }
 interface Cluster { theme: string; memberIds: string[]; size: number }
 interface SummaryResult { summary: string; actionItems: Array<{ text: string; owner: string | null }>; source: string }
 interface Comment { id: string; elementId: string; authorId: string; authorName: string; body: string; createdAt: string; resolved: boolean }
@@ -64,6 +64,7 @@ const TEMPLATE_KINDS = [
 export function CollabBoardSection() {
   const { user } = useAuth();
   const [boards, setBoards] = useState<BoardMeta[]>([]);
+  const [canvasNote, setCanvasNote] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeShapes, setActiveShapes] = useState<Shape[]>([]);
   const [activeTitle, setActiveTitle] = useState<string>('');
@@ -136,12 +137,21 @@ export function CollabBoardSection() {
       const r = await lensRun({ domain: 'whiteboard', action: 'board-list', input: {} });
       const list = (r.data?.result?.boards || []) as BoardMeta[];
       setBoards(list);
-      if (!activeId && list.length > 0) openBoard(list[0].id);
+      const firstCollab = list.find((b) => b.origin !== 'canvas');
+      if (!activeId && firstCollab) openBoard(firstCollab.id);
     } catch (e) { console.error('[Board] boards', e); }
     finally { setLoading(false); }
   }
 
   async function openBoard(id: string) {
+    // S1: canvas boards live in the main canvas (sketch element model);
+    // loading one into this Shape editor would mangle it. Tag + explain.
+    const meta = boards.find((b) => b.id === id);
+    if (meta?.origin === 'canvas') {
+      setCanvasNote(`"${meta.title}" is a canvas board — it opens in the main canvas (the Boards menu, top left), not the collab editor.`);
+      return;
+    }
+    setCanvasNote(null);
     try {
       const r = await lensRun({ domain: 'whiteboard', action: 'board-load', input: { id } });
       const b = r.data?.result?.board;
@@ -377,10 +387,12 @@ export function CollabBoardSection() {
                 <div className="truncate text-white">{b.title}</div>
                 <div className="text-[10px] text-gray-400 tabular-nums">{b.elementCount} elements · {b.updatedAt.slice(0, 10)}</div>
               </div>
+              {b.origin === 'canvas' && <span className="shrink-0 rounded bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-sky-300">Canvas</span>}
               <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); deleteBoard(b.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
             </li>
           ))}
         </ul>
+        {canvasNote && <p className="border-t border-white/10 px-3 py-2 text-[11px] leading-snug text-sky-300">{canvasNote}</p>}
       </aside>
 
       {/* Center: canvas + chrome */}
