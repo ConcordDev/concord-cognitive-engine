@@ -130,6 +130,12 @@ export function WhiteboardStudio({
   const [audioClipName, setAudioClipName] = useState('');
   const [audioClipDur, setAudioClipDur] = useState(30);
   const [imageLabel, setImageLabel] = useState('');
+  const [imageUrlInput, setImageUrlInput] = useState('');
+  const [imageData, setImageData] = useState('');
+  const [imageName, setImageName] = useState('');
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [imageTick, setImageTick] = useState(0);
+  const imageCacheRef = useRef(new Map<string, HTMLImageElement>());
   const [noteText, setNoteText] = useState('');
   const [noteColor, setNoteColor] = useState(CARD_COLORS[0]);
   const [sectionChoice, setSectionChoice] = useState(SECTION_PRESETS[0]);
@@ -357,6 +363,73 @@ export function WhiteboardStudio({
     };
   };
 
+  /* ---------- S6: real images for reference pins ---------- */
+  // Cache + async-load aware accessor: the draw effect re-runs when
+  // setImageTick bumps after an image finishes loading.
+  const loadImage = (url: string): HTMLImageElement => {
+    const cache = imageCacheRef.current;
+    let img = cache.get(url);
+    if (!img) {
+      img = new Image();
+      img.src = url;
+      img.onload = () => setImageTick((n) => n + 1);
+      cache.set(url, img);
+    }
+    return img;
+  };
+
+  // Embed a picked/dropped file into the board itself (downscaled
+  // to <=1024px JPEG) so the image persists with the scene — no
+  // external hosting, no dead link later.
+  const fileToEmbeddedImage = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const max = 1024;
+      const scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.max(1, Math.round(img.naturalWidth * scale));
+      const h = Math.max(1, Math.round(img.naturalHeight * scale));
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const cctx = c.getContext('2d');
+      URL.revokeObjectURL(url);
+      if (!cctx) { reject(new Error('Could not process that image.')); return; }
+      cctx.drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That file could not be read as an image.')); };
+    img.src = url;
+  });
+
+  const handleImageFile = async (file: File | null | undefined) => {
+    if (!file) return;
+    setImageError(null);
+    try {
+      const data = await fileToEmbeddedImage(file);
+      setImageData(data);
+      setImageName(file.name);
+      if (!imageLabel.trim()) setImageLabel(file.name.replace(/\.[^.]+$/, ''));
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : 'That file could not be read as an image.');
+    }
+  };
+
+  const handleCanvasDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    try {
+      const data = await fileToEmbeddedImage(file);
+      const pos = getCanvasCoords(e as unknown as React.MouseEvent);
+      pushUndo();
+      setElements((prev) => [...prev, {
+        id: uid(), type: 'image', x: pos.x - 80, y: pos.y - 60,
+        imageLabel: file.name.replace(/\.[^.]+$/, ''), imageUrl: data, stroke: '#f59e0b', fill: 'rgba(245, 158, 11, 0.08)',
+        strokeWidth: 2, width: 200, height: 150,
+      }]);
+    } catch { /* unreadable file — the dialog path reports errors properly */ }
+  };
+
   /* ---------- S5 geometry helpers ---------- */
   const elementBBox = (el: Element) => {
     if (el.type === 'freehand' && el.points && el.points.length > 0) {
@@ -452,7 +525,7 @@ export function WhiteboardStudio({
     if (tool === 'text') { setTextInput(''); setTextPosition({ x, y }); return; }
     if (tool === 'dtu') { setShowDtuPicker(true); setTextPosition({ x, y }); return; }
     if (tool === 'audio') { setAudioClipName(''); setAudioClipDur(30); setShowAudioDialog(true); setTextPosition({ x, y }); return; }
-    if (tool === 'image') { setImageLabel(''); setShowImageDialog(true); setTextPosition({ x, y }); return; }
+    if (tool === 'image') { setImageLabel(''); setImageUrlInput(''); setImageData(''); setImageName(''); setImageError(null); setShowImageDialog(true); setTextPosition({ x, y }); return; }
     if (tool === 'notecard') { setNoteText(''); setShowNoteDialog(true); setTextPosition({ x, y }); return; }
     if (tool === 'section') { setShowSectionDialog(true); setTextPosition({ x, y }); return; }
 
@@ -650,14 +723,15 @@ export function WhiteboardStudio({
   };
 
   const addImagePin = () => {
-    if (!textPosition || !imageLabel.trim()) return;
+    const url = imageData || imageUrlInput.trim();
+    if (!textPosition || (!url && !imageLabel.trim())) return;
     pushUndo();
     setElements(prev => [...prev, {
       id: uid(), type: 'image', x: textPosition.x, y: textPosition.y,
-      imageLabel, imageUrl: '', stroke: '#f59e0b', fill: 'rgba(245, 158, 11, 0.08)',
-      strokeWidth: 2, width: 160, height: 160,
+      imageLabel: imageLabel.trim() || imageName.replace(/\.[^.]+$/, '') || 'Image', imageUrl: url, stroke: '#f59e0b', fill: 'rgba(245, 158, 11, 0.08)',
+      strokeWidth: 2, width: 200, height: 150,
     }]);
-    setImageLabel(''); setShowImageDialog(false); setTextPosition(null); setTool('select');
+    setImageLabel(''); setImageUrlInput(''); setImageData(''); setImageName(''); setImageError(null); setShowImageDialog(false); setTextPosition(null); setTool('select');
   };
 
   const addNoteCard = () => {
@@ -965,13 +1039,29 @@ export function WhiteboardStudio({
           ctx.fillStyle = el.fill || 'rgba(245,158,11,0.08)';
           ctx.beginPath(); ctx.roundRect(el.x, el.y, w, h, 10); ctx.fill();
           ctx.strokeStyle = el.stroke; ctx.lineWidth = 1.5; ctx.stroke();
-          /* placeholder icon area */
-          ctx.fillStyle = 'rgba(245,158,11,0.15)';
-          ctx.fillRect(el.x + 12, el.y + 12, w - 24, h - 44);
-          ctx.fillStyle = '#f59e0b'; ctx.font = '24px sans-serif';
-          ctx.fillText('\u{1F5BC}', el.x + w / 2 - 12, el.y + h / 2 - 10);
-          ctx.fillStyle = '#ffffff'; ctx.font = '11px Inter, sans-serif';
-          ctx.fillText(el.imageLabel || 'Image', el.x + 12, el.y + h - 12);
+          const img = el.imageUrl ? loadImage(el.imageUrl) : null;
+          if (img && img.complete && img.naturalWidth > 0) {
+            // S6: draw the real image, cover-fit inside the frame,
+            // with a label strip along the bottom.
+            ctx.save();
+            ctx.beginPath(); ctx.roundRect(el.x, el.y, w, h, 10); ctx.clip();
+            const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+            const dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
+            ctx.drawImage(img, el.x + (w - dw) / 2, el.y + (h - dh) / 2, dw, dh);
+            ctx.fillStyle = 'rgba(0,0,0,0.55)';
+            ctx.fillRect(el.x, el.y + h - 22, w, 22);
+            ctx.fillStyle = '#ffffff'; ctx.font = '11px Inter, sans-serif';
+            ctx.fillText(el.imageLabel || 'Image', el.x + 8, el.y + h - 7);
+            ctx.restore();
+          } else {
+            /* placeholder icon area (no image yet, or still loading) */
+            ctx.fillStyle = 'rgba(245,158,11,0.15)';
+            ctx.fillRect(el.x + 12, el.y + 12, w - 24, h - 44);
+            ctx.fillStyle = '#f59e0b'; ctx.font = '24px sans-serif';
+            ctx.fillText('\u{1F5BC}', el.x + w / 2 - 12, el.y + h / 2 - 10);
+            ctx.fillStyle = '#ffffff'; ctx.font = '11px Inter, sans-serif';
+            ctx.fillText(el.imageLabel || 'Image', el.x + 12, el.y + h - 12);
+          }
           break;
         }
 
@@ -1045,7 +1135,7 @@ export function WhiteboardStudio({
       ctx.strokeRect(mx, my, mw, mh);
     }
     ctx.restore();
-  }, [elements, currentElement, selectedElement, selectedIds, marquee, dimensions, zoom, offset, showGrid, tool, boardMode]);
+  }, [elements, currentElement, selectedElement, selectedIds, marquee, dimensions, zoom, offset, showGrid, tool, boardMode, imageTick]);
 
   /* ---------- duplicate selected ---------- */
   const duplicateSelected = useCallback(() => {
@@ -1106,7 +1196,7 @@ export function WhiteboardStudio({
     { id: 'text', icon: Type, label: 'Text', key: 'T' },
     { id: 'dtu', icon: Link2, label: 'Link DTU', key: 'D' },
     { id: 'audio', icon: PenTool, label: 'Audio Pin', key: '' },
-    { id: 'image', icon: ImageIcon, label: 'Image Pin', key: '' },
+    { id: 'image', icon: ImageIcon, label: 'Reference Pin', key: '' },
     { id: 'notecard', icon: StickyNote, label: 'Note Card', key: '' },
     { id: 'section', icon: Bookmark, label: 'Section Marker', key: '' },
   ];
@@ -1206,7 +1296,8 @@ export function WhiteboardStudio({
                 <canvas ref={canvasRef} className={`h-full w-full ${tool === 'select' ? 'cursor-default' : 'cursor-crosshair'}`}
                   style={{ width: dimensions.width, height: dimensions.height }}
                   onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
-                  onMouseLeave={handleMouseUp} onWheel={handleWheel} onDoubleClick={handleDoubleClick} />
+                  onMouseLeave={handleMouseUp} onWheel={handleWheel} onDoubleClick={handleDoubleClick}
+                  onDragOver={e => e.preventDefault()} onDrop={handleCanvasDrop} />
 
                 {/* Floating tool rail */}
                 <div className="absolute left-6 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-1 rounded-2xl border border-white/[0.08] bg-[#121212]/90 p-1.5 backdrop-blur">
@@ -1385,14 +1476,27 @@ export function WhiteboardStudio({
                       <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
                         className="bg-lattice-surface border border-lattice-border rounded-lg p-5 w-80">
                         <div className="flex items-center justify-between mb-4">
-                          <h3 className="font-semibold flex items-center gap-2"><ImageIcon className="w-4 h-4 text-amber-400" />Pin Image Reference</h3>
+                          <h3 className="font-semibold flex items-center gap-2"><ImageIcon className="w-4 h-4 text-amber-400" />Pin Reference</h3>
                           <button type="button" onClick={() => { setShowImageDialog(false); setTextPosition(null); }} aria-label="Close"><X className="w-5 h-5" /></button>
                         </div>
                         <input type="text" placeholder="Label (e.g. Album Cover Ref)" value={imageLabel}
                           onChange={e => setImageLabel(e.target.value)} autoFocus
-                          className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded text-sm mb-4" />
+                          className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded text-sm mb-3" />
+                        <label className="flex items-center justify-center gap-2 w-full px-3 py-2 mb-3 rounded border border-dashed border-amber-500/40 text-amber-300 text-sm cursor-pointer hover:bg-amber-500/10">
+                          <ImageIcon className="w-4 h-4" />{imageName ? `Image: ${imageName}` : 'Upload an image'}
+                          <input type="file" accept="image/*" className="hidden" onChange={e => { void handleImageFile(e.target.files?.[0]); e.target.value = ''; }} />
+                        </label>
+                        <input type="text" placeholder="…or paste an image link (https://…)" value={imageUrlInput}
+                          onChange={e => setImageUrlInput(e.target.value)}
+                          className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded text-sm mb-3" />
+                        {(imageData || imageUrlInput.trim()) && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={imageData || imageUrlInput.trim()} alt="Reference preview" className="w-full h-28 object-cover rounded border border-lattice-border mb-3" />
+                        )}
+                        {imageError && <p className="text-[11px] text-rose-300 mb-3" role="status">{imageError}</p>}
+                        <p className="text-[11px] text-gray-500 mb-4">Uploaded images are embedded in the board (max 1024px) so they travel with it. You can also drop an image file straight onto the canvas.</p>
                         <div className="flex gap-2">
-                          <button type="button" onClick={addImagePin} disabled={!imageLabel.trim()} className="flex-1 py-2 bg-amber-500 text-black rounded-lg text-sm font-medium disabled:opacity-40">Place Pin</button>
+                          <button type="button" onClick={addImagePin} disabled={!imageLabel.trim() && !imageData && !imageUrlInput.trim()} className="flex-1 py-2 bg-amber-500 text-black rounded-lg text-sm font-medium disabled:opacity-40">Place Pin</button>
                           <button type="button" onClick={() => { setShowImageDialog(false); setTextPosition(null); }} className="flex-1 py-2 bg-lattice-bg rounded-lg text-sm">Cancel</button>
                         </div>
                       </motion.div>
