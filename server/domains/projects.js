@@ -275,6 +275,53 @@ export default function registerProjectsActions(registerLensAction) {
   });
 
   // ── Tasks / issues ──────────────────────────────────────────────────
+  // ── Status-transition gate (S8 — F10 WIP limits + F11 blocked-by) ──
+  // WIP: a column with a limit refuses entries past it, naming the
+  // limit. Blocked-by: an issue with an incomplete blocker cannot move
+  // to in_progress/done — unless the caller passes overrideBlocked, in
+  // which case the CALLER records the override in the activity feed
+  // (pjLogStatus below does it for the paths that log status changes).
+  function pjBlockers(s, userId, task) {
+    const all = s.tasks.get(userId) || [];
+    const out = [];
+    for (const r of (s.relations.get(userId) || [])) {
+      let blockerId = null;
+      if (r.toTaskId === task.id && r.kind === "blocks") blockerId = r.fromTaskId;
+      else if (r.fromTaskId === task.id && r.kind === "blocked_by") blockerId = r.toTaskId;
+      if (!blockerId) continue;
+      const b = all.find((x) => x.id === blockerId);
+      if (b && b.status !== "done") out.push(b);
+    }
+    return out;
+  }
+  function pjWipGate(s, userId, projectId, nextStatus, excludeId) {
+    const wip = (s.wip.get(userId) || []).find((w) => w.projectId === projectId && w.status === nextStatus);
+    if (!wip || !(wip.limit > 0)) return null;
+    const count = (s.tasks.get(userId) || [])
+      .filter((x) => x.projectId === projectId && x.status === nextStatus && x.id !== excludeId).length;
+    if (count >= wip.limit) {
+      return `${nextStatus.replace(/_/g, " ")} is at its WIP limit of ${wip.limit} — finish or move something out of that column before adding another`;
+    }
+    return null;
+  }
+  function pjStatusGate(s, userId, task, nextStatus, opts = {}) {
+    if (!task || nextStatus === task.status) return null;
+    if (nextStatus === "in_progress" || nextStatus === "done") {
+      const blockers = pjBlockers(s, userId, task);
+      if (blockers.length && !opts.overrideBlocked) {
+        return `${task.ref} is blocked by ${blockers.map((b) => b.ref).join(", ")} — complete the blocker first, or override to move it anyway (an override is recorded in Activity)`;
+      }
+    }
+    return pjWipGate(s, userId, task.projectId, nextStatus, task.id);
+  }
+  function pjLogOverride(s, userId, task, nextStatus) {
+    const blockers = pjBlockers(s, userId, task);
+    if (blockers.length) {
+      pjLog(s, userId, task.id, "override",
+        `moved to ${nextStatus.replace(/_/g, " ")} while blocked by ${blockers.map((b) => b.ref).join(", ")} — override`);
+    }
+  }
+
   registerLensAction("projects", "task-create", (ctx, _a, params = {}) => {
   try {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -285,6 +332,8 @@ export default function registerProjectsActions(registerLensAction) {
     if (!title) return { ok: false, error: "task title required" };
     if (pjDayStrict(params.startDate) === null) return { ok: false, error: "invalid start date — use a real date with a four-digit year" };
     if (pjDayStrict(params.dueDate) === null) return { ok: false, error: "invalid due date — use a real date with a four-digit year" };
+    const wipErr = pjWipGate(s, userId, project.id, pjPick(params.status, PJ_STATUSES, "backlog"), null);
+    if (wipErr) return { ok: false, error: wipErr };
     let assigneeId = params.assigneeId ? String(params.assigneeId) : null;
     if (assigneeId) {
       const member = (s.members.get(userId) || []).find((m) => m.id === assigneeId);
@@ -417,7 +466,11 @@ export default function registerProjectsActions(registerLensAction) {
         && (s.tasks.get(userId) || []).some((t) => t.id === p && t.projectId === task.projectId)) ? p : null;
     }
     if (params.status != null) {
-      task.status = pjPick(params.status, PJ_STATUSES, task.status);
+      const next = pjPick(params.status, PJ_STATUSES, task.status);
+      const gate = pjStatusGate(s, userId, task, next, { overrideBlocked: params.overrideBlocked === true });
+      if (gate) return { ok: false, error: gate };
+      if (params.overrideBlocked === true && next !== task.status) pjLogOverride(s, userId, task, next);
+      task.status = next;
       task.completedAt = task.status === "done" ? (task.completedAt || pjNow()) : null;
     }
     if (prevStatus !== task.status) {
@@ -438,7 +491,11 @@ export default function registerProjectsActions(registerLensAction) {
     const task = (s.tasks.get(userId) || []).find((t) => t.id === params.id);
     if (!task) return { ok: false, error: "task not found" };
     const prev = task.status;
-    task.status = pjPick(params.status, PJ_STATUSES, task.status);
+    const next = pjPick(params.status, PJ_STATUSES, task.status);
+    const gate = pjStatusGate(s, userId, task, next, { overrideBlocked: params.overrideBlocked === true });
+    if (gate) return { ok: false, error: gate };
+    if (params.overrideBlocked === true && next !== prev) pjLogOverride(s, userId, task, next);
+    task.status = next;
     task.completedAt = task.status === "done" ? (task.completedAt || pjNow()) : null;
     task.updatedAt = pjNow();
     if (prev !== task.status) {
@@ -1264,6 +1321,31 @@ export default function registerProjectsActions(registerLensAction) {
     const ids = Array.isArray(params.ids) ? params.ids.map(String) : [];
     if (!ids.length) return { ok: false, error: "ids required" };
     const patch = params.patch || {};
+    // S8: a bulk status move is gated as a unit — if any target is
+    // blocked or the column is at its WIP limit, the whole move is
+    // refused with the reason named, and nothing is half-applied.
+    if (patch.status != null) {
+      const next = pjPick(patch.status, PJ_STATUSES, "");
+      const targets = (s.tasks.get(userId) || []).filter((x) => ids.includes(x.id));
+      for (const task of targets) {
+        if (next === "in_progress" || next === "done") {
+          const blockers = pjBlockers(s, userId, task);
+          if (blockers.length) {
+            return { ok: false, error: `${task.ref} is blocked by ${blockers.map((b) => b.ref).join(", ")} — complete the blocker first, or override to move it anyway (an override is recorded in Activity)` };
+          }
+        }
+      }
+      // WIP is a group check: the column must fit ALL incoming tasks,
+      // not just each one against the pre-move count.
+      const wip = (s.wip.get(userId) || []).find((w) => w.status === next && targets.some((x) => x.projectId === w.projectId));
+      if (wip && wip.limit > 0) {
+        const incoming = targets.filter((x) => x.projectId === wip.projectId && x.status !== next).length;
+        const present = (s.tasks.get(userId) || []).filter((x) => x.projectId === wip.projectId && x.status === next).length;
+        if (present + incoming > wip.limit) {
+          return { ok: false, error: `${next.replace(/_/g, " ")} is at its WIP limit of ${wip.limit} — this move would put ${present + incoming} there` };
+        }
+      }
+    }
     let updated = 0;
     for (const task of s.tasks.get(userId) || []) {
       if (!ids.includes(task.id)) continue;
@@ -1512,14 +1594,46 @@ export default function registerProjectsActions(registerLensAction) {
     return { ok: true, result: { goal } };
   });
 
+  // ── Goal measures (S9 — F12) ─────────────────────────────────────
+  // A goal whose metric names a system measure (tasks done, points,
+  // issues closed — matched on the normalized metric text, so legacy
+  // free-text goals like "Tasks done" count) computes its current
+  // value LIVE from project state and reports the exact issues it
+  // counted. Anything else is a manual metric: the stored value is
+  // the value, and the surface labels it manual.
+  function pjGoalMeasure(s, userId, goal) {
+    const norm = String(goal.metric || "").toLowerCase().replace(/[^a-z]+/g, "_").replace(/^_+|_+$/g, "");
+    const done = (s.tasks.get(userId) || [])
+      .filter((x) => x.projectId === goal.projectId && x.status === "done");
+    if (["tasks_done", "tasks_completed", "completed_tasks", "done_tasks", "issues_closed", "closed_issues", "issues_done"].includes(norm)) {
+      return { key: norm.startsWith("issues") || norm.startsWith("closed") ? "issues_closed" : "tasks_done",
+        current: done.length, countedRefs: done.map((x) => x.ref) };
+    }
+    if (["points", "points_done", "story_points", "points_completed", "completed_points"].includes(norm)) {
+      const contributing = done.filter((x) => (x.points || 0) > 0);
+      return { key: "points_done",
+        current: contributing.reduce((sum, x) => sum + (x.points || 0), 0),
+        countedRefs: contributing.map((x) => x.ref) };
+    }
+    return null;
+  }
+
   registerLensAction("projects", "goal-list", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const goals = (s.goals.get(pjAid(ctx)) || [])
+    const userId = pjAid(ctx);
+    const goals = (s.goals.get(userId) || [])
       .filter((g) => g.projectId === String(params.projectId))
-      .map((g) => ({
-        ...g,
-        progressPct: g.target > 0 ? Math.round((g.current / g.target) * 100) : 0,
-      }));
+      .map((g) => {
+        const m = pjGoalMeasure(s, userId, g);
+        const current = m ? m.current : g.current;
+        return {
+          ...g,
+          current,
+          systemMetric: m ? m.key : null,
+          countedRefs: m ? m.countedRefs : [],
+          progressPct: g.target > 0 ? Math.round((current / g.target) * 100) : 0,
+        };
+      });
     return { ok: true, result: { goals, count: goals.length } };
   });
 
@@ -1527,6 +1641,9 @@ export default function registerProjectsActions(registerLensAction) {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const goal = (s.goals.get(pjAid(ctx)) || []).find((g) => g.id === params.id);
     if (!goal) return { ok: false, error: "goal not found" };
+    if (params.current != null && pjGoalMeasure(s, pjAid(ctx), goal)) {
+      return { ok: false, error: `this goal measures "${goal.metric}" from the project itself — its value cannot be typed; complete issues to move it` };
+    }
     if (params.current != null) goal.current = pjNum(params.current, goal.current);
     if (params.target != null) goal.target = pjNum(params.target, goal.target);
     savePjState();
@@ -1918,9 +2035,15 @@ export default function registerProjectsActions(registerLensAction) {
     const task = (s.tasks.get(userId) || []).find((t) => t.id === params.id);
     if (!task) return { ok: false, error: "task not found" };
     if (!task.isTriage) return { ok: false, error: "task is not in triage" };
+    if (params.status != null) {
+      const next = pjPick(params.status, PJ_STATUSES, task.status);
+      const gate = pjStatusGate(s, userId, task, next, { overrideBlocked: params.overrideBlocked === true });
+      if (gate) return { ok: false, error: gate };
+      if (params.overrideBlocked === true && next !== task.status) pjLogOverride(s, userId, task, next);
+      task.status = next;
+    }
     task.isTriage = false;
     if (params.priority != null) task.priority = pjPick(params.priority, PJ_PRIORITIES, task.priority);
-    if (params.status != null) task.status = pjPick(params.status, PJ_STATUSES, task.status);
     if (params.assigneeId) {
       const a = String(params.assigneeId);
       if ((s.members.get(userId) || []).some((m) => m.id === a)) task.assigneeId = a;
