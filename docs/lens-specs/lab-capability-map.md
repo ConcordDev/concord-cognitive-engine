@@ -1,27 +1,4 @@
-# Lab Lens — Capability Map (Frontend Rebuild Program, Wave 4)
-
-> **Re-verification (HANDOFF-3 batch L15a, 2026-10-28, against main 02910bbb):**
-> The audit below is kept as history (its protocol-revise wiring is
-> verified in place). Current truth:
->
-> - **34/34 macros now reachable.** The fresh scan's two holdouts
->   were both genuine small gaps, and **both are WIRED in this
->   batch**: `org-leave` — a member could create and join lab
->   organizations but never leave one; `LabOrgPanel`'s selected-lab
->   header now carries a Leave action dispatching the real macro
->   (server-side membership rules still decide; errors surface in
->   the panel). `validate-protocol` — the structural protocol
->   checker (missing steps, empty step text, critical steps without
->   durations) had no caller; the ELN Protocols tab now has a
->   per-protocol Validate action rendering its issues inline.
->   Pinned by `tests/lab-org-leave.test.tsx` and
->   `tests/eln-validate-protocol.test.tsx`.
-> - **Shipped in this batch:** the concept's serif headline — "The
->   experiment, {username}" — as the page header
->   (`data-testid="lab-greeting"`, `tests/lab-greeting.test.tsx`).
-> - Server suites run locally this pass: lab-domain-parity passes
->   (in the combined 64-pass L15a run).
-
+# lab — Capability Map (Wave 2 rebuild, Space/lab-science archetype)
 
 Reference apps: **Benchling** (ELN + LIMS — notebook, inventory, protocol
 library, plate designer, instrument-run import, construct registry, QC
