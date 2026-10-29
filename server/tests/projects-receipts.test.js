@@ -58,11 +58,36 @@ describe("projects sprint receipt (D1)", () => {
       "the unfinished issue rolled back to the backlog");
     const stream = call("activity-list", ctxA, { projectId: p.id });
     const receipts = stream.result.activity.filter((a) => a.action === "sprint_receipt");
-    assert.equal(receipts.length, 2, "one kept receipt per settled issue");
+    assert.equal(receipts.filter((a) => a.taskId).length, 2, "one kept receipt per settled issue");
+    assert.equal(receipts.filter((a) => !a.taskId).length, 1, "plus the one project-level receipt record (D1 remainder)");
     assert.match(receipts[0].detail, /Sprint "Sprint 1" settled: 2\/3 issues, 5\/9 points/);
     // The same numbers report-velocity reconciles from:
     const vel = call("report-velocity", ctxA, { projectId: p.id });
     assert.equal(vel.ok, true);
+  });
+
+  it("the Activity stream carries ONE project-level receipt record with the settlement in meta (D1 remainder)", () => {
+    const { p, sp } = sprintWith([["Done A", 3, "done"], ["Done B", 2, "done"], ["Open C", 5, null]]);
+    call("sprint-complete", ctxA, { id: sp.id });
+    const stream = call("activity-list", ctxA, { projectId: p.id }).result.activity;
+    const summaries = stream.filter((a) => a.action === "sprint_receipt" && !a.taskId);
+    assert.equal(summaries.length, 1, "exactly one project-level receipt record");
+    const m = summaries[0].meta;
+    assert.ok(m, "the record carries structured settlement meta");
+    assert.equal(m.sprintName, "Sprint 1");
+    assert.equal(m.issuesDone, 2); assert.equal(m.issuesTotal, 3);
+    assert.equal(m.pointsDone, 5); assert.equal(m.pointsTotal, 10);
+    assert.equal(m.carriedOver, 1); assert.equal(m.settledInFull, false);
+    assert.equal(summaries[0].projectId, p.id, "the record resolves to its project in the stream");
+    // A zero-done sprint still leaves its receipt record.
+    const p2 = call("project-create", ctxA, { name: "Empty", key: "EMP" }).result.project;
+    const sp2 = call("sprint-create", ctxA, { projectId: p2.id, name: "Empty Sprint" }).result.sprint;
+    call("task-create", ctxA, { projectId: p2.id, title: "Undone", sprintId: sp2.id });
+    call("sprint-complete", ctxA, { id: sp2.id });
+    const stream2 = call("activity-list", ctxA, { projectId: p2.id }).result.activity;
+    const summaries2 = stream2.filter((a) => a.action === "sprint_receipt" && !a.taskId);
+    assert.equal(summaries2.length, 1, "zero-done completion still writes the receipt record");
+    assert.equal(summaries2[0].meta.issuesDone, 0);
   });
 
   it("a clean sprint is Settled in full; re-completing writes no second receipt", () => {
