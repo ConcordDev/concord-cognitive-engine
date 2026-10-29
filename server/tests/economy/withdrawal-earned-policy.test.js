@@ -23,8 +23,8 @@ import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 
-import { requestWithdrawal, WITHDRAWABLE_EARNED_TYPES } from "../../economy/withdrawals.js";
-import { executePurchase } from "../../economy/transfer.js";
+import { requestWithdrawal, earnedWithdrawableBalance, WITHDRAWABLE_EARNED_TYPES } from "../../economy/withdrawals.js";
+import { executePurchase, executeTransfer } from "../../economy/transfer.js";
 import { PLATFORM_ACCOUNT_ID } from "../../economy/fees.js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -66,15 +66,22 @@ function createTestDb() {
   return db;
 }
 
-/** Insert an EARNED credit row, backdated past the 48h hold by default. */
+/**
+ * Insert an EARNED credit row, backdated past the 48h hold by default.
+ * Royalty rows are stamped the way the real royalty-cascade writer stamps
+ * them (metadata role "royalty") — since C1, earnedWithdrawableBalance only
+ * counts system-stamped royalty rows, so an unstamped seed would be a
+ * fiction no production writer produces.
+ */
 function seedEarned(db, userId, net, { hoursAgo = 72, type = "ROYALTY_PAYOUT" } = {}) {
   const ts = new Date(Date.now() - hoursAgo * 3600 * 1000)
     .toISOString().replace("T", " ").replace("Z", "");
   const from = type === "MARKETPLACE_PURCHASE" ? null : PLATFORM_ACCOUNT_ID;
+  const metadata = type === "ROYALTY_PAYOUT" ? JSON.stringify({ role: "royalty" }) : "{}";
   db.prepare(`
-    INSERT INTO economy_ledger (id, type, from_user_id, to_user_id, amount, fee, net, status, created_at)
-    VALUES (?, ?, ?, ?, ?, 0, ?, 'complete', ?)
-  `).run("txn_seed_" + Math.random().toString(36).slice(2, 14), type, from, userId, net, net, ts);
+    INSERT INTO economy_ledger (id, type, from_user_id, to_user_id, amount, fee, net, status, metadata_json, created_at)
+    VALUES (?, ?, ?, ?, ?, 0, ?, 'complete', ?, ?)
+  `).run("txn_seed_" + Math.random().toString(36).slice(2, 14), type, from, userId, net, net, metadata, ts);
 }
 
 // ── Policy ────────────────────────────────────────────────────────────────────
@@ -136,6 +143,73 @@ describe("CC withdrawal policy — earned vs purchased", () => {
     const req = requestWithdrawal(db, { userId: "launderer", amount: 50 });
     assert.equal(req.ok, false);
     assert.equal(req.error, "insufficient_earned_balance");
+  });
+});
+
+// ── C1: ledger-type seal (defense in depth on the withdrawal leg) ────────────
+// The transfer route no longer accepts a caller-chosen ledger type (user
+// transfers are always TRANSFER). These tests pin the second leg: even a
+// ROYALTY_PAYOUT-labelled row that a peer transfer produced must never
+// count as earned — only system-stamped royalty distributions do.
+
+describe("C1 — mislabeled transfer rows never become withdrawable", () => {
+  let db;
+  beforeEach(() => { db = createTestDb(); });
+
+  function backdateLedgerRow(id) {
+    const ts = new Date(Date.now() - 72 * 3600 * 1000).toISOString().replace("T", " ").replace("Z", "");
+    db.prepare("UPDATE economy_ledger SET created_at = ? WHERE id = ?").run(ts, id);
+  }
+
+  it("a peer transfer labelled ROYALTY_PAYOUT earns nothing (the C1 attack)", () => {
+    executePurchase(db, { userId: "attacker", amount: 500 });
+    // The exact pre-seal attack construction at the economy layer: a peer
+    // transfer whose credit row claims the 0%-fee royalty type.
+    const res = executeTransfer(db, {
+      from: "attacker",
+      to: "attacker-alt",
+      amount: 200,
+      type: "ROYALTY_PAYOUT",
+    });
+    assert.ok(res.ok, `transfer should execute, got ${res.error}`);
+    const credit = db.prepare(
+      "SELECT * FROM economy_ledger WHERE to_user_id = 'attacker-alt' AND type = 'ROYALTY_PAYOUT'",
+    ).get();
+    assert.ok(credit, "the mislabeled credit row exists");
+    assert.equal(credit.fee, 0); // the fee-evasion half of C1, as constructed
+    backdateLedgerRow(credit.id); // let the 48h hold pass
+
+    assert.equal(earnedWithdrawableBalance(db, "attacker-alt").eligible, 0);
+    const req = requestWithdrawal(db, { userId: "attacker-alt", amount: 50 });
+    assert.equal(req.ok, false);
+    assert.equal(req.error, "insufficient_earned_balance");
+  });
+
+  it("creative-marketplace royalty rows (from NULL, role creative_royalty_cascade) DO count", () => {
+    const ts = new Date(Date.now() - 72 * 3600 * 1000).toISOString().replace("T", " ").replace("Z", "");
+    db.prepare(`
+      INSERT INTO economy_ledger (id, type, from_user_id, to_user_id, amount, fee, net, status, metadata_json, ref_id, created_at)
+      VALUES ('txn_creative_royalty', 'ROYALTY_PAYOUT', NULL, 'creator', 120, 0, 120, 'complete', ?, 'creative_royalty:buy1:art1', ?)
+    `).run(JSON.stringify({ role: "creative_royalty_cascade", generation: 0 }), ts);
+    assert.equal(earnedWithdrawableBalance(db, "creator").eligible, 120);
+  });
+
+  it("royalty-cascade rows (from the seller, role royalty) DO count", () => {
+    const ts = new Date(Date.now() - 72 * 3600 * 1000).toISOString().replace("T", " ").replace("Z", "");
+    db.prepare(`
+      INSERT INTO economy_ledger (id, type, from_user_id, to_user_id, amount, fee, net, status, metadata_json, created_at)
+      VALUES ('txn_cascade_royalty', 'ROYALTY_PAYOUT', 'seller-1', 'ancestor', 80, 0, 80, 'complete', ?, ?)
+    `).run(JSON.stringify({ role: "royalty", generation: 1 }), ts);
+    assert.equal(earnedWithdrawableBalance(db, "ancestor").eligible, 80);
+  });
+
+  it("an unstamped ROYALTY_PAYOUT row fails closed (no system royalty stamp, no earnings)", () => {
+    const ts = new Date(Date.now() - 72 * 3600 * 1000).toISOString().replace("T", " ").replace("Z", "");
+    db.prepare(`
+      INSERT INTO economy_ledger (id, type, from_user_id, to_user_id, amount, fee, net, status, metadata_json, created_at)
+      VALUES ('txn_unstamped', 'ROYALTY_PAYOUT', ?, 'mystery', 90, 0, 90, 'complete', '{}', ?)
+    `).run(PLATFORM_ACCOUNT_ID, ts);
+    assert.equal(earnedWithdrawableBalance(db, "mystery").eligible, 0);
   });
 });
 

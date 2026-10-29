@@ -63,6 +63,7 @@ export const REFLECTION_STATS = {
   exports: 0,
   routes: 0,
   total: 0,
+  cap: 0,
   scannedAt: null,
   durationMs: 0,
 };
@@ -455,6 +456,7 @@ export async function reflectMacros(options = {}) {
   REFLECTION_STATS.exports = REFLECTION_SOURCES.exports.length;
   REFLECTION_STATS.routes = routeCount;
   REFLECTION_STATS.total = REFLECTED_TOOLS.length;
+  REFLECTION_STATS.cap = maxTools;
   REFLECTION_STATS.scannedAt = new Date().toISOString();
   REFLECTION_STATS.durationMs = Date.now() - t0;
 
@@ -623,7 +625,21 @@ export async function callReflectedTool(toolName, args) {
  * Get stats about the reflection pass.
  */
 export function getReflectionStats() {
-  return { ...REFLECTION_STATS, registrySize: MACRO_REGISTRY.size };
+  const stats = { ...REFLECTION_STATS, registrySize: MACRO_REGISTRY.size };
+  // Denominator labelling (the reflect family's rule: no count without its
+  // denominator stated). macros / exports / routes are PRE-cap discovery
+  // counts — full source-list lengths. `total` is the POST-cap, post-dedup
+  // generation count (REFLECTED_TOOLS.length). The additive fields below
+  // name both denominators; `total` is retained as a deprecated alias of
+  // generatedTotal so existing consumers keep working. registrySize is
+  // the number of distinct macro domains in MACRO_REGISTRY.
+  const discoveredTotal = stats.macros + stats.exports + stats.routes;
+  return {
+    ...stats,
+    discoveredTotal,
+    capped: discoveredTotal > stats.total,
+    generatedTotal: stats.total,
+  };
 }
 
 // ─── Status helper ──────────────────────────────────────────────────────
