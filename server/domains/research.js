@@ -677,6 +677,13 @@ export default function registerResearchActions(registerLensAction) {
     const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const title = rfClean(params.title, 400);
     if (!title) return { ok: false, error: "title required" };
+    // S3 (F8): manual adds pass the same duplicate gate as imports —
+    // answering with the existing record beats filing a twin by hand.
+    const dup = findDuplicateRef(rfListB(s.references, rfAid(ctx)), {
+      doi: params.doi, title,
+      year: Number.isFinite(Number(params.year)) ? Math.round(Number(params.year)) : null,
+    });
+    if (dup) return { ok: true, result: { reference: dup, duplicate: true } };
     const ref = {
       id: rfId("ref"), title,
       authors: rfClean(params.authors, 400) || null,
@@ -708,7 +715,9 @@ export default function registerResearchActions(registerLensAction) {
       refs = refs.filter((r) =>
         r.title.toLowerCase().includes(q) ||
         (r.authors || "").toLowerCase().includes(q) ||
-        (r.journal || "").toLowerCase().includes(q));
+        (r.journal || "").toLowerCase().includes(q) ||
+        (r.doi || "").toLowerCase().includes(q) ||
+        (r.tags || []).some((t) => t.includes(q)));
     }
     refs.sort((a, b) => (b.year || 0) - (a.year || 0) || b.createdAt.localeCompare(a.createdAt));
     return { ok: true, result: { references: refs, count: refs.length } };
@@ -1359,13 +1368,66 @@ export default function registerResearchActions(registerLensAction) {
     }
   });
 
+  // ── Duplicate detection (S3, F8) ────────────────────────────────────
+  // One gate for every filing path (academic-import,
+  // academic-resolve-import, manual reference-add): a paper already in
+  // the user's library is answered with the EXISTING record, never a
+  // twin. Ladder:
+  //  (1) normalised DOI equality — lowercase, doi.org prefix and
+  //      whitespace stripped, so case/prefix variants of the same DOI
+  //      still collide;
+  //  (2) normalised title + year, when both years are known;
+  //  (3) normalised title where the STORED record carries no DOI but
+  //      the incoming work does — a hand-filed record cannot disprove
+  //      identity against a DOI'd import of the same title, and an
+  //      upstream year quirk (F8: OpenAlex showed 2025 for a 2017
+  //      paper) must not smuggle a duplicate past the year check in
+  //      exactly that hand-filed-then-imported case.
+  // A stored record carrying a DIFFERENT DOI disproves identity and is
+  // never matched on title alone.
+  function normDoiKey(v) {
+    return String(v == null ? "" : v).trim().toLowerCase()
+      .replace(/^https?:\/\/(?:dx\.)?doi\.org\//, "")
+      .replace(/^doi:\s*/, "");
+  }
+  function normTitleKey(v) {
+    return String(v == null ? "" : v).trim().toLowerCase().replace(/\s+/g, " ");
+  }
+  function findDuplicateRef(refs, cand) {
+    const list = Array.isArray(refs) ? refs : [];
+    const doi = normDoiKey(cand?.doi);
+    if (doi) {
+      const byDoi = list.find((r) => normDoiKey(r.doi) === doi);
+      if (byDoi) return byDoi;
+    }
+    const title = normTitleKey(cand?.title);
+    if (!title) return null;
+    const yearRaw = cand?.year == null ? NaN : Number(cand.year);
+    const year = Number.isFinite(yearRaw) ? Math.round(yearRaw) : null;
+    for (const r of list) {
+      if (normTitleKey(r.title) !== title) continue;
+      const rDoi = normDoiKey(r.doi);
+      if (doi && rDoi && rDoi !== doi) continue; // a different DOI disproves identity
+      const rYearRaw = r.year == null ? NaN : Number(r.year);
+      const rYear = Number.isFinite(rYearRaw) ? Math.round(rYearRaw) : null;
+      if (year != null && rYear != null && year === rYear) return r;
+      if (doi && !rDoi) return r;
+    }
+    return null;
+  }
+
   // ── Import a search result straight into the reference library ──────
   // The single ref construction every import path persists through
   // (academic-import, academic-resolve-import). `source` records where
-  // the metadata came from (S1: the record names its source).
+  // the metadata came from (S1: the record names its source). Returns
+  // { reference, duplicate } — on a duplicate the reference is the
+  // record already in the library and nothing new is filed (S3, F8).
   function importWorkToLibrary(s, ctx, w, tags) {
     const title = rfClean(w?.title, 400);
     if (!title) return null;
+    const list = rfListB(s.references, rfAid(ctx));
+    const dup = findDuplicateRef(list, { doi: w.doi, title, year: w.year });
+    if (dup) return { reference: dup, duplicate: true };
     const authors = Array.isArray(w.authors) ? w.authors.join(", ") : rfClean(w.authors, 400);
     const ref = {
       id: rfId("ref"), title,
@@ -1383,18 +1445,18 @@ export default function registerResearchActions(registerLensAction) {
       citationCount: Number.isFinite(Number(w.citationCount)) ? Number(w.citationCount) : null,
       createdAt: rfNow(),
     };
-    rfListB(s.references, rfAid(ctx)).push(ref);
+    list.push(ref);
     saveResearchState();
-    return ref;
+    return { reference: ref, duplicate: false };
   }
 
   registerLensAction("research", "academic-import", (ctx, _a, params = {}) => {
     const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
     const w = params.work || params;
     if (!rfClean(w?.title, 400)) return { ok: false, error: "title required" };
-    const ref = importWorkToLibrary(s, ctx, w, params.tags);
-    if (!ref) return { ok: false, error: "title required" };
-    return { ok: true, result: { reference: ref } };
+    const out = importWorkToLibrary(s, ctx, w, params.tags);
+    if (!out) return { ok: false, error: "title required" };
+    return { ok: true, result: { reference: out.reference, ...(out.duplicate ? { duplicate: true } : {}) } };
   });
 
   // ── Resolve an identifier (DOI / arXiv ID / paper URL) and import ───
@@ -1532,9 +1594,9 @@ export default function registerResearchActions(registerLensAction) {
     if (params.preview) {
       return { ok: true, result: { reference: null, work, source: work.source || null } };
     }
-    const ref = importWorkToLibrary(s, ctx, work, params.tags);
-    if (!ref) return { ok: false, error: "title required" };
-    return { ok: true, result: { reference: ref, work, source: work.source || null } };
+    const out = importWorkToLibrary(s, ctx, work, params.tags);
+    if (!out) return { ok: false, error: "title required" };
+    return { ok: true, result: { reference: out.reference, work, source: work.source || null, ...(out.duplicate ? { duplicate: true } : {}) } };
   });
 
   // ── LLM literature review — comparison table across many papers ─────
