@@ -964,14 +964,19 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
               } catch { /* fall through to the key list */ }
             }
             const valid = await validComputeKeys(modName);
+            const { closestComputeKeys } = await import("./chat/compute-si.js");
+            const closest = key ? await closestComputeKeys(key).catch(() => []) : [];
             return {
               tool: call.tool, ok: false,
               error: key.includes(".") ? `unknown compute function ${key}` : 'run_compute requires "module.function" key',
+              ...(closest.length ? { closestKeys: closest } : {}),
               validKeys: valid.keys,
               retryHint: `Use one of the real compute keys${valid.module ? ` in ${valid.module}` : ""}: ${valid.keys.join(", ")}. For word-problem arithmetic (money, interest, trips, unit conversions) write ONE expression with the numbers filled in and call [TOOL_CALL: {"tool": "run_compute", "params": {"key": "symbolic.evaluate", "input": {"expression": "5000*(1+0.06)^10"}}}]`,
             };
           }
-          const rawResult = invokeCompute(mod, modName, fnName, input);
+          const rawResult = (modName === "physics" || modName === "engineering")
+            ? (await import("./chat/compute-si.js")).runChatCompute(key, mod, fnName, input)
+            : invokeCompute(mod, modName, fnName, input);
           let _stringify;
           if (_SYMBOLIC_MODS.has(String(modName).toLowerCase())) {
             _stringify = mod.stringify || (await import("./compute/symbolic-math.js")).stringify;

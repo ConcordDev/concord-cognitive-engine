@@ -29983,8 +29983,12 @@ ${_operatorV6Block}` : "";
             const { loadComputeModule } = await import("./lib/compute/index.js");
             const mod = await loadComputeModule(modName);
             if (!mod) return { tool: call.tool, ok: false, error: `Unknown compute module: ${modName}` };
-            if (typeof mod[fnName] !== "function") return { tool: call.tool, ok: false, error: `Unknown function ${fnName} in ${modName}` };
-            const computeResult = mod[fnName](computeInput);
+            if (typeof mod[fnName] !== "function") {
+              const { closestComputeKeys: _closest } = await import("./lib/chat/compute-si.js");
+              return { tool: call.tool, ok: false, error: `Unknown function ${fnName} in ${modName}`, closestKeys: await _closest(computeKey).catch(() => []) };
+            }
+            const { runChatCompute: _runChatCompute } = await import("./lib/chat/compute-si.js");
+            const computeResult = _runChatCompute(computeKey, mod, fnName, computeInput);
             return { tool: call.tool, ok: true, key: computeKey, result: computeResult };
           } catch (_ce) {
             return { tool: call.tool, ok: false, error: `Compute error: ${_ce?.message}` };
