@@ -372,7 +372,18 @@ export function CollabBoardSection() {
   async function addComment(elementId: string, body: string) {
     if (!activeId || !body.trim()) return;
     try {
-      await lensRun({ domain: 'whiteboard', action: 'comments-add', input: { boardId: activeId, elementId, body: body.trim() } });
+      const r = await lensRun({ domain: 'whiteboard', action: 'comments-add', input: { boardId: activeId, elementId, body: body.trim(), authorName: user?.username || undefined } });
+      // S12: render the comment the server just created right away.
+      // The follow-up list read can lag (read replicas), which hid
+      // the first post until a second one landed and refreshed.
+      const created = r.data?.result?.comment as Comment | undefined;
+      if (created && created.id) {
+        setComments((prev) => {
+          const list = prev[elementId] || [];
+          if (list.some((c) => c.id === created.id)) return prev;
+          return { ...prev, [elementId]: [...list, created] };
+        });
+      }
       await refreshComments(activeId);
       bumpSummary(); // openCommentCount changed
     } catch (e) { console.error('[Board] add comment', e); }
