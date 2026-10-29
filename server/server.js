@@ -41690,6 +41690,7 @@ const MCP_TOOLS_REQUIRE_REAL_AUTH = new Set([
   // data — real auth only; the public corpus reads (dtu_*/atlas_*/lens_*)
   // and aggregate status tools stay anonymous by design.
   "browser_check_coins",
+  "browser_check_rate_limits",
   "vault_stats",
   "vault_read",
   "vault_inbox",

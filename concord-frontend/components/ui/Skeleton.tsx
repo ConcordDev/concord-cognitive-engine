@@ -19,6 +19,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { ds } from '@/lib/design-system';
 
 export type SkeletonVariant = 'line' | 'block' | 'avatar' | 'table-row';
 
@@ -33,12 +34,10 @@ export interface SkeletonProps {
   className?: string;
 }
 
-// design-system.ts doesn't yet carry a dedicated skeleton/shimmer token —
-// falling back to the lattice border tone used by components/common/Skeleton.tsx.
-// TODO: migrate to `ds.skeleton` once the design-system agent lands one. @fake-data-ok: not fabricated data — a design-token
-// migration note for a component that renders honest animate-pulse placeholders; the token doesn't exist yet, so there is
-// nothing to migrate to today.
-const SKELETON_BASE = 'animate-pulse bg-lattice-border/50';
+// Migrated to the design-system token (audit Q71/B#11): ds.skeleton is
+// the single source for the loading-placeholder tone — the same lattice
+// border tone components/common/Skeleton.tsx uses.
+const SKELETON_BASE = ds.skeleton;
 
 function srStatus(label: string) {
   return (
