@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz/ChartKit';
+import { localDayKey, formatLocalDate, formatLocalDateTime } from '@/components/goals/goals-model';
 import {
   GitBranch, CalendarCheck, Users, LayoutTemplate, BarChart3,
   Bell, Link2, Loader2, Plus, Trash2, RefreshCw, Repeat, AlertTriangle,
@@ -349,6 +350,7 @@ function CheckinsTab() {
     const r = await lensRun('goals', 'checkin', {
       op: 'add', goalId: goalId.trim(), confidence,
       progress: progress ? Number(progress) : undefined, note: note.trim(),
+      period: localDayKey(new Date()), // the user's today, not UTC's (S12)
     });
     setBusy(false);
     if (r.data?.ok && r.data.result) {
@@ -755,7 +757,7 @@ function TemplatesTab() {
             {occurrences.map((o) => (
               <div key={o.id} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
                 <span className="text-xs text-white">{o.title}</span>
-                <span className="text-[10px] text-zinc-400">#{o.occurrence} · due {o.dueAt.slice(0, 10)}</span>
+                <span className="text-[10px] text-zinc-400">#{o.occurrence} · due {formatLocalDate(o.dueAt)}</span>
               </div>
             ))}
           </div>
@@ -975,7 +977,7 @@ function RemindersTab() {
     if (!label.trim() || !dueAt) return;
     setBusy(true);
     const r = await lensRun('goals', 'reminder', {
-      op: 'create', label: label.trim(), dueAt, kind, cadence,
+      op: 'create', label: label.trim(), dueAt: new Date(dueAt).toISOString(), kind, cadence,
       goalId: goalId.trim() || undefined,
     });
     setBusy(false);
@@ -1061,7 +1063,7 @@ function RemindersTab() {
               <div className="min-w-0 flex-1">
                 <span className={`text-xs ${rm.done ? 'text-zinc-400 line-through' : 'text-white'}`}>{rm.label}</span>
                 <span className="ml-2 text-[10px] text-zinc-400">
-                  {rm.kind} · {rm.cadence} · due {rm.dueAt.slice(0, 16).replace('T', ' ')}
+                  {rm.kind} · {rm.cadence} · due {formatLocalDateTime(rm.dueAt)}
                   {rm.goalId && ` · ${rm.goalId}`}
                   {rm.firedCount > 0 && ` · fired ${rm.firedCount}×`}
                 </span>

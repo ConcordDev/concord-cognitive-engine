@@ -18,6 +18,7 @@ import {
   CHALLENGES_FALLBACK,
   categoryColors,
   resolveIcon,
+  localDayKey,
 } from '@/components/goals/goals-model';
 
 export function MilestonesPanel() {
@@ -45,11 +46,11 @@ export function MilestonesPanel() {
   const acceptedChallengeCount = challenges.filter((c) => c.accepted).length;
 
   const streakDays = useMemo(() => {
-    const days = new Set(completedGoals.filter((g) => g.completedAt).map((g) => g.completedAt!.slice(0, 10)));
+    const days = new Set(completedGoals.filter((g) => g.completedAt).map((g) => localDayKey(new Date(g.completedAt!))));
     let streak = 0;
     const cursor = new Date();
     for (;;) {
-      const key = cursor.toISOString().slice(0, 10);
+      const key = localDayKey(cursor);
       if (!days.has(key)) break;
       streak++;
       cursor.setDate(cursor.getDate() - 1);

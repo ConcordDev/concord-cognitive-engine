@@ -92,9 +92,42 @@ export const priorityFlame: Record<string, string> = {
 
 // --------------- Helpers ---------------
 
+// S12 (F13): calendar math in the USER's timezone. The browser's
+// local zone is the user's zone; a date-only string names a calendar
+// day in that zone, not a UTC instant.
+export function localDayKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function parseDay(dateStr: string): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return new Date(dateStr);
+}
+
 export function daysUntil(dateStr: string): number {
-  const diff = new Date(dateStr).getTime() - Date.now();
-  return Math.max(0, Math.ceil(diff / 86400000));
+  // Whole calendar days from the user's today to the target day —
+  // not a 24-hour quotient, which over/under-counts by a day
+  // depending on the time of day and the zone offset (F13).
+  const target = parseDay(dateStr);
+  if (isNaN(target.getTime())) return 0;
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  return Math.max(0, Math.round((startOfDay(target) - startOfDay(new Date())) / 86400000));
+}
+
+export function formatLocalDate(iso: string): string {
+  const d = parseDay(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+export function formatLocalDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 export function getLevel(xp: number): { label: string; color: string; next: number } {
