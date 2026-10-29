@@ -32,7 +32,7 @@ import { cn } from '@/lib/utils';
 import {
   CalendarRange, LayoutList, GitBranch, LayoutGrid, Clock, Bell, UserCircle, Loader2, Globe, Users, Lock, Plus,
 } from 'lucide-react';
-import type { FeedPost } from '@/components/timeline/types';
+import type { FeedPost, Privacy } from '@/components/timeline/types';
 
 type Tab = 'roadmap' | 'feed' | 'timeline' | 'albums' | 'memories' | 'notifications' | 'profile';
 
@@ -86,6 +86,15 @@ export default function TimelineLensPage() {
   }, []);
   const [limit, setLimit] = useState(30);
   const [search, setSearch] = useState('');
+  // S-TL-10 (F13/F17): the audience filter and search run server-side
+  // over the whole visible set, so the counts describe the filtered
+  // set — not the loaded page. Search input is debounced into the query.
+  const [audience, setAudience] = useState<'all' | Privacy>('all');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
   // Friends-only visibility is decided by the server friend graph.
   // Sending persona ids as friendIds only hides real friends, because that
@@ -97,11 +106,13 @@ export default function TimelineLensPage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['timeline-feed', limit],
+    queryKey: ['timeline-feed', limit, audience, debouncedSearch],
     queryFn: async () => {
       const r = await lensRun<FeedResult>('timeline', 'feed-list', {
         limit,
         offset: 0,
+        ...(audience !== 'all' ? { audience } : {}),
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
       });
       if (!r.data.ok) throw new Error(r.data.error || 'Could not load feed');
       return r.data.result ?? { posts: [], total: 0 };
@@ -121,16 +132,11 @@ export default function TimelineLensPage() {
 
   const posts = useMemo(() => feed?.posts ?? [], [feed]);
 
-  const visiblePosts = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return posts;
-    return posts.filter(
-      (p) =>
-        p.content.toLowerCase().includes(q) ||
-        p.authorId.toLowerCase().includes(q) ||
-        (p.citedDtuId || '').toLowerCase().includes(q),
-    );
-  }, [posts, search]);
+  // S-TL-10: filtering/searching already happened server-side — what
+  // arrived IS the visible set (the old client filter searched author
+  // UUIDs over one loaded page and called the page count a match count).
+  const visiblePosts = posts;
+  const filtering = audience !== 'all' || debouncedSearch.length > 0;
 
   // Timeline-view events derived from real feed posts.
   const timelineEvents: TimelineEvent[] = useMemo(
@@ -231,18 +237,32 @@ export default function TimelineLensPage() {
             <>
               <PostComposer onPosted={() => setTab('feed')} />
 
-              {/* Privacy legend */}
-              <div className="bg-[#242526] rounded-lg px-4 py-2 flex items-center gap-4 text-xs text-gray-400">
-                <span className="inline-flex items-center gap-1">
-                  <Globe className="w-3.5 h-3.5 text-blue-500" /> Public
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <Users className="w-3.5 h-3.5 text-green-500" /> Friends
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <Lock className="w-3.5 h-3.5 text-purple-500" /> Only me
-                </span>
-                <span className="ml-auto">{feed?.total ?? 0} posts</span>
+              {/* S-TL-10: the audience filter row — every chip shows
+                  exactly its tier, and the count is that tier's total. */}
+              <div className="bg-[#242526] rounded-lg px-4 py-2 flex items-center gap-2 text-xs text-gray-400">
+                {([
+                  { id: 'all', label: 'All', icon: LayoutList },
+                  { id: 'public', label: 'Public', icon: Globe },
+                  { id: 'friends', label: 'Friends', icon: Users },
+                  { id: 'private', label: 'Only me', icon: Lock },
+                ] as const).map((f) => {
+                  const Icon = f.icon;
+                  const active = audience === f.id;
+                  return (
+                    <button
+                      key={f.id}
+                      onClick={() => setAudience(f.id)}
+                      aria-pressed={active}
+                      className={cn(
+                        'inline-flex items-center gap-1 px-2.5 py-1 rounded-full',
+                        active ? 'bg-blue-600 text-white' : 'hover:bg-[#3a3b3c] text-gray-300',
+                      )}
+                    >
+                      <Icon className="w-3.5 h-3.5" /> {f.label}
+                    </button>
+                  );
+                })}
+                <span className="ml-auto">{feed?.total ?? 0} posts{filtering ? ' in this view' : ''}</span>
               </div>
 
               {isLoading ? (
@@ -280,7 +300,9 @@ export default function TimelineLensPage() {
                       className="flex-1 bg-[#3a3b3c] rounded px-3 py-1.5 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
                     />
                     <span className="text-xs text-gray-400 whitespace-nowrap">
-                      {search ? `${visiblePosts.length} match` : `${posts.length} loaded`}
+                      {debouncedSearch
+                        ? `${feed?.total ?? 0} match${(feed?.total ?? 0) === 1 ? '' : 'es'}`
+                        : `${posts.length} loaded`}
                     </span>
                   </div>
 
@@ -288,7 +310,11 @@ export default function TimelineLensPage() {
                     <div className="bg-[#242526] rounded-lg p-8 text-center text-gray-400">
                       <LayoutList className="w-10 h-10 mx-auto mb-3 opacity-40" />
                       <p className="text-sm">
-                        {search ? 'No posts match your search.' : 'Your feed is empty. Share your first post above.'}
+                        {debouncedSearch
+                          ? 'No posts match your search.'
+                          : audience !== 'all'
+                            ? 'No posts with this audience in your feed.'
+                            : 'Your feed is empty. Share your first post above.'}
                       </p>
                     </div>
                   ) : (
@@ -297,7 +323,7 @@ export default function TimelineLensPage() {
                     ))
                   )}
 
-                  {!search && posts.length < (feed?.total ?? 0) && (
+                  {posts.length < (feed?.total ?? 0) && (
                     <button
                       onClick={loadMore}
                       className="w-full py-2.5 rounded-lg bg-[#242526] text-blue-400 text-sm font-medium hover:bg-[#3a3b3c]"

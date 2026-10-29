@@ -711,6 +711,73 @@ describe("S-TL-9 timeline safety verbs (F12)", () => {
   });
 });
 
+// ── S-TL-10: the filter row filters; search counts honestly (F13/F17) ──
+describe("S-TL-10 timeline feed filters + search (F13/F17)", () => {
+  const ada = asUser("fl_ada");
+  const bob = asUser("fl_bob");
+  const carol = asUser("fl_carol");
+  befriend("fl_ada", "fl_bob");
+
+  function seed() {
+    call("profile-update", ada, { displayName: "Zebra Ada" });
+    const mine = {
+      pub: call("post-create", ada, { content: "ada public note", privacy: "public" }).result.post,
+      fr: call("post-create", ada, { content: "ada friends note", privacy: "friends" }).result.post,
+      priv: call("post-create", ada, { content: "ada private note", privacy: "private" }).result.post,
+    };
+    const bobs = {
+      pub: call("post-create", bob, { content: "bob public note", privacy: "public" }).result.post,
+      fr: call("post-create", bob, { content: "bob friends note", privacy: "friends" }).result.post,
+    };
+    const carols = {
+      pub: call("post-create", carol, { content: "carol public note", privacy: "public" }).result.post,
+      priv: call("post-create", carol, { content: "carol secret words", privacy: "private" }).result.post,
+    };
+    return { mine, bobs, carols };
+  }
+
+  it("each audience filter shows exactly its tier, and total describes the filtered set", () => {
+    const { mine, bobs, carols } = seed();
+    const all = call("feed-list", ada, { limit: 50 }).result;
+    assert.equal(all.total, 6, "everything ada may see");
+    const pub = call("feed-list", ada, { limit: 50, audience: "public" }).result;
+    assert.deepEqual(new Set(pub.posts.map((p) => p.id)), new Set([mine.pub.id, bobs.pub.id, carols.pub.id]));
+    assert.equal(pub.total, 3);
+    const fr = call("feed-list", ada, { limit: 50, audience: "friends" }).result;
+    assert.deepEqual(new Set(fr.posts.map((p) => p.id)), new Set([mine.fr.id, bobs.fr.id]));
+    assert.equal(fr.total, 2);
+    const priv = call("feed-list", ada, { limit: 50, audience: "private" }).result;
+    assert.deepEqual(priv.posts.map((p) => p.id), [mine.priv.id], "Only me is only yours");
+    const page = call("feed-list", ada, { limit: 1, audience: "public" }).result;
+    assert.equal(page.posts.length, 1);
+    assert.equal(page.total, 3, "total counts the set, not the page");
+    assert.equal(call("feed-list", ada, { audience: "subscribers" }).error, "Unknown audience filter.");
+  });
+
+  it("search matches content and author names — and never leaks what you can't see", () => {
+    seed();
+    const byContent = call("feed-list", ada, { limit: 50, search: "FRIENDS NOTE" }).result;
+    assert.equal(byContent.total, 2, "case-insensitive, both friends-tier posts ada may see");
+    const byName = call("feed-list", carol, { limit: 50, search: "zebra" }).result;
+    assert.ok(byName.total >= 1 && byName.posts.every((p) => p.authorId === "fl_ada"), "search by display name");
+    const leak = call("feed-list", ada, { limit: 50, search: "carol secret" }).result;
+    assert.equal(leak.total, 0, "a stranger's private post never matches");
+    const composed = call("feed-list", ada, { limit: 50, audience: "public", search: "note" }).result;
+    assert.equal(composed.total, 3, "filter and search compose");
+  });
+
+  it("search matches shared copies by the original's words and author (F17)", () => {
+    call("profile-update", ada, { displayName: "Zebra Ada" });
+    const original = call("post-create", ada, { content: "a very particular phrase", privacy: "public" }).result.post;
+    const share = call("share-post", bob, { postId: original.id, comment: "look", privacy: "public" }).result.post;
+    const hits = call("feed-list", carol, { limit: 50, search: "particular phrase" }).result;
+    const ids = hits.posts.map((p) => p.id);
+    assert.ok(ids.includes(original.id) && ids.includes(share.id), "the share matches the original's text");
+    const byAuthor = call("feed-list", carol, { limit: 50, search: "zebra" }).result;
+    assert.ok(byAuthor.posts.some((p) => p.id === share.id), "the share matches the original's author");
+  });
+});
+
 // ── S-TL-2: friends-tier regression lock ───────────────────────────────
 // The prep audit found the friends-tier gate already fixed on main
 // (checkPostAccess via areFriends, fail-closed, oracle-safe). This

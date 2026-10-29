@@ -822,6 +822,22 @@ export default function registerTimelineActions(registerLensAction) {
         });
       }
     }
+    // S-TL-10 (F13/F17): the audience filter and search run HERE, over
+    // the whole visible set — so `total` describes the filtered set,
+    // not the loaded page, and a shared copy matches the original's
+    // words and author, not just the sharer's comment.
+    const audienceRaw = params.audience ? String(params.audience) : null;
+    if (audienceRaw && !PRIVACY_KINDS.includes(audienceRaw)) {
+      return { ok: false, error: "Unknown audience filter." };
+    }
+    const searchQ = tlClean(params.search, 200).toLowerCase();
+    if (audienceRaw) all = all.filter((p) => p.privacy === audienceRaw);
+    if (searchQ) {
+      const hit = (v) => typeof v === "string" && v.toLowerCase().includes(searchQ);
+      all = all.filter((p) =>
+        hit(p.content) || hit(p.authorDisplayName) || hit(p.citedDtuId) ||
+        (p.sharedFrom && (hit(p.sharedFrom.content) || hit(p.sharedFrom.authorDisplayName))));
+    }
     all.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     const limit = Math.max(1, Math.min(100, tlNum(params.limit, 30)));
     const offset = Math.max(0, tlNum(params.offset, 0));
