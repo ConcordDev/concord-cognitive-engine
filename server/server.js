@@ -44737,10 +44737,13 @@ async function governorTick(reason="heartbeat") {
             const visionMod = await import("./lib/vision-inference.js").catch(() => null);
             const atlasMod  = await import("./emergent/atlas-store.js").catch(() => null);
             const guardMod  = await import("./emergent/atlas-write-guard.js").catch(() => null);
-            // Multimodal image gen is not wired in this build. EvoAsset's
-            // refinement passes detect a null callImageGen and skip the
-            // detail-maps pass without crashing.
-            const callImageGen = async () => null;
+            // Image gen for the detail-maps pass: the real adapter over
+            // lib/pollinations-image.js (GPU-first) lives in
+            // lib/evo-asset/detail-maps-deps.js. If that module ever
+            // fails to load, fall back to the null stub — the pass
+            // detects it and skips without crashing.
+            const detailDeps = await import("./lib/evo-asset/detail-maps-deps.js").catch(() => null);
+            const callImageGen = detailDeps?.callImageGen ?? (async () => null);
             const stats = await evoSched.runEvolutionTick(STATE, db, {
               callVision:        visionMod?.callVision,
               callImageGen,
