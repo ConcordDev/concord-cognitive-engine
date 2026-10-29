@@ -45,7 +45,7 @@ let _persistWriting = Promise.resolve();
 function defaultConfig() {
   return {
     now: () => Date.now(),
-    sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+    sleep: (ms) => new Promise((r) => { setTimeout(r, ms); }),
     dir: undefined, // undefined => resolve from env/home; null => disabled
     persistDebounceMs: 2000,
     log: (...a) => { try { console.warn("[feed-cache]", ...a); } catch { /* ignore */ } },
