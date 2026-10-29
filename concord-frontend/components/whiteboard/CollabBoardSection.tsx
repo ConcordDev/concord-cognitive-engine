@@ -74,6 +74,7 @@ export function CollabBoardSection() {
   const [activeTitle, setActiveTitle] = useState<string>('');
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [aiTab, setAITab] = useState<'cluster' | 'summarize' | 'generate' | 'comments' | 'export' | 'collab'>('cluster');
   const [clusters, setClusters] = useState<Cluster[] | null>(null);
@@ -251,15 +252,26 @@ export function CollabBoardSection() {
     // write into the PRIVATE board map under the shared board's id instead.
     if (isSharedBoard) { setDirty(false); return; }
     setSaving(true);
+    setSaveError(null);
     try {
-      await lensRun({ domain: 'whiteboard', action: 'board-save', input: {
+      const r = await lensRun({ domain: 'whiteboard', action: 'board-save', input: {
         id: activeId,
         title: activeTitle || 'Untitled',
         scene: { elements: activeShapes, appState: {} },
       } });
+      // S11: only a verified ok clears the indicator. A server
+      // refusal (ok:false) previously cleared dirty too — the header
+      // said "saved" while nothing had persisted.
+      if (r.data?.ok === false) {
+        setSaveError(`Save failed: ${String(r.data?.error || 'server refused')} — changes are still unsaved.`);
+        return;
+      }
       setDirty(false);
       bumpSummary(); // elementCount/stickyCount are computed from the persisted scene
-    } catch (e) { console.error('[Board] save', e); }
+    } catch (e) {
+      console.error('[Board] save', e);
+      setSaveError('Save failed — changes are still unsaved.');
+    }
     finally { setSaving(false); }
   }
 
@@ -439,7 +451,7 @@ export function CollabBoardSection() {
       <main className="flex-1 flex flex-col overflow-hidden">
         {activeId ? (
           <>
-            <header className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
+            <header className="relative z-10 bg-lattice-deep px-3 py-2 border-b border-white/10 flex items-center gap-2">
               {isSharedBoard ? (
                 <span className="text-sm font-semibold text-white flex-1 max-w-[400px] truncate">{activeTitle}</span>
               ) : (
@@ -454,6 +466,7 @@ export function CollabBoardSection() {
               )}
               <span className="text-[10px] text-gray-400 tabular-nums">{activeShapes.length} elements</span>
               {!isSharedBoard && dirty && <span className="text-[10px] text-amber-300">● unsaved</span>}
+              {!isSharedBoard && saveError && <span className="text-[10px] text-rose-300" role="status">{saveError}</span>}
               <BoardTimer boardId={activeId} />
               {!isSharedBoard && (
                 <button onClick={save} disabled={saving || !dirty} className="px-2 py-1 text-[11px] rounded border border-white/15 text-gray-300 hover:bg-white/[0.05] disabled:opacity-40 inline-flex items-center gap-1">
