@@ -48,6 +48,38 @@ Ramaj's §8 Q2 team-model call). S1 (lifecycle) notes:
   pinned by `server/tests/projects-lifecycle.test.js`.
 - Frontend behaviour: `concord-frontend/tests/projects-lifecycle.test.tsx`.
 
+S7 (typing + focus integrity, F8/F9) notes:
+
+- The garble mechanism, hand-found: custom-field inputs bound
+  straight to server state and saved PER KEYSTROKE, so each save's
+  refresh snapped the input back mid-typing; title/description drafts
+  lived in the same detail object a sibling save's refresh replaced;
+  the Board blanked its whole tree (open task detail included) on
+  every re-fetch; and the Backlog panel swapped its entire tree —
+  search box included — for a skeleton whenever a fetch returned
+  zero rows.
+- Now: title/description/custom-field text values are local drafts
+  committed on blur/Enter, synced from the server only when a
+  different task opens; the Board blanks only on first load; the
+  Backlog filters stay mounted (the skeleton covers only the list
+  region) and stale list responses can no longer land out of order.
+  Tests: `concord-frontend/tests/projects-typing.test.tsx`.
+
+S6 (date integrity, F7) notes:
+
+- The corruption was a write-path shape: `pjDay` slices any string to
+  yyyy-mm-dd, so a mangled year (0002) stored as happily as a real
+  one, and `sprint-create` silently defaulted missing/unparseable
+  dates and never checked range order. A strict write-path check
+  (`pjDayStrict` — real calendar date, four-digit year) now guards
+  task create/update, sprint create, milestone create and project
+  create/update: provided-but-invalid is a named rejection, nothing
+  is stored or substituted. Sprint end-before-start is rejected in
+  the domain and pre-checked in the sprint form's own words. Absent
+  dates keep their defaults. Tests:
+  `server/tests/projects-dates.test.js` (1 pass / 5 fail against the
+  original domain — only exact-storage of a valid date pre-existed).
+
 S5 (⌘K content search, F6) notes:
 
 - `command-search` already existed and Collab's palette already

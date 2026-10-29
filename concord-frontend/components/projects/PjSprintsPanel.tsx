@@ -43,6 +43,12 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
 
   const addSprint = async () => {
     if (!form.name.trim()) { setError('Sprint name is required.'); return; }
+    // F7: a reversed range is rejected here, in words — the domain
+    // rejects it too; entered dates are never silently replaced.
+    if (form.startDate && form.endDate && form.endDate < form.startDate) {
+      setError('Sprint end date is before its start date — fix the dates; no sprint was created.');
+      return;
+    }
     const r = await lensRun('projects', 'sprint-create', {
       projectId, name: form.name.trim(), startDate: form.startDate, endDate: form.endDate,
     });
