@@ -42,7 +42,7 @@ function offsetToLineCol(text: string, offset: number): { line: number; col: num
   return { line: lines.length, col: lines[lines.length - 1].length + 1 };
 }
 
-type AdvTab = 'intellisense' | 'debugger' | 'remote' | 'chat' | 'extensions' | 'layout' | 'liveshare';
+export type AdvTab = 'intellisense' | 'debugger' | 'remote' | 'chat' | 'extensions' | 'layout' | 'liveshare';
 
 const TABS: { id: AdvTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'intellisense', label: 'IntelliSense', icon: Sparkles },
@@ -56,8 +56,13 @@ const TABS: { id: AdvTab; label: string; icon: React.ComponentType<{ className?:
 
 interface FileRow { path: string; language: string; size: number }
 
-export function CodeAdvancedPanel() {
+export function CodeAdvancedPanel({ initialTab }: { initialTab?: string } = {}) {
   const [tab, setTab] = useState<AdvTab>('intellisense');
+  // S13: deep-links from the workspace ("Open Extras — Debugger" etc.)
+  // select the named tab, on mount and whenever the request changes.
+  useEffect(() => {
+    if (initialTab && TABS.some(t => t.id === initialTab)) setTab(initialTab as AdvTab);
+  }, [initialTab]);
   // Shared across the quick-script tabs + CodeWorkbenchSection via
   // CodeProjectContext — previously this was its own, disconnected
   // ProjectSwitcher instance. See that file's header comment.

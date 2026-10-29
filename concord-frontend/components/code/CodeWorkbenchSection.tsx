@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AlertCircle, AlertTriangle, Folder, FileCode2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { cn } from '@/lib/utils';
 import { CodeWorkbenchShell, CodeNav } from './CodeWorkbenchShell';
 import { ProjectSwitcher } from './ProjectSwitcher';
 import { useCodeProject } from './CodeProjectContext';
@@ -40,12 +41,40 @@ export function CodeWorkbenchSection() {
   // server store; EditorPane reconciles open tabs from that store so
   // the change is visible and a stale buffer can't overwrite it.
   const [replaceSignal, setReplaceSignal] = useState<{ paths: string[]; nonce: number } | null>(null);
+  // Split layout (S13, F12): the Split View tab has always SAVED a
+  // per-project layout (layout-save/layout-get) — nothing ever
+  // rendered it. The section now reads the saved layout and renders
+  // it as real editor panes.
+  const [splitLayout, setSplitLayout] = useState<{ orientation: string; panes: Array<{ id: string; path: string | null }> } | null>(null);
+  const [panePaths, setPanePaths] = useState<(string | null)[]>([]);
+
+  useEffect(() => {
+    if (!projectId) { setSplitLayout(null); setPanePaths([]); return; }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await lensRun({ domain: 'code', action: 'layout-get', input: { projectId } });
+        if (cancelled || r.data?.ok === false) return;
+        const l = r.data?.result?.layout;
+        if (l && Array.isArray(l.panes)) {
+          setSplitLayout(l);
+          setPanePaths(l.panes.map((p: { path: string | null }) => p.path));
+        }
+      } catch { /* no saved layout — single pane */ }
+    })();
+    return () => { cancelled = true; };
+  }, [projectId]);
+
+  const splitActive = !!splitLayout && splitLayout.orientation !== 'single'
+    && panePaths.filter(Boolean).length >= 2;
 
   // openFile carries an optional line so Problems / Outline / Search rows
-  // jump straight to the offending position.
+  // jump straight to the offending position. In a split, explorer and
+  // panel clicks target the first pane.
   const openFile = useCallback((path: string, line?: number) => {
     setOpenPath(path);
     setOpenLine(line ?? null);
+    setPanePaths(prev => (prev.length > 0 ? [path, ...prev.slice(1)] : prev));
   }, []);
 
   const refreshStatus = useCallback(async () => {
@@ -112,7 +141,29 @@ export function CodeWorkbenchSection() {
           {nav === 'settings' && <div className="p-3 text-xs text-gray-400 italic">BYOK model selector lives in /settings — Cmd-, opens it.</div>}
         </>
       }
-      editor={
+      editor={splitActive ? (
+        <div className={cn('grid h-full',
+          splitLayout!.orientation === 'vertical' ? 'grid-cols-2' :
+          splitLayout!.orientation === 'horizontal' ? 'grid-rows-2' :
+          'grid-cols-2 grid-rows-2')}>
+          {panePaths.map((path, i) => (
+            <div key={i} className="min-w-0 min-h-0 border-white/10 odd:border-r [&:nth-child(3)]:border-t [&:nth-child(4)]:border-t overflow-hidden">
+              <EditorPane
+                projectId={projectId}
+                openPath={path}
+                openLine={i === 0 ? openLine : null}
+                onOpenChange={(p) => {
+                  setPanePaths(prev => prev.map((x, j) => (j === i ? p : x)));
+                  if (i === 0) { setOpenPath(p); setOpenLine(null); }
+                }}
+                onContentSaved={refreshStatus}
+                renameSignal={renameSignal}
+                replaceSignal={replaceSignal}
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
         <EditorPane
           projectId={projectId}
           openPath={openPath}
@@ -122,7 +173,7 @@ export function CodeWorkbenchSection() {
           renameSignal={renameSignal}
           replaceSignal={replaceSignal}
         />
-      }
+      )}
       statusRight={
         <>
           <button type="button" onClick={() => setShowBottom((v) => !v)}

@@ -47,6 +47,9 @@ export default function CodeApp() {
   // without a page reload, and a failure there can never take the
   // editor or the other tabs down with it.
   const [trendingKey, setTrendingKey] = useState(0);
+  // S13: "Open Extras" buttons name their panel — carry the request
+  // into the Advanced panel instead of always landing on IntelliSense.
+  const [advancedTab, setAdvancedTab] = useState<string>('intellisense');
 
   // The editor's Run button is the only one. This publishes the server
   // gate (code.exec-status) so that button can say execution is disabled.
@@ -135,11 +138,11 @@ export default function CodeApp() {
           </nav>
 
           <div className="min-h-[70vh] overflow-hidden rounded-2xl border border-white/10 bg-[#0c0c0e]">
-            <CodeEditorWorkspacePanel onOpenExtras={() => setExtras('advanced')} />
+            <CodeEditorWorkspacePanel onOpenExtras={(tab) => { setExtras('advanced'); if (tab) setAdvancedTab(tab); }} />
           </div>
 
           <div className="mt-5">
-            {extras === 'advanced' && <CodeAdvancedPanel />}
+            {extras === 'advanced' && <CodeAdvancedPanel initialTab={advancedTab} />}
             {extras === 'trending' && (
               <ErrorBoundary
                 key={trendingKey}

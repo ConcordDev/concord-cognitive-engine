@@ -180,7 +180,12 @@ function isUserCodeDtu(d: CodeDtuLike, userId?: string | null): boolean {
   return true;
 }
 
-export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () => void }) {
+export function CodeEditorWorkspacePanel({ onOpenExtras }: {
+  /** S13 (F12): deep-links to the named Advanced panel tab —
+   *  'debugger' | 'liveshare' | 'extensions'. Undefined opens the
+   *  extras surface as-is. */
+  onOpenExtras?: (tab?: string) => void;
+}) {
   const { user, isAuthenticated } = useAuth();
   const { alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('code');
 
@@ -780,7 +785,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
       { id: 'output-tab',  label: 'Show script output',          hint: '',          action: () => { setOutputTab('output'); setPaletteOpen(false); } },
       { id: 'project',     label: 'Open project workbench',      hint: '⌘⇧E',       action: () => { setWorkspaceKind('project'); setPaletteOpen(false); } },
       { id: 'scratch',     label: 'Open scratch editor',         hint: '⌘⇧N',       action: () => { setWorkspaceKind('scratch'); setPaletteOpen(false); } },
-      { id: 'extras',      label: 'Open extras (Live Share, debugger)', hint: '⌘2', action: () => { onOpenExtras?.(); setPaletteOpen(false); } },
+      { id: 'extras',      label: 'Open extras (Live Share, debugger)', hint: '⌘2', action: () => { onOpenExtras?.('liveshare'); setPaletteOpen(false); } },
     ];
     return [...actionCmds, ...tabCmds, ...fileCmds];
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1643,10 +1648,10 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
                     </p>
                     <button
                       type="button"
-                      onClick={() => onOpenExtras?.()}
+                      onClick={() => onOpenExtras?.(activity === 'debug' ? 'debugger' : 'extensions')}
                       className="w-full px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400"
                     >
-                      Open Extras — debugger, Live Share, extensions
+                      {activity === 'debug' ? 'Open Extras — Debugger' : 'Open Extras — Extensions'}
                     </button>
                   </div>
                 )}
