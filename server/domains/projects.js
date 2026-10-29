@@ -215,11 +215,35 @@ export default function registerProjectsActions(registerLensAction) {
     const i = arr.findIndex((p) => p.id === params.id);
     if (i < 0) return { ok: false, error: "project not found" };
     arr.splice(i, 1);
+    // Task-scoped stores are keyed by task, not by project — collect the
+    // project's task ids first so their comments, attachments, activity
+    // entries and relations go with it (the same set task-delete cleans
+    // up one task at a time).
+    const doomedTasks = new Set((s.tasks.get(userId) || [])
+      .filter((t) => t.projectId === params.id).map((t) => t.id));
     for (const k of ["tasks", "sprints", "members", "milestones", "labels", "customFields",
       "views", "rules", "templates", "risks", "goals", "wip"]) {
       const list = s[k].get(userId);
       if (list) s[k].set(userId, list.filter((x) => x.projectId !== params.id));
     }
+    for (const k of ["comments", "attachments", "activity"]) {
+      const list = s[k].get(userId);
+      if (list) s[k].set(userId, list.filter((x) => !doomedTasks.has(x.taskId)));
+    }
+    const rels = s.relations.get(userId);
+    if (rels) s.relations.set(userId, rels.filter(
+      (r) => !doomedTasks.has(r.fromTaskId) && !doomedTasks.has(r.toTaskId)));
+    // Project-scoped stores from the parity-backlog block are created
+    // lazily, so any of them may be absent: integrations and SLA policies
+    // by projectId, notifications by projectId or by a doomed taskId.
+    for (const k of ["integrations", "slaPolicies"]) {
+      const map = s[k];
+      const list = map instanceof Map ? map.get(userId) : null;
+      if (list) map.set(userId, list.filter((x) => x.projectId !== params.id));
+    }
+    const inbox = s.notifications instanceof Map ? s.notifications.get(userId) : null;
+    if (inbox) s.notifications.set(userId, inbox.filter(
+      (n) => n.projectId !== params.id && !doomedTasks.has(n.taskId)));
     savePjState();
     return { ok: true, result: { deleted: params.id } };
   });
