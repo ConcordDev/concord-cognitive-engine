@@ -66603,7 +66603,11 @@ app.delete("/api/workspaces/:id/templates/:templateId", (req, res) => {
 });
 
 // ---- Wave 15: Ecosystem Endpoints ----
-app.post("/api/cli", asyncHandler(async (req, res) => {
+// The CLI commands operate on the whole corpus unscoped (full export,
+// backup creation, tagging and creating DTUs), so the route is an operator
+// surface: owner/admin only, with sovereign passing via requireRole. There
+// is no member-facing CLI surface.
+app.post("/api/cli", requireRole("owner", "admin"), asyncHandler(async (req, res) => {
   const result = await executeCLICommand(req.body?.command || "");
   res.json(result);
 }));
