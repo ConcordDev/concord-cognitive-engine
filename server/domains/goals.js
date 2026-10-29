@@ -789,6 +789,13 @@ export default function registerGoalsActions(registerLensAction) {
 
     // Build tree (nodes carry S3 derived progress)
     const enriched = withProgress(s, userId, list);
+    // S9 (F10): blocked state rides the objective — derived from the
+    // edge store at read, so it appears wherever the objective
+    // renders and clears the moment the edge is removed.
+    const depsList = s.deps.get(userId) || [];
+    for (const o of enriched) {
+      o.blockedBy = depsList.filter((e) => e.kind === "blocks" && e.to === o.id).map((e) => e.from);
+    }
     const byId = new Map(enriched.map((o) => [o.id, { ...o, children: [] }]));
     const roots = [];
     for (const node of byId.values()) {
