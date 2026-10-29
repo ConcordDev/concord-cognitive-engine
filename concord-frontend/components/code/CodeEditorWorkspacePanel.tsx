@@ -45,6 +45,7 @@ import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import { CodeRunMenu } from '@/components/code/CodeRunMenu';
 import type { CodeExecResult } from '@/components/code/codeRunReport';
 import { readExecStatus, subscribeExecStatus, type CodeExecStatus } from '@/components/code/codeExecGate';
+import { isLocallyRunnable, runLocalScript } from '@/components/code/localExec';
 import { codeAiSessionId, fetchCodeAiHistory } from '@/components/code/codeAiHistory';
 import { LIVE_PROJECT_ID, LIVE_SNIPPET_PATH, snippetFromFilesRead, tabAfterSnippetRead } from '@/components/code/liveSnippet';
 
@@ -275,6 +276,10 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
   const execOff = exec?.enabled === false;
   const execUnknown = exec == null;
   const execReason = execOff ? (exec?.reason || 'Live code execution is disabled in this environment.') : '';
+  // S1 (PR #1707): JavaScript/TypeScript run locally in the browser, so
+  // the Run button lives for those languages regardless of the server
+  // exec flag; the server sandbox stays founder/sovereign for the rest.
+  const localRun = isLocallyRunnable(activeTab.language);
   const semanticCtx = useMemo(
     () => ({ projectId: LIVE_PROJECT_ID, path: activeTab.name, run: runCodeMacro }),
     [activeTab.name, runCodeMacro],
@@ -497,11 +502,15 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
 
   const runScriptMutation = useMutation({
     mutationFn: async () => {
-      // Dead-macro-call fix (verification-audit campaign): 'code.generate'
-      // was never registered — every run hit onError and silently fell
-      // back to the local simulation. 'code.exec' is the real macro for
-      // this shape (executes JS/TS in a sandboxed node:vm; other
-      // languages return an honest "unsupported" result).
+      // S1 (PR #1707): JavaScript/TypeScript run locally in the user's
+      // browser (localExec.ts) — the server host sandbox was retired
+      // (INC-145) and its WASM path stays founder/sovereign, so the
+      // server call below serves only the languages the local runner
+      // does not claim, and refuses honestly for normal accounts.
+      if (isLocallyRunnable(activeTab.language)) {
+        const outcome = await runLocalScript({ code: activeTab.content, language: activeTab.language });
+        return { data: { result: outcome.result }, elapsedMs: outcome.elapsedMs, timedOut: outcome.timedOut, local: true as const };
+      }
       const started = performance.now();
       const res = await api.post('/api/lens/run', {
         domain: 'code',
@@ -512,9 +521,9 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
           scriptType: activeTab.scriptType || activeScriptType,
         },
       });
-      return { data: res.data, elapsedMs: Math.round(performance.now() - started) };
+      return { data: res.data, elapsedMs: Math.round(performance.now() - started), timedOut: false, local: false as const };
     },
-    onSuccess: ({ data, elapsedMs }) => {
+    onSuccess: ({ data, elapsedMs, timedOut, local }) => {
       // code.exec returns { result: { stdout, stderr, exitCode, supported } },
       // not a bare string/.content — read the real shape. No fake fallback:
       // when the sandbox refuses (supported:false) the output panel says so,
@@ -534,13 +543,17 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
         const lines: string[] = [];
         if (stdout) lines.push(stdout);
         if (stderr) lines.push(stderr);
-        if (lines.length === 0) lines.push('(no output)');
-        lines.push(`\n[exit ${exitCode ?? '?'} · ${elapsedMs}ms]`);
+        if (timedOut) {
+          lines.push(`[stopped after ${Math.round(elapsedMs / 1000)}s — the code did not finish; the output above is what it printed before it was stopped]`);
+        } else {
+          if (lines.length === 0) lines.push('(no output)');
+          lines.push(`\n[exit ${exitCode ?? '?'} · ${elapsedMs}ms]`);
+        }
         setScriptOutput({ log: lines.join('\n'), visualization: '' });
       }
       setConsoleLog((prev) => [
         ...prev,
-        `[${new Date().toLocaleTimeString()}] ${supported ? `Script executed (exit ${exitCode ?? '?'})` : 'Sandbox refused this language'}`,
+        `[${new Date().toLocaleTimeString()}] ${!supported ? 'Concord does not run this language here' : timedOut ? 'Run stopped (timeout) — partial output kept' : local ? `Script executed locally in your browser (exit ${exitCode ?? '?'})` : `Script executed (exit ${exitCode ?? '?'})`}`,
         `[${new Date().toLocaleTimeString()}] Type: ${SCRIPT_TYPES.find((s) => s.id === (activeTab.scriptType || activeScriptType))?.name}`,
       ]);
       setShowOutput(true);
@@ -1207,17 +1220,17 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
 
           <button
             type="button"
-            onClick={() => { if (!execOff && !execUnknown) runScriptMutation.mutate(); }}
-            disabled={runScriptMutation.isPending || execOff || execUnknown}
+            onClick={() => { if (localRun || (!execOff && !execUnknown)) runScriptMutation.mutate(); }}
+            disabled={runScriptMutation.isPending || (!localRun && (execOff || execUnknown))}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-green-600 hover:bg-green-500 text-white text-[13px] font-semibold transition-colors disabled:opacity-40"
-            title={execOff ? execReason : execUnknown ? 'Checking whether live execution is enabled.' : 'Run (⌘↵)'}
+            title={localRun ? 'Run (⌘↵) — runs locally in your browser' : execOff ? execReason : execUnknown ? 'Checking whether live execution is enabled.' : 'Run (⌘↵)'}
           >
             {runScriptMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <Play className="w-4 h-4 fill-current" />
             )}
-            {runScriptMutation.isPending ? 'Running…' : execOff ? 'Execution disabled' : 'Run'}
+            {runScriptMutation.isPending ? 'Running…' : !localRun && execOff ? 'Execution disabled' : 'Run'}
           </button>
 
           <button
@@ -1869,8 +1882,8 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
                           ) : (
                             <div className="flex flex-col items-center justify-center h-full text-gray-400">
                               <Terminal className="w-12 h-12 mb-4 opacity-30" />
-                              <p className="text-sm">Click &quot;Run&quot; to execute</p>
-                              <p className="text-xs mt-1 text-gray-400">Output will appear here</p>
+                              <p className="text-sm">Press Run (⌘↵) to run this file</p>
+                              <p className="text-xs mt-1 text-gray-400">{localRun ? 'It runs locally in your browser — output appears here' : 'Output will appear here'}</p>
                             </div>
                           )
                         ) : (

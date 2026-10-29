@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Terminal as TerminalIcon, X, Play, RotateCcw, Loader2, Maximize2, Minimize2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { isLocallyRunnable, runLocalScript } from './localExec';
 
 interface TerminalPanelProps {
   open: boolean;
@@ -182,25 +183,54 @@ export function TerminalPanel({ open, onClose, activeCode, activeLanguage, activ
     appendLine({ kind: 'result', text: `[exit ${exit} in ${elapsed}ms]`, ts: Date.now() });
   }, [appendLine]);
 
+  /**
+   * One run, from either engine. JavaScript/TypeScript run locally in
+   * the browser (S1, PR #1707); everything else still goes to the
+   * server macro, whose refusals render through the honesty guard.
+   * A local timeout prints its partial output and a stopped line —
+   * never an exit line, because the run produced no exit.
+   */
+  const runCode = useCallback(async (code: string, language: string, filename: string, started: number) => {
+    if (isLocallyRunnable(language)) {
+      const outcome = await runLocalScript({ code, language });
+      const { result } = outcome;
+      if (result.supported === false) {
+        appendLine({ kind: 'stderr', text: `That didn’t run — ${result.stderr || 'this language is not runnable.'} Nothing was executed.`, ts: Date.now() });
+        return;
+      }
+      if (result.stdout) appendLine({ kind: 'stdout', text: String(result.stdout), ts: Date.now() });
+      if (result.stderr) appendLine({ kind: 'stderr', text: String(result.stderr), ts: Date.now() });
+      if (!result.stdout && !result.stderr && !outcome.timedOut) appendLine({ kind: 'result', text: '(no output)', ts: Date.now() });
+      if (outcome.timedOut) {
+        appendLine({ kind: 'result', text: '[stopped — the code did not finish in time; output above is partial]', ts: Date.now() });
+      } else {
+        const elapsed = Math.round(performance.now() - started);
+        appendLine({ kind: 'result', text: `[exit ${result.exitCode ?? 0} in ${elapsed}ms]`, ts: Date.now() });
+      }
+      return;
+    }
+    const res = await lensRun({
+      domain: 'code',
+      action: 'exec',
+      input: { code, language, filename },
+    });
+    renderExecOutcome(res.data as ExecResponseData, started);
+  }, [appendLine, renderExecOutcome]);
+
   const runActiveFile = useCallback(async () => {
     if (running) return;
     setRunning(true);
     const started = performance.now();
     appendLine({ kind: 'cmd', text: `▶ run ${activeName} (${activeLanguage})`, ts: Date.now() });
     try {
-      const res = await lensRun({
-        domain: 'code',
-        action: 'exec',
-        input: { code: activeCode, language: activeLanguage, filename: activeName },
-      });
-      renderExecOutcome(res.data as ExecResponseData, started);
+      await runCode(activeCode, activeLanguage, activeName, started);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'run failed';
       appendLine({ kind: 'stderr', text: `That didn’t run — ${msg}`, ts: Date.now() });
     } finally {
       setRunning(false);
     }
-  }, [running, activeCode, activeLanguage, activeName, appendLine, renderExecOutcome]);
+  }, [running, activeCode, activeLanguage, activeName, appendLine, runCode]);
 
   const handleSubmit = useCallback(async () => {
     const cmd = input.trim();
@@ -216,18 +246,13 @@ export function TerminalPanel({ open, onClose, activeCode, activeLanguage, activ
     setRunning(true);
     const started = performance.now();
     try {
-      const res = await lensRun({
-        domain: 'code',
-        action: 'exec',
-        input: { code: cmd, language: activeLanguage, filename: 'inline' },
-      });
-      renderExecOutcome(res.data as ExecResponseData, started);
+      await runCode(cmd, activeLanguage, 'inline', started);
     } catch (e) {
       appendLine({ kind: 'stderr', text: `That didn’t run — ${e instanceof Error ? e.message : 'run failed'}`, ts: Date.now() });
     } finally {
       setRunning(false);
     }
-  }, [input, activeLanguage, appendLine, clearBuffer, runActiveFile, renderExecOutcome]);
+  }, [input, activeLanguage, appendLine, clearBuffer, runActiveFile, runCode]);
 
   if (!open) return null;
 
