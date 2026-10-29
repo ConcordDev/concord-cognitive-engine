@@ -9,9 +9,11 @@
 // Two layers:
 //   1. Unit tests for lensUpdateDenial in lib/lens-update-gate.js.
 //   2. Source assertions that server.js's lens.update handler calls the
-//      gate (inside the owned-artifact clause Fix 10 will later widen)
-//      before the status validation, the first artifact assignment and
-//      the _lensEmitDTU emit — and that the social bypass is gone.
+//      gate before the status validation, the first artifact assignment
+//      and the _lensEmitDTU emit — and that the social bypass is gone.
+//      (Fix 10 later replaced the owned-artifact clause with an
+//      isOwnerlessArtifact branch; the ordering assertions below pin
+//      the current shape — see tests/lens-ownerless-write.test.js.)
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
@@ -117,22 +119,33 @@ describe("lens-update-gate — server.js handler wiring (source order)", () => {
     );
   });
 
-  it("the gate runs inside the owned-artifact clause, before status validation and any mutation", () => {
-    const clauseAt = body.indexOf('if (artifact.ownerId && artifact.ownerId !== "anon")');
+  it("the gate runs before status validation and any mutation (owned + ownerless branches, Fix 10)", () => {
+    // Fix 10 removed the owned-artifact clause this test originally
+    // pinned: the handler now branches on isOwnerlessArtifact —
+    // ownerless artifacts take lensOwnerlessDenial, owned artifacts
+    // keep lensUpdateDenial. Both gates must precede every mutation.
+    const ownerlessAt = body.indexOf("isOwnerlessArtifact(artifact)");
+    const ownerlessGateAt = body.indexOf("lensOwnerlessDenial({");
     const gateAt = body.indexOf("lensUpdateDenial({");
     const statusAt = body.indexOf("getValidTransitions");
     const assignAt = body.indexOf("artifact.title =");
     const emitAt = body.indexOf("_lensEmitDTU");
-    assert.ok(clauseAt > 0, "owned-artifact clause present (ownerless stays Fix 10)");
-    assert.ok(gateAt > clauseAt, "gate called inside the clause");
-    assert.ok(statusAt > gateAt, "status-transition validation stays after the gate");
-    assert.ok(assignAt > gateAt, "gate precedes the first artifact assignment");
-    assert.ok(emitAt > gateAt, "gate precedes _lensEmitDTU (no emit on denial)");
+    assert.ok(ownerlessAt > 0, "ownerless branch present (Fix 10)");
+    assert.ok(ownerlessGateAt > ownerlessAt, "ownerless gate called inside its branch");
+    assert.ok(gateAt > ownerlessAt, "owned gate still called");
+    assert.ok(
+      !body.includes('artifact.ownerId && artifact.ownerId !== "anon"'),
+      "the ownerless short-circuit clause is gone (Fix 10)",
+    );
+    assert.ok(statusAt > gateAt && statusAt > ownerlessGateAt, "status-transition validation stays after both gates");
+    assert.ok(assignAt > gateAt && assignAt > ownerlessGateAt, "gates precede the first artifact assignment");
+    assert.ok(emitAt > gateAt && emitAt > ownerlessGateAt, "gates precede _lensEmitDTU (no emit on denial)");
   });
 
   it("the gate receives the handler's own owner/admin resolutions and the social flag", () => {
     assert.ok(body.includes("isOwner: _lensIsOwnerActor(ctx, artifact)"), "owner resolved by the existing helper");
     assert.ok(body.includes("isAdmin: _lensIsAdminActor(ctx)"), "admin resolved by the existing helper");
-    assert.ok(body.includes("isSocialDomain: LENS_SOCIAL_DOMAINS.has(artifact.domain)"), "social flag from the existing set");
+    assert.ok(body.includes("LENS_SOCIAL_DOMAINS.has(artifact.domain)"), "social flag from the existing set");
+    assert.ok(body.includes("isSocialDomain: _lensIsSocialDomain"), "social flag passed to the gate (Fix 10 hoisted it for both branches)");
   });
 });

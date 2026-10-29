@@ -2,6 +2,7 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import crypto from "node:crypto";
 import { newShareToken, isStrongShareToken } from "../lib/share-token.js";
 import { generatePollinationsImage } from "../lib/pollinations-image.js";
+import { generateMelody } from "../lib/melody-generate.js";
 
 // Deterministic per-form skeleton for structural-poetry generation — no
 // LLM required by default (matches domains/research.js's "generate"
@@ -61,7 +62,11 @@ export default function registerCreativeActions(registerLensAction) {
       return { ok, result };
     }
     if (kind === "melody") {
-      return { ok: false, reason: "not_yet_wired", error: "Melody generation is not yet implemented." };
+      const melodyPrompt = String(params.prompt || "").trim();
+      if (!melodyPrompt) return { ok: false, error: "prompt required" };
+      // Deterministic seeded composition (lib/melody-generate.js) —
+      // structured notes + ABC notation, reproducible per prompt.
+      return { ok: true, result: generateMelody({ prompt: melodyPrompt, bars: params.bars }) };
     }
     // kind === "text"
     const prompt = String(params.prompt || "").trim();

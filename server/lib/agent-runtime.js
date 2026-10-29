@@ -34,6 +34,7 @@ import { getExistentialOS, groupExistentialOSByCategory } from "../existential/r
 import * as relationalEmotion from "../emergent/relational-emotion.js";
 import * as trustNetwork from "../emergent/trust-network.js";
 import * as cognitiveFingerprint from "../emergent/cognitive-fingerprint.js";
+import { listPeers } from "./federation.js";
 
 const PHASE = 1;
 
@@ -411,11 +412,50 @@ export async function rtSnapshot(entity_id, ctx = {}) {
 //  Helper: safe MCP call (when rt_* needs to call another concord-local tool)
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function callMcpSafe(tool, args, timeoutMs = 10000) {
-  // Use the existing MCP machinery — we can't recurse through /mcp/call
-  // directly from inside the server, but we can delegate to functions.
-  // For Phase 1 we just return a placeholder noting the call shape.
-  return { status: "not_implemented_inline", tool, args, note: "Use concord-local MCP for cross-layer calls; agent-runtime doesn't recurse" };
+async function callMcpSafe(tool, args = {}, timeoutMs = 10000) {
+  // In-process delegation (Q32): agent-runtime can't recurse through
+  // /mcp/call from inside the server, so the two read tools it needs
+  // delegate to the real in-process sources instead of returning the
+  // old { status: "not_implemented_inline" } placeholder — which
+  // callers read as real data (memory reported sample_count: null as
+  // "available"; perception reported 0 peers as fact). Failures THROW
+  // so the callers' tryRead wrappers mark the layer "error" honestly.
+  // (timeoutMs is retained for signature compatibility; both delegates
+  // are synchronous in-process reads.)
+  void timeoutMs;
+  switch (tool) {
+    case "dtu_list": {
+      // The hot DTU substrate — the same STATE.dtus store the DTU
+      // routes serve (routes/dtus.js). Count semantics: in-memory
+      // substrate size, not the archival DB total.
+      const dtus = globalThis.STATE?.dtus;
+      if (!dtus || typeof dtus.size !== "number" || typeof dtus.values !== "function") {
+        throw new Error("DTU substrate unavailable (STATE.dtus not initialized)");
+      }
+      const limit = Math.max(1, Math.min(Number(args.limit) || 100, 200));
+      const sample = [];
+      for (const d of dtus.values()) {
+        if (sample.length >= limit) break;
+        sample.push({
+          id: d?.id ?? null,
+          title: d?.title ?? null,
+          creatorId: d?.creator_id ?? d?.creatorId ?? null,
+          createdAt: d?.created_at ?? d?.createdAt ?? null,
+        });
+      }
+      return { count: dtus.size, dtus: sample };
+    }
+    case "federation_peers": {
+      const db = globalThis.STATE?.db;
+      if (!db || typeof db.prepare !== "function") {
+        throw new Error("federation peer store unavailable (STATE.db not initialized)");
+      }
+      const { peers } = listPeers(db, {});
+      return { total: peers.length, peers };
+    }
+    default:
+      throw new Error(`callMcpSafe: unsupported tool "${tool}" (only dtu_list / federation_peers are wired in-process)`);
+  }
 }
 
 

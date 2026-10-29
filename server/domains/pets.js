@@ -611,8 +611,20 @@ export default function registerPetsActions(registerLensAction) {
     const i = arr.findIndex((p) => p.id === params.id);
     if (i < 0) return { ok: false, error: "pet not found" };
     arr.splice(i, 1);
-    for (const m of [s.vaccines, s.medications, s.vetVisits, s.weights, s.careActivities, s.symptoms, s.reminders, s.documents, s.expenses]) {
+    // Q20: the cascade must cover EVERY petId-keyed collection. It
+    // missed photos, appointments, and lostProfiles — a deleted pet's
+    // photos/appointments lingered as orphans and its lost-pet card
+    // stayed resolvable by public token for a pet that no longer
+    // exists. Access grants naming the pet are filtered out of every
+    // owner's list too (a grant for a dead pet id is a dangling
+    // permission). Caregivers and bookings are user-level records,
+    // not per-pet collections, and are deliberately untouched.
+    for (const m of [s.vaccines, s.medications, s.vetVisits, s.weights, s.careActivities, s.symptoms, s.reminders, s.documents, s.expenses, s.photos, s.appointments, s.lostProfiles]) {
       m.delete(params.id);
+    }
+    for (const [ownerId, grants] of s.petAccess.entries()) {
+      const kept = grants.filter((g) => g.petId !== params.id);
+      if (kept.length !== grants.length) s.petAccess.set(ownerId, kept);
     }
     savePetState();
     return { ok: true, result: { deleted: params.id } };
