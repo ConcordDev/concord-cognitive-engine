@@ -593,7 +593,10 @@ describe("atlas — network-backed macros: pre-fetch validation-rejection branch
   it("nominatim-geocode: a blank query is rejected before any network call", async () => {
     const r = await lensRun("atlas", "nominatim-geocode", { params: { query: "   " } });
     assert.equal(r.result.ok, false);
-    assert.match(r.result.error, /query required/);
+    // HANDOFF-3 C1 (#1695): structured invalid_input (HTTP 400) shape.
+    assert.equal(r.result.error, "invalid_input");
+    assert.equal(r.result.reason, "required");
+    assert.match(r.result.message, /query required/);
   });
 
   it("nominatim-reverse: non-numeric latitude/longitude is rejected before any network call", async () => {

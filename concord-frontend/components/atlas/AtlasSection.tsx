@@ -136,6 +136,7 @@ function ExplorePanel({ onSaved, onShowOnMap }: { onSaved: () => void; onShowOnM
   const [q, setQ] = useState('');
   const [results, setResults] = useState<GeoMatch[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [focus, setFocus] = useState<GeoMatch | null>(null);
   const [activeAmenity, setActiveAmenity] = useState<string | null>(null);
   const [pois, setPois] = useState<OverpassPoi[]>([]);
@@ -145,10 +146,17 @@ function ExplorePanel({ onSaved, onShowOnMap }: { onSaved: () => void; onShowOnM
   async function search() {
     if (!q.trim()) return;
     setLoading(true);
+    setSearchError(null);
     setFocus(null); setPois([]); setActiveAmenity(null);
     try {
       lensRun({ domain: 'atlas', action: 'recent-searches-record', input: { query: q.trim() } }).catch(() => {});
       const r = await lensRun({ domain: 'atlas', action: 'nominatim-geocode', input: { query: q.trim(), limit: 8 } });
+      if (!r.data?.ok && (r.data?.code === 'geocoder_unavailable' || r.data?.error === 'geocoder_unavailable')) {
+        // A real outage is not "no results": say so, with the retry hint.
+        setSearchError(`Geocoder unavailable — try again in ${r.data?.retryAfterS ?? 30}s.`);
+        setResults([]);
+        return;
+      }
       const raw = (r.data?.result?.places || r.data?.result?.result?.places || r.data?.result?.matches || r.data?.result?.results || []) as Array<{ displayName?: string; display_name?: string; latitude?: number; lat?: number | string; longitude?: number; lng?: number | string; lon?: number | string; osmType?: string; osmId?: number; boundingBox?: number[] }>;
       const parsed: GeoMatch[] = raw.map(m => ({
         name: String(m.displayName || m.display_name || '').split(',')[0] || 'Result',
@@ -279,7 +287,9 @@ function ExplorePanel({ onSaved, onShowOnMap }: { onSaved: () => void; onShowOnM
       )}
 
       <div className="flex-1 overflow-y-auto">
-        {results.length === 0 ? (
+        {searchError ? (
+          <div className="px-3 py-8 text-center text-xs text-amber-300">{searchError}</div>
+        ) : results.length === 0 ? (
           <div className="px-3 py-8 text-center text-xs text-gray-400">Search to find places. Results plot on the map — pick one to discover nearby cafés, restaurants, fuel, hotels, or parking.</div>
         ) : (
           <ul className="divide-y divide-white/5">
@@ -614,13 +624,22 @@ function fmtMeters(m: number): string {
 
 async function geocodeOne(query: string): Promise<{ name: string; lat: number; lng: number } | null> {
   if (!query.trim()) return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let r: Awaited<ReturnType<typeof lensRun<any>>>;
   try {
-    const r = await lensRun({ domain: 'atlas', action: 'nominatim-geocode', input: { query: query.trim(), limit: 1 } });
-    const raw = (r.data?.result?.places || r.data?.result?.result?.places || []) as Array<{ displayName?: string; display_name?: string; latitude?: number; longitude?: number }>;
-    const top = raw[0];
-    if (!top) return null;
-    return { name: String(top.displayName || top.display_name || query), lat: Number(top.latitude), lng: Number(top.longitude) };
+    r = await lensRun({ domain: 'atlas', action: 'nominatim-geocode', input: { query: query.trim(), limit: 1 } });
   } catch { return null; }
+  // An outage is not "place not found": throw a marked error so the caller
+  // can show the honest unavailable message instead of a resolve failure.
+  if (!r.data?.ok && (r.data?.code === 'geocoder_unavailable' || r.data?.error === 'geocoder_unavailable')) {
+    const e = new Error('geocoder_unavailable') as Error & { retryAfterS?: number };
+    e.retryAfterS = r.data?.retryAfterS;
+    throw e;
+  }
+  const raw = (r.data?.result?.places || r.data?.result?.result?.places || []) as Array<{ displayName?: string; display_name?: string; latitude?: number; longitude?: number }>;
+  const top = raw[0];
+  if (!top) return null;
+  return { name: String(top.displayName || top.display_name || query), lat: Number(top.latitude), lng: Number(top.longitude) };
 }
 
 function DirectionsPanel({ places, onShowOnMap }: { places: Place[]; onShowOnMap: (m: MapMarker[]) => void }) {
@@ -663,7 +682,12 @@ function DirectionsPanel({ places, onShowOnMap }: { places: Place[]; onShowOnMap
       } else {
         setError(r.data?.error || 'Routing failed.');
       }
-    } catch { setError('Routing service unreachable.'); }
+    } catch (e) {
+      if (e instanceof Error && e.message === 'geocoder_unavailable') {
+        const s = (e as Error & { retryAfterS?: number }).retryAfterS;
+        setError(`Geocoder unavailable — try again in ${typeof s === 'number' ? s : 30}s.`);
+      } else setError('Routing service unreachable.');
+    }
     finally { setLoading(false); }
   }
 

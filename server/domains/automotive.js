@@ -12,7 +12,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { DTC_DATABASE } from "../lib/automotive-dtc.js";
-import { nominatimSearch } from "../lib/geo-feed-sources.js";
+import { nominatimSearch, geocoderUnavailable } from "../lib/geo-feed-sources.js";
 import { needNums, notComputed } from "../lib/lens-inputs.js";
 
 const NHTSA_API_BASE = "https://vpic.nhtsa.dot.gov/api/vehicles";
@@ -1364,10 +1364,12 @@ export default function registerAutomotiveActions(registerLensAction) {
   // locator can place a saved shop on a map.
   registerLensAction("automotive", "shops-geocode", async (_ctx, _a, params = {}) => {
     const query = String(params.query || params.address || "").trim();
-    if (!query) return { ok: false, error: "query (address or place) required" };
+    if (!query) return { ok: false, error: "invalid_input", field: "query", reason: "required", message: "query (address or place) required" };
     try {
       const geo = await nominatimSearch(query, { limit: 5 });
-      if (!geo.ok) throw new Error(geo.error);
+      // Same Nominatim door as atlas: a real outage is the shared
+      // geocoder_unavailable shape (HTTP 503), not a 400.
+      if (!geo.ok) return geocoderUnavailable(geo.reason, geo.lastOkAt);
       const data = geo.data;
       const matches = (Array.isArray(data) ? data : []).map(m => ({
         displayName: m.display_name,
@@ -1377,7 +1379,7 @@ export default function registerAutomotiveActions(registerLensAction) {
       }));
       return { ok: true, result: { matches, count: matches.length, source: "osm-nominatim" } };
     } catch (e) {
-      return { ok: false, error: `nominatim unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return geocoderUnavailable(`upstream_error: ${e instanceof Error ? e.message : String(e)}`);
     }
   });
 

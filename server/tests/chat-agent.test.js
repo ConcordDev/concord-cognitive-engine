@@ -17,6 +17,14 @@ import {
   CHAT_AGENT_CONSTANTS,
 } from "../lib/chat-agent.js";
 
+// Authenticated ctx for the bridge-backed tools (run_lens_action,
+// mcp_connect). The MCP execution bridge refuses anonymous callers before
+// dispatch (lib/mcp-hermes-identity.js rejectImpersonation — calls must be
+// attributed to an authenticated identity), so these tests pass the same
+// actor shape production passes. Tests for non-bridge tools keep the bare
+// {} ctx they have always used.
+const AUTH_CTX = { db: null, actor: { userId: "u_test", id: "u_test", role: "member" } };
+
 test("parseToolCalls extracts a single tool call", () => {
   const text = `I'll look that up.\n[TOOL_CALL: {"tool": "web_search", "params": {"query": "concord cognitive engine"}}]`;
   const calls = parseToolCalls(text);
@@ -85,7 +93,7 @@ test("executeToolCall surfaces a graceful failure when the action is in NEITHER 
   const fakeRunMacro = async (domain, name) => {
     throw new Error(`macro not found: ${domain}.${name}`);
   };
-  const result = await executeToolCall({}, fakeRunMacro, new Map(), {
+  const result = await executeToolCall(AUTH_CTX, fakeRunMacro, new Map(), {
     tool: "run_lens_action", params: { domain: "ghost", action: "noop" },
   });
   assert.equal(result.ok, false);
@@ -113,14 +121,21 @@ test("executeToolCall run_lens_action falls back to runMacro/MACROS when the pai
   assert.equal(result.ok, true);
   assert.equal(result.key, "plugin_demo.compute");
   assert.deepEqual(result.result, { ok: true, echoed: { x: 1 } });
-  assert.deepEqual(calledWith, { domain: "plugin_demo", name: "compute", input: { x: 1 }, ctx });
+  assert.equal(calledWith.domain, "plugin_demo");
+  assert.equal(calledWith.name, "compute");
+  assert.deepEqual(calledWith.input, { x: 1 });
+  // The bridge normalizes the ctx it forwards (actor gains id/role/scopes,
+  // ctx gains userId) — the invariant that matters is attribution: the call
+  // is still credited to the caller's identity, never widened or dropped.
+  assert.equal(calledWith.ctx.actor.userId, "u1");
+  assert.equal(calledWith.ctx.userId, "u1");
 });
 
 test("executeToolCall run_lens_action still prefers LENS_ACTIONS over MACROS when both could resolve the pair (no regression vs runMcpTool's precedence)", async () => {
   const lensActions = new Map();
   lensActions.set("legal.summarize", async (_ctx, _u, params) => ({ ok: true, via: "lens_action", summary: params?.text }));
   const fakeRunMacro = async () => ({ ok: true, via: "macro" });
-  const result = await executeToolCall({}, fakeRunMacro, lensActions, {
+  const result = await executeToolCall(AUTH_CTX, fakeRunMacro, lensActions, {
     tool: "run_lens_action",
     params: { domain: "legal", action: "summarize", params: { text: "hi" } },
   });
@@ -130,7 +145,7 @@ test("executeToolCall run_lens_action still prefers LENS_ACTIONS over MACROS whe
 });
 
 test("executeToolCall run_lens_action reports lens_actions_unavailable only when NEITHER registry is usable", async () => {
-  const result = await executeToolCall({}, null, null, {
+  const result = await executeToolCall(AUTH_CTX, null, null, {
     tool: "run_lens_action", params: { domain: "ghost", action: "noop" },
   });
   assert.equal(result.ok, false);
@@ -140,7 +155,7 @@ test("executeToolCall run_lens_action reports lens_actions_unavailable only when
 test("executeToolCall invokes a known lens action via the injected map", async () => {
   const lensActions = new Map();
   lensActions.set("legal.summarize", async (_ctx, _u, params) => ({ ok: true, summary: params?.text || "" }));
-  const result = await executeToolCall({}, () => null, lensActions, {
+  const result = await executeToolCall(AUTH_CTX, () => null, lensActions, {
     tool: "run_lens_action",
     params: { domain: "legal", action: "summarize", params: { text: "hello" } },
   });
@@ -530,7 +545,7 @@ test("mcp_connect is SSRF-guarded — a loopback URL is blocked via the real mcp
   // Deliberately calls through the REAL mcp-bridge.js (this case does a raw
   // dynamic import, same as the pre-existing mcp_call/mcp_list cases) so
   // this pins the actual security boundary, not a stand-in.
-  const result = await executeToolCall({}, () => null, new Map(), {
+  const result = await executeToolCall(AUTH_CTX, () => null, new Map(), {
     tool: "mcp_connect", params: { serverId: "t-agent-loopback", url: "http://127.0.0.1:1/mcp" },
   });
   assert.equal(result.ok, false);
@@ -542,7 +557,7 @@ test("mcp_connect always dispatches as kind='http' — a brain-supplied kind:'st
   // try to spawn `command` as a local subprocess. Since the case hardcodes
   // kind:"http" regardless of params, it hits the SSRF guard on `url`
   // instead — proving `kind` and `command` are ignored.
-  const result = await executeToolCall({}, () => null, new Map(), {
+  const result = await executeToolCall(AUTH_CTX, () => null, new Map(), {
     tool: "mcp_connect",
     params: { serverId: "t-agent-stdio-attempt", url: "http://127.0.0.1:1/mcp", kind: "stdio", command: "/bin/true" },
   });
@@ -574,7 +589,7 @@ test("run_lens_action returns an actionable error for a misnamed action (strict 
   globalThis._concordMACROS = macros;
   try {
     const fakeRunMacro = async () => { throw new Error("should not be called for an unregistered pair"); };
-    const result = await executeToolCall({}, fakeRunMacro, new Map(), {
+    const result = await executeToolCall(AUTH_CTX, fakeRunMacro, new Map(), {
       tool: "run_lens_action", params: { domain: "physics", action: "teleport" },
     });
     assert.equal(result.ok, false);
@@ -594,7 +609,7 @@ test("run_lens_action still runs a real MACROS-registered pair", async () => {
   try {
     let called = false;
     const fakeRunMacro = async (d, n) => { called = true; return { ok: true, d, n, watts: 36 }; };
-    const result = await executeToolCall({}, fakeRunMacro, new Map(), {
+    const result = await executeToolCall(AUTH_CTX, fakeRunMacro, new Map(), {
       tool: "run_lens_action", params: { domain: "physics", action: "power", params: { v: 12, i: 3 } },
     });
     assert.equal(called, true);
