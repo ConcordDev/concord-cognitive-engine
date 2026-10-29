@@ -5,7 +5,7 @@
  * optional swimlane grouping. Cards open the full PjTaskDetail editor.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -43,7 +43,13 @@ const TYPE_COLOR: Record<string, string> = {
   epic: 'text-violet-400', chore: 'text-gray-400',
 };
 
-export function PjBoardPanel({ projectId, onChange }: { projectId: string; onChange: () => void }) {
+export function PjBoardPanel({ projectId, onChange, openTaskRequest, onOpenTaskRequestHandled }: {
+  projectId: string;
+  onChange: () => void;
+  // S5 (F6): the command palette asks the board to open an issue.
+  openTaskRequest?: string | null;
+  onOpenTaskRequestHandled?: () => void;
+}) {
   const [columns, setColumns] = useState<Column[]>([]);
   const [swimlanes, setSwimlanes] = useState<{ key: string; label: string; columns: Column[] }[]>([]);
   const [wip, setWip] = useState<Record<string, number>>({});
@@ -57,8 +63,19 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
   const [openTask, setOpenTask] = useState<string | null>(null);
   const [swimlaneError, setSwimlaneError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (openTaskRequest && meta) {
+      setOpenTask(openTaskRequest);
+      onOpenTaskRequestHandled?.();
+    }
+  }, [openTaskRequest, meta, onOpenTaskRequestHandled]);
+
+  const loadedOnceRef = useRef(false);
   const refresh = useCallback(async () => {
-    setLoading(true);
+    // S7 (F9): only the FIRST load blanks the board. A re-fetch after a
+    // save used to swap the whole board (and the open task detail) for
+    // a skeleton — unmounting the field the user was typing in.
+    if (!loadedOnceRef.current) setLoading(true);
     const [b, w, g, list] = await Promise.all([
       lensRun('projects', 'board', { projectId }),
       lensRun('projects', 'wip-list', { projectId }),
@@ -85,6 +102,7 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
     } else {
       setSwimlaneError(null);
     }
+    loadedOnceRef.current = true;
     setLoading(false);
     onChange();
   }, [projectId, groupBy, onChange]);
@@ -103,7 +121,11 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
   };
 
   const moveStatus = async (id: string, status: string) => {
-    await lensRun('projects', 'task-move-status', { id, status });
+    // S8: a refused move (WIP limit, blocked-by) says why — the card
+    // simply stays in its column and the reason shows.
+    const r = await lensRun('projects', 'task-move-status', { id, status });
+    if (r.data?.ok === false) { setError(r.data?.error || 'That move was refused.'); }
+    else setError(null);
     await refresh();
   };
 
@@ -165,6 +187,7 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
       {/* New task + swimlane toggle */}
       <section className="flex flex-wrap items-center gap-2 bg-lattice-surface/70 border border-lattice-border rounded-xl p-3">
         <input placeholder="Task title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void addTask(); } }}
           className="flex-1 min-w-[140px] bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
         <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}
           className="bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white capitalize">

@@ -43,7 +43,7 @@ interface SlaResult {
   escalated: number; breachedCount: number; atRiskCount: number;
 }
 interface CmdResult {
-  results: { kind: string; id: string; label: string; sub: string; status?: string }[];
+  results: { kind: string; id: string; projectId?: string; label: string; sub: string; status?: string }[];
   commands: { id: string; label: string; action: string }[];
 }
 interface Member { id: string; name: string }
@@ -52,7 +52,15 @@ const INTEGRATION_KINDS = ['github', 'slack', 'ci'];
 const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
 const STATUSES = ['backlog', 'todo', 'in_progress', 'in_review', 'done'];
 
-export function PjCollabPanel({ projectId, onChange }: { projectId: string; onChange: () => void }) {
+export function PjCollabPanel({ projectId, onChange, onJumpToProject, onOpenTask }: {
+  projectId: string;
+  onChange: () => void;
+  // S5 (F6): palette results are jumps, not text — the section owns
+  // project switching and the board's open-task state, so it passes
+  // these in. Standalone, the palette still opens and closes honestly.
+  onJumpToProject?: (projectId: string) => void;
+  onOpenTask?: (projectId: string, taskId: string) => void;
+}) {
   const [presence, setPresence] = useState<Collaborator[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unread, setUnread] = useState(0);
@@ -73,6 +81,7 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
   const [cmdOpen, setCmdOpen] = useState(false);
   const [cmdQuery, setCmdQuery] = useState('');
   const [cmdResult, setCmdResult] = useState<CmdResult | null>(null);
+  const [cmdSel, setCmdSel] = useState(0);
   const cmdInputRef = useRef<HTMLInputElement>(null);
 
   const refresh = useCallback(async () => {
@@ -146,16 +155,25 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
     if (cmdOpen) setTimeout(() => cmdInputRef.current?.focus(), 0);
   }, [cmdOpen]);
 
+  // ProjectsSection claims ⌘K for the whole lens and routes here.
+  useEffect(() => {
+    const open = () => setCmdOpen(true);
+    window.addEventListener('projects:open-command', open);
+    return () => window.removeEventListener('projects:open-command', open);
+  }, []);
+
+  useEffect(() => { setCmdSel(0); }, [cmdResult, cmdOpen]);
+
   useEffect(() => {
     if (!cmdOpen) return;
     let stale = false;
     const run = async () => {
-      const r = await lensRun('projects', 'command-search', { projectId, query: cmdQuery });
+      const r = await lensRun('projects', 'command-search', { query: cmdQuery });
       if (!stale) setCmdResult((r.data?.result as CmdResult | null) || null);
     };
     void run();
     return () => { stale = true; };
-  }, [cmdOpen, cmdQuery, projectId]);
+  }, [cmdOpen, cmdQuery]);
 
   const connectIntegration = async () => {
     if (!itgForm.target.trim()) return;
@@ -218,6 +236,38 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
   const clearNotifications = async () => {
     await lensRun('projects', 'notification-clear', {});
     await refresh();
+  };
+
+  const runCommand = async (c: { id: string; label: string; action: string }) => {
+    if (c.action === 'task-create' && cmdQuery.trim()) {
+      await lensRun('projects', 'task-create', { projectId, title: cmdQuery.trim() });
+    } else if (c.action === 'project-create' && cmdQuery.trim()) {
+      await lensRun('projects', 'project-create', { name: cmdQuery.trim() });
+    }
+    setCmdOpen(false); setCmdQuery('');
+    await refresh(); onChange();
+  };
+
+  const runResult = (r: { kind: string; id: string; projectId?: string }) => {
+    setCmdOpen(false); setCmdQuery('');
+    if (r.kind === 'project') { onJumpToProject?.(r.id); return; }
+    if (r.kind === 'task') { onOpenTask?.(r.projectId || projectId, r.id); }
+  };
+
+  const cmdItems: ({ type: 'command'; c: { id: string; label: string; action: string } } | { type: 'result'; r: { kind: string; id: string; projectId?: string; label: string; sub: string; status?: string } })[] = [
+    ...(cmdResult?.commands || []).map((c) => ({ type: 'command' as const, c })),
+    ...(cmdResult?.results || []).map((r) => ({ type: 'result' as const, r })),
+  ];
+
+  const onCmdKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setCmdSel((s) => Math.min(s + 1, Math.max(0, cmdItems.length - 1))); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setCmdSel((s) => Math.max(0, s - 1)); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      const item = cmdItems[cmdSel] || cmdItems[0];
+      if (!item) return;
+      if (item.type === 'command') void runCommand(item.c); else runResult(item.r);
+    }
   };
 
   if (loading) {
@@ -483,36 +533,35 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
             <div className="flex items-center gap-2 px-3 py-2.5 border-b border-lattice-border">
               <Command className="w-4 h-4 text-violet-400" />
               <input ref={cmdInputRef} value={cmdQuery} onChange={(e) => setCmdQuery(e.target.value)}
+                onKeyDown={onCmdKeyDown}
                 placeholder="Type to search or create…"
                 className="flex-1 bg-transparent text-sm text-white placeholder-gray-600 focus:outline-none" />
               <kbd className="text-[9px] px-1.5 py-0.5 bg-lattice-elevated rounded border border-lattice-border text-gray-400">ESC</kbd>
             </div>
             <div className="max-h-80 overflow-y-auto p-2">
-              {(cmdResult?.commands || []).map((c) => (
+              {(cmdResult?.commands || []).map((c, i) => (
                 <button key={c.id} type="button"
-                  onClick={async () => {
-                    if (c.action === 'task-create' && cmdQuery.trim()) {
-                      await lensRun('projects', 'task-create', { projectId, title: cmdQuery.trim() });
-                    } else if (c.action === 'project-create' && cmdQuery.trim()) {
-                      await lensRun('projects', 'project-create', { name: cmdQuery.trim() });
-                    }
-                    setCmdOpen(false); setCmdQuery('');
-                    await refresh(); onChange();
-                  }}
-                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-violet-950/50 text-left">
+                  onClick={() => void runCommand(c)}
+                  onMouseEnter={() => setCmdSel(i)}
+                  className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left ${cmdSel === i ? 'bg-violet-950/50' : 'hover:bg-violet-950/50'}`}>
                   <Plus className="w-3.5 h-3.5 text-violet-400 shrink-0" />
                   <span className="text-[12px] text-gray-200">{c.label}</span>
                 </button>
               ))}
-              {(cmdResult?.results || []).map((r) => (
-                <div key={`${r.kind}-${r.id}`}
-                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-lattice-surface text-left">
-                  <ArrowUpRight className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                  <span className="text-[12px] text-gray-200 flex-1 truncate">{r.label}</span>
-                  <span className="text-[10px] font-mono text-gray-400">{r.sub}</span>
-                  {r.status && <span className="text-[9px] text-gray-400">{r.status.replace(/_/g, ' ')}</span>}
-                </div>
-              ))}
+              {(cmdResult?.results || []).map((r, j) => {
+                const i = (cmdResult?.commands.length || 0) + j;
+                return (
+                  <button key={`${r.kind}-${r.id}`} type="button"
+                    onClick={() => runResult(r)}
+                    onMouseEnter={() => setCmdSel(i)}
+                    className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left ${cmdSel === i ? 'bg-lattice-surface' : 'hover:bg-lattice-surface'}`}>
+                    <ArrowUpRight className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                    <span className="text-[12px] text-gray-200 flex-1 truncate">{r.label}</span>
+                    <span className="text-[10px] font-mono text-gray-400">{r.sub}</span>
+                    {r.status && <span className="text-[9px] text-gray-400">{r.status.replace(/_/g, ' ')}</span>}
+                  </button>
+                );
+              })}
               {cmdResult && cmdResult.results.length === 0 && cmdResult.commands.length === 0 && (
                 <p className="text-[11px] text-gray-400 italic px-2.5 py-3">Type to search projects and issues.</p>
               )}
