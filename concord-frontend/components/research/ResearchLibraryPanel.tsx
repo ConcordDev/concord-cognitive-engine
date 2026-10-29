@@ -6,10 +6,11 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2, Plus, BookMarked, ChevronLeft, ChevronDown, Trash2, Copy, FileText, ExternalLink, Pencil, Link2, X, Tag, Highlighter } from 'lucide-react';
+import { Loader2, Plus, BookMarked, BookOpen, ChevronLeft, ChevronDown, Trash2, Copy, FileText, ExternalLink, Pencil, Link2, X, Tag, Highlighter, Upload } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
+import { ResearchPdfReader } from './ResearchPdfReader';
 
 interface Reference {
   id: string; title: string; authors: string | null; year: number | null;
@@ -19,7 +20,12 @@ interface Reference {
 
 const SOURCE_LABEL: Record<string, string> = { crossref: 'Crossref', openalex: 'OpenAlex', arxiv: 'arXiv' };
 const sourceLabel = (s: string) => SOURCE_LABEL[s] || s;
-interface Annotation { id: string; page: number | null; quote: string | null; text: string | null; color: string }
+interface Annotation {
+  id: string; page: number | null; quote: string | null; text: string | null; color: string;
+  // S4: reader-created annotations carry a structured anchor (page +
+  // passage offsets; offsets null until the platform has a PDF text layer).
+  anchor?: { page: number | null; startOffset: number | null; endOffset: number | null } | null;
+}
 interface LibraryAnnotation extends Annotation { referenceId: string }
 interface PdfAttachment { id: string; referenceId: string; url: string; filename: string; pages: number | null }
 interface TagCount { tag: string; count: number }
@@ -118,6 +124,11 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
   const [editForm, setEditForm] = useState({ title: '', authors: '', year: '', journal: '', doi: '', tags: '' });
   const [related, setRelated] = useState<Reference[]>([]);
   const [relateQuery, setRelateQuery] = useState('');
+  // S4 (F2): the in-app reader replaces the detail view while open.
+  // pdfUrl/source are set when opened from a specific attachment; left
+  // unset when opened via server-side resolution (reference-pdf).
+  const [reader, setReader] = useState<{ page?: number; pdfUrl?: string; source?: string } | null>(null);
+  const pdfFileInputRef = useRef<HTMLInputElement>(null);
 
   // S3 (F6): the library is loaded whole and the search box filters it
   // client-side, live — the note search's model (a local, exact filter),
@@ -174,6 +185,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
 
   const openRef = useCallback(async (ref: Reference) => {
     setSelected(ref);
+    setReader(null);
     setEditing(false);
     const r = await lensRun('research', 'reference-detail', { id: ref.id });
     if (r.data?.ok === false) {
@@ -253,6 +265,44 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
     await openRef(selected);
   };
 
+  // S4 (F2): upload a PDF file through the platform's existing artifact
+  // story — POST /api/artifact/upload stores the bytes as the user's own
+  // artifact (the ArtifactUploader pattern: raw body + X- headers), and
+  // the ACL-gated /api/artifact/:dtuId/stream URL is filed on the
+  // reference through the existing reference-attach-pdf macro. No new
+  // storage or serving mechanism is introduced here.
+  const uploadPdfFile = async (file: File): Promise<boolean> => {
+    if (!selected) return false;
+    try {
+      const res = await fetch('/api/artifact/upload', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': file.type || 'application/pdf',
+          'X-Filename': encodeURIComponent(file.name),
+          'X-Title': encodeURIComponent(file.name),
+          'X-Domain': 'research',
+        },
+        body: file,
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok || !data.dtuId) {
+        setError(data?.error || `Upload failed (${res.status})`);
+        return false;
+      }
+      const r = await lensRun('research', 'reference-attach-pdf', {
+        referenceId: selected.id, url: `/api/artifact/${data.dtuId}/stream`, filename: file.name,
+      });
+      if (r.data?.ok === false) { setError(r.data?.error || 'Failed to attach the uploaded PDF'); return false; }
+      setError(null);
+      onChange();
+      return true;
+    } catch {
+      setError('Upload failed — the file could not be sent.');
+      return false;
+    }
+  };
+
   const add = async () => {
     if (!form.title.trim()) { setError('Title is required.'); return; }
     const r = await lensRun('research', 'reference-add', {
@@ -323,6 +373,22 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  // ── In-app reader (S4) ──
+  if (selected && reader) {
+    return (
+      <ResearchPdfReader
+        referenceId={selected.id}
+        title={selected.title}
+        initialPage={reader.page}
+        initialPdfUrl={reader.pdfUrl}
+        initialSource={reader.source}
+        onClose={() => { void openRef(selected); }}
+        onUpload={uploadPdfFile}
+        onChanged={onChange}
+      />
+    );
   }
 
   // ── Reference detail ──
@@ -400,7 +466,25 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
         )}
 
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-          <h4 className="text-xs font-semibold text-zinc-300 mb-2">PDF attachments</h4>
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-xs font-semibold text-zinc-300">PDF attachments</h4>
+            <div className="flex items-center gap-1.5">
+              <button type="button" onClick={() => setReader({})}
+                className="flex items-center gap-1 text-[10px] font-medium bg-red-600 hover:bg-red-500 text-white rounded px-2 py-1">
+                <BookOpen className="w-3 h-3" /> Read in Concord
+              </button>
+              <button type="button" onClick={() => pdfFileInputRef.current?.click()}
+                className="flex items-center gap-1 text-[10px] text-zinc-300 hover:text-zinc-100 border border-zinc-700 rounded px-2 py-1">
+                <Upload className="w-3 h-3" /> Upload PDF
+              </button>
+              <input ref={pdfFileInputRef} type="file" accept="application/pdf,.pdf" className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = '';
+                  if (f) void uploadPdfFile(f).then((ok) => { if (ok && selected) void openRef(selected); });
+                }} />
+            </div>
+          </div>
           <div className="grid grid-cols-6 gap-2 mb-2">
             <input placeholder="PDF URL (https://…)" value={pdfForm.url} onChange={(e) => setPdfForm({ ...pdfForm, url: e.target.value })}
               className="col-span-3 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
@@ -412,7 +496,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
               className="col-span-6 bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Attach PDF</button>
           </div>
           {pdfs.length === 0 ? (
-            <p className="text-[11px] text-zinc-400 italic">No PDFs attached.</p>
+            <p className="text-[11px] text-zinc-400 italic">No PDFs attached — “Read in Concord” still checks arXiv and open-access sources for this reference.</p>
           ) : (
             <ul className="space-y-1">
               {pdfs.map((p) => (
@@ -424,9 +508,16 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
                     {p.pages ? <span className="text-zinc-600">· {p.pages}p</span> : null}
                     <ExternalLink className="w-3 h-3 shrink-0" />
                   </a>
-                  <button type="button" onClick={() => deletePdf(p.id)} aria-label="Delete PDF" className="text-zinc-600 hover:text-rose-400 shrink-0">
-                    <Trash2 className="w-3 h-3" />
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button type="button"
+                      onClick={() => setReader({ pdfUrl: p.url, source: p.url.startsWith('/api/artifact/') ? 'upload' : 'attached' })}
+                      aria-label="Read PDF in Concord" className="text-zinc-400 hover:text-red-300">
+                      <BookOpen className="w-3.5 h-3.5" />
+                    </button>
+                    <button type="button" onClick={() => deletePdf(p.id)} aria-label="Delete PDF" className="text-zinc-600 hover:text-rose-400">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -447,12 +538,26 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
           </div>
           {annotations.length > 0 && (
             <ul className="space-y-1">
-              {annotations.map((a) => (
-                <li key={a.id} className="text-[11px] border-l-2 border-amber-600/50 pl-2">
-                  {a.quote && <p className="text-zinc-300 italic">&ldquo;{a.quote}&rdquo;{a.page ? ` (p.${a.page})` : ''}</p>}
-                  {a.text && <p className="text-zinc-400">{a.text}</p>}
-                </li>
-              ))}
+              {annotations.map((a) => {
+                const target = a.anchor?.page || a.page;
+                const body = (
+                  <>
+                    {a.quote && <p className="text-zinc-300 italic">&ldquo;{a.quote}&rdquo;{target ? ` (p.${target})` : ''}</p>}
+                    {a.text && <p className="text-zinc-400">{a.text}</p>}
+                  </>
+                );
+                // S4: an annotation with a page opens the reader at that
+                // page — the passage's home is the document, not this list.
+                return (
+                  <li key={a.id} className="text-[11px] border-l-2 border-amber-600/50 pl-2">
+                    {target ? (
+                      <button type="button" onClick={() => setReader({ page: target })} className="text-left w-full hover:bg-zinc-800/40 rounded-r px-1 -ml-1">
+                        {body}
+                      </button>
+                    ) : body}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
