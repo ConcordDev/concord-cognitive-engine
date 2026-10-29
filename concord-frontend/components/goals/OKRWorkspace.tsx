@@ -27,6 +27,7 @@ interface AlignObjective {
   id: string; title: string; parentId: string | null; owner: string | null;
   team: string | null; level: string; keyResults: string[];
   progress?: number | null; progressSource?: string | null;
+  blockedBy?: string[];
   children?: AlignObjective[];
 }
 interface AlignStats {
@@ -199,6 +200,9 @@ function AlignmentTab() {
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-xs font-medium text-white">{node.title}</span>
             <span className="rounded bg-cyan-500/15 px-1 text-[9px] uppercase text-cyan-300">{node.level}</span>
+            {node.blockedBy && node.blockedBy.length > 0 && (
+              <span className="rounded bg-orange-500/15 px-1 text-[9px] uppercase text-orange-300" title={`Blocked by ${node.blockedBy.join(', ')}`}>Blocked</span>
+            )}
             {node.team && <span className="rounded bg-purple-500/15 px-1 text-[9px] text-purple-300">{node.team}</span>}
           </div>
           {node.progress != null && (
