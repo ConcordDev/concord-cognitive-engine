@@ -19,9 +19,12 @@ interface ProfileResult {
 
 const EMPTY_ABOUT = { work: '', education: '', location: '', relationship: '', website: '' };
 
-export function ProfilePanel({ viewerId }: { viewerId: string }) {
+export function ProfilePanel({ viewerId: _viewerId }: { viewerId: string }) {
+  // _viewerId: the signed-in viewer's id — S-TL-7's View As preview
+  // consumes it (the heading itself now shows the resolved name).
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
+  const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
   const [coverUrl, setCoverUrl] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -60,6 +63,7 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
 
   useEffect(() => {
     if (data?.profile) {
+      setDisplayName(data.profile.displayName || '');
       setBio(data.profile.bio || '');
       setCoverUrl(data.profile.coverUrl || '');
       setAvatarUrl(data.profile.avatarUrl || '');
@@ -68,7 +72,7 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
   }, [data]);
 
   const saveMutation = useMutation({
-    mutationFn: () => lensRun('timeline', 'profile-update', { bio, coverUrl, avatarUrl, about }),
+    mutationFn: () => lensRun('timeline', 'profile-update', { displayName, bio, coverUrl, avatarUrl, about }),
     onSuccess: (r) => {
       if (r.data.ok) {
         qc.invalidateQueries({ queryKey: ['timeline-profile'] });
@@ -114,7 +118,12 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
       <div className="pt-10 px-4 pb-4">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-bold text-white">{viewerId}</h2>
+            <h2 className="text-lg font-bold text-white">
+              {profile?.displayName || profile?.username || 'Your profile'}
+              {profile?.displayName && profile?.username && (
+                <span className="ml-2 text-sm font-normal text-gray-400">@{profile.username}</span>
+              )}
+            </h2>
             <p className="text-xs text-gray-400">
               {data?.stats.posts ?? 0} posts · {data?.stats.albums ?? 0} albums
             </p>
@@ -129,6 +138,13 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
 
         {editing ? (
           <div className="mt-3 space-y-2">
+            <label className="text-[11px] text-gray-400">Display name</label>
+            <input
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="How your name appears on the wall"
+              className="w-full bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+            />
             <label className="text-[11px] text-gray-400 flex items-center gap-1">
               <Camera className="w-3 h-3" /> Cover photo URL
             </label>

@@ -8,6 +8,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { areFriends } from "../lib/friendships.js";
 import { presentOwnedId } from "../lib/public-actor.js";
+import { lookupUserIdentity } from "../lib/user-identity.js";
 
 export default function registerTimelineActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -508,6 +509,21 @@ export default function registerTimelineActions(registerLensAction) {
     .slice(0, 12)
     .map((m) => ({ kind: String(m.kind), url: tlClean(m.url, 1000), caption: tlClean(m.caption, 200) }));
 
+  // Display identity for a person (S-TL-4 / F5). A name set on the
+  // user's Timeline profile wins; otherwise the account's users-table
+  // identity (display name, then @username). Never falls back to the
+  // raw id: an unnamed account resolves to null and the surface shows
+  // its neutral label — a UUID is not a name.
+  const tlPersonName = (ctx, s, userId) => {
+    if (!userId) return null;
+    const stored = s.profiles.get(userId);
+    if (stored?.displayName) return stored.displayName;
+    try {
+      const ident = lookupUserIdentity(ctx?.db || globalThis._concordSTATE?.db, userId);
+      return ident.displayName || ident.username || null;
+    } catch { return null; }
+  };
+
   // Find a post by id across all users' feeds — returns { ownerId, post } | null.
   function findPost(s, postId) {
     for (const [ownerId, posts] of s.posts.entries()) {
@@ -709,6 +725,12 @@ export default function registerTimelineActions(registerLensAction) {
         const mine = reactions.find((r) => r.userId === viewerId);
         all.push({
           ...p,
+          // S-TL-4: people render as names, not UUIDs (F5).
+          authorDisplayName: tlPersonName(ctx, s, p.authorId),
+          sharedFrom: p.sharedFrom
+            ? { ...p.sharedFrom, authorDisplayName: tlPersonName(ctx, s, p.sharedFrom.authorId) }
+            : p.sharedFrom,
+          taggedDisplayNames: (p.taggedUserIds || []).map((id) => tlPersonName(ctx, s, id) || "Member"),
           reactionCounts: counts,
           reactionTotal: reactions.length,
           userReaction: mine ? mine.kind : null,
@@ -881,7 +903,9 @@ export default function registerTimelineActions(registerLensAction) {
     const list = [...(s.reactions.get(postId) || [])];
     list.sort((a, b) => b.at.localeCompare(a.at));
     const byKind = REACTION_KINDS.reduce((acc, k) => {
-      acc[k] = list.filter((r) => r.kind === k).map((r) => ({ userId: r.userId, at: r.at }));
+      acc[k] = list.filter((r) => r.kind === k).map((r) => ({
+        userId: r.userId, at: r.at, displayName: tlPersonName(ctx, s, r.userId),
+      }));
       return acc;
     }, {});
     const counts = REACTION_KINDS.reduce((acc, k) => { acc[k] = byKind[k].length; return acc; }, {});
@@ -889,7 +913,9 @@ export default function registerTimelineActions(registerLensAction) {
       ok: true,
       result: {
         total: list.length, counts, byKind,
-        reactors: list.map((r) => ({ userId: r.userId, kind: r.kind, at: r.at })),
+        reactors: list.map((r) => ({
+          userId: r.userId, kind: r.kind, at: r.at, displayName: tlPersonName(ctx, s, r.userId),
+        })),
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -1010,15 +1036,21 @@ export default function registerTimelineActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = params.userId ? tlClean(params.userId, 64) : tlAid(ctx);
     const profile = s.profiles.get(userId) || {
-      userId, coverUrl: null, avatarUrl: null, bio: "",
+      userId, coverUrl: null, avatarUrl: null, bio: "", displayName: null,
       about: { work: "", education: "", location: "", relationship: "", website: "" },
       updatedAt: null,
     };
     const posts = s.posts.get(userId) || [];
+    // S-TL-4: the profile carries the person's name (F5/F7) — the name
+    // set here wins, then the account identity.
+    let username = null;
+    try {
+      username = lookupUserIdentity(ctx?.db || globalThis._concordSTATE?.db, userId).username || null;
+    } catch { /* identity lookup is best-effort */ }
     return {
       ok: true,
       result: {
-        profile,
+        profile: { ...profile, displayName: tlPersonName(ctx, s, userId), username },
         stats: {
           posts: posts.length,
           albums: (s.albums.get(userId) || []).length,
@@ -1032,7 +1064,7 @@ export default function registerTimelineActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = tlAid(ctx);
     const prev = s.profiles.get(userId) || {
-      userId, coverUrl: null, avatarUrl: null, bio: "",
+      userId, coverUrl: null, avatarUrl: null, bio: "", displayName: null,
       about: { work: "", education: "", location: "", relationship: "", website: "" },
     };
     const a = params.about || {};
@@ -1040,6 +1072,11 @@ export default function registerTimelineActions(registerLensAction) {
       userId,
       coverUrl: params.coverUrl !== undefined ? (tlClean(params.coverUrl, 1000) || null) : prev.coverUrl,
       avatarUrl: params.avatarUrl !== undefined ? (tlClean(params.avatarUrl, 1000) || null) : prev.avatarUrl,
+      // S-TL-4: the display name is editable here; empty clears it back
+      // to the account identity.
+      displayName: params.displayName !== undefined
+        ? (tlClean(params.displayName, 80) || null)
+        : (prev.displayName || null),
       bio: params.bio !== undefined ? tlClean(params.bio, 500) : prev.bio,
       about: {
         work: a.work !== undefined ? tlClean(a.work, 200) : prev.about.work,
@@ -1105,7 +1142,10 @@ export default function registerTimelineActions(registerLensAction) {
     return {
       ok: true,
       result: {
-        notifications: list.slice(0, limit),
+        // S-TL-4: the actor renders as a name, not a UUID (F5).
+        notifications: list.slice(0, limit).map((n) => ({
+          ...n, actorDisplayName: tlPersonName(ctx, s, n.actorId),
+        })),
         total: list.length,
         unread: (s.notifs.get(userId) || []).filter((n) => !n.read).length,
       },

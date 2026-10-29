@@ -105,7 +105,7 @@ export function NotificationsPanel() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-gray-200">
-                    <span className="font-semibold text-white">{n.actorId}</span> {meta.verb}
+                    <span className="font-semibold text-white">{n.actorDisplayName || 'Member'}</span> {meta.verb}
                   </p>
                   {n.preview && <p className="text-xs text-gray-400 truncate">&ldquo;{n.preview}&rdquo;</p>}
                   <p className="text-[11px] text-gray-400 mt-0.5">{timeAgo(n.at)}</p>

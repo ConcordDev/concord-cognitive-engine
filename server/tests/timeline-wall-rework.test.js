@@ -287,6 +287,92 @@ describe("S-TL-3 timeline media URL honesty (F14)", () => {
   });
 });
 
+// ── S-TL-4: names, not UUIDs (F5/F7) ───────────────────────────────────
+// A db that answers BOTH the friendships SQL and the users-table
+// identity SQL lookupUserIdentity issues (PRAGMA + username select).
+function makeIdentityDb(users) {
+  const inner = makeFriendDb();
+  return {
+    prepare(sql) {
+      const n = sql.replace(/\s+/g, " ").trim();
+      if (n.startsWith("PRAGMA")) {
+        return { all: () => [{ name: "username" }, { name: "display_name" }] };
+      }
+      if (n.startsWith("SELECT username")) {
+        return {
+          get: (id) => {
+            const u = users.get(id);
+            return u ? { username: u.username, displayName: u.displayName || null } : undefined;
+          },
+        };
+      }
+      return inner.prepare(sql);
+    },
+    _rows: inner._rows,
+  };
+}
+
+describe("S-TL-4 timeline names (F5/F7)", () => {
+  const users = new Map([
+    ["nm_ada", { username: "ada", displayName: "Ada Lovelace" }],
+    ["nm_grace", { username: "grace", displayName: null }],
+  ]);
+  const idb = makeIdentityDb(users);
+  const ada = asUser("nm_ada", idb);
+  const grace = asUser("nm_grace", idb);
+  const anon = asUser("nm_nobody", idb);
+
+  it("feed posts carry the author's account name; an unnamed author resolves to null, never the UUID", () => {
+    call("post-create", ada, { content: "ada post", privacy: "public" });
+    call("post-create", grace, { content: "grace post", privacy: "public" });
+    call("post-create", anon, { content: "mystery post", privacy: "public" });
+    const feed = call("feed-list", grace, {});
+    const byContent = new Map(feed.result.posts.map((p) => [p.content, p]));
+    assert.equal(byContent.get("ada post").authorDisplayName, "Ada Lovelace");
+    assert.equal(byContent.get("grace post").authorDisplayName, "grace");
+    assert.equal(byContent.get("mystery post").authorDisplayName, null);
+  });
+
+  it("a name set on the Timeline profile wins over the account name, and clearing restores it", () => {
+    call("post-create", ada, { content: "ada post", privacy: "public" });
+    const before = call("profile-get", ada, {});
+    assert.equal(before.result.profile.displayName, "Ada Lovelace");
+    assert.equal(before.result.profile.username, "ada");
+    call("profile-update", ada, { displayName: "Ada L." });
+    const set = call("profile-get", ada, {});
+    assert.equal(set.result.profile.displayName, "Ada L.");
+    const feed = call("feed-list", grace, {});
+    assert.equal(feed.result.posts.find((p) => p.content === "ada post").authorDisplayName, "Ada L.");
+    call("profile-update", ada, { displayName: "" });
+    const cleared = call("profile-get", ada, {});
+    assert.equal(cleared.result.profile.displayName, "Ada Lovelace");
+  });
+
+  it("reactions breakdown and notifications carry names too", () => {
+    const post = call("post-create", grace, { content: "react to me", privacy: "public" }).result.post;
+    call("react", ada, { postId: post.id, kind: "love" });
+    const bd = call("reactions-breakdown", grace, { postId: post.id });
+    assert.equal(bd.result.reactors[0].displayName, "Ada Lovelace");
+    const notifs = call("notifications-list", grace, {});
+    const reaction = notifs.result.notifications.find((n) => n.type === "reaction");
+    assert.ok(reaction, "reaction notification exists");
+    assert.equal(reaction.actorDisplayName, "Ada Lovelace");
+  });
+
+  it("shared posts name the original author, and tags resolve to names", () => {
+    const original = call("post-create", ada, {
+      content: "tagged", privacy: "public", taggedUserIds: ["nm_grace", "nm_nobody"],
+    }).result.post;
+    call("share-post", grace, { postId: original.id, privacy: "public" });
+    const feed = call("feed-list", grace, {});
+    const shared = feed.result.posts.find((p) => p.sharedFrom?.postId === original.id);
+    assert.ok(shared, "share present in feed");
+    assert.equal(shared.sharedFrom.authorDisplayName, "Ada Lovelace");
+    const tagged = feed.result.posts.find((p) => p.id === original.id);
+    assert.deepEqual(tagged.taggedDisplayNames, ["grace", "Member"]);
+  });
+});
+
 // ── S-TL-2: friends-tier regression lock ───────────────────────────────
 // The prep audit found the friends-tier gate already fixed on main
 // (checkPostAccess via areFriends, fail-closed, oracle-safe). This

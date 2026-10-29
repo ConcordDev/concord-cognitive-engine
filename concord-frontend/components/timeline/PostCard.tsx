@@ -110,7 +110,7 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
         <div className="flex gap-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0" />
           <div>
-            <h3 className="font-semibold text-white text-sm" title={post.authorId}>{isOwner ? 'You' : post.authorId}</h3>
+            <h3 className="font-semibold text-white text-sm">{isOwner ? 'You' : (post.authorDisplayName || 'Member')}</h3>
             <div className="flex items-center gap-1.5 text-xs text-gray-400">
               <span>{timeAgo(post.createdAt)}</span>
               <span>·</span>
@@ -226,10 +226,12 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
         <p className="px-4 pb-2 text-xs text-gray-400">From DTU {post.citedDtuId}</p>
       )}
 
-      {/* Tagged users */}
+      {/* Tagged users — names, not ids (S-TL-4) */}
       {post.taggedUserIds?.length > 0 && (
         <div className="px-4 pb-1 text-xs text-gray-400">
-          with {post.taggedUserIds.join(', ')}
+          with {(post.taggedDisplayNames && post.taggedDisplayNames.length === post.taggedUserIds.length
+            ? post.taggedDisplayNames
+            : post.taggedUserIds.map(() => 'Member')).join(', ')}
         </div>
       )}
 
@@ -251,7 +253,7 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
       {/* Shared-from quote */}
       {post.sharedFrom && (
         <div className="mx-4 my-2 border border-gray-700 rounded-lg p-3 bg-[#18191a]">
-          <p className="text-xs font-semibold text-gray-300 mb-1">{post.sharedFrom.authorId}</p>
+          <p className="text-xs font-semibold text-gray-300 mb-1">{post.sharedFrom.authorDisplayName || 'Member'}</p>
           <p className="text-sm text-gray-400">{post.sharedFrom.content || '(media post)'}</p>
         </div>
       )}

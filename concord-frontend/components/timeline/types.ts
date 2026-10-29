@@ -15,6 +15,8 @@ export interface MediaItem {
 export interface SharedFrom {
   postId: string;
   authorId: string;
+  /** S-TL-4: resolved display name; null when the account is unnamed. */
+  authorDisplayName?: string | null;
   content: string;
   media: MediaItem[];
   createdAt: string;
@@ -31,6 +33,11 @@ export interface PostVersion {
 export interface FeedPost {
   id: string;
   authorId: string;
+  /** S-TL-4: resolved display name; null when the account is unnamed —
+   *  surfaces show a neutral label, never the raw id. */
+  authorDisplayName?: string | null;
+  /** S-TL-4: tagged people resolved to names, parallel to taggedUserIds. */
+  taggedDisplayNames?: string[];
   content: string;
   media: MediaItem[];
   privacy: Privacy;
@@ -79,6 +86,10 @@ export interface Profile {
   userId: string;
   coverUrl: string | null;
   avatarUrl: string | null;
+  /** S-TL-4: resolved display name (profile-set name wins, then the
+   *  account identity); username is the @handle when one exists. */
+  displayName?: string | null;
+  username?: string | null;
   bio: string;
   about: {
     work: string;
@@ -94,6 +105,8 @@ export interface Notification {
   id: string;
   type: 'reaction' | 'comment' | 'reply' | 'tag' | 'share';
   actorId: string;
+  /** S-TL-4: the actor's resolved display name; null when unnamed. */
+  actorDisplayName?: string | null;
   postId?: string;
   kind?: ReactionKind;
   preview?: string;
