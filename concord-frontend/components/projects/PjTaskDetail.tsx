@@ -137,10 +137,40 @@ export function PjTaskDetail({
     await refresh();
   };
 
+  // F23: date inputs draft locally and commit on blur, like the text
+  // fields (S7). Firing task-update on every change event meant each
+  // per-segment partial value from a split-field date control drew an
+  // invalid-date banner, and the refusal path refreshed the panel —
+  // snapping the input back mid-entry. While editing there is now no
+  // round-trip, no banner, no reset; a commit sends a complete date
+  // or a deliberate clear, and an abandoned partial entry simply
+  // reverts to the stored value, which never changed.
+  const [dateDrafts, setDateDrafts] = useState<Record<string, string>>({});
+  const commitDate = async (key: 'startDate' | 'dueDate', stored: string | null) => {
+    const v = dateDrafts[key];
+    if (v === undefined) return;
+    setDateDrafts((prev) => { const next = { ...prev }; delete next[key]; return next; });
+    if (v === (stored || '')) return;
+    // An empty read-back is ambiguous: split-field controls report ''
+    // for a half-typed date AND for a deliberate clear. Treating it as
+    // a clear would erase the stored date on every abandoned entry —
+    // so an empty commit simply reverts; clearing is the explicit
+    // Clear button beside the input, never a side effect.
+    if (v === '') return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return; // partial entry, abandoned
+    await patch({ [key]: v });
+  };
+
   const commitFieldDraft = async (fieldId: string) => {
     const v = fieldDrafts[fieldId];
     if (v === undefined) return;
     setFieldDrafts((prev) => { const next = { ...prev }; delete next[fieldId]; return next; });
+    // F23: a date-typed field commits only a complete date — a
+    // partial entry is abandoned, never stored raw, and an empty
+    // read-back (ambiguous with a half-typed entry) reverts instead
+    // of erasing; custom dates clear via their Clear button.
+    const field = customFields.find((f) => f.id === fieldId);
+    if (field?.type === 'date' && (v === '' || !/^\d{4}-\d{2}-\d{2}$/.test(v))) return;
     await setField(fieldId, v);
   };
 
@@ -318,10 +348,28 @@ export function PjTaskDetail({
               </select>
             </Field>
             <Field label="Start">
-              <input type="date" value={t.startDate || ''} onChange={(e) => patch({ startDate: e.target.value })} className={cn(selCls, 'tabular-nums')} />
+              <span className="flex items-center gap-1">
+                <input type="date" value={dateDrafts.startDate ?? (t.startDate || '')}
+                  onChange={(e) => setDateDrafts((prev) => ({ ...prev, startDate: e.target.value }))}
+                  onBlur={() => void commitDate('startDate', t.startDate)} className={cn(selCls, 'tabular-nums', 'flex-1')} />
+                {t.startDate && (
+                  <button type="button" aria-label="Clear start date" title="Clear start date"
+                    onClick={() => { setDateDrafts((prev) => { const next = { ...prev }; delete next.startDate; return next; }); void patch({ startDate: '' }); }}
+                    className="text-gray-500 hover:text-gray-200 text-xs px-1">×</button>
+                )}
+              </span>
             </Field>
             <Field label="Due">
-              <input type="date" value={t.dueDate || ''} onChange={(e) => patch({ dueDate: e.target.value })} className={cn(selCls, 'tabular-nums')} />
+              <span className="flex items-center gap-1">
+                <input type="date" value={dateDrafts.dueDate ?? (t.dueDate || '')}
+                  onChange={(e) => setDateDrafts((prev) => ({ ...prev, dueDate: e.target.value }))}
+                  onBlur={() => void commitDate('dueDate', t.dueDate)} className={cn(selCls, 'tabular-nums', 'flex-1')} />
+                {t.dueDate && (
+                  <button type="button" aria-label="Clear due date" title="Clear due date"
+                    onClick={() => { setDateDrafts((prev) => { const next = { ...prev }; delete next.dueDate; return next; }); void patch({ dueDate: '' }); }}
+                    className="text-gray-500 hover:text-gray-200 text-xs px-1">×</button>
+                )}
+              </span>
             </Field>
           </div>
 
@@ -366,9 +414,18 @@ export function PjTaskDetail({
                       {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
                     </select>
                   ) : f.type === 'date' ? (
-                    <input type="date"
-                      value={String(t.customFields[f.id] ?? '')}
-                      onChange={(e) => setField(f.id, e.target.value)} className={selCls} />
+                    <span className="flex items-center gap-1">
+                      <input type="date"
+                        value={fieldDrafts[f.id] ?? String(t.customFields[f.id] ?? '')}
+                        onChange={(e) => setFieldDrafts((prev) => ({ ...prev, [f.id]: e.target.value }))}
+                        onBlur={() => void commitFieldDraft(f.id)}
+                        className={cn(selCls, 'flex-1')} />
+                      {!!t.customFields[f.id] && (
+                        <button type="button" aria-label={`Clear ${f.name}`} title={`Clear ${f.name}`}
+                          onClick={() => void setField(f.id, '')}
+                          className="text-gray-500 hover:text-gray-200 text-xs px-1">×</button>
+                      )}
+                    </span>
                   ) : (
                     <input type={f.type === 'number' ? 'number' : 'text'}
                       value={fieldDrafts[f.id] ?? String(t.customFields[f.id] ?? '')}
