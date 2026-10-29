@@ -26,7 +26,11 @@ import { PjPortfolioPanel } from './PjPortfolioPanel';
 import { PjCollabPanel } from './PjCollabPanel';
 import { ProjectsKeepMenu } from './ProjectsKeepMenu';
 
-interface Project { id: string; name: string; key: string; color: string; status: string; health: string; archived: boolean }
+interface Project {
+  id: string; name: string; key: string; color: string; status: string; health: string; archived: boolean;
+  description?: string | null; startDate?: string | null; targetDate?: string | null;
+  duplicatedFrom?: { projectId: string; name: string; key: string; at: string } | null;
+}
 interface Dash {
   name: string; totalTasks: number; done: number; completionPct: number;
   overdue: number; activeSprints: number; openMilestones: number; members: number;
@@ -59,6 +63,8 @@ export function ProjectsSection() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [closedIds, setClosedIds] = useState<string[]>([]);
   const [confirming, setConfirming] = useState<'archive' | 'delete' | null>(null);
+  const [dupOpen, setDupOpen] = useState(false);
+  const [dupForm, setDupForm] = useState({ name: '', key: '' });
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   const openComposer = useCallback(() => {
@@ -142,6 +148,21 @@ export function ProjectsSection() {
     if (!project) return;
     await lensRun('projects', 'project-update', { id: project.id, ...patch });
     await refreshProjects();
+  };
+
+  const duplicateProject = async () => {
+    if (!project) return;
+    const r = await lensRun('projects', 'project-duplicate', {
+      id: project.id,
+      name: dupForm.name.trim() || undefined,
+      key: dupForm.key.trim() || undefined,
+    });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not duplicate the project.'); return; }
+    setError(null);
+    setDupOpen(false);
+    const copyId = r.data?.result?.project?.id as string | undefined;
+    await refreshProjects();
+    if (copyId) setActiveProject(copyId);
   };
 
   const archiveProject = async () => {
@@ -251,7 +272,24 @@ export function ProjectsSection() {
                   className="text-[11px] px-2 py-1 bg-lattice-elevated hover:bg-lattice-border text-gray-300 rounded-lg">Archive</button>
                 <button type="button" onClick={() => setConfirming('delete')}
                   className="text-[11px] px-2 py-1 bg-lattice-elevated hover:bg-rose-900 text-rose-200 rounded-lg">Delete</button>
+                <button type="button" onClick={() => { setDupForm({ name: `${project.name} (copy)`, key: '' }); setDupOpen((v) => !v); }}
+                  className="text-[11px] px-2 py-1 bg-lattice-elevated hover:bg-lattice-border text-gray-300 rounded-lg">Duplicate</button>
               </div>
+              {dupOpen && (
+                <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-lattice-border">
+                  <span className="text-[11px] text-gray-300">Copy of “{project.name}” — issues, sprints and structure come along; comments and history stay with the original. The copy names “{project.name}” as its source.</span>
+                  <input aria-label="Copy name" value={dupForm.name}
+                    onChange={(e) => setDupForm({ ...dupForm, name: e.target.value })}
+                    className="px-2 py-1 text-[11px] bg-lattice-elevated border border-lattice-border rounded-lg text-gray-200 w-44" />
+                  <input aria-label="Copy key (optional)" value={dupForm.key} placeholder="Key (optional)"
+                    onChange={(e) => setDupForm({ ...dupForm, key: e.target.value })}
+                    className="px-2 py-1 text-[11px] bg-lattice-elevated border border-lattice-border rounded-lg text-gray-200 w-28" />
+                  <button type="button" onClick={() => void duplicateProject()}
+                    className="px-2 py-1 text-[11px] font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">Create copy</button>
+                  <button type="button" onClick={() => setDupOpen(false)}
+                    className="px-2 py-1 text-[11px] text-zinc-300">Cancel</button>
+                </div>
+              )}
               {confirming === 'archive' && (
                 <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-lattice-border">
                   <span className="text-[11px] text-amber-200">Archive “{project.name}”? It leaves the switcher; you can restore it from Portfolio.</span>
@@ -293,7 +331,7 @@ export function ProjectsSection() {
                 {tab === 'planning' && <PjPlanningPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'team' && <PjTeamPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'collab' && <PjCollabPanel projectId={activeProject} onChange={refreshDash} />}
-                {tab === 'settings' && <PjSettingsPanel projectId={activeProject} onChange={refreshDash} />}
+                {tab === 'settings' && <PjSettingsPanel projectId={activeProject} project={project} onProjectSaved={refreshProjects} onChange={refreshDash} />}
                 {tab === 'portfolio' && <PjPortfolioPanel onLifecycle={refreshProjects} />}
               </div>
             </>

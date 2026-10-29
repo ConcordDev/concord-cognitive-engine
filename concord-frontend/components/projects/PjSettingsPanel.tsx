@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * PjSettingsPanel — labels, custom fields, automation rules and task
- * templates for a project.
+ * PjSettingsPanel — project identity (name, description, dates), labels,
+ * custom fields, automation rules and task templates for a project.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -18,12 +18,22 @@ interface Rule {
   condition: { field: string; equals: string } | null; enabled: boolean;
 }
 interface Template { id: string; name: string; taskDefaults: { title: string; points: number }; subtasks: string[] }
+interface ProjectIdentity {
+  id: string; name: string; key: string;
+  description?: string | null; startDate?: string | null; targetDate?: string | null;
+  duplicatedFrom?: { projectId: string; name: string; key: string; at: string } | null;
+}
 
 const COLORS = ['red', 'orange', 'amber', 'lime', 'emerald', 'teal', 'sky', 'indigo', 'violet', 'pink', 'zinc'];
 const TRIGGERS = ['status_changed', 'task_created', 'assigned', 'priority_changed'];
 const ACTIONS = ['set_status', 'set_priority', 'set_assignee', 'add_label', 'set_sprint'];
 
-export function PjSettingsPanel({ projectId, onChange }: { projectId: string; onChange: () => void }) {
+export function PjSettingsPanel({ projectId, project, onProjectSaved, onChange }: {
+  projectId: string;
+  project?: ProjectIdentity | null;
+  onProjectSaved?: () => Promise<void> | void;
+  onChange: () => void;
+}) {
   const [labels, setLabels] = useState<Label[]>([]);
   const [fields, setFields] = useState<CustomField[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
@@ -36,6 +46,36 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
   const [fForm, setFForm] = useState({ name: '', type: 'text', options: '' });
   const [rForm, setRForm] = useState({ name: '', trigger: 'status_changed', action: 'set_priority', actionValue: '' });
   const [tForm, setTForm] = useState({ name: '', title: '', points: '', subtasks: '' });
+  const [idForm, setIdForm] = useState({ name: '', description: '', startDate: '', targetDate: '' });
+  const [idError, setIdError] = useState<string | null>(null);
+  const [idSaved, setIdSaved] = useState(false);
+
+  useEffect(() => {
+    if (project) {
+      setIdForm({
+        name: project.name || '',
+        description: project.description || '',
+        startDate: project.startDate || '',
+        targetDate: project.targetDate || '',
+      });
+      setIdSaved(false);
+    }
+  }, [project?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveIdentity = async () => {
+    if (!project || !idForm.name.trim()) { setIdError('A project needs a name.'); return; }
+    const r = await lensRun('projects', 'project-update', {
+      id: project.id,
+      name: idForm.name.trim(),
+      description: idForm.description.trim(),
+      startDate: idForm.startDate || null,
+      targetDate: idForm.targetDate || null,
+    });
+    if (r.data?.ok === false) { setIdError(r.data?.error || 'Could not save project details.'); setIdSaved(false); return; }
+    setIdError(null);
+    setIdSaved(true);
+    if (onProjectSaved) await onProjectSaved();
+  };
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -124,6 +164,52 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
 
   return (
     <div className="space-y-5">
+      {/* Project identity */}
+      {project && (
+        <section>
+          <h3 className="flex items-center gap-1 text-xs font-semibold text-gray-300 mb-2">
+            <Pencil className="w-3.5 h-3.5 text-indigo-400" /> Project
+          </h3>
+          <div className="space-y-2 max-w-xl">
+            <label className="block">
+              <span className="text-[11px] text-gray-400">Name</span>
+              <input aria-label="Project name" value={idForm.name}
+                onChange={(e) => { setIdForm({ ...idForm, name: e.target.value }); setIdSaved(false); }}
+                className="mt-0.5 w-full px-2 py-1.5 text-xs bg-lattice-elevated border border-lattice-border rounded-lg text-gray-100" />
+            </label>
+            <label className="block">
+              <span className="text-[11px] text-gray-400">Description</span>
+              <textarea aria-label="Project description" value={idForm.description} rows={3}
+                onChange={(e) => { setIdForm({ ...idForm, description: e.target.value }); setIdSaved(false); }}
+                className="mt-0.5 w-full px-2 py-1.5 text-xs bg-lattice-elevated border border-lattice-border rounded-lg text-gray-100" />
+            </label>
+            <div className="flex gap-2">
+              <label className="block flex-1">
+                <span className="text-[11px] text-gray-400">Start date</span>
+                <input aria-label="Project start date" type="date" value={idForm.startDate}
+                  onChange={(e) => { setIdForm({ ...idForm, startDate: e.target.value }); setIdSaved(false); }}
+                  className="mt-0.5 w-full px-2 py-1.5 text-xs bg-lattice-elevated border border-lattice-border rounded-lg text-gray-100" />
+              </label>
+              <label className="block flex-1">
+                <span className="text-[11px] text-gray-400">Target date</span>
+                <input aria-label="Project target date" type="date" value={idForm.targetDate}
+                  onChange={(e) => { setIdForm({ ...idForm, targetDate: e.target.value }); setIdSaved(false); }}
+                  className="mt-0.5 w-full px-2 py-1.5 text-xs bg-lattice-elevated border border-lattice-border rounded-lg text-gray-100" />
+              </label>
+            </div>
+            {project.duplicatedFrom && (
+              <p className="text-[11px] text-gray-400">
+                Duplicated from <span className="font-mono">{project.duplicatedFrom.key}</span> — {project.duplicatedFrom.name}
+                {' '}on {project.duplicatedFrom.at.slice(0, 10)}.
+              </p>
+            )}
+            {idError && <p className="text-[11px] text-rose-300">{idError}</p>}
+            {idSaved && <p className="text-[11px] text-emerald-300">Saved — the new name and dates apply across the switcher and Portfolio.</p>}
+            <button type="button" onClick={() => void saveIdentity()}
+              className="px-3 py-1.5 text-[11px] font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">Save project details</button>
+          </div>
+        </section>
+      )}
       {/* Labels */}
       <section>
         <h3 className="flex items-center gap-1 text-xs font-semibold text-gray-300 mb-2">

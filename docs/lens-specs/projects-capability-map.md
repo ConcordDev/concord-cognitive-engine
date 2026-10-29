@@ -48,6 +48,35 @@ Ramaj's §8 Q2 team-model call). S1 (lifecycle) notes:
   pinned by `server/tests/projects-lifecycle.test.js`.
 - Frontend behaviour: `concord-frontend/tests/projects-lifecycle.test.tsx`.
 
+S3 (Portfolio truth, F2/F3 remainder) notes:
+
+- Chip-close semantics landed with S1 (× deselects; reopenable in one
+  click from the Closed row) on the strength of the §8 Q1
+  determination: the old × called `project-delete` — CLS was deleted,
+  not hidden.
+- Portfolio now defaults to the active set: archived projects sit
+  behind a "Show archived (N)" toggle, the heading reports active and
+  archived counts, and shown archived rows keep their S1 Archived
+  marker + Restore/Delete — heading and rows always describe the same
+  set.
+
+S2 (identity, F5) notes:
+
+- Rename, description and project dates ride the existing
+  `project-update` macro — it was surface-missing only; Settings now
+  opens with a Project section driving it, and the save refreshes the
+  switcher/Portfolio in the same interaction.
+- `project-duplicate` is a NEW macro in this rework: a structural
+  copy (tasks with hierarchy/assignments, relations, sprints,
+  milestones, members, labels, fields, views, rules, templates,
+  risks, goals, WIP) under a new id and key, refs re-sequenced. It
+  does not copy comments/attachments/activity (the original's
+  history) or integrations/SLA/triage (external connections). The
+  copy's `duplicatedFrom` records the source project, name, key and
+  time — the citation the Settings surface shows. Tests:
+  `server/tests/projects-identity.test.js`,
+  `concord-frontend/tests/projects-identity.test.tsx`.
+
 Reproduce the macro list:
 `grep -c 'registerLensAction("projects"' server/domains/projects.js` → 98 macros
 (plus 4 legacy generic-artifact macros — `ganttGenerate`, `riskMatrix`,
