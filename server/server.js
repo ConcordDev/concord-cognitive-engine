@@ -2435,7 +2435,7 @@ import {
   findCrossDomainConnections, embedDTU, storeEmbedding, getEmbedding,
   removeEmbedding, backfillEmbeddings, getEmbeddingStatus, isEmbeddingAvailable,
   trimEmbeddingCache, getEmbeddingCacheSize, setLocalEmbedder, reprobeEmbeddings,
-  embeddingEntries,
+  embeddingEntries, scheduleEmbeddingReprobe, embeddingWarmupPending,
 } from "./embeddings.js";
 import { consolidatedVisibility, applyConsolidatedVisibility, absorbVisibility, backfillConsolidatedVisibility } from "./lib/consolidated-visibility.js";
 import { isPublicFeedSource, backfillPublicFeedItems, asPublicFeedMember } from "./lib/public-feed-sources.js";
@@ -22476,6 +22476,8 @@ _unrefInTest(setTimeout(async () => {
 
     // Initialize embeddings
     await initEmbeddings({ db, ollamaUrls, structuredLog });
+    // Not on the Ollama embedder yet (tunnel or model still coming up): retry on a short backoff instead of waiting ~25 min.
+    try { scheduleEmbeddingReprobe({ onChanged: () => startSemanticBackfill("boot-reprobe") }); } catch (_e) { logger.debug("server", "embedding reprobe schedule", { error: _e?.message }); }
 
     // Initialize downstream modules
     initSemanticCache({ structuredLog });
@@ -44639,7 +44641,7 @@ async function governorTick(reason="heartbeat") {
           // The boot backfill can be skipped (idle gate) or stop early, and
           // nothing else re-runs it; resume while vectors are missing.
           if (embStatus?.available && embStatus.cached < embStatus.totalDTUs) startSemanticBackfill("resume");
-          if (!embStatus?.available) {
+          if (!embStatus?.available && !embeddingWarmupPending()) {
             structuredLog("warn", "embeddings_degraded", {
               reason: embStatus?.reason || "unknown",
               fallback: "keyword_extraction",
