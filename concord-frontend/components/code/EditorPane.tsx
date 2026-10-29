@@ -102,7 +102,10 @@ export function EditorPane({
       .then(r => {
         if (r.data?.ok === false) { alert(r.data?.error); return; }
         const { content, language } = r.data?.result || { content: '', language: 'plaintext' };
-        setFiles(prev => [...prev, { path: openPath, content, original: content, language, modified: false }]);
+        // S17 (F17): never two tabs for one path — a rename retargets
+        // openPath AND relabels the tab; whichever lands second must
+        // find the path already present instead of appending a twin.
+        setFiles(prev => (prev.some(f => f.path === openPath) ? prev : [...prev, { path: openPath, content, original: content, language, modified: false }]));
       })
       .catch(e => console.error('[Editor] open', e))
       .finally(() => setLoadingFile(false));
@@ -114,7 +117,13 @@ export function EditorPane({
   // old path (which would otherwise silently recreate it on next Save).
   useEffect(() => {
     if (!renameSignal) return;
-    setFiles(prev => prev.map(f => f.path === renameSignal.from ? { ...f, path: renameSignal.to } : f));
+    setFiles(prev => {
+      // S17 (F17): if the new path already has a tab (the open effect
+      // won the race), drop the old tab instead of mapping it into a
+      // duplicate; otherwise relabel in place.
+      if (prev.some(f => f.path === renameSignal.to)) return prev.filter(f => f.path !== renameSignal.from);
+      return prev.map(f => f.path === renameSignal.from ? { ...f, path: renameSignal.to } : f);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fires once per nonce, not per renameSignal identity
   }, [renameSignal?.nonce]);
 

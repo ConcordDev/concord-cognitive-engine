@@ -8,7 +8,7 @@
  *    rename.
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Search, Loader2, Replace, CaseSensitive, Regex, WholeWord, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -16,10 +16,20 @@ import { cn } from '@/lib/utils';
 interface Hit { file: string; line: number; column: number; preview: string }
 interface Ref { path: string; line: number; snippet: string }
 
+const TOGGLE_LABELS = {
+  caseSensitive: 'Match case',
+  wholeWord: 'Whole word',
+  regex: 'Use regular expression',
+} as const;
+
 export function SearchPanel({
-  projectId, onOpen, onReplaced,
+  projectId, onOpen, onReplaced, active,
 }: {
   projectId: string | null;
+  /** S17 (F17): the panel now stays mounted (hidden) across nav
+   *  switches so its query survives; `active` tells it when it becomes
+   *  visible again, and a present-but-unrun query runs on activation. */
+  active?: boolean;
   onOpen: (path: string, line: number) => void;
   /** S6 (F5): after a successful project replace, the changed paths —
    *  the caller reconciles any open editor tabs from the server store,
@@ -37,6 +47,11 @@ export function SearchPanel({
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [noticeKind, setNoticeKind] = useState<'ok' | 'error'>('ok');
+  // S17: the query+options the current results actually answer. An
+  // empty result list may only say "No matches." when it answers the
+  // CURRENT query — before that it must say the search has not run.
+  const [searchedFor, setSearchedFor] = useState('');
+  const runKey = () => `${mode}:${q}:${opts.caseSensitive}:${opts.wholeWord}:${opts.regex}`;
 
   async function runSearch() {
     if (!projectId || q.trim().length < 1) return;
@@ -44,6 +59,7 @@ export function SearchPanel({
     try {
       const r = await lensRun({ domain: 'code', action: 'search-project', input: { projectId, query: q, ...opts } });
       setHits((r.data?.result?.hits || []) as Hit[]);
+      setSearchedFor(runKey());
     } catch (e) { console.error('[Search] failed', e); }
     finally { setLoading(false); }
   }
@@ -85,6 +101,7 @@ export function SearchPanel({
         return;
       }
       setRefs((r.data?.result?.references || []) as Ref[]);
+      setSearchedFor(runKey());
     } catch (e) {
       console.error('[Refs] failed', e);
       setNoticeKind('error');
@@ -108,6 +125,19 @@ export function SearchPanel({
   }
 
   if (!projectId) return <div className="p-3 text-xs text-gray-400 italic">Open a project to search.</div>;
+
+  // S17: becoming visible with a query that has not been run (or whose
+  // options changed while hidden) runs it — no dead "No matches." wait
+  // for a Find click that should never have been necessary.
+  const wasActive = useRef(false);
+  useEffect(() => {
+    const becameActive = !!active && !wasActive.current;
+    wasActive.current = !!active;
+    if (!becameActive || !projectId || q.trim().length < 1) return;
+    if (searchedFor === runKey()) return;
+    void (mode === 'text' ? runSearch() : runRefs());
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- activation edge only
+  }, [active]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -151,6 +181,7 @@ export function SearchPanel({
           <div className="flex items-center gap-1 pl-5">
             {([['caseSensitive', CaseSensitive], ['wholeWord', WholeWord], ['regex', Regex]] as const).map(([k, Icon]) => (
               <button key={k} type="button" onClick={() => setOpts({ ...opts, [k]: !opts[k] })}
+                title={TOGGLE_LABELS[k]} aria-label={TOGGLE_LABELS[k]} aria-pressed={opts[k]}
                 className={cn('p-1 rounded border', opts[k] ? 'border-blue-500 bg-blue-500/15 text-blue-300' : 'border-white/10 text-gray-400 hover:text-white')}>
                 <Icon className="w-3 h-3" />
               </button>
@@ -170,7 +201,7 @@ export function SearchPanel({
           <div className="p-3 text-xs text-gray-400"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Working…</div>
         ) : mode === 'text' ? (
           hits.length === 0 ? (
-            <div className="p-3 text-xs text-gray-400 italic">{q ? 'No matches.' : 'Type a query and press Enter.'}</div>
+            <div className="p-3 text-xs text-gray-400 italic">{!q ? 'Type a query and press Enter.' : searchedFor === runKey() ? 'No matches.' : 'Press Enter or Find to search.'}</div>
           ) : (
             <ul className="divide-y divide-white/5">
               {hits.map((h, i) => (
@@ -183,7 +214,7 @@ export function SearchPanel({
           )
         ) : (
           refs.length === 0 ? (
-            <div className="p-3 text-xs text-gray-400 italic">{q ? 'No references.' : 'Type a symbol and press Enter.'}</div>
+            <div className="p-3 text-xs text-gray-400 italic">{!q ? 'Type a symbol and press Enter.' : searchedFor === runKey() ? 'No references.' : 'Press Enter or Find to search.'}</div>
           ) : (
             <ul className="divide-y divide-white/5">
               {refs.map((r, i) => (

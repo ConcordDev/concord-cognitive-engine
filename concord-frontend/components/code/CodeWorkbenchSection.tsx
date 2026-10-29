@@ -22,6 +22,23 @@ export function CodeWorkbenchSection() {
   // CodeProjectContext — see that file's header comment.
   const { projectId, setProjectId } = useCodeProject();
   const [openPath, setOpenPath] = useState<string | null>(null);
+  // S17 (F17): the last-open file per project survives reload — a
+  // return lands on the file you left, not an empty editor. (S20 adds
+  // the return highlight on top of this restore.)
+  useEffect(() => {
+    if (projectId && openPath) {
+      try { localStorage.setItem(`concord.code.openPath.${projectId}`, openPath); } catch { /* storage unavailable */ }
+    }
+  }, [projectId, openPath]);
+  useEffect(() => {
+    if (projectId && !openPath) {
+      try {
+        const saved = localStorage.getItem(`concord.code.openPath.${projectId}`);
+        if (saved) setOpenPath(saved);
+      } catch { /* storage unavailable */ }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- restore once per project arrival
+  }, [projectId]);
   const [openLine, setOpenLine] = useState<number | null>(null);
   const [branch, setBranch] = useState<string>('main');
   const [modifiedCount, setModifiedCount] = useState(0);
@@ -134,7 +151,9 @@ export function CodeWorkbenchSection() {
               <OutlinePanel projectId={projectId} path={openPath} onOpen={openFile} />
             </>
           )}
-          {nav === 'search'   && <SearchPanel projectId={projectId} onOpen={openFile} onReplaced={(paths) => { setReplaceSignal({ paths, nonce: Date.now() }); void refreshStatus(); }} />}
+          <div className={nav === 'search' ? 'contents' : 'hidden'}>
+            <SearchPanel projectId={projectId} active={nav === 'search'} onOpen={openFile} onReplaced={(paths) => { setReplaceSignal({ paths, nonce: Date.now() }); void refreshStatus(); }} />
+          </div>
           {nav === 'git'      && <GitPanel projectId={projectId} onChanged={refreshStatus} onDiscarded={(path) => setReplaceSignal({ paths: [path], nonce: Date.now() })} />}
           {nav === 'agent'    && <AgentComposerPanel projectId={projectId} />}
           {nav === 'debug'    && <RunPanel projectId={projectId} onOpen={openFile} />}

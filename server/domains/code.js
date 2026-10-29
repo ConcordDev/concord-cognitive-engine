@@ -1548,8 +1548,13 @@ Rules:
     files.delete(from);
     files.set(to, { ...file, modifiedAt: isoC() });
     const git = ensureGit(s, userId, projectId);
+    // S17 (F17): a rename is ONE change, counted once, at its new path.
+    // The old code added BOTH paths to modified, so Source Control
+    // counted the renamed-away file forever and disagreed with the
+    // Explorer's file count.
+    git.modified.delete(from);
     git.modified.add(to);
-    git.modified.add(from);
+    if (git.staged.has(from)) { git.staged.delete(from); git.staged.add(to); }
     saveWS();
     return { ok: true, result: { from, to } };
   });

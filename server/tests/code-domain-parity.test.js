@@ -1160,6 +1160,21 @@ describe("code — run configs + bookmarks", () => {
     assert.equal(call("bookmark-list", ctxC, { projectId: p.id }).result.bookmarks.length, 0);
   });
 
+  // ── S17 (F17): a rename is ONE change at its new path — Source
+  // Control's counter and the Explorer's file count share this set.
+  test('S17 rename: git-status counts the renamed file once, at its new path', () => {
+    const proj = call("projects-create", ctxC, { name: "RenameCount" }).result.project;
+    call("files-write", ctxC, { projectId: proj.id, path: "a.js", content: "1" });
+    call("files-write", ctxC, { projectId: proj.id, path: "b.js", content: "2" });
+    const before = call("git-status", ctxC, { projectId: proj.id }).result;
+    assert.equal(before.modified.length, 2);
+    call("files-rename", ctxC, { projectId: proj.id, from: "a.js", to: "c.js" });
+    const after = call("git-status", ctxC, { projectId: proj.id }).result;
+    assert.equal(after.modified.length, 2, 'rename must not inflate the change count');
+    assert.ok(after.modified.includes("c.js"));
+    assert.ok(!after.modified.includes("a.js"), 'the renamed-away path must not linger in the change set');
+  });
+
   // ── S15 (F15): the extension catalog states each entry's real effect;
   // an extension whose effect the editor cannot produce says so.
   test('S15 extensions catalog: every entry carries an honest effect note', () => {
