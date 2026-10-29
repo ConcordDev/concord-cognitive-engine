@@ -155,6 +155,7 @@ export default function registerSrsActions(registerLensAction) {
       reviewsPerDay: 200,
       learningSteps: [1, 10],   // minutes
       scheduler: "fsrs",        // "fsrs" | "sm2"
+      desiredRetention: 0.9,    // FSRS target recall probability (S12)
     };
   }
   function normaliseOptions(raw = {}) {
@@ -167,6 +168,7 @@ export default function registerSrsActions(registerLensAction) {
       if (steps.length) o.learningSteps = steps;
     }
     if (raw.scheduler === "sm2" || raw.scheduler === "fsrs") o.scheduler = raw.scheduler;
+    if (Number.isFinite(+raw.desiredRetention)) o.desiredRetention = Math.max(0.7, Math.min(0.97, +raw.desiredRetention));
     return o;
   }
 
@@ -260,10 +262,10 @@ export default function registerSrsActions(registerLensAction) {
       hint: srsClean(params.hint, 500),
       markup: params.markup === "markdown" || params.markup === "html" ? params.markup : "plain",
       media: {
-        frontImage: srsClean(params.frontImage, 400) || null,
-        backImage: srsClean(params.backImage, 400) || null,
-        frontAudio: srsClean(params.frontAudio, 400) || null,
-        backAudio: srsClean(params.backAudio, 400) || null,
+        frontImage: srsMediaUrl(params.frontImage) || null,
+        backImage: srsMediaUrl(params.backImage) || null,
+        frontAudio: srsMediaUrl(params.frontAudio) || null,
+        backAudio: srsMediaUrl(params.backAudio) || null,
         tts: !!params.tts,
       },
     });
@@ -286,7 +288,7 @@ export default function registerSrsActions(registerLensAction) {
     }
 
     if (cardType === "image-occlusion") {
-      const image = srsClean(params.image || params.frontImage, 400);
+      const image = srsMediaUrl(params.image || params.frontImage);
       if (!image) return { ok: false, error: "image required for image-occlusion" };
       const occlusions = Array.isArray(params.occlusions)
         ? params.occlusions.map((o) => ({
@@ -333,12 +335,21 @@ export default function registerSrsActions(registerLensAction) {
       return { ok: true, result: { card: c } };
     }
 
-    // basic
+    // basic — optionally with its reversed twin (S10): one note,
+    // two cards, the twin's front/back swapped.
     const front = srsClean(params.front, 2000);
     const back = srsClean(params.back, 4000);
     if (!front || !back) return { ok: false, error: "front and back required" };
     const card = { ...base(), front, back };
     cardsArr.push(card);
+    if (params.alsoReversed === true) {
+      const noteId = srsId("nt");
+      card.noteId = noteId;
+      const twin = { ...base(), front: back, back: front, noteId };
+      cardsArr.push(twin);
+      saveSrs();
+      return { ok: true, result: { card, cards: [card, twin], noteId, generated: 2 } };
+    }
     saveSrs();
     return { ok: true, result: { card } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -374,6 +385,12 @@ export default function registerSrsActions(registerLensAction) {
     return { ok: true, result: { deleted: params.id } };
   });
 
+  // Media slots accept ordinary URLs (cleaned, short) and uploaded
+  // data: URLs, whose bytes ride in the value itself (S11).
+  function srsMediaUrl(v) {
+    if (typeof v === "string" && (v.startsWith("data:image/") || v.startsWith("data:audio/"))) return v.slice(0, 2800000);
+    return srsClean(v, 1000);
+  }
   function studyableCard(c) {
     return !c.suspended && !c.buried;
   }
@@ -486,8 +503,8 @@ export default function registerSrsActions(registerLensAction) {
     if (stability <= 0) return 0;
     return Math.pow(1 + FSRS_FACTOR * elapsedDays / stability, FSRS_DECAY);
   }
-  function fsrsIntervalFromStability(stability) {
-    const ivl = (stability / FSRS_FACTOR) * (Math.pow(FSRS_TARGET_R, 1 / FSRS_DECAY) - 1);
+  function fsrsIntervalFromStability(stability, retention = FSRS_TARGET_R) {
+    const ivl = (stability / FSRS_FACTOR) * (Math.pow(retention, 1 / FSRS_DECAY) - 1);
     return Math.max(1, Math.min(36500, Math.round(ivl)));
   }
   function fsrsNextDifficulty(d, g) {
@@ -509,7 +526,7 @@ export default function registerSrsActions(registerLensAction) {
       (Math.exp((1 - r) * FSRS_W[10]) - 1) * hardPenalty * easyBonus);
   }
   // Returns the next state for a card under FSRS for a given rating.
-  function fsrsSchedule(card, rating) {
+  function fsrsSchedule(card, rating, retention) {
     const g = RATING_GRADE[rating] || 3;
     const firstTime = !card.lastReviewedAt || card.reps === 0 || !card.stability;
     let stability, difficulty;
@@ -523,7 +540,7 @@ export default function registerSrsActions(registerLensAction) {
       difficulty = fsrsNextDifficulty(card.difficulty || fsrsInitDifficulty(3), g);
       stability = fsrsNextStability(difficulty, card.stability || 0.1, r, g);
     }
-    const interval = g === 1 ? 1 : fsrsIntervalFromStability(stability);
+    const interval = g === 1 ? 1 : fsrsIntervalFromStability(stability, retention);
     return {
       stability: Math.round(stability * 1000) / 1000,
       difficulty: Math.round(difficulty * 1000) / 1000,
@@ -559,7 +576,7 @@ export default function registerSrsActions(registerLensAction) {
     const steps = Array.isArray(opts.learningSteps) && opts.learningSteps.length ? opts.learningSteps : [1, 10];
     let sched;
     if (scheduler === "fsrs") {
-      const r = fsrsSchedule(card, rating);
+      const r = fsrsSchedule(card, rating, opts.desiredRetention);
       sched = { interval: r.interval, stability: r.stability, difficulty: r.difficulty };
     } else {
       const r = sm2Schedule(card, rating);
@@ -698,7 +715,19 @@ export default function registerSrsActions(registerLensAction) {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = srsActor(ctx);
     let log = srsList(s.reviewLog, userId);
-    if (params.deckId) log = log.filter((r) => r.deckId === params.deckId);
+    // S14: a deck's stats cover its study pool (subdecks and
+    // filtered matches included) — the same scope study serves.
+    let poolCards = [];
+    if (params.deckId) {
+      const deck = srsList(s.decks, userId).find((d) => d.id === params.deckId);
+      if (deck) {
+        poolCards = poolCardsAll(s, userId, deck);
+        const poolDeckIds = new Set(poolCards.map((c) => c.deckId));
+        log = log.filter((r) => poolDeckIds.has(r.deckId));
+      } else {
+        log = log.filter((r) => r.deckId === params.deckId);
+      }
+    }
     // 14-day review heatmap
     const heatmap = {};
     for (let d = 0; d < 14; d++) {
@@ -711,6 +740,9 @@ export default function registerSrsActions(registerLensAction) {
     }
     const total = log.length;
     const correct = log.filter((r) => r.rating !== "again").length;
+    const today = new Date().toISOString().slice(0, 10);
+    const todays = log.filter((r) => (r.at || "").slice(0, 10) === today);
+    const futureDues = poolCards.filter((c) => studyableCard(c) && !isDue(c)).map((c) => c.due).sort();
     return {
       ok: true,
       result: {
@@ -723,6 +755,9 @@ export default function registerSrsActions(registerLensAction) {
           good: log.filter((r) => r.rating === "good").length,
           easy: log.filter((r) => r.rating === "easy").length,
         },
+        reviewsToday: todays.length,
+        againToday: todays.filter((r) => r.rating === "again").length,
+        nextDueAt: futureDues.length ? futureDues[0] : null,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -754,7 +789,7 @@ export default function registerSrsActions(registerLensAction) {
     const deck = srsList(s.decks, srsActor(ctx)).find((d) => d.id === params.deckId);
     if (!deck) return { ok: false, error: "deck not found" };
     if (!deck.options) deck.options = defaultDeckOptions();
-    return { ok: true, result: { deckId: deck.id, options: deck.options } };
+    return { ok: true, result: { deckId: deck.id, options: normaliseOptions(deck.options || {}) } };
   });
 
   registerLensAction("srs", "deck-options-update", (ctx, _a, params = {}) => {
@@ -947,10 +982,21 @@ export default function registerSrsActions(registerLensAction) {
   // Register a media asset (URL/data-uri reference) for reuse on cards.
   registerLensAction("srs", "media-add", (ctx, _a, params = {}) => {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const url = srsClean(params.url, 1000);
-    const kind = ["image", "audio"].includes(params.kind) ? params.kind : "image";
+    // S11: an upload rides as a data: URL (image/audio only,
+    // capped); anything else must be an ordinary URL.
+    let url = "";
+    if (typeof params.dataUrl === "string" && (params.dataUrl.startsWith("data:image/") || params.dataUrl.startsWith("data:audio/"))) {
+      if (params.dataUrl.length > 2800000) return { ok: false, error: "file too large — uploads are capped at about 2 MB" };
+      url = params.dataUrl;
+    } else if (params.dataUrl) {
+      return { ok: false, error: "only image or audio files can be uploaded" };
+    } else {
+      url = srsClean(params.url, 1000);
+    }
+    const kind = ["image", "audio"].includes(params.kind) ? params.kind
+      : (url.startsWith("data:audio/") ? "audio" : "image");
     if (!url) return { ok: false, error: "media url required" };
-    const media = { id: srsId("md"), kind, url, name: srsClean(params.name, 120) || url.slice(0, 60), createdAt: srsNow() };
+    const media = { id: srsId("md"), kind, url, name: srsClean(params.name, 120) || (url.startsWith("data:") ? "Uploaded file" : url.slice(0, 60)), createdAt: srsNow() };
     srsList(s.media, srsActor(ctx)).push(media);
     saveSrs();
     return { ok: true, result: { media } };
@@ -962,6 +1008,18 @@ export default function registerSrsActions(registerLensAction) {
     return { ok: true, result: { media, count: media.length } };
   });
 
+  // media-remove — delete one of the caller's own library assets
+  // (S11). Cards that already reference the URL keep their copy.
+  registerLensAction("srs", "media-remove", (ctx, _a, params = {}) => {
+    const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = srsList(s.media, srsActor(ctx));
+    const idx = arr.findIndex((m) => m.id === params.id);
+    if (idx < 0) return { ok: false, error: "media not found" };
+    const [removed] = arr.splice(idx, 1);
+    saveSrs();
+    return { ok: true, result: { removed: removed.id, name: removed.name } };
+  });
+
   // Attach/clear media + TTS flags on an existing card.
   registerLensAction("srs", "card-set-media", (ctx, _a, params = {}) => {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -969,7 +1027,7 @@ export default function registerSrsActions(registerLensAction) {
     if (!card) return { ok: false, error: "card not found" };
     if (!card.media) card.media = { frontImage: null, backImage: null, frontAudio: null, backAudio: null, tts: false };
     for (const slot of ["frontImage", "backImage", "frontAudio", "backAudio"]) {
-      if (slot in params) card.media[slot] = params[slot] ? srsClean(params[slot], 1000) : null;
+      if (slot in params) card.media[slot] = params[slot] ? srsMediaUrl(params[slot]) : null;
     }
     if ("tts" in params) card.media.tts = !!params.tts;
     saveSrs();
