@@ -6,6 +6,12 @@ import {
   createIntegritySystem,
 } from "../lib/dtu-integrity.js";
 
+// H2: the platform signing key is no longer hardcoded in dtu-integrity.js —
+// it comes from CONCORD_DTU_SIGNING_KEY. Configure a test-only key so this
+// suite exercises the signed path. (Env is read at call time, so setting it
+// here, after the import, is effective.)
+process.env.CONCORD_DTU_SIGNING_KEY = "dtu-integrity-test-only-key";
+
 describe("dtu-integrity", () => {
   let db;
   let system;
