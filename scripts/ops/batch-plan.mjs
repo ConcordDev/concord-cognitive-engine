@@ -92,6 +92,7 @@ function main() {
   // Trial merge on a scratch branch inside prclean.
   const trial = { merged: [], conflicts: [], tests: null };
   if (picked.length) {
+    if (git(repo, "status", "--porcelain", "--untracked-files=no")) { console.error("refusing: prclean has uncommitted changes; commit or stash them first"); process.exit(2); }
     git(repo, "fetch", "-q", "origin", "main");
     const scratch = `batch-trial/${Date.now()}`;
     git(repo, "checkout", "-q", "-b", scratch, "origin/main");
@@ -111,9 +112,9 @@ function main() {
         const own = picked.filter((p) => trial.merged.includes(p.n)).flatMap((p) => p.files).filter((f) => /^server\/tests\/.*\.test\.js$/.test(f)).map((f) => f.replace(/^server\//, ""));
         const list = [...new Set([...own, "tests/boot.test.js"])];
         const cmd = `~/.zuko/quality/mem-gate.sh batch-plan && cd ${JSON.stringify(path.join(repo, "server"))} && NODE_ENV=test node --test --test-timeout=240000 ${list.map((f) => JSON.stringify(f)).join(" ")}`;
-        const r = spawnSync("/bin/zsh", ["-c", cmd], { encoding: "utf8" });
+        const r = spawnSync("/bin/zsh", ["-c", cmd], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
         const out = `${r.stdout}\n${r.stderr}`;
-        trial.tests = { files: list, pass: Number((out.match(/^ℹ pass (\d+)/m) || [])[1] || 0), fail: Number((out.match(/^ℹ fail (\d+)/m) || [])[1] || 0), cancelled: Number((out.match(/^ℹ cancelled (\d+)/m) || [])[1] || 0), exit: r.status };
+        trial.tests = { files: list, pass: Number((out.match(/^ℹ pass (\d+)/m) || [])[1] || 0), fail: Number((out.match(/^ℹ fail (\d+)/m) || [])[1] || 0), cancelled: Number((out.match(/^ℹ cancelled (\d+)/m) || [])[1] || 0), exit: r.status, ...(r.status === 0 ? {} : { tail: out.trim().split("\n").slice(-6).join("\n"), error: r.error?.message || null }) };
       }
     } finally {
       git(repo, "checkout", "-q", "--detach", "origin/main");
@@ -128,7 +129,7 @@ function main() {
   if (!trial.merged.length) console.log("No safe batch: nothing eligible after the rules and the trial merge.");
   else {
     console.log(`Deploy together (${trial.merged.length}): ${trial.merged.map((n) => `#${n}`).join(", ")}   ready: ${ready ? "YES" : "NO (see tests)"}`);
-    if (trial.tests) console.log(`Trial tests: ${trial.tests.pass} pass, ${trial.tests.fail} fail, ${trial.tests.cancelled} cancelled over ${trial.tests.files.length} files (incl. boot).`);
+    if (trial.tests) console.log(`Trial tests: ${trial.tests.pass} pass, ${trial.tests.fail} fail, ${trial.tests.cancelled} cancelled over ${trial.tests.files.length} files (incl. boot).${trial.tests.tail ? `\n${trial.tests.tail}` : ""}`);
     else console.log("Trial tests: skipped (--no-tests).");
     console.log("One deploy, one /health watch. The deploy lane runs the merges; this script merged nothing to main.");
   }
