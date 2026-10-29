@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
+import { buildLensFactsBlock } from '@/components/chat/lensAccountFacts';
 import { ChatDraftInThreadButton } from '@/components/chat/ChatDraftInThreadButton';
 import { getApiBase } from '@/lib/api/base';
 import { useUIStore } from '@/store/ui';
@@ -1221,6 +1222,17 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         systemPrompt +=
           (systemPrompt ? '\n\n' : '') +
           `Current domain context: ${domainContext}. Use domain-specific knowledge and terminology.`;
+      }
+
+      // Ground the analyst in the lens's live values (Review 4, Analytics
+      // F1): for a domain with a facts provider, the model receives the
+      // surface's actual numbers with their sources — or an explicit decline
+      // instruction when they can't be read — instead of a bare context
+      // label it would otherwise have to invent numbers for. Fetched here,
+      // at send time, so the values are current at ask time.
+      const factsBlock = await buildLensFactsBlock(domainContext);
+      if (factsBlock) {
+        systemPrompt += (systemPrompt ? '\n\n' : '') + factsBlock;
       }
 
       // Build the message to send, optionally including quoted context
