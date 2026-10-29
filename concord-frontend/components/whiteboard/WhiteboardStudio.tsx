@@ -2,7 +2,7 @@
 
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useState, useRef, useEffect, useCallback, type ComponentType } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -221,6 +221,30 @@ export function WhiteboardStudio({
     return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [elements, selectedWbId]);
+  /* S1 (one board store): mirror the open canvas board into the domain
+     board store under its DTU id, so the Workbench list, the Collab
+     list, Analyze and the workspace summary all read the same board
+     the canvas is showing. Debounced like the autosave; fires for an
+     emptied board too (element counts must be able to reach zero). */
+  const mirrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastMirroredRef = useRef<string>('');
+  useEffect(() => {
+    if (!selectedWbId || hydratedId !== selectedWbId) return;
+    const title = boardName(boardListItems.find((b) => b.id === selectedWbId)?.title ?? selectedWb?.whiteboard?.title);
+    const payload = JSON.stringify({ id: selectedWbId, title, elements });
+    if (payload === lastMirroredRef.current) return;
+    if (mirrorTimerRef.current) clearTimeout(mirrorTimerRef.current);
+    mirrorTimerRef.current = setTimeout(() => {
+      lastMirroredRef.current = payload;
+      void lensRun({ domain: 'whiteboard', action: 'board-save', input: {
+        id: selectedWbId, title, origin: 'canvas', dtuId: selectedWbId,
+        scene: { elements, appState: { grid: showGrid }, model: 'sketch' },
+      } }).catch(() => { /* best-effort mirror; the DTU save is the record */ });
+    }, 1500);
+    return () => { if (mirrorTimerRef.current) clearTimeout(mirrorTimerRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [elements, selectedWbId, hydratedId, showGrid]);
+
 
   /* resize — the canvas container mounts only once a board is open, so observe
      it whenever it (re)mounts instead of measuring once at first render. */
@@ -1159,7 +1183,7 @@ export function WhiteboardStudio({
         )}
       </div>
 
-      {showInspector && <WhiteboardInspector boardId={boardArtifacts[0]?.id ?? selectedWbId ?? undefined} />}
+      {showInspector && <WhiteboardInspector boardId={selectedWbId ?? undefined} />}
 
       {selectedWbId && boardMode === 'canvas' && (
         <div className="pointer-events-auto absolute bottom-8 left-1/2 z-20 -translate-x-1/2">
