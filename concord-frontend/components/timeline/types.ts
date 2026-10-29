@@ -20,6 +20,14 @@ export interface SharedFrom {
   createdAt: string;
 }
 
+/** A prior version of a post, recorded by post-update (S-TL-2). */
+export interface PostVersion {
+  content: string;
+  media: MediaItem[];
+  privacy: Privacy;
+  editedAt: string;
+}
+
 export interface FeedPost {
   id: string;
   authorId: string;
@@ -31,6 +39,10 @@ export interface FeedPost {
   citedDtuId?: string | null;
   sharedFrom: SharedFrom | null;
   createdAt: string;
+  /** S-TL-2: set when the post has been edited; editHistory holds the
+   *  versions it replaced, newest last. */
+  editedAt?: string | null;
+  editHistory?: PostVersion[];
   reactionCounts: Record<ReactionKind, number>;
   reactionTotal: number;
   userReaction: ReactionKind | null;
@@ -46,6 +58,10 @@ export interface Comment {
   isMine?: boolean;
   text: string;
   createdAt: string;
+  /** S-TL-2: set when the comment has been edited; editHistory holds
+   *  the texts it replaced, newest last. */
+  editedAt?: string | null;
+  editHistory?: { text: string; editedAt: string }[];
   replies: Comment[];
 }
 

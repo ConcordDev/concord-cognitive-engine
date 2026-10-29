@@ -10,12 +10,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ThumbsUp, Heart, Laugh, Frown, Angry, MessageCircle, Share2, Bookmark,
-  Globe, Users, Lock, Film, Trash2, Repeat2,
+  Globe, Users, Lock, Film, Trash2, Repeat2, Pencil, History, Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
-import type { FeedPost, ReactionKind } from './types';
+import type { FeedPost, Privacy, ReactionKind } from './types';
 import { CommentThread } from './CommentThread';
 import { ReactionBreakdown } from './ReactionBreakdown';
 import { ShareModal } from './ShareModal';
@@ -48,6 +48,11 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showKeep, setShowKeep] = useState(false);
+  // S-TL-2: inline post editing (content + audience) with history.
+  const [editing, setEditing] = useState(false);
+  const [draftContent, setDraftContent] = useState('');
+  const [draftPrivacy, setDraftPrivacy] = useState<Privacy>('private');
+  const [showHistory, setShowHistory] = useState(false);
 
   const reactMutation = useMutation({
     mutationFn: (kind: ReactionKind) => lensRun('timeline', 'react', { postId: post.id, kind }),
@@ -65,6 +70,30 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
       }
     },
   });
+
+  const updateMutation = useMutation({
+    mutationFn: () => {
+      const vars: { postId: string; content?: string; privacy?: Privacy } = { postId: post.id };
+      if (draftContent !== post.content) vars.content = draftContent;
+      if (draftPrivacy !== post.privacy) vars.privacy = draftPrivacy;
+      return lensRun('timeline', 'post-update', vars);
+    },
+    onSuccess: (r) => {
+      if (r.data.ok) {
+        setEditing(false);
+        qc.invalidateQueries({ queryKey: ['timeline-feed'] });
+        useUIStore.getState().addToast({ type: 'success', message: 'Post updated' });
+      } else {
+        useUIStore.getState().addToast({ type: 'error', message: r.data.error || 'Update failed' });
+      }
+    },
+  });
+
+  const startEditing = () => {
+    setDraftContent(post.content);
+    setDraftPrivacy(post.privacy);
+    setEditing(true);
+  };
 
   const total = post.reactionTotal;
   const topKinds = REACTIONS.filter((r) => (post.reactionCounts?.[r.id] ?? 0) > 0)
@@ -86,6 +115,19 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
               <span>{timeAgo(post.createdAt)}</span>
               <span>·</span>
               <PrivacyIcon className="w-3 h-3" />
+              {post.editedAt && (
+                <>
+                  <span>·</span>
+                  <button
+                    onClick={() => setShowHistory((h) => !h)}
+                    className="inline-flex items-center gap-1 hover:text-white"
+                    aria-expanded={showHistory}
+                    title="See what changed"
+                  >
+                    <History className="w-3 h-3" /> Edited
+                  </button>
+                </>
+              )}
               {post.sharedFrom && (
                 <>
                   <span>·</span>
@@ -97,21 +139,86 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
           </div>
         </div>
         {isOwner && (
-          <button
-            onClick={() => deleteMutation.mutate()}
-            disabled={deleteMutation.isPending}
-            className="p-2 rounded-full hover:bg-[#3a3b3c] text-gray-400 hover:text-red-400"
-            aria-label="Delete post"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          <div className="flex items-center">
+            <button
+              onClick={startEditing}
+              className="p-2 rounded-full hover:bg-[#3a3b3c] text-gray-400 hover:text-white"
+              aria-label="Edit post"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+              className="p-2 rounded-full hover:bg-[#3a3b3c] text-gray-400 hover:text-red-400"
+              aria-label="Delete post"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
         )}
       </div>
 
-      {/* Content */}
-      {post.content && (
+      {/* Content — or the inline editor (S-TL-2) */}
+      {editing ? (
+        <div className="px-4 py-2 space-y-2">
+          <textarea
+            value={draftContent}
+            onChange={(e) => setDraftContent(e.target.value)}
+            rows={4}
+            autoFocus
+            className="w-full bg-[#3a3b3c] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="What's on your mind?"
+          />
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-400" htmlFor={`privacy-${post.id}`}>Audience</label>
+            <select
+              id={`privacy-${post.id}`}
+              value={draftPrivacy}
+              onChange={(e) => setDraftPrivacy(e.target.value as Privacy)}
+              className="bg-[#3a3b3c] rounded-full px-2 py-1 text-xs text-white outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="public">Public</option>
+              <option value="friends">Friends</option>
+              <option value="private">Only me</option>
+            </select>
+            <div className="flex-1" />
+            <button
+              onClick={() => setEditing(false)}
+              className="px-3 py-1.5 rounded-full text-xs text-gray-300 hover:bg-[#3a3b3c]"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => updateMutation.mutate()}
+              disabled={updateMutation.isPending || (draftContent === post.content && draftPrivacy === post.privacy)}
+              className="px-3 py-1.5 rounded-full bg-blue-600 text-white text-xs font-medium disabled:opacity-40 inline-flex items-center gap-1"
+            >
+              {updateMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+              Save
+            </button>
+          </div>
+          <p className="text-[11px] text-gray-500">The version you replace stays in the post's edit history — nothing is silently rewritten.</p>
+        </div>
+      ) : post.content ? (
         <div className="px-4 py-2">
           <p className="text-white text-sm whitespace-pre-wrap">{post.content}</p>
+        </div>
+      ) : null}
+
+      {/* Edit history (S-TL-2): prior versions, most recent first */}
+      {showHistory && post.editHistory && post.editHistory.length > 0 && (
+        <div className="mx-4 mb-2 rounded-lg border border-gray-700 bg-[#18191a] p-3 space-y-2">
+          <p className="text-xs font-semibold text-gray-300">Edit history</p>
+          {[...post.editHistory].reverse().map((v, i) => (
+            <div key={`${v.editedAt}-${i}`} className="border-t border-gray-800 pt-2 first:border-0 first:pt-0">
+              <p className="text-[11px] text-gray-500">
+                Replaced {new Date(v.editedAt).toLocaleString()} · audience: {v.privacy}
+                {v.media?.length ? ` · ${v.media.length} media` : ''}
+              </p>
+              <p className="text-sm text-gray-400 whitespace-pre-wrap">{v.content || '(no text)'}</p>
+            </div>
+          ))}
         </div>
       )}
 

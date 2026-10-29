@@ -7,7 +7,7 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { lensRun } from '@/lib/api/client';
-import { MessageCircle, CornerDownRight, Trash2, Loader2 } from 'lucide-react';
+import { MessageCircle, CornerDownRight, Trash2, Loader2, Pencil, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Comment } from './types';
 
@@ -34,6 +34,7 @@ function CommentNode({
   viewerId,
   onReply,
   onDelete,
+  onEdit,
   busyId,
 }: {
   comment: Comment;
@@ -42,16 +43,28 @@ function CommentNode({
   viewerId: string;
   onReply: (parentId: string, text: string) => void;
   onDelete: (commentId: string) => void;
+  onEdit: (commentId: string, text: string) => void;
   busyId: string | null;
 }) {
   const [replying, setReplying] = useState(false);
   const [draft, setDraft] = useState('');
+  // S-TL-2: inline comment editing with viewable history.
+  const [editing, setEditing] = useState(false);
+  const [editDraft, setEditDraft] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
+  const mine = comment.isMine || (comment.authorId != null && comment.authorId === viewerId);
 
   const submit = () => {
     if (!draft.trim()) return;
     onReply(comment.id, draft.trim());
     setDraft('');
     setReplying(false);
+  };
+
+  const submitEdit = () => {
+    if (!editDraft.trim() || editDraft.trim() === comment.text) return;
+    onEdit(comment.id, editDraft.trim());
+    setEditing(false);
   };
 
   return (
@@ -61,14 +74,55 @@ function CommentNode({
         <div className="flex-1 min-w-0">
           <div className="bg-[#3a3b3c] rounded-2xl px-3 py-1.5 inline-block max-w-full">
             <p className="text-xs font-semibold text-white">{comment.displayName || comment.authorId || 'Member'}</p>
-            <p className="text-sm text-gray-200 whitespace-pre-wrap break-words">{comment.text}</p>
+            {editing ? (
+              <span className="flex items-center gap-1.5 mt-0.5">
+                <input
+                  value={editDraft}
+                  onChange={(e) => setEditDraft(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && submitEdit()}
+                  autoFocus
+                  className="bg-[#242526] rounded-full px-3 py-1 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <button
+                  onClick={submitEdit}
+                  disabled={!editDraft.trim() || editDraft.trim() === comment.text || busyId === comment.id}
+                  className="px-2.5 py-1 rounded-full bg-blue-600 text-white text-[11px] disabled:opacity-40"
+                >
+                  Save
+                </button>
+                <button onClick={() => setEditing(false)} className="text-[11px] text-gray-300 hover:text-white">
+                  Cancel
+                </button>
+              </span>
+            ) : (
+              <p className="text-sm text-gray-200 whitespace-pre-wrap break-words">{comment.text}</p>
+            )}
           </div>
           <div className="flex items-center gap-3 mt-0.5 ml-2 text-[11px] text-gray-400">
             <span>{timeAgo(comment.createdAt)}</span>
             <button onClick={() => setReplying((r) => !r)} className="hover:text-white font-medium">
               Reply
             </button>
-            {(comment.isMine || (comment.authorId != null && comment.authorId === viewerId)) && (
+            {comment.editedAt && (
+              <button
+                onClick={() => setShowHistory((h) => !h)}
+                className="hover:text-white inline-flex items-center gap-1"
+                aria-expanded={showHistory}
+                title="See what changed"
+              >
+                <History className="w-3 h-3" /> Edited
+              </button>
+            )}
+            {mine && !editing && (
+              <button
+                onClick={() => { setEditDraft(comment.text); setEditing(true); }}
+                className="hover:text-white inline-flex items-center gap-1"
+              >
+                <Pencil className="w-3 h-3" />
+                Edit
+              </button>
+            )}
+            {mine && (
               <button
                 onClick={() => onDelete(comment.id)}
                 disabled={busyId === comment.id}
@@ -79,6 +133,17 @@ function CommentNode({
               </button>
             )}
           </div>
+          {showHistory && comment.editHistory && comment.editHistory.length > 0 && (
+            <div className="mt-1 ml-2 rounded-lg border border-gray-700 bg-[#242526] px-3 py-2 space-y-1.5 max-w-md">
+              <p className="text-[11px] font-semibold text-gray-300">Edit history</p>
+              {[...comment.editHistory].reverse().map((v, i) => (
+                <div key={`${v.editedAt}-${i}`} className="border-t border-gray-700 pt-1.5 first:border-0 first:pt-0">
+                  <p className="text-[10px] text-gray-500">Replaced {new Date(v.editedAt).toLocaleString()}</p>
+                  <p className="text-xs text-gray-400 whitespace-pre-wrap break-words">{v.text}</p>
+                </div>
+              ))}
+            </div>
+          )}
           {replying && (
             <div className="flex gap-2 mt-1.5 ml-2">
               <CornerDownRight className="w-4 h-4 text-gray-400 mt-1.5 flex-shrink-0" />
@@ -110,6 +175,7 @@ function CommentNode({
           viewerId={viewerId}
           onReply={onReply}
           onDelete={onDelete}
+          onEdit={onEdit}
           busyId={busyId}
         />
       ))}
@@ -147,6 +213,13 @@ export function CommentThread({ postId, viewerId }: CommentThreadProps) {
     onSettled: () => setBusyId(null),
   });
 
+  const updateMutation = useMutation({
+    mutationFn: (vars: { commentId: string; text: string }) =>
+      lensRun('timeline', 'comment-update', { postId, commentId: vars.commentId, text: vars.text }),
+    onSuccess: invalidate,
+    onSettled: () => setBusyId(null),
+  });
+
   const submitRoot = () => {
     if (!draft.trim()) return;
     addMutation.mutate({ text: draft.trim() });
@@ -176,6 +249,10 @@ export function CommentThread({ postId, viewerId }: CommentThreadProps) {
             onDelete={(id) => {
               setBusyId(id);
               deleteMutation.mutate(id);
+            }}
+            onEdit={(id, text) => {
+              setBusyId(id);
+              updateMutation.mutate({ commentId: id, text });
             }}
             busyId={busyId}
           />

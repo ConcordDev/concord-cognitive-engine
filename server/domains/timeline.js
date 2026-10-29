@@ -586,6 +586,69 @@ export default function registerTimelineActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  // ── Post edit with history (S-TL-2) ────────────────────────────────────
+  // Author-only, fail closed: a non-author gets the same "Post not found
+  // or not yours." post-delete returns, so the error never oracles a
+  // restricted post's existence. Content, media and audience (privacy)
+  // are editable independently. Unlike post-create — which defaults an
+  // unknown privacy to "private" — an edit REJECTS an unknown privacy:
+  // silently flipping a post's audience on a typo is the failure this
+  // slice exists to prevent. The post-create invariant (content or
+  // media) holds on edit too. Every change records the version it
+  // replaced in editHistory (newest last, capped) and stamps editedAt.
+  registerLensAction("timeline", "post-update", (ctx, _a, params = {}) => {
+  try {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const postId = tlClean(params.postId, 64);
+    if (!postId) return { ok: false, error: "postId required." };
+    const actorId = tlAid(ctx);
+    const found = findPost(s, postId);
+    if (!found || found.ownerId !== actorId) {
+      return { ok: false, error: "Post not found or not yours." };
+    }
+    const post = found.post;
+    const next = { content: post.content, media: post.media, privacy: post.privacy };
+    if (params.content !== undefined) next.content = tlClean(params.content, 5000);
+    if (params.privacy !== undefined) {
+      if (!PRIVACY_KINDS.includes(String(params.privacy))) {
+        return { ok: false, error: "Unknown privacy setting." };
+      }
+      next.privacy = String(params.privacy);
+    }
+    if (params.media !== undefined) {
+      if (!Array.isArray(params.media)) return { ok: false, error: "media must be a list." };
+      next.media = params.media
+        .filter((m) => m && MEDIA_KINDS.includes(String(m.kind)))
+        .slice(0, 12)
+        .map((m) => ({ kind: String(m.kind), url: tlClean(m.url, 1000), caption: tlClean(m.caption, 200) }));
+    }
+    // A shared post's payload lives in sharedFrom; it may legitimately
+    // keep empty content and media. Any other post must carry one of them.
+    if (!next.content && next.media.length === 0 && !post.sharedFrom) {
+      return { ok: false, error: "Post needs content or media." };
+    }
+    const changed =
+      next.content !== post.content ||
+      next.privacy !== post.privacy ||
+      JSON.stringify(next.media) !== JSON.stringify(post.media || []);
+    if (changed) {
+      const at = tlNow();
+      if (!Array.isArray(post.editHistory)) post.editHistory = [];
+      post.editHistory.push({
+        content: post.content, media: post.media || [], privacy: post.privacy, editedAt: at,
+      });
+      if (post.editHistory.length > 50) post.editHistory.splice(0, post.editHistory.length - 50);
+      post.content = next.content;
+      post.media = next.media;
+      post.privacy = next.privacy;
+      post.editedAt = at;
+    }
+    saveTlState();
+    return { ok: true, result: { post, edited: changed } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
   // ── Feed listing (privacy-aware) ───────────────────────────────────────
   // viewerId sees: own posts (all privacy), friends' posts marked
   // public|friends, everyone else's public posts only.
@@ -709,6 +772,37 @@ export default function registerTimelineActions(registerLensAction) {
     saveTlState();
     return { ok: true, result: { removed: list.length - next.length, total: next.length } };
   });
+
+  // ── Comment edit with history (S-TL-2) ─────────────────────────────────
+  // Author-only — the same "Not your comment." line comment-delete uses.
+  // The replaced text is kept in editHistory (newest last, capped) and
+  // the comment is stamped editedAt, mirroring post-update.
+  registerLensAction("timeline", "comment-update", (ctx, _a, params = {}) => {
+  try {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const postId = tlClean(params.postId, 64);
+    const commentId = tlClean(params.commentId, 64);
+    if (!postId || !commentId) return { ok: false, error: "postId and commentId required." };
+    const text = tlClean(params.text, 2000);
+    if (!text) return { ok: false, error: "Comment text required." };
+    const list = s.comments.get(postId) || [];
+    const target = list.find((c) => c.id === commentId);
+    if (!target) return { ok: false, error: "Comment not found." };
+    if (target.authorId !== tlAid(ctx)) return { ok: false, error: "Not your comment." };
+    const changed = text !== target.text;
+    if (changed) {
+      const at = tlNow();
+      if (!Array.isArray(target.editHistory)) target.editHistory = [];
+      target.editHistory.push({ text: target.text, editedAt: at });
+      if (target.editHistory.length > 50) target.editHistory.splice(0, target.editHistory.length - 50);
+      target.text = text;
+      target.editedAt = at;
+    }
+    saveTlState();
+    return { ok: true, result: { comment: presentComment(ctx, tlAid(ctx), target), edited: changed } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Reactions with counts + "who reacted" breakdown ────────────────────
   // Idempotent per (user, post): re-reacting changes the kind; reacting with
