@@ -12,6 +12,7 @@
  */
 
 import expressRateLimit from "express-rate-limit";
+import { podPick as _podPick } from "./lib/pod-profile.js";
 import { router as p2pSignallingRouter } from "./lib/p2p-dtu-signalling.js";
 import { createPhotosRouter } from "./routes/photos.js";
 import { selfPinAwayFromOllama } from "./lib/cpu-self-pin.js";
@@ -10250,7 +10251,7 @@ const _CONCURRENCY = {
     // bulk_import 4 → 32 (heavy I/O + GPU embed work paralellizes well);
     // simulation 6 → 32 (per-tick simulation jobs want to fan out so
     // emergent modules don't queue behind each other).
-    llm_call:    Number(process.env.LLM_CONCURRENCY_LIMIT || 64),
+    llm_call:    Number(process.env.LLM_CONCURRENCY_LIMIT || _podPick(64, 192)),
     bulk_import: Number(process.env.BULK_IMPORT_CONCURRENCY || 32),
     simulation:  Number(process.env.SIM_CONCURRENCY || 32),
     ml_infer: 6,
@@ -20878,11 +20879,11 @@ _unrefInTest(setTimeout(() => initLLMPipeline(), 100));
 // a local Ollama slot can spill to an operator-funded external endpoint
 // instead of competing for the same 9 cores.
 const _llmQueue = createLLMQueue({
-  concurrency: parseInt(process.env.LLM_CONCURRENCY || "32", 10),
+  concurrency: parseInt(process.env.LLM_CONCURRENCY || String(_podPick(32, 96)), 10),
   // Was hardcoded 200, which always won over llm-queue.js's own
   // `opts.maxQueueDepth || CONCORD_LLM_QUEUE_DEPTH || 1000` fallback —
   // silently making CONCORD_LLM_QUEUE_DEPTH dead (audit 2026-07-27).
-  maxQueueDepth: parseInt(process.env.CONCORD_LLM_QUEUE_DEPTH || "200", 10),
+  maxQueueDepth: parseInt(process.env.CONCORD_LLM_QUEUE_DEPTH || String(_podPick(200, 1000)), 10),
   onReject: (priority, reason) => {
     structuredLog("warn", "llm_queue_reject", { priority, reason });
   },
