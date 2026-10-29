@@ -14,7 +14,7 @@
 //
 // Wire envelopes (the outbound side is
 // server/lib/federation-peering-transport.js):
-//   POST /heartbeat  { from, heartbeat } → 200 { ok, syncNeeded, heartbeat }
+//   POST /heartbeat  { from, heartbeat, signature } → 200 { ok, syncNeeded, heartbeat }
 //     The response carries OUR heartbeat so one exchange updates both
 //     pods' sync planning.
 //   POST /sync       { from, package }   → the receiveSyncPackage result
@@ -23,7 +23,7 @@
 import express from "express";
 import {
   buildHeartbeat,
-  receiveHeartbeat,
+  receiveSignedHeartbeat,
   receiveSyncPackage,
   receiveProposal,
 } from "../emergent/federation-peering.js";
@@ -53,7 +53,8 @@ export default function createFederationPeeringRouter() {
   router.post("/heartbeat", (req, res) => {
     const STATE = state();
     if (!STATE) return res.status(503).json({ ok: false, error: "state_unavailable" });
-    const received = receiveHeartbeat(STATE, fromPeer(req), req.body?.heartbeat || {});
+    const signature = typeof req.body?.signature === "string" ? req.body.signature : null;
+    const received = receiveSignedHeartbeat(STATE, fromPeer(req), req.body?.heartbeat || {}, signature);
     if (!received.ok) return sendResult(res, received);
     const ours = buildHeartbeat(STATE);
     return res.json({ ok: true, syncNeeded: !!received.syncNeeded, heartbeat: ours.heartbeat });

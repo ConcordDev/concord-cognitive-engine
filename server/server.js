@@ -39702,6 +39702,19 @@ allowMacro("council", "reviewGlobal", _ACL_MEMBER);
 allowMacro("council", "credibility", _ACL_MEMBER);
 allowMacro("council", "proposePromotion", _ACL_MEMBER);
 
+// SECURITY: federation peering (emergent/federation-peering.js). The
+// emergent domain is member-tier, but inbound HMAC is only as strong as
+// peer registration: a member who could register a peer with a secret of
+// their choosing could sign their own sync packages and proposals, and the
+// send* macros make this server POST our heartbeat / published DTUs to the
+// registered endpoint. Peer registration, inbound receive, and outbound
+// send are admin-only (humanMacroAclDenial enforces this for humans;
+// internal callers bypass). federation.metrics stays public.
+for (const n of [
+  "registerPeer", "heartbeat", "buildSync", "receiveSync", "receiveProposal",
+  "sendHeartbeat", "sendSync", "sendProposal",
+]) allowMacro("emergent", `federation.${n}`, _ACL_ADMIN);
+
 // Auth: whoami just echoes the caller's own actor/user/org back to them —
 // no other user's data, nothing sensitive. Overrides the domain-level
 // _ACL_OWNER so any authenticated (or public-read) request can call it;

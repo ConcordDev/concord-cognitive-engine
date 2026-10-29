@@ -13,7 +13,7 @@ import assert from "node:assert/strict";
 
 import {
   registerPeer,
-  receiveHeartbeat,
+  receiveSignedHeartbeat,
   buildHeartbeat,
   receiveSyncPackage,
   receiveProposal,
@@ -27,7 +27,7 @@ import {
   sendProposal,
 } from "../lib/federation-peering-transport.js";
 
-const SECRET = "test" + "-secret";
+const SECRET = "test" + "-secret-0123456789";
 
 function makeState(dtus = []) {
   return {
@@ -54,7 +54,7 @@ function loopbackTo(podB) {
     const body = JSON.parse(init.body);
     const path = new URL(url).pathname;
     if (path.endsWith("/heartbeat")) {
-      const r = receiveHeartbeat(podB, body.from, body.heartbeat);
+      const r = receiveSignedHeartbeat(podB, body.from, body.heartbeat, body.signature);
       if (!r.ok) return { ok: false, status: 404, json: async () => r };
       const ours = buildHeartbeat(podB);
       return { ok: true, status: 200, json: async () => ({ ok: true, syncNeeded: !!r.syncNeeded, heartbeat: ours.heartbeat }) };

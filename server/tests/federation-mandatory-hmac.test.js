@@ -15,19 +15,28 @@ import assert from "node:assert/strict";
 
 import {
   registerPeer,
+  getRegisteredPeer,
   receiveSyncPackage,
   receiveProposal,
   signPackage,
   signProposal,
 } from "../emergent/federation-peering.js";
 
-const SECRET = "test" + "-secret";
+const SECRET = "test" + "-secret-0123456789";
 
 function makeState() {
   return { dtus: new Map(), shadowDtus: new Map() };
 }
 
 const DTU = { id: "dtu_1", title: "Shared note", tier: "atomic", tags: ["x"], core: {}, human: {} };
+
+// registerPeer now refuses a peer without a shared secret, so a secretless
+// record can only come from state saved before that rule. Simulate one to
+// pin that the receive paths still fail closed for it.
+function legacySecretlessPeer(s, peerId) {
+  registerPeer(s, { peerId, endpoint: `https://${peerId}.example/api/federation/v1`, trust: 0.9, sharedSecret: SECRET });
+  getRegisteredPeer(s, peerId).sharedSecret = null;
+}
 
 function pkgFor(peerId, dtus = [DTU]) {
   return { peerId, count: dtus.length, timestamp: "2026-10-29T00:00:00.000Z", dtus };
@@ -36,7 +45,7 @@ function pkgFor(peerId, dtus = [DTU]) {
 describe("federation inbound — mandatory HMAC (sync packages)", () => {
   it("a secretless registered peer cannot sync — the spoofing channel is closed", () => {
     const s = makeState();
-    registerPeer(s, { peerId: "pod-a", endpoint: "https://pod-a.example/api/federation/v1", trust: 0.9 });
+    legacySecretlessPeer(s, "pod-a");
     const r = receiveSyncPackage(s, "pod-a", pkgFor("pod-a"));
     assert.equal(r.ok, false);
     assert.equal(r.error, "signature_required");
@@ -79,7 +88,7 @@ describe("federation inbound — mandatory HMAC (proposals)", () => {
 
   it("a secretless (even trusted) peer cannot propose", () => {
     const s = makeState();
-    registerPeer(s, { peerId: "pod-a", endpoint: "https://pod-a.example/api/federation/v1", trust: 0.9 });
+    legacySecretlessPeer(s, "pod-a");
     const r = receiveProposal(s, "pod-a", PROP, signProposal("anything", "pod-a", PROP));
     assert.equal(r.ok, false);
     assert.equal(r.error, "signature_required");

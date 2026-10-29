@@ -6,7 +6,7 @@
 // packages, proposal routing — but deliberately made no network calls.
 // This module is the wire:
 //
-//   POST {peer.endpoint}/heartbeat  { from, heartbeat }   → peer replies
+//   POST {peer.endpoint}/heartbeat  { from, heartbeat, signature } → peer replies
 //     with its own heartbeat, which is fed to receiveHeartbeat so one
 //     exchange updates both sides' sync planning.
 //   POST {peer.endpoint}/sync       { from, package }     → the signed
@@ -36,6 +36,7 @@ import {
   receiveHeartbeat,
   buildSyncPackage,
   routeProposalToPeer,
+  signHeartbeat,
   signProposal,
 } from "../emergent/federation-peering.js";
 
@@ -116,9 +117,11 @@ export async function sendHeartbeat(STATE, selfPeerId, peerId, opts = {}) {
   const built = buildHeartbeat(STATE);
   if (!built.ok) return built;
 
+  if (!found.peer.sharedSecret) return { ok: false, error: "peer_secret_missing" };
   const res = await postJsonToPeer(found.peer, "/heartbeat", {
     from: selfPeerId,
     heartbeat: built.heartbeat,
+    signature: signHeartbeat(found.peer.sharedSecret, selfPeerId, built.heartbeat),
   }, opts);
   if (!res.ok) return res;
 

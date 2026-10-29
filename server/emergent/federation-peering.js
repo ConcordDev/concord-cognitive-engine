@@ -100,6 +100,26 @@ export function verifyProposalSignature(secret, fromPeerId, proposal, signature)
 }
 
 /**
+ * Compute the HMAC signature for a heartbeat. Heartbeats carry only
+ * lattice summaries, but the reply carries OUR summary, so an inbound
+ * heartbeat must prove the sender holds the peer's shared secret too.
+ */
+export function signHeartbeat(secret, fromPeerId, heartbeat) {
+  const payload = stableStringify({ kind: "heartbeat", from: fromPeerId, heartbeat });
+  return crypto.createHmac(HMAC_ALGO, secret).update(payload).digest("hex");
+}
+
+export function verifyHeartbeatSignature(secret, fromPeerId, heartbeat, signature) {
+  if (!secret || !signature) return false;
+  const expected = signHeartbeat(secret, fromPeerId, heartbeat);
+  try {
+    return crypto.timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(signature, "hex"));
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Validate a single DTU in an inbound sync package.
  * @param {Object} dtu
  * @returns {{ valid: boolean, reason?: string }}
@@ -176,12 +196,24 @@ function getPeeringStore(STATE) {
  * @param {string} [peer.sharedSecret] - HMAC shared secret for signing
  * @returns {{ ok, peerId }}
  */
+export const MIN_SHARED_SECRET_LEN = 16;
+
 export function registerPeer(STATE, peer = {}) {
   if (!peer.peerId || !peer.endpoint) {
     return { ok: false, error: "peerId_and_endpoint_required" };
   }
+  // Inbound HMAC is only as strong as the secret registered here, so a
+  // peer without one is never admitted (receive paths also fail closed
+  // for any secretless record restored from older state).
+  if (typeof peer.sharedSecret !== "string" || peer.sharedSecret.length < MIN_SHARED_SECRET_LEN) {
+    return { ok: false, error: "shared_secret_required", minLength: MIN_SHARED_SECRET_LEN };
+  }
 
   const store = getPeeringStore(STATE);
+  // Never silently replace an existing peer's endpoint, trust or secret.
+  if (store.peers.has(peer.peerId)) {
+    return { ok: false, error: "peer_exists", peerId: peer.peerId };
+  }
 
   const record = {
     peerId: peer.peerId,
@@ -217,6 +249,20 @@ export function registerPeer(STATE, peer = {}) {
  * @param {string[]} heartbeat.recentDtuIds - Last 10 DTU IDs for sync diff
  * @returns {{ ok, syncNeeded }}
  */
+/**
+ * Inbound HTTP heartbeat: the sender must be a registered peer with a
+ * shared secret and must sign the heartbeat under it. Fail-closed.
+ */
+export function receiveSignedHeartbeat(STATE, peerId, heartbeat = {}, signature = null) {
+  const peer = getPeeringStore(STATE).peers.get(peerId);
+  if (!peer) return { ok: false, error: "unknown_peer" };
+  if (!peer.sharedSecret || !signature) return { ok: false, error: "signature_required" };
+  if (!verifyHeartbeatSignature(peer.sharedSecret, peerId, heartbeat, signature)) {
+    return { ok: false, error: "signature_invalid" };
+  }
+  return receiveHeartbeat(STATE, peerId, heartbeat);
+}
+
 export function receiveHeartbeat(STATE, peerId, heartbeat = {}) {
   const store = getPeeringStore(STATE);
   const peer = store.peers.get(peerId);
