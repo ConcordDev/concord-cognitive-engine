@@ -386,6 +386,12 @@ export default function registerTravelActions(registerLensAction) {
     if (!destination) return { ok: false, error: "destination required" };
     const startDate = tvday(params.startDate);
     const endDate = tvday(params.endDate) || startDate;
+    // Q24: an inverted range is rejected, not clamped into a fake
+    // 1-day trip (the Math.max(1, …) below used to store end-before-
+    // start silently, and trip-list then mislabelled its status).
+    if (startDate && endDate && endDate < startDate) {
+      return { ok: false, error: "endDate must be on or after startDate" };
+    }
     const trip = {
       id: tvid("trip"), name, destination, startDate: startDate || null, endDate: endDate || null,
       travelers: Math.max(1, Math.round(tvnum(params.travelers, 1))),
@@ -414,6 +420,14 @@ export default function registerTravelActions(registerLensAction) {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const trip = findTrip(s, tvaid(ctx), params.id);
     if (!trip) return { ok: false, error: "trip not found" };
+    // Q24: validate the POST-update date pair before mutating
+    // anything — a rejected update changes nothing (no partial write
+    // of the name/destination fields that accompany the bad dates).
+    const nextStart = params.startDate != null ? (tvday(params.startDate) || null) : trip.startDate;
+    const nextEnd = params.endDate != null ? (tvday(params.endDate) || null) : trip.endDate;
+    if (nextStart && nextEnd && nextEnd < nextStart) {
+      return { ok: false, error: "endDate must be on or after startDate" };
+    }
     if (params.name != null) { const n = tvclean(params.name, 120); if (n) trip.name = n; }
     if (params.destination != null) { const d = tvclean(params.destination, 120); if (d) trip.destination = d; }
     if (params.startDate != null) trip.startDate = tvday(params.startDate) || null;
