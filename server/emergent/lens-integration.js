@@ -305,7 +305,7 @@ function _executeViaMacro(STATE, { artifact, artifactId, action, params, emergen
 }
 
 export function executeEmergentLensAction(STATE, opts = {}) {
-  const { emergentId, artifactId, action, params = {}, justification, runMacro, makeCtx } = opts;
+  const { emergentId, artifactId, action, params = {}, justification, submittedBy = null, runMacro, makeCtx } = opts;
 
   if (!artifactId || !action) {
     return { ok: false, error: "artifactId_and_action_required" };
@@ -328,9 +328,10 @@ export function executeEmergentLensAction(STATE, opts = {}) {
   // governance queue (lib/emergent-proposals.js) instead of returning a
   // stub that evaporates. A human governance role decides it; only an
   // approved proposal can ever be applied (applyEmergentLensProposal).
-  const proposal = createLensProposal(STATE, {
+  const created = createLensProposal(STATE, {
     type: "lens_action",
     emergentId,
+    submittedBy,
     domain: artifact.domain,
     artifactId,
     action,
@@ -338,13 +339,15 @@ export function executeEmergentLensAction(STATE, opts = {}) {
     justification: justification || `Emergent ${emergentId} requests ${action} on ${artifact.domain} artifact ${artifactId}`,
     createdAt: new Date().toISOString(),
   });
-  recordEnrichmentMetric("emergentProposals");
+  if (!created.ok) return { ok: false, executed: false, requiresGovernance: true, error: created.error, limit: created.limit };
+  if (!created.deduped) recordEnrichmentMetric("emergentProposals");
   return {
     ok: true,
     executed: false,
     requiresGovernance: true,
-    proposalId: proposal.id,
-    proposal,
+    proposalId: created.proposal.id,
+    proposal: created.proposal,
+    ...(created.deduped ? { deduped: true } : {}),
   };
 }
 

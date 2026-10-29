@@ -22,10 +22,68 @@
 //   including its own.
 // - Denials are result objects, never throws, matching the codebase style.
 //
+// - The store is bounded: pending proposals expire after a TTL, an
+//   identical pending proposal is returned instead of duplicated, pending
+//   counts are capped (globally and per emergent), and old terminal
+//   records are pruned past a retention size.
+//
 // Storage follows the STATE.lensArtifacts convention: a Map on STATE,
 // serialized by the state save/restore wiring in server.js.
 
 export const GOVERNANCE_ROLES = new Set(["owner", "admin", "founder", "sovereign"]);
+
+export const PROPOSAL_LIMITS = Object.freeze({
+  maxPending: 500,
+  maxPendingPerEmergent: 25,
+  pendingTtlMs: 7 * 24 * 60 * 60 * 1000,
+  maxStored: 2000,
+});
+
+const TERMINAL = new Set(["rejected", "applied", "expired"]);
+
+function _createdMs(p) {
+  const t = Date.parse(p?.createdAt);
+  return Number.isFinite(t) ? t : 0;
+}
+
+function _dedupeKey(p) {
+  let params = "";
+  try { params = JSON.stringify(p.params ?? {}); } catch { params = String(p.params); }
+  return `${p.emergentId}|${p.artifactId}|${p.action}|${params}`;
+}
+
+/**
+ * Expire stale pending proposals and drop the oldest terminal records
+ * past PROPOSAL_LIMITS.maxStored. Returns { expired, pruned }.
+ */
+export function pruneLensProposals(STATE, now = Date.now()) {
+  const store = ensureProposalStore(STATE);
+  let expired = 0;
+  for (const p of store.values()) {
+    if (p.status === "pending" && now - _createdMs(p) > PROPOSAL_LIMITS.pendingTtlMs) {
+      p.status = "expired";
+      p.decidedAt = new Date(now).toISOString();
+      expired++;
+    }
+  }
+  let pruned = 0;
+  if (store.size > PROPOSAL_LIMITS.maxStored) {
+    const terminal = Array.from(store.values())
+      .filter((p) => TERMINAL.has(p.status))
+      .sort((a, b) => _createdMs(a) - _createdMs(b));
+    for (const p of terminal) {
+      if (store.size <= PROPOSAL_LIMITS.maxStored) break;
+      store.delete(p.id);
+      pruned++;
+    }
+  }
+  return { expired, pruned };
+}
+
+/** An emergent or internal (server-process) actor — never a human decider. */
+export function isEmergentActor({ userId, internal } = {}) {
+  return internal === true || String(userId || "").startsWith("emergent:");
+}
 
 let _seq = 0;
 
@@ -37,15 +95,35 @@ export function ensureProposalStore(STATE) {
   return STATE.emergentLensProposals;
 }
 
-export function createLensProposal(STATE, proposal = {}) {
+/**
+ * Queue a proposal. Returns { ok:true, proposal, deduped? } or
+ * { ok:false, error } when a pending cap is reached.
+ */
+export function createLensProposal(STATE, proposal = {}, { now = Date.now() } = {}) {
   const store = ensureProposalStore(STATE);
-  const id = `elp_${Date.now().toString(36)}_${(++_seq).toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`;
+  pruneLensProposals(STATE, now);
+  const key = _dedupeKey(proposal);
+  let pending = 0;
+  let pendingForEmergent = 0;
+  for (const p of store.values()) {
+    if (p.status !== "pending") continue;
+    if (_dedupeKey(p) === key) return { ok: true, proposal: p, deduped: true };
+    pending++;
+    if (p.emergentId === proposal.emergentId) pendingForEmergent++;
+  }
+  if (pending >= PROPOSAL_LIMITS.maxPending) {
+    return { ok: false, error: "proposal_queue_full", limit: PROPOSAL_LIMITS.maxPending };
+  }
+  if (pendingForEmergent >= PROPOSAL_LIMITS.maxPendingPerEmergent) {
+    return { ok: false, error: "emergent_pending_cap", limit: PROPOSAL_LIMITS.maxPendingPerEmergent };
+  }
+  const id = `elp_${now.toString(36)}_${(++_seq).toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`;
   const record = {
     ...proposal,
     id,
     type: proposal.type || "lens_action",
     status: "pending",
-    createdAt: proposal.createdAt || new Date().toISOString(),
+    createdAt: proposal.createdAt || new Date(now).toISOString(),
     decidedBy: null,
     decidedByRole: null,
     decidedAt: null,
@@ -54,7 +132,7 @@ export function createLensProposal(STATE, proposal = {}) {
     applyError: null,
   };
   store.set(id, record);
-  return record;
+  return { ok: true, proposal: record };
 }
 
 export function getLensProposal(STATE, proposalId) {
@@ -62,12 +140,18 @@ export function getLensProposal(STATE, proposalId) {
 }
 
 export function listLensProposals(STATE, { status } = {}) {
+  pruneLensProposals(STATE);
   const all = Array.from(ensureProposalStore(STATE).values());
   const filtered = status ? all.filter((p) => p.status === status) : all;
   return filtered.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
 }
 
-export function decideLensProposal(STATE, proposalId, { decision, decidedBy = null, decidedByRole = null } = {}) {
+export function decideLensProposal(STATE, proposalId, { decision, decidedBy = null, decidedByRole = null, internal = false } = {}) {
+  // Checked before the role: emergent execution elevates its ctx to
+  // role "owner", so the role alone cannot tell a human from an emergent.
+  if (isEmergentActor({ userId: decidedBy, internal })) {
+    return { ok: false, error: "emergent_cannot_decide" };
+  }
   if (!GOVERNANCE_ROLES.has(decidedByRole)) {
     return { ok: false, error: "not_governance_role" };
   }
@@ -101,7 +185,10 @@ export function recordProposalApplication(STATE, proposalId, { ok, result = null
 
 export default {
   GOVERNANCE_ROLES,
+  PROPOSAL_LIMITS,
   ensureProposalStore,
+  pruneLensProposals,
+  isEmergentActor,
   createLensProposal,
   getLensProposal,
   listLensProposals,

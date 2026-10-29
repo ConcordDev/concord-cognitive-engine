@@ -17,9 +17,12 @@ import {
   getLensIntegrationMetrics,
 } from "../emergent/lens-integration.js";
 import {
+  PROPOSAL_LIMITS,
+  createLensProposal,
   getLensProposal,
   listLensProposals,
   decideLensProposal,
+  pruneLensProposals,
 } from "../lib/emergent-proposals.js";
 
 function makeState() {
@@ -78,7 +81,7 @@ test("safe actions still execute immediately through the runner", () => {
 test("list filters by status and get round-trips", () => {
   const STATE = makeState();
   const a = mutate(STATE).proposalId;
-  mutate(STATE);
+  mutate(STATE, { params: { hard: false } });
   assert.equal(listLensProposals(STATE).length, 2);
   assert.equal(listLensProposals(STATE, { status: "pending" }).length, 2);
   decideLensProposal(STATE, a, { decision: "rejected", decidedBy: "root", decidedByRole: "founder" });
@@ -179,4 +182,87 @@ test("apply against a vanished artifact records apply_failed honestly", () => {
   assert.equal(r.ok, false);
   assert.equal(r.error, "artifact_not_found");
   assert.equal(getLensProposal(STATE, id).status, "apply_failed");
+});
+
+// ── Review HOLD (Q40): bounded store, no spoofed deciders ──────────────────
+
+test("an identical pending proposal is returned, not duplicated", () => {
+  const STATE = makeState();
+  const a = mutate(STATE);
+  const b = mutate(STATE);
+  assert.equal(b.proposalId, a.proposalId);
+  assert.equal(b.deduped, true);
+  assert.equal(listLensProposals(STATE).length, 1);
+  // Once decided, the same request is a new proposal.
+  decideLensProposal(STATE, a.proposalId, { decision: "rejected", decidedBy: "root", decidedByRole: "admin" });
+  assert.notEqual(mutate(STATE).proposalId, a.proposalId);
+});
+
+test("pending proposals are capped per emergent", () => {
+  const STATE = makeState();
+  for (let i = 0; i < PROPOSAL_LIMITS.maxPendingPerEmergent; i++) {
+    assert.equal(mutate(STATE, { params: { i } }).ok, true);
+  }
+  const over = mutate(STATE, { params: { i: "one-too-many" } });
+  assert.equal(over.ok, false);
+  assert.equal(over.error, "emergent_pending_cap");
+  assert.equal(listLensProposals(STATE).length, PROPOSAL_LIMITS.maxPendingPerEmergent);
+  // A different emergent still has room.
+  assert.equal(mutate(STATE, { emergentId: "em_2" }).ok, true);
+});
+
+test("the pending queue is capped globally", () => {
+  const STATE = makeState();
+  const per = PROPOSAL_LIMITS.maxPendingPerEmergent;
+  for (let i = 0; i < PROPOSAL_LIMITS.maxPending; i++) {
+    const r = createLensProposal(STATE, { emergentId: `em_${Math.floor(i / per)}`, artifactId: "art_1", action: "delete", params: { i } });
+    assert.equal(r.ok, true, `proposal ${i}`);
+  }
+  const over = createLensProposal(STATE, { emergentId: "em_fresh", artifactId: "art_1", action: "delete", params: {} });
+  assert.equal(over.ok, false);
+  assert.equal(over.error, "proposal_queue_full");
+  assert.equal(STATE.emergentLensProposals.size, PROPOSAL_LIMITS.maxPending);
+});
+
+test("stale pending proposals expire and free the cap", () => {
+  const STATE = makeState();
+  const now = Date.now();
+  const old = new Date(now - PROPOSAL_LIMITS.pendingTtlMs - 1000).toISOString();
+  const r = createLensProposal(STATE, { emergentId: "em_1", artifactId: "art_1", action: "delete", params: {}, createdAt: old }, { now });
+  assert.equal(r.ok, true);
+  assert.equal(pruneLensProposals(STATE, now).expired, 1);
+  assert.equal(getLensProposal(STATE, r.proposal.id).status, "expired");
+  assert.equal(listLensProposals(STATE, { status: "pending" }).length, 0);
+  // An expired proposal can no longer be decided.
+  assert.equal(decideLensProposal(STATE, r.proposal.id, { decision: "approved", decidedBy: "root", decidedByRole: "admin" }).error, "already_decided");
+});
+
+test("old terminal records are pruned past the retention size; pending ones never are", () => {
+  const STATE = makeState();
+  const store = STATE.emergentLensProposals;
+  const t0 = Date.now() - 60_000;
+  for (let i = 0; i < PROPOSAL_LIMITS.maxStored + 50; i++) {
+    store.set(`elp_old_${i}`, { id: `elp_old_${i}`, status: "rejected", createdAt: new Date(t0 + i).toISOString() });
+  }
+  store.set("elp_pending", { id: "elp_pending", status: "pending", createdAt: new Date(t0 - 1).toISOString() });
+  const { pruned } = pruneLensProposals(STATE);
+  assert.equal(pruned, 51);
+  assert.equal(store.size, PROPOSAL_LIMITS.maxStored);
+  assert.ok(store.has("elp_pending"), "pending proposals are never pruned for size");
+  assert.ok(!store.has("elp_old_0"), "oldest terminal record goes first");
+});
+
+test("an emergent or internal actor can never decide, even with role owner", () => {
+  const STATE = makeState();
+  const id = mutate(STATE).proposalId;
+  // _executeViaMacro elevates emergent ctx to role "owner" + internal.
+  assert.equal(decideLensProposal(STATE, id, { decision: "approved", decidedBy: "emergent:em_1", decidedByRole: "owner" }).error, "emergent_cannot_decide");
+  assert.equal(decideLensProposal(STATE, id, { decision: "approved", decidedBy: "system", decidedByRole: "owner", internal: true }).error, "emergent_cannot_decide");
+  assert.equal(getLensProposal(STATE, id).status, "pending");
+});
+
+test("the submitting actor is recorded on the proposal", () => {
+  const STATE = makeState();
+  const r = mutate(STATE, { submittedBy: "emergent:em_1" });
+  assert.equal(getLensProposal(STATE, r.proposalId).submittedBy, "emergent:em_1");
 });

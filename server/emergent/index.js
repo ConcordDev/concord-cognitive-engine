@@ -163,7 +163,6 @@ import {
 import {
   buildDTUConversationContext, getArtifactDTUs, getDTUArtifact,
   checkEmergentLensAccess, executeEmergentLensAction,
-  applyEmergentLensProposal,
   getLensIntegrationMetrics,
 } from "./lens-integration.js";
 import {
@@ -1489,14 +1488,25 @@ function init({ register, STATE, helpers }) {
   }, { description: "Check if emergent can execute a lens action", public: true });
 
   register("emergent", "lens.emergentAction", (_ctx, input = {}) => {
+    // Internal-only. Mutating requests are persisted as governance
+    // proposals, so an HTTP caller here could file unbounded proposals
+    // under any emergent's name. Server-side emergent processes run with
+    // an internal ctx and no reqMeta; an emergent actor's own id wins over
+    // input.emergentId so a proposal can't be filed under another name.
+    const internal = _ctx?.internal === true || _ctx?.actor?.internal === true;
+    if (!internal || _ctx?.reqMeta) return { ok: false, error: "internal_only" };
+    const actorId = String(_ctx?.actor?.userId || "");
+    const emergentId = actorId.startsWith("emergent:") ? actorId.slice("emergent:".length) : input.emergentId;
+    if (!emergentId) return { ok: false, error: "emergentId_required" };
     return executeEmergentLensAction(STATE, {
-      emergentId: input.emergentId,
+      emergentId,
       artifactId: input.artifactId,
       action: input.action,
       params: input.params,
       justification: input.justification,
+      submittedBy: actorId || null,
     });
-  }, { description: "Execute lens action on behalf of emergent agent", public: false });
+  }, { description: "Execute lens action on behalf of emergent agent (internal callers only)", public: false });
 
   register("emergent", "lens.integrationMetrics", (_ctx) => {
     return getLensIntegrationMetrics();
@@ -1515,18 +1525,15 @@ function init({ register, STATE, helpers }) {
       decision: input.decision,
       decidedBy: actor.userId || null,
       decidedByRole: actor.role || null,
+      internal: _ctx?.internal === true || actor.internal === true,
     });
     if (!decided.ok) return decided;
-    // On approval, apply immediately when the caller supplies a macro
-    // runner (the established input._runMacro injection pattern). With
-    // no runner the proposal rests at "approved" — a visible, applicable
-    // state, never a silent drop.
-    if (decided.proposal.status === "approved" && typeof input._runMacro === "function") {
-      const applied = applyEmergentLensProposal(STATE, input.proposalId, {
-        runMacro: input._runMacro,
-        makeCtx: typeof input._makeCtx === "function" ? input._makeCtx : undefined,
-      });
-      return { ...decided, applied };
+    if (decided.proposal.status === "approved") {
+      // No server-side apply path is wired yet: applyEmergentLensProposal
+      // needs the server's async macro runner, which the emergent module
+      // does not receive. An approved proposal rests at "approved" — a
+      // visible state, never a silent drop or a pretend success.
+      return { ...decided, apply: { live: false, note: "Approved. Automatic apply is not wired yet; the proposal stays 'approved' until it is." } };
     }
     return decided;
   }, { description: "Approve or reject an emergent lens-action proposal (human governance roles only; emergents can never decide)", public: false });
