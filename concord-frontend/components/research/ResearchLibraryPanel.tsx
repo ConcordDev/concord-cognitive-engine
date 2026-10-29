@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2, Plus, BookMarked, BookOpen, ChevronLeft, ChevronDown, Trash2, Copy, FileText, ExternalLink, Pencil, Link2, X, Tag, Highlighter, Upload } from 'lucide-react';
+import { Loader2, Plus, BookMarked, BookOpen, ChevronLeft, ChevronDown, Trash2, Copy, FileText, ExternalLink, Pencil, Link2, X, Tag, Highlighter, Upload, BarChart3 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
@@ -92,6 +92,226 @@ function HighlightsSection({ onOpenReference }: { onOpenReference: (ref: Referen
               </button>
             ))
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface AnalysisItemRead { id: string; title: string; year: number | null }
+interface AnalysisEvaluation {
+  referenceId: string; title: string; credibility?: string; signals?: string[]; status?: string; error?: string;
+}
+interface AnalysisGapEntry {
+  kind: string; count?: number; references?: { id: string; title: string }[]; year?: number; tags?: string[];
+}
+interface AnalysisResult {
+  question: string | null;
+  itemsRead: AnalysisItemRead[];
+  evaluations: AnalysisEvaluation[];
+  gaps: { referenceCount: number; gaps: AnalysisGapEntry[]; byYear: Record<string, number> } | null;
+  matches: {
+    question: string; matchCount: number;
+    matches: { referenceId: string; title: string; score: number; matchedTokens: string[] }[];
+  } | null;
+}
+interface AnalysisJob {
+  id: string; status: string; question: string | null; itemCount: number;
+  createdAt: string; completedAt?: string | null;
+  result?: AnalysisResult | null; error?: string | null;
+}
+
+const CREDIBILITY_COLOR: Record<string, string> = {
+  high: 'text-emerald-300 border-emerald-800/60 bg-emerald-950/30',
+  moderate: 'text-amber-300 border-amber-800/60 bg-amber-950/30',
+  low: 'text-rose-300 border-rose-800/60 bg-rose-950/30',
+};
+
+/**
+ * AnalyzeLibrarySection — S5 (F3): the library-level "Analyze library"
+ * surface. Starts the research.analyze-library background job (source
+ * evaluation + gap detection + question matching over the user's own
+ * references), polls analysis-get while it runs, and renders what the
+ * job produced. Per §7 S5 every output names the items it read: the
+ * read list, per-reference evaluations, gap entries and matches all
+ * carry titles. On revisit the latest completed run is restored from
+ * analysis-list so the surface is not blank. An empty library gets the
+ * macro's honest no_references refusal, never a template.
+ */
+function AnalyzeLibrarySection() {
+  const [question, setQuestion] = useState('');
+  const [job, setJob] = useState<AnalysisJob | null>(null);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const pollRef = useRef<number | null>(null);
+
+  useEffect(() => () => { if (pollRef.current) window.clearTimeout(pollRef.current); }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await lensRun<{ analyses: AnalysisJob[] }>('research', 'analysis-list', {});
+        const latest = (r.data?.result?.analyses || []).find((a) => a.status === 'complete');
+        if (!latest || cancelled) return;
+        const g = await lensRun<{ job: AnalysisJob }>('research', 'analysis-get', { id: latest.id });
+        if (!cancelled && g.data?.result?.job) setJob(g.data.result.job);
+      } catch { /* restoring the last run is best-effort */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const poll = useCallback(async (id: string, tries: number) => {
+    try {
+      const g = await lensRun<{ job: AnalysisJob }>('research', 'analysis-get', { id });
+      const j = g.data?.result?.job;
+      if (j) setJob(j);
+      if (j && j.status === 'running' && tries > 0) {
+        pollRef.current = window.setTimeout(() => { void poll(id, tries - 1); }, 1200);
+        return;
+      }
+      setRunning(false);
+    } catch {
+      if (tries > 0) {
+        pollRef.current = window.setTimeout(() => { void poll(id, tries - 1); }, 1200);
+      } else {
+        setRunning(false);
+      }
+    }
+  }, []);
+
+  const run = useCallback(async () => {
+    setError(null);
+    setRunning(true);
+    try {
+      const r = await lensRun<{ job: AnalysisJob }>('research', 'analyze-library', { question: question.trim() });
+      if (r.data?.ok === false) {
+        setRunning(false);
+        setError(r.data?.reason === 'no_references'
+          ? 'Your library is empty — add references first; there is nothing to analyse yet.'
+          : (r.data?.error || 'Analysis could not be started.'));
+        return;
+      }
+      const j = r.data?.result?.job;
+      if (j) {
+        setJob(j);
+        void poll(j.id, 40);
+      } else {
+        setRunning(false);
+      }
+    } catch {
+      setRunning(false);
+      setError('Analysis could not be started.');
+    }
+  }, [question, poll]);
+
+  const result = job?.status === 'complete' ? job.result : null;
+
+  return (
+    <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
+      <div className="flex items-center gap-1.5">
+        <BarChart3 className="w-3.5 h-3.5 text-red-400" />
+        <h4 className="text-xs font-semibold text-zinc-200">Analyze library</h4>
+      </div>
+      <p className="text-[11px] text-zinc-400">
+        Runs source evaluation, gap detection and question matching over your references as a
+        background job. Every result names the items it read.
+      </p>
+      <div className="flex gap-2">
+        <input value={question} onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !running) void run(); }}
+          placeholder="Optional: a research question to match against your library"
+          className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+        <button type="button" onClick={() => void run()} disabled={running}
+          className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white rounded-lg">
+          {running ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+          {running ? 'Analyzing…' : 'Analyze library'}
+        </button>
+      </div>
+      {error && <p className="text-[11px] text-rose-300">{error}</p>}
+      {job?.status === 'running' && (
+        <p className="text-[11px] text-zinc-400 flex items-center gap-1.5">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          Analyzing your library — reading {job.itemCount} reference{job.itemCount === 1 ? '' : 's'}…
+        </p>
+      )}
+      {job?.status === 'failed' && (
+        <p className="text-[11px] text-rose-300">That analysis run failed{job.error ? `: ${job.error}` : '.'}</p>
+      )}
+      {result && (
+        <div className="space-y-3 pt-1">
+          <div>
+            <p className="text-[11px] text-zinc-400">
+              Read {result.itemsRead.length} reference{result.itemsRead.length === 1 ? '' : 's'}
+              {result.question ? <> for &ldquo;{result.question}&rdquo;</> : ''}
+              {job?.completedAt ? <> · {new Date(job.completedAt).toLocaleString()}</> : ''}:
+            </p>
+            <ul className="mt-1 space-y-0.5">
+              {result.itemsRead.map((i) => (
+                <li key={i.id} className="text-[11px] text-zinc-300 truncate">
+                  • {i.title}{i.year ? <span className="text-zinc-500"> ({i.year})</span> : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-zinc-300 mb-1">Source evaluations</p>
+            <ul className="space-y-1">
+              {result.evaluations.map((e) => (
+                <li key={e.referenceId} className="flex items-center gap-2 text-[11px]">
+                  <span className="text-zinc-300 truncate flex-1">{e.title}</span>
+                  {e.error ? (
+                    <span className="text-rose-300 shrink-0">{e.error}</span>
+                  ) : (
+                    <span className={cn('px-1.5 py-0.5 rounded border shrink-0', CREDIBILITY_COLOR[e.credibility || ''] || 'text-zinc-300 border-zinc-700')}>
+                      {e.credibility} · {(e.signals || []).join(', ')}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-zinc-300 mb-1">Gaps</p>
+            {!result.gaps ? (
+              <p className="text-[11px] text-zinc-500 italic">Gap detection returned nothing for this run.</p>
+            ) : result.gaps.gaps.length === 0 ? (
+              <p className="text-[11px] text-zinc-400">
+                No gaps found — every reference carries an abstract, coverage is continuous, and no tag is used only once.
+              </p>
+            ) : (
+              <ul className="space-y-0.5">
+                {result.gaps.gaps.map((g, i) => (
+                  <li key={`${g.kind}-${i}`} className="text-[11px] text-zinc-300">
+                    {g.kind === 'missing_abstract' && (
+                      <>Missing an abstract: {(g.references || []).map((r) => r.title).join('; ') || `${g.count ?? 0} reference(s)`}</>
+                    )}
+                    {g.kind === 'year_gap' && <>No references from {g.year} — a hole in the timeline.</>}
+                    {g.kind === 'singleton_tags' && <>Tags used only once: {(g.tags || []).join(', ')}</>}
+                    {g.kind !== 'missing_abstract' && g.kind !== 'year_gap' && g.kind !== 'singleton_tags' && <>{g.kind}</>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-zinc-300 mb-1">Question matches</p>
+            {!result.question ? (
+              <p className="text-[11px] text-zinc-500 italic">
+                No question was given for this run — add one above to match it against your library.
+              </p>
+            ) : !result.matches || result.matches.matchCount === 0 ? (
+              <p className="text-[11px] text-zinc-400">No references mention that question&rsquo;s terms.</p>
+            ) : (
+              <ul className="space-y-0.5">
+                {result.matches.matches.map((m) => (
+                  <li key={m.referenceId} className="text-[11px] text-zinc-300 truncate">
+                    • {m.title} <span className="text-zinc-500">— matched: {m.matchedTokens.join(', ')}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -611,6 +831,8 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
       </div>
 
       <HighlightsSection onOpenReference={openRef} />
+
+      <AnalyzeLibrarySection />
 
       {tags.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
