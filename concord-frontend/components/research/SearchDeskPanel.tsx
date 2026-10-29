@@ -1,8 +1,10 @@
 'use client';
 
 /**
- * Search desk — DTU full-text search, hypothesis/generate, deep research,
- * and the library citation-network action. Extracted from research/page.tsx.
+ * Platform feed desk — platform-wide full-text search, hypothesis/generate,
+ * deep research, and the library citation-network action. Extracted from
+ * research/page.tsx. S9 (F11): this desk searches the whole platform, not
+ * the user's library — its heading and intro say so in plain language.
  */
 
 import { useState, useMemo, useCallback, useRef } from 'react';
@@ -86,11 +88,11 @@ function formatDeepResearchPhases(research: DeepResearchExecution): string {
   const lines: string[] = [`# Deep Research: ${research.topic}`, ''];
   for (const p of research.phases || []) {
     if (p.phase === 'substrate_scan') {
-      lines.push('## Substrate scan');
+      lines.push('## What already exists');
       lines.push(
         p.dtuCount
-          ? `Found ${p.dtuCount} existing DTU(s)${p.domains?.length ? ` across ${p.domains.join(', ')}` : ''}.`
-          : 'No existing DTUs matched this topic in your substrate.'
+          ? `Found ${p.dtuCount} existing item(s)${p.domains?.length ? ` across ${p.domains.join(', ')}` : ''}.`
+          : 'No existing items matched this topic.'
       );
     } else if (p.phase === 'hypothesis_generation') {
       lines.push('## Hypotheses');
@@ -109,7 +111,7 @@ function formatDeepResearchPhases(research: DeepResearchExecution): string {
       } else {
         for (const c of p.connections) {
           lines.push(
-            `- **${c.domain}** — ${c.dtuCount} related DTU(s), avg relevance ${(c.avgScore * 100).toFixed(0)}%${c.topTitles?.length ? `: ${c.topTitles.join('; ')}` : ''}`
+            `- **${c.domain}** — ${c.dtuCount} related item(s), avg relevance ${(c.avgScore * 100).toFixed(0)}%${c.topTitles?.length ? `: ${c.topTitles.join('; ')}` : ''}`
           );
         }
       }
@@ -119,7 +121,7 @@ function formatDeepResearchPhases(research: DeepResearchExecution): string {
         lines.push('_No synthesis produced._');
       } else {
         lines.push(p.content);
-        if (p.dtuId) lines.push('', `_Saved as DTU \`${p.dtuId}\`._`);
+        if (p.dtuId) lines.push('', `_Saved as a platform item (\`${p.dtuId}\`)._`);
       }
     }
     lines.push('');
@@ -167,8 +169,8 @@ export function SearchDeskPanel() {
       { id: 'focus-search', keys: '/', description: 'Focus query',          category: 'navigation', action: () => queryInputRef.current?.focus() },
       { id: 'sort-rel',     keys: '1', description: 'Sort by relevance',    category: 'view', action: () => setSortBy('relevance') },
       { id: 'sort-date',    keys: '2', description: 'Sort by date',         category: 'view', action: () => setSortBy('date') },
-      { id: 'sort-tier',    keys: '3', description: 'Sort by tier',         category: 'view', action: () => setSortBy('tier') },
-      { id: 'close',        keys: 'esc', description: 'Close selected DTU', category: 'navigation', action: () => setSelectedDtu(null) },
+      { id: 'sort-tier',    keys: '3', description: 'Sort by level',        category: 'view', action: () => setSortBy('tier') },
+      { id: 'close',        keys: 'esc', description: 'Close selected item', category: 'navigation', action: () => setSelectedDtu(null) },
     ],
     { lensId: 'research' }
   );
@@ -376,7 +378,7 @@ export function SearchDeskPanel() {
       <SessionRail lensId="research" hideWhenEmpty />
       {/* The page header already names the lens; this row is the search
           desk's own toolbar (no second "Research" title). */}
-      <header className="flex items-center gap-3" aria-label="Search desk toolbar">
+      <header className="flex items-center gap-3" aria-label="Platform feed toolbar">
 
         {/* Real-time Enhancement Toolbar */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -401,7 +403,7 @@ export function SearchDeskPanel() {
             onClick={() => refetchDTUs()}
             disabled={dtusLoading}
             className="p-1 rounded hover:bg-lattice-surface/50 disabled:opacity-50 transition-colors"
-            title="Refresh DTUs"
+            title="Refresh feed"
           >
             {dtusLoading ? (
               <span className="w-4 h-4 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin inline-block" />
@@ -419,13 +421,28 @@ export function SearchDeskPanel() {
 
       <FeedBanner domain="research" />
 
+      {/* S9 (F11): honest labelling. This desk is the platform-wide
+          feed — content published from every lens, most of it not the
+          user's research — and it now says so at the top, in plain
+          language, instead of wearing the library's coat. The lens
+          also no longer lands here (page.tsx opens on the Library). */}
+      <div className="p-4 bg-lattice-surface border border-lattice-border rounded-xl space-y-1">
+        <h2 className="text-sm font-semibold text-white">Platform feed</h2>
+        <p className="text-xs text-gray-400">
+          Everything published across Concord, from every lens — not your library. Your own
+          references live in the <span className="text-neon-cyan">Library</span> view and your
+          notes in the <span className="text-neon-cyan">Workbench</span>. Items here carry a
+          platform level — shadow, regular, mega or hyper.
+        </p>
+      </div>
+
       {/* Quick Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { icon: FileText, label: 'Total DTUs', value: dtus.length, color: 'text-neon-cyan' },
+          { icon: FileText, label: 'Items in feed', value: dtus.length, color: 'text-neon-cyan' },
           {
             icon: Microscope,
-            label: 'Hyper Tier',
+            label: 'Hyper-level items',
             value: dtus.filter((d) => d.tier === 'hyper').length,
             color: 'text-pink-400',
           },
@@ -558,7 +575,7 @@ export function SearchDeskPanel() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Escape') { setQuery(''); queryInputRef.current?.blur(); } }}
-          placeholder="Search DTUs by title, content, tags…  / focuses · Esc clears"
+          placeholder="Search the platform by title, content, tags…  / focuses · Esc clears"
           className="w-full pl-12 pr-4 py-3 bg-lattice-surface border border-lattice-border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan text-sm"
         />
       </div>
@@ -585,11 +602,11 @@ export function SearchDeskPanel() {
           onChange={(e) => setTierFilter(e.target.value)}
           className="px-3 py-1.5 bg-lattice-surface border border-lattice-border rounded-lg text-sm text-white"
         >
-          <option value="">All Tiers</option>
-          <option value="hyper">Hyper</option>
-          <option value="mega">Mega</option>
-          <option value="regular">Regular</option>
-          <option value="shadow">Shadow</option>
+          <option value="">All levels</option>
+          <option value="hyper">Hyper level</option>
+          <option value="mega">Mega level</option>
+          <option value="regular">Regular level</option>
+          <option value="shadow">Shadow level</option>
         </select>
         <select
           value={sortBy}
@@ -597,7 +614,7 @@ export function SearchDeskPanel() {
           className="px-3 py-1.5 bg-lattice-surface border border-lattice-border rounded-lg text-sm text-white"
         >
           <option value="date">Sort by Date</option>
-          <option value="tier">Sort by Tier</option>
+          <option value="tier">Sort by Level</option>
           <option value="relevance">Sort by Relevance</option>
         </select>
         <span className="text-sm text-gray-400 self-center ml-auto">
@@ -620,7 +637,7 @@ export function SearchDeskPanel() {
               <p className="text-gray-400">
                 {query
                   ? `No results for "${query}"`
-                  : 'No DTUs found. Create some in the Chat lens.'}
+                  : 'Nothing in the feed yet — items published from any lens show up here.'}
               </p>
             </div>
           ) : (
@@ -641,7 +658,7 @@ export function SearchDeskPanel() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-medium text-white truncate">
-                      {dtu.title || dtu.summary?.slice(0, 80) || `DTU ${dtu.id.slice(0, 8)}`}
+                      {dtu.title || dtu.summary?.slice(0, 80) || `Item ${dtu.id.slice(0, 8)}`}
                     </h3>
                     <p className="text-xs text-gray-400 mt-1 line-clamp-2">{getSnippet(dtu)}</p>
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -661,7 +678,7 @@ export function SearchDeskPanel() {
                                 : 'bg-gray-500/20 text-gray-400'
                           )}
                         >
-                          {dtu.tier}
+                          {dtu.tier} level
                         </span>
                       )}
                       {/* Citation count badge */}
@@ -698,12 +715,12 @@ export function SearchDeskPanel() {
           {selectedDtu ? (
             <>
               <h2 className="font-semibold text-white">
-                {selectedDtu.title || selectedDtu.summary?.slice(0, 60) || 'DTU Detail'}
+                {selectedDtu.title || selectedDtu.summary?.slice(0, 60) || 'Item detail'}
               </h2>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center gap-2 text-gray-400">
                   <Layers className="w-4 h-4" />
-                  <span>Tier: {selectedDtu.tier || 'regular'}</span>
+                  <span>Level: {selectedDtu.tier || 'regular'}</span>
                 </div>
                 {selectedDtu.domain && (
                   <div className="flex items-center gap-2 text-gray-400">
@@ -775,7 +792,7 @@ export function SearchDeskPanel() {
           regularDTUs={regularDTUs}
           tierDistribution={tierDistribution}
           onPublish={(dtu) => publishToMarketplace({ dtuId: dtu.id })}
-          title="Research DTUs"
+          title="Your items in Research"
         />
         <FeedbackWidget targetType="lens" targetId="research" />
 

@@ -36,7 +36,7 @@ import { ResearchWorkbench } from '@/components/research/ResearchWorkbench';
 type ResearchView = 'search' | 'library' | 'crossref' | 'arxiv' | 'workbench';
 
 const VIEWS: { id: ResearchView; label: string; keys: string; hint: string; icon: typeof Search }[] = [
-  { id: 'search', label: 'Search', keys: 's', hint: 'DTU search · analyze', icon: Search },
+  { id: 'search', label: 'Platform Feed', keys: 's', hint: 'Everything across Concord', icon: Search },
   { id: 'library', label: 'Library', keys: 'l', hint: 'Zotero references', icon: BookMarked },
   { id: 'crossref', label: 'CrossRef', keys: 'c', hint: 'DOI lookup', icon: Link2 },
   { id: 'arxiv', label: 'arXiv', keys: 'a', hint: 'Preprint feed', icon: Newspaper },
@@ -80,7 +80,10 @@ export default function ResearchLensPage() {
   useLensIdentity('research');
   const reduceMotion = useReducedMotion();
   const { isLive, lastUpdated } = useRealtimeLens('research');
-  const [active, setActive] = useState<ResearchView>('search');
+  // S9 (F11): the scholar lands on their own library, not the
+  // platform-wide feed — the feed desk stays one tab away, honestly
+  // labelled as platform content (see SearchDeskPanel's intro).
+  const [active, setActive] = useState<ResearchView>('library');
 
   useLensCommand(
     VIEWS.map((v) => ({

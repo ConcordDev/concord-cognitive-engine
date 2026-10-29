@@ -338,6 +338,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
   const [citations, setCitations] = useState<{ apa: string; mla: string; bibtex: string; chicago?: string; vancouver?: string } | null>(null);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [annForm, setAnnForm] = useState({ page: '', quote: '', text: '' });
+  const [addingAnn, setAddingAnn] = useState(false);
   const [pdfs, setPdfs] = useState<PdfAttachment[]>([]);
   const [pdfForm, setPdfForm] = useState({ url: '', filename: '', pages: '' });
   const [editing, setEditing] = useState(false);
@@ -583,13 +584,27 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
     await refresh(); onChange();
     if (selected?.id === ref.id) setSelected({ ...ref, status });
   };
+  // S9 (F12d): this handler used to ignore the result envelope — a
+  // failed annotation-add (ok:false) still cleared the form and
+  // reloaded, so the click "silently did nothing": the typed text
+  // vanished and no annotation appeared, indistinguishable from a
+  // dead button. Now the first click either saves visibly or says
+  // why not, the form survives a failure, and the button cannot
+  // double-fire while a save is in flight. (The S4 reader's annotate
+  // form already checked the envelope; this form now matches it.)
   const addAnnotation = async () => {
-    if (!selected) return;
+    if (!selected || addingAnn) return;
     if (!annForm.quote.trim() && !annForm.text.trim()) { setError('Add a quote or note.'); return; }
-    await lensRun('research', 'annotation-add', {
+    setAddingAnn(true);
+    const r = await lensRun('research', 'annotation-add', {
       referenceId: selected.id, page: annForm.page ? Number(annForm.page) : undefined,
       quote: annForm.quote.trim(), text: annForm.text.trim(),
     });
+    setAddingAnn(false);
+    if (r.data?.ok === false) {
+      setError(r.data?.error || 'Could not save the annotation.');
+      return;
+    }
     setAnnForm({ page: '', quote: '', text: '' });
     setError(null);
     await openRef(selected); onChange();
@@ -758,8 +773,8 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
               className="col-span-3 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <input placeholder="Your note" value={annForm.text} onChange={(e) => setAnnForm({ ...annForm, text: e.target.value })}
               className="col-span-3 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-            <button type="button" onClick={addAnnotation}
-              className="bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-lg">Add</button>
+            <button type="button" onClick={addAnnotation} disabled={addingAnn}
+              className="bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-medium rounded-lg">{addingAnn ? 'Adding…' : 'Add'}</button>
           </div>
           {annotations.length > 0 && (
             <ul className="space-y-1">
