@@ -962,6 +962,7 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
               <th className="p-2 w-20">Type</th>
               <th className="p-2 w-14 text-center">Reps</th>
               <th className="p-2 w-16 text-center">Interval</th>
+              <th className="p-2 w-24">Due</th>
               <th className="p-2 w-20">State</th>
               <th className="p-2 w-14"></th>
             </tr>
@@ -969,7 +970,7 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
           <tbody>
             {cards.map(c => editing?.id === c.id ? (
               <tr key={c.id} className="border-b border-purple-500/30 bg-purple-950/20">
-                <td colSpan={7} className="p-2">
+                <td colSpan={8} className="p-2">
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <textarea aria-label="Front" rows={2} value={editing.front} onChange={e => setEditing({ ...editing, front: e.target.value })}
                       className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100" />
@@ -1005,6 +1006,7 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
                 <td className="p-2 text-zinc-400">{c.cardType || 'basic'}</td>
                 <td className="p-2 text-center text-zinc-400 font-mono">{c.reps}</td>
                 <td className="p-2 text-center text-zinc-400 font-mono">{c.interval}d</td>
+                <td className="p-2 text-zinc-400">{c.state === 'new' ? '—' : new Date(c.due).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                 <td className="p-2">
                   <span className={cn('text-[9px] px-1 rounded',
                     c.suspended ? 'bg-amber-900/50 text-amber-300'
@@ -1051,16 +1053,27 @@ function StudyTab({
   const [remaining, setRemaining] = useState(0);
   const [done, setDone] = useState(0);
   const [scheduler, setScheduler] = useState<string | null>(null);
-  const [nextDays, setNextDays] = useState<number | null>(null);
+  const [nextLabel, setNextLabel] = useState<string | null>(null);
+  const [previews, setPreviews] = useState<Record<string, string> | null>(null);
+  const [lastGrade, setLastGrade] = useState<string | null>(null);
 
   const deckId = active || decks[0]?.id;
   const deck = decks.find(d => d.id === deckId);
 
   const fetchNext = useCallback(async (id: string) => {
     const r = await lensRun('srs', 'study-next', { deckId: id });
-    setCard((r.data?.result?.card as Card) || null);
+    const nextCard = (r.data?.result?.card as Card) || null;
+    setCard(nextCard);
     setRemaining(r.data?.result?.remaining || 0);
     setRevealed(false);
+    setPreviews(null);
+    if (nextCard) {
+      // S3: the grade buttons carry the interval each grade promises,
+      // from the same grading core study-answer applies.
+      const pv = await lensRun('srs', 'study-preview', { cardId: nextCard.id });
+      const p = pv.data?.result?.previews as Record<string, { label: string }> | undefined;
+      if (p) setPreviews(Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v.label])));
+    }
   }, []);
   useEffect(() => { if (deckId) void Promise.resolve().then(() => fetchNext(deckId)); }, [deckId, fetchNext]);
 
@@ -1069,7 +1082,9 @@ function StudyTab({
     const r = await lensRun('srs', 'study-answer', { cardId: card.id, rating });
     if (r.data?.ok) {
       setScheduler(r.data.result?.scheduler as string);
-      setNextDays(r.data.result?.nextReviewInDays as number);
+      const label = r.data.result?.intervalLabel as string | undefined;
+      setNextLabel(label ?? null);
+      if (label) setLastGrade(card.front + ' · ' + rating + ' · back in ' + label);
       setDone(d => d + 1);
     }
     await fetchNext(deckId);
@@ -1100,6 +1115,10 @@ function StudyTab({
         </span>
         <span className="ml-auto text-[11px] text-zinc-400">{done} studied this session</span>
       </div>
+
+      {lastGrade && (
+        <p className="text-[11px] text-zinc-500">{lastGrade}</p>
+      )}
 
       {card ? (
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-5 text-center">
@@ -1139,6 +1158,9 @@ function StudyTab({
                   <button key={r.id} onClick={() => rate(r.id)}
                     className={cn('px-3 py-1.5 text-xs font-semibold rounded text-white', r.cls)}>
                     {r.label}
+                    {previews?.[r.id] && (
+                      <span className="block text-[10px] font-normal opacity-80">{previews[r.id]}</span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -1154,9 +1176,9 @@ function StudyTab({
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-8 text-center">
           <Sparkles className="w-7 h-7 text-emerald-400 mx-auto mb-2" />
           <p className="text-sm text-zinc-200">All caught up — nothing due in this deck.</p>
-          {scheduler && nextDays != null && (
+          {scheduler && nextLabel && (
             <p className="text-[11px] text-zinc-400 mt-1">
-              Last card scheduled +{nextDays}d via {scheduler.toUpperCase()}.
+              Last card scheduled +{nextLabel} via {scheduler.toUpperCase()}.
             </p>
           )}
         </div>
