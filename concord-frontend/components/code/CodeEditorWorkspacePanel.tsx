@@ -601,9 +601,16 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
     );
   }, [activeTabId]);
 
+  // S8 (F8): a failed Scratch save must name the failing field in the
+  // UI — the server's validation errors do name them; the old handler
+  // swallowed the error to the console and the user got a bare
+  // "validation failed" toast with nothing actionable.
+  const [saveError, setSaveError] = useState('');
+
   const handleSave = useCallback(async () => {
     const tab = tabs.find(t => t.id === activeTabId);
     if (!tab) return;
+    setSaveError('');
     try {
       await saveScript({
         title: tab.name,
@@ -611,10 +618,20 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
         meta: { tags: ['script', tab.scriptType], status: 'active' },
       });
       setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, isDirty: false } : t));
+      void refetch();
     } catch (err) {
       console.error('[Code] Save failed:', err);
+      const e = err as { response?: { data?: { errors?: unknown; details?: unknown; error?: unknown } }; message?: string };
+      const data = e?.response?.data;
+      const named = [data?.errors, data?.details]
+        .flatMap(v => (Array.isArray(v) ? v : []))
+        .map(v => String(v))
+        .filter(Boolean);
+      setSaveError(named.length > 0
+        ? `Save failed — ${named.join(' ')}`
+        : `Save failed${data?.error ? ` — ${String(data.error)}` : ''}${e?.message && !data?.error ? `: ${e.message}` : ''}. Nothing was saved.`);
     }
-  }, [tabs, activeTabId, saveScript]);
+  }, [tabs, activeTabId, saveScript, refetch]);
 
   const handleCodeAction = async (action: string) => {
     const targetId = savedScripts[0]?.id;
@@ -1700,7 +1717,8 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
                   <span>{activeTab.content.split('\n').length} lines</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={handleSave} className={cn('p-1 rounded hover:bg-lattice-elevated transition-colors', activeTab.isDirty ? 'text-neon-blue' : 'text-gray-400')} title="Save script (persists to backend)">
+                  <button onClick={handleSave} className={cn('p-1 rounded hover:bg-lattice-elevated transition-colors', activeTab.isDirty ? 'text-neon-blue' : 'text-gray-400')} title="Save script (persists to your library as a DTU)">
+
                     <Save className="w-4 h-4" />
                   </button>
                   <button className="p-1 rounded hover:bg-lattice-elevated text-gray-400" title="Copy to clipboard"
@@ -1724,6 +1742,9 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
                     egress can block its CDN). Page stays up even if the
                     editor can't initialise. */}
                 <SafeCard label="Code editor">
+                  {saveError && (
+                    <div role="alert" className="px-3 py-1.5 text-[11px] text-rose-200 bg-rose-500/10 border-b border-rose-500/30">{saveError}</div>
+                  )}
                   <MonacoWrapper
                     value={activeTab.content}
                     onChange={(val) => updateTabContent(val)}
