@@ -305,6 +305,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     const map = s.boards.get(userId);
     if (!map) return { ok: true, result: { boards: [] } };
     const boards = Array.from(map.values())
+      .filter((b) => !b.deletedAt)
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       .map(({ scene, ...meta }) => ({ ...meta, elementCount: Array.isArray(scene?.elements) ? scene.elements.length : 0 }));
     return { ok: true, result: { boards } };
@@ -347,6 +348,10 @@ export default function registerWhiteboardActions(registerLensAction) {
       keptVersion: Number.isFinite(params.keptVersion) ? params.keptVersion : (existing?.keptVersion || 0),
       keptAt: typeof params.keptAt === "string" ? params.keptAt : (existing?.keptAt || null),
       keptSceneHash: typeof params.keptSceneHash === "string" ? params.keptSceneHash : (existing?.keptSceneHash || null),
+      // S2: trash state is carried, never dropped — only board-restore
+      // clears it. A save (the Studio mirror above all) must not be
+      // able to resurrect a board the user deleted.
+      deletedAt: existing?.deletedAt || null,
       createdAt: existing?.createdAt || nowIsoWb(),
       updatedAt: nowIsoWb(),
     };
@@ -361,7 +366,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     const userId = wbActor(ctx);
     const id = String(params.id || "");
     const map = s.boards.get(userId);
-    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    if (!map || !map.has(id) || map.get(id).deletedAt) return { ok: false, error: "not found" };
     return { ok: true, result: { board: map.get(id) } };
   });
 
@@ -371,10 +376,58 @@ export default function registerWhiteboardActions(registerLensAction) {
     const userId = wbActor(ctx);
     const id = String(params.id || "");
     const map = s.boards.get(userId);
-    if (!map || !map.has(id)) return { ok: false, error: "not found" };
-    map.delete(id);
+    if (!map || !map.has(id) || map.get(id).deletedAt) return { ok: false, error: "not found" };
+    // S2: delete is SOFT and funnels through deletedAt — board-list,
+    // board-load, duplicate and findBoardForUser all stop seeing the
+    // board at once, and board-restore can bring it back whole.
+    map.get(id).deletedAt = nowIsoWb();
     saveWhiteboardState();
-    return { ok: true, result: { deleted: id } };
+    return { ok: true, result: { deleted: id, soft: true } };
+  });
+
+  registerLensAction("whiteboard", "board-restore", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const id = String(params.id || "");
+    const map = s.boards.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    if (!map.get(id).deletedAt) return { ok: false, error: "board is not in trash" };
+    map.get(id).deletedAt = null;
+    saveWhiteboardState();
+    return { ok: true, result: { restored: id } };
+  });
+
+  registerLensAction("whiteboard", "boards-trash-list", (ctx, _artifact, _params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const map = s.boards.get(userId);
+    if (!map) return { ok: true, result: { boards: [] } };
+    const boards = Array.from(map.values())
+      .filter((b) => b.deletedAt)
+      .sort((a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime())
+      .map(({ scene, ...meta }) => ({ ...meta, elementCount: Array.isArray(scene?.elements) ? scene.elements.length : 0 }));
+    return { ok: true, result: { boards } };
+  });
+
+  registerLensAction("whiteboard", "board-delete-permanent", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const id = String(params.id || "");
+    const map = s.boards.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    if (!map.get(id).deletedAt) return { ok: false, error: "board is not in trash" };
+    map.delete(id);
+    // The per-board buckets go with it — frames, this user's comments,
+    // votes and any running timer keyed by the board id.
+    if (s.frames) s.frames.delete(id);
+    if (s.timers) s.timers.delete(id);
+    if (s.votes) s.votes.delete(id);
+    if (s.comments) s.comments.get(userId)?.delete(id);
+    saveWhiteboardState();
+    return { ok: true, result: { deleted: id, permanent: true } };
   });
 
   registerLensAction("whiteboard", "board-duplicate", (ctx, _artifact, params = {}) => {
@@ -383,7 +436,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     const userId = wbActor(ctx);
     const srcId = String(params.id || "");
     const map = s.boards.get(userId);
-    if (!map || !map.has(srcId)) return { ok: false, error: "not found" };
+    if (!map || !map.has(srcId) || map.get(srcId).deletedAt) return { ok: false, error: "not found" };
     const src = map.get(srcId);
     const id = nextWbId("board");
     const board = {
@@ -683,7 +736,7 @@ export default function registerWhiteboardActions(registerLensAction) {
   // Look up a board the caller owns OR is a participant in (so shared boards work too).
   function findBoardForUser(s, userId, boardId) {
     const own = s.boards.get(userId)?.get(boardId);
-    if (own) return { board: own, scope: 'own' };
+    if (own && !own.deletedAt) return { board: own, scope: 'own' };
     const shared = s.sharedBoards.get(boardId);
     if (shared && (shared.ownerId === userId || wbParticipants(shared).has(userId))) {
       return { board: shared, scope: 'shared' };
