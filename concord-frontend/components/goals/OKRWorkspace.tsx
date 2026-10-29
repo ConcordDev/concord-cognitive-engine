@@ -143,6 +143,27 @@ export function OKRWorkspace() {
   );
 }
 
+// S10 (F11): the delete standard's shared pieces — a two-step inline
+// confirm where the trash icon was, and an Undo strip after a delete.
+function ConfirmDelete({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <button onClick={onConfirm} className="text-[10px] font-medium text-red-300 hover:text-red-200">Confirm delete</button>
+      <button onClick={onCancel} className="text-[10px] text-zinc-400 hover:text-zinc-300">Cancel</button>
+    </span>
+  );
+}
+
+function UndoStrip({ label, onUndo, onDismiss }: { label: string; onUndo: () => void; onDismiss: () => void }) {
+  return (
+    <div className="flex items-center gap-2 rounded border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-[11px] text-zinc-300" role="status">
+      <span className="flex-1">{label} deleted.</span>
+      <button onClick={onUndo} className="font-medium text-cyan-300 hover:text-cyan-200">Undo</button>
+      <button onClick={onDismiss} className="text-zinc-500 hover:text-zinc-300">Dismiss</button>
+    </div>
+  );
+}
+
 // --------------- Alignment Tree ---------------
 
 function AlignmentTab() {
@@ -155,6 +176,8 @@ function AlignmentTab() {
   const [team, setTeam] = useState('');
   const [level, setLevel] = useState('company');
   const [krText, setKrText] = useState('');
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [undo, setUndo] = useState<{ trashId: string; label: string } | null>(null);
 
   const load = useCallback(async () => {
     const r = await lensRun('goals', 'alignmentTree', { op: 'list' });
@@ -183,13 +206,26 @@ function AlignmentTab() {
     }
   };
 
-  const remove = async (id: string) => {
-    const r = await lensRun('goals', 'alignmentTree', { op: 'remove', id });
+  const remove = async (node: AlignObjective) => {
+    const r = await lensRun('goals', 'alignmentTree', { op: 'remove', id: node.id });
+    setConfirmId(null);
+    if (r.data?.ok && r.data.result) {
+      setFlat(r.data.result.flat || []);
+      setTree(r.data.result.tree || []);
+      setStats(r.data.result.stats || null);
+      if (r.data.result.trashId) setUndo({ trashId: r.data.result.trashId, label: `Objective "${node.title}"` });
+    }
+  };
+
+  const undoRemove = async () => {
+    if (!undo) return;
+    const r = await lensRun('goals', 'alignmentTree', { op: 'restore', trashId: undo.trashId });
     if (r.data?.ok && r.data.result) {
       setFlat(r.data.result.flat || []);
       setTree(r.data.result.tree || []);
       setStats(r.data.result.stats || null);
     }
+    setUndo(null);
   };
 
   const renderNode = (node: AlignObjective, depth: number) => (
@@ -222,9 +258,13 @@ function AlignmentTab() {
             </ul>
           )}
         </div>
-        <button aria-label="Delete" onClick={() => remove(node.id)} className="text-zinc-600 hover:text-red-400">
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        {confirmId === node.id ? (
+          <ConfirmDelete onConfirm={() => remove(node)} onCancel={() => setConfirmId(null)} />
+        ) : (
+          <button aria-label="Delete" onClick={() => setConfirmId(node.id)} className="text-zinc-600 hover:text-red-400">
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
       {(node.children || []).map((c) => renderNode(c, depth + 1))}
     </div>
@@ -272,6 +312,7 @@ function AlignmentTab() {
 
       <div className="space-y-1">
         {tree.map((n) => renderNode(n, 0))}
+      {undo && <UndoStrip label={undo.label} onUndo={undoRemove} onDismiss={() => setUndo(null)} />}
         {tree.length === 0 && <EmptyMsg text="No objectives yet. Add one to build your alignment tree." />}
       </div>
     </div>
@@ -289,6 +330,8 @@ function CheckinsTab() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [objProgress, setObjProgress] = useState<{ progress: number | null; progressSource: string | null } | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [undo, setUndo] = useState<{ trashId: string; label: string } | null>(null);
 
   const load = useCallback(async () => {
     const r = await lensRun('goals', 'checkin', { op: 'list' });
@@ -315,12 +358,24 @@ function CheckinsTab() {
     }
   };
 
-  const remove = async (id: string) => {
-    const r = await lensRun('goals', 'checkin', { op: 'remove', id });
+  const remove = async (c: Checkin) => {
+    const r = await lensRun('goals', 'checkin', { op: 'remove', id: c.id });
+    setConfirmId(null);
+    if (r.data?.ok && r.data.result) {
+      setCheckins(r.data.result.checkins || []);
+      setStats(r.data.result.stats || null);
+      if (r.data.result.trashId) setUndo({ trashId: r.data.result.trashId, label: `Check-in for ${c.goalId}` });
+    }
+  };
+
+  const undoRemove = async () => {
+    if (!undo) return;
+    const r = await lensRun('goals', 'checkin', { op: 'restore', trashId: undo.trashId });
     if (r.data?.ok && r.data.result) {
       setCheckins(r.data.result.checkins || []);
       setStats(r.data.result.stats || null);
     }
+    setUndo(null);
   };
 
   return (
@@ -344,6 +399,7 @@ function CheckinsTab() {
         </button>
       </div>
 
+      {undo && <UndoStrip label={undo.label} onUndo={undoRemove} onDismiss={() => setUndo(null)} />}
       {objProgress?.progress != null && (
         <p className="text-[11px] text-cyan-300" role="status">
           That objective is now at {Math.round(objProgress.progress)}% — the alignment tree shows this same progress.
@@ -383,9 +439,13 @@ function CheckinsTab() {
               </div>
               {c.note && <p className="mt-0.5 text-[10px] text-zinc-400">{c.note}</p>}
             </div>
-            <button aria-label="Delete" onClick={() => remove(c.id)} className="text-zinc-600 hover:text-red-400">
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            {confirmId === c.id ? (
+              <ConfirmDelete onConfirm={() => remove(c)} onCancel={() => setConfirmId(null)} />
+            ) : (
+              <button aria-label="Delete" onClick={() => setConfirmId(c.id)} className="text-zinc-600 hover:text-red-400">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         ))}
         {checkins.length === 0 && <EmptyMsg text="No check-ins yet. Log a weekly status to track confidence over time." />}
@@ -434,9 +494,23 @@ function TeamGoalsTab() {
     }
   };
 
-  const remove = async (id: string) => {
-    const r = await lensRun('goals', 'teamGoal', { op: 'remove', id });
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [undo, setUndo] = useState<{ trashId: string; label: string } | null>(null);
+
+  const remove = async (g: TeamGoal) => {
+    const r = await lensRun('goals', 'teamGoal', { op: 'remove', id: g.id });
+    setConfirmId(null);
+    if (r.data?.ok && r.data.result) {
+      setGoals(r.data.result.teamGoals || []);
+      if (r.data.result.trashId) setUndo({ trashId: r.data.result.trashId, label: `Team goal "${g.title}"` });
+    }
+  };
+
+  const undoRemove = async () => {
+    if (!undo) return;
+    const r = await lensRun('goals', 'teamGoal', { op: 'restore', trashId: undo.trashId });
     if (r.data?.ok && r.data.result) setGoals(r.data.result.teamGoals || []);
+    setUndo(null);
   };
 
   return (
@@ -450,6 +524,7 @@ function TeamGoalsTab() {
         </button>
       </div>
 
+      {undo && <UndoStrip label={undo.label} onUndo={undoRemove} onDismiss={() => setUndo(null)} />}
       <div className="space-y-2">
         {goals.map((g) => (
           <div key={g.id} className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
@@ -460,9 +535,13 @@ function TeamGoalsTab() {
                   {g.totalContributed} / {g.target} · {g.members.length} member{g.members.length !== 1 ? 's' : ''}
                 </p>
               </div>
-              <button aria-label="Delete" onClick={() => remove(g.id)} className="text-zinc-600 hover:text-red-400">
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              {confirmId === g.id ? (
+                <ConfirmDelete onConfirm={() => remove(g)} onCancel={() => setConfirmId(null)} />
+              ) : (
+                <button aria-label="Delete" onClick={() => setConfirmId(g.id)} className="text-zinc-600 hover:text-red-400">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
               <div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-purple-500" style={{ width: `${g.progress}%` }} />
@@ -565,9 +644,23 @@ function TemplatesTab() {
     }
   };
 
-  const removeRecurring = async (id: string) => {
-    const r = await lensRun('goals', 'templates', { op: 'recurring-remove', id });
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [undo, setUndo] = useState<{ trashId: string; label: string } | null>(null);
+
+  const removeRecurring = async (rg: RecurringGoal) => {
+    const r = await lensRun('goals', 'templates', { op: 'recurring-remove', id: rg.id });
+    setConfirmId(null);
+    if (r.data?.ok && r.data.result) {
+      setRecurring(r.data.result.recurringGoals || []);
+      if (r.data.result.trashId) setUndo({ trashId: r.data.result.trashId, label: `Recurring goal "${rg.title}"` });
+    }
+  };
+
+  const undoRemove = async () => {
+    if (!undo) return;
+    const r = await lensRun('goals', 'templates', { op: 'restore', trashId: undo.trashId });
     if (r.data?.ok && r.data.result) setRecurring(r.data.result.recurringGoals || []);
+    setUndo(null);
   };
 
   const runDue = async () => {
@@ -626,6 +719,7 @@ function TemplatesTab() {
             </button>
           )}
         </div>
+      {undo && <UndoStrip label={undo.label} onUndo={undoRemove} onDismiss={() => setUndo(null)} />}
         <div className="space-y-1.5">
           {recurring.map((rg) => (
             <div key={rg.id} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
@@ -636,9 +730,13 @@ function TemplatesTab() {
                   {rg.cadence} · {rg.occurrences} run{rg.occurrences !== 1 ? 's' : ''} · next {rg.nextDue.slice(0, 10)}
                 </span>
               </div>
-              <button aria-label="Delete" onClick={() => removeRecurring(rg.id)} className="text-zinc-600 hover:text-red-400">
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              {confirmId === rg.id ? (
+                <ConfirmDelete onConfirm={() => removeRecurring(rg)} onCancel={() => setConfirmId(null)} />
+              ) : (
+                <button aria-label="Delete" onClick={() => setConfirmId(rg.id)} className="text-zinc-600 hover:text-red-400">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
           ))}
           {recurring.length === 0 && <EmptyMsg text="No recurring goals yet." />}
@@ -722,9 +820,23 @@ function ChartsTab() {
     }
   };
 
-  const removePoint = async (id: string) => {
-    const r = await lensRun('goals', 'progressChart', { op: 'remove-point', id, goalId, target: Number(target) || 100 });
+  const [confirmPointId, setConfirmPointId] = useState<string | null>(null);
+  const [undo, setUndo] = useState<{ trashId: string; label: string } | null>(null);
+
+  const removePoint = async (pt: SeriesPoint) => {
+    const r = await lensRun('goals', 'progressChart', { op: 'remove-point', id: pt.id, goalId, target: Number(target) || 100 });
+    setConfirmPointId(null);
+    if (r.data?.ok && r.data.result) {
+      applySeries(r.data.result);
+      if (r.data.result.trashId) setUndo({ trashId: r.data.result.trashId, label: `Manual point ${pt.date}: ${pt.progress}%` });
+    }
+  };
+
+  const undoRemove = async () => {
+    if (!undo) return;
+    const r = await lensRun('goals', 'progressChart', { op: 'restore-point', trashId: undo.trashId, goalId, target: Number(target) || 100 });
     if (r.data?.ok && r.data.result) applySeries(r.data.result);
+    setUndo(null);
   };
 
   return (
@@ -744,6 +856,7 @@ function ChartsTab() {
       </div>
 
       {error && <p className="text-[11px] text-rose-300" role="alert">{error}</p>}
+      {undo && <UndoStrip label={undo.label} onUndo={undoRemove} onDismiss={() => setUndo(null)} />}
 
       {points.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
@@ -751,9 +864,13 @@ function ChartsTab() {
             <span key={pt.id} className="flex items-center gap-1 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300">
               {pt.date}: {pt.progress}% · {pt.source}
               {pt.source === 'manual' && (
-                <button aria-label="Delete" onClick={() => removePoint(pt.id)} className="text-zinc-400 hover:text-red-400">
-                  <Trash2 className="h-3 w-3" />
-                </button>
+                {confirmPointId === pt.id ? (
+                  <ConfirmDelete onConfirm={() => removePoint(pt)} onCancel={() => setConfirmPointId(null)} />
+                ) : (
+                  <button aria-label="Delete" onClick={() => setConfirmPointId(pt.id)} className="text-zinc-400 hover:text-red-400">
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
               )}
             </span>
           ))}
@@ -872,9 +989,23 @@ function RemindersTab() {
     }
   };
 
-  const remove = async (id: string) => {
-    const r = await lensRun('goals', 'reminder', { op: 'remove', id });
-    if (r.data?.ok) await load();
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [undo, setUndo] = useState<{ trashId: string; label: string } | null>(null);
+
+  const remove = async (rm: Reminder) => {
+    const r = await lensRun('goals', 'reminder', { op: 'remove', id: rm.id });
+    setConfirmId(null);
+    if (r.data?.ok && r.data.result) {
+      if (r.data.result.trashId) setUndo({ trashId: r.data.result.trashId, label: `Reminder "${rm.label}"` });
+      await load();
+    }
+  };
+
+  const undoRemove = async () => {
+    if (!undo) return;
+    await lensRun('goals', 'reminder', { op: 'restore', trashId: undo.trashId });
+    setUndo(null);
+    await load();
   };
 
   const now = Date.now();
@@ -897,6 +1028,7 @@ function RemindersTab() {
         </button>
       </div>
 
+      {undo && <UndoStrip label={undo.label} onUndo={undoRemove} onDismiss={() => setUndo(null)} />}
       {stats && stats.total > 0 && (
         <div className="grid grid-cols-4 gap-2">
           {[
@@ -932,9 +1064,13 @@ function RemindersTab() {
               {!rm.done && (
                 <button onClick={() => complete(rm.id)} className="text-[10px] text-emerald-400 hover:text-emerald-300">Complete</button>
               )}
-              <button aria-label="Delete" onClick={() => remove(rm.id)} className="text-zinc-600 hover:text-red-400">
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              {confirmId === rm.id ? (
+                <ConfirmDelete onConfirm={() => remove(rm)} onCancel={() => setConfirmId(null)} />
+              ) : (
+                <button aria-label="Delete" onClick={() => setConfirmId(rm.id)} className="text-zinc-600 hover:text-red-400">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
           );
         })}
@@ -973,9 +1109,23 @@ function DependenciesTab() {
     }
   };
 
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [undo, setUndo] = useState<{ trashId: string; label: string } | null>(null);
+
   const unlink = async (e: DepEdge) => {
     const r = await lensRun('goals', 'dependencies', { op: 'unlink', from: e.from, to: e.to });
+    setConfirmId(null);
+    if (r.data?.ok && r.data.result) {
+      setResult(r.data.result);
+      if (r.data.result.trashId) setUndo({ trashId: r.data.result.trashId, label: `Dependency ${e.from} → ${e.to}` });
+    }
+  };
+
+  const undoRemove = async () => {
+    if (!undo) return;
+    const r = await lensRun('goals', 'dependencies', { op: 'restore', trashId: undo.trashId });
     if (r.data?.ok && r.data.result) setResult(r.data.result);
+    setUndo(null);
   };
 
   return (
@@ -1035,6 +1185,7 @@ function DependenciesTab() {
         </div>
       )}
 
+      {undo && <UndoStrip label={undo.label} onUndo={undoRemove} onDismiss={() => setUndo(null)} />}
       <div className="space-y-1.5">
         {(result?.edges || []).map((e) => (
           <div key={e.id} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
@@ -1042,9 +1193,13 @@ function DependenciesTab() {
             <span className="font-mono text-[11px] text-zinc-300">{e.from}</span>
             <span className={`text-[10px] uppercase ${e.kind === 'blocks' ? 'text-red-400' : 'text-zinc-400'}`}>{e.kind}</span>
             <span className="font-mono text-[11px] text-zinc-300">{e.to}</span>
-            <button aria-label="Delete" onClick={() => unlink(e)} className="ml-auto text-zinc-600 hover:text-red-400">
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            {confirmId === e.id ? (
+              <span className="ml-auto"><ConfirmDelete onConfirm={() => unlink(e)} onCancel={() => setConfirmId(null)} /></span>
+            ) : (
+              <button aria-label="Delete" onClick={() => setConfirmId(e.id)} className="ml-auto text-zinc-600 hover:text-red-400">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         ))}
         {(!result || result.edges.length === 0) && (
