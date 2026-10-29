@@ -38,6 +38,16 @@ export const SURVIVAL_CONSTANTS = Object.freeze({
 
   DISEASE_TICK_PROGRESS: 0.005,
   DISEASE_RECOVERY_BELOW_SEVERITY: 0.02,
+  // Natural recovery (tickDiseases): each basic need the player has
+  // actually tended recently — rested / fed / hydrated, budget at or
+  // above CARE_NEED_THRESHOLD with the matching last_*_at inside
+  // CARE_WINDOW_SEC — subtracts DISEASE_RECOVERY_PER_CARE from the
+  // per-tick progression. Full care (3 needs) outweighs progression
+  // (3 × 0.004 > 0.005), so a cared-for disease drifts down and can
+  // recover from any severity; neglect progresses exactly as before.
+  DISEASE_RECOVERY_PER_CARE: 0.004,
+  CARE_NEED_THRESHOLD: 60,
+  CARE_WINDOW_SEC: 3600,
 });
 
 /* ───────── Budgets ─────────────────────────────────────────────────── */
@@ -199,6 +209,27 @@ export function contractDisease(db, userId, diseaseId, opts = {}) {
   return { ok: true, id };
 }
 
+/**
+ * How many of the three basic needs the player has actually tended
+ * recently, read from their survival budget: rested (sleep budget at
+ * threshold + slept within the care window), fed (hunger + ate
+ * recently), hydrated (thirst + drank recently). A need counts only
+ * when BOTH the budget is currently up AND the care action is recent —
+ * a full bar from long ago is not care within the tick window. No
+ * budget row (or a missing timestamp) counts as no care.
+ */
+export function careScore(db, userId, nowSec = Math.floor(Date.now() / 1000)) {
+  const budget = getBudget(db, userId);
+  if (!budget) return 0;
+  const K = SURVIVAL_CONSTANTS;
+  const recent = (ts) => ts != null && nowSec - Number(ts) <= K.CARE_WINDOW_SEC;
+  let score = 0;
+  if (budget.sleep >= K.CARE_NEED_THRESHOLD && recent(budget.last_sleep_at)) score++;
+  if (budget.hunger >= K.CARE_NEED_THRESHOLD && recent(budget.last_meal_at)) score++;
+  if (budget.thirst >= K.CARE_NEED_THRESHOLD && recent(budget.last_drink_at)) score++;
+  return score;
+}
+
 export function tickDiseases(db, userId) {
   const active = db.prepare(`
     SELECT id, disease_id, severity FROM player_diseases
@@ -211,18 +242,28 @@ export function tickDiseases(db, userId) {
         INSERT INTO pain_signals (id, user_id, region, intensity, source, recorded_at)
         VALUES (?, ?, 'systemic', ?, 'disease', unixepoch())
       `);
+  // Natural recovery keys off the care the player actually took within
+  // the window (rest / food / water — see careScore). Medicine is the
+  // other half and already lives in curePartial: it cuts severity
+  // directly, and sustained care then carries the disease the rest of
+  // the way to recovered instead of the old stub rule, where recovery
+  // was an accident of starting below the threshold and severity
+  // otherwise only ever rose.
+  const care = careScore(db, userId);
+  const drift = SURVIVAL_CONSTANTS.DISEASE_TICK_PROGRESS
+    - care * SURVIVAL_CONSTANTS.DISEASE_RECOVERY_PER_CARE;
   for (const d of active) {
-    // Progress: small severity bump per tick, but also a chance of natural
-    // recovery if currently low. (Stub recovery — real version would key
-    // off rest/eat/meds within the tick window.)
-    let next = d.severity + SURVIVAL_CONSTANTS.DISEASE_TICK_PROGRESS;
+    let next = d.severity + drift;
     if (next < SURVIVAL_CONSTANTS.DISEASE_RECOVERY_BELOW_SEVERITY) {
       markRecovered.run(d.id);
-      events.push({ kind: "recovered", id: d.id, diseaseId: d.disease_id });
+      events.push({ kind: "recovered", id: d.id, diseaseId: d.disease_id, care });
       continue;
     }
-    next = Math.min(1, next);
+    next = Math.max(0, Math.min(1, next));
     setSeverity.run(next, d.id);
+    if (next < d.severity) {
+      events.push({ kind: "improving", id: d.id, diseaseId: d.disease_id, severity: next, care });
+    }
     // Pain signal at high severity
     if (next > 0.5) {
       const id = crypto.randomBytes(8).toString("hex");
