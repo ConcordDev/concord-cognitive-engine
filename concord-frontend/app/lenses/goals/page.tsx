@@ -27,6 +27,7 @@ import { MilestonesPanel } from '@/components/goals/MilestonesPanel';
 import { OKRWorkspace } from '@/components/goals/OKRWorkspace';
 import { GoalsAnalyticsTools } from '@/components/goals/GoalsAnalyticsTools';
 import { AgentAutonomyPanel } from '@/components/goals/AgentAutonomyPanel';
+import { GoalSearch } from '@/components/goals/GoalSearch';
 import { ProductivityFeed } from '@/components/goals/ProductivityFeed';
 import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
 import type { GoalTab } from '@/components/goals/goals-model';
@@ -103,6 +104,7 @@ export default function GoalsLensPage() {
             <Target className="h-4 w-4 text-violet-400" /> Set a weekly focus
           </button>
         </div>
+        <GoalSearch onNavigate={(v) => setActive(v)} />
         <nav className="mt-6 mb-2 flex flex-wrap gap-4 text-[13px]" aria-label="Goals views">
           {navViews.map((v) => {
             const on = active === v.id;
