@@ -964,14 +964,19 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
               } catch { /* fall through to the key list */ }
             }
             const valid = await validComputeKeys(modName);
+            const { closestComputeKeys } = await import("./chat/compute-si.js");
+            const closest = key ? await closestComputeKeys(key).catch(() => []) : [];
             return {
               tool: call.tool, ok: false,
               error: key.includes(".") ? `unknown compute function ${key}` : 'run_compute requires "module.function" key',
+              ...(closest.length ? { closestKeys: closest } : {}),
               validKeys: valid.keys,
               retryHint: `Use one of the real compute keys${valid.module ? ` in ${valid.module}` : ""}: ${valid.keys.join(", ")}. For word-problem arithmetic (money, interest, trips, unit conversions) write ONE expression with the numbers filled in and call [TOOL_CALL: {"tool": "run_compute", "params": {"key": "symbolic.evaluate", "input": {"expression": "5000*(1+0.06)^10"}}}]`,
             };
           }
-          const rawResult = invokeCompute(mod, modName, fnName, input);
+          const rawResult = (modName === "physics" || modName === "engineering")
+            ? (await import("./chat/compute-si.js")).runChatCompute(key, mod, fnName, input)
+            : invokeCompute(mod, modName, fnName, input);
           let _stringify;
           if (_SYMBOLIC_MODS.has(String(modName).toLowerCase())) {
             _stringify = mod.stringify || (await import("./compute/symbolic-math.js")).stringify;
@@ -1237,6 +1242,35 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
               partList: asm.parts.map((x) => ({ name: x.name, size_mm: x.size_mm })), bbox_mm: asm.bbox_mm,
               ...layoutMeshFields(mesh, asm.parts) },
           };
+        }
+        // A simply supported beam with a width and no depth is a sizing ask: the
+        // chat solver picks the R10 depth against strength AND the span/n
+        // deflection limit and says which governs. The legacy solver below
+        // would assume a 200 mm I-section instead of sizing anything.
+        {
+          const { parseChatBrief } = await import("./conkay/chat/brief-parser.js");
+          const { solveBeam } = await import("./conkay/chat/structures.js");
+          const brief = parseChatBrief(text);
+          const ir = brief.ok && brief.domain === "beam" ? brief.ir : null;
+          if (ir && ir.support === "simply-supported" && ir.spanM && ir.widthM && !ir.depthM && ir.material && ir.loads?.length) {
+            const beam = solveBeam(ir);
+            if (beam.ok && beam.section) {
+              const mm = (m) => Math.round(m * 1e6) / 1e3;
+              return {
+                tool: call.tool, ok: true, key: "conkay_design.beam-size", input: { text },
+                result: {
+                  kind: "beam-size", part: "beam", material: beam.material, support: ir.support, spanM: ir.spanM,
+                  depthMm: mm(beam.section.depthM), widthMm: mm(beam.section.widthM), depthSource: beam.depthSource || null,
+                  governs: beam.governs || null, sizing: beam.sizing || null, pass: beam.pass ?? null,
+                  maxMomentNm: beam.maxMoment.value, sigmaMPa: beam.hand.sigmaPa / 1e6,
+                  allowableMPa: beam.hand.allowablePa != null ? beam.hand.allowablePa / 1e6 : null,
+                  deltaMm: beam.hand.deltaM != null ? beam.hand.deltaM * 1000 : null,
+                  deflectionCheck: beam.deflectionCheck || null, fe: beam.fe, steps: beam.steps,
+                  instruction: "Quote the selected depth, say which check governs (strength or deflection) and the depth each check alone would need. Quote the figures in this result; do not recompute them.",
+                },
+              };
+            }
+          }
         }
         const { solveDesignText, summarizeDesignSolve, feaUtilToColor } = await import("./conkay/nlp-design-intent.js");
         const solved = solveDesignText(text);
