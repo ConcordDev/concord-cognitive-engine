@@ -676,30 +676,284 @@ export default function registerResearchActions(registerLensAction) {
     const firstAuthor = rfClean(ref.authors, 400).split(/[,;&]/)[0].trim().split(/\s+/).pop() || "ref";
     return `${firstAuthor.toLowerCase().replace(/[^a-z]/g, "")}${ref.year || ""}`;
   }
+
+  // ── S7 (F10): citation strictness — CSL-as-data ────────────────────
+  // The four styles genuinely reformatted before S7, but the output was
+  // not strict: APA printed full first names ("David Silver, Aja
+  // Huang, …") where APA requires surnames + initials. Style rules now
+  // live in CITATION_STYLES as data (author form, list truncation /
+  // et-al rule, separators, year placement, title casing, DOI form),
+  // and formatCitation — the ONE engine behind reference-detail,
+  // cite-format, bibliography-build and generate-bibliography —
+  // consumes the table. No external CSL processor and no new
+  // dependency: the style set is small and the rules are data, per
+  // research.md §7 S7 ("CSL-as-data rather than hand-rolled formats").
+  //
+  // Stored refs carry authors as ONE display string in natural order
+  // ("David Silver, Aja Huang, …"): every importer joins display names
+  // with ", " (Crossref maps given+family, OpenAlex uses display_name,
+  // the arXiv parser takes feed names). parseAuthors therefore treats
+  // comma/semicolon segments as natural-order names, with two guarded
+  // recognitions for hand-entered inverted text: alternating
+  // "Family, Initials" pairs ("Vaswani, A.", "Silver, D., Hassabis,
+  // D."), and a lone single-token "Family, Given…" pair ("Silver,
+  // David" — the manual-add fixture form). Anything that cannot be
+  // split safely — a single token, an organisation, an all-caps name —
+  // is kept literal and renders exactly as stored: the parser never
+  // invents a split it cannot justify.
+  const NAME_PARTICLES = new Set(["van", "von", "der", "den", "ten", "ter", "de", "del", "della", "di", "da", "du", "la", "le", "bin", "ibn", "al"]);
+  const NAME_SUFFIXES = { jr: "Jr.", sr: "Sr.", ii: "II", iii: "III", iv: "IV" };
+  const ORG_TOKENS = new Set(["university", "institute", "institution", "organization", "organisation", "association", "society", "committee", "commission", "council", "foundation", "consortium", "group", "team", "corporation", "company", "inc", "ltd", "llc", "gmbh", "laboratory", "laboratories", "centre", "center", "department", "ministry", "agency", "academy", "college", "school", "hospital", "press", "publishers", "publishing", "editors", "editorial", "board", "network", "initiative", "project", "consortium"]);
+  const isInitialsOnly = (seg) => seg.length > 0 && seg.split(/\s+/).every((t) => /^(\p{Lu}\.)+$/u.test(t) || /^\p{Lu}$/u.test(t));
+
+  function splitSuffix(tokens) {
+    const out = [...tokens];
+    let suffix = null;
+    while (out.length > 1) {
+      const key = out[out.length - 1].toLowerCase().replace(/\.$/, "");
+      if (NAME_SUFFIXES[key]) { suffix = NAME_SUFFIXES[key]; out.pop(); } else break;
+    }
+    return { tokens: out, suffix };
+  }
+  function makeInvertedAuthor(familyRaw, givenTokens) {
+    const fam = splitSuffix(familyRaw.split(/\s+/).filter(Boolean));
+    return { family: fam.tokens.join(" "), given: givenTokens, suffix: fam.suffix, literal: false, raw: null };
+  }
+  function parseNaturalAuthor(seg) {
+    const tokens = seg.split(/\s+/).filter(Boolean);
+    if (tokens.length <= 1) return { family: tokens[0] || seg, given: [], suffix: null, literal: true, raw: seg };
+    // Organisations and all-caps names render as stored, never split.
+    const plain = tokens.map((t) => t.toLowerCase().replace(/[^\p{L}]/gu, ""));
+    if (plain.some((t) => ORG_TOKENS.has(t))) return { family: seg, given: [], suffix: null, literal: true, raw: seg };
+    if (seg === seg.toUpperCase() && /\p{L}{2,}/u.test(seg)) return { family: seg, given: [], suffix: null, literal: true, raw: seg };
+    const { tokens: rest, suffix } = splitSuffix(tokens);
+    if (rest.length <= 1) return { family: rest[0] || seg, given: [], suffix, literal: true, raw: seg };
+    // Family name = last token plus any preceding name particles
+    // ("George van den Driessche" → family "van den Driessche"),
+    // always leaving at least one given-name token.
+    let famStart = rest.length - 1;
+    while (famStart > 1 && NAME_PARTICLES.has(rest[famStart - 1].toLowerCase())) famStart -= 1;
+    return { family: rest.slice(famStart).join(" "), given: rest.slice(0, famStart), suffix, literal: false, raw: null };
+  }
+  function parseAuthors(rawAuthors) {
+    const raw = rfClean(rawAuthors, 400);
+    if (!raw) return [];
+    const segments = raw
+      .replace(/\bet\s+al\.?\s*$/i, "")
+      .split(/\s*[;,]\s*|\s+&\s+/)
+      .map((s) => s.replace(/^and\s+/i, "").trim())
+      .filter((s) => s && !/^et\s+al\.?$/i.test(s));
+    if (!segments.length) return [];
+    // Inverted text, recognised only when the pattern is unambiguous:
+    // an even run of segments alternating family / initials-only, or a
+    // lone pair whose first segment is a single token ("Silver, David"
+    // / "Silver, David J") — importers never produce either shape for
+    // a multi-author natural-order list (their first segment always
+    // carries a given name), so the recognition cannot misfire on
+    // imported records.
+    if (segments.length >= 2 && segments.length % 2 === 0) {
+      let inverted = true;
+      for (let i = 0; i < segments.length; i += 2) {
+        if (isInitialsOnly(segments[i]) || !isInitialsOnly(segments[i + 1])) { inverted = false; break; }
+      }
+      if (inverted) {
+        const out = [];
+        for (let i = 0; i < segments.length; i += 2) out.push(makeInvertedAuthor(segments[i], segments[i + 1].split(/\s+/)));
+        return out;
+      }
+    }
+    if (segments.length === 2 && !segments[0].includes(" ")) {
+      return [makeInvertedAuthor(segments[0], segments[1].split(/\s+/))];
+    }
+    return segments.map(parseNaturalAuthor);
+  }
+  function initialGroups(author) {
+    return author.given
+      .map((tok) => tok.split("-").map((part) => {
+        const m = part.match(/\p{L}/u);
+        return m ? m[0].toUpperCase() : "";
+      }).filter(Boolean))
+      .filter((g) => g.length);
+  }
+  // "C. J." — hyphenated given names keep the hyphen: "Jean-Luc" → "J.-L."
+  const initialsSpaced = (a) => initialGroups(a).map((g) => g.map((l) => `${l}.`).join("-")).join(" ");
+  const initialsCompact = (a) => initialGroups(a).flat().join("");
+  function authorApaForm(a) {
+    if (a.literal) return a.raw;
+    const ini = initialsSpaced(a);
+    let out = ini ? `${a.family}, ${ini}` : a.family;
+    if (a.suffix) out += `, ${a.suffix}`;
+    return out;
+  }
+  function authorInvertedFull(a) {
+    if (a.literal) return a.raw;
+    const given = a.given.join(" ");
+    let out = given ? `${a.family}, ${given}` : a.family;
+    if (a.suffix) out += `, ${a.suffix}`;
+    return out;
+  }
+  function authorNaturalForm(a) {
+    if (a.literal) return a.raw;
+    const given = a.given.join(" ");
+    let out = given ? `${given} ${a.family}` : a.family;
+    if (a.suffix) out += ` ${a.suffix}`;
+    return out;
+  }
+  function authorVancouverForm(a) {
+    if (a.literal) return a.raw;
+    const ini = initialsCompact(a);
+    let out = ini ? `${a.family} ${ini}` : a.family;
+    if (a.suffix) out += ` ${a.suffix}`;
+    return out;
+  }
+  function formatAuthorList(authors, def) {
+    let forms;
+    if (def.authorForm === "first-inverted-rest-natural") {
+      forms = authors.map((a, i) => (i === 0 ? authorInvertedFull(a) : authorNaturalForm(a)));
+    } else if (def.authorForm === "family-initials-compact") {
+      forms = authors.map(authorVancouverForm);
+    } else {
+      forms = authors.map(authorApaForm);
+    }
+    if (def.etAl && authors.length >= def.etAl.minAuthors) {
+      return `${forms.slice(0, def.etAl.listCount).join(def.separator)}, et al.`;
+    }
+    if (def.ellipsisAfter && authors.length > def.ellipsisAfter) {
+      // APA 7 §9.8: 21+ authors → first 19, an ellipsis, the last one.
+      return `${forms.slice(0, def.ellipsisAfter - 1).join(def.separator)}, … ${forms[forms.length - 1]}`;
+    }
+    if (forms.length === 1) return forms[0];
+    if (def.lastSeparator) return forms.slice(0, -1).join(def.separator) + def.lastSeparator + forms[forms.length - 1];
+    return forms.join(def.separator);
+  }
+  const HEADLINE_MINOR = new Set(["a", "an", "the", "and", "but", "or", "nor", "for", "so", "yet", "at", "by", "from", "in", "into", "of", "off", "on", "onto", "out", "over", "past", "to", "up", "upon", "with", "as", "via", "per"]);
+  function capFirstLetter(s, from = 0) {
+    const rest = s.slice(from);
+    const idx = rest.search(/\p{L}/u);
+    if (idx < 0) return s;
+    const i = from + idx;
+    return s.slice(0, i) + rest[idx].toUpperCase() + s.slice(i + 1);
+  }
+  // APA sentence case: capitalise the first word and the first word of
+  // a subtitle. The rest of the title is left EXACTLY as stored —
+  // downcasing would corrupt proper nouns the record carries ("Go",
+  // "COVID-19"), so the transform only ever raises, never lowers.
+  function sentenceCaseTitle(t) {
+    if (!t) return t;
+    let out = capFirstLetter(t);
+    const colon = out.indexOf(": ");
+    if (colon >= 0) out = capFirstLetter(out, colon + 2);
+    return out;
+  }
+  function headlineCaseTitle(t) {
+    if (!t) return t;
+    const parts = t.split(/(\s+)/);
+    const wordIdx = [];
+    parts.forEach((p, i) => { if (p.trim()) wordIdx.push(i); });
+    let prevEndsColon = true; // first word always capitalised
+    for (const i of wordIdx) {
+      const w = parts[i];
+      const isLast = i === wordIdx[wordIdx.length - 1];
+      const minor = !prevEndsColon && !isLast && HEADLINE_MINOR.has(w.toLowerCase().replace(/[^\p{L}]/gu, ""));
+      if (!minor) {
+        parts[i] = w.split("-").map((part, j) =>
+          (j > 0 && HEADLINE_MINOR.has(part.toLowerCase())) || /\p{Lu}/u.test(part.slice(1))
+            ? part : capFirstLetter(part)).join("-");
+      }
+      prevEndsColon = /:$/.test(w);
+    }
+    return parts.join("");
+  }
+  const withDot = (s) => (/[.!?…]$/.test(s) ? s : `${s}.`);
+  // Author lists can already end a sentence ("…, et al."); never double it.
+  const endSentence = (s) => (/[.!?…]$/.test(s) ? s : `${s}.`);
+  const quotedTitle = (t) => (/[.!?]$/.test(t) ? t : `${t}.`);
+
+  // The style table (CSL-as-data). journalForm is "as-stored" for every
+  // style: the records carry no abbreviation source (Vancouver's NLM
+  // abbreviations are not in the data), so no style invents one.
+  const CITATION_STYLES = {
+    apa: {
+      authorForm: "family-initials", // Silver, D.
+      separator: ", ", lastSeparator: ", & ",
+      ellipsisAfter: 20,
+      year: "paren-after-authors", titleCase: "sentence", journalForm: "as-stored",
+      doi: "url", // https://doi.org/…
+    },
+    mla: {
+      authorForm: "first-inverted-rest-natural", // Silver, David / David Silver
+      separator: ", ", lastSeparator: ", and ",
+      etAl: { minAuthors: 3, listCount: 1 },
+      year: "end-after-journal", titleCase: "headline", journalForm: "as-stored",
+      doi: "url-end",
+    },
+    chicago: {
+      authorForm: "first-inverted-rest-natural",
+      separator: ", ", lastSeparator: ", and ",
+      etAl: { minAuthors: 11, listCount: 7 }, // bibliography: ≤10 listed in full
+      year: "paren-after-journal", titleCase: "headline", journalForm: "as-stored",
+      doi: "url-end",
+    },
+    vancouver: {
+      authorForm: "family-initials-compact", // Silver D
+      separator: ", ", lastSeparator: null,
+      etAl: { minAuthors: 7, listCount: 6 },
+      year: "after-journal", titleCase: "as-stored", journalForm: "as-stored",
+      doi: "doi-tag", // doi:10.…
+    },
+  };
+  const CITATION_STYLE_NAMES = [...Object.keys(CITATION_STYLES), "bibtex"];
+
   function formatCitation(ref, style) {
-    const authors = rfClean(ref.authors, 400) || "Unknown";
     const year = ref.year || "n.d.";
     const title = rfClean(ref.title, 400);
     const journal = rfClean(ref.journal, 200);
     const doi = rfClean(ref.doi, 120);
+    if (style === "bibtex") {
+      const authors = rfClean(ref.authors, 400) || "Unknown";
+      const fields = [
+        `  title={${title}}`,
+        `  author={${authors}}`,
+        ref.year ? `  year={${ref.year}}` : null,
+        journal ? `  journal={${journal}}` : null,
+        doi ? `  doi={${doi}}` : null,
+      ].filter(Boolean).join(",\n");
+      return `@${ref.type === "book" ? "book" : "article"}{${citationKey(ref)},\n${fields}\n}`;
+    }
+    const def = CITATION_STYLES[style] || CITATION_STYLES.apa;
+    const parsed = parseAuthors(ref.authors);
+    const authorStr = parsed.length ? formatAuthorList(parsed, def) : "Unknown";
+    const titleOut = def.titleCase === "sentence" ? sentenceCaseTitle(title)
+      : def.titleCase === "headline" ? headlineCaseTitle(title) : title;
     switch (style) {
-      case "mla":
-        return `${authors}. "${title}." ${journal ? `${journal}, ` : ""}${year}.`;
-      case "chicago":
-        return `${authors}. "${title}." ${journal ? `${journal} ` : ""}(${year}).`;
-      case "bibtex": {
-        const fields = [
-          `  title={${title}}`,
-          `  author={${authors}}`,
-          ref.year ? `  year={${ref.year}}` : null,
-          journal ? `  journal={${journal}}` : null,
-          doi ? `  doi={${doi}}` : null,
-        ].filter(Boolean).join(",\n");
-        return `@${ref.type === "book" ? "book" : "article"}{${citationKey(ref)},\n${fields}\n}`;
+      case "mla": {
+        let out = `${endSentence(authorStr)} "${quotedTitle(titleOut)}"`;
+        if (journal) out += ` ${journal},`;
+        out += ` ${year}`;
+        if (doi) out += `, https://doi.org/${doi}`;
+        return `${out}.`;
+      }
+      case "chicago": {
+        let out = `${endSentence(authorStr)} "${quotedTitle(titleOut)}"`;
+        if (journal) out += ` ${journal}`;
+        out += ` (${year}).`;
+        if (doi) out += ` https://doi.org/${doi}.`;
+        return out;
+      }
+      case "vancouver": {
+        let out = `${endSentence(authorStr)} ${withDot(titleOut)}`;
+        if (journal) out += ` ${withDot(journal)}`;
+        out += ` ${year}.`;
+        if (doi) out += ` doi:${doi}.`;
+        return out;
       }
       case "apa":
-      default:
-        return `${authors} (${year}). ${title}.${journal ? ` ${journal}.` : ""}${doi ? ` https://doi.org/${doi}` : ""}`;
+      default: {
+        let out = `${authorStr} (${year}). ${withDot(titleOut)}`;
+        if (journal) out += ` ${withDot(journal)}`;
+        if (doi) out += ` https://doi.org/${doi}`;
+        return out;
+      }
     }
   }
 
@@ -770,6 +1024,8 @@ export default function registerResearchActions(registerLensAction) {
         citations: {
           apa: formatCitation(ref, "apa"),
           mla: formatCitation(ref, "mla"),
+          chicago: formatCitation(ref, "chicago"),
+          vancouver: formatCitation(ref, "vancouver"),
           bibtex: formatCitation(ref, "bibtex"),
         },
       },
@@ -980,7 +1236,7 @@ export default function registerResearchActions(registerLensAction) {
     const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const ref = findRef(s, rfAid(ctx), params.id);
     if (!ref) return { ok: false, error: "reference not found" };
-    const style = ["apa", "mla", "chicago", "bibtex"].includes(String(params.style).toLowerCase())
+    const style = CITATION_STYLE_NAMES.includes(String(params.style).toLowerCase())
       ? String(params.style).toLowerCase() : "apa";
     return { ok: true, result: { style, citation: formatCitation(ref, style), key: citationKey(ref) } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -990,7 +1246,7 @@ export default function registerResearchActions(registerLensAction) {
   try {
     const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = rfAid(ctx);
-    const style = ["apa", "mla", "chicago", "bibtex"].includes(String(params.style).toLowerCase())
+    const style = CITATION_STYLE_NAMES.includes(String(params.style).toLowerCase())
       ? String(params.style).toLowerCase() : "apa";
     let refs;
     if (params.collectionId) {
@@ -1938,7 +2194,7 @@ ${corpus}`;
     try {
       const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = rfAid(ctx);
-      const style = ["apa", "mla", "chicago", "bibtex"].includes(String(params.style).toLowerCase())
+      const style = CITATION_STYLE_NAMES.includes(String(params.style).toLowerCase())
         ? String(params.style).toLowerCase() : "apa";
       let refs;
       if (params.collectionId) {
