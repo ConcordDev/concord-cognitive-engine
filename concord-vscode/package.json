@@ -104,11 +104,11 @@
     "publish": "vsce publish --no-yarn"
   },
   "dependencies": {
-    "socket.io-client": "^4.7.0",
+    "socket.io-client": "^4.8.4",
     "vscode-languageclient": "^10.1.2"
   },
   "devDependencies": {
-    "@types/node": "^26.6.3",
+    "@types/node": "^26.6.5",
     "@types/vscode": "^1.140.0",
     "@vscode/vsce": "^3.9.2",
     "typescript": "^5.4.0"
