@@ -6,7 +6,7 @@
  * a real artifact was persisted (carrying a downloadUrl), else "pending". This
  * pins that the panel mirrors that truth: a COMPLETED render shows a real
  * download link (href = the persisted artifact URL); a PENDING render shows an
- * honest "not yet available" note and renders NO download link (no dead button).
+ * honest "no audio was rendered" note and renders NO download link (no dead button).
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -48,13 +48,14 @@ describe('BouncePanel — truthful render states', () => {
     expect(link).toHaveAttribute('download');
   });
 
-  it('PENDING render shows an honest not-yet-available note and NO download link (no dead button)', async () => {
+  it('PENDING render shows an honest no-audio note and NO download link (no dead button)', async () => {
     lensRunMock.mockReturnValue(rendersList([pendingRender]));
     render(<BouncePanel />);
     await waitFor(() => expect(screen.getByText(/Pending Mix/)).toBeTruthy());
     // No download anchor for a not-produced render.
     expect(screen.queryByRole('link', { name: /download/i })).toBeNull();
-    // Honest pending disclosure is shown.
-    expect(screen.getByText(/not yet available/i)).toBeTruthy();
+    // Honest pending disclosure: no audio was rendered; bouncing again
+    // renders it in the browser (Q31 wired the real client render).
+    expect(screen.getByText(/no audio was rendered for this bounce/i)).toBeTruthy();
   });
 });

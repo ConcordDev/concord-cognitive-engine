@@ -52,10 +52,24 @@ describe("creative.generate — image/text kinds + structural_poetry mode", () =
     assert.match(r.result.content, /a poem about the sea/);
   });
 
-  it("kind:'melody' returns an honest not-yet-wired failure, never a fabricated melody", async () => {
+  it("kind:'melody' generates a real deterministic melody (Q46 — no longer not_yet_wired)", async () => {
     const r = await call("creative", "generate", {}, { kind: "melody", prompt: "a jazz riff" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.kind, "melody");
+    assert.ok(Array.isArray(r.result.notes) && r.result.notes.length >= 8, "structured notes present");
+    assert.ok(r.result.notes.every((n) => Number.isInteger(n.midi) && n.durationBeats > 0), "every note has a MIDI pitch and duration");
+    // Deterministic: the same prompt regenerates the identical melody.
+    const r2 = await call("creative", "generate", {}, { kind: "melody", prompt: "a jazz riff" });
+    assert.deepEqual(r2.result.notes, r.result.notes);
+    // Opens and closes on the tonic of the stated key.
+    assert.equal(r.result.notes[0].name.replace(/[0-9-]/g, ""), r.result.key.split(" ")[0]);
+    assert.equal(r.result.notes[r.result.notes.length - 1].midi, r.result.notes[0].midi);
+  });
+
+  it("kind:'melody' rejects an empty prompt like kind:'text' does", async () => {
+    const r = await call("creative", "generate", {}, { kind: "melody", prompt: "  " });
     assert.equal(r.ok, false);
-    assert.equal(r.reason, "not_yet_wired");
+    assert.match(r.error, /prompt required/);
   });
 
   it("mode:'structural_poetry' returns a deterministic skeleton for the requested form", async () => {
