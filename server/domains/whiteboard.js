@@ -1726,15 +1726,17 @@ export default function registerWhiteboardActions(registerLensAction) {
     const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = wbActor(ctx);
     const boards = s.boards.get(userId);
-    const boardCount = boards ? boards.size : 0;
+    // S9: counts describe the live workspace — trashed boards (S2) are
+    // excluded, and stickies are counted in BOTH element models
+    // (Collab kind 'sticky', sketch type 'notecard').
+    const liveBoards = boards ? [...boards.values()].filter((b) => !b.deletedAt) : [];
+    const boardCount = liveBoards.length;
     let elementCount = 0;
     let stickyCount = 0;
-    if (boards) {
-      for (const b of boards.values()) {
-        const els = Array.isArray(b.scene?.elements) ? b.scene.elements : [];
-        elementCount += els.length;
-        stickyCount += els.filter(el => el.kind === 'sticky').length;
-      }
+    for (const b of liveBoards) {
+      const els = Array.isArray(b.scene?.elements) ? b.scene.elements : [];
+      elementCount += els.length;
+      stickyCount += els.filter((el) => el.kind === 'sticky' || el.type === 'notecard').length;
     }
     let sharedCount = 0;
     for (const board of s.sharedBoards.values()) {
@@ -1742,9 +1744,12 @@ export default function registerWhiteboardActions(registerLensAction) {
     }
     const cBucket = ensureCommentsBucket(s);
     let openCommentCount = 0;
-    if (boards) {
-      for (const id of boards.keys()) {
-        const elementMap = cBucket.get(id);
+    // The bucket is keyed userId -> boardId -> elementId; reading the
+    // board id at the top level silently counted nothing.
+    const userComments = cBucket.get(userId);
+    if (userComments) {
+      for (const b of liveBoards) {
+        const elementMap = userComments.get(b.id);
         if (elementMap) for (const list of elementMap.values()) openCommentCount += list.filter(c => !c.resolved).length;
       }
     }
