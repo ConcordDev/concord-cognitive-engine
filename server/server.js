@@ -29793,6 +29793,7 @@ Available tools:
   "physics.beamDeflection" with {loadLbs:1000,lengthFt:20,modulusE:29000000,momentI:200}, "quantum.simulateCircuit" with {qubits:2,gates:[{"type":"H","target":0},{"type":"CNOT","control":0,"target":1}]},
   "engineering.columnBuckling" with {loadLbs:50000,lengthFt:12,area:8.25,momentI:82.8,elasticModulus:29000000},
   "statistics.linearRegression" with {x:[1,2,3],y:[2,4,6]}, "chemistry.gibbsFreeEnergy" with {deltaH:-286,deltaS:-163,tempK:298}
+- dtu_search: Search the knowledge base (DTUs) the user can see. Read-only. Use it BEFORE citing any DTU; only the ids and titles it returns may be cited. Params: {"query": "search terms", "limit": 8}
 - browse_url: Fetch and read any web page. Params: {"url": "https://...", "selector": "optional css selector"}
   Use when the user pastes a URL or asks about a specific web page.
 - create_dtu: Create a new DTU (Decision/Thought Unit) from the conversation. Params: {"title": "DTU title", "summary": "brief summary", "tags": ["tag1", "tag2"]}
@@ -29993,6 +29994,10 @@ ${_operatorV6Block}` : "";
           } catch (_ce) {
             return { tool: call.tool, ok: false, error: `Compute error: ${_ce?.message}` };
           }
+        }
+        case "dtu_search": {
+          const { dispatchChatDtuSearch: _dtuSearch } = await import("./lib/chat-tool-surface.js");
+          return _dtuSearch(runMacro, _toolCtx, call.params);
         }
         case "browse_url": {
           const { url: browseUrl = "", selector: browseSelector } = call.params;
