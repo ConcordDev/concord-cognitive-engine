@@ -785,6 +785,20 @@ describe("code — git diff / blame / discard", () => {
     call("git-discard", ctxC, { projectId: p.id, path: "a.js" });
     assert.equal(call("files-read", ctxC, { projectId: p.id, path: "a.js" }).result.content, "line1\nline2\nline3\n");
   });
+
+  it("discard keeps a recoverable snapshot in the stash list (S10)", () => {
+    const p = committedProject();
+    call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "line1\nDISCARD-ME\nline3\n" });
+    const r = call("git-discard", ctxC, { projectId: p.id, path: "a.js" });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.snapshotId, "snapshot id returned");
+    const list = call("git-stash-list", ctxC, { projectId: p.id });
+    assert.ok(list.result.stashes.some(st => st.id === r.result.snapshotId));
+    // Pop restores the discarded content.
+    call("git-stash-pop", ctxC, { projectId: p.id, id: r.result.snapshotId });
+    const back = call("files-read", ctxC, { projectId: p.id, path: "a.js" });
+    assert.match(back.result.content, /DISCARD-ME/);
+  });
 });
 
 describe("code — git stash", () => {

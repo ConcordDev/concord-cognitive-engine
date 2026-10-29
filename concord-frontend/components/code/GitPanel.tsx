@@ -10,7 +10,13 @@ interface GitCommitRow { id: string; number: string; message: string; branch: st
 interface DiffHunk { type: 'context' | 'add' | 'del'; text: string; oldLine?: number; newLine?: number }
 interface StashRow { id: string; message: string; branch: string; createdAt: string; fileCount: number }
 
-export function GitPanel({ projectId, onChanged }: { projectId: string | null; onChanged?: () => void }) {
+export function GitPanel({ projectId, onChanged, onDiscarded }: {
+  projectId: string | null;
+  onChanged?: () => void;
+  /** S10: after a discard, the caller reconciles the editor tab for
+   *  this path from the store (the revert already landed there). */
+  onDiscarded?: (path: string) => void;
+}) {
   const [status, setStatus] = useState<GitStatus | null>(null);
   const [log, setLog] = useState<GitCommitRow[]>([]);
   const [stashes, setStashes] = useState<StashRow[]>([]);
@@ -50,9 +56,18 @@ export function GitPanel({ projectId, onChanged }: { projectId: string | null; o
 
   const stage = async (path?: string) => { await run('git-stage', path ? { paths: [path] } : {}); await refresh(); };
   const unstage = async (path?: string) => { await run('git-unstage', path ? { paths: [path] } : {}); await refresh(); };
+  // S10 (F10): the old discard gated on native confirm() — in the
+  // reviewed surface the dialog never resolves, so the click silently
+  // did nothing while the change stayed staged for a future commit.
+  // Confirmation is the row's in-UI arm/confirm now (FileRow); this
+  // handler just executes, reports, and reconciles the editor.
   const discard = async (path: string) => {
-    if (!confirm(`Discard all working changes to ${path}?`)) return;
-    await run('git-discard', { path }); await refresh(); onChanged?.();
+    const r = await run('git-discard', { path });
+    if (r) {
+      setNotice(`Discarded changes to ${path}${r.snapshotId ? ' — a snapshot is kept in the stash list below if you need it back' : ''}.`);
+      onDiscarded?.(path);
+    }
+    await refresh(); onChanged?.();
   };
   async function commit() {
     if (!message.trim()) return;
@@ -250,6 +265,13 @@ function FileRow({
   path: string; accent: 'emerald' | 'amber'; onDiff: () => void;
   onPrimary: () => void; primaryLabel: string; primaryTitle: string; onDiscard?: () => void;
 }) {
+  // In-UI arm/confirm (S10): first click arms, second click discards.
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const t = setTimeout(() => setArmed(false), 4000);
+    return () => clearTimeout(t);
+  }, [armed]);
   return (
     <div className="px-3 py-1 flex items-center gap-2 text-xs hover:bg-white/[0.03] group">
       <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', accent === 'emerald' ? 'bg-emerald-400' : 'bg-amber-400')} />
@@ -257,9 +279,15 @@ function FileRow({
         {path}
       </button>
       {onDiscard && (
-        <button onClick={onDiscard} title="Discard changes" className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-300">
-          <Undo2 className="w-3 h-3" />
-        </button>
+        armed ? (
+          <button onClick={() => { setArmed(false); onDiscard(); }} title="Confirm discard" className="px-1 text-[11px] font-semibold text-rose-300 hover:text-rose-200">
+            Discard?
+          </button>
+        ) : (
+          <button onClick={() => setArmed(true)} title="Discard changes" className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-300">
+            <Undo2 className="w-3 h-3" />
+          </button>
+        )
       )}
       <button onClick={onPrimary} title={primaryTitle}
         className="opacity-0 group-hover:opacity-100 px-1 text-[11px] text-gray-300 hover:text-white">{primaryLabel}</button>

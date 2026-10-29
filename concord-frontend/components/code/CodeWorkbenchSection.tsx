@@ -106,7 +106,7 @@ export function CodeWorkbenchSection() {
             </>
           )}
           {nav === 'search'   && <SearchPanel projectId={projectId} onOpen={openFile} onReplaced={(paths) => { setReplaceSignal({ paths, nonce: Date.now() }); void refreshStatus(); }} />}
-          {nav === 'git'      && <GitPanel projectId={projectId} onChanged={refreshStatus} />}
+          {nav === 'git'      && <GitPanel projectId={projectId} onChanged={refreshStatus} onDiscarded={(path) => setReplaceSignal({ paths: [path], nonce: Date.now() })} />}
           {nav === 'agent'    && <AgentComposerPanel projectId={projectId} />}
           {nav === 'debug'    && <RunPanel projectId={projectId} onOpen={openFile} />}
           {nav === 'settings' && <div className="p-3 text-xs text-gray-400 italic">BYOK model selector lives in /settings — Cmd-, opens it.</div>}

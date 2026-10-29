@@ -1730,6 +1730,21 @@ Rules:
     const git = ensureGit(s, userId, projectId);
     const files = ensureFiles(s, userId, projectId);
     const committed = headTree(git)[path];
+    // S10 (F10): a discard is recoverable — before reverting, keep a
+    // snapshot of the discarded content as a stash entry (the shape
+    // git-stash writes), so the panel's stash Pop can bring it back.
+    const current = files.has(path) ? files.get(path).content : null;
+    let snapshotId = null;
+    if (current !== null && current !== committed) {
+      const entry = {
+        id: shortIdC("stash"),
+        message: `Discard snapshot — ${path}`,
+        branch: git.branch, createdAt: isoC(),
+        files: { [path]: current },
+      };
+      git.stashes.unshift(entry);
+      snapshotId = entry.id;
+    }
     if (committed === undefined) {
       files.delete(path); // never committed — discard means remove
     } else {
@@ -1738,7 +1753,7 @@ Rules:
     git.modified.delete(path);
     git.staged.delete(path);
     saveWS();
-    return { ok: true, result: { path, restored: committed !== undefined } };
+    return { ok: true, result: { path, restored: committed !== undefined, snapshotId } };
   });
 
   // ── Stash ─────────────────────────────────────────────────────
