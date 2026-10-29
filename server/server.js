@@ -12,6 +12,7 @@
  */
 
 import expressRateLimit from "express-rate-limit";
+import { createDtuQualityService as _createDtuQualityService, dtuQualityMode as _dtuQualityMode } from "./lib/dtu-quality/service.js";
 import { router as p2pSignallingRouter } from "./lib/p2p-dtu-signalling.js";
 import { createPhotosRouter } from "./routes/photos.js";
 import { selfPinAwayFromOllama } from "./lib/cpu-self-pin.js";
@@ -19241,6 +19242,42 @@ function dtusByIds(ids=[]) {
   }
   return out;
 }
+// DTU classification + quality gates (lib/dtu-quality). Lazy so nothing runs at module-eval time.
+let _dqSvc = null;
+let _dqIter = null;
+function getDtuQuality() {
+  if (_dqSvc) return _dqSvc;
+  _dqSvc = _createDtuQualityService({
+    deps: { exists: (id) => STATE.dtus.has(id), yieldNow: () => new Promise((resolve) => { setImmediate(resolve); }) },
+    store: {
+      // resumable pass over the DTU map: a few hundred entries per call, never the whole store at once
+      scan: (maxExamine, maxNeeds) => {
+        if (!_dqIter) _dqIter = STATE.dtus.values();
+        const needs = []; const counted = []; let examined = 0; let done = false;
+        while (examined < maxExamine && needs.length < maxNeeds) {
+          const n = _dqIter.next();
+          if (n.done) { _dqIter = null; done = true; break; }
+          examined++;
+          const d = n.value;
+          if (!d?.id) continue;
+          if (_dqSvc.isCurrent(d)) counted.push(d.meta.classification); else needs.push(d);
+        }
+        return { examined, needs, counted, done };
+      },
+      write: (id, rec) => {
+        const d = STATE.dtus.get(id); if (!d) return;
+        d.meta = { ...(d.meta || {}), classification: rec };
+        if (rec.quality.gate === "low_quality" || rec.quality.gate === "refuted") {
+          d.tags = [...new Set([...(Array.isArray(d.tags) ? d.tags : []), "quality:low"])];
+          d.meta.rankPenalty = Math.round((1 - rec.quality.score) * 100) / 100;
+        }
+        upsertDTU(d, { broadcast: false });
+      },
+    },
+  });
+  return _dqSvc;
+}
+
 function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
   // Sidecar cache is refreshed from SQLite on a timer. Record the write so
   // dtu.list can fall back while that cache is behind.
@@ -19320,6 +19357,9 @@ function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
 
   // Auto-tag DTU with lens domain classifications
   try { if (typeof applyAutoTagging === "function") applyAutoTagging(dtu); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+
+  // Auto-sort on write: kind, origin, domain and a quality score with reasons (additive meta; never blocks the write).
+  try { if (_dtuQualityMode() === "on") getDtuQuality().annotateInPlace(dtu); } catch (_e) { logger.debug("server", "dtu-quality annotate", { error: _e?.message }); }
 
   STATE.dtus.set(dtu.id, dtu);
   saveStateDebounced();
@@ -43890,6 +43930,21 @@ function _runNewsFeedWarm(_tick) {
     .catch((e) => { structuredLog("warn", "feed_cache_warm_tick", { error: String(e?.message || e) }); })
     .finally(() => { _newsWarmRunning = false; });
 }
+// Backfill DTU classification in small budgeted batches (existing DTUs without a current classification).
+registerHeartbeat("dtu-quality-backfill", {
+  frequency: 4,
+  scope: "global",
+  handler: async () => {
+    try {
+      if (_dtuQualityMode() !== "on") return { ok: true, skipped: "off" };
+      return { ok: true, ...(await getDtuQuality().cycle()) };
+    } catch (err) {
+      structuredLog("warn", "dtu_quality_backfill_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
+
 registerHeartbeat("news-feed-warm", {
   frequency: 5, // ~75 s at the 15 s heartbeat (same cadence as the old REALTIME_DATA slot)
   handler: ({ tickCount } = {}) => { _runNewsFeedWarm(Number(tickCount) || 0); },
@@ -63316,6 +63371,14 @@ app.get("/api/admin/background-governor", requireRole("owner", "admin", "soverei
 app.post("/api/admin/background-governor/mode", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
   try { res.json({ ok: true, mode: setBgGovernorMode(req.body?.mode ?? null) }); }
   catch (e) { res.status(400).json({ ok: false, error: String(e?.message || e) }); }
+});
+
+app.get("/api/admin/dtu-quality", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try {
+    return res.json({ ok: true, totalDtus: STATE.dtus.size, ...getDtuQuality().metrics() });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 
 app.get("/api/admin/heartbeat-stats", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
