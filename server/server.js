@@ -30873,6 +30873,20 @@ ${_operatorV6Block}` : "";
     } catch { /* guard optional */ }
   }
 
+  // Figures with units must trace to a tool result or the user's message (lib/chat/numeric-trace.js).
+  let _untracedNumbers = [];
+  if (!_lockedReply && llmUsed && typeof finalReply === "string" && finalReply && _toolCallsExecuted.length) {
+    try {
+      const { guardNumericTrace: _guardNumericTrace } = await import("./lib/chat/numeric-trace.js");
+      const _nt = _guardNumericTrace(finalReply, _toolCallsExecuted, { prompt });
+      if (_nt.untraced.length) {
+        finalReply = _nt.text;
+        _untracedNumbers = _nt.untraced;
+        ctx.log("chat", "Flagged figures not traceable to a tool result", { sessionId, count: _nt.untraced.length });
+      }
+    } catch { /* guard optional */ }
+  }
+
   // AI-tell strip (lib/persona/humanizer.js, light). humanizeSafe keeps the
   // original whenever a number, URL or DTU id would not survive, and skips
   // code, lists and tables.
@@ -31149,6 +31163,7 @@ ${_operatorV6Block}` : "";
     ...(_answerTag || {}),
     ...(_selfContMeta ? { selfContinuation: _selfContMeta } : {}),
     ...(_dtuRefsRemoved.length ? { dtuRefsRemoved: _dtuRefsRemoved } : {}),
+    ...(_untracedNumbers.length ? { untracedNumbers: _untracedNumbers } : {}),
     ...(_imageTurn?.artifact ? { artifact: _imageTurn.artifact } : {}),
     ...(_turnArtifacts.length ? { artifacts: _turnArtifacts } : {}),
     ...(_aiUnavailable ? {
