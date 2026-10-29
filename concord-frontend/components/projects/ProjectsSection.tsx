@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Plus, KanbanSquare, ListChecks, CalendarRange, Repeat, BarChart3,
-  Flag, Users, Settings2, Briefcase, Radio, History,
+  Flag, Users, Settings2, Briefcase, Radio, History, Inbox,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -31,6 +31,7 @@ interface Project {
   id: string; name: string; key: string; color: string; status: string; health: string; archived: boolean;
   description?: string | null; startDate?: string | null; targetDate?: string | null;
   duplicatedFrom?: { projectId: string; name: string; key: string; at: string } | null;
+  sample?: boolean;
 }
 interface Dash {
   name: string; totalTasks: number; done: number; completionPct: number;
@@ -144,11 +145,29 @@ export function ProjectsSection() {
   useEffect(() => { void refreshProjects(); }, [refreshProjects]);
   useEffect(() => { void refreshDash(); }, [refreshDash]);
 
+  // D2 (triage as the front door): when the open project has
+  // un-triaged issues, the lens says so at the top — one click to
+  // the intake room in Collab, instead of the inbox sitting three
+  // clicks deep. Rechecked whenever the project or tab changes, so
+  // emptying the queue clears the banner on return.
+  const [triageCount, setTriageCount] = useState(0);
+  useEffect(() => {
+    if (!activeProject) { setTriageCount(0); return; }
+    let stale = false;
+    void (async () => {
+      const r = await lensRun('projects', 'triage-queue', { projectId: activeProject });
+      if (!stale) setTriageCount((r.data?.result as { count?: number } | null)?.count || 0);
+    })();
+    return () => { stale = true; };
+  }, [activeProject, tab]);
+
   const [dupNameWarn, setDupNameWarn] = useState(false);
+  const [starter, setStarter] = useState('');
   const addProject = async (confirmDuplicateName = false) => {
     if (!form.name.trim()) { setError('Project name is required.'); return; }
     const r = await lensRun('projects', 'project-create', {
       name: form.name.trim(), key: form.key.trim(),
+      ...(starter ? { template: starter } : {}),
       ...(confirmDuplicateName ? { confirmDuplicateName: true } : {}),
     });
     if (r.data?.ok === false) {
@@ -166,6 +185,7 @@ export function ProjectsSection() {
     }
     const createdId = (r.data?.result as { project?: { id?: string } } | null)?.project?.id;
     setForm({ name: '', key: '' });
+    setStarter('');
     setDupNameWarn(false);
     setComposerOpen(false);
     setError(null);
@@ -204,7 +224,15 @@ export function ProjectsSection() {
 
   const updateProject = async (patch: Record<string, unknown>) => {
     if (!project) return;
-    await lensRun('projects', 'project-update', { id: project.id, ...patch });
+    const pid = project.id;
+    // S12 (F18): the header's own write renders in the same
+    // interaction — apply the patch to local state immediately and
+    // let the refetch reconcile. Before this, the select showed the
+    // previous value until a later interaction refreshed the list,
+    // and Portfolio inherited the stale value on first entry.
+    setProjects((prev) => prev.map((p) => (p.id === pid ? { ...p, ...(patch as Partial<Project>) } : p)));
+    const r = await lensRun('projects', 'project-update', { id: pid, ...patch });
+    if (r.data?.ok === false) setError(r.data?.error || 'Could not update the project.');
     await refreshProjects();
   };
 
@@ -289,6 +317,26 @@ export function ProjectsSection() {
                   onSubmit={(e) => { e.preventDefault(); void addProject(); }}
                 >
                   <h2 className="text-sm font-semibold text-zinc-100">New project</h2>
+                  <div className="flex flex-wrap gap-1.5" role="group" aria-label="Start from">
+                    {[
+                      { id: '', label: 'Blank' },
+                      { id: 'launch', label: 'Product launch' },
+                      { id: 'triage', label: 'Bug triage' },
+                      { id: 'content', label: 'Content series' },
+                    ].map((s) => (
+                      <button key={s.id || 'blank'} type="button" aria-pressed={starter === s.id}
+                        onClick={() => {
+                          setStarter(s.id);
+                          if (s.id && !form.name.trim()) setForm({ ...form, name: s.label });
+                        }}
+                        className={starter === s.id
+                          ? 'px-2 py-1 text-[11px] rounded-lg bg-teal-400 text-black font-medium'
+                          : 'px-2 py-1 text-[11px] rounded-lg bg-lattice-elevated text-gray-300 hover:bg-lattice-border'}>
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                  {starter && <p className="text-[11px] text-gray-500">Starts with example issues already in it — one is already done, so goals and progress have something true to count.</p>}
                   <input ref={nameInputRef} aria-label="New project name" placeholder="New project name" value={form.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); setDupNameWarn(false); }}
                     className="w-full bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
                   <input aria-label="Project key" placeholder="KEY" value={form.key} onChange={(e) => { setForm({ ...form, key: e.target.value }); setDupNameWarn(false); }}
@@ -319,13 +367,41 @@ export function ProjectsSection() {
 
           {!project ? (
             projects.length === 0 ? (
-              <p className="text-[11px] text-gray-400 italic px-4 py-8 text-center">Nothing in the substrate. Use New project to start one.</p>
+              <div className="px-4 py-10 max-w-xl mx-auto text-center space-y-3">
+                <p className="text-sm text-gray-200 font-medium">A project is one piece of work, tracked as issues.</p>
+                <p className="text-xs text-gray-400">
+                  Issues live on a board, move from backlog to done, roll up into goals and reports —
+                  and everything you make here can be kept, shared and traded as a DTU.
+                </p>
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  <button type="button" onClick={openComposer}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-teal-400 text-black rounded-lg">
+                    <Plus className="w-3.5 h-3.5" /> New project
+                  </button>
+                  <button type="button"
+                    onClick={async () => {
+                      const r = await lensRun('projects', 'project-create-sample', {});
+                      const pid = (r.data?.result as { project?: { id?: string } } | null)?.project?.id;
+                      await refreshProjects();
+                      if (pid) setActiveProject(pid);
+                    }}
+                    className="px-3 py-1.5 text-xs text-gray-200 bg-lattice-elevated hover:bg-lattice-border rounded-lg">
+                    Open the sample project
+                  </button>
+                </div>
+                <p className="text-[11px] text-gray-500">The sample is a real project with example issues — edit or delete it freely.</p>
+              </div>
             ) : (
               <p className="text-[11px] text-gray-400 italic px-4 py-8 text-center">No project open. Reopen one from the Closed row above, or start a new project.</p>
             )
           ) : (
             <>
               <ProjectsKeepMenu project={project} />
+              {project.sample && (
+                <p className="px-4 py-1.5 text-[11px] text-indigo-300 bg-indigo-950/40 border-b border-indigo-900/50">
+                  Sample project — a worked example with real issues. Edit anything, or delete it when you're done looking.
+                </p>
+              )}
               <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-lattice-border">
                 <select value={project.status} onChange={(e) => updateProject({ status: e.target.value })}
                   className="bg-lattice-void border border-lattice-border rounded-lg px-2 py-1 text-[11px] text-white capitalize">
@@ -389,6 +465,16 @@ export function ProjectsSection() {
                   );
                 })}
               </nav>
+              {triageCount > 0 && tab !== 'collab' && (
+                <div className="mx-4 mt-4 flex flex-wrap items-center gap-2 text-xs text-amber-200 bg-amber-950/50 border border-amber-800/60 rounded-xl px-3 py-2">
+                  <Inbox className="w-4 h-4 text-amber-300" />
+                  <span><strong>{triageCount}</strong> {triageCount === 1 ? 'issue needs' : 'issues need'} triage in this project.</span>
+                  <button type="button" onClick={() => setTab('collab')}
+                    className="px-2 py-0.5 bg-amber-900 hover:bg-amber-800 text-amber-100 rounded-lg">
+                    Review triage
+                  </button>
+                </div>
+              )}
               <div className="p-4">
                 {tab === 'board' && <PjBoardPanel projectId={activeProject} onChange={refreshDash} openTaskRequest={boardOpenRequest} onOpenTaskRequestHandled={() => setBoardOpenRequest(null)} />}
                 {tab === 'backlog' && <PjBacklogPanel projectId={activeProject} onChange={refreshDash} />}

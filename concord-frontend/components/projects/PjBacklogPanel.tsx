@@ -263,9 +263,9 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
               {t.points > 0 && <span className="text-[10px] text-gray-400 tabular-nums">{t.points}pt</span>}
               {filters.sort === 'rank' && (
                 <span className="flex">
-                  <button aria-label="Collapse" type="button" onClick={() => rank(t.id, -1)} disabled={i === 0}
+                  <button aria-label="Move up" title="Move up" type="button" onClick={() => rank(t.id, -1)} disabled={i === 0}
                     className="text-gray-600 hover:text-gray-300 disabled:opacity-30"><ChevronUp className="w-3.5 h-3.5" /></button>
-                  <button aria-label="Expand" type="button" onClick={() => rank(t.id, 1)} disabled={i === tasks.length - 1}
+                  <button aria-label="Move down" title="Move down" type="button" onClick={() => rank(t.id, 1)} disabled={i === tasks.length - 1}
                     className="text-gray-600 hover:text-gray-300 disabled:opacity-30"><ChevronDown className="w-3.5 h-3.5" /></button>
                 </span>
               )}

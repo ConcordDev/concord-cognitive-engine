@@ -187,6 +187,7 @@ export function PjBoardPanel({ projectId, onChange, openTaskRequest, onOpenTaskR
       {/* New task + swimlane toggle */}
       <section className="flex flex-wrap items-center gap-2 bg-lattice-surface/70 border border-lattice-border rounded-xl p-3">
         <input placeholder="Task title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void addTask(); } }}
           className="flex-1 min-w-[140px] bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
         <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}
           className="bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white capitalize">

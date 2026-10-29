@@ -320,7 +320,7 @@ export function PjSettingsPanel({ projectId, project, onProjectSaved, onChange }
                   className={cn('text-[10px] px-1.5 py-0.5 rounded', r.enabled ? 'bg-emerald-900/50 text-emerald-300' : 'bg-lattice-elevated text-gray-400')}>
                   {r.enabled ? 'on' : 'off'}
                 </button>
-                <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'rule-delete', { id: r.id }).then(refresh)}
+                <button aria-label="Delete" type="button" onClick={() => { setRules((prev) => prev.filter((x) => x.id !== r.id)); void lensRun('projects', 'rule-delete', { id: r.id }).then(refresh); }}
                   className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}
@@ -351,7 +351,7 @@ export function PjSettingsPanel({ projectId, project, onProjectSaved, onChange }
                 </span>
                 <button type="button" onClick={() => lensRun('projects', 'template-apply', { id: t.id }).then(refresh)}
                   className="text-[10px] px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded">Apply</button>
-                <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'template-delete', { id: t.id }).then(refresh)}
+                <button aria-label="Delete" type="button" onClick={() => { setTemplates((prev) => prev.filter((x) => x.id !== t.id)); void lensRun('projects', 'template-delete', { id: t.id }).then(refresh); }}
                   className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}
