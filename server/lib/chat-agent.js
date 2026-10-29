@@ -1238,6 +1238,35 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
               ...layoutMeshFields(mesh, asm.parts) },
           };
         }
+        // A simply supported beam with a width and no depth is a sizing ask: the
+        // chat solver picks the R10 depth against strength AND the span/n
+        // deflection limit and says which governs. The legacy solver below
+        // would assume a 200 mm I-section instead of sizing anything.
+        {
+          const { parseChatBrief } = await import("./conkay/chat/brief-parser.js");
+          const { solveBeam } = await import("./conkay/chat/structures.js");
+          const brief = parseChatBrief(text);
+          const ir = brief.ok && brief.domain === "beam" ? brief.ir : null;
+          if (ir && ir.support === "simply-supported" && ir.spanM && ir.widthM && !ir.depthM && ir.material && ir.loads?.length) {
+            const beam = solveBeam(ir);
+            if (beam.ok && beam.section) {
+              const mm = (m) => Math.round(m * 1e6) / 1e3;
+              return {
+                tool: call.tool, ok: true, key: "conkay_design.beam-size", input: { text },
+                result: {
+                  kind: "beam-size", part: "beam", material: beam.material, support: ir.support, spanM: ir.spanM,
+                  depthMm: mm(beam.section.depthM), widthMm: mm(beam.section.widthM), depthSource: beam.depthSource || null,
+                  governs: beam.governs || null, sizing: beam.sizing || null, pass: beam.pass ?? null,
+                  maxMomentNm: beam.maxMoment.value, sigmaMPa: beam.hand.sigmaPa / 1e6,
+                  allowableMPa: beam.hand.allowablePa != null ? beam.hand.allowablePa / 1e6 : null,
+                  deltaMm: beam.hand.deltaM != null ? beam.hand.deltaM * 1000 : null,
+                  deflectionCheck: beam.deflectionCheck || null, fe: beam.fe, steps: beam.steps,
+                  instruction: "Quote the selected depth, say which check governs (strength or deflection) and the depth each check alone would need. Quote the figures in this result; do not recompute them.",
+                },
+              };
+            }
+          }
+        }
         const { solveDesignText, summarizeDesignSolve, feaUtilToColor } = await import("./conkay/nlp-design-intent.js");
         const solved = solveDesignText(text);
         const summary = summarizeDesignSolve(solved);
