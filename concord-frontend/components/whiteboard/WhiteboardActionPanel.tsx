@@ -74,7 +74,8 @@ export function WhiteboardActionPanel() {
 
   const [savedBoardId, setSavedBoardId] = useState<string | null>(null);
   const [tallyResult, setTallyResult] = useState<TallyResult | null>(null);
-  const [shareResult, setShareResult] = useState<{ sharedBoardId?: string; sharedWith?: number } | null>(null);
+  const [shareResult, setShareResult] = useState<{ sharedBoardId?: string; sharedWith?: number; participants?: string[] } | null>(null);
+  const [shareCopied, setShareCopied] = useState(false);
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
@@ -201,13 +202,13 @@ export function WhiteboardActionPanel() {
       // — this used to send { boardId } (unread by the macro, so every
       // share silently promoted an EMPTY untitled board and ignored the
       // named recipients entirely, while still reporting "Shared with N").
-      const r = await callMacro<{ board?: { id: string }; sharedWith?: number }>('share-board', { id: savedBoardId, userIds: users });
+      const r = await callMacro<{ board?: { id: string; participants?: string[] }; sharedWith?: number }>('share-board', { id: savedBoardId, userIds: users });
       if (r.ok && r.result) {
         const sharedId = r.result.board?.id;
         // No deep-link route exists yet for opening a shared board straight
         // from a URL — recipients find it via the Shared tab (shared-list),
         // so we surface the real board id instead of fabricating a shareUrl.
-        setShareResult({ sharedWith: r.result.sharedWith ?? 0, sharedBoardId: sharedId });
+        setShareResult({ sharedWith: r.result.sharedWith ?? 0, sharedBoardId: sharedId, participants: r.result.board?.participants });
         pipe.publish('whiteboard.share', r.result, { label: `shared with ${r.result.sharedWith ?? 0}` });
         ok(`Shared with ${r.result.sharedWith ?? 0} — they'll see it under Collab → Shared.`);
       } else err(r.error ?? 'share failed');
@@ -395,10 +396,20 @@ export function WhiteboardActionPanel() {
       )}
 
       {shareResult && (
-        <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-2.5 text-[11px]">
-          <Share2 className="w-3 h-3 inline text-orange-300" /> <span className="text-gray-300">Shared with <span className="tabular-nums">{shareResult.sharedWith ?? 0}</span> user{shareResult.sharedWith === 1 ? '' : 's'} — board</span>{' '}
-          <code className="text-orange-200 font-mono">{shareResult.sharedBoardId}</code>
-          <span className="text-gray-300"> — they'll find it under Collab → Shared.</span>
+        <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-2.5 text-[11px] space-y-1.5">
+          <div>
+            <Share2 className="w-3 h-3 inline text-orange-300" /> <span className="text-gray-300">Shared board </span>
+            <code className="text-orange-200 font-mono">{shareResult.sharedBoardId}</code>
+            <button type="button"
+              onClick={() => { void navigator.clipboard?.writeText(shareResult.sharedBoardId || ''); setShareCopied(true); setTimeout(() => setShareCopied(false), 2000); }}
+              className="ml-2 px-1.5 py-0.5 rounded border border-orange-500/40 text-orange-200 hover:bg-orange-500/10">
+              {shareCopied ? 'Copied ✓' : 'Copy ID'}
+            </button>
+          </div>
+          {shareResult.participants && shareResult.participants.length > 0 && (
+            <div className="text-gray-400">Participants: {shareResult.participants.join(', ')}</div>
+          )}
+          <div className="text-gray-400">People you named find it under Collab → Shared; anyone with the board ID can join it from that tab. Every participant can edit — view-only access and adding people later aren't available yet.</div>
         </div>
       )}
 
