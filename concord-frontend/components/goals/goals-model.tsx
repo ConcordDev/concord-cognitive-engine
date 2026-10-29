@@ -32,6 +32,10 @@ export interface Goal {
    * the derived Milestones timeline can order/date completions. Not part of
    * the persisted `data` shape. */
   completedAt?: string;
+  /** When the artifact was created (item.createdAt) — feeds the completion record. */
+  createdAt?: string;
+  /** S13 (F14/§3b): the user-chosen weekly focus. One goal at a time. */
+  weeklyFocus?: boolean;
 }
 
 export interface Challenge {
@@ -128,6 +132,27 @@ export function formatLocalDateTime(iso: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+export function daysBetween(fromIso: string, toIso: string): number {
+  const a = parseDay(fromIso);
+  const b = parseDay(toIso);
+  if (isNaN(a.getTime()) || isNaN(b.getTime())) return 0;
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  return Math.max(0, Math.round((startOfDay(b) - startOfDay(a)) / 86400000));
+}
+
+// §3b proposal 3: a completed goal's record, from its real data —
+// what it took, kept by the card and the Milestones timeline.
+export function completionRecord(g: { subtasks?: SubTask[]; createdAt?: string; completedAt?: string }): string {
+  const parts: string[] = [];
+  const steps = g.subtasks?.length || 0;
+  if (steps > 0) parts.push(`${steps} step${steps !== 1 ? 's' : ''}`);
+  if (g.createdAt && g.completedAt) {
+    const days = daysBetween(g.createdAt, g.completedAt);
+    parts.push(days > 0 ? `${days} day${days !== 1 ? 's' : ''}` : 'same day');
+  }
+  return parts.join(' · ');
 }
 
 export function getLevel(xp: number): { label: string; color: string; next: number } {

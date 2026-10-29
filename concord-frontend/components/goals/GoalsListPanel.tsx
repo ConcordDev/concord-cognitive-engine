@@ -10,12 +10,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, CheckCircle2, Pencil, Trash2 } from 'lucide-react';
+import { Plus, CheckCircle2, Pencil, Trash2, Target } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { KeepRecordActions } from '@/components/lens/KeepRecordActions';
 import { goalKeepRecord } from '@/components/lens/recordKeep';
-import { type Goal, GOALS_FALLBACK, daysUntil } from '@/components/goals/goals-model';
+import { type Goal, GOALS_FALLBACK, daysUntil, completionRecord } from '@/components/goals/goals-model';
 
 /** Dispatched by the Goals page chips; detail { weekly?: boolean }. */
 export const GOALS_NEW_EVENT = 'concord:goals-new';
@@ -42,13 +42,14 @@ export function GoalsListPanel() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [undoGoal, setUndoGoal] = useState<{ title: string; data: Record<string, unknown> } | null>(null);
   const [deleteError, setDeleteError] = useState('');
+  const [showFocusPicker, setShowFocusPicker] = useState(false);
 
   const { isLoading, isError, error, refetch, items: goalItems, create: createGoalItem, update: updateGoalItem, remove: removeGoalItem } = useLensData<Record<string, unknown>>('goals', 'goal', {
     seed: GOALS_FALLBACK.map(g => ({ title: g.title, data: g as unknown as Record<string, unknown> })),
   });
 
   const goals = useMemo(
-    () => goalItems.map(item => ({ id: item.id, ...item.data, completedAt: item.updatedAt } as unknown as Goal)),
+    () => goalItems.map(item => ({ id: item.id, ...item.data, createdAt: item.createdAt, completedAt: item.updatedAt } as unknown as Goal)),
     [goalItems]
   );
 
@@ -81,8 +82,10 @@ export function GoalsListPanel() {
     const open = (e: Event) => {
       const weekly = (e as CustomEvent<{ weekly?: boolean }>).detail?.weekly;
       if (weekly) {
-        setNewTargetDate(new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10));
-        setNewCategory('Personal');
+        // S13 (F14): "Set a weekly focus" opens the focus picker — a
+        // real control — not the create form wearing a due date.
+        setShowFocusPicker(true);
+        return;
       }
       setShowCreate(true);
     };
@@ -105,6 +108,19 @@ export function GoalsListPanel() {
     const goal = goals.find(g => g.id === goalId);
     if (!goal) return;
     updateGoalItem(goalId, { data: { ...goal, status: 'completed', progress: 1 } as unknown as Record<string, unknown> }).catch((err) => console.error('Failed to complete goal:', err instanceof Error ? err.message : err));
+  };
+
+  // S13 (F14/§3b 4): the weekly focus is a property of the goal the
+  // user chose — exactly one goal wears it; choosing another moves it.
+  const setWeeklyFocus = (goalId: string | null) => {
+    goals.forEach((g) => {
+      const shouldBe = g.id === goalId;
+      if (!!g.weeklyFocus !== shouldBe) {
+        updateGoalItem(g.id, { data: { ...g, weeklyFocus: shouldBe } as unknown as Record<string, unknown> })
+          .catch((err) => console.error('Failed to set weekly focus:', err instanceof Error ? err.message : err));
+      }
+    });
+    setShowFocusPicker(false);
   };
 
   // S1 (F1): the namesake object gets its lifecycle — edit + delete.
@@ -151,7 +167,7 @@ export function GoalsListPanel() {
         data: {
           title: goal.title, description: goal.description, category: goal.category,
           progress: goal.progress, priority: goal.priority, targetDate: goal.targetDate,
-          subtasks: goal.subtasks, xp: goal.xp, milestones: goal.milestones, status: goal.status,
+          subtasks: goal.subtasks, xp: goal.xp, milestones: goal.milestones, status: goal.status, weeklyFocus: goal.weeklyFocus,
         } as unknown as Record<string, unknown>,
       });
       setConfirmDeleteId(null);
@@ -188,6 +204,30 @@ export function GoalsListPanel() {
 
   return (
     <div className="max-w-2xl space-y-3 pb-24">
+      {showFocusPicker && (
+        <div className="rounded-2xl border border-violet-400/20 bg-violet-400/[0.04] px-5 py-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[15px] text-zinc-100">Set a weekly focus</h3>
+            <button type="button" onClick={() => setShowFocusPicker(false)} className="text-[13px] text-zinc-400 hover:text-zinc-200">Cancel</button>
+          </div>
+          <p className="mt-1 text-[12px] text-zinc-500">One goal wears the focus line until you change it.</p>
+          <div className="mt-3 space-y-1.5">
+            {goals.filter((g) => g.status === 'active').map((g) => (
+              <button key={g.id} type="button" aria-label={`Set ${g.title} as weekly focus`} onClick={() => setWeeklyFocus(g.id)} className="flex w-full items-center justify-between rounded-lg border border-white/10 px-3 py-2 text-left text-[14px] text-zinc-200 hover:bg-white/5">
+                <span>{g.title}</span>
+                {g.weeklyFocus && <span className="text-[12px] text-violet-300">This week's focus</span>}
+              </button>
+            ))}
+            {goals.filter((g) => g.status === 'active').length === 0 && (
+              <p className="text-[13px] text-zinc-500">No active goals yet — create a goal first, then set it as your focus.</p>
+            )}
+          </div>
+          {goals.some((g) => g.weeklyFocus) && (
+            <button type="button" onClick={() => setWeeklyFocus(null)} className="mt-3 text-[13px] text-zinc-400 hover:text-zinc-200">Clear focus</button>
+          )}
+        </div>
+      )}
+
       {/* Quiet filter — the dashboard (XP / level / streak) is gone per the north star. */}
       <div className="flex gap-4 text-[13px]">
         {['All', 'Active', 'Completed'].map((f) => (
@@ -293,6 +333,9 @@ export function GoalsListPanel() {
                 <h3 className="font-vault text-[19px] text-zinc-100">{goal.title}</h3>
                 {goal.status === 'completed' && <CheckCircle2 className="h-4 w-4 text-teal-400" aria-label="Completed" />}
               </div>
+              {goal.weeklyFocus && (
+                <p className="mt-1 flex items-center gap-1 text-[12px] text-violet-300"><Target className="h-3 w-3" /> This week's focus</p>
+              )}
               <div className="mt-3 flex items-center gap-4">
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.07]">
                   <motion.div className={`h-full rounded-full ${bar}`} initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} />
@@ -305,6 +348,9 @@ export function GoalsListPanel() {
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                   <div className="space-y-1.5 border-t border-white/[0.06] px-5 py-4">
                     {goal.description && <p className="pb-1 text-[13px] text-zinc-400">{goal.description}</p>}
+                    {goal.status === 'completed' && completionRecord(goal) && (
+                      <p className="pb-1 text-[12px] text-zinc-500">Completed — {completionRecord(goal)}</p>
+                    )}
                     {goal.status === 'active' && goal.targetDate && (
                       <p className={`pb-1 text-[12px] ${dLeft <= 3 ? 'text-rose-400' : 'text-zinc-500'}`}>
                         {dLeft === 0 ? 'Due today' : dLeft < 0 ? `${-dLeft} day${dLeft !== -1 ? 's' : ''} overdue` : `${dLeft} day${dLeft !== 1 ? 's' : ''} left`}
@@ -322,6 +368,11 @@ export function GoalsListPanel() {
                     {goal.status === 'active' && (
                       <button type="button" onClick={() => completeGoalItem(goal.id)} className="mt-2 rounded-lg border border-teal-400/30 px-3 py-1.5 text-[13px] text-teal-300 hover:bg-teal-400/10">
                         Mark complete
+                      </button>
+                    )}
+                    {goal.status === 'active' && !goal.weeklyFocus && (
+                      <button type="button" onClick={() => setWeeklyFocus(goal.id)} className="mt-2 ml-2 rounded-lg border border-violet-400/30 px-3 py-1.5 text-[13px] text-violet-300 hover:bg-violet-400/10">
+                        Set as weekly focus
                       </button>
                     )}
                     <div className="flex flex-wrap items-center gap-2 pt-2">

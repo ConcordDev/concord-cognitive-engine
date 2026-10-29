@@ -186,7 +186,7 @@ export function ChallengesPanel() {
                 <div className="text-right flex-shrink-0 ml-4">
                   <div className="flex items-center gap-1 text-yellow-400 text-sm font-bold">
                     <Zap className="w-4 h-4" />
-                    {ch.xp} XP
+                    {ch.xp} XP on completion
                   </div>
                   {ch.deadline && (
                     <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1 justify-end">

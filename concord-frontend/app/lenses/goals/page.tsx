@@ -93,7 +93,7 @@ export default function GoalsLensPage() {
         <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">Goals</h1>
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" onClick={() => setActive('okr')} className={chip}>
-            <Sparkles className="h-4 w-4 text-violet-400" /> Review OKRs
+            <Sparkles className="h-4 w-4 text-violet-400" /> Open OKRs
           </button>
           <button
             type="button"
