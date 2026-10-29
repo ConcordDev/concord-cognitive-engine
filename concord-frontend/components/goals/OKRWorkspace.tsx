@@ -57,7 +57,7 @@ interface TrendPoint extends Record<string, unknown> { date: string; progress: n
 interface BurndownPoint extends Record<string, unknown> { date: string; remaining: number; idealRemaining: number; }
 interface ChartStats {
   points: number; currentProgress: number; target: number; remaining: number;
-  velocityPerDay: number; varianceFromIdeal: number; pace: string;
+  velocityPerDay: number; varianceFromIdeal: number; pace: string | null;
 }
 interface Reminder {
   id: string; goalId: string | null; label: string; kind: string;
@@ -718,7 +718,7 @@ function ChartsTab() {
             { label: 'Current', value: `${stats.currentProgress}%` },
             { label: 'Remaining', value: `${stats.remaining}` },
             { label: 'Velocity/day', value: stats.velocityPerDay },
-            { label: 'Pace', value: stats.pace.replace('_', ' ') },
+            { label: 'Pace', value: stats.pace ? stats.pace.replace('_', ' ') : '—' },
           ].map((s) => (
             <div key={s.label} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-center">
               <div className="font-mono text-sm text-cyan-300">{s.value}</div>
