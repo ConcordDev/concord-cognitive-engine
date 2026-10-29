@@ -612,7 +612,16 @@ export default function registerWhiteboardActions(registerLensAction) {
     const userId = wbActor(ctx);
     const id = String(params.id || "");
     const b = s.sharedBoards.get(id);
-    if (!b) return { ok: false, error: "shared board not found" };
+    if (!b) {
+      // S10: the collab hook joins on mount for EVERY open board,
+      // shared or not, and broadcasts cursor/scene on activity.
+      // For the caller's own unshared board that is a quiet no-op,
+      // not an error — erroring flooded the shell's issue counter
+      // while the user simply worked on a private board. Ids that
+      // exist nowhere keep the hard error.
+      if (findBoardForUser(s, userId, id)) return { ok: true, result: { shared: false } };
+      return { ok: false, error: "shared board not found" };
+    }
     wbParticipants(b).add(userId);
     saveWhiteboardState();
     return { ok: true, result: { board: { ...sharedBoardSummary(b), scene: b.scene } } };
@@ -624,7 +633,16 @@ export default function registerWhiteboardActions(registerLensAction) {
     const userId = wbActor(ctx);
     const id = String(params.id || "");
     const b = s.sharedBoards.get(id);
-    if (!b) return { ok: false, error: "shared board not found" };
+    if (!b) {
+      // S10: the collab hook joins on mount for EVERY open board,
+      // shared or not, and broadcasts cursor/scene on activity.
+      // For the caller's own unshared board that is a quiet no-op,
+      // not an error — erroring flooded the shell's issue counter
+      // while the user simply worked on a private board. Ids that
+      // exist nowhere keep the hard error.
+      if (findBoardForUser(s, userId, id)) return { ok: true, result: { shared: false } };
+      return { ok: false, error: "shared board not found" };
+    }
     wbParticipants(b).delete(userId);
     saveWhiteboardState();
     return { ok: true, result: { id, remainingParticipants: wbParticipants(b).size } };
@@ -639,7 +657,16 @@ export default function registerWhiteboardActions(registerLensAction) {
     const userId = wbActor(ctx);
     const id = String(params.id || "");
     const b = s.sharedBoards.get(id);
-    if (!b) return { ok: false, error: "shared board not found" };
+    if (!b) {
+      // S10: the collab hook joins on mount for EVERY open board,
+      // shared or not, and broadcasts cursor/scene on activity.
+      // For the caller's own unshared board that is a quiet no-op,
+      // not an error — erroring flooded the shell's issue counter
+      // while the user simply worked on a private board. Ids that
+      // exist nowhere keep the hard error.
+      if (findBoardForUser(s, userId, id)) return { ok: true, result: { shared: false } };
+      return { ok: false, error: "shared board not found" };
+    }
     if (!wbParticipants(b).has(userId)) return { ok: false, error: "not a participant" };
     if (!params.scene || typeof params.scene !== "object") return { ok: false, error: "scene required" };
     b.scene = params.scene;
@@ -664,7 +691,16 @@ export default function registerWhiteboardActions(registerLensAction) {
     const userId = wbActor(ctx);
     const id = String(params.id || "");
     const b = s.sharedBoards.get(id);
-    if (!b) return { ok: false, error: "shared board not found" };
+    if (!b) {
+      // S10: the collab hook joins on mount for EVERY open board,
+      // shared or not, and broadcasts cursor/scene on activity.
+      // For the caller's own unshared board that is a quiet no-op,
+      // not an error — erroring flooded the shell's issue counter
+      // while the user simply worked on a private board. Ids that
+      // exist nowhere keep the hard error.
+      if (findBoardForUser(s, userId, id)) return { ok: true, result: { shared: false } };
+      return { ok: false, error: "shared board not found" };
+    }
     if (!wbParticipants(b).has(userId)) return { ok: false, error: "not a participant" };
     const x = Number(params.x);
     const y = Number(params.y);
