@@ -211,7 +211,7 @@ export function WhiteboardStudio({
   /* auto-save: debounce save elements to backend when they change */
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (!selectedWbId || elements.length === 0) return;
+    if (!selectedWbId || hydratedId !== selectedWbId) return;
     // Skip the initial load (when elements were just set from server data)
     if (selectedWb?.whiteboard?.elements && JSON.stringify(selectedWb.whiteboard.elements) === JSON.stringify(elements)) return;
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
