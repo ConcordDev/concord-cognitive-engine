@@ -668,7 +668,7 @@ export const MCP_TOOLS = [
   {
     name: "trace_root_cause",
     description: "Trace Fabric: identify root cause of a failure (F3 organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ trace_id: textProp("Trace to find the root cause of (domains/trace-fabric.js: 'For a given trace_id, find originating event + walk parent_trace_id chain')") })
   },
   {
     name: "trace_backfill",
@@ -690,7 +690,7 @@ export const MCP_TOOLS = [
   {
     name: "incident_history",
     description: "Incident Engine: get incident history (B organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ limit: intProp("Max incidents to return (lib/mission-templates.js passes 10)") })
   },
   {
     name: "incident_classify",
@@ -705,7 +705,7 @@ export const MCP_TOOLS = [
   {
     name: "research_filter",
     description: "Research Frontier: filter signals by novelty/value (D organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ since_minutes: intProp("Look-back window in minutes (in-repo callers in lib/mission-templates.js pass it)") })
   },
   {
     name: "research_invoke",
@@ -730,7 +730,7 @@ export const MCP_TOOLS = [
   {
     name: "opportunity_scan",
     description: "Opportunity Engine: scan upstream signals + propose opportunities (C organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ since_minutes: intProp("Look-back window in minutes (in-repo callers in lib/mission-templates.js pass it)") })
   },
   {
     name: "opportunity_list",
@@ -810,7 +810,7 @@ export const MCP_TOOLS = [
   {
     name: "initiative_compose",
     description: "Initiative Engine: read approved opportunities + proactive predictions, compose into initiatives (F organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ since_minutes: intProp("Look-back window in minutes (in-repo callers in lib/mission-templates.js pass it)") })
   },
   {
     name: "initiative_list",
@@ -895,12 +895,12 @@ export const MCP_TOOLS = [
   {
     name: "experience_compress",
     description: "Experience-to-Learning: scan all organ DBs and create compressed chunks (H organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ since_minutes: intProp("Look-back window in minutes (in-repo callers in lib/mission-templates.js pass it)") })
   },
   {
     name: "experience_distill",
     description: "Experience-to-Learning: group chunks and find recurring patterns (H organ).",
-    inputSchema: SCHEMA_DESCRIPTION_BASE
+    inputSchema: organSchema({ since_minutes: intProp("Look-back window in minutes (in-repo callers in lib/mission-templates.js pass it)") })
   },
   {
     name: "experience_consolidate",
