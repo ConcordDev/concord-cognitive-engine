@@ -27,6 +27,9 @@ import {
   StickyNote,
   Bookmark,
   MoreHorizontal,
+  ChevronUp,
+  ChevronDown,
+  RotateCw,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { Skeleton } from '@/components/ui';
@@ -88,6 +91,10 @@ export function WhiteboardStudio({
   const [elements, setElements] = useState<Element[]>([]);
   const [selectedElement, setSelectedElement] = useState<Element | null>(null);
   const [editingElement, setEditingElement] = useState<{ id: string; draft: string } | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  const groupDragRef = useRef<{ startX: number; startY: number; origins: Map<string, { x: number; y: number }> } | null>(null);
+  const resizeRef = useRef<{ id: string; corner: string; startX: number; startY: number; orig: { x: number; y: number; width: number; height: number } } | null>(null);
   const [viewingDtuId, setViewingDtuId] = useState<string | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentElement, setCurrentElement] = useState<Element | null>(null);
@@ -104,7 +111,12 @@ export function WhiteboardStudio({
   const [strokeColor, setStrokeColor] = useState('#00d4ff');
   const [fillColor, setFillColor] = useState('transparent');
   const [strokeWidth, setStrokeWidth] = useState(2);
-  const [showGrid, setShowGrid] = useState(false);
+  const [showGrid, setShowGrid] = useState(() => {
+    try { return window.localStorage.getItem('wb-show-grid') === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem('wb-show-grid', showGrid ? '1' : '0'); } catch { /* storage unavailable */ }
+  }, [showGrid]);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showDtuPicker, setShowDtuPicker] = useState(false);
   const [textInput, setTextInput] = useState('');
@@ -345,6 +357,50 @@ export function WhiteboardStudio({
     };
   };
 
+  /* ---------- S5 geometry helpers ---------- */
+  const elementBBox = (el: Element) => {
+    if (el.type === 'freehand' && el.points && el.points.length > 0) {
+      const xs = el.points.map((p) => p.x);
+      const ys = el.points.map((p) => p.y);
+      return { x: Math.min(...xs), y: Math.min(...ys), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) };
+    }
+    return { x: el.x, y: el.y, width: el.width || 100, height: el.height || 50 };
+  };
+
+  // Hit test honouring rotation: un-rotate the point around the centre.
+  const pointInElement = (el: Element, x: number, y: number) => {
+    const b = elementBBox(el);
+    let px = x;
+    let py = y;
+    if (el.rotation) {
+      const cx = b.x + b.width / 2;
+      const cy = b.y + b.height / 2;
+      const rad = -(el.rotation * Math.PI) / 180;
+      const dx = x - cx;
+      const dy = y - cy;
+      px = cx + dx * Math.cos(rad) - dy * Math.sin(rad);
+      py = cy + dx * Math.sin(rad) + dy * Math.cos(rad);
+    }
+    if (el.type === 'freehand' && el.points) {
+      return el.points.some((p) => Math.abs(p.x - px) < 10 && Math.abs(p.y - py) < 10);
+    }
+    return px >= b.x && px <= b.x + b.width && py >= b.y && py <= b.y + b.height;
+  };
+
+  const resizeCornerAt = (el: Element, x: number, y: number): string | null => {
+    if (el.type === 'freehand') return null;
+    const b = elementBBox(el);
+    const tol = 10 / zoom;
+    const corners: Record<string, { cx: number; cy: number }> = {
+      nw: { cx: b.x, cy: b.y }, ne: { cx: b.x + b.width, cy: b.y },
+      sw: { cx: b.x, cy: b.y + b.height }, se: { cx: b.x + b.width, cy: b.y + b.height },
+    };
+    for (const [name, c] of Object.entries(corners)) {
+      if (Math.abs(x - c.cx) <= tol && Math.abs(y - c.cy) <= tol) return name;
+    }
+    return null;
+  };
+
   /* ---------- mouse handlers (canvas mode) ---------- */
   const handleMouseDown = (e: React.MouseEvent) => {
     const { x, y } = getCanvasCoords(e);
@@ -356,19 +412,40 @@ export function WhiteboardStudio({
     }
 
     if (tool === 'select') {
-      const clicked = [...elements].reverse().find(el => {
-        if (el.type === 'freehand' && el.points) {
-          return el.points.some(p => Math.abs(p.x - x) < 10 && Math.abs(p.y - y) < 10);
+      // S5: a resize handle on the single selection takes the click first.
+      if (selectedElement && selectedIds.length <= 1) {
+        const corner = resizeCornerAt(selectedElement, x, y);
+        if (corner) {
+          resizeRef.current = { id: selectedElement.id, corner, startX: x, startY: y, orig: elementBBox(selectedElement) };
+          setIsDrawing(true);
+          return;
         }
-        const w = el.width || 100;
-        const h = el.height || 50;
-        return x >= el.x && x <= el.x + w && y >= el.y && y <= el.y + h;
-      });
-      setSelectedElement(clicked || null);
-      if (clicked) {
-        setIsDrawing(true);
-        setCurrentElement({ ...clicked, x: x - clicked.x, y: y - clicked.y } as unknown as Element);
       }
+      const clicked = [...elements].reverse().find((el) => pointInElement(el, x, y));
+      if (clicked && e.shiftKey) {
+        setSelectedIds((prev) => (prev.includes(clicked.id) ? prev.filter((id) => id !== clicked.id) : [...prev, clicked.id]));
+        setSelectedElement(clicked);
+        return;
+      }
+      if (clicked) {
+        const group = selectedIds.includes(clicked.id) && selectedIds.length > 1 ? selectedIds : [clicked.id];
+        setSelectedIds(group);
+        setSelectedElement(clicked);
+        setIsDrawing(true);
+        if (group.length > 1) {
+          const origins = new Map<string, { x: number; y: number }>();
+          elements.forEach((el) => { if (group.includes(el.id)) origins.set(el.id, { x: el.x, y: el.y }); });
+          groupDragRef.current = { startX: x, startY: y, origins };
+        } else {
+          setCurrentElement({ ...clicked, x: x - clicked.x, y: y - clicked.y } as unknown as Element);
+        }
+        return;
+      }
+      // Empty canvas: clear the selection and start a marquee.
+      setSelectedElement(null);
+      setSelectedIds([]);
+      setIsDrawing(true);
+      setMarquee({ x0: x, y0: y, x1: x, y1: y });
       return;
     }
 
@@ -400,14 +477,52 @@ export function WhiteboardStudio({
       setOffset({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
       return;
     }
-    const cur = drawingRef.current ?? currentElement;
-    if (!isDrawing || !cur) return;
     const { x, y } = getCanvasCoords(e);
 
+    if (tool === 'select' && marquee) {
+      setMarquee((m) => (m ? { ...m, x1: x, y1: y } : m));
+      return;
+    }
+
+    if (tool === 'select' && resizeRef.current) {
+      const rz = resizeRef.current;
+      const dx = x - rz.startX;
+      const dy = y - rz.startY;
+      const o = rz.orig;
+      let nx = o.x;
+      let ny = o.y;
+      let nw = o.width;
+      let nh = o.height;
+      if (rz.corner.includes('e')) nw = o.width + dx;
+      if (rz.corner.includes('s')) nh = o.height + dy;
+      if (rz.corner.includes('w')) { nw = o.width - dx; nx = o.x + dx; }
+      if (rz.corner.includes('n')) { nh = o.height - dy; ny = o.y + dy; }
+      if (nw < 20) { nw = 20; if (rz.corner.includes('w')) nx = o.x + o.width - 20; }
+      if (nh < 14) { nh = 14; if (rz.corner.includes('n')) ny = o.y + o.height - 14; }
+      setElements((prev) => prev.map((el) => (el.id === rz.id ? { ...el, x: nx, y: ny, width: nw, height: nh } : el)));
+      return;
+    }
+
+    if (tool === 'select' && groupDragRef.current) {
+      const gd = groupDragRef.current;
+      let dx = x - gd.startX;
+      let dy = y - gd.startY;
+      if (showGrid) { dx = Math.round(dx / 20) * 20; dy = Math.round(dy / 20) * 20; }
+      setElements((prev) => prev.map((el) => {
+        const origin = gd.origins.get(el.id);
+        return origin ? { ...el, x: origin.x + dx, y: origin.y + dy } : el;
+      }));
+      return;
+    }
+
+    const cur = drawingRef.current ?? currentElement;
+    if (!isDrawing || !cur) return;
+
     if (tool === 'select' && selectedElement) {
+      const snap = (v: number) => (showGrid ? Math.round(v / 20) * 20 : v);
       setElements(prev => prev.map(el =>
         el.id === selectedElement.id
-          ? { ...el, x: x - (currentElement as unknown as Record<string, number>).x, y: y - (currentElement as unknown as Record<string, number>).y }
+          ? { ...el, x: snap(x - (currentElement as unknown as Record<string, number>).x), y: snap(y - (currentElement as unknown as Record<string, number>).y) }
           : el
       ));
       return;
@@ -422,6 +537,31 @@ export function WhiteboardStudio({
 
   const handleMouseUp = () => {
     setIsPanning(false);
+    if (marquee) {
+      const m = marquee;
+      setMarquee(null);
+      setIsDrawing(false);
+      const x0 = Math.min(m.x0, m.x1);
+      const x1 = Math.max(m.x0, m.x1);
+      const y0 = Math.min(m.y0, m.y1);
+      const y1 = Math.max(m.y0, m.y1);
+      if (x1 - x0 > 4 || y1 - y0 > 4) {
+        const hits = elements.filter((el) => {
+          const b = elementBBox(el);
+          return b.x < x1 && b.x + b.width > x0 && b.y < y1 && b.y + b.height > y0;
+        }).map((el) => el.id);
+        setSelectedIds(hits);
+        setSelectedElement(elements.find((el) => el.id === hits[hits.length - 1]) || null);
+      }
+      return;
+    }
+    if (resizeRef.current) {
+      resizeRef.current = null;
+      setIsDrawing(false);
+      pushUndo();
+      return;
+    }
+    if (groupDragRef.current) groupDragRef.current = null;
     if (!isDrawing) return;
     setIsDrawing(false);
     const done = drawingRef.current ?? currentElement;
@@ -442,11 +582,7 @@ export function WhiteboardStudio({
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     const { x, y } = getCanvasCoords(e);
-    const clicked = [...elements].reverse().find(el => {
-      const w = el.width || 100;
-      const h = el.height || 50;
-      return x >= el.x && x <= el.x + w && y >= el.y && y <= el.y + h;
-    });
+    const clicked = [...elements].reverse().find((el) => pointInElement(el, x, y));
     if (clicked?.type === 'dtu' && clicked.dtuId) {
       setViewingDtuId(clicked.dtuId);
       return;
@@ -554,9 +690,37 @@ export function WhiteboardStudio({
   const deleteSelected = useCallback(() => {
     if (!selectedElement) return;
     pushUndo();
-    setElements(prev => prev.filter(el => el.id !== selectedElement.id));
+    if (selectedIds.length > 1) {
+      setElements(prev => prev.filter(el => !selectedIds.includes(el.id)));
+      setSelectedIds([]);
+    } else {
+      setElements(prev => prev.filter(el => el.id !== selectedElement.id));
+    }
     setSelectedElement(null);
-  }, [selectedElement, pushUndo]);
+  }, [selectedElement, selectedIds, pushUndo]);
+
+  const reorderSelected = (dir: 1 | -1) => {
+    if (!selectedElement) return;
+    pushUndo();
+    setElements(prev => {
+      const i = prev.findIndex(el => el.id === selectedElement.id);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      const tmp = next[i];
+      next[i] = next[j];
+      next[j] = tmp;
+      return next;
+    });
+  };
+
+  const rotateSelected = () => {
+    if (!selectedElement) return;
+    pushUndo();
+    const turn = (el: Element) => ({ ...el, rotation: ((el.rotation || 0) + 15) % 360 });
+    setElements(prev => prev.map(el => (el.id === selectedElement.id ? turn(el) : el)));
+    setSelectedElement(prev => (prev ? turn(prev as Element) : prev));
+  };
 
   const exportCanvas = () => {
     const canvas = canvasRef.current;
@@ -689,7 +853,18 @@ export function WhiteboardStudio({
       ctx.lineJoin = 'round';
 
       const isSel = selectedElement?.id === el.id;
+      const inGroup = selectedIds.length > 1 && selectedIds.includes(el.id);
       if (isSel && !preview) { ctx.shadowColor = el.stroke; ctx.shadowBlur = 10; }
+
+      ctx.save();
+      if (el.rotation) {
+        const bb = elementBBox(el);
+        const cx = bb.x + bb.width / 2;
+        const cy = bb.y + bb.height / 2;
+        ctx.translate(cx, cy);
+        ctx.rotate((el.rotation * Math.PI) / 180);
+        ctx.translate(-cx, -cy);
+      }
 
       switch (el.type) {
         case 'rectangle':
@@ -836,20 +1011,41 @@ export function WhiteboardStudio({
 
       ctx.shadowBlur = 0;
 
-      if (isSel && !preview) {
+      if ((isSel || inGroup) && !preview) {
         ctx.strokeStyle = '#00d4ff'; ctx.lineWidth = 1; ctx.setLineDash([5, 5]);
         const p = 8;
         ctx.strokeRect(el.x - p, el.y - p, (el.width || 100) + p * 2, (el.height || 50) + p * 2);
         ctx.setLineDash([]);
       }
+
+      if (isSel && !preview && selectedIds.length <= 1 && el.type !== 'freehand') {
+        const b = elementBBox(el);
+        const hs = 5 / zoom + 3;
+        ctx.fillStyle = '#00d4ff';
+        [[b.x, b.y], [b.x + b.width, b.y], [b.x, b.y + b.height], [b.x + b.width, b.y + b.height]].forEach(([hx, hy]) => {
+          ctx.fillRect(hx - hs / 2, hy - hs / 2, hs, hs);
+        });
+      }
+      ctx.restore();
     };
 
     elements.forEach(el => drawEl(el));
     if (currentElement && tool !== 'select') {
       ctx.globalAlpha = 0.7; drawEl(currentElement, true); ctx.globalAlpha = 1;
     }
+    if (marquee) {
+      const mx = Math.min(marquee.x0, marquee.x1);
+      const my = Math.min(marquee.y0, marquee.y1);
+      const mw = Math.abs(marquee.x1 - marquee.x0);
+      const mh = Math.abs(marquee.y1 - marquee.y0);
+      ctx.fillStyle = 'rgba(0, 212, 255, 0.08)';
+      ctx.strokeStyle = 'rgba(0, 212, 255, 0.7)';
+      ctx.lineWidth = 1 / zoom;
+      ctx.fillRect(mx, my, mw, mh);
+      ctx.strokeRect(mx, my, mw, mh);
+    }
     ctx.restore();
-  }, [elements, currentElement, selectedElement, dimensions, zoom, offset, showGrid, tool, boardMode]);
+  }, [elements, currentElement, selectedElement, selectedIds, marquee, dimensions, zoom, offset, showGrid, tool, boardMode]);
 
   /* ---------- duplicate selected ---------- */
   const duplicateSelected = useCallback(() => {
@@ -1045,6 +1241,21 @@ export function WhiteboardStudio({
                   <button type="button" onClick={redo} disabled={redoStack.length === 0} title="Redo (Ctrl+Y)" aria-label="Redo" className="flex h-9 w-9 items-center justify-center rounded-xl text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-100 disabled:opacity-30"><Redo2 className="h-4 w-4" /></button>
                   {selectedElement && (
                     <button type="button" onClick={deleteSelected} title="Delete selected" aria-label="Delete selected" className="flex h-9 w-9 items-center justify-center rounded-xl text-rose-300 hover:bg-white/[0.06]"><Trash2 className="h-4 w-4" /></button>
+                  )}
+                  {selectedElement && (
+                    <button type="button" onClick={() => reorderSelected(1)} title="Bring forward" aria-label="Bring forward" className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-white/[0.06] text-zinc-300">
+                      <ChevronUp className="w-4 h-4" />
+                    </button>
+                  )}
+                  {selectedElement && (
+                    <button type="button" onClick={() => reorderSelected(-1)} title="Send backward" aria-label="Send backward" className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-white/[0.06] text-zinc-300">
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                  )}
+                  {selectedElement && (
+                    <button type="button" onClick={rotateSelected} title="Rotate 15 degrees" aria-label="Rotate 15 degrees" className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-white/[0.06] text-zinc-300">
+                      <RotateCw className="w-4 h-4" />
+                    </button>
                   )}
                 </div>
 
