@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Square, BookOpen, ThumbsUp, Trash2, Save, Plus, Upload } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui';
 import { PublishAsBlueprintDialog } from './PublishAsBlueprintDialog';
+import { commitDeletedBoard } from './boardOwner';
 
 export interface Template {
   id: string;
@@ -19,6 +20,8 @@ export interface Board {
   elementCount?: number;
   createdAt: string;
   updatedAt: string;
+  origin?: string;
+  deletedAt?: string | null;
 }
 
 interface Props {
@@ -82,6 +85,12 @@ function BoardsTab() {
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState('');
   const [publishingBoardId, setPublishingBoardId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string; isCanvas: boolean } | null>(null);
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showTrash, setShowTrash] = useState(false);
+  const [trashBoards, setTrashBoards] = useState<Board[]>([]);
+  const [confirmForeverId, setConfirmForeverId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -102,12 +111,60 @@ function BoardsTab() {
     } catch (e) { console.error(e); }
   };
 
-  const remove = async (id: string) => {
-    if (!window.confirm('Delete board?')) return;
+  const loadTrash = useCallback(async () => {
     try {
-      await lensRun({ domain: 'whiteboard', action: 'board-delete', input: { id } });
-      await refresh();
+      const r = await lensRun({ domain: 'whiteboard', action: 'boards-trash-list', input: {} });
+      setTrashBoards(((r.data as { result?: { boards?: Board[] } }).result?.boards) || []);
     } catch (e) { console.error(e); }
+  }, []);
+
+  useEffect(() => { void loadTrash(); }, [loadTrash]);
+
+  // S2: two-step inline confirm (the native confirm() never surfaces in
+  // embedded browsers), soft delete now, hard commit after the Undo
+  // window lapses.
+  const remove = async (b: Board) => {
+    if (confirmDeleteId !== b.id) { setConfirmDeleteId(b.id); return; }
+    setConfirmDeleteId(null);
+    try {
+      await lensRun({ domain: 'whiteboard', action: 'board-delete', input: { id: b.id } });
+      setBoards((prev) => prev.filter((x) => x.id !== b.id));
+      void loadTrash();
+      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+      const pending = { id: b.id, title: b.title, isCanvas: b.origin === 'canvas' };
+      setPendingDelete(pending);
+      deleteTimerRef.current = setTimeout(() => {
+        setPendingDelete(null);
+        void commitDeletedBoard(pending.id, pending.isCanvas).then(() => { void loadTrash(); });
+      }, 12000);
+    } catch (e) { console.error(e); }
+  };
+
+  const undoDelete = async () => {
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    const pending = pendingDelete;
+    setPendingDelete(null);
+    if (!pending) return;
+    try {
+      await lensRun({ domain: 'whiteboard', action: 'board-restore', input: { id: pending.id } });
+    } catch (e) { console.error(e); }
+    await refresh();
+    void loadTrash();
+  };
+
+  const restoreFromTrash = async (id: string) => {
+    try {
+      await lensRun({ domain: 'whiteboard', action: 'board-restore', input: { id } });
+    } catch (e) { console.error(e); }
+    await refresh();
+    void loadTrash();
+  };
+
+  const deleteForever = async (b: Board) => {
+    if (confirmForeverId !== b.id) { setConfirmForeverId(b.id); return; }
+    setConfirmForeverId(null);
+    await commitDeletedBoard(b.id, b.origin === 'canvas');
+    void loadTrash();
   };
 
   return (
@@ -145,12 +202,55 @@ function BoardsTab() {
               <button type="button" onClick={() => setPublishingBoardId(b.id)}
                 title="Publish as Concordia building blueprint"
                 className="p-1 text-gray-500 hover:text-violet-300 opacity-0 group-hover:opacity-100"><Upload className="w-3 h-3" /></button>
-              <button aria-label="Delete" type="button" onClick={() => remove(b.id)}
-                className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
+              {confirmDeleteId === b.id ? (
+                <span className="flex items-center gap-1">
+                  <button type="button" onClick={() => { void remove(b); }} className="px-1.5 py-0.5 text-[11px] font-medium text-rose-300 hover:bg-rose-500/10 rounded">Delete?</button>
+                  <button type="button" onClick={() => setConfirmDeleteId(null)} className="px-1.5 py-0.5 text-[11px] text-gray-400 hover:bg-white/[0.05] rounded">Cancel</button>
+                </span>
+              ) : (
+                <button aria-label="Delete" type="button" onClick={() => setConfirmDeleteId(b.id)}
+                  className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
+              )}
             </div>
           </div>
         ))
       }
+      {pendingDelete && (
+        <div className="flex items-center justify-between gap-2 rounded border border-white/10 bg-zinc-900 px-3 py-2" role="status">
+          <span className="text-xs text-zinc-300">Board “{pendingDelete.title}” deleted.</span>
+          <button type="button" onClick={() => { void undoDelete(); }} className="text-xs font-medium text-teal-300 hover:text-teal-200">Undo</button>
+        </div>
+      )}
+      <div className="pt-1">
+        <button type="button" onClick={() => { const next = !showTrash; setShowTrash(next); if (next) void loadTrash(); }} className="text-[11px] text-zinc-500 hover:text-zinc-300">
+          {showTrash ? '▾' : '▸'} Trash{trashBoards.length > 0 ? ` (${trashBoards.length})` : ''}
+        </button>
+        {showTrash && (
+          <div className="mt-1 space-y-1">
+            {trashBoards.length === 0 ? (
+              <p className="py-1 text-[11px] text-zinc-500">Trash is empty.</p>
+            ) : trashBoards.map((b) => (
+              <div key={b.id} className="flex items-center justify-between gap-2 rounded border border-white/[0.06] bg-black/20 px-2.5 py-1.5">
+                <span className="min-w-0">
+                  <span className="block truncate text-xs text-zinc-300">{b.title}</span>
+                  <span className="block text-[10px] tabular-nums text-zinc-500">{b.elementCount ?? 0} elements</span>
+                </span>
+                <span className="flex shrink-0 items-center gap-1">
+                  <button type="button" onClick={() => { void restoreFromTrash(b.id); }} className="rounded px-1.5 py-0.5 text-[11px] text-teal-300 hover:bg-white/[0.05]">Restore</button>
+                  {confirmForeverId === b.id ? (
+                    <>
+                      <button type="button" onClick={() => { void deleteForever(b); }} className="rounded px-1.5 py-0.5 text-[11px] font-medium text-rose-300 hover:bg-rose-500/10">Delete forever</button>
+                      <button type="button" onClick={() => setConfirmForeverId(null)} className="rounded px-1.5 py-0.5 text-[11px] text-zinc-400 hover:bg-white/[0.05]">Cancel</button>
+                    </>
+                  ) : (
+                    <button type="button" onClick={() => setConfirmForeverId(b.id)} className="rounded px-1.5 py-0.5 text-[11px] text-rose-300/80 hover:bg-white/[0.05]">Delete forever</button>
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
       {publishingBoardId && (
         <PublishAsBlueprintDialog
           boardId={publishingBoardId}
