@@ -279,10 +279,27 @@ export function WhiteboardActionPanel() {
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
+      // S7: the retro task carries the board's actual notes. Before,
+      // it named the board and nothing else \u2014 on a fresh session the
+      // agent had literally nothing to summarize and returned empty.
+      const retroBoardId = selectedBoardId || savedBoardId;
+      let notes: string[] = [];
+      if (retroBoardId) {
+        const loaded = await lensRun({ domain: 'whiteboard', action: 'board-load', input: { id: retroBoardId } });
+        const els = (loaded.data?.result?.board?.scene?.elements || []) as Array<{ kind?: string; type?: string; text?: string }>;
+        notes = els.filter((el) => (el.kind === 'sticky' || el.type === 'notecard') && el.text).map((el) => String(el.text)).slice(0, 12);
+      }
+      if (notes.length === 0 && !tallyResult) {
+        err(retroBoardId
+          ? 'Nothing to retro yet \u2014 this board has no notes and no vote tally. Add stickies first, or run a vote.'
+          : 'Save the board in this tab first (Save board), then run the retro.');
+        return;
+      }
       const task = [
         `Whiteboard session summary:`,
         `Board: ${boardName || 'untitled'}.`,
-        tallyResult ? `Vote on "${tallyResult.question}": ${tallyResult.totalVotes} votes, winner ${tallyResult.winner}.` : '',
+        notes.length ? `Notes: ${notes.join(' | ')}` : '',
+        tallyResult ? `Vote on \"${tallyResult.question}\": ${tallyResult.totalVotes} votes, winner ${tallyResult.winner}.` : '',
         '',
         'Write a 3-sentence retro: what was decided, what was deferred, what to revisit next session. Plain text.',
       ].filter(Boolean).join(' ');
@@ -341,7 +358,7 @@ export function WhiteboardActionPanel() {
           const Icon = a.icon;
           const isBusy = busy === a.id;
           return (
-            <button key={a.id} type="button" disabled={a.disabled || !!busy} onClick={a.handler}
+            <button key={a.id} type="button" disabled={a.disabled || isBusy} onClick={a.handler}
               className={cn('group flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-lattice-surface/40 border-lattice-border hover:bg-lattice-elevated/60 hover:border-white/20', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
               <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: a.accent + '20', color: a.accent }}>
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
