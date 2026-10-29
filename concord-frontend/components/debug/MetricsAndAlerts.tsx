@@ -16,6 +16,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { useDebugProject } from './ProjectContext';
 import { ChartKit } from '@/components/viz';
 import {
   BellRing,
@@ -79,6 +80,7 @@ function sampleRuntime(): Array<{ metric: string; value: number; unit: string }>
 }
 
 export function MetricsAndAlerts() {
+  const { projectId } = useDebugProject();
   const [metricNames, setMetricNames] = useState<string[]>([]);
   const [activeMetric, setActiveMetric] = useState('');
   const [points, setPoints] = useState<MetricPoint[]>([]);
@@ -98,6 +100,7 @@ export function MetricsAndAlerts() {
 
   const loadSeries = useCallback(async (metric: string) => {
     const r = await lensRun('debug', 'metric-series', {
+      projectId,
       metric: metric || undefined,
       buckets: 40,
     });
@@ -106,12 +109,12 @@ export function MetricsAndAlerts() {
       setPoints(r.data.result.points || []);
       setStats(r.data.result.stats || null);
     }
-  }, []);
+  }, [projectId]);
 
   const loadRules = useCallback(async () => {
-    const r = await lensRun('debug', 'alert-list', {});
+    const r = await lensRun('debug', 'alert-list', { projectId });
     if (r.data?.ok && r.data.result) setRules(r.data.result.rules || []);
-  }, []);
+  }, [projectId]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -122,20 +125,20 @@ export function MetricsAndAlerts() {
 
   useEffect(() => {
     refresh();
-  }, [activeMetric]);
+  }, [refresh]);
 
   // Record a fresh runtime sample, then reload the series.
   const captureSample = useCallback(async () => {
     setBusy(true);
     setError(null);
     const t0 = performance.now();
-    const probe = await lensRun('debug', 'alert-list', {});
+    const probe = await lensRun('debug', 'alert-list', { projectId });
     const latency = Math.round(performance.now() - t0);
     const samples = sampleRuntime();
     samples.push({ metric: 'macro_latency_ms', value: latency, unit: 'ms' });
     let lastBreach = 0;
     for (const sm of samples) {
-      const r = await lensRun('debug', 'metric-record', sm);
+      const r = await lensRun('debug', 'metric-record', { ...sm, projectId });
       if (r.data?.ok && Array.isArray(r.data.result?.breaches)) {
         lastBreach += r.data.result.breaches.length;
       }
@@ -146,12 +149,13 @@ export function MetricsAndAlerts() {
     const next = activeMetric || samples[0]?.metric || '';
     if (next !== activeMetric) setActiveMetric(next);
     else refresh();
-  }, [activeMetric, refresh]);
+  }, [activeMetric, refresh, projectId]);
 
   const createRule = useCallback(async () => {
     if (!ruleForm.name.trim() || !ruleForm.metric.trim() || ruleForm.threshold === '') return;
     setBusy(true);
     const r = await lensRun('debug', 'alert-create', {
+      projectId,
       name: ruleForm.name,
       metric: ruleForm.metric,
       op: ruleForm.op,
@@ -165,7 +169,7 @@ export function MetricsAndAlerts() {
     } else {
       setError(r.data?.error || 'Rule create failed');
     }
-  }, [ruleForm, loadRules]);
+  }, [ruleForm, loadRules, projectId]);
 
   const toggleRule = useCallback(
     async (rule: AlertRule) => {
