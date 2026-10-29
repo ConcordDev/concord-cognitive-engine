@@ -1738,6 +1738,18 @@ export default function registerResearchActions(registerLensAction) {
     return entries;
   }
 
+  // arXiv search_query for free text (S8, F9): one `all:` clause per
+  // term, AND-joined. Encoding the whole query as a single field value
+  // makes arXiv's parser OR its words (live-verified — see
+  // research-live.js buildArxivRequest, which builds the same way).
+  function arxivTextSearchQuery(query) {
+    const terms = String(query || "").split(/\s+/)
+      .map((t) => t.replace(/["()]/g, ""))
+      .filter(Boolean)
+      .slice(0, 10);
+    return terms.map((t) => `all:${encodeURIComponent(t)}`).join("+AND+");
+  }
+
   registerLensAction("research", "academic-search", async (_ctx, _a, params = {}) => {
     const query = String(params.query || "").trim();
     if (!query) return { ok: false, error: "query required" };
@@ -1747,7 +1759,7 @@ export default function registerResearchActions(registerLensAction) {
       ? String(params.provider) : "openalex";
     try {
       if (provider === "arxiv") {
-        const url = `http://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(query)}&start=0&max_results=${limit}&sortBy=relevance`;
+        const url = `http://export.arxiv.org/api/query?search_query=${arxivTextSearchQuery(query)}&start=0&max_results=${limit}&sortBy=relevance`;
         const xml = await (await fetch(url, { signal: AbortSignal.timeout(9000) })).text();
         const results = mapArxivWork(xml);
         return { ok: true, result: { provider, query, count: results.length, results } };
@@ -1997,6 +2009,154 @@ export default function registerResearchActions(registerLensAction) {
     const out = importWorkToLibrary(s, ctx, work, params.tags);
     if (!out) return { ok: false, error: "title required" };
     return { ok: true, result: { reference: out.reference, work, source: work.source || null, ...(out.duplicate ? { duplicate: true } : {}) } };
+  });
+
+  // ── CrossRef browse search with canonical preference (S8, F9) ──────
+  // The shared live_crossref handler (scholarly-apis.js — untouched; it
+  // also serves the Paper lens) runs Crossref's generic `query=` over a
+  // shallow page and presents Crossref's order uncritically. For a
+  // title search that buries the paper being looked for: live-verified
+  // 2026-10-29, "attention is all you need" via `query=` returns
+  // derivative works and a swarm of near-identical clone deposits
+  // (Crossref member 54718, "Shenzhen Medical Academy of Research and
+  // Translation", DOIs under 10.65215 copying the real author list,
+  // deposited 2025) ahead of any record of the actual paper. This
+  // research-domain macro therefore:
+  //   • searches a DEEP pool via query.title (Crossref's title-weighted
+  //     parameter) so the ranking below has something to work with;
+  //   • collapses duplicate deposits of the same work (same normalised
+  //     title + first-author family) into their most complete record,
+  //     counting what was collapsed onto the record itself;
+  //   • ranks canonical-first: exact-title matches, then records whose
+  //     title covers every query term, then the rest — each group by
+  //     metadata completeness, citations, Crossref's own score.
+  // Honest limit, also live-verified: for some papers Crossref holds
+  // NO canonical record at all — "Attention Is All You Need"'s
+  // registration is a DataCite DOI (10.48550/arXiv.1706.03762 → 404 at
+  // Crossref), so there the surface collapses the clone swarm to one
+  // representative and says so on the record; it cannot mint the
+  // canonical record Crossref doesn't hold. Discover/OpenAlex remains
+  // the surface that ranks the true record first.
+  function mapCrossrefBrowseWork(w) {
+    if (!w || typeof w !== "object") return null;
+    return {
+      doi: w.DOI || null,
+      title: (w.title || [])[0] || null,
+      authors: (w.author || []).slice(0, 8).map((a) => ({
+        name: [a.given, a.family].filter(Boolean).join(" ") || a.name || "Unknown",
+        orcid: a.ORCID || null,
+      })),
+      publishedYear: w["published-print"]?.["date-parts"]?.[0]?.[0]
+        || w["published-online"]?.["date-parts"]?.[0]?.[0] || null,
+      containerTitle: (w["container-title"] || [])[0] || null,
+      publisher: w.publisher || null,
+      type: w.type || null,
+      subjects: (w.subject || []).slice(0, 6),
+      citationCount: typeof w["is-referenced-by-count"] === "number" ? w["is-referenced-by-count"] : null,
+      url: w.URL || (w.DOI ? `https://doi.org/${w.DOI}` : null),
+      crossrefScore: typeof w.score === "number" ? w.score : null,
+    };
+  }
+
+  function crossrefCompleteness(w) {
+    let n = 0;
+    if (w.authors.length) n += 1;
+    if (w.publishedYear) n += 1;
+    if (w.containerTitle) n += 1;
+    if (w.publisher) n += 1;
+    if (w.citationCount != null) n += 1;
+    if (w.subjects.length) n += 1;
+    if (w.type) n += 1;
+    return n;
+  }
+
+  // The more trustworthy representative of a duplicate group / the
+  // higher rank within a title group: completeness, then citations,
+  // then Crossref's own relevance score.
+  function crossrefWorkBeats(a, b) {
+    const ca = crossrefCompleteness(a);
+    const cb = crossrefCompleteness(b);
+    if (ca !== cb) return ca > cb;
+    const na = a.citationCount ?? -1;
+    const nb = b.citationCount ?? -1;
+    if (na !== nb) return na > nb;
+    return (a.crossrefScore ?? -1) > (b.crossrefScore ?? -1);
+  }
+
+  function rankCrossrefWorks(items, query, limit) {
+    const squash = (v) => String(v || "").toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+    const qSquash = squash(query);
+    const qTerms = qSquash.split(" ").filter(Boolean);
+    // Collapse duplicate deposits of the same work into one record.
+    const groups = new Map();
+    for (const w of items) {
+      if (!w || !w.doi) continue;
+      const family = squash(w.authors[0]?.name).split(" ").pop() || "";
+      // Untitled records never group with anything but themselves.
+      const key = w.title ? `${squash(w.title)}|${family}` : `doi:${normDoiKey(w.doi)}`;
+      const cur = groups.get(key);
+      if (!cur) groups.set(key, { rep: w, count: 1 });
+      else {
+        cur.count += 1;
+        if (crossrefWorkBeats(w, cur.rep)) cur.rep = w;
+      }
+    }
+    const works = [...groups.values()].map(({ rep, count }) => {
+      const t = squash(rep.title);
+      const tTerms = t.split(" ").filter(Boolean);
+      return {
+        ...rep,
+        exactTitleMatch: qSquash.length > 0 && t === qSquash,
+        titleCoversQuery: qTerms.length > 1 && qTerms.every((term) => tTerms.includes(term)),
+        duplicatesCollapsed: count - 1,
+        metadataComplete: !!(rep.authors.length && rep.publishedYear && rep.containerTitle),
+      };
+    });
+    const groupOf = (w) => (w.exactTitleMatch ? 0 : w.titleCoversQuery ? 1 : 2);
+    works.sort((a, b) => {
+      const g = groupOf(a) - groupOf(b);
+      if (g) return g;
+      // Within a title group, a record that absorbed duplicate deposits
+      // outranks a same-titled record nobody re-deposited: the swarm
+      // copies the work the title actually refers to, so the deposit
+      // count is evidence this record IS that work (live case: the
+      // Attention clone representative vs a complete but different
+      // handbook chapter sharing the exact title).
+      const d = b.duplicatesCollapsed - a.duplicatesCollapsed;
+      if (d) return d;
+      if (crossrefWorkBeats(a, b)) return -1;
+      if (crossrefWorkBeats(b, a)) return 1;
+      return 0;
+    });
+    const collapsedCount = works.reduce((n, w) => n + w.duplicatesCollapsed, 0);
+    return { works: works.slice(0, limit), collapsedCount };
+  }
+
+  registerLensAction("research", "crossref-search", async (_ctx, _a, params = {}) => {
+    const query = String(params.query || "").trim();
+    if (!query) return { ok: false, error: "query required" };
+    if (query.length > 300) return { ok: false, error: "query too long" };
+    const limit = Math.min(Math.max(Number(params.limit) || 15, 1), 25);
+    const pool = 50;
+    const select = "DOI,title,author,published-print,published-online,container-title,publisher,type,subject,is-referenced-by-count,URL,score";
+    const url = `https://api.crossref.org/works?query.title=${encodeURIComponent(query)}&rows=${pool}&sort=relevance&select=${select}`;
+    let data;
+    try {
+      data = await cachedFetchJson(url, {
+        ttlMs: 10 * 60 * 1000, timeoutMs: 9000,
+        opts: { headers: { "User-Agent": SCHOLARLY_UA } },
+      });
+    } catch (e) {
+      return { ok: false, error: `crossref search failed: ${String(e?.message || e)}` };
+    }
+    const items = (data?.message?.items || []).map(mapCrossrefBrowseWork).filter(Boolean);
+    const { works, collapsedCount } = rankCrossrefWorks(items, query, limit);
+    return { ok: true, result: {
+      source: "CrossRef", query,
+      total: data?.message?.["total-results"] || items.length,
+      collapsedCount, works,
+    } };
   });
 
   // ── LLM literature review — comparison table across many papers ─────
