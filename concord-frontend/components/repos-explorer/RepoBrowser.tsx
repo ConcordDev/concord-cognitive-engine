@@ -38,7 +38,23 @@ export function RepoBrowser() {
       ]);
       if (c.ok && c.result) setCommits(c.result.commits);
       if (i.ok && i.result) setIssues(i.result.issues);
-      if (l.ok && l.result) setLanguages(l.result.languages || (l.result as unknown as Languages));
+      if (l.ok && l.result) {
+        // The macro returns languages as an ARRAY of {language, bytes,
+        // percent}; this strip wants a {name: bytes} map. Feeding the
+        // array straight in rendered "0 NaN%" / "1 NaN%" (Review F9).
+        const raw = (l.result as { languages?: unknown }).languages;
+        if (Array.isArray(raw)) {
+          const map: Languages = {};
+          for (const entry of raw as Array<{ language?: string; bytes?: number }>) {
+            if (entry && typeof entry.language === 'string' && typeof entry.bytes === 'number') {
+              map[entry.language] = entry.bytes;
+            }
+          }
+          setLanguages(map);
+        } else if (raw && typeof raw === 'object') {
+          setLanguages(raw as Languages);
+        }
+      }
     },
   });
 
@@ -74,7 +90,7 @@ export function RepoBrowser() {
         )}
       </form>
 
-      {Object.keys(languages).length > 0 && (
+      {Object.keys(languages).length > 0 && totalBytes > 0 && (
         <div className="rounded-md border border-zinc-800 bg-zinc-950 p-2">
           <div className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400">
             <Code2 className="h-3 w-3" /> Language mix

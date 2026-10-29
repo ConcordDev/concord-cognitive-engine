@@ -60,26 +60,6 @@ export class ConcordSoSRuntime {
     }
   }
 
-  /**
-   * Check if a macro has opt-in locking enabled (env CONCORD_CSL_LOCK_ALL_MACROS).
-   * NOT currently consulted by _lockedRunMacro — Sprint 33's pinned test
-   * requires different-turn waiting to be unconditional (see
-   * docs/SPRINT-38-PROOFS-BLOCKING.md). Kept for server/tests/csl-lock.test.js's
-   * direct calls and as a reserved hook for future per-macro selective locking.
-   */
-  _isLockedMacro(domain, macro) {
-    try {
-      const envLocked = process.env.CONCORD_CSL_LOCK_ALL_MACROS === 'true';
-      if (envLocked) return true;
-      // TODO: read macro metadata from MACROS registry when available
-      // const meta = MACROS.get(domain)?.get(macro)?.meta;
-      // return meta?.locked === true;
-      return false; // opt-in default
-    } catch (e) {
-      return false;
-    }
-  }
-
   /** Get lock metrics for telemetry */
   getLockMetrics() {
     return {
@@ -356,13 +336,13 @@ export class ConcordSoSRuntime {
    *   CONCORD_CSL_MACRO_TIMEOUT_MS (default 30s; both env var names are
    *   honored — Sprint 33 and Sprint 36 pinned different names for the same
    *   knob). A stale/expired lock is cleared rather than hung on forever.
-   * - `_isLockedMacro()` (opt-in per-macro gating via
-   *   CONCORD_CSL_LOCK_ALL_MACROS) is NOT consulted here — Sprint 33's
-   *   pinned test requires different-turn waiting to be the unconditional
-   *   default. The method is kept, unmodified, for server/tests/csl-lock.test.js's
-   *   direct calls and as a reserved hook for future per-macro-metadata
-   *   selective locking (its own TODO), but it does not currently gate this
-   *   function's behavior — see docs/SPRINT-38-PROOFS-BLOCKING.md.
+   * - Per-macro selective locking is deliberately NOT a thing here:
+   *   Sprint 33's pinned semantics require different-turn waiting to be
+   *   the unconditional default. A reserved `_isLockedMacro()` hook sat
+   *   unconsulted next to this function for years — its only claimed
+   *   caller (server/tests/csl-lock.test.js) does not exist — and was
+   *   removed in remaining-work audit Q70/A#4 rather than wired in
+   *   against the pinned semantics. See docs/SPRINT-38-PROOFS-BLOCKING.md.
    * - Metrics: acquisitions, timeouts, re-entrance detections
    *   (getLockMetrics()).
    */
