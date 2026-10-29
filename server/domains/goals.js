@@ -612,7 +612,8 @@ export default function registerGoalsActions(registerLensAction) {
         recurring: new Map(),  // userId -> Array<recurringGoal>
         reminders: new Map(),  // userId -> Array<reminder>
         deps: new Map(),
-        chartPoints: new Map(), // userId -> Array<manual chart point> (S4)       // userId -> Array<{ from, to, kind }>
+        chartPoints: new Map(), // userId -> Array<manual chart point> (S4)
+        occurrences: new Map(), // userId -> Array<occurrence> (S6)       // userId -> Array<{ from, to, kind }>
         seq: new Map(),        // userId -> { obj, chk, team, rec, rem, dep }
       };
     }
@@ -629,7 +630,7 @@ export default function registerGoalsActions(registerLensAction) {
   }
 
   function nextSeq(s, userId, key) {
-    if (!s.seq.has(userId)) s.seq.set(userId, { obj: 1, chk: 1, team: 1, rec: 1, rem: 1, dep: 1, cp: 1 });
+    if (!s.seq.has(userId)) s.seq.set(userId, { obj: 1, chk: 1, team: 1, rec: 1, rem: 1, dep: 1, cp: 1, occ: 1 });
     const seq = s.seq.get(userId);
     if (seq[key] == null) seq[key] = 1; // states persisted before a kind existed
     const n = seq[key]++;
@@ -987,6 +988,51 @@ export default function registerGoalsActions(registerLensAction) {
       return { ok: true, result: { templates: GOAL_TEMPLATES } };
     }
 
+    if (op === "apply") {
+      // S6 (F6): a template creates what its card promises — one
+      // objective carrying the template's key results, plus a
+      // recurring goal when the template has a real cadence.
+      const tpl = GOAL_TEMPLATES.find((t) => t.id === params.templateId);
+      if (!tpl) return { ok: false, error: "template not found" };
+      const objectives = ensureList(s.objectives, userId);
+      const objective = {
+        id: `obj_${nextSeq(s, userId, "obj")}`,
+        title: typeof params.title === "string" && params.title.trim() ? params.title.trim() : tpl.name,
+        parentId: null,
+        owner: null,
+        team: null,
+        level: "individual",
+        keyResults: [...(tpl.keyResults || [])],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      objectives.push(objective);
+      let recurring = null;
+      const cadenceDaysApply = { daily: 1, weekly: 7, monthly: 30, quarterly: 91 };
+      if (cadenceDaysApply[tpl.cadence]) {
+        const recList = ensureList(s.recurring, userId);
+        recurring = {
+          id: `rec_${nextSeq(s, userId, "rec")}`,
+          title: objective.title,
+          cadence: tpl.cadence,
+          category: tpl.category || null,
+          templateId: tpl.id,
+          startAt: new Date().toISOString(),
+          nextDue: new Date().toISOString(),
+          occurrences: 0,
+          createdAt: new Date().toISOString(),
+        };
+        recList.push(recurring);
+      }
+      save();
+      return { ok: true, result: { applied: tpl.id, objective, recurring } };
+    }
+
+    if (op === "occurrences-list") {
+      return { ok: true, result: { occurrences: ensureList(s.occurrences, userId) } };
+    }
+
+
     const list = ensureList(s.recurring, userId);
     const cadenceDays = { daily: 1, weekly: 7, monthly: 30, quarterly: 91 };
 
@@ -1025,13 +1071,19 @@ export default function registerGoalsActions(registerLensAction) {
       for (const rec of list) {
         let guard = 0;
         while (new Date(rec.nextDue).getTime() <= now && guard < 500) {
-          created.push({
+          // S6: an occurrence is a real, persisted object — findable
+          // via occurrences-list, not a counter with a press release.
+          const occ = {
+            id: `occ_${nextSeq(s, userId, "occ")}`,
             recurringId: rec.id,
             title: rec.title,
             category: rec.category,
             occurrence: rec.occurrences + 1,
             dueAt: rec.nextDue,
-          });
+            createdAt: new Date().toISOString(),
+          };
+          ensureList(s.occurrences, userId).push(occ);
+          created.push(occ);
           rec.occurrences += 1;
           rec.nextDue = new Date(
             new Date(rec.nextDue).getTime() + cadenceDays[rec.cadence] * 86400000,
@@ -1040,7 +1092,7 @@ export default function registerGoalsActions(registerLensAction) {
         }
       }
       save();
-      return { ok: true, result: { created, recurringGoals: list } };
+      return { ok: true, result: { created, recurringGoals: list, occurrences: ensureList(s.occurrences, userId) } };
     }
 
     // recurring-list (default for non-list ops fall here too)
