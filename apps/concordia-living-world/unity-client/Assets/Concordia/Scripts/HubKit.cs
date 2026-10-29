@@ -505,8 +505,43 @@ namespace Concordia
             foreach (var renderer in tmpl.GetComponentsInChildren<Renderer>(true))
                 if (renderer) renderer.enabled = false;
             tmpl.SetActive(true);
+            KeepImportOwnedAssets(import);
             Imports[key] = import;
             Runtime[key] = tmpl;
+        }
+
+        /// <summary>
+        /// EditMode only. The cache GameObject is HideAndDontSave there, so it survives a
+        /// scene change, but the meshes, materials and textures glTFast created are plain
+        /// runtime objects and the editor destroys them when a scene is (re)opened — which
+        /// the test runner does after every [UnityTest]. That left all 147 cached apartment
+        /// templates alive with a null sharedMesh (SettlementRealKitTests). Measured
+        /// 2026-10-26: UnloadUnusedAssetsImmediate kept them; OpenScene destroyed them.
+        /// DontSave (= DontSaveInEditor | DontSaveInBuild | DontUnloadUnusedAsset) is what
+        /// lets the cache's own GameObject survive, so give the import's assets the same.
+        /// Read from the import itself, since glTFast may bind meshes to the hierarchy a
+        /// frame late. In Play the DontDestroyOnLoad cache already holds them, and the
+        /// flag would keep them past the session.
+        /// </summary>
+        static void KeepImportOwnedAssets(GltfImport import)
+        {
+            if (Application.isPlaying || import == null) return;
+            const HideFlags keep = HideFlags.DontSave;
+            var meshes = import.GetMeshes();
+            if (meshes != null)
+                foreach (var m in meshes) if (m) m.hideFlags |= keep;
+            for (int i = 0; i < import.MaterialCount; i++)
+            {
+                var mat = import.GetMaterial(i);
+                if (mat) mat.hideFlags |= keep;
+            }
+            for (int i = 0; i < import.TextureCount; i++)
+            {
+                var tex = import.GetTexture(i);
+                if (tex) tex.hideFlags |= keep;
+            }
+            var fallback = import.GetDefaultMaterial();
+            if (fallback) fallback.hideFlags |= keep;
         }
 
         static string Url(string file)

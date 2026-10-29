@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Concordia
@@ -27,6 +28,45 @@ namespace Concordia
         /// island_tree_* include rocky island bases that read as floating slabs in stills —
         /// prefer jacaranda / Kenney Nature trees for upright trunk+canopy without pad.
         /// </summary>
+        /// <summary>
+        /// The band's tree: Dutch's generated rune pine, ~12k triangles at LOD0 with
+        /// authored LOD1/LOD2. The jacaranda in TreePrefer is 3.86M triangles a tree, and
+        /// a band of them cost ~100 ms of GPU a frame, so TreePrefer is only the fallback
+        /// for a session where the pine could not be imported.
+        /// </summary>
+        public const string FillTree = "flora_sunder_rune_pine";
+
+        /// <summary>
+        /// Import the fill tree before Ensure builds the band. HubKit.TryGet misses on a
+        /// stem's first request, so a band built without this falls back to TreePrefer.
+        /// glTFast imports a slice per frame and staging runs at a few fps, so callers start
+        /// this at continent bootstrap and every later call joins the same import.
+        /// </summary>
+        public static Task<bool> PrewarmFillTree()
+        {
+            // A finished import is reused only while its template is still alive: static
+            // state outlives a Play session that did not domain-reload.
+            if (_fillWarm != null && (!_fillWarm.IsCompleted || FillTreeReady)) return _fillWarm;
+            return _fillWarm = WarmFillTree();
+        }
+
+        /// <summary>True when the last band build used TreePrefer because the pine was not in.</summary>
+        public static bool BuiltWithFallback { get; private set; }
+
+        static Task<bool> _fillWarm;
+
+        static bool FillTreeReady => OrganicKit.Has(FillTree) && HubKit.TryGet(FillTree, out var t) && t;
+
+        static async Task<bool> WarmFillTree()
+        {
+            // HubKit's LoadAll rebuilds its index, so it settles before the organic
+            // registry adds its stems to it.
+            await HubKit.EnsureLoaded();
+            await OrganicKit.PreloadAsync();
+            OrganicKit.EnsureIndexed();
+            return OrganicKit.Has(FillTree) && await HubKit.Prewarm(FillTree);
+        }
+
         static readonly string[] TreePrefer =
         {
             "Concordia_Real_ForestTree", "Concordia_Real_Oak",
@@ -80,6 +120,7 @@ namespace Concordia
                 return stats;
             }
 
+            BuiltWithFallback = false;
             var hold = new GameObject(RootName).transform;
             hold.SetParent(continent, false);
             hold.localPosition = Vector3.zero;
@@ -353,6 +394,14 @@ namespace Concordia
 
         static GameObject SpawnNativeTree(Transform parent, Vector3 at, float yawDeg, float height)
         {
+            var fill = SpawnFillTree(parent, at, yawDeg, height);
+            if (fill) return fill;
+            if (!BuiltWithFallback)
+            {
+                BuiltWithFallback = true;
+                Debug.LogWarning("[Concordia] HubWilderness: " + FillTree
+                                 + " not imported yet; this build uses the PolyHaven fallback trees.");
+            }
             for (int i = 0; i < TreePrefer.Length; i++)
             {
                 var stem = TreePrefer[i];
@@ -394,6 +443,28 @@ namespace Concordia
                 return go;
             }
             return null;
+        }
+
+        /// <summary>
+        /// The registry mesh is a pivot-centered unit box, so it is scaled on a child and
+        /// the trunk collider sits on the unscaled host at true metres.
+        /// </summary>
+        static GameObject SpawnFillTree(Transform parent, Vector3 at, float yawDeg, float height)
+        {
+            var host = new GameObject(FillTree);
+            host.transform.SetParent(parent, false);
+            host.transform.SetPositionAndRotation(at, Quaternion.Euler(0f, yawDeg, 0f));
+            var art = OrganicBind.InstantiateLodded(FillTree, host.transform, out _);
+            if (!art)
+            {
+                if (Application.isPlaying) Object.Destroy(host);
+                else Object.DestroyImmediate(host);
+                return null;
+            }
+            FreePacks.FitHeight(art, Mathf.Min(height, 16f));
+            FreePacks.Sit(art, at);
+            FreePacks.TrunkCollider(host);
+            return host;
         }
 
         static GameObject SpawnNativeGrass(Transform parent, Vector3 at, float yawDeg)

@@ -1,0 +1,398 @@
+[
+  {
+    "id": "faction_scholars_1",
+    "title": "The Reconstruction Project",
+    "description": "Maren needs help locating a retired merchant who once employed a scribe that worked in Vault Twelve before the Purge. The merchant is elderly, reclusive, and has refused Guild contact for twenty years. Approach differently.",
+    "giver_npc_id": "archivist_maren",
+    "faction": "scholars_guild",
+    "difficulty": "intermediate",
+    "domain": "concordia_main",
+    "estimated_time": "45m",
+    "objectives": [
+      {
+        "id": "obj_sq1_1",
+        "type": "talk_to",
+        "target": "archivist_maren",
+        "required_count": 1,
+        "description": "Get the merchant's name and last known location from Maren"
+      },
+      {
+        "id": "obj_sq1_2",
+        "type": "reach_location",
+        "target": "retired_quarter",
+        "required_count": 1,
+        "description": "Find the merchant's residence in the retired quarter"
+      },
+      {
+        "id": "obj_sq1_3",
+        "type": "talk_to",
+        "target": "merchant_laran",
+        "required_count": 2,
+        "description": "Earn enough trust to get the merchant talking — this takes time and patience"
+      },
+      {
+        "id": "obj_sq1_4",
+        "type": "gather",
+        "target": "vault_twelve_testimony",
+        "required_count": 1,
+        "description": "Record the merchant's account of the night of the Purge"
+      }
+    ],
+    "rewards": {
+      "xp": 250,
+      "gold": 60,
+      "skill_xp": {"social": 60, "lore_concordia": 80},
+      "faction_reputation": {"scholars_guild": 20}
+    },
+    "prerequisites": ["the_choice"],
+    "follow_up_quest_ids": ["faction_scholars_2"],
+    "tags": ["faction_quest", "scholars_guild", "purge_investigation"]
+  },
+  {
+    "id": "faction_scholars_2",
+    "title": "The Borrowed Knowledge",
+    "description": "Three texts that survived the Purge are in private hands — a Warden official's personal library. They were legally borrowed before the Purge and never returned. Legally, they belong to the Guild. Practically, getting them back requires navigating the garrison's bureaucracy without alerting Voss.",
+    "giver_npc_id": "scribe_tollan",
+    "faction": "scholars_guild",
+    "difficulty": "intermediate",
+    "domain": "concordia_main",
+    "estimated_time": "1h",
+    "objectives": [
+      {
+        "id": "obj_sq2_1",
+        "type": "gather",
+        "target": "library_loan_records",
+        "required_count": 1,
+        "description": "Find the original loan records in the Guild's surviving administrative files"
+      },
+      {
+        "id": "obj_sq2_2",
+        "type": "reach_location",
+        "target": "garrison_records_office",
+        "required_count": 1,
+        "description": "File a formal return request at the garrison records office"
+      },
+      {
+        "id": "obj_sq2_3",
+        "type": "talk_to",
+        "target": "records_clerk_benn",
+        "required_count": 1,
+        "description": "Convince the records clerk to process the request without routing it to Voss's office"
+      },
+      {
+        "id": "obj_sq2_4",
+        "type": "deliver",
+        "target": "recovered_texts_three",
+        "required_count": 3,
+        "description": "Return the three texts to Tollan"
+      }
+    ],
+    "rewards": {
+      "xp": 300,
+      "gold": 70,
+      "skill_xp": {"negotiation": 70, "lore_concordia": 60},
+      "faction_reputation": {"scholars_guild": 25}
+    },
+    "prerequisites": ["faction_scholars_1"],
+    "follow_up_quest_ids": [],
+    "tags": ["faction_quest", "scholars_guild", "garrison", "texts"]
+  },
+  {
+    "id": "faction_wardens_1",
+    "title": "Order in the Warren",
+    "description": "A dispute in the Warrens — the Shadow Network's informal territory — has escalated into property destruction. The Wardens have authority to respond, but sending uniformed officers into the Warrens usually makes things worse. Captain Rael needs someone who can move through the district without a uniform.",
+    "giver_npc_id": "captain_rael",
+    "faction": "iron_wardens",
+    "difficulty": "intermediate",
+    "domain": "concordia_main",
+    "estimated_time": "1h",
+    "objectives": [
+      {
+        "id": "obj_wq1_1",
+        "type": "reach_location",
+        "target": "the_warrens",
+        "required_count": 1,
+        "description": "Enter the Warrens"
+      },
+      {
+        "id": "obj_wq1_2",
+        "type": "talk_to",
+        "target": "warren_mediator",
+        "required_count": 1,
+        "description": "Find the informal dispute mediator the Warrens residents recognize as authority"
+      },
+      {
+        "id": "obj_wq1_3",
+        "type": "talk_to",
+        "target": "warren_disputing_parties",
+        "required_count": 2,
+        "description": "Hear both sides of the dispute"
+      },
+      {
+        "id": "obj_wq1_4",
+        "type": "deliver",
+        "target": "warren_resolution_terms",
+        "required_count": 1,
+        "description": "Bring an agreed resolution back to Captain Rael"
+      }
+    ],
+    "rewards": {
+      "xp": 275,
+      "gold": 65,
+      "skill_xp": {"social": 80, "negotiation": 50},
+      "faction_reputation": {"iron_wardens": 20}
+    },
+    "prerequisites": ["the_choice"],
+    "follow_up_quest_ids": ["faction_wardens_2"],
+    "tags": ["faction_quest", "iron_wardens", "warrens", "mediation"]
+  },
+  {
+    "id": "faction_wardens_2",
+    "title": "The Missing Patrol",
+    "description": "A two-person Warden patrol failed to return from a routine circuit of the archive quarter. Rael is concerned but cannot officially report them missing for another twelve hours without triggering an inquiry she does not want Voss involved in. She needs them found quietly.",
+    "giver_npc_id": "captain_rael",
+    "faction": "iron_wardens",
+    "difficulty": "intermediate",
+    "domain": "concordia_main",
+    "estimated_time": "1h",
+    "objectives": [
+      {
+        "id": "obj_wq2_1",
+        "type": "reach_location",
+        "target": "archive_quarter_circuit",
+        "required_count": 1,
+        "description": "Walk the patrol's last known route"
+      },
+      {
+        "id": "obj_wq2_2",
+        "type": "gather",
+        "target": "patrol_evidence",
+        "required_count": 3,
+        "description": "Find signs of where the patrol went off-route"
+      },
+      {
+        "id": "obj_wq2_3",
+        "type": "reach_location",
+        "target": "patrol_location",
+        "required_count": 1,
+        "description": "Locate the missing patrol officers"
+      },
+      {
+        "id": "obj_wq2_4",
+        "type": "deliver",
+        "target": "patrol_report",
+        "required_count": 1,
+        "description": "Report back to Rael with what you found"
+      }
+    ],
+    "narrative_note": "The patrol was detained by Shadow Network operatives who believed they were getting too close to one of Maren's dead-drops. The officers are unharmed but shaken. Rael's reaction to learning this will deepen the player's sense of the factional web.",
+    "rewards": {
+      "xp": 325,
+      "gold": 75,
+      "skill_xp": {"investigation": 70, "stealth": 40},
+      "faction_reputation": {"iron_wardens": 25}
+    },
+    "prerequisites": ["faction_wardens_1"],
+    "follow_up_quest_ids": [],
+    "tags": ["faction_quest", "iron_wardens", "investigation", "shadow_network"]
+  },
+  {
+    "id": "faction_merchants_1",
+    "title": "The Disrupted Shipment",
+    "description": "Factor Cade has a practical problem: a grain shipment from the northern route was turned back at the gate under a new Warden inspection protocol — inspections that are taking three times as long as standard. The delay will spoil the grain. Cade needs the shipment cleared before sundown.",
+    "giver_npc_id": "factor_cade",
+    "faction": "merchant_collective",
+    "difficulty": "beginner",
+    "domain": "concordia_main",
+    "estimated_time": "45m",
+    "objectives": [
+      {
+        "id": "obj_mq1_1",
+        "type": "reach_location",
+        "target": "north_gate_inspection",
+        "required_count": 1,
+        "description": "Go to the north gate inspection point"
+      },
+      {
+        "id": "obj_mq1_2",
+        "type": "talk_to",
+        "target": "gate_inspector_nwat",
+        "required_count": 1,
+        "description": "Speak with the inspector running the extended protocol"
+      },
+      {
+        "id": "obj_mq1_3",
+        "type": "gather",
+        "target": "shipment_clearance_documentation",
+        "required_count": 1,
+        "description": "Obtain the correct documentation to expedite the shipment's clearance"
+      },
+      {
+        "id": "obj_mq1_4",
+        "type": "deliver",
+        "target": "cleared_grain_shipment",
+        "required_count": 1,
+        "description": "Confirm the shipment's clearance to Cade"
+      }
+    ],
+    "rewards": {
+      "xp": 175,
+      "gold": 80,
+      "skill_xp": {"negotiation": 45, "social": 35},
+      "faction_reputation": {"merchant_collective": 15}
+    },
+    "prerequisites": ["the_choice"],
+    "follow_up_quest_ids": ["faction_merchants_2"],
+    "tags": ["faction_quest", "merchant_collective", "logistics", "wardens"]
+  },
+  {
+    "id": "faction_merchants_2",
+    "title": "The Price of Neutrality",
+    "description": "Cade has received an offer from a merchant house she suspects has ties to the Shadow Network — a lucrative contract with terms that are slightly too favorable. She wants a second opinion on whether this is a legitimate business opportunity or a trap designed to create leverage. Yshe Dawnmere has agreed to look at it, but Cade wants to know your read first.",
+    "giver_npc_id": "factor_cade",
+    "faction": "merchant_collective",
+    "difficulty": "intermediate",
+    "domain": "concordia_main",
+    "estimated_time": "1h",
+    "objectives": [
+      {
+        "id": "obj_mq2_1",
+        "type": "gather",
+        "target": "suspicious_contract",
+        "required_count": 1,
+        "description": "Review the contract Cade has received"
+      },
+      {
+        "id": "obj_mq2_2",
+        "type": "talk_to",
+        "target": "lorekeeper_yshe",
+        "required_count": 1,
+        "description": "Get Yshe's read on the merchant house named in the contract"
+      },
+      {
+        "id": "obj_mq2_3",
+        "type": "talk_to",
+        "target": "broker_sael",
+        "required_count": 1,
+        "description": "Optional: ask Sael directly whether the Network is behind the offer"
+      },
+      {
+        "id": "obj_mq2_4",
+        "type": "talk_to",
+        "target": "factor_cade",
+        "required_count": 2,
+        "description": "Give Cade your assessment"
+      }
+    ],
+    "rewards": {
+      "xp": 275,
+      "gold": 90,
+      "skill_xp": {"investigation": 55, "social": 60},
+      "faction_reputation": {"merchant_collective": 20}
+    },
+    "prerequisites": ["faction_merchants_1"],
+    "follow_up_quest_ids": [],
+    "tags": ["faction_quest", "merchant_collective", "shadow_network", "investigation"]
+  },
+  {
+    "id": "faction_network_1",
+    "title": "The Dead Drop",
+    "description": "Sael needs a message delivered to a contact in the Scholars' Guild district — but not through any route the Wardens monitor. They give you a token and an address and nothing else. The Network tests new contacts this way.",
+    "giver_npc_id": "broker_sael",
+    "faction": "shadow_network",
+    "difficulty": "intermediate",
+    "domain": "concordia_main",
+    "estimated_time": "45m",
+    "objectives": [
+      {
+        "id": "obj_nq1_1",
+        "type": "reach_location",
+        "target": "shadow_market",
+        "required_count": 1,
+        "description": "Collect the token from Sael at the shadow market"
+      },
+      {
+        "id": "obj_nq1_2",
+        "type": "deliver",
+        "target": "network_token",
+        "required_count": 1,
+        "description": "Deliver the token to the contact address without being observed by Warden patrols"
+      },
+      {
+        "id": "obj_nq1_3",
+        "type": "talk_to",
+        "target": "broker_sael",
+        "required_count": 2,
+        "description": "Return to Sael and confirm delivery"
+      }
+    ],
+    "rewards": {
+      "xp": 225,
+      "gold": 55,
+      "skill_xp": {"stealth": 80, "social": 30},
+      "faction_reputation": {"shadow_network": 20}
+    },
+    "prerequisites": ["the_choice"],
+    "follow_up_quest_ids": ["faction_network_2"],
+    "tags": ["faction_quest", "shadow_network", "stealth", "delivery"]
+  },
+  {
+    "id": "faction_network_2",
+    "title": "The Handler's Question",
+    "description": "Venn has noticed you. You are summoned — which is not how the Network usually phrases things — to a meeting in the undercity. Venn wants to know what you know and whether you are, as they phrase it, 'an instrument or an agent.'",
+    "giver_npc_id": "cipher_venn",
+    "faction": "shadow_network",
+    "difficulty": "advanced",
+    "domain": "concordia_main",
+    "estimated_time": "1h",
+    "objectives": [
+      {
+        "id": "obj_nq2_1",
+        "type": "reach_location",
+        "target": "undercity_meeting_room",
+        "required_count": 1,
+        "description": "Navigate to the undercity meeting location"
+      },
+      {
+        "id": "obj_nq2_2",
+        "type": "talk_to",
+        "target": "cipher_venn",
+        "required_count": 1,
+        "description": "Meet with Venn"
+      },
+      {
+        "id": "obj_nq2_3",
+        "type": "talk_to",
+        "target": "cipher_venn",
+        "required_count": 3,
+        "description": "Survive the interrogation — Venn's questions are tests, not inquiries"
+      }
+    ],
+    "moral_branch": {
+      "description": "Venn offers you a standing arrangement: information in exchange for reports on what the other factions are doing. Standard Network operating procedure. The arrangement is voluntary. The implicit cost of refusing is losing Network access entirely.",
+      "options": [
+        {
+          "id": "accept_network_deal",
+          "trigger": "accept_arrangement",
+          "consequence": "You agree. Venn seems unsurprised. You gain Network access and a persistent information advantage — at the cost of Venn knowing everything you do inside the city.",
+          "reputation_change": {"shadow_network": 30, "cipher_venn_personal": 15}
+        },
+        {
+          "id": "decline_network_deal",
+          "trigger": "decline_arrangement",
+          "consequence": "You decline. Venn says: 'Interesting.' They do not close the door entirely — they rarely do. But they file you differently from now on.",
+          "reputation_change": {"shadow_network": -10, "cipher_venn_personal": 5}
+        }
+      ]
+    },
+    "rewards": {
+      "xp": 400,
+      "gold": 0,
+      "skill_xp": {"social": 80, "negotiation": 70},
+      "faction_reputation": {"shadow_network": 25}
+    },
+    "prerequisites": ["faction_network_1"],
+    "follow_up_quest_ids": [],
+    "tags": ["faction_quest", "shadow_network", "venn", "moral_choice"]
+  }
+]

@@ -529,6 +529,8 @@ System.Collections.IEnumerator BuildContinentStaged(int generation)
                 // Readiness is the minimum physical bootstrap needed to begin the
                 // Hub full chunk. Route geometry, weather, sun, and wilderness are
                 // presentation work and continue independently after this gate.
+                // The wilderness band's tree imports across many staging frames; start it now.
+                HubWilderness.PrewarmFillTree();
                 Debug.Log("[Concordia] continent stage=ground");
                 try { MakeGround(); }
                 catch (System.Exception ex) { Debug.LogException(ex); }
@@ -559,8 +561,9 @@ System.Collections.IEnumerator FinishContinentPresentationStaged(int generation)
             if (generation != _continentGeneration || !continent) yield break;
 
             Debug.Log("[Concordia] continent stage=hub_wilderness");
-            try { HubWilderness.Ensure(continent); }
-            catch (System.Exception ex) { Debug.LogException(ex); }
+            // The band waits for its tree on its own coroutine, so roads, routes, visuals
+            // and sun are not held behind the import. Nothing below reads the band.
+            StartCoroutine(BuildHubWildernessStaged(generation));
             yield return null;
             if (generation != _continentGeneration) yield break;
 
@@ -598,6 +601,39 @@ System.Collections.IEnumerator FinishContinentPresentationStaged(int generation)
             if (generation != _continentGeneration) yield break;
 
             StartCoroutine(UpgradeStreamedScenery(generation));
+        }
+
+        System.Collections.IEnumerator BuildHubWildernessStaged(int generation)
+        {
+            // Bounded: an import that never lands builds the band from the fallback trees.
+            var fillTree = HubWilderness.PrewarmFillTree();
+            var fillDeadline = Time.realtimeSinceStartup + 40f;
+            while (!fillTree.IsCompleted && Time.realtimeSinceStartup < fillDeadline) yield return null;
+            if (generation != _continentGeneration || !continent) yield break;
+            try { HubWilderness.Ensure(continent); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            // The LeanPlay city pass can have built the band first, so check even when
+            // this Ensure found it already standing.
+            if (HubWilderness.BuiltWithFallback)
+                yield return UpgradeWildernessFillTree(generation, fillTree);
+        }
+
+        /// The band went up with the fallback trees because the pine was still importing.
+        /// Rebuild it once the import lands; give up after five minutes and keep the fallback.
+        System.Collections.IEnumerator UpgradeWildernessFillTree(int generation, System.Threading.Tasks.Task<bool> fillTree)
+        {
+            var deadline = Time.realtimeSinceStartup + 300f;
+            while (!fillTree.IsCompleted && Time.realtimeSinceStartup < deadline) yield return null;
+            if (generation != _continentGeneration || !continent) yield break;
+            if (fillTree.Status != System.Threading.Tasks.TaskStatus.RanToCompletion || !fillTree.Result)
+            {
+                Debug.LogWarning("[Concordia] HubWilderness: " + HubWilderness.FillTree
+                                 + " did not import; the band keeps its fallback trees.");
+                yield break;
+            }
+            Debug.Log("[Concordia] continent stage=wilderness_fill_tree");
+            try { HubWilderness.Ensure(continent, force: true); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
         }
 
         /// Web builds stream their heaviest scenery models (the PolyHaven hero and

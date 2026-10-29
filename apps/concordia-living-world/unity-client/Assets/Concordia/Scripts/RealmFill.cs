@@ -918,12 +918,8 @@ namespace Concordia // keep-spawn-assign
                     try
                     {
                         var mega = GameObject.Find("Megaworld");
-                        if (mega)
-                        {
-                            var wild = HubWilderness.Ensure(mega.transform);
-                            Debug.Log("[Concordia] CityTown LeanPlay Hub wilderness " + wild
-                                      + " for " + cityId);
-                        }
+                        // Not awaited: the band waits for its tree without holding the city.
+                        if (mega) _ = EnsureHubWildernessWhenFillTreeReady(cityId);
                     }
                     catch (System.Exception we)
                     {
@@ -942,6 +938,29 @@ namespace Concordia // keep-spawn-assign
             catch (System.Exception e)
             {
                 Debug.LogWarning("Concordia CityTown: settlement compile failed for '" + cityId + "': " + e.Message);
+            }
+        }
+
+        static async System.Threading.Tasks.Task EnsureHubWildernessWhenFillTreeReady(string cityId)
+        {
+            try
+            {
+                // Bounded: an import that never lands builds the band from the fallback trees.
+                var playing = Application.isPlaying;
+                var fillTree = HubWilderness.PrewarmFillTree();
+                var fillDeadline = Time.realtimeSinceStartup + 40f;
+                while (!fillTree.IsCompleted && Time.realtimeSinceStartup < fillDeadline)
+                    await System.Threading.Tasks.Task.Yield();
+                // Play can end during the wait; never build into the edit-mode scene.
+                if (Application.isPlaying != playing) return;
+                var mega = GameObject.Find("Megaworld");
+                if (!mega) return;
+                var wild = HubWilderness.Ensure(mega.transform);
+                Debug.Log("[Concordia] CityTown LeanPlay Hub wilderness " + wild + " for " + cityId);
+            }
+            catch (System.Exception we)
+            {
+                Debug.LogWarning("Concordia CityTown: HubWilderness failed for '" + cityId + "': " + we.Message);
             }
         }
 

@@ -71,6 +71,7 @@ namespace Concordia
                 seeded++;
             }
 
+            HubResidents.Bind();
             int live = StreamNpcSim.CountLiveFullBodies();
             Debug.Log("[Concordia] LeanPlay: DataNpcSeed Hub sim=" + seeded
                       + " live=" + live + " capFull=" + LeanFullBodyCap

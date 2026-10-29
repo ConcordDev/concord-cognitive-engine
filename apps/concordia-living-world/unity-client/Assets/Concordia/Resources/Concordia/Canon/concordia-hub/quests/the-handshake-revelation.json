@@ -1,0 +1,123 @@
+[
+  {
+    "id": "the_handshake_revelation",
+    "title": "The Handshake Revelation",
+    "description": "Maren keeps a private archive in the Concordia hub. She has noticed that Vela of the Sovereign Ruins — who hasn't been seen leaving in over a hundred years — appears in archive entries from worlds she could not have walked to. The Lost Parcel that vanished between Concordia and the Ruins last month was never lost; the Handshake Protocol that binds the Frontier was authored by a hand the Couriers never knew. Trace Vela's silent walk across all four worlds, find what she has been teaching, and the lattice will recognize you.",
+    "giver_npc_id": "archivist_maren",
+    "difficulty": "master",
+    "domain": "cross_world_arc",
+    "estimated_time": "90m",
+    "objectives": [
+      {
+        "id": "obj_hsr_1",
+        "type": "talk_to_npc",
+        "target": "archivist_maren",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "Talk to Maren about Vela's missing Archive entry. Her own page is blank — she chose not to be recorded."
+      },
+      {
+        "id": "obj_hsr_2",
+        "type": "reach_location",
+        "target": "shadow_archive_vault",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "Find Vela's blank page in the Shadow Archive vault. Confirm with your own eyes."
+      },
+      {
+        "id": "obj_hsr_3",
+        "type": "travel",
+        "target": "sovereign-ruins",
+        "required_count": 1,
+        "description": "Travel to the Sovereign Ruins. Pell can carry you on her next monthly run."
+      },
+      {
+        "id": "obj_hsr_4",
+        "type": "talk_to_npc",
+        "target": "archivist_three_kestra",
+        "world_id": "sovereign-ruins",
+        "required_count": 1,
+        "description": "Ask Kestra where Vela has been. The First Bench has been empty for three cycles. Kestra will ask if you carry a message."
+      },
+      {
+        "id": "obj_hsr_5",
+        "type": "talk_to_npc",
+        "target": "ruins_apprentice_sennit",
+        "world_id": "sovereign-ruins",
+        "required_count": 1,
+        "description": "Sennit remembers Pell once carried a sealed glyph back to the Frontier. Pell never opened it. The seal looked like Vela's hand."
+      },
+      {
+        "id": "obj_hsr_6",
+        "type": "travel",
+        "target": "concord-link-frontier",
+        "required_count": 1,
+        "description": "Travel to the Frontier. Both factions need to corroborate before the Crucible will witness."
+      },
+      {
+        "id": "obj_hsr_7",
+        "type": "talk_to_npc",
+        "target": "postmaster_ria",
+        "world_id": "concord-link-frontier",
+        "required_count": 1,
+        "description": "Ria opens Dorvik's route logs. There is a hand-written annotation at the Lost Parcel handover: three letters, V-E-L."
+      },
+      {
+        "id": "obj_hsr_8",
+        "type": "talk_to_npc",
+        "target": "broker_temir",
+        "world_id": "concord-link-frontier",
+        "required_count": 1,
+        "description": "Temir confesses: the Handshake Protocol was carried in person by an elderly woman who refused to give a name and paid in glyph fragments. He has waited a generation for someone to ask."
+      },
+      {
+        "id": "obj_hsr_9",
+        "type": "travel",
+        "target": "lattice-crucible",
+        "required_count": 1,
+        "description": "Travel to the Lattice Crucible. The Witnesses' charter dispute is the resolution venue."
+      },
+      {
+        "id": "obj_hsr_10",
+        "type": "macro",
+        "target": "faction-strategy.witness_next_move",
+        "world_id": "lattice-crucible",
+        "required_count": 1,
+        "description": "Be present in the Crucible when Orla presents the player-conditional drift corpus to the other Witnesses. The lattice itself will witness you."
+      },
+      {
+        "id": "obj_hsr_11",
+        "type": "talk_to_npc",
+        "target": "witness_orla",
+        "world_id": "lattice-crucible",
+        "required_count": 1,
+        "description": "Orla shows you what she has been hiding: the player-conditional drift alerts spell Vela's refusal signature when read in sequence. Vela has been teaching the lattice for a hundred years. She is teaching you now."
+      }
+    ],
+    "rewards": {
+      "gold": 200,
+      "xp": 1500,
+      "skill_xp": {
+        "research": 200,
+        "diplomacy": 150,
+        "refusal_glyph_reading": 150
+      },
+      "ecosystem_score_delta": 0.15,
+      "lens_action_unlock": "lens_action_refusal_reader",
+      "governance_vote_weight_bonus": 1,
+      "signature_artifact_dtu": {
+        "title": "Vela's Sealed Glyph",
+        "description": "A unique signature artifact granted only by completing The Handshake Revelation. Cites every DTU you author from this point forward — your work is permanently in lineage with Vela's silent refusal."
+      }
+    },
+    "prerequisites": [],
+    "next_quest_id": null,
+    "narrative_payoff": "You have learned to see what Vela sees — the hidden handshakes between worlds. The lattice recognizes you. From this point, drift alerts in any world reveal their player-conditional layer to you alone. Concordia's Iron Wardens will note your governance authority. Every DTU you author cites Vela's Sealed Glyph as a permanent ancestor.",
+    "hidden_truths_revealed": [
+      "Vela of the Sovereign Ruins is alive, in voluntary refusal across all four worlds. Her continuity has been folk-tale for a century; you have proof.",
+      "The Lost Parcel was never lost. Vela delivered it herself, posing as a courier no one remembers. It contained the seed glyph for the Crucible's drift-monitoring system — the lattice's birth certificate.",
+      "The Crucible's player-conditional drift is Vela's pedagogy. She has been teaching every player who arrives in the Crucible what refusal means.",
+      "The Handshake Protocol's true author is Vela, walking the Frontier as an unnamed walker. Temir paid her in glyph fragments. The Couriers' Guild has never known."
+    ]
+  }
+]

@@ -214,8 +214,9 @@ namespace Concordia
             int n = UpgradeStandardOn(go);
             foreach (var r in go.GetComponentsInChildren<Renderer>(true))
             {
-                if (!r) continue;
-                r.shadowCastingMode = ShadowCastingMode.On;
+                if (!r || FreePacks.IsShadowLod(r)) continue;
+                // A coarse-LOD child already casts this renderer's shadow.
+                if (!FreePacks.HasShadowLod(r)) r.shadowCastingMode = ShadowCastingMode.On;
                 r.receiveShadows = true;
                 n++;
             }

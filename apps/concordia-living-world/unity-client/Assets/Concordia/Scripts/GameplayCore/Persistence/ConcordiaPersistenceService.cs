@@ -34,8 +34,69 @@ namespace Concordia.GameplayCore.Persistence
         static int LastSuccessfulSaveFrame = -1;
         static int WorldMemoryRevision;
         static int LastSavedWorldMemoryRevision = -1;
+        static readonly HashSet<string> RestoredSections = new HashSet<string>();
+
+        /// <summary>
+        /// Payload sections a save carries forward until their runtime has
+        /// received them. World memory, plot and consequences are always
+        /// captured live: TryLoad applies world memory, and the other two are
+        /// session logs.
+        /// </summary>
+        public static class Section
+        {
+            public const string Player = "player";
+            public const string Npcs = "npcs";
+            public const string Vehicles = "vehicles";
+            public const string Quests = "quests";
+            public const string Skills = "skills";
+            public const string WorldSystems = "worldSystems";
+            public const string WorldSimulation = "worldSimulation";
+            public const string Economy = "economy";
+            public const string WorldFabric = "worldFabric";
+            public const string Fabrication = "fabrication";
+            public const string Gunsmithing = "gunsmithing";
+            public const string Spellcrafting = "spellcrafting";
+            public const string Containers = "containers";
+        }
 
         public static IReadOnlyList<ConsequenceEventRecord> RecordedEvents => RecordedConsequences;
+
+        /// <summary>True once this session's runtime has received the loaded section.</summary>
+        public static bool IsRestored(string section) => RestoredSections.Contains(section);
+
+        static void MarkRestored(string section) => RestoredSections.Add(section);
+
+        // Statics survive Play when domain reload is off; each session starts unrestored.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetSession()
+        {
+            RestoredSections.Clear();
+            LastLoadedEnvelope = null;
+        }
+
+        /// <summary>
+        /// Writes each loaded section whose runtime never received it back as
+        /// loaded. Capturing it live would save the fresh-boot state over the
+        /// player's progress (LIVE_PATH §7.4).
+        /// </summary>
+        public static void KeepUnrestoredSections(PersistencePayload live, PersistencePayload loaded, ICollection<string> restored)
+        {
+            if (live == null || loaded == null) return;
+            bool Keep(string section) => restored == null || !restored.Contains(section);
+            if (Keep(Section.Player)) live.player = loaded.player;
+            if (Keep(Section.Npcs)) live.npcs = loaded.npcs;
+            if (Keep(Section.Vehicles)) live.vehicles = loaded.vehicles;
+            if (Keep(Section.Quests)) live.quests = loaded.quests;
+            if (Keep(Section.Skills)) live.skills = loaded.skills;
+            if (Keep(Section.WorldSystems)) live.worldSystems = loaded.worldSystems;
+            if (Keep(Section.WorldSimulation)) live.worldSimulation = loaded.worldSimulation;
+            if (Keep(Section.Economy)) live.economy = loaded.economy;
+            if (Keep(Section.WorldFabric)) live.worldFabric = loaded.worldFabric;
+            if (Keep(Section.Fabrication)) live.fabrication = loaded.fabrication;
+            if (Keep(Section.Gunsmithing)) live.gunsmithing = loaded.gunsmithing;
+            if (Keep(Section.Spellcrafting)) live.spellcrafting = loaded.spellcrafting;
+            if (Keep(Section.Containers)) live.containers = loaded.containers;
+        }
 
         public static void NotifyWorldMemoryChanged()
         {
@@ -102,6 +163,7 @@ namespace Concordia.GameplayCore.Persistence
             CaptureSkillState(envelope.payload);
             CapturePlotState(envelope.payload);
             CaptureConsequences(envelope.payload);
+            KeepUnrestoredSections(envelope.payload, LastLoadedEnvelope?.payload, RestoredSections);
             return envelope;
         }
 
@@ -193,6 +255,13 @@ namespace Concordia.GameplayCore.Persistence
             RestoreContainers(envelope.payload.containers);
             RestoreVehicleState(envelope.payload.vehicles);
             RestoreConsequences(envelope.payload);
+            foreach (var section in new[]
+            {
+                Section.Player, Section.Npcs, Section.Vehicles, Section.Quests, Section.Skills,
+                Section.WorldSystems, Section.WorldSimulation, Section.Economy, Section.WorldFabric,
+                Section.Fabrication, Section.Gunsmithing, Section.Spellcrafting, Section.Containers
+            })
+                MarkRestored(section);
         }
 
         public static bool LoadAndRestore()
@@ -246,6 +315,8 @@ namespace Concordia.GameplayCore.Persistence
 
         static bool RestoreWorldSimulation(WorldSimulationHost host, WorldSimulationPersistenceRecord record)
         {
+            // A present host is authoritative from here on, even when the save had no simulation.
+            if (host != null && host.Service != null) MarkRestored(Section.WorldSimulation);
             return host != null && RestoreWorldSimulation(host.Service, record);
         }
 
@@ -288,6 +359,7 @@ namespace Concordia.GameplayCore.Persistence
                 error = "World simulation host is not initialized.";
                 return false;
             }
+            MarkRestored(Section.WorldSimulation);
 
             if (File.Exists(SavePath))
             {
@@ -320,6 +392,7 @@ namespace Concordia.GameplayCore.Persistence
 
         public static bool RestoreEconomy(WorldSystemsEconomyService economy, WorldSystemsEconomyPersistenceRecord record)
         {
+            if (economy != null) MarkRestored(Section.Economy);
             if (economy == null || record == null) return false;
             economy.State.simulationTime = record.simulationTime;
             economy.State.inventories.Clear();
@@ -910,7 +983,9 @@ namespace Concordia.GameplayCore.Persistence
 
         static bool RestoreWorldFabric(WorldFabricRuntime runtime, WorldFabricState state)
         {
-            if (!runtime || runtime.Service == null || state == null) return false;
+            if (!runtime || runtime.Service == null) return false;
+            MarkRestored(Section.WorldFabric);
+            if (state == null) return false;
             runtime.Service.Restore(state);
             return true;
         }
@@ -941,7 +1016,9 @@ namespace Concordia.GameplayCore.Persistence
 
         static bool RestoreWorldSystems(WorldSystemsHost host, WorldSystemsPersistenceRecord record)
         {
-            if (!host || host.Simulation == null || record == null) return false;
+            if (!host || host.Simulation == null) return false;
+            MarkRestored(Section.WorldSystems);
+            if (record == null) return false;
             var state = host.Simulation.State;
             state.buildings.Clear();
             state.storefront.Clear();

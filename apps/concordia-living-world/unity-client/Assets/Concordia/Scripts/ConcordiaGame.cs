@@ -107,6 +107,10 @@ namespace Concordia
             pgo.AddComponent<EvoResolver>();
             var kernelGo = new GameObject("ConcordClient");
             var kernel = kernelGo.AddComponent<ConcordClient>();
+            // B-09: hold the socket shut for the whole boot window. ConcordClient.Start already
+            // defers in LeanPlay, but its Update retry loop re-dialled 3 s later, so the
+            // handshake happened mid-boot anyway. StagedConnect re-opens this when idle.
+            if (ConcordiaHost.LeanPlay) ConcordClient.LeanAutoConnect = false;
             kernel.OnEvent += HandleKernelEvent;
             // Other players' avatars — players only. The headless host renders
             // nothing; at 100 players it was spending ~100% CPU building bodies
@@ -123,7 +127,13 @@ namespace Concordia
             WorldClock.Enter(world);
             // Full and Lean: Bridge + hero after staged Hub (BuildChunkStaged / realmfill_done).
             Debug.Log("[Concordia] defer GameplayCoreBridge.Install until Hub staged");
-            StartCoroutine(DressHeroAfterHub(look, chase, kernel));
+            // Coroutines started from Start()'s first-frame continuation never resume on
+            // this machine (verified 2026-10-24: a canary started here never reached 40
+            // frames while the game advanced 497; the same body started from Update ran
+            // at once). Stash the args and kick them from the first Update instead.
+            _bootLook = look;
+            _bootChase = chase;
+            _bootKernel = kernel;
             if (!ConcordiaHost.LeanPlay && _loadedPersistence != null)
             {
                 // Persistence restore after Expand in DressHero — stash for then.
@@ -149,6 +159,29 @@ namespace Concordia
             UnityEditor.EditorApplication.isPaused = false;
 #endif
             Time.timeScale = 1f;
+            _bootStarted = true;
+            s_domainAlive = true;
+            _bootPending = true;
+        }
+
+        // A play-mode script reload destroys every running coroutine but leaves this
+        // object and its fields intact — Editor.log shows "Begin MonoManager
+        // ReloadAssembly" / "Domain Reload Profiling: 22324ms" ~30 s into every
+        // session, which is what killed DressHeroAfterHub before its tail. Statics
+        // reset with the domain, so a false s_domainAlive in Update means it happened.
+        static bool s_domainAlive;
+        bool _bootStarted;
+
+        Appearance _bootLook;
+        ChaseCamera _bootChase;
+        ConcordClient _bootKernel;
+        bool _bootPending;
+
+        void KickBootCoroutines()
+        {
+            _bootPending = false;
+            Debug.Log("[Concordia] LeanPlay: kicking boot coroutines from Update (frame " + Time.frameCount + ")");
+            if (_bootKernel != null) StartCoroutine(DressHeroAfterHub(_bootLook, _bootChase, _bootKernel));
             StartCoroutine(ConcordiaShot.Grab());
             if (File.Exists("/tmp/concordia-request-tour"))
                 StartCoroutine(ConcordiaShot.Tour(this));
@@ -216,8 +249,12 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
                 catch { }
                 yield return null;
             }
+            Debug.Log("[Concordia] LeanPlay: heroTrace wait-done t=" + Time.realtimeSinceStartup.ToString("F1") +
+                " stageComplete=" + (_world != null && _world.HubStageComplete));
             // Let guest/gate CX settle — AttachHero same frame as last guest was the cliff.
             for (int i = 0; i < 20; i++) yield return null;
+            Debug.Log("[Concordia] LeanPlay: heroTrace settle-done t=" + Time.realtimeSinceStartup.ToString("F1") +
+                " player=" + (_player != null) + " person=" + (_player != null && _player.person != null));
 
             // Your character lives on your Concord account: load it before the hero
             // is built so you appear as yourself on any device. Bounded wait — a
@@ -225,7 +262,9 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
             bool accountHasCharacter = false;
             if (kernel != null)
             {
-                var connectTask = kernel.Connected ? null : kernel.EnsureConnected();
+                // B-09: never dial during the boot window. In LeanPlay this stage uses the local
+                // appearance cache; the socket opens later in StagedConnect.
+                var connectTask = (kernel.Connected || ConcordiaHost.LeanPlay) ? null : kernel.EnsureConnected();
                 float connectBy = Time.realtimeSinceStartup + 4f;
                 while (connectTask != null && !connectTask.IsCompleted && Time.realtimeSinceStartup < connectBy) yield return null;
                 if (kernel.Connected)
@@ -242,6 +281,8 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
                     }
                 }
             }
+            Debug.Log("[Concordia] LeanPlay: heroTrace account-done t=" + Time.realtimeSinceStartup.ToString("F1") +
+                " connected=" + (kernel != null && kernel.Connected) + " accountChar=" + accountHasCharacter);
             _needsCharacterCreator = !accountHasCharacter && !AppearanceStore.HasSaved;
             // A character made on this device before accounts held them: adopt it
             // onto the account instead of making the player create it again.
@@ -286,6 +327,8 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
                     Debug.LogError("[Concordia] AttachHero failed after 3 attempts; hero binding remains incomplete");
                     yield break;
                 }
+                Debug.Log("[Concordia] LeanPlay: heroTrace attach-done person=" + _player.person.name +
+                    " t=" + Time.realtimeSinceStartup.ToString("F1"));
                 _player.EquipWorldKit();
             }
             // Spread kit/gear work off the bind frame.
@@ -314,8 +357,11 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
             }
             for (int i = 0; i < 8; i++) yield return null;
 
+            Debug.Log("[Concordia] LeanPlay: heroTrace pre-expand bridge=" + (_coreBridge != null) +
+                " t=" + Time.realtimeSinceStartup.ToString("F1"));
             if (_coreBridge != null)
                 yield return _coreBridge.ExpandSystemsStaged();
+            Debug.Log("[Concordia] LeanPlay: heroTrace post-expand t=" + Time.realtimeSinceStartup.ToString("F1"));
 
             // Skip persistence Restore/ReceiveHere during Full Play stabilize — was part of post-Expand melt.
             if (_loadedPersistence != null)
@@ -327,12 +373,54 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
 
             if (kernel != null)
             {
-                // Defer WS + RestoreAgentSoul — both sat on the ~28–29s post-Expand melt.
-                // Probe SUCCESS first; re-enable once Play holds 60s with buildings.
-                Debug.Log("[Concordia] LeanPlay: skip EnsureConnected/RestoreAgentSoul (post-Expand stability)");
+                // RestoreAgentSoul stays off (post-Expand melt). The gateway opens only after
+                // the boot is idle — see StagedConnect.
+                Debug.Log("[Concordia] LeanPlay: skip RestoreAgentSoul (post-Expand stability)");
                 _leanDressDone = true;
                 Debug.Log("[Concordia] LeanPlay: DressHeroAfterHub complete (Bridge locomotion; Expand guests live)");
+                if (ConcordiaSettings.ConnectInLeanPlay && !_stagedConnectStarted)
+                {
+                    _stagedConnectStarted = true;
+                    StartCoroutine(StagedConnect(kernel));
+                }
             }
+        }
+
+        bool _stagedConnectStarted;
+        bool _stagedConnectDone;
+
+        // B-09: never open the socket during the boot window. Wait until the hero is dressed
+        // and the world has been idle for IdleSeconds, then handshake once.
+        const float StagedIdleSeconds = 30f;
+
+        System.Collections.IEnumerator StagedConnect(ConcordClient kernel)
+        {
+            float idleUntil = Time.realtimeSinceStartup + StagedIdleSeconds;
+            while (Time.realtimeSinceStartup < idleUntil) yield return null;
+            if (!ConcordiaSettings.ConnectInLeanPlay)
+            {
+                Debug.Log("[Concordia] LeanPlay: staged connect disabled (connectInLeanPlay=False) — socket stays shut");
+                _stagedConnectDone = true;
+                yield break;
+            }
+            ConcordClient.LeanAutoConnect = true;
+            Debug.Log("[Concordia] LeanPlay: staged connect — boot idle " + StagedIdleSeconds.ToString("F0") +
+                "s, hero dressed, connecting (t=" + Time.realtimeSinceStartup.ToString("F1") + ")");
+            Debug.Log("[AuraVerify] B-09 boot-window frame budget (whole boot, for comparison) " + FrameWatch.Line());
+            FrameWatch.Reset();
+            var task = kernel.Connected ? null : kernel.EnsureConnected();
+            float openBy = Time.realtimeSinceStartup + 10f;
+            while (task != null && !task.IsCompleted && Time.realtimeSinceStartup < openBy) yield return null;
+            Debug.Log("[AuraVerify] B-09 connected=" + kernel.Connected +
+                " timedOut=" + (task != null && !task.IsCompleted) +
+                " status=" + ConcordClient.StatusJson +
+                " hud=" + ConcordClient.HudLine);
+            // 10 s of frame watching after the handshake, per the task's frame gate.
+            float watchUntil = Time.realtimeSinceStartup + 10f;
+            while (Time.realtimeSinceStartup < watchUntil) yield return null;
+            Debug.Log("[AuraVerify] B-09 FrameWatch after connect " + FrameWatch.Line() +
+                " connected=" + kernel.Connected + " reason=" + ConcordClient.LastReason);
+            _stagedConnectDone = true;
         }
 
         void RefreshProbe()
@@ -351,6 +439,21 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
 
         void Update()
         {
+            if (!s_domainAlive)
+            {
+                s_domainAlive = true;
+                if (_bootStarted && !_leanDressDone && _coreBridge == null)
+                {
+                    Debug.Log("[Concordia] LeanPlay: play-mode domain reload killed the boot coroutine — re-kicking");
+                    _bootPending = true;
+                }
+                else if (_stagedConnectStarted && !_stagedConnectDone && _bootKernel != null)
+                {
+                    Debug.Log("[Concordia] LeanPlay: play-mode domain reload killed the staged connect — re-kicking");
+                    StartCoroutine(StagedConnect(_bootKernel));
+                }
+            }
+            if (_bootPending) KickBootCoroutines();
             if (!_player) _player = ConcordiaPlayer.Live;
             if (ContinentStream.Live == null && _world)
                 ContinentStream.Bind(_world);
@@ -777,13 +880,45 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
 
         void HandleKernelEvent(string evt, string json)
         {
+            if (evt == "skill:progress")
+            {
+                ServerProgress.Apply(json);
+                var news = ServerProgress.TakeNews();
+                if (!string.IsNullOrEmpty(news)) _player?.Notice(news);
+                return;
+            }
+            if (evt == "npc:attack:ack")
+            {
+                NpcStrikeEnvelope strike = null;
+                try { strike = JsonUtility.FromJson<NpcStrikeEnvelope>(json); }
+                catch { return; }
+                if (strike?.data != null) _player?.ApplyServerStrike(ToStrike(strike.data));
+                return;
+            }
             if (evt != "combat:attack:ack") return;
             KernelAckEnvelope env = null;
             try { env = JsonUtility.FromJson<KernelAckEnvelope>(json); }
             catch { return; }
             if (env?.data == null) return;
-            _player?.ApplyKernelAttackAck(env.data.ok, env.data.refused, env.data.damage, env.data.error, env.data.reason);
+            var d = env.data;
+            // combat-hp-authority acks carry the server's running hp (C-19/C-20).
+            var serverHp = d.authority == "combat-hp-authority";
+            _player?.ApplyKernelAttackAck(d.ok, d.refused, d.damage, d.error, d.reason,
+                serverHp, d.hpBefore, d.hpAfter, d.kill != null && d.kill.died, d.kill?.lootBagId);
         }
+
+        static ConcordiaPlayer.ServerStrike ToStrike(NpcStrikeData d) => new ConcordiaPlayer.ServerStrike
+        {
+            ok = d.ok,
+            error = d.error,
+            npcId = d.npcId,
+            evaded = d.evaded,
+            finalDamage = d.damageResult != null ? d.damageResult.finalDamage : 0f,
+            blocked = d.damageResult != null && d.damageResult.blocked,
+            killed = d.kill,
+            playerHp = d.playerHp,
+            playerMaxHp = d.playerMaxHp,
+        };
 
         async void SubmitTalk(string typed)
         {
@@ -857,6 +992,47 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
             public float damage;
             public string error;
             public string reason;
+            public string authority;
+            public float hpBefore;
+            public float hpAfter;
+            public KernelKillData kill;
+        }
+
+        [Serializable]
+        class KernelKillData
+        {
+            public bool died;
+            public bool spared;
+            public string lootBagId;
+        }
+
+        [Serializable]
+        class NpcStrikeEnvelope
+        {
+            public string evt;
+            public NpcStrikeData data;
+        }
+
+        /// <summary>npc:attack:ack — the body of POST …/combat/npc-attack plus status and npcId.</summary>
+        [Serializable]
+        class NpcStrikeData
+        {
+            public bool ok;
+            public int status;
+            public string error;
+            public string npcId;
+            public bool evaded;
+            public bool kill;
+            public float playerHp;
+            public float playerMaxHp;
+            public NpcStrikeDamage damageResult;
+        }
+
+        [Serializable]
+        class NpcStrikeDamage
+        {
+            public float finalDamage;
+            public bool blocked;
         }
     }
 #if false

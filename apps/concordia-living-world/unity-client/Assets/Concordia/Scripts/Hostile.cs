@@ -180,6 +180,14 @@ namespace Concordia
             av?.Slash();
             var person = GetComponentInChildren<ModularPerson>();
             person?.Slash();
+            // A server creature's strike is resolved by the server (npc:attack →
+            // lib/npc-attack.js); the ack lands in ConcordiaPlayer.ApplyServerStrike.
+            var client = ConcordClient.Live;
+            if (_body && !string.IsNullOrEmpty(_body.ServerNpcId) && client && client.Connected)
+            {
+                _ = client.SendNpcAttack(_body.ServerNpcId);
+                return;
+            }
             // One defense grammar: ConcordiaPlayer.TakeHit → Core.HitResolver.
             // GameplayCore.CombatDefenseEvaluator is not on this path.
             player.TakeHit(damage, name, 0f);
