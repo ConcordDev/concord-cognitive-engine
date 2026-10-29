@@ -49,6 +49,9 @@ import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-ta
 import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
 import { humanMacroAclDenial } from "./lib/macro-acl-human-gate.js";
 import { forumModDenial } from "./lib/forum-mod-gate.js";
+import { personaCreateDenial, personaModifyDenial, personaListVisible, personaPromptVisible, personaRosterPutDenial } from "./lib/persona-legacy-gate.js";
+import { lensUpdateDenial, lensOwnerlessDenial, isOwnerlessArtifact } from "./lib/lens-update-gate.js";
+import { applyBallot, findCommentInTree, countCommentTree, appendCommentTree, applyAward, toggleSavedBy } from "./lib/forum-interactions.js";
 import { marketplaceOwnerDenial, marketplaceBuyDenial } from "./lib/marketplace-action-gate.js";
 import { threadModerationDenial, threadDeleteNodeDenial } from "./lib/thread-node-gate.js";
 import { collabCouncilDenial } from "./lib/collab-council-gate.js";
@@ -2053,6 +2056,7 @@ import { initDTUStore, createDTUStore } from "./lib/dtu-store.js";
 import { configureWriteSpill, waitForWriteQuiet, replaySpill, spilledIsNewer, spillStats } from "./lib/shutdown-write-gate.js";
 import { assignDtuCustody, dtuMutationDenial, normalizeOwnerlessDtus } from "./lib/dtu-ownership.js";
 import { dtuReadDenial, credibilityAdminDenial, collabParticipantDenial } from "./lib/dtu-macro-guards.js";
+import { exportableDtus, exportBulkDenial } from "./lib/export-filter.js";
 import { dtuImportDecision, importAuthDenial, stampImportedDtu } from "./lib/dtu-import-guard.js";
 import { renderAndAttach, hasRenderer as _hasRenderer } from "./lib/render-engine.js";
 import { registerAllRenderers } from "./lib/render-registry.js";
@@ -19578,10 +19582,14 @@ function createFromTemplate(templateId, overrides = {}) {
 }
 
 // ---- Import/Export ----
-function exportDTUsToMarkdown(dtuIds = null, _options = {}) {
-  const dtus = dtuIds
+function exportDTUsToMarkdown(dtuIds = null, _options = {}, ctx = null) {
+  // SECURITY: export only DTUs the caller may read, minus hidden
+  // system rows (lib/export-filter.js). A null ctx is the
+  // server-internal CLI export — no HTTP caller — and stays
+  // unfiltered; HTTP routes pass makeCtx(req).
+  const dtus = exportableDtus(ctx, dtuIds
     ? dtuIds.map(id => STATE.dtus.get(id)).filter(Boolean)
-    : dtusArray();
+    : dtusArray(), _isHiddenSystemDtu);
 
   const lines = [];
 
@@ -19601,10 +19609,11 @@ function exportDTUsToMarkdown(dtuIds = null, _options = {}) {
   return { ok: true, markdown: lines.join("\n"), count: dtus.length };
 }
 
-function exportDTUsToJSON(dtuIds = null) {
-  const dtus = dtuIds
+function exportDTUsToJSON(dtuIds = null, ctx = null) {
+  // SECURITY: see exportDTUsToMarkdown — same read filter.
+  const dtus = exportableDtus(ctx, dtuIds
     ? dtuIds.map(id => STATE.dtus.get(id)).filter(Boolean)
-    : dtusArray();
+    : dtusArray(), _isHiddenSystemDtu);
 
   return {
     ok: true,
@@ -41677,6 +41686,102 @@ const MCP_TOOLS_REQUIRE_REAL_AUTH = new Set([
   "conkay_solver_list",
   "conkay_ir_schema",
   "conkay_compile_brief",
+  // Tools that return operator, account, vault, financial, or personal
+  // data — real auth only; the public corpus reads (dtu_*/atlas_*/lens_*)
+  // and aggregate status tools stay anonymous by design.
+  "browser_check_coins",
+  "vault_stats",
+  "vault_read",
+  "vault_inbox",
+  "vault_backlog",
+  "a2a_list_routes",
+  "a2a_list_messages",
+  "a2a_get_message",
+  "economic_snapshot",
+  "economic_budget",
+  "economic_costs",
+  "economic_pnl",
+  "economic_attribution",
+  "economic_check",
+  "experience_list_memories",
+  "experience_get_memory",
+  "experience_stats",
+  "proactive_list_predictions",
+  "proactive_list_reminders",
+  "proactive_calibration",
+  "trace_recent",
+  "trace_lookup",
+  "trace_tool_history",
+  "incident_watch",
+  "incident_active",
+  "incident_history",
+  "sentinel_review_alerts",
+  "sentinel_gate_diff",
+  "research_findings",
+  "research_pending",
+  "research_get",
+  "opportunity_list",
+  "opportunity_get",
+  "initiative_list",
+  "initiative_get",
+  "capability_list_patterns",
+  "capability_list_templates",
+  "dila_status",
+  "dila_workers",
+  "concordia_list_assemblies",
+  // Tools that write state or act on the operator's behalf — real auth only.
+  "vault_write",
+  "vault_done",
+  "vault_broadcast",
+  "vault_compress",
+  "a2a_send",
+  "a2a_ack",
+  "a2a_check_delivery",
+  "dila_dispatch",
+  "dila_compress",
+  "repo_graph_index",
+  "repo_graph_link_dtu",
+  "trace_record",
+  "trace_backfill",
+  "incident_recover",
+  "opportunity_approve",
+  "opportunity_reject",
+  "proactive_dismiss_reminder",
+  "initiative_submit",
+  "initiative_record_execution",
+  "capability_register",
+  // Model/pipeline compute — the reflect_rescan rationale applies:
+  // unauthenticated compute is a resource-exhaustion surface.
+  "csl_proofs_run",
+  "csl_classify",
+  "csl_compress",
+  "dtu_compress",
+  "dhtp_detect",
+  "dhtp_compress",
+  "memory_benchmark_run",
+  "substrate_invoke_oracles",
+  "dtu_retrieval_eval",
+  "breakdown_decompose",
+  "breakdown_dispatch",
+  "breakdown_stitch",
+  "breakdown_build",
+  "trace_root_cause",
+  "incident_classify",
+  "research_filter",
+  "research_invoke",
+  "opportunity_scan",
+  "proactive_predict",
+  "initiative_compose",
+  "initiative_validate",
+  "capability_mine",
+  "capability_generate_template",
+  "experience_compress",
+  "experience_distill",
+  "experience_consolidate",
+  "dila_repair",
+  "concordia_assemble",
+  "concordia_verify",
+  "concordia_demonstrate",
 ]);
 
 app.post("/mcp/call", express.json({ limit: "1mb" }), asyncHandler(async (req, res) => {
@@ -45525,7 +45630,12 @@ register("llm", "embed", (ctx, input) => {
 // ---- Export/Import System ----
 register("export", "markdown", (ctx, input) => {
   if (input.ids != null && !Array.isArray(input.ids)) return { ok: false, error: "invalid_input", reason: "not_a_function" };
-  const dtus = Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray();
+  // SECURITY: exports are read-filtered per caller (lib/export-
+  // filter.js); bulk export requires a signed-in user. Explicit
+  // ids the caller may not read are silently dropped.
+  const bulkDenial = exportBulkDenial(ctx, Array.isArray(input.ids));
+  if (bulkDenial) return bulkDenial;
+  const dtus = exportableDtus(ctx, Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray(), _isHiddenSystemDtu);
   const lines = ["# Concord DTU Export", `Exported: ${nowISO()}`, `Count: ${dtus.length}`, ""];
 
   for (const dtu of dtus) {
@@ -45556,7 +45666,10 @@ register("export", "markdown", (ctx, input) => {
 
 register("export", "obsidian", (ctx, input) => {
   if (input.ids != null && !Array.isArray(input.ids)) return { ok: false, error: "invalid_input", reason: "not_a_function" };
-  const dtus = Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray();
+  // SECURITY: same read filter as export.markdown.
+  const bulkDenial = exportBulkDenial(ctx, Array.isArray(input.ids));
+  if (bulkDenial) return bulkDenial;
+  const dtus = exportableDtus(ctx, Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray(), _isHiddenSystemDtu);
   const files = [];
 
   for (const dtu of dtus) {
@@ -45596,7 +45709,12 @@ register("export", "obsidian", (ctx, input) => {
 
 register("export", "json", (ctx, input) => {
   if (input.ids != null && !Array.isArray(input.ids)) return { ok: false, error: "invalid_input", reason: "not_a_function" };
-  const dtus = Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray();
+  // SECURITY: same read filter as export.markdown. Filter only —
+  // the full-object shape this macro returns is unchanged (a shape
+  // change for non-admins is a noted follow-up, not this fix).
+  const bulkDenial = exportBulkDenial(ctx, Array.isArray(input.ids));
+  if (bulkDenial) return bulkDenial;
+  const dtus = exportableDtus(ctx, Array.isArray(input.ids) ? input.ids.map(id => STATE.dtus.get(id)).filter(Boolean) : dtusArray(), _isHiddenSystemDtu);
   return { ok: true, format: "json", dtus, count: dtus.length };
 });
 
@@ -45903,6 +46021,11 @@ register("council", "proposePromotion", (ctx, input = {}) => {
 if (!STATE.customPersonas) STATE.customPersonas = new Map();
 
 register("persona", "create", (ctx, input) => {
+  // SECURITY: a real signed-in user is required and becomes the
+  // persona's owner (lib/persona-legacy-gate.js). The personas.*
+  // alias copies this fn, so the guard covers both names.
+  const createDenial = personaCreateDenial(ctx);
+  if (createDenial) return createDenial;
   const { name, description, style, traits } = input;
   if (!name) return { ok: false, error: "Persona name required" };
 
@@ -45919,6 +46042,7 @@ register("persona", "create", (ctx, input) => {
     },
     traits: Array.isArray(traits) ? traits : [],
     systemPrompt: input.systemPrompt || "",
+    ownerId: ctx?.actor?.userId || ctx?.actor?.id || null,
     createdAt: nowISO(),
     updatedAt: nowISO(),
     usageCount: 0
@@ -45934,20 +46058,27 @@ register("persona", "create", (ctx, input) => {
 // line ~20086 (which used ctx.state.personas instead of
 // STATE.customPersonas). The earlier registration is dead through the
 // dispatcher but its function still runs for any direct callers.
-register("persona", "list", (_ctx, _input) => {
+register("persona", "list", (ctx, _input) => {
   const builtIn = [
     { id: "ethicist", name: "Ethicist", description: "Focuses on moral implications", builtin: true },
     { id: "engineer", name: "Engineer", description: "Practical, implementation-focused", builtin: true },
     { id: "historian", name: "Historian", description: "Historical context and precedent", builtin: true },
     { id: "economist", name: "Economist", description: "Economic analysis and trade-offs", builtin: true }
   ];
-  const custom = Array.from(STATE.customPersonas.values());
+  // SECURITY: members see the built-ins + their OWN custom personas
+  // only (admin/internal see all) — this list used to return every
+  // user's personas including their systemPrompt (persona-legacy-gate.js).
+  const custom = Array.from(STATE.customPersonas.values()).filter((p) => personaListVisible(ctx, p));
   return { ok: true, personas: [...builtIn, ...custom], builtInCount: builtIn.length, customCount: custom.length };
 }, { note: "intentional_shadow_ok" });
 
 register("persona", "update", (ctx, input) => {
   const persona = STATE.customPersonas.get(input.id);
   if (!persona) return { ok: false, error: "Persona not found" };
+  // SECURITY: owner, admin-class or internal only; legacy ownerless
+  // personas are admin-only (persona-legacy-gate.js).
+  const updateDenial = personaModifyDenial(ctx, persona);
+  if (updateDenial) return updateDenial;
 
   if (input.name) persona.name = normalizeText(input.name);
   if (input.description) persona.description = input.description;
@@ -45963,7 +46094,11 @@ register("persona", "update", (ctx, input) => {
 });
 
 register("persona", "delete", (ctx, input) => {
-  if (!STATE.customPersonas.has(input.id)) return { ok: false, error: "Persona not found" };
+  const persona = STATE.customPersonas.get(input.id);
+  if (!persona) return { ok: false, error: "Persona not found" };
+  // SECURITY: same ownership rule as update (persona-legacy-gate.js).
+  const deleteDenial = personaModifyDenial(ctx, persona);
+  if (deleteDenial) return deleteDenial;
   STATE.customPersonas.delete(input.id);
   saveStateDebounced();
   return { ok: true, deleted: input.id };
@@ -45997,6 +46132,12 @@ register("personas", "get", (ctx, input = {}) => {
   if (!id) return { ok: false, error: "missing_id" };
   const p = STATE.customPersonas.get(id);
   if (!p) return { ok: false, error: "persona_not_found" };
+  // SECURITY: same store, same rule as persona.list — another user's
+  // systemPrompt is never returned (persona-legacy-gate.js, Fix 9).
+  if (!personaPromptVisible(ctx, p)) {
+    const { systemPrompt: _omitted, ...rest } = p;
+    return { ok: true, persona: rest };
+  }
   return { ok: true, persona: p };
 }, { note: "Z4 thin wrapper" });
 
@@ -49044,11 +49185,42 @@ register("lens", "update", async (ctx, input={}) => {
   if (!id) return { ok: false, error: "id required" };
   const artifact = STATE.lensArtifacts.get(id);
   if (!artifact) return { ok: false, error: "not found" };
-  // Ownership validation — mirrors lens.delete's rule (owner or admin), which
-  // this handler was missing entirely: any authenticated caller could
-  // silently overwrite another user's private artifact's title/data/meta.
-  if (!LENS_SOCIAL_DOMAINS.has(artifact.domain) && artifact.ownerId && artifact.ownerId !== "anon" && !_lensIsOwnerActor(ctx, artifact) && !_lensIsAdminActor(ctx)) {
-    return { ok: false, error: "unauthorized: you can only update your own artifacts" };
+  // SECURITY: ownership validation — mirrors lens.delete's rule (owner
+  // or admin). The old check SKIPPED social domains entirely
+  // (!LENS_SOCIAL_DOMAINS.has(...)), so on forum/feed/marketplace/
+  // collab/thread/vote/alliance/global/news/questmarket any signed-in
+  // member could overwrite any other user's artifact title/data/meta.
+  // The gate (lib/lens-update-gate.js) now applies to every owned
+  // artifact: owner, admin, internal callers, and — on social domains
+  // only — moderator-class roles (the forum post lock is a moderator
+  // action riding this path) may update.
+  // SECURITY (Fix 10): the owned-artifact clause itself was the second
+  // hole — it only ran when ownerId was a concrete user id, so
+  // artifacts with no owner (missing, "anon", "anonymous", "system",
+  // or marketplace artifacts with no owner fields at all) were
+  // writable by ANY signed-in member. Ownerless artifacts now take
+  // the ownerless gate: admin/internal only, plus moderators on
+  // social domains; AUTH_MODE=public (solo local-first) is exempt.
+  // createdBy/createdByUser count as ownership (see
+  // isOwnerlessArtifact), so a createdBy-only artifact stays on the
+  // owned path and its creator can still update it.
+  const _lensIsSocialDomain = LENS_SOCIAL_DOMAINS.has(artifact.domain);
+  if (isOwnerlessArtifact(artifact)) {
+    const ownerlessDenial = lensOwnerlessDenial({
+      ctx,
+      isAdmin: _lensIsAdminActor(ctx),
+      isSocialDomain: _lensIsSocialDomain,
+      authMode: AUTH_MODE,
+    });
+    if (ownerlessDenial) return ownerlessDenial;
+  } else {
+    const updateDenial = lensUpdateDenial({
+      ctx,
+      isOwner: _lensIsOwnerActor(ctx, artifact),
+      isAdmin: _lensIsAdminActor(ctx),
+      isSocialDomain: _lensIsSocialDomain,
+    });
+    if (updateDenial) return updateDenial;
   }
   // Validate status transitions if status is changing
   if (meta?.status && meta.status !== artifact.meta?.status) {
@@ -50711,7 +50883,25 @@ app.post("/api/lens/:domain/:id/publish", async (req, res) => {
     const ctx = makeCtx(req);
     const artifact = STATE.lensArtifacts.get(req.params.id);
     if (!artifact) return res.status(404).json({ ok: false, error: "not found" });
-    if (artifact.ownerId && artifact.ownerId !== "anon" && artifact.ownerId !== ctx.actor?.userId) {
+    // SECURITY (Fix 10): the old check only ran when ownerId was a
+    // concrete user id, so ownerless/"anon"/"system" artifacts — and
+    // artifacts owned only via createdBy — could be published
+    // (visibility flipped to "published") by anyone. Ownerless
+    // artifacts now publish admin/internal-only (moderators on social
+    // domains; AUTH_MODE=public exempt), via the same gate as
+    // lens.update. Owned artifacts keep this route's historical
+    // owner-only rule (no admin widening): _lensIsOwnerActor, which
+    // also matches createdBy/createdByUser.
+    if (isOwnerlessArtifact(artifact)) {
+      const ownerlessDenial = lensOwnerlessDenial({
+        ctx,
+        isAdmin: _lensIsAdminActor(ctx),
+        isSocialDomain: LENS_SOCIAL_DOMAINS.has(artifact.domain),
+        authMode: AUTH_MODE,
+        forbiddenError: "not your artifact",
+      });
+      if (ownerlessDenial) return res.status(ownerlessDenial.status).json({ ok: false, error: ownerlessDenial.error });
+    } else if (!_lensIsOwnerActor(ctx, artifact) && ctx?.internal !== true && ctx?.actor?.internal !== true) {
       return res.status(403).json({ ok: false, error: "not your artifact" });
     }
     artifact.meta = artifact.meta || {};
@@ -51912,6 +52102,106 @@ registerLensAction("forum", "moderate", (ctx, artifact, params) => {
   artifact.updatedAt = nowISO();
   saveStateDebounced();
   return { ok: true, moderation: { action, moderatedAt: nowISO() } };
+});
+// ── Forum post interactions (feature PR ahead of SEC Fix 7) ─────────────
+// BoardPanel used to persist votes, comment votes, comments, saves and
+// awards by rewriting the WHOLE post artifact through the generic
+// lens.update. Fix 7 closes lens.update to non-owners on social domains,
+// which would have broken every one of those interactions for everyone
+// but the post's author. These four actions are the proper server-side
+// path: each requires a real signed-in user, resolves the post artifact,
+// and applies ONLY the caller's own change (lib/forum-interactions.js) —
+// one ballot per user, one appended comment, the caller's own save,
+// one award. The client never sends the post body, so it cannot forge
+// another user's ballot, edit the post text, or flip shared state.
+// The post LOCK intentionally stays on lens.update (moderator path) and
+// becomes moderator-only when Fix 7 lands.
+function _forumInteractionDenial(ctx) {
+  const userId = ctx?.actor?.userId || ctx?.actor?.id || null;
+  if (!userId || userId === "anon") {
+    return { ok: false, status: 401, code: "AUTH_REQUIRED", error: "sign in required" };
+  }
+  return null;
+}
+function _forumPostArtifact(artifact) {
+  if (!artifact || artifact.domain !== "forum" || artifact.type !== "post") return null;
+  if (artifact.data?.removed) return null;
+  return artifact;
+}
+registerLensAction("forum", "post-vote", (ctx, artifact, params) => {
+  const denied = _forumInteractionDenial(ctx); if (denied) return denied;
+  const post = _forumPostArtifact(artifact);
+  if (!post) return { ok: false, status: 404, error: "post not found" };
+  const userId = ctx.actor.userId || ctx.actor.id;
+  const target = params?.targetId
+    ? findCommentInTree(post.data.comments, String(params.targetId))
+    : post.data;
+  if (!target) return { ok: false, status: 404, error: "comment not found" };
+  const result = applyBallot(target, userId, params?.direction);
+  post.updatedAt = nowISO();
+  saveStateDebounced();
+  return { ok: true, ...result, ...(params?.targetId ? { targetId: String(params.targetId) } : {}) };
+});
+registerLensAction("forum", "post-comment", (ctx, artifact, params) => {
+  const denied = _forumInteractionDenial(ctx); if (denied) return denied;
+  const post = _forumPostArtifact(artifact);
+  if (!post) return { ok: false, status: 404, error: "post not found" };
+  if (post.data.locked) return { ok: false, status: 403, code: "FORBIDDEN", error: "forbidden: post is locked" };
+  const content = String(params?.content || "").trim().slice(0, 8000);
+  if (!content) return { ok: false, status: 400, error: "comment content required" };
+  const userId = ctx.actor.userId || ctx.actor.id;
+  const username = ctx.actor.username || userId;
+  const requestedId = typeof params?.id === "string" && params.id ? params.id : null;
+  const commentId = requestedId && !findCommentInTree(post.data.comments, requestedId)
+    ? requestedId
+    : uid("cmt");
+  const comment = {
+    id: commentId,
+    author: { username, displayName: ctx.actor.displayName || username, avatar: String(username).slice(0, 1).toUpperCase() },
+    authorId: userId,
+    content,
+    score: 1,
+    userVote: 1,
+    voters: { [userId]: 1 },
+    createdAt: nowISO(),
+    awards: [],
+    replies: [],
+    collapsed: false,
+  };
+  if (!Array.isArray(post.data.comments)) post.data.comments = [];
+  const parentId = params?.parentId ? String(params.parentId) : null;
+  if (!appendCommentTree(post.data.comments, parentId, comment)) {
+    return { ok: false, status: 404, error: "parent comment not found" };
+  }
+  post.data.commentCount = countCommentTree(post.data.comments);
+  post.updatedAt = nowISO();
+  saveStateDebounced();
+  return { ok: true, comment, commentCount: post.data.commentCount };
+});
+registerLensAction("forum", "post-save", (ctx, artifact, params) => {
+  const denied = _forumInteractionDenial(ctx); if (denied) return denied;
+  const post = _forumPostArtifact(artifact);
+  if (!post) return { ok: false, status: 404, error: "post not found" };
+  const userId = ctx.actor.userId || ctx.actor.id;
+  const result = toggleSavedBy(post.data, userId);
+  post.updatedAt = nowISO();
+  saveStateDebounced();
+  return { ok: true, ...result };
+});
+registerLensAction("forum", "post-award", (ctx, artifact, params) => {
+  const denied = _forumInteractionDenial(ctx); if (denied) return denied;
+  const post = _forumPostArtifact(artifact);
+  if (!post) return { ok: false, status: 404, error: "post not found" };
+  const award = String(params?.award || "").trim().slice(0, 8);
+  if (!award) return { ok: false, status: 400, error: "award required" };
+  const target = params?.targetId
+    ? findCommentInTree(post.data.comments, String(params.targetId))
+    : post.data;
+  if (!target) return { ok: false, status: 404, error: "comment not found" };
+  const result = applyAward(target, award);
+  post.updatedAt = nowISO();
+  saveStateDebounced();
+  return { ok: true, ...result, ...(params?.targetId ? { targetId: String(params.targetId) } : {}) };
 });
 registerLensAction("forum", "rank_posts", (ctx, artifact, params) => {
   try {
@@ -60487,7 +60777,12 @@ app.post("/api/import/roam", (req, res) => {
 
 app.get("/api/export/markdown", (req, res) => {
   const ids = req.query.ids ? req.query.ids.split(",") : null;
-  const result = exportDTUsToMarkdown(ids);
+  // SECURITY: bulk (no-ids) export requires a signed-in user, and
+  // the export is filtered to DTUs the caller may read.
+  const ctx = makeCtx(req);
+  const bulkDenial = exportBulkDenial(ctx, !!ids);
+  if (bulkDenial) return res.status(401).json(bulkDenial);
+  const result = exportDTUsToMarkdown(ids, {}, ctx);
   if (req.query.download === "1") {
     res.set("Content-Type", "text/markdown");
     res.set("Content-Disposition", "attachment; filename=concord-export.md");
@@ -60498,7 +60793,12 @@ app.get("/api/export/markdown", (req, res) => {
 
 app.get("/api/export/json", (req, res) => {
   const ids = req.query.ids ? req.query.ids.split(",") : null;
-  const result = exportDTUsToJSON(ids);
+  // SECURITY: same rule as the markdown route — bulk requires a
+  // signed-in user; the export is read-filtered per caller.
+  const ctx = makeCtx(req);
+  const bulkDenial = exportBulkDenial(ctx, !!ids);
+  if (bulkDenial) return res.status(401).json(bulkDenial);
+  const result = exportDTUsToJSON(ids, ctx);
   if (req.query.download === "1") {
     res.set("Content-Disposition", "attachment; filename=concord-export.json");
   }
@@ -73360,6 +73660,13 @@ app.post("/api/personas/:id/ask", async (req, res) => {
 });
 
 app.put("/api/personas/:id", (req, res) => {
+  // SECURITY: this route mutates the GLOBAL agent persona roster
+  // (customInstructions/active/name every user's agent persona uses).
+  // It had no auth check at all — admin-class only now, checked before
+  // the roster lookup so members cannot probe roster ids
+  // (persona-legacy-gate.js, Fix 9).
+  const rosterDenial = personaRosterPutDenial(makeCtx(req));
+  if (rosterDenial) return res.status(rosterDenial.status).json(rosterDenial);
   const persona = Array.isArray(STATE.personas) ? STATE.personas.find(p => p.id === req.params.id) : null;
   if (!persona) return res.status(404).json({ ok: false, error: "Persona not found" });
   if (req.body.customInstructions !== undefined) persona.customInstructions = req.body.customInstructions;
