@@ -1218,8 +1218,9 @@ export default function registerResearchActions(registerLensAction) {
     if (rawCards.length > 200) return { ok: false, error: "too many cards (max 200)" };
     const cards = rawCards.map((c) => ({
       id: String(c.id || nextResId("card")),
-      kind: ["note", "text", "link"].includes(String(c.kind)) ? String(c.kind) : "text",
+      kind: ["note", "text", "link", "reference"].includes(String(c.kind)) ? String(c.kind) : "text",
       noteId: c.noteId ? String(c.noteId) : null,
+      referenceId: c.referenceId ? String(c.referenceId) : null,
       text: String(c.text || "").slice(0, 2000),
       x: Number.isFinite(Number(c.x)) ? Math.round(Number(c.x)) : 0,
       y: Number.isFinite(Number(c.y)) ? Math.round(Number(c.y)) : 0,
