@@ -182,6 +182,52 @@ describe("survival-engine library", () => {
     // severity > 0.5 → pain event
     assert.ok(events.some((e) => e.kind === "pain"));
   });
+
+  it("tickDiseases with no care on record progresses exactly as before (+0.005)", () => {
+    contractDisease(db, "u", "flu", { severity: 0.3 });
+    tickDiseases(db, "u");
+    const after = listActiveDiseases(db, "u")[0];
+    assert.ok(Math.abs(after.severity - 0.305) < 1e-9, `severity ${after.severity}`);
+  });
+
+  it("natural recovery keys off recent rest/food/water: full care drifts severity down and recovers", () => {
+    contractDisease(db, "u", "flu", { severity: 0.1 });
+    // Full care: budgets topped up AND meal/drink/sleep all just happened.
+    ensureBudget(db, "u");
+    db.prepare(`
+      UPDATE player_survival_budgets
+         SET hunger = 90, thirst = 90, sleep = 90,
+             last_meal_at = unixepoch(), last_drink_at = unixepoch(), last_sleep_at = unixepoch()
+       WHERE user_id = 'u'
+    `).run();
+    const events = tickDiseases(db, "u");
+    // drift = 0.005 - 3*0.004 = -0.007 → 0.093, reported as improving.
+    const after = listActiveDiseases(db, "u")[0];
+    assert.ok(Math.abs(after.severity - 0.093) < 1e-9, `severity ${after.severity}`);
+    assert.ok(events.some((e) => e.kind === "improving" && e.care === 3));
+    // Sustained care carries even a mid-severity disease to recovered.
+    db.prepare("UPDATE player_diseases SET severity = 0.05 WHERE user_id = 'u'").run();
+    let recovered = null;
+    for (let i = 0; i < 10 && !recovered; i++) {
+      recovered = tickDiseases(db, "u").find((e) => e.kind === "recovered") || null;
+    }
+    assert.ok(recovered, "disease should recover under sustained full care");
+    assert.equal(listActiveDiseases(db, "u").length, 0);
+  });
+
+  it("stale care does not count: high budgets with old timestamps still progress", () => {
+    contractDisease(db, "u", "flu", { severity: 0.3 });
+    ensureBudget(db, "u");
+    db.prepare(`
+      UPDATE player_survival_budgets
+         SET hunger = 90, thirst = 90, sleep = 90,
+             last_meal_at = unixepoch() - 7200, last_drink_at = unixepoch() - 7200, last_sleep_at = unixepoch() - 7200
+       WHERE user_id = 'u'
+    `).run();
+    tickDiseases(db, "u");
+    const after = listActiveDiseases(db, "u")[0];
+    assert.ok(Math.abs(after.severity - 0.305) < 1e-9, `severity ${after.severity}`);
+  });
 });
 
 describe("survival domain macros", () => {
