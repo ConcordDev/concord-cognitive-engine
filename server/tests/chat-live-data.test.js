@@ -80,3 +80,19 @@ test("the chat tool reaches get_live_data and refuses anonymous callers", async 
   assert.equal(r.ok, false);
   assert.match(r.error, /sign in/);
 });
+
+test("a hung exchange-rate server times out instead of holding the chat turn", async () => {
+  process.env.CONCORD_LIVE_DATA_FX_TIMEOUT_MS = "500";
+  try {
+    const hang = (url, init) => new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(Object.assign(new Error("aborted"), { name: "AbortError" }))));
+    const t0 = Date.now();
+    const r = await getLiveData(ctx, { kind: "fx", base: "EUR", symbols: ["USD"] }, { fetchImpl: hang });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /timed out after 500 ms/);
+    assert.ok(Date.now() - t0 < 3000);
+    // a stalled body read is cut too
+    const stall = async (url, init) => ({ ok: true, json: () => new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new Error("aborted")))) });
+    const r2 = await getLiveData(ctx, { kind: "fx", base: "EUR", symbols: ["GBP"] }, { fetchImpl: stall });
+    assert.match(r2.error, /timed out/);
+  } finally { delete process.env.CONCORD_LIVE_DATA_FX_TIMEOUT_MS; }
+});

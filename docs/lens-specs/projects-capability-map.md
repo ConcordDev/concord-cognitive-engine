@@ -384,3 +384,51 @@ project-management UI** that pre-dates it:
   "polished"`, `isGenericScaffold: false`.
 - No lens-page-level or `Pj*`-panel test file exists for `/lenses/projects`
   (confirmed by search) — nothing to update.
+
+## S4/D3 delta — assignment identity, real accounts only (2026-10-29)
+
+Branch `feat/lens-projects-assignment-s4` (stacked on
+`feat/lens-projects-analytics-redesign`; founder ruling §8 Q2:
+real accounts only — no free-text member or assignee path).
+
+CHANGED (domain, server/domains/projects.js):
+- Membership IS the platform ACL (server/lib/artifact-acl.js, #1789;
+  first domain adoption): the domain registers the "project" owner
+  resolver at registration and builds its manager over
+  `globalThis._concordSTATE.db`. member-list = owner + active
+  grantees (grant level view/edit is the role), display names resolved
+  via server/lib/user-identity.js at read time, never stored.
+- member-add = ACL grant by @username (or account id, resolved against
+  the users table); member-delete = ACL revoke + unassign that
+  account's tasks in the project. Free-text adds refused in words;
+  unknown accounts refused by name; the owner cannot be removed.
+- task.assigneeId now holds an ACCOUNT userId. The valid set (owner ∪
+  active grantees) is enforced at task-create, task-update (named
+  refusal), task-bulk-update, triage-accept, automation set_assignee,
+  and project leadId. Self-assignment works by construction (F4).
+- Migration (remove-and-receipt, S4 plan §4): legacy free-text member
+  records are deleted on first read, their tasks unassigned, ONE
+  activity receipt (members_migrated) per affected project with
+  counts. Idempotent.
+- project-duplicate copies NO membership (grants are per-artifact);
+  tasks keep an assignment only when the assignee is the owner.
+- NEW macros: my-work (the caller's open assignments across projects,
+  due-sorted, project refs attached) and shared-with-me (ACL
+  listSharedWith discovery — name/key/level only; task reads inside
+  another account's store ride the platform shared read path, not
+  this slice).
+
+CHANGED (frontend): PjTeamPanel rewritten for accounts (username +
+level add form, owner pinned/undeletable, revoke passes project
+scope); NEW PjMyWorkPanel (due-state groups, complete-through writes
+task-move-status, shared-with-you discovery rows); ProjectsSection
+gains the My Work tab (first) and the D3 landing rule (returning
+user with open assignments lands on My Work, decided once at load).
+
+Suites: server/tests/projects-assignment.test.js (9, new);
+projects-identity + projects-domain-parity updated to the account
+contract (disclosed changes — the parity suite's state now carries
+an in-memory db, the pattern of the repo's own artifact-acl suite);
+concord-frontend/tests/projects-assignment.test.tsx (5, new).
+Automation rules with a set_assignee value that is not a member
+no-op silently (system actor); explicit user choices refuse by name.

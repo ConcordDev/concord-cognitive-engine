@@ -88,11 +88,17 @@ async function fx(params, fetchImpl, nowIso) {
   if (!/^[A-Z]{3}$/.test(base) || !symbols.length) return { ok: false, error: 'fx needs 3-letter currency codes, e.g. {"kind":"fx","base":"EUR","symbols":["USD"]}' };
   const url = `${FRANKFURTER}/latest?base=${base}&symbols=${symbols.join(",")}`;
   let res; let json;
+  // A hung rate server must not hold a chat turn: abort the request and the body read after the timeout.
+  const timeoutMs = Math.max(500, Number(process.env.CONCORD_LIVE_DATA_FX_TIMEOUT_MS) || 8000);
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), timeoutMs);
   try {
-    res = await fetchImpl(url, { headers: { accept: "application/json" } });
+    res = await fetchImpl(url, { headers: { accept: "application/json" }, signal: ac.signal });
     if (!res.ok) return { ok: false, error: `Frankfurter HTTP ${res.status}` };
     json = await res.json();
-  } catch (e) { return { ok: false, error: `Frankfurter unreachable: ${String(e?.message || e)}` }; }
+  } catch (e) {
+    return { ok: false, error: ac.signal.aborted ? `Frankfurter timed out after ${timeoutMs} ms` : `Frankfurter unreachable: ${String(e?.message || e)}` };
+  } finally { clearTimeout(timer); }
   if (!json?.rates || typeof json.rates !== "object") return { ok: false, error: "Frankfurter returned no rates" };
   return {
     ok: true, kind: "fx", query: `${base}->${symbols.join(",")}`,
