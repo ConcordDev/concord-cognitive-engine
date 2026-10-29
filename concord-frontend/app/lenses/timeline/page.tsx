@@ -43,10 +43,26 @@ interface FeedResult {
 
 const TAB_IDS: Tab[] = ['roadmap', 'feed', 'timeline', 'albums', 'memories', 'notifications', 'profile'];
 
-function tabFromLocation(): Tab {
-  if (typeof window === 'undefined') return 'roadmap';
+// S-TL-1 (F1/F10): the wall is the front door. A fresh visit lands on
+// Feed; an explicit ?tab= wins; otherwise the lens restores the view
+// you last left — it remembers where you were instead of resetting
+// you to the Roadmap every time.
+const LAST_VIEW_KEY = 'concord.timeline.lastView';
+
+function tabFromParam(): Tab | null {
+  if (typeof window === 'undefined') return null;
   const value = new URLSearchParams(window.location.search).get('tab');
-  return TAB_IDS.includes(value as Tab) ? (value as Tab) : 'roadmap';
+  return TAB_IDS.includes(value as Tab) ? (value as Tab) : null;
+}
+
+function tabFromStorage(): Tab | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const value = window.localStorage.getItem(LAST_VIEW_KEY);
+    return TAB_IDS.includes(value as Tab) ? (value as Tab) : null;
+  } catch {
+    return null;
+  }
 }
 
 const TABS: { id: Tab; label: string; keys: string; hint: string; icon: typeof LayoutList }[] = [
@@ -73,8 +89,16 @@ export default function TimelineLensPage() {
   const { user } = useAuth();
   const viewerId = user?.id || 'anon';
 
-  const [tab, setTab] = useState<Tab>('roadmap');
-  useEffect(() => { setTab(tabFromLocation()); }, []);
+  const [tab, setTab] = useState<Tab>('feed');
+  useEffect(() => {
+    const fromParam = tabFromParam();
+    if (fromParam) { setTab(fromParam); return; }
+    const fromStorage = tabFromStorage();
+    if (fromStorage) setTab(fromStorage);
+  }, []);
+  useEffect(() => {
+    try { window.localStorage.setItem(LAST_VIEW_KEY, tab); } catch { /* storage unavailable */ }
+  }, [tab]);
   const [limit, setLimit] = useState(30);
   const [search, setSearch] = useState('');
 

@@ -3,7 +3,7 @@
 // PostComposer — create a post via timeline.post-create with media,
 // privacy controls and user tagging.
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Globe, Users, Lock, ImagePlus, Film, X, AtSign, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,19 @@ const PRIVACY: { id: Privacy; icon: typeof Globe; label: string }[] = [
   { id: 'private', icon: Lock, label: 'Only me' },
 ];
 
+// S-TL-1 (F10): the composer keeps its draft. Text, audience, media
+// and tags persist on this device across view switches and reloads,
+// and clear when the post is published — the lens remembers what you
+// were writing instead of dropping it.
+const DRAFT_KEY = 'concord.timeline.composerDraft';
+
+interface ComposerDraft {
+  content: string;
+  privacy: Privacy;
+  media: MediaItem[];
+  tags: string[];
+}
+
 export function PostComposer({ onPosted }: { onPosted?: () => void }) {
   const qc = useQueryClient();
   const [content, setContent] = useState('');
@@ -28,6 +41,51 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
   const [tagDraft, setTagDraft] = useState('');
   const [showMediaInput, setShowMediaInput] = useState(false);
   const [showTagInput, setShowTagInput] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+
+  // Restore once on mount (client-only, like the page's last-view).
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw) as Partial<ComposerDraft>;
+      const hasContent = typeof draft.content === 'string' && draft.content.length > 0;
+      const hasMedia = Array.isArray(draft.media) && draft.media.length > 0;
+      const hasTags = Array.isArray(draft.tags) && draft.tags.length > 0;
+      if (!hasContent && !hasMedia && !hasTags) return;
+      if (hasContent) setContent(draft.content as string);
+      if (draft.privacy === 'public' || draft.privacy === 'friends' || draft.privacy === 'private') {
+        setPrivacy(draft.privacy);
+      }
+      if (hasMedia) {
+        setMedia((draft.media as MediaItem[]).filter((m) => m && typeof m.url === 'string' && (m.kind === 'photo' || m.kind === 'video')));
+      }
+      if (hasTags) setTags((draft.tags as string[]).filter((t) => typeof t === 'string'));
+      setDraftRestored(true);
+    } catch { /* a corrupt draft is dropped, never fatal */ }
+  }, []);
+
+  // Persist on every change — but skip the first run: on mount this
+  // effect would otherwise write the initial empty state over the
+  // stored draft before the restore above has landed.
+  const skipFirstPersist = useRef(true);
+  useEffect(() => {
+    if (skipFirstPersist.current) { skipFirstPersist.current = false; return; }
+    try {
+      const draft: ComposerDraft = { content, privacy, media, tags };
+      window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch { /* storage unavailable */ }
+  }, [content, privacy, media, tags]);
+
+  const discardDraft = () => {
+    setContent('');
+    setMedia([]);
+    setTags([]);
+    setDraftRestored(false);
+    try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+  };
+
+  const hasDraft = content.length > 0 || media.length > 0 || tags.length > 0;
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -44,6 +102,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
         setContent('');
         setMedia([]);
         setTags([]);
+        setDraftRestored(false);
         onPosted?.();
       } else {
         useUIStore.getState().addToast({ type: 'error', message: r.data.error || 'Post failed' });
@@ -79,6 +138,15 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
           className="flex-1 bg-[#3a3b3c] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-400 outline-none resize-none focus:ring-1 focus:ring-blue-500"
         />
       </div>
+
+      {hasDraft && (
+        <p className="text-[11px] text-gray-500 flex items-center gap-2">
+          <span>{draftRestored ? 'Draft restored. ' : ''}Your draft is kept on this device until you post it.</span>
+          <button onClick={discardDraft} className="text-gray-400 hover:text-red-400 underline">
+            Discard draft
+          </button>
+        </p>
+      )}
 
       {/* Attached media chips */}
       {media.length > 0 && (
