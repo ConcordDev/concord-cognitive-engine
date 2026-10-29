@@ -563,7 +563,8 @@ export default function registerGoalsActions(registerLensAction) {
         team: new Map(),       // userId -> Array<teamGoal>
         recurring: new Map(),  // userId -> Array<recurringGoal>
         reminders: new Map(),  // userId -> Array<reminder>
-        deps: new Map(),       // userId -> Array<{ from, to, kind }>
+        deps: new Map(),
+        chartPoints: new Map(), // userId -> Array<manual chart point> (S4)       // userId -> Array<{ from, to, kind }>
         seq: new Map(),        // userId -> { obj, chk, team, rec, rem, dep }
       };
     }
@@ -580,8 +581,9 @@ export default function registerGoalsActions(registerLensAction) {
   }
 
   function nextSeq(s, userId, key) {
-    if (!s.seq.has(userId)) s.seq.set(userId, { obj: 1, chk: 1, team: 1, rec: 1, rem: 1, dep: 1 });
+    if (!s.seq.has(userId)) s.seq.set(userId, { obj: 1, chk: 1, team: 1, rec: 1, rem: 1, dep: 1, cp: 1 });
     const seq = s.seq.get(userId);
+    if (seq[key] == null) seq[key] = 1; // states persisted before a kind existed
     const n = seq[key]++;
     return n;
   }
@@ -998,33 +1000,22 @@ export default function registerGoalsActions(registerLensAction) {
   });
 
   /**
-   * progressChart
-   * Progress charts — burndown and trend series from a goal's history.
-   * artifact/params.history = [{ date, progress (0-100) }]
-   * params.target (default 100), params.targetDate (optional ISO)
-   * Returns burndown (remaining work), trend (cumulative progress) and an
-   * ideal line for comparison — ready to feed ChartKit.
+   * chartFromHistory — the one chart computation (S4 refactor of the
+   * former progressChart body; arithmetic unchanged).
+   * Pure: history [{date, progress}] -> { trend, burndown, stats }.
    */
-  registerLensAction("goals", "progressChart", (ctx, artifact, params = {}) => {
-  try {
-    const history = (Array.isArray(params.history) && params.history.length
-      ? params.history
-      : artifact?.data?.history) || [];
-    const target = Number(params.target) > 0 ? Number(params.target) : 100;
-
-    const sorted = history
+  function chartFromHistory(history, targetIn, targetDateIn) {
+    const target = Number(targetIn) > 0 ? Number(targetIn) : 100;
+    const sorted = (Array.isArray(history) ? history : [])
       .map((h) => ({ date: h.date, progress: Number(h.progress) || 0, t: new Date(h.date).getTime() }))
       .filter((h) => !isNaN(h.t))
       .sort((a, b) => a.t - b.t);
-
     if (sorted.length === 0) {
-      return { ok: true, result: { trend: [], burndown: [], stats: { points: 0 }, empty: true } };
+      return { trend: [], burndown: [], stats: { points: 0 }, empty: true };
     }
-
     const first = sorted[0].t;
-    const targetDate = params.targetDate ? new Date(params.targetDate).getTime() : sorted[sorted.length - 1].t;
+    const targetDate = targetDateIn ? new Date(targetDateIn).getTime() : sorted[sorted.length - 1].t;
     const span = Math.max(1, targetDate - first);
-
     const trend = sorted.map((h) => {
       const frac = Math.min(1, Math.max(0, (h.t - first) / span));
       return {
@@ -1033,7 +1024,6 @@ export default function registerGoalsActions(registerLensAction) {
         ideal: Math.round(frac * target * 100) / 100,
       };
     });
-
     const burndown = sorted.map((h) => {
       const frac = Math.min(1, Math.max(0, (h.t - first) / span));
       return {
@@ -1042,30 +1032,94 @@ export default function registerGoalsActions(registerLensAction) {
         idealRemaining: Math.round((target - frac * target) * 100) / 100,
       };
     });
-
     const last = sorted[sorted.length - 1];
     const days = Math.max(1, (last.t - first) / 86400000);
     const velocity = Math.round(((last.progress - sorted[0].progress) / days) * 1000) / 1000;
     const idealFrac = Math.min(1, Math.max(0, (last.t - first) / span));
     const expected = idealFrac * target;
     const variance = Math.round((last.progress - expected) * 100) / 100;
-
     return {
-      ok: true,
-      result: {
-        trend,
-        burndown,
-        stats: {
-          points: sorted.length,
-          currentProgress: last.progress,
-          target,
-          remaining: Math.round((target - last.progress) * 100) / 100,
-          velocityPerDay: velocity,
-          varianceFromIdeal: variance,
-          pace: variance >= 0 ? "ahead" : variance > -10 ? "on_track" : "behind",
-        },
+      trend, burndown,
+      stats: {
+        points: sorted.length,
+        currentProgress: last.progress,
+        target,
+        remaining: Math.round((target - last.progress) * 100) / 100,
+        velocityPerDay: velocity,
+        varianceFromIdeal: variance,
+        pace: variance >= 0 ? "ahead" : variance > -10 ? "on_track" : "behind",
       },
     };
+  }
+
+  /**
+   * progressChart
+   * Progress charts — burndown and trend series from a goal's history.
+   * Legacy compute (no op): params.history = [{ date, progress }],
+   *   params.target (default 100), params.targetDate (optional ISO).
+   * S4 ops (params.op):
+   *   'series'       -> { goalId, target? } — the objective's series,
+   *                     built from its check-in history plus its
+   *                     persisted manual points; every point is tagged
+   *                     with its source ('checkin' | 'manual').
+   *   'add-point'    -> { goalId, date, progress } — persist a manual
+   *                     point. Progress is validated, never clamped.
+   *   'remove-point' -> { id, goalId } — remove a manual point
+   *                     (check-in points are removed with the check-in).
+   *   All ops return the objective's refreshed series.
+   */
+  registerLensAction("goals", "progressChart", (ctx, artifact, params = {}) => {
+  try {
+    if (params.op) {
+      const s = getGoalsState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = actId(ctx);
+      const manual = ensureList(s.chartPoints, userId);
+
+      if (params.op === "add-point") {
+        if (!params.goalId) return { ok: false, error: "goalId required" };
+        const progress = Number(params.progress);
+        if (!Number.isFinite(progress) || progress < 0 || progress > 100) {
+          return { ok: false, error: "progress must be between 0 and 100" };
+        }
+        const date = typeof params.date === "string" && params.date
+          ? params.date : new Date().toISOString().slice(0, 10);
+        manual.push({
+          id: `cp_${nextSeq(s, userId, "cp")}`,
+          goalId: params.goalId, date, progress,
+          createdAt: new Date().toISOString(),
+        });
+        save();
+      } else if (params.op === "remove-point") {
+        const idx = manual.findIndex((pt) => pt.id === params.id);
+        if (idx === -1) return { ok: false, error: "manual point not found" };
+        manual.splice(idx, 1);
+        save();
+      } else if (params.op !== "series") {
+        return { ok: false, error: "unknown op" };
+      }
+
+      const goalId = params.goalId || null;
+      const checkinPoints = (s.checkins.get(userId) || [])
+        .filter((c) => c.goalId === goalId && c.progress != null)
+        .map((c) => ({
+          id: c.id, source: "checkin",
+          date: c.period || (c.createdAt || "").slice(0, 10),
+          progress: c.progress, createdAt: c.createdAt || "",
+        }));
+      const manualPoints = manual
+        .filter((pt) => pt.goalId === goalId)
+        .map((pt) => ({ id: pt.id, source: "manual", date: pt.date, progress: pt.progress, createdAt: pt.createdAt || "" }));
+      const points = [...checkinPoints, ...manualPoints]
+        .sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.createdAt || "").localeCompare(b.createdAt || ""));
+      const result = chartFromHistory(points, params.target, params.targetDate);
+      return { ok: true, result: { ...result, goalId, points } };
+    }
+
+    const history = (Array.isArray(params.history) && params.history.length
+      ? params.history
+      : artifact?.data?.history) || [];
+    return { ok: true, result: chartFromHistory(history, params.target, params.targetDate) };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
