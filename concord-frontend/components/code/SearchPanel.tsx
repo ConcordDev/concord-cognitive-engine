@@ -77,8 +77,19 @@ export function SearchPanel({
     setLoading(true); setNotice(null);
     try {
       const r = await lensRun({ domain: 'code', action: 'find-references', input: { projectId, symbol: q.trim() } });
+      if (r.data?.ok === false) {
+        // S7 (F7): a failed reference search is not "No references."
+        setNoticeKind('error');
+        setNotice(`Reference search failed: ${r.data?.error || 'unavailable'}`);
+        setRefs([]);
+        return;
+      }
       setRefs((r.data?.result?.references || []) as Ref[]);
-    } catch (e) { console.error('[Refs] failed', e); }
+    } catch (e) {
+      console.error('[Refs] failed', e);
+      setNoticeKind('error');
+      setNotice('Reference search failed: the request did not complete.');
+    }
     finally { setLoading(false); }
   }
 

@@ -651,6 +651,43 @@ describe("code — symbols-outline", () => {
   });
 });
 
+describe("code — diagnostics engine honesty (S7)", () => {
+  it("names its engine, and when the TS engine is live it sees the syntax error the editor sees", () => {
+    const p = call("projects-create", ctxC, { name: "D" }).result.project;
+    call("files-write", ctxC, { projectId: p.id, path: "bad.js", content: "const x =;\n" });
+    const r = call("diagnostics", ctxC, { projectId: p.id });
+    assert.equal(r.ok, true);
+    assert.ok(["typescript", "heuristics-only"].includes(r.result.engine));
+    if (r.result.engine === "typescript") {
+      const msgs = r.result.problems.filter(x => x.path === "bad.js").map(x => x.message).join(" ");
+      assert.match(msgs, /Expression expected/);
+    }
+  });
+
+  it("symbols-outline labels its source and refuses docs files honestly", () => {
+    const p = call("projects-create", ctxC, { name: "S" }).result.project;
+    call("files-write", ctxC, { projectId: p.id, path: "a.py", content: "def helper():\n    return 1\n" });
+    const py = call("symbols-outline", ctxC, { projectId: p.id, path: "a.py" });
+    assert.equal(py.ok, true);
+    assert.equal(py.result.source, "lexical");
+    assert.ok(py.result.symbols.some(x => x.name === "helper"));
+    call("files-write", ctxC, { projectId: p.id, path: "notes.md", content: "# Title\n\ntext\n" });
+    const md = call("symbols-outline", ctxC, { projectId: p.id, path: "notes.md" });
+    assert.equal(md.ok, true);
+    assert.equal(md.result.unsupported, true);
+    assert.equal(md.result.count, 0);
+  });
+
+  it("find-references labels the lexical source when no position is given", () => {
+    const p = call("projects-create", ctxC, { name: "S" }).result.project;
+    call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "const renamedVar = 1;\nconsole.log(renamedVar);\n" });
+    const r = call("find-references", ctxC, { projectId: p.id, symbol: "renamedVar" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.source, "lexical");
+    assert.equal(r.result.count, 2);
+  });
+});
+
 describe("code — diagnostics", () => {
   it("flags debugger, console, var, loose equality and unbalanced brackets", () => {
     const p = call("projects-create", ctxC, { name: "D" }).result.project;

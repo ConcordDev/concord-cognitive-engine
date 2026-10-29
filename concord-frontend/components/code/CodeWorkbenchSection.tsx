@@ -26,6 +26,7 @@ export function CodeWorkbenchSection() {
   const [modifiedCount, setModifiedCount] = useState(0);
   const [problems, setProblems] = useState({ error: 0, warning: 0 });
   const [showBottom, setShowBottom] = useState(false);
+  const [statusNonce, setStatusNonce] = useState(0);
   // Dashboard-summary stat strip (code.workspace-summary) — a real
   // cross-project glance (project/file counts, running agent tasks, dirty
   // projects) rendered in the status bar so it's always visible, not
@@ -48,6 +49,7 @@ export function CodeWorkbenchSection() {
   }, []);
 
   const refreshStatus = useCallback(async () => {
+    setStatusNonce(n => n + 1);
     if (!projectId) { setBranch('main'); setModifiedCount(0); setProblems({ error: 0, warning: 0 }); return; }
     try {
       const [s, d] = await Promise.all([
@@ -88,7 +90,7 @@ export function CodeWorkbenchSection() {
       branch={branch}
       showBottom={showBottom}
       onToggleBottom={() => setShowBottom((v) => !v)}
-      bottomPanel={<ProblemsPanel projectId={projectId} onOpen={openFile} />}
+      bottomPanel={<ProblemsPanel projectId={projectId} onOpen={openFile} refreshNonce={statusNonce} />}
       sidePanel={
         <>
           <ProjectSwitcher value={projectId} onChange={setProjectId} onDeleted={() => { setProjectId(null); setOpenPath(null); setOpenLine(null); }} />

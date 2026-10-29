@@ -2167,7 +2167,7 @@ Rules:
         re.lastIndex = 0;
       });
     }
-    return { ok: true, result: { symbol, references: refs.slice(0, 200), count: refs.length } };
+    return { ok: true, result: { symbol, references: refs.slice(0, 200), count: refs.length, source: "lexical" } };
     } catch (e) { return handlerFailure(e); }
 });
 
@@ -2187,8 +2187,15 @@ Rules:
       const r = tsLang.outline(files, path);
       if (r) return { ok: true, result: { path, language: lang, symbols: r.symbols, count: r.symbols.length, source: "typescript" } };
     }
+    // S7 (F7): the lexical scan is a real source for code languages;
+    // for file kinds it cannot read (docs, data, prose) the honest
+    // answer is "unavailable", never a plausible-looking empty list.
+    const LEXICAL_LANGS = new Set(["python", "javascript", "typescript", "c", "cpp", "java", "go", "rust"]);
+    if (!LEXICAL_LANGS.has(lang)) {
+      return { ok: true, result: { path, language: lang, symbols: [], count: 0, source: "none", unsupported: true } };
+    }
     const symbols = extractSymbols(files.get(path).content, lang);
-    return { ok: true, result: { path, language: lang, symbols, count: symbols.length } };
+    return { ok: true, result: { path, language: lang, symbols, count: symbols.length, source: "lexical" } };
     } catch (e) { return handlerFailure(e); }
 });
 
@@ -2228,7 +2235,12 @@ Rules:
     }
     const bySeverity = { error: 0, warning: 0, info: 0 };
     for (const p of problems) bySeverity[p.severity] = (bySeverity[p.severity] || 0) + 1;
-    return { ok: true, result: { problems, total: problems.length, bySeverity, filesScanned: targets.length } };
+    // S7 (F6): say which engine produced this. When the TypeScript
+    // language service is unavailable server-side, only the style
+    // heuristics ran — the panel must not present that as full
+    // coverage while the editor's own markers show syntax errors.
+    const engine = tsLang.tsAvailable(null) ? "typescript" : "heuristics-only";
+    return { ok: true, result: { problems, total: problems.length, bySeverity, filesScanned: targets.length, engine } };
     } catch (e) { return handlerFailure(e); }
 });
 
