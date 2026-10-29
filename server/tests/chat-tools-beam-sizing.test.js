@@ -67,6 +67,7 @@ test("a beam ask with no span, load or section asks for inputs instead of design
   assert.ok(r.result.missing.length >= 3);
   const some = await run("size a steel beam, 4 m span");
   assert.notEqual(some.key, "conkay_design.needs-inputs", "any real input keeps the existing path");
+});
 
 test("a footbridge beam brief is a beam, not a truss (live harness case normal.beam-footbridge)", async () => {
   const { detectDomain } = await import("../lib/conkay/chat/brief-parser.js");
