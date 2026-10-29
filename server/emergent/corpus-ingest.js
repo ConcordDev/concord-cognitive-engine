@@ -83,54 +83,79 @@ function _safeFetch(url, opts = {}) {
 
 // ── OpenStax (Rice University free college textbooks, CC-BY) ──────────────
 
-// Rotation window for the OpenStax pull (audit Q65/B#25): previously every
-// cycle fetched catalog page 1 and chapters 1-3 of each book, so books 21+
-// and chapters 4+ were unreachable FOREVER despite the daily budget being
-// spent. The cursor advances the chapter window every cycle and the
-// catalog page whenever a page is fully consumed, wrapping at the ends —
-// coverage now rotates through the whole catalog over successive cycles.
+// Rotation for the OpenStax pull (audit Q65/B#25): previously every cycle
+// fetched catalog page 1 and chapters 1-3 of each book, so books 21+ and
+// chapters 4+ were unreachable FOREVER despite the daily budget being spent.
+//
+// The cursor walks a page in order: for each chapter window, every book,
+// then the next window, until the page's longest TOC is covered; then the
+// next catalog page (wrapping after a short final page). The daily budget
+// (default 25) is smaller than one window of one page (20 books x 3
+// chapters), so the cursor records the exact book and chapter where the
+// budget stopped and the next cycle resumes THERE. A page-level "completed"
+// flag would never become true under the default budget and the rotation
+// would stall on page 1.
 // In-memory like the daily counters above (a restart restarts the
 // rotation; worst case some early chapters are re-pulled, never lost).
 const OPENSTAX_PAGE_SIZE = 20;
 const OPENSTAX_CHAPTER_WINDOW = 3;
-const _openstaxCursor = { offset: 0, chapterStart: 0 };
+const _openstaxCursor = { offset: 0, chapterStart: 0, bookIdx: 0, chapterIdx: 0, pageMaxToc: 0 };
 
-/** Pure rotation step — exported for tests. */
-export function _nextOpenStaxWindow(cursor, { booksOnPage = 0, pageCompleted = false, maxToc = 0 } = {}) {
-  let chapterStart = cursor.chapterStart;
-  if (maxToc > 0) {
-    chapterStart = chapterStart + OPENSTAX_CHAPTER_WINDOW >= maxToc ? 0 : chapterStart + OPENSTAX_CHAPTER_WINDOW;
+/** Test hook: restart the rotation and refund the day's OpenStax budget. */
+export function _resetOpenStaxForTest() {
+  Object.assign(_openstaxCursor, { offset: 0, chapterStart: 0, bookIdx: 0, chapterIdx: 0, pageMaxToc: 0 });
+  _dailyCount.delete("openstax");
+}
+/** Test hook: refund the day's OpenStax budget only (simulates a new UTC day). */
+export function _refundOpenStaxBudgetForTest() { _dailyCount.delete("openstax"); }
+
+/**
+ * Pure rotation step — exported for tests.
+ * @param {{offset:number,chapterStart:number,bookIdx:number,chapterIdx:number,pageMaxToc:number}} cursor
+ * @param {{booksOnPage?:number, stoppedAt?:{bookIdx:number,chapterIdx:number}|null, maxToc?:number, fetched?:boolean}} r
+ *   stoppedAt: where the budget ran out (null = the window sweep finished);
+ *   fetched:   false when the catalog fetch failed (cursor unchanged).
+ */
+export function _advanceOpenStaxCursor(cursor, { booksOnPage = 0, stoppedAt = null, maxToc = 0, fetched = true } = {}) {
+  if (!fetched) return { ...cursor };
+  const pageMaxToc = Math.max(cursor.pageMaxToc || 0, maxToc);
+  if (stoppedAt) {
+    return { ...cursor, bookIdx: stoppedAt.bookIdx, chapterIdx: stoppedAt.chapterIdx, pageMaxToc };
   }
-  let offset = cursor.offset;
-  if (pageCompleted) {
-    offset = booksOnPage < OPENSTAX_PAGE_SIZE ? 0 : offset + OPENSTAX_PAGE_SIZE;
+  // Window swept across every book on this page.
+  if (pageMaxToc > 0 && cursor.chapterStart + OPENSTAX_CHAPTER_WINDOW < pageMaxToc) {
+    return { offset: cursor.offset, chapterStart: cursor.chapterStart + OPENSTAX_CHAPTER_WINDOW, bookIdx: 0, chapterIdx: 0, pageMaxToc };
   }
-  return { offset, chapterStart };
+  const offset = booksOnPage < OPENSTAX_PAGE_SIZE ? 0 : cursor.offset + OPENSTAX_PAGE_SIZE;
+  return { offset, chapterStart: 0, bookIdx: 0, chapterIdx: 0, pageMaxToc: 0 };
 }
 
 //
 // The OpenStax catalog is at https://openstax.org/api/v2/pages
 // (no key required). Pull a small batch per day, parse chapter
 // content, hand to bridge as kind="textbook_chapter".
-async function _pullOpenStax(bridgeEvent) {
+export async function _pullOpenStax(bridgeEvent) {
   const budget = _budgetRemaining("openstax");
   if (budget <= 0) return { source: "openstax", pulled: 0, reason: "budget_exhausted" };
 
   let pulled = 0;
-  let pageCompleted = false;
+  let stoppedAt = null;
   let maxToc = 0;
   let booksOnPage = 0;
+  let fetched = false;
+  const cur = { ..._openstaxCursor };
   try {
     // Catalog listing — one page per cycle, rotating (see _openstaxCursor).
-    const catalogRes = await _safeFetch(`https://openstax.org/api/v2/pages/?type=books.Book&fields=title,slug,description&limit=${OPENSTAX_PAGE_SIZE}&offset=${_openstaxCursor.offset}`);
+    const catalogRes = await _safeFetch(`https://openstax.org/api/v2/pages/?type=books.Book&fields=title,slug,description&limit=${OPENSTAX_PAGE_SIZE}&offset=${cur.offset}`);
     if (!catalogRes.ok) return { source: "openstax", pulled: 0, reason: `catalog_${catalogRes.status}` };
     const catalog = await catalogRes.json().catch(() => null);
     const books = Array.isArray(catalog?.items) ? catalog.items : [];
     booksOnPage = books.length;
+    fetched = true;
 
-    pageCompleted = true;
-    for (const book of books) {
-      if (pulled >= budget) { pageCompleted = false; break; }
+    for (let i = cur.bookIdx < books.length ? cur.bookIdx : 0; i < books.length; i++) {
+      const book = books[i];
+      if (pulled >= budget) { stoppedAt = { bookIdx: i, chapterIdx: 0 }; break; }
       try {
         const slug = book?.slug || book?.meta?.slug;
         if (!slug) continue;
@@ -141,8 +166,11 @@ async function _pullOpenStax(bridgeEvent) {
         const tocItems = tocJson?.items?.[0]?.book_state || [];
         if (tocItems.length > maxToc) maxToc = tocItems.length;
 
-        for (const chapter of (tocItems || []).slice(_openstaxCursor.chapterStart, _openstaxCursor.chapterStart + OPENSTAX_CHAPTER_WINDOW)) {
-          if (pulled >= budget) { pageCompleted = false; break; }
+        const windowChapters = (tocItems || []).slice(cur.chapterStart, cur.chapterStart + OPENSTAX_CHAPTER_WINDOW);
+        // Only the book the previous cycle stopped inside resumes mid-window.
+        for (let j = (i === cur.bookIdx ? cur.chapterIdx : 0); j < windowChapters.length; j++) {
+          if (pulled >= budget) { stoppedAt = { bookIdx: i, chapterIdx: j }; break; }
+          const chapter = windowChapters[j];
           const chapterTitle = chapter?.title || chapter?.tree?.title || "(untitled chapter)";
           const chapterContent = chapter?.content || chapter?.text || chapter?.tree?.contents || "";
           if (!chapterTitle || !chapterContent) continue;
@@ -162,6 +190,7 @@ async function _pullOpenStax(bridgeEvent) {
           pulled += 1;
           _spendBudget("openstax", 1);
         }
+        if (stoppedAt) break;
       } catch (e) {
         logger.debug?.("corpus-ingest", "openstax_book_fail", { error: e?.message });
       }
@@ -169,9 +198,7 @@ async function _pullOpenStax(bridgeEvent) {
   } catch (e) {
     logger.warn?.("corpus-ingest", "openstax_catalog_fail", { error: e?.message });
   }
-  const next = _nextOpenStaxWindow(_openstaxCursor, { booksOnPage, pageCompleted, maxToc });
-  _openstaxCursor.offset = next.offset;
-  _openstaxCursor.chapterStart = next.chapterStart;
+  Object.assign(_openstaxCursor, _advanceOpenStaxCursor(cur, { booksOnPage, stoppedAt, maxToc, fetched }));
   return { source: "openstax", pulled };
 }
 
