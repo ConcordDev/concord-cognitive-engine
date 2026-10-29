@@ -3,6 +3,7 @@ import { updateClockOffset } from '../offline/db';
 import { useUIStore } from '@/store/ui';
 import { fromAxiosError } from '@/lib/errors';
 import { getApiBase } from './base';
+import { isHandlerDefectRefusal, refusalToastMessage } from './lens-refusal';
 import { clearServerBusy, isServiceOverloadedPayload, noteServerBusy } from '@/lib/realtime/server-busy';
 import { createRestartWindow, isRestartFailure, type RestartWindow } from './restart-window';
 import type {
@@ -430,7 +431,7 @@ api.interceptors.response.use(
     // is a 4xx we deliberately resolved above. Surface it once. Quiet codes
     // are read-path noise (logged-out list, unknown macro still on HTTP 200).
     const lensUrl = response.config?.url || '';
-    const lensData = response.data as { ok?: boolean; error?: string } | undefined;
+    const lensData = response.data as { ok?: boolean; error?: string; field?: string | null; reason?: string } | undefined;
     if (
       typeof window !== 'undefined' &&
       response.status >= 400 &&
@@ -440,9 +441,36 @@ api.interceptors.response.use(
       !QUIET_LENS_ERRORS.has(lensData.error)
     ) {
       const store = useUIStore.getState();
-      const existingToastCount = store.toasts.filter((t) => t.type === 'error' || t.type === 'warning').length;
-      if (existingToastCount < 2) {
-        store.addToast({ type: 'error', message: lensData.error.replace(/_/g, ' ') });
+      // F16 (PR #1707): a server handler TypeError is rewritten by the
+      // dispatch to error:"invalid_input" (reason type_error /
+      // not_a_function / invalid_time). That is a server defect, NOT the
+      // user's input — but this toast printed it verbatim as
+      // "invalid input", and because companion calls (diagnostics,
+      // status refreshes) ride along with saves and creates, the red
+      // toast fired on SUCCESSFUL operations and trained users to
+      // ignore the error channel. Handler defects are recorded in the
+      // request-error list (System Status) where they can be inspected,
+      // never toasted as user mistakes. Genuine refusals still toast,
+      // now with the field/reason the server named.
+      const handlerDefect = isHandlerDefectRefusal(lensData.error, lensData.reason);
+      if (handlerDefect) {
+        let action = 'lens action';
+        try {
+          const body = typeof response.config?.data === 'string' ? JSON.parse(response.config.data) : response.config?.data;
+          if (body?.action) action = String(body.action);
+        } catch { /* keep the generic label */ }
+        store.addRequestError({
+          path: lensUrl,
+          method: (response.config?.method || 'post').toUpperCase(),
+          status: response.status,
+          message: `${action} failed inside the server (invalid_input/${lensData.reason})`,
+          reason: 'handler_defect',
+        });
+      } else {
+        const existingToastCount = store.toasts.filter((t) => t.type === 'error' || t.type === 'warning').length;
+        if (existingToastCount < 2) {
+          store.addToast({ type: 'error', message: refusalToastMessage(lensData.error, lensData.field, lensData.reason) });
+        }
       }
     }
 

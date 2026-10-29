@@ -129,7 +129,10 @@ function SystemStatus() {
           {showUnreachable ? 'Backend Unreachable' : !statusSettled ? 'Checking backend…' : 'System Status'}
         </span>
         {hasErrors && (
-          <span className="ml-auto px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded-full text-xs">
+          <span
+            className="ml-auto px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded-full text-xs"
+            title={`${criticalCount} failed requests recorded (server errors, timeouts, network failures) — expand for the list`}
+          >
             {criticalCount}
           </span>
         )}
@@ -190,6 +193,11 @@ function SystemStatus() {
                   Clear
                 </button>
               </div>
+              <p className="text-xs text-gray-400">
+                {criticalCount} failed request{criticalCount === 1 ? '' : 's'} recorded since this page
+                loaded — server errors, timeouts, and network failures. Expected responses
+                (404 lookups, 401 auth checks, 403s handled elsewhere) are not counted.
+              </p>
               {criticalCount > recentErrors.length && (
                 <p className="text-xs text-gray-400">
                   Showing latest {recentErrors.length} of {criticalCount}
