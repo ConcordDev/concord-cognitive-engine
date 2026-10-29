@@ -26,6 +26,7 @@ import {
 interface AlignObjective {
   id: string; title: string; parentId: string | null; owner: string | null;
   team: string | null; level: string; keyResults: string[];
+  progress?: number | null; progressSource?: string | null;
   children?: AlignObjective[];
 }
 interface AlignStats {
@@ -194,6 +195,15 @@ function AlignmentTab() {
             <span className="rounded bg-cyan-500/15 px-1 text-[9px] uppercase text-cyan-300">{node.level}</span>
             {node.team && <span className="rounded bg-purple-500/15 px-1 text-[9px] text-purple-300">{node.team}</span>}
           </div>
+          {node.progress != null && (
+            <div className="mt-1 flex items-center gap-2">
+              <div className="h-1 flex-1 overflow-hidden rounded bg-zinc-800">
+                <div className="h-full rounded bg-cyan-400 transition-all duration-500" style={{ width: `${Math.min(100, Math.max(0, node.progress))}%` }} />
+              </div>
+              <span className="font-mono text-[10px] text-cyan-300">{Math.round(node.progress)}%</span>
+              <span className="text-[9px] text-zinc-500">{node.progressSource === 'rollup' ? 'rolled up from children' : 'from check-ins'}</span>
+            </div>
+          )}
           {node.keyResults.length > 0 && (
             <ul className="mt-1 space-y-0.5">
               {node.keyResults.map((kr, i) => (
@@ -268,6 +278,7 @@ function CheckinsTab() {
   const [progress, setProgress] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [objProgress, setObjProgress] = useState<{ progress: number | null; progressSource: string | null } | null>(null);
 
   const load = useCallback(async () => {
     const r = await lensRun('goals', 'checkin', { op: 'list' });
@@ -289,6 +300,7 @@ function CheckinsTab() {
     if (r.data?.ok && r.data.result) {
       setCheckins(r.data.result.checkins || []);
       setStats(r.data.result.stats || null);
+      setObjProgress(r.data.result.objectiveProgress || null);
       setNote(''); setProgress('');
     }
   };
@@ -322,6 +334,11 @@ function CheckinsTab() {
         </button>
       </div>
 
+      {objProgress?.progress != null && (
+        <p className="text-[11px] text-cyan-300" role="status">
+          That objective is now at {Math.round(objProgress.progress)}% — the alignment tree shows this same progress.
+        </p>
+      )}
       {stats && stats.count > 0 && (
         <div className="grid grid-cols-3 gap-2">
           <div className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-center">
