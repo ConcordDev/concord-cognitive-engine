@@ -52,6 +52,7 @@ interface RecurringGoal {
   nextDue: string; occurrences: number;
 }
 interface ChartPoint { date: string; progress: number; }
+interface SeriesPoint { id: string; source: 'checkin' | 'manual'; date: string; progress: number; }
 interface TrendPoint extends Record<string, unknown> { date: string; progress: number; ideal: number; }
 interface BurndownPoint extends Record<string, unknown> { date: string; remaining: number; idealRemaining: number; }
 interface ChartStats {
@@ -616,7 +617,9 @@ function TemplatesTab() {
 // --------------- Progress Charts ---------------
 
 function ChartsTab() {
-  const [points, setPoints] = useState<ChartPoint[]>([]);
+  const [objectives, setObjectives] = useState<AlignObjective[]>([]);
+  const [goalId, setGoalId] = useState('');
+  const [points, setPoints] = useState<SeriesPoint[]>([]);
   const [date, setDate] = useState('');
   const [progress, setProgress] = useState('');
   const [target, setTarget] = useState('100');
@@ -625,57 +628,85 @@ function ChartsTab() {
   const [stats, setStats] = useState<ChartStats | null>(null);
   const [view, setView] = useState<'trend' | 'burndown'>('trend');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
-  const compute = useCallback(async (pts: ChartPoint[]) => {
-    if (pts.length === 0) {
-      setTrend([]); setBurndown([]); setStats(null);
-      return;
-    }
+  const applySeries = useCallback((result: {
+    points?: SeriesPoint[]; trend?: TrendPoint[]; burndown?: BurndownPoint[];
+    stats?: ChartStats; empty?: boolean;
+  }) => {
+    setPoints(result.points || []);
+    setTrend(result.trend || []);
+    setBurndown(result.burndown || []);
+    setStats(result.empty ? null : (result.stats || null));
+  }, []);
+
+  const loadSeries = useCallback(async (gid: string, tgt: string) => {
+    if (!gid) { setPoints([]); setTrend([]); setBurndown([]); setStats(null); return; }
     setBusy(true);
-    const r = await lensRun('goals', 'progressChart', {
-      history: pts, target: Number(target) || 100,
-    });
+    const r = await lensRun('goals', 'progressChart', { op: 'series', goalId: gid, target: Number(tgt) || 100 });
     setBusy(false);
-    if (r.data?.ok && r.data.result) {
-      setTrend(r.data.result.trend || []);
-      setBurndown(r.data.result.burndown || []);
-      setStats(r.data.result.empty ? null : (r.data.result.stats || null));
-    }
-  }, [target]);
+    if (r.data?.ok && r.data.result) applySeries(r.data.result);
+  }, [applySeries]);
 
-  const addPoint = () => {
-    if (!date || progress === '') return;
-    const next = [...points, { date, progress: Number(progress) }];
-    setPoints(next);
-    setDate(''); setProgress('');
-    compute(next);
+  useEffect(() => {
+    (async () => {
+      const r = await lensRun('goals', 'alignmentTree', { op: 'list' });
+      if (r.data?.ok && r.data.result) {
+        const flat = (r.data.result.flat || []) as AlignObjective[];
+        setObjectives(flat);
+        const first = flat.find((o) => o.progress != null) || flat[0];
+        if (first) { setGoalId(first.id); void loadSeries(first.id, '100'); }
+      }
+    })();
+  }, [loadSeries]);
+
+  const addPoint = async () => {
+    if (!goalId || !date || progress === '') return;
+    setError('');
+    const r = await lensRun('goals', 'progressChart', {
+      op: 'add-point', goalId, date, progress: Number(progress), target: Number(target) || 100,
+    });
+    if (r.data?.ok && r.data.result) {
+      applySeries(r.data.result);
+      setDate(''); setProgress('');
+    } else {
+      setError(r.data?.error || 'Could not add that point.');
+    }
   };
 
-  const removePoint = (idx: number) => {
-    const next = points.filter((_, i) => i !== idx);
-    setPoints(next);
-    compute(next);
+  const removePoint = async (id: string) => {
+    const r = await lensRun('goals', 'progressChart', { op: 'remove-point', id, goalId, target: Number(target) || 100 });
+    if (r.data?.ok && r.data.result) applySeries(r.data.result);
   };
 
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-        <input value={date} onChange={(e) => setDate(e.target.value)} type="date" className={inputCls} />
-        <input value={progress} onChange={(e) => setProgress(e.target.value)} type="number" min={0} max={100} placeholder="Progress %" className={inputCls} />
-        <input value={target} onChange={(e) => { setTarget(e.target.value); compute(points); }} type="number" min={1} placeholder="Target" className={inputCls} />
-        <button onClick={addPoint} disabled={!date || progress === ''} className={`${btnCls} col-span-3 justify-center`}>
-          <Plus className="h-3.5 w-3.5" /> Add data point
+        <select value={goalId} onChange={(e) => { setGoalId(e.target.value); setError(''); void loadSeries(e.target.value, target); }} className={inputCls} aria-label="Objective">
+          {objectives.length === 0 && <option value="">No objectives</option>}
+          {objectives.map((o) => <option key={o.id} value={o.id}>{o.title}</option>)}
+        </select>
+        <input value={target} onChange={(e) => { setTarget(e.target.value); void loadSeries(goalId, e.target.value); }} type="number" min={1} placeholder="Target" className={inputCls} aria-label="Target" />
+        <span className="flex items-center text-[10px] text-zinc-500">Series = this objective's check-ins + manual points. Both persist.</span>
+        <input value={date} onChange={(e) => setDate(e.target.value)} type="date" className={inputCls} aria-label="Point date" />
+        <input value={progress} onChange={(e) => setProgress(e.target.value)} type="number" min={0} max={100} placeholder="Progress %" className={inputCls} aria-label="Point progress" />
+        <button onClick={addPoint} disabled={!goalId || !date || progress === ''} className={`${btnCls} justify-center`}>
+          <Plus className="h-3.5 w-3.5" /> Add manual point
         </button>
       </div>
 
+      {error && <p className="text-[11px] text-rose-300" role="alert">{error}</p>}
+
       {points.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {points.map((p, i) => (
-            <span key={i} className="flex items-center gap-1 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300">
-              {p.date}: {p.progress}%
-              <button aria-label="Delete" onClick={() => removePoint(i)} className="text-zinc-400 hover:text-red-400">
-                <Trash2 className="h-3 w-3" />
-              </button>
+          {points.map((pt) => (
+            <span key={pt.id} className="flex items-center gap-1 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300">
+              {pt.date}: {pt.progress}% · {pt.source}
+              {pt.source === 'manual' && (
+                <button aria-label="Delete" onClick={() => removePoint(pt.id)} className="text-zinc-400 hover:text-red-400">
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              )}
             </span>
           ))}
         </div>
@@ -738,8 +769,11 @@ function ChartsTab() {
         </div>
       )}
 
-      {points.length === 0 && (
-        <EmptyMsg text="No progress data yet. Add dated data points to chart burndown and trend." />
+      {objectives.length === 0 && (
+        <EmptyMsg text="Create an objective first — charts are drawn per objective, from its check-ins." />
+      )}
+      {objectives.length > 0 && points.length === 0 && (
+        <EmptyMsg text="No progress data yet for this objective. Log a check-in or add a manual point — both persist here." />
       )}
       {busy && <div className="flex items-center gap-1.5 text-[10px] text-zinc-400"><Loader2 className="h-3 w-3 animate-spin" /> Computing…</div>}
     </div>
