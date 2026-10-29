@@ -1265,25 +1265,68 @@ export async function lensManifest(db, args) {
 // EMBEDDINGS
 // ═══════════════════════════════════════════════════════════════════════
 
-export async function embeddingSearch(db, args) {
+export async function embeddingSearch(db, args, deps = {}) {
   const query = String(args?.query || "").trim();
   const limit = Math.min(50, Math.max(1, Number(args?.limit) || 10));
   if (!query) return { ok: false, error: "query is required" };
 
   try {
-    // We can't do real semantic search without the embedding model.
-    // Return the metadata of recent embeddings as a placeholder.
+    // Real semantic search (Q34): embed the query with the SAME
+    // semantic layer that populated embeddings_e5 (server/embeddings.js
+    // — mxbai-embed-large, 1024-dim; its embed() is the exact function
+    // embed-backfill stored vectors with, so query and stored vectors
+    // share a space), then rank stored vectors by cosine. This replaced
+    // a placeholder that returned the most RECENT embedding rows
+    // regardless of the query. deps.embed / deps.cosineSimilarity are
+    // injectable for tests (the codebase's proof-gate seam convention).
+    let embedFn = deps.embed;
+    let cosineFn = deps.cosineSimilarity;
+    if (!embedFn || !cosineFn) {
+      const emb = await import("../embeddings.js");
+      embedFn = embedFn || emb.embed;
+      cosineFn = cosineFn || emb.cosineSimilarity;
+    }
+    const queryVec = await embedFn(query, "query");
+    if (!queryVec) {
+      // Honest unavailability — never fall back to unranked recent rows.
+      return { ok: false, error: "embedding model unavailable — semantic search cannot run right now" };
+    }
+
+    const MAX_SCAN = 20000;
     const rows = db.prepare(
-      `SELECT dtu_id, model, source, created_at FROM embeddings_e5 ORDER BY updated_at DESC LIMIT ?`
-    ).all(limit);
+      `SELECT dtu_id, vector, dim, model, source, created_at FROM embeddings_e5 LIMIT ?`
+    ).all(MAX_SCAN + 1);
+    const truncated = rows.length > MAX_SCAN;
+
+    let skippedDimMismatch = 0;
+    let skippedMissingVector = 0;
+    const scored = [];
+    for (const row of rows.slice(0, MAX_SCAN)) {
+      if (!row.vector) { skippedMissingVector++; continue; }
+      const vec = new Float32Array(row.vector.buffer, row.vector.byteOffset, row.vector.byteLength / Float32Array.BYTES_PER_ELEMENT);
+      // Rule from embeddings.js: never mix models/dimensions in one space.
+      if (vec.length !== queryVec.length) { skippedDimMismatch++; continue; }
+      scored.push({
+        dtu_id: row.dtu_id,
+        model: row.model,
+        source: row.source,
+        created_at: row.created_at,
+        score: cosineFn(queryVec, vec),
+      });
+    }
+    scored.sort((a, b) => b.score - a.score);
+    const results = scored.slice(0, limit);
     return {
       ok: true,
-      results: rows,
-      count: rows.length,
-      note: "Semantic search requires the embedding model loaded in-process. This endpoint returns recent embedding metadata."
+      results,
+      count: results.length,
+      scanned: scored.length + skippedDimMismatch + skippedMissingVector,
+      ...(truncated ? { truncated: true, scan_cap: MAX_SCAN } : {}),
+      ...(skippedDimMismatch ? { skipped_dim_mismatch: skippedDimMismatch } : {}),
+      ...(skippedMissingVector ? { skipped_missing_vector: skippedMissingVector } : {}),
     };
   } catch (e) {
-    return { ok: false, error: "DB query failed: " + String(e?.message || e) };
+    return { ok: false, error: "embedding search failed: " + String(e?.message || e) };
   }
 }
 
