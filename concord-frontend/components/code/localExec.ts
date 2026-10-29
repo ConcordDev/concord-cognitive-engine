@@ -66,6 +66,12 @@ export interface LocalRunOutcome {
 
 export type LocalRunPhase = 'loading-runtime' | 'running';
 
+export interface GeneratedTestRun {
+  outcome: LocalRunOutcome;
+  /** Present only when the tests actually executed and were counted. */
+  summary: import('./testHarness').TestSummary | null;
+}
+
 async function toPlainJs(code: string, language: string): Promise<string> {
   const lang = language.trim().toLowerCase();
   if (lang !== 'typescript' && lang !== 'ts') return code;
@@ -334,4 +340,181 @@ function runPythonOnce(
     worker.postMessage({ type: 'run', id, code: input.code, indexURL: pyodideIndexURL() });
     void runClockStart;
   });
+}
+
+// ── Generated-test execution (S4) ────────────────────────────────────
+// Executes tests produced by code.test-generate (after the
+// testGenContract validation) against the file under test, in the
+// same worker discipline as plain runs. The summary it returns was
+// counted by the harness from tests that actually ran — it is the
+// ONLY source of pass/fail anywhere in the Code lens.
+
+export async function runGeneratedTests(input: {
+  sourceCode: string;
+  testCode: string;
+  language: string;
+  timeoutMs?: number;
+  onStatus?: (phase: LocalRunPhase) => void;
+}): Promise<GeneratedTestRun> {
+  if (isPythonLanguage(input.language)) {
+    return runPythonGeneratedTests(input);
+  }
+  const started = performance.now();
+  const timeoutMs = Math.min(
+    Math.max(1_000, Math.floor(input.timeoutMs ?? LOCAL_RUN_DEFAULT_TIMEOUT_MS)),
+    LOCAL_RUN_MAX_TIMEOUT_MS,
+  );
+  return new Promise<GeneratedTestRun>((resolve) => {
+    let worker: Worker;
+    try {
+      worker = new Worker(new URL('./local-exec.worker.ts', import.meta.url), { type: 'module' });
+    } catch {
+      resolve({
+        outcome: { result: { supported: false, stderr: 'The local test runner could not start in this browser.' }, elapsedMs: 0, timedOut: false, ranLocally: false },
+        summary: null,
+      });
+      return;
+    }
+    const id = ++workerSeq;
+    let stdout = '';
+    let stderr = '';
+    let summary: import('./testHarness').TestSummary | null = null;
+    let settled = false;
+    const finish = (outcome: LocalRunOutcome) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try { worker.terminate(); } catch { /* already gone */ }
+      resolve({ outcome, summary });
+    };
+    const timer = setTimeout(() => {
+      finish({
+        result: { supported: true, stdout, stderr, exitCode: undefined },
+        elapsedMs: Math.round(performance.now() - started), timedOut: true, ranLocally: true,
+      });
+    }, timeoutMs);
+    worker.onmessage = (ev: MessageEvent) => {
+      const msg = (ev.data || {}) as { type?: string; id?: number; text?: string; exitCode?: number; summary?: import('./testHarness').TestSummary };
+      if (msg.id !== id) return;
+      if (msg.type === 'stdout') stdout += String(msg.text || '');
+      else if (msg.type === 'stderr') stderr += String(msg.text || '');
+      else if (msg.type === 'test-summary') summary = msg.summary || null;
+      else if (msg.type === 'done') {
+        finish({
+          result: { supported: true, stdout, stderr, exitCode: Number.isFinite(msg.exitCode) ? Number(msg.exitCode) : 0 },
+          elapsedMs: Math.round(performance.now() - started), timedOut: false, ranLocally: true,
+        });
+      }
+    };
+    worker.onerror = (ev: ErrorEvent) => {
+      finish({
+        result: { supported: true, stdout, stderr: stderr + (ev.message || 'The test runner stopped unexpectedly.'), exitCode: 1 },
+        elapsedMs: Math.round(performance.now() - started), timedOut: false, ranLocally: true,
+      });
+    };
+    worker.postMessage({ type: 'run-tests', id, source: input.sourceCode, testCode: input.testCode });
+  });
+}
+
+function runPythonGeneratedTests(input: {
+  sourceCode: string;
+  testCode: string;
+  timeoutMs?: number;
+  onStatus?: (phase: LocalRunPhase) => void;
+}): Promise<GeneratedTestRun> {
+  const started = performance.now();
+  if (!pythonSession) {
+    pythonSession = { worker: null as unknown as Worker, ready: false, chain: Promise.resolve() };
+  }
+  const session = pythonSession;
+  const run = session.chain.then(async (): Promise<GeneratedTestRun> => {
+    // Re-check after queueing: a prior timeout may have discarded it.
+    const live = pythonSession ?? (pythonSession = { worker: null as unknown as Worker, ready: false, chain: Promise.resolve() });
+    if (!live.worker) {
+      try {
+        live.worker = new Worker(new URL('./python-exec.worker.ts', import.meta.url), { type: 'classic' });
+      } catch {
+        return {
+          outcome: { result: { supported: false, stderr: 'The local Python runner could not start in this browser.' }, elapsedMs: 0, timedOut: false, ranLocally: false },
+          summary: null,
+        };
+      }
+    }
+    const worker = live.worker;
+    const id = ++workerSeq;
+    const timeoutMs = Math.min(
+      Math.max(1_000, Math.floor(input.timeoutMs ?? LOCAL_RUN_DEFAULT_TIMEOUT_MS)),
+      LOCAL_RUN_MAX_TIMEOUT_MS,
+    );
+    return new Promise<GeneratedTestRun>((resolve) => {
+      let stdout = '';
+      let stderr = '';
+      let summary: import('./testHarness').TestSummary | null = null;
+      let settled = false;
+      let loadedRuntime = false;
+      let runtimeLoadMs: number | undefined;
+      const finish = (outcome: LocalRunOutcome, kill = false) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(hardTimer);
+        if (runTimer) clearTimeout(runTimer);
+        worker.removeEventListener('message', onMessage);
+        worker.removeEventListener('error', onError);
+        if (kill) {
+          try { worker.terminate(); } catch { /* already gone */ }
+          if (pythonSession === live) pythonSession = null;
+        }
+        resolve({ outcome, summary });
+      };
+      let runTimer: ReturnType<typeof setTimeout> | null = null;
+      const armRunTimer = () => {
+        if (runTimer) return;
+        runTimer = setTimeout(() => {
+          finish({
+            result: { supported: true, stdout, stderr, exitCode: undefined },
+            elapsedMs: Math.round(performance.now() - started), timedOut: true, ranLocally: true,
+            ...(loadedRuntime ? { loadedRuntime, runtimeLoadMs } : {}),
+          }, true);
+        }, timeoutMs);
+      };
+      const hardTimer = setTimeout(() => {
+        finish({
+          result: { supported: true, stdout, stderr: stderr + 'The Python runtime did not become ready in time.\n', exitCode: undefined },
+          elapsedMs: Math.round(performance.now() - started), timedOut: true, ranLocally: true,
+        }, true);
+      }, timeoutMs + 60_000);
+      const onError = (ev: ErrorEvent) => {
+        finish({
+          result: { supported: true, stdout, stderr: stderr + (ev.message || 'The Python runner stopped unexpectedly.'), exitCode: 1 },
+          elapsedMs: Math.round(performance.now() - started), timedOut: false, ranLocally: true,
+        }, true);
+      };
+      const onMessage = (ev: MessageEvent) => {
+        const msg = (ev.data || {}) as { type?: string; id?: number; text?: string; exitCode?: number; loadMs?: number; summary?: import('./testHarness').TestSummary };
+        if (msg.id !== id && msg.type !== 'ready' && msg.type !== 'loading') return;
+        if (msg.type === 'loading') { loadedRuntime = true; input.onStatus?.('loading-runtime'); }
+        else if (msg.type === 'ready') {
+          live.ready = true;
+          runtimeLoadMs = Number.isFinite(msg.loadMs) ? Number(msg.loadMs) : undefined;
+          input.onStatus?.('running');
+          armRunTimer();
+        } else if (msg.type === 'stdout') stdout += String(msg.text || '');
+        else if (msg.type === 'stderr') stderr += String(msg.text || '');
+        else if (msg.type === 'test-summary') summary = msg.summary || null;
+        else if (msg.type === 'done') {
+          finish({
+            result: { supported: true, stdout, stderr, exitCode: Number.isFinite(msg.exitCode) ? Number(msg.exitCode) : 0 },
+            elapsedMs: Math.round(performance.now() - started), timedOut: false, ranLocally: true,
+            ...(loadedRuntime ? { loadedRuntime, runtimeLoadMs } : {}),
+          });
+        }
+      };
+      worker.addEventListener('message', onMessage);
+      worker.addEventListener('error', onError);
+      if (live.ready) armRunTimer();
+      worker.postMessage({ type: 'run-tests', id, source: input.sourceCode, testCode: input.testCode, indexURL: pyodideIndexURL() });
+    });
+  });
+  session.chain = run.catch(() => undefined);
+  return run;
 }

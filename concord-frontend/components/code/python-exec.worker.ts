@@ -46,9 +46,40 @@ function ensureRuntime(id: number, indexURL: string): Promise<void> {
 
 let currentRunId = 0;
 
+// S4: the pytest-shim driver. Runs the file under test, then the
+// generated tests, in one globals dict; discovers test_* callables and
+// counts real outcomes. A minimal pytest.raises is provided; fixtures
+// and plugins are NOT — tests using them fail with their real error,
+// which the summary reports like any other failure.
+const TEST_DRIVER = [
+  "import sys, types",
+  "__pytest = types.ModuleType('pytest')",
+  "class __Raises:",
+  "    def __init__(self, exc): self.exc = exc",
+  "    def __enter__(self): return self",
+  "    def __exit__(self, et, ev, tb):",
+  "        if et is None: return False",
+  "        excs = self.exc if isinstance(self.exc, tuple) else (self.exc,)",
+  "        return any(isinstance(et, type) and issubclass(et, e) for e in excs)",
+  "__pytest.raises = __Raises",
+  "sys.modules.setdefault('pytest', __pytest)",
+  "__g = {}",
+  "exec(__SRC, __g)",
+  "exec(__TESTS, __g)",
+  "__found = [(n, f) for n, f in list(__g.items()) if n.startswith('test_') and callable(f)]",
+  "__results = []",
+  "for __name, __fn in __found:",
+  "    try:",
+  "        __fn()",
+  "        __results.append({'name': __name, 'ok': True})",
+  "    except Exception as __e:",
+  "        __results.append({'name': __name, 'ok': False, 'error': f'{type(__e).__name__}: {__e}'})",
+  "{'total': len(__found), 'passed': sum(1 for r in __results if r['ok']), 'failed': sum(1 for r in __results if not r['ok']), 'failures': [{'name': r['name'], 'error': r.get('error', '')} for r in __results if not r['ok']]}",
+].join('\n');
+
 scope.onmessage = (ev: MessageEvent) => {
-  const msg = (ev.data || {}) as { type?: string; id?: number; code?: string; indexURL?: string };
-  if (msg.type !== 'run') return;
+  const msg = (ev.data || {}) as { type?: string; id?: number; code?: string; indexURL?: string; source?: string; testCode?: string };
+  if (msg.type !== 'run' && msg.type !== 'run-tests') return;
   const id = Number(msg.id);
   currentRunId = id;
   void (async () => {
@@ -63,6 +94,15 @@ scope.onmessage = (ev: MessageEvent) => {
       return;
     }
     try {
+      if (msg.type === 'run-tests') {
+        pyodide.globals.set('__SRC', String(msg.source || ''));
+        pyodide.globals.set('__TESTS', String(msg.testCode || ''));
+        const raw = await pyodide.runPythonAsync(TEST_DRIVER);
+        const summary = raw && typeof raw.toJs === 'function' ? raw.toJs({ dict_converter: Object.fromEntries }) : raw;
+        scope.postMessage({ type: 'test-summary', id, summary });
+        scope.postMessage({ type: 'done', id, exitCode: 0 });
+        return;
+      }
       await pyodide.runPythonAsync(String(msg.code || ''));
       scope.postMessage({ type: 'done', id, exitCode: 0 });
     } catch (err) {

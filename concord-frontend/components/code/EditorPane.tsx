@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Sparkles, Loader2, Save, Wand2, MessageSquareText, FlaskConical, History, X } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { lensRun } from '@/lib/api/client';
+import { validateGeneratedTests } from './testGenContract';
+import { runGeneratedTests } from './localExec';
+import type { TestSummary } from './testHarness';
 import { EditorTabs } from './CodeWorkbenchShell';
 
 const MonacoWrapper = dynamic(() => import('./MonacoWrapper'), { ssr: false });
@@ -57,6 +60,11 @@ export function EditorPane({
   const [testGenOpen, setTestGenOpen] = useState(false);
   const [testGenLoading, setTestGenLoading] = useState(false);
   const [testGenResult, setTestGenResult] = useState<{ tests: string; framework: string; suggestedPath: string } | null>(null);
+  // S4: contract rejections render in the panel (never an alert, never
+  // a fake result), and run results live in their own block — produced
+  // only by actually executing the tests in the browser harness.
+  const [testGenError, setTestGenError] = useState<string | null>(null);
+  const [testRun, setTestRun] = useState<{ running: boolean; summary: TestSummary | null; note: string | null } | null>(null);
 
   // code.git-blame — per-line commit attribution for the active file.
   const [blameOpen, setBlameOpen] = useState(false);
@@ -197,17 +205,45 @@ export function EditorPane({
     setTestGenOpen(true);
     setTestGenLoading(true);
     setTestGenResult(null);
+    setTestGenError(null);
+    setTestRun(null);
     try {
       const framework = /\.py$/.test(active.path) ? 'pytest' : /\.(ts|tsx|js|jsx)$/.test(active.path) ? 'node:test' : 'the project convention';
       const r = await lensRun({ domain: 'code', action: 'test-generate', input: { code: active.content, framework } });
-      if (r.data?.ok === false) { alert(r.data?.error || 'Test generation failed.'); setTestGenOpen(false); return; }
-      const tests = String(r.data?.result?.tests || '');
-      if (!tests.trim()) { alert('No tests were generated.'); setTestGenOpen(false); return; }
-      setTestGenResult({ tests, framework: String(r.data?.result?.framework || framework), suggestedPath: suggestedTestPath(active.path) });
+      if (r.data?.ok === false) { setTestGenError(r.data?.error || 'Test generation failed.'); return; }
+      // The contract gate: run-shaped or non-test output is rejected
+      // here and NEVER rendered as tests or results (the A8 shape).
+      const verdict = validateGeneratedTests(r.data?.result, framework);
+      if (!verdict.ok) { setTestGenError(verdict.reason); return; }
+      setTestGenResult({ tests: verdict.tests, framework: verdict.framework, suggestedPath: suggestedTestPath(active.path) });
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Test generation failed.');
-      setTestGenOpen(false);
+      setTestGenError(e instanceof Error ? e.message : 'Test generation failed.');
     } finally { setTestGenLoading(false); }
+  }
+
+  async function runGenerated() {
+    if (!active || !testGenResult) return;
+    setTestRun({ running: true, summary: null, note: null });
+    try {
+      const { outcome, summary } = await runGeneratedTests({
+        sourceCode: active.content,
+        testCode: testGenResult.tests,
+        language: /\.py$/.test(active.path) ? 'python' : 'javascript',
+        onStatus: (phase) => {
+          if (phase === 'loading-runtime') {
+            setTestRun({ running: true, summary: null, note: 'Loading the Python runtime — first Python run only; this can take several seconds…' });
+          }
+        },
+      });
+      if (summary) {
+        setTestRun({ running: false, summary, note: outcome.timedOut ? 'The run was stopped for taking too long — counts above are partial.' : null });
+      } else {
+        const why = outcome.result.stderr?.trim() || (outcome.timedOut ? 'The tests did not finish in time.' : 'The tests could not run.');
+        setTestRun({ running: false, summary: null, note: why });
+      }
+    } catch (e) {
+      setTestRun({ running: false, summary: null, note: e instanceof Error ? e.message : 'The tests could not run.' });
+    }
   }
 
   async function saveGeneratedTests() {
@@ -335,15 +371,42 @@ export function EditorPane({
               </div>
               {testGenLoading ? (
                 <div className="text-gray-400 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />Writing tests…</div>
+              ) : testGenError ? (
+                <p className="text-amber-300 leading-relaxed">{testGenError}</p>
               ) : testGenResult ? (
                 <>
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold tracking-wider">GENERATED</span>
+                    <span className="text-gray-400">Written by the model for {active.path}. It has not been run{testRun?.summary ? ' — results below' : ''}.</span>
+                  </div>
                   <pre className="max-h-48 overflow-auto p-2 rounded bg-black/40 font-mono text-[11px] text-emerald-200 whitespace-pre-wrap">{testGenResult.tests}</pre>
                   <div className="mt-2 flex items-center gap-2">
                     <button onClick={saveGeneratedTests} disabled={!projectId} className="px-2 py-1 rounded bg-emerald-600 text-white font-bold hover:bg-emerald-500 disabled:opacity-40">
                       Save as {testGenResult.suggestedPath}
                     </button>
+                    <button onClick={runGenerated} disabled={testRun?.running} className="px-2 py-1 rounded bg-blue-600 text-white font-bold hover:bg-blue-500 disabled:opacity-40 inline-flex items-center gap-1">
+                      {testRun?.running ? <Loader2 className="w-3 h-3 animate-spin" /> : null}Run tests
+                    </button>
                     <button onClick={() => navigator.clipboard?.writeText(testGenResult.tests)} className="px-2 py-1 rounded border border-white/15 text-gray-300 hover:bg-white/[0.05]">Copy</button>
                   </div>
+                  {testRun && (
+                    <div className="mt-2 p-2 rounded bg-blue-500/[0.07] border border-blue-500/20">
+                      <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold mb-1">Run results — executed in your browser just now</div>
+                      {testRun.running ? (
+                        <div className="text-gray-300">{testRun.note || 'Running…'}</div>
+                      ) : testRun.summary ? (
+                        <>
+                          <div className="text-gray-100">{testRun.summary.passed} passed · {testRun.summary.failed} failed · {testRun.summary.total} total</div>
+                          {testRun.summary.failures.map((f) => (
+                            <div key={f.name} className="mt-1 text-red-300 font-mono text-[11px]">✗ {f.name} — {f.error}</div>
+                          ))}
+                          {testRun.note && <div className="mt-1 text-amber-300">{testRun.note}</div>}
+                        </>
+                      ) : (
+                        <div className="text-amber-300 whitespace-pre-wrap">{testRun.note}</div>
+                      )}
+                    </div>
+                  )}
                 </>
               ) : null}
             </div>
