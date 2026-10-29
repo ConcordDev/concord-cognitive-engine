@@ -173,7 +173,7 @@ export function WhiteboardStudio({
   // the lens-artifact record only when the server list is genuinely empty.
   const boardListItems: Record<string, unknown>[] = ((whiteboards?.whiteboards && whiteboards.whiteboards.length > 0)
     ? whiteboards.whiteboards
-    : boardArtifacts.map(a => ({ id: a.id, title: a.title, elementCount: 0 })))
+    : boardArtifacts.map(a => ({ id: a.id, title: a.title, elementCount: Array.isArray((a as { data?: { elements?: unknown[] } }).data?.elements) ? ((a as { data?: { elements?: unknown[] } }).data!.elements as unknown[]).length : 0 })))
     .filter((b) => !trashedBoardIds.has(String(b.id)));
 
   // North star: the canvas is the page, so open the most recent board instead
@@ -610,7 +610,7 @@ export function WhiteboardStudio({
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    const d = e.deltaY > 0 ? 0.9 : 1.1;
+    const d = e.deltaY > 0 ? 1 / 1.1 : 1.1;
     setZoom(z => clamp(z * d, 0.25, 4));
   };
 
