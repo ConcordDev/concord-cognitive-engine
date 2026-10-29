@@ -518,12 +518,53 @@ describe("code — agent tasks (Composer parity)", () => {
     assert.ok(actions.includes("tests"));
   });
 
-  it("agent-task-finish marks status + records files changed", async () => {
+  it("agent-task-finish REFUSES completion when nothing changed (S5 gate)", async () => {
     const proj = call("projects-create", ctxC, { name: "X" }).result.project;
     const t = await call("agent-task-start", ctxC, { projectId: proj.id, prompt: "fix bug" });
+    // A caller-supplied filesChanged list is never trusted — the gate
+    // derives the diff from content fingerprints taken at task start.
     const fin = call("agent-task-finish", ctxC, { id: t.result.task.id, status: "completed", filesChanged: ["src/a.ts", "src/b.ts"] });
+    assert.equal(fin.ok, false);
+    assert.match(fin.error, /no files changed/);
+    const list = call("agent-tasks-list", ctxC, {});
+    const still = list.result.tasks.find(x => x.id === t.result.task.id);
+    assert.equal(still.status, "running");
+  });
+
+  it("agent-task-finish completes when files really changed, deriving the list + receipts server-side", async () => {
+    const proj = call("projects-create", ctxC, { name: "X" }).result.project;
+    const t = await call("agent-task-start", ctxC, { projectId: proj.id, prompt: "fix bug" });
+    call("files-write", ctxC, { projectId: proj.id, path: "src/a.ts", content: "export const a = 1;" });
+    const fin = call("agent-task-finish", ctxC, { id: t.result.task.id, status: "completed" });
+    assert.equal(fin.ok, true);
     assert.equal(fin.result.task.status, "completed");
-    assert.equal(fin.result.task.filesChanged.length, 2);
+    assert.ok(fin.result.task.filesChanged.includes("src/a.ts"));
+    const receipt = fin.result.task.changeReceipts.find(c => c.path === "src/a.ts");
+    assert.ok(receipt, "receipt for the written file");
+    assert.equal(receipt.before, null);
+    assert.equal(typeof receipt.after, "string");
+    assert.equal(receipt.after.length, 12);
+  });
+
+  it("agent-task-finish rejects an unnamed status and re-finishing a terminal task", async () => {
+    const proj = call("projects-create", ctxC, { name: "X" }).result.project;
+    const t = await call("agent-task-start", ctxC, { projectId: proj.id, prompt: "fix bug" });
+    const bad = call("agent-task-finish", ctxC, { id: t.result.task.id, status: "done" });
+    assert.equal(bad.ok, false);
+    const cancelled = call("agent-task-finish", ctxC, { id: t.result.task.id, status: "cancelled" });
+    assert.equal(cancelled.ok, true);
+    const again = call("agent-task-finish", ctxC, { id: t.result.task.id, status: "cancelled" });
+    assert.equal(again.ok, false);
+    assert.match(again.error, /already cancelled/);
+  });
+
+  it("agent-task-finish failed stores the reason", async () => {
+    const proj = call("projects-create", ctxC, { name: "X" }).result.project;
+    const t = await call("agent-task-start", ctxC, { projectId: proj.id, prompt: "fix bug" });
+    const fin = call("agent-task-finish", ctxC, { id: t.result.task.id, status: "failed", reason: "planner unavailable" });
+    assert.equal(fin.ok, true);
+    assert.equal(fin.result.task.status, "failed");
+    assert.equal(fin.result.task.error, "planner unavailable");
   });
 });
 

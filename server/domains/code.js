@@ -25,6 +25,7 @@ import { retrieveRelevantFiles, candidatesFromLocalFiles, candidatesFromGitHubTr
 // lives in the lib (mirrors repair-remediation.js's shape); these are thin
 // macro wrappers only.
 import codePushGovernance from "../lib/code-push-governance.js";
+import { createHash } from "node:crypto";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
 
@@ -48,6 +49,13 @@ async function runLensOrMacro(ctx, domain, name, input) {
   } catch (e) {
     return handlerFailure(e);
   }
+}
+
+// S5 (PR #1707): content fingerprint for the Composer completion gate —
+// a task may only be marked completed when the project's files provably
+// differ from their fingerprints at task start. SHA-256 over content.
+function fileFingerprint(content) {
+  return createHash("sha256").update(String(content ?? ""), "utf8").digest("hex");
 }
 
 const SNIPPET_KIND = "code_snippet";
@@ -1900,6 +1908,13 @@ Rules:
       filesChanged: [],
     };
     seq.task++;
+    // S5: fingerprint every project file at start. Completion is gated
+    // on these (agent-task-finish re-fingerprints and diffs) — a task
+    // that changed nothing can never be certified COMPLETED.
+    task.fileHashesAtStart = {};
+    for (const [p, f] of ensureFiles(s, userId, projectId).entries()) {
+      task.fileHashesAtStart[p] = fileFingerprint(f?.content ?? "");
+    }
     bucketC(s.agentTasks, userId).push(task);
     saveWS();
 
@@ -1947,11 +1962,47 @@ Rules:
 
   registerLensAction("code", "agent-task-finish", (ctx, _a, params = {}) => {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const task = bucketC(s.agentTasks, aidC(ctx)).find(t => t.id === String(params.id || ""));
+    const userId = aidC(ctx);
+    const task = bucketC(s.agentTasks, userId).find(t => t.id === String(params.id || ""));
     if (!task) return { ok: false, error: "task not found" };
-    task.status = ['completed','cancelled','failed'].includes(params.status) ? params.status : 'completed';
+    // S5: no default-to-completed. The status must be named, and a
+    // terminal task cannot be re-finished.
+    const status = String(params.status || "");
+    if (!["completed", "cancelled", "failed"].includes(status)) {
+      return { ok: false, error: "status must be completed, cancelled, or failed" };
+    }
+    if (task.status !== "running") {
+      return { ok: false, error: `task already ${task.status}` };
+    }
+    if (status === "completed") {
+      // The completion gate: re-fingerprint the project's files and
+      // diff against the start record. The changed set is derived
+      // HERE, from content — a caller-supplied filesChanged list is
+      // never trusted. Zero changes refuses completion outright: the
+      // task stays running and the refusal says why.
+      const start = task.fileHashesAtStart || {};
+      const current = {};
+      for (const [p, f] of ensureFiles(s, userId, task.projectId).entries()) {
+        current[p] = fileFingerprint(f?.content ?? "");
+      }
+      const changed = [];
+      const paths = new Set([...Object.keys(start), ...Object.keys(current)]);
+      for (const p of paths) {
+        if (start[p] !== current[p]) {
+          changed.push({ path: p, before: start[p] ? start[p].slice(0, 12) : null, after: current[p] ? current[p].slice(0, 12) : null });
+        }
+      }
+      if (changed.length === 0) {
+        return { ok: false, error: "no files changed — a task that changed nothing cannot be marked completed", result: { task, changedFiles: [] } };
+      }
+      task.filesChanged = changed.map(c => c.path);
+      task.changeReceipts = changed;
+    }
+    if (status === "failed") {
+      task.error = String(params.reason || "marked failed");
+    }
+    task.status = status;
     task.finishedAt = isoC();
-    if (Array.isArray(params.filesChanged)) task.filesChanged = params.filesChanged.map(String);
     if (Array.isArray(params.steps)) task.steps = params.steps;
     saveWS();
     return { ok: true, result: { task } };
