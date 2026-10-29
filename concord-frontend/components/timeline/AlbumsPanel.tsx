@@ -60,7 +60,10 @@ export function AlbumsPanel() {
   const [editPrivacy, setEditPrivacy] = useState<Privacy>('private');
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const lifecycleError = (fallback: string) => (r: { data: { ok: boolean; error?: string } }) => {
+  // The error field is `string | null` in lensRun's declared result —
+  // typing it `string` here made all four lifecycle onSuccess call
+  // sites fail with TS2345 (GB-0045).
+  const lifecycleError = (fallback: string) => (r: { data: { ok: boolean; error?: string | null } }) => {
     if (!r.data.ok) useUIStore.getState().addToast({ type: 'error', message: r.data.error || fallback });
   };
 
