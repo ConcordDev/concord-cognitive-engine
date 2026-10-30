@@ -11,6 +11,9 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { createNotification } from "../emergent/social-layer.js";
 import { registerHeartbeat } from "../emergent/heartbeat-registry.js";
+import { fetchPublicUrl, assessPublicUrl } from "../lib/public-fetch.js";
+
+const MAX_ISSUES_PER_USER = Math.max(10, Number(process.env.CONCORD_DEBUG_MAX_ISSUES) || 1000);
 export default function registerDebugActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── Per-user observability state ───────────────────────────────
@@ -25,6 +28,7 @@ export default function registerDebugActions(registerLensAction) {
     if (!(d.metrics instanceof Map)) d.metrics = new Map();      // userId -> Array<sample>
     if (!(d.releases instanceof Map)) d.releases = new Map();    // userId -> Array<release>
     if (!(d.monitors instanceof Map)) d.monitors = new Map();    // userId -> Array<monitor>
+    if (!(d.projects instanceof Map)) d.projects = new Map();    // userId -> Array<project> (S10)
     return d;
   }
   function saveDebug() {
@@ -54,6 +58,154 @@ export default function registerDebugActions(registerLensAction) {
   const ISSUE_STATES = ["open", "resolved", "ignored"];
   const ALERT_OPS = [">", ">=", "<", "<=", "=="];
 
+  // ─── Projects (S10 — real project entities, §8 Q3 ruling) ─────────
+  // Sentry's organising unit: every observability record belongs to a
+  // project. Records stored before projects existed carry no projectId
+  // and belong to the account's default project. The default project
+  // is materialized lazily — real state, created the first time an
+  // account with no projects touches a project-aware surface.
+  function dbgProjects(s, userId) { return dbgList(s.projects, userId); }
+  function ensureDefaultProject(s, userId) {
+    const list = dbgProjects(s, userId);
+    let def = list.find((p) => p.isDefault);
+    if (!def) {
+      const now = new Date().toISOString();
+      def = {
+        id: dbgId("proj"), name: "Default project", description: "",
+        isDefault: true, createdAt: now, updatedAt: now,
+      };
+      list.push(def);
+      saveDebug();
+    }
+    return def;
+  }
+  // The project a record belongs to: its stamp, or the default.
+  const dbgRecordProject = (record, defaultId) => record.projectId || defaultId;
+  // Resolve the project a call operates on. An explicit projectId must
+  // be one of the caller's own projects — an unknown id is refused,
+  // never silently stamped or ignored. Absent means the default.
+  function dbgResolveProject(s, userId, params) {
+    const def = ensureDefaultProject(s, userId);
+    const raw = params?.projectId ? dbgClean(params.projectId, 64) : null;
+    if (!raw) return { project: def, defaultId: def.id };
+    const project = dbgProjects(s, userId).find((p) => p.id === raw);
+    if (!project) return { error: "project not found" };
+    return { project, defaultId: def.id };
+  }
+  function dbgProjectCounts(s, userId, projectId, defaultId) {
+    const count = (map) => dbgList(map, userId)
+      .filter((r) => dbgRecordProject(r, defaultId) === projectId).length;
+    return {
+      issues: count(s.issues),
+      traces: count(s.traces),
+      metrics: count(s.metrics),
+      alerts: count(s.alertRules),
+      releases: count(s.releases),
+    };
+  }
+
+  registerLensAction("debug", "project-create", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const userId = dbgActor(ctx);
+      ensureDefaultProject(s, userId);
+      const name = dbgClean(params.name, 80);
+      if (!name) return { ok: false, error: "project name required" };
+      const dupe = dbgProjects(s, userId)
+        .some((p) => p.name.toLowerCase() === name.toLowerCase());
+      if (dupe) return { ok: false, error: "a project with that name already exists" };
+      const now = new Date().toISOString();
+      const project = {
+        id: dbgId("proj"), name,
+        description: dbgClean(params.description, 500) || "",
+        isDefault: false, createdAt: now, updatedAt: now,
+      };
+      dbgProjects(s, userId).push(project);
+      saveDebug();
+      return { ok: true, result: { project } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("debug", "project-list", (ctx, _a, _params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const userId = dbgActor(ctx);
+      const def = ensureDefaultProject(s, userId);
+      const projects = dbgProjects(s, userId).map((p) => ({
+        ...p, counts: dbgProjectCounts(s, userId, p.id, def.id),
+      }));
+      return { ok: true, result: { projects, count: projects.length, defaultProjectId: def.id } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("debug", "project-update", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const userId = dbgActor(ctx);
+      ensureDefaultProject(s, userId);
+      const project = dbgProjects(s, userId).find((p) => p.id === params.id);
+      if (!project) return { ok: false, error: "project not found" };
+      if (params.name != null) {
+        const name = dbgClean(params.name, 80);
+        if (!name) return { ok: false, error: "project name required" };
+        const dupe = dbgProjects(s, userId)
+          .some((p) => p.id !== project.id && p.name.toLowerCase() === name.toLowerCase());
+        if (dupe) return { ok: false, error: "a project with that name already exists" };
+        project.name = name;
+      }
+      if (params.description != null) project.description = dbgClean(params.description, 500);
+      project.updatedAt = new Date().toISOString();
+      saveDebug();
+      return { ok: true, result: { project } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("debug", "project-delete", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const userId = dbgActor(ctx);
+      const def = ensureDefaultProject(s, userId);
+      const list = dbgProjects(s, userId);
+      const idx = list.findIndex((p) => p.id === params.id);
+      if (idx < 0) return { ok: false, error: "project not found" };
+      const project = list[idx];
+      if (project.isDefault) {
+        return { ok: false, error: "the default project can't be deleted — it holds everything recorded before projects" };
+      }
+      const counts = dbgProjectCounts(s, userId, project.id, def.id);
+      const total = counts.issues + counts.traces + counts.metrics + counts.alerts + counts.releases;
+      if (total > 0 && params.confirm !== true) {
+        return {
+          ok: false,
+          error: `project still holds ${total} record${total === 1 ? "" : "s"} — confirm the deletion to remove the project and its data`,
+          counts,
+        };
+      }
+      // Cascade: remove exactly this project's records, nothing else's.
+      const purge = (map) => {
+        const arr = dbgList(map, userId);
+        const next = arr.filter((r) => dbgRecordProject(r, def.id) !== project.id);
+        if (next.length !== arr.length) map.set(userId, next);
+      };
+      purge(s.issues); purge(s.traces); purge(s.metrics); purge(s.alertRules); purge(s.releases);
+      list.splice(idx, 1);
+      saveDebug();
+      return { ok: true, result: { deleted: project.id, name: project.name, removed: counts } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
   // ─── FEATURE: Live error stream / issue inbox ───────────────────
   // Ingest a runtime exception; groups by fingerprint into an issue
   // with occurrence count, breadcrumb trail, and release tag.
@@ -76,10 +228,16 @@ export default function registerDebugActions(registerLensAction) {
             level: ["debug", "info", "warning", "error"].includes(b.level) ? b.level : "info",
           }))
         : [];
+      const userId = dbgActor(ctx);
+      const resolved = dbgResolveProject(s, userId, params);
+      if (resolved.error) return { ok: false, error: resolved.error };
       const fp = fingerprint(type, message, culprit);
-      const list = dbgList(s.issues, dbgActor(ctx));
+      const list = dbgList(s.issues, userId);
       const now = new Date().toISOString();
-      let issue = list.find((i) => i.fingerprint === fp);
+      // S10: grouping is per-project — the same error in two projects
+      // is two issues, one in each.
+      let issue = list.find((i) => i.fingerprint === fp
+        && dbgRecordProject(i, resolved.defaultId) === resolved.project.id);
       let regressedNow = false;
       if (issue) {
         issue.count += 1;
@@ -95,6 +253,7 @@ export default function registerDebugActions(registerLensAction) {
         issue = {
           id: dbgId("issue"),
           fingerprint: fp,
+          projectId: resolved.project.id,
           type, message, culprit, level, stack,
           status: "open",
           assignee: null,
@@ -107,6 +266,14 @@ export default function registerDebugActions(registerLensAction) {
           occurrenceTimes: [now],
         };
         list.push(issue);
+        // Bounded per user: distinct messages make distinct issues and this is fed by client errors from every
+        // signed-in account, so evict the stalest (resolved first) instead of growing STATE without limit.
+        if (list.length > MAX_ISSUES_PER_USER) {
+          const rank = (i) => (i.status === "resolved" ? 0 : 1);
+          list.sort((a, b) => rank(a) - rank(b) || String(a.lastSeen || "").localeCompare(String(b.lastSeen || "")));
+          list.splice(0, list.length - MAX_ISSUES_PER_USER);
+          list.sort((a, b) => String(a.firstSeen || a.lastSeen || "").localeCompare(String(b.firstSeen || b.lastSeen || "")));
+        }
       }
       saveDebug();
       // Alert rules of kind issue/regression reach the owner through
@@ -127,7 +294,13 @@ export default function registerDebugActions(registerLensAction) {
     const s = getDebugState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     try {
-      let list = [...dbgList(s.issues, dbgActor(ctx))];
+      const userId = dbgActor(ctx);
+      const resolved = dbgResolveProject(s, userId, params);
+      if (resolved.error) return { ok: false, error: resolved.error };
+      // S10: the inbox shows the selected project; the summary below
+      // describes that project too, not the whole account.
+      let list = [...dbgList(s.issues, userId)]
+        .filter((i) => dbgRecordProject(i, resolved.defaultId) === resolved.project.id);
       if (ISSUE_STATES.includes(params.status)) list = list.filter((i) => i.status === params.status);
       if (params.level) list = list.filter((i) => i.level === params.level);
       if (params.release) list = list.filter((i) => (i.releases || []).includes(params.release));
@@ -140,10 +313,12 @@ export default function registerDebugActions(registerLensAction) {
       list.sort((a, b) => sort === "count"
         ? b.count - a.count
         : String(b[sort]).localeCompare(String(a[sort])));
-      const all = dbgList(s.issues, dbgActor(ctx));
+      const all = dbgList(s.issues, userId)
+        .filter((i) => dbgRecordProject(i, resolved.defaultId) === resolved.project.id);
       return {
         ok: true,
         result: {
+          projectId: resolved.project.id,
           issues: list.map((i) => ({ ...i, occurrenceTimes: undefined, stack: undefined })),
           count: list.length,
           summary: {
@@ -166,6 +341,14 @@ export default function registerDebugActions(registerLensAction) {
     try {
       const issue = dbgList(s.issues, dbgActor(ctx)).find((i) => i.id === params.id);
       if (!issue) return { ok: false, error: "issue not found" };
+      // S10: addressed under another project, it answers not-found —
+      // the same oracle-safe shape as a missing id.
+      if (params.projectId) {
+        const def = ensureDefaultProject(s, dbgActor(ctx));
+        if (dbgRecordProject(issue, def.id) !== dbgClean(params.projectId, 64)) {
+          return { ok: false, error: "issue not found" };
+        }
+      }
       // Bucket occurrences into a sparkline (hourly, last 24h).
       const times = (issue.occurrenceTimes || []).map((t) => new Date(t).getTime()).filter((n) => !isNaN(n));
       const now = Date.now();
@@ -257,8 +440,11 @@ export default function registerDebugActions(registerLensAction) {
           depth: depthOf(sp),
         };
       }).sort((a, b) => a.startMs - b.startMs || a.depth - b.depth);
+      const resolved = dbgResolveProject(s, dbgActor(ctx), params);
+      if (resolved.error) return { ok: false, error: resolved.error };
       const trace = {
         id: dbgId("trace"),
+        projectId: resolved.project.id,
         name: dbgClean(params.name, 200) || layout[0]?.name || "request",
         spanCount: layout.length,
         totalDurationMs: Math.round(total * 100) / 100,
@@ -277,18 +463,24 @@ export default function registerDebugActions(registerLensAction) {
     }
   });
 
-  registerLensAction("debug", "trace-list", (ctx, _a, _params = {}) => {
+  registerLensAction("debug", "trace-list", (ctx, _a, params = {}) => {
     const s = getDebugState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     try {
-      const list = dbgList(s.traces, dbgActor(ctx));
+      const userId = dbgActor(ctx);
+      const resolved = dbgResolveProject(s, userId, params);
+      if (resolved.error) return { ok: false, error: resolved.error };
+      const list = dbgList(s.traces, userId)
+        .filter((t) => dbgRecordProject(t, resolved.defaultId) === resolved.project.id);
       return {
         ok: true,
         result: {
+          projectId: resolved.project.id,
           traces: list.map((t) => ({
             id: t.id, name: t.name, spanCount: t.spanCount,
             totalDurationMs: t.totalDurationMs, errorCount: t.errorCount,
             rootService: t.rootService, recordedAt: t.recordedAt,
+            projectId: dbgRecordProject(t, resolved.defaultId),
           })),
           count: list.length,
         },
@@ -304,6 +496,12 @@ export default function registerDebugActions(registerLensAction) {
     try {
       const trace = dbgList(s.traces, dbgActor(ctx)).find((t) => t.id === params.id);
       if (!trace) return { ok: false, error: "trace not found" };
+      if (params.projectId) {
+        const def = ensureDefaultProject(s, dbgActor(ctx));
+        if (dbgRecordProject(trace, def.id) !== dbgClean(params.projectId, 64)) {
+          return { ok: false, error: "trace not found" };
+        }
+      }
       // Per-service rollup for the waterfall summary.
       const byService = {};
       for (const sp of trace.spans) {
@@ -336,19 +534,23 @@ export default function registerDebugActions(registerLensAction) {
       const value = dbgNum(params.value);
       if (!metric) return { ok: false, error: "metric name required" };
       if (value == null) return { ok: false, error: "numeric value required" };
+      const userId = dbgActor(ctx);
+      const resolved = dbgResolveProject(s, userId, params);
+      if (resolved.error) return { ok: false, error: resolved.error };
       const sample = {
         metric,
         value,
+        projectId: resolved.project.id,
         unit: dbgClean(params.unit, 20) || "",
         at: dbgClean(params.at, 40) || new Date().toISOString(),
       };
-      const list = dbgList(s.metrics, dbgActor(ctx));
+      const list = dbgList(s.metrics, userId);
       list.push(sample);
       // Keep last 5000 samples per user.
       if (list.length > 5000) list.splice(0, list.length - 5000);
       saveDebug();
       // Evaluate alert rules on the freshly recorded value.
-      const breaches = evaluateRules(s, dbgActor(ctx), metric, value);
+      const breaches = evaluateRules(s, userId, metric, value, resolved.project.id, resolved.defaultId);
       return { ok: true, result: { sample, breaches } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
@@ -360,10 +562,14 @@ export default function registerDebugActions(registerLensAction) {
     const s = getDebugState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     try {
-      const all = dbgList(s.metrics, dbgActor(ctx));
+      const userId = dbgActor(ctx);
+      const resolved = dbgResolveProject(s, userId, params);
+      if (resolved.error) return { ok: false, error: resolved.error };
+      const all = dbgList(s.metrics, userId)
+        .filter((m) => dbgRecordProject(m, resolved.defaultId) === resolved.project.id);
       const names = [...new Set(all.map((m) => m.metric))];
       const metric = dbgClean(params.metric, 60);
-      if (!metric) return { ok: true, result: { series: [], points: [], metrics: names } };
+      if (!metric) return { ok: true, result: { series: [], points: [], metrics: names, projectId: resolved.project.id } };
       let pts = all
         .filter((m) => m.metric === metric)
         .map((m) => ({ t: new Date(m.at).getTime(), value: m.value, unit: m.unit }))
@@ -404,7 +610,7 @@ export default function registerDebugActions(registerLensAction) {
             latest: vals[vals.length - 1],
           }
         : { count: 0, avg: 0, min: 0, max: 0, latest: 0 };
-      return { ok: true, result: { metric, points, stats, metrics: names } };
+      return { ok: true, result: { metric, points, stats, metrics: names, projectId: resolved.project.id } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -446,10 +652,12 @@ export default function registerDebugActions(registerLensAction) {
     if (rules.length) saveDebug();
   }
 
-  function evaluateRules(s, userId, metric, value) {
-    const rules = dbgList(s.alertRules, userId).filter(
-      (r) => (r.kind || "metric") === "metric" && r.metric === metric && r.enabled,
-    );
+  function evaluateRules(s, userId, metric, value, projectId, defaultId) {
+    // S10: a sample recorded into one project only evaluates that
+    // project's rules. Only metric-kind rules are threshold rules.
+    const rules = dbgList(s.alertRules, userId).filter((r) =>
+      (r.kind || "metric") === "metric" && r.metric === metric && r.enabled
+      && (projectId == null || dbgRecordProject(r, defaultId) === projectId));
     const breaches = [];
     for (const rule of rules) {
       let breached = false;
@@ -496,8 +704,11 @@ export default function registerDebugActions(registerLensAction) {
       // channel is Concord notifications — the one channel every
       // account has; the field is stored so the surface can say so.
       const kind = ["metric", "issue", "regression"].includes(params.kind) ? params.kind : "metric";
+      const resolved = dbgResolveProject(s, dbgActor(ctx), params);
+      if (resolved.error) return { ok: false, error: resolved.error };
       const rule = {
         id: dbgId("alert"),
+        projectId: resolved.project.id,
         name,
         kind,
         channel: "notifications",
@@ -542,14 +753,19 @@ export default function registerDebugActions(registerLensAction) {
     }
   });
 
-  registerLensAction("debug", "alert-list", (ctx, _a, _params = {}) => {
+  registerLensAction("debug", "alert-list", (ctx, _a, params = {}) => {
     const s = getDebugState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     try {
-      const rules = dbgList(s.alertRules, dbgActor(ctx));
+      const userId = dbgActor(ctx);
+      const resolved = dbgResolveProject(s, userId, params);
+      if (resolved.error) return { ok: false, error: resolved.error };
+      const rules = dbgList(s.alertRules, userId)
+        .filter((r) => dbgRecordProject(r, resolved.defaultId) === resolved.project.id);
       return {
         ok: true,
         result: {
+          projectId: resolved.project.id,
           rules,
           count: rules.length,
           alerting: rules.filter((r) => r.state === "alerting").length,
@@ -604,10 +820,19 @@ export default function registerDebugActions(registerLensAction) {
     try {
       const version = dbgClean(params.version, 60);
       if (!version) return { ok: false, error: "version required" };
-      const list = dbgList(s.releases, dbgActor(ctx));
-      if (list.some((r) => r.version === version)) return { ok: false, error: "release already tracked" };
+      const userId = dbgActor(ctx);
+      const resolved = dbgResolveProject(s, userId, params);
+      if (resolved.error) return { ok: false, error: resolved.error };
+      const list = dbgList(s.releases, userId);
+      // S10: a version is unique per project, not per account — two
+      // services can both ship a 1.0.0.
+      if (list.some((r) => r.version === version
+        && dbgRecordProject(r, resolved.defaultId) === resolved.project.id)) {
+        return { ok: false, error: "release already tracked" };
+      }
       const release = {
         id: dbgId("rel"),
+        projectId: resolved.project.id,
         version,
         environment: dbgClean(params.environment, 40) || "production",
         notes: dbgClean(params.notes, 1000) || "",
@@ -623,17 +848,22 @@ export default function registerDebugActions(registerLensAction) {
   });
 
   // List releases, each annotated with the issues tied to it.
-  registerLensAction("debug", "release-list", (ctx, _a, _params = {}) => {
+  registerLensAction("debug", "release-list", (ctx, _a, params = {}) => {
     const s = getDebugState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     try {
       const userId = dbgActor(ctx);
-      const releases = dbgList(s.releases, userId);
+      const resolved = dbgResolveProject(s, userId, params);
+      if (resolved.error) return { ok: false, error: resolved.error };
+      const releases = dbgList(s.releases, userId)
+        .filter((r) => dbgRecordProject(r, resolved.defaultId) === resolved.project.id);
       const issues = dbgList(s.issues, userId);
       const annotated = [...releases]
         .sort((a, b) => String(b.deployedAt).localeCompare(String(a.deployedAt)))
         .map((rel) => {
-          const tied = issues.filter((i) => (i.releases || []).includes(rel.version));
+          // S10: a release is tied only to issues in its own project.
+          const tied = issues.filter((i) => (i.releases || []).includes(rel.version)
+            && dbgRecordProject(i, resolved.defaultId) === dbgRecordProject(rel, resolved.defaultId));
           return {
             ...rel,
             issueCount: tied.length,
@@ -644,7 +874,7 @@ export default function registerDebugActions(registerLensAction) {
             crashFree: tied.length === 0,
           };
         });
-      return { ok: true, result: { releases: annotated, count: annotated.length } };
+      return { ok: true, result: { releases: annotated, count: annotated.length, projectId: resolved.project.id } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -1098,13 +1328,19 @@ export default function registerDebugActions(registerLensAction) {
   // Checks run on the platform heartbeat (due-ness by wall clock per
   // monitor) and on demand via monitor-check. Down/recovery
   // transitions notify through the same channel as alert rules.
-  const MONITOR_BLOCKED_HOSTS = new Set(["169.254.169.254", "metadata.google.internal"]);
+  // Monitors are member-reachable and the server runs on a host with loopback services and a home LAN, so
+  // every probe goes through the SSRF guard (scheme allowlist, private/loopback/link-local/metadata block,
+  // DNS pinned to the validated IP) and never follows a redirect: a 30x is reported as the status it is, it
+  // is not chased into a private address. Per-user count is capped so one member cannot starve the heartbeat.
+  const MAX_MONITORS_PER_USER = Math.max(1, Number(process.env.CONCORD_DEBUG_MAX_MONITORS) || 20);
 
-  function monitorUrlOk(raw) {
+  async function monitorUrlOk(raw) {
     let u;
     try { u = new URL(raw); } catch { return { ok: false, error: "invalid URL" }; }
     if (u.protocol !== "http:" && u.protocol !== "https:") return { ok: false, error: "only http(s) URLs can be monitored" };
-    if (MONITOR_BLOCKED_HOSTS.has(u.hostname)) return { ok: false, error: "that host cannot be monitored" };
+    if (u.username || u.password) return { ok: false, error: "URLs with embedded credentials cannot be monitored" };
+    const verdict = await assessPublicUrl(u.toString());
+    if (!verdict.ok) return { ok: false, error: "that address cannot be monitored (private, loopback or invalid)" };
     return { ok: true, url: u.toString() };
   }
 
@@ -1115,7 +1351,7 @@ export default function registerDebugActions(registerLensAction) {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 5000);
       try {
-        const res = await fetch(monitor.url, { method: "GET", redirect: "follow", signal: ctrl.signal });
+        const res = await fetchPublicUrl(monitor.url, { method: "GET", redirect: "manual", signal: ctrl.signal });
         outcome = { ok: res.status >= 200 && res.status < 400, statusCode: res.status, error: null };
       } finally { clearTimeout(timer); }
     } catch (e) {
@@ -1148,11 +1384,14 @@ export default function registerDebugActions(registerLensAction) {
     return entry;
   }
 
-  registerLensAction("debug", "monitor-create", (ctx, _a, params = {}) => {
+  registerLensAction("debug", "monitor-create", async (ctx, _a, params = {}) => {
     const s = getDebugState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     try {
-      const check = monitorUrlOk(dbgClean(params.url, 500));
+      if (dbgList(s.monitors, dbgActor(ctx)).length >= MAX_MONITORS_PER_USER) {
+        return { ok: false, error: `monitor limit reached (${MAX_MONITORS_PER_USER}) — delete one first` };
+      }
+      const check = await monitorUrlOk(dbgClean(params.url, 500));
       if (!check.ok) return { ok: false, error: check.error };
       const interval = Math.max(1, Math.min(1440, Math.round(dbgNum(params.intervalMinutes) ?? 5)));
       const monitor = {
@@ -1195,7 +1434,7 @@ export default function registerDebugActions(registerLensAction) {
     }
   });
 
-  registerLensAction("debug", "monitor-update", (ctx, _a, params = {}) => {
+  registerLensAction("debug", "monitor-update", async (ctx, _a, params = {}) => {
     const s = getDebugState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     try {
@@ -1203,7 +1442,7 @@ export default function registerDebugActions(registerLensAction) {
       if (!monitor) return { ok: false, error: "monitor not found" };
       if (params.name != null) monitor.name = dbgClean(params.name, 120) || monitor.name;
       if (params.url != null) {
-        const check = monitorUrlOk(dbgClean(params.url, 500));
+        const check = await monitorUrlOk(dbgClean(params.url, 500));
         if (!check.ok) return { ok: false, error: check.error };
         monitor.url = check.url;
       }

@@ -76,6 +76,71 @@ describe('useLensCommand', () => {
     expect(ids[0]).not.toBe(ids[1]);
   });
 
+  describe('per-command form-tag discipline (Q82)', () => {
+    function hotkeysArgs() {
+      const calls = useHotkeysSpy.mock.calls;
+      return calls[calls.length - 1] as [string, (e: unknown, h: unknown) => void, { enableOnFormTags: unknown }, unknown];
+    }
+    function fire(handler: (e: unknown, h: unknown) => void, hotkey: string, target: EventTarget) {
+      const event = { target, preventDefault: vi.fn() };
+      handler(event, { hotkey });
+      return event;
+    }
+    function renderMixed() {
+      const globalAction = vi.fn();
+      const slashAction = vi.fn();
+      renderHook(() =>
+        useLensCommand(
+          [
+            { id: 'palette', keys: 'mod+k', description: 'Palette', global: true, action: globalAction },
+            { id: 'focus', keys: '/', description: 'Focus input', action: slashAction },
+          ],
+          { lensId: 'chat' },
+        ),
+      );
+      return { globalAction, slashAction };
+    }
+
+    it('keeps form-tag delivery enabled when any command is global (globals must still fire in fields)', () => {
+      renderMixed();
+      const [, , options] = hotkeysArgs();
+      expect(options.enableOnFormTags).toEqual(['INPUT', 'TEXTAREA', 'SELECT']);
+    });
+
+    it("acceptance: '/' typed in a non-chat input lands — the plain command does not fire and nothing is prevented", () => {
+      const { slashAction } = renderMixed();
+      const [, handler] = hotkeysArgs();
+      const input = document.createElement('input');
+      const event = fire(handler, '/', input);
+      expect(slashAction).not.toHaveBeenCalled();
+      expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+
+    it("'/' typed in a textarea is likewise left to the field", () => {
+      const { slashAction } = renderMixed();
+      const [, handler] = hotkeysArgs();
+      const event = fire(handler, '/', document.createElement('textarea'));
+      expect(slashAction).not.toHaveBeenCalled();
+      expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+
+    it("'/' outside a form field still fires the plain command", () => {
+      const { slashAction } = renderMixed();
+      const [, handler] = hotkeysArgs();
+      const event = fire(handler, '/', document.body);
+      expect(slashAction).toHaveBeenCalledTimes(1);
+      expect(event.preventDefault).toHaveBeenCalled();
+    });
+
+    it('a global command still fires from inside a form field', () => {
+      const { globalAction } = renderMixed();
+      const [, handler] = hotkeysArgs();
+      const event = fire(handler, 'mod+k', document.createElement('input'));
+      expect(globalAction).toHaveBeenCalledTimes(1);
+      expect(event.preventDefault).toHaveBeenCalled();
+    });
+  });
+
   it('routes the registered action through a stable indirection so action identity changes don\'t re-register', () => {
     const action1 = vi.fn();
     const action2 = vi.fn();

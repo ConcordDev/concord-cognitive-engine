@@ -131,27 +131,50 @@ export function solveBeam(ir) {
   if (!mat || !b) return { ...out, needs: [...(mat ? [] : ["material"]), ...(b ? [] : ["section width (and depth, or ask for it to be sized)"])], note: "stress and deflection need a material and a section" };
   const allowable = ir.safetyFactor ? mat.Fy / ir.safetyFactor : null;
   const sigmaOf = (hh) => (Mmax * (hh / 2)) / ((b * hh ** 3) / 12);
-  if (!h) {
-    if (!allowable) return { ...out, needs: ["safety factor"], note: "sizing the depth needs a safety factor (none cited for this material)" };
-    h = r10Between(0.005, 2).find((hh) => sigmaOf(hh) <= allowable);
-    if (!h) return { ...out, note: "no R10 depth up to 2 m holds this load at this width" };
-    out.depthSource = R10_SOURCE;
-  }
-  const I = (b * h ** 3) / 12, sigma = sigmaOf(h);
   const E = mat.E;
   const sym = pts.length <= 1 && pts.every((p) => Math.abs(p.a - L / 2) < 1e-9);
-  const deltaHand = sym ? (pts[0] ? (pts[0].P * L ** 3) / (48 * E * I) : 0) + (5 * w * L ** 4) / (384 * E * I) : null;
   // the frame FE for the same beam: nodes at the supports and each point load
   const xs = [...new Set([0, L, ...pts.map((p) => p.a), L / 2])].sort((a, c) => a - c);
   const nodes = xs.map((x, i) => ({ id: `N${i}`, x, y: 0, z: 0 }));
-  const sec = { shape: "rect", width: b, height: h };
-  const members = nodes.slice(1).map((n, i) => ({ id: `B${i}`, i: nodes[i].id, j: n.id, section: sec, E, G: E / 2.6 }));
-  const fe = analyzeFrame({
-    nodes, members,
-    supports: [{ node: "N0", fix: ["x", "y", "z", "rx"] }, { node: nodes.at(-1).id, fix: ["y", "z"] }],
-    loadCases: [{ id: "L", nodal: pts.map((p) => ({ node: nodes[xs.indexOf(p.a)].id, F: [0, -p.P, 0] })), udl: w ? members.map((m) => ({ member: m.id, w: [0, -w, 0] })) : [] }],
-  });
-  const cs = fe.ok === false ? null : fe.cases[0];
+  const solveFE = (hh) => {
+    const sec = { shape: "rect", width: b, height: hh };
+    const members = nodes.slice(1).map((n, i) => ({ id: `B${i}`, i: nodes[i].id, j: n.id, section: sec, E, G: E / 2.6 }));
+    const fe = analyzeFrame({
+      nodes, members,
+      supports: [{ node: "N0", fix: ["x", "y", "z", "rx"] }, { node: nodes.at(-1).id, fix: ["y", "z"] }],
+      loadCases: [{ id: "L", nodal: pts.map((p) => ({ node: nodes[xs.indexOf(p.a)].id, F: [0, -p.P, 0] })), udl: w ? members.map((m) => ({ member: m.id, w: [0, -w, 0] })) : [] }],
+    });
+    return fe.ok === false ? null : fe.cases[0];
+  };
+  const handDelta = (hh) => (sym ? (pts[0] ? (pts[0].P * L ** 3) / (48 * E * ((b * hh ** 3) / 12)) : 0) + (5 * w * L ** 4) / (384 * E * ((b * hh ** 3) / 12)) : null);
+  // the largest deflection anywhere on the span: the closed form when it applies, else the FE
+  const deltaOf = (hh) => {
+    const d = handDelta(hh);
+    if (d != null) return d;
+    const c = solveFE(hh);
+    return c ? Math.max(...nodes.map((n) => Math.abs(c.nodeDisplacement(n.id)[1]))) : null;
+  };
+  const ratio = Number.isFinite(ir.deflectionLimit) && ir.deflectionLimit > 0 ? ir.deflectionLimit : null;
+  const deltaAllow = ratio ? L / ratio : null;
+  let governs = null;
+  if (!h) {
+    if (!allowable) return { ...out, needs: ["safety factor"], note: "sizing the depth needs a safety factor (none cited for this material)" };
+    const sizes = r10Between(0.005, 2);
+    const hStrength = sizes.find((hh) => sigmaOf(hh) <= allowable);
+    if (!hStrength) return { ...out, note: "no R10 depth up to 2 m holds this load at this width" };
+    let hDefl = null;
+    if (deltaAllow != null) {
+      hDefl = sizes.find((hh) => { const d = deltaOf(hh); return d != null && d <= deltaAllow; });
+      if (!hDefl) return { ...out, note: `no R10 depth up to 2 m holds span/${ratio} at this width` };
+    }
+    h = Math.max(hStrength, hDefl ?? 0);
+    governs = hDefl != null && hDefl > hStrength ? "deflection" : "strength";
+    out.sizing = { strengthDepthM: hStrength, ...(hDefl != null ? { deflectionDepthM: hDefl } : {}), governs, selectedDepthM: h };
+    out.depthSource = R10_SOURCE;
+  }
+  const I = (b * h ** 3) / 12, sigma = sigmaOf(h);
+  const deltaHand = handDelta(h);
+  const cs = solveFE(h);
   const feDelta = cs ? Math.max(...nodes.map((n) => Math.abs(cs.nodeDisplacement(n.id)[1]))) : null;
   const feSigma = cs ? Math.max(...cs.members.map((m) => m.worst.sigma)) : null;
   out.section = { widthM: b, depthM: h, I };
@@ -160,7 +183,19 @@ export function solveBeam(ir) {
   out.steps.push(`σ = M c / I = ${f(Mmax, "N·m")} × ${f(h / 2, "m")} / ${f(I, "m⁴")} = ${f(sigma / 1e6, "MPa")}${allowable ? ` (allowable F_y / SF = ${f(allowable / 1e6, "MPa")}, utilization ${f(sigma / allowable, "", 3)})` : ""}`);
   if (deltaHand != null) out.steps.push(`δ_mid = P L³ / (48 E I) + 5 w L⁴ / (384 E I) = ${f(deltaHand * 1000, "mm")}`);
   out.hand = { sigmaPa: sigma, deltaM: deltaHand, allowablePa: allowable };
-  out.fe = cs ? { sigma: feSigma, delta: feDelta, agrees: { sigma: Math.abs(feSigma - sigma) <= FE_TOLERANCE * sigma, delta: deltaHand == null ? null : Math.abs(feDelta - deltaHand) <= FE_TOLERANCE * deltaHand } } : { error: fe.error };
+  if (deltaAllow != null) {
+    const dMax = deltaHand ?? feDelta;
+    const deflPass = dMax != null && dMax <= deltaAllow;
+    const strengthPass = allowable != null ? sigma <= allowable : null;
+    out.steps.push(`δ_allow = span / ${ratio} = ${f(L, "m")} / ${ratio} = ${f(deltaAllow * 1000, "mm")}; δ = ${f((dMax ?? NaN) * 1000, "mm")} (${deflPass ? "passes" : "FAILS"})`);
+    out.deflectionCheck = { ratio, allowableM: deltaAllow, deltaM: dMax, pass: deflPass };
+    if (!governs) governs = strengthPass === false ? "strength" : (!deflPass ? "deflection" : (allowable != null && sigma / allowable >= dMax / deltaAllow ? "strength" : "deflection"));
+    out.pass = strengthPass !== false && deflPass;
+  } else if (allowable != null) {
+    out.pass = sigma <= allowable;
+  }
+  if (governs) out.governs = governs;
+  out.fe = cs ? { sigma: feSigma, delta: feDelta, agrees: { sigma: Math.abs(feSigma - sigma) <= FE_TOLERANCE * sigma, delta: deltaHand == null ? null : Math.abs(feDelta - deltaHand) <= FE_TOLERANCE * deltaHand } } : { error: "the frame FE did not solve" };
   out.tolerance = FE_TOLERANCE;
   return out;
 }

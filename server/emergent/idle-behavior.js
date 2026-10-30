@@ -57,13 +57,30 @@ function _markBrainCall(emergentId) {
 /**
  * Fetch a sample of substrate for the emergent to observe.
  */
-function sampleSubstrate(lens, db, limit = 5) {
+//
+// Random rowid probes, not ORDER BY RANDOM(): that form reads and sorts every
+// row of dtus (content included) on the main thread — 2.7 s of blocked event
+// loop on the live box (lag profiler, 2026-10-23). Each probe is one rowid
+// seek. Rows after a rowid gap are a little more likely to be picked; this is
+// an idle sample, so that is fine.
+export function sampleSubstrate(lens, db, limit = 5, rand = Math.random) {
   if (!db) return [];
   try {
-    const sql = lens
-      ? "SELECT id, title, content FROM dtus WHERE lens_domain = ? ORDER BY RANDOM() LIMIT ?"
-      : "SELECT id, title, content FROM dtus ORDER BY RANDOM() LIMIT ?";
-    return lens ? db.prepare(sql).all(lens, limit) : db.prepare(sql).all(limit);
+    const max = db.prepare("SELECT MAX(rowid) AS m FROM dtus").get()?.m;
+    if (!Number.isFinite(max) || max < 1) return [];
+    const probe = lens
+      ? db.prepare("SELECT rowid AS rid, id, title, content FROM dtus WHERE lens_domain = ? AND rowid >= ? ORDER BY rowid LIMIT 1")
+      : db.prepare("SELECT rowid AS rid, id, title, content FROM dtus WHERE rowid >= ? ORDER BY rowid LIMIT 1");
+    const seen = new Set();
+    const out = [];
+    for (let k = 0; k < limit * 3 && out.length < limit; k++) {
+      const at = 1 + Math.floor(rand() * max);
+      const row = lens ? probe.get(lens, at) : probe.get(at);
+      if (!row || seen.has(row.rid)) continue;
+      seen.add(row.rid);
+      out.push({ id: row.id, title: row.title, content: row.content });
+    }
+    return out;
   } catch { return []; }
 }
 

@@ -91,3 +91,44 @@ Tests: `server/tests/debug-domain.test.js` (handler-level, 9 groups) and
 the feed mapping, grouping/regression, alert dedupe, monitor
 transitions, and the quartet's dual input. The gate's own suite
 (`platform-internal-lens-gate.test.js`) covers the new classification.
+## Addendum — S10 real projects (2026-10-29, PR #1843)
+
+This map predates Product Review 2's freeze of the Debug lens. That review's
+F3 found the gap this addendum records as closed: **there was no project
+concept at either layer** (item 33; acceptance flow C1/A1 failed). The §8 Q3
+ruling (Ramaj, 2026-10-29) decided projects are real entities — created,
+named, switched — and S10 built them. (The PR #1804 rework is recorded in
+that PR; this addendum covers only the S10 layer.)
+
+**New macros (domain now registers 25):** `project-create`, `project-list`,
+`project-update`, `project-delete` in `server/domains/debug.js`.
+
+- Every account has a **Default project**, materialized lazily as real state
+  on first project-aware contact. Records stored before projects existed
+  carry no `projectId` and belong to the default project on every path.
+- `project-create`: name required; an exact duplicate name in the account is
+  refused. `project-list` returns per-project record counts (issues, traces,
+  metric samples, alert rules, releases). `project-delete`: the default
+  project cannot be deleted; a project holding records requires
+  `confirm: true` and cascade-deletes exactly its records, returning the
+  removed counts as the receipt.
+- **Scoping:** an optional `projectId` (absent = default) is honoured by
+  `issue-ingest` / `issue-list` / `issue-detail`, `trace-record` /
+  `trace-list` / `trace-detail`, `metric-record` / `metric-series`,
+  `alert-create` / `alert-list`, `release-create` / `release-list`. Issue
+  fingerprint grouping is per-project; `issue-list`'s summary describes the
+  selected project; alert evaluation runs only the recorded sample's project
+  rules; a release version is unique per project, not per account. An
+  unknown `projectId` is refused ("project not found") on reads and writes.
+- **Frontend:** `ProjectContext` holds the selection (persisted per device,
+  derived with fallback to the default project); the header
+  `ProjectSwitcher` switches/creates/renames/deletes, its delete confirm
+  stating the record counts. `IssueInbox`, `TraceViewer`,
+  `MetricsAndAlerts`, `ReleaseTracker` pass the selected `projectId` at
+  their existing single call sites — no macro gained a second caller.
+
+Verified by `server/tests/debug-projects.test.js` (13 behaviour tests:
+materialization, CRUD + refusals, cascade receipt, legacy rule, per-project
+grouping/isolation, cross-account isolation) alongside the unchanged
+`debug-domain-parity` suite. Live acceptance is Review 2's re-pass of C1 on
+deploy.

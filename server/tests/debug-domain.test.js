@@ -33,7 +33,7 @@ const ANON = { actor: { userId: "anon", role: "viewer" } };
 
 describe("debug domain (S1 unwalled workspace)", () => {
   it("registers the review's 21 macros plus the build's alert-test and S11 monitors", () => {
-    assert.equal(handlers.size, 27);
+    assert.equal(handlers.size, 31);  // 27 + the four project macros main added (S10)
   });
 
   it("a normal account ingests, lists, works and deletes its own issue", () => {
@@ -165,32 +165,31 @@ describe("debug domain (S1 unwalled workspace)", () => {
     assert.match(notifs()[0].content, /Test notification/);
   });
 
-  it("S11: uptime monitors probe real URLs, keep history, and notify on down/recovery", async () => {
-    const { createServer } = await import("node:http");
+  it("S11: uptime monitors probe URLs, keep history, and notify on down/recovery", async () => {
+    // The transport is stubbed (the SSRF guard is bypassed only by this test seam; production never sets it).
+    // A loopback listener is no longer a valid target — see the SSRF test below.
+    const { __setPublicFetchTestTransport } = await import("../lib/public-fetch.js");
     let targetUp = true;
-    const target = createServer((req, res) => {
-      res.writeHead(targetUp ? 200 : 503, { "Content-Type": "text/plain" });
-      res.end(targetUp ? "ok" : "bad");
-    });
-    await new Promise((r) => target.listen(0, "127.0.0.1", r));
-    const port = target.address().port;
+    const inits = [];
+    __setPublicFetchTestTransport(async (_url, init) => { inits.push(init); return { status: targetUp ? 200 : 503 }; });
     try {
       const ctx = member("u_grace");
       const notifs = () => getNotifications(globalThis._concordSTATE, "u_grace", { limit: 50 })
         .notifications.filter((n) => n.type === "debug_alert");
 
-      const bad = call("monitor-create", ctx, { name: "Nope", url: "ftp://example.com" });
+      const bad = await call("monitor-create", ctx, { name: "Nope", url: "ftp://example.com" });
       assert.equal(bad.ok, false);
-      const meta = call("monitor-create", ctx, { name: "Meta", url: "http://169.254.169.254/latest" });
+      const meta = await call("monitor-create", ctx, { name: "Meta", url: "http://169.254.169.254/latest" });
       assert.equal(meta.ok, false);
 
-      const mon = call("monitor-create", ctx, { name: "Local target", url: `http://127.0.0.1:${port}/health`, intervalMinutes: 5 });
+      const mon = await call("monitor-create", ctx, { name: "Public target", url: "http://93.184.216.34/health", intervalMinutes: 5 });
       assert.equal(mon.ok, true);
       assert.equal(mon.result.monitor.status, "unknown");
 
       const c1 = await call("monitor-check", ctx, { id: mon.result.monitor.id });
       assert.equal(c1.ok, true);
       assert.equal(c1.result.results[0].ok, true);
+      assert.equal(inits[0].redirect, "manual", "a probe never follows a redirect");
       let list = call("monitor-list", ctx, {});
       assert.equal(list.result.monitors[0].status, "up");
       assert.equal(list.result.monitors[0].history.length, 1);
@@ -216,8 +215,40 @@ describe("debug domain (S1 unwalled workspace)", () => {
       assert.equal(call("monitor-delete", ctx, { id: mon.result.monitor.id }).ok, true);
       assert.equal(call("monitor-list", ctx, {}).result.count, 0);
     } finally {
-      target.close();
+      __setPublicFetchTestTransport(null);
     }
+  });
+
+  it("S11 security: monitors refuse loopback, private, link-local and credentialed targets (member-reachable SSRF)", async () => {
+    const ctx = member("u_ssrf");
+    for (const url of [
+      "http://127.0.0.1:5050/health", "http://localhost:11480/", "http://[::1]:3001/", "http://10.0.0.5/", "http://172.16.0.9/",
+      "http://192.168.1.1/", "http://169.254.169.254/latest", "http://0.0.0.0/", "http://user:pw@93.184.216.34/",
+    ]) {
+      const r = await call("monitor-create", ctx, { name: "x", url });
+      assert.equal(r.ok, false, url + " must be refused");
+    }
+    assert.equal(call("monitor-list", ctx, {}).result.count, 0);
+    // Updating an existing monitor to a private target is refused too.
+    const ok = await call("monitor-create", ctx, { name: "ok", url: "http://93.184.216.34/" });
+    assert.equal(ok.ok, true);
+    const upd = await call("monitor-update", ctx, { id: ok.result.monitor.id, url: "http://127.0.0.1:5050/" });
+    assert.equal(upd.ok, false);
+    assert.equal(call("monitor-list", ctx, {}).result.monitors[0].url, "http://93.184.216.34/");
+  });
+
+  it("S11 caps: a member cannot register unlimited monitors, nor grow issues without bound", async () => {
+    const ctx = member("u_cap");
+    let created = 0, refused = null;
+    for (let i = 0; i < 25; i++) {
+      const r = await call("monitor-create", ctx, { name: "m" + i, url: `http://93.184.216.${(i % 200) + 1}/` });
+      if (r.ok) created++; else { refused = r.error; break; }
+    }
+    assert.equal(created, 20, "default cap is 20 monitors per member");
+    assert.match(refused, /monitor limit reached/);
+    // Issues: distinct messages are bounded per user (default 1000).
+    for (let i = 0; i < 1040; i++) call("issue-ingest", ctx, { type: "Error", message: "distinct " + i, culprit: "c" + i });
+    assert.ok(call("issue-list", ctx, {}).result.issues.length <= 1000);
   });
 
   it("S5: the quartet answers from params input and names its contents", () => {

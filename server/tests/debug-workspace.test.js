@@ -15,6 +15,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { armOrphanGuard } from "./lib/e2e-orphan-guard.js";
 
 const SERVER = join(dirname(fileURLToPath(import.meta.url)), "..", "server.js");
 const PORT = 18900 + Math.floor(Math.random() * 800);
@@ -22,7 +23,8 @@ const BASE = `http://127.0.0.1:${PORT}`;
 let proc = null;
 let dataDir = null;
 
-async function waitReady(tries = 60) {
+// A full server.js boot takes well over a minute on a loaded box; 60 s made the whole file cancel.
+async function waitReady(tries = 120) {
   for (let i = 0; i < tries; i++) {
     try {
       const r = await fetch(`${BASE}/api/health`);
@@ -35,13 +37,16 @@ async function waitReady(tries = 60) {
 
 function client() {
   let cookie = "";
+  let token = "";
   return {
+    setToken(t) { token = t; },
     async call(method, path, body) {
       const res = await fetch(`${BASE}${path}`, {
         method,
         headers: {
           "Content-Type": "application/json",
           ...(cookie ? { Cookie: cookie } : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: body === undefined ? undefined : JSON.stringify(body),
       });
@@ -63,12 +68,16 @@ const lens = (c, action, input = {}, artifactData) =>
   });
 
 async function signup(c, name) {
-  const r = await c.call("POST", "/api/auth/signup", {
+  const r = await c.call("POST", "/api/auth/register", {
     username: name,
-    email: `${name}@example.test`,
-    password: "test-password-123",
+    email: `${name}@example.com`,
+    password: "CorrectHorseBattery9!",
+    dateOfBirth: "1990-01-01",
+    _t: Date.now() - 5000,
   });
-  assert.equal(r.json?.ok, true, `signup ${name}: ${JSON.stringify(r.json)}`);
+  assert.equal(r.status, 201, `register ${name}: ${JSON.stringify(r.json)}`);
+  assert.ok(r.json?.token, "register returns a token");
+  c.setToken(r.json.token);
 }
 
 describe("debug workspace (S1 unwall + S3/S4 issue loop)", () => {
@@ -79,14 +88,23 @@ describe("debug workspace (S1 unwall + S3/S4 issue loop)", () => {
         ...process.env,
         PORT: String(PORT),
         DATA_DIR: dataDir,
+        NODE_ENV: "e2e-test",
+        AUTH_MODE: "hybrid",
+        CONCORD_NO_LISTEN: "false",
+        CONCORD_LOAD_SHED_ENABLED: "0",
         CONCORD_SEED_FRESH: "1",
-        NODE_ENV: "production",
+        OPENAI_API_KEY: "",
+        ANTHROPIC_API_KEY: "",
+        // The parent's per-file isolation paths must not leak into the child (see animation-share-routes).
+        DB_PATH: "",
+        STATE_PATH: "",
       },
       stdio: ["ignore", "pipe", "pipe"],
     });
+    armOrphanGuard(proc, dataDir);
     proc.stderr.on("data", () => {});
     assert.equal(await waitReady(), true, "server did not become ready");
-  });
+  }, { timeout: 200000 });
 
   after(() => {
     if (proc) proc.kill("SIGKILL");
