@@ -290,9 +290,14 @@ export function buildErpBom(db, assemblyId, opts = {}) {
     });
   }
 
-  const overheadUsd = totalMaterialCostUsd * overheadPct;
-  const rollupCostUsd = totalMaterialCostUsd + overheadUsd;
   const unpricedLines = lines.length - pricedLines;
+  // Honest rollup: with NO priced line there is no cost at all (null, never $0.00 - an unpriced BOM is not a
+  // free one). With some priced lines the figure is a lower bound over those lines only, flagged partial.
+  const anyPriced = pricedLines > 0;
+  const costComplete = lines.length > 0 && unpricedLines === 0;
+  const materialCostUsd = anyPriced ? totalMaterialCostUsd : null;
+  const overheadUsd = anyPriced ? totalMaterialCostUsd * overheadPct : null;
+  const rollupCostUsd = anyPriced ? totalMaterialCostUsd + totalMaterialCostUsd * overheadPct : null;
 
   return {
     ok: true,
@@ -305,9 +310,13 @@ export function buildErpBom(db, assemblyId, opts = {}) {
     rollup: {
       totalMassKg: massKnown ? totalMassKg : null,
       massLinesKnown: massKnown,
-      materialCostUsd: totalMaterialCostUsd,
+      materialCostUsd,
       pricedLines,
       unpricedLines,
+      costComplete,
+      costNote: !anyPriced
+        ? 'No line has a price source: cost is not computed. Import a vendor price list (POST /api/conkay/assemblies/:id/bom/erp with priceList).'
+        : (costComplete ? null : `Partial: ${unpricedLines} of ${lines.length} line(s) have no price, so the figures cover the priced lines only.`),
       overheadPct,
       overheadUsd,
       rollupCostUsd,

@@ -72,10 +72,10 @@ describe("world-creator — registration (every lens-driven macro present)", () 
 });
 
 describe("world-creator — static reference data (templates + biomes)", () => {
-  it("templates returns the 3 seeded presets with real counts", () => {
+  it("templates returns the 8 seeded presets with real counts (one per biome)", () => {
     const r = call("templates", ctxA, {});
     assert.equal(r.ok, true);
-    assert.equal(r.result.templates.length, 3);
+    assert.equal(r.result.templates.length, 8);
     const forest = r.result.templates.find((t) => t.id === "forest_realm");
     assert.ok(forest);
     assert.equal(forest.biome, "temperate_forest");

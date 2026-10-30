@@ -222,8 +222,21 @@ export function balanceReaction({ equation }) {
   }, 1);
 
   const intCoeffs = fracs.map(f => f.num * (lcmDen / f.den));
-  const minCoeff  = Math.min(...intCoeffs.filter(c => c > 0));
-  const finalCoeffs = intCoeffs.map(c => Math.round(c / minCoeff));
+  // Reduce by the GCD of all coefficients. Dividing by the smallest coefficient
+  // is wrong whenever the others are not multiples of it: [4,3,2] became
+  // [2,2,1], so Fe + O2 -> Fe2O3 came back as 2Fe + 2O2 -> Fe2O3 (4 O in, 3 O out).
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+  const g = intCoeffs.filter(c => c > 0).reduce((a, b) => gcd(a, b), 0) || 1;
+  const finalCoeffs = intCoeffs.map(c => Math.round(c / g));
+
+  // Never return an equation that does not conserve atoms (a singular system,
+  // or a reaction that cannot be balanced, lands here).
+  for (const el of elements) {
+    const net = compounds.reduce((sum, _, ci) => sum + (ci < reactants.length ? 1 : -1) * finalCoeffs[ci] * (parsed[ci][el] || 0), 0);
+    if (net !== 0 || finalCoeffs.some(c => !(c > 0))) {
+      return { ok: false, error: 'could not balance this equation (it may be impossible as written, or underdetermined)' };
+    }
+  }
 
   // Format balanced equation
   const fmt = (compound, coeff) => coeff === 1 ? compound : `${coeff}${compound}`;

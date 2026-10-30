@@ -3,9 +3,11 @@
  * Honesty: NOT SAP/Oracle.
  * Run: node --test tests/conkay-erp-bom.test.js
  */
-import { describe, it } from 'node:test';
+import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
+import express from 'express';
+import createConkayAssemblyRouter from '../routes/conkay-assembly.js';
 import {
   ensureAssemblyTables,
   createAssembly,
@@ -74,7 +76,12 @@ describe('conkay ERP-shaped BOM', () => {
     assert.equal(line.unitCostUsd, null);
     assert.equal(line.extendedCostUsd, null);
     assert.equal(line.costBasis, 'unpriced');
-    assert.equal(bom.rollup.materialCostUsd, 0);
+    // No price source: the rollup cost is NOT computed (null), never a fake $0.00.
+    assert.equal(bom.rollup.materialCostUsd, null);
+    assert.equal(bom.rollup.overheadUsd, null);
+    assert.equal(bom.rollup.rollupCostUsd, null);
+    assert.equal(bom.rollup.costComplete, false);
+    assert.match(bom.rollup.costNote, /not computed/);
     assert.equal(bom.rollup.pricedLines, 0);
     assert.equal(bom.rollup.unpricedLines, 1);
     assert.match(bom.honesty.note, /ERP-shaped BOM export LIVE/);
@@ -179,4 +186,86 @@ it('a part with an unknown material has no mass, not a 1000 kg/m³ guess', async
   assert.equal(r.massKg, null);
   assert.equal(r.densityKgM3, null);
   assert.match(r.massUnavailable, /no density/);
+});
+
+function twoPartAssembly(db) {
+  ensureAssemblyTables(db);
+  const asm = createAssembly(db, { name: 'erp-partial' });
+  const mk = (name, material, pn) => {
+    const r = addPart(db, asm.id, {
+      name, kind: 'box', source: 'test', transform: defaultTransform(), mesh: boxMesh(), material,
+      meta: { intent: { width: 1, depth: 1, height: 1, material }, erp: { partNumber: pn } },
+    });
+    attachMaterialToPart(db, asm.id, r.part.id, material);
+    return r.part;
+  };
+  mk('plate', 'steel', 'PN-STEEL');
+  mk('block', 'aluminum', 'PN-AL');
+  return asm;
+}
+
+describe('ERP BOM rollup is honest when lines are unpriced', () => {
+  it('no price list: rollup cost is null (not $0.00) and says why; the CSV footer leaves it blank', () => {
+    const db = new Database(':memory:');
+    const asm = twoPartAssembly(db);
+    const bom = buildErpBom(db, asm.id);
+    assert.equal(bom.rollup.rollupCostUsd, null);
+    assert.equal(bom.rollup.materialCostUsd, null);
+    assert.equal(bom.rollup.costComplete, false);
+    assert.equal(bom.rollup.unpricedLines, 2);
+    assert.match(erpBomToCsv(bom).csv, /# rollup\.rollupCostUsd,\n/);
+  });
+
+  it('partial prices: numbers cover priced lines only and are flagged partial with a count', () => {
+    const db = new Database(':memory:');
+    const asm = twoPartAssembly(db);
+    const bom = buildErpBom(db, asm.id, { priceList: [{ partNumber: 'PN-STEEL', unitCostUsd: 10 }] });
+    assert.equal(bom.rollup.pricedLines, 1);
+    assert.equal(bom.rollup.unpricedLines, 1);
+    assert.equal(bom.rollup.costComplete, false);
+    assert.equal(bom.rollup.materialCostUsd, 10);
+    assert.match(bom.rollup.costNote, /Partial: 1 of 2 line/);
+  });
+
+  it('every line priced: complete, no note', () => {
+    const db = new Database(':memory:');
+    const asm = twoPartAssembly(db);
+    const bom = buildErpBom(db, asm.id, { priceList: [{ partNumber: 'PN-STEEL', unitCostUsd: 10 }, { partNumber: 'PN-AL', unitCostUsd: 5 }] });
+    assert.equal(bom.rollup.costComplete, true);
+    assert.equal(bom.rollup.costNote, null);
+    assert.equal(bom.rollup.materialCostUsd, 15);
+  });
+});
+
+describe('POST /api/conkay/assemblies/:id/bom/erp (price-list import is API-only)', () => {
+  let server, base, db, asm;
+  before(async () => {
+    db = new Database(':memory:');
+    asm = twoPartAssembly(db);
+    const app = express();
+    app.use(express.json());
+    app.use('/api/conkay', createConkayAssemblyRouter({ requireAuth: (_req, _res, next) => next(), db }));
+    await new Promise((resolve) => { server = app.listen(0, '127.0.0.1', resolve); });
+    base = `http://127.0.0.1:${server.address().port}/api/conkay/assemblies`;
+  });
+  after(async () => { await new Promise((resolve) => server.close(resolve)); });
+  const post = (id, body) => fetch(`${base}/${id}/bom/erp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+  it('prices from a posted JSON price list and from CSV text, with overheadPct', async () => {
+    const res = await post(asm.id, { priceList: [{ partNumber: 'PN-STEEL', unitCostUsd: 10 }, { partNumber: 'PN-AL', unitCostUsd: 5 }], overheadPct: 0.1 });
+    assert.equal(res.status, 200);
+    const json = await res.json();
+    assert.equal(json.rollup.costComplete, true);
+    assert.equal(json.rollup.materialCostUsd, 15);
+    assert.ok(Math.abs(json.rollup.rollupCostUsd - 16.5) < 1e-9);
+    const csv = await post(asm.id, { priceList: 'partNumber,unitCostUsd\nPN-STEEL,10\nPN-AL,5' });
+    assert.equal((await csv.json()).rollup.pricedLines, 2);
+  });
+
+  it('with no price list the route returns the honest null rollup, and an unknown assembly is 404', async () => {
+    const json = await (await post(asm.id, {})).json();
+    assert.equal(json.rollup.rollupCostUsd, null);
+    const miss = await post('does-not-exist', { priceList: [] });
+    assert.equal(miss.status, 404);
+  });
 });

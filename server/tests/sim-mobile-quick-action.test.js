@@ -22,7 +22,19 @@ describe("mobile quick-action", () => {
       );
       CREATE TABLE dtus (id TEXT PRIMARY KEY, title TEXT, type TEXT, creator_id TEXT, created_at TEXT);
       CREATE TABLE dtu_citations (dtu_id TEXT PRIMARY KEY, citation_count INTEGER NOT NULL DEFAULT 0);
+      CREATE TABLE marketplace_listings (id TEXT PRIMARY KEY, owner_user_id TEXT, title TEXT, price_cents INTEGER, currency TEXT, visibility TEXT);
+      CREATE TABLE economy_ledger (id TEXT PRIMARY KEY, to_user_id TEXT, type TEXT, status TEXT, net REAL);
     `);
+    db.prepare(`INSERT INTO marketplace_listings VALUES
+      ('l1','user-a','Pier Print',1500,'CC','published'),
+      ('l2','user-a','Draft Song',900,'CC','draft'),
+      ('l3','user-b','Theirs',100,'CC','published')`).run();
+    db.prepare(`INSERT INTO economy_ledger VALUES
+      ('e1','user-a','ROYALTY_PAYOUT','complete',12.5),
+      ('e2','user-a','ROYALTY_PAYOUT','complete',2.25),
+      ('e3','user-a','ROYALTY_PAYOUT','pending',99),
+      ('e4','user-a','TIP','complete',50),
+      ('e5','user-b','ROYALTY_PAYOUT','complete',7)`).run();
     db.prepare(`INSERT INTO world_buildings VALUES
       ('b1','w1','Boathouse','dock','player','user-a','standing',1.0),
       ('b2','w1','Shed','house','player','user-a','damaged',0.5),
@@ -83,6 +95,27 @@ describe("mobile quick-action", () => {
     assert.equal(r.status, 200);
     assert.equal(r.body.count, 0);
     assert.deepEqual(r.body.buildings, []);
+  });
+
+  it("view-marketplace counts only the caller's listings, split by published", async () => {
+    const r = await act("view-marketplace");
+    assert.equal(r.status, 200);
+    assert.equal(r.body.listingCount, 2);
+    assert.equal(r.body.publishedCount, 1);
+    assert.deepEqual(r.body.listings.map((l) => l.id).sort(), ["l1", "l2"]);
+    const empty = await act("view-marketplace", "user-c");
+    assert.equal(empty.body.listingCount, 0);
+    assert.equal(empty.body.publishedCount, 0);
+  });
+
+  it("view-royalties totals only the caller's completed ROYALTY_PAYOUT rows", async () => {
+    const r = await act("view-royalties");
+    assert.equal(r.status, 200);
+    assert.equal(r.body.totalRoyalties, 14.75);
+    assert.equal(r.body.payoutCount, 2);
+    const empty = await act("view-royalties", "user-c");
+    assert.equal(empty.body.totalRoyalties, 0);
+    assert.equal(empty.body.payoutCount, 0);
   });
 
   it("requires sign-in", async () => {
