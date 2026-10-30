@@ -43,6 +43,27 @@ describe("world-creator — reference data", () => {
     assert.ok(forest.rules && typeof forest.rules.combatLethality === "number");
   });
 
+  it("every biome has at least one template, and templates seed real drafts (Q61)", () => {
+    const tpls = call("templates", ctxA).result.templates;
+    const biomes = call("biomes", ctxA).result.biomes;
+    assert.equal(tpls.length, 8);
+    for (const b of biomes) {
+      assert.ok(tpls.some((t) => t.biome === b.id), `biome ${b.id} has no template`);
+    }
+    for (const t of tpls) {
+      assert.ok(t.propCount > 0 && t.spawnCount > 0 && t.zoneCount > 0, `${t.id} seeds nothing`);
+      for (const v of Object.values(t.rules)) assert.ok(v >= 0.5 && v <= 1.5, `${t.id} rule out of clamp range`);
+    }
+    // A new-biome template round-trips through draft-create with its
+    // biome, props, spawns and zones actually seeded.
+    const d = newDraft(ctxA, { name: "Volcano World", template: "volcanic_wastes" });
+    assert.equal(d.biome, "volcanic");
+    assert.equal(d.template, "volcanic_wastes");
+    assert.ok(d.props.length >= 5 && d.props.every((p) => p.id));
+    assert.equal(d.spawnPoints.length, 1);
+    assert.equal(d.zones[0].kind, "hazard");
+  });
+
   it("biomes returns climate reference rows", () => {
     const r = call("biomes", ctxA);
     assert.equal(r.ok, true);

@@ -18,13 +18,27 @@ const PRIVACY: { id: Privacy; icon: typeof Globe; label: string }[] = [
   { id: 'private', icon: Lock, label: 'Only me' },
 ];
 
+const RANK: Record<Privacy, number> = { private: 0, friends: 1, public: 2 };
+const TIER_LABEL: Record<Privacy, string> = { private: 'Only me', friends: 'Friends', public: 'Public' };
+
 export function ShareModal({ post, onClose }: { post: FeedPost; onClose: () => void }) {
   const qc = useQueryClient();
   const [comment, setComment] = useState('');
-  const [privacy, setPrivacy] = useState<Privacy>('friends');
+  // S-TL-11 (F16): the share starts at the original's own tier — never
+  // wider by default. Picking a wider tier surfaces the consequence
+  // and requires an explicit confirmation before Share enables.
+  const [privacy, setPrivacy] = useState<Privacy>(post.privacy);
+  const [confirmWiden, setConfirmWiden] = useState(false);
+  const widening = RANK[privacy] > RANK[post.privacy];
 
   const shareMutation = useMutation({
-    mutationFn: () => lensRun('timeline', 'share-post', { postId: post.id, comment, privacy }),
+    mutationFn: () =>
+      lensRun('timeline', 'share-post', {
+        postId: post.id,
+        comment,
+        privacy,
+        ...(widening ? { confirmWiden } : {}),
+      }),
     onSuccess: (r) => {
       if (r.data.ok) {
         qc.invalidateQueries({ queryKey: ['timeline-feed'] });
@@ -38,8 +52,8 @@ export function ShareModal({ post, onClose }: { post: FeedPost; onClose: () => v
   });
 
   const original = post.sharedFrom
-    ? { content: post.sharedFrom.content, authorId: post.sharedFrom.authorId }
-    : { content: post.content, authorId: post.authorId };
+    ? { content: post.sharedFrom.content, author: post.sharedFrom.authorDisplayName || 'Member' }
+    : { content: post.content, author: post.authorDisplayName || 'Member' };
 
   return (
     <motion.div
@@ -76,7 +90,7 @@ export function ShareModal({ post, onClose }: { post: FeedPost; onClose: () => v
 
         {/* Quoted original */}
         <div className="border border-gray-700 rounded-lg p-3 bg-[#18191a]">
-          <p className="text-xs font-semibold text-gray-300 mb-1">{original.authorId}</p>
+          <p className="text-xs font-semibold text-gray-300 mb-1">{original.author}</p>
           <p className="text-sm text-gray-400 line-clamp-3">{original.content || '(media post)'}</p>
         </div>
 
@@ -87,7 +101,7 @@ export function ShareModal({ post, onClose }: { post: FeedPost; onClose: () => v
             return (
               <button
                 key={p.id}
-                onClick={() => setPrivacy(p.id)}
+                onClick={() => { setPrivacy(p.id); setConfirmWiden(false); }}
                 className={cn(
                   'px-3 py-1.5 rounded-lg text-xs font-medium inline-flex items-center gap-1.5',
                   privacy === p.id ? 'bg-blue-600 text-white' : 'bg-[#3a3b3c] text-gray-400 hover:bg-[#4a4b4c]',
@@ -100,10 +114,30 @@ export function ShareModal({ post, onClose }: { post: FeedPost; onClose: () => v
           })}
         </div>
 
+        {/* S-TL-11 (F16): widening is a stated, confirmed act — never
+            the silent side effect of a default. */}
+        {widening && (
+          <div className="border border-amber-500/40 bg-amber-500/10 rounded-lg p-3 space-y-2">
+            <p className="text-xs text-amber-200">
+              This will make a {TIER_LABEL[post.privacy]} post {privacy} — people who couldn&apos;t see
+              the original will see it on your wall.
+            </p>
+            <label className="flex items-center gap-2 text-xs text-gray-200 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={confirmWiden}
+                onChange={(e) => setConfirmWiden(e.target.checked)}
+                className="accent-amber-500"
+              />
+              I understand this widens the audience beyond what the author chose.
+            </label>
+          </div>
+        )}
+
         <div className="flex justify-end pt-1">
           <button
             onClick={() => shareMutation.mutate()}
-            disabled={shareMutation.isPending}
+            disabled={shareMutation.isPending || (widening && !confirmWiden)}
             className="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 inline-flex items-center gap-2"
           >
             {shareMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
