@@ -3,13 +3,14 @@
 // PostComposer — create a post via timeline.post-create with media,
 // privacy controls and user tagging.
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Globe, Users, Lock, ImagePlus, Film, X, AtSign, Loader2 } from 'lucide-react';
+import { Globe, Users, Lock, ImagePlus, Film, X, AtSign, Loader2, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
-import type { Privacy, MediaItem, MediaKind } from './types';
+import type { Privacy, MediaItem, MediaKind, ReplyGate } from './types';
+import { uploadTimelineFile, mediaUrlError, probeImageUrl, UPLOAD_ACCEPT } from './uploadMedia';
 
 const PRIVACY: { id: Privacy; icon: typeof Globe; label: string }[] = [
   { id: 'public', icon: Globe, label: 'Public' },
@@ -17,10 +18,33 @@ const PRIVACY: { id: Privacy; icon: typeof Globe; label: string }[] = [
   { id: 'private', icon: Lock, label: 'Only me' },
 ];
 
+// S-TL-1 (F10): the composer keeps its draft. Text, audience, media
+// and tags persist on this device across view switches and reloads,
+// and clear when the post is published — the lens remembers what you
+// were writing instead of dropping it.
+const DRAFT_KEY = 'concord.timeline.composerDraft';
+
+interface ComposerDraft {
+  content: string;
+  privacy: Privacy;
+  media: MediaItem[];
+  tags: string[];
+  replyGate?: ReplyGate;
+}
+
+const REPLY_GATES: { id: ReplyGate; label: string }[] = [
+  { id: 'anyone', label: 'Anyone' },
+  { id: 'friends', label: 'Friends' },
+  { id: 'mentioned', label: 'Mentioned' },
+  { id: 'none', label: 'No one' },
+];
+
 export function PostComposer({ onPosted }: { onPosted?: () => void }) {
   const qc = useQueryClient();
   const [content, setContent] = useState('');
   const [privacy, setPrivacy] = useState<Privacy>('private');
+  // S-TL-8: who may reply to this post.
+  const [replyGate, setReplyGate] = useState<ReplyGate>('anyone');
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [mediaDraft, setMediaDraft] = useState('');
@@ -28,6 +52,55 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
   const [tagDraft, setTagDraft] = useState('');
   const [showMediaInput, setShowMediaInput] = useState(false);
   const [showTagInput, setShowTagInput] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+
+  // Restore once on mount (client-only, like the page's last-view).
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw) as Partial<ComposerDraft>;
+      const hasContent = typeof draft.content === 'string' && draft.content.length > 0;
+      const hasMedia = Array.isArray(draft.media) && draft.media.length > 0;
+      const hasTags = Array.isArray(draft.tags) && draft.tags.length > 0;
+      if (!hasContent && !hasMedia && !hasTags) return;
+      if (hasContent) setContent(draft.content as string);
+      if (draft.privacy === 'public' || draft.privacy === 'friends' || draft.privacy === 'private') {
+        setPrivacy(draft.privacy);
+      }
+      if (draft.replyGate === 'anyone' || draft.replyGate === 'friends' || draft.replyGate === 'mentioned' || draft.replyGate === 'none') {
+        setReplyGate(draft.replyGate);
+      }
+      if (hasMedia) {
+        setMedia((draft.media as MediaItem[]).filter((m) => m && typeof m.url === 'string' && (m.kind === 'photo' || m.kind === 'video')));
+      }
+      if (hasTags) setTags((draft.tags as string[]).filter((t) => typeof t === 'string'));
+      setDraftRestored(true);
+    } catch { /* a corrupt draft is dropped, never fatal */ }
+  }, []);
+
+  // Persist on every change — but skip the first run: on mount this
+  // effect would otherwise write the initial empty state over the
+  // stored draft before the restore above has landed.
+  const skipFirstPersist = useRef(true);
+  useEffect(() => {
+    if (skipFirstPersist.current) { skipFirstPersist.current = false; return; }
+    try {
+      const draft: ComposerDraft = { content, privacy, media, tags, replyGate };
+      window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch { /* storage unavailable */ }
+  }, [content, privacy, media, tags, replyGate]);
+
+  const discardDraft = () => {
+    setContent('');
+    setMedia([]);
+    setTags([]);
+    setReplyGate('anyone');
+    setDraftRestored(false);
+    try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+  };
+
+  const hasDraft = content.length > 0 || media.length > 0 || tags.length > 0;
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -36,6 +109,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
         privacy,
         media,
         taggedUserIds: tags,
+        replyGate,
       }),
     onSuccess: (r) => {
       if (r.data.ok) {
@@ -44,7 +118,11 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
         setContent('');
         setMedia([]);
         setTags([]);
+        setReplyGate('anyone');
+        setDraftRestored(false);
         onPosted?.();
+        // D2/M7: publishing was silent.
+        useUIStore.getState().addToast({ type: 'success', message: 'Post published' });
       } else {
         useUIStore.getState().addToast({ type: 'error', message: r.data.error || 'Post failed' });
       }
@@ -52,11 +130,43 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
     onError: () => useUIStore.getState().addToast({ type: 'error', message: 'Post failed' }),
   });
 
-  const addMedia = () => {
-    if (!mediaDraft.trim()) return;
-    setMedia((m) => [...m, { kind: mediaKind, url: mediaDraft.trim() }]);
+  // S-TL-3: uploads + honest URL attach (F14). A pasted link is shape-
+  // checked, and a photo link must actually load, before it attaches —
+  // a refusal lands here as a stated reason, never a broken tile.
+  const [mediaError, setMediaError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const addMedia = async () => {
+    const url = mediaDraft.trim();
+    if (!url) return;
+    const shapeError = mediaUrlError(url);
+    if (shapeError) { setMediaError(shapeError); return; }
+    if (mediaKind === 'photo') {
+      const loads = await probeImageUrl(url);
+      if (!loads) {
+        setMediaError("That link didn't load as an image — check the URL, or upload the file instead.");
+        return;
+      }
+    }
+    setMediaError(null);
+    setMedia((m) => [...m, { kind: mediaKind, url }]);
     setMediaDraft('');
     setShowMediaInput(false);
+  };
+
+  const onFilePicked = async (file: File | null) => {
+    if (!file) return;
+    setUploading(true);
+    setMediaError(null);
+    const result = await uploadTimelineFile(file);
+    setUploading(false);
+    if (result.ok) {
+      setMedia((m) => [...m, result.item]);
+      setShowMediaInput(false);
+    } else {
+      setMediaError(result.error);
+    }
   };
   const addTag = () => {
     const t = tagDraft.trim();
@@ -79,6 +189,15 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
           className="flex-1 bg-[#3a3b3c] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-400 outline-none resize-none focus:ring-1 focus:ring-blue-500"
         />
       </div>
+
+      {hasDraft && (
+        <p className="text-[11px] text-gray-500 flex items-center gap-2">
+          <span>{draftRestored ? 'Draft restored. ' : ''}Your draft is kept on this device until you post it.</span>
+          <button onClick={discardDraft} className="text-gray-400 hover:text-red-400 underline">
+            Discard draft
+          </button>
+        </p>
+      )}
 
       {/* Attached media chips */}
       {media.length > 0 && (
@@ -110,26 +229,48 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
         </div>
       )}
 
-      {/* Media input */}
+      {/* Media input — upload a file or paste a link (S-TL-3) */}
       {showMediaInput && (
-        <div className="flex gap-2">
-          <select
-            value={mediaKind}
-            onChange={(e) => setMediaKind(e.target.value as MediaKind)}
-            className="bg-[#3a3b3c] text-white text-xs rounded px-2 outline-none"
-          >
-            <option value="photo">Photo</option>
-            <option value="video">Video</option>
-          </select>
-          <input
-            value={mediaDraft}
-            onChange={(e) => setMediaDraft(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addMedia()}
-            placeholder="Media URL"
-            autoFocus
-            className="flex-1 bg-[#3a3b3c] rounded px-3 py-1.5 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
-          />
-          <button onClick={addMedia} className="px-3 py-1.5 rounded bg-blue-600 text-white text-xs">Add</button>
+        <div className="space-y-1.5">
+          <div className="flex gap-2">
+            <select
+              value={mediaKind}
+              onChange={(e) => setMediaKind(e.target.value as MediaKind)}
+              className="bg-[#3a3b3c] text-white text-xs rounded px-2 outline-none"
+            >
+              <option value="photo">Photo</option>
+              <option value="video">Video</option>
+            </select>
+            <input
+              value={mediaDraft}
+              onChange={(e) => setMediaDraft(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addMedia()}
+              placeholder="Media URL"
+              autoFocus
+              className="flex-1 bg-[#3a3b3c] rounded px-3 py-1.5 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <button onClick={addMedia} className="px-3 py-1.5 rounded bg-blue-600 text-white text-xs">Add</button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="px-3 py-1.5 rounded bg-[#3a3b3c] text-white text-xs inline-flex items-center gap-1.5 hover:bg-[#4a4b4c] disabled:opacity-50"
+            >
+              {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+              Upload file
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={UPLOAD_ACCEPT}
+              className="hidden"
+              onChange={(e) => {
+                void onFilePicked(e.target.files?.[0] ?? null);
+                e.target.value = '';
+              }}
+            />
+          </div>
+          <p className="text-[11px] text-gray-500">Images (JPEG, PNG, GIF, WebP, SVG) or video (MP4, WebM), up to 10 MB — or paste a link; links are checked before they attach.</p>
+          {mediaError && <p className="text-[11px] text-rose-300">{mediaError}</p>}
         </div>
       )}
 
@@ -199,6 +340,27 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
       {privacy === 'public' && (
         <p className="text-[11px] text-amber-400/80">Public posts are visible to everyone and NPCs.</p>
       )}
+      {/* S-TL-8: who may reply to this post */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="text-[11px] text-gray-400 inline-flex items-center gap-1">
+          <Lock className="w-3.5 h-3.5" /> Who can reply:
+        </span>
+        {REPLY_GATES.map((g) => (
+          <button
+            key={g.id}
+            onClick={() => setReplyGate(g.id)}
+            className={cn(
+              'px-2.5 py-1 rounded-full text-[11px]',
+              replyGate === g.id ? 'bg-blue-600 text-white' : 'bg-[#3a3b3c] text-gray-300 hover:bg-[#4a4b4c]',
+            )}
+          >
+            {g.label}
+          </button>
+        ))}
+        {replyGate === 'mentioned' && (
+          <span className="text-[11px] text-gray-500">People you tag in this post.</span>
+        )}
+      </div>
     </div>
   );
 }
