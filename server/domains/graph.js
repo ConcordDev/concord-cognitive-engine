@@ -5,6 +5,7 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
 import { convergeUserMaps } from "../lib/map-convergence.js";
+import { substrateCounts } from "../lib/substrate-counts.js";
 export default function registerGraphActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -917,9 +918,16 @@ export default function registerGraphActions(registerLensAction) {
     return {
       ok: true,
       result: {
+        // Legacy fields: these count the caller's MAPS only (the
+        // field names predate the convergence and are kept for
+        // existing consumers; `source` names the universe).
+        source: "user-maps",
         maps: maps.length,
         totalNodes: maps.reduce((n, m) => n + m.nodes.length, 0),
         totalEdges: maps.reduce((n, m) => n + m.edges.length, 0),
+        // #1715 S4: the single counting source — substrate counts
+        // under source-named fields, from lib/substrate-counts.js.
+        counts: substrateCounts(globalThis._concordSTATE, gphActor(ctx)),
       },
     };
     } catch (e) { return handlerFailure(e); }

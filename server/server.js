@@ -46,6 +46,7 @@ import {
 } from "./lib/log-access.js";
 import { dtuSkipsAutoTag } from "./lib/dtu-auto-tag.js";
 import { relationEdges as dtuRelationEdges } from "./lib/dtu-relations.js";
+import { substrateCounts } from "./lib/substrate-counts.js";
 import { hasUsableBrainInput, needsInputError } from "./lib/brain-action-input.js";
 import { aggregateTopicCounts } from "./lib/trending-topics.js";
 import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-tags.js";
@@ -35441,18 +35442,32 @@ register("settings", "status", (ctx, _input) => {
   register("graph", "stats", (ctx, _input = {}) => {
     try {
       _ensureGraphIndex();
+      const viewer = _graphViewer(ctx);
+      let visibleNodes = 0;
+      for (const id of GRAPH_INDEX?.nodes?.keys?.() || []) {
+        if (_graphCanSeeId(id, viewer)) visibleNodes++;
+      }
       return {
         ok: true,
         stats: {
+          // Legacy fields: these count the GRAPH_INDEX projection
+          // (DTUs + synthetic tag nodes; lineage + relation edges),
+          // not the substrate itself — `source` names the universe,
+          // and lib/substrate-counts.js is the single counting
+          // source (#1715 S4).
+          source: "graph-index",
           totalNodes: GRAPH_INDEX?.nodes?.size || 0,
           totalEdges: GRAPH_INDEX?.edges?.size || 0,
+          indexNodes: GRAPH_INDEX?.nodes?.size || 0,
+          indexEdges: GRAPH_INDEX?.edges?.size || 0,
           dirty: !!GRAPH_INDEX?.dirty,
+          substrate: substrateCounts(STATE, viewer, { index: GRAPH_INDEX, indexVisibleNodes: visibleNodes }),
         },
       };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
-  }, { description: "Graph index stats (nodes/edges)." });
+  }, { description: "Graph index stats (nodes/edges) with source-named substrate counts." });
 
   register("graph", "edges", (ctx, input = {}) => {
     try {
