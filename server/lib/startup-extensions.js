@@ -25,6 +25,7 @@ import { ALL_DEFAULT_FEEDS } from "./feed-sources.js";
 import { importAnthropicSkillTree } from "./skills/anthropic-skills-adapter.js";
 import { initIntegrityTable, createIntegritySystem } from "./dtu-integrity.js";
 import { initRightsTable, createRightsManager } from "./dtu-rights.js";
+import { initArtifactAclTable, createArtifactAcl } from "./artifact-acl.js";
 import { createCompressionPipeline } from "./dtu-compression.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -167,6 +168,18 @@ export async function initExtensions(app, db, STATE, io) {
     logger.info("[startup-extensions] DTU rights manager initialized");
   } catch (err) {
     logger.warn("[startup-extensions] dtu-rights init failed", { err: err?.message });
+  }
+
+  // 11b. Platform artifact ACL (boards, maps, DTUs, future kinds).
+  // Artifact kinds register their owner resolver via
+  // registerArtifactOwnerResolver() when they adopt the model; until a
+  // kind registers, its artifacts resolve as not found (fail closed).
+  try {
+    initArtifactAclTable(db);
+    app.locals.artifactAcl = createArtifactAcl(db, {});
+    logger.info("[startup-extensions] artifact-acl initialized");
+  } catch (err) {
+    logger.warn("[startup-extensions] artifact-acl init failed", { err: err?.message });
   }
 
   // 12. DTU compression pipeline

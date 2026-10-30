@@ -87,6 +87,61 @@ export default function registerWorldCreatorActions(registerLensAction) {
       spawnPoints: [{ name: "Central Plaza", x: 0, z: 0 }],
       zones: [{ name: "Market District", kind: "social", x: 0, z: 0, radius: 70 }],
     },
+    tundra_expanse: {
+      label: "Tundra Expanse", biome: "tundra",
+      description: "Frozen survival starter — scarce shelter, brutal weather, careful travel.",
+      rules: { combatLethality: 1.2, refusalSensitivity: 1.0, questDensity: 0.8, weatherIntensity: 1.5 },
+      props: [
+        { kind: "rock", x: -18, z: 6 }, { kind: "rock", x: 24, z: -14 },
+        { kind: "campfire", x: 2, z: 2 }, { kind: "crystal", x: 30, z: 26 }, { kind: "statue", x: -6, z: -20 },
+      ],
+      spawnPoints: [{ name: "Frostbite Camp", x: 0, z: 0 }],
+      zones: [{ name: "Whiteout Flats", kind: "hazard", x: 40, z: 40, radius: 90 }],
+    },
+    jungle_depths: {
+      label: "Jungle Depths", biome: "tropical",
+      description: "Dense overgrowth and buried ruins — quest-rich, ambush-prone.",
+      rules: { combatLethality: 1.1, refusalSensitivity: 1.0, questDensity: 1.4, weatherIntensity: 1.3 },
+      props: [
+        { kind: "tree", x: -12, z: 18 }, { kind: "tree", x: 16, z: 8 }, { kind: "tree", x: 4, z: -22 },
+        { kind: "ruin", x: 0, z: 0 }, { kind: "altar", x: -24, z: -10 },
+      ],
+      spawnPoints: [{ name: "Canopy Landing", x: 6, z: 6 }],
+      zones: [{ name: "Overgrown Ruins", kind: "quest", x: 0, z: 0, radius: 65 }],
+    },
+    volcanic_wastes: {
+      label: "Volcanic Wastes", biome: "volcanic",
+      description: "Ash, lava fields and crystal seams — the most lethal starter on the list.",
+      rules: { combatLethality: 1.5, refusalSensitivity: 1.1, questDensity: 0.9, weatherIntensity: 1.2 },
+      props: [
+        { kind: "rock", x: -20, z: -6 }, { kind: "crystal", x: 12, z: 16 }, { kind: "crystal", x: 26, z: -20 },
+        { kind: "ruin", x: 0, z: 10 }, { kind: "altar", x: -8, z: 24 },
+      ],
+      spawnPoints: [{ name: "Ashen Shelf", x: 0, z: 0 }],
+      zones: [{ name: "Lava Fields", kind: "hazard", x: -35, z: 35, radius: 75 }],
+    },
+    coastal_harbor: {
+      label: "Coastal Harbor", biome: "coastal",
+      description: "A working port town — trade, travel and social play over combat.",
+      rules: { combatLethality: 0.7, refusalSensitivity: 1.2, questDensity: 1.2, weatherIntensity: 1.0 },
+      props: [
+        { kind: "building", x: -16, z: -12 }, { kind: "building", x: 14, z: -16 },
+        { kind: "bridge", x: 0, z: 14 }, { kind: "lamp", x: 8, z: 0 }, { kind: "well", x: -6, z: 6 },
+      ],
+      spawnPoints: [{ name: "Harbor Steps", x: 0, z: 0 }],
+      zones: [{ name: "Dockside Market", kind: "social", x: -10, z: -10, radius: 55 }],
+    },
+    alpine_pass: {
+      label: "Alpine Pass", biome: "alpine",
+      description: "A high mountain crossing — chokepoints, long sightlines, thin air.",
+      rules: { combatLethality: 1.0, refusalSensitivity: 1.0, questDensity: 1.0, weatherIntensity: 1.3 },
+      props: [
+        { kind: "rock", x: -14, z: 20 }, { kind: "tree", x: 18, z: 12 }, { kind: "tree", x: 22, z: -6 },
+        { kind: "bridge", x: 0, z: -18 }, { kind: "fence", x: -8, z: -4 },
+      ],
+      spawnPoints: [{ name: "Pass Watchpost", x: 0, z: 0 }],
+      zones: [{ name: "High Pass", kind: "combat", x: 0, z: -30, radius: 50 }],
+    },
   };
 
   const PROP_KINDS = ["tree", "rock", "building", "campfire", "well", "ruin", "lamp", "bridge", "statue", "fence", "crystal", "altar"];

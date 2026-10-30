@@ -82,6 +82,20 @@ describe("consumePlatformToken — fail-closed gate", () => {
     assert.equal(consumePlatformToken("groq", "conscious", t1).allowed, true);
   });
 
+  it("google defaults are the verified free-tier 5 RPM for gemini-3.6-flash (B#24/Q76)", () => {
+    const r = consumePlatformToken("google", "conscious", 1_000_000);
+    assert.equal(r.allowed, true);
+    assert.equal(r.maxPerMinute, 5);
+    const v = consumePlatformToken("google", "vision", 1_000_000);
+    assert.equal(v.maxPerMinute, 5);
+  });
+
+  it("mistral defaults stay at the documented fail-closed 10 RPM (no public figure exists)", () => {
+    const r = consumePlatformToken("mistral", "conscious", 1_000_000);
+    assert.equal(r.allowed, true);
+    assert.equal(r.maxPerMinute, 10);
+  });
+
   it("respects a CONCORD_PLATFORM_RPM_<PROVIDER>_<SLOT> override", () => {
     process.env.CONCORD_PLATFORM_RPM_MISTRAL_UTILITY = "5";
     const r = consumePlatformToken("mistral", "utility", 1_000_000);
