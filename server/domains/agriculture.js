@@ -800,7 +800,18 @@ export default function registerAgricultureActions(registerLensAction) {
       const n = params.name.trim(); if (!n) return { ok: false, error: "name cannot be empty" };
       f.name = n.slice(0, 60);
     }
-    if (Number.isFinite(Number(params.acreage))) f.acreage = Number(params.acreage);
+    // Q23: update enforces the SAME acreage bounds as field-create.
+    // It previously assigned any finite number (−50 and 5e9 both
+    // landed) and a null acreage silently zeroed the field
+    // (Number(null) === 0 is finite). A provided-but-invalid value now
+    // errors with create's messages instead of mutating or silently
+    // no-oping; omitting acreage leaves it untouched.
+    if (params.acreage != null) {
+      const acreage = Number(params.acreage);
+      if (!Number.isFinite(acreage) || acreage <= 0) return { ok: false, error: "acreage must be > 0" };
+      if (acreage > 100_000) return { ok: false, error: "acreage too large (max 100000)" };
+      f.acreage = acreage;
+    }
     if (typeof params.soilType === "string") f.soilType = params.soilType.slice(0, 24);
     if (typeof params.currentCrop === "string") f.currentCrop = params.currentCrop.slice(0, 40);
     f.updatedAt = nowIsoAgri();

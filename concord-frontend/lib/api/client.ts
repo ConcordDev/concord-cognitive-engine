@@ -667,11 +667,16 @@ api.interceptors.response.use(
           } else if (code === 'PERMISSION_DENIED' && data?.permission) {
             store.addToast({ type: 'error', message: `Permission denied: ${data.permission}` });
           } else if (!isBackgroundFetch) {
-            // A user action hit a bare 403 (no PERMISSION_DENIED code). Far more
-            // often a stale CSRF cookie — common on mobile Safari's stricter
-            // SameSite/Secure/partitioned-cookie handling — than a real authz
-            // denial. Don't cry "permission denied"; tell them to refresh.
-            store.addToast({ type: 'warning', message: 'That action was blocked — your session may have expired. Refresh the page and try again.' });
+            // A user action hit a bare 403 (no stamped code). Two unlike
+            // causes share this shape — a stale session/CSRF state AND
+            // real authorization denials from server paths that don't
+            // stamp codes (role gates, sovereign gates, route-level
+            // 403s) — so the copy names the block and at most both
+            // causes. It must not claim session expiry or prescribe a
+            // refresh: for a true denial, refreshing can never succeed
+            // (Q83 interim copy; the durable fix is the server stamping
+            // a code on every 403, a separate sweep).
+            store.addToast({ type: 'warning', message: 'That action was blocked. It may be a permission restriction, or your session may have expired.' });
           }
           // Background GET 403 (e.g. role-gated telemetry polls hitting a
           // non-admin session): stay silent — the caller handles it.
@@ -2079,6 +2084,10 @@ export const apiHelpers = {
   lens: {
     list: (domain: string, params?: { type?: string; search?: string; tags?: string; status?: string; limit?: number; offset?: number }) =>
       api.get(`/api/lens/${domain}`, { params }),
+    // Q79: the export read — artifacts (scaffolding excluded) merged with
+    // the domain's state-resident records when it has an export provider.
+    exportList: (domain: string, params?: { limit?: number }) =>
+      api.get(`/api/lens/${domain}/export`, { params }),
     get: (domain: string, id: string) =>
       api.get(`/api/lens/${domain}/${id}`),
     create: (domain: string, data: { type: string; title?: string; data?: Record<string, unknown>; meta?: Record<string, unknown> }) =>

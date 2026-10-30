@@ -8,6 +8,8 @@
  * cutoff as a 1500-character history slice. The model reprinted the stub.
  */
 
+import { podPick } from "./pod-profile.js";
+
 export const CHAT_MAX_TOKENS_DEFAULT = 4096;
 export const CHAT_MAX_TOKENS_FLOOR = 256;
 export const CHAT_MAX_TOKENS_CEILING = 16384;
@@ -105,8 +107,8 @@ function clampIntPositive(n, fallback, cap) {
  */
 export function resolveAgentMaxTurns({ requested, env } = {}) {
   const e = env || process.env;
-  const ceiling = clampIntPositive(e?.CONCORD_AGENT_MAX_TURNS_CEILING, 12, 50);
-  const fallback = clampIntPositive(e?.CONCORD_AGENT_MAX_TURNS, 8, ceiling);
+  const ceiling = clampIntPositive(e?.CONCORD_AGENT_MAX_TURNS_CEILING, podPick(12, 30, e), 50);
+  const fallback = clampIntPositive(e?.CONCORD_AGENT_MAX_TURNS, podPick(8, 16, e), ceiling);
   if (Number.isFinite(requested) && requested > 0) {
     return Math.min(ceiling, Math.max(1, Math.round(requested)));
   }
@@ -119,7 +121,7 @@ export function resolveAgentMaxTurns({ requested, env } = {}) {
  */
 export function resolveAgentMaxCallsPerTurn({ env } = {}) {
   const e = env || process.env;
-  return clampIntPositive(e?.CONCORD_AGENT_MAX_CALLS_PER_TURN, 6, 16);
+  return clampIntPositive(e?.CONCORD_AGENT_MAX_CALLS_PER_TURN, podPick(6, 10, e), 16);
 }
 
 /**
@@ -128,7 +130,7 @@ export function resolveAgentMaxCallsPerTurn({ env } = {}) {
  */
 export function resolveAgentMaxToolCalls({ env } = {}) {
   const e = env || process.env;
-  return clampIntPositive(e?.CONCORD_AGENT_MAX_TOOL_CALLS, 24, 100);
+  return clampIntPositive(e?.CONCORD_AGENT_MAX_TOOL_CALLS, podPick(24, 48, e), 100);
 }
 
 export function stoppedOnLength(reason) {
