@@ -135,28 +135,42 @@ export function ConcordRepoWorkspace() {
   // tab can check a branch out into the Code view (Review S1).
   const [currentBranch, setCurrentBranch] = useState<string>('main');
   const [loading, setLoading] = useState(true);
+  const [loadedOnce, setLoadedOnce] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [listErr, setListErr] = useState<string | null>(null);
+  const [listNotice, setListNotice] = useState<string | null>(null);
 
   // Repo create
   const [newRepoName, setNewRepoName] = useState('');
 
+  // Only the FIRST load gates the view behind the spinner. Later
+  // refreshes (a Settings save, a delete) must not unmount the open
+  // repo view: unmounting destroyed every tab's local state — which
+  // is why a Settings save's own success banner never survived to be
+  // seen in the follow-up re-pass (receipts round, PR #1837).
   const loadRepos = useCallback(async () => {
-    setLoading(true);
+    if (!loadedOnce) setLoading(true);
     const res = await runX<{ repos: RepoSummary[] }>('repo-list', {});
     if (res.ok) { setRepos(res.data?.repos || []); setListErr(null); }
     else { setListErr(res.error); }
     setLoading(false);
-  }, []);
+    setLoadedOnce(true);
+  }, [loadedOnce]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadRepos(); }, []);
 
   const createRepo = async () => {
     if (!newRepoName.trim()) return;
+    const name = newRepoName.trim();
     setBusy('create-repo');
-    const r = await runX('repo-create', { name: newRepoName.trim(), description: 'A Concord repository' });
-    if (r.ok) { setNewRepoName(''); setListErr(null); await loadRepos(); }
+    setListNotice(null);
+    const r = await runX('repo-create', { name, description: 'A Concord repository' });
+    if (r.ok) {
+      setNewRepoName(''); setListErr(null);
+      setListNotice(`Created "${name}" — seeded with the starter tree (README.md, package.json, src/). Open it below to start editing.`);
+      await loadRepos();
+    }
     else { setListErr(r.error); }
     setBusy(null);
   };
@@ -205,6 +219,11 @@ export function ConcordRepoWorkspace() {
       )}
 
       <ErrorBanner err={listErr} />
+      {listNotice && !activeRepo && (
+        <p className="flex items-center gap-1.5 rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-[10px] text-green-300">
+          <CheckCircle className="h-3 w-3 shrink-0" /> {listNotice}
+        </p>
+      )}
 
       {loading && (
         <div className="flex items-center gap-2 text-xs text-zinc-400">
@@ -223,7 +242,7 @@ export function ConcordRepoWorkspace() {
           {repos.map((r) => (
             <button
               key={r.id}
-              onClick={() => { setActiveRepo(r); setTab('code'); setCurrentBranch(r.defaultBranch || 'main'); }}
+              onClick={() => { setActiveRepo(r); setTab('code'); setCurrentBranch(r.defaultBranch || 'main'); setListNotice(null); }}
               className="block w-full rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-left hover:border-cyan-500/40"
             >
               <div className="flex items-center gap-2">
@@ -295,7 +314,7 @@ export function ConcordRepoWorkspace() {
             <SettingsTab
               repo={activeRepo}
               onUpdated={(r) => { setActiveRepo(r); void loadRepos(); }}
-              onDeleted={() => { setActiveRepo(null); void loadRepos(); }}
+              onDeleted={(name) => { setActiveRepo(null); setListNotice(`Deleted "${name}" — the repo and its history are gone.`); void loadRepos(); }}
             />
           )}
         </div>
@@ -349,6 +368,7 @@ function CodeTab({ repoId, branch, onBranchChange }: {
     if (!path) return;
     setFile({ path, content: '', language: 'Text', lineCount: 0 });
     setDraft('');
+    setCommitMsg(`Add ${path}`);
     setEditing(true);
     setIsNewFile(true);
     setErr(null);
@@ -362,7 +382,15 @@ function CodeTab({ repoId, branch, onBranchChange }: {
       'file-save',
       {
         repoId, branch, path: file.path, content: draft,
-        message: commitMsg || `${isNewFile ? 'Add' : 'Update'} ${file.path}`,
+        // S6, live form (Review 2 re-pass, checkpoint 5d): send the
+        // message EXACTLY as it stands in the box. The suggestion is
+        // prefilled into the input when editing starts (visible,
+        // editable, deletable) — an earlier build silently
+        // substituted it for an emptied box here, which defeated the
+        // server's empty-message guard: the user's blank committed
+        // "successfully" under words they never typed. An emptied
+        // box now reaches the server and its refusal surfaces below.
+        message: commitMsg,
         ...(confirmEmptyArmed ? { confirmEmpty: true } : {}),
       },
     );
@@ -478,7 +506,7 @@ function CodeTab({ repoId, branch, onBranchChange }: {
                     </>
                   ) : (
                     <>
-                      <button onClick={() => setEditing(true)} className="rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800">Edit</button>
+                      <button onClick={() => { setCommitMsg(`Update ${file.path}`); setEditing(true); }} className="rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800">Edit</button>
                       {!isNewFile && (
                         <button
                           onClick={deleteFile}
@@ -530,6 +558,10 @@ function BranchesTab({ repoId, onCheckout }: { repoId: string; onCheckout: (name
   } | null>(null);
   const [newBranch, setNewBranch] = useState('');
   const [newTag, setNewTag] = useState('');
+  // Tag receipts also render inside the Tags panel itself: the tab-top
+  // banner alone was missed in the follow-up re-pass (tag delete read
+  // as silent), so the outcome shows where the action happened.
+  const [tagNote, setTagNote] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -563,9 +595,10 @@ function BranchesTab({ repoId, onCheckout }: { repoId: string; onCheckout: (name
   const createTag = async () => {
     if (!newTag.trim()) return;
     setBusy('tag'); setErr(null);
-    const r = await runX('tag-create', { repoId, name: newTag.trim() });
+    const name = newTag.trim();
+    const r = await runX('tag-create', { repoId, name });
     setBusy(null);
-    if (r.ok) { setNewTag(''); await load(); } else { setErr(r.error); }
+    if (r.ok) { setNewTag(''); setTagNote(`Tag "${name}" created at the current tip.`); setNotice(`Tag "${name}" created at the current tip.`); await load(); } else { setErr(r.error); }
   };
   const deleteBranch = async (name: string) => {
     setBusy(`del-branch-${name}`); setErr(null); setNotice(null);
@@ -577,7 +610,7 @@ function BranchesTab({ repoId, onCheckout }: { repoId: string; onCheckout: (name
     setBusy(`del-tag-${name}`); setErr(null);
     const r = await runX('tag-delete', { repoId, name });
     setBusy(null);
-    if (r.ok) { setNotice(`Tag "${name}" deleted.`); await load(); } else { setErr(r.error); }
+    if (r.ok) { setTagNote(`Tag "${name}" deleted.`); setNotice(`Tag "${name}" deleted.`); await load(); } else { setErr(r.error); }
   };
   const openCommit = async (sha: string) => {
     const r = await runX('commit-detail', { repoId, sha });
@@ -627,6 +660,11 @@ function BranchesTab({ repoId, onCheckout }: { repoId: string; onCheckout: (name
               <button onClick={createTag} disabled={busy === 'tag'} className="rounded bg-green-600 px-1.5 py-0.5 text-[10px] text-white disabled:opacity-50">+</button>
             </div>
           </div>
+          {tagNote && (
+            <p className="mb-1 flex items-center gap-1.5 rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-[10px] text-green-300">
+              <CheckCircle className="h-3 w-3 shrink-0" /> {tagNote}
+            </p>
+          )}
           {tags.length === 0 && <p className="text-[11px] text-zinc-400">No tags yet.</p>}
           {tags.map((t) => (
             <div key={t.name} className="flex items-center gap-1.5 border-t border-zinc-800/60 py-1 text-[11px]">
@@ -864,7 +902,15 @@ function PullsTab({ repoId }: { repoId: string }) {
     setBusy('review'); setErr(null);
     const r = await runX('pull-review', { repoId, number: detail.pull.number, verdict, body: reviewBody });
     setBusy(null);
-    if (r.ok) { setReviewBody(''); await openDetail(detail.pull.number); } else { setErr(r.error); }
+    if (r.ok) {
+      setReviewBody('');
+      setNotice(verdict === 'approve'
+        ? 'Review recorded — you approved this pull request.'
+        : verdict === 'request-changes'
+          ? 'Review recorded — changes requested on this pull request.'
+          : 'Review recorded — comment posted as a review.');
+      await openDetail(detail.pull.number);
+    } else { setErr(r.error); }
   };
   const merge = async () => {
     if (!detail) return;
@@ -1363,7 +1409,7 @@ function InsightsTab({ repoId }: { repoId: string }) {
 function SettingsTab({ repo, onUpdated, onDeleted }: {
   repo: RepoSummary;
   onUpdated: (r: RepoSummary) => void;
-  onDeleted: () => void;
+  onDeleted: (name: string) => void;
 }) {
   const [name, setName] = useState(repo.name);
   const [description, setDescription] = useState(repo.description || '');
@@ -1389,7 +1435,7 @@ function SettingsTab({ repo, onUpdated, onDeleted }: {
     setBusy('delete'); setErr(null);
     const r = await runX('repo-delete', { repoId: repo.id, confirmName });
     setBusy(null);
-    if (r.ok) { onDeleted(); } else { setErr(r.error); }
+    if (r.ok) { onDeleted(repo.name); } else { setErr(r.error); }
   };
 
   return (
@@ -1482,7 +1528,10 @@ interface DependencyAuditResult {
   totalDependencies: number; healthScore: number; healthGrade: string;
   depth: { max: number; avgDepth: number };
   duplicates: { versionConflicts: number };
-  vulnerabilities: { total: number; affectedDeps: number };
+  // total/affectedDeps are null when the live OSV check was requested
+  // but unreachable — unknown, never a printed 0 (re-pass checkpoint 3).
+  vulnerabilities: { total: number | null; affectedDeps: number | null; source?: string; checked?: boolean; unreachable?: boolean };
+  dependencyList?: Array<{ name: string; version: string; vulnerabilities: number | null; advisories: string[] }>;
   freshness: { avgScore: number; criticalUpdates: number; stalePackages: number };
   licenses: { risks: Array<{ license: string; count: number }> };
 }
@@ -1493,6 +1542,8 @@ function AnalysisTab({ repoId }: { repoId: string }) {
   const [ranOnce, setRanOnce] = useState(false);
   const [filesCapped, setFilesCapped] = useState(false);
   const [complexity, setComplexity] = useState<ComplexityResult | null>(null);
+  const [cxError, setCxError] = useState<string | null>(null);
+  const [cxMeta, setCxMeta] = useState<{ matched: number; unreadable: number }>({ matched: 0, unreadable: 0 });
   const [commits, setCommits] = useState<CommitAnalysisResult | null>(null);
   const [deps, setDeps] = useState<DependencyAuditResult | null>(null);
   const [noPackageJson, setNoPackageJson] = useState(false);
@@ -1512,13 +1563,21 @@ function AnalysisTab({ repoId }: { repoId: string }) {
       setFilesCapped(flat.length > COMPLEXITY_FILE_CAP);
       const capped = flat.slice(0, COMPLEXITY_FILE_CAP);
       const sourceFiles: Array<{ path: string; content: string }> = [];
+      let unreadable = 0;
       for (const f of capped) {
         const fr = await runX<FileContent>('file-read', { repoId, path: f.path });
-        if (!fr.ok || !fr.data) continue;
+        if (!fr.ok || !fr.data) { unreadable++; continue; }
         sourceFiles.push({ path: f.path, content: fr.data.content });
       }
+      // The card renders the macro's ACTUAL outcome (re-pass
+      // checkpoint 3): a failed call shows its message, never the
+      // empty-state text — "No files to analyze" over a repo full of
+      // files was the silent wrong answer, whatever the server's
+      // reason (e.g. its parser package not loading).
+      setCxMeta({ matched: flat.length, unreadable });
       const cx = await runX<ComplexityResult>('codeComplexity', { sourceFiles });
-      setComplexity(cx.ok ? cx.data : null);
+      if (cx.ok) { setComplexity(cx.data); setCxError(null); }
+      else { setComplexity(null); setCxError(cx.error); }
       if (!cx.ok && cx.error) setErr(cx.error);
 
       // 2) Commit-pattern analysis — real commit-graph, field-mapped to the
@@ -1549,7 +1608,10 @@ function AnalysisTab({ repoId }: { repoId: string }) {
             const dependencies = Object.entries(depEntries).map(([name, version]) => ({ name, version: String(version) }));
             if (dependencies.length === 0) { setNoPackageJson(true); setDeps(null); }
             else {
-              const da = await runX<DependencyAuditResult>('dependencyAudit', { dependencies });
+              // liveVulnCheck: the audit asks the same OSV.dev source
+              // the Security tab scans with, so the two tabs' counts
+              // agree by construction (re-pass checkpoint 3).
+              const da = await runX<DependencyAuditResult>('dependencyAudit', { dependencies, liveVulnCheck: true });
               setDeps(da.ok ? da.data : null);
               setNoPackageJson(false);
             }
@@ -1598,7 +1660,15 @@ function AnalysisTab({ repoId }: { repoId: string }) {
           <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
             <h4 className="mb-2 text-xs font-semibold text-white">Code complexity</h4>
             {!complexity ? (
-              <p className="text-[11px] text-zinc-400">No files to analyze.</p>
+              cxError ? (
+                <p className="text-[11px] text-amber-400">{cxError}</p>
+              ) : cxMeta.matched === 0 ? (
+                <p className="text-[11px] text-zinc-400">No JS/TS files in this repo — the complexity engine parses JavaScript and TypeScript only.</p>
+              ) : cxMeta.unreadable >= cxMeta.matched ? (
+                <p className="text-[11px] text-amber-400">{cxMeta.matched} JS/TS file(s) are in this repo, but none could be read, so there was nothing to send for analysis.</p>
+              ) : (
+                <p className="text-[11px] text-zinc-400">No files to analyze.</p>
+              )
             ) : complexity.message ? (
               <p className="text-[11px] text-zinc-400">{complexity.message}</p>
             ) : (
@@ -1660,11 +1730,34 @@ function AnalysisTab({ repoId }: { repoId: string }) {
             ) : !deps ? (
               <p className="text-[11px] text-zinc-400">No dependency data.</p>
             ) : (
-              <div className="grid grid-cols-4 gap-2">
-                <StatBox label="Deps" value={deps.totalDependencies} />
-                <StatBox label="Health" value={`${deps.healthScore} (${deps.healthGrade})`} tone={deps.healthScore < 60 ? 'bad' : 'good'} />
-                <StatBox label="Version conflicts" value={deps.duplicates.versionConflicts} tone={deps.duplicates.versionConflicts > 0 ? 'bad' : 'good'} />
-                <StatBox label="Vulnerable" value={deps.vulnerabilities.affectedDeps} tone={deps.vulnerabilities.affectedDeps > 0 ? 'bad' : 'good'} />
+              <div className="space-y-2">
+                <div className="grid grid-cols-4 gap-2">
+                  <StatBox label="Deps" value={deps.totalDependencies} />
+                  <StatBox label="Health" value={`${deps.healthScore} (${deps.healthGrade})`} tone={deps.healthScore < 60 ? 'bad' : 'good'} />
+                  <StatBox label="Version conflicts" value={deps.duplicates.versionConflicts} tone={deps.duplicates.versionConflicts > 0 ? 'bad' : 'good'} />
+                  <StatBox label="Vulnerable" value={deps.vulnerabilities.affectedDeps ?? 'unknown'} tone={(deps.vulnerabilities.affectedDeps ?? 0) > 0 ? 'bad' : 'good'} />
+                </div>
+                {deps.vulnerabilities.unreachable ? (
+                  <p className="text-[10px] text-amber-400">Vulnerability check: OSV.dev could not be reached at audit time — the counts are unknown, not zero.</p>
+                ) : deps.vulnerabilities.checked ? (
+                  <p className="text-[10px] text-zinc-500">Vulnerability data: OSV.dev, queried live at audit time — the same source the Security tab scans with.</p>
+                ) : null}
+                {deps.dependencyList && deps.dependencyList.length > 0 && (
+                  <div>
+                    {deps.dependencyList.map((d) => (
+                      <div key={d.name} className="flex items-center justify-between border-t border-zinc-800/60 py-1 text-[11px] first:border-0">
+                        <span className="truncate font-mono text-zinc-200">{d.name}@{d.version}</span>
+                        {d.vulnerabilities === null ? (
+                          <span className="shrink-0 text-zinc-500">vulnerabilities unknown</span>
+                        ) : d.vulnerabilities === 0 ? (
+                          <span className="shrink-0 text-zinc-500">no known advisories</span>
+                        ) : (
+                          <span className="shrink-0 text-rose-300">{d.vulnerabilities} advisor{d.vulnerabilities === 1 ? 'y' : 'ies'}: {d.advisories.join(', ')}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -7,6 +7,7 @@
 // pull/push/two-way direction). The legacy ICS pull (`accounts-sync`) stays.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 import { writeGoogleCalendarEvent, readGoogleCalendarEvents } from "../lib/connector-client.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 
@@ -288,6 +289,28 @@ export default function registerCalendarActions(registerLensAction) {
     for (const k of ['cal','evt','task']) if (!Number.isFinite(seq[k])) seq[k] = 1;
     return seq;
   }
+
+  // Q79: register Calendar's state-resident records with the shared
+  // export (lib/lens-export.js). Calendar events/calendars/tasks live in
+  // STATE.calendarLens, not the generic artifact store, so an
+  // artifacts-only export contained none of the user's actual data.
+  // Scoped to the calling user, like every other calendar read.
+  registerLensExportProvider("calendar", (ctx) => {
+    const s = getCalState();
+    if (!s) return [];
+    const userId = aidCal(ctx);
+    const rows = [];
+    for (const c of listCal(s.calendars, userId)) {
+      rows.push({ id: c.id, type: "calendar", title: c.name || "Calendar", createdAt: c.createdAt, updatedAt: c.updatedAt || c.createdAt, data: c });
+    }
+    for (const e of listCal(s.events, userId)) {
+      rows.push({ id: e.id, type: "event", title: e.title || e.name || "Untitled event", createdAt: e.createdAt, updatedAt: e.updatedAt || e.createdAt, data: e });
+    }
+    for (const t of listCal(s.tasks, userId)) {
+      rows.push({ id: t.id, type: "task", title: t.title || t.name || "Untitled task", createdAt: t.createdAt, updatedAt: t.updatedAt || t.createdAt, data: t });
+    }
+    return rows;
+  });
 
   const CAL_COLORS = ['#4285f4', '#ea4335', '#34a853', '#fbbc04', '#a142f4', '#24c1e0', '#f538a0', '#f6911e'];
 
