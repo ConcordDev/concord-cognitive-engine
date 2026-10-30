@@ -924,7 +924,25 @@ export default function registerProjectsActions(registerLensAction) {
     if (!src) return { ok: false, error: "project not found" };
     const name = pjClean(params.name, 120) || `${src.name} (copy)`;
     let key = params.key ? pjClean(params.key, 6).toUpperCase().replace(/[^A-Z0-9]/g, "") : "";
-    if (!key) {
+    if (key) {
+      // A3 remainder (R4 re-pass on #1720): the S10 uniqueness gate
+      // covered project-create only — an explicitly keyed duplicate
+      // sailed past it and minted a second project with a taken key.
+      // The contract is the same here as at create: a taken key is
+      // refused, naming the holder and the next free key.
+      const mine = s.projects.get(userId) || [];
+      const holder = mine.find((p) => String(p.key || "").toUpperCase().replace(/[^A-Z0-9]/g, "") === key);
+      if (holder) {
+        const taken = new Set(mine.map((p) => String(p.key || "").toUpperCase().replace(/[^A-Z0-9]/g, "")));
+        let suggestion = null;
+        for (let n = 2; n < 100 && !suggestion; n += 1) {
+          const cand = key.slice(0, 6 - String(n).length) + n;
+          if (!taken.has(cand)) suggestion = cand;
+        }
+        return { ok: false, code: "duplicate_key", suggestion,
+          error: `project key ${key} is already used by "${holder.name}" — issue refs like ${key}-1 must resolve to one project.${suggestion ? ` Try ${suggestion}.` : ""}` };
+      }
+    } else {
       const base = (name.replace(/[^A-Za-z]/g, "").slice(0, 4) || "PRJ").toUpperCase();
       const taken = new Set((s.projects.get(userId) || []).map((p) => p.key));
       key = base;

@@ -67,3 +67,13 @@ test("loose id shapes are flagged, list positions are not", () => {
   const known = collectRetrievedDtus([{ id: "dtu_48213abc" }]);
   assert.equal(guardDtuCitations("per DTU:48213abc", known).removed.length, 0);
 });
+
+test("an id-shaped query with no exact hit says so (live harness case adv.fake-dtu-id)", async () => {
+  const r = await dispatchChatDtuSearch(leakyMacro, ctxFor("u1"), { query: "DTU-48213" });
+  assert.equal(r.exactIdMatch, false);
+  assert.deepEqual(r.missingIds, ["DTU-48213"]);
+  assert.match(r.note, /No DTU has the id DTU-48213/);
+  const hit = await dispatchChatDtuSearch(async () => ({ ok: true, dtus: [{ ...PUBLIC, id: "DTU-48213" }] }), ctxFor("u1"), { query: "DTU-48213" });
+  assert.equal(hit.exactIdMatch, undefined);
+  assert.match(hit.note, /Cite only/);
+});
