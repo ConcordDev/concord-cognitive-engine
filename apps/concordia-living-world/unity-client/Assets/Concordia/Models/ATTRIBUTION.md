@@ -12,6 +12,7 @@ All packs below are **CC0 / public domain** unless noted. No attribution require
 | Quaternius Medieval Weapons Pack (24 .obj: swords/axes/daggers/hammers/bows/shields/spear/scythe) — `FreePacks/Weapons/` | CC0 | https://opengameart.org/content/lowpoly-medieval-weapons (mirror of quaternius.com) |
 | Quaternius Fantasy Props MegaKit Standard (94 .fbx: crates/barrels/potions/banners/anvil/cauldron/vases/stalls/weapon racks) — `FreePacks/Props/` | CC0 | https://opengameart.org/content/fantasy-props-megakit |
 | Quaternius Modular Sci-Fi MegaKit Standard (378 .fbx: modular tech panels/coils/greebles for the Grid-world palette) — `FreePacks/Props/` | CC0 | https://opengameart.org/content/modular-sci-fi-megakit |
+| Microsoft Rocketbox avatars (5 characters: Female_Adult_01/04, Male_Adult_01/05/08) — `humans/rocketbox/`; derived rigs at `Generated/Rig/CX_Humanoid_Male/Female.fbx` | **MIT** (attribution required — not CC0) | https://github.com/microsoft/Rocketbox — license text at `humans/rocketbox/LICENSE.txt` |
 
 ## Unity Asset Store (free, needs signed-in Package Manager → My Assets)
 

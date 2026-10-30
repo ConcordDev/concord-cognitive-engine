@@ -65,6 +65,32 @@ function syncRead(label, fn) {
   }
 }
 
+// ── agent_reasoning_traces (migration 327) ──────────────────────────
+// The per-entity deliberation journal: the awareness loop writes a
+// trace on each tier-3 wake and the runtime heartbeat writes one per
+// tick. The table's entity column is `agent_id` (migration 327's
+// schema). Readers here previously probed only for
+// emergent_id/entity_id/user_id — none of which exist on the table —
+// so per-entity traces always reported "no_entity_column" and the
+// reflection layer looked unimplemented; the heartbeat writer also
+// INSERTed a nonexistent entity_id column and failed silently, so
+// its traces were never persisted at all. Probe the real column
+// first and keep the other names as forward-compatible fallbacks.
+const TRACE_ENTITY_COLUMNS = ["agent_id", "emergent_id", "entity_id", "user_id"];
+function traceEntityColumn(db) {
+  try {
+    const cols = db.prepare("PRAGMA table_info(agent_reasoning_traces)").all().map(c => c.name);
+    return TRACE_ENTITY_COLUMNS.find(c => cols.includes(c)) || null;
+  } catch { return null; }
+}
+function readEntityTraces(db, entity_id, limit) {
+  if (!db) return { available: false, reason: "no_db" };
+  const entity_col = traceEntityColumn(db);
+  if (!entity_col) return { available: false, reason: "no_entity_column" };
+  const traces = db.prepare(`SELECT * FROM agent_reasoning_traces WHERE ${entity_col} = ? ORDER BY created_at DESC LIMIT ?`).all(entity_id, limit);
+  return { available: true, count: traces.length, recent: traces };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Identity layer
 // ─────────────────────────────────────────────────────────────────────────────
@@ -477,28 +503,37 @@ export async function readCognition(entity_id, ctx) {
       style_dimensions: cf.STYLE_DIMENSIONS || [],
     };
   });
-  // 2. Reflection trace — query the reflection subsystem
-  out.reflection = await tryRead("cognition.reflection", async () => {
-    const reflection = await import("../domains/reflection.js");
-    // Reflection has many functions; return a status summary
-    const functions = Object.keys(reflection).filter(k => typeof reflection[k] === "function" && !k.startsWith("_"));
+  // 2. Reflection — per-entity tracking over the mig-327 deliberation
+  // journal (the awareness loop's reflection rows for THIS entity).
+  // The reflection DOMAIN is a separate thing (stateless analytics
+  // over journal entries a caller supplies); entity reflection lives
+  // in agent_reasoning_traces.
+  out.reflection = syncRead("cognition.reflection", () => {
+    const t = readEntityTraces(globalThis?._concordDB, entity_id, 50);
+    if (!t.available) return { domain: "reflection", tracking: "agent_reasoning_traces", ...t };
+    const rows = t.recent;
+    const byReason = {};
+    let surpriseSum = 0, surpriseN = 0, awarenessSum = 0, awarenessN = 0;
+    for (const row of rows) {
+      if (row.reason) byReason[row.reason] = (byReason[row.reason] || 0) + 1;
+      if (typeof row.surprise === "number") { surpriseSum += row.surprise; surpriseN++; }
+      if (typeof row.awareness_index === "number") { awarenessSum += row.awareness_index; awarenessN++; }
+    }
     return {
       domain: "reflection",
-      exposed_functions: functions,
-      note: "Reflection is in-memory per session. Per-entity tracking not implemented; see agent_reasoning_traces table.",
+      tracking: "agent_reasoning_traces",
+      available: true,
+      trace_count: rows.length,
+      by_reason: byReason,
+      avg_surprise: surpriseN ? Number((surpriseSum / surpriseN).toFixed(4)) : null,
+      avg_awareness_index: awarenessN ? Number((awarenessSum / awarenessN).toFixed(4)) : null,
+      latest: rows[0] || null,
     };
   });
   // 3. Reasoning traces — DB-backed
   out.reasoning_traces = syncRead("cognition.reasoning_traces", () => {
     try {
-      const db = globalThis?._concordDB;
-      if (!db) return { available: false, reason: "no_db" };
-      // agent_reasoning_traces table — check if it has a column for entity_id
-      const cols = db.prepare("PRAGMA table_info(agent_reasoning_traces)").all().map(c => c.name);
-      const entity_col = cols.find(c => c === "emergent_id" || c === "entity_id" || c === "user_id");
-      if (!entity_col) return { available: false, reason: "no_entity_column", columns: cols };
-      const traces = db.prepare(`SELECT * FROM agent_reasoning_traces WHERE ${entity_col} = ? ORDER BY created_at DESC LIMIT 20`).all(entity_id);
-      return { available: true, count: traces.length, recent: traces };
+      return readEntityTraces(globalThis?._concordDB, entity_id, 20);
     } catch (e) {
       return { available: false, reason: e?.message || String(e) };
     }
@@ -587,14 +622,8 @@ export async function readReflection(entity_id, ctx) {
   const out = { entity_id };
   out.reflection = syncRead("reflection.trace", () => {
     try {
-      const db = globalThis?._concordDB;
-      if (!db) return { available: false, reason: "no_db" };
-      // agent_reasoning_traces from migration 327
-      const cols = db.prepare("PRAGMA table_info(agent_reasoning_traces)").all().map(c => c.name);
-      const entity_col = cols.find(c => c === "emergent_id" || c === "entity_id" || c === "user_id");
-      if (!entity_col) return { available: false, reason: "no_entity_column" };
-      const traces = db.prepare(`SELECT * FROM agent_reasoning_traces WHERE ${entity_col} = ? ORDER BY created_at DESC LIMIT 5`).all(entity_id);
-      return { available: true, count: traces.length, recent: traces };
+      // agent_reasoning_traces from migration 327, keyed by agent_id
+      return readEntityTraces(globalThis?._concordDB, entity_id, 5);
     } catch (e) {
       return { available: false, reason: e?.message || String(e) };
     }
@@ -817,10 +846,13 @@ export async function rtTick(entity_id, ctx = {}) {
   if (db) {
     try {
       const traceId = `trace_${entity_id}_${tickRow.tick_at}_${Math.random().toString(36).slice(2, 8)}`;
+      // Migration 327's table has agent_id only — no entity_id column.
+      // This INSERT previously named entity_id and failed silently on
+      // every tick, so heartbeat traces were never persisted.
       db.prepare(`INSERT INTO agent_reasoning_traces
-        (id, agent_id, entity_id, quale, awareness_index, reason, note, world_id, attended, surprise, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-          traceId, entity_id, entity_id,
+        (id, agent_id, quale, awareness_index, reason, note, world_id, attended, surprise, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+          traceId, entity_id,
           dominant?.name || "neutral",  // quale = dominant drive label
           Math.min(0.99, Math.max(0.01, (fp?.queryPatterns?.total ?? 0) / 100)),  // awareness_index
           "tick_heartbeat",  // wake reason
@@ -828,7 +860,9 @@ export async function rtTick(entity_id, ctx = {}) {
           "agent_runtime",
           `heartbeat[${hooksFired.length}hooks]`,
           0,  // surprise
-          tickRow.tick_at
+          // Seconds, like awareness-loop's unixepoch() traces. Milliseconds here sorted every
+          // heartbeat above every real deliberation trace in ORDER BY created_at DESC.
+          Math.floor(tickRow.tick_at / 1000)
         );
     } catch (e) { /* table may not exist */ }
   }
@@ -852,7 +886,7 @@ export async function rtTick(entity_id, ctx = {}) {
       const days = Number(process.env.RT_TICK_RETENTION_DAYS) || 7;
       const cutoff = tickRow.tick_at - days * 86_400_000;
       db.prepare("DELETE FROM entity_tick_history WHERE entity_id = ? AND tick_at < ?").run(entity_id, cutoff);
-      db.prepare("DELETE FROM agent_reasoning_traces WHERE entity_id = ? AND reason = 'tick_heartbeat' AND created_at < ?").run(entity_id, cutoff);
+      db.prepare("DELETE FROM agent_reasoning_traces WHERE agent_id = ? AND reason = 'tick_heartbeat' AND created_at < ?").run(entity_id, Math.floor(cutoff / 1000));
     } catch { /* retention is best-effort */ }
   }
 
