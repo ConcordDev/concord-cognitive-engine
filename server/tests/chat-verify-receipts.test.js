@@ -73,3 +73,21 @@ test("end to end through the chat tools, no LLM: footbridge beam + column, then 
   const wrong = "The bending stress is 111 MPa at 125 mm.";
   assert.deepEqual(guardNumericTrace(wrong, [beam, col], { prompt: "" }).untraced, ["111 MPa"]);
 });
+
+test("a unit outside the independent table is NOT reported as independently verified", () => {
+  const r = runRecipe("unit_conversion", { value: 3, from: "mm2", to: "m2" });
+  assert.equal(r.ok, true);
+  assert.equal(r.passed, true); // the converter's own declared checks still pass
+  assert.equal(r.verified, false);
+  assert.equal(r.receipt.verification.verified, false);
+  assert.deepEqual(r.receipt.verification.independent, []);
+  assert.ok(!r.checks.some((c) => c.name === "independent:independent_factor" && c.pass));
+  assert.match(r.note, /no independent recomputation exists/);
+  assert.doesNotMatch(r.note, /independent recomputation agrees/);
+});
+
+test("an in-table unit conversion is still independently verified", () => {
+  const r = runRecipe("unit_conversion", { value: 3, from: "psi", to: "mpa" });
+  assert.equal(r.verified, true);
+  assert.ok(r.checks.some((c) => c.name === "independent:conversion_factor" && c.pass));
+});

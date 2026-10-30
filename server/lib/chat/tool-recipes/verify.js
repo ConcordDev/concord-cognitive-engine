@@ -100,7 +100,8 @@ const INDEPENDENT = {
     // a small second table, typed here rather than read from the converter under test
     const F = { n: 1, kn: 1e3, mn: 1e6, lbf: 4.4482216152605, pa: 1, kpa: 1e3, mpa: 1e6, gpa: 1e9, psi: 6894.757293168, ksi: 6894757.293168, m: 1, mm: 1e-3, cm: 1e-2, km: 1e3, in: 0.0254, ft: 0.3048 };
     const a = F[String(v.from).toLowerCase()]; const b = F[String(v.to).toLowerCase()];
-    if (a == null || b == null) return [{ name: "independent_factor", pass: true, detail: "unit outside the independent table: not independently checked" }];
+    // Outside the independent table nothing is recomputed, so return no checks: the recipe is then reported unverified.
+    if (a == null || b == null) return [];
     return [agree("conversion_factor", r.value, (v.value * a) / b, 1e-9)];
   },
   material_compare(v, r) {
