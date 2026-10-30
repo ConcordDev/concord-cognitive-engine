@@ -102,4 +102,19 @@ describe("projects sprint receipt (D1)", () => {
       .filter((a) => a.action === "sprint_receipt").length;
     assert.equal(after, before, "no duplicate receipts");
   });
+
+  it("the #1844 S4 assignment identity still holds beside the receipt: non-members and non-accounts are rejected", async () => {
+    const { p, sp } = sprintWith([["Done A", 3, "done"]]);
+    call("sprint-complete", ctxA, { id: sp.id });
+    const bad = call("task-create", ctxA, { projectId: p.id, title: "Assigned to a stranger", assigneeId: "user_stranger" });
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /not a member of this project/);
+    const free = call("task-create", ctxA, { projectId: p.id, title: "Assigned to a free-text name", assigneeId: "mbr_made_up_name" });
+    assert.equal(free.ok, false);
+    const own = call("task-create", ctxA, { projectId: p.id, title: "Assigned to the owner", assigneeId: "user_a" });
+    assert.equal(own.ok, true, "the owner is always a member");
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(new URL("../domains/projects.js", import.meta.url), "utf8");
+    for (const sym of ["createArtifactAcl", "registerArtifactOwnerResolver", "lookupUserIdentity", "pjMigrateLegacyMembers", "pjAssigneeSet"]) assert.ok(src.includes(sym), sym + " must stay");
+  });
 });
