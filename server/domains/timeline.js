@@ -6,8 +6,9 @@
 // authoritative, server-verified source for "are these two users friends",
 // as opposed to a client-supplied assertion. See checkPostAccess() below.
 import { guardAnonWrites } from "../lib/lens-authz.js";
-import { areFriends } from "../lib/friendships.js";
+import { areFriends, blockUser, unblockUser, isBlocked, listBlockPairs } from "../lib/friendships.js";
 import { presentOwnedId } from "../lib/public-actor.js";
+import { lookupUserIdentity } from "../lib/user-identity.js";
 
 export default function registerTimelineActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -460,12 +461,16 @@ export default function registerTimelineActions(registerLensAction) {
     // posts:    Map<userId, Post[]>          — feed posts authored by the user
     // comments: Map<postId, Comment[]>       — flat list, nested via parentId
     // reactions:Map<postId, Reaction[]>      — one row per (userId, post)
+    // commentReactions: Map<commentId, Reaction[]> — S-TL-6, same shape
     // albums:   Map<userId, Album[]>         — media albums + their media items
     // profiles: Map<userId, Profile>         — cover photo / bio / about
     // notifs:   Map<userId, Notification[]>  — reaction/comment/tag alerts
-    for (const k of ["posts", "comments", "reactions", "albums", "profiles", "notifs"]) {
+    // mutes:    Map<userId, userId[]>        — S-TL-9: people this user muted
+    // reports:  Report[]                     — S-TL-9: the moderation queue
+    for (const k of ["posts", "comments", "reactions", "commentReactions", "albums", "profiles", "notifs", "mutes"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
+    if (!Array.isArray(s.reports)) s.reports = [];
     return s;
   }
   function saveTlState() {
@@ -478,7 +483,20 @@ export default function registerTimelineActions(registerLensAction) {
   const tlAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const presentComment = (ctx, viewer, c) => {
     const replies = Array.isArray(c?.replies) ? c.replies.map((r) => presentComment(ctx, viewer, r)) : c?.replies;
-    return presentOwnedId(ctx, viewer, { ...c, replies }, "authorId", { label: "Member" });
+    // S-TL-6: comments carry their reaction summary, like posts do.
+    const s = getTlState();
+    const list = s?.commentReactions?.get(c.id) || [];
+    const reactionCounts = REACTION_KINDS.reduce((acc, k) => {
+      acc[k] = list.filter((r) => r.kind === k).length;
+      return acc;
+    }, {});
+    const mine = list.find((r) => r.userId === viewer);
+    return presentOwnedId(ctx, viewer, {
+      ...c, replies,
+      reactionCounts,
+      reactionTotal: list.length,
+      userReaction: mine ? mine.kind : null,
+    }, "authorId", { label: "Member" });
   };
   const tlList = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
   const tlClean = (v, max = 2000) => String(v == null ? "" : v).trim().slice(0, max);
@@ -486,6 +504,71 @@ export default function registerTimelineActions(registerLensAction) {
   const REACTION_KINDS = ["like", "love", "haha", "sad", "angry"];
   const PRIVACY_KINDS = ["public", "friends", "private"];
   const MEDIA_KINDS = ["photo", "video"];
+  // Per-post reply gates (S-TL-8, §5d B11): who may comment. Posts
+  // stored before gates existed have no field and read as 'anyone'.
+  const REPLY_GATES = ["anyone", "friends", "mentioned", "none"];
+  const tlReplyGate = (post) =>
+    REPLY_GATES.includes(post?.replyGate) ? post.replyGate : "anyone";
+  // The post's author always may reply. 'friends' resolves through
+  // the real friend graph (fails closed without a db handle);
+  // 'mentioned' means the people tagged in the post.
+  const tlCanReply = (ctx, post, actorId) => {
+    if (!post) return false;
+    if (post.authorId === actorId) return true;
+    const gate = tlReplyGate(post);
+    if (gate === "anyone") return true;
+    if (gate === "none") return false;
+    if (gate === "mentioned") return (post.taggedUserIds || []).includes(actorId);
+    const db = ctx?.db || globalThis._concordSTATE?.db;
+    return db ? areFriends(db, post.authorId, actorId) === true : false;
+  };
+
+  // Safety verbs (S-TL-9, F12): personal, user-invoked containment —
+  // no lists, no account-wide switches. A block lives in the friend
+  // graph (one row per pair, covering both directions); a mute is the
+  // viewer's own list in tlState and affects only their surfaces.
+  const tlDb = (ctx) => ctx?.db || globalThis._concordSTATE?.db || null;
+  const tlMutedBy = (s, viewerId) => new Set(s.mutes.get(viewerId) || []);
+  const tlBlockedEither = (ctx, a, b) => {
+    const db = tlDb(ctx);
+    return db ? isBlocked(db, a, b) : false;
+  };
+
+  // Media URLs (S-TL-3 / F14): an item may point at an uploaded
+  // artifact (its stream path) or at an absolute http(s) URL. Anything
+  // else — a bare word, a javascript:/data: URL, a malformed string —
+  // can never render, and attaching it silently was F14's broken-image
+  // publish. The macros refuse the attach with this reason instead.
+  // Returns null when the URL is usable.
+  const tlMediaUrlError = (url) => {
+    const u = String(url || "");
+    if (/^\/api\/artifact\/[A-Za-z0-9_.:-]+\/stream$/.test(u)) return null;
+    try {
+      const parsed = new URL(u);
+      if (parsed.protocol === "http:" || parsed.protocol === "https:") return null;
+    } catch { /* not a URL at all — fall through */ }
+    return `Media URL can't be used: ${u.slice(0, 80) || "(empty)"} — paste an http(s) link or upload the file instead.`;
+  };
+  // The post-create media mapping, shared by post-update (S-TL-2).
+  const tlMapMedia = (media) => (Array.isArray(media) ? media : [])
+    .filter((m) => m && MEDIA_KINDS.includes(String(m.kind)))
+    .slice(0, 12)
+    .map((m) => ({ kind: String(m.kind), url: tlClean(m.url, 1000), caption: tlClean(m.caption, 200) }));
+
+  // Display identity for a person (S-TL-4 / F5). A name set on the
+  // user's Timeline profile wins; otherwise the account's users-table
+  // identity (display name, then @username). Never falls back to the
+  // raw id: an unnamed account resolves to null and the surface shows
+  // its neutral label — a UUID is not a name.
+  const tlPersonName = (ctx, s, userId) => {
+    if (!userId) return null;
+    const stored = s.profiles.get(userId);
+    if (stored?.displayName) return stored.displayName;
+    try {
+      const ident = lookupUserIdentity(ctx?.db || globalThis._concordSTATE?.db, userId);
+      return ident.displayName || ident.username || null;
+    } catch { return null; }
+  };
 
   // Find a post by id across all users' feeds — returns { ownerId, post } | null.
   function findPost(s, postId) {
@@ -550,12 +633,22 @@ export default function registerTimelineActions(registerLensAction) {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const content = tlClean(params.content, 5000);
-    const media = Array.isArray(params.media) ? params.media : [];
+    const media = tlMapMedia(params.media);
     if (!content && media.length === 0) {
       return { ok: false, error: "Post needs content or media." };
     }
+    for (const m of media) {
+      const urlError = tlMediaUrlError(m.url);
+      if (urlError) return { ok: false, error: urlError };
+    }
     const privacy = PRIVACY_KINDS.includes(String(params.privacy))
       ? String(params.privacy) : "private";
+    // S-TL-8: an unknown reply gate is refused, not silently mapped —
+    // the author learns before publishing, like post-update's privacy.
+    if (params.replyGate !== undefined && !REPLY_GATES.includes(String(params.replyGate))) {
+      return { ok: false, error: "Unknown reply setting." };
+    }
+    const replyGate = params.replyGate !== undefined ? String(params.replyGate) : "anyone";
     // A lens may attach a DTU it already created. The id is stored only when
     // it looks like an id, so a post never pretends to cite a missing record.
     const rawCite = tlClean(params.citedDtuId, 80);
@@ -564,11 +657,9 @@ export default function registerTimelineActions(registerLensAction) {
       id: tlId("pst"),
       authorId: tlAid(ctx),
       content,
-      media: media
-        .filter((m) => m && MEDIA_KINDS.includes(String(m.kind)))
-        .slice(0, 12)
-        .map((m) => ({ kind: String(m.kind), url: tlClean(m.url, 1000), caption: tlClean(m.caption, 200) })),
+      media,
       privacy,
+      replyGate,
       citedDtuId,
       taggedUserIds: Array.isArray(params.taggedUserIds)
         ? params.taggedUserIds.map((u) => tlClean(u, 64)).filter(Boolean).slice(0, 20)
@@ -586,6 +677,79 @@ export default function registerTimelineActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  // ── Post edit with history (S-TL-2) ────────────────────────────────────
+  // Author-only, fail closed: a non-author gets the same "Post not found
+  // or not yours." post-delete returns, so the error never oracles a
+  // restricted post's existence. Content, media and audience (privacy)
+  // are editable independently. Unlike post-create — which defaults an
+  // unknown privacy to "private" — an edit REJECTS an unknown privacy:
+  // silently flipping a post's audience on a typo is the failure this
+  // slice exists to prevent. The post-create invariant (content or
+  // media) holds on edit too. Every change records the version it
+  // replaced in editHistory (newest last, capped) and stamps editedAt.
+  registerLensAction("timeline", "post-update", (ctx, _a, params = {}) => {
+  try {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const postId = tlClean(params.postId, 64);
+    if (!postId) return { ok: false, error: "postId required." };
+    const actorId = tlAid(ctx);
+    const found = findPost(s, postId);
+    if (!found || found.ownerId !== actorId) {
+      return { ok: false, error: "Post not found or not yours." };
+    }
+    const post = found.post;
+    const next = { content: post.content, media: post.media, privacy: post.privacy, replyGate: post.replyGate };
+    if (params.content !== undefined) next.content = tlClean(params.content, 5000);
+    if (params.privacy !== undefined) {
+      if (!PRIVACY_KINDS.includes(String(params.privacy))) {
+        return { ok: false, error: "Unknown privacy setting." };
+      }
+      next.privacy = String(params.privacy);
+    }
+    if (params.replyGate !== undefined) {
+      if (!REPLY_GATES.includes(String(params.replyGate))) {
+        return { ok: false, error: "Unknown reply setting." };
+      }
+      next.replyGate = String(params.replyGate);
+    }
+    if (params.media !== undefined) {
+      if (!Array.isArray(params.media)) return { ok: false, error: "media must be a list." };
+      next.media = tlMapMedia(params.media);
+      for (const m of next.media) {
+        const urlError = tlMediaUrlError(m.url);
+        if (urlError) return { ok: false, error: urlError };
+      }
+    }
+    // A shared post's payload lives in sharedFrom; it may legitimately
+    // keep empty content and media. Any other post must carry one of them.
+    if (!next.content && next.media.length === 0 && !post.sharedFrom) {
+      return { ok: false, error: "Post needs content or media." };
+    }
+    const changed =
+      next.content !== post.content ||
+      next.privacy !== post.privacy ||
+      JSON.stringify(next.media) !== JSON.stringify(post.media || []);
+    if (changed) {
+      const at = tlNow();
+      if (!Array.isArray(post.editHistory)) post.editHistory = [];
+      post.editHistory.push({
+        content: post.content, media: post.media || [], privacy: post.privacy, editedAt: at,
+      });
+      if (post.editHistory.length > 50) post.editHistory.splice(0, post.editHistory.length - 50);
+      post.content = next.content;
+      post.media = next.media;
+      post.privacy = next.privacy;
+      post.editedAt = at;
+    }
+    // S-TL-8: the reply gate is metadata, not a content version — it
+    // applies without an edit-history entry.
+    if (next.replyGate !== post.replyGate) post.replyGate = next.replyGate;
+    saveTlState();
+    return { ok: true, result: { post, edited: changed } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
   // ── Feed listing (privacy-aware) ───────────────────────────────────────
   // viewerId sees: own posts (all privacy), friends' posts marked
   // public|friends, everyone else's public posts only.
@@ -594,6 +758,18 @@ export default function registerTimelineActions(registerLensAction) {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const viewerId = tlAid(ctx);
+    // S-TL-7 (View As, §5d #6): the caller previews THEIR OWN wall as
+    // someone else — 'public' (a stranger) or a specific userId. Only
+    // the caller's own posts are listed and every access decision is
+    // computed for the stand-in, so the preview can reveal nothing the
+    // stand-in could not already see of the caller.
+    const viewAsRaw = params.viewAs ? String(params.viewAs) : null;
+    const viewAs = !viewAsRaw
+      ? null
+      : viewAsRaw === "public"
+        ? { id: null, label: "Public" }
+        : { id: tlClean(viewAsRaw, 64), label: null };
+    const effectiveViewer = viewAs ? viewAs.id : viewerId;
     // Optional client filter: when sent, friends-tier posts are limited to
     // these owners. It can only narrow — access itself is decided below by
     // the server-side friend graph (fails closed without a db handle).
@@ -602,16 +778,26 @@ export default function registerTimelineActions(registerLensAction) {
       : null;
     const friendCache = new Map();
     const isFriend = (ownerId) => {
-      if (!friendCache.has(ownerId)) friendCache.set(ownerId, ctx?.db ? areFriends(ctx.db, ownerId, viewerId) : false);
+      if (!friendCache.has(ownerId)) {
+        friendCache.set(ownerId, ctx?.db && effectiveViewer ? areFriends(ctx.db, ownerId, effectiveViewer) : false);
+      }
       return friendCache.get(ownerId);
     };
     const onlyAuthor = params.authorId ? tlClean(params.authorId, 64) : null;
+    // S-TL-9: the viewer's containment — muted and blocked authors
+    // never reach this viewer's feed. Skipped under View As: a preview
+    // lists only the caller's own posts, and containment belongs to
+    // the caller, not the stand-in.
+    const mutedSet = viewAs ? new Set() : tlMutedBy(s, viewerId);
     let all = [];
     for (const [ownerId, posts] of s.posts.entries()) {
       if (onlyAuthor && ownerId !== onlyAuthor) continue;
+      if (viewAs && ownerId !== viewerId) continue;
+      if (!viewAs && ownerId !== viewerId &&
+          (mutedSet.has(ownerId) || tlBlockedEither(ctx, viewerId, ownerId))) continue;
       for (const p of posts) {
         const visible =
-          ownerId === viewerId ||
+          ownerId === effectiveViewer ||
           p.privacy === "public" ||
           (p.privacy === "friends" && (!claimed || claimed.has(ownerId)) && isFriend(ownerId));
         if (!visible) continue;
@@ -620,9 +806,15 @@ export default function registerTimelineActions(registerLensAction) {
           acc[k] = reactions.filter((r) => r.kind === k).length;
           return acc;
         }, {});
-        const mine = reactions.find((r) => r.userId === viewerId);
+        const mine = reactions.find((r) => r.userId === effectiveViewer);
         all.push({
           ...p,
+          // S-TL-4: people render as names, not UUIDs (F5).
+          authorDisplayName: tlPersonName(ctx, s, p.authorId),
+          sharedFrom: p.sharedFrom
+            ? { ...p.sharedFrom, authorDisplayName: tlPersonName(ctx, s, p.sharedFrom.authorId) }
+            : p.sharedFrom,
+          taggedDisplayNames: (p.taggedUserIds || []).map((id) => tlPersonName(ctx, s, id) || "Member"),
           reactionCounts: counts,
           reactionTotal: reactions.length,
           userReaction: mine ? mine.kind : null,
@@ -630,12 +822,36 @@ export default function registerTimelineActions(registerLensAction) {
         });
       }
     }
+    // S-TL-10 (F13/F17): the audience filter and search run HERE, over
+    // the whole visible set — so `total` describes the filtered set,
+    // not the loaded page, and a shared copy matches the original's
+    // words and author, not just the sharer's comment.
+    const audienceRaw = params.audience ? String(params.audience) : null;
+    if (audienceRaw && !PRIVACY_KINDS.includes(audienceRaw)) {
+      return { ok: false, error: "Unknown audience filter." };
+    }
+    const searchQ = tlClean(params.search, 200).toLowerCase();
+    if (audienceRaw) all = all.filter((p) => p.privacy === audienceRaw);
+    if (searchQ) {
+      const hit = (v) => typeof v === "string" && v.toLowerCase().includes(searchQ);
+      all = all.filter((p) =>
+        hit(p.content) || hit(p.authorDisplayName) || hit(p.citedDtuId) ||
+        (p.sharedFrom && (hit(p.sharedFrom.content) || hit(p.sharedFrom.authorDisplayName))));
+    }
     all.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     const limit = Math.max(1, Math.min(100, tlNum(params.limit, 30)));
     const offset = Math.max(0, tlNum(params.offset, 0));
     return {
       ok: true,
-      result: { posts: all.slice(offset, offset + limit), total: all.length },
+      result: {
+        posts: all.slice(offset, offset + limit),
+        total: all.length,
+        // S-TL-7: echo the preview stand-in (name resolved) so the
+        // surface can label whose eyes these are.
+        viewAs: viewAs
+          ? { as: viewAsRaw, label: viewAs.label || tlPersonName(ctx, s, viewAs.id) || "Member" }
+          : null,
+      },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
@@ -651,6 +867,10 @@ export default function registerTimelineActions(registerLensAction) {
     const actorId = tlAid(ctx);
     const { found, blocked } = checkPostAccess(s, postId, actorId, ctx?.db);
     if (!found || blocked) return { ok: false, error: "Post not found." };
+    // S-TL-8: the post's reply gate (the author always may reply).
+    if (!tlCanReply(ctx, found.post, actorId)) {
+      return { ok: false, error: "The author limited who can reply to this post." };
+    }
     const parentId = params.parentId ? tlClean(params.parentId, 64) : null;
     const list = tlList(s.comments, postId);
     if (parentId && !list.some((c) => c.id === parentId)) {
@@ -680,7 +900,28 @@ export default function registerTimelineActions(registerLensAction) {
     if (!postId) return { ok: false, error: "postId required." };
     const { blocked } = checkPostAccess(s, postId, tlAid(ctx), ctx?.db);
     if (blocked) return { ok: false, error: "Post not found." };
-    const flat = [...(s.comments.get(postId) || [])];
+    let flat = [...(s.comments.get(postId) || [])];
+    // S-TL-9: the viewer's containment applies inside threads too —
+    // a muted/blocked author's comments are dropped, and replies
+    // inside their threads go with them (no orphaned roots).
+    const commentViewer = tlAid(ctx);
+    const mutedForComments = tlMutedBy(s, commentViewer);
+    const hiddenAuthor = (authorId) =>
+      authorId !== commentViewer &&
+      (mutedForComments.has(authorId) || tlBlockedEither(ctx, commentViewer, authorId));
+    const dropped = new Set();
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const c of flat) {
+        if (dropped.has(c.id)) continue;
+        if (hiddenAuthor(c.authorId) || (c.parentId && dropped.has(c.parentId))) {
+          dropped.add(c.id);
+          grew = true;
+        }
+      }
+    }
+    if (dropped.size > 0) flat = flat.filter((c) => !dropped.has(c.id));
     flat.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     const byId = new Map(flat.map((c) => [c.id, { ...c, replies: [] }]));
     const roots = [];
@@ -709,6 +950,37 @@ export default function registerTimelineActions(registerLensAction) {
     saveTlState();
     return { ok: true, result: { removed: list.length - next.length, total: next.length } };
   });
+
+  // ── Comment edit with history (S-TL-2) ─────────────────────────────────
+  // Author-only — the same "Not your comment." line comment-delete uses.
+  // The replaced text is kept in editHistory (newest last, capped) and
+  // the comment is stamped editedAt, mirroring post-update.
+  registerLensAction("timeline", "comment-update", (ctx, _a, params = {}) => {
+  try {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const postId = tlClean(params.postId, 64);
+    const commentId = tlClean(params.commentId, 64);
+    if (!postId || !commentId) return { ok: false, error: "postId and commentId required." };
+    const text = tlClean(params.text, 2000);
+    if (!text) return { ok: false, error: "Comment text required." };
+    const list = s.comments.get(postId) || [];
+    const target = list.find((c) => c.id === commentId);
+    if (!target) return { ok: false, error: "Comment not found." };
+    if (target.authorId !== tlAid(ctx)) return { ok: false, error: "Not your comment." };
+    const changed = text !== target.text;
+    if (changed) {
+      const at = tlNow();
+      if (!Array.isArray(target.editHistory)) target.editHistory = [];
+      target.editHistory.push({ text: target.text, editedAt: at });
+      if (target.editHistory.length > 50) target.editHistory.splice(0, target.editHistory.length - 50);
+      target.text = text;
+      target.editedAt = at;
+    }
+    saveTlState();
+    return { ok: true, result: { comment: presentComment(ctx, tlAid(ctx), target), edited: changed } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Reactions with counts + "who reacted" breakdown ────────────────────
   // Idempotent per (user, post): re-reacting changes the kind; reacting with
@@ -752,6 +1024,51 @@ export default function registerTimelineActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  // S-TL-6: reactions on comments (F9) — the same 5 kinds and toggle
+  // semantics as post reactions, gated by access to the parent post.
+  registerLensAction("timeline", "comment-react", (ctx, _a, params = {}) => {
+  try {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const postId = tlClean(params.postId, 64);
+    const commentId = tlClean(params.commentId, 64);
+    const kind = String(params.kind || "like");
+    if (!postId || !commentId) return { ok: false, error: "postId and commentId required." };
+    if (!REACTION_KINDS.includes(kind)) return { ok: false, error: "Unknown reaction kind." };
+    const actorId = tlAid(ctx);
+    const { found, blocked } = checkPostAccess(s, postId, actorId, ctx?.db);
+    if (!found || blocked) return { ok: false, error: "Post not found." };
+    const comment = (s.comments.get(postId) || []).find((c) => c.id === commentId);
+    if (!comment) return { ok: false, error: "Comment not found." };
+    const list = tlList(s.commentReactions, commentId);
+    const existing = list.findIndex((r) => r.userId === actorId);
+    let action;
+    if (existing >= 0) {
+      if (list[existing].kind === kind) {
+        list.splice(existing, 1);
+        action = "removed";
+      } else {
+        list[existing] = { userId: actorId, kind, at: tlNow() };
+        action = "changed";
+      }
+    } else {
+      list.push({ userId: actorId, kind, at: tlNow() });
+      action = "added";
+      // Mirror post reactions: the comment's author hears about it.
+      pushNotif(s, comment.authorId, actorId, "reaction", { postId, commentId, kind });
+    }
+    const counts = REACTION_KINDS.reduce((acc, k) => {
+      acc[k] = list.filter((r) => r.kind === k).length;
+      return acc;
+    }, {});
+    saveTlState();
+    return {
+      ok: true,
+      result: { action, kind, counts, total: list.length, userReaction: action === "removed" ? null : kind },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
   // Full "who reacted" breakdown for a post.
   registerLensAction("timeline", "reactions-breakdown", (ctx, _a, params = {}) => {
   try {
@@ -764,7 +1081,9 @@ export default function registerTimelineActions(registerLensAction) {
     const list = [...(s.reactions.get(postId) || [])];
     list.sort((a, b) => b.at.localeCompare(a.at));
     const byKind = REACTION_KINDS.reduce((acc, k) => {
-      acc[k] = list.filter((r) => r.kind === k).map((r) => ({ userId: r.userId, at: r.at }));
+      acc[k] = list.filter((r) => r.kind === k).map((r) => ({
+        userId: r.userId, at: r.at, displayName: tlPersonName(ctx, s, r.userId),
+      }));
       return acc;
     }, {});
     const counts = REACTION_KINDS.reduce((acc, k) => { acc[k] = byKind[k].length; return acc; }, {});
@@ -772,7 +1091,9 @@ export default function registerTimelineActions(registerLensAction) {
       ok: true,
       result: {
         total: list.length, counts, byKind,
-        reactors: list.map((r) => ({ userId: r.userId, kind: r.kind, at: r.at })),
+        reactors: list.map((r) => ({
+          userId: r.userId, kind: r.kind, at: r.at, displayName: tlPersonName(ctx, s, r.userId),
+        })),
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -799,8 +1120,26 @@ export default function registerTimelineActions(registerLensAction) {
       const confirmedFriend = ctx?.db ? areFriends(ctx.db, found.ownerId, actorId) : false;
       if (!confirmedFriend) return { ok: false, error: "Cannot share a friends-only post." };
     }
-    const privacy = PRIVACY_KINDS.includes(String(params.privacy))
-      ? String(params.privacy) : "friends";
+    // S-TL-11 (F16): a share never silently widens. No audience param
+    // means the original's own tier (the old default was "friends"
+    // regardless — itself a silent change for public/private posts).
+    // A wider tier is refused unless the caller confirms the widening
+    // explicitly (confirmWiden — the share dialog states the
+    // consequence and only sends it after the user agrees). Narrowing
+    // never needs confirmation. An unknown tier is refused, not mapped.
+    const PRIVACY_RANK = { private: 0, friends: 1, public: 2 };
+    const TIER_LABEL = { private: "Only me", friends: "Friends", public: "Public" };
+    let privacy;
+    if (params.privacy === undefined) {
+      privacy = found.post.privacy;
+    } else if (!PRIVACY_KINDS.includes(String(params.privacy))) {
+      return { ok: false, error: "Unknown privacy setting." };
+    } else {
+      privacy = String(params.privacy);
+      if (PRIVACY_RANK[privacy] > PRIVACY_RANK[found.post.privacy] && params.confirmWiden !== true) {
+        return { ok: false, error: `That would make a ${TIER_LABEL[found.post.privacy]} post ${privacy}. Confirm the wider audience to share it that way.` };
+      }
+    }
     const shared = {
       id: tlId("pst"),
       authorId: actorId,
@@ -818,6 +1157,9 @@ export default function registerTimelineActions(registerLensAction) {
       createdAt: tlNow(),
     };
     tlList(s.posts, actorId).unshift(shared);
+    // S-TL-6: the original carries its share count (F9) — the author's
+    // only signal that the post travelled.
+    found.post.shareCount = (found.post.shareCount || 0) + 1;
     pushNotif(s, found.post.authorId, actorId, "share", { postId: found.post.id });
     saveTlState();
     return { ok: true, result: { post: shared } };
@@ -825,6 +1167,27 @@ export default function registerTimelineActions(registerLensAction) {
 });
 
   // ── Media albums ───────────────────────────────────────────────────────
+  // Per-album audience (S-TL-5 / F6): the same three tiers as posts.
+  // An album stored before tiers existed has no privacy field and is
+  // treated as private — owner-only — never silently public.
+  const tlAlbumPrivacy = (album) =>
+    PRIVACY_KINDS.includes(album?.privacy) ? album.privacy : "private";
+  const tlCanViewAlbum = (ctx, album, viewerId) => {
+    if (!album) return false;
+    if (album.ownerId === viewerId) return true;
+    const privacy = tlAlbumPrivacy(album);
+    if (privacy === "public") return true;
+    if (privacy === "friends") {
+      const db = ctx?.db || globalThis._concordSTATE?.db;
+      return db ? areFriends(db, album.ownerId, viewerId) === true : false;
+    }
+    return false;
+  };
+  // Owner-only lookup shared by the album lifecycle verbs: another
+  // user's album is indistinguishable from a missing one.
+  const tlOwnAlbum = (s, userId, albumId) =>
+    (s.albums.get(userId) || []).find((a) => a.id === albumId) || null;
+
   registerLensAction("timeline", "album-create", (ctx, _a, params = {}) => {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
@@ -835,6 +1198,7 @@ export default function registerTimelineActions(registerLensAction) {
       ownerId: tlAid(ctx),
       name,
       description: tlClean(params.description, 500),
+      privacy: PRIVACY_KINDS.includes(String(params.privacy)) ? String(params.privacy) : "private",
       coverUrl: tlClean(params.coverUrl, 1000) || null,
       media: [],
       createdAt: tlNow(),
@@ -857,6 +1221,10 @@ export default function registerTimelineActions(registerLensAction) {
       const kind = String(m && m.kind);
       const url = tlClean(m && m.url, 1000);
       if (!MEDIA_KINDS.includes(kind) || !url) continue;
+      // F14: a kind-valid item with an unusable URL refuses the whole
+      // attach with the reason — never a silent skip into a broken tile.
+      const urlError = tlMediaUrlError(url);
+      if (urlError) return { ok: false, error: urlError };
       const item = { id: tlId("med"), kind, url, caption: tlClean(m.caption, 200), at: tlNow() };
       album.media.push(item);
       added.push(item);
@@ -870,8 +1238,13 @@ export default function registerTimelineActions(registerLensAction) {
   registerLensAction("timeline", "album-list", (ctx, _a, params = {}) => {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = params.ownerId ? tlClean(params.ownerId, 64) : tlAid(ctx);
-    const albums = [...(s.albums.get(userId) || [])];
+    const viewerId = tlAid(ctx);
+    const userId = params.ownerId ? tlClean(params.ownerId, 64) : viewerId;
+    // S-TL-5: listing someone else's albums returns only the albums
+    // whose audience includes the viewer — previously any caller could
+    // enumerate any owner's albums in full.
+    const albums = [...(s.albums.get(userId) || [])]
+      .filter((a) => tlCanViewAlbum(ctx, a, viewerId));
     albums.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return {
       ok: true,
@@ -883,25 +1256,120 @@ export default function registerTimelineActions(registerLensAction) {
     };
   });
 
+  // S-TL-5: albums are finished objects — rename / retier (F6).
+  registerLensAction("timeline", "album-update", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tlAid(ctx);
+    const album = tlOwnAlbum(s, userId, tlClean(params.albumId, 64));
+    if (!album) return { ok: false, error: "Album not found." };
+    if (params.name !== undefined) {
+      const name = tlClean(params.name, 120);
+      if (!name) return { ok: false, error: "Album name can't be empty." };
+      album.name = name;
+    }
+    if (params.description !== undefined) {
+      album.description = tlClean(params.description, 500);
+    }
+    if (params.privacy !== undefined) {
+      // Unknown tiers are refused, never silently narrowed (post-update rule).
+      if (!PRIVACY_KINDS.includes(String(params.privacy))) {
+        return { ok: false, error: "Unknown privacy." };
+      }
+      album.privacy = String(params.privacy);
+    }
+    saveTlState();
+    return { ok: true, result: { album } };
+  });
+
+  // S-TL-5: delete (F6). The album and its media list go together; the
+  // caller confirms on the surface with the item count named.
+  registerLensAction("timeline", "album-delete", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tlAid(ctx);
+    const albumId = tlClean(params.albumId, 64);
+    const mine = s.albums.get(userId) || [];
+    const album = mine.find((a) => a.id === albumId);
+    if (!album) return { ok: false, error: "Album not found." };
+    s.albums.set(userId, mine.filter((a) => a.id !== albumId));
+    saveTlState();
+    return { ok: true, result: { deleted: true, albumId, name: album.name, mediaCount: album.media.length } };
+  });
+
+  // S-TL-5: remove one item (F6). If the removed item was the cover,
+  // the cover falls to the first remaining item (or clears).
+  registerLensAction("timeline", "album-remove-media", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tlAid(ctx);
+    const album = tlOwnAlbum(s, userId, tlClean(params.albumId, 64));
+    if (!album) return { ok: false, error: "Album not found." };
+    const mediaId = tlClean(params.mediaId, 64);
+    const item = album.media.find((m) => m.id === mediaId);
+    if (!item) return { ok: false, error: "Media not found in this album." };
+    album.media = album.media.filter((m) => m.id !== mediaId);
+    if (album.coverUrl === item.url) {
+      album.coverUrl = album.media.length > 0 ? album.media[0].url : null;
+    }
+    saveTlState();
+    return { ok: true, result: { album, removed: mediaId } };
+  });
+
+  // S-TL-5: explicit cover choice (F6) — replaces the implicit
+  // first-photo-becomes-cover behaviour as the only path (the implicit
+  // default stays for a coverless album's first add).
+  registerLensAction("timeline", "album-set-cover", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tlAid(ctx);
+    const album = tlOwnAlbum(s, userId, tlClean(params.albumId, 64));
+    if (!album) return { ok: false, error: "Album not found." };
+    const mediaId = tlClean(params.mediaId, 64);
+    const item = album.media.find((m) => m.id === mediaId);
+    if (!item) return { ok: false, error: "Media not found in this album." };
+    album.coverUrl = item.url;
+    saveTlState();
+    return { ok: true, result: { album, coverUrl: album.coverUrl } };
+  });
+
   // ── Profile: cover photo, bio, about ──────────────────────────────────
   registerLensAction("timeline", "profile-get", (ctx, _a, params = {}) => {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = params.userId ? tlClean(params.userId, 64) : tlAid(ctx);
     const profile = s.profiles.get(userId) || {
-      userId, coverUrl: null, avatarUrl: null, bio: "",
+      userId, coverUrl: null, avatarUrl: null, bio: "", displayName: null,
       about: { work: "", education: "", location: "", relationship: "", website: "" },
       updatedAt: null,
     };
     const posts = s.posts.get(userId) || [];
+    // S-TL-4: the profile carries the person's name (F5/F7) — the name
+    // set here wins, then the account identity.
+    let username = null;
+    try {
+      username = lookupUserIdentity(ctx?.db || globalThis._concordSTATE?.db, userId).username || null;
+    } catch { /* identity lookup is best-effort */ }
+    // S-TL-7: profile-get accepts the same viewAs stand-in as
+    // feed-list and echoes it for the preview surface's label. The
+    // profile fields themselves are not audience-gated in this lens.
+    const viewAsRaw = params.viewAs ? String(params.viewAs) : null;
     return {
       ok: true,
       result: {
-        profile,
+        profile: { ...profile, displayName: tlPersonName(ctx, s, userId), username },
         stats: {
           posts: posts.length,
           albums: (s.albums.get(userId) || []).length,
         },
+        viewAs: viewAsRaw
+          ? {
+              as: viewAsRaw,
+              label: viewAsRaw === "public"
+                ? "Public"
+                : tlPersonName(ctx, s, tlClean(viewAsRaw, 64)) || "Member",
+            }
+          : null,
       },
     };
   });
@@ -911,7 +1379,7 @@ export default function registerTimelineActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = tlAid(ctx);
     const prev = s.profiles.get(userId) || {
-      userId, coverUrl: null, avatarUrl: null, bio: "",
+      userId, coverUrl: null, avatarUrl: null, bio: "", displayName: null,
       about: { work: "", education: "", location: "", relationship: "", website: "" },
     };
     const a = params.about || {};
@@ -919,6 +1387,11 @@ export default function registerTimelineActions(registerLensAction) {
       userId,
       coverUrl: params.coverUrl !== undefined ? (tlClean(params.coverUrl, 1000) || null) : prev.coverUrl,
       avatarUrl: params.avatarUrl !== undefined ? (tlClean(params.avatarUrl, 1000) || null) : prev.avatarUrl,
+      // S-TL-4: the display name is editable here; empty clears it back
+      // to the account identity.
+      displayName: params.displayName !== undefined
+        ? (tlClean(params.displayName, 80) || null)
+        : (prev.displayName || null),
       bio: params.bio !== undefined ? tlClean(params.bio, 500) : prev.bio,
       about: {
         work: a.work !== undefined ? tlClean(a.work, 200) : prev.about.work,
@@ -942,11 +1415,34 @@ export default function registerTimelineActions(registerLensAction) {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = tlAid(ctx);
-    const ref = params.date ? new Date(params.date) : new Date();
-    if (isNaN(ref.getTime())) return { ok: false, error: "Invalid date." };
-    const refMonth = ref.getMonth();
-    const refDay = ref.getDate();
-    const refYear = ref.getFullYear();
+    // F18: a picked date arrives as "YYYY-MM-DD" and must be read as
+    // that calendar day. `new Date("2026-10-29")` parses as UTC
+    // midnight, so local getters west of UTC reported the PREVIOUS
+    // day — the heading read "October 28" for a picked 29th, and the
+    // match ran against the wrong day too. Parse the components.
+    const MONTH_NAMES = ["January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"];
+    let refMonth; let refDay; let refYear;
+    const picked = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(params.date || ""));
+    if (picked) {
+      refYear = Number(picked[1]);
+      refMonth = Number(picked[2]) - 1;
+      refDay = Number(picked[3]);
+      if (refMonth < 0 || refMonth > 11 || refDay < 1 || refDay > 31) {
+        return { ok: false, error: "Invalid date." };
+      }
+    } else if (params.date) {
+      const ref = new Date(params.date);
+      if (isNaN(ref.getTime())) return { ok: false, error: "Invalid date." };
+      refMonth = ref.getMonth();
+      refDay = ref.getDate();
+      refYear = ref.getFullYear();
+    } else {
+      const ref = new Date();
+      refMonth = ref.getMonth();
+      refDay = ref.getDate();
+      refYear = ref.getFullYear();
+    }
     const posts = s.posts.get(userId) || [];
     const memories = [];
     for (const p of posts) {
@@ -967,7 +1463,9 @@ export default function registerTimelineActions(registerLensAction) {
       result: {
         memories,
         count: memories.length,
-        onThisDay: `${ref.toLocaleString("en-US", { month: "long" })} ${refDay}`,
+        // From the parsed components — the heading names the picked
+        // day in every timezone (F18).
+        onThisDay: `${MONTH_NAMES[refMonth]} ${refDay}`,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -984,7 +1482,10 @@ export default function registerTimelineActions(registerLensAction) {
     return {
       ok: true,
       result: {
-        notifications: list.slice(0, limit),
+        // S-TL-4: the actor renders as a name, not a UUID (F5).
+        notifications: list.slice(0, limit).map((n) => ({
+          ...n, actorDisplayName: tlPersonName(ctx, s, n.actorId),
+        })),
         total: list.length,
         unread: (s.notifs.get(userId) || []).filter((n) => !n.read).length,
       },
@@ -1024,5 +1525,159 @@ export default function registerTimelineActions(registerLensAction) {
     s.reactions.delete(postId);
     saveTlState();
     return { ok: true, result: { removed: true } };
+  });
+
+  // ── Safety verbs (S-TL-9, F12) ───────────────────────────────────────
+  // Report files into the lens's moderation queue (tlState.reports).
+  // A report hides nothing by itself — it is a private signal to
+  // moderation, and the response says exactly that (nextSteps), so the
+  // surface never promises an outcome the system doesn't deliver.
+  registerLensAction("timeline", "report", (ctx, _a, params = {}) => {
+  try {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const reporterId = tlAid(ctx);
+    const targetType = String(params.targetType || "");
+    const targetId = tlClean(params.targetId, 64);
+    const reason = tlClean(params.reason, 1000);
+    if (!["post", "comment"].includes(targetType) || !targetId) {
+      return { ok: false, error: "Say what you're reporting." };
+    }
+    if (!reason) return { ok: false, error: "Give a reason — it goes to moderation with the report." };
+    let targetAuthorId = null;
+    if (targetType === "post") {
+      const { found, blocked } = checkPostAccess(s, targetId, reporterId, ctx?.db);
+      if (!found || blocked) return { ok: false, error: "Post not found." };
+      targetAuthorId = found.post.authorId;
+    } else {
+      // Comments live in per-post lists; postId scopes the search when
+      // the caller knows it (the thread surface always does).
+      const scope = params.postId ? [tlClean(params.postId, 64)] : [...s.comments.keys()];
+      let comment = null;
+      let hostPostId = null;
+      for (const pid of scope) {
+        const hit = (s.comments.get(pid) || []).find((c) => c.id === targetId);
+        if (hit) { comment = hit; hostPostId = pid; break; }
+      }
+      if (!comment) return { ok: false, error: "Comment not found." };
+      const { blocked } = checkPostAccess(s, hostPostId, reporterId, ctx?.db);
+      if (blocked) return { ok: false, error: "Comment not found." };
+      targetAuthorId = comment.authorId;
+    }
+    if (targetAuthorId === reporterId) {
+      return { ok: false, error: `You can't report your own ${targetType}.` };
+    }
+    const nextSteps = "Saved to the moderation queue with your reason. The author is not told who reported — reports are private. A report doesn't hide anything by itself; if you don't want to see this person, mute or block them.";
+    const existing = s.reports.find((r) =>
+      r.reporterId === reporterId && r.targetType === targetType &&
+      r.targetId === targetId && r.status === "open");
+    if (existing) return { ok: true, result: { report: existing, duplicate: true, nextSteps } };
+    const report = {
+      id: tlId("rpt"), reporterId, targetType, targetId, targetAuthorId,
+      reason, status: "open", createdAt: tlNow(),
+    };
+    s.reports.push(report);
+    saveTlState();
+    return { ok: true, result: { report, duplicate: false, nextSteps } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  // Block: the friend-graph row for the pair becomes 'blocked' — it
+  // severs any friendship and hides both directions in the feed.
+  registerLensAction("timeline", "user-block", (ctx, _a, params = {}) => {
+  try {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const actorId = tlAid(ctx);
+    const targetId = tlClean(params.userId, 64);
+    if (!targetId) return { ok: false, error: "userId required." };
+    if (targetId === actorId) return { ok: false, error: "You can't block yourself." };
+    const db = tlDb(ctx);
+    if (!db) return { ok: false, error: "Friend graph unavailable — blocking needs it." };
+    const r = blockUser(db, actorId, targetId);
+    if (!r.ok) return { ok: false, error: "Couldn't block that person." };
+    return { ok: true, result: { userId: targetId, blocked: true, displayName: tlPersonName(ctx, s, targetId) } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  registerLensAction("timeline", "user-unblock", (ctx, _a, params = {}) => {
+  try {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const actorId = tlAid(ctx);
+    const targetId = tlClean(params.userId, 64);
+    if (!targetId) return { ok: false, error: "userId required." };
+    const db = tlDb(ctx);
+    if (!db) return { ok: false, error: "Friend graph unavailable — unblocking needs it." };
+    const r = unblockUser(db, actorId, targetId);
+    if (!r.ok) {
+      // Name the real reason: a blocked party trying to lift someone
+      // else's block is not the same state as "isn't blocked."
+      return r.error === "not_blocker"
+        ? { ok: false, error: "Only the person who set this block can undo it." }
+        : { ok: false, error: "That person isn't blocked." };
+    }
+    return { ok: true, result: { userId: targetId, blocked: false, displayName: tlPersonName(ctx, s, targetId) } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  // Mute: the viewer's own list — their surfaces stop showing the
+  // person; nothing else changes (no severing, the other side is
+  // not told and can still see the muter).
+  registerLensAction("timeline", "user-mute", (ctx, _a, params = {}) => {
+  try {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const actorId = tlAid(ctx);
+    const targetId = tlClean(params.userId, 64);
+    if (!targetId) return { ok: false, error: "userId required." };
+    if (targetId === actorId) return { ok: false, error: "You can't mute yourself." };
+    const list = tlList(s.mutes, actorId);
+    if (!list.includes(targetId)) list.push(targetId);
+    saveTlState();
+    return { ok: true, result: { userId: targetId, muted: true, displayName: tlPersonName(ctx, s, targetId) } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  registerLensAction("timeline", "user-unmute", (ctx, _a, params = {}) => {
+  try {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const actorId = tlAid(ctx);
+    const targetId = tlClean(params.userId, 64);
+    if (!targetId) return { ok: false, error: "userId required." };
+    const list = tlList(s.mutes, actorId);
+    const next = list.filter((id) => id !== targetId);
+    if (next.length !== list.length) {
+      s.mutes.set(actorId, next);
+      saveTlState();
+    }
+    return { ok: true, result: { userId: targetId, muted: false, displayName: tlPersonName(ctx, s, targetId) } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  // The profile surface's safety section: who you've muted/blocked,
+  // with names — the undo path for both verbs.
+  registerLensAction("timeline", "safety-lists", (ctx, _a, _params = {}) => {
+  try {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const actorId = tlAid(ctx);
+    const db = tlDb(ctx);
+    const named = (id) => ({ userId: id, displayName: tlPersonName(ctx, s, id) || "Member" });
+    return {
+      ok: true,
+      result: {
+        muted: (s.mutes.get(actorId) || []).map(named),
+        // This list is the viewer's own undo surface: only blocks they
+        // set (or legacy rows with no recorded blocker) belong here.
+        // A pair the OTHER party blocked them in is not theirs to lift
+        // and listing it as "your blocks" would mislabel it.
+        blocked: (db ? listBlockPairs(db, actorId) : [])
+          .filter((p) => !p.blockedBy || p.blockedBy === actorId)
+          .map((p) => named(p.otherUserId)),
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 }
