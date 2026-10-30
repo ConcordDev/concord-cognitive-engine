@@ -47,6 +47,21 @@ export function NvdCveFeed() {
 
   const list = cves.data || [];
   const meta = lookupMeta(cves.data);
+  // F13: the surface must carry the data's ACTUAL date span. The lookup
+  // can return historical entries (the review found a HIGH list dated
+  // 1997–2001) — the label is computed from the returned rows, never
+  // asserted as "live" or "latest".
+  const publishedSorted = list
+    .map((v) => v.cve.published)
+    .filter((p): p is string => typeof p === 'string' && p.length >= 10)
+    .sort();
+  const publishedRange =
+    publishedSorted.length > 0
+      ? { from: publishedSorted[0].slice(0, 10), to: publishedSorted[publishedSorted.length - 1].slice(0, 10) }
+      : null;
+  const newestIsHistorical =
+    publishedRange != null &&
+    Date.now() - new Date(publishedRange.to).getTime() > 365 * 24 * 60 * 60 * 1000;
   const sevCounts = list.reduce<Record<string, number>>((a, v) => {
     const s = v.cve.metrics?.cvssMetricV31?.[0]?.cvssData.baseSeverity || v.cve.metrics?.cvssMetricV30?.[0]?.cvssData.baseSeverity || 'UNKNOWN';
     a[s] = (a[s] || 0) + 1; return a;
@@ -69,7 +84,7 @@ export function NvdCveFeed() {
               compact
               apiSource="nvd-cve"
               apiUrl="https://nvd.nist.gov/vuln/search"
-              title={`NVD CVEs${severity ? ` (${severity})` : ''} — ${list.length} latest`}
+              title={`NVD CVEs${severity ? ` (${severity})` : ''} — ${list.length} shown${publishedRange ? `, published ${publishedRange.from} – ${publishedRange.to}` : ''}`}
               content={list.slice(0, 20).map((v, i) => {
                 const desc = v.cve.descriptions?.find((d) => d.lang === 'en')?.value || '';
                 const sev = v.cve.metrics?.cvssMetricV31?.[0]?.cvssData.baseSeverity || v.cve.metrics?.cvssMetricV30?.[0]?.cvssData.baseSeverity || '—';
@@ -82,6 +97,17 @@ export function NvdCveFeed() {
           )}
         </div>
       </header>
+      {publishedRange && (
+        <div className="text-[11px] text-zinc-400">
+          Showing entries published {publishedRange.from} – {publishedRange.to}
+          {newestIsHistorical && (
+            <span className="text-amber-300">
+              {' '}— the newest entry here is over a year old, so this is a historical
+              result set from the source, not recent disclosures.
+            </span>
+          )}
+        </div>
+      )}
       {cves.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">NVD is unavailable right now — nothing is being shown in its place.</div>}
       {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached NVD data{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}
       <div className="grid grid-cols-4 gap-2">

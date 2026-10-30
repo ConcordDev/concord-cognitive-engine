@@ -7,6 +7,7 @@ import { Cpu, Play, ChevronDown, AlertTriangle, Loader2 } from 'lucide-react';
 interface ComputeModule {
   name: string;
   description: string;
+  functions?: string[];
 }
 
 function ComputePanel() {
@@ -107,9 +108,25 @@ function ComputePanel() {
             type="text"
             value={fnName}
             onChange={(e) => setFnName(e.target.value)}
-            placeholder="e.g. add, multiply, transform"
+            list="compute-module-functions"
+            placeholder={
+              selectedModule && modules.find((m) => m.name === selectedModule)?.functions?.length
+                ? `e.g. ${modules.find((m) => m.name === selectedModule)!.functions!.slice(0, 3).join(', ')}`
+                : 'Select a module first'
+            }
             className="w-full bg-lattice-deep border border-lattice-border rounded-lg px-4 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-neon-blue/50"
           />
+          <datalist id="compute-module-functions">
+            {(modules.find((m) => m.name === selectedModule)?.functions ?? []).map((f) => (
+              <option key={f} value={f} />
+            ))}
+          </datalist>
+          {selectedModule && (modules.find((m) => m.name === selectedModule)?.functions?.length ?? 0) > 0 && (
+            <p className="mt-1.5 text-[11px] text-gray-500">
+              {modules.find((m) => m.name === selectedModule)!.functions!.length} functions in this
+              module — the field above suggests every one of them.
+            </p>
+          )}
         </div>
 
         {/* Args */}

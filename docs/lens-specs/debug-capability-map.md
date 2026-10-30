@@ -61,6 +61,36 @@ its own reference bar.
 
 ---
 
+## B5 build update — 2026-10-28 (Product Review 2, `lens-reviews/debug.md`)
+
+The Wave-3 map above predates the live product pass. Review 2 found the
+console above was real but unreachable: the whole `debug` domain sat
+behind the platform-internal lens gate, so normal accounts met a
+permission wall (and a misleading "session may have expired" toast).
+Ramaj's §8 ruling: the wall is a bug. What changed in this build:
+
+Reproduce the macro list now: `grep -c 'registerLensAction("debug"' server/domains/debug.js` → **27**
+(21 original + `alert-test` + `monitor-create/list/update/delete/check`).
+
+| Item | Disposition |
+|---|---|
+| Access (S1) | UNWALLED — `debug` removed from `PLATFORM_INTERNAL_LENS_DOMAINS` (`server/lib/platform-internal-lens-gate.js`); `ops`/`system` stay gated. Anon writes still refused by the domain's `guardAnonWrites`. |
+| First feed (S2) | LIVE — authenticated client errors (`POST /api/client-error`) fan out into the reporting user's own issue inbox via `issue-ingest`; grouping/regression semantics are the domain's own. |
+| Issue object (S3/S4) | COMPLETE — manual capture takes a stack trace; the detail drawer renders readable frames with the raw trace behind a disclosure; honest first-run empty state. |
+| Analysis quartet (S5) | DUAL-INPUT — `logAnalysis`/`errorCluster`/`performanceProfile`/`stackTraceAnalysis` accept `params` (incl. `params.input`) as well as a DTU artifact; the panel runs pasted input or workspace data with no artifact required. |
+| Alerts (S6) | DELIVER — rules gain `kind` (metric / issue / regression) and fire to Concord notifications (the bell), deduped structurally: metric rules notify on the ok→alerting transition only, issue rules at creation, regression rules on the resolved→open transition. `alert-test` proves the path. |
+| Releases (S7) | WIRED BOTH ENDS — the issue form's Release field offers tracked release names (free text still allowed). |
+| Traces/metrics capture (S8) | VERIFIED PRE-BUILT — Capture Trace times real macro round-trips; Sample Runtime reads real browser values. The wall was the only block. |
+| Small surfaces (S9) | FIXED — Run Verification treats the endpoint's 422-with-report as a completed verification and renders per-claim results; the Inspector renders human not-found guidance instead of raw error JSON; the Compute panel offers only functions the selected module actually exports (server enumerates them); the CVE surface labels itself with the returned entries' real published range instead of "live". |
+| Projects (S10) | PARKED — gated on founder Q3 (what a project is in Concord); not built. |
+| Uptime monitors (S11) | NEW — `MonitorsPanel` ("Uptime" tool): register URLs, Concord's server probes them on their interval (heartbeat-registered), notifications fire only on up/down transitions. SSRF basics: http/https only, metadata hosts refused. |
+| Presentation (S12) | DE-ENGINE-ROOMED — Overview's System/Jobs panels render designed scalar rows with the raw payload behind a "Raw payload" disclosure; the heap contradiction (F12) is fixed at its source: `perf.metrics` reports MB and the cards no longer divide a second time. |
+
+Tests: `server/tests/debug-domain.test.js` (handler-level, 9 groups) and
+`server/tests/debug-workspace.test.js` (HTTP-level) cover the unwall,
+the feed mapping, grouping/regression, alert dedupe, monitor
+transitions, and the quartet's dual input. The gate's own suite
+(`platform-internal-lens-gate.test.js`) covers the new classification.
 ## Addendum — S10 real projects (2026-10-29, PR #1843)
 
 This map predates Product Review 2's freeze of the Debug lens. That review's

@@ -47,8 +47,10 @@ export function StatusPanel() {
     {
       label: 'Memory',
       status: (perfMetrics?.memory ? 'ok' : 'warn') as 'ok' | 'warn',
+      // perf.metrics reports memory already in MB — dividing again was
+      // the F12 contradiction (cards read 0MB over a ~1.1GB heap).
       detail: perfMetrics?.memory
-        ? `${Math.round((perfMetrics.memory.heapUsed || 0) / 1024 / 1024)}MB`
+        ? `${perfMetrics.memory.heapUsed || 0}MB`
         : 'N/A',
     },
   ].map((card, i) => (
@@ -65,15 +67,14 @@ export function StatusPanel() {
 
       <AnalysisActionsPanel />
 <div className="space-y-4">
-  {/* System Status */}
+  {/* System Status — designed rows; the raw payload lives behind Raw */}
   <div className="panel p-4">
     <h2 className="font-semibold mb-4 flex items-center gap-2">
       <Database className="w-4 h-4 text-neon-blue" />
       System Status
     </h2>
-    <pre className="bg-lattice-void p-4 rounded-lg overflow-auto max-h-96 text-sm font-mono text-gray-300">
-      {JSON.stringify(status, null, 2)}
-    </pre>
+    <ScalarRows data={status} />
+    <RawDetails data={status} />
   </div>
 
   {/* Performance Metrics */}
@@ -84,7 +85,7 @@ export function StatusPanel() {
         Performance Metrics
       </h2>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-        {perfMetrics.uptime && (
+        {perfMetrics.uptime != null && (
           <div className="bg-lattice-deep p-3 rounded-lg">
             <p className="text-xs text-gray-400">Uptime</p>
             <p className="text-lg font-mono text-neon-green">
@@ -92,26 +93,54 @@ export function StatusPanel() {
             </p>
           </div>
         )}
-        {perfMetrics.memory?.heapUsed && (
+        {perfMetrics.memory?.heapUsed != null && (
           <div className="bg-lattice-deep p-3 rounded-lg">
             <p className="text-xs text-gray-400">Heap Used</p>
             <p className="text-lg font-mono text-neon-blue">
-              {Math.round(perfMetrics.memory.heapUsed / 1024 / 1024)}MB
+              {perfMetrics.memory.heapUsed}MB
             </p>
           </div>
         )}
-        {perfMetrics.memory?.heapTotal && (
+        {perfMetrics.memory?.heapTotal != null && (
           <div className="bg-lattice-deep p-3 rounded-lg">
             <p className="text-xs text-gray-400">Heap Total</p>
             <p className="text-lg font-mono text-gray-300">
-              {Math.round(perfMetrics.memory.heapTotal / 1024 / 1024)}MB
+              {perfMetrics.memory.heapTotal}MB
             </p>
           </div>
         )}
+        {perfMetrics.memory?.rss != null && (
+          <div className="bg-lattice-deep p-3 rounded-lg">
+            <p className="text-xs text-gray-400">RSS</p>
+            <p className="text-lg font-mono text-gray-300">{perfMetrics.memory.rss}MB</p>
+          </div>
+        )}
+        {perfMetrics.dtus?.total != null && (
+          <div className="bg-lattice-deep p-3 rounded-lg">
+            <p className="text-xs text-gray-400">DTUs</p>
+            <p className="text-lg font-mono text-gray-300">{perfMetrics.dtus.total}</p>
+          </div>
+        )}
+        {perfMetrics.graph?.nodes != null && (
+          <div className="bg-lattice-deep p-3 rounded-lg">
+            <p className="text-xs text-gray-400">Graph Nodes</p>
+            <p className="text-lg font-mono text-gray-300">{perfMetrics.graph.nodes}</p>
+          </div>
+        )}
+        {perfMetrics.graph?.edges != null && (
+          <div className="bg-lattice-deep p-3 rounded-lg">
+            <p className="text-xs text-gray-400">Graph Edges</p>
+            <p className="text-lg font-mono text-gray-300">{perfMetrics.graph.edges}</p>
+          </div>
+        )}
+        {perfMetrics.cache?.queries != null && (
+          <div className="bg-lattice-deep p-3 rounded-lg">
+            <p className="text-xs text-gray-400">Cached Queries</p>
+            <p className="text-lg font-mono text-gray-300">{perfMetrics.cache.queries}</p>
+          </div>
+        )}
       </div>
-      <pre className="bg-lattice-void p-4 rounded-lg overflow-auto max-h-48 text-xs font-mono text-gray-400">
-        {JSON.stringify(perfMetrics, null, 2)}
-      </pre>
+      <RawDetails data={perfMetrics} />
     </div>
   )}
 
@@ -121,12 +150,63 @@ export function StatusPanel() {
       <Play className="w-4 h-4 text-neon-green" />
       Jobs Status
     </h2>
-    <pre className="bg-lattice-void p-4 rounded-lg overflow-auto max-h-60 text-sm font-mono text-gray-300">
-      {JSON.stringify(jobs, null, 2)}
-    </pre>
+    <ScalarRows data={jobs} />
+    <RawDetails data={jobs} />
   </div>
 </div>
 
     </div>
+  );
+}
+
+/**
+ * ScalarRows — the scalar (string/number/boolean) fields of a payload
+ * as designed label/value rows. Nested objects and arrays are skipped
+ * here; they stay available in the Raw payload below. This is the S12
+ * de-engine-room presentation: Overview reads like a status page, the
+ * JSON dump is one click away instead of the default view.
+ */
+function ScalarRows({ data }: { data: unknown }) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return <p className="text-xs text-gray-500">No data yet.</p>;
+  }
+  const rows = Object.entries(data as Record<string, unknown>).filter(
+    ([, v]) => v === null || ['string', 'number', 'boolean'].includes(typeof v),
+  );
+  if (rows.length === 0) {
+    return (
+      <p className="text-xs text-gray-500">
+        No summary fields in this payload — the full payload is under Raw payload below.
+      </p>
+    );
+  }
+  return (
+    <dl className="divide-y divide-white/5">
+      {rows.map(([key, value]) => (
+        <div key={key} className="flex items-baseline justify-between gap-4 py-1.5">
+          <dt className="text-xs text-gray-400 capitalize">
+            {key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/_/g, ' ')}
+          </dt>
+          <dd className="text-sm font-mono text-gray-200 text-right break-all">
+            {value === null ? '—' : String(value)}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/** RawDetails — the untouched JSON payload, collapsed by default. */
+function RawDetails({ data }: { data: unknown }) {
+  if (data == null) return null;
+  return (
+    <details className="mt-3">
+      <summary className="text-[11px] text-gray-500 cursor-pointer hover:text-gray-300 select-none">
+        Raw payload
+      </summary>
+      <pre className="mt-2 bg-lattice-void p-4 rounded-lg overflow-auto max-h-96 text-xs font-mono text-gray-400">
+        {JSON.stringify(data, null, 2)}
+      </pre>
+    </details>
   );
 }
