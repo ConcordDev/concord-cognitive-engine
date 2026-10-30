@@ -142,11 +142,9 @@ export class DesignEngine {
     return stale;
   }
 
-  /**
-   * Apply graph edits [{ node, path, value }] and recompute only what they
-   * affect. Returns a report of what changed, what reran and what was reused.
-   */
-  applyEdits(ops, { source = "api", text = null } = {}) {
+  /** Stage the ops of an edit on the graph. On a rejected op, what this batch
+   * already changed is undone before returning, so a failed edit leaves no trace. */
+  _stageOps(ops) {
     const applied = [];
     const undo = () => {
       for (const a of applied.reverse()) {
@@ -172,23 +170,40 @@ export class DesignEngine {
         continue;
       }
       const r = this.graph.set(op.node, op.path, op.value);
-      if (!r.ok) {
-        // Undo what this batch already changed, so a failed edit leaves no trace.
-        undo();
-        return { ok: false, error: r.error };
-      }
+      if (!r.ok) { undo(); return { ok: false, error: r.error }; }
       applied.push({ node: op.node, path: op.path, before: r.before, after: r.after, keys: [r.key], replay: { node: op.node, path: op.path, value: r.after } });
     }
-    const before = new Map([...this.runs].map(([id, run]) => [id, run.envelope]));
-    this.graph.revision += 1;
-    const changedKeys = applied.flatMap((a) => a.keys);
-    const stale = this.invalidate(changedKeys);
-    if (structural) {
-      this.plan(); // new nodes may bring new runs; removed ones drop theirs
-      for (const [id, run] of this.runs) if (run.stale) stale.add(id);
+    return { ok: true, applied, structural, undo };
+  }
+
+  /** Everything the recompute half of an edit can touch, captured so a failure
+   * there rolls the edit back whole (INC-154: a mid-recompute throw used to
+   * escape with the graph values set, the revision bumped, the envelopes half
+   * new and half old, and no history entry — the edit had "applied" in a way
+   * undo could not see, let alone reverse). Envelopes and read-sets are
+   * replaced rather than mutated by ensure(), so holding the references is a
+   * true snapshot. */
+  _snapshotRuns() {
+    return {
+      runsMap: this.runs,
+      runState: new Map([...this.runs].map(([id, r]) => [id, { envelope: r.envelope, stale: r.stale, reads: r.reads }])),
+      revision: this.graph.revision,
+      before: new Map([...this.runs].map(([id, run]) => [id, run.envelope])),
+    };
+  }
+
+  _restoreRuns(snap, undo) {
+    this.runs = snap.runsMap; // plan() may have replaced the map itself
+    for (const [id, st] of snap.runState) {
+      const r = this.runs.get(id);
+      if (r) { r.envelope = st.envelope; r.stale = st.stale; r.reads = st.reads; }
     }
+    undo();
+    this.graph.revision = snap.revision;
     this.computedThisPass = [];
-    for (const id of stale) if (this.runs.has(id)) this.ensure(id);
+  }
+
+  _commitEdit({ applied, changedKeys, source, text, structural, before }) {
     const rerun = [...this.computedThisPass];
     const entry = {
       revision: this.graph.revision, source, text,
@@ -205,6 +220,64 @@ export class DesignEngine {
       changes: rerun.map((id) => diffEnvelope(id, before.get(id), this.runs.get(id).envelope)),
       ...(structural ? { removedRuns: [...before.keys()].filter((id) => !this.runs.has(id)) } : {}),
     };
+  }
+
+  /**
+   * Apply graph edits [{ node, path, value }] and recompute only what they
+   * affect. Returns a report of what changed, what reran and what was reused.
+   * Failure-atomic: a throw out of the recompute (envelope construction, the
+   * cycle guard) rolls the whole edit back and is reported as { ok: false },
+   * never thrown over a half-applied edit.
+   */
+  applyEdits(ops, { source = "api", text = null } = {}) {
+    const staged = this._stageOps(ops);
+    if (!staged.ok) return staged;
+    const { applied, structural, undo } = staged;
+    const snap = this._snapshotRuns();
+    this.graph.revision += 1;
+    try {
+      const changedKeys = applied.flatMap((a) => a.keys);
+      const stale = this.invalidate(changedKeys);
+      if (structural) {
+        this.plan(); // new nodes may bring new runs; removed ones drop theirs
+        for (const [id, run] of this.runs) if (run.stale) stale.add(id);
+      }
+      this.computedThisPass = [];
+      for (const id of stale) if (this.runs.has(id)) this.ensure(id);
+      return this._commitEdit({ applied, changedKeys, source, text, structural, before: snap.before });
+    } catch (e) {
+      this._restoreRuns(snap, undo);
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
+  /** applyEdits for the request path: the same edit, but the recompute yields
+   * to the event loop between runs, so a wide closure (a packaging knob is
+   * read by much of the graph) cannot freeze the loop for its whole duration
+   * (INC-154). Same failure-atomicity as applyEdits. */
+  async applyEditsAsync(ops, { source = "api", text = null } = {}) {
+    const staged = this._stageOps(ops);
+    if (!staged.ok) return staged;
+    const { applied, structural, undo } = staged;
+    const snap = this._snapshotRuns();
+    this.graph.revision += 1;
+    try {
+      const changedKeys = applied.flatMap((a) => a.keys);
+      const stale = this.invalidate(changedKeys);
+      if (structural) {
+        this.plan(); // new nodes may bring new runs; removed ones drop theirs
+        for (const [id, run] of this.runs) if (run.stale) stale.add(id);
+      }
+      this.computedThisPass = [];
+      for (const id of stale) {
+        if (this.runs.has(id)) this.ensure(id);
+        await new Promise((r) => { setImmediate(r); });
+      }
+      return this._commitEdit({ applied, changedKeys, source, text, structural, before: snap.before });
+    } catch (e) {
+      this._restoreRuns(snap, undo);
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
   }
 
   /** Recompute the given runs and everything that read their results (e.g. after an external kernel finished). */
