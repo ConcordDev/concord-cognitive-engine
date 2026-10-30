@@ -10,6 +10,7 @@ import { runChatCompute, toSI } from "../compute-si.js";
 import * as engineering from "../../compute/engineering-compute.js";
 import { solveBeam } from "../../conkay/chat/structures.js";
 import { getMaterial } from "../../conkay/materials/index.js";
+import * as chemistry from "../../compute/chemistry-compute.js";
 
 const MATERIAL_IDS = ["steel-a36", "aluminum-6061-t6-b221", "aluminum-6061-t6", "concrete-30mpa"];
 const lookupMaterial = (id) => getMaterial(id) || null;
@@ -172,6 +173,50 @@ export const RECIPES = [
       return { steps: [step("darcy", "formula", v, { Re, f, dp, basis })],
         checks: [{ name: "regime_known", pass: regime !== "transitional", detail: regime === "transitional" ? "Re 2300-4000: the friction factor is not reliable" : `${regime} (Re ${Re.toFixed(0)})` }],
         result: { reynolds: Re, regime, frictionFactor: f, frictionBasis: basis, pressureDropPa: dp } };
+    },
+  },
+
+  {
+    id: "pressure_vessel",
+    title: "Thin-wall pressure vessel stress (cylinder or sphere)",
+    keywords: ["pressure", "vessel", "tank", "boiler", "hoop", "thin-wall", "cylinder", "sphere"],
+    inputs: {
+      pressurePa: { dim: "stress", unit: "Pa", required: true, desc: "internal gauge pressure" },
+      radiusM: { dim: "length", unit: "m", required: true, desc: "mean radius" },
+      thicknessM: { dim: "length", unit: "m", required: true, desc: "wall thickness" },
+      shape: { type: "string", required: false, desc: "cylinder (default) or sphere" },
+      yieldPa: { dim: "stress", unit: "Pa", required: false, desc: "yield strength, for the safety factor" },
+    },
+    run(v) {
+      const shape = String(v.shape || "cylinder").toLowerCase();
+      if (shape !== "cylinder" && shape !== "sphere") return { error: 'shape must be "cylinder" or "sphere"' };
+      const hoop = shape === "cylinder" ? (v.pressurePa * v.radiusM) / v.thicknessM : (v.pressurePa * v.radiusM) / (2 * v.thicknessM);
+      const axial = (v.pressurePa * v.radiusM) / (2 * v.thicknessM);
+      const slender = v.radiusM / v.thicknessM >= 10;
+      const checks = [{ name: "thin_wall", pass: slender, detail: `r/t = ${(v.radiusM / v.thicknessM).toFixed(1)} (thin-wall formulas need r/t >= 10)` }];
+      const result = { hoopStressPa: hoop, axialStressPa: axial, shape };
+      if (v.yieldPa) { result.safetyFactor = v.yieldPa / hoop; checks.push({ name: "yield", pass: result.safetyFactor >= 1, detail: `SF ${result.safetyFactor.toFixed(2)} on yield` }); }
+      return { steps: [step("thin_wall", "formula", v, result)], checks, result };
+    },
+  },
+
+  {
+    id: "reaction_balance",
+    title: "Balance a chemical reaction and give molar masses",
+    keywords: ["chemistry", "balance", "reaction", "stoichiometry", "molar", "equation", "reactants"],
+    inputs: { equation: { type: "string", required: true, desc: 'e.g. "H2 + O2 -> H2O"' } },
+    run(v) {
+      const b = chemistry.balanceReaction({ equation: v.equation });
+      const steps = [step("balanceReaction", "chemistry.balanceReaction", v, b)];
+      if (!b?.ok) return { error: b?.error || "the equation could not be balanced", steps };
+      const species = Object.keys(b.coefficients);
+      const masses = {};
+      for (const sp of species) {
+        const m = chemistry.molecularAnalysis({ formula: sp });
+        if (m?.ok) masses[sp] = m.molarMass;
+      }
+      steps.push(step("molarMasses", "chemistry.molecularAnalysis", species, masses));
+      return { steps, checks: [{ name: "balanced", pass: true, detail: b.balanced }], result: { balanced: b.balanced, coefficients: b.coefficients, reactantCoeffs: b.reactantCoeffs, productCoeffs: b.productCoeffs, molarMassGPerMol: masses } };
     },
   },
 ];

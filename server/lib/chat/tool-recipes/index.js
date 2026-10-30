@@ -9,6 +9,8 @@
 
 import { RECIPES } from "./recipes.js";
 import { toSI } from "../compute-si.js";
+import { independentRecompute, referenceMatch } from "./verify.js";
+import { canonicalJson, sha256Hex } from "../../receipts/attest.js";
 
 export const RECIPE_VERSION = "1.0.0";
 
@@ -63,18 +65,30 @@ export function runRecipe(id, rawInputs) {
   let out;
   try { out = recipe.run(values); } catch (e) { return { ok: false, recipe: recipe.id, error: `recipe failed: ${String(e?.message || e)}` }; }
   if (out.error) return { ok: false, recipe: recipe.id, error: out.error, steps: out.steps || [], inputSchema: schemaOf(recipe) };
-  const passed = out.checks.every((c) => c.pass);
+  // Verify against reality: recompute independently, and compare with the reference corpus when a case matches.
+  const independent = independentRecompute(recipe.id, values, out.result);
+  const reference = referenceMatch(recipe.id, values, out.result);
+  const checks = [...out.checks, ...independent.map((c) => ({ ...c, name: `independent:${c.name}` }))];
+  if (reference.matched) checks.push({ name: `reference:${reference.caseId}`, pass: reference.pass, detail: reference.pass ? `matches the textbook case (${reference.source})` : `disagrees with the textbook case: ${JSON.stringify(reference.mismatches)}` });
+  const passed = checks.every((c) => c.pass);
+  const verified = independent.length > 0 && independent.every((c) => c.pass) && (!reference.matched || reference.pass);
+  const receipt = { recipe: recipe.id, version: RECIPE_VERSION, units: "SI", inputs: values, steps: out.steps, checks, verification: { independent, reference, verified }, result: out.result, passed, generatedAt: new Date().toISOString() };
+  receipt.digest = `sha256:${sha256Hex(Buffer.from(canonicalJson({ ...receipt, generatedAt: undefined })))}`;
+  const failed = checks.filter((c) => !c.pass).map((c) => c.name);
   return {
     ok: true,
     recipe: recipe.id,
     title: recipe.title,
     system: "SI",
     passed,
-    checks: out.checks,
+    verified,
+    checks,
     result: out.result,
     steps: out.steps,
-    receipt: { recipe: recipe.id, version: RECIPE_VERSION, units: "SI", inputs: values, steps: out.steps, checks: out.checks, passed, generatedAt: new Date().toISOString() },
-    note: passed ? "All declared checks passed." : `Failed checks: ${out.checks.filter((c) => !c.pass).map((c) => c.name).join(", ")}. Say so; do not report this design as passing.`,
+    receipt,
+    note: failed.length
+      ? `Failed checks: ${failed.join(", ")}. Say so plainly; do not report this as passing or verified.`
+      : (verified ? "All checks passed and an independent recomputation agrees." : "All declared checks passed; no independent recomputation exists for this recipe."),
   };
 }
 

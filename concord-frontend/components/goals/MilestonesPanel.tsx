@@ -18,6 +18,8 @@ import {
   CHALLENGES_FALLBACK,
   categoryColors,
   resolveIcon,
+  localDayKey,
+  completionRecord,
 } from '@/components/goals/goals-model';
 
 export function MilestonesPanel() {
@@ -29,14 +31,17 @@ export function MilestonesPanel() {
   });
 
   const goals = useMemo(
-    () => goalItems.map(item => ({ id: item.id, ...item.data, completedAt: item.updatedAt } as unknown as Goal)),
+    () => goalItems.map(item => ({ id: item.id, ...item.data, createdAt: item.createdAt, completedAt: item.updatedAt } as unknown as Goal)),
     [goalItems]
   );
   const challenges = useMemo(() => challengeItems.map(item => ({ id: item.id, ...item.data } as unknown as Challenge)), [challengeItems]);
 
   const totalXp = useMemo(
-    () => goals.filter((g) => g.status === 'completed').reduce((s, g) => s + g.xp, 0),
-    [goals]
+    () => goals.filter((g) => g.status === 'completed').reduce((s, g) => s + g.xp, 0)
+      // S13 (F14): challenge XP counts too — the card promises it, so
+      // the total includes it once the challenge is complete.
+      + challenges.filter((c) => c.target > 0 && c.progress >= c.target).reduce((s, c) => s + c.xp, 0),
+    [goals, challenges]
   );
   const completedGoals = useMemo(
     () => goals.filter((g) => g.status === 'completed').sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || '')),
@@ -45,11 +50,11 @@ export function MilestonesPanel() {
   const acceptedChallengeCount = challenges.filter((c) => c.accepted).length;
 
   const streakDays = useMemo(() => {
-    const days = new Set(completedGoals.filter((g) => g.completedAt).map((g) => g.completedAt!.slice(0, 10)));
+    const days = new Set(completedGoals.filter((g) => g.completedAt).map((g) => localDayKey(new Date(g.completedAt!))));
     let streak = 0;
     const cursor = new Date();
     for (;;) {
-      const key = cursor.toISOString().slice(0, 10);
+      const key = localDayKey(cursor);
       if (!days.has(key)) break;
       streak++;
       cursor.setDate(cursor.getDate() - 1);
@@ -130,6 +135,7 @@ export function MilestonesPanel() {
                 <Zap className="w-3 h-3" /> {totalXp.toLocaleString()} XP earned
               </div>
             </div>
+            <p className="mb-3 text-[11px] text-gray-500">XP rules: a completed goal earns its XP (200 when created here); a completed challenge earns its XP — Easy 50 · Medium 150 · Hard 300 · Legendary 750. Both count in the total above.</p>
             <div className="relative pl-8">
               <div className="absolute left-3 top-0 bottom-0 w-0.5 bg-gradient-to-b from-cyan-500/50 via-purple-500/50 to-transparent" />
               <div className="space-y-4">
@@ -156,6 +162,9 @@ export function MilestonesPanel() {
                           <span className="text-[10px] text-yellow-400 flex items-center gap-0.5">
                             <Zap className="w-2.5 h-2.5" /> +{g.xp} XP
                           </span>
+                          {completionRecord(g) && (
+                            <span className="text-[10px] text-gray-500">{completionRecord(g)}</span>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -201,6 +201,20 @@ export default function registerAnalyticsActions(registerLensAction) {
     return { ok: true, result: { events: log.slice(0, 100), total: log.length } };
   });
 
+  // event-delete — the event family's delete, in the same idiom as
+  // funnel-delete / dashboard-delete / alert-delete: the actor's own log
+  // is the only collection searched (actor-scoped by construction), the
+  // row is spliced out and persisted, and a miss is a named error.
+  registerLensAction("analytics", "event-delete", (ctx, _a, params = {}) => {
+    const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const log = anEvents(s, anActor(ctx));
+    const i = log.findIndex((e) => e.id === params.id);
+    if (i < 0) return { ok: false, error: "event not found" };
+    log.splice(i, 1);
+    saveAnalytics();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
   registerLensAction("analytics", "event-stats", (ctx, _a, _params = {}) => {
     const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const log = anEvents(s, anActor(ctx));

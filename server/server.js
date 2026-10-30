@@ -45,6 +45,8 @@ import {
   actorFromReq,
 } from "./lib/log-access.js";
 import { dtuSkipsAutoTag } from "./lib/dtu-auto-tag.js";
+import { relationEdges as dtuRelationEdges } from "./lib/dtu-relations.js";
+import { substrateCounts, derivedLayerCounts } from "./lib/substrate-counts.js";
 import { hasUsableBrainInput, needsInputError } from "./lib/brain-action-input.js";
 import { aggregateTopicCounts } from "./lib/trending-topics.js";
 import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-tags.js";
@@ -16723,6 +16725,36 @@ register("tools","web_search", (ctx, input={}) => {
 
 // ===== GOAL SYSTEM MACROS =====
 
+// S7 (Review 5 F8): the status header stats are DERIVED from the
+// registry at read time. The stored record was a set of cumulative
+// event counters incremented by hand at some call sites and never
+// decremented — evaluateGoal transitions PROPOSED -> APPROVED /
+// ABANDONED without touching any counter, so an evaluated goal read
+// APPROVED 0 in the header beside its APPROVED card, and an abandoned
+// goal stayed counted as proposed forever. Counting current states
+// cannot drift from the cards the panel lists. Field names are the
+// ones the panel already reads; avgCompletionTime is still carried
+// from the stored record (it is a duration average, not a count).
+function deriveGoalStats(goalsState) {
+  const stats = {
+    proposed: 0, evaluating: 0, approved: 0, active: 0,
+    paused: 0, completed: 0, abandoned: 0, blocked: 0,
+    total: 0,
+    avgCompletionTime: goalsState?.stats?.avgCompletionTime || 0
+  };
+  const known = ["proposed", "evaluating", "approved", "active",
+    "paused", "completed", "abandoned", "blocked"];
+  const registry = goalsState?.registry;
+  if (registry && typeof registry.values === "function") {
+    for (const g of registry.values()) {
+      if (!g) continue;
+      stats.total++;
+      if (known.includes(g.state)) stats[g.state]++;
+    }
+  }
+  return stats;
+}
+
 register("goals", "status", (ctx, _input = {}) => {
   try {
   enforceEthosInvariant("goals_status");
@@ -16747,7 +16779,7 @@ register("goals", "status", (ctx, _input = {}) => {
     active: activeGoals,
     activeCount: activeGoals.length,
     proposalCount,
-    stats: ctx.state.goals.stats,
+    stats: deriveGoalStats(ctx.state.goals),
     config: ctx.state.goals.config,
     invariants: GOAL_INVARIANTS
   };
@@ -16897,6 +16929,21 @@ register("goals", "abandon", (ctx, input = {}) => {
   return abandonGoal(goalId, reason);
 }, { public: false });
 
+register("goals", "delete", (ctx, input = {}) => {
+  // Permanent removal from the global goal registry (system/agent goals
+  // included), so it is not a member action — same gate as founder-approve.
+  if (!["owner", "admin", "founder"].includes(ctx.actor?.role)) {
+    return { ok: false, error: "Goal deletion requires owner/admin role" };
+  }
+  enforceEthosInvariant("goals_delete");
+  ensureGoalSystem();
+
+  const goalId = String(input.goalId || input.id || "");
+  if (!goalId) return { ok: false, error: "goalId required" };
+
+  return deleteGoal(goalId);
+}, { public: false });
+
 register("goals", "list", (ctx, input = {}) => {
   try {
   enforceEthosInvariant("goals_list");
@@ -16993,7 +17040,14 @@ register("worldmodel", "status", (ctx, _input = {}) => {
     snapshots: ctx.state.worldModel.snapshots.length,
     stats: ctx.state.worldModel.stats,
     config: ctx.state.worldModel.config,
-    invariants: WORLD_MODEL_INVARIANTS
+    invariants: WORLD_MODEL_INVARIANTS,
+    // #1715 S5: single-sourced accounting. The fields above count
+    // the world-model derived layer (living state, NOT the
+    // substrate); `derived` names that and counts the DTU-
+    // provenance link, `substrate` carries the canonical store's
+    // own counts from the same counting source as graph.stats.
+    derived: derivedLayerCounts(ctx.state),
+    substrate: substrateCounts(ctx.state, null),
   };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
@@ -35460,18 +35514,32 @@ register("settings", "status", (ctx, _input) => {
   register("graph", "stats", (ctx, _input = {}) => {
     try {
       _ensureGraphIndex();
+      const viewer = _graphViewer(ctx);
+      let visibleNodes = 0;
+      for (const id of GRAPH_INDEX?.nodes?.keys?.() || []) {
+        if (_graphCanSeeId(id, viewer)) visibleNodes++;
+      }
       return {
         ok: true,
         stats: {
+          // Legacy fields: these count the GRAPH_INDEX projection
+          // (DTUs + synthetic tag nodes; lineage + relation edges),
+          // not the substrate itself — `source` names the universe,
+          // and lib/substrate-counts.js is the single counting
+          // source (#1715 S4).
+          source: "graph-index",
           totalNodes: GRAPH_INDEX?.nodes?.size || 0,
           totalEdges: GRAPH_INDEX?.edges?.size || 0,
+          indexNodes: GRAPH_INDEX?.nodes?.size || 0,
+          indexEdges: GRAPH_INDEX?.edges?.size || 0,
           dirty: !!GRAPH_INDEX?.dirty,
+          substrate: substrateCounts(STATE, viewer, { index: GRAPH_INDEX, indexVisibleNodes: visibleNodes }),
         },
       };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
-  }, { description: "Graph index stats (nodes/edges)." });
+  }, { description: "Graph index stats (nodes/edges) with source-named substrate counts." });
 
   register("graph", "edges", (ctx, input = {}) => {
     try {
@@ -48551,6 +48619,11 @@ function rebuildGraphIndex() {
       if (!GRAPH_INDEX.nodes.has(tagNodeId)) GRAPH_INDEX.nodes.set(tagNodeId, { id: tagNodeId, type: "tag", label: tag });
       GRAPH_INDEX.edges.set(`${id}->tag:${tag}`, { source: id, target: tagNodeId, type: "tagged" });
     }
+    // #1715 S1: typed relations project alongside lineage/tag edges.
+    // Keyed by the edge's own id (carries `#type`), so a typed edge
+    // never overwrites a lineage edge between the same pair; readers'
+    // visibility filtering (_graphVisibleEdge) applies unchanged.
+    for (const e of dtuRelationEdges(dtu)) { GRAPH_INDEX.edges.set(e.id, e); }
   }
   // Compute lineage depths
   const roots = Array.from(STATE.dtus.values()).filter(d => !d.lineage?.parents?.length || d.tier === "core");
@@ -80026,6 +80099,30 @@ function abandonGoal(goalId, reason = "user_requested") {
 
   saveStateDebounced();
   return { ok: true, goal };
+}
+
+function deleteGoal(goalId) {
+  ensureGoalSystem();
+  const goal = STATE.goals.registry.get(goalId);
+  if (!goal) return { ok: false, error: "Goal not found" };
+
+  // S1/S7 (Review 5 F1): agent goals and system proposals were
+  // undeletable — the registry had no removal path at all. Removal is
+  // total and stated: registry entry, active-set membership, any
+  // pending proposal-queue entry, and the completed-history record
+  // all go, and the response names the removed goal so the deletion
+  // is never silent. Dependents keep the id in deps.requiredGoals:
+  // activation already refuses on a missing dependency and names it,
+  // so a deleted dependency blocks loudly instead of passing silently.
+  STATE.goals.registry.delete(goalId);
+  STATE.goals.active.delete(goalId);
+  if (STATE.queues && Array.isArray(STATE.queues.goalProposals)) {
+    STATE.queues.goalProposals = STATE.queues.goalProposals.filter(p => p.id !== goalId);
+  }
+  STATE.goals.completed = STATE.goals.completed.filter(c => c.id !== goalId);
+
+  saveStateDebounced();
+  return { ok: true, deleted: true, goal: { id: goal.id, title: goal.title, state: goal.state } };
 }
 
 function generateAutoGoalProposals(_ctx = {}) {
