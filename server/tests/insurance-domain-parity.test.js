@@ -136,6 +136,29 @@ describe("insurance.documents + payments", () => {
   });
 });
 
+describe("insurance.claim-documents", () => {
+  it("photos attach to a claim, maintain its documents count, and stay off other users' claims", () => {
+    const claim = call("claim-file", ctxA, { carrier: "Acme", description: "Cracked bumper", claimAmount: 1200 }).result.claim;
+    assert.equal(claim.documents, 0);
+    const added = call("claim-document-add", ctxA, { claimId: claim.id, title: "Front bumper damage" });
+    assert.equal(added.ok, true);
+    assert.equal(added.result.document.kind, "photo");
+    assert.equal(added.result.document.claimId, claim.id);
+    call("claim-document-add", ctxA, { claimId: claim.id, title: "Repair estimate", kind: "estimate", url: "https://example.com/est.pdf" });
+    const list = call("claim-document-list", ctxA, { claimId: claim.id });
+    assert.equal(list.result.documents.length, 2);
+    assert.equal(list.result.documents[0].title, "Repair estimate");
+    assert.equal(call("claim-detail", ctxA, { id: claim.id }).result.claim.documents, 2);
+    // Title is required; another user cannot see or extend the claim.
+    assert.equal(call("claim-document-add", ctxA, { claimId: claim.id }).ok, false);
+    assert.equal(call("claim-document-list", ctxB, { claimId: claim.id }).ok, false);
+    assert.equal(call("claim-document-add", ctxB, { claimId: claim.id, title: "Not yours" }).ok, false);
+    // Deleting the claim cascades its documents.
+    assert.equal(call("claim-delete", ctxA, { id: claim.id }).ok, true);
+    assert.equal(call("claim-document-list", ctxA, { claimId: claim.id }).ok, false);
+  });
+});
+
 describe("insurance.claim-update / detail", () => {
   it("claim status flow and payout", () => {
     newPolicy();

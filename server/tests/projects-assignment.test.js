@@ -189,3 +189,34 @@ describe("projects My Work (D3)", () => {
     assert.equal(shared.result.projects[0].ownerName, "bea");
   });
 });
+
+describe("A18 project-get members feed the assignee picker (R4 S4 re-review)", () => {
+  it("a fresh project's project-get members contain the owner row — and match member-list", () => {
+    const p = project();
+    const got = call("project-get", ctxA, { id: p.id });
+    assert.equal(got.ok, true);
+    // The Board/Backlog panels pass project-get.members straight into the
+    // task detail's Assignee select. This payload used to be the raw legacy
+    // member store — empty on account-era projects — so the picker rendered
+    // only "Unassigned" and self-assignment was impossible on the live
+    // surface even though the write path accepted it.
+    assert.equal(got.result.members.length, 1);
+    const ownerRow = got.result.members[0];
+    assert.equal(ownerRow.id, "user_a");
+    assert.equal(ownerRow.userId, "user_a");
+    assert.equal(ownerRow.level, "owner");
+    assert.ok(ownerRow.name && ownerRow.name.length > 0);
+    const listed = call("member-list", ctxA, { projectId: p.id });
+    assert.deepEqual(
+      got.result.members.map((m) => m.id).sort(),
+      listed.result.members.map((m) => m.id).sort(),
+    );
+  });
+
+  it("a granted member appears in project-get members too", () => {
+    const p = project();
+    call("member-add", ctxA, { projectId: p.id, account: "@bea" });
+    const got = call("project-get", ctxA, { id: p.id });
+    assert.deepEqual(got.result.members.map((m) => m.id).sort(), ["user_a", "user_bea"]);
+  });
+});
