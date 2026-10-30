@@ -26,7 +26,19 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', startDate: '', endDate: '' });
+  // A14 remainder (R4 re-pass on #1720): the create form opens with
+  // the default range VISIBLE (today -> +14d) instead of empty fields
+  // whose emptiness the domain silently replaced. What the form shows
+  // is what gets created; a field the user clears or leaves half-typed
+  // in a split-field date control reads back empty and is called out
+  // in words, never substituted behind their back.
+  const defaultRange = () => {
+    const start = new Date();
+    const end = new Date(Date.now() + 14 * 86400000);
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    return { startDate: iso(start), endDate: iso(end) };
+  };
+  const [form, setForm] = useState(() => ({ name: '', ...defaultRange() }));
   const [burndown, setBurndown] = useState<Burndown | null>(null);
   const [receipt, setReceipt] = useState<SprintReceipt | null>(null);
 
@@ -50,7 +62,11 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
     if (!form.name.trim()) { setError('Sprint name is required.'); return; }
     // F7: a reversed range is rejected here, in words — the domain
     // rejects it too; entered dates are never silently replaced.
-    if (form.startDate && form.endDate && form.endDate < form.startDate) {
+    if (!form.startDate || !form.endDate) {
+      setError('Both sprint dates are needed — a date field is empty or half-typed. The range was pre-filled with the next two weeks; finish the dates or restore them. No sprint was created.');
+      return;
+    }
+    if (form.endDate < form.startDate) {
       setError('Sprint end date is before its start date — fix the dates; no sprint was created.');
       return;
     }
@@ -58,7 +74,7 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
       projectId, name: form.name.trim(), startDate: form.startDate, endDate: form.endDate,
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
-    setForm({ name: '', startDate: '', endDate: '' });
+    setForm({ name: '', ...defaultRange() });
     setError(null);
     await refresh();
   };
