@@ -59,7 +59,9 @@ tasks {
         )
       }
     }
-    from("../concord-lsp/out") { into("lsp") }
-    from("../concord-lsp/node_modules") { into("lsp/node_modules") }
+    // The sandbox root is plugins/, so nest under the plugin's own directory:
+    // <pluginName>/lsp/server.js is what the built zip and the runtime see.
+    from("../concord-lsp/out") { into(pluginName.map { "$it/lsp" }) }
+    from("../concord-lsp/node_modules") { into(pluginName.map { "$it/lsp/node_modules" }) }
   }
 }
