@@ -6,7 +6,9 @@
 // lifecycle suite; the panels' wiring is what is under test.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const stores = vi.hoisted(() => ({
   goal: null as unknown as Record<string, unknown>,
@@ -33,6 +35,13 @@ vi.mock('@/components/lens/recordKeep', () => ({ goalKeepRecord: () => null }));
 import { GoalsListPanel, GOALS_NEW_EVENT } from '@/components/goals/GoalsListPanel';
 import { ChallengesPanel } from '@/components/goals/ChallengesPanel';
 import { MilestonesPanel } from '@/components/goals/MilestonesPanel';
+
+// The panels use react-query mutations, so every render needs a client.
+function renderWithClient(ui: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
+
 
 function store(items: unknown[]) {
   return {
@@ -85,19 +94,19 @@ beforeEach(() => {
 
 describe('XP coherence (F14)', () => {
   it('Milestones total counts completed challenge XP as well as goal XP', () => {
-    render(<MilestonesPanel />);
+    renderWithClient(<MilestonesPanel />);
     // 200 (goal) + 50 (completed challenge); the incomplete 150 stays out.
     expect(screen.getByText(/250 XP earned/)).toBeTruthy();
     expect(screen.getByText(/XP rules:/)).toBeTruthy();
   });
 
   it('the timeline keeps the completion record from real data', () => {
-    render(<MilestonesPanel />);
+    renderWithClient(<MilestonesPanel />);
     expect(screen.getByText(/2 steps · 63 days/)).toBeTruthy();
   });
 
   it('the challenge card states when its XP is earned', () => {
-    render(<ChallengesPanel />);
+    renderWithClient(<ChallengesPanel />);
     expect(screen.getAllByText(/XP on completion/).length).toBeGreaterThan(0);
   });
 });
@@ -105,7 +114,7 @@ describe('XP coherence (F14)', () => {
 describe('weekly focus (F14 / §3b 4)', () => {
   it('the page chip event opens a picker; choosing a goal sets weeklyFocus', async () => {
     stores.goal = store([activeGoal]);
-    render(<GoalsListPanel />);
+    renderWithClient(<GoalsListPanel />);
     act(() => {
       window.dispatchEvent(new CustomEvent(GOALS_NEW_EVENT, { detail: { weekly: true } }));
     });
@@ -123,7 +132,7 @@ describe('weekly focus (F14 / §3b 4)', () => {
       data: { ...activeGoal.data, weeklyFocus: true },
     };
     stores.goal = store([focused]);
-    render(<GoalsListPanel />);
+    renderWithClient(<GoalsListPanel />);
     expect(screen.getByText(/This week's focus/)).toBeTruthy();
   });
 });
