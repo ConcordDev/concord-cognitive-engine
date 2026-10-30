@@ -830,21 +830,30 @@ export function getTranscodeStatus(STATE, jobId) {
 // ── Thumbnail Generation ──────────────────────────────────────────────────
 
 /**
- * Generate a thumbnail for a media DTU.
- * In production this would extract a frame (video) or resize (image).
- * Here we store a reference and mark it as generated.
+ * Resolve a media DTU's thumbnail from what actually exists.
+ *
+ * Thumbnails are produced by artifact-store when the media bytes are
+ * stored (the original file for images, an ffmpeg poster frame for
+ * video, a waveform/preview file where one is honestly derivable) and
+ * recorded on the artifact descriptor. This function's job is only to
+ * adopt that real path onto the DTU. A DTU whose bytes never landed —
+ * or whose type yielded no derivative — has no thumbnail, and this
+ * returns a named failure instead of inventing a path to a file that
+ * was never written.
  */
 export function generateThumbnail(STATE, mediaId) {
   const media = getMediaState(STATE);
   const dtu = media.mediaDTUs.get(mediaId);
   if (!dtu) return { ok: false, error: "Media not found" };
 
-  const thumbnailPath = `thumbnails/${dtu.mediaType}/${mediaId}.jpg`;
-  dtu.thumbnail = thumbnailPath;
+  const realThumbnail = dtu.storageRef?.artifactRef?.thumbnail || null;
+  if (!realThumbnail) return { ok: false, error: "no_thumbnail_available" };
+
+  dtu.thumbnail = realThumbnail;
   dtu.updatedAt = new Date().toISOString();
   rememberMedia(STATE, dtu);
 
-  return { ok: true, mediaId, thumbnail: thumbnailPath };
+  return { ok: true, mediaId, thumbnail: realThumbnail };
 }
 
 // ── HLS Manifest ──────────────────────────────────────────────────────────
