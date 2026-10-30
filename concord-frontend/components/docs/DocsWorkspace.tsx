@@ -11,13 +11,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  FileText, Plus, Trash2, Loader2, Search,
+  FileText, Plus, Loader2, Search,
   History, MessageSquare, Share2, Table2, Sparkles, Link2, Users,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { cn } from '@/lib/utils';
 import { setDocsWorkspaceSnapshot } from './docsSession';
+import { requestDelete } from './deleteSafety';
+import { ConfirmDeleteButton, DeleteReceiptToast, useDeleteSafety } from './DeleteSafety';
 import { BlockEditorRow } from './BlockEditorRow';
 import { TemplatePicker } from './TemplatePicker';
 import { VersionHistoryPanel } from './VersionHistoryPanel';
@@ -132,13 +134,29 @@ export function DocsWorkspace() {
     return () => window.removeEventListener(DOCS_NEW_EVENT, run);
   }, []);
 
-  async function deletePage(id: string) {
-    await lensRun('docs', 'page-delete', { id });
+  // Delete safety (S1 / F1): a confirmed delete registers with the
+  // undo-window registry instead of executing instantly. The page
+  // leaves the tree at once (the pending filter below) and the
+  // page-delete macro runs only when the window lapses; Undo inside
+  // the window cancels it outright. Both delete surfaces — the
+  // editor's Delete page and the tree rows — funnel through here.
+  function deletePage(id: string) {
+    const label = pages.find((p) => p.id === id)?.title || active?.title || 'Untitled page';
     if (active?.id === id) {
       setActive(null);
       persist({ pageId: '' });
     }
-    await refreshTree();
+    requestDelete({
+      key: `page:${id}`,
+      label,
+      commit: async () => {
+        const r = await lensRun('docs', 'page-delete', { id });
+        await refreshTree();
+        if (r.data && r.data.ok === false) {
+          throw new Error(String(r.data.error || 'page-delete failed'));
+        }
+      },
+    });
   }
   async function renamePage(title: string) {
     if (!active) return;
@@ -190,8 +208,21 @@ export function DocsWorkspace() {
     setSide('versions');
   }
 
-  const topLevel = useMemo(() => pages.filter(p => !p.parentId), [pages]);
-  const childrenOf = useCallback((id: string) => pages.filter(p => p.parentId === id), [pages]);
+  // Pages inside their delete undo window are hidden from the tree
+  // (they still exist server-side until the window lapses).
+  const { pendingKeys } = useDeleteSafety();
+  const pendingPageIds = useMemo(
+    () => new Set(pendingKeys.filter((k) => k.startsWith('page:')).map((k) => k.slice('page:'.length))),
+    [pendingKeys],
+  );
+  const topLevel = useMemo(
+    () => pages.filter((p) => !p.parentId && !pendingPageIds.has(p.id)),
+    [pages, pendingPageIds],
+  );
+  const childrenOf = useCallback(
+    (id: string) => pages.filter((p) => p.parentId === id && !pendingPageIds.has(p.id)),
+    [pages, pendingPageIds],
+  );
 
   if (loading) {
     return (
@@ -203,6 +234,7 @@ export function DocsWorkspace() {
 
   return (
     <div>
+      <DeleteReceiptToast />
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <FileText className="w-4 h-4 text-zinc-300" />
         <h3 className="text-sm font-bold text-zinc-100">Docs Workspace</h3>
@@ -270,8 +302,9 @@ export function DocsWorkspace() {
                   className="w-9 text-center text-xl bg-transparent" />
                 <input value={active.title} onChange={e => renamePage(e.target.value)}
                   className="flex-1 bg-transparent text-lg font-bold text-zinc-100 focus:outline-none border-b border-transparent focus:border-zinc-700" />
-                <button onClick={() => deletePage(active.id)} title="Delete page"
-                  className="p-1 text-rose-400 hover:bg-rose-500/10 rounded"><Trash2 className="w-4 h-4" /></button>
+                <ConfirmDeleteButton itemLabel={active.title || 'Untitled page'} deleteTitle="Delete page"
+                  onConfirm={() => deletePage(active.id)} iconClassName="w-4 h-4"
+                  className="p-1 text-rose-400 hover:bg-rose-500/10 rounded" />
               </div>
 
               {/* page toolbar */}
@@ -409,8 +442,9 @@ function PageTreeNode({ page, depth, activeId, childrenOf, onOpen, onAddChild, o
         )}
         <button onClick={() => onAddChild(page.id)} title="Add sub-page"
           className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-zinc-200"><Plus className="w-3 h-3" /></button>
-        <button onClick={() => onDelete(page.id)} title="Delete"
-          className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+        <ConfirmDeleteButton itemLabel={page.title || 'Untitled page'} deleteTitle="Delete"
+          onConfirm={() => onDelete(page.id)} iconClassName="w-3 h-3"
+          className="opacity-0 group-hover:opacity-100 text-rose-400" />
       </div>
       {kids.length > 0 && (
         <ul>
