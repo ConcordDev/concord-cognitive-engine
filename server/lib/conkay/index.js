@@ -127,6 +127,12 @@ export class DesignSession {
     return this.engine.applyEdits(ops, { source: "ops" });
   }
 
+  /** The same edit through the yielding recompute — for request-path callers
+   * (the Workbench knob path), so a wide closure cannot freeze the event loop. */
+  async editAsync(ops) {
+    return this.engine.applyEditsAsync(ops, { source: "ops" });
+  }
+
   /** Edit with a sentence. The parsed ops are returned with the report. */
   editText(text) {
     const p = parseEdit(text, this.graph);

@@ -400,7 +400,10 @@ export default function registerProjectsActions(registerLensAction) {
       ok: true,
       result: {
         project,
-        members: forP("members"),
+        // A18 (R4 S4 re-review): the assignee pickers read project-get's
+        // members — serve the ACL account rows (owner first), not the
+        // legacy free-text store, which is empty on account-era projects.
+        members: pjMemberRows(s, userId, project.id),
         sprints: forP("sprints"),
         milestones: forP("milestones"),
         labels: forP("labels"),
