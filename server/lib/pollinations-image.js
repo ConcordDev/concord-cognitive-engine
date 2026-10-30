@@ -15,6 +15,8 @@ import path from "path";
 const GEN_URL = () => (process.env.CONCORD_GEN_URL || process.env.GEN_SERVER_URL || "http://127.0.0.1:7870").replace(/\/$/, "");
 const FALLBACK_REASONS = new Set(["local_gpu_unreachable", "weights_missing"]);
 // FLUX-schnell renders in seconds; the long tail is a cold model load.
+// Reachability probe of the third-party fallback: never let it hang a caller.
+const FALLBACK_HEAD_TIMEOUT_MS = Number(process.env.CONCORD_POLLINATIONS_HEAD_TIMEOUT_MS) || 5_000;
 const GPU_CONCEPT_TIMEOUT_MS = Number(process.env.CONCORD_GEN_TIMEOUT_MS) || 5 * 60 * 1000;
 // Chat turns must not sit on the 5-minute default. A phone cancels the
 // stream at ~45s with no bytes; 120s is the chat concept budget.
@@ -231,7 +233,7 @@ async function generatePollinationsFallback({ prompt, width, height, seed } = {}
 
   let reachable = true;
   try {
-    const head = await fetch(url, { method: "HEAD" });
+    const head = await fetch(url, { method: "HEAD", signal: AbortSignal.timeout(FALLBACK_HEAD_TIMEOUT_MS) });
     reachable = head.ok;
   } catch {
     reachable = false;

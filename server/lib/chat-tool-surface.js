@@ -61,6 +61,23 @@ export const CHAT_RESPOND_TOOLS = Object.freeze([
     operatorOnly: false,
   },
   {
+    name: "list_recipes",
+    description: "List tested multi-step recipes (beam sizing, column buckling, unit conversion, material comparison, wall conduction, pipe flow) with their inputs. Prefer a matching recipe to composing tools yourself.",
+    params: { query: { type: "string", required: false, description: "What you want to do, in words" } },
+    requiresOptIn: false,
+    operatorOnly: false,
+  },
+  {
+    name: "run_recipe",
+    description: "Run a recipe deterministically in SI and get its result, pass/fail checks and receipt.",
+    params: {
+      recipe: { type: "string", required: true, description: "Recipe id from list_recipes" },
+      inputs: { type: "object", required: true, description: "The recipe's inputs (SI numbers, or quantities like \"60 mm\")" },
+    },
+    requiresOptIn: false,
+    operatorOnly: false,
+  },
+  {
     name: "browse_url",
     description: "Fetch and read a public web page.",
     params: {
@@ -190,6 +207,8 @@ export const AGENT_LOOP_TOOLS = Object.freeze([
   { name: "run_compute", description: "Deterministic compute module.function.", params: { key: { type: "string", required: true }, input: { type: "object", required: true } } },
   { name: "dtu_search", description: "Search the DTUs the user can see (read-only). Only ids returned here may be cited.", params: { query: { type: "string", required: true }, limit: { type: "number", required: false } } },
   { name: "get_live_data", description: "Live data with source, timestamp and licence (PubChem compounds, ECB fx rates). Signed-in users only.", params: { kind: { type: "string", required: true } } },
+  { name: "list_recipes", description: "List tested multi-step recipes with their inputs.", params: { query: { type: "string", required: false } } },
+  { name: "run_recipe", description: "Run a recipe deterministically in SI: result, checks, receipt.", params: { recipe: { type: "string", required: true }, inputs: { type: "object", required: true } } },
   { name: "conkay_design", description: "ConKay sizing check: hand calc + FEA + safety-factor pass/fail from a plain-language spec.", params: { text: { type: "string", required: true } } },
   { name: "conkay_solve", description: "Run one ConKay solver against a Design IR (MCP bridge).", params: { solver_id: { type: "string", required: true }, ir: { type: "object", required: false } } },
   { name: "conkay_solver_list", description: "List ConKay solvers (MCP bridge).", params: { domain: { type: "string", required: false } } },
@@ -371,8 +390,27 @@ export async function dispatchChatDtuSearch(runMacro, ctx, params = {}) {
         .replace(/\s+/g, " ").trim().slice(0, 240),
       ...(Array.isArray(d.tags) && d.tags.length ? { tags: d.tags.slice(0, 6).map(String) } : {}),
     }));
+  // An id-shaped query ("DTU-48213") that no hit carries is a miss, even when fuzzy text matches came back.
+  const idTokens = [...new Set(query.match(/\bDTU[-_ ]?[A-Za-z0-9]*\d[A-Za-z0-9]*\b/gi) || [])];
+  const norm = (x) => String(x).toLowerCase().replace(/[-_ ]/g, "");
+  const missingIds = idTokens.filter((tok) => !dtus.some((d) => norm(d.id) === norm(tok)));
+  const note = missingIds.length
+    ? `No DTU has the id ${missingIds.join(", ")}. Say that plainly; do not describe or cite any of the other results as that DTU.`
+    : dtus.length ? "Cite only the ids and titles listed here." : "No DTU matched. Say so; do not invent DTU titles or ids.";
   return {
     tool: "dtu_search", ok: true, query, total: dtus.length, dtus,
-    note: dtus.length ? "Cite only the ids and titles listed here." : "No DTU matched. Say so; do not invent DTU titles or ids.",
+    ...(missingIds.length ? { exactIdMatch: false, missingIds } : {}),
+    note,
   };
+}
+
+/** chat list_recipes / run_recipe: pure, deterministic, SI. */
+export async function dispatchChatRecipe(tool, params = {}) {
+  const { listRecipes, runRecipe } = await import("./chat/tool-recipes/index.js");
+  if (tool === "list_recipes") {
+    const recipes = listRecipes(String(params.query || params.q || ""));
+    return { tool, ok: true, total: recipes.length, recipes, note: recipes.length ? "Pick one and call run_recipe with its inputs." : "No recipe matches; compose the tools directly." };
+  }
+  const r = runRecipe(params.recipe || params.id, params.inputs || params.input || {});
+  return { tool, ...r, ok: r.ok === true };
 }

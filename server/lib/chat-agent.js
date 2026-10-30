@@ -107,6 +107,8 @@ const TOOL_REQUIRED_PARAMS = {
   run_compute:       ["key", "input"],
   dtu_search:        ["query"],
   get_live_data:     ["kind"],
+  list_recipes:      [],
+  run_recipe:        ["recipe", "inputs"],
   conkay_design:     ["text"],
   conkay_solve:      ["solver_id"],
   conkay_solver_list: [],
@@ -306,6 +308,9 @@ Available tools (with one working example each):
 - dtu_search: Search the knowledge base (DTUs) the user can see. Read-only. Use it BEFORE citing any DTU; only ids and titles it returns may be cited. Params: {"query": "search terms", "limit": 8}
   Example: [TOOL_CALL: {"tool": "dtu_search", "params": {"query": "heat pump efficiency"}}]
 - get_live_data: Read-only live data with source, timestamp and licence. kind "compound" (PubChem: formula, molar mass, CAS; optional property density|boiling_point|melting_point) or kind "fx" (ECB reference rates). Cite the source and retrievedAt. Params: {"kind": "compound", "name": "ethanol", "property": "boiling_point"} or {"kind": "fx", "base": "EUR", "symbols": ["USD"]}
+- list_recipes: List tested multi-step recipes (beam sizing, column buckling, unit conversion, material comparison, wall conduction, pipe flow) and their inputs. Check this FIRST for an engineering calculation. Params: {"query": "what you want to do"}
+  Example: [TOOL_CALL: {"tool": "list_recipes", "params": {"query": "size a beam"}}]
+- run_recipe: Run a recipe in SI; returns the result, pass/fail checks and a receipt. Quote only numbers from its result. Params: {"recipe": "beam_sizing", "inputs": {"spanM": 4, "loadN": 10000, "widthM": "60 mm", "material": "steel-a36", "safetyFactor": 2}}
 - conkay_design: Size or check a structural part (beam, cantilever, I-beam, bracket, shaft, column) from a plain-language spec. For a robot (base, torso, arms, head...) or an everyday CAD object (phone stand, truss, gearbox, shelf, table, chair, enclosure) it returns a concept 3D assembly with its parts list instead. This is the tool for "make a 3D/CAD model of X", STL and printable-part asks. Runs the deterministic hand calc and FEA and checks the stated safety factor (pass/fail with margin). If the user asked for one sub-assembly (torso, arm, head, leg, hand, or a single part), set "scope" to that part so only that sub-assembly is built. Params: {"text": "the design in words, with span, load, material, supports and safety factor", "scope": "torso"}
   Example: [TOOL_CALL: {"tool": "conkay_design", "params": {"text": "steel cantilever beam 2 m long, 10 kN at the tip, safety factor of 2"}}]
 - conkay_ir_schema: Worked Design IR example + contract hints before conkay_solve. Params: {}
@@ -1220,6 +1225,11 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         const { getLiveData } = await import("./chat/live-data.js");
         return getLiveData(ctx, call.params);
       }
+      case "list_recipes":
+      case "run_recipe": {
+        const { dispatchChatRecipe } = await import("./chat-tool-surface.js");
+        return dispatchChatRecipe(call.tool, call.params);
+      }
       case "conkay_design": {
         // Deterministic ConKay sizing check: parse → hand calc + FEA → safety
         // factor pass/fail. Same code as POST /api/conkay/design, without mesh arrays.
@@ -1266,6 +1276,16 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           const { solveBeam } = await import("./conkay/chat/structures.js");
           const brief = parseChatBrief(text);
           const ir = brief.ok && brief.domain === "beam" ? brief.ir : null;
+          // "Size the beam." with no span, load or section: ask, do not hand back the legacy 200 mm I-beam as if it were a design.
+          if (ir && !ir.spanM && !ir.loads?.length && !ir.depthM && !ir.widthM) {
+            const missing = ["span (m)", "load and where it acts", "material", "width (mm)"];
+            return {
+              tool: call.tool, ok: false, key: "conkay_design.needs-inputs", input: { text },
+              error: `Not enough to size a beam: need ${missing.join(", ")}.`,
+              result: { kind: "needs-inputs", missing,
+                instruction: "Do not invent a beam. Ask the user for the missing inputs listed here, then call conkay_design again with the full brief." },
+            };
+          }
           if (ir && ir.support === "simply-supported" && ir.spanM && ir.widthM && !ir.depthM && ir.material && ir.loads?.length) {
             const beam = solveBeam(ir);
             if (beam.ok && beam.section) {

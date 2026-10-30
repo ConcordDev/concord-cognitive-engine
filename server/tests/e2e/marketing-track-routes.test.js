@@ -1,12 +1,9 @@
 /**
- * E2E — marketing email beacons (/api/marketing/track/{open,click}/:sendId)
- * are reachable by an email client with NO session.
- *
- * Q47: the beacons were mounted but sat behind the global auth gate, so a
- * real email client's anonymous pixel fetch / click would have been 401'd
- * and engagement could never be recorded. Spawns server.js in
- * AUTH_MODE=hybrid (auth genuinely enforced elsewhere) and drives the
- * beacons with a bare fetch carrying no Authorization header and no cookie.
+ * E2E — the marketing email beacons (/api/marketing/track/{open,click}/:sendId)
+ * were removed; Concord does not track email. Spawns server.js in
+ * AUTH_MODE=hybrid and checks both old paths no longer serve anything to an
+ * anonymous GET. The global auth gate answers 401 before routing reaches a
+ * missing route (auth mode is unchanged), so 401 or 404 both mean "gone".
  */
 
 import { describe, it, before, after } from 'node:test';
@@ -152,7 +149,7 @@ async function postJSON(base, path, payload, headers) {
   return { status: res.status, body: body };
 }
 
-describe('E2E — marketing email beacons are public, GET-only', { timeout: 120000 }, function () {
+describe('E2E — marketing email beacons are gone', { timeout: 120000 }, function () {
   let base;
   let serverProc;
   let dataDir;
@@ -169,28 +166,16 @@ describe('E2E — marketing email beacons are public, GET-only', { timeout: 1200
     rmSync(dataDir, { recursive: true, force: true });
   });
 
-  it('anonymous GET of the open pixel returns the 1x1 GIF (same for unknown ids, no probing)', async function () {
-    const res = await apiFetch(base, '/api/marketing/track/open/snd_does_not_exist', {});
-    assert.equal(res.status, 200, 'open beacon must not require auth');
-    assert.equal(res.headers.get('content-type'), 'image/gif');
-    const buf = Buffer.from(await res.arrayBuffer());
-    assert.equal(buf.subarray(0, 6).toString('latin1'), 'GIF89a');
+  it('anonymous GET of the old open pixel serves nothing (401/404, no GIF)', async function () {
+    const res = await apiFetch(base, '/api/marketing/track/open/snd_x', {});
+    assert.ok([401, 404].includes(res.status), 'got ' + res.status);
+    assert.notEqual(res.headers.get('content-type'), 'image/gif');
   });
 
-  it('anonymous GET of a click for an unknown send is an honest 404, never 401 and never a redirect', async function () {
-    const res = await apiFetch(base, '/api/marketing/track/click/snd_does_not_exist?u=' + encodeURIComponent('https://evil.example/'), { redirect: 'manual' });
-    assert.equal(res.status, 404);
-    assert.equal(res.headers.get('location'), null, 'must not redirect to an unrecorded URL');
-  });
-
-  it('the bypass is GET-only: an anonymous POST to a beacon path is still rejected', async function () {
-    const { status } = await postJSON(base, '/api/marketing/track/open/snd_x', {});
-    assert.notEqual(status, 200);
-  });
-
-  it('the bypass is exact-shape: an anonymous GET elsewhere under /api/marketing still needs auth', async function () {
-    const res = await apiFetch(base, '/api/marketing/track/open/snd_x/extra', {});
-    assert.notEqual(res.status, 200);
+  it('anonymous GET of the old click redirect serves nothing and never redirects', async function () {
+    const res = await apiFetch(base, '/api/marketing/track/click/snd_x?u=' + encodeURIComponent('https://example.com/'), { redirect: 'manual' });
+    assert.ok([401, 404].includes(res.status), 'got ' + res.status);
+    assert.equal(res.headers.get('location'), null);
   });
 
   it('sanity: a genuinely auth-protected route in this SAME hybrid-mode server still 401s unauthenticated', async function () {
