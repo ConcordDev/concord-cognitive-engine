@@ -41,7 +41,11 @@ function ts() {
   if (_ts) return _ts;
   if (_loadFailed) return null;
   try {
-    _ts = _require("typescript");
+    const m = _require("typescript");
+    // TypeScript 7 ships without the JS compiler API (no createSourceFile / ScriptTarget); treating that
+    // as "loaded" crashed every analysis. Only a module that can actually parse counts as the engine.
+    if (typeof m?.createSourceFile !== "function" || !m?.ScriptTarget) { _loadFailed = true; return null; }
+    _ts = m;
     return _ts;
   } catch {
     _loadFailed = true;
