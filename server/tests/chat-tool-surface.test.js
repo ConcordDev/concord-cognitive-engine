@@ -75,7 +75,7 @@ describe("chat tool catalog matches both live paths", () => {
     assert.equal(on.paths.chat.available, true);
     assert.equal(on.paths.chat.gatedBySessionOptIn, false);
     assert.deepEqual(on.tools.map((t) => t.name), [
-      "web_search", "run_compute", "browse_url", "create_dtu", "run_lens_action",
+      "web_search", "run_compute", "dtu_search", "list_recipes", "run_recipe", "browse_url", "create_dtu", "run_lens_action",
       "list_lens_actions", "conkay_solver_list", "conkay_solve", "conkay_ir_schema", "conkay_compile_brief",
       "conkay_design", "generate_3d", "generate_image",
     ]);

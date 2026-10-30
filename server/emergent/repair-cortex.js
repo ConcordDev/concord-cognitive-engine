@@ -371,6 +371,59 @@ export function getAllRepairPatterns() {
   }
 }
 
+/**
+ * Import anonymized pattern signals pulled from the global repair
+ * network (see emergent/repair-network.js). Entries arrive keyed by
+ * the shared pattern hash — the raw pattern never leaves its home
+ * instance — and carry NO fix payload: the network shares which
+ * executors succeed on which error classes, never the fixes
+ * themselves. Imported entries therefore store `fix: null`, which
+ * lookupRepairMemory returns as null: a network signal can inform
+ * stats and confidence, but it can never be applied as a repair.
+ * Local accounting starts at zero (the sender's aggregates are kept
+ * separately as networkSuccessRate / networkOccurrences); if the
+ * pattern is later observed locally, addToRepairMemory's normal
+ * path takes over the entry. Deliberately NOT persisted to
+ * repair_knowledge — that table is this instance's own learning,
+ * and loadRepairEntry would resurrect foreign signals as local.
+ * Returns the number of NEW patterns imported.
+ */
+export function importGlobalRepairPatterns(fixes) {
+  let imported = 0;
+  try {
+    _ensureRepairMemory();
+    for (const fix of Array.isArray(fixes) ? fixes : []) {
+      const key = String(fix?.errorPattern || "");
+      if (!/^[0-9a-f]{16}$/.test(key)) continue;
+      if (_repairMemory.has(key)) continue;
+      if (_repairMemory.size >= REPAIR_MEMORY_CAP) break;
+      const rate = Number(fix.successRate) || 0;
+      _repairMemory.set(key, {
+        pattern: null,
+        fix: null,
+        occurrences: 0,
+        successes: 0,
+        failures: 0,
+        successRate: 0,
+        firstSeen: fix.firstSeen || nowISO(),
+        lastSeen: nowISO(),
+        deprecated: false,
+        securityRelated: fix.category === "security" || !!fix.vulnerabilityType,
+        cveId: fix.cveId || null,
+        source: "global_network",
+        executor: fix.executor || "unknown",
+        networkSuccessRate: rate,
+        networkOccurrences: Number(fix.occurrences) || 0,
+        confidence: rate * 0.8,
+        importedAt: nowISO(),
+      });
+      imported++;
+    }
+    if (imported) _syncRepairMemoryToSTATE();
+  } catch (_e) { logger.debug('emergent:repair-cortex', 'silent', { error: _e?.message }); }
+  return imported;
+}
+
 // ── Error Accumulator + observe() ────────────────────────────────────────────
 // Replaces empty catch blocks. The cortex sees everything now.
 

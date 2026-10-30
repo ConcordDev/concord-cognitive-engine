@@ -70,6 +70,7 @@ import { budgetLeftMs, raceDeadline } from "./chat/gen-budget.js";
 import { fallThroughDtuGet } from "./chat/dtu-get-fallthrough.js";
 import { guardPlaybackClaim as _guardPlaybackClaimRaw, historyHasSong } from "./chat/playback-honesty.js";
 import { guardFeaClaim } from "./chat/fea-honesty.js";
+import { guardNumericTrace } from "./chat/numeric-trace.js";
 import { textbookNeedsWeb } from "./chat/textbook-fallback.js";
 import { todayLine } from "./chat/today.js";
 import {
@@ -104,6 +105,9 @@ const ECHOED_TOOL_RESULT_RE = /^\s*\[TOOL_RESULT:/;
 const TOOL_REQUIRED_PARAMS = {
   web_search:        ["query"],
   run_compute:       ["key", "input"],
+  dtu_search:        ["query"],
+  list_recipes:      [],
+  run_recipe:        ["recipe", "inputs"],
   conkay_design:     ["text"],
   conkay_solve:      ["solver_id"],
   conkay_solver_list: [],
@@ -300,6 +304,11 @@ Available tools (with one working example each):
   Example: [TOOL_CALL: {"tool": "web_search", "params": {"query": "concord cognitive engine"}}]
 - run_compute: Run a math/physics/chemistry/quantum/engineering calculation. Params: {"key": "module.function", "input": {...}}. Physics/chemistry/engineering functions take a named-field object (e.g. physics.ohmsLaw -> {"voltage":12,"resistance":4}). Symbolic math (symbolic.differentiate / integrate / simplify / solve / expand / evaluate) takes {"expression": "...", "variable": "x"}.
   Example: [TOOL_CALL: {"tool": "run_compute", "params": {"key": "symbolic.integrate", "input": {"expression": "x^2", "variable": "x"}}}]
+- dtu_search: Search the knowledge base (DTUs) the user can see. Read-only. Use it BEFORE citing any DTU; only ids and titles it returns may be cited. Params: {"query": "search terms", "limit": 8}
+  Example: [TOOL_CALL: {"tool": "dtu_search", "params": {"query": "heat pump efficiency"}}]
+- list_recipes: List tested multi-step recipes (beam sizing, column buckling, unit conversion, material comparison, wall conduction, pipe flow) and their inputs. Check this FIRST for an engineering calculation. Params: {"query": "what you want to do"}
+  Example: [TOOL_CALL: {"tool": "list_recipes", "params": {"query": "size a beam"}}]
+- run_recipe: Run a recipe in SI; returns the result, pass/fail checks and a receipt. Quote only numbers from its result. Params: {"recipe": "beam_sizing", "inputs": {"spanM": 4, "loadN": 10000, "widthM": "60 mm", "material": "steel-a36", "safetyFactor": 2}}
 - conkay_design: Size or check a structural part (beam, cantilever, I-beam, bracket, shaft, column) from a plain-language spec. For a robot (base, torso, arms, head...) or an everyday CAD object (phone stand, truss, gearbox, shelf, table, chair, enclosure) it returns a concept 3D assembly with its parts list instead. This is the tool for "make a 3D/CAD model of X", STL and printable-part asks. Runs the deterministic hand calc and FEA and checks the stated safety factor (pass/fail with margin). If the user asked for one sub-assembly (torso, arm, head, leg, hand, or a single part), set "scope" to that part so only that sub-assembly is built. Params: {"text": "the design in words, with span, load, material, supports and safety factor", "scope": "torso"}
   Example: [TOOL_CALL: {"tool": "conkay_design", "params": {"text": "steel cantilever beam 2 m long, 10 kN at the tip, safety factor of 2"}}]
 - conkay_ir_schema: Worked Design IR example + contract hints before conkay_solve. Params: {}
@@ -964,14 +973,19 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
               } catch { /* fall through to the key list */ }
             }
             const valid = await validComputeKeys(modName);
+            const { closestComputeKeys } = await import("./chat/compute-si.js");
+            const closest = key ? await closestComputeKeys(key).catch(() => []) : [];
             return {
               tool: call.tool, ok: false,
               error: key.includes(".") ? `unknown compute function ${key}` : 'run_compute requires "module.function" key',
+              ...(closest.length ? { closestKeys: closest } : {}),
               validKeys: valid.keys,
               retryHint: `Use one of the real compute keys${valid.module ? ` in ${valid.module}` : ""}: ${valid.keys.join(", ")}. For word-problem arithmetic (money, interest, trips, unit conversions) write ONE expression with the numbers filled in and call [TOOL_CALL: {"tool": "run_compute", "params": {"key": "symbolic.evaluate", "input": {"expression": "5000*(1+0.06)^10"}}}]`,
             };
           }
-          const rawResult = invokeCompute(mod, modName, fnName, input);
+          const rawResult = (modName === "physics" || modName === "engineering")
+            ? (await import("./chat/compute-si.js")).runChatCompute(key, mod, fnName, input)
+            : invokeCompute(mod, modName, fnName, input);
           let _stringify;
           if (_SYMBOLIC_MODS.has(String(modName).toLowerCase())) {
             _stringify = mod.stringify || (await import("./compute/symbolic-math.js")).stringify;
@@ -1201,6 +1215,15 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           ...(artifacts.length ? { artifacts } : {}),
         };
       }
+      case "dtu_search": {
+        const { dispatchChatDtuSearch } = await import("./chat-tool-surface.js");
+        return dispatchChatDtuSearch(runMacro, ctx, call.params);
+      }
+      case "list_recipes":
+      case "run_recipe": {
+        const { dispatchChatRecipe } = await import("./chat-tool-surface.js");
+        return dispatchChatRecipe(call.tool, call.params);
+      }
       case "conkay_design": {
         // Deterministic ConKay sizing check: parse → hand calc + FEA → safety
         // factor pass/fail. Same code as POST /api/conkay/design, without mesh arrays.
@@ -1237,6 +1260,45 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
               partList: asm.parts.map((x) => ({ name: x.name, size_mm: x.size_mm })), bbox_mm: asm.bbox_mm,
               ...layoutMeshFields(mesh, asm.parts) },
           };
+        }
+        // A simply supported beam with a width and no depth is a sizing ask: the
+        // chat solver picks the R10 depth against strength AND the span/n
+        // deflection limit and says which governs. The legacy solver below
+        // would assume a 200 mm I-section instead of sizing anything.
+        {
+          const { parseChatBrief } = await import("./conkay/chat/brief-parser.js");
+          const { solveBeam } = await import("./conkay/chat/structures.js");
+          const brief = parseChatBrief(text);
+          const ir = brief.ok && brief.domain === "beam" ? brief.ir : null;
+          // "Size the beam." with no span, load or section: ask, do not hand back the legacy 200 mm I-beam as if it were a design.
+          if (ir && !ir.spanM && !ir.loads?.length && !ir.depthM && !ir.widthM) {
+            const missing = ["span (m)", "load and where it acts", "material", "width (mm)"];
+            return {
+              tool: call.tool, ok: false, key: "conkay_design.needs-inputs", input: { text },
+              error: `Not enough to size a beam: need ${missing.join(", ")}.`,
+              result: { kind: "needs-inputs", missing,
+                instruction: "Do not invent a beam. Ask the user for the missing inputs listed here, then call conkay_design again with the full brief." },
+            };
+          }
+          if (ir && ir.support === "simply-supported" && ir.spanM && ir.widthM && !ir.depthM && ir.material && ir.loads?.length) {
+            const beam = solveBeam(ir);
+            if (beam.ok && beam.section) {
+              const mm = (m) => Math.round(m * 1e6) / 1e3;
+              return {
+                tool: call.tool, ok: true, key: "conkay_design.beam-size", input: { text },
+                result: {
+                  kind: "beam-size", part: "beam", material: beam.material, support: ir.support, spanM: ir.spanM,
+                  depthMm: mm(beam.section.depthM), widthMm: mm(beam.section.widthM), depthSource: beam.depthSource || null,
+                  governs: beam.governs || null, sizing: beam.sizing || null, pass: beam.pass ?? null,
+                  maxMomentNm: beam.maxMoment.value, sigmaMPa: beam.hand.sigmaPa / 1e6,
+                  allowableMPa: beam.hand.allowablePa != null ? beam.hand.allowablePa / 1e6 : null,
+                  deltaMm: beam.hand.deltaM != null ? beam.hand.deltaM * 1000 : null,
+                  deflectionCheck: beam.deflectionCheck || null, fe: beam.fe, steps: beam.steps,
+                  instruction: "Quote the selected depth, say which check governs (strength or deflection) and the depth each check alone would need. Quote the figures in this result; do not recompute them.",
+                },
+              };
+            }
+          }
         }
         const { solveDesignText, summarizeDesignSolve, feaUtilToColor } = await import("./conkay/nlp-design-intent.js");
         const solved = solveDesignText(text);
@@ -2760,6 +2822,9 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
 
   // A failed FEA run is never reported as a pass (INC-128).
   finalAnswer = guardFeaClaim(finalAnswer, allToolCalls);
+  // Figures with units must trace to a tool result or the user's own message.
+  const _numTrace = guardNumericTrace(finalAnswer, allToolCalls, { prompt: message });
+  finalAnswer = _numTrace.text;
   // A streamed follow-up once called an 880 mm layout "2.7 m tall".
   finalAnswer = alignReplyToBbox(finalAnswer, specBbox(allToolCalls));
   finalAnswer = ensureDesignSummary(finalAnswer, allToolCalls);
@@ -2772,6 +2837,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     ok: true,
     answer: finalAnswer,
     ...(linksRemoved.length ? { linksRemoved } : {}),
+    ...(_numTrace.untraced.length ? { untracedNumbers: _numTrace.untraced } : {}),
     ...(selfContinuation ? { selfContinuation } : {}),
     toolCalls: allToolCalls,
     artifacts: allArtifacts,
