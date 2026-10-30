@@ -233,3 +233,69 @@ Facebook-shaped UI — the UX polish grader's `hasMacroButtonWall: true` flag
 on this lens reflects that same footer strip, correctly not enough on its own
 to cap the tier since `bespokeRatio` is 0.841 and `isGenericScaffold` is
 `false`).
+
+---
+
+## Addendum — Review 3 wall build (PR #1840, 2026-10-29)
+
+Product Review 3's frozen review (`lens-reviews/timeline.md`, 54 inventoried /
+50 exercised / 33 passed / 17 failed) routed eleven build slices, S-TL-1…
+S-TL-11, all landed on `feat/lens-timeline-redesign` as one isolated commit
+per slice. Timeline is a **social wall** (founder decision, 2026-10-28); the
+4 roadmap macros stay orphaned — not deleted, not surfaced. Feed is the
+front door; Roadmap is a tab (founder ruling, 2026-10-29).
+
+**New wall macros (13) — the domain now registers 34 macros, 30 of them the
+wall substrate:**
+
+| Macro | Slice | What it does |
+|---|---|---|
+| `post-update` | S-TL-2 | Author-only post edit (content/media/audience/reply gate) with `editedAt` + capped `editHistory[]`; unknown tiers refused, never silently mapped |
+| `comment-update` | S-TL-2 | Author-only comment edit with the same history treatment |
+| `comment-react` | S-TL-6 | The 5-kind reaction picker on comments; author notified on add |
+| `album-update` | S-TL-5 | Rename / re-tier an album (unknown tier refused, nothing half-applied) |
+| `album-delete` | S-TL-5 | Delete with the album name + media count reported back |
+| `album-remove-media` | S-TL-5 | Remove an item; cover falls back to the first remaining |
+| `album-set-cover` | S-TL-5 | Set the album cover |
+| `report` | S-TL-9 | File a post/comment into the moderation queue (`tlState.reports`); duplicate open reports dedupe; the response carries the honest what-happens-next |
+| `user-block` / `user-unblock` | S-TL-9 | Friend-graph block (one pair row, both directions, severs friendship) and its undo — unblocking returns the pair to strangers |
+| `user-mute` / `user-unmute` | S-TL-9 | The viewer's own mute list; one-way, no severing |
+| `safety-lists` | S-TL-9 | The profile Safety section's source: muted/blocked people by name |
+
+**Behaviour changes to existing macros:**
+
+- `post-create` — accepts `replyGate` (anyone/friends/mentioned/none,
+  S-TL-8; unknown refused) and refuses unusable media URLs with a stated
+  reason (S-TL-3/F14).
+- `comment-add` — enforces the post's reply gate (S-TL-8).
+- `feed-list` — display-name enrichment (S-TL-4); `viewAs` preview of your
+  own wall as Public or a specific person (S-TL-7); muted/blocked authors
+  excluded (S-TL-9); server-side `audience` filter + `search` — totals
+  describe the filtered set, and shares match the original's content and
+  author (S-TL-10/F13/F17).
+- `comment-list` — the viewer's containment applies inside threads;
+  totals count the visible set (S-TL-9).
+- `share-post` — the audience **caps at the original's tier**: no param
+  means the original's tier; widening is refused unless `confirmWiden`
+  is sent after the dialog's labelled consequence (S-TL-11/F16).
+- `album-list` — **supersedes this map's earlier statement**: albums now
+  carry per-album audience tiers and another owner's album-list enforces
+  them (S-TL-5). The "no privacy gate by design" disposition above is
+  historical.
+- `profile-get` / `profile-update` — editable display name; profiles
+  resolve names, never bare UUIDs (S-TL-4).
+- `memories` — the `YYYY-MM-DD` heading date parses by components; the
+  old UTC-midnight parse named the previous day (S-TL-6/F18).
+
+**The friends-tier residual documented above is closed**: `checkPostAccess`
+resolves the real friend graph (migration 214) and fails closed without a
+db handle — that landed on main ahead of this build; the S-TL-2 regression
+group in the suite below locks it.
+
+**Tests:** `server/tests/timeline-wall-rework.test.js` — **49/49** behaviour
+tests across all eleven slices (pure-JS friendships fixture; runs without
+native deps), 76/76 together with `friendships.test.js` and the neighbouring
+suites importing the domain. NOT RUN in the build sandbox (standing
+NEEDS-MAC): FE vitest + type-check/lint for the touched frontend files, and
+`timeline-domain-parity.test.js` (requires better-sqlite3). Live
+click-through is Review 3's §9 re-pass, fired by the ship deploy notice.

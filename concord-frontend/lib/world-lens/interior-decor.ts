@@ -14,7 +14,7 @@
  *   - archive    → shelves with scrolls + reading table + rug
  *   - forge      → anvil + bellows + tool rack
  *   - market     → stall counter + sack pile
- *   - tower      → spiral staircase mock + window slit + standing torch
+ *   - tower      → spiral staircase + window slit + standing torch
  *   - restaurant → kitchen counter + stove + hood + fridge + dishrack + table
  *
  * Each prop is a simple primitive group attached as a child of the
@@ -285,6 +285,50 @@ function buildStandingTorch(THREE: typeof THREE_NS, metalPBR: PBRTextureSet | un
 }
 
 /**
+ * Spiral staircase for the tower archetype — a real helical stair built
+ * from the same primitives as every other prop here (the header comment
+ * promised one for years while the tower case built only a torch and a
+ * window slit; remaining-work audit B#13). A stone newel column, stone
+ * steps rising one full turn over `height`, a wooden baluster at each
+ * step's outer edge, and a wooden landing tread at the top.
+ */
+function buildSpiralStaircase(
+  THREE: typeof THREE_NS,
+  stonePBR: PBRTextureSet | undefined,
+  woodPBR: PBRTextureSet | undefined,
+  height: number,
+  radius: number,
+): THREE_NS.Group {
+  const grp = new THREE.Group();
+  grp.name = 'spiral-staircase';
+  const stoneMat = makeMaterial(THREE, stonePBR, 0x8a8378, { roughness: 0.95 });
+  const woodMat = makeMaterial(THREE, woodPBR, 0x7a5a38, { roughness: 0.8 });
+
+  const newel = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, height, 10), stoneMat);
+  newel.position.y = height / 2;
+  grp.add(newel);
+
+  const steps = Math.max(10, Math.floor(height / 0.27));
+  for (let i = 0; i < steps; i++) {
+    const a = (i / steps) * Math.PI * 2;
+    const y = ((i + 0.5) / steps) * height;
+    const step = new THREE.Mesh(new THREE.BoxGeometry(radius, 0.09, 0.62), stoneMat);
+    step.position.set(Math.cos(a) * radius * 0.55, y, Math.sin(a) * radius * 0.55);
+    step.rotation.y = -a;
+    grp.add(step);
+    const baluster = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.85, 6), woodMat);
+    baluster.position.set(Math.cos(a) * radius * 0.98, y + 0.45, Math.sin(a) * radius * 0.98);
+    grp.add(baluster);
+  }
+
+  // Landing tread at the top of the turn (angle 0 = +x, where the helix ends).
+  const landing = new THREE.Mesh(new THREE.BoxGeometry(radius, 0.1, 0.95), woodMat);
+  landing.position.set(radius * 0.55, height + 0.03, 0);
+  grp.add(landing);
+  return grp;
+}
+
+/**
  * Decorate an interior with archetype-appropriate props.
  */
 export function decorateInterior(
@@ -400,8 +444,15 @@ export function decorateInterior(
       break;
     }
     case 'tower': {
+      // Spiral staircase hugging the corner opposite the window slit —
+      // the header comment's promised centrepiece, built for real (B#13).
+      const stairRadius = Math.min(size.x, size.z) * 0.3;
+      const stairs = buildSpiralStaircase(THREE, pbr.stone, pbr.wood, size.y * 0.92, stairRadius);
+      stairs.position.set(-size.x / 2 + stairRadius + 0.4, 0, -size.z / 2 + stairRadius + 0.4);
+      group.add(stairs); props.push(stairs);
+
       const torch = buildStandingTorch(THREE, pbr.metal);
-      torch.position.set(0, 0, 0);
+      torch.position.set(size.x / 2 - 0.6, 0, size.z / 2 - 0.6);
       group.add(torch); props.push(torch);
 
       // Window-slit glow (vertical light shaft)
