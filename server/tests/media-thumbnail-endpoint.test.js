@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import createMediaRouter from "../routes/media.js";
 import { createMediaDTU } from "../lib/media-dtu.js";
+import { grantMediaLicense } from "../lib/media-preview-window.js";
 
 /**
  * Q26 — GET /:id/thumbnail serves real bytes or an honest 404.
@@ -257,6 +258,41 @@ describe("GET /:id/thumbnail (Q26)", () => {
     });
     assert.equal(owner.status, 200);
     assert.deepEqual(owner.body, imgBytes);
+  });
+
+  it("licence gate: a priced Commercial image's full-original thumbnail is 403 license_required for non-licensees", async () => {
+    const mediaDTU = seed({
+      tiers: [{ tier: "commercial", price: 25, enabled: true }],
+      artifactRef: { type: "image/png", diskPath: imgPath, thumbnail: imgPath },
+    });
+    const get = (user) => router.call("get", "/:id/thumbnail", { params: { id: mediaDTU.id }, user });
+    const stranger = await get({ id: "stranger-2" });
+    assert.equal(stranger.status, 403);
+    assert.equal(stranger.body.error, "license_required");
+    assert.ok(!Buffer.isBuffer(stranger.body), "no bytes leak");
+    const anon = await get(null);
+    assert.notEqual(anon.status, 200);
+    const owner = await get({ id: "owner-1" });
+    assert.equal(owner.status, 200);
+    assert.deepEqual(owner.body, imgBytes);
+    grantMediaLicense(STATE, mediaDTU.id, "licensee-3");
+    const licensee = await get({ id: "licensee-3" });
+    assert.equal(licensee.status, 200);
+    assert.deepEqual(licensee.body, imgBytes);
+  });
+
+  it("licence gate leaves derived poster thumbnails servable for priced media, and free images stay open", async () => {
+    const priced = seed({
+      mediaType: "video", mimeType: "video/mp4",
+      tiers: [{ tier: "create", price: 10, enabled: true }],
+      artifactRef: { type: "video/mp4", diskPath: path.join(dir, "clip.mp4"), thumbnail: posterPath },
+    });
+    const poster = await router.call("get", "/:id/thumbnail", { params: { id: priced.id }, user: { id: "stranger-2" } });
+    assert.equal(poster.status, 200);
+    assert.deepEqual(poster.body, posterBytes);
+    const free = seed({ artifactRef: { type: "image/png", diskPath: imgPath, thumbnail: imgPath }, tiers: [{ tier: "create", price: 0, enabled: true }] });
+    const open = await router.call("get", "/:id/thumbnail", { params: { id: free.id }, user: { id: "stranger-2" } });
+    assert.equal(open.status, 200);
   });
 
   it("honours range requests against the thumbnail bytes", async () => {

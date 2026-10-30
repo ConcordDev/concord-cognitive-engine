@@ -551,6 +551,14 @@ export default function createMediaRouter({ STATE }) {
     const artifactRef = mediaDTU.storageRef?.artifactRef;
     const thumbPath = artifactRef?.thumbnail || null;
     if (thumbPath) {
+      // For images artifact-store sets the "thumbnail" to the full original. Serving that whole file
+      // would hand a non-licensee what /stream withholds, so the licence gate applies to it too.
+      // Derived poster/waveform thumbnails (a different file) stay servable.
+      if (thumbPath === artifactRef.diskPath
+        && pricedCreateOrCommercial(mediaDTU)
+        && !viewerMayStreamFull(STATE, mediaDTU, viewerId)) {
+        return res.status(403).json({ ok: false, error: "license_required" });
+      }
       try {
         const buffer = await fsp.readFile(thumbPath);
         const contentType = thumbPath === artifactRef.diskPath
