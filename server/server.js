@@ -45,6 +45,7 @@ import {
   actorFromReq,
 } from "./lib/log-access.js";
 import { dtuSkipsAutoTag } from "./lib/dtu-auto-tag.js";
+import { relationEdges as dtuRelationEdges } from "./lib/dtu-relations.js";
 import { hasUsableBrainInput, needsInputError } from "./lib/brain-action-input.js";
 import { aggregateTopicCounts } from "./lib/trending-topics.js";
 import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-tags.js";
@@ -6403,7 +6404,6 @@ const STATE = {
   growth: null,          // growth OS state
   // v3: Generic lens artifact store (domain.type → artifact)
   lensArtifacts: new Map(), // artifactId → {id, domain, type, ownerId, title, data, meta, createdAt, updatedAt, version}
-  emergentLensProposals: new Map(), // proposalId → governance proposal record (lib/emergent-proposals.js)
   lensDomainIndex: new Map(), // domain → Set<artifactId> — O(1) domain lookup
   // v4: User Universes (local/global multiverse substrate)
   userUniverses: new Map(), // userId → { userId, localDTUs: Map, localLensArtifacts: Map, syncedFromGlobal: Set, preferences, stats, discoveryLog }
@@ -12937,7 +12937,6 @@ function _serializeState() {
     // is still a plain Map and we MUST keep serializing it or artifacts have
     // nowhere to live.
     ...(artifactStoreActive ? {} : { lensArtifacts: toArr(STATE.lensArtifacts) }),
-    emergentLensProposals: toArr(STATE.emergentLensProposals),
     _scopeSeparation: STATE._scopeSeparation || null,
     _autogenPipeline: STATE._autogenPipeline || null,
     // Entity growth profiles (persist across restarts)
@@ -13115,12 +13114,6 @@ function _hydrateState(obj) {
   if (Array.isArray(obj.lensArtifacts)) {
     STATE.lensArtifacts.clear();
     for (const a of obj.lensArtifacts) if (a && a.id) STATE.lensArtifacts.set(a.id, a);
-  }
-  // Emergent lens-action governance proposals (Q40) — same round-trip.
-  if (Array.isArray(obj.emergentLensProposals)) {
-    if (!(STATE.emergentLensProposals instanceof Map)) STATE.emergentLensProposals = new Map();
-    STATE.emergentLensProposals.clear();
-    for (const p of obj.emergentLensProposals) if (p && p.id) STATE.emergentLensProposals.set(p.id, p);
   }
   // Rebuild domain index
   _rebuildLensDomainIndex();
@@ -29876,9 +29869,6 @@ Available tools:
   "engineering.columnBuckling" with {loadLbs:50000,lengthFt:12,area:8.25,momentI:82.8,elasticModulus:29000000},
   "statistics.linearRegression" with {x:[1,2,3],y:[2,4,6]}, "chemistry.gibbsFreeEnergy" with {deltaH:-286,deltaS:-163,tempK:298}
 - dtu_search: Search the knowledge base (DTUs) the user can see. Read-only. Use it BEFORE citing any DTU; only the ids and titles it returns may be cited. Params: {"query": "search terms", "limit": 8}
-- get_live_data: Read-only live data with source, timestamp and licence. kind "compound" (PubChem: formula, molar mass, CAS; optional property density|boiling_point|melting_point) or kind "fx" (ECB reference rates). Cite the source and retrievedAt. Params: {"kind": "compound", "name": "ethanol", "property": "boiling_point"} or {"kind": "fx", "base": "EUR", "symbols": ["USD"]}
-- list_recipes: List tested multi-step recipes (beam sizing, column buckling, unit conversion, material comparison, wall conduction, pipe flow) and their inputs. Check it FIRST for an engineering calculation. Params: {"query": "what you want to do"}
-- run_recipe: Run a recipe in SI; returns result, pass/fail checks and a receipt. Quote only numbers from its result. Params: {"recipe": "beam_sizing", "inputs": {"spanM": 4, "loadN": 10000, "widthM": "60 mm", "material": "steel-a36", "safetyFactor": 2}}
 - browse_url: Fetch and read any web page. Params: {"url": "https://...", "selector": "optional css selector"}
   Use when the user pastes a URL or asks about a specific web page.
 - create_dtu: Create a new DTU (Decision/Thought Unit) from the conversation. Params: {"title": "DTU title", "summary": "brief summary", "tags": ["tag1", "tag2"]}
@@ -30083,15 +30073,6 @@ ${_operatorV6Block}` : "";
         case "dtu_search": {
           const { dispatchChatDtuSearch: _dtuSearch } = await import("./lib/chat-tool-surface.js");
           return _dtuSearch(runMacro, _toolCtx, call.params);
-        }
-        case "get_live_data": {
-          const { getLiveData: _liveData } = await import("./lib/chat/live-data.js");
-          return _liveData(_toolCtx, call.params);
-        }
-        case "list_recipes":
-        case "run_recipe": {
-          const { dispatchChatRecipe: _recipe } = await import("./lib/chat-tool-surface.js");
-          return _recipe(call.tool, call.params);
         }
         case "browse_url": {
           const { url: browseUrl = "", selector: browseSelector } = call.params;
@@ -39834,19 +39815,6 @@ allowMacro("council", "reviewGlobal", _ACL_MEMBER);
 allowMacro("council", "credibility", _ACL_MEMBER);
 allowMacro("council", "proposePromotion", _ACL_MEMBER);
 
-// SECURITY: federation peering (emergent/federation-peering.js). The
-// emergent domain is member-tier, but inbound HMAC is only as strong as
-// peer registration: a member who could register a peer with a secret of
-// their choosing could sign their own sync packages and proposals, and the
-// send* macros make this server POST our heartbeat / published DTUs to the
-// registered endpoint. Peer registration, inbound receive, and outbound
-// send are admin-only (humanMacroAclDenial enforces this for humans;
-// internal callers bypass). federation.metrics stays public.
-for (const n of [
-  "registerPeer", "heartbeat", "buildSync", "receiveSync", "receiveProposal",
-  "sendHeartbeat", "sendSync", "sendProposal",
-]) allowMacro("emergent", `federation.${n}`, _ACL_ADMIN);
-
 // Auth: whoami just echoes the caller's own actor/user/org back to them —
 // no other user's data, nothing sensitive. Overrides the domain-level
 // _ACL_OWNER so any authenticated (or public-read) request can call it;
@@ -48551,6 +48519,11 @@ function rebuildGraphIndex() {
       if (!GRAPH_INDEX.nodes.has(tagNodeId)) GRAPH_INDEX.nodes.set(tagNodeId, { id: tagNodeId, type: "tag", label: tag });
       GRAPH_INDEX.edges.set(`${id}->tag:${tag}`, { source: id, target: tagNodeId, type: "tagged" });
     }
+    // #1715 S1: typed relations project alongside lineage/tag edges.
+    // Keyed by the edge's own id (carries `#type`), so a typed edge
+    // never overwrites a lineage edge between the same pair; readers'
+    // visibility filtering (_graphVisibleEdge) applies unchanged.
+    for (const e of dtuRelationEdges(dtu)) { GRAPH_INDEX.edges.set(e.id, e); }
   }
   // Compute lineage depths
   const roots = Array.from(STATE.dtus.values()).filter(d => !d.lineage?.parents?.length || d.tier === "core");
