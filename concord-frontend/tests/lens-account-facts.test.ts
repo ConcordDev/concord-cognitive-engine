@@ -148,3 +148,104 @@ describe('buildLensFactsBlock — analytics grounding (F1)', () => {
     expect(await buildLensFactsBlock('')).toBe('');
   });
 });
+
+describe('buildLensFactsBlock — R1 mirror rules (A19/A20)', () => {
+  it('reads DTUs with the card\u2019s verbatim call (limit 100, offset 0)', async () => {
+    wireHappyPath();
+    await buildLensFactsBlock('analytics');
+    expect(myDtus).toHaveBeenCalledWith({ limit: 100, offset: 0 });
+  });
+
+  it('derives the total exactly as the card does: total || dtus.length', async () => {
+    wireHappyPath();
+    // The DeskPanel paints `data?.total || dtus.length` — with a 0 total and
+    // a 3-item page, the card shows 3, so the fact is 3. Mirror, not sanity:
+    // the analyst must quote the surface's number, not a corrected one.
+    myDtus.mockImplementation(() =>
+      Promise.resolve({ data: { dtus: [{}, {}, {}], total: 0 } }),
+    );
+    const block = await buildLensFactsBlock('analytics');
+    expect(block).toContain('Total DTUs: 3');
+  });
+
+  it('a successful fetch with an absent summary grounds Total CC as the card\u2019s 0 (A20 rule)', async () => {
+    wireHappyPath();
+    apiGet.mockImplementation((url: string) => {
+      if (url === '/api/economy/transactions') {
+        return Promise.resolve({ data: { transactions: [] } }); // no summary at all
+      }
+      if (url === '/api/social/profile') {
+        return Promise.resolve({
+          data: { profile: { userId: 'qa-user', stats: { citationCount: 2 } } },
+        });
+      }
+      if (url === '/api/social/followers/qa-user') {
+        return Promise.resolve({ data: { followers: [], count: 0 } });
+      }
+      if (url === '/api/social/analytics/creator') {
+        return Promise.resolve({ data: { overview: { totalReach: 0, engagementRate: 0 } } });
+      }
+      return Promise.reject(new Error(`unexpected ${url}`));
+    });
+    const block = await buildLensFactsBlock('analytics');
+    expect(block).toContain('Total CC moved: 0');
+    expect(block).not.toContain('Total CC (GET /api/economy/transactions)');
+  });
+
+  it('a successful profile fetch with no citation stat grounds Citations as the card\u2019s 0', async () => {
+    wireHappyPath();
+    apiGet.mockImplementation((url: string) => {
+      if (url === '/api/social/profile') {
+        return Promise.resolve({ data: { profile: { userId: 'qa-user', stats: {} } } });
+      }
+      if (url === '/api/economy/transactions') {
+        return Promise.resolve({ data: { summary: { total: 0 } } });
+      }
+      if (url === '/api/social/followers/qa-user') {
+        return Promise.resolve({ data: { followers: [], count: 0 } });
+      }
+      if (url === '/api/social/analytics/creator') {
+        return Promise.resolve({ data: { overview: { totalReach: 0, engagementRate: 0 } } });
+      }
+      return Promise.reject(new Error(`unexpected ${url}`));
+    });
+    const block = await buildLensFactsBlock('analytics');
+    expect(block).toContain('Citations: 0');
+  });
+
+  it('followers falls through the card\u2019s chain to the profile stat on a successful fetch', async () => {
+    wireHappyPath();
+    apiGet.mockImplementation((url: string) => {
+      if (url === '/api/social/profile') {
+        return Promise.resolve({
+          data: { profile: { userId: 'qa-user', stats: { citationCount: 1, followerCount: 7 } } },
+        });
+      }
+      if (url === '/api/social/followers/qa-user') {
+        return Promise.resolve({ data: {} }); // neither count nor list
+      }
+      if (url === '/api/economy/transactions') {
+        return Promise.resolve({ data: { summary: { total: 0 } } });
+      }
+      if (url === '/api/social/analytics/creator') {
+        return Promise.resolve({ data: { overview: { totalReach: 0, engagementRate: 0 } } });
+      }
+      return Promise.reject(new Error(`unexpected ${url}`));
+    });
+    const block = await buildLensFactsBlock('analytics');
+    expect(block).toContain('Followers: 7');
+  });
+
+  it('disqualifies conversation-context DTU counts as account totals', async () => {
+    wireHappyPath();
+    const block = await buildLensFactsBlock('analytics');
+    expect(block).toContain('harvested as conversation context are NOT account totals');
+  });
+
+  it('the total-failure decline block carries the context-count rule too', async () => {
+    apiGet.mockImplementation(() => Promise.reject(new Error('down')));
+    myDtus.mockImplementation(() => Promise.reject(new Error('down')));
+    const block = await buildLensFactsBlock('analytics');
+    expect(block).toContain('harvested as conversation context are NOT account totals');
+  });
+});

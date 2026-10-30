@@ -12,6 +12,8 @@
  */
 
 import expressRateLimit from "express-rate-limit";
+import { podPick as _podPick } from "./lib/pod-profile.js";
+import { createDtuQualityService as _createDtuQualityService, dtuQualityMode as _dtuQualityMode } from "./lib/dtu-quality/service.js";
 import { router as p2pSignallingRouter } from "./lib/p2p-dtu-signalling.js";
 import { createPhotosRouter } from "./routes/photos.js";
 import { selfPinAwayFromOllama } from "./lib/cpu-self-pin.js";
@@ -101,6 +103,7 @@ import cors from "cors";
 import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
+import { buildAnalyticsGroundingBlock, groundingUserId } from "./lib/lens-grounding.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
 import { chatContextPool, makeChatMayUse } from "./lib/chat/context-pool.js";
 import { filterVisibleSearchHits, materializeIndexedHits, searchCandidateLimit } from "./lib/dtu-search-hits.js";
@@ -2434,7 +2437,7 @@ import {
   findCrossDomainConnections, embedDTU, storeEmbedding, getEmbedding,
   removeEmbedding, backfillEmbeddings, getEmbeddingStatus, isEmbeddingAvailable,
   trimEmbeddingCache, getEmbeddingCacheSize, setLocalEmbedder, reprobeEmbeddings,
-  embeddingEntries,
+  embeddingEntries, scheduleEmbeddingReprobe, embeddingWarmupPending,
 } from "./embeddings.js";
 import { consolidatedVisibility, applyConsolidatedVisibility, absorbVisibility, backfillConsolidatedVisibility } from "./lib/consolidated-visibility.js";
 import { isPublicFeedSource, backfillPublicFeedItems, asPublicFeedMember } from "./lib/public-feed-sources.js";
@@ -10255,7 +10258,7 @@ const _CONCURRENCY = {
     // bulk_import 4 → 32 (heavy I/O + GPU embed work paralellizes well);
     // simulation 6 → 32 (per-tick simulation jobs want to fan out so
     // emergent modules don't queue behind each other).
-    llm_call:    Number(process.env.LLM_CONCURRENCY_LIMIT || 64),
+    llm_call:    Number(process.env.LLM_CONCURRENCY_LIMIT || _podPick(64, 192)),
     bulk_import: Number(process.env.BULK_IMPORT_CONCURRENCY || 32),
     simulation:  Number(process.env.SIM_CONCURRENCY || 32),
     ml_infer: 6,
@@ -19246,6 +19249,42 @@ function dtusByIds(ids=[]) {
   }
   return out;
 }
+// DTU classification + quality gates (lib/dtu-quality). Lazy so nothing runs at module-eval time.
+let _dqSvc = null;
+let _dqIter = null;
+function getDtuQuality() {
+  if (_dqSvc) return _dqSvc;
+  _dqSvc = _createDtuQualityService({
+    deps: { exists: (id) => STATE.dtus.has(id), yieldNow: () => new Promise((resolve) => { setImmediate(resolve); }) },
+    store: {
+      // resumable pass over the DTU map: a few hundred entries per call, never the whole store at once
+      scan: (maxExamine, maxNeeds) => {
+        if (!_dqIter) _dqIter = STATE.dtus.values();
+        const needs = []; const counted = []; let examined = 0; let done = false;
+        while (examined < maxExamine && needs.length < maxNeeds) {
+          const n = _dqIter.next();
+          if (n.done) { _dqIter = null; done = true; break; }
+          examined++;
+          const d = n.value;
+          if (!d?.id) continue;
+          if (_dqSvc.isCurrent(d)) counted.push(d.meta.classification); else needs.push(d);
+        }
+        return { examined, needs, counted, done };
+      },
+      write: (id, rec) => {
+        const d = STATE.dtus.get(id); if (!d) return;
+        d.meta = { ...(d.meta || {}), classification: rec };
+        if (rec.quality.gate === "low_quality" || rec.quality.gate === "refuted") {
+          d.tags = [...new Set([...(Array.isArray(d.tags) ? d.tags : []), "quality:low"])];
+          d.meta.rankPenalty = Math.round((1 - rec.quality.score) * 100) / 100;
+        }
+        upsertDTU(d, { broadcast: false });
+      },
+    },
+  });
+  return _dqSvc;
+}
+
 function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
   // Sidecar cache is refreshed from SQLite on a timer. Record the write so
   // dtu.list can fall back while that cache is behind.
@@ -19325,6 +19364,9 @@ function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
 
   // Auto-tag DTU with lens domain classifications
   try { if (typeof applyAutoTagging === "function") applyAutoTagging(dtu); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+
+  // Auto-sort on write: kind, origin, domain and a quality score with reasons (additive meta; never blocks the write).
+  try { if (_dtuQualityMode() === "on") getDtuQuality().annotateInPlace(dtu); } catch (_e) { logger.debug("server", "dtu-quality annotate", { error: _e?.message }); }
 
   STATE.dtus.set(dtu.id, dtu);
   saveStateDebounced();
@@ -20883,11 +20925,11 @@ _unrefInTest(setTimeout(() => initLLMPipeline(), 100));
 // a local Ollama slot can spill to an operator-funded external endpoint
 // instead of competing for the same 9 cores.
 const _llmQueue = createLLMQueue({
-  concurrency: parseInt(process.env.LLM_CONCURRENCY || "32", 10),
+  concurrency: parseInt(process.env.LLM_CONCURRENCY || String(_podPick(32, 96)), 10),
   // Was hardcoded 200, which always won over llm-queue.js's own
   // `opts.maxQueueDepth || CONCORD_LLM_QUEUE_DEPTH || 1000` fallback —
   // silently making CONCORD_LLM_QUEUE_DEPTH dead (audit 2026-07-27).
-  maxQueueDepth: parseInt(process.env.CONCORD_LLM_QUEUE_DEPTH || "200", 10),
+  maxQueueDepth: parseInt(process.env.CONCORD_LLM_QUEUE_DEPTH || String(_podPick(200, 1000)), 10),
   onReject: (priority, reason) => {
     structuredLog("warn", "llm_queue_reject", { priority, reason });
   },
@@ -21439,11 +21481,15 @@ async function initGhostFleet() {
     register("hlm", "metrics", () => ghostFleetOk(hlm.getHLMMetrics()));
 
     // HLM slow interval: every 20 minutes — graph computation, CPU-intensive
+    let _hlmRunning = false; // in-flight guard: a slow pass over a big store must not overlap the next tick (#1839 pattern)
     const hlmTimer = setInterval(async () => {
+      if (_hlmRunning) return;
+      _hlmRunning = true;
       try {
         const dtus = typeof STATE.dtus?.values === 'function' ? Array.from(STATE.dtus.values()) : [];
         if (dtus.length > 0) await hlm.runHLMPass(dtus);
       } catch (e) { observe(e, "hlm_slow_interval"); }
+      finally { _hlmRunning = false; }
     }, 1_200_000);
     if (hlmTimer.unref) hlmTimer.unref();
 
@@ -22340,7 +22386,9 @@ async function initGhostFleet() {
       // Entity economy cycle (inflation/deflation, UBI, trade expiry)
       const econ = await import("./emergent/entity-economy.js").catch(() => null);
       if (econ?.runEconomicCycle) {
-        try { econ.runEconomicCycle(); } catch (e) { observe(e, "ghost_fleet_economy_cycle"); }
+        // The governor heartbeat already runs the economic cycle (every 100th tick, ~25 min). Skip here unless it has not
+        // run for twice that, so enabling the fleet never doubles UBI/inflation passes.
+        try { econ.runEconomicCycle({ skipIfRecentMs: 50 * 60_000 }); } catch (e) { observe(e, "ghost_fleet_economy_cycle"); }
       }
 
       // History era transitions
@@ -22481,6 +22529,8 @@ _unrefInTest(setTimeout(async () => {
 
     // Initialize embeddings
     await initEmbeddings({ db, ollamaUrls, structuredLog });
+    // Not on the Ollama embedder yet (tunnel or model still coming up): retry on a short backoff instead of waiting ~25 min.
+    try { scheduleEmbeddingReprobe({ onChanged: () => startSemanticBackfill("boot-reprobe") }); } catch (_e) { logger.debug("server", "embedding reprobe schedule", { error: _e?.message }); }
 
     // Initialize downstream modules
     initSemanticCache({ structuredLog });
@@ -28303,6 +28353,23 @@ const _mentionsSelf = Array.from(_selfTokens).some(t => _pLow.includes(t));
     if (!sess_pre.crossDomainContext) sess_pre.crossDomainContext = {};
   }
 
+  // Analytics grounding (R1, Review 4 A19/A20): when this conversation is on
+  // the Analytics lens, compose the account facts from the surface's own
+  // stores and append them to the system prompt at both assembly paths
+  // below. This assembly never reads a client-supplied systemPrompt, so the
+  // grounding must be injected here — the seam where the prompt is built.
+  // Lens-gated and best-effort: any failure leaves the turn exactly as it
+  // was (the block itself carries the decline instruction when reads fail).
+  let _analyticsGrounding = "";
+  if ((currentLens || sess_pre.currentLens) === "analytics") {
+    try {
+      _analyticsGrounding = await buildAnalyticsGroundingBlock({
+        runMacro, ctx, STATE,
+        userId: groundingUserId(ctx),
+      });
+    } catch (_groundErr) { _analyticsGrounding = ""; }
+  }
+
   // Session-adaptive style vector (mutable)
   const styleSignal = input.styleSignal || null; // {kind:'like'|'dislike'} or {field,dir,amount}
   let styleVec = getSessionStyleVector(sessionId);
@@ -30330,7 +30397,7 @@ ${_operatorV6Block}` : "";
       voice_exemplars: _voiceExemplarsForPrompt(),
       moodColor: _chatMoodColor,
       actor: ctx?.actor || null,
-    }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : "") + _currentTurnAnchor, mode);
+    }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : "") + (_analyticsGrounding ? ("\n\n" + _analyticsGrounding) : "") + _currentTurnAnchor, mode);
     const _userContent = _computeGroundTruth
       ? `${_computeGroundTruth.groundTruthBlock}\n\n${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`
       : `${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`;
@@ -30427,7 +30494,7 @@ ${_operatorV6Block}` : "";
         styleHints: buildStyleHints(styleVec),
         voice_exemplars: _voiceExemplarsForPrompt(),
         moodColor: _chatMoodColor,
-      }) + _toolSystemPrompt + _lensHintSuffix + _currentTurnAnchor, mode);
+      }) + _toolSystemPrompt + _lensHintSuffix + (_analyticsGrounding ? ("\n\n" + _analyticsGrounding) : "") + _currentTurnAnchor, mode);
       _selfContSystem = _directSystem + _selfContBlock + smallModelPromptSuffix(brainModel);
       const _directMessages = [
         { role: "system", content: _selfContSystem },
@@ -43864,6 +43931,21 @@ function _runNewsFeedWarm(_tick) {
     .catch((e) => { structuredLog("warn", "feed_cache_warm_tick", { error: String(e?.message || e) }); })
     .finally(() => { _newsWarmRunning = false; });
 }
+// Backfill DTU classification in small budgeted batches (existing DTUs without a current classification).
+registerHeartbeat("dtu-quality-backfill", {
+  frequency: 4,
+  scope: "global",
+  handler: async () => {
+    try {
+      if (_dtuQualityMode() !== "on") return { ok: true, skipped: "off" };
+      return { ok: true, ...(await getDtuQuality().cycle()) };
+    } catch (err) {
+      structuredLog("warn", "dtu_quality_backfill_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
+
 registerHeartbeat("news-feed-warm", {
   frequency: 5, // ~75 s at the 15 s heartbeat (same cadence as the old REALTIME_DATA slot)
   handler: ({ tickCount } = {}) => { _runNewsFeedWarm(Number(tickCount) || 0); },
@@ -44613,7 +44695,7 @@ async function governorTick(reason="heartbeat") {
           // The boot backfill can be skipped (idle gate) or stop early, and
           // nothing else re-runs it; resume while vectors are missing.
           if (embStatus?.available && embStatus.cached < embStatus.totalDTUs) startSemanticBackfill("resume");
-          if (!embStatus?.available) {
+          if (!embStatus?.available && !embeddingWarmupPending()) {
             structuredLog("warn", "embeddings_degraded", {
               reason: embStatus?.reason || "unknown",
               fallback: "keyword_extraction",
@@ -58059,6 +58141,28 @@ function initChatSocketHandlers(io) {
               }
             } catch (_e) { /* context building is best-effort */ }
 
+            // Analytics grounding (R1, Review 4 A19/A20): on the Analytics
+            // lens, label the retrieved DTU material as conversation context
+            // (not account data) and append the grounded account facts,
+            // composed server-side from the surface's own stores — this
+            // streaming assembly builds its prompt here, so this is the seam.
+            // Lens-gated and best-effort, exactly like the context build above.
+            let _streamGrounding = '';
+            if (lens === 'analytics') {
+              try {
+                _streamGrounding = await buildAnalyticsGroundingBlock({
+                  runMacro, ctx: { actor: { userId: socket.data?.userId || null }, userId: socket.data?.userId || null },
+                  STATE, userId: socket.data?.userId || null,
+                });
+              } catch (_groundErr) { _streamGrounding = ''; }
+              if (_streamGrounding && _streamDtuContext) {
+                _streamDtuContext = _streamDtuContext.replace(
+                  'Relevant knowledge from your substrate:',
+                  'Relevant knowledge from your substrate (conversation context — retrieved material, NOT account data):',
+                );
+              }
+            }
+
             // Build system prompt for streaming
             const _streamConsciousParams = getConsciousParams({ exchange_count: (_streamSess.messages || []).length });
             const _streamStyleVec = getSessionStyleVector(sessionId);
@@ -58067,7 +58171,7 @@ function initChatSocketHandlers(io) {
               dtu_count: STATE.dtus?.size || 0,
               domain_count: Object.keys(STATE.domains || {}).length,
               lens: lens || "general",
-              context: _streamDtuContext + (_webContext ? `\n\nWeb search results (use to inform your answer, cite sources naturally):\n${_webContext}` : ""),
+              context: _streamDtuContext + (_webContext ? `\n\nWeb search results (use to inform your answer, cite sources naturally):\n${_webContext}` : "") + (_streamGrounding ? `\n\n${_streamGrounding}` : ""),
               conversation_history: (_streamSess.messages || []).slice(-20),
               personality_state: getPersonality(STATE),
               active_wants: _activeWantsForPrompt(),
@@ -63290,6 +63394,14 @@ app.get("/api/admin/background-governor", requireRole("owner", "admin", "soverei
 app.post("/api/admin/background-governor/mode", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
   try { res.json({ ok: true, mode: setBgGovernorMode(req.body?.mode ?? null) }); }
   catch (e) { res.status(400).json({ ok: false, error: String(e?.message || e) }); }
+});
+
+app.get("/api/admin/dtu-quality", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try {
+    return res.json({ ok: true, totalDtus: STATE.dtus.size, ...getDtuQuality().metrics() });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 
 app.get("/api/admin/heartbeat-stats", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {

@@ -493,21 +493,36 @@ describe("Integration: Media Pipeline", () => {
   // ── Thumbnail Generation ──────
 
   it("generates thumbnail for media DTU", () => {
+    const posterPath = "/artifacts/def456/thumbnail.jpg";
     const { mediaDTU } = createMediaDTU(STATE, {
       authorId: "user-1",
       title: "Thumb Test",
       mediaType: "video",
       mimeType: "video/mp4",
+      artifactRef: { type: "video/mp4", diskPath: "/artifacts/def456/clip.mp4", thumbnail: posterPath },
     });
 
     assert.equal(mediaDTU.thumbnail, null);
 
     const thumbResult = generateThumbnail(STATE, mediaDTU.id);
     assert.ok(thumbResult.ok);
-    assert.ok(thumbResult.thumbnail.includes("thumbnails/"));
-    assert.ok(thumbResult.thumbnail.includes(mediaDTU.id));
+    assert.equal(thumbResult.thumbnail, posterPath);
 
     const dtu = getMediaDTU(STATE, mediaDTU.id);
     assert.equal(dtu.mediaDTU.thumbnail, thumbResult.thumbnail);
+  });
+
+  it("reports no thumbnail for media whose bytes never landed", () => {
+    const { mediaDTU } = createMediaDTU(STATE, {
+      authorId: "user-1",
+      title: "Metadata Only",
+      mediaType: "video",
+      mimeType: "video/mp4",
+    });
+
+    const thumbResult = generateThumbnail(STATE, mediaDTU.id);
+    assert.equal(thumbResult.ok, false);
+    assert.equal(thumbResult.error, "no_thumbnail_available");
+    assert.equal(getMediaDTU(STATE, mediaDTU.id).mediaDTU.thumbnail, null);
   });
 });
