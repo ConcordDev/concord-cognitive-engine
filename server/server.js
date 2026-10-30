@@ -12,6 +12,7 @@
  */
 
 import expressRateLimit from "express-rate-limit";
+import { createDtuQualityService as _createDtuQualityService, dtuQualityMode as _dtuQualityMode } from "./lib/dtu-quality/service.js";
 import { router as p2pSignallingRouter } from "./lib/p2p-dtu-signalling.js";
 import { createPhotosRouter } from "./routes/photos.js";
 import { selfPinAwayFromOllama } from "./lib/cpu-self-pin.js";
@@ -2154,7 +2155,6 @@ import createSovereignRouter from "./routes/sovereign.js";
 import createSovereignEmergentRouter from "./routes/sovereign-emergent.js";
 import { createUserDispatchRouter } from "./routes/user-dispatch.js";
 import createFederationRouter from "./routes/federation.js";
-import { createMarketingTrackRouter } from "./routes/marketing-track.js";
 import registerOAuthRoutes from "./routes/oauth.js";
 import registerConnectorOAuthRoutes from "./routes/connector-oauth.js";
 import { mountDxOAuth } from "./routes/dx-oauth.js";
@@ -2436,7 +2436,7 @@ import {
   findCrossDomainConnections, embedDTU, storeEmbedding, getEmbedding,
   removeEmbedding, backfillEmbeddings, getEmbeddingStatus, isEmbeddingAvailable,
   trimEmbeddingCache, getEmbeddingCacheSize, setLocalEmbedder, reprobeEmbeddings,
-  embeddingEntries,
+  embeddingEntries, scheduleEmbeddingReprobe, embeddingWarmupPending,
 } from "./embeddings.js";
 import { consolidatedVisibility, applyConsolidatedVisibility, absorbVisibility, backfillConsolidatedVisibility } from "./lib/consolidated-visibility.js";
 import { isPublicFeedSource, backfillPublicFeedItems, asPublicFeedMember } from "./lib/public-feed-sources.js";
@@ -8693,12 +8693,6 @@ function authMiddleware(req, res, next) {
   // widened to any other action or envelope.
   if (req.method === "GET" && /^\/api\/esign\/[^/]+$/.test(req.path)) return next();
   if (req.method === "POST" && /^\/api\/esign\/[^/]+\/sign$/.test(req.path)) return next();
-  // Marketing email beacons (routes/marketing-track.js) — an email client
-  // fetches the open pixel and follows click redirects with no session.
-  // GET-only, exact shape. The open beacon always returns the same 1×1 GIF
-  // (no send-id probing); the click beacon only redirects to a link recorded
-  // in that send at send time, so it is not an open redirector.
-  if (req.method === "GET" && /^\/api\/marketing\/track\/(open|click)\/[^/]+$/.test(req.path)) return next();
   // INC-72: inbound ingest webhook. The 32-hex token in the path is the only
   // credential; the handler resolves it to exactly one user's endpoint and can
   // only append records to that user's webhook inbox.
@@ -19242,6 +19236,42 @@ function dtusByIds(ids=[]) {
   }
   return out;
 }
+// DTU classification + quality gates (lib/dtu-quality). Lazy so nothing runs at module-eval time.
+let _dqSvc = null;
+let _dqIter = null;
+function getDtuQuality() {
+  if (_dqSvc) return _dqSvc;
+  _dqSvc = _createDtuQualityService({
+    deps: { exists: (id) => STATE.dtus.has(id), yieldNow: () => new Promise((resolve) => { setImmediate(resolve); }) },
+    store: {
+      // resumable pass over the DTU map: a few hundred entries per call, never the whole store at once
+      scan: (maxExamine, maxNeeds) => {
+        if (!_dqIter) _dqIter = STATE.dtus.values();
+        const needs = []; const counted = []; let examined = 0; let done = false;
+        while (examined < maxExamine && needs.length < maxNeeds) {
+          const n = _dqIter.next();
+          if (n.done) { _dqIter = null; done = true; break; }
+          examined++;
+          const d = n.value;
+          if (!d?.id) continue;
+          if (_dqSvc.isCurrent(d)) counted.push(d.meta.classification); else needs.push(d);
+        }
+        return { examined, needs, counted, done };
+      },
+      write: (id, rec) => {
+        const d = STATE.dtus.get(id); if (!d) return;
+        d.meta = { ...(d.meta || {}), classification: rec };
+        if (rec.quality.gate === "low_quality" || rec.quality.gate === "refuted") {
+          d.tags = [...new Set([...(Array.isArray(d.tags) ? d.tags : []), "quality:low"])];
+          d.meta.rankPenalty = Math.round((1 - rec.quality.score) * 100) / 100;
+        }
+        upsertDTU(d, { broadcast: false });
+      },
+    },
+  });
+  return _dqSvc;
+}
+
 function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
   // Sidecar cache is refreshed from SQLite on a timer. Record the write so
   // dtu.list can fall back while that cache is behind.
@@ -19321,6 +19351,9 @@ function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
 
   // Auto-tag DTU with lens domain classifications
   try { if (typeof applyAutoTagging === "function") applyAutoTagging(dtu); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+
+  // Auto-sort on write: kind, origin, domain and a quality score with reasons (additive meta; never blocks the write).
+  try { if (_dtuQualityMode() === "on") getDtuQuality().annotateInPlace(dtu); } catch (_e) { logger.debug("server", "dtu-quality annotate", { error: _e?.message }); }
 
   STATE.dtus.set(dtu.id, dtu);
   saveStateDebounced();
@@ -21435,11 +21468,15 @@ async function initGhostFleet() {
     register("hlm", "metrics", () => ghostFleetOk(hlm.getHLMMetrics()));
 
     // HLM slow interval: every 20 minutes — graph computation, CPU-intensive
+    let _hlmRunning = false; // in-flight guard: a slow pass over a big store must not overlap the next tick (#1839 pattern)
     const hlmTimer = setInterval(async () => {
+      if (_hlmRunning) return;
+      _hlmRunning = true;
       try {
         const dtus = typeof STATE.dtus?.values === 'function' ? Array.from(STATE.dtus.values()) : [];
         if (dtus.length > 0) await hlm.runHLMPass(dtus);
       } catch (e) { observe(e, "hlm_slow_interval"); }
+      finally { _hlmRunning = false; }
     }, 1_200_000);
     if (hlmTimer.unref) hlmTimer.unref();
 
@@ -22336,7 +22373,9 @@ async function initGhostFleet() {
       // Entity economy cycle (inflation/deflation, UBI, trade expiry)
       const econ = await import("./emergent/entity-economy.js").catch(() => null);
       if (econ?.runEconomicCycle) {
-        try { econ.runEconomicCycle(); } catch (e) { observe(e, "ghost_fleet_economy_cycle"); }
+        // The governor heartbeat already runs the economic cycle (every 100th tick, ~25 min). Skip here unless it has not
+        // run for twice that, so enabling the fleet never doubles UBI/inflation passes.
+        try { econ.runEconomicCycle({ skipIfRecentMs: 50 * 60_000 }); } catch (e) { observe(e, "ghost_fleet_economy_cycle"); }
       }
 
       // History era transitions
@@ -22477,6 +22516,8 @@ _unrefInTest(setTimeout(async () => {
 
     // Initialize embeddings
     await initEmbeddings({ db, ollamaUrls, structuredLog });
+    // Not on the Ollama embedder yet (tunnel or model still coming up): retry on a short backoff instead of waiting ~25 min.
+    try { scheduleEmbeddingReprobe({ onChanged: () => startSemanticBackfill("boot-reprobe") }); } catch (_e) { logger.debug("server", "embedding reprobe schedule", { error: _e?.message }); }
 
     // Initialize downstream modules
     initSemanticCache({ structuredLog });
@@ -41050,7 +41091,6 @@ app.use("/api/sovereign", createSovereignRouter({ STATE, makeCtx, runMacro, save
 app.use("/api/sovereign-emergent", createSovereignEmergentRouter({ STATE }));
 app.use("/api", createUserDispatchRouter({ STATE })); // non-sovereign user action dispatch (POST /api/run)
 app.use("/api/federation", createFederationRouter({ db }));
-app.use("/api/marketing/track", createMarketingTrackRouter()); // public email beacons (open pixel + click redirect); handlers are probe/redirect-safe by design — see routes/marketing-track.js
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PROMOTION PIPELINE — HTTP routes for council voting UI
@@ -43908,6 +43948,21 @@ function _runNewsFeedWarm(_tick) {
     .catch((e) => { structuredLog("warn", "feed_cache_warm_tick", { error: String(e?.message || e) }); })
     .finally(() => { _newsWarmRunning = false; });
 }
+// Backfill DTU classification in small budgeted batches (existing DTUs without a current classification).
+registerHeartbeat("dtu-quality-backfill", {
+  frequency: 4,
+  scope: "global",
+  handler: async () => {
+    try {
+      if (_dtuQualityMode() !== "on") return { ok: true, skipped: "off" };
+      return { ok: true, ...(await getDtuQuality().cycle()) };
+    } catch (err) {
+      structuredLog("warn", "dtu_quality_backfill_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
+
 registerHeartbeat("news-feed-warm", {
   frequency: 5, // ~75 s at the 15 s heartbeat (same cadence as the old REALTIME_DATA slot)
   handler: ({ tickCount } = {}) => { _runNewsFeedWarm(Number(tickCount) || 0); },
@@ -44657,7 +44712,7 @@ async function governorTick(reason="heartbeat") {
           // The boot backfill can be skipped (idle gate) or stop early, and
           // nothing else re-runs it; resume while vectors are missing.
           if (embStatus?.available && embStatus.cached < embStatus.totalDTUs) startSemanticBackfill("resume");
-          if (!embStatus?.available) {
+          if (!embStatus?.available && !embeddingWarmupPending()) {
             structuredLog("warn", "embeddings_degraded", {
               reason: embStatus?.reason || "unknown",
               fallback: "keyword_extraction",
@@ -63356,6 +63411,14 @@ app.get("/api/admin/background-governor", requireRole("owner", "admin", "soverei
 app.post("/api/admin/background-governor/mode", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
   try { res.json({ ok: true, mode: setBgGovernorMode(req.body?.mode ?? null) }); }
   catch (e) { res.status(400).json({ ok: false, error: String(e?.message || e) }); }
+});
+
+app.get("/api/admin/dtu-quality", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try {
+    return res.json({ ok: true, totalDtus: STATE.dtus.size, ...getDtuQuality().metrics() });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 
 app.get("/api/admin/heartbeat-stats", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {

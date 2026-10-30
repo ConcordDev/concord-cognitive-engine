@@ -9,8 +9,8 @@ import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import {
   sendFriendRequest, acceptFriendRequest, declineFriendRequest,
-  unfriend, blockUser, listFriends, listIncomingRequests, listOutgoingRequests,
-  areFriends,
+  unfriend, blockUser, unblockUser, listFriends, listIncomingRequests, listOutgoingRequests,
+  areFriends, isBlocked, listBlocked, listBlockPairs,
 } from "../lib/friendships.js";
 
 function memDb() {
@@ -45,10 +45,17 @@ function memDb() {
       const status = sql.includes("'blocked'") ? "blocked" : "pending";
       rows.set(id, {
         id, requester_id: requesterId, addressee_id: addresseeId, status,
+        blocked_by: status === "blocked" ? args[3] : null,
         created_at: Math.floor(Date.now() / 1000),
         responded_at: status === "blocked" ? Math.floor(Date.now() / 1000) : null,
       });
       return { changes: 1 };
+    }
+    if (sql.startsWith("SELECT requester_id, addressee_id, blocked_by FROM friendships WHERE status = 'blocked'")) {
+      const [u] = args;
+      return [...rows.values()]
+        .filter(r => r.status === "blocked" && (r.requester_id === u || r.addressee_id === u))
+        .map(r => ({ requester_id: r.requester_id, addressee_id: r.addressee_id, blocked_by: r.blocked_by ?? null }));
     }
     if (sql.startsWith("UPDATE friendships SET status = 'accepted'")) {
       const row = rows.get(args[0]);
@@ -61,8 +68,8 @@ function memDb() {
       return { changes: row ? 1 : 0 };
     }
     if (sql.startsWith("UPDATE friendships SET status = 'blocked'")) {
-      const row = rows.get(args[0]);
-      if (row) { row.status = "blocked"; row.responded_at = Math.floor(Date.now() / 1000); }
+      const row = rows.get(args[1]);
+      if (row) { row.status = "blocked"; row.blocked_by = args[0]; row.responded_at = Math.floor(Date.now() / 1000); }
       return { changes: row ? 1 : 0 };
     }
     if (sql.startsWith("DELETE FROM friendships")) {
@@ -171,5 +178,62 @@ describe("friendships", () => {
     assert.equal(incoming[0].fromUser, "u3");
     assert.equal(outgoing.length, 1);
     assert.equal(outgoing[0].toUser, "u2");
+  });
+});
+
+// GB-0045 regression: a block records its blocker, and only the
+// blocker may lift it — the blocked party cannot unilaterally restore
+// contact the blocker severed.
+describe("friendships — blocker-only unblock (GB-0045)", () => {
+  let db;
+  beforeEach(() => { db = memDb(); });
+
+  it("a fresh block: the blocked party cannot unblock; the blocker can", () => {
+    blockUser(db, "u1", "u2");
+    assert.equal(isBlocked(db, "u1", "u2"), true);
+    const byBlocked = unblockUser(db, "u2", "u1");
+    assert.equal(byBlocked.ok, false);
+    assert.equal(byBlocked.error, "not_blocker");
+    assert.equal(isBlocked(db, "u1", "u2"), true, "the refused unblock changes nothing");
+    const byBlocker = unblockUser(db, "u1", "u2");
+    assert.equal(byBlocker.ok, true);
+    assert.equal(isBlocked(db, "u1", "u2"), false);
+    assert.equal(unblockUser(db, "u1", "u2").error, "not_blocked");
+  });
+
+  it("blocking over an existing request: the blocker is who blocked, not the requester", () => {
+    // u1 sent the request (requester); u2 blocks u1 (addressee blocks).
+    sendFriendRequest(db, "u1", "u2");
+    blockUser(db, "u2", "u1");
+    assert.equal(unblockUser(db, "u1", "u2").error, "not_blocker",
+      "the original requester is the blocked party here — no lift");
+    assert.equal(unblockUser(db, "u2", "u1").ok, true);
+  });
+
+  it("blocking an accepted friend records the blocker the same way", () => {
+    const r = sendFriendRequest(db, "u1", "u2");
+    acceptFriendRequest(db, r.id, "u2");
+    blockUser(db, "u1", "u2");
+    assert.equal(unblockUser(db, "u2", "u1").error, "not_blocker");
+    assert.equal(unblockUser(db, "u1", "u2").ok, true);
+  });
+
+  it("legacy rows (blocked_by NULL) stay liftable by either party", () => {
+    blockUser(db, "u1", "u2");
+    const row = [...db._rows.values()][0];
+    row.blocked_by = null; // simulate a block set before migration 493
+    assert.equal(unblockUser(db, "u2", "u1").ok, true,
+      "an unprovable legacy block must not strand the pair forever");
+  });
+
+  it("listBlockPairs names the blocker; listBlocked keeps its id shape", () => {
+    blockUser(db, "u1", "u2");
+    blockUser(db, "u3", "u1");
+    assert.deepEqual(listBlockPairs(db, "u1"), [
+      { otherUserId: "u2", blockedBy: "u1" },
+      { otherUserId: "u3", blockedBy: "u3" },
+    ]);
+    assert.deepEqual(listBlocked(db, "u1").sort(), ["u2", "u3"]);
+    assert.deepEqual(listBlockPairs(db, "u2"), [{ otherUserId: "u1", blockedBy: "u1" }]);
   });
 });
