@@ -106,6 +106,7 @@ const TOOL_REQUIRED_PARAMS = {
   web_search:        ["query"],
   run_compute:       ["key", "input"],
   dtu_search:        ["query"],
+  get_live_data:     ["kind"],
   list_recipes:      [],
   run_recipe:        ["recipe", "inputs"],
   conkay_design:     ["text"],
@@ -306,6 +307,7 @@ Available tools (with one working example each):
   Example: [TOOL_CALL: {"tool": "run_compute", "params": {"key": "symbolic.integrate", "input": {"expression": "x^2", "variable": "x"}}}]
 - dtu_search: Search the knowledge base (DTUs) the user can see. Read-only. Use it BEFORE citing any DTU; only ids and titles it returns may be cited. Params: {"query": "search terms", "limit": 8}
   Example: [TOOL_CALL: {"tool": "dtu_search", "params": {"query": "heat pump efficiency"}}]
+- get_live_data: Read-only live data with source, timestamp and licence. kind "compound" (PubChem: formula, molar mass, CAS; optional property density|boiling_point|melting_point) or kind "fx" (ECB reference rates). Cite the source and retrievedAt. Params: {"kind": "compound", "name": "ethanol", "property": "boiling_point"} or {"kind": "fx", "base": "EUR", "symbols": ["USD"]}
 - list_recipes: List tested multi-step recipes (beam sizing, column buckling, unit conversion, material comparison, wall conduction, pipe flow) and their inputs. Check this FIRST for an engineering calculation. Params: {"query": "what you want to do"}
   Example: [TOOL_CALL: {"tool": "list_recipes", "params": {"query": "size a beam"}}]
 - run_recipe: Run a recipe in SI; returns the result, pass/fail checks and a receipt. Quote only numbers from its result. Params: {"recipe": "beam_sizing", "inputs": {"spanM": 4, "loadN": 10000, "widthM": "60 mm", "material": "steel-a36", "safetyFactor": 2}}
@@ -1218,6 +1220,10 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
       case "dtu_search": {
         const { dispatchChatDtuSearch } = await import("./chat-tool-surface.js");
         return dispatchChatDtuSearch(runMacro, ctx, call.params);
+      }
+      case "get_live_data": {
+        const { getLiveData } = await import("./chat/live-data.js");
+        return getLiveData(ctx, call.params);
       }
       case "list_recipes":
       case "run_recipe": {

@@ -48,6 +48,19 @@ export const CHAT_RESPOND_TOOLS = Object.freeze([
     operatorOnly: false,
   },
   {
+    name: "get_live_data",
+    description: "Read-only live data with source, timestamp and licence: kind compound (PubChem: formula, molar mass, CAS, density/boiling/melting point) or fx (ECB reference rates). Cite the source.",
+    params: {
+      kind: { type: "string", required: true, description: "compound | fx" },
+      name: { type: "string", required: false, description: "compound name (kind compound)" },
+      property: { type: "string", required: false, description: "density | boiling_point | melting_point (kind compound)" },
+      base: { type: "string", required: false, description: "base currency code (kind fx)" },
+      symbols: { type: "array", required: false, description: "currency codes (kind fx)" },
+    },
+    requiresOptIn: false,
+    operatorOnly: false,
+  },
+  {
     name: "list_recipes",
     description: "List tested multi-step recipes (beam sizing, column buckling, unit conversion, material comparison, wall conduction, pipe flow) with their inputs. Prefer a matching recipe to composing tools yourself.",
     params: { query: { type: "string", required: false, description: "What you want to do, in words" } },
@@ -193,6 +206,7 @@ export const AGENT_LOOP_TOOLS = Object.freeze([
   { name: "web_search", description: "Live web search via expert_mode.web_search.", params: { query: { type: "string", required: true } } },
   { name: "run_compute", description: "Deterministic compute module.function.", params: { key: { type: "string", required: true }, input: { type: "object", required: true } } },
   { name: "dtu_search", description: "Search the DTUs the user can see (read-only). Only ids returned here may be cited.", params: { query: { type: "string", required: true }, limit: { type: "number", required: false } } },
+  { name: "get_live_data", description: "Live data with source, timestamp and licence (PubChem compounds, ECB fx rates). Signed-in users only.", params: { kind: { type: "string", required: true } } },
   { name: "list_recipes", description: "List tested multi-step recipes with their inputs.", params: { query: { type: "string", required: false } } },
   { name: "run_recipe", description: "Run a recipe deterministically in SI: result, checks, receipt.", params: { recipe: { type: "string", required: true }, inputs: { type: "object", required: true } } },
   { name: "conkay_design", description: "ConKay sizing check: hand calc + FEA + safety-factor pass/fail from a plain-language spec.", params: { text: { type: "string", required: true } } },
