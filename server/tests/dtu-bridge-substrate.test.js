@@ -21,6 +21,7 @@ import {
   DTU_SUBSTRATE_TABLES,
   isSubstrateTable,
   assertSubstrateTable,
+  BRIDGE_INFRASTRUCTURE_TABLES,
 } from "../lib/dtu-bridge/substrate-registry.js";
 
 const SERVER_DIR =
@@ -68,12 +69,21 @@ test("every registered table is created in the codebase (no phantom scope)", () 
 test("every DTU-shaped table created in the codebase is registered (no silent drift)", () => {
   const created = collectCreatedTables(SERVER_DIR);
   for (const name of created) {
+    if (BRIDGE_INFRASTRUCTURE_TABLES.includes(name)) continue; // the bridge's own bookkeeping, not substrate
     if (name.includes("dtu") || name === "canonical_registry") {
       assert.ok(
         isSubstrateTable(name) || QUERY_DEFINED.has(name),
         `codebase creates DTU-shaped table "${name}" that the bridge registry does not list`
       );
     }
+  }
+});
+
+test("bridge infrastructure tables are exempt from the drift scan but never substrate", () => {
+  assert.deepEqual([...BRIDGE_INFRASTRUCTURE_TABLES], ["dtu_bridge_outbox"]);
+  for (const t of BRIDGE_INFRASTRUCTURE_TABLES) {
+    assert.equal(isSubstrateTable(t), false);
+    assert.ok(collectCreatedTables(SERVER_DIR).has(t), `${t} should actually be created by the bridge (exemption must not be phantom)`);
   }
 });
 

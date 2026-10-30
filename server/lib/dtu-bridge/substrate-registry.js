@@ -78,6 +78,14 @@ export const DTU_SUBSTRATE_TABLES = Object.freeze([
 const SUBSTRATE_SET = new Set(DTU_SUBSTRATE_TABLES);
 
 /**
+ * Tables the bridge itself creates. They carry bridge bookkeeping, not
+ * substrate data, so they are deliberately NOT in DTU_SUBSTRATE_TABLES
+ * (assertSubstrateTable refuses them); the "no silent drift" scan reads
+ * this list so the bridge's own table does not trip its own guard.
+ */
+export const BRIDGE_INFRASTRUCTURE_TABLES = Object.freeze(["dtu_bridge_outbox"]);
+
+/**
  * True when `table` belongs to the DTU substrate class and may cross
  * the bridge. Names are matched exactly (SQLite table names in this
  * codebase are lowercase snake_case); anything else is out of scope.
