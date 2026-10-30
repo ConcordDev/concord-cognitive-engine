@@ -15,8 +15,22 @@ function call(name, ctx, params = {}) {
 }
 
 before(() => { registerProjectsActions(register); });
+// S4: members are real accounts resolved through the platform ACL, so
+// the suite state carries a db (in-memory; the repo's own artifact-acl
+// suite uses the same better-sqlite3 pattern) with a small users table.
+import Database from "better-sqlite3";
+import { initArtifactAclTable } from "../lib/artifact-acl.js";
+function testDb() {
+  const db = new Database(":memory:");
+  db.exec("CREATE TABLE users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL DEFAULT '', role TEXT NOT NULL DEFAULT 'member', scopes TEXT NOT NULL DEFAULT '[\"read\",\"write\"]', created_at TEXT NOT NULL DEFAULT '2026-01-01', last_login_at TEXT, is_active INTEGER NOT NULL DEFAULT 1)");
+  initArtifactAclTable(db);
+  const ins = db.prepare("INSERT INTO users (id, username, email) VALUES (?, ?, ?)");
+  ins.run("user_a", "usera", "a@example.test");
+  ins.run("user_dev", "devone", "dev@example.test");
+  return db;
+}
 beforeEach(() => {
-  globalThis._concordSTATE = { dtus: new Map() };
+  globalThis._concordSTATE = { dtus: new Map(), db: testDb() };
   globalThis._concordSaveStateDebounced = () => {};
 });
 
@@ -117,10 +131,10 @@ describe("projects sprints & burndown", () => {
 describe("projects members & milestones", () => {
   it("adds members and assigns tasks to them", () => {
     const pid = newProject();
-    const m = call("member-add", ctxA, { projectId: pid, name: "Dev One", role: "engineer" }).result.member;
+    const m = call("member-add", ctxA, { projectId: pid, account: "devone", level: "edit" }).result.member;
     call("task-create", ctxA, { projectId: pid, title: "Assigned", assigneeId: m.id });
     const members = call("member-list", ctxA, { projectId: pid });
-    assert.equal(members.result.members[0].assigned, 1);
+    assert.equal(members.result.members.find((x) => x.id === m.id).assigned, 1);
   });
 
   it("tracks milestone progress", () => {
@@ -317,7 +331,7 @@ describe("projects — templates & bulk ops", () => {
 describe("projects — board swimlanes & WIP", () => {
   it("groups the board into swimlanes", () => {
     const pid = newProject();
-    const m = call("member-add", ctxA, { projectId: pid, name: "Dev" }).result.member;
+    const m = call("member-add", ctxA, { projectId: pid, account: "devone" }).result.member;
     call("task-create", ctxA, { projectId: pid, title: "A", assigneeId: m.id });
     call("task-create", ctxA, { projectId: pid, title: "B" });
     const sl = call("board-swimlanes", ctxA, { projectId: pid, groupBy: "assignee" });
