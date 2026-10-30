@@ -2154,7 +2154,6 @@ import createSovereignRouter from "./routes/sovereign.js";
 import createSovereignEmergentRouter from "./routes/sovereign-emergent.js";
 import { createUserDispatchRouter } from "./routes/user-dispatch.js";
 import createFederationRouter from "./routes/federation.js";
-import { createMarketingTrackRouter } from "./routes/marketing-track.js";
 import registerOAuthRoutes from "./routes/oauth.js";
 import registerConnectorOAuthRoutes from "./routes/connector-oauth.js";
 import { mountDxOAuth } from "./routes/dx-oauth.js";
@@ -2436,7 +2435,7 @@ import {
   findCrossDomainConnections, embedDTU, storeEmbedding, getEmbedding,
   removeEmbedding, backfillEmbeddings, getEmbeddingStatus, isEmbeddingAvailable,
   trimEmbeddingCache, getEmbeddingCacheSize, setLocalEmbedder, reprobeEmbeddings,
-  embeddingEntries,
+  embeddingEntries, scheduleEmbeddingReprobe, embeddingWarmupPending,
 } from "./embeddings.js";
 import { consolidatedVisibility, applyConsolidatedVisibility, absorbVisibility, backfillConsolidatedVisibility } from "./lib/consolidated-visibility.js";
 import { isPublicFeedSource, backfillPublicFeedItems, asPublicFeedMember } from "./lib/public-feed-sources.js";
@@ -8693,12 +8692,6 @@ function authMiddleware(req, res, next) {
   // widened to any other action or envelope.
   if (req.method === "GET" && /^\/api\/esign\/[^/]+$/.test(req.path)) return next();
   if (req.method === "POST" && /^\/api\/esign\/[^/]+\/sign$/.test(req.path)) return next();
-  // Marketing email beacons (routes/marketing-track.js) — an email client
-  // fetches the open pixel and follows click redirects with no session.
-  // GET-only, exact shape. The open beacon always returns the same 1×1 GIF
-  // (no send-id probing); the click beacon only redirects to a link recorded
-  // in that send at send time, so it is not an open redirector.
-  if (req.method === "GET" && /^\/api\/marketing\/track\/(open|click)\/[^/]+$/.test(req.path)) return next();
   // INC-72: inbound ingest webhook. The 32-hex token in the path is the only
   // credential; the handler resolves it to exactly one user's endpoint and can
   // only append records to that user's webhook inbox.
@@ -21474,11 +21467,15 @@ async function initGhostFleet() {
     register("hlm", "metrics", () => ghostFleetOk(hlm.getHLMMetrics()));
 
     // HLM slow interval: every 20 minutes — graph computation, CPU-intensive
+    let _hlmRunning = false; // in-flight guard: a slow pass over a big store must not overlap the next tick (#1839 pattern)
     const hlmTimer = setInterval(async () => {
+      if (_hlmRunning) return;
+      _hlmRunning = true;
       try {
         const dtus = typeof STATE.dtus?.values === 'function' ? Array.from(STATE.dtus.values()) : [];
         if (dtus.length > 0) await hlm.runHLMPass(dtus);
       } catch (e) { observe(e, "hlm_slow_interval"); }
+      finally { _hlmRunning = false; }
     }, 1_200_000);
     if (hlmTimer.unref) hlmTimer.unref();
 
@@ -22375,7 +22372,9 @@ async function initGhostFleet() {
       // Entity economy cycle (inflation/deflation, UBI, trade expiry)
       const econ = await import("./emergent/entity-economy.js").catch(() => null);
       if (econ?.runEconomicCycle) {
-        try { econ.runEconomicCycle(); } catch (e) { observe(e, "ghost_fleet_economy_cycle"); }
+        // The governor heartbeat already runs the economic cycle (every 100th tick, ~25 min). Skip here unless it has not
+        // run for twice that, so enabling the fleet never doubles UBI/inflation passes.
+        try { econ.runEconomicCycle({ skipIfRecentMs: 50 * 60_000 }); } catch (e) { observe(e, "ghost_fleet_economy_cycle"); }
       }
 
       // History era transitions
@@ -22516,6 +22515,8 @@ _unrefInTest(setTimeout(async () => {
 
     // Initialize embeddings
     await initEmbeddings({ db, ollamaUrls, structuredLog });
+    // Not on the Ollama embedder yet (tunnel or model still coming up): retry on a short backoff instead of waiting ~25 min.
+    try { scheduleEmbeddingReprobe({ onChanged: () => startSemanticBackfill("boot-reprobe") }); } catch (_e) { logger.debug("server", "embedding reprobe schedule", { error: _e?.message }); }
 
     // Initialize downstream modules
     initSemanticCache({ structuredLog });
@@ -41072,7 +41073,6 @@ app.use("/api/sovereign", createSovereignRouter({ STATE, makeCtx, runMacro, save
 app.use("/api/sovereign-emergent", createSovereignEmergentRouter({ STATE }));
 app.use("/api", createUserDispatchRouter({ STATE })); // non-sovereign user action dispatch (POST /api/run)
 app.use("/api/federation", createFederationRouter({ db }));
-app.use("/api/marketing/track", createMarketingTrackRouter()); // public email beacons (open pixel + click redirect); handlers are probe/redirect-safe by design — see routes/marketing-track.js
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PROMOTION PIPELINE — HTTP routes for council voting UI
@@ -44694,7 +44694,7 @@ async function governorTick(reason="heartbeat") {
           // The boot backfill can be skipped (idle gate) or stop early, and
           // nothing else re-runs it; resume while vectors are missing.
           if (embStatus?.available && embStatus.cached < embStatus.totalDTUs) startSemanticBackfill("resume");
-          if (!embStatus?.available) {
+          if (!embStatus?.available && !embeddingWarmupPending()) {
             structuredLog("warn", "embeddings_degraded", {
               reason: embStatus?.reason || "unknown",
               fallback: "keyword_extraction",

@@ -6,6 +6,7 @@
 // at highest priority (0). Conscious (user-facing) beats subconscious (autonomous).
 
 // Adaptive system monitoring and resource scaling
+import { podProfile, podNumber } from "./pod-profile.js";
 import './system-monitor.js';
 import { systemMonitor } from './system-monitor.js';
 
@@ -197,14 +198,14 @@ contextWindow: Math.min(Number(process.env.BRAIN_CONSCIOUS_CONTEXT) || 32768, 65
     model: _resolveBrainModel(process.env.BRAIN_SUBCONSCIOUS_MODEL, "qwen2.5:7b-instruct-q4_K_M", _subconscious_urls),
     role: "autogen, dream, evolution, synthesis, birth, background analysis",
     temperature: 0.85,
-    timeout: Number(process.env.BRAIN_SUBCONSCIOUS_TIMEOUT_MS) || 30000,
+    timeout: podNumber("BRAIN_SUBCONSCIOUS_TIMEOUT_MS", { lean: 30000, pod: 90000 }),
     priority: 2,       // NORMAL — autonomous background
     // Bumped 4 → 12 to match OLLAMA_NUM_PARALLEL=12 on the
     // subconscious service.
     maxConcurrent: Number(process.env.BRAIN_SUBCONSCIOUS_CONCURRENT) || 12,
     // Moderate context for background generation tasks
-    contextWindow: Math.min(Number(process.env.BRAIN_SUBCONSCIOUS_CONTEXT) || 4096, 4096),
-    maxTokens: 1200,   // GPU: 7B brain can generate longer, more coherent DTUs
+    contextWindow: podNumber("BRAIN_SUBCONSCIOUS_CONTEXT", { lean: 4096, pod: 8192, leanMax: 4096, podMax: 32768 }),
+    maxTokens: podNumber("BRAIN_SUBCONSCIOUS_MAX_TOKENS", { lean: 1200, pod: 2400 }),   // GPU: 7B brain can generate longer, more coherent DTUs
   },
   utility: {
     url: _utility_urls[0],
@@ -212,15 +213,15 @@ contextWindow: Math.min(Number(process.env.BRAIN_CONSCIOUS_CONTEXT) || 32768, 65
     model: _resolveBrainModel(process.env.BRAIN_UTILITY_MODEL, "qwen2.5:3b", _utility_urls),
     role: "lens interactions, entity actions, quick domain tasks, function calls",
     temperature: 0.3,
-    timeout: Number(process.env.BRAIN_UTILITY_TIMEOUT_MS) || 20000,
+    timeout: podNumber("BRAIN_UTILITY_TIMEOUT_MS", { lean: 20000, pod: 45000 }),
     priority: 3,       // LOW — support tasks
     // Utility brain handles quick actions and lens interactions - doesn't need
     // large context windows. Tasks are typically short prompts with structured outputs.
     maxConcurrent: Number(process.env.BRAIN_UTILITY_CONCURRENT) || 16,
     // Reduced from 16384 - utility tasks are typically short function calls
     // and entity actions that don't need deep context
-    contextWindow: Math.min(Number(process.env.BRAIN_UTILITY_CONTEXT) || 2048, 4096),
-    maxTokens: 800,    // GPU: more complete outputs for entity actions
+    contextWindow: podNumber("BRAIN_UTILITY_CONTEXT", { lean: 2048, pod: 4096, leanMax: 4096, podMax: 32768 }),
+    maxTokens: podNumber("BRAIN_UTILITY_MAX_TOKENS", { lean: 800, pod: 1600 }),    // GPU: more complete outputs for entity actions
   },
   repair: {
     // 4-lane: repair is NOT a separate VRAM brain — set BRAIN_REPAIR_URL/MODEL
@@ -234,12 +235,12 @@ contextWindow: Math.min(Number(process.env.BRAIN_CONSCIOUS_CONTEXT) || 32768, 65
     model: _resolveBrainModel(process.env.BRAIN_REPAIR_MODEL, "qwen2.5:1.5b", _repair_urls),
     role: "error detection, auto-fix, runtime repair (aliased to subconscious when env matches)",
     temperature: 0.1,
-    timeout: Number(process.env.BRAIN_REPAIR_TIMEOUT_MS) || 10000,
+    timeout: podNumber("BRAIN_REPAIR_TIMEOUT_MS", { lean: 10000, pod: 20000 }),
     priority: 0,       // HIGHEST — system health
     // Bumped 2 → 4 to match OLLAMA_NUM_PARALLEL=4 on repair.
     maxConcurrent: Number(process.env.BRAIN_REPAIR_CONCURRENT) || 4,
-    contextWindow: Math.min(Number(process.env.BRAIN_REPAIR_CONTEXT) || 2048, 4096),
-    maxTokens: 500,    // GPU: 1.5B can actually articulate error analysis now
+    contextWindow: podNumber("BRAIN_REPAIR_CONTEXT", { lean: 2048, pod: 4096, leanMax: 4096, podMax: 16384 }),
+    maxTokens: podNumber("BRAIN_REPAIR_MAX_TOKENS", { lean: 500, pod: 1000 }),    // GPU: 1.5B can actually articulate error analysis now
   },
   multimodal: {
     // Resolution order:
@@ -267,7 +268,7 @@ contextWindow: Math.min(Number(process.env.BRAIN_CONSCIOUS_CONTEXT) || 32768, 65
     // vision queries; bumped from 2 so the food-vision endpoint and
     // personal-locker upload pipeline don't serialize.
     maxConcurrent: Number(process.env.BRAIN_VISION_CONCURRENT) || 8,
-    contextWindow: Math.min(Number(process.env.BRAIN_MULTIMODAL_CONTEXT) || 4096, 4096),
+    contextWindow: podNumber("BRAIN_MULTIMODAL_CONTEXT", { lean: 4096, pod: 8192, leanMax: 4096, podMax: 32768 }),
     maxTokens: 1500,
   },
   ...(_background_urls ? {
@@ -280,7 +281,7 @@ contextWindow: Math.min(Number(process.env.BRAIN_CONSCIOUS_CONTEXT) || 32768, 65
       timeout: Number(process.env.BRAIN_BACKGROUND_TIMEOUT_MS) || 60000,
       priority: 3,
       maxConcurrent: Number(process.env.BRAIN_BACKGROUND_CONCURRENT) || 4,
-      contextWindow: Math.min(Number(process.env.BRAIN_BACKGROUND_CONTEXT) || 4096, 8192),
+      contextWindow: podNumber("BRAIN_BACKGROUND_CONTEXT", { lean: 4096, pod: 8192, leanMax: 8192, podMax: 16384 }),
       maxTokens: Number(process.env.BRAIN_BACKGROUND_MAX_TOKENS) || 400,
       // concord-core-v6 is a thinking model; with thinking on it spends
       // ~1800 tokens per call. Background output is short and structured.
@@ -389,7 +390,9 @@ export function getActiveBrainConfig() {
   let config = _activeConfig || BRAIN_CONFIG;
 
   // Apply adaptive scaling when enabled
-  if (ADAPTIVE_BRAIN_SCALING && systemMonitor.metrics.memory.total > 0) {
+  // The monitor measures the machine the backend runs on. With the brains on the pod that says nothing about
+  // them, so the pod profile never shrinks their context, concurrency or timeouts or switches the subconscious off.
+  if (ADAPTIVE_BRAIN_SCALING && !podProfile() && systemMonitor.metrics.memory.total > 0) {
     const settings = systemMonitor.getRecommendedSettings();
     const stress = systemMonitor.getSystemStressLevel();
 
