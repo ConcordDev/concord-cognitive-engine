@@ -361,7 +361,12 @@ export function createMeshPacket(dtu, destinationNodeId, opts = {}) {
   const header = createMeshHeader({
     sourceNodeId: getNodeId(),
     destinationNodeId: destinationNodeId || "broadcast",
-    dtuHash: contentHash,
+    // Q25: opts.dtuHash lets a caller (fragmentDTU) name the WHOLE
+    // DTU this packet belongs to, so every fragment's header carries
+    // the DTU's hash — the field's documented purpose is
+    // deduplication/grouping at header level. payloadHash below stays
+    // this packet's own content hash either way.
+    dtuHash: opts.dtuHash || contentHash,
     sequence: opts.sequence || 0,
     total: opts.total || 1,
     ttl: opts.ttl || 7,
@@ -414,11 +419,18 @@ export function fragmentDTU(dtu, maxPayloadBytes) {
   }
 
   const transferId = uid("xfer");
+  // Q25: every fragment header carries the WHOLE DTU's hash, so a
+  // receiver holding only headers can group and dedupe the fragments
+  // of one transfer. (Before, headers carried per-chunk hashes —
+  // fragments of one DTU shared no identity, and different DTUs with
+  // an identical chunk collided.)
+  const wholeHash = sha256(content);
   for (let i = 0; i < chunks.length; i++) {
     const packet = createMeshPacket(chunks[i], null, {
       sequence: i,
       total: chunks.length,
       fragmented: true,
+      dtuHash: wholeHash,
     });
     packet.transferId = transferId;
     packet.fragmentIndex = i;
