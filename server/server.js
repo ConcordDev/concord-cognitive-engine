@@ -21427,11 +21427,15 @@ async function initGhostFleet() {
     register("hlm", "metrics", () => ghostFleetOk(hlm.getHLMMetrics()));
 
     // HLM slow interval: every 20 minutes — graph computation, CPU-intensive
+    let _hlmRunning = false; // in-flight guard: a slow pass over a big store must not overlap the next tick (#1839 pattern)
     const hlmTimer = setInterval(async () => {
+      if (_hlmRunning) return;
+      _hlmRunning = true;
       try {
         const dtus = typeof STATE.dtus?.values === 'function' ? Array.from(STATE.dtus.values()) : [];
         if (dtus.length > 0) await hlm.runHLMPass(dtus);
       } catch (e) { observe(e, "hlm_slow_interval"); }
+      finally { _hlmRunning = false; }
     }, 1_200_000);
     if (hlmTimer.unref) hlmTimer.unref();
 
@@ -22328,7 +22332,9 @@ async function initGhostFleet() {
       // Entity economy cycle (inflation/deflation, UBI, trade expiry)
       const econ = await import("./emergent/entity-economy.js").catch(() => null);
       if (econ?.runEconomicCycle) {
-        try { econ.runEconomicCycle(); } catch (e) { observe(e, "ghost_fleet_economy_cycle"); }
+        // The governor heartbeat already runs the economic cycle (every 100th tick, ~25 min). Skip here unless it has not
+        // run for twice that, so enabling the fleet never doubles UBI/inflation passes.
+        try { econ.runEconomicCycle({ skipIfRecentMs: 50 * 60_000 }); } catch (e) { observe(e, "ghost_fleet_economy_cycle"); }
       }
 
       // History era transitions
