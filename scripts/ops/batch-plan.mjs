@@ -3,7 +3,7 @@
 //   node scripts/ops/batch-plan.mjs [--prs 1866,1867] [--max 4] [--no-tests] [--json] [--repo ~/concord-wt/prclean]
 // Rules (Dutch, 2026-10-29): backend-only, no file overlap inside the batch, no server.js / auth / security /
 // migration / package files, verdict head must equal the PR head, at most 4. It never merges to main, pushes or deploys:
-// the trial merge happens on a scratch branch inside prclean, which is deleted afterwards. The deploy lane does the real merges.
+// the trial merge happens in a throwaway sparse clone in the OS temp dir (--repo is only read, never modified). The deploy lane does the real merges.
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -51,6 +51,7 @@ export function selectBatch(prs, max = MAX_BATCH) {
   return { picked, skipped };
 }
 
+const TRIAL_DIRS = ["server", "scripts", "content", "config"];
 const git = (repo, ...a) => execFileSync("git", ["-C", repo, ...a], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 const gh = (...a) => execFileSync("gh", a, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 
@@ -61,7 +62,6 @@ function main() {
   const repo = path.resolve(opt("repo", path.join(os.homedir(), "concord-wt/prclean")));
   const queue = path.resolve(opt("queue", path.join(os.homedir(), ".zuko/quality/opencode-runs/review-queue")));
   const max = Math.min(MAX_BATCH, Number(opt("max", MAX_BATCH)));
-  if (!repo.endsWith("/prclean")) { console.error("refusing: run the trial merge only inside the prclean worktree"); process.exit(2); }
 
   const nums = opt("prs", null)
     ? opt("prs").split(",").map(Number)
@@ -89,21 +89,28 @@ function main() {
   const { picked, skipped } = selectBatch(candidates, max);
   excluded.push(...skipped);
 
-  // Trial merge on a scratch branch inside prclean.
+  // Trial merge in a throwaway sparse clone under the OS temp dir. --repo is only READ (its origin URL
+  // and server/node_modules); it is never fetched into, checked out or modified, so any worktree or the live
+  // tree can be passed and its HEAD is untouched by construction.
   const trial = { merged: [], conflicts: [], tests: null };
   if (picked.length) {
-    if (git(repo, "status", "--porcelain", "--untracked-files=no")) { console.error("refusing: prclean has uncommitted changes; commit or stash them first"); process.exit(2); }
-    git(repo, "fetch", "-q", "origin", "main");
-    const scratch = `batch-trial/${Date.now()}`;
-    git(repo, "checkout", "-q", "-b", scratch, "origin/main");
+    const origin = git(repo, "remote", "get-url", "origin");
+    const work = fs.mkdtempSync(path.join(os.tmpdir(), "batch-plan-"));
     try {
+      execFileSync("git", ["clone", "-q", "--filter=blob:none", "--no-checkout", "--branch", "main", origin, work], { stdio: ["ignore", "pipe", "pipe"] });
+      git(work, "sparse-checkout", "set", ...TRIAL_DIRS);
+      git(work, "checkout", "-q", "-b", "batch-trial", "origin/main");
+      git(work, "config", "user.email", "batch-plan@localhost");
+      git(work, "config", "user.name", "batch-plan");
+      const nm = path.join(repo, "server", "node_modules");
+      if (fs.existsSync(nm)) fs.symlinkSync(nm, path.join(work, "server", "node_modules"));
       for (const p of picked) {
         try {
-          git(repo, "fetch", "-q", "origin", `pull/${p.n}/head`);
-          git(repo, "merge", "--no-ff", "-q", "-m", `trial #${p.n}`, "FETCH_HEAD");
+          git(work, "fetch", "-q", "origin", `pull/${p.n}/head`);
+          git(work, "merge", "--no-ff", "-q", "-m", `trial #${p.n}`, "FETCH_HEAD");
           trial.merged.push(p.n);
         } catch (e) {
-          try { git(repo, "merge", "--abort"); } catch { /* nothing to abort */ }
+          try { git(work, "merge", "--abort"); } catch { /* nothing to abort */ }
           trial.conflicts.push(p.n);
           excluded.push({ n: p.n, reason: "conflicts with main or an earlier batch member" });
         }
@@ -111,14 +118,13 @@ function main() {
       if (!flag("no-tests") && trial.merged.length) {
         const own = picked.filter((p) => trial.merged.includes(p.n)).flatMap((p) => p.files).filter((f) => /^server\/tests\/.*\.test\.js$/.test(f)).map((f) => f.replace(/^server\//, ""));
         const list = [...new Set([...own, "tests/boot.test.js"])];
-        const cmd = `~/.zuko/quality/mem-gate.sh batch-plan && cd ${JSON.stringify(path.join(repo, "server"))} && NODE_ENV=test node --test --test-timeout=240000 ${list.map((f) => JSON.stringify(f)).join(" ")}`;
+        const cmd = `~/.zuko/quality/mem-gate.sh batch-plan && cd ${JSON.stringify(path.join(work, "server"))} && NODE_ENV=test node --test --test-timeout=240000 ${list.map((f) => JSON.stringify(f)).join(" ")}`;
         const r = spawnSync("/bin/zsh", ["-c", cmd], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
         const out = `${r.stdout}\n${r.stderr}`;
         trial.tests = { files: list, pass: Number((out.match(/^ℹ pass (\d+)/m) || [])[1] || 0), fail: Number((out.match(/^ℹ fail (\d+)/m) || [])[1] || 0), cancelled: Number((out.match(/^ℹ cancelled (\d+)/m) || [])[1] || 0), exit: r.status, ...(r.status === 0 ? {} : { tail: out.trim().split("\n").slice(-6).join("\n"), error: r.error?.message || null }) };
       }
     } finally {
-      git(repo, "checkout", "-q", "--detach", "origin/main");
-      try { git(repo, "branch", "-q", "-D", scratch); } catch { /* already gone */ }
+      fs.rmSync(work, { recursive: true, force: true });
     }
   }
 

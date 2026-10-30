@@ -34,3 +34,12 @@ test("selectBatch takes at most four, never two PRs that share a file", () => {
   assert.match(skipped.find((s) => s.n === 6).reason, /batch full/);
   assert.equal(selectBatch(prs, 2).picked.length, 2);
 });
+
+test("trial merge runs in a temp clone: no prclean-only refusal, --repo is never checked out or fetched into", async () => {
+  const fs = await import("node:fs");
+  const src = fs.readFileSync(new URL("../../scripts/ops/batch-plan.mjs", import.meta.url), "utf8");
+  assert.ok(!src.includes('endsWith("/prclean")'), "any --repo is accepted");
+  assert.ok(!/git\(repo, "(checkout|fetch|merge|branch)"/.test(src), "--repo is only read");
+  assert.match(src, /mkdtempSync\(path\.join\(os\.tmpdir\(\)/);
+  assert.match(src, /fs\.rmSync\(work/, "temp clone removed in finally, also on conflict or test failure");
+});
