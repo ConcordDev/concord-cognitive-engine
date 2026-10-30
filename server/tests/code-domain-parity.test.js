@@ -1162,7 +1162,7 @@ describe("code — run configs + bookmarks", () => {
 
   // ── S17 (F17): a rename is ONE change at its new path — Source
   // Control's counter and the Explorer's file count share this set.
-  test('S17 rename: git-status counts the renamed file once, at its new path', () => {
+  it('S17 rename: git-status counts the renamed file once, at its new path', () => {
     const proj = call("projects-create", ctxC, { name: "RenameCount" }).result.project;
     call("files-write", ctxC, { projectId: proj.id, path: "a.js", content: "1" });
     call("files-write", ctxC, { projectId: proj.id, path: "b.js", content: "2" });
@@ -1177,7 +1177,7 @@ describe("code — run configs + bookmarks", () => {
 
   // ── S15 (F15): the extension catalog states each entry's real effect;
   // an extension whose effect the editor cannot produce says so.
-  test('S15 extensions catalog: every entry carries an honest effect note', () => {
+  it('S15 extensions catalog: every entry carries an honest effect note', () => {
     const catalog = call('extensions-catalog', ctxC, {});
     assert.equal(catalog.ok, true);
     assert.ok(catalog.result.catalog.length >= 8);
