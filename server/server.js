@@ -29868,6 +29868,7 @@ Available tools:
   "engineering.columnBuckling" with {loadLbs:50000,lengthFt:12,area:8.25,momentI:82.8,elasticModulus:29000000},
   "statistics.linearRegression" with {x:[1,2,3],y:[2,4,6]}, "chemistry.gibbsFreeEnergy" with {deltaH:-286,deltaS:-163,tempK:298}
 - dtu_search: Search the knowledge base (DTUs) the user can see. Read-only. Use it BEFORE citing any DTU; only the ids and titles it returns may be cited. Params: {"query": "search terms", "limit": 8}
+- get_live_data: Read-only live data with source, timestamp and licence. kind "compound" (PubChem: formula, molar mass, CAS; optional property density|boiling_point|melting_point) or kind "fx" (ECB reference rates). Cite the source and retrievedAt. Params: {"kind": "compound", "name": "ethanol", "property": "boiling_point"} or {"kind": "fx", "base": "EUR", "symbols": ["USD"]}
 - list_recipes: List tested multi-step recipes (beam sizing, column buckling, unit conversion, material comparison, wall conduction, pipe flow) and their inputs. Check it FIRST for an engineering calculation. Params: {"query": "what you want to do"}
 - run_recipe: Run a recipe in SI; returns result, pass/fail checks and a receipt. Quote only numbers from its result. Params: {"recipe": "beam_sizing", "inputs": {"spanM": 4, "loadN": 10000, "widthM": "60 mm", "material": "steel-a36", "safetyFactor": 2}}
 - browse_url: Fetch and read any web page. Params: {"url": "https://...", "selector": "optional css selector"}
@@ -30074,6 +30075,10 @@ ${_operatorV6Block}` : "";
         case "dtu_search": {
           const { dispatchChatDtuSearch: _dtuSearch } = await import("./lib/chat-tool-surface.js");
           return _dtuSearch(runMacro, _toolCtx, call.params);
+        }
+        case "get_live_data": {
+          const { getLiveData: _liveData } = await import("./lib/chat/live-data.js");
+          return _liveData(_toolCtx, call.params);
         }
         case "list_recipes":
         case "run_recipe": {
