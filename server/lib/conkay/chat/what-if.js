@@ -129,7 +129,11 @@ const getPath = (o, p) => p.split(".").reduce((x, k) => (x == null ? undefined :
  * ask(text) for each follow-up, undo() to step back.
  */
 export class DesignConversation {
-  constructor({ evaluate, rules, requirements, state, final, budget }) {
+  constructor({ evaluate, rules, requirements, state, final, budget, settleDeadlineMs }) {
+    // INC-154: a request never waits on external kernels longer than this; the edit is committed with its kernels
+    // honestly pending and the settle finishes in the background (see settling).
+    this.settleDeadlineMs = Number(settleDeadlineMs ?? process.env.CONCORD_CONKAY_SETTLE_DEADLINE_MS) || 15000;
+    this.settling = false;
     this.evaluate = evaluate;
     this.rules = rules;
     this.budget = budget;
@@ -193,17 +197,33 @@ export class DesignConversation {
     // a design-variable edit, applied to the live graph
     const session = cur.final.session;
     const reads = new Map([...session.engine.runs].map(([id, run]) => [id, new Set(run.reads)]));
+    if (this.settling) return { kind: "error", error: "busy", busy: true };
     const r = await session.editAsync(w.ops);
     if (!r.ok) return { kind: "error", error: r.error };
-    const settled = await session.settle();
+    // the inverse is read from the engine's own record of this edit NOW, before any await, so a later edit or
+    // undo cannot make history.at(-1) a different entry
+    const inverse = session.engine.graph.history.at(-1).ops.map((o) => ({ node: o.node, path: o.path, value: o.before }));
+    const sw = this._settleWithin(session);
+    let settled;
+    try { settled = await sw.result; } catch (e) {
+      // a settle that threw leaves no trace: put the previous values back and record no revision
+      const back = await session.editAsync(inverse);
+      return { kind: "error", error: `settle_failed: ${String(e?.message || e)}`, restored: back.ok };
+    }
     const after = envMap(session);
     const rerun = [...new Set([...r.rerun, ...settled.rerun])].sort();
     const final = { ...cur.final, envelopes: after };
     const state = { ...cur.state, ...w.stateUpdate };
-    // the inverse: the engine's own record of each op's previous value
-    const inverse = session.engine.graph.history.at(-1).ops.map((o) => ({ node: o.node, path: o.path, value: o.before }));
     const rev = { kind: "parameter", text, ops: w.ops, inverse, editedSession: session, state, final, requirements: cur.requirements, receipt: designReceipt(after), readsBefore: reads, changedKeys: r.changedKeys };
     this.revisions.push(rev);
+    if (settled.timedOut) {
+      // committed, kernels still pending: refresh the revision when the background settle lands
+      this.settling = true;
+      sw.done.then(() => {
+        rev.final = { ...rev.final, envelopes: envMap(session) };
+        rev.receipt = designReceipt(rev.final.envelopes);
+      }).catch(() => {}).finally(() => { this.settling = false; });
+    }
     const newFails = flips(before, after).filter((f) => f.to === "FAIL").map((f) => f.runId);
     let resumed = null;
     if (newFails.length && Object.keys(w.stateUpdate).length) {
@@ -216,11 +236,26 @@ export class DesignConversation {
       kind: "parameter", ok: true, revision: this.revisions.length - 1,
       diff: { changed: w.changes, flipped: flips(before, rev.final.envelopes), rerun, reused: r.reused.length },
       newFailures: newFails, resumed, receipt: rev.receipt, ...(w.notes?.length ? { notes: w.notes } : {}),
+      ...(settled.timedOut ? { pending: true, pendingNote: "NOT_COMPUTED: external kernels still running; this edit is committed and results refresh when they finish" } : {}),
     };
+  }
+
+  /**
+   * Settle the session's kernels, but give the caller an answer within settleDeadlineMs. `result` resolves with
+   * { rounds, kernels, rerun, timedOut }; `done` resolves when the underlying settle really finishes.
+   */
+  _settleWithin(session) {
+    const done = session.settle();
+    let timer;
+    const deadline = new Promise((resolve) => { timer = setTimeout(() => resolve({ rounds: 0, kernels: 0, rerun: [], pending: true, timedOut: true }), this.settleDeadlineMs); });
+    const result = Promise.race([done, deadline]).finally(() => clearTimeout(timer));
+    done.catch(() => {});
+    return { result, done };
   }
 
   /** Step back one revision. Graph edits are reversed on the live graph; a rebuild returns to the kept design. */
   async undo() {
+    if (this.settling) return { ok: false, error: "busy", busy: true };
     if (this.revisions.length < 2) return { ok: false, error: "nothing to undo" };
     const rev = this.revisions.pop();
     const prev = this.current;

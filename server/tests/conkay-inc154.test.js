@@ -208,3 +208,70 @@ describe("INC-154: conversation receipts (edit -> undo)", () => {
     assert.equal(conv.current.receipt, r0, "the receipt equals the pre-edit receipt");
   });
 });
+
+describe("INC-154: bounded settle, committed-with-pending, busy lock, early inverse", () => {
+  const slowSettle = (session, ms) => {
+    const real = session.settle.bind(session);
+    session.settle = () => new Promise((resolve, reject) => setTimeout(() => real().then(resolve, reject), ms));
+  };
+
+  it("a settle slower than the deadline commits the edit with kernels pending, undo works afterwards", async () => {
+    const { conv, session } = conversation();
+    conv.settleDeadlineMs = 30;
+    slowSettle(session, 250);
+    const r0 = conv.current.receipt;
+    const t0 = performance.now();
+    const reply = await conv.ask("make the tail shorter");
+    const waited = performance.now() - t0;
+    assert.equal(reply.ok, true, JSON.stringify(reply));
+    assert.ok(waited < 200, `the request returned at the deadline (${waited.toFixed(0)} ms), not at the end of the settle`);
+    assert.equal(reply.pending, true);
+    assert.match(reply.pendingNote, /NOT_COMPUTED/);
+    assert.equal(conv.revisions.length, 2, "the edit is committed with a revision, so view and revisions agree");
+    assert.equal(conv.settling, true);
+    // while the settle is still running, a second edit and an undo are refused rather than interleaved
+    const busyEdit = await conv.ask("make the tail shorter");
+    assert.equal(busyEdit.error, "busy");
+    const busyUndo = await conv.undo();
+    assert.equal(busyUndo.ok, false);
+    assert.equal(busyUndo.busy, true);
+    assert.equal(conv.revisions.length, 2, "a refused undo pops nothing");
+    await new Promise((r) => setTimeout(r, 400));
+    assert.equal(conv.settling, false, "the background settle finished and released the lock");
+    const back = await conv.undo();
+    assert.equal(back.ok, true);
+    assert.equal(back.receipt, r0, "undo restores the pre-edit receipt");
+  });
+
+  it("a settle that throws leaves no trace: values restored, no revision", async () => {
+    const { conv, session } = conversation();
+    session.settle = async () => { throw new Error("kernel exploded"); };
+    const r0 = conv.current.receipt;
+    const reply = await conv.ask("make the tail shorter");
+    assert.equal(reply.kind, "error");
+    assert.match(reply.error, /settle_failed/);
+    assert.equal(reply.restored, true);
+    assert.equal(conv.revisions.length, 1);
+    assert.equal(conv.current.receipt, r0);
+    assert.equal(session.engine.graph.get("BODY_SHELL", "geometry.tailExtension"), 0.3, "the tail is back at its original value");
+    assert.equal(conv.settling, false);
+  });
+
+  it("the inverse is the edit's own record even when settle is slow (read before the await)", async () => {
+    const { conv, session } = conversation();
+    conv.settleDeadlineMs = 5000;
+    slowSettle(session, 60);
+    await conv.ask("make the tail shorter");
+    const rev = conv.revisions.at(-1);
+    assert.ok(rev.inverse.length > 0);
+    assert.ok(rev.inverse.every((o) => o.node && o.path && o.value !== undefined));
+    assert.equal(rev.inverse.find((o) => o.node === "BODY_SHELL" && o.path === "geometry.tailExtension")?.value, 0.3);
+  });
+
+  it("undo with nothing to undo is a refusal, not a success", async () => {
+    const { conv } = conversation();
+    const u = await conv.undo();
+    assert.equal(u.ok, false);
+    assert.match(u.error, /nothing to undo/);
+  });
+});
