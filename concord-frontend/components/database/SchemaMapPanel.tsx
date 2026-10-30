@@ -2,13 +2,15 @@
 
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useLensData } from '@/lib/hooks/use-lens-data';
 import { Layers, Key, Link2 } from 'lucide-react';
 import { type TableInfo } from './db-utils';
+import { useWorkspaceTables } from './use-workspace-tables';
 
 export function SchemaMapPanel() {
-  const { items: tableItems } = useLensData('database', 'table', { noSeed: true });
-  const tables: TableInfo[] = useMemo(() => tableItems?.map(i => i.data as unknown as TableInfo) ?? [], [tableItems]);
+  // S6: same workspace store as the Live Client — real tables, real
+  // foreign keys (S4 relations), real counts.
+  const { tables: wsTables } = useWorkspaceTables();
+  const tables: TableInfo[] = wsTables;
 
   const relationships = useMemo(() => {
     const rels: { from: string; fromCol: string; to: string; toCol: string }[] = [];
