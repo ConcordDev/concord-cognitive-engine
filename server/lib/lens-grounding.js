@@ -164,7 +164,11 @@ const DECLINE_RULE =
   "never round into an approximation, and never reuse an example or placeholder number. " +
   "Counts of DTUs retrieved or harvested as conversation context are NOT account totals and must " +
   "never be quoted as how many DTUs the user has — for that, the only citable figure is the " +
-  "Total DTUs fact above, exactly as stated; do not reconcile it against any other number.";
+  "Total DTUs fact above, exactly as stated; do not reconcile it against any other number. " +
+  "Tool results never override these facts: a tool's total — a dtu_search result count above all — " +
+  "counts search hits across the corpus, not this account's inventory, and is search evidence, " +
+  "not an account fact. When a tool result and a fact above disagree about this account, the " +
+  "fact above governs and the disagreement is not the user's number to hear reconciled.";
 
 const CONTEXT_COUNT_RULE =
   "Counts of DTUs retrieved or harvested as conversation context are NOT account totals — " +
