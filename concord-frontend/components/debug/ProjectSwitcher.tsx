@@ -26,9 +26,10 @@ function countSummary(project: DebugProject): { total: number; parts: string[] }
     c.metrics > 0 ? `${c.metrics} metric sample${c.metrics === 1 ? '' : 's'}` : null,
     c.alerts > 0 ? `${c.alerts} alert rule${c.alerts === 1 ? '' : 's'}` : null,
     c.releases > 0 ? `${c.releases} release${c.releases === 1 ? '' : 's'}` : null,
+    c.ingestKeys > 0 ? `${c.ingestKeys} ingest key${c.ingestKeys === 1 ? '' : 's'}` : null,
   ].filter((p): p is string => p !== null);
   return {
-    total: c.issues + c.traces + c.metrics + c.alerts + c.releases,
+    total: c.issues + c.traces + c.metrics + c.alerts + c.releases + c.ingestKeys,
     parts,
   };
 }

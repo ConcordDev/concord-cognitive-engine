@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { useDebugProject } from './ProjectContext';
+import { IngestPanel } from './IngestPanel';
 import { ChartKit } from '@/components/viz';
 import {
   AlertTriangle,
@@ -215,7 +216,7 @@ export function IssueInbox() {
       <div className="bg-lattice-deep rounded-lg p-3 border border-lattice-border space-y-2">
         <div>
           <p className="text-[10px] text-gray-400 uppercase tracking-wider">Record Observed Exception</p>
-          <p className="mt-1 text-[11px] text-gray-500">This creates an authored issue record; Debug does not claim an automatic external APM collector.</p>
+          <p className="mt-1 text-[11px] text-gray-500">Records an exception by hand, into the selected project. For automatic reporting from your own app, connect it in the panel below.</p>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <input
@@ -268,6 +269,9 @@ export function IssueInbox() {
           Record Exception
         </button>
       </div>
+
+      {/* External ingest (Q1): per-project keys + the Sentry-compatible endpoint */}
+      <IngestPanel onIngested={load} />
 
       {/* Filters */}
       <div className="flex items-center gap-2">

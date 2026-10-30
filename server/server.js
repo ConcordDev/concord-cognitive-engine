@@ -1972,7 +1972,7 @@ import {
 import { serverError, configureHttpErrorLogger, httpStatusLogLevel, opensRepairSignal } from "./lib/http-errors.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
 import configureMiddleware from "./middleware/index.js";
-import { createCsrfMiddleware, PUBLIC_PROOF_COMMENT_RE, INGEST_WEBHOOK_RE } from "./middleware/csrf.js";
+import { createCsrfMiddleware, PUBLIC_PROOF_COMMENT_RE, INGEST_WEBHOOK_RE, DEBUG_INGEST_RE } from "./middleware/csrf.js";
 import { readReplicaGate } from "./lib/read-replica-allowlist.js";
 import { createLLMQueue } from "./lib/llm-queue.js";
 import { bindNpcCoalescerQueue } from "./lib/npc-prompt-coalescer.js";
@@ -2153,6 +2153,7 @@ import createEmergentRouter from "./routes/emergent.js";
 import registerOperationRoutes from "./routes/operations.js";
 import createQualiaRouter from "./routes/qualia.js";
 import createSovereignRouter from "./routes/sovereign.js";
+import createDebugIngestRouter from "./routes/debug-ingest.js";
 import createSovereignEmergentRouter from "./routes/sovereign-emergent.js";
 import { createUserDispatchRouter } from "./routes/user-dispatch.js";
 import createFederationRouter from "./routes/federation.js";
@@ -8698,6 +8699,11 @@ function authMiddleware(req, res, next) {
   // credential; the handler resolves it to exactly one user's endpoint and can
   // only append records to that user's webhook inbox.
   if (req.method === "POST" && INGEST_WEBHOOK_RE.test(req.path)) return next();
+  // Debug lens Sentry-compatible ingest (exact route, never a prefix).
+  // The cdi_ ingest key in the X-Sentry-Auth header is the only
+  // credential; it resolves server-side to exactly one project of one
+  // user and can only append grouped error issues there.
+  if (req.method === "POST" && DEBUG_INGEST_RE.test(req.path)) return next();
 
   // Animation public share viewer (Wave 4 gap closure,
   // `docs/lens-specs/animation-capability-map.md` checklist item 17) — an
@@ -8940,6 +8946,9 @@ function productionWriteAuthMiddleware(req, res, next) {
   if (method === "POST" && PUBLIC_PROOF_COMMENT_RE.test(req.path)) return next();
   // INC-72: token-scoped inbound ingest webhook (exact route, not a prefix).
   if (method === "POST" && INGEST_WEBHOOK_RE.test(req.path)) return next();
+  // Debug lens Sentry-compatible ingest: key-scoped (exact route, not a
+  // prefix) — the cdi_ key is verified in the handler before any write.
+  if (method === "POST" && DEBUG_INGEST_RE.test(req.path)) return next();
   // POST /api/receipts/verify checks an Ed25519 signature and writes nothing.
   // Exact path, not a prefix, so no other route under /api/receipts/ is opened.
   // Rate limit: write.receipt-verify. See routes/receipts.js.
@@ -10227,6 +10236,10 @@ function botGuardMiddleware(req, res, next) {
   // INC-72: inbound ingest webhooks are sent by external automation (Zapier,
   // cron jobs, curl). The 32-hex token in the exact route is the credential.
   if (req.method === "POST" && INGEST_WEBHOOK_RE.test(req.path)) return next();
+  // Debug lens Sentry-compatible ingest: external error reporters
+  // (Sentry SDKs, curl harnesses) are automated clients by design; the
+  // cdi_ key in the X-Sentry-Auth header is the credential.
+  if (req.method === "POST" && DEBUG_INGEST_RE.test(req.path)) return next();
   const ua = req.headers["user-agent"] || "";
   if (!ua || _BOT_UA_RE.test(ua)) {
     return res.status(403).json({
@@ -41090,6 +41103,7 @@ app.use("/api/emergent", createEmergentRouter({ makeCtx, runMacro }));
 app.use("/api/qualia", createQualiaRouter());
 app.use("/api/sovereign", createSovereignRouter({ STATE, makeCtx, runMacro, saveStateDebounced })); // includes /api/sovereign/dashboard, /pulse, /decree, /audit, /eval
 app.use("/api/sovereign-emergent", createSovereignEmergentRouter({ STATE }));
+app.use("/api/debug", createDebugIngestRouter()); // Sentry-compatible envelope ingest (POST /api/debug/ingest/:projectId/envelope, cdi_ key auth)
 app.use("/api", createUserDispatchRouter({ STATE })); // non-sovereign user action dispatch (POST /api/run)
 app.use("/api/federation", createFederationRouter({ db }));
 

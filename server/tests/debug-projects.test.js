@@ -88,7 +88,7 @@ describe("S10 debug projects — the entity layer", () => {
     assert.equal(refused.counts.traces, 1);
     const done = call("project-delete", ada, { id: p.id, confirm: true });
     assert.equal(done.ok, true);
-    assert.deepEqual(done.result.removed, { issues: 1, traces: 1, metrics: 0, alerts: 0, releases: 0 });
+    assert.deepEqual(done.result.removed, { issues: 1, traces: 1, metrics: 0, alerts: 0, releases: 0, ingestKeys: 0 });
     assert.equal(call("issue-list", ada, { projectId: p.id }).error, "project not found");
     const remaining = call("issue-list", ada, {}).result;
     assert.deepEqual(remaining.issues.map((i) => i.id), [keep.id], "the default project's data is untouched");
