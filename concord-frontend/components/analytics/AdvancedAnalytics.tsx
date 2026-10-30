@@ -20,6 +20,7 @@ import {
   CalendarRange, Plus, Trash2, RefreshCw, Loader2, Play, Pause, Save,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { ChartKit } from '@/components/viz';
 import { cn } from '@/lib/utils';
 
@@ -151,7 +152,23 @@ interface LoadedWidget extends Widget { data?: WidgetData }
 
 function ReportBuilder({ eventNames }: { eventNames: string[] }) {
   const [dashboards, setDashboards] = useState<DashboardSummary[]>([]);
-  const [name, setName] = useState('');
+  // Draft persistence (A23 successor, Review 4 Addenda 5 + 8): the
+  // dashboard-name draft rides the lens state store under a
+  // dashboardDraft key — restored once on mount, re-persisted on
+  // change. ReportBuilder unmounts on every internal tab switch and
+  // the whole Advanced view unmounts on every lens tab switch, so a
+  // plain useState draft died on both. This is the A23 protocol's
+  // third graded field; the builder's widgets/editing state are
+  // deliberately NOT persisted (not named by the protocol).
+  const { restore, persist } = useLensStatePersistence('analytics');
+  const [savedDashboardDraft] = useState(() => {
+    const d = restore()?.dashboardDraft;
+    return d && typeof d === 'object' ? (d as Record<string, unknown>) : {};
+  });
+  const [name, setName] = useState(() => String(savedDashboardDraft.name ?? ''));
+  useEffect(() => {
+    persist({ ...(restore() ?? {}), dashboardDraft: { name } });
+  }, [name, persist, restore]);
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState<LoadedWidget[] | null>(null);
