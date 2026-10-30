@@ -12,6 +12,7 @@
  */
 
 import expressRateLimit from "express-rate-limit";
+import { createDtuQualityService as _createDtuQualityService, dtuQualityMode as _dtuQualityMode } from "./lib/dtu-quality/service.js";
 import { router as p2pSignallingRouter } from "./lib/p2p-dtu-signalling.js";
 import { createPhotosRouter } from "./routes/photos.js";
 import { selfPinAwayFromOllama } from "./lib/cpu-self-pin.js";
@@ -103,6 +104,7 @@ import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
 import { chatContextPool, makeChatMayUse } from "./lib/chat/context-pool.js";
+import { chatProgress as _chatProgress, withToolProgress as _chatWithToolProgress, readOllamaChatStream as _readOllamaChatStream } from "./lib/chat/progress.js";
 import { filterVisibleSearchHits, materializeIndexedHits, searchCandidateLimit } from "./lib/dtu-search-hits.js";
 import { handleArchaeology, handleSubstrateDiff, handleTimeCrystalDetect } from "./lib/knowledge-archaeology.js";
 import { artifactDtuForViewer, publicArtifactRef } from "./lib/artifact-access.js";
@@ -2433,7 +2435,7 @@ import {
   findCrossDomainConnections, embedDTU, storeEmbedding, getEmbedding,
   removeEmbedding, backfillEmbeddings, getEmbeddingStatus, isEmbeddingAvailable,
   trimEmbeddingCache, getEmbeddingCacheSize, setLocalEmbedder, reprobeEmbeddings,
-  embeddingEntries,
+  embeddingEntries, scheduleEmbeddingReprobe, embeddingWarmupPending,
 } from "./embeddings.js";
 import { consolidatedVisibility, applyConsolidatedVisibility, absorbVisibility, backfillConsolidatedVisibility } from "./lib/consolidated-visibility.js";
 import { isPublicFeedSource, backfillPublicFeedItems, asPublicFeedMember } from "./lib/public-feed-sources.js";
@@ -19233,6 +19235,42 @@ function dtusByIds(ids=[]) {
   }
   return out;
 }
+// DTU classification + quality gates (lib/dtu-quality). Lazy so nothing runs at module-eval time.
+let _dqSvc = null;
+let _dqIter = null;
+function getDtuQuality() {
+  if (_dqSvc) return _dqSvc;
+  _dqSvc = _createDtuQualityService({
+    deps: { exists: (id) => STATE.dtus.has(id), yieldNow: () => new Promise((resolve) => { setImmediate(resolve); }) },
+    store: {
+      // resumable pass over the DTU map: a few hundred entries per call, never the whole store at once
+      scan: (maxExamine, maxNeeds) => {
+        if (!_dqIter) _dqIter = STATE.dtus.values();
+        const needs = []; const counted = []; let examined = 0; let done = false;
+        while (examined < maxExamine && needs.length < maxNeeds) {
+          const n = _dqIter.next();
+          if (n.done) { _dqIter = null; done = true; break; }
+          examined++;
+          const d = n.value;
+          if (!d?.id) continue;
+          if (_dqSvc.isCurrent(d)) counted.push(d.meta.classification); else needs.push(d);
+        }
+        return { examined, needs, counted, done };
+      },
+      write: (id, rec) => {
+        const d = STATE.dtus.get(id); if (!d) return;
+        d.meta = { ...(d.meta || {}), classification: rec };
+        if (rec.quality.gate === "low_quality" || rec.quality.gate === "refuted") {
+          d.tags = [...new Set([...(Array.isArray(d.tags) ? d.tags : []), "quality:low"])];
+          d.meta.rankPenalty = Math.round((1 - rec.quality.score) * 100) / 100;
+        }
+        upsertDTU(d, { broadcast: false });
+      },
+    },
+  });
+  return _dqSvc;
+}
+
 function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
   // Sidecar cache is refreshed from SQLite on a timer. Record the write so
   // dtu.list can fall back while that cache is behind.
@@ -19312,6 +19350,9 @@ function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
 
   // Auto-tag DTU with lens domain classifications
   try { if (typeof applyAutoTagging === "function") applyAutoTagging(dtu); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+
+  // Auto-sort on write: kind, origin, domain and a quality score with reasons (additive meta; never blocks the write).
+  try { if (_dtuQualityMode() === "on") getDtuQuality().annotateInPlace(dtu); } catch (_e) { logger.debug("server", "dtu-quality annotate", { error: _e?.message }); }
 
   STATE.dtus.set(dtu.id, dtu);
   saveStateDebounced();
@@ -21426,11 +21467,15 @@ async function initGhostFleet() {
     register("hlm", "metrics", () => ghostFleetOk(hlm.getHLMMetrics()));
 
     // HLM slow interval: every 20 minutes — graph computation, CPU-intensive
+    let _hlmRunning = false; // in-flight guard: a slow pass over a big store must not overlap the next tick (#1839 pattern)
     const hlmTimer = setInterval(async () => {
+      if (_hlmRunning) return;
+      _hlmRunning = true;
       try {
         const dtus = typeof STATE.dtus?.values === 'function' ? Array.from(STATE.dtus.values()) : [];
         if (dtus.length > 0) await hlm.runHLMPass(dtus);
       } catch (e) { observe(e, "hlm_slow_interval"); }
+      finally { _hlmRunning = false; }
     }, 1_200_000);
     if (hlmTimer.unref) hlmTimer.unref();
 
@@ -22327,7 +22372,9 @@ async function initGhostFleet() {
       // Entity economy cycle (inflation/deflation, UBI, trade expiry)
       const econ = await import("./emergent/entity-economy.js").catch(() => null);
       if (econ?.runEconomicCycle) {
-        try { econ.runEconomicCycle(); } catch (e) { observe(e, "ghost_fleet_economy_cycle"); }
+        // The governor heartbeat already runs the economic cycle (every 100th tick, ~25 min). Skip here unless it has not
+        // run for twice that, so enabling the fleet never doubles UBI/inflation passes.
+        try { econ.runEconomicCycle({ skipIfRecentMs: 50 * 60_000 }); } catch (e) { observe(e, "ghost_fleet_economy_cycle"); }
       }
 
       // History era transitions
@@ -22468,6 +22515,8 @@ _unrefInTest(setTimeout(async () => {
 
     // Initialize embeddings
     await initEmbeddings({ db, ollamaUrls, structuredLog });
+    // Not on the Ollama embedder yet (tunnel or model still coming up): retry on a short backoff instead of waiting ~25 min.
+    try { scheduleEmbeddingReprobe({ onChanged: () => startSemanticBackfill("boot-reprobe") }); } catch (_e) { logger.debug("server", "embedding reprobe schedule", { error: _e?.message }); }
 
     // Initialize downstream modules
     initSemanticCache({ structuredLog });
@@ -29786,6 +29835,7 @@ Available tools:
   "physics.beamDeflection" with {loadLbs:1000,lengthFt:20,modulusE:29000000,momentI:200}, "quantum.simulateCircuit" with {qubits:2,gates:[{"type":"H","target":0},{"type":"CNOT","control":0,"target":1}]},
   "engineering.columnBuckling" with {loadLbs:50000,lengthFt:12,area:8.25,momentI:82.8,elasticModulus:29000000},
   "statistics.linearRegression" with {x:[1,2,3],y:[2,4,6]}, "chemistry.gibbsFreeEnergy" with {deltaH:-286,deltaS:-163,tempK:298}
+- dtu_search: Search the knowledge base (DTUs) the user can see. Read-only. Use it BEFORE citing any DTU; only the ids and titles it returns may be cited. Params: {"query": "search terms", "limit": 8}
 - browse_url: Fetch and read any web page. Params: {"url": "https://...", "selector": "optional css selector"}
   Use when the user pastes a URL or asks about a specific web page.
 - create_dtu: Create a new DTU (Decision/Thought Unit) from the conversation. Params: {"title": "DTU title", "summary": "brief summary", "tags": ["tag1", "tag2"]}
@@ -29976,12 +30026,20 @@ ${_operatorV6Block}` : "";
             const { loadComputeModule } = await import("./lib/compute/index.js");
             const mod = await loadComputeModule(modName);
             if (!mod) return { tool: call.tool, ok: false, error: `Unknown compute module: ${modName}` };
-            if (typeof mod[fnName] !== "function") return { tool: call.tool, ok: false, error: `Unknown function ${fnName} in ${modName}` };
-            const computeResult = mod[fnName](computeInput);
+            if (typeof mod[fnName] !== "function") {
+              const { closestComputeKeys: _closest } = await import("./lib/chat/compute-si.js");
+              return { tool: call.tool, ok: false, error: `Unknown function ${fnName} in ${modName}`, closestKeys: await _closest(computeKey).catch(() => []) };
+            }
+            const { runChatCompute: _runChatCompute } = await import("./lib/chat/compute-si.js");
+            const computeResult = _runChatCompute(computeKey, mod, fnName, computeInput);
             return { tool: call.tool, ok: true, key: computeKey, result: computeResult };
           } catch (_ce) {
             return { tool: call.tool, ok: false, error: `Compute error: ${_ce?.message}` };
           }
+        }
+        case "dtu_search": {
+          const { dispatchChatDtuSearch: _dtuSearch } = await import("./lib/chat-tool-surface.js");
+          return _dtuSearch(runMacro, _toolCtx, call.params);
         }
         case "browse_url": {
           const { url: browseUrl = "", selector: browseSelector } = call.params;
@@ -30080,7 +30138,8 @@ ${_operatorV6Block}` : "";
       if (_gate && _gate.ok === false) {
         result = { tool: call.tool, ok: false, error: _gate.reason || "csl_rejected" };
       } else {
-        result = await _executeToolCall(call);
+        // running/done reach a streaming client as the call really starts and ends
+        result = await _chatWithToolProgress(ctx, call, () => _executeToolCall(call));
       }
       if (_gate) {
         result.cslRouted = !!_gate.cslRouted;
@@ -30329,6 +30388,7 @@ ${_operatorV6Block}` : "";
     if (_chatTodayLine) messages = [{ role: "system", content: _chatTodayLine }, ...messages];
     if (_conversationalChat) messages = withChatToneReminder(messages);
     const _llmSpan = startSpan("llm.chat", { mode, sessionId, promptLength: prompt.length });
+    _chatProgress(ctx, { stage: "thinking", label: "Thinking" });
     _selfContSystem = system + _selfContBlock + smallModelPromptSuffix(brainModel);
     const r = await ctx.llm.chat({
       system: _selfContSystem, messages, temperature: _llmTemp, maxTokens: _selfContFirstTokens(_llmMaxTokens),
@@ -30577,19 +30637,24 @@ ${_operatorV6Block}` : "";
           const _fuAc = new AbortController();
           const _fuTimeout = setTimeout(() => _fuAc.abort(), 120000);
           const _fuStart = Date.now();
+          // A streaming client gets the answer's tokens as the brain writes them.
+          const _fuStream = typeof ctx?.chatToken === "function";
+          _chatProgress(ctx, { stage: "writing", label: "Writing the answer" });
           const _fuRes = await fetch(`${brainUrl}/api/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               model: brainModel,
               messages: [{ role: "system", content: _followUpSystem }, ..._followUpMessages],
-              stream: false,
+              stream: _fuStream,
               think: false,
               options: { temperature: 0.4, num_predict: _chatMaxTokens }
             }),
             signal: _fuAc.signal
-          }).finally(() => clearTimeout(_fuTimeout));
-          const _fuJson = await _fuRes.json().catch(() => ({}));
+          }).finally(() => { if (!_fuStream) clearTimeout(_fuTimeout); });
+          const _fuJson = _fuStream && _fuRes.ok
+            ? await _readOllamaChatStream(_fuRes, ctx.chatToken).catch(() => ({})).finally(() => clearTimeout(_fuTimeout))
+            : await _fuRes.json().catch(() => ({}));
           const _fuElapsed = Date.now() - _fuStart;
           BRAIN.conscious.stats.requests++;
           BRAIN.conscious.stats.totalMs += _fuElapsed;
@@ -30851,6 +30916,20 @@ ${_operatorV6Block}` : "";
         finalReply = _g.text;
         _dtuRefsRemoved = _g.removed;
         ctx.log("chat", "Removed DTU references that were not retrieved", { sessionId, count: _g.removed.length });
+      }
+    } catch { /* guard optional */ }
+  }
+
+  // Figures with units must trace to a tool result or the user's message (lib/chat/numeric-trace.js).
+  let _untracedNumbers = [];
+  if (!_lockedReply && llmUsed && typeof finalReply === "string" && finalReply && _toolCallsExecuted.length) {
+    try {
+      const { guardNumericTrace: _guardNumericTrace } = await import("./lib/chat/numeric-trace.js");
+      const _nt = _guardNumericTrace(finalReply, _toolCallsExecuted, { prompt });
+      if (_nt.untraced.length) {
+        finalReply = _nt.text;
+        _untracedNumbers = _nt.untraced;
+        ctx.log("chat", "Flagged figures not traceable to a tool result", { sessionId, count: _nt.untraced.length });
       }
     } catch { /* guard optional */ }
   }
@@ -31131,6 +31210,7 @@ ${_operatorV6Block}` : "";
     ...(_answerTag || {}),
     ...(_selfContMeta ? { selfContinuation: _selfContMeta } : {}),
     ...(_dtuRefsRemoved.length ? { dtuRefsRemoved: _dtuRefsRemoved } : {}),
+    ...(_untracedNumbers.length ? { untracedNumbers: _untracedNumbers } : {}),
     ...(_imageTurn?.artifact ? { artifact: _imageTurn.artifact } : {}),
     ...(_turnArtifacts.length ? { artifacts: _turnArtifacts } : {}),
     ...(_aiUnavailable ? {
@@ -43850,6 +43930,21 @@ function _runNewsFeedWarm(_tick) {
     .catch((e) => { structuredLog("warn", "feed_cache_warm_tick", { error: String(e?.message || e) }); })
     .finally(() => { _newsWarmRunning = false; });
 }
+// Backfill DTU classification in small budgeted batches (existing DTUs without a current classification).
+registerHeartbeat("dtu-quality-backfill", {
+  frequency: 4,
+  scope: "global",
+  handler: async () => {
+    try {
+      if (_dtuQualityMode() !== "on") return { ok: true, skipped: "off" };
+      return { ok: true, ...(await getDtuQuality().cycle()) };
+    } catch (err) {
+      structuredLog("warn", "dtu_quality_backfill_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
+
 registerHeartbeat("news-feed-warm", {
   frequency: 5, // ~75 s at the 15 s heartbeat (same cadence as the old REALTIME_DATA slot)
   handler: ({ tickCount } = {}) => { _runNewsFeedWarm(Number(tickCount) || 0); },
@@ -44599,7 +44694,7 @@ async function governorTick(reason="heartbeat") {
           // The boot backfill can be skipped (idle gate) or stop early, and
           // nothing else re-runs it; resume while vectors are missing.
           if (embStatus?.available && embStatus.cached < embStatus.totalDTUs) startSemanticBackfill("resume");
-          if (!embStatus?.available) {
+          if (!embStatus?.available && !embeddingWarmupPending()) {
             structuredLog("warn", "embeddings_degraded", {
               reason: embStatus?.reason || "unknown",
               fallback: "keyword_extraction",
@@ -63276,6 +63371,14 @@ app.get("/api/admin/background-governor", requireRole("owner", "admin", "soverei
 app.post("/api/admin/background-governor/mode", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
   try { res.json({ ok: true, mode: setBgGovernorMode(req.body?.mode ?? null) }); }
   catch (e) { res.status(400).json({ ok: false, error: String(e?.message || e) }); }
+});
+
+app.get("/api/admin/dtu-quality", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try {
+    return res.json({ ok: true, totalDtus: STATE.dtus.size, ...getDtuQuality().metrics() });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 
 app.get("/api/admin/heartbeat-stats", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
