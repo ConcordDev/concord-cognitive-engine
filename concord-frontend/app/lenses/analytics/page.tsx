@@ -130,15 +130,14 @@ export default function AnalyticsPage() {
         </AnimatePresence>
 
         {active !== 'actions' && (
-          <button
-            type="button"
-            onClick={() => setActive('actions')}
-            title="Open the analyst bench (A)"
+          <a
+            href="/lenses/chat?context=analytics"
+            title="Ask the analyst — opens Chat with the Analytics context"
             className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
           >
             <Zap className="h-4 w-4" />
             Ask the analyst
-          </button>
+          </a>
         )}
       </div>
       <a href="#analytics-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to analytics content</a>

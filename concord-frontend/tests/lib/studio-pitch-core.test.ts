@@ -5,6 +5,7 @@ import {
   scaleMaskFor,
   pitchLatencySamples,
   processPitchSignal,
+  applyFormantShift,
   PITCH_PRESETS,
   type PitchSettings,
 } from '@/lib/daw/dsp/pitch/core';
@@ -56,6 +57,7 @@ function settings(over: Partial<PitchSettings> = {}): PitchSettings {
     maxHz: 1200,
     scaleMask: 0xfff,
     bypass: false,
+    formantSemitones: 0,
     ...over,
   };
 }
@@ -139,5 +141,76 @@ describe('Pitch Correct processor', () => {
     expect(PITCH_PRESETS.map((p) => p.name)).toEqual(['Rap vocal: hard tune', 'R&B vocal: natural tune']);
     const blob = JSON.stringify(PITCH_PRESETS).toLowerCase();
     expect(blob).not.toMatch(/auto-?tune|melodyne|flex pitch|elastic/);
+  });
+});
+
+describe('formant shift (Q58)', () => {
+  const F0 = 120;
+  // Synthetic vowel: harmonics of 120 Hz under a two-formant envelope
+  // (peaks at 500 Hz and 1500 Hz, roughly an /a/).
+  function vowel(n: number): Float32Array {
+    const out = new Float32Array(n);
+    for (let k = 1; k <= 33; k++) {
+      const f = F0 * k;
+      const amp = Math.exp(-(((f - 500) / 180) ** 2)) + 0.6 * Math.exp(-(((f - 1500) / 220) ** 2));
+      const w = (2 * Math.PI * f) / SR;
+      for (let i = 0; i < n; i++) out[i] += amp * Math.cos(w * i);
+    }
+    return out;
+  }
+
+  // Goertzel magnitude at one exact frequency over a steady segment.
+  function magAt(x: Float32Array, freq: number): number {
+    const w = (2 * Math.PI * freq) / SR;
+    const coeff = 2 * Math.cos(w);
+    let s1 = 0;
+    let s2 = 0;
+    for (let i = 0; i < x.length; i++) {
+      const s = x[i] + coeff * s1 - s2;
+      s2 = s1;
+      s1 = s;
+    }
+    return Math.sqrt(Math.max(0, s1 * s1 + s2 * s2 - coeff * s1 * s2));
+  }
+
+  it('zero shift returns an unchanged copy', () => {
+    const input = vowel(8192);
+    const out = applyFormantShift(input, SR, 0);
+    expect(out.length).toBe(input.length);
+    expect(Array.from(out)).toEqual(Array.from(input));
+  });
+
+  it('+12 semitones moves the envelope up an octave and keeps the pitch', () => {
+    const input = vowel(SR);
+    const segIn = input.subarray(16000, 32000);
+    // Before: the 500 Hz formant dominates — harmonic at 480 ≫ at 960.
+    expect(magAt(segIn, 480)).toBeGreaterThan(magAt(segIn, 960) * 3);
+
+    const out = applyFormantShift(input, SR, 12);
+    expect(out.length).toBe(input.length);
+    const seg = out.subarray(16000, 32000);
+    // After: the warped envelope peaks near 1000 Hz — 960 ≫ 480.
+    expect(magAt(seg, 960)).toBeGreaterThan(magAt(seg, 480) * 3);
+    // Pitch (harmonic spacing) is untouched.
+    const found = yinDetect(seg, SR, 60, 1400);
+    expect(cents(found.hz, F0)).toBeLessThan(10);
+  });
+
+  it('processPitchSignal applies the formant stage with length and latency unchanged', () => {
+    const input = vowel(SR);
+    const plain = processPitchSignal(input, settings({ flexCents: 5 }));
+    const shifted = processPitchSignal(input, settings({ flexCents: 5, formantSemitones: 12 }));
+    expect(shifted.output.length).toBe(plain.output.length);
+    expect(shifted.latency).toBe(plain.latency);
+    expect(shifted.output.every((v) => Number.isFinite(v))).toBe(true);
+    const seg = shifted.output.subarray(shifted.latency + 16000, shifted.latency + 32000);
+    expect(magAt(seg, 960)).toBeGreaterThan(magAt(seg, 480) * 3);
+  });
+
+  it('a bypassed device does not formant-shift on render', () => {
+    const input = vowel(16000);
+    const out = processPitchSignal(input, settings({ bypass: true, formantSemitones: 12 }));
+    const seg = out.output.subarray(out.latency + 4000, out.latency + 12000);
+    expect(magAt(seg, 480)).toBeGreaterThan(magAt(seg, 960) * 3);
   });
 });
