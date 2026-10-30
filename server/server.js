@@ -103,6 +103,7 @@ import cors from "cors";
 import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
+import { buildAnalyticsGroundingBlock, groundingUserId } from "./lib/lens-grounding.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
 import { chatContextPool, makeChatMayUse } from "./lib/chat/context-pool.js";
 import { chatProgress as _chatProgress, withToolProgress as _chatWithToolProgress, readOllamaChatStream as _readOllamaChatStream } from "./lib/chat/progress.js";
@@ -28340,6 +28341,23 @@ const _mentionsSelf = Array.from(_selfTokens).some(t => _pLow.includes(t));
     if (!sess_pre.crossDomainContext) sess_pre.crossDomainContext = {};
   }
 
+  // Analytics grounding (R1, Review 4 A19/A20): when this conversation is on
+  // the Analytics lens, compose the account facts from the surface's own
+  // stores and append them to the system prompt at both assembly paths
+  // below. This assembly never reads a client-supplied systemPrompt, so the
+  // grounding must be injected here — the seam where the prompt is built.
+  // Lens-gated and best-effort: any failure leaves the turn exactly as it
+  // was (the block itself carries the decline instruction when reads fail).
+  let _analyticsGrounding = "";
+  if ((currentLens || sess_pre.currentLens) === "analytics") {
+    try {
+      _analyticsGrounding = await buildAnalyticsGroundingBlock({
+        runMacro, ctx, STATE,
+        userId: groundingUserId(ctx),
+      });
+    } catch (_groundErr) { _analyticsGrounding = ""; }
+  }
+
   // Session-adaptive style vector (mutable)
   const styleSignal = input.styleSignal || null; // {kind:'like'|'dislike'} or {field,dir,amount}
   let styleVec = getSessionStyleVector(sessionId);
@@ -30377,7 +30395,7 @@ ${_operatorV6Block}` : "";
       voice_exemplars: _voiceExemplarsForPrompt(),
       moodColor: _chatMoodColor,
       actor: ctx?.actor || null,
-    }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : "") + _currentTurnAnchor, mode);
+    }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : "") + (_analyticsGrounding ? ("\n\n" + _analyticsGrounding) : "") + _currentTurnAnchor, mode);
     const _userContent = _computeGroundTruth
       ? `${_computeGroundTruth.groundTruthBlock}\n\n${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`
       : `${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`;
@@ -30475,7 +30493,7 @@ ${_operatorV6Block}` : "";
         styleHints: buildStyleHints(styleVec),
         voice_exemplars: _voiceExemplarsForPrompt(),
         moodColor: _chatMoodColor,
-      }) + _toolSystemPrompt + _lensHintSuffix + _currentTurnAnchor, mode);
+      }) + _toolSystemPrompt + _lensHintSuffix + (_analyticsGrounding ? ("\n\n" + _analyticsGrounding) : "") + _currentTurnAnchor, mode);
       _selfContSystem = _directSystem + _selfContBlock + smallModelPromptSuffix(brainModel);
       const _directMessages = [
         { role: "system", content: _selfContSystem },
@@ -58141,6 +58159,28 @@ function initChatSocketHandlers(io) {
               }
             } catch (_e) { /* context building is best-effort */ }
 
+            // Analytics grounding (R1, Review 4 A19/A20): on the Analytics
+            // lens, label the retrieved DTU material as conversation context
+            // (not account data) and append the grounded account facts,
+            // composed server-side from the surface's own stores — this
+            // streaming assembly builds its prompt here, so this is the seam.
+            // Lens-gated and best-effort, exactly like the context build above.
+            let _streamGrounding = '';
+            if (lens === 'analytics') {
+              try {
+                _streamGrounding = await buildAnalyticsGroundingBlock({
+                  runMacro, ctx: { actor: { userId: socket.data?.userId || null }, userId: socket.data?.userId || null },
+                  STATE, userId: socket.data?.userId || null,
+                });
+              } catch (_groundErr) { _streamGrounding = ''; }
+              if (_streamGrounding && _streamDtuContext) {
+                _streamDtuContext = _streamDtuContext.replace(
+                  'Relevant knowledge from your substrate:',
+                  'Relevant knowledge from your substrate (conversation context — retrieved material, NOT account data):',
+                );
+              }
+            }
+
             // Build system prompt for streaming
             const _streamConsciousParams = getConsciousParams({ exchange_count: (_streamSess.messages || []).length });
             const _streamStyleVec = getSessionStyleVector(sessionId);
@@ -58149,7 +58189,7 @@ function initChatSocketHandlers(io) {
               dtu_count: STATE.dtus?.size || 0,
               domain_count: Object.keys(STATE.domains || {}).length,
               lens: lens || "general",
-              context: _streamDtuContext + (_webContext ? `\n\nWeb search results (use to inform your answer, cite sources naturally):\n${_webContext}` : ""),
+              context: _streamDtuContext + (_webContext ? `\n\nWeb search results (use to inform your answer, cite sources naturally):\n${_webContext}` : "") + (_streamGrounding ? `\n\n${_streamGrounding}` : ""),
               conversation_history: (_streamSess.messages || []).slice(-20),
               personality_state: getPersonality(STATE),
               active_wants: _activeWantsForPrompt(),
