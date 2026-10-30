@@ -461,7 +461,10 @@ export default function registerSrsActions(registerLensAction) {
       const q = (deck.filterQuery || "").toLowerCase().trim();
       return all.filter((c) => {
         if (!q) return true;
-        if (q.startsWith("tag:")) return (c.tags || []).includes(q.slice(4));
+        // F5: the query arrives lowercased; stored tags keep their
+        // author's case. Compare case-insensitively or a tag whose
+        // case differs from the query's matches nothing at all.
+        if (q.startsWith("tag:")) { const want = q.slice(4).trim(); return (c.tags || []).some((t) => t.toLowerCase() === want); }
         if (q.startsWith("is:due")) return isDue(c);
         if (q.startsWith("is:new")) return c.state === "new";
         return (c.front || "").toLowerCase().includes(q) || (c.back || "").toLowerCase().includes(q);
