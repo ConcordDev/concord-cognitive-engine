@@ -80,7 +80,9 @@ test("every DTU-shaped table created in the codebase is registered (no silent dr
 });
 
 test("bridge infrastructure tables are exempt from the drift scan but never substrate", () => {
-  assert.deepEqual([...BRIDGE_INFRASTRUCTURE_TABLES], ["dtu_bridge_outbox"]);
+  // dtu_bridge_records joined with the wiring slice (the SQLite apply
+  // target's chain store) — deliberate growth, recorded in the change.
+  assert.deepEqual([...BRIDGE_INFRASTRUCTURE_TABLES], ["dtu_bridge_outbox", "dtu_bridge_records"]);
   for (const t of BRIDGE_INFRASTRUCTURE_TABLES) {
     assert.equal(isSubstrateTable(t), false);
     assert.ok(collectCreatedTables(SERVER_DIR).has(t), `${t} should actually be created by the bridge (exemption must not be phantom)`);
