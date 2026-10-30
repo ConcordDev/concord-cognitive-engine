@@ -86,3 +86,46 @@ export function substrateCounts(state, userId, opts = {}) {
   }
   return out;
 }
+
+/**
+ * #1715 S5 — accounting for the DERIVED layers (world model /
+ * swarm-extracted entities, personal agents). The determination is
+ * explicit: this is living runtime state over DTU provenance and is
+ * NOT migrated into the substrate. What converges is the accounting:
+ * counts come from this one function, each block names its source,
+ * and the DTU-provenance link is counted, not implied — an entity is
+ * "DTU-derived" exactly when it carries source DTU ids
+ * (entity.source.dtuIds, or the older extractedFrom/dtuIds shapes).
+ */
+export function derivedLayerCounts(state) {
+  const out = {
+    worldModel: {
+      source: "world-model-derived-layer",
+      entities: 0,
+      relations: 0,
+      entitiesWithDtuProvenance: 0,
+      entitiesNative: 0,
+      distinctSourceDtus: 0,
+    },
+    agents: { source: "agent-runtime-state", total: 0 },
+  };
+  const wm = state?.worldModel;
+  if (wm?.entities && typeof wm.entities.values === "function") {
+    const sourceDtus = new Set();
+    for (const e of wm.entities.values()) {
+      out.worldModel.entities++;
+      const ids = e?.source?.dtuIds || e?.dtuIds || (e?.extractedFrom ? [e.extractedFrom] : []);
+      if (Array.isArray(ids) && ids.length > 0) {
+        out.worldModel.entitiesWithDtuProvenance++;
+        for (const id of ids) sourceDtus.add(id);
+      }
+    }
+    out.worldModel.entitiesNative = out.worldModel.entities - out.worldModel.entitiesWithDtuProvenance;
+    out.worldModel.distinctSourceDtus = sourceDtus.size;
+    out.worldModel.relations = wm.relations?.size || 0;
+  }
+  if (state?.entities && typeof state.entities.size === "number") {
+    out.agents.total = state.entities.size;
+  }
+  return out;
+}

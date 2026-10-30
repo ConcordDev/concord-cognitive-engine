@@ -9,7 +9,7 @@
 
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { substrateCounts } from "../lib/substrate-counts.js";
+import { substrateCounts, derivedLayerCounts } from "../lib/substrate-counts.js";
 import { putNode, putEdge, putSchema } from "../lib/entity-substrate.js";
 import registerGraphActions from "../domains/graph.js";
 
@@ -99,5 +99,33 @@ describe("S4 substrate counts", () => {
     assert.equal(c.dtusTotal, 0);
     assert.equal(c.workbench.nodes, 0);
     assert.equal(c.index, null);
+  });
+
+  it("S5: derived layers count from the same source, provenance split honest", () => {
+    STATE.worldModel = {
+      entities: new Map([
+        ["w1", { id: "w1", name: "Extracted A", source: { dtuIds: ["d1", "d2"] } }],
+        ["w2", { id: "w2", name: "Extracted B", source: { dtuIds: ["d2"] } }],
+        ["w3", { id: "w3", name: "Native", source: { dtuIds: [] } }],
+        ["w4", { id: "w4", name: "Legacy shape", extractedFrom: "d9" }],
+      ]),
+      relations: new Map([["r1", {}], ["r2", {}]]),
+    };
+    STATE.entities = new Map([["a1", {}], ["a2", {}], ["a3", {}]]);
+    const d = derivedLayerCounts(STATE);
+    assert.equal(d.worldModel.source, "world-model-derived-layer");
+    assert.equal(d.worldModel.entities, 4);
+    assert.equal(d.worldModel.relations, 2);
+    assert.equal(d.worldModel.entitiesWithDtuProvenance, 3);
+    assert.equal(d.worldModel.entitiesNative, 1);
+    assert.equal(d.worldModel.distinctSourceDtus, 3); // d1, d2, d9
+    assert.equal(d.agents.source, "agent-runtime-state");
+    assert.equal(d.agents.total, 3);
+  });
+
+  it("S5: missing derived stores count as zeros, not an error", () => {
+    const d = derivedLayerCounts(STATE);
+    assert.equal(d.worldModel.entities, 0);
+    assert.equal(d.agents.total, 0);
   });
 });

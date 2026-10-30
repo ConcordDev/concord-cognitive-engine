@@ -46,7 +46,7 @@ import {
 } from "./lib/log-access.js";
 import { dtuSkipsAutoTag } from "./lib/dtu-auto-tag.js";
 import { relationEdges as dtuRelationEdges } from "./lib/dtu-relations.js";
-import { substrateCounts } from "./lib/substrate-counts.js";
+import { substrateCounts, derivedLayerCounts } from "./lib/substrate-counts.js";
 import { hasUsableBrainInput, needsInputError } from "./lib/brain-action-input.js";
 import { aggregateTopicCounts } from "./lib/trending-topics.js";
 import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-tags.js";
@@ -16987,7 +16987,14 @@ register("worldmodel", "status", (ctx, _input = {}) => {
     snapshots: ctx.state.worldModel.snapshots.length,
     stats: ctx.state.worldModel.stats,
     config: ctx.state.worldModel.config,
-    invariants: WORLD_MODEL_INVARIANTS
+    invariants: WORLD_MODEL_INVARIANTS,
+    // #1715 S5: single-sourced accounting. The fields above count
+    // the world-model derived layer (living state, NOT the
+    // substrate); `derived` names that and counts the DTU-
+    // provenance link, `substrate` carries the canonical store's
+    // own counts from the same counting source as graph.stats.
+    derived: derivedLayerCounts(ctx.state),
+    substrate: substrateCounts(ctx.state, null),
   };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
