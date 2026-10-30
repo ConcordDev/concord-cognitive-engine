@@ -6,7 +6,7 @@ import { listRecipes, runRecipe } from "../lib/chat/tool-recipes/index.js";
 const near = (a, b, tol = 0.002) => Math.abs(a - b) <= tol * Math.abs(b);
 
 test("the registry lists the starter recipes and matches by intent words", () => {
-  assert.deepEqual(listRecipes().map((r) => r.id).sort(), ["beam_sizing", "column_buckling", "material_compare", "pipe_flow", "unit_conversion", "wall_conduction"]);
+  assert.deepEqual(listRecipes().map((r) => r.id).sort(), ["beam_sizing", "column_buckling", "material_compare", "pipe_flow", "pressure_vessel", "reaction_balance", "unit_conversion", "wall_conduction"]);
   assert.equal(listRecipes("size a beam for a footbridge")[0].id, "beam_sizing");
   assert.equal(listRecipes("euler buckling of a strut")[0].id, "column_buckling");
   assert.deepEqual(listRecipes("zzzz nothing"), []);
@@ -19,7 +19,8 @@ test("footbridge beam, A36: 125 mm, deflection governs, all checks pass", () => 
   assert.equal(r.result.depthM, 0.125);
   assert.equal(r.result.governs, "deflection");
   assert.equal(r.passed, true);
-  assert.deepEqual(r.checks.map((c) => c.name), ["strength", "deflection", "hand_vs_FE"]);
+  assert.deepEqual(r.checks.slice(0, 3).map((c) => c.name), ["strength", "deflection", "hand_vs_FE"]);
+  assert.ok(r.checks.some((c) => c.name.startsWith("independent:")));
   assert.equal(r.receipt.units, "SI");
   assert.equal(r.receipt.inputs.widthM, 0.06);
 });
