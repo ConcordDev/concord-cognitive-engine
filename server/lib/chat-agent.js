@@ -105,6 +105,7 @@ const ECHOED_TOOL_RESULT_RE = /^\s*\[TOOL_RESULT:/;
 const TOOL_REQUIRED_PARAMS = {
   web_search:        ["query"],
   run_compute:       ["key", "input"],
+  dtu_search:        ["query"],
   list_recipes:      [],
   run_recipe:        ["recipe", "inputs"],
   conkay_design:     ["text"],
@@ -303,6 +304,8 @@ Available tools (with one working example each):
   Example: [TOOL_CALL: {"tool": "web_search", "params": {"query": "concord cognitive engine"}}]
 - run_compute: Run a math/physics/chemistry/quantum/engineering calculation. Params: {"key": "module.function", "input": {...}}. Physics/chemistry/engineering functions take a named-field object (e.g. physics.ohmsLaw -> {"voltage":12,"resistance":4}). Symbolic math (symbolic.differentiate / integrate / simplify / solve / expand / evaluate) takes {"expression": "...", "variable": "x"}.
   Example: [TOOL_CALL: {"tool": "run_compute", "params": {"key": "symbolic.integrate", "input": {"expression": "x^2", "variable": "x"}}}]
+- dtu_search: Search the knowledge base (DTUs) the user can see. Read-only. Use it BEFORE citing any DTU; only ids and titles it returns may be cited. Params: {"query": "search terms", "limit": 8}
+  Example: [TOOL_CALL: {"tool": "dtu_search", "params": {"query": "heat pump efficiency"}}]
 - list_recipes: List tested multi-step recipes (beam sizing, column buckling, unit conversion, material comparison, wall conduction, pipe flow) and their inputs. Check this FIRST for an engineering calculation. Params: {"query": "what you want to do"}
   Example: [TOOL_CALL: {"tool": "list_recipes", "params": {"query": "size a beam"}}]
 - run_recipe: Run a recipe in SI; returns the result, pass/fail checks and a receipt. Quote only numbers from its result. Params: {"recipe": "beam_sizing", "inputs": {"spanM": 4, "loadN": 10000, "widthM": "60 mm", "material": "steel-a36", "safetyFactor": 2}}
@@ -1212,6 +1215,10 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           ...(artifacts.length ? { artifacts } : {}),
         };
       }
+      case "dtu_search": {
+        const { dispatchChatDtuSearch } = await import("./chat-tool-surface.js");
+        return dispatchChatDtuSearch(runMacro, ctx, call.params);
+      }
       case "list_recipes":
       case "run_recipe": {
         const { dispatchChatRecipe } = await import("./chat-tool-surface.js");
@@ -1263,6 +1270,16 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           const { solveBeam } = await import("./conkay/chat/structures.js");
           const brief = parseChatBrief(text);
           const ir = brief.ok && brief.domain === "beam" ? brief.ir : null;
+          // "Size the beam." with no span, load or section: ask, do not hand back the legacy 200 mm I-beam as if it were a design.
+          if (ir && !ir.spanM && !ir.loads?.length && !ir.depthM && !ir.widthM) {
+            const missing = ["span (m)", "load and where it acts", "material", "width (mm)"];
+            return {
+              tool: call.tool, ok: false, key: "conkay_design.needs-inputs", input: { text },
+              error: `Not enough to size a beam: need ${missing.join(", ")}.`,
+              result: { kind: "needs-inputs", missing,
+                instruction: "Do not invent a beam. Ask the user for the missing inputs listed here, then call conkay_design again with the full brief." },
+            };
+          }
           if (ir && ir.support === "simply-supported" && ir.spanM && ir.widthM && !ir.depthM && ir.material && ir.loads?.length) {
             const beam = solveBeam(ir);
             if (beam.ok && beam.section) {

@@ -526,10 +526,18 @@ export function PjCollabPanel({ projectId, onChange, onJumpToProject, onOpenTask
       </section>
 
       {cmdOpen && (
+        /* F22: these overlays are containers, not buttons. They used
+           to carry a keydown handler that reinterpreted Space/Enter
+           as a click — a Space typed in the palette's own input
+           bubbled up, was preventDefaulted, and the synthetic click
+           closed the palette, making phrase search impossible
+           (shortcut-keystroke-eating). Mouse click-to-close stays;
+           keyboards close with Esc; keys typed in the input are the
+           input's. */
         <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/60 pt-24"
-          onClick={() => setCmdOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          onClick={() => setCmdOpen(false)}>
           <div className="w-full max-w-lg bg-lattice-void border border-lattice-border rounded-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-2 px-3 py-2.5 border-b border-lattice-border">
               <Command className="w-4 h-4 text-violet-400" />
               <input ref={cmdInputRef} value={cmdQuery} onChange={(e) => setCmdQuery(e.target.value)}

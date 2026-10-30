@@ -18,6 +18,8 @@
  */
 
 import { Router } from "express";
+import * as fsp from "node:fs/promises";
+import path from "node:path";
 import { asyncHandler } from "../lib/async-handler.js";
 import { ValidationError, NotFoundError } from "../lib/errors.js";
 import { validateSafeFetchUrl } from "../lib/ssrf-guard.js";
@@ -53,6 +55,19 @@ import {
   sendRangedBuffer,
   viewerMayStreamFull,
 } from "../lib/media-preview-window.js";
+
+// Content types for derived thumbnail files served by GET /:id/thumbnail,
+// keyed by file extension (the original-artifact case takes its type from
+// the artifact descriptor instead).
+const THUMBNAIL_CONTENT_TYPES = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+  ".json": "application/json",
+  ".txt": "text/plain; charset=utf-8",
+};
 
 // A content-classifier / CSAM provider is configured → run the full async screen.
 function _mediaProviderConfigured() {
@@ -504,7 +519,19 @@ export default function createMediaRouter({ STATE }) {
   // ── Thumbnail ─────────────────────────────────────────────────────────
 
   /**
-   * GET /:id/thumbnail — Get thumbnail for a media DTU.
+   * GET /:id/thumbnail — Serve the media DTU's thumbnail bytes.
+   *
+   * The thumbnail is whatever artifact-store actually produced when the
+   * media bytes were stored: the original file for images, an ffmpeg
+   * poster frame for video, a waveform/preview file where one was
+   * honestly derivable. That path lives on the server-generated artifact
+   * descriptor (storageRef.artifactRef.thumbnail) and is the only path
+   * this endpoint will read — the DTU's `thumbnail` field is user-settable
+   * via the update whitelist, so it is treated as a display hint only and
+   * never as a filesystem path. When no real thumbnail exists (legacy
+   * metadata-only DTUs, media whose bytes never landed, types with no
+   * honest derivative) the answer is a named 404, not a JSON note
+   * describing bytes that were never served.
    */
   router.get("/:id/thumbnail", asyncHandler(async (req, res) => {
     const viewerId = req.user?.id || null;
@@ -516,17 +543,34 @@ export default function createMediaRouter({ STATE }) {
 
     const mediaDTU = gated.mediaDTU;
     if (!mediaDTU.thumbnail) {
-      // Generate on the fly
+      // Adopt the real artifact thumbnail onto the DTU, if one exists, so
+      // the listing field names something true. Ignored when none exists.
       generateThumbnail(STATE, mediaDTU.id);
     }
 
-    // In production, serve the actual image file
-    res.json({
-      ok: true,
-      mediaId: mediaDTU.id,
-      thumbnail: mediaDTU.thumbnail,
-      note: "In production, this returns an actual image with proper Content-Type",
-    });
+    const artifactRef = mediaDTU.storageRef?.artifactRef;
+    const thumbPath = artifactRef?.thumbnail || null;
+    if (thumbPath) {
+      // For images artifact-store sets the "thumbnail" to the full original. Serving that whole file
+      // would hand a non-licensee what /stream withholds, so the licence gate applies to it too.
+      // Derived poster/waveform thumbnails (a different file) stay servable.
+      if (thumbPath === artifactRef.diskPath
+        && pricedCreateOrCommercial(mediaDTU)
+        && !viewerMayStreamFull(STATE, mediaDTU, viewerId)) {
+        return res.status(403).json({ ok: false, error: "license_required" });
+      }
+      try {
+        const buffer = await fsp.readFile(thumbPath);
+        const contentType = thumbPath === artifactRef.diskPath
+          ? (artifactRef.type || mediaDTU.mimeType || "application/octet-stream")
+          : (THUMBNAIL_CONTENT_TYPES[path.extname(thumbPath).toLowerCase()] || "application/octet-stream");
+        return sendRangedBuffer(res, buffer, contentType, req.headers.range, { privateCache: true });
+      } catch {
+        // The descriptor names a file that is gone — fall through to the
+        // honest 404 rather than serving a note about it.
+      }
+    }
+    return res.status(404).json({ ok: false, error: "no_thumbnail_available" });
   }));
 
   // ── HLS Manifest ─────────────────────────────────────────────────────

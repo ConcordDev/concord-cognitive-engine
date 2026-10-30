@@ -15,6 +15,8 @@
 // count crosses 1,000 (see the PR note on inLatticeReality). The agent
 // loop already calls expert_mode.web_search. Chat does the same here.
 
+import { privateDtuHiddenFrom, viewerIdFromCtx } from "./dtu-read-access.js";
+
 // Names chat.respond actually writes into _toolSystemPrompt. operatorOnly
 // tools are appended only when isOperator(ctx) is true.
 export const CHAT_RESPOND_TOOLS = Object.freeze([
@@ -31,6 +33,16 @@ export const CHAT_RESPOND_TOOLS = Object.freeze([
     params: {
       key: { type: "string", required: true, description: "module.function, e.g. chemistry.balanceReaction" },
       input: { type: "object", required: false, description: "Function arguments" },
+    },
+    requiresOptIn: false,
+    operatorOnly: false,
+  },
+  {
+    name: "dtu_search",
+    description: "Search the knowledge base (DTUs) the user can see. Read-only; the only source of DTU ids and titles you may cite.",
+    params: {
+      query: { type: "string", required: true, description: "Search terms" },
+      limit: { type: "number", required: false, description: "Max results (default 8, up to 20)" },
     },
     requiresOptIn: false,
     operatorOnly: false,
@@ -180,6 +192,7 @@ export const CHAT_RESPOND_TOOLS = Object.freeze([
 export const AGENT_LOOP_TOOLS = Object.freeze([
   { name: "web_search", description: "Live web search via expert_mode.web_search.", params: { query: { type: "string", required: true } } },
   { name: "run_compute", description: "Deterministic compute module.function.", params: { key: { type: "string", required: true }, input: { type: "object", required: true } } },
+  { name: "dtu_search", description: "Search the DTUs the user can see (read-only). Only ids returned here may be cited.", params: { query: { type: "string", required: true }, limit: { type: "number", required: false } } },
   { name: "list_recipes", description: "List tested multi-step recipes with their inputs.", params: { query: { type: "string", required: false } } },
   { name: "run_recipe", description: "Run a recipe deterministically in SI: result, checks, receipt.", params: { recipe: { type: "string", required: true }, inputs: { type: "object", required: true } } },
   { name: "conkay_design", description: "ConKay sizing check: hand calc + FEA + safety-factor pass/fail from a plain-language spec.", params: { text: { type: "string", required: true } } },
@@ -330,6 +343,50 @@ export async function dispatchChatWebSearch(runMacro, ctx, params = {}) {
     query,
     source: "expert_mode.web_search",
     result: text.slice(0, MAX_TOOL_RESULT_LEN),
+  };
+}
+
+/**
+ * chat dtu_search. Wraps the dtu.search macro, which applies the same
+ * per-viewer visibility as GET /api/dtus (private/user-scoped DTUs are
+ * owner-only). Each hit is checked again against the by-id read gate, so a
+ * private DTU of someone else cannot reach the model even if the macro's
+ * filter changes. Returns a short projection, never full content.
+ */
+export async function dispatchChatDtuSearch(runMacro, ctx, params = {}) {
+  const query = String(params.query || params.q || params.text || "").trim().slice(0, 300);
+  if (!query) return { tool: "dtu_search", ok: false, error: "query required" };
+  const limit = Math.min(20, Math.max(1, Number(params.limit) || 8));
+  const viewer = viewerIdFromCtx(ctx);
+  let r;
+  try {
+    r = await runMacro("dtu", "search", { q: query, limit: limit * 3 }, ctx);
+  } catch (e) {
+    return { tool: "dtu_search", ok: false, error: String(e?.message || e) };
+  }
+  if (!r?.ok) return { tool: "dtu_search", ok: false, error: r?.error || r?.reason || "dtu_search failed" };
+  const rows = Array.isArray(r.dtus) ? r.dtus : [];
+  const dtus = rows
+    .filter((d) => d && typeof d.id === "string" && !privateDtuHiddenFrom(d, viewer))
+    .slice(0, limit)
+    .map((d) => ({
+      id: d.id,
+      title: String(d.title || "").replace(/\s+/g, " ").trim().slice(0, 160),
+      snippet: String(d.cretiHuman || d.human?.summary || d.summary || (typeof d.creti === "string" ? d.creti : "") || d.content || "")
+        .replace(/\s+/g, " ").trim().slice(0, 240),
+      ...(Array.isArray(d.tags) && d.tags.length ? { tags: d.tags.slice(0, 6).map(String) } : {}),
+    }));
+  // An id-shaped query ("DTU-48213") that no hit carries is a miss, even when fuzzy text matches came back.
+  const idTokens = [...new Set(query.match(/\bDTU[-_ ]?[A-Za-z0-9]*\d[A-Za-z0-9]*\b/gi) || [])];
+  const norm = (x) => String(x).toLowerCase().replace(/[-_ ]/g, "");
+  const missingIds = idTokens.filter((tok) => !dtus.some((d) => norm(d.id) === norm(tok)));
+  const note = missingIds.length
+    ? `No DTU has the id ${missingIds.join(", ")}. Say that plainly; do not describe or cite any of the other results as that DTU.`
+    : dtus.length ? "Cite only the ids and titles listed here." : "No DTU matched. Say so; do not invent DTU titles or ids.";
+  return {
+    tool: "dtu_search", ok: true, query, total: dtus.length, dtus,
+    ...(missingIds.length ? { exactIdMatch: false, missingIds } : {}),
+    note,
   };
 }
 

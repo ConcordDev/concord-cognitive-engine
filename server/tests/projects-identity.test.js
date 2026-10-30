@@ -30,7 +30,9 @@ const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
 
 function fixture(ctx = ctxA) {
   const p = call("project-create", ctx, { name: "PR4 Rename Test", key: "PRN" }).result.project;
-  const member = call("member-add", ctx, { projectId: p.id, name: "Ada" }).result.member;
+  // S4: assignees are accounts; the fixture assigns to the owner
+  // (self-assignment — the member-add-by-name world is gone).
+  const member = { id: ctx.userId };
   const sprint = call("sprint-create", ctx, { projectId: p.id, name: "Sprint 1" }).result.sprint;
   const parent = call("task-create", ctx, {
     projectId: p.id, title: "Parent", assigneeId: member.id, sprintId: sprint.id,
@@ -84,10 +86,10 @@ describe("projects identity — project-duplicate (F5)", () => {
     assert.ok(cParent.ref.startsWith(`${copy.key}-`), "refs re-sequenced under the new key");
     assert.notEqual(cParent.id, parent.id);
     assert.equal(cChild.parentId, cParent.id, "hierarchy points at the copied parent");
-    assert.notEqual(cParent.assigneeId, member.id, "assignee is the copied member");
+    assert.equal(cParent.assigneeId, member.id, "the owner's assignment survives the copy (owner is a member of both)");
     const members = call("member-list", ctxA, { projectId: copy.id }).result.members;
-    assert.deepEqual(members.map((m) => m.id), [cParent.assigneeId]);
-    assert.equal(members[0].name, "Ada");
+    assert.deepEqual(members.map((m) => m.id), [member.id], "S4: membership is not copied — the copy starts owner-only");
+    assert.equal(members[0].level, "owner");
     const sprints = call("sprint-list", ctxA, { projectId: copy.id }).result.sprints;
     assert.equal(sprints.length, 1);
     assert.equal(cParent.sprintId, sprints[0].id, "sprint link remapped");
@@ -98,6 +100,22 @@ describe("projects identity — project-duplicate (F5)", () => {
     assert.equal(detail.result.relations[0].task.id, cChild.id);
     assert.equal(detail.result.comments.length, 0, "history is not copied — the copy starts clean");
     assert.equal(detail.result.activity.length, 0);
+  });
+
+  it("refuses an explicitly taken key, naming the holder (A3 remainder)", () => {
+    const { p } = fixture();
+    call("project-create", ctxA, { name: "Holder Project", key: "HLD" });
+    const refused = call("project-duplicate", ctxA, { id: p.id, name: "PR4 Rename Test", key: "HLD" });
+    assert.equal(refused.ok, false);
+    assert.equal(refused.code, "duplicate_key");
+    assert.match(refused.error, /HLD/);
+    assert.match(refused.error, /Holder Project/);
+    assert.ok(refused.suggestion && refused.suggestion !== "HLD", "a next free key is suggested");
+    const keys = call("project-list", ctxA, {}).result.projects.map((x) => x.key);
+    assert.equal(keys.filter((k) => k === "HLD").length, 1, "still exactly one HLD project");
+    const okDup = call("project-duplicate", ctxA, { id: p.id, name: "PR4 Rename Test", key: "PRN2" });
+    assert.equal(okDup.ok, true);
+    assert.equal(okDup.result.project.key, "PRN2", "a free explicit key is honoured");
   });
 
   it("honours an explicit name and key; duplicating an archived project yields an active copy", () => {
