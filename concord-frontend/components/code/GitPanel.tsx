@@ -4,13 +4,20 @@ import { useEffect, useState } from 'react';
 import { GitBranch, Loader2, GitCommit, GitMerge, Check, Plus, Archive, Undo2, FileDiff, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { QuietSuccessEdge, ShipItLine, isShipItCommit, DELIGHT_CSS } from './delight';
 
 interface GitStatus { branch: string; branches: string[]; modified: string[]; staged: string[]; head: string | null; clean: boolean }
 interface GitCommitRow { id: string; number: string; message: string; branch: string; committedAt: string; paths: string[] }
 interface DiffHunk { type: 'context' | 'add' | 'del'; text: string; oldLine?: number; newLine?: number }
 interface StashRow { id: string; message: string; branch: string; createdAt: string; fileCount: number }
 
-export function GitPanel({ projectId, onChanged }: { projectId: string | null; onChanged?: () => void }) {
+export function GitPanel({ projectId, onChanged, onDiscarded }: {
+  projectId: string | null;
+  onChanged?: () => void;
+  /** S10: after a discard, the caller reconciles the editor tab for
+   *  this path from the store (the revert already landed there). */
+  onDiscarded?: (path: string) => void;
+}) {
   const [status, setStatus] = useState<GitStatus | null>(null);
   const [log, setLog] = useState<GitCommitRow[]>([]);
   const [stashes, setStashes] = useState<StashRow[]>([]);
@@ -19,6 +26,10 @@ export function GitPanel({ projectId, onChanged }: { projectId: string | null; o
   const [branchDraft, setBranchDraft] = useState('');
   const [diff, setDiff] = useState<{ path: string; hunks: DiffHunk[] } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // S19 (D2): a confirmed commit flashes the panel edge once and the
+  // new LOG entry settles in (M3) — tracked by the commit's id.
+  const [commitFlash, setCommitFlash] = useState(0);
+  const [settledCommitId, setSettledCommitId] = useState<string | null>(null);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable closure; only projectId should retrigger
   useEffect(() => { if (projectId) refresh(); else { setStatus(null); setLog([]); setStashes([]); } }, [projectId]);
@@ -50,15 +61,30 @@ export function GitPanel({ projectId, onChanged }: { projectId: string | null; o
 
   const stage = async (path?: string) => { await run('git-stage', path ? { paths: [path] } : {}); await refresh(); };
   const unstage = async (path?: string) => { await run('git-unstage', path ? { paths: [path] } : {}); await refresh(); };
+  // S10 (F10): the old discard gated on native confirm() — in the
+  // reviewed surface the dialog never resolves, so the click silently
+  // did nothing while the change stayed staged for a future commit.
+  // Confirmation is the row's in-UI arm/confirm now (FileRow); this
+  // handler just executes, reports, and reconciles the editor.
   const discard = async (path: string) => {
-    if (!confirm(`Discard all working changes to ${path}?`)) return;
-    await run('git-discard', { path }); await refresh(); onChanged?.();
+    const r = await run('git-discard', { path });
+    if (r) {
+      setNotice(`Discarded changes to ${path}${r.snapshotId ? ' — a snapshot is kept in the stash list below if you need it back' : ''}.`);
+      onDiscarded?.(path);
+    }
+    await refresh(); onChanged?.();
   };
   async function commit() {
     if (!message.trim()) return;
     setNotice(null);
     const r = await run('git-commit', { message: message.trim() });
-    if (r) { setMessage(''); await refresh(); onChanged?.(); }
+    if (r) {
+      setMessage('');
+      setCommitFlash((n) => n + 1);
+      const newId = (r.commit as { id?: string } | undefined)?.id;
+      if (newId) setSettledCommitId(newId);
+      await refresh(); onChanged?.();
+    }
   }
   async function createBranch() {
     if (!branchDraft.trim()) return;
@@ -89,7 +115,9 @@ export function GitPanel({ projectId, onChanged }: { projectId: string | null; o
   if (!projectId) return <div className="p-3 text-xs text-gray-400 italic">Open a project to use source control.</div>;
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden relative">
+      <style>{DELIGHT_CSS}</style>
+      <QuietSuccessEdge flashKey={commitFlash} />
       <div className="px-2 py-1.5 border-b border-white/10 flex items-center gap-2">
         <GitBranch className="w-3.5 h-3.5 text-blue-400" />
         <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Source control</span>
@@ -191,13 +219,15 @@ export function GitPanel({ projectId, onChanged }: { projectId: string | null; o
             {log.length > 0 && (
               <Section title="Log" count={log.length}>
                 {log.slice(0, 20).map((c) => (
-                  <div key={c.id} className="px-3 py-1.5 hover:bg-white/[0.03]">
+                  <div key={c.id} className={`px-3 py-1.5 hover:bg-white/[0.03] ${c.id === settledCommitId ? 'concord-settle' : ''}`}
+                    style={c.id === settledCommitId ? { animation: 'concord-settle 280ms ease-out' } : undefined}>
                     <div className="flex items-center gap-2">
                       <GitCommit className="w-3 h-3 text-gray-400" />
                       <span className="font-mono text-[10px] text-gray-400">{c.id.slice(0, 8)}</span>
                       <span className="text-xs text-white flex-1 truncate">{c.message}</span>
                     </div>
                     <div className="ml-5 text-[10px] text-gray-400">{c.paths.length} files · {c.committedAt.slice(0, 16).replace('T', ' ')}</div>
+                    {isShipItCommit(c.message) && <ShipItLine />}
                   </div>
                 ))}
               </Section>
@@ -250,6 +280,13 @@ function FileRow({
   path: string; accent: 'emerald' | 'amber'; onDiff: () => void;
   onPrimary: () => void; primaryLabel: string; primaryTitle: string; onDiscard?: () => void;
 }) {
+  // In-UI arm/confirm (S10): first click arms, second click discards.
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const t = setTimeout(() => setArmed(false), 4000);
+    return () => clearTimeout(t);
+  }, [armed]);
   return (
     <div className="px-3 py-1 flex items-center gap-2 text-xs hover:bg-white/[0.03] group">
       <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', accent === 'emerald' ? 'bg-emerald-400' : 'bg-amber-400')} />
@@ -257,9 +294,15 @@ function FileRow({
         {path}
       </button>
       {onDiscard && (
-        <button onClick={onDiscard} title="Discard changes" className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-300">
-          <Undo2 className="w-3 h-3" />
-        </button>
+        armed ? (
+          <button onClick={() => { setArmed(false); onDiscard(); }} title="Confirm discard" className="px-1 text-[11px] font-semibold text-rose-300 hover:text-rose-200">
+            Discard?
+          </button>
+        ) : (
+          <button onClick={() => setArmed(true)} title="Discard changes" className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-300">
+            <Undo2 className="w-3 h-3" />
+          </button>
+        )
       )}
       <button onClick={onPrimary} title={primaryTitle}
         className="opacity-0 group-hover:opacity-100 px-1 text-[11px] text-gray-300 hover:text-white">{primaryLabel}</button>

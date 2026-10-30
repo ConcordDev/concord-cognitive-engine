@@ -64,7 +64,7 @@ export function runSentence(facts: RunFacts): string | null {
   if (result.supported === false) {
     const lang = String(facts.language || 'this language').trim();
     const reason = String(result.stderr || '').trim();
-    return `${name}: the sandbox does not run ${lang}.${reason ? ` ${reason}` : ''}`;
+    return `${name}: Concord does not run ${lang} here.${reason ? ` ${reason}` : ''}`;
   }
 
   const exit = Number.isFinite(result.exitCode) ? Number(result.exitCode) : null;
@@ -90,7 +90,7 @@ export function runBody(facts: RunFacts): string {
   const result = facts.result;
   if (!result) return '';
   if (result.supported === false) {
-    lines.push(`The sandbox does not run ${facts.language}. No code was executed.`);
+    lines.push(`Concord does not run ${facts.language} here. No code was executed.`);
     lines.push('Nothing was published by saving this.');
     return lines.join('\n');
   }
@@ -107,7 +107,7 @@ export function runBody(facts: RunFacts): string {
   if (Number.isFinite(result.exitCode)) {
     lines.push(`exit code: ${Number(result.exitCode)}`);
   }
-  lines.push('Every figure here came from the Code sandbox in Concord. Nothing was published by saving this.');
+  lines.push('Every figure here came from the run in Concord. Nothing was published by saving this.');
   return lines.join('\n');
 }
 

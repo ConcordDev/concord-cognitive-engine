@@ -8,7 +8,7 @@
  *    rename.
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Search, Loader2, Replace, CaseSensitive, Regex, WholeWord, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -16,9 +16,27 @@ import { cn } from '@/lib/utils';
 interface Hit { file: string; line: number; column: number; preview: string }
 interface Ref { path: string; line: number; snippet: string }
 
+const TOGGLE_LABELS = {
+  caseSensitive: 'Match case',
+  wholeWord: 'Whole word',
+  regex: 'Use regular expression',
+} as const;
+
 export function SearchPanel({
-  projectId, onOpen,
-}: { projectId: string | null; onOpen: (path: string, line: number) => void }) {
+  projectId, onOpen, onReplaced, active,
+}: {
+  projectId: string | null;
+  /** S17 (F17): the panel now stays mounted (hidden) across nav
+   *  switches so its query survives; `active` tells it when it becomes
+   *  visible again, and a present-but-unrun query runs on activation. */
+  active?: boolean;
+  onOpen: (path: string, line: number) => void;
+  /** S6 (F5): after a successful project replace, the changed paths —
+   *  the caller reconciles any open editor tabs from the server store,
+   *  because the replace writes there directly and a stale tab buffer
+   *  would otherwise hide (and later overwrite) the change. */
+  onReplaced?: (paths: string[]) => void;
+}) {
   const [mode, setMode] = useState<'text' | 'refs'>('text');
   const [q, setQ] = useState('');
   const [replacement, setReplacement] = useState('');
@@ -28,6 +46,12 @@ export function SearchPanel({
   const [refs, setRefs] = useState<Ref[]>([]);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [noticeKind, setNoticeKind] = useState<'ok' | 'error'>('ok');
+  // S17: the query+options the current results actually answer. An
+  // empty result list may only say "No matches." when it answers the
+  // CURRENT query — before that it must say the search has not run.
+  const [searchedFor, setSearchedFor] = useState('');
+  const runKey = () => `${mode}:${q}:${opts.caseSensitive}:${opts.wholeWord}:${opts.regex}`;
 
   async function runSearch() {
     if (!projectId || q.trim().length < 1) return;
@@ -35,6 +59,7 @@ export function SearchPanel({
     try {
       const r = await lensRun({ domain: 'code', action: 'search-project', input: { projectId, query: q, ...opts } });
       setHits((r.data?.result?.hits || []) as Hit[]);
+      setSearchedFor(runKey());
     } catch (e) { console.error('[Search] failed', e); }
     finally { setLoading(false); }
   }
@@ -44,10 +69,27 @@ export function SearchPanel({
     setLoading(true); setNotice(null);
     try {
       const r = await lensRun({ domain: 'code', action: 'replace-project', input: { projectId, query: q, replacement, ...opts } });
+      if (r.data?.ok === false) {
+        setNoticeKind('error');
+        setNotice(`Replace failed: ${r.data?.error || 'the server refused'}. Nothing was changed.`);
+        return;
+      }
       const res = r.data?.result;
-      setNotice(`Replaced ${res?.totalReplacements || 0} occurrence(s) across ${res?.filesChanged || 0} file(s).`);
+      const changedPaths = Array.isArray(res?.changed) ? (res.changed as Array<{ path: string }>).map(c => c.path) : [];
+      if (changedPaths.length > 0) onReplaced?.(changedPaths);
+      // Regenerate results BEFORE setting the success notice: runSearch
+      // clears the notice on entry, so a notice set first is erased
+      // before it ever renders (the count this slice exists to report
+      // never appeared — caught by code-replace-all in the recipe env,
+      // 2026-10-29; the same ordering on main predates this rework).
       await runSearch();
-    } catch (e) { console.error('[Replace] failed', e); }
+      setNoticeKind('ok');
+      setNotice(`Replaced ${res?.totalReplacements || 0} occurrence(s) across ${res?.filesChanged || 0} file(s) — saved.`);
+    } catch (e) {
+      console.error('[Replace] failed', e);
+      setNoticeKind('error');
+      setNotice('Replace failed: the request did not complete. Nothing was changed.');
+    }
     finally { setLoading(false); }
   }
 
@@ -56,8 +98,20 @@ export function SearchPanel({
     setLoading(true); setNotice(null);
     try {
       const r = await lensRun({ domain: 'code', action: 'find-references', input: { projectId, symbol: q.trim() } });
+      if (r.data?.ok === false) {
+        // S7 (F7): a failed reference search is not "No references."
+        setNoticeKind('error');
+        setNotice(`Reference search failed: ${r.data?.error || 'unavailable'}`);
+        setRefs([]);
+        return;
+      }
       setRefs((r.data?.result?.references || []) as Ref[]);
-    } catch (e) { console.error('[Refs] failed', e); }
+      setSearchedFor(runKey());
+    } catch (e) {
+      console.error('[Refs] failed', e);
+      setNoticeKind('error');
+      setNotice('Reference search failed: the request did not complete.');
+    }
     finally { setLoading(false); }
   }
 
@@ -66,14 +120,31 @@ export function SearchPanel({
     setLoading(true); setNotice(null);
     try {
       const r = await lensRun({ domain: 'code', action: 'rename-symbol', input: { projectId, from: q.trim(), to: replacement.trim() } });
-      if (r.data?.ok === false) { setNotice(r.data?.error || 'Rename failed.'); return; }
+      if (r.data?.ok === false) { setNoticeKind('error'); setNotice(r.data?.error || 'Rename failed.'); return; }
       const res = r.data?.result;
-      setNotice(`Renamed ${res?.totalOccurrences || 0} occurrence(s) in ${res?.filesChanged || 0} file(s).`);
+      // Same ordering rule as runReplace: runRefs clears the notice on
+      // entry, so the confirmation is set after it returns.
       await runRefs();
+      setNoticeKind('ok');
+      setNotice(`Renamed ${res?.totalOccurrences || 0} occurrence(s) in ${res?.filesChanged || 0} file(s).`);
     } catch (e) { console.error('[Rename] failed', e); }
     finally { setLoading(false); }
   }
 
+  // S17: becoming visible with a query that has not been run (or whose
+  // options changed while hidden) runs it — no dead "No matches." wait
+  // for a Find click that should never have been necessary.
+  const wasActive = useRef(false);
+  useEffect(() => {
+    const becameActive = !!active && !wasActive.current;
+    wasActive.current = !!active;
+    if (!becameActive || !projectId || q.trim().length < 1) return;
+    if (searchedFor === runKey()) return;
+    void (mode === 'text' ? runSearch() : runRefs());
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- activation edge only
+  }, [active]);
+
+  // After every hook: returning earlier changed the hook count when a project opened or closed.
   if (!projectId) return <div className="p-3 text-xs text-gray-400 italic">Open a project to search.</div>;
 
   return (
@@ -118,6 +189,7 @@ export function SearchPanel({
           <div className="flex items-center gap-1 pl-5">
             {([['caseSensitive', CaseSensitive], ['wholeWord', WholeWord], ['regex', Regex]] as const).map(([k, Icon]) => (
               <button key={k} type="button" onClick={() => setOpts({ ...opts, [k]: !opts[k] })}
+                title={TOGGLE_LABELS[k]} aria-label={TOGGLE_LABELS[k]} aria-pressed={opts[k]}
                 className={cn('p-1 rounded border', opts[k] ? 'border-blue-500 bg-blue-500/15 text-blue-300' : 'border-white/10 text-gray-400 hover:text-white')}>
                 <Icon className="w-3 h-3" />
               </button>
@@ -130,14 +202,14 @@ export function SearchPanel({
         )}
       </div>
 
-      {notice && <div className="px-3 py-1.5 text-[11px] text-emerald-300 bg-emerald-500/10 border-b border-white/5">{notice}</div>}
+      {notice && <div className={cn('px-3 py-1.5 text-[11px] border-b border-white/5', noticeKind === 'error' ? 'text-rose-300 bg-rose-500/10' : 'text-emerald-300 bg-emerald-500/10')}>{notice}</div>}
 
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="p-3 text-xs text-gray-400"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Working…</div>
         ) : mode === 'text' ? (
           hits.length === 0 ? (
-            <div className="p-3 text-xs text-gray-400 italic">{q ? 'No matches.' : 'Type a query and press Enter.'}</div>
+            <div className="p-3 text-xs text-gray-400 italic">{!q ? 'Type a query and press Enter.' : searchedFor === runKey() ? 'No matches.' : 'Press Enter or Find to search.'}</div>
           ) : (
             <ul className="divide-y divide-white/5">
               {hits.map((h, i) => (
@@ -150,7 +222,7 @@ export function SearchPanel({
           )
         ) : (
           refs.length === 0 ? (
-            <div className="p-3 text-xs text-gray-400 italic">{q ? 'No references.' : 'Type a symbol and press Enter.'}</div>
+            <div className="p-3 text-xs text-gray-400 italic">{!q ? 'Type a symbol and press Enter.' : searchedFor === runKey() ? 'No references.' : 'Press Enter or Find to search.'}</div>
           ) : (
             <ul className="divide-y divide-white/5">
               {refs.map((r, i) => (
