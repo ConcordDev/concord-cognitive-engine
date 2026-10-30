@@ -598,18 +598,15 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
               </div>
             </motion.div>
           )) : (
-            // Placeholder cards
-            Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="rounded-xl overflow-hidden bg-white/5 border border-white/10">
-                <div className="aspect-square flex items-center justify-center" style={{ background: `linear-gradient(135deg, hsl(${i * 45}, 60%, 25%), hsl(${i * 45 + 60}, 60%, 20%))` }}>
-                  <ImageIcon className="w-12 h-12 opacity-20" />
-                </div>
-                <div className="p-3">
-                  <p className="font-medium text-sm text-gray-300">{['Neon Dreams', 'Digital Horizons', 'Abstract Flow', 'Cosmic Pulse', 'Neural Art', 'Pixel Paradise', 'Wave Form', 'Fractal Mind'][i]}</p>
-                  <p className="text-xs text-gray-400 mt-1">{ART_STYLES[i % ART_STYLES.length]}</p>
-                </div>
-              </div>
-            ))
+            // Honest empty state — never fabricate artwork to fill the
+            // grid. Real pieces published from this desk render above.
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-5 py-8 text-center break-inside-avoid">
+              <ImageIcon className="mx-auto mb-2 h-8 w-8 opacity-30" />
+              <p className="text-sm text-gray-300">{assetsLoading ? 'Loading artwork…' : 'No artwork featured yet.'}</p>
+              {!assetsLoading && (
+                <p className="mt-1 text-xs text-gray-500">Pieces published from the Art desk will appear here.</p>
+              )}
+            </div>
           )}
         </div>
       </section>
@@ -863,21 +860,11 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
             </div>
           </div>
         )) : (
-          Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
-              <div className="aspect-[4/3] flex items-center justify-center" style={{ background: `linear-gradient(135deg, hsl(${i * 60}, 50%, 20%), hsl(${i * 60 + 30}, 50%, 15%))` }}>
-                <ImageIcon className="w-10 h-10 opacity-20" />
-              </div>
-              <div className="p-4">
-                <h3 className="font-medium text-gray-300">{['Album Cover Pack', 'Neon Logo Kit', 'Abstract Backgrounds', 'Character Set', 'Social Media Kit', 'Poster Templates'][i]}</h3>
-                <p className="text-xs text-gray-400 mt-1">{ART_TYPES[i]?.replace('-', ' ')}</p>
-                <div className="flex items-center justify-between mt-3">
-                  <span className="text-neon-green font-bold">${[25, 50, 35, 75, 15, 100][i]}</span>
-                  <button onClick={() => void ('gallery')} className="px-3 py-1.5 bg-white/10 text-gray-300 rounded text-xs hover:bg-white/20">View</button>
-                </div>
-              </div>
-            </div>
-          ))
+          <div className="col-span-full rounded-xl border border-dashed border-white/10 bg-white/5 p-8 text-center">
+            <ImageIcon className="mx-auto mb-3 h-10 w-10 opacity-20" aria-hidden="true" />
+            <p className="text-sm text-gray-300">No listings yet.</p>
+            <p className="mt-1 text-xs text-gray-400">Art that creators list for sale appears here.</p>
+          </div>
         )}
       </div>
     </div>

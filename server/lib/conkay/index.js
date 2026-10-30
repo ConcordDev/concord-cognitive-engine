@@ -91,6 +91,7 @@ import "./physics/solvers/reacting-chemistry.js";
 import "./physics/solvers/solid-stress.js";
 import "./physics/solvers/em-fdtd.js";
 import "./physics/solvers/em-magnetostatic.js";
+import "./physics/solvers/long-term-limit-states.js";
 import "./safety-case/solvers.js";
 
 export { listSolvers };

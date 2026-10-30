@@ -46,6 +46,8 @@ import { ComputeDeskPanel } from './ComputeDeskPanel';
 import { TemplatesPanel } from './TemplatesPanel';
 import { CvePanel } from './CvePanel';
 import { TestConsolePanel } from './TestConsolePanel';
+import { DebugProjectProvider } from './ProjectContext';
+import { ProjectSwitcher } from './ProjectSwitcher';
 
 type DebugTool =
   | 'overview'
@@ -175,22 +177,26 @@ export function DebugWorkspace() {
   );
 
   return (
+    <DebugProjectProvider>
     <div data-lens-theme="debug" className="min-h-full bg-[#080a0c] px-4 pb-24 pt-5 sm:px-7">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-5">
         <div>
           <h1 className="font-vault mt-1 text-4xl leading-tight text-zinc-100 sm:text-5xl">Debug</h1>
           <p className="mt-2 text-sm text-zinc-500">{active.description}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => void refresh()}
-          disabled={refreshing}
-          className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-300 hover:bg-white/[0.08] disabled:opacity-60"
-        >
-          {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          Refresh
-          <kbd aria-hidden="true" className="font-mono text-[10px] text-white/30">⇧R</kbd>
-        </button>
+        <div className="flex flex-wrap items-start gap-3">
+          <ProjectSwitcher />
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-300 hover:bg-white/[0.08] disabled:opacity-60"
+          >
+            {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            Refresh
+            <kbd aria-hidden="true" className="font-mono text-[10px] text-white/30">⇧R</kbd>
+          </button>
+        </div>
       </header>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[11rem_minmax(0,1fr)]">
@@ -242,5 +248,6 @@ export function DebugWorkspace() {
         </motion.main>
       </div>
     </div>
+    </DebugProjectProvider>
   );
 }
