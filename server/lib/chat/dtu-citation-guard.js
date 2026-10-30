@@ -18,6 +18,10 @@
 // Deterministic, no model call.
 
 const ID_RE = /\bdtu_[a-z0-9_]{6,}\b/gi;
+// "DTU-48213", "DTU #a1b2c3", "dtu:7f3a9c": an id written without the dtu_ prefix. Needs a digit and 5+
+// characters so "DTU #3" (a list position) and ordinary words are left alone.
+const LOOSE_ID_RE = /\bDTU\s*(?:id\s*)?[#:-]\s*([A-Za-z0-9_-]{5,})/gi;
+const PLACEHOLDER = "[unknown DTU]";
 const STOP = new Set("the a an of and or to in on for with by at from is are was were be my your our this that these those dtu dtus note notes".split(" "));
 
 function words(s) {
@@ -124,11 +128,22 @@ export function guardDtuCitations(reply, retrieved, { prompt = "" } = {}) {
     return "a DTU I could not find";
   });
 
+  // A placeholder the model wrote itself (it copies the one this guard emits on earlier turns)
+  // is an invented reference too: count it so the note below is always attached.
+  for (const _ of text.split(PLACEHOLDER).slice(1)) removed.push(PLACEHOLDER);
+
   // 3. Raw ids.
   result = result.replace(ID_RE, (id) => {
     if (ids.has(id.toLowerCase())) { kept++; return id; }
     removed.push(id);
-    return "[unknown DTU]";
+    return PLACEHOLDER;
+  });
+  result = result.replace(LOOSE_ID_RE, (whole, tok) => {
+    if (!/\d/.test(tok)) return whole;
+    const t = tok.toLowerCase();
+    if ([...ids].some((i) => i === t || i.endsWith(`_${t}`) || i.endsWith(t))) { kept++; return whole; }
+    removed.push(whole.trim());
+    return PLACEHOLDER;
   });
 
   if (!removed.length) return { text, removed, kept };
