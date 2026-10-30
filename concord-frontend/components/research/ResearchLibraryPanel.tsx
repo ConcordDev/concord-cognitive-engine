@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2, Plus, BookMarked, BookOpen, ChevronLeft, ChevronDown, Trash2, Copy, FileText, ExternalLink, Pencil, Link2, X, Tag, Highlighter, Upload, BarChart3 } from 'lucide-react';
+import { Loader2, Plus, BookMarked, BookOpen, ChevronLeft, ChevronDown, Trash2, Copy, FileText, ExternalLink, Pencil, Link2, X, Tag, Highlighter, Upload, BarChart3, ScanSearch } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
@@ -138,7 +138,10 @@ const CREDIBILITY_COLOR: Record<string, string> = {
  * analysis-list so the surface is not blank. An empty library gets the
  * macro's honest no_references refusal, never a template.
  */
-function AnalyzeLibrarySection() {
+function AnalyzeLibrarySection({ references, onOpenReference }: {
+  references: Reference[];
+  onOpenReference: (ref: Reference) => Promise<void> | void;
+}) {
   const [question, setQuestion] = useState('');
   const [job, setJob] = useState<AnalysisJob | null>(null);
   const [running, setRunning] = useState(false);
@@ -314,6 +317,175 @@ function AnalyzeLibrarySection() {
           </div>
         </div>
       )}
+      <AnalyzeQuickTools references={references} onOpenReference={onOpenReference} />
+    </div>
+  );
+}
+
+interface GapEntry { kind: string; count?: number; referenceIds?: string[]; year?: number; tags?: string[] }
+interface GapResult { referenceCount: number; topic: string | null; gaps: GapEntry[]; byYear: Record<string, number> }
+interface MatchEntry { referenceId: string; title: string; score: number; matchedTokens: string[] }
+interface MatchResult { question: string; matchCount: number; matches: MatchEntry[] }
+interface EvalResult { referenceId: string; title: string; credibility: string; signals: string[]; status: string }
+
+const SIGNAL_LABEL: Record<string, string> = {
+  has_doi: 'DOI', has_venue: 'Venue', has_year: 'Year', has_abstract: 'Abstract', has_authors: 'Authors',
+};
+const CREDIBILITY_BADGE: Record<string, string> = {
+  high: 'text-emerald-400 border-emerald-700/60', moderate: 'text-amber-400 border-amber-700/60', low: 'text-red-400 border-red-800/60',
+};
+
+function gapText(g: GapEntry): string {
+  if (g.kind === 'missing_abstract') return `${g.count ?? 0} reference${g.count === 1 ? '' : 's'} missing an abstract`;
+  if (g.kind === 'year_gap') return `No references from ${g.year}`;
+  if (g.kind === 'singleton_tags') return `Tags used only once: ${(g.tags || []).join(', ')}`;
+  return g.kind;
+}
+
+/**
+ * AnalyzeQuickTools — the per-tool half of the Analyze surface, from
+ * main (PR #1898, Q62): the three backend actions (research.find-gaps,
+ * research.match-questions, research.evaluate-source) called directly
+ * with a topic, a question, or a single chosen source. Kept intact in
+ * the #1723 wrap merge alongside the S5 whole-library job above: the
+ * job runs all three over the whole library and names its inputs;
+ * these run one tool at a time. Errors surface as-is.
+ */
+function AnalyzeQuickTools({ references, onOpenReference }: {
+  references: Reference[];
+  onOpenReference: (ref: Reference) => Promise<void> | void;
+}) {
+  const [topic, setTopic] = useState('');
+  const [gapResult, setGapResult] = useState<GapResult | null>(null);
+  const [gapError, setGapError] = useState<string | null>(null);
+  const [gapLoading, setGapLoading] = useState(false);
+  const [question, setQuestion] = useState('');
+  const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
+  const [matchError, setMatchError] = useState<string | null>(null);
+  const [matchLoading, setMatchLoading] = useState(false);
+  const [evalId, setEvalId] = useState('');
+  const [evalResult, setEvalResult] = useState<EvalResult | null>(null);
+  const [evalError, setEvalError] = useState<string | null>(null);
+  const [evalLoading, setEvalLoading] = useState(false);
+
+  const runGaps = async () => {
+    setGapLoading(true); setGapError(null);
+    const params: Record<string, string> = {};
+    if (topic.trim()) params.topic = topic.trim();
+    const r = await lensRun<GapResult>('research', 'find-gaps', params);
+    if (r.data?.ok === false) { setGapError(r.data.error || 'Gap analysis failed.'); setGapResult(null); }
+    else setGapResult((r.data?.result as GapResult) || null);
+    setGapLoading(false);
+  };
+
+  const runMatch = async () => {
+    if (!question.trim()) return;
+    setMatchLoading(true); setMatchError(null);
+    const r = await lensRun<MatchResult>('research', 'match-questions', { question: question.trim() });
+    if (r.data?.ok === false) { setMatchError(r.data.error || 'Matching failed.'); setMatchResult(null); }
+    else setMatchResult((r.data?.result as MatchResult) || null);
+    setMatchLoading(false);
+  };
+
+  const runEval = async () => {
+    if (!evalId) return;
+    setEvalLoading(true); setEvalError(null);
+    const r = await lensRun<EvalResult>('research', 'evaluate-source', { id: evalId });
+    if (r.data?.ok === false) { setEvalError(r.data.error || 'Evaluation failed.'); setEvalResult(null); }
+    else setEvalResult((r.data?.result as EvalResult) || null);
+    setEvalLoading(false);
+  };
+
+  const jump = async (referenceId: string) => {
+    const r = await lensRun('research', 'reference-detail', { id: referenceId });
+    const ref = r.data?.result?.reference as Reference | undefined;
+    if (ref) await onOpenReference(ref);
+  };
+
+  const inputCls = 'flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100';
+  const btnCls = 'px-2.5 py-1.5 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-100 rounded-lg disabled:opacity-50';
+
+  return (
+    <div className="space-y-4 border-t border-zinc-800 pt-3">
+      <p className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-300">
+        <ScanSearch className="w-3.5 h-3.5 text-sky-400" /> Quick checks — one tool at a time
+      </p>
+<div className="space-y-1.5">
+            <p className="text-[11px] font-semibold text-zinc-300">Coverage gaps</p>
+            <div className="flex gap-2">
+              <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Topic (optional)"
+                className={inputCls} />
+              <button type="button" onClick={runGaps} disabled={gapLoading} className={btnCls}>
+                {gapLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Find gaps'}
+              </button>
+            </div>
+            {gapError && <p className="text-[11px] text-red-400">{gapError}</p>}
+            {gapResult && (
+              gapResult.gaps.length === 0 ? (
+                <p className="text-[11px] text-zinc-400">No gaps found across {gapResult.referenceCount} references.</p>
+              ) : (
+                <ul className="space-y-0.5">
+                  {gapResult.gaps.map((g, i) => (
+                    <li key={`${g.kind}-${g.year ?? i}`} className="text-[11px] text-zinc-300 border-l-2 border-sky-700/60 pl-2 py-0.5">{gapText(g)}</li>
+                  ))}
+                </ul>
+              )
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold text-zinc-300">Match a question to your sources</p>
+            <div className="flex gap-2">
+              <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="What are you trying to answer?"
+                className={inputCls} />
+              <button type="button" onClick={runMatch} disabled={matchLoading || !question.trim()} className={btnCls}>
+                {matchLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Match'}
+              </button>
+            </div>
+            {matchError && <p className="text-[11px] text-red-400">{matchError}</p>}
+            {matchResult && (
+              matchResult.matches.length === 0 ? (
+                <p className="text-[11px] text-zinc-400">No references matched that question.</p>
+              ) : (
+                <div className="space-y-1">
+                  {matchResult.matches.map((m) => (
+                    <button key={m.referenceId} type="button" onClick={() => jump(m.referenceId)}
+                      className="w-full text-left text-[11px] border-l-2 border-sky-700/60 pl-2 py-1 hover:bg-zinc-800/40 rounded-r transition-colors">
+                      <span className="text-zinc-200">{m.title}</span>
+                      <span className="text-zinc-500"> — matched: {m.matchedTokens.join(', ')}</span>
+                    </button>
+                  ))}
+                </div>
+              )
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold text-zinc-300">Evaluate a source</p>
+            <div className="flex gap-2">
+              <select value={evalId} onChange={(e) => setEvalId(e.target.value)} className={inputCls}>
+                <option value="">Choose a reference…</option>
+                {references.map((r) => (
+                  <option key={r.id} value={r.id}>{r.title}</option>
+                ))}
+              </select>
+              <button type="button" onClick={runEval} disabled={evalLoading || !evalId} className={btnCls}>
+                {evalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Evaluate'}
+              </button>
+            </div>
+            {references.length === 0 && <p className="text-[11px] text-zinc-500 italic">Add references to evaluate them.</p>}
+            {evalError && <p className="text-[11px] text-red-400">{evalError}</p>}
+            {evalResult && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={cn('text-[11px] px-1.5 py-0.5 rounded border capitalize', CREDIBILITY_BADGE[evalResult.credibility] || 'text-zinc-300 border-zinc-700')}>
+                  {evalResult.credibility} credibility
+                </span>
+                {evalResult.signals.map((s) => (
+                  <span key={s} className="text-[10px] px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-400">{SIGNAL_LABEL[s] || s}</span>
+                ))}
+              </div>
+            )}
+          </div>
     </div>
   );
 }
@@ -852,7 +1024,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
 
       <HighlightsSection onOpenReference={openRef} />
 
-      <AnalyzeLibrarySection />
+      <AnalyzeLibrarySection references={references} onOpenReference={openRef} />
 
       {tags.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">

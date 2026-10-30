@@ -102,6 +102,8 @@ function NotesTab({ onOpen }: { onOpen: (id: string) => void }) {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState({ title: '', body: '' });
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -122,12 +124,22 @@ function NotesTab({ onOpen }: { onOpen: (id: string) => void }) {
     } catch (e) { console.error(e); }
   };
 
-  const remove = async (id: string) => {
-    if (!window.confirm('Delete this note?')) return;
+  // Two-step inline confirmation. The old handler gated on window.confirm(),
+  // which never resolves in the embedded browser — the click silently did
+  // nothing and the note stayed listed (F5). The macro was never the problem:
+  // note-delete removes the note server-side; the call just never reached it.
+  const remove = async (n: Note) => {
+    if (confirmDeleteId !== n.id) { setConfirmDeleteId(n.id); setNotice(null); return; }
     try {
-      await lensRun({ domain: 'research', action: 'note-delete', input: { id } });
-      await refresh();
-    } catch (e) { console.error(e); }
+      const r = await lensRun({ domain: 'research', action: 'note-delete', input: { id: n.id } });
+      if ((r.data as { ok?: boolean } | undefined)?.ok) {
+        setNotes((prev) => prev.filter((x) => x.id !== n.id));
+        setNotice(`Deleted “${n.title}” — the note and its version history were removed.`);
+      } else {
+        setNotice(`Could not delete “${n.title}” — it may already be gone.`);
+      }
+    } catch (e) { console.error(e); setNotice(`Could not delete “${n.title}” — please try again.`); }
+    finally { setConfirmDeleteId(null); }
   };
 
   return (
@@ -153,6 +165,9 @@ function NotesTab({ onOpen }: { onOpen: (id: string) => void }) {
           </button>
         </div>
       )}
+      {notice && (
+        <p role="status" className="rounded border border-white/10 bg-white/5 px-2.5 py-1.5 text-[11px] text-gray-300">{notice}</p>
+      )}
       {loading ? <div className="text-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div> :
         notes.length === 0 ? <p className="text-center text-xs text-gray-400 py-8">No notes yet.</p> :
         notes.map((n) => (
@@ -167,9 +182,18 @@ function NotesTab({ onOpen }: { onOpen: (id: string) => void }) {
                   </div>
                 )}
               </button>
-              <button type="button" onClick={() => remove(n.id)} aria-label="Delete note"
+              <button type="button" onClick={() => remove(n)} aria-label="Delete note"
                 className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
             </div>
+            {confirmDeleteId === n.id && (
+              <div className="mt-2 flex items-center gap-2 rounded border border-rose-500/30 bg-rose-500/10 px-2 py-1.5">
+                <span className="flex-1 text-[11px] text-rose-200">Delete “{n.title}” permanently? Its version history goes too.</span>
+                <button type="button" onClick={() => remove(n)}
+                  className="px-2 py-0.5 rounded bg-rose-500/20 border border-rose-500/40 text-[11px] text-rose-100">Delete</button>
+                <button type="button" onClick={() => setConfirmDeleteId(null)}
+                  className="px-2 py-0.5 rounded border border-white/10 text-[11px] text-gray-300">Keep</button>
+              </div>
+            )}
           </div>
         ))
       }
@@ -269,6 +293,9 @@ function NoteEditor({ noteId, onBack, onOpenNote }: { noteId: string; onBack: ()
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [previewBody, setPreviewBody] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [confirmRestoreId, setConfirmRestoreId] = useState<string | null>(null);
+  const [confirmDeleteNote, setConfirmDeleteNote] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -303,13 +330,37 @@ function NoteEditor({ noteId, onBack, onOpenNote }: { noteId: string; onBack: ()
     } catch (e) { console.error(e); }
   };
 
-  const restore = async (snapshotId: string) => {
-    if (!window.confirm('Restore this version? Current state is snapshotted first.')) return;
+  // Two-step inline confirmation. The old handler gated on window.confirm(),
+  // which never resolves in the embedded browser — Restore silently did
+  // nothing (F4). note-restore itself applies the snapshot server-side and
+  // snapshots the current text first, so a restore is itself reversible.
+  const restore = async (sn: Snapshot) => {
+    if (confirmRestoreId !== sn.id) { setConfirmRestoreId(sn.id); setNotice(null); return; }
     try {
-      await lensRun('research', 'note-restore', { noteId, snapshotId });
-      await refresh();
-      await loadSnapshots();
-    } catch (e) { console.error(e); }
+      const r = await lensRun('research', 'note-restore', { noteId, snapshotId: sn.id });
+      if (r.data?.ok) {
+        setNotice(`Restored “${sn.title}” to its ${new Date(sn.createdAt).toLocaleString()} version — the text you had was snapshotted first, so this restore can itself be undone from History.`);
+        setEditing(false);
+        await refresh();
+        await loadSnapshots();
+      } else {
+        setNotice('Could not restore that version — it may no longer exist.');
+      }
+    } catch (e) { console.error(e); setNotice('Could not restore that version — please try again.'); }
+    finally { setConfirmRestoreId(null); }
+  };
+
+  // The note detail previously offered no delete control at all (F5); this is
+  // the same two-step inline pattern as the list, then back to the list.
+  const removeNote = async () => {
+    if (!note) return;
+    if (!confirmDeleteNote) { setConfirmDeleteNote(true); setNotice(null); return; }
+    try {
+      const r = await lensRun({ domain: 'research', action: 'note-delete', input: { id: noteId } });
+      if ((r.data as { ok?: boolean } | undefined)?.ok) { onBack(); return; }
+      setNotice(`Could not delete “${note.title}” — it may already be gone.`);
+    } catch (e) { console.error(e); setNotice(`Could not delete “${note.title}” — please try again.`); }
+    setConfirmDeleteNote(false);
   };
 
   const togglePreview = async (snapshotId: string) => {
@@ -342,8 +393,16 @@ function NoteEditor({ noteId, onBack, onOpenNote }: { noteId: string; onBack: ()
             className="px-3 py-1 rounded-md border border-fuchsia-500/40 bg-fuchsia-500/15 text-xs text-fuchsia-100">
             {editing ? 'Save' : 'Edit'}
           </button>
+          <button type="button" onClick={removeNote}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded border border-rose-500/30 text-xs text-rose-300 hover:text-rose-200">
+            <Trash2 className="w-3 h-3" /> {confirmDeleteNote ? 'Confirm delete?' : 'Delete'}
+          </button>
         </div>
       </div>
+
+      {notice && (
+        <p role="status" className="rounded border border-white/10 bg-white/5 px-2.5 py-1.5 text-[11px] text-gray-300">{notice}</p>
+      )}
 
       {showHistory && (
         <div className="rounded border border-white/10 bg-black/20 p-2 space-y-1">
@@ -361,9 +420,9 @@ function NoteEditor({ noteId, onBack, onOpenNote }: { noteId: string; onBack: ()
                     className="text-gray-400 hover:text-gray-200">
                     {previewId === sn.id ? 'Hide' : 'Preview'}
                   </button>
-                  <button type="button" onClick={() => restore(sn.id)}
+                  <button type="button" onClick={() => restore(sn)}
                     className="inline-flex items-center gap-1 text-fuchsia-300 hover:text-fuchsia-200">
-                    <RotateCcw className="w-3 h-3" /> Restore
+                    <RotateCcw className="w-3 h-3" /> {confirmRestoreId === sn.id ? 'Confirm restore?' : 'Restore'}
                   </button>
                 </div>
               </div>

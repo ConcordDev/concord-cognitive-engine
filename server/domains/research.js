@@ -521,6 +521,13 @@ export default function registerResearchActions(registerLensAction) {
     const map = s.notes.get(userId);
     if (!map || !map.has(id)) return { ok: false, error: "not found" };
     map.delete(id);
+    // Clean up the note's version history and any daily-journal pointer so a
+    // deleted note leaves nothing behind (orphaned snapshots were previously
+    // still listed by note-snapshots, and a stale daily pointer made
+    // daily-note return an empty note instead of recreating the day).
+    if (s.snapshots instanceof Map) s.snapshots.get(userId)?.delete(id);
+    const dailyMap = s.dailyByDate.get(userId);
+    if (dailyMap) for (const [date, noteId] of dailyMap) { if (noteId === id) dailyMap.delete(date); }
     saveResearchState();
     return { ok: true, result: { deleted: id } };
   });
