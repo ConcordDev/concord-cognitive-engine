@@ -175,7 +175,7 @@ notes say who owns the item — SEC items belong to the SEC sequence
 | Q59 | Media collections panel is static copy — wire real collections data/actions | B#9 | M | FIX-ALL |
 | Q60 | JetBrains plugin is scaffold-only (placeholder rows, no LSP listener) | B#16, B#10 | M | FIX-ALL |
 | Q61 | World creator has only 3 templates | B#32 | M | FIX-ALL |
-| Q62 | Research "Analyze library": `evaluate-source` / `find-gaps` / `match-questions` still genuinely unsurfaced (already recorded by the L15a batch) | Lens-spec pass §2b note | M | FIX-ALL — **done 2026-10-28**: `AnalyzeLibrarySection` added to ResearchLibraryPanel (collapsible sibling of Highlights): coverage gaps (find-gaps, optional topic), question→source matching (match-questions, click a match to open the reference), and per-source credibility (evaluate-source over the loaded references, signals shown as chips). Backend errors surface as-is (empty library → "references required"). 4 vitest pins in ResearchLibraryPanel.test.tsx |
+| Q62 | Research "Analyze library": `evaluate-source` / `find-gaps` / `match-questions` still genuinely unsurfaced (already recorded by the L15a batch) | Lens-spec pass §2b note | M | FIX-ALL |
 | Q63 | Macro-depth behavioural tests for the ~364 important-untested macros (the depth program; issue #850) | D1, D3, D14, GH-850 | L | FIX-ALL (program) |
 | Q64 | ZSTD compression id reserved but unimplemented (falls back to gzip silently) | B#23 | S | FIX-ALL |
 | Q65 | OpenStax coverage is a fixed 16-book subset with deferred indexing | B#25 | M | FIX-ALL |
