@@ -250,6 +250,10 @@ export default function registerSrsActions(registerLensAction) {
     if (!deck) return { ok: false, error: "deck not found" };
     const cardType = ["basic", "cloze", "image-occlusion", "templated"].includes(params.cardType)
       ? params.cardType : "basic";
+    for (const k of ["frontImage", "backImage", "frontAudio", "backAudio", "image"]) {
+      const chk = srsMediaCheck(params[k]);
+      if (!chk.ok) return chk;
+    }
     const tags = Array.isArray(params.tags) ? params.tags.map((t) => srsClean(t, 30)).filter(Boolean).slice(0, 8) : [];
     const base = () => ({
       id: srsId("cd"), deckId: deck.id,
@@ -283,6 +287,8 @@ export default function registerSrsActions(registerLensAction) {
         cardsArr.push(c);
         created.push(c);
       }
+      const qe = srsEnforceCardQuota(s, userId, cardsArr, created);
+      if (qe) return { ok: false, error: qe };
       saveSrs();
       return { ok: true, result: { card: created[0], cards: created, noteId, generated: created.length } };
     }
@@ -313,6 +319,8 @@ export default function registerSrsActions(registerLensAction) {
         cardsArr.push(c);
         created.push(c);
       });
+      const qe = srsEnforceCardQuota(s, userId, cardsArr, created);
+      if (qe) return { ok: false, error: qe };
       saveSrs();
       return { ok: true, result: { card: created[0], cards: created, noteId, generated: created.length } };
     }
@@ -331,6 +339,8 @@ export default function registerSrsActions(registerLensAction) {
       if (!front || !back) return { ok: false, error: "templated card produced empty front/back" };
       const c = { ...base(), front, back, fields: cleanFields, frontTemplate: frontTpl, backTemplate: backTpl };
       cardsArr.push(c);
+      const qe = srsEnforceCardQuota(s, userId, cardsArr, [c]);
+      if (qe) return { ok: false, error: qe };
       saveSrs();
       return { ok: true, result: { card: c } };
     }
@@ -347,9 +357,13 @@ export default function registerSrsActions(registerLensAction) {
       card.noteId = noteId;
       const twin = { ...base(), front: back, back: front, noteId };
       cardsArr.push(twin);
+      const qe2 = srsEnforceCardQuota(s, userId, cardsArr, [card, twin]);
+      if (qe2) return { ok: false, error: qe2 };
       saveSrs();
       return { ok: true, result: { card, cards: [card, twin], noteId, generated: 2 } };
     }
+    const qe1 = srsEnforceCardQuota(s, userId, cardsArr, [card]);
+    if (qe1) return { ok: false, error: qe1 };
     saveSrs();
     return { ok: true, result: { card } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -387,9 +401,52 @@ export default function registerSrsActions(registerLensAction) {
 
   // Media slots accept ordinary URLs (cleaned, short) and uploaded
   // data: URLs, whose bytes ride in the value itself (S11).
+  //
+  // Bounds (the lens state is held in memory and serialized on every save, so inline bytes are a DoS surface
+  // for any signed-in member): one file may not exceed SRS_MEDIA_MAX_FILE chars (rejected, never truncated -
+  // a truncated data URL is a corrupt file), and each member's total inline bytes across the media library
+  // AND every card that carries a data: URL (counted per reference, as it serializes) may not exceed
+  // CONCORD_SRS_MEDIA_MAX_BYTES (default 40 MB), with at most CONCORD_SRS_MEDIA_MAX_ITEMS library entries.
+  // Moving the blobs out of STATE into the artifact/file store would remove the cap's reason; not done here.
+  const SRS_MEDIA_MAX_FILE = 2800000;
+  const SRS_MEDIA_MAX_USER_BYTES = Math.max(SRS_MEDIA_MAX_FILE, Number(process.env.CONCORD_SRS_MEDIA_MAX_BYTES) || 40_000_000);
+  const SRS_MEDIA_MAX_ITEMS = Math.max(1, Number(process.env.CONCORD_SRS_MEDIA_MAX_ITEMS) || 200);
+  const srsIsInline = (v) => typeof v === "string" && (v.startsWith("data:image/") || v.startsWith("data:audio/"));
+  function srsCardInlineBytes(c) {
+    let n = 0;
+    for (const v of Object.values(c?.media || {})) if (srsIsInline(v)) n += v.length;
+    if (srsIsInline(c?.image)) n += c.image.length;
+    return n;
+  }
+  function srsInlineUsage(s, userId) {
+    let n = 0;
+    for (const m of srsList(s.media, userId)) if (srsIsInline(m.url)) n += m.url.length;
+    for (const c of srsList(s.cards, userId)) n += srsCardInlineBytes(c);
+    return n;
+  }
   function srsMediaUrl(v) {
-    if (typeof v === "string" && (v.startsWith("data:image/") || v.startsWith("data:audio/"))) return v.slice(0, 2800000);
+    if (srsIsInline(v)) return v.length > SRS_MEDIA_MAX_FILE ? null : v;
     return srsClean(v, 1000);
+  }
+  /** Validate one media value: ok:false when an inline file is over the per-file cap. */
+  function srsMediaCheck(v) {
+    if (srsIsInline(v) && v.length > SRS_MEDIA_MAX_FILE) return { ok: false, error: "file too large - uploads are capped at about 2 MB" };
+    return { ok: true };
+  }
+  function srsQuotaError(s, userId, addBytes) {
+    if (addBytes <= 0) return null;
+    return srsInlineUsage(s, userId) + addBytes > SRS_MEDIA_MAX_USER_BYTES
+      ? `media storage limit reached (${Math.round(SRS_MEDIA_MAX_USER_BYTES / 1e6)} MB per account) - remove media or use a link instead of an upload`
+      : null;
+  }
+  /** Roll back freshly pushed cards if they put the member over quota. */
+  function srsEnforceCardQuota(s, userId, cardsArr, created) {
+    const add = created.reduce((n, c) => n + srsCardInlineBytes(c), 0);
+    if (add > 0 && srsInlineUsage(s, userId) > SRS_MEDIA_MAX_USER_BYTES) {
+      for (const c of created) { const i = cardsArr.indexOf(c); if (i >= 0) cardsArr.splice(i, 1); }
+      return `media storage limit reached (${Math.round(SRS_MEDIA_MAX_USER_BYTES / 1e6)} MB per account) - remove media or use a link instead of an upload`;
+    }
+    return null;
   }
   function studyableCard(c) {
     return !c.suspended && !c.buried;
@@ -986,7 +1043,9 @@ export default function registerSrsActions(registerLensAction) {
     // capped); anything else must be an ordinary URL.
     let url = "";
     if (typeof params.dataUrl === "string" && (params.dataUrl.startsWith("data:image/") || params.dataUrl.startsWith("data:audio/"))) {
-      if (params.dataUrl.length > 2800000) return { ok: false, error: "file too large — uploads are capped at about 2 MB" };
+      if (params.dataUrl.length > SRS_MEDIA_MAX_FILE) return { ok: false, error: "file too large — uploads are capped at about 2 MB" };
+      const qErr = srsQuotaError(s, srsActor(ctx), params.dataUrl.length);
+      if (qErr) return { ok: false, error: qErr };
       url = params.dataUrl;
     } else if (params.dataUrl) {
       return { ok: false, error: "only image or audio files can be uploaded" };
@@ -996,6 +1055,9 @@ export default function registerSrsActions(registerLensAction) {
     const kind = ["image", "audio"].includes(params.kind) ? params.kind
       : (url.startsWith("data:audio/") ? "audio" : "image");
     if (!url) return { ok: false, error: "media url required" };
+    if (srsList(s.media, srsActor(ctx)).length >= SRS_MEDIA_MAX_ITEMS) {
+      return { ok: false, error: `media library limit reached (${SRS_MEDIA_MAX_ITEMS} items) - remove some first` };
+    }
     const media = { id: srsId("md"), kind, url, name: srsClean(params.name, 120) || (url.startsWith("data:") ? "Uploaded file" : url.slice(0, 60)), createdAt: srsNow() };
     srsList(s.media, srsActor(ctx)).push(media);
     saveSrs();
@@ -1026,6 +1088,16 @@ export default function registerSrsActions(registerLensAction) {
     const card = srsList(s.cards, srsActor(ctx)).find((c) => c.id === params.id);
     if (!card) return { ok: false, error: "card not found" };
     if (!card.media) card.media = { frontImage: null, backImage: null, frontAudio: null, backAudio: null, tts: false };
+    const userId = srsActor(ctx);
+    let addBytes = 0;
+    for (const slot of ["frontImage", "backImage", "frontAudio", "backAudio"]) {
+      if (!(slot in params) || !params[slot]) continue;
+      const chk = srsMediaCheck(params[slot]);
+      if (!chk.ok) return chk;
+      if (srsIsInline(params[slot])) addBytes += params[slot].length - (srsIsInline(card.media[slot]) ? card.media[slot].length : 0);
+    }
+    const qErr = srsQuotaError(s, userId, addBytes);
+    if (qErr) return { ok: false, error: qErr };
     for (const slot of ["frontImage", "backImage", "frontAudio", "backAudio"]) {
       if (slot in params) card.media[slot] = params[slot] ? srsMediaUrl(params[slot]) : null;
     }
@@ -1089,6 +1161,17 @@ export default function registerSrsActions(registerLensAction) {
     srsList(s.decks, userId).push(deck);
     const cardsArr = srsList(s.cards, userId);
     let imported = 0;
+    let mediaDropped = 0, importedInline = 0;
+    const importBudget = Math.max(0, SRS_MEDIA_MAX_USER_BYTES - srsInlineUsage(s, userId));
+    const importInline = (v) => (srsIsInline(v) ? srsMediaUrl(v) : (typeof v === "string" ? srsClean(v, 1000) : null)) || null;
+    const importMedia = (m) => {
+      const out = { frontImage: null, backImage: null, frontAudio: null, backAudio: null, tts: false };
+      if (m && typeof m === "object") {
+        for (const k of ["frontImage", "backImage", "frontAudio", "backAudio"]) out[k] = importInline(m[k]);
+        out.tts = !!m.tts;
+      }
+      return out;
+    };
     for (const raw of bundle.cards) {
       const front = srsClean(raw.front, 2000);
       const back = srsClean(raw.back, 4000);
@@ -1102,11 +1185,19 @@ export default function registerSrsActions(registerLensAction) {
         cardType: ["basic", "cloze", "image-occlusion", "templated"].includes(raw.cardType) ? raw.cardType : "basic",
         hint: srsClean(raw.hint, 500),
         markup: raw.markup === "markdown" || raw.markup === "html" ? raw.markup : "plain",
-        media: raw.media && typeof raw.media === "object" ? raw.media : { frontImage: null, backImage: null, frontAudio: null, backAudio: null, tts: false },
+        media: importMedia(raw.media),
         clozeText: raw.clozeText || null, fields: raw.fields || null,
         frontTemplate: raw.frontTemplate || null, backTemplate: raw.backTemplate || null,
-        occlusions: raw.occlusions || null, image: raw.image || null,
+        occlusions: raw.occlusions || null, image: importInline(raw.image),
       };
+      // An imported card that would push the member past the inline-media quota keeps its text but loses the
+      // inline file, so a bundle cannot be used to smuggle unbounded blobs into the lens state.
+      const need = srsCardInlineBytes(card);
+      if (need > 0 && importedInline + need > importBudget) {
+        for (const k of Object.keys(card.media)) if (srsIsInline(card.media[k])) card.media[k] = null;
+        if (srsIsInline(card.image)) card.image = null;
+        mediaDropped++;
+      } else importedInline += need;
       // S7: scheduling survives import — from the bundle's
       // scheduling block, or flat fields on hand-written bundles.
       const sch = (raw.scheduling && typeof raw.scheduling === "object") ? raw.scheduling : raw;
@@ -1129,7 +1220,7 @@ export default function registerSrsActions(registerLensAction) {
       imported++;
     }
     saveSrs();
-    return { ok: true, result: { deck, imported } };
+    return { ok: true, result: { deck, imported, ...(mediaDropped ? { mediaDropped } : {}) } };
   });
 
   // ─── [S] Review heatmap / streak calendar + forecast graph ────────
