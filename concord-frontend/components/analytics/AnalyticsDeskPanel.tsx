@@ -116,7 +116,18 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
   const followerCount = followersData?.count || profileData?.stats?.followerCount || 0;
   const revenue = txData?.summary || { royaltyTotal: 0, salesTotal: 0, total: 0 };
   const totalPosts = (socialAnalytics?.totalPosts as number) || 0;
-  const engagementRate = (socialAnalytics?.engagementRate as number) || 0;
+  // The creator view carries the engagement rate nested under `overview`
+  // (emergent/social-layer.js getCreatorAnalyticsView) — CreatorAnalytics
+  // renders it from there. Reading it flat always missed and pinned this
+  // card at 0.0% (office flag, folded into the R2 slice); the flat read
+  // stays as a fallback for any older cached shape.
+  const socialOverview = socialAnalytics?.overview as
+    | { engagementRate?: number }
+    | undefined;
+  const engagementRate =
+    socialOverview?.engagementRate ??
+    (socialAnalytics?.engagementRate as number) ??
+    0;
 
   const lensDist = new Map<string, number>();
   for (const dtu of dtus) {
@@ -188,7 +199,9 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
         />
       </div>
 
-      {mode === 'overview' && <CreatorAnalytics userId={userId} />}
+      {/* hideFollowersCard: this strip already renders the Followers card;
+          CreatorAnalytics' own would duplicate it on the Overview (S7). */}
+      {mode === 'overview' && <CreatorAnalytics userId={userId} hideFollowersCard />}
 
       {mode === 'revenue' && (
         <div className="space-y-4">

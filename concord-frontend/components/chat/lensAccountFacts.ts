@@ -18,6 +18,17 @@
  *   - renders a present 0 as 0 (a real zero is a fact, never "missing"),
  *   - NAMES any source that could not be read (never zero-fills a failure),
  *   - instructs the model to answer only from these facts, else decline.
+ *
+ * R1 (re-review Addendum 4 — A19/A20): the provider's reads mirror the
+ * surface cards' OWN calls and derivations verbatim (same helper, same
+ * arguments, same fallback expression), because a paraphrased read can
+ * land on a different store's number. A source counts as unreadable only
+ * when its fetch fails (or returns a shape the surface itself could not
+ * render); on a successful fetch the fact takes the card's displayed
+ * value INCLUDING the card's own defaulting — the Overview paints 0 for
+ * an absent summary, so 0 is the grounded fact, not a decline. The block
+ * also disqualifies conversation-context DTU counts (retrieved/harvested
+ * tallies injected by the chat pipeline) as account totals.
  * A domain with no provider yields an empty block: behaviour for that domain
  * is exactly what it was before this module existed.
  */
@@ -48,7 +59,7 @@ function num(value: unknown): number | undefined {
 interface ProfileShape {
   userId?: string;
   id?: string;
-  stats?: { citationCount?: number };
+  stats?: { citationCount?: number; followerCount?: number };
 }
 
 async function fetchAnalyticsFacts(): Promise<LensFactsResult> {
@@ -58,12 +69,22 @@ async function fetchAnalyticsFacts(): Promise<LensFactsResult> {
   // Profile first: it carries Citations and the userId the followers and
   // creator reads key off — the same order AnalyticsDeskPanel resolves them.
   let userId = '';
+  let profileFollowerCount: number | undefined;
   try {
     const res = await api.get('/api/social/profile');
-    const profile = (res.data?.profile ?? res.data) as ProfileShape | undefined;
-    userId = profile?.userId || profile?.id || '';
-    const citations = num(profile?.stats?.citationCount);
-    if (citations !== undefined) {
+    // Mirror the card exactly (AnalyticsDeskPanel): the profile lives at
+    // res.data.profile and the account key is its userId — no fallback to
+    // a bare-body shape or a secondary id field. A profile without a
+    // userId leaves the keyed reads (followers, creator) honestly
+    // unreadable below rather than keying them off a guessed id
+    // (deploy-lane flag GB-0083, "client userId fallback").
+    const profile = res.data?.profile as ProfileShape | undefined;
+    userId = profile?.userId || '';
+    profileFollowerCount = num(profile?.stats?.followerCount);
+    if (profile) {
+      // The card renders `stats?.citationCount || 0`: on a successful fetch
+      // an absent stat IS the displayed 0, so 0 is the grounded fact.
+      const citations = num(profile.stats?.citationCount) ?? 0;
       facts.push({
         label: 'Citations',
         value: formatNumber(citations),
@@ -77,10 +98,16 @@ async function fetchAnalyticsFacts(): Promise<LensFactsResult> {
   }
 
   try {
-    const res = await apiHelpers.dtus.myDtus({ limit: 1, offset: 0 });
+    // The card's verbatim call and derivation (AnalyticsDeskPanel):
+    // myDtus({ limit: 100, offset: 0 }), then `data?.total || dtus.length`.
+    // A limit-1 paraphrase of this read is how a grounded fact can land on
+    // a different number than the card shows (A19) — never paraphrase it.
+    const res = await apiHelpers.dtus.myDtus({ limit: 100, offset: 0 });
     const data = res.data as { total?: number; dtus?: unknown[] } | undefined;
-    const total = num(data?.total) ??
-      (Array.isArray(data?.dtus) ? data.dtus.length : undefined);
+    // The fetch succeeded, so the card paints a number: `total || dtus.length`
+    // with the panel's [] default — the fact is that number, exactly.
+    const total = num(data?.total) ||
+      (Array.isArray(data?.dtus) ? data.dtus.length : 0);
     if (total !== undefined) {
       facts.push({
         label: 'Total DTUs',
@@ -96,7 +123,9 @@ async function fetchAnalyticsFacts(): Promise<LensFactsResult> {
 
   try {
     const res = await api.get('/api/economy/transactions');
-    const total = num(res.data?.summary?.total);
+    // The card defaults an absent summary to { total: 0 } and paints 0 —
+    // on a successful fetch that 0 is the grounded fact (A20's rule).
+    const total = num(res.data?.summary?.total) ?? 0;
     if (total !== undefined) {
       facts.push({
         label: 'Total CC moved',
@@ -113,8 +142,12 @@ async function fetchAnalyticsFacts(): Promise<LensFactsResult> {
   if (userId) {
     try {
       const res = await api.get(`/api/social/followers/${userId}`);
+      // The card's chain: endpoint count, then the profile stat, then 0 —
+      // on a successful fetch the fact is wherever that chain lands.
       const count = num(res.data?.count) ??
-        (Array.isArray(res.data?.followers) ? res.data.followers.length : undefined);
+        (Array.isArray(res.data?.followers)
+          ? res.data.followers.length
+          : profileFollowerCount ?? 0);
       if (count !== undefined) {
         facts.push({
           label: 'Followers',
@@ -188,7 +221,14 @@ const PROVIDERS: Record<string, () => Promise<LensFactsResult>> = {
 const DECLINE_RULE =
   'Rule: answer questions about this account ONLY from the facts above, and name the source you used. ' +
   'If a value is not listed above, say the surface doesn\'t give you that — never estimate, ' +
-  'never round into an approximation, and never reuse an example or placeholder number.';
+  'never round into an approximation, and never reuse an example or placeholder number. ' +
+  'Counts of DTUs retrieved or harvested as conversation context are NOT account totals and must ' +
+  'never be quoted as how many DTUs the user has — for that, the only citable figure is the ' +
+  'Total DTUs fact above, exactly as stated; do not reconcile it against any other number.';
+
+const CONTEXT_COUNT_RULE =
+  'Counts of DTUs retrieved or harvested as conversation context are NOT account totals — ' +
+  'never quote one as how many DTUs the user has.';
 
 /**
  * Build the grounded-facts system-prompt block for a chat domain context.
@@ -211,6 +251,7 @@ export async function buildLensFactsBlock(domain: string): Promise<string> {
       'ACCOUNT FACTS — Analytics could not be read just now (the live surface did not answer).',
       'Rule: if the user asks about this account\'s values (DTU counts, citations, followers, reach, totals), ' +
         'say the surface doesn\'t give you that right now — never estimate or invent a number.',
+      CONTEXT_COUNT_RULE,
     ].join('\n');
   }
 
