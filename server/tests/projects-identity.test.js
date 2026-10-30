@@ -102,6 +102,22 @@ describe("projects identity — project-duplicate (F5)", () => {
     assert.equal(detail.result.activity.length, 0);
   });
 
+  it("refuses an explicitly taken key, naming the holder (A3 remainder)", () => {
+    const { p } = fixture();
+    call("project-create", ctxA, { name: "Holder Project", key: "HLD" });
+    const refused = call("project-duplicate", ctxA, { id: p.id, name: "PR4 Rename Test", key: "HLD" });
+    assert.equal(refused.ok, false);
+    assert.equal(refused.code, "duplicate_key");
+    assert.match(refused.error, /HLD/);
+    assert.match(refused.error, /Holder Project/);
+    assert.ok(refused.suggestion && refused.suggestion !== "HLD", "a next free key is suggested");
+    const keys = call("project-list", ctxA, {}).result.projects.map((x) => x.key);
+    assert.equal(keys.filter((k) => k === "HLD").length, 1, "still exactly one HLD project");
+    const okDup = call("project-duplicate", ctxA, { id: p.id, name: "PR4 Rename Test", key: "PRN2" });
+    assert.equal(okDup.ok, true);
+    assert.equal(okDup.result.project.key, "PRN2", "a free explicit key is honoured");
+  });
+
   it("honours an explicit name and key; duplicating an archived project yields an active copy", () => {
     const { p } = fixture();
     call("project-archive", ctxA, { id: p.id, archived: true });
