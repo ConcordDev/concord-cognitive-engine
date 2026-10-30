@@ -69,11 +69,12 @@ export default function registerProjectsActions(registerLensAction) {
     return (s.projects.get(userId) || []).find((p) => p.id === projectId) || null;
   }
   // Append a per-task activity entry (audit log).
-  function pjLog(s, userId, taskId, action, detail) {
+  function pjLog(s, userId, taskId, action, detail, meta) {
     pjListB(s.activity, userId).push({
       id: pjId("act"), taskId, action,
       detail: detail == null ? null : String(detail).slice(0, 200),
       at: pjNow(),
+      ...(meta ? { meta } : {}),
     });
   }
   // ── Assignment identity (S4 — F4; §8 Q2 ruling: real accounts only) ──
@@ -868,6 +869,17 @@ export default function registerProjectsActions(registerLensAction) {
     // settlement line — it survives reload because it IS the record.
     const line = `Sprint "${sprint.name}" settled: ${receipt.issuesDone}/${receipt.issuesTotal} issues, ${pointsDone}/${pointsTotal} points${receipt.settledInFull ? " — settled in full" : ""}${carried ? `; ${carried} carried over` : ""}`;
     for (const t of doneTasks) pjLog(s, userId, t.id, "sprint_receipt", line);
+    // D1 remainder (R4 re-pass on #1720): the receipt must exist in
+    // the project's Activity as a record in its own right and survive
+    // reload — the per-issue lines alone left a zero-done sprint with
+    // no record at all, and no single card for the stream to render.
+    // One project-level summary entry carries the full settlement.
+    pjLog(s, userId, null, "sprint_receipt", line, {
+      projectId: sprint.projectId, sprintId: sprint.id, sprintName: sprint.name,
+      issuesDone: receipt.issuesDone, issuesTotal: receipt.issuesTotal,
+      pointsDone: receipt.pointsDone, pointsTotal: receipt.pointsTotal,
+      carriedOver: receipt.carriedOver, settledInFull: receipt.settledInFull,
+    });
     savePjState();
     return { ok: true, result: { id: sprint.id, status: "completed", carriedOver: carried, receipt } };
   });
@@ -924,7 +936,25 @@ export default function registerProjectsActions(registerLensAction) {
     if (!src) return { ok: false, error: "project not found" };
     const name = pjClean(params.name, 120) || `${src.name} (copy)`;
     let key = params.key ? pjClean(params.key, 6).toUpperCase().replace(/[^A-Z0-9]/g, "") : "";
-    if (!key) {
+    if (key) {
+      // A3 remainder (R4 re-pass on #1720): the S10 uniqueness gate
+      // covered project-create only — an explicitly keyed duplicate
+      // sailed past it and minted a second project with a taken key.
+      // The contract is the same here as at create: a taken key is
+      // refused, naming the holder and the next free key.
+      const mine = s.projects.get(userId) || [];
+      const holder = mine.find((p) => String(p.key || "").toUpperCase().replace(/[^A-Z0-9]/g, "") === key);
+      if (holder) {
+        const taken = new Set(mine.map((p) => String(p.key || "").toUpperCase().replace(/[^A-Z0-9]/g, "")));
+        let suggestion = null;
+        for (let n = 2; n < 100 && !suggestion; n += 1) {
+          const cand = key.slice(0, 6 - String(n).length) + n;
+          if (!taken.has(cand)) suggestion = cand;
+        }
+        return { ok: false, code: "duplicate_key", suggestion,
+          error: `project key ${key} is already used by "${holder.name}" — issue refs like ${key}-1 must resolve to one project.${suggestion ? ` Try ${suggestion}.` : ""}` };
+      }
+    } else {
       const base = (name.replace(/[^A-Za-z]/g, "").slice(0, 4) || "PRJ").toUpperCase();
       const taken = new Set((s.projects.get(userId) || []).map((p) => p.key));
       key = base;
@@ -1442,7 +1472,7 @@ export default function registerProjectsActions(registerLensAction) {
       .map((a) => {
         const task = taskById.get(a.taskId);
         return { ...a, taskRef: task ? task.ref : null, taskTitle: task ? task.title : null,
-          projectId: task ? task.projectId : (a.projectId || null) };
+          projectId: task ? task.projectId : (a.projectId || (a.meta && a.meta.projectId) || null) };
       })
       .filter((a) => (params.projectId ? a.projectId === String(params.projectId) : true))
       .sort((a, b) => b.at.localeCompare(a.at))

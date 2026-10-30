@@ -14,8 +14,9 @@
 //
 // Heavy passes (2, 3, 5) lean on the existing platform substrate:
 //   - vision: server/lib/vision-inference.js (LLaVA via Ollama)
-//   - image gen: _callMultimodalBrain in server.js (SD/ComfyUI/A1111 local
-//     + DALL-E-3 cloud fallback)
+//   - image gen: server/lib/pollinations-image.js (local FLUX GPU gen
+//     server first), adapted to this pass's { prompt, size } →
+//     { ok, imageB64 } contract by server/lib/evo-asset/detail-maps-deps.js
 //
 // All passes are best-effort — failure returns null and the asset stays
 // at its current quality level. Promotion is gated downstream.

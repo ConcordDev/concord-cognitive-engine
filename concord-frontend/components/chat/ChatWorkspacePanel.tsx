@@ -1312,6 +1312,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             mode: aiMode.id,
             sessionId: activeSessionId,
             clientTurnId: userMsg.id,
+            // The server assembly gates its lens grounding on input.lens —
+            // send the domain context as the lens it names (R1, A19/A20).
+            ...(domainContext ? { lens: domainContext } : {}),
             ...(systemPrompt ? { systemPrompt } : {}),
             ...(attachmentMeta.length > 0 ? { attachments: attachmentMeta } : {}),
           }),
@@ -1441,6 +1444,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               mode: aiMode.id,
               sessionId: activeSessionId,
               clientTurnId: userMsg.id,
+              ...(domainContext ? { lens: domainContext } : {}),
               ...(systemPrompt ? { systemPrompt } : {}),
               ...(attachmentMeta.length > 0 ? { attachments: attachmentMeta } : {}),
             },

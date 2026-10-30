@@ -145,3 +145,96 @@ only the broken, redundant generic-artifact CRUD duplicate.
 - `node --test --test-force-exit server/tests/srs-wire.test.js server/tests/srs-domain-parity.test.js` — **34/34 passing, 0 fail** (includes the pinned frontend-contract regexes for `apiHelpers.srs.due/add/review`).
 - `node scripts/verify-lens-backends.mjs` — `{"WIRED":258,"NO-BACKEND-CALL":2}` total 260, unchanged.
 - `node scripts/grade-ux-polish.mjs --honest` — `srs`: `tier: "polished"`, `isGenericScaffold: false`, `antiPatterns: 0`. (Transient `audit/ux-polish-honest*` files reverted after the run via `git checkout -- audit/`.)
+
+
+# Builder update — Review 5 rework (PR #1802, B7, 2026-10-29)
+
+Built to the frozen Product Review 5 document (`lens-reviews/srs.md`):
+49 features inventoried, 17 failures (F1–F14) addressed in its §7 slice
+order S1–S14. Domain macros 31 → 34 (`study-preview`, `study-undo`,
+`media-remove`). Verification from this seat: local domain harness on
+the shipped branch bytes **68/68** (S2 6, S3/S4 8, S5–S9 13, S10–S14 8,
+repo parity suite 33 as the regression gate); repo suites added:
+`srs-rename-delete.test.js`, `srs-study-core.test.js`,
+`srs-decks-portability.test.js`, `srs-types-sharing.test.js`. Frontend
+vitest/typecheck NOT RUN from this seat (no node_modules — NEEDS-MAC/CI);
+live re-pass is Review 5's §9 gate after deploy.
+
+## What the rework changed, by finding
+
+- **F1 (P0) text input stripped keys** — the page registered Space/1–4
+  as form-field-firing lens commands; those flags are removed, so the
+  keys belong to the field. Physical-keyboard confirmation is the
+  re-pass's §9 item.
+- **F2 (P0) deck delete/rename** — delete's only gate was a native
+  `confirm()` (a dead control in the embedded browser); now an inline
+  two-step row confirmation naming the card fate and subdeck
+  re-parenting (domain re-parents children instead of orphaning them
+  out of the tree). Rename is a real field + macro parameter.
+- **F3 (P0) study core** — one pure grading core (`gradeOutcome`)
+  serves both `study-answer` and the new `study-preview`, so the
+  interval printed on each grade button is the interval applied.
+  Learning steps are real: Again re-enters steps and resurfaces in
+  minutes in-session. Reps increments on every grade. Browse gained
+  the Due column its sort already promised.
+- **F4 (P0) options govern** — `study-next` serves step-due first
+  (never capped), then review-due under `reviewsPerDay`, then new
+  under `newPerDay`, counting today's log/introductions.
+- **F5/F8 filtered decks + counts** — one pool definition
+  (`poolCardsAll`) feeds study and every count; `deckCounts` mirrors
+  study-next's arithmetic; filtered decks count their matches, show
+  their query on the row, and edit it in Deck Options; the dashboard
+  counts studyable cards and reports buried separately; the Study
+  selector says "(N to study)".
+- **F6 bury/suspend honesty** — both macros count only real flag
+  changes (`updated`/`unchanged`); banners report the verified
+  counts; an explicit Unbury button exists.
+- **F7 portability** — export carries each card's scheduling block;
+  import restores it (block or flat fields, bounded). The format
+  takes the review's honest-rename fork: `.srs.json`, with copy
+  stating it is not an Anki `.apkg`. A true `.apkg` writer was NOT
+  built.
+- **F9 grading undo** — every grade snapshots the card (undo log,
+  capped 50); `study-undo` restores it exactly and removes the
+  logged review. Button + Ctrl/Cmd+Z, form fields exempt.
+- **F10 card types** — the masking editor is real: draw boxes on the
+  image, name each; the fabricated auto-grid is gone. Study masks
+  the target region until reveal, then outlines it. Basic gains
+  "also create reversed" (one note, swapped twin). Cloze rides F1's
+  cure.
+- **F11 media** — uploads (image/audio, ~2 MB cap) join URL assets
+  in the library; assets are removable (two-step, verified banner;
+  cards keep their copies); the library can fill a card's front
+  image; card media slots accept data URLs.
+- **F12 settings legibility** — every Deck Options control carries a
+  plain-language consequence sentence; FSRS/SM-2 are explained;
+  desired retention is a named control that actually governs FSRS
+  intervals through the one grading core (clamped 0.7–0.97).
+- **F13 shared decks + data safety** — publish stores a deck's
+  bundle as a public DTU (owner's choice, read-back verified);
+  published bundles appear in Shared decks and add via `deck-import`
+  as the caller's own copy. No permission model was changed. The
+  Transfer tab states where deck data lives and that import never
+  overwrites.
+- **F14 study surface** — Workbench keyboard (Space reveals, 1–4
+  grade, hints printed, form fields exempt); progress and the
+  session-complete summary read the review log via pool-scoped
+  `study-stats` (`reviewsToday`/`againToday`/`nextDueAt`), so they
+  survive leaving and returning; the lapse line reports the real
+  Again count.
+
+## Honest not-built / not-claimed
+
+- True Anki `.apkg` export (zip/SQLite writer) — not built; the
+  `.srs.json` rename is the shipped answer.
+- Anki §5d items with no §7 slice: workload simulator, manual
+  reschedule/forget, FSRS fit evaluation, CSV import/export,
+  automatic backups, add-on/API surface, iOS fidelity.
+- Delight: grade-receipt previews (S3), undo, and the lapse line
+  shipped; the forecast self-grading line and the first-deck moment
+  were not built as separate moments.
+- The "Spaced-repetition repos" view is untouched — keep/move/cut
+  is Ramaj's open product call.
+- Cross-account shared-deck discovery rides the platform's DTU
+  library surface; whether a second account sees a published bundle
+  live is Review 5's §9 check, not verified from this seat.
