@@ -277,7 +277,7 @@ export const actuatorFatigueScreening = registerSolver({
   domain: "fatigue",
   fidelity: 1,
   screening: true,
-  method: "Basquin S–N screening: Nf = 0.5·(σa / (0.9·Su))^(1/b), b = −0.085; declared cycles vs computed life",
+  method: "Basquin S–N screening: Nf = 0.5·(σa / (0.9·Su))^(1/b), σa = stress range / 2, b = −0.085; declared cycles vs computed life",
   reference: "Shigley's Mechanical Engineering Design, Basquin equation and σ'f ≈ 0.9·Su screening fit for steels",
   targets: (g) => g.nodesOfKind("Actuator").map((n) => n.id),
   run(ctx, id) {
@@ -289,10 +289,13 @@ export const actuatorFatigueScreening = registerSolver({
     const mat = ctx.material(id);
     if (!mat || mat.ultimatePa == null) return { notComputed: `${id} has no material ultimate strength`, covers };
     const sigmaF = 0.9 * mat.ultimatePa;
-    const life = 0.5 * Math.pow(stressRangePa / sigmaF, 1 / BASQUIN_B);
+    // Basquin is written in stress AMPLITUDE (half the peak-to-peak range); the declared prop is the range.
+    // Using the range as the amplitude doubled the stress and shortened the computed life ~3,500x.
+    const amplitudePa = stressRangePa / 2;
+    const life = 0.5 * Math.pow(amplitudePa / sigmaF, 1 / BASQUIN_B);
     return {
       inputs: {
-        stressRange: { value: stressRangePa, unit: "Pa" }, cycles: { value: cycles },
+        stressRange: { value: stressRangePa, unit: "Pa" }, stressAmplitude: { value: amplitudePa, unit: "Pa" }, cycles: { value: cycles },
         [`${id}.Su`]: { value: mat.ultimatePa, unit: "Pa", source: mat.source },
       },
       outputs: { cyclesToFailure: { value: Math.round(life) }, sigmaFPrime: { value: Math.round(sigmaF), unit: "Pa" } },

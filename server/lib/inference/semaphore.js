@@ -5,7 +5,9 @@
 import { BRAIN_CONFIG } from "../brain-config.js";
 import { LruMap, LruSet } from "../lru-map.js";
 
-const VRAM_BUDGET_GB = parseFloat(process.env.VRAM_BUDGET_GB || "32");
+import { podPick } from "../pod-profile.js";
+// Pod profile: the A40 has 48 GB; leave ~4 GB for the driver and KV spikes.
+const VRAM_BUDGET_GB = parseFloat(process.env.VRAM_BUDGET_GB || String(podPick(32, 44)));
 
 const BRAIN_VRAM_GB = {
   repair:       1,   // qwen2.5:0.5b

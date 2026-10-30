@@ -122,6 +122,24 @@ describe("long-term limit states (Q42)", () => {
     assert.equal(failing.result("actuator.fatigue-screening@AC1").status, "FAIL");
   });
 
+  it("Basquin uses the stress AMPLITUDE (range/2): life matches a hand calculation, not just a status", () => {
+    const range = 200e6;
+    const s = open(design({
+      extraNodes: [{ id: "AC1", kind: "Actuator", material: "steel-a36", props: { fatigue: { stressRangePa: range, cycles: 1e5 } } }],
+      extraEdges: [{ type: "CONTAINS", from: "A1", to: "AC1" }],
+    }));
+    const e = s.result("actuator.fatigue-screening@AC1");
+    const Su = e.inputs["AC1.Su"].value;
+    assert.ok(Su > 1e8, "A36 ultimate strength is read from the material library: " + Su);
+    // Hand calc: sigma_f' = 0.9*Su ; sigma_a = range/2 ; Nf = 0.5*(sigma_a/sigma_f')^(1/-0.085)
+    const expected = 0.5 * Math.pow((range / 2) / (0.9 * Su), 1 / -0.085);
+    assert.equal(e.outputs.cyclesToFailure.value, Math.round(expected));
+    assert.equal(e.inputs.stressAmplitude.value, range / 2);
+    // And it is NOT the old range-as-amplitude answer (about 3,500x shorter).
+    const old = 0.5 * Math.pow(range / (0.9 * Su), 1 / -0.085);
+    assert.ok(e.outputs.cyclesToFailure.value > old * 1000, `${e.outputs.cyclesToFailure.value} vs old ${old}`);
+  });
+
   it("coverage no longer reports the three domains as missing solvers", () => {
     const s = open(design({
       jointProps: { environment: "outdoor-urban", fatigueCategory: "D", fatigueCycles: 1e6, fatigueStressRange: "10 MPa" },

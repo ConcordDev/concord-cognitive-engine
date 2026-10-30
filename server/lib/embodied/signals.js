@@ -175,9 +175,12 @@ export function signalsForWorld(db, worldId, location = null) {
   } catch {
     return out;
   }
-  if (!rows || rows.length === 0) return out;
+  return _foldSignalRows(out, rows, now);
+}
 
-  const acc = new Map();
+// Recency-weighted fold shared by signalsForWorld and
+// signalsForWorldCooperative. `acc` may be passed in to fold page by page.
+function _accumulateSignalRows(acc, rows, now) {
   for (const r of rows) {
     const ch = r.channel;
     const ts = Number(r.recorded_at ?? r.observed_at ?? now);
@@ -195,7 +198,15 @@ export function signalsForWorld(db, worldId, location = null) {
       cur.deltaSum += v * w;
     }
   }
+  return acc;
+}
 
+function _foldSignalRows(out, rows, now) {
+  if (!rows || rows.length === 0) return out;
+  return _finishSignalFold(out, _accumulateSignalRows(new Map(), rows, now));
+}
+
+function _finishSignalFold(out, acc) {
   for (const [ch, agg] of acc) {
     const base = agg.absW > 0 ? (agg.absSum / agg.absW) : (DEFAULTS[ch] ?? 0);
     out[ch] = base + agg.deltaSum;
@@ -226,6 +237,77 @@ function _attachAliases(out) {
   out.noise            = out["sonic_os.ambient_db"];
   out.pressure         = out["tactile_force_os.ambient_pressure"];
   out.structuralStress = out["tactile_force_os.structural_stress"];
+}
+
+/**
+ * Whole-world signalsForWorld (no location) that reads the log in pages and
+ * yields to the event loop between them. Same rows, same fold, same result.
+ *
+ * A world can hold tens of thousands of live rows. Folding 30k rows takes
+ * ~20 ms in memory, but on the live box (memory paged to swap) the single
+ * read measured 1.5–5.4 s of blocked event loop under creature-flock-cycle
+ * (lag profiler, 2026-10-23). Paging keeps each synchronous stretch to one
+ * index-ordered page.
+ *
+ * @param {import("better-sqlite3").Database} db
+ * @param {string} worldId
+ * @param {{ pageSize?: number, yieldFn?: () => Promise<void>, now?: number }} [opts]
+ */
+export async function signalsForWorldCooperative(db, worldId, opts = {}) {
+  const out = { ...DEFAULTS, hasData: false, weatherKind: "clear" };
+  _attachAliases(out);
+  try { out.biome = classifyBiome(out).biome; } catch { out.biome = "barren"; }
+  if (!db || !worldId) return out;
+  const pageSize = Math.max(1, Math.floor(Number(opts.pageSize) || 2000));
+  const yieldFn = opts.yieldFn || (() => new Promise((r) => { setImmediate(r); }));
+  const now = Number.isFinite(opts.now) ? opts.now : Math.floor(Date.now() / 1000);
+
+  const acc = new Map();
+  let any = false;
+  try {
+    // Keyset pages on idx_emb_world_time (world_id, observed_at DESC). A page
+    // that fills up may split one observed_at second; that second is dropped
+    // from the page and read whole by the tie query, then the cursor moves
+    // strictly past it, so every row is folded exactly once.
+    const page = db.prepare(`
+      SELECT channel, value, source, recorded_at, observed_at
+        FROM embodied_signal_log
+       WHERE world_id = ? AND observed_at < ?
+         AND (decay_at IS NULL OR decay_at >= ?)
+       ORDER BY observed_at DESC
+       LIMIT ?
+    `);
+    const tie = db.prepare(`
+      SELECT channel, value, source, recorded_at, observed_at
+        FROM embodied_signal_log
+       WHERE world_id = ? AND observed_at = ?
+         AND (decay_at IS NULL OR decay_at >= ?)
+    `);
+    let cursor = Number.MAX_SAFE_INTEGER;
+    for (;;) {
+      let rows = page.all(worldId, cursor, now, pageSize);
+      if (rows.length === 0) break;
+      const full = rows.length === pageSize;
+      if (full) {
+        const edge = rows[rows.length - 1].observed_at;
+        rows = rows.filter((r) => r.observed_at !== edge);
+        if (rows.length) { _accumulateSignalRows(acc, rows, now); any = true; }
+        await yieldFn();
+        const tied = tie.all(worldId, edge, now);
+        if (tied.length) { _accumulateSignalRows(acc, tied, now); any = true; }
+        cursor = edge;
+      } else {
+        _accumulateSignalRows(acc, rows, now);
+        any = true;
+        break;
+      }
+      await yieldFn();
+    }
+  } catch {
+    return out;
+  }
+  if (!any) return out;
+  return _finishSignalFold(out, acc);
 }
 
 /** GC sweep: hard-delete rows past their TTL (if decay_at set). */
