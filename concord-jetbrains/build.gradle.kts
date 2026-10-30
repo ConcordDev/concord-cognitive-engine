@@ -24,9 +24,9 @@ intellij {
 }
 
 dependencies {
-  implementation("com.redhat.devtools.lsp4ij:lsp4ij:0.5.0") {
-    isTransitive = false
-  }
+  // LSP4IJ is an IDE plugin, not a Maven artifact: the intellij { plugins }
+  // entry above puts its classes on the compile classpath, and the IDE
+  // supplies them at runtime via <depends> in plugin.xml.
   // org.json — used by ConcordSettingsConfigurable + ConcordSignInAction
   // for JSON parse/serialize in the OAuth loopback callback.
   implementation("org.json:json:20231013")
