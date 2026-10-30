@@ -110,7 +110,7 @@ describe("forgetting-engine — second-chance grace window", () => {
     assert.equal(dtu._graceUntil, undefined, "_graceUntil is cleared on recovery — clean slate");
   });
 
-  it("a DTU that stays below threshold for GRACE_CYCLES consecutive cycles IS eventually tombstoned", async () => {
+  it("a DTU that stays below threshold for GRACE_CYCLES consecutive cycles is eventually LABELED weak, never tombstoned", async () => {
     const dtu = weakDtu("d-expire");
     STATE.dtus.set(dtu.id, dtu);
 
@@ -125,13 +125,15 @@ describe("forgetting-engine — second-chance grace window", () => {
       );
     }
 
-    // One more cycle: grace has elapsed and the DTU is still below
-    // threshold — it goes through the existing, unmodified forgetDTU path.
+    // One more cycle: grace has elapsed and the DTU is still below threshold. Owner rule: it is
+    // labeled and ranked lower, never removed (see forgetting-engine-label-only.test.js).
     const finalResult = await runForgettingCycle(false);
     assert.equal(finalResult.ok, true);
-    assert.ok(!STATE.dtus.has(dtu.id), "the DTU is gone after its grace window elapses");
-    assert.ok(STATE.dtus.has(`tomb_${dtu.id}`), "a tombstone was created via forgetDTU");
-    assert.equal(finalResult.forgottenCount, 1);
+    assert.ok(STATE.dtus.has(dtu.id), "the DTU is still present after its grace window elapses");
+    assert.ok(!STATE.dtus.has(`tomb_${dtu.id}`), "no tombstone is created");
+    assert.equal(finalResult.forgottenCount, 0);
+    assert.equal(finalResult.labeledCount, 1);
+    assert.equal(STATE.dtus.get(dtu.id).meta.quality.label, "weak");
   });
 
   it("a protected/pinned DTU never enters the grace mechanism at all", async () => {

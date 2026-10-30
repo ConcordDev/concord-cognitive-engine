@@ -981,8 +981,20 @@ function snapshotSupply(currentSupply) {
  *
  * Call this once per tick from the main loop.
  */
-export function runEconomicCycle() {
+let _lastCycleAt = 0;
+
+/**
+ * `opts.skipIfRecentMs`: a secondary driver (the ghost fleet's 5-minute timer) passes this so it does not
+ * run a second cycle (and a second UBI/inflation pass) alongside the governor heartbeat's. Callers that
+ * pass nothing (governor, the manual macro/route) always run.
+ */
+export function runEconomicCycle(opts = {}) {
   try {
+    const skip = Number(opts?.skipIfRecentMs);
+    if (skip > 0 && _lastCycleAt && Date.now() - _lastCycleAt < skip) {
+      return { ok: true, skipped: "recent_cycle", sinceMs: Date.now() - _lastCycleAt };
+    }
+    _lastCycleAt = Date.now();
     _tick++;
 
     const currentSupply = computeTotalSupply();
