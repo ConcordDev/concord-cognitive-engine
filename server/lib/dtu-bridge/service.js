@@ -101,17 +101,32 @@ export function createDtuBridgeService({ store, target, sourceNode = "concord-sq
     return { enqueued: res.enqueued || 0, deduped: res.deduped || 0, skipped: 0 };
   }
 
-  /** Capture pass over an iterable of live DTUs. */
+  // Rotating sweep position. A sweep scans at most `limit` DTUs, so without
+  // this the same head of the list is rescanned every tick and DTUs past
+  // `limit` are never captured. Each sweep resumes where the last one ended
+  // and wraps, so every live DTU is visited once per ceil(n / limit) sweeps.
+  let sweepCursor = 0;
+
+  /** Capture pass over live DTUs: `limit` items from the rotating cursor. */
   function sweep(dtus, { limit = 200 } = {}) {
-    const counts = { scanned: 0, enqueued: 0, deduped: 0, skipped: 0 };
-    for (const dtu of dtus || []) {
-      if (counts.scanned >= limit) break;
+    const list = Array.isArray(dtus) ? dtus : Array.from(dtus || []);
+    const n = list.length;
+    const counts = { scanned: 0, enqueued: 0, deduped: 0, skipped: 0, cursor: 0 };
+    if (n === 0) {
+      sweepCursor = 0;
+      return counts;
+    }
+    const start = sweepCursor >= n ? 0 : sweepCursor;
+    const budget = Math.min(n, Math.max(0, limit));
+    for (let k = 0; k < budget; k++) {
       counts.scanned++;
-      const r = enqueueDtu(dtu);
+      const r = enqueueDtu(list[(start + k) % n]);
       counts.enqueued += r.enqueued;
       counts.deduped += r.deduped;
       counts.skipped += r.skipped;
     }
+    sweepCursor = (start + counts.scanned) % n;
+    counts.cursor = sweepCursor;
     return counts;
   }
 
@@ -122,6 +137,7 @@ export function createDtuBridgeService({ store, target, sourceNode = "concord-sq
 
   function stats() {
     return {
+      cursor: sweepCursor,
       outbox: outbox.stats(),
       chains:
         typeof target.countChains === "function"

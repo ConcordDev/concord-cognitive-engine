@@ -44065,7 +44065,6 @@ function _runNewsFeedWarm(_tick) {
     .catch((e) => { structuredLog("warn", "feed_cache_warm_tick", { error: String(e?.message || e) }); })
     .finally(() => { _newsWarmRunning = false; });
 }
-// Backfill DTU classification in small budgeted batches (existing DTUs without a current classification).
 // DTU bridge wiring (slices 0–5 go live): a periodic sweep captures
 // live DTUs into the bridge outbox and the pump drains the outbox
 // through the conflict rule into the local bridge replica
@@ -44103,6 +44102,7 @@ registerHeartbeat("dtu-bridge-pump", {
   },
 });
 
+// Backfill DTU classification in small budgeted batches (existing DTUs without a current classification).
 registerHeartbeat("dtu-quality-backfill", {
   frequency: 4,
   scope: "global",

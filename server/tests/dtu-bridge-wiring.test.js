@@ -77,7 +77,7 @@ test("capture + deliver (memory): sweep enqueues once, re-sweep dedupes, drain a
   const svc = createMemoryBridgeService();
   const dtu = liveDtu();
   const first = svc.sweep([dtu]);
-  assert.deepEqual(first, { scanned: 1, enqueued: 1, deduped: 0, skipped: 0 });
+  assert.deepEqual(first, { scanned: 1, enqueued: 1, deduped: 0, skipped: 0, cursor: 0 });
   const second = svc.sweep([dtu]);
   assert.equal(second.enqueued, 0);
   assert.equal(svc.stats().outbox.pending, 1);
@@ -118,6 +118,37 @@ test("capture: DTUs without a usable id are skipped, never packed", () => {
   const r = svc.sweep([{ title: "no id" }, { id: "" }, null, liveDtu({ id: "dtu-ok" })]);
   assert.equal(r.skipped, 3);
   assert.equal(r.enqueued, 1);
+});
+
+test("capture: a rotating cursor reaches every DTU past the per-sweep limit", () => {
+  const svc = createMemoryBridgeService();
+  const dtus = Array.from({ length: 450 }, (_, i) => liveDtu({ id: `dtu-rot-${i}`, title: `T${i}` }));
+  const totals = [];
+  for (let k = 0; k < 3; k++) totals.push(svc.sweep(dtus, { limit: 200 }));
+  assert.deepEqual(totals.map((c) => c.enqueued), [200, 200, 50]);
+  assert.deepEqual(totals.map((c) => c.scanned), [200, 200, 200]);
+  // The third sweep wraps: 50 new DTUs, then 150 already-captured ones dedupe.
+  assert.equal(totals[2].deduped, 150);
+  assert.equal(totals[2].cursor, 600 % 450);
+  assert.equal(svc.stats().cursor, 150);
+  // Every id is in the outbox exactly once.
+  assert.equal(svc.stats().outbox.pending, 450);
+  // A fourth sweep finds nothing new.
+  const fourth = svc.sweep(dtus, { limit: 200 });
+  assert.equal(fourth.enqueued, 0);
+  assert.equal(fourth.deduped, 200);
+});
+
+test("capture: cursor survives a shrinking corpus and an empty one", () => {
+  const svc = createMemoryBridgeService();
+  const big = Array.from({ length: 10 }, (_, i) => liveDtu({ id: `dtu-s-${i}` }));
+  svc.sweep(big, { limit: 8 });
+  assert.equal(svc.stats().cursor, 8);
+  const small = big.slice(0, 3);
+  const c = svc.sweep(small, { limit: 8 });
+  assert.equal(c.scanned, 3);
+  assert.equal(svc.sweep([], {}).scanned, 0);
+  assert.equal(svc.stats().cursor, 0);
 });
 
 test("sqlite composition: full lifecycle against a real database", async (t) => {
