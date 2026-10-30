@@ -1510,6 +1510,7 @@ export const apiHelpers = {
     complete: (goalId: string) => api.post(`/api/goals/${goalId}/complete`, {}),
     activate: (goalId: string) => api.post(`/api/goals/${goalId}/activate`, {}),
     abandon: (goalId: string, reason?: string) => api.post(`/api/goals/${goalId}/abandon`, { reason }),
+    remove: (goalId: string) => api.delete(`/api/goals/${goalId}`),
     status: () => api.get('/api/goals/status'),
     autoPropose: () => api.post('/api/goals/auto-propose', {}),
     config: (data?: Record<string, unknown>) => (data ? api.post('/api/goals/config', data) : api.get('/api/goals/config')),

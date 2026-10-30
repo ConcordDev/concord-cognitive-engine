@@ -9,7 +9,7 @@ package ai.concord.jetbrains.settings
 
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.ConfigurationException
-import com.intellij.openapi.ui.MessageDialogBuilder
+import com.intellij.openapi.ui.Messages
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBPanel
 import com.intellij.ui.components.JBTextField
@@ -82,10 +82,10 @@ class ConcordSettingsConfigurable : Configurable {
                 val instance = cls.getDeclaredConstructor().newInstance()
                 cls.getMethod("startSignIn").invoke(instance)
             } catch (e: Throwable) {
-                MessageDialogBuilder.okCancel(
-                    "Sign-in unavailable",
-                    "Concord sign-in could not start: ${e.message}"
-                ).show()
+                Messages.showErrorDialog(
+                    "Concord sign-in could not start: ${e.message}",
+                    "Sign-in Unavailable"
+                )
             }
         }
 

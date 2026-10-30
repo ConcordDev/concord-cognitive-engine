@@ -6,13 +6,14 @@
  * mint/DM/publish/agent.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BarChart3, Filter, Users, TrendingUp, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -39,10 +40,23 @@ interface TrendResult { trend: string; slope: number; dataPoints: number; lastVa
 
 // No seed data — paste real funnel / cohort / time-series JSON.
 export function AnalyticsActionPanel() {
-  const [funnelText, setFunnelText] = useState('');
-  const [cohortText, setCohortText] = useState('');
-  const [seriesText, setSeriesText] = useState('');
-  const [recipient, setRecipient] = useState('');
+  // Bench drafts persist across tab switches (A23/F8): this panel mounts
+  // only in DeskPanel's actions mode, so plain useState drafts died on
+  // every unmount — type in a field, switch tab, come back, gone. The
+  // drafts ride the lens state store (lib/lens-state-persistence) under
+  // a benchDrafts key: restored once on mount, re-persisted on change.
+  const { restore, persist } = useLensStatePersistence('analytics');
+  const [savedDrafts] = useState(() => {
+    const d = restore()?.benchDrafts;
+    return d && typeof d === 'object' ? (d as Record<string, unknown>) : {};
+  });
+  const [funnelText, setFunnelText] = useState(() => String(savedDrafts.funnelText ?? ''));
+  const [cohortText, setCohortText] = useState(() => String(savedDrafts.cohortText ?? ''));
+  const [seriesText, setSeriesText] = useState(() => String(savedDrafts.seriesText ?? ''));
+  const [recipient, setRecipient] = useState(() => String(savedDrafts.recipient ?? ''));
+  useEffect(() => {
+    persist({ ...(restore() ?? {}), benchDrafts: { funnelText, cohortText, seriesText, recipient } });
+  }, [funnelText, cohortText, seriesText, recipient, persist, restore]);
 
   const [busy, setBusy] = useState<ActionId | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
