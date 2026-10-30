@@ -61,6 +61,15 @@ export function PjTaskDetail({
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
   const [comment, setComment] = useState('');
+  // S7 (F8/F9): title, description and custom-field text values are
+  // LOCAL DRAFTS, committed on blur/Enter. They used to bind straight
+  // to server state (custom fields saved per keystroke, then a refresh
+  // snapped the input back to the server's string mid-typing — "PR4
+  // field value" stored as "Rfeae"), and a sibling field's save
+  // refresh replaced the whole detail object, wiping drafts and focus.
+  const [titleDraft, setTitleDraft] = useState('');
+  const [descDraft, setDescDraft] = useState('');
+  const [fieldDrafts, setFieldDrafts] = useState<Record<string, string>>({});
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [att, setAtt] = useState({ name: '', url: '' });
   const [uploading, setUploading] = useState(false);
@@ -70,10 +79,22 @@ export function PjTaskDetail({
   const [subtaskTitle, setSubtaskTitle] = useState('');
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [itgLink, setItgLink] = useState({ integrationId: '', url: '', label: '', ciStatus: 'passed' });
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
+  const draftTaskRef = useRef<string | null>(null);
   const refresh = useCallback(async () => {
     const r = await lensRun('projects', 'task-detail', { id: taskId });
-    setDetail((r.data?.result as Detail | null) || null);
+    const d = (r.data?.result as Detail | null) || null;
+    setDetail(d);
+    // Drafts sync from the server ONLY when a different task opens —
+    // a same-task refresh (a sibling field just saved) must never
+    // overwrite what the user is typing (F8/F9).
+    if (d && draftTaskRef.current !== taskId) {
+      draftTaskRef.current = taskId;
+      setTitleDraft(d.task.title);
+      setDescDraft(d.task.description || '');
+      setFieldDrafts({});
+    }
     setLoading(false);
   }, [taskId]);
 
@@ -91,8 +112,22 @@ export function PjTaskDetail({
     return () => { stale = true; };
   }, [projectId]);
 
+  const [patchError, setPatchError] = useState<string | null>(null);
+  const [blockedPatch, setBlockedPatch] = useState<Record<string, unknown> | null>(null);
   const patch = async (p: Record<string, unknown>) => {
-    await lensRun('projects', 'task-update', { id: taskId, ...p });
+    const r = await lensRun('projects', 'task-update', { id: taskId, ...p });
+    if (r.data?.ok === false) {
+      // S8: a refused change (WIP limit, blocked-by) names itself; a
+      // blocked move can be overridden here — the domain records the
+      // override in this issue's Activity.
+      const msg = r.data?.error || 'That change was refused.';
+      setPatchError(msg);
+      setBlockedPatch(/blocked by/.test(msg) ? p : null);
+      await refresh();
+      return;
+    }
+    setPatchError(null);
+    setBlockedPatch(null);
     await refresh();
     onChange();
   };
@@ -100,6 +135,43 @@ export function PjTaskDetail({
   const setField = async (fieldId: string, value: string) => {
     await lensRun('projects', 'task-set-field', { taskId, fieldId, value });
     await refresh();
+  };
+
+  // F23: date inputs draft locally and commit on blur, like the text
+  // fields (S7). Firing task-update on every change event meant each
+  // per-segment partial value from a split-field date control drew an
+  // invalid-date banner, and the refusal path refreshed the panel —
+  // snapping the input back mid-entry. While editing there is now no
+  // round-trip, no banner, no reset; a commit sends a complete date
+  // or a deliberate clear, and an abandoned partial entry simply
+  // reverts to the stored value, which never changed.
+  const [dateDrafts, setDateDrafts] = useState<Record<string, string>>({});
+  const commitDate = async (key: 'startDate' | 'dueDate', stored: string | null) => {
+    const v = dateDrafts[key];
+    if (v === undefined) return;
+    setDateDrafts((prev) => { const next = { ...prev }; delete next[key]; return next; });
+    if (v === (stored || '')) return;
+    // An empty read-back is ambiguous: split-field controls report ''
+    // for a half-typed date AND for a deliberate clear. Treating it as
+    // a clear would erase the stored date on every abandoned entry —
+    // so an empty commit simply reverts; clearing is the explicit
+    // Clear button beside the input, never a side effect.
+    if (v === '') return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return; // partial entry, abandoned
+    await patch({ [key]: v });
+  };
+
+  const commitFieldDraft = async (fieldId: string) => {
+    const v = fieldDrafts[fieldId];
+    if (v === undefined) return;
+    setFieldDrafts((prev) => { const next = { ...prev }; delete next[fieldId]; return next; });
+    // F23: a date-typed field commits only a complete date — a
+    // partial entry is abandoned, never stored raw, and an empty
+    // read-back (ambiguous with a half-typed entry) reverts instead
+    // of erasing; custom dates clear via their Clear button.
+    const field = customFields.find((f) => f.id === fieldId);
+    if (field?.type === 'date' && (v === '' || !/^\d{4}-\d{2}-\d{2}$/.test(v))) return;
+    await setField(fieldId, v);
   };
 
   const addSubtask = async () => {
@@ -220,13 +292,26 @@ export function PjTaskDetail({
         </div>
 
         <div className="p-4 space-y-3">
-          <input value={t.title} onChange={(e) => setDetail({ ...detail, task: { ...t, title: e.target.value } })}
-            onBlur={(e) => patch({ title: e.target.value })}
+          <input value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)}
+            onBlur={(e) => { if (e.target.value !== t.title) void patch({ title: e.target.value }); }}
             className="w-full bg-lattice-surface border border-lattice-border rounded-lg px-3 py-2 text-sm font-semibold text-white" />
-          <textarea value={t.description || ''} placeholder="Description"
-            onChange={(e) => setDetail({ ...detail, task: { ...t, description: e.target.value } })}
-            onBlur={(e) => patch({ description: e.target.value })}
+          <textarea value={descDraft} placeholder="Description"
+            onChange={(e) => setDescDraft(e.target.value)}
+            onBlur={(e) => { if (e.target.value !== (t.description || '')) void patch({ description: e.target.value }); }}
             rows={3} className="w-full bg-lattice-surface border border-lattice-border rounded-lg px-3 py-2 text-xs text-white resize-y" />
+
+          {patchError && (
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-rose-300 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">
+              <span>{patchError}</span>
+              {blockedPatch && (
+                <button type="button"
+                  onClick={() => void patch({ ...blockedPatch, overrideBlocked: true })}
+                  className="px-2 py-0.5 bg-rose-900 hover:bg-rose-800 text-rose-100 rounded">
+                  Move anyway — recorded in Activity
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Field grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -263,10 +348,28 @@ export function PjTaskDetail({
               </select>
             </Field>
             <Field label="Start">
-              <input type="date" value={t.startDate || ''} onChange={(e) => patch({ startDate: e.target.value })} className={cn(selCls, 'tabular-nums')} />
+              <span className="flex items-center gap-1">
+                <input type="date" value={dateDrafts.startDate ?? (t.startDate || '')}
+                  onChange={(e) => setDateDrafts((prev) => ({ ...prev, startDate: e.target.value }))}
+                  onBlur={() => void commitDate('startDate', t.startDate)} className={cn(selCls, 'tabular-nums', 'flex-1')} />
+                {t.startDate && (
+                  <button type="button" aria-label="Clear start date" title="Clear start date"
+                    onClick={() => { setDateDrafts((prev) => { const next = { ...prev }; delete next.startDate; return next; }); void patch({ startDate: '' }); }}
+                    className="text-gray-500 hover:text-gray-200 text-xs px-1">×</button>
+                )}
+              </span>
             </Field>
             <Field label="Due">
-              <input type="date" value={t.dueDate || ''} onChange={(e) => patch({ dueDate: e.target.value })} className={cn(selCls, 'tabular-nums')} />
+              <span className="flex items-center gap-1">
+                <input type="date" value={dateDrafts.dueDate ?? (t.dueDate || '')}
+                  onChange={(e) => setDateDrafts((prev) => ({ ...prev, dueDate: e.target.value }))}
+                  onBlur={() => void commitDate('dueDate', t.dueDate)} className={cn(selCls, 'tabular-nums', 'flex-1')} />
+                {t.dueDate && (
+                  <button type="button" aria-label="Clear due date" title="Clear due date"
+                    onClick={() => { setDateDrafts((prev) => { const next = { ...prev }; delete next.dueDate; return next; }); void patch({ dueDate: '' }); }}
+                    className="text-gray-500 hover:text-gray-200 text-xs px-1">×</button>
+                )}
+              </span>
             </Field>
           </div>
 
@@ -310,10 +413,26 @@ export function PjTaskDetail({
                       <option value="">—</option>
                       {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
                     </select>
+                  ) : f.type === 'date' ? (
+                    <span className="flex items-center gap-1">
+                      <input type="date"
+                        value={fieldDrafts[f.id] ?? String(t.customFields[f.id] ?? '')}
+                        onChange={(e) => setFieldDrafts((prev) => ({ ...prev, [f.id]: e.target.value }))}
+                        onBlur={() => void commitFieldDraft(f.id)}
+                        className={cn(selCls, 'flex-1')} />
+                      {!!t.customFields[f.id] && (
+                        <button type="button" aria-label={`Clear ${f.name}`} title={`Clear ${f.name}`}
+                          onClick={() => void setField(f.id, '')}
+                          className="text-gray-500 hover:text-gray-200 text-xs px-1">×</button>
+                      )}
+                    </span>
                   ) : (
-                    <input type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
-                      value={String(t.customFields[f.id] ?? '')}
-                      onChange={(e) => setField(f.id, e.target.value)} className={selCls} />
+                    <input type={f.type === 'number' ? 'number' : 'text'}
+                      value={fieldDrafts[f.id] ?? String(t.customFields[f.id] ?? '')}
+                      onChange={(e) => setFieldDrafts((prev) => ({ ...prev, [f.id]: e.target.value }))}
+                      onBlur={() => void commitFieldDraft(f.id)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                      className={selCls} />
                   )}
                 </Field>
               ))}
@@ -486,10 +605,24 @@ export function PjTaskDetail({
             </ul>
           </Section>
 
-          <button type="button" onClick={() => lensRun('projects', 'task-delete', { id: taskId }).then(() => { onChange(); onClose(); })}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-lattice-elevated hover:bg-rose-900 text-gray-200 rounded-lg">
-            <Trash2 className="w-3.5 h-3.5" /> Delete issue
-          </button>
+          {confirmDelete ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-rose-900/50 bg-rose-950/40 px-2.5 py-2">
+              <span className="text-[11px] text-rose-200">
+                Delete {detail.task.ref} “{detail.task.title}” for good? Its comments, attachments and activity go with it.
+              </span>
+              <button type="button" onClick={() => lensRun('projects', 'task-delete', { id: taskId }).then(() => { onChange(); onClose(); })}
+                className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium bg-rose-600 hover:bg-rose-500 text-white rounded-lg">
+                <Trash2 className="w-3.5 h-3.5" /> Delete issue
+              </button>
+              <button type="button" onClick={() => setConfirmDelete(false)}
+                className="px-2 py-1 text-[11px] text-zinc-300">Cancel</button>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setConfirmDelete(true)}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-lattice-elevated hover:bg-rose-900 text-gray-200 rounded-lg">
+              <Trash2 className="w-3.5 h-3.5" /> Delete issue
+            </button>
+          )}
         </div>
       </div>
     </div>
