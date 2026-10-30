@@ -69,11 +69,12 @@ export default function registerProjectsActions(registerLensAction) {
     return (s.projects.get(userId) || []).find((p) => p.id === projectId) || null;
   }
   // Append a per-task activity entry (audit log).
-  function pjLog(s, userId, taskId, action, detail) {
+  function pjLog(s, userId, taskId, action, detail, meta) {
     pjListB(s.activity, userId).push({
       id: pjId("act"), taskId, action,
       detail: detail == null ? null : String(detail).slice(0, 200),
       at: pjNow(),
+      ...(meta ? { meta } : {}),
     });
   }
   // ── Assignment identity (S4 — F4; §8 Q2 ruling: real accounts only) ──
@@ -871,6 +872,17 @@ export default function registerProjectsActions(registerLensAction) {
     // settlement line — it survives reload because it IS the record.
     const line = `Sprint "${sprint.name}" settled: ${receipt.issuesDone}/${receipt.issuesTotal} issues, ${pointsDone}/${pointsTotal} points${receipt.settledInFull ? " — settled in full" : ""}${carried ? `; ${carried} carried over` : ""}`;
     for (const t of doneTasks) pjLog(s, userId, t.id, "sprint_receipt", line);
+    // D1 remainder (R4 re-pass on #1720): the receipt must exist in
+    // the project's Activity as a record in its own right and survive
+    // reload — the per-issue lines alone left a zero-done sprint with
+    // no record at all, and no single card for the stream to render.
+    // One project-level summary entry carries the full settlement.
+    pjLog(s, userId, null, "sprint_receipt", line, {
+      projectId: sprint.projectId, sprintId: sprint.id, sprintName: sprint.name,
+      issuesDone: receipt.issuesDone, issuesTotal: receipt.issuesTotal,
+      pointsDone: receipt.pointsDone, pointsTotal: receipt.pointsTotal,
+      carriedOver: receipt.carriedOver, settledInFull: receipt.settledInFull,
+    });
     savePjState();
     return { ok: true, result: { id: sprint.id, status: "completed", carriedOver: carried, receipt } };
   });
@@ -1463,7 +1475,7 @@ export default function registerProjectsActions(registerLensAction) {
       .map((a) => {
         const task = taskById.get(a.taskId);
         return { ...a, taskRef: task ? task.ref : null, taskTitle: task ? task.title : null,
-          projectId: task ? task.projectId : (a.projectId || null) };
+          projectId: task ? task.projectId : (a.projectId || (a.meta && a.meta.projectId) || null) };
       })
       .filter((a) => (params.projectId ? a.projectId === String(params.projectId) : true))
       .sort((a, b) => b.at.localeCompare(a.at))
