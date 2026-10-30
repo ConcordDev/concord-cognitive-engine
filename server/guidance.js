@@ -150,9 +150,7 @@ export function registerGuidanceEndpoints(app, db) {
       const lim = Math.min(Math.max(1, Number(limit)), 200);
       const off = Math.max(0, Number(offset));
 
-      // TODO: project explicit columns (auto-fix suggestion)
-
-      const rows = db.prepare(`SELECT * FROM events ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+      const rows = db.prepare(`SELECT id, type, actor_user_id, payload_json, created_at, request_id FROM events ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
         .all(...params, lim, off);
 
       const items = rows.map((row) => {
@@ -256,25 +254,25 @@ export function registerGuidanceEndpoints(app, db) {
 
       switch (entityType) {
         case "dtu": {
-          // TODO: project explicit columns (auto-fix suggestion)
+          // SELECT * is deliberate: the whole row is the API response (entity pass-through) — projecting a subset would silently change the response shape. (Audit Q69/A#3.)
           entity = db.prepare("SELECT * FROM dtus WHERE id = ?").get(entityId);
           if (!entity) return res.status(404).json({ error: "DTU not found" });
           entity.body = safeJSON(entity.body_json);
           entity.tags = safeJSON(entity.tags_json);
           versions = db.prepare("SELECT id, version, created_at FROM dtu_versions WHERE dtu_id = ? ORDER BY version DESC").all(entityId);
-          // TODO: project explicit columns (auto-fix suggestion)
+          // SELECT * is deliberate: the whole row is the API response (entity pass-through) — projecting a subset would silently change the response shape. (Audit Q69/A#3.)
           links = db.prepare("SELECT * FROM artifact_links WHERE from_kind = 'dtu' AND from_id = ?").all(entityId);
           actions = ["update", "delete", "publish", "sync_to_lens"];
           if (entity.visibility === "private") actions.push("make_public");
           break;
         }
         case "artifact": {
-          // TODO: project explicit columns (auto-fix suggestion)
+          // SELECT * is deliberate: the whole row is the API response (entity pass-through) — projecting a subset would silently change the response shape. (Audit Q69/A#3.)
           entity = db.prepare("SELECT * FROM artifacts WHERE id = ?").get(entityId);
           if (!entity) return res.status(404).json({ error: "Artifact not found" });
           entity.metadata = safeJSON(entity.metadata_json);
           versions = db.prepare("SELECT id, version, sha256, size_bytes, mime_type, created_at FROM artifact_versions WHERE artifact_id = ? ORDER BY version DESC").all(entityId);
-          // TODO: project explicit columns (auto-fix suggestion)
+          // SELECT * is deliberate: the whole row is the API response (entity pass-through) — projecting a subset would silently change the response shape. (Audit Q69/A#3.)
           links = db.prepare("SELECT * FROM artifact_links WHERE to_artifact_id = ?").all(entityId);
           const linkedJobs = db.prepare("SELECT j.* FROM jobs j JOIN job_artifacts ja ON j.id = ja.job_id WHERE ja.artifact_id = ?").all(entityId);
           actions = ["download", "delete", "publish_to_marketplace", "sync_to_lens"];
@@ -282,7 +280,7 @@ export function registerGuidanceEndpoints(app, db) {
           break;
         }
         case "listing": {
-          // TODO: project explicit columns (auto-fix suggestion)
+          // SELECT * is deliberate: the whole row is the API response (entity pass-through) — projecting a subset would silently change the response shape. (Audit Q69/A#3.)
           entity = db.prepare("SELECT * FROM marketplace_listings WHERE id = ?").get(entityId);
           if (!entity) return res.status(404).json({ error: "Listing not found" });
           const assets = db.prepare("SELECT a.* FROM artifacts a JOIN marketplace_listing_assets mla ON a.id = mla.artifact_id WHERE mla.listing_id = ?").all(entityId);
@@ -293,21 +291,21 @@ export function registerGuidanceEndpoints(app, db) {
           break;
         }
         case "project": {
-          // TODO: project explicit columns (auto-fix suggestion)
+          // SELECT * is deliberate: the whole row is the API response (entity pass-through) — projecting a subset would silently change the response shape. (Audit Q69/A#3.)
           entity = db.prepare("SELECT * FROM studio_projects WHERE id = ?").get(entityId);
           if (!entity) return res.status(404).json({ error: "Project not found" });
           entity.metadata = safeJSON(entity.metadata_json);
-          // TODO: project explicit columns (auto-fix suggestion)
+          // SELECT * is deliberate: the whole row is the API response (entity pass-through) — projecting a subset would silently change the response shape. (Audit Q69/A#3.)
           const tracks = db.prepare("SELECT * FROM studio_tracks WHERE project_id = ?").all(entityId);
           entity._tracks = tracks;
-          // TODO: project explicit columns (auto-fix suggestion)
+          // SELECT * is deliberate: the whole row is the API response (entity pass-through) — projecting a subset would silently change the response shape. (Audit Q69/A#3.)
           const renders = db.prepare("SELECT * FROM studio_renders WHERE project_id = ? ORDER BY created_at DESC LIMIT 5").all(entityId);
           entity._renders = renders;
           actions = ["update", "add_track", "render", "master", "delete"];
           break;
         }
         case "job": {
-          // TODO: project explicit columns (auto-fix suggestion)
+          // SELECT * is deliberate: the whole row is the API response (entity pass-through) — projecting a subset would silently change the response shape. (Audit Q69/A#3.)
           entity = db.prepare("SELECT * FROM jobs WHERE id = ?").get(entityId);
           if (!entity) return res.status(404).json({ error: "Job not found" });
           entity.input = safeJSON(entity.input_json);
@@ -325,8 +323,7 @@ export function registerGuidanceEndpoints(app, db) {
       // Get recent events for this entity
       try {
         recentEvents = db.prepare(
-          // TODO: project explicit columns (auto-fix suggestion)
-          "SELECT * FROM events WHERE payload_json LIKE ? ORDER BY created_at DESC LIMIT 20"
+          "SELECT id, type, payload_json, created_at FROM events WHERE payload_json LIKE ? ORDER BY created_at DESC LIMIT 20"
         ).all(`%"_entityId":"${escapeLike(entityId)}"%`).map((row) => {
           const p = safeJSON(row.payload_json);
           return {
@@ -410,8 +407,7 @@ export function registerGuidanceEndpoints(app, db) {
 
       // Find event with this undo token
       const event = db.prepare(
-        // TODO: project explicit columns (auto-fix suggestion)
-        "SELECT * FROM events WHERE payload_json LIKE ? ORDER BY created_at DESC LIMIT 1"
+        "SELECT payload_json FROM events WHERE payload_json LIKE ? ORDER BY created_at DESC LIMIT 1"
       ).get(`%"_undoToken":"${escapeLike(undoToken)}"%`);
 
       if (!event) return res.status(404).json({ error: "Undo token not found or expired" });
@@ -523,7 +519,7 @@ export function registerGuidanceEndpoints(app, db) {
   // DTU Update with undo
   app.put("/api/dtus/guided/:id", (req, res) => {
     try {
-      // TODO: project explicit columns (auto-fix suggestion)
+      // SELECT * is deliberate: this row becomes the undo snapshot (previousState) — it must carry every column or an undo restore would lose data. (Audit Q69/A#3.)
       const existing = db.prepare("SELECT * FROM dtus WHERE id = ?").get(req.params.id);
       if (!existing) return res.status(404).json({ error: "DTU not found" });
 
@@ -570,7 +566,7 @@ export function registerGuidanceEndpoints(app, db) {
         undoPayload: { action: "restore_dtu", entityId: req.params.id, previousState },
       });
 
-      // TODO: project explicit columns (auto-fix suggestion)
+      // SELECT * is deliberate: the whole row is the API response (entity pass-through) — projecting a subset would silently change the response shape. (Audit Q69/A#3.)
 
       const updated = db.prepare("SELECT * FROM dtus WHERE id = ?").get(req.params.id);
       res.json({ ok: true, dtu: updated, undoToken });
@@ -582,7 +578,7 @@ export function registerGuidanceEndpoints(app, db) {
   // DTU Delete with undo
   app.delete("/api/dtus/guided/:id", (req, res) => {
     try {
-      // TODO: project explicit columns (auto-fix suggestion)
+      // SELECT * is deliberate: this row becomes the undo snapshot (previousState) — it must carry every column or an undo restore would lose data. (Audit Q69/A#3.)
       const existing = db.prepare("SELECT * FROM dtus WHERE id = ?").get(req.params.id);
       if (!existing) return res.status(404).json({ error: "DTU not found" });
 
@@ -645,8 +641,7 @@ export function registerGuidanceEndpoints(app, db) {
 
   app.post("/api/marketplace/listings/:id/guided-publish", (req, res) => {
     try {
-      // TODO: project explicit columns (auto-fix suggestion)
-      const listing = db.prepare("SELECT * FROM marketplace_listings WHERE id = ?").get(req.params.id);
+      const listing = db.prepare("SELECT id, owner_user_id, title, visibility FROM marketplace_listings WHERE id = ?").get(req.params.id);
       if (!listing) return res.status(404).json({ error: "Listing not found" });
       if (listing.visibility === "published") return res.json({ ok: true, message: "Already published" });
 
@@ -688,8 +683,7 @@ export function registerGuidanceEndpoints(app, db) {
 
       switch (action) {
         case "publish_listing": {
-          // TODO: project explicit columns (auto-fix suggestion)
-          const listing = db.prepare("SELECT * FROM marketplace_listings WHERE id = ?").get(entityId);
+          const listing = db.prepare("SELECT id, visibility FROM marketplace_listings WHERE id = ?").get(entityId);
           if (!listing) { preview.warnings.push("Listing not found"); break; }
           preview.willModify.push({ type: "listing", id: entityId, field: "visibility", from: listing.visibility, to: "published" });
           const assets = db.prepare("SELECT COUNT(*) as c FROM marketplace_listing_assets WHERE listing_id = ?").get(entityId);
@@ -697,8 +691,7 @@ export function registerGuidanceEndpoints(app, db) {
           break;
         }
         case "delete_dtu": {
-          // TODO: project explicit columns (auto-fix suggestion)
-          const dtu = db.prepare("SELECT * FROM dtus WHERE id = ?").get(entityId);
+          const dtu = db.prepare("SELECT id, title FROM dtus WHERE id = ?").get(entityId);
           if (!dtu) { preview.warnings.push("DTU not found"); break; }
           preview.willDelete.push({ type: "dtu", id: entityId, title: dtu.title });
           const lensItems = db.prepare("SELECT COUNT(*) as c FROM lens_items WHERE dtu_id = ?").get(entityId);
@@ -710,8 +703,7 @@ export function registerGuidanceEndpoints(app, db) {
           break;
         }
         case "render_project": {
-          // TODO: project explicit columns (auto-fix suggestion)
-          const project = db.prepare("SELECT * FROM studio_projects WHERE id = ?").get(entityId);
+          const project = db.prepare("SELECT id FROM studio_projects WHERE id = ?").get(entityId);
           if (!project) { preview.warnings.push("Project not found"); break; }
           preview.willCreate.push({ type: "job", jobType: "studio_render" });
           preview.willCreate.push({ type: "artifact", artifactType: "render" });

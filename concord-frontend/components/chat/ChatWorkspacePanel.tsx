@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
+import { buildLensFactsBlock } from '@/components/chat/lensAccountFacts';
 import { ChatDraftInThreadButton } from '@/components/chat/ChatDraftInThreadButton';
 import { getApiBase } from '@/lib/api/base';
 import { useUIStore } from '@/store/ui';
@@ -1223,6 +1224,17 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           `Current domain context: ${domainContext}. Use domain-specific knowledge and terminology.`;
       }
 
+      // Ground the analyst in the lens's live values (Review 4, Analytics
+      // F1): for a domain with a facts provider, the model receives the
+      // surface's actual numbers with their sources — or an explicit decline
+      // instruction when they can't be read — instead of a bare context
+      // label it would otherwise have to invent numbers for. Fetched here,
+      // at send time, so the values are current at ask time.
+      const factsBlock = await buildLensFactsBlock(domainContext);
+      if (factsBlock) {
+        systemPrompt += (systemPrompt ? '\n\n' : '') + factsBlock;
+      }
+
       // Build the message to send, optionally including quoted context
       let messageContent = content;
       if (quotedMessage) {
@@ -1312,7 +1324,18 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           // Assigned inside the SSE parser callback; the cast keeps TS from narrowing it to null.
           let finalOut = null as Record<string, unknown> | null;
           let gotDone = false;
+          // Live status and a preview of the answer while the turn runs. Only the
+          // checked `chunk` text becomes the reply; it replaces any preview.
+          let preview = '';
           const sse = createSseParser((data) => {
+            const progress = data.progress as { label?: unknown } | undefined;
+            if (progress && typeof progress.label === 'string' && !accumulated && !preview) {
+              setStreamingContent(`*${progress.label}…*`);
+            }
+            if (typeof data.token === 'string' && data.token && !accumulated) {
+              preview += data.token;
+              setStreamingContent(preview);
+            }
             if (typeof data.chunk === 'string' && data.chunk) {
               accumulated += data.chunk;
               setStreamingContent(accumulated);

@@ -24,6 +24,33 @@ describe("@concord/inference — Agent Loop", () => {
     assert.equal(r.steps[0].type, "inference");
   });
 
+  it("reports no_dispatcher_configured honestly when no dispatcher is configured (Q13)", async () => {
+    const brain = makeBrain([
+      { ok: true, text: "calling tool", toolCalls: [{ id: "tc9", name: "ghost_tool", args: {} }], tokensIn: 5, tokensOut: 10 },
+      { ok: true, text: "understood, it did not run", toolCalls: [], tokensIn: 5, tokensOut: 8 },
+    ]);
+    const r = await runAgentLoop(brain, BASE_MESSAGES, [], {});
+    const toolStep = r.steps.find((s) => s.type === "tool_call");
+    assert.ok(toolStep, "the tool call is still recorded as a step");
+    const parsed = JSON.parse(toolStep.result);
+    assert.equal(parsed.ok, false);
+    assert.equal(parsed.error, "no_dispatcher_configured");
+    assert.equal(parsed.status, undefined, "never claim the call was dispatched");
+    assert.equal(r.finalText, "understood, it did not run", "the loop continues with the honest result reinjected");
+  });
+
+  it("a dispatchCtx without a dispatch function is also no dispatcher (Q13)", async () => {
+    const brain = makeBrain([
+      { ok: true, text: "calling tool", toolCalls: [{ id: "tc10", name: "ghost_tool", args: {} }], tokensIn: 5, tokensOut: 10 },
+      { ok: true, text: "done", toolCalls: [], tokensIn: 5, tokensOut: 8 },
+    ]);
+    const r = await runAgentLoop(brain, BASE_MESSAGES, [], { dispatchCtx: {} });
+    const toolStep = r.steps.find((s) => s.type === "tool_call");
+    const parsed = JSON.parse(toolStep.result);
+    assert.equal(parsed.ok, false);
+    assert.equal(parsed.error, "no_dispatcher_configured");
+  });
+
   it("dispatches tool calls and reinjects result", async () => {
     const brain = makeBrain([
       { ok: true, text: "calling tool", toolCalls: [{ id: "tc1", name: "test_tool", args: { x: 1 } }], tokensIn: 5, tokensOut: 10 },

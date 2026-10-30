@@ -122,6 +122,57 @@ export function readOwnBuildings(db, userId, limit = 25) {
   }
 }
 
+// The caller's own marketplace listings. marketplace_listings is the
+// durable store (owner_user_id + visibility draft/published/...). Counts
+// cover all of the caller's listings; the sample is newest-first.
+export function readOwnListings(db, userId, limit = 5) {
+  if (!userId) return { ok: false, status: 401, error: "sign_in_required" };
+  if (!db) return { ok: false, status: 503, error: "no_db" };
+  if (!tableExists(db, "marketplace_listings")) return { ok: false, reason: "no_listings_table" };
+  if (!columnExists(db, "marketplace_listings", "owner_user_id")) {
+    return { ok: false, reason: "listings_unattributed" };
+  }
+  const hasVisibility = columnExists(db, "marketplace_listings", "visibility");
+  const want = ["id", "title", "visibility", "price_cents", "currency"]
+    .filter((c) => columnExists(db, "marketplace_listings", c));
+  try {
+    const rows = db.prepare(
+      `SELECT ${want.join(", ")} FROM marketplace_listings WHERE owner_user_id = ? ORDER BY rowid DESC LIMIT ?`,
+    ).all(userId, Math.max(1, Math.min(25, Number(limit) || 5)));
+    const counts = db.prepare(
+      hasVisibility
+        ? `SELECT COUNT(*) AS total, COALESCE(SUM(CASE WHEN visibility = 'published' THEN 1 ELSE 0 END), 0) AS published FROM marketplace_listings WHERE owner_user_id = ?`
+        : `SELECT COUNT(*) AS total FROM marketplace_listings WHERE owner_user_id = ?`,
+    ).get(userId);
+    return {
+      ok: true,
+      listingCount: Number(counts?.total) || 0,
+      publishedCount: hasVisibility ? Number(counts?.published) || 0 : null,
+      listings: rows,
+    };
+  } catch {
+    return { ok: false, reason: "listings_unreadable" };
+  }
+}
+
+// The caller's own royalty payouts — the same ledger rule as royaltyTotal
+// (completed ROYALTY_PAYOUT rows addressed to the caller), with the count.
+export function readOwnRoyalties(db, userId) {
+  if (!userId) return { ok: false, status: 401, error: "sign_in_required" };
+  if (!db) return { ok: false, status: 503, error: "no_db" };
+  const total = royaltyTotal(db, userId);
+  if (total.total === null) return { ok: false, reason: total.reason };
+  try {
+    const row = db.prepare(`
+      SELECT COUNT(*) AS n FROM economy_ledger
+       WHERE to_user_id = ? AND type = 'ROYALTY_PAYOUT' AND status = 'complete'
+    `).get(userId);
+    return { ok: true, totalRoyalties: total.total, payoutCount: Number(row?.n) || 0 };
+  } catch {
+    return { ok: false, reason: "no_ledger" };
+  }
+}
+
 // The caller's own DTU citation totals and most-cited DTUs. Starter material
 // inventory (mat_ rows) is excluded, same as readCreatorSimStats.
 export function readOwnCitations(db, userId, limit = 5) {
