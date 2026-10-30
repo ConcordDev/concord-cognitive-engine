@@ -106,6 +106,7 @@ import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
 import { buildAnalyticsGroundingBlock, groundingUserId } from "./lib/lens-grounding.js";
+import { createSqliteBridgeService } from "./lib/dtu-bridge/service.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
 import { chatContextPool, makeChatMayUse } from "./lib/chat/context-pool.js";
 import { chatProgress as _chatProgress, withToolProgress as _chatWithToolProgress, readOllamaChatStream as _readOllamaChatStream } from "./lib/chat/progress.js";
@@ -44064,6 +44065,43 @@ function _runNewsFeedWarm(_tick) {
     .catch((e) => { structuredLog("warn", "feed_cache_warm_tick", { error: String(e?.message || e) }); })
     .finally(() => { _newsWarmRunning = false; });
 }
+// DTU bridge wiring (slices 0–5 go live): a periodic sweep captures
+// live DTUs into the bridge outbox and the pump drains the outbox
+// through the conflict rule into the local bridge replica
+// (dtu_bridge_records). Capture is by sweep, not write-path hooks, so
+// every DTU writer is covered; the sweep is idempotent, so only real
+// content changes ever move. The Postgres target (slice 6) swaps in
+// behind the same service when configured. Failure-isolated: a bridge
+// fault logs and returns, never breaking a tick or a DTU write.
+let _dtuBridgeSvc = null;
+function getDtuBridge() {
+  if (_dtuBridgeSvc) return _dtuBridgeSvc;
+  try {
+    if (!db) return null;
+    _dtuBridgeSvc = createSqliteBridgeService({ db, sourceNode: "concord-server" });
+  } catch (e) {
+    structuredLog("warn", "dtu_bridge_init_failed", { error: e?.message });
+    return null;
+  }
+  return _dtuBridgeSvc;
+}
+registerHeartbeat("dtu-bridge-pump", {
+  frequency: 4,
+  scope: "global",
+  handler: async () => {
+    try {
+      const svc = getDtuBridge();
+      if (!svc) return { ok: true, skipped: "no_db" };
+      const swept = svc.sweep(dtusArray(), { limit: 200 });
+      const drained = svc.drain(50);
+      return { ok: true, swept, drained };
+    } catch (err) {
+      structuredLog("warn", "dtu_bridge_pump_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
+
 // Backfill DTU classification in small budgeted batches (existing DTUs without a current classification).
 registerHeartbeat("dtu-quality-backfill", {
   frequency: 4,
@@ -60887,7 +60925,7 @@ async function runMigrations() {
 
 register("db", "status", (ctx, _input) => {
   const denied = dbMacroDenied(ctx); if (denied) return denied;
-  return { ok: true, postgres: { enabled: PG_CONFIG.enabled, connected: !!pgPool, pool: pgPool ? { total: pgPool.totalCount, idle: pgPool.idleCount, waiting: pgPool.waitingCount } : null }, redis: { enabled: REDIS_CONFIG.enabled, connected: !!redisClient }, mode: pgPool ? "postgresql" : "in-memory" };
+  return { ok: true, postgres: { enabled: PG_CONFIG.enabled, connected: !!pgPool, pool: pgPool ? { total: pgPool.totalCount, idle: pgPool.idleCount, waiting: pgPool.waitingCount } : null }, redis: { enabled: REDIS_CONFIG.enabled, connected: !!redisClient }, mode: pgPool ? "postgresql" : "in-memory", dtuBridge: (() => { try { const svc = getDtuBridge(); return svc ? svc.stats() : null; } catch (_e) { return null; } })() };
 });
 
 register("db", "migrate", (ctx, _input) => { const denied = dbMacroDenied(ctx); if (denied) return denied; return runMigrations(); });

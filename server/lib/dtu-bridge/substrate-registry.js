@@ -81,9 +81,12 @@ const SUBSTRATE_SET = new Set(DTU_SUBSTRATE_TABLES);
  * Tables the bridge itself creates. They carry bridge bookkeeping, not
  * substrate data, so they are deliberately NOT in DTU_SUBSTRATE_TABLES
  * (assertSubstrateTable refuses them); the "no silent drift" scan reads
- * this list so the bridge's own table does not trip its own guard.
+ * this list so the bridge's own tables do not trip its own guard.
+ * dtu_bridge_records joined with the wiring slice: the SQLite apply
+ * target persists applied version chains there — replica bookkeeping,
+ * not substrate data.
  */
-export const BRIDGE_INFRASTRUCTURE_TABLES = Object.freeze(["dtu_bridge_outbox"]);
+export const BRIDGE_INFRASTRUCTURE_TABLES = Object.freeze(["dtu_bridge_outbox", "dtu_bridge_records"]);
 
 /**
  * True when `table` belongs to the DTU substrate class and may cross
