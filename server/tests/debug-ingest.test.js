@@ -14,6 +14,8 @@ import {
   createRateLimiter,
 } from "../lib/sentry-envelope.js";
 import { gzipSync } from "node:zlib";
+import express from "express";
+import createDebugIngestRouter from "../routes/debug-ingest.js";
 import { DEBUG_INGEST_RE } from "../middleware/csrf.js";
 import { createIngestHandler } from "../lib/debug-ingest-handler.js";
 import registerDebugActions, { debugIngest } from "../domains/debug.js";
@@ -365,5 +367,63 @@ describe("the gate exemption is the exact route, never a prefix", () => {
     ]) {
       assert.equal(DEBUG_INGEST_RE.test(p), false, p);
     }
+  });
+});
+
+describe("debug ingest — the real HTTP route (express.raw already inflates gzip)", () => {
+  async function withServer(fn) {
+    const app = express();
+    app.use("/api/debug", createDebugIngestRouter());
+    const srv = await new Promise((resolve) => { const s = app.listen(0, "127.0.0.1", () => resolve(s)); });
+    try { return await fn(`http://127.0.0.1:${srv.address().port}`); } finally { await new Promise((r) => srv.close(r)); }
+  }
+  const authFor = (key) => `Sentry sentry_version=7, sentry_key=${key}, sentry_client=test/1.0`;
+  function setup() {
+    const pid = call("project-list", ada, {}).result.defaultProjectId;
+    const { result } = call("ingest-key-create", ada, { projectId: pid });
+    return { pid, key: result.key };
+  }
+  const post = (base, pid, key, body, headers = {}) => fetch(`${base}/api/debug/ingest/${pid}/envelope`, {
+    method: "POST", headers: { "X-Sentry-Auth": authFor(key), "Content-Type": "application/x-sentry-envelope", ...headers }, body,
+  });
+
+  it("a gzipped envelope with Content-Encoding: gzip is ingested (200, ingested 1)", async () => {
+    const { pid, key } = setup();
+    const body = gzipSync(envelopeBody([[{ type: "event" }, sampleEvent()]]));
+    await withServer(async (base) => {
+      const res = await post(base, pid, key, body, { "Content-Encoding": "gzip" });
+      const json = await res.json();
+      assert.equal(res.status, 200, JSON.stringify(json));
+      assert.equal(json.ingested, 1);
+    });
+  });
+
+  it("a plain (non-gzip) envelope is ingested (200)", async () => {
+    const { pid, key } = setup();
+    const body = envelopeBody([[{ type: "event" }, sampleEvent()]]);
+    await withServer(async (base) => {
+      const res = await post(base, pid, key, body);
+      assert.equal(res.status, 200);
+      assert.equal((await res.json()).ingested, 1);
+    });
+  });
+
+  it("a gzip body that inflates past the 1 MB cap is 413, not a bomb", async () => {
+    const { pid, key } = setup();
+    const big = gzipSync(Buffer.alloc(5 * 1024 * 1024, 97));
+    assert.ok(big.length < 1024 * 1024, "the compressed body is under the cap; only the inflated size is over");
+    await withServer(async (base) => {
+      const res = await post(base, pid, key, big, { "Content-Encoding": "gzip" });
+      assert.equal(res.status, 413);
+    });
+  });
+
+  it("the handler itself still gunzips for direct callers, with the same ceiling", () => {
+    const { pid, key } = setup();
+    const h = createIngestHandler({ ingest: debugIngest });
+    const ok = h.handle({ projectId: pid, authHeader: authFor(key), body: gzipSync(envelopeBody([[{ type: "event" }, sampleEvent()]])), contentEncoding: "gzip" });
+    assert.equal(ok.status, 200);
+    const bomb = h.handle({ projectId: pid, authHeader: authFor(key), body: gzipSync(Buffer.alloc(5 * 1024 * 1024, 97)), contentEncoding: "gzip" });
+    assert.equal(bomb.status, 413);
   });
 });

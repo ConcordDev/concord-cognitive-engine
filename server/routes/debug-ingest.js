@@ -33,7 +33,10 @@ export default function createDebugIngestRouter() {
           projectId: req.params.projectId,
           authHeader: req.get("x-sentry-auth"),
           body: Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0),
-          contentEncoding: req.get("content-encoding"),
+          // express.raw already inflated a Content-Encoding: gzip body (and its 1 MB limit applies to the
+          // inflated size, which also stops gzip bombs). Passing the header on would gunzip plain bytes a
+          // second time and 400 every real Sentry SDK.
+          contentEncoding: undefined,
         });
       } catch {
         out = { status: 500, json: { error: "ingest failed" } };

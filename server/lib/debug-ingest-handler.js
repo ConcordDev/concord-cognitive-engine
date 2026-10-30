@@ -25,6 +25,8 @@ import {
   createRateLimiter,
 } from "./sentry-envelope.js";
 
+const MAX_ENVELOPE_BYTES = 1024 * 1024;
+
 export function createIngestHandler({ ingest, limit = 600, windowMs = 60_000 } = {}) {
   const limiter = createRateLimiter({ limit, windowMs });
   const fail = (status, error, headers) => ({ status, json: { error }, ...(headers ? { headers } : {}) });
@@ -36,8 +38,10 @@ export function createIngestHandler({ ingest, limit = 600, windowMs = 60_000 } =
     let raw = Buffer.isBuffer(body) ? body : Buffer.from(body ?? "", "utf8");
     if (typeof contentEncoding === "string" && contentEncoding.includes("gzip")) {
       try {
-        raw = gunzipSync(raw);
-      } catch {
+        // Same 1 MB ceiling as the route's body limit, so a direct caller cannot use gzip as a bomb either.
+        raw = gunzipSync(raw, { maxOutputLength: MAX_ENVELOPE_BYTES });
+      } catch (e) {
+        if (e && e.code === "ERR_BUFFER_TOO_LARGE") return fail(413, "envelope too large");
         return fail(400, "envelope body is not valid gzip");
       }
     }
