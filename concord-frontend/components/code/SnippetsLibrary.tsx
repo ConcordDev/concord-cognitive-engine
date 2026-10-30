@@ -221,6 +221,7 @@ export function SnippetsLibrary({ onInsert, currentLanguage, currentSelection }:
             )}
           </div>
         ) : (
+          <>
           {deleteError && (
             <div role="alert" className="mx-2 mt-1 px-2 py-1.5 rounded bg-rose-500/10 border border-rose-500/30 text-[11px] text-rose-200">{deleteError}</div>
           )}
@@ -283,6 +284,7 @@ export function SnippetsLibrary({ onInsert, currentLanguage, currentSelection }:
               );
             })}
           </ul>
+          </>
         )}
       </div>
     </div>

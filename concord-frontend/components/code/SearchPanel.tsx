@@ -131,8 +131,6 @@ export function SearchPanel({
     finally { setLoading(false); }
   }
 
-  if (!projectId) return <div className="p-3 text-xs text-gray-400 italic">Open a project to search.</div>;
-
   // S17: becoming visible with a query that has not been run (or whose
   // options changed while hidden) runs it — no dead "No matches." wait
   // for a Find click that should never have been necessary.
@@ -145,6 +143,9 @@ export function SearchPanel({
     void (mode === 'text' ? runSearch() : runRefs());
     // eslint-disable-next-line react-hooks/exhaustive-deps -- activation edge only
   }, [active]);
+
+  // After every hook: returning earlier changed the hook count when a project opened or closed.
+  if (!projectId) return <div className="p-3 text-xs text-gray-400 italic">Open a project to search.</div>;
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">

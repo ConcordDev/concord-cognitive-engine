@@ -82,6 +82,7 @@ export function CodeActionPanel() {
     setActivity(prev => [{ id, text }, ...prev.filter(a => a.id !== id)].slice(0, 9));
   };
   const err = (text: string) => setFeedback({ kind: 'err', text });
+  const keptActivity = activity.filter(a => !(feedback?.kind === 'ok' && feedback.text === a.text));
   const ready = snippetCode.trim().length > 0;
 
   const pipe = usePipe();
@@ -337,11 +338,12 @@ export function CodeActionPanel() {
         )}
       </div>
 
-      {activity.length > 0 && (
+      {/* The banner above already shows the latest outcome; the kept list holds the earlier ones, so no line renders twice. */}
+      {keptActivity.length > 0 && (
         <div className="rounded-md border border-white/10 bg-white/[0.02] px-3 py-2">
           <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">Results — kept per action</div>
           <ul className="space-y-0.5">
-            {activity.map(a => (
+            {keptActivity.map(a => (
               <li key={a.id} className="text-[11px] text-zinc-300"><span className="text-zinc-500 font-mono mr-1.5">{a.id}</span>{a.text}</li>
             ))}
           </ul>

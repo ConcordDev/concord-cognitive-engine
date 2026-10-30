@@ -100,6 +100,7 @@ describe('Advanced panel deep-links (S13)', () => {
   it('initialTab="debugger" opens on the Breakpoints tab, not IntelliSense', async () => {
     render(
       <CodeProjectProvider>
+        <SelectProject id="p1" />
         <CodeAdvancedPanel initialTab="debugger" />
       </CodeProjectProvider>,
     );
@@ -109,6 +110,7 @@ describe('Advanced panel deep-links (S13)', () => {
   it('initialTab="layout" opens on Split View', async () => {
     render(
       <CodeProjectProvider>
+        <SelectProject id="p1" />
         <CodeAdvancedPanel initialTab="layout" />
       </CodeProjectProvider>,
     );
