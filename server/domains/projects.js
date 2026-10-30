@@ -1,5 +1,7 @@
 // server/domains/projects.js
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { createArtifactAcl, registerArtifactOwnerResolver } from "../lib/artifact-acl.js";
+import { lookupUserIdentity } from "../lib/user-identity.js";
 export default function registerProjectsActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("projects", "ganttGenerate", (ctx, artifact, _params) => { const tasks = artifact.data?.tasks || []; if (tasks.length === 0) return { ok: true, result: { message: "Add tasks with duration and dependencies." } }; let dayOffset = 0; const gantt = tasks.map(t => { const duration = parseInt(t.duration) || 5; const start = dayOffset; dayOffset += duration; return { task: t.name || t.title, startDay: start, endDay: start + duration, duration, dependencies: t.dependencies || [] }; }); return { ok: true, result: { tasks: gantt, totalDays: dayOffset, totalWeeks: Math.ceil(dayOffset / 5), criticalPath: gantt.map(t => t.task) } }; });
@@ -74,6 +76,103 @@ export default function registerProjectsActions(registerLensAction) {
       at: pjNow(),
     });
   }
+  // ── Assignment identity (S4 — F4; §8 Q2 ruling: real accounts only) ──
+  // Membership in a project IS the platform ACL: the owner plus every
+  // account holding an active grant on kind "project" (server/lib/
+  // artifact-acl.js, #1789). There is no Projects-local person record:
+  // task.assigneeId holds an account userId, and display names resolve
+  // from the account records at read time (lib/user-identity.js), never
+  // from a stored string. The platform db rides globalThis._concordSTATE
+  // (STATE.db, server.js) — the same object this domain already reads.
+  let _pjAcl = null, _pjAclDb = null;
+  function pjDb() { return globalThis._concordSTATE?.db || null; }
+  function pjAcl() {
+    const db = pjDb(); if (!db) return null;
+    if (!_pjAcl || _pjAclDb !== db) {
+      try { _pjAcl = createArtifactAcl(db, {}); _pjAclDb = db; } catch (_e) { _pjAcl = null; _pjAclDb = null; }
+    }
+    return _pjAcl;
+  }
+  try {
+    registerArtifactOwnerResolver("project", (projectId) => {
+      const st = getPjState(); if (!st) return null;
+      for (const [owner, list] of st.projects.entries()) {
+        if ((list || []).some((p) => p.id === projectId)) return owner;
+      }
+      return null;
+    });
+  } catch (_e) { /* resolver registration is best-effort */ }
+  function pjAccountDisplay(accountId) {
+    if (!accountId) return null;
+    const ident = lookupUserIdentity(pjDb(), accountId);
+    return ident.displayName || ident.username || null;
+  }
+  function pjResolveAccount(identifier) {
+    const db = pjDb(); if (!db) return null;
+    const raw = pjClean(identifier, 120); if (!raw) return null;
+    try {
+      const byId = db.prepare("SELECT id FROM users WHERE id = ?").get(raw);
+      if (byId) return byId.id;
+      const byName = db.prepare("SELECT id FROM users WHERE username = ?").get(raw.replace(/^@/, ""));
+      return byName ? byName.id : null;
+    } catch (_e) { return null; }
+  }
+  // The member set of a project in the caller's store: the owner (the
+  // caller — this store is the owner's) plus active grantees.
+  function pjMembers(userId, projectId) {
+    const out = [{ userId, level: "owner" }];
+    const acl = pjAcl();
+    if (acl) {
+      const r = acl.listGrants("project", projectId, userId);
+      if (r && r.ok) for (const g of r.grants) out.push({ userId: g.granteeId, level: g.level });
+    }
+    return out;
+  }
+  function pjAssigneeSet(userId, projectId) {
+    return new Set(pjMembers(userId, projectId).map((m) => m.userId));
+  }
+  function pjMemberRows(s, userId, projectId) {
+    const tasks = s.tasks.get(userId) || [];
+    return pjMembers(userId, projectId).map((m) => {
+      const ident = lookupUserIdentity(pjDb(), m.userId);
+      return {
+        id: m.userId, userId: m.userId, level: m.level,
+        name: ident.displayName || ident.username || (m.level === "owner" ? "You" : "Concord member"),
+        username: ident.username || null,
+        assigned: tasks.filter((x) => x.projectId === projectId && x.assigneeId === m.userId && x.status !== "done").length,
+      };
+    });
+  }
+  // Migration (S4 plan §4, remove-and-receipt): legacy free-text member
+  // records are name strings, not identities, and cannot be converted —
+  // matching a name to a same-named account would fabricate attribution.
+  // One idempotent pass per owner account: records deleted, their tasks
+  // unassigned, ONE activity receipt per affected project with counts.
+  function pjMigrateLegacyMembers(s, userId) {
+    const legacy = s.members.get(userId) || [];
+    if (!legacy.length) return;
+    const tasks = s.tasks.get(userId) || [];
+    const byProject = new Map();
+    for (const m of legacy) {
+      let cleared = 0;
+      for (const task of tasks) {
+        if (task.assigneeId === m.id) { task.assigneeId = null; cleared += 1; }
+      }
+      const agg = byProject.get(m.projectId) || { names: 0, cleared: 0 };
+      agg.names += 1; agg.cleared += cleared; byProject.set(m.projectId, agg);
+    }
+    s.members.set(userId, []);
+    for (const [projectId, agg] of byProject.entries()) {
+      const proj = pjProject(s, userId, projectId);
+      pjLog(s, userId, null, "members_migrated",
+        `${proj ? proj.name : "Project"}: assignment moved to Concord accounts — ${agg.names} legacy name(s) removed, ${agg.cleared} assignment(s) cleared. The names were not accounts and could not be carried over.`);
+      const acts = s.activity.get(userId) || [];
+      const last = acts[acts.length - 1];
+      if (last) last.projectId = projectId;
+    }
+    savePjState();
+  }
+
   // Evaluate automation rules for a project against a task event.
   function pjRunRules(s, userId, task, trigger) {
     const rules = (s.rules.get(userId) || []).filter(
@@ -90,7 +189,7 @@ export default function registerProjectsActions(registerLensAction) {
       } else if (rule.action === "set_priority" && PJ_PRIORITIES.includes(v)) {
         task.priority = v;
       } else if (rule.action === "set_assignee") {
-        if ((s.members.get(userId) || []).some((m) => m.id === v)) task.assigneeId = v;
+        if (pjAssigneeSet(userId, task.projectId).has(v)) task.assigneeId = v;
       } else if (rule.action === "add_label" && v) {
         if (!task.labels.includes(v)) task.labels = [...task.labels, v].slice(0, 12);
       } else if (rule.action === "set_sprint") {
@@ -332,7 +431,7 @@ export default function registerProjectsActions(registerLensAction) {
     }
     if (params.leadId !== undefined) {
       const l = params.leadId ? String(params.leadId) : null;
-      project.leadId = (l && (s.members.get(userId) || []).some((m) => m.id === l)) ? l : null;
+      project.leadId = (l && pjAssigneeSet(userId, project.id).has(l)) ? l : null;
     }
     project.updatedAt = pjNow();
     savePjState();
@@ -452,11 +551,8 @@ export default function registerProjectsActions(registerLensAction) {
     const wipErr = pjWipGate(s, userId, project.id, pjPick(params.status, PJ_STATUSES, "backlog"), null);
     if (wipErr) return { ok: false, error: wipErr };
     let assigneeId = params.assigneeId ? String(params.assigneeId) : null;
-    if (assigneeId) {
-      const member = (s.members.get(userId) || []).find((m) => m.id === assigneeId);
-      if (!member || (member.projectId && member.projectId !== project.id)) {
-        return { ok: false, error: "assignee not found" };
-      }
+    if (assigneeId && !pjAssigneeSet(userId, project.id).has(assigneeId)) {
+      return { ok: false, error: "assignee is not a member of this project — add them in Team first" };
     }
     let sprintId = params.sprintId ? String(params.sprintId) : null;
     if (sprintId) {
@@ -567,7 +663,10 @@ export default function registerProjectsActions(registerLensAction) {
     }
     if (params.assigneeId !== undefined) {
       const a = params.assigneeId ? String(params.assigneeId) : null;
-      task.assigneeId = (a && (s.members.get(userId) || []).some((m) => m.id === a)) ? a : null;
+      if (a && !pjAssigneeSet(userId, task.projectId).has(a)) {
+        return { ok: false, error: "assignee is not a member of this project — add them in Team first" };
+      }
+      task.assigneeId = a;
     }
     if (params.sprintId !== undefined) {
       const sp = params.sprintId ? String(params.sprintId) : null;
@@ -865,8 +964,10 @@ export default function registerProjectsActions(registerLensAction) {
       }
       return out;
     };
-    const memberMap = new Map(), fieldMap = new Map(), sprintMap = new Map(), mileMap = new Map();
-    cloneInto("members", (m) => { const id = pjId("mem"); memberMap.set(m.id, id); return { ...m, id, projectId: copy.id }; });
+    const fieldMap = new Map(), sprintMap = new Map(), mileMap = new Map();
+    // S4: membership is NOT copied. Grants are the owner's deliberate
+    // act on one artifact; a copy is a new artifact and starts with the
+    // owner as its only member (see the S4 plan).
     cloneInto("labels", (l) => ({ ...l, id: pjId("lbl"), projectId: copy.id }));
     cloneInto("customFields", (f) => { const id = pjId("fld"); fieldMap.set(f.id, id); return { ...f, id, projectId: copy.id }; });
     cloneInto("sprints", (sp) => { const id = pjId("spr"); sprintMap.set(sp.id, id); return { ...sp, id, projectId: copy.id }; });
@@ -888,7 +989,7 @@ export default function registerProjectsActions(registerLensAction) {
         parentId: tsk.parentId ? (taskMap.get(tsk.parentId) || null) : null,
         sprintId: tsk.sprintId ? (sprintMap.get(tsk.sprintId) || null) : null,
         milestoneId: tsk.milestoneId ? (mileMap.get(tsk.milestoneId) || null) : null,
-        assigneeId: tsk.assigneeId ? (memberMap.get(tsk.assigneeId) || null) : null,
+        assigneeId: tsk.assigneeId === userId ? userId : null,
         customFields: fields,
       };
       copiedTasks.push(c); pjListB(s.tasks, userId).push(c);
@@ -904,7 +1005,7 @@ export default function registerProjectsActions(registerLensAction) {
     cloneInto("views", (v) => ({ ...v, id: pjId("view"), projectId: copy.id }));
     cloneInto("rules", (r) => {
       const c = { ...r, id: pjId("rule"), projectId: copy.id };
-      if (c.action === "set_assignee" && memberMap.has(c.actionValue)) c.actionValue = memberMap.get(c.actionValue);
+      if (c.action === "set_assignee" && c.actionValue !== userId) c.actionValue = null;
       if (c.action === "set_sprint" && sprintMap.has(c.actionValue)) c.actionValue = sprintMap.get(c.actionValue);
       return c;
     });
@@ -916,7 +1017,7 @@ export default function registerProjectsActions(registerLensAction) {
     savePjState();
     return { ok: true, result: { project: copy, copied: {
       tasks: copiedTasks.length, relations: relationCount,
-      members: memberMap.size, sprints: sprintMap.size, milestones: mileMap.size } } };
+      members: 1, sprints: sprintMap.size, milestones: mileMap.size } } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -924,44 +1025,98 @@ export default function registerProjectsActions(registerLensAction) {
   registerLensAction("projects", "member-add", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
-    if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
-    const name = pjClean(params.name, 80);
-    if (!name) return { ok: false, error: "member name required" };
-    const member = {
-      id: pjId("mbr"), projectId: String(params.projectId), name,
-      role: pjClean(params.role, 40) || "contributor",
-      createdAt: pjNow(),
-    };
-    pjListB(s.members, userId).push(member);
-    savePjState();
-    return { ok: true, result: { member } };
+    const project = pjProject(s, userId, params.projectId);
+    if (!project) return { ok: false, error: "project not found" };
+    pjMigrateLegacyMembers(s, userId);
+    // S4: a member is a real Concord account, added by @username (or
+    // account id) and granted a level through the platform ACL. A bare
+    // name is not an identity and is refused as one.
+    const identifier = pjClean(params.account || params.username || "", 120);
+    if (!identifier) {
+      return { ok: false, error: "add members by their Concord username — free-text names are not supported" };
+    }
+    const acl = pjAcl();
+    if (!acl) return { ok: false, error: "member accounts are unavailable right now" };
+    const granteeId = pjResolveAccount(identifier);
+    if (!granteeId) return { ok: false, error: `no Concord account found for "${identifier}"` };
+    if (granteeId === userId) return { ok: false, error: "you are the project owner — you are already a member" };
+    const level = pjPick(params.level, ["view", "edit"], "edit");
+    const r = acl.grant({ kind: "project", id: project.id, granteeId, level, byUserId: userId });
+    if (!r.ok) return { ok: false, error: `could not add that member (${r.error})` };
+    const row = pjMemberRows(s, userId, project.id).find((m) => m.userId === granteeId);
+    return { ok: true, result: { member: row || { id: granteeId, userId: granteeId, level }, updated: !!r.updated } };
   });
 
   registerLensAction("projects", "member-list", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
-    const tasks = s.tasks.get(userId) || [];
-    const members = (s.members.get(userId) || [])
-      .filter((m) => m.projectId === String(params.projectId))
-      .map((m) => ({
-        ...m,
-        assigned: tasks.filter((t) => t.assigneeId === m.id && t.status !== "done").length,
-      }));
+    pjMigrateLegacyMembers(s, userId);
+    const projectId = String(params.projectId || "");
+    const members = pjProject(s, userId, projectId) ? pjMemberRows(s, userId, projectId) : [];
     return { ok: true, result: { members, count: members.length } };
   });
 
   registerLensAction("projects", "member-delete", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
-    const arr = s.members.get(userId) || [];
-    const i = arr.findIndex((m) => m.id === params.id);
-    if (i < 0) return { ok: false, error: "member not found" };
-    arr.splice(i, 1);
-    for (const t of s.tasks.get(userId) || []) {
-      if (t.assigneeId === params.id) t.assigneeId = null;
+    const project = pjProject(s, userId, params.projectId);
+    if (!project) return { ok: false, error: "project not found" };
+    const target = String(params.id || "");
+    if (target === userId) return { ok: false, error: "the project owner cannot be removed" };
+    const acl = pjAcl();
+    if (!acl) return { ok: false, error: "member accounts are unavailable right now" };
+    const r = acl.revoke({ kind: "project", id: project.id, granteeId: target, byUserId: userId });
+    if (!r.ok) return { ok: false, error: r.error === "no_active_grant" ? "that account is not a member of this project" : `could not remove that member (${r.error})` };
+    // Revoking access unassigns the account's work in this project —
+    // the same contract the legacy member-delete had, now recorded by
+    // the revocation itself in the ACL's audit rows.
+    for (const task of s.tasks.get(userId) || []) {
+      if (task.projectId === project.id && task.assigneeId === target) task.assigneeId = null;
     }
     savePjState();
-    return { ok: true, result: { deleted: params.id } };
+    return { ok: true, result: { deleted: target } };
+  });
+
+  // ── My Work + shared with me (D3 — depends on S4) ──────────────────
+  registerLensAction("projects", "my-work", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    pjMigrateLegacyMembers(s, userId);
+    const projects = new Map((s.projects.get(userId) || []).map((p) => [p.id, p]));
+    const tasks = (s.tasks.get(userId) || [])
+      .filter((x) => x.assigneeId === userId && x.status !== "done")
+      .map((x) => {
+        const p = projects.get(x.projectId);
+        return { ...x, projectName: p ? p.name : null, projectKey: p ? p.key : null,
+          assigneeName: pjAccountDisplay(userId) };
+      })
+      .sort((a, b) => String(a.dueDate || "9999").localeCompare(String(b.dueDate || "9999")));
+    return { ok: true, result: { tasks, count: tasks.length } };
+  });
+
+  registerLensAction("projects", "shared-with-me", (ctx, _a, _params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const acl = pjAcl();
+    if (!acl) return { ok: true, result: { projects: [], count: 0 } };
+    const r = acl.listSharedWith(userId);
+    if (!r.ok) return { ok: false, error: "shared projects are unavailable right now" };
+    // Discovery only: name/key/level from the artifact records. Task
+    // data inside another account's store rides the platform's
+    // shared-artifact read path (S4 plan §5) — not read from here.
+    const projects = r.grants
+      .filter((g) => g.artifactKind === "project")
+      .map((g) => {
+        let found = null;
+        for (const list of s.projects.values()) {
+          const hit = (list || []).find((p) => p.id === g.artifactId);
+          if (hit) { found = hit; break; }
+        }
+        return { projectId: g.artifactId, name: found ? found.name : null,
+          key: found ? found.key : null, level: g.level, ownerId: g.ownerId,
+          ownerName: pjAccountDisplay(g.ownerId) };
+      });
+    return { ok: true, result: { projects, count: projects.length } };
   });
 
   // ── Milestones ──────────────────────────────────────────────────────
@@ -1030,7 +1185,7 @@ export default function registerProjectsActions(registerLensAction) {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
     if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
-    const memberMap = new Map((s.members.get(userId) || []).map((m) => [m.id, m.name]));
+    const memberMap = new Map(pjMemberRows(s, userId, String(params.projectId)).map((m) => [m.userId, m.name]));
     let tasks = (s.tasks.get(userId) || []).filter((t) => t.projectId === String(params.projectId));
     if (params.sprintId) tasks = tasks.filter((t) => t.sprintId === String(params.sprintId));
     const columns = PJ_STATUSES.map((status) => ({
@@ -1068,7 +1223,7 @@ export default function registerProjectsActions(registerLensAction) {
         overdue: tasks.filter((t) => t.dueDate && t.dueDate < today && t.status !== "done").length,
         activeSprints: (s.sprints.get(userId) || []).filter((sp) => sp.projectId === project.id && sp.status === "active").length,
         openMilestones: (s.milestones.get(userId) || []).filter((m) => m.projectId === project.id && m.status === "open").length,
-        members: (s.members.get(userId) || []).filter((m) => m.projectId === project.id).length,
+        members: pjMembers(userId, project.id).length,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -1305,7 +1460,7 @@ export default function registerProjectsActions(registerLensAction) {
       .map((a) => {
         const task = taskById.get(a.taskId);
         return { ...a, taskRef: task ? task.ref : null, taskTitle: task ? task.title : null,
-          projectId: task ? task.projectId : null };
+          projectId: task ? task.projectId : (a.projectId || null) };
       })
       .filter((a) => (params.projectId ? a.projectId === String(params.projectId) : true))
       .sort((a, b) => b.at.localeCompare(a.at))
@@ -1540,7 +1695,7 @@ export default function registerProjectsActions(registerLensAction) {
       }
       if (patch.assigneeId !== undefined) {
         const a = patch.assigneeId ? String(patch.assigneeId) : null;
-        task.assigneeId = (a && (s.members.get(userId) || []).some((m) => m.id === a)) ? a : null;
+        task.assigneeId = (a && pjAssigneeSet(userId, task.projectId).has(a)) ? a : null;
       }
       if (patch.addLabel) {
         const l = pjClean(patch.addLabel, 30);
@@ -1598,7 +1753,7 @@ export default function registerProjectsActions(registerLensAction) {
     if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
     const groupBy = pjPick(params.groupBy, ["assignee", "epic", "priority", "type"], "assignee");
     const tasks = (s.tasks.get(userId) || []).filter((t) => t.projectId === String(params.projectId));
-    const memberMap = new Map((s.members.get(userId) || []).map((m) => [m.id, m.name]));
+    const memberMap = new Map(pjMemberRows(s, userId, String(params.projectId)).map((m) => [m.userId, m.name]));
     const keyOf = (t) => {
       if (groupBy === "assignee") return t.assigneeId || "_unassigned";
       if (groupBy === "epic") return t.parentId || "_none";
@@ -2224,7 +2379,7 @@ export default function registerProjectsActions(registerLensAction) {
     if (params.priority != null) task.priority = pjPick(params.priority, PJ_PRIORITIES, task.priority);
     if (params.assigneeId) {
       const a = String(params.assigneeId);
-      if ((s.members.get(userId) || []).some((m) => m.id === a)) task.assigneeId = a;
+      if (pjAssigneeSet(userId, task.projectId).has(a)) task.assigneeId = a;
     }
     if (params.sprintId) {
       const sp = String(params.sprintId);
