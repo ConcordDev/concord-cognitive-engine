@@ -43,10 +43,14 @@ type ErpBom = {
   lines?: ErpLine[];
   rollup?: {
     totalMassKg?: number | null;
-    materialCostUsd?: number;
+    materialCostUsd?: number | null;
     overheadPct?: number;
-    overheadUsd?: number;
-    rollupCostUsd?: number;
+    overheadUsd?: number | null;
+    rollupCostUsd?: number | null;
+    pricedLines?: number;
+    unpricedLines?: number;
+    costComplete?: boolean;
+    costNote?: string | null;
     currency?: string;
   };
   honesty?: { note?: string; not?: string; status?: string };
@@ -99,7 +103,7 @@ export function ErpBomPanel() {
       setBom(data);
       setSelectedIdx(null);
       setStatus(
-        `ERP BOM LIVE — ${data.totalParts ?? data.lines?.length ?? 0} parts · rollup $${fmt(data.rollup?.rollupCostUsd, 2)} · ${elapsed}ms (not SAP/Oracle)`,
+        `ERP BOM LIVE — ${data.totalParts ?? data.lines?.length ?? 0} parts · rollup ${data.rollup?.rollupCostUsd == null ? 'cost not computed (no prices)' : '$' + fmt(data.rollup.rollupCostUsd, 2) + (data.rollup.costComplete === false ? ' (partial)' : '')} · ${elapsed}ms (not SAP/Oracle)`,
       );
       void mintConkayArtifactDtu({
         title: 'ERP BOM load',
@@ -322,10 +326,21 @@ export function ErpBomPanel() {
           data-testid="ck-erp-bom-rollup"
           className="mb-2 rounded border border-white/10 bg-black/25 px-2 py-1.5 font-mono text-[10px] text-cyan-100/85"
         >
-          rollup ${fmt(bom.rollup.rollupCostUsd, 2)} {bom.rollup.currency || 'USD'} · material $
-          {fmt(bom.rollup.materialCostUsd, 2)} · overhead{' '}
-          {((bom.rollup.overheadPct || 0) * 100).toFixed(0)}% ($
-          {fmt(bom.rollup.overheadUsd, 2)}) · mass {fmt(bom.rollup.totalMassKg, 3)} kg
+          {bom.rollup.rollupCostUsd == null ? (
+            <>rollup cost not computed — no line has a price</>
+          ) : (
+            <>
+              rollup ${fmt(bom.rollup.rollupCostUsd, 2)} {bom.rollup.currency || 'USD'}
+              {bom.rollup.costComplete === false ? ' (partial)' : ''} · material $
+              {fmt(bom.rollup.materialCostUsd, 2)} · overhead{' '}
+              {((bom.rollup.overheadPct || 0) * 100).toFixed(0)}% ($
+              {fmt(bom.rollup.overheadUsd, 2)})
+            </>
+          )}{' '}
+          · mass {fmt(bom.rollup.totalMassKg, 3)} kg
+          {bom.rollup.costNote ? (
+            <div data-testid="ck-erp-bom-cost-note" className="mt-1 text-amber-200/90">{bom.rollup.costNote}</div>
+          ) : null}
         </div>
       ) : null}
 

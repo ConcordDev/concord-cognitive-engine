@@ -176,7 +176,7 @@
       ],
       "applies_to": "corrosion.galvanic, fatigue",
       "description": "Service environment. Affects corrosion loss rate and atmospheric fatigue category per AISC Appendix 3.",
-      "status": "planned"
+      "status": "implemented"
     },
     "Joint.props.fatigueCategory": {
       "type": "enum",
@@ -192,21 +192,21 @@
       ],
       "applies_to": "fatigue",
       "description": "AISC fatigue category for the detail. Determines the S-N curve (allowable stress range vs cycles). Per AISC Appendix 3 Table A-3.1.",
-      "status": "planned"
+      "status": "implemented"
     },
     "Joint.props.fatigueCycles": {
       "type": "number",
       "constraint": "> 0",
       "applies_to": "fatigue",
       "description": "Design number of stress-range cycles (e.g. 2,000,000 for bridges, 500,000 to 2,000,000 for cranes).",
-      "status": "planned"
+      "status": "implemented"
     },
     "Joint.props.fatigueStressRange": {
       "type": "stress",
       "si_unit": "Pa",
       "applies_to": "fatigue",
       "description": "Effective stress range (\u0394F). For tension-only or reversal, may need separate ranges. The fatigue check is \u0394F \u2264 FSR\u00b7(allowable range at N cycles).",
-      "status": "planned"
+      "status": "implemented"
     },
     "Bolt.props.grade": {
       "type": "enum",
