@@ -60,6 +60,15 @@ test("a part with no width still falls through to the legacy solver", async () =
   assert.notEqual(r.key, "conkay_design.beam-size");
 });
 
+test("a beam ask with no span, load or section asks for inputs instead of designing (live harness case edge.missing-inputs)", async () => {
+  const r = await run("Size the beam.");
+  assert.equal(r.ok, false);
+  assert.equal(r.key, "conkay_design.needs-inputs");
+  assert.ok(r.result.missing.length >= 3);
+  const some = await run("size a steel beam, 4 m span");
+  assert.notEqual(some.key, "conkay_design.needs-inputs", "any real input keeps the existing path");
+});
+
 test("a footbridge beam brief is a beam, not a truss (live harness case normal.beam-footbridge)", async () => {
   const { detectDomain } = await import("../lib/conkay/chat/brief-parser.js");
   const t = "Size a simply supported A36 steel footbridge beam: 4 m span, 10 kN at midspan, 60 mm wide, safety factor 2, deflection limit span/360, use R10 preferred depths.";
