@@ -121,8 +121,11 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
   // renders it from there. Reading it flat always missed and pinned this
   // card at 0.0% (office flag, folded into the R2 slice); the flat read
   // stays as a fallback for any older cached shape.
+  const socialOverview = socialAnalytics?.overview as
+    | { engagementRate?: number }
+    | undefined;
   const engagementRate =
-    (socialAnalytics?.overview?.engagementRate as number) ??
+    socialOverview?.engagementRate ??
     (socialAnalytics?.engagementRate as number) ??
     0;
 

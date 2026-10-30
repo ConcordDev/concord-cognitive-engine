@@ -72,8 +72,14 @@ async function fetchAnalyticsFacts(): Promise<LensFactsResult> {
   let profileFollowerCount: number | undefined;
   try {
     const res = await api.get('/api/social/profile');
-    const profile = (res.data?.profile ?? res.data) as ProfileShape | undefined;
-    userId = profile?.userId || profile?.id || '';
+    // Mirror the card exactly (AnalyticsDeskPanel): the profile lives at
+    // res.data.profile and the account key is its userId — no fallback to
+    // a bare-body shape or a secondary id field. A profile without a
+    // userId leaves the keyed reads (followers, creator) honestly
+    // unreadable below rather than keying them off a guessed id
+    // (deploy-lane flag GB-0083, "client userId fallback").
+    const profile = res.data?.profile as ProfileShape | undefined;
+    userId = profile?.userId || '';
     profileFollowerCount = num(profile?.stats?.followerCount);
     if (profile) {
       // The card renders `stats?.citationCount || 0`: on a successful fetch
