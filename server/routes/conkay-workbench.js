@@ -174,6 +174,7 @@ export default function createConkayWorkbenchRouter({ requireAuth, store = new M
   router.post("/workbench/:id/ask", auth, handle(async (req, res) => {
     const c = own(req, res); if (!c) return;
     const reply = await c.conv.ask(String(req.body?.text || ""));
+    if (reply?.busy) return res.status(409).json({ ok: false, error: "busy" });
     res.json({ ok: true, reply: plain(reply), view: workbenchView(c.conv) });
   }));
 

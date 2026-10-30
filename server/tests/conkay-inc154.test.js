@@ -275,3 +275,78 @@ describe("INC-154: bounded settle, committed-with-pending, busy lock, early inve
     assert.match(u.error, /nothing to undo/);
   });
 });
+
+describe("INC-154: one exclusive operation per conversation, from the first await", () => {
+  const slowSettle = (session, ms) => {
+    const real = session.settle.bind(session);
+    session.settle = () => new Promise((resolve, reject) => setTimeout(() => real().then(resolve, reject), ms));
+  };
+  const histLen = (session) => session.engine.graph.history.length;
+
+  it("a second edit that starts inside the first's settle window is refused; history gets exactly one entry", async () => {
+    const { conv, session } = conversation();
+    conv.settleDeadlineMs = 5000; // the whole first request happens inside the window
+    slowSettle(session, 120);
+    const h0 = histLen(session);
+    const first = conv.ask("make the tail shorter");
+    // started while the first is still in editAsync / its slow settle: settling must already be true
+    assert.equal(conv.settling, true, "busy from the very start of the operation, not only after a timeout");
+    const second = await conv.ask("make the tail shorter");
+    assert.equal(second.error, "busy");
+    assert.equal(second.busy, true);
+    const r1 = await first;
+    assert.equal(r1.ok, true, JSON.stringify(r1));
+    assert.equal(histLen(session), h0 + 1, "exactly one edit reached the graph history");
+    assert.equal(conv.revisions.length, 2);
+    assert.equal(conv.settling, false, "released when the operation completed inside the window");
+    const sameTick = await Promise.all([conv.ask("make the tail shorter"), conv.ask("make the tail shorter")]);
+    assert.equal(sameTick.filter((x) => x.busy).length, 1, "of two concurrent edits exactly one is refused");
+  });
+
+  it("an undo that arrives during an in-window settle is refused and pops nothing", async () => {
+    const { conv, session } = conversation();
+    conv.settleDeadlineMs = 5000;
+    slowSettle(session, 120);
+    const first = conv.ask("make the tail shorter");
+    const u = await conv.undo();
+    assert.equal(u.ok, false);
+    assert.equal(u.busy, true);
+    await first;
+    assert.equal(conv.revisions.length, 2, "the edit's revision is still there");
+    const ok = await conv.undo();
+    assert.equal(ok.ok, true);
+    assert.equal(conv.revisions.length, 1);
+  });
+
+  it("undo has the same deadline: pending:true on timeout, busy held until the background settle ends", async () => {
+    const { conv, session } = conversation();
+    const r0 = conv.current.receipt;
+    await conv.ask("make the tail shorter");
+    conv.settleDeadlineMs = 30;
+    slowSettle(session, 250);
+    const t0 = performance.now();
+    const u = await conv.undo();
+    assert.ok(performance.now() - t0 < 200, "the undo answered at the deadline");
+    assert.equal(u.ok, true);
+    assert.equal(u.pending, true);
+    assert.equal(u.matches, null, "not claimed as matching while kernels are pending");
+    assert.equal(conv.settling, true);
+    assert.equal((await conv.ask("make the tail shorter")).busy, true);
+    await new Promise((r) => setTimeout(r, 400));
+    assert.equal(conv.settling, false);
+    assert.equal(conv.current.receipt, r0);
+  });
+
+  it("a throwing settle during undo puts the edit back", async () => {
+    const { conv, session } = conversation();
+    await conv.ask("make the tail shorter");
+    const tailAfterEdit = session.engine.graph.get("BODY_SHELL", "geometry.tailExtension");
+    session.settle = async () => { throw new Error("kernel exploded"); };
+    const u = await conv.undo();
+    assert.equal(u.ok, false);
+    assert.match(u.error, /settle_failed/);
+    assert.equal(conv.revisions.length, 2, "the revision is back");
+    assert.equal(session.engine.graph.get("BODY_SHELL", "geometry.tailExtension"), tailAfterEdit);
+    assert.equal(conv.settling, false);
+  });
+});

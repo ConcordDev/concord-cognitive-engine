@@ -133,7 +133,9 @@ export class DesignConversation {
     // INC-154: a request never waits on external kernels longer than this; the edit is committed with its kernels
     // honestly pending and the settle finishes in the background (see settling).
     this.settleDeadlineMs = Number(settleDeadlineMs ?? process.env.CONCORD_CONKAY_SETTLE_DEADLINE_MS) || 15000;
-    this.settling = false;
+    // one exclusive operation per conversation, from the start of the edit until it is fully done (a timed-out
+    // settle keeps it held until the background settle really finishes)
+    this.busy = false;
     this.evaluate = evaluate;
     this.rules = rules;
     this.budget = budget;
@@ -142,6 +144,24 @@ export class DesignConversation {
   }
 
   get current() { return this.revisions.at(-1); }
+
+  /** True while an edit, rebuild or undo (or its background settle) owns the conversation. */
+  get settling() { return this.busy; }
+
+  /**
+   * Run fn as the conversation's only operation. A second caller gets `busyReply` at once instead of
+   * interleaving. fn may call hold(promise) to keep the conversation busy past its own return (a background
+   * settle); the flag clears when that promise settles.
+   */
+  async _exclusive(fn, busyReply = { kind: "error", error: "busy", busy: true }) {
+    if (this.busy) return busyReply;
+    this.busy = true;
+    let held = null;
+    try { return await fn((p) => { held = p; }); } finally {
+      if (held) Promise.resolve(held).catch(() => {}).finally(() => { this.busy = false; });
+      else this.busy = false;
+    }
+  }
 
   async ask(text) {
     const cur = this.current;
@@ -171,7 +191,9 @@ export class DesignConversation {
   lock(variable) { if (!knobsOf(this).some((k) => k.variable === variable)) return { ok: false, error: `no knob "${variable}"` }; this.locked.add(variable); return { ok: true, locked: [...this.locked].sort() }; }
   unlock(variable) { this.locked.delete(variable); return { ok: true, locked: [...this.locked].sort() }; }
 
-  async _rebuild(state, change, text) {
+  _rebuild(state, change, text) { return this._exclusive(() => this._rebuildLocked(state, change, text)); }
+
+  async _rebuildLocked(state, change, text) {
     const cur = this.current;
     const before = new Map(cur.final.envelopes);
     const run = await orchestrate({ evaluate: this.evaluate, rules: this.rules, initialState: state, budget: this.budget, locked: [...this.locked] });
@@ -181,7 +203,9 @@ export class DesignConversation {
     return { kind: "variable", ok: true, revision: this.revisions.length - 1, diff: { changed: [change], flipped: flips(before, run.final.envelopes), rerun: "rebuilt: a component choice feeds the compiler" }, outcome: run.outcome, receipt: rev.receipt };
   }
 
-  async _apply(w, text) {
+  _apply(w, text) { return this._exclusive((hold) => this._applyLocked(w, text, hold)); }
+
+  async _applyLocked(w, text, hold) {
     const cur = this.current;
     const before = new Map(cur.final.envelopes);
     if (w.kind === "requirement") {
@@ -197,7 +221,6 @@ export class DesignConversation {
     // a design-variable edit, applied to the live graph
     const session = cur.final.session;
     const reads = new Map([...session.engine.runs].map(([id, run]) => [id, new Set(run.reads)]));
-    if (this.settling) return { kind: "error", error: "busy", busy: true };
     const r = await session.editAsync(w.ops);
     if (!r.ok) return { kind: "error", error: r.error };
     // the inverse is read from the engine's own record of this edit NOW, before any await, so a later edit or
@@ -218,11 +241,10 @@ export class DesignConversation {
     this.revisions.push(rev);
     if (settled.timedOut) {
       // committed, kernels still pending: refresh the revision when the background settle lands
-      this.settling = true;
-      sw.done.then(() => {
+      hold(sw.done.then(() => {
         rev.final = { ...rev.final, envelopes: envMap(session) };
         rev.receipt = designReceipt(rev.final.envelopes);
-      }).catch(() => {}).finally(() => { this.settling = false; });
+      }));
     }
     const newFails = flips(before, after).filter((f) => f.to === "FAIL").map((f) => f.runId);
     let resumed = null;
@@ -254,20 +276,39 @@ export class DesignConversation {
   }
 
   /** Step back one revision. Graph edits are reversed on the live graph; a rebuild returns to the kept design. */
-  async undo() {
-    if (this.settling) return { ok: false, error: "busy", busy: true };
+  undo() { return this._exclusive((hold) => this._undoLocked(hold), { ok: false, error: "busy", busy: true }); }
+
+  async _undoLocked(hold) {
     if (this.revisions.length < 2) return { ok: false, error: "nothing to undo" };
     const rev = this.revisions.pop();
     const prev = this.current;
+    let pending = false;
     if (rev.kind === "parameter") {
       // reverse the edit on the session it was applied to (even if the orchestrator then moved on to a rebuild)
       const r = await rev.editedSession.editAsync(rev.inverse);
-      if (!r.ok) return { ok: false, error: r.error };
-      await rev.editedSession.settle();
+      if (!r.ok) { this.revisions.push(rev); return { ok: false, error: r.error }; }
+      const sw = this._settleWithin(rev.editedSession);
+      let settled;
+      try { settled = await sw.result; } catch (e) {
+        // the undo's settle threw: put the edit back so the graph and the revision list agree
+        await rev.editedSession.editAsync(rev.ops);
+        this.revisions.push(rev);
+        return { ok: false, error: `settle_failed: ${String(e?.message || e)}` };
+      }
       prev.final = { ...prev.final, envelopes: envMap(rev.editedSession) };
+      if (settled.timedOut) {
+        pending = true;
+        hold(sw.done.then(() => {
+          prev.final = { ...prev.final, envelopes: envMap(rev.editedSession) };
+          prev.receipt = designReceipt(prev.final.envelopes);
+        }));
+      }
     }
     const receipt = designReceipt(prev.final.envelopes);
-    return { ok: true, revision: this.revisions.length - 1, receipt, matches: receipt === prev.receipt };
+    return {
+      ok: true, revision: this.revisions.length - 1, receipt, matches: pending ? null : receipt === prev.receipt,
+      ...(pending ? { pending: true, pendingNote: "NOT_COMPUTED: external kernels still running; the undo is applied and results refresh when they finish" } : {}),
+    };
   }
 }
 
