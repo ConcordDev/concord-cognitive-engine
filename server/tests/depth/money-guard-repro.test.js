@@ -197,7 +197,11 @@ describe("money-guard repro — finance bills-pay", () => {
 
     const repeat = await lensRun("finance", "bills-pay", { params: { id: bill.id, amount: 200 } }, ctx);
     assert.equal(repeat.ok, true);
-    assert.equal(repeat.unchanged, true);
+    // finance.bills-pay returns { ok, unchanged:true, result:{bill} } on a repeat, but lens.run's envelope only
+    // forwards { ok, result }, so `unchanged` is not visible here. Assert what the envelope does carry: the bill
+    // comes back untouched (same payment timestamp as the first settle), i.e. the repeat did not pay again.
+    assert.equal(repeat.result.bill.paidThisCycle, true);
+    assert.equal(repeat.result.bill.lastPaidAt, settle.result.bill.lastPaidAt);
   });
 });
 
