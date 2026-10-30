@@ -102,7 +102,7 @@ import cors from "cors";
 import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
-import { buildAnalyticsGroundingBlock } from "./lib/lens-grounding.js";
+import { buildAnalyticsGroundingBlock, groundingUserId } from "./lib/lens-grounding.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
 import { chatContextPool, makeChatMayUse } from "./lib/chat/context-pool.js";
 import { chatProgress as _chatProgress, withToolProgress as _chatWithToolProgress, readOllamaChatStream as _readOllamaChatStream } from "./lib/chat/progress.js";
@@ -28352,7 +28352,7 @@ const _mentionsSelf = Array.from(_selfTokens).some(t => _pLow.includes(t));
     try {
       _analyticsGrounding = await buildAnalyticsGroundingBlock({
         runMacro, ctx, STATE,
-        userId: ctx?.actor?.userId || input?.userId || null,
+        userId: groundingUserId(ctx),
       });
     } catch (_groundErr) { _analyticsGrounding = ""; }
   }

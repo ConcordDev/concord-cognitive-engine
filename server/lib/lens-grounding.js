@@ -201,6 +201,12 @@ export function formatGroundingBlock(facts, unreadable) {
  * signed-in user to ground (anonymous chat proceeds exactly as before).
  * Never throws.
  */
+export function groundingUserId(ctx) {
+  // Server-side actor only. A client-supplied input.userId must never choose whose account facts
+  // land in the prompt; with no actor, grounding is skipped.
+  return ctx?.actor?.userId || null;
+}
+
 export async function buildAnalyticsGroundingBlock(deps) {
   if (!deps?.userId) return "";
   let result;

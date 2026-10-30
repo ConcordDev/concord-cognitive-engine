@@ -24,6 +24,7 @@ import {
   collectAnalyticsFacts,
   formatGroundingBlock,
   buildAnalyticsGroundingBlock,
+  groundingUserId,
 } from "../lib/lens-grounding.js";
 
 function happyDeps(overrides = {}) {
@@ -140,4 +141,18 @@ test("the facts block carries the decline rule and disqualifies context counts",
 test("no signed-in user → empty block (anonymous chat unchanged)", async () => {
   const block = await buildAnalyticsGroundingBlock(happyDeps({ userId: null }));
   assert.equal(block, "");
+});
+
+test("grounding identity is the server-side actor only: a forged input.userId is ignored", async () => {
+  assert.equal(groundingUserId({ actor: { userId: "u_real" } }), "u_real");
+  assert.equal(groundingUserId({}), null);
+  assert.equal(groundingUserId({ actor: {} }), null);
+  assert.equal(groundingUserId(undefined), null);
+  // A forged input.userId has no way in: the helper takes only ctx, and with no actor the block is empty.
+  const block = await buildAnalyticsGroundingBlock(happyDeps({ userId: groundingUserId({ input: { userId: "victim" } }) }));
+  assert.equal(block, "");
+  // The chat assembly must call the helper, not fall back to input.userId.
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../server.js", import.meta.url), "utf8");
+  assert.match(src, /buildAnalyticsGroundingBlock\(\{\s*runMacro, ctx, STATE,\s*userId: groundingUserId\(ctx\)/);
 });
