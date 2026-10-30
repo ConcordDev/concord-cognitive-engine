@@ -860,7 +860,9 @@ export async function rtTick(entity_id, ctx = {}) {
           "agent_runtime",
           `heartbeat[${hooksFired.length}hooks]`,
           0,  // surprise
-          tickRow.tick_at
+          // Seconds, like awareness-loop's unixepoch() traces. Milliseconds here sorted every
+          // heartbeat above every real deliberation trace in ORDER BY created_at DESC.
+          Math.floor(tickRow.tick_at / 1000)
         );
     } catch (e) { /* table may not exist */ }
   }
@@ -884,7 +886,7 @@ export async function rtTick(entity_id, ctx = {}) {
       const days = Number(process.env.RT_TICK_RETENTION_DAYS) || 7;
       const cutoff = tickRow.tick_at - days * 86_400_000;
       db.prepare("DELETE FROM entity_tick_history WHERE entity_id = ? AND tick_at < ?").run(entity_id, cutoff);
-      db.prepare("DELETE FROM agent_reasoning_traces WHERE agent_id = ? AND reason = 'tick_heartbeat' AND created_at < ?").run(entity_id, cutoff);
+      db.prepare("DELETE FROM agent_reasoning_traces WHERE agent_id = ? AND reason = 'tick_heartbeat' AND created_at < ?").run(entity_id, Math.floor(cutoff / 1000));
     } catch { /* retention is best-effort */ }
   }
 
