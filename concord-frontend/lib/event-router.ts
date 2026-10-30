@@ -56,9 +56,10 @@ function buildHandlers(opts: {
     }
   };
 
-  // MobileCompanion quick-action ids → the real backend reads. Marketplace
-  // (qa-5) and Royalties (qa-6) have no action yet; the panel renders them
-  // disabled, so they never reach here.
+  // MobileCompanion quick-action ids → the real backend reads. All six
+  // quick actions map to a real read now (qa-5 Marketplace and qa-6
+  // Royalties were the last two; their server reads live in
+  // server/lib/sim-stats.js readOwnListings/readOwnRoyalties).
   const SIM_QUICK_ACTIONS: Record<string, { action: string; label: string; summarize: (b: Record<string, unknown>) => string }> = {
     'qa-1': { action: 'check-builds', label: 'Builds', summarize: (b) => `${Number(b.count ?? 0)} building(s)` },
     'qa-2': {
@@ -70,6 +71,16 @@ function buildHandlers(opts: {
       action: 'manage-inventory',
       label: 'Inventory',
       summarize: (b) => `${Array.isArray(b.items) ? b.items.length : 0} item(s) in your bag`,
+    },
+    'qa-5': {
+      action: 'view-marketplace',
+      label: 'Marketplace',
+      summarize: (b) => `${Number(b.publishedCount ?? 0)} live listing(s) of ${Number(b.listingCount ?? 0)} total`,
+    },
+    'qa-6': {
+      action: 'view-royalties',
+      label: 'Royalties',
+      summarize: (b) => `${Number(b.totalRoyalties ?? 0)} CC from ${Number(b.payoutCount ?? 0)} payout(s)`,
     },
   };
 

@@ -12,7 +12,7 @@ import { SkeletonTableRows, ErrorState } from '@/components/ui';
 
 interface Milestone { id: string; name: string; dueDate: string | null; status: string; taskCount: number; doneCount: number; progressPct: number }
 interface Risk { id: string; name: string; likelihood: number; impact: number; score: number; severity: string; mitigation: string | null }
-interface Goal { id: string; name: string; metric: string; target: number; current: number; progressPct: number }
+interface Goal { id: string; name: string; metric: string; target: number; current: number; progressPct: number; systemMetric: string | null; countedRefs: string[] }
 
 const SEVERITY_COLOR: Record<string, string> = {
   critical: 'text-rose-400', high: 'text-orange-400', medium: 'text-amber-400', low: 'text-gray-400',
@@ -26,7 +26,8 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
   const [loadError, setLoadError] = useState<string | null>(null);
   const [mForm, setMForm] = useState({ name: '', dueDate: '' });
   const [rForm, setRForm] = useState({ name: '', likelihood: '3', impact: '3', mitigation: '' });
-  const [gForm, setGForm] = useState({ name: '', metric: '', target: '' });
+  const [gForm, setGForm] = useState({ name: '', metric: 'Tasks done', target: '' });
+  const [metricCustom, setMetricCustom] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -167,7 +168,19 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
           <input placeholder="Goal" value={gForm.name} onChange={(e) => setGForm({ ...gForm, name: e.target.value })} className={inp} />
-          <input placeholder="Metric" value={gForm.metric} onChange={(e) => setGForm({ ...gForm, metric: e.target.value })} className={inp} />
+          <select value={metricCustom ? '__custom' : gForm.metric} aria-label="Metric"
+            onChange={(e) => {
+              if (e.target.value === '__custom') { setMetricCustom(true); setGForm({ ...gForm, metric: '' }); }
+              else { setMetricCustom(false); setGForm({ ...gForm, metric: e.target.value }); }
+            }} className={inp}>
+            <option value="Tasks done">Tasks done — counted live</option>
+            <option value="Points done">Points done — counted live</option>
+            <option value="Issues closed">Issues closed — counted live</option>
+            <option value="__custom">Custom metric (manual)…</option>
+          </select>
+          {metricCustom && (
+            <input placeholder="Custom metric (manual)" value={gForm.metric} onChange={(e) => setGForm({ ...gForm, metric: e.target.value })} className={inp} />
+          )}
           <input placeholder="Target" inputMode="numeric" value={gForm.target}
             onChange={(e) => setGForm({ ...gForm, target: e.target.value })} className={inp} />
           <button type="button" onClick={addGoal} className={btn}><Plus className="w-3.5 h-3.5" /> Add</button>
@@ -178,16 +191,30 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
               <li key={g.id} className="bg-lattice-surface/70 border border-lattice-border rounded-lg p-2.5">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs font-semibold text-white flex-1">{g.name}</span>
-                  <input type="number" defaultValue={g.current}
-                    onBlur={(e) => lensRun('projects', 'goal-update-progress', { id: g.id, current: Number(e.target.value) }).then(refresh)}
-                    className="w-16 bg-lattice-void border border-lattice-border rounded px-1.5 py-0.5 text-[11px] text-white tabular-nums" />
+                  {g.systemMetric ? (
+                    <span className="text-[11px] text-white tabular-nums font-semibold">{g.current}</span>
+                  ) : (
+                    <input type="number" defaultValue={g.current} aria-label={`${g.name} current value (manual)`}
+                      onBlur={(e) => lensRun('projects', 'goal-update-progress', { id: g.id, current: Number(e.target.value) }).then(refresh)}
+                      className="w-16 bg-lattice-void border border-lattice-border rounded px-1.5 py-0.5 text-[11px] text-white tabular-nums" />
+                  )}
                   <span className="text-[10px] text-gray-400 tabular-nums">/ {g.target} {g.metric}</span>
+                  {g.systemMetric
+                    ? <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-900/50 text-emerald-300 border border-emerald-800/60">counted live</span>
+                    : <span className="text-[9px] px-1.5 py-0.5 rounded bg-lattice-elevated text-gray-400 border border-lattice-border">manual</span>}
                   <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'goal-delete', { id: g.id }).then(refresh)}
                     className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
                 <div className="h-1.5 rounded-full bg-lattice-elevated overflow-hidden">
                   <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min(100, g.progressPct)}%` }} />
                 </div>
+                {g.systemMetric && (
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    {g.countedRefs.length
+                      ? <>Counted from: {g.countedRefs.join(', ')}</>
+                      : 'No completed issues counted yet.'}
+                  </p>
+                )}
               </li>
             ))}
           </ul>

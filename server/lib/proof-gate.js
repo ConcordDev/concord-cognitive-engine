@@ -258,6 +258,21 @@ export async function runLean(source, opts = {}) {
     try { return await opts.runner(source); }
     catch (e) { return { available: false, ok: false, raw: String(e?.message || e) }; }
   }
+  // Source policy first (no sorry/admit/axiom/IO), then the pod's Lean+Mathlib service when one is
+  // configured (CONCORD_LEAN_URL) or no local binary exists; the local `lean` below is the fallback.
+  {
+    const { leanSourceIssues } = await import("./lean-service/policy.js");
+    const issues = leanSourceIssues(source);
+    if (issues.length) return { available: true, ok: false, raw: `rejected: ${issues.join("; ")}` };
+    if (opts.useRemote !== false && (process.env.CONCORD_LEAN_URL || !opts.leanPath)) {
+      const { checkLean } = await import("./verify-gate/lean-client.js");
+      const r = await checkLean(source, { timeoutS: Math.ceil((opts.timeoutMs || 20000) / 1000) });
+      if (r.status === "verified") return { available: true, ok: true, raw: "verified by the pod's Lean service" };
+      if (r.status === "failed") return { available: true, ok: false, raw: (r.errors || []).join("\n") };
+      if (r.status === "rejected") return { available: true, ok: false, raw: `rejected: ${(r.rejected || []).join("; ")}` };
+      // pending: the service is not reachable; fall through to a local binary if there is one
+    }
+  }
   const lean = opts.leanPath || locateLean();
   const timeoutMs = opts.timeoutMs || 20000; // Lean elaboration is slower than SMT
   let dir;

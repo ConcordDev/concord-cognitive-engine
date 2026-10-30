@@ -16,9 +16,15 @@
  * Denials are fresh objects. The 403 keeps the handler's historical
  * error text so existing clients see the same message, now with a
  * status/code beside it; a caller with no real user id gets 401.
- * Whether an artifact is "owned" at all (ownerless/anon artifacts)
- * is Fix 10's question and stays the handler's clause, not this
- * predicate's.
+ *
+ * Fix 10 (below) closes the remaining half: artifacts with NO concrete
+ * owner at all (ownerId/createdBy/createdByUser missing or a sentinel
+ * — "anon", "anonymous", "system") were skipped by every ownership
+ * clause, so any signed-in member could rewrite or publish them,
+ * including marketplace artifacts carrying no owner fields at all.
+ * Ownerless writes are admin/internal-only, plus moderators on
+ * social domains (the Fix 7 rule), and AUTH_MODE=public keeps the
+ * solo local-first behavior (the only "user" is anon by design).
  */
 import { FORUM_MOD_ROLES } from "./forum-mod-gate.js";
 
@@ -69,5 +75,74 @@ export function lensUpdateDenial({ ctx, isOwner, isAdmin, isSocialDomain }) {
     status: 403,
     code: "FORBIDDEN",
     error: "unauthorized: you can only update your own artifacts",
+  };
+}
+
+const OWNERLESS_SENTINELS = new Set(["anon", "anonymous", "system"]);
+
+function isConcreteOwnerId(value) {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    !OWNERLESS_SENTINELS.has(value.toLowerCase())
+  );
+}
+
+/**
+ * An artifact is ownerless when NONE of its owner fields names a
+ * concrete owner: ownerId missing/"anon"/"anonymous"/"system" AND
+ * createdBy/createdByUser likewise absent or sentinel. A real
+ * createdBy counts as ownership even when ownerId is missing (the
+ * handler's _lensIsOwnerActor already matches on it). Stamps like
+ * "pipeline" are concrete non-user owners — not ownerless; they stay
+ * on the owned path, where only admins can write.
+ */
+export function isOwnerlessArtifact(artifact) {
+  if (!artifact) return true;
+  return (
+    !isConcreteOwnerId(artifact.ownerId) &&
+    !isConcreteOwnerId(artifact.createdBy) &&
+    !isConcreteOwnerId(artifact.createdByUser)
+  );
+}
+
+/**
+ * Write gate for ownerless artifacts (lens.update and the
+ * /api/lens/:domain/:id/publish route).
+ *
+ * @param {{ctx: object, isAdmin: boolean, isSocialDomain: boolean,
+ *          authMode?: string, forbiddenError?: string}} args
+ *   isAdmin is resolved by the handler's _lensIsAdminActor. authMode
+ *   is the server's AUTH_MODE; "public" is the solo local-first mode
+ *   and never denies (mirrors dtuMutationDenial's public early
+ *   return). forbiddenError lets the publish route keep its
+ *   historical "not your artifact" text; lens.update keeps the
+ *   update handler's text.
+ * @returns {null | {ok:false, status:number, code:string, error:string}}
+ */
+export function lensOwnerlessDenial({
+  ctx,
+  isAdmin,
+  isSocialDomain,
+  authMode,
+  forbiddenError,
+}) {
+  if (isInternal(ctx)) return null;
+  if (authMode === "public") return null;
+  if (isAdmin) return null;
+  if (isSocialDomain && isModeratorActor(ctx)) return null;
+  if (!realUserId(ctx)) {
+    return {
+      ok: false,
+      status: 401,
+      code: "AUTH_REQUIRED",
+      error: "sign in required",
+    };
+  }
+  return {
+    ok: false,
+    status: 403,
+    code: "FORBIDDEN",
+    error: forbiddenError || "unauthorized: you can only update your own artifacts",
   };
 }

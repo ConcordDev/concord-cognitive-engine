@@ -20,10 +20,16 @@
  * ISOMETRIC_ANGLES/isometricAngleRef in ConcordiaScene.tsx) and wired the
  * Rotation compass for real — it's only shown in isometric mode now (the
  * only mode that reads it), and its buttons call the real onRotate prop.
- * Follow Target (NPC/Event) and the Cinematic Timeline transport remain
- * disabled — no NPC/event camera-target plumbing exists yet, and
- * cinematic-director.ts's shots don't (yet) expose scrub/seek — so those
- * two contracts are still pinned as-is.
+ * Follow Target (NPC/Event) remains disabled — no NPC/event
+ * camera-target plumbing exists yet.
+ *
+ * The Cinematic Timeline moved past inert: Phase 4 wired the camera
+ * itself (ConcordiaScene interpolates every director shot), and the
+ * transport now reflects a live sequence — the parent feeds real
+ * cinematicPlaying/Time/Duration from the director's start/end events —
+ * with a working Stop (the director's cancel). The skip buttons stay
+ * disabled: the director exposes no per-shot seek, so there is still
+ * nothing honest for them to call.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
@@ -159,6 +165,33 @@ describe('CameraControls', () => {
         onTransition={() => {}}
       />,
     );
+    expect(screen.getByLabelText('Previous track')).toBeDisabled();
+    expect(screen.getByLabelText('Next track')).toBeDisabled();
+    // Nothing is playing, and sequences start from world events — the
+    // play button has nothing honest to start from this panel.
+    expect(screen.getByLabelText('Play cinematic timeline')).toBeDisabled();
+    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument();
+  });
+
+  it('shows live progress and a working Stop while a sequence plays', () => {
+    const onCinematicStop = vi.fn();
+    render(
+      <CameraControls
+        cameraState={baseState({ mode: 'cinematic', cinematicPlaying: true, cinematicTime: 5, cinematicDuration: 10 })}
+        onModeChange={() => {}}
+        onZoom={() => {}}
+        onRotate={() => {}}
+        onTransition={() => {}}
+        onCinematicStop={onCinematicStop}
+      />,
+    );
+    expect(screen.getByText('0:05')).toBeInTheDocument();
+    expect(screen.getByText('0:10')).toBeInTheDocument();
+    const stop = screen.getByLabelText('Stop cinematic');
+    expect(stop).not.toBeDisabled();
+    fireEvent.click(stop);
+    expect(onCinematicStop).toHaveBeenCalledTimes(1);
+    // Seek still does not exist in the director — skip stays disabled.
     expect(screen.getByLabelText('Previous track')).toBeDisabled();
     expect(screen.getByLabelText('Next track')).toBeDisabled();
   });

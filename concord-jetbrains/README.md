@@ -40,3 +40,15 @@ Not done: Marketplace publication (the dx-platform installer link has
 no published listing behind it yet), and a findings *list* inside the
 tool window — LSP4IJ 0.5.0's client owns publishDiagnostics, so
 findings surface in the editor rather than a tree here.
+
+## Build
+
+```
+npm --prefix ../concord-lsp ci && npm --prefix ../concord-lsp run compile
+./gradlew buildPlugin        # Gradle 8.5 via the wrapper; JDK 17
+```
+
+`.github/workflows/jetbrains-plugin.yml` runs exactly this on every change here or in `concord-lsp/`, checks
+that the plugin zip contains `lsp/server.js`, and uploads the zip. That workflow is the build evidence for
+this plugin; it has not been compiled on the maintainers' Mac (a full IntelliJ Platform build downloads the
+IDE SDK and is too heavy for that machine).

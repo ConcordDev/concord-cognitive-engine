@@ -2,8 +2,14 @@
  * System: Global Repair Network (Future SaaS Layer)
  *
  * Syncs anonymized repair memory with a global registry so every Concord
- * deployment teaches every other deployment. Currently a stub — local-only
- * mode with the sync protocol specced and ready for activation via env vars.
+ * deployment teaches every other deployment. Activation is env-gated
+ * (below); the sync reads and writes the REAL repair memory — the
+ * repair cortex's pattern store (emergent/repair-cortex.js), bridged
+ * dynamically so a minimal build without the cortex still loads this
+ * module and simply reports the network as unavailable. (Before the
+ * bridge, this module read a globalThis._concordRepairMemory Map that
+ * nothing in the codebase ever populated, so push always exported an
+ * empty list and pulled fixes landed in a Map nobody read.)
  *
  * Enabled via: REPAIR_NETWORK_ENABLED=true and REPAIR_NETWORK_TOKEN=xxx
  *
@@ -66,18 +72,53 @@ function anonymizeFix(fix) {
   };
 }
 
+// ── Cortex bridge ───────────────────────────────────────────────────────────
+// The repair cortex owns the live pattern store. Import it lazily and
+// cache the promise: this module must still load in contexts where the
+// cortex is absent, and a static import would also risk a cycle.
+
+let _cortexPromise = null;
+function cortexBridge() {
+  if (!_cortexPromise) {
+    _cortexPromise = import("./repair-cortex.js").catch(() => null);
+  }
+  return _cortexPromise;
+}
+
+/**
+ * Read the live repair-memory entries (cortex shape). Falls back to
+ * the legacy globalThis._concordRepairMemory Map only when the cortex
+ * module itself is unavailable.
+ */
+async function readRepairMemoryEntries() {
+  const cortex = await cortexBridge();
+  if (cortex?.getAllRepairPatterns) {
+    try {
+      const all = cortex.getAllRepairPatterns();
+      if (Array.isArray(all?.patterns)) return all.patterns;
+    } catch { /* fall through to the legacy global */ }
+  }
+  const repairMem = globalThis._concordRepairMemory;
+  if (repairMem instanceof Map) {
+    return [...repairMem.entries()].map(([pattern, data]) => ({ pattern, ...data }));
+  }
+  return [];
+}
+
 // ── Push Fixes ──────────────────────────────────────────────────────────────
 
-function getRepairMemoryExport() {
-  const repairMem = globalThis._concordRepairMemory;
-  if (!repairMem || !(repairMem instanceof Map)) return [];
-
+async function getRepairMemoryExport() {
+  const entries = await readRepairMemoryEntries();
   const fixes = [];
-  for (const [pattern, data] of repairMem.entries()) {
+  for (const data of entries) {
+    // Network-imported signals are not this instance's learning —
+    // never re-export them as our own (and their pattern is null:
+    // the raw pattern never left the instance that learned it).
+    if (!data?.pattern || data.source === "global_network") continue;
     fixes.push({
-      pattern,
-      category: data.category || "unknown",
-      executor: data.executor || "unknown",
+      pattern: data.pattern,
+      category: data.fix?.category || data.category || "unknown",
+      executor: data.fix?.executor || data.executor || "unknown",
       successRate: data.successRate || 0,
       occurrences: data.occurrences || 0,
       firstSeen: data.firstSeen || nowISO(),
@@ -91,7 +132,7 @@ export async function pushFixes() {
   if (TIERS[_tier]?.pushToGlobal === false) return { ok: false, error: "Tier does not allow push" };
 
   try {
-    const fixes = getRepairMemoryExport();
+    const fixes = await getRepairMemoryExport();
     const filtered = fixes
       .filter(f => f.successRate > 0.7 && f.occurrences >= 3)
       .map(anonymizeFix);
@@ -131,18 +172,26 @@ export async function pullFixes() {
     const globalFixes = data.fixes || [];
     let imported = 0;
 
-    const repairMem = globalThis._concordRepairMemory;
-    if (repairMem instanceof Map) {
-      for (const fix of globalFixes) {
-        const existing = repairMem.get(fix.errorPattern);
-        if (!existing) {
-          repairMem.set(fix.errorPattern, {
-            executor: fix.executor,
-            source: "global_network",
-            confidence: (fix.successRate || 0) * 0.8,
-            importedAt: nowISO(),
-          });
-          imported++;
+    // Import into the REAL repair memory through the cortex, which
+    // keys entries by the shared pattern hash and stores pulled
+    // signals fix-less (they can inform, never be applied). The
+    // legacy global Map is only a fallback for cortex-less builds.
+    const cortex = await cortexBridge();
+    if (cortex?.importGlobalRepairPatterns) {
+      imported = cortex.importGlobalRepairPatterns(globalFixes);
+    } else {
+      const repairMem = globalThis._concordRepairMemory;
+      if (repairMem instanceof Map) {
+        for (const fix of globalFixes) {
+          if (!repairMem.has(fix.errorPattern)) {
+            repairMem.set(fix.errorPattern, {
+              executor: fix.executor,
+              source: "global_network",
+              confidence: (fix.successRate || 0) * 0.8,
+              importedAt: nowISO(),
+            });
+            imported++;
+          }
         }
       }
     }
@@ -173,14 +222,16 @@ export async function pushSecurityFixes() {
   if (TIERS[_tier]?.pushToGlobal === false) return { ok: false, error: "Tier does not allow push" };
 
   try {
-    const repairMem = globalThis._concordRepairMemory;
-    if (!(repairMem instanceof Map)) return { ok: true, pushed: 0 };
+    const entries = await readRepairMemoryEntries();
 
     const securityFixes = [];
-    for (const [pattern, data] of repairMem.entries()) {
+    for (const data of entries) {
+      // Local patterns only: network-imported entries have no raw
+      // pattern to hash (and are not ours to re-share).
+      if (!data?.pattern || data.source === "global_network") continue;
       if (data.securityRelated && data.successRate > 0.5 && data.occurrences >= 2) {
         securityFixes.push({
-          errorPattern: hashPattern(pattern),
+          errorPattern: hashPattern(data.pattern),
           category: "security",
           vulnerabilityType: data.vulnerabilityType || data.fix?.vulnerabilityType || "unknown",
           cveId: data.cveId || data.fix?.cveId || null,
@@ -210,15 +261,16 @@ export async function pushSecurityFixes() {
 }
 
 /**
- * Get count of security-tagged fixes in repair memory.
- * @returns {{ count: number, withCve: number }}
+ * Get count of security-tagged fixes in this instance's OWN repair
+ * memory (network-imported signals are not counted — they are not
+ * this instance's fixes).
+ * @returns {Promise<{ count: number, withCve: number }>}
  */
-export function getSecurityFixCount() {
-  const repairMem = globalThis._concordRepairMemory;
-  if (!(repairMem instanceof Map)) return { count: 0, withCve: 0 };
-
+export async function getSecurityFixCount() {
+  const entries = await readRepairMemoryEntries();
   let count = 0, withCve = 0;
-  for (const data of repairMem.values()) {
+  for (const data of entries) {
+    if (!data?.pattern || data.source === "global_network") continue;
     if (data.securityRelated) {
       count++;
       if (data.cveId || data.fix?.cveId) withCve++;

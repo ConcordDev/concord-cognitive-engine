@@ -117,6 +117,7 @@ export const TYPED_JOINT_PROPS = {
   tStubA: "length",           // T-stub: distance from bolt centerline to face of stem
   tStubB: "length",           // T-stub: distance from bolt centerline to edge of flange
   tributaryWidth: "length",   // T-stub: per-bolt tributary flange width w
+  fatigueStressRange: "pressure", // ΔF for the AISC Appendix 3 fatigue check (joint.fatigue, Q42); the units table's dimension for Pa-family stress units is "pressure"; Pa after compile
   // jointFayingSurface: a class string ("A" | "B" | "C") is plain text, not a quantity.
 };
 
