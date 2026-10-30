@@ -6,6 +6,7 @@
 import { Router } from "express";
 import { lensDataToDTU, wrapFormatAsDTU, exportDTUAs, inspectDTU } from "../lib/universal-dtu-bridge.js";
 import { asyncHandler } from "../lib/async-handler.js";
+import { collectLensExport } from "../lib/lens-export.js";
 
 // ── MIME → media category mapping ────────────────────────────────────────
 const MIME_CATEGORY_MAP = {
@@ -89,6 +90,20 @@ const FORMAT_EXTENSIONS = {
 
 export default function createUniversalExportRouter(STATE, runMacro, makeCtx) {
   const router = Router();
+
+  // GET /api/lens/:domain/export — the shared Export menu's data read (Q79).
+  // Returns the lens's real exportable rows: canonical lens artifacts
+  // (ownership rules ride on lens.list; dispatcher scaffolding excluded)
+  // merged with the domain's state-resident records when it has
+  // registered an export provider (lib/lens-export.js). Same
+  // { artifacts, total } envelope as lens.list, plus provenance.
+  router.get("/api/lens/:domain/export", asyncHandler(async (req, res) => {
+    const ctx = makeCtx(req);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 1000, 1), 5000);
+    const out = await collectLensExport({ runMacro, domain: req.params.domain, ctx, limit });
+    if (!out.ok) return res.status(500).json(out);
+    res.json(out);
+  }));
 
   // POST /api/lens/:domain/export-dtu — Export lens artifact as .dtu file
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production

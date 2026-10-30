@@ -30,6 +30,7 @@
 // The governor never touches user-facing (conscious/chat) calls.
 
 import os from "node:os";
+import { podProfile } from "./pod-profile.js";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -42,7 +43,8 @@ async function _loadPressure() {
   return _pressure;
 }
 
-function _num(name, dflt) {
+function _num(name, dflt, podDflt) {
+  if (podDflt !== undefined && podProfile()) dflt = podDflt;
   const raw = process.env[name];
   if (raw === undefined || raw === null || raw === "") return dflt;
   const v = Number(raw);
@@ -61,12 +63,12 @@ export function governorConfig() {
     recipientPendingCap: _num("CONCORD_BG_RECIPIENT_PENDING_CAP", 3),
     creatorPerHour: _num("CONCORD_BG_CREATOR_PER_HOUR", 6),
     dedupeWindowMs: _num("CONCORD_BG_DEDUPE_WINDOW_MS", 24 * 3600_000),
-    maxInflight: _num("CONCORD_BG_MAX_INFLIGHT", 4),
+    maxInflight: _num("CONCORD_BG_MAX_INFLIGHT", 4, 12),
     kindInflightCaps: {
-      communication: _num("CONCORD_BG_INFLIGHT_COMMUNICATION", 2),
-      dream: _num("CONCORD_BG_INFLIGHT_DREAM", 1),
-      observe: _num("CONCORD_BG_INFLIGHT_OBSERVE", 2),
-      embed: _num("CONCORD_BG_INFLIGHT_EMBED", 1),
+      communication: _num("CONCORD_BG_INFLIGHT_COMMUNICATION", 2, 6),
+      dream: _num("CONCORD_BG_INFLIGHT_DREAM", 1, 3),
+      observe: _num("CONCORD_BG_INFLIGHT_OBSERVE", 2, 6),
+      embed: _num("CONCORD_BG_INFLIGHT_EMBED", 1, 4),
     },
     agentMinIntervalMs: _num("CONCORD_BG_AGENT_MIN_INTERVAL_MS", 5 * 60_000),
     taskTtlMs: _num("CONCORD_BG_TASK_TTL_H", 6) * 3600_000,

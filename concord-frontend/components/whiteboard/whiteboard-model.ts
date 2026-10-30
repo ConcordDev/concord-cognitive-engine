@@ -133,7 +133,9 @@ export function dragStarts(elements: SketchElement[], ids: Selection): Map<strin
 
 /** Move every element in `starts` by (dx, dy) from its drag-start position. */
 export function moveSelection(elements: SketchElement[], starts: Map<string, DragStart>, dx: number, dy: number): SketchElement[] {
-  if (starts.size === 0 || (dx === 0 && dy === 0)) return elements;
+  // A zero delta is NOT a no-op: dragging back to the grab point must restore the start positions, not leave
+  // the elements at the last intermediate move.
+  if (starts.size === 0) return elements;
   return elements.map((el) => {
     const start = starts.get(el.id);
     if (!start) return el;

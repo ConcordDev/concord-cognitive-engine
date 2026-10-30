@@ -32,7 +32,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { lensRun } from '@/lib/api/client';
 import {
   FlaskConical, Users, Plus, LogIn, Notebook, Boxes, Loader2, AlertTriangle,
-  Crown, Wrench, Eye, RefreshCw,
+  Crown, Wrench, Eye, RefreshCw, LogOut,
 } from 'lucide-react';
 
 const DOMAIN = 'lab';
@@ -216,7 +216,18 @@ export function LabOrgPanel() {
 
 function LabOrgDetail({ lab, onRosterChange }: { lab: LabOrgSummary; onRosterChange: () => void }) {
   const [tab, setTab] = useState<'roster' | 'notebook' | 'inventory'>('roster');
+  const [err, setErr] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
   const caps = TIER_CAPS[lab.tier];
+
+  const leaveLab = async () => {
+    setLeaving(true);
+    try {
+      await run('org-leave', { orgId: lab.orgId });
+      onRosterChange();
+    } catch (e) { setErr(e instanceof Error ? e.message : 'leave failed'); }
+    finally { setLeaving(false); }
+  };
 
   return (
     <div className="lens-card space-y-3">
@@ -225,15 +236,19 @@ function LabOrgDetail({ lab, onRosterChange }: { lab: LabOrgSummary; onRosterCha
           <p className="font-medium text-sm">{lab.name}</p>
           <p className="text-xs text-gray-400">{lab.description || 'No description'} · {lab.memberCount} member(s) · you are {TIER_LABEL[lab.tier]}</p>
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1 items-center">
           {(['roster', 'notebook', 'inventory'] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`btn-neon text-xs capitalize ${tab === t ? 'purple' : ''}`}>
               {t}
             </button>
           ))}
+          <button onClick={leaveLab} disabled={leaving} className="btn-neon text-xs flex items-center gap-1">
+            {leaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <LogOut className="w-3 h-3" />} Leave lab
+          </button>
         </div>
       </div>
+      <ErrLine msg={err} />
 
       {tab === 'roster' && <RosterTab orgId={lab.orgId} canManageMembers={caps.manageMembers} onChange={onRosterChange} />}
       {tab === 'notebook' && <OrgNotebookTab orgId={lab.orgId} canEdit={caps.editNotebook} />}

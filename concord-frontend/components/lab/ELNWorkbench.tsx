@@ -23,7 +23,7 @@ import { ChartKit } from '@/components/viz';
 import {
   Notebook, Boxes, ListChecks, Grid3x3, FileSpreadsheet, Dna, LineChart as LineChartIcon,
   Plus, Trash2, PenLine, Stamp, RefreshCw, Play, AlertTriangle, CheckCircle2, Loader2, History,
-  Printer, Barcode,
+  Printer, Barcode, ShieldCheck,
 } from 'lucide-react';
 
 const DOMAIN = 'lab';
@@ -493,6 +493,7 @@ function ProtocolsTab() {
   const [runDone, setRunDone] = useState<Set<number>>(new Set());
   const [revisingId, setRevisingId] = useState<string | null>(null);
   const [reviseText, setReviseText] = useState('');
+  const [validation, setValidation] = useState<Record<string, { valid: boolean; issues: { severity: string; message: string }[] }>>({});
 
   const refresh = useCallback(async () => {
     try { const res = await run('protocol-list', {}); setProtocols(res.protocols || []); setErr(null); }
@@ -522,6 +523,15 @@ function ProtocolsTab() {
       setActiveRun(res.run);
       setRunDone(new Set());
     } catch (e) { setErr(e instanceof Error ? e.message : 'run failed'); }
+    finally { setBusy(false); }
+  };
+
+  const validate = async (id: string) => {
+    setBusy(true);
+    try {
+      const res = await run('validate-protocol', { id });
+      setValidation((prev) => ({ ...prev, [id]: { valid: !!res.valid, issues: res.issues || [] } }));
+    } catch (e) { setErr(e instanceof Error ? e.message : 'validate failed'); }
     finally { setBusy(false); }
   };
 
@@ -596,6 +606,9 @@ function ProtocolsTab() {
                   {p.history?.length ? ` · ${p.history.length} prior version(s)` : ''}</p>
               </div>
               <div className="flex gap-2">
+                <button onClick={() => validate(p.id)} disabled={busy} className="btn-neon text-xs flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3" /> Validate
+                </button>
                 {revisingId !== p.id && (
                   <button onClick={() => openRevise(p)} disabled={busy} className="btn-neon text-xs flex items-center gap-1">
                     <History className="w-3 h-3" /> Revise
@@ -606,6 +619,19 @@ function ProtocolsTab() {
                 </button>
               </div>
             </div>
+            {validation[p.id] && (
+              <div className="border-t border-white/10 pt-2 space-y-1">
+                {validation[p.id].issues.length === 0 ? (
+                  <p className="text-xs text-emerald-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Protocol is structurally valid.</p>
+                ) : (
+                  validation[p.id].issues.map((issue, i) => (
+                    <p key={i} className={`text-xs flex items-center gap-1 ${issue.severity === 'error' ? 'text-red-400' : 'text-amber-300'}`}>
+                      <AlertTriangle className="w-3 h-3" /> {issue.message}
+                    </p>
+                  ))
+                )}
+              </div>
+            )}
             {revisingId === p.id && (
               <div className="space-y-2 border-t border-white/10 pt-2">
                 <p className="text-xs text-gray-400">Editing steps publishes v{p.version + 1}; v{p.version} is archived to history.</p>
