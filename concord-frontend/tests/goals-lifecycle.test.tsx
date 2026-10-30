@@ -5,7 +5,9 @@
 // what is under test.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const stores = vi.hoisted(() => ({
   goal: null as unknown as Record<string, unknown>,
@@ -32,6 +34,12 @@ vi.mock('@/components/lens/recordKeep', () => ({ goalKeepRecord: () => null }));
 
 import { GoalsListPanel } from '@/components/goals/GoalsListPanel';
 import { ChallengesPanel } from '@/components/goals/ChallengesPanel';
+
+// The panels use react-query mutations, so every render needs a client.
+function renderWithClient(ui: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
 
 const goalItem = {
   id: 'g1', title: 'Ship it', version: 1,
@@ -75,7 +83,7 @@ beforeEach(() => {
 
 describe('personal goal lifecycle (F1)', () => {
   it('edit saves the new title and keeps step completion', async () => {
-    render(<GoalsListPanel />);
+    renderWithClient(<GoalsListPanel />);
     fireEvent.click(screen.getByRole('button', { name: /Ship it/ }));
     fireEvent.click(await screen.findByRole('button', { name: /Edit goal/ }));
     const title = await screen.findByLabelText('Edit goal title');
@@ -90,7 +98,7 @@ describe('personal goal lifecycle (F1)', () => {
   });
 
   it('delete is two-step, then Undo restores the goal content', async () => {
-    render(<GoalsListPanel />);
+    renderWithClient(<GoalsListPanel />);
     fireEvent.click(screen.getByRole('button', { name: /Ship it/ }));
     fireEvent.click(await screen.findByRole('button', { name: /Delete goal/ }));
     expect(stores.goal.remove).not.toHaveBeenCalled();
@@ -105,7 +113,7 @@ describe('personal goal lifecycle (F1)', () => {
 
   it('a failed delete says so and offers no fake undo', async () => {
     stores.goal = goalStore({ remove: vi.fn(async () => { throw new Error('store down'); }) });
-    render(<GoalsListPanel />);
+    renderWithClient(<GoalsListPanel />);
     fireEvent.click(screen.getByRole('button', { name: /Ship it/ }));
     fireEvent.click(await screen.findByRole('button', { name: /Delete goal/ }));
     fireEvent.click(screen.getByRole('button', { name: /Confirm delete/ }));
@@ -116,7 +124,7 @@ describe('personal goal lifecycle (F1)', () => {
 
 describe('challenge lifecycle (F1)', () => {
   it('challenge delete is two-step and calls the store remove', async () => {
-    render(<ChallengesPanel />);
+    renderWithClient(<ChallengesPanel />);
     fireEvent.click(screen.getByRole('button', { name: /^Delete$/ }));
     expect(stores.challenge.remove).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: /Confirm delete/ }));

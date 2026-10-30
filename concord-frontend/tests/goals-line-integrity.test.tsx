@@ -5,7 +5,9 @@
 // losslessly. Four lines typed must reach the store as four steps.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // In-memory drafts backend with exact JSON-string semantics.
 const draftStore = vi.hoisted(() => new Map<string, string>());
@@ -24,6 +26,12 @@ vi.mock('@/components/lens/KeepRecordActions', () => ({ KeepRecordActions: () =>
 vi.mock('@/components/lens/recordKeep', () => ({ goalKeepRecord: () => null }));
 
 import { GoalsListPanel } from '@/components/goals/GoalsListPanel';
+
+// The panels use react-query mutations, so every render needs a client.
+function renderWithClient(ui: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
 
 beforeEach(() => {
   draftStore.clear();
@@ -52,7 +60,7 @@ beforeEach(() => {
 
 describe('line-structured input keeps its lines (F2)', () => {
   it('four step lines become four stored steps with exact labels', async () => {
-    render(<GoalsListPanel />);
+    renderWithClient(<GoalsListPanel />);
     fireEvent.click(screen.getByRole('button', { name: 'New goal' }));
     fireEvent.change(await screen.findByPlaceholderText('What do you want to achieve?'), { target: { value: 'Line test' } });
     const steps = await screen.findByPlaceholderText(/Steps, one per line/);
