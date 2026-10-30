@@ -860,21 +860,11 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
             </div>
           </div>
         )) : (
-          Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
-              <div className="aspect-[4/3] flex items-center justify-center" style={{ background: `linear-gradient(135deg, hsl(${i * 60}, 50%, 20%), hsl(${i * 60 + 30}, 50%, 15%))` }}>
-                <ImageIcon className="w-10 h-10 opacity-20" />
-              </div>
-              <div className="p-4">
-                <h3 className="font-medium text-gray-300">{['Album Cover Pack', 'Neon Logo Kit', 'Abstract Backgrounds', 'Character Set', 'Social Media Kit', 'Poster Templates'][i]}</h3>
-                <p className="text-xs text-gray-400 mt-1">{ART_TYPES[i]?.replace('-', ' ')}</p>
-                <div className="flex items-center justify-between mt-3">
-                  <span className="text-neon-green font-bold">${[25, 50, 35, 75, 15, 100][i]}</span>
-                  <button onClick={() => void ('gallery')} className="px-3 py-1.5 bg-white/10 text-gray-300 rounded text-xs hover:bg-white/20">View</button>
-                </div>
-              </div>
-            </div>
-          ))
+          <div className="col-span-full rounded-xl border border-dashed border-white/10 bg-white/5 p-8 text-center">
+            <ImageIcon className="mx-auto mb-3 h-10 w-10 opacity-20" aria-hidden="true" />
+            <p className="text-sm text-gray-300">No listings yet.</p>
+            <p className="mt-1 text-xs text-gray-400">Art that creators list for sale appears here.</p>
+          </div>
         )}
       </div>
     </div>

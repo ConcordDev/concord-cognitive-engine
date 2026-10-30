@@ -90,17 +90,31 @@ vi.mock('framer-motion', () => ({
 
 import { ArtMarketDesk } from '@/components/art/ArtMarketDesk';
 
-describe('ArtMarketDesk Featured Artwork with an empty catalogue', () => {
-  it('shows an honest empty state and no fabricated artwork titles', async () => {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const utils = render(
-      <QueryClientProvider client={client}>
-        <ArtMarketDesk mode="marketplace" />
-      </QueryClientProvider>,
-    );
+const FAKE_LISTINGS = ['Album Cover Pack', 'Neon Logo Kit', 'Abstract Backgrounds', 'Character Set', 'Social Media Kit', 'Poster Templates'];
+
+function renderDesk(mode: 'gallery' | 'marketplace') {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={client}>
+      <ArtMarketDesk mode={mode} />
+    </QueryClientProvider>,
+  );
+}
+
+describe('ArtMarketDesk with an empty catalogue', () => {
+  it('gallery: Featured Artwork shows an honest empty state and no fabricated titles', async () => {
+    const utils = renderDesk('gallery');
     await waitFor(() => expect(utils.getByText('No artwork featured yet.')).toBeInTheDocument());
     for (const fake of ['Neon Dreams', 'Digital Horizons', 'Abstract Flow', 'Cosmic Pulse', 'Neural Art', 'Pixel Paradise', 'Wave Form', 'Fractal Mind']) {
       expect(utils.queryByText(fake)).toBeNull();
     }
+  });
+
+  it('marketplace: shows an honest empty state, no fabricated priced listings, no dead View buttons', async () => {
+    const utils = renderDesk('marketplace');
+    await waitFor(() => expect(utils.getByText('No listings yet.')).toBeInTheDocument());
+    for (const fake of FAKE_LISTINGS) expect(utils.queryByText(fake)).toBeNull();
+    expect(utils.queryByText('$25')).toBeNull();
+    expect(utils.queryByRole('button', { name: 'View' })).toBeNull();
   });
 });
