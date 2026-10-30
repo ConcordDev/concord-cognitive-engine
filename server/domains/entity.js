@@ -3,6 +3,13 @@
 // relationship graph analysis, and attribute validation.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import {
+  listNodes as wbListNodes, getNode as wbGetNode, putNode as wbPutNode,
+  deleteNode as wbDeleteNode, listEdges as wbListEdges, putEdge as wbPutEdge,
+  deleteEdge as wbDeleteEdge, listSchemas as wbListSchemas,
+  putSchema as wbPutSchema, deleteSchema as wbDeleteSchema,
+  migrateUser as wbMigrateUser, migrationReceipt as wbMigrationReceipt,
+} from "../lib/entity-substrate.js";
 export default function registerEntityActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -714,26 +721,22 @@ export default function registerEntityActions(registerLensAction) {
       },
     };
   });
-
   // ───────────────────────────────────────────────────────────────────────
-  // Knowledge-graph workbench: per-user persistent entity/relationship store
-  // on STATE.entityGraph (in LENS_STATE_KEYS), so nodes, edges, and schemas
-  // survive a restart. Caps: 5000 nodes, 10000 edges, 200 schemas per user.
-  // typed schemas, attribute provenance, path-finding, merge/split, and
-  // CSV/JSON + Wikidata import.
+  // Knowledge-graph workbench (#1715 S2 — converged onto the canonical
+  // DTU store; see lib/entity-substrate.js). Nodes are entity DTUs,
+  // edges are typed DTU relations, schemas are entity-schema DTUs.
+  // The macro surface and result shapes are the legacy workbench's,
+  // unchanged; only the store moved. A user's legacy STATE.entityGraph
+  // data migrates onto DTUs on first workbench access (idempotent,
+  // receipt kept on the graph-get result and in state), after which
+  // the legacy arrays sit frozen — readable, never read here again.
+  // Caps carry over: 5000 nodes, 10000 edges, 200 schemas per user.
   // ───────────────────────────────────────────────────────────────────────
 
-  function getGraphState() {
+  function getWorkbenchState() {
     const STATE = globalThis._concordSTATE;
-    if (!STATE) return null;
-    if (!STATE.entityGraph || typeof STATE.entityGraph !== "object" || Array.isArray(STATE.entityGraph)) {
-      STATE.entityGraph = {};
-    }
-    const s = STATE.entityGraph;
-    for (const k of ["nodes", "edges", "schemas"]) {
-      if (!(s[k] instanceof Map)) s[k] = new Map();
-    }
-    return s;
+    if (!STATE || !STATE.dtus) return null;
+    return STATE;
   }
   function saveGraphState() {
     if (typeof globalThis._concordSaveStateDebounced === "function") {
@@ -742,25 +745,31 @@ export default function registerEntityActions(registerLensAction) {
   }
   const aid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const gid = () => `g_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-  const userNodes = (s, u) => { if (!s.nodes.has(u)) s.nodes.set(u, []); return s.nodes.get(u); };
-  const userEdges = (s, u) => { if (!s.edges.has(u)) s.edges.set(u, []); return s.edges.get(u); };
-  const userSchemas = (s, u) => { if (!s.schemas.has(u)) s.schemas.set(u, []); return s.schemas.get(u); };
-  // Snapshot bound. Reject (or skip, on bulk import) past these so one
-  // account cannot grow the process snapshot without a limit.
+  // First touch migrates the user's legacy graph (no-op afterwards).
+  function wb(ctx) {
+    const s = getWorkbenchState();
+    if (!s) return null;
+    const u = aid(ctx);
+    wbMigrateUser(s, u);
+    return { s, u };
+  }
+  // Snapshot bound (legacy GRAPH_CAPS, carried over). Reject (or skip,
+  // on bulk import) past these so one account cannot grow the store
+  // without a limit.
   const GRAPH_CAPS = { nodes: 5000, edges: 10000, schemas: 200 };
-  const graphFull = (arr, kind) => arr.length >= GRAPH_CAPS[kind];
 
-  /** graph-get — full per-user graph (nodes + edges + schemas). */
+  /** graph-get — full per-user graph (nodes + edges + schemas), plus
+   *  the convergence migration receipt for this user. */
   registerLensAction("entity", "graph-get", (ctx, _a, _p = {}) => {
   try {
-    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const u = aid(ctx);
+    const w = wb(ctx); if (!w) return { ok: false, error: "STATE unavailable" };
     return {
       ok: true,
       result: {
-        nodes: userNodes(s, u),
-        edges: userEdges(s, u),
-        schemas: userSchemas(s, u),
+        nodes: wbListNodes(w.s, w.u),
+        edges: wbListEdges(w.s, w.u),
+        schemas: wbListSchemas(w.s, w.u),
+        migration: wbMigrationReceipt(w.s, w.u),
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -768,11 +777,9 @@ export default function registerEntityActions(registerLensAction) {
 
   /** node-create — add an entity node. params: { name, entityType?, attributes?:{key:{value,source}} } */
   registerLensAction("entity", "node-create", (ctx, _a, params = {}) => {
-    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const u = aid(ctx);
+    const w = wb(ctx); if (!w) return { ok: false, error: "STATE unavailable" };
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "name required" };
-    const nodes = userNodes(s, u);
     // attributes: { key: { value, source? } }
     const attributes = {};
     if (params.attributes && typeof params.attributes === "object") {
@@ -784,25 +791,23 @@ export default function registerEntityActions(registerLensAction) {
         }
       }
     }
-    const node = {
+    if (wbListNodes(w.s, w.u).length >= GRAPH_CAPS.nodes) return { ok: false, error: "node_cap" };
+    const node = wbPutNode(w.s, w.u, {
       id: gid(),
       name,
       entityType: String(params.entityType || "generic"),
       attributes,
       wikidataId: params.wikidataId ? String(params.wikidataId) : null,
       createdAt: Date.now(),
-    };
-    if (graphFull(nodes, "nodes")) return { ok: false, error: "node_cap" };
-    nodes.push(node);
+    });
     saveGraphState();
     return { ok: true, result: { node } };
   });
 
   /** node-update — rename / retype / set attribute (with provenance). */
   registerLensAction("entity", "node-update", (ctx, _a, params = {}) => {
-    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const u = aid(ctx);
-    const node = userNodes(s, u).find(n => n.id === params.id);
+    const w = wb(ctx); if (!w) return { ok: false, error: "STATE unavailable" };
+    const node = wbGetNode(w.s, w.u, params.id);
     if (!node) return { ok: false, error: "node not found" };
     if (params.name != null) node.name = String(params.name).trim() || node.name;
     if (params.entityType != null) node.entityType = String(params.entityType);
@@ -820,74 +825,63 @@ export default function registerEntityActions(registerLensAction) {
         }
       }
     }
+    const saved = wbPutNode(w.s, w.u, node);
     saveGraphState();
-    return { ok: true, result: { node } };
+    return { ok: true, result: { node: saved } };
   });
 
   /** node-delete — remove a node and all incident edges. */
   registerLensAction("entity", "node-delete", (ctx, _a, params = {}) => {
-    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const u = aid(ctx);
-    const nodes = userNodes(s, u);
-    const idx = nodes.findIndex(n => n.id === params.id);
-    if (idx < 0) return { ok: false, error: "node not found" };
-    nodes.splice(idx, 1);
-    const edges = userEdges(s, u);
-    const before = edges.length;
-    s.edges.set(u, edges.filter(e => e.from !== params.id && e.to !== params.id));
+    const w = wb(ctx); if (!w) return { ok: false, error: "STATE unavailable" };
+    const r = wbDeleteNode(w.s, w.u, params.id);
+    if (!r.deleted) return { ok: false, error: "node not found" };
     saveGraphState();
-    return { ok: true, result: { deleted: params.id, edgesRemoved: before - s.edges.get(u).length } };
+    return { ok: true, result: { deleted: params.id, edgesRemoved: r.edgesRemoved } };
   });
 
   /** edge-create — link two nodes. params: { from, to, relType?, weight? } */
   registerLensAction("entity", "edge-create", (ctx, _a, params = {}) => {
-    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const u = aid(ctx);
-    const nodes = userNodes(s, u);
-    if (!nodes.find(n => n.id === params.from)) return { ok: false, error: "from node not found" };
-    if (!nodes.find(n => n.id === params.to)) return { ok: false, error: "to node not found" };
+    const w = wb(ctx); if (!w) return { ok: false, error: "STATE unavailable" };
+    if (!wbGetNode(w.s, w.u, params.from)) return { ok: false, error: "from node not found" };
+    if (!wbGetNode(w.s, w.u, params.to)) return { ok: false, error: "to node not found" };
     if (params.from === params.to) return { ok: false, error: "self-edge not allowed" };
-    const edges = userEdges(s, u);
-    if (edges.find(e => e.from === params.from && e.to === params.to && e.relType === String(params.relType || "related"))) {
+    const relType = String(params.relType || "related");
+    const edges = wbListEdges(w.s, w.u);
+    if (edges.find(e => e.from === params.from && e.to === params.to && e.relType === relType)) {
       return { ok: false, error: "edge already exists" };
     }
-    const edge = {
-      id: gid(),
+    if (edges.length >= GRAPH_CAPS.edges) return { ok: false, error: "edge_cap" };
+    const r = wbPutEdge(w.s, w.u, {
       from: String(params.from),
       to: String(params.to),
-      relType: String(params.relType || "related"),
+      relType,
       weight: Number(params.weight) || 1,
-      createdAt: Date.now(),
-    };
-    if (graphFull(edges, "edges")) return { ok: false, error: "edge_cap" };
-    edges.push(edge);
+      at: Date.now(),
+    });
+    if (!r.ok) return { ok: false, error: r.error };
     saveGraphState();
-    return { ok: true, result: { edge } };
+    return { ok: true, result: { edge: r.edge } };
   });
 
   /** edge-delete — remove an edge by id. */
   registerLensAction("entity", "edge-delete", (ctx, _a, params = {}) => {
-    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const u = aid(ctx);
-    const edges = userEdges(s, u);
-    const idx = edges.findIndex(e => e.id === params.id);
-    if (idx < 0) return { ok: false, error: "edge not found" };
-    const [removed] = edges.splice(idx, 1);
+    const w = wb(ctx); if (!w) return { ok: false, error: "STATE unavailable" };
+    const r = wbDeleteEdge(w.s, w.u, params.id);
+    if (!r.ok) return { ok: false, error: r.error };
     saveGraphState();
-    return { ok: true, result: { deleted: removed.id } };
+    return { ok: true, result: { deleted: r.deleted } };
   });
 
   /** schema-list — list typed entity-class schemas for the user. */
   registerLensAction("entity", "schema-list", (ctx, _a, _p = {}) => {
-    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    return { ok: true, result: { schemas: userSchemas(s, aid(ctx)) } };
+    const w = wb(ctx); if (!w) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { schemas: wbListSchemas(w.s, w.u) } };
   });
 
   /** schema-save — create or update an entity-class schema.
    *  params: { id?, className, attributes:[{ name, type, required? }] } */
   registerLensAction("entity", "schema-save", (ctx, _a, params = {}) => {
-    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const u = aid(ctx);
+    const w = wb(ctx); if (!w) return { ok: false, error: "STATE unavailable" };
     const className = String(params.className || "").trim();
     if (!className) return { ok: false, error: "className required" };
     const validTypes = ["string", "number", "integer", "boolean", "date", "url", "email"];
@@ -900,31 +894,27 @@ export default function registerEntityActions(registerLensAction) {
           }))
           .filter(a => a.name)
       : [];
-    const schemas = userSchemas(s, u);
     if (params.id) {
-      const existing = schemas.find(sc => sc.id === params.id);
+      const existing = wbListSchemas(w.s, w.u).find(sc => sc.id === params.id);
       if (!existing) return { ok: false, error: "schema not found" };
-      existing.className = className;
-      existing.attributes = attributes;
-      existing.updatedAt = Date.now();
+      const schema = wbPutSchema(w.s, w.u, {
+        ...existing, className, attributes, updatedAt: Date.now(),
+      });
       saveGraphState();
-      return { ok: true, result: { schema: existing } };
+      return { ok: true, result: { schema } };
     }
-    const schema = { id: gid(), className, attributes, createdAt: Date.now() };
-    if (graphFull(schemas, "schemas")) return { ok: false, error: "schema_cap" };
-    schemas.push(schema);
+    if (wbListSchemas(w.s, w.u).length >= GRAPH_CAPS.schemas) return { ok: false, error: "schema_cap" };
+    const schema = wbPutSchema(w.s, w.u, {
+      id: gid(), className, attributes, createdAt: Date.now(),
+    });
     saveGraphState();
     return { ok: true, result: { schema } };
   });
 
   /** schema-delete — remove a schema. */
   registerLensAction("entity", "schema-delete", (ctx, _a, params = {}) => {
-    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const u = aid(ctx);
-    const schemas = userSchemas(s, u);
-    const idx = schemas.findIndex(sc => sc.id === params.id);
-    if (idx < 0) return { ok: false, error: "schema not found" };
-    schemas.splice(idx, 1);
+    const w = wb(ctx); if (!w) return { ok: false, error: "STATE unavailable" };
+    if (!wbDeleteSchema(w.s, w.u, params.id)) return { ok: false, error: "schema not found" };
     saveGraphState();
     return { ok: true, result: { deleted: params.id } };
   });
@@ -934,11 +924,9 @@ export default function registerEntityActions(registerLensAction) {
    *  rewiring all source edges onto the target, then deleting the source.
    *  params: { sourceId, targetId, fieldChoices?:{key:'source'|'target'} } */
   registerLensAction("entity", "node-merge", (ctx, _a, params = {}) => {
-    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const u = aid(ctx);
-    const nodes = userNodes(s, u);
-    const source = nodes.find(n => n.id === params.sourceId);
-    const target = nodes.find(n => n.id === params.targetId);
+    const w = wb(ctx); if (!w) return { ok: false, error: "STATE unavailable" };
+    const source = wbGetNode(w.s, w.u, params.sourceId);
+    const target = wbGetNode(w.s, w.u, params.targetId);
     if (!source || !target) return { ok: false, error: "source or target node not found" };
     if (source.id === target.id) return { ok: false, error: "cannot merge node into itself" };
     const choices = params.fieldChoices && typeof params.fieldChoices === "object" ? params.fieldChoices : {};
@@ -956,31 +944,53 @@ export default function registerEntityActions(registerLensAction) {
         reconciled.push({ key, resolution: "kept_target" });
       }
     }
+    wbPutNode(w.s, w.u, target);
     // Rewire edges: any edge touching source now points at target.
-    const edges = userEdges(s, u);
+    // (Self-edges and exact duplicates the rewire produces drop, as
+    // in the legacy store; incoming edges are re-pointed by editing
+    // the relation on their owner DTU, outgoing by the delete+re-add
+    // below.)
+    const edges = wbListEdges(w.s, w.u);
     let rewired = 0;
-    for (const e of edges) {
-      if (e.from === source.id) { e.from = target.id; rewired++; }
-      if (e.to === source.id) { e.to = target.id; rewired++; }
-    }
-    // Drop self-edges and exact duplicates produced by the rewire.
     const seen = new Set();
-    s.edges.set(u, edges.filter(e => {
-      if (e.from === e.to) return false;
-      const k = `${e.from}|${e.to}|${e.relType}`;
-      if (seen.has(k)) return false;
+    const finalEdges = [];
+    for (const e of edges) {
+      let { from, to } = e;
+      if (from === source.id) { from = target.id; rewired++; }
+      if (to === source.id) { to = target.id; rewired++; }
+      if (from === to) continue;
+      const k = `${from}|${to}|${e.relType}`;
+      if (seen.has(k)) continue;
       seen.add(k);
-      return true;
-    }));
-    // Delete the source node.
-    s.nodes.set(u, nodes.filter(n => n.id !== source.id));
+      finalEdges.push({ ...e, from, to });
+    }
+    // Rebuild the user's relation set to the rewired shape: delete
+    // every current edge not in the final set, add every final edge
+    // not already standing.
+    const finalKeys = new Set(finalEdges.map(e => `${e.from}|${e.to}|${e.relType}`));
+    for (const e of edges) {
+      const k = `${e.from}|${e.to}|${e.relType}`;
+      if (!finalKeys.has(k) || e.from === source.id || e.to === source.id) {
+        wbDeleteEdge(w.s, w.u, e.id);
+      }
+    }
+    for (const e of finalEdges) {
+      const standing = wbListEdges(w.s, w.u)
+        .some(x => x.from === e.from && x.to === e.to && x.relType === e.relType);
+      if (!standing) {
+        wbPutEdge(w.s, w.u, { from: e.from, to: e.to, relType: e.relType, weight: e.weight, at: e.createdAt });
+      }
+    }
+    // Delete the source node (its remaining outgoing relations go
+    // with it; incoming were re-pointed above).
+    wbDeleteNode(w.s, w.u, source.id);
     saveGraphState();
     return {
       ok: true,
       result: {
         merged: source.id,
         into: target.id,
-        node: target,
+        node: wbGetNode(w.s, w.u, target.id),
         reconciled,
         edgesRewired: rewired,
       },
@@ -991,16 +1001,14 @@ export default function registerEntityActions(registerLensAction) {
    *  linked back by a 'split_from' edge.
    *  params: { id, splitName, attributeKeys:[...], splitEntityType? } */
   registerLensAction("entity", "node-split", (ctx, _a, params = {}) => {
-    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const u = aid(ctx);
-    const nodes = userNodes(s, u);
-    const node = nodes.find(n => n.id === params.id);
+    const w = wb(ctx); if (!w) return { ok: false, error: "STATE unavailable" };
+    const node = wbGetNode(w.s, w.u, params.id);
     if (!node) return { ok: false, error: "node not found" };
     const splitName = String(params.splitName || "").trim();
     if (!splitName) return { ok: false, error: "splitName required" };
     const keys = Array.isArray(params.attributeKeys) ? params.attributeKeys : [];
-    if (graphFull(nodes, "nodes")) return { ok: false, error: "node_cap" };
-    if (graphFull(userEdges(s, u), "edges")) return { ok: false, error: "edge_cap" };
+    if (wbListNodes(w.s, w.u).length >= GRAPH_CAPS.nodes) return { ok: false, error: "node_cap" };
+    if (wbListEdges(w.s, w.u).length >= GRAPH_CAPS.edges) return { ok: false, error: "edge_cap" };
     const moved = {};
     for (const k of keys) {
       if (node.attributes[k]) {
@@ -1008,28 +1016,22 @@ export default function registerEntityActions(registerLensAction) {
         delete node.attributes[k];
       }
     }
-    const newNode = {
+    wbPutNode(w.s, w.u, node);
+    const newNode = wbPutNode(w.s, w.u, {
       id: gid(),
       name: splitName,
       entityType: String(params.splitEntityType || node.entityType),
       attributes: moved,
       wikidataId: null,
       createdAt: Date.now(),
-    };
-    nodes.push(newNode);
-    const edge = {
-      id: gid(),
-      from: node.id,
-      to: newNode.id,
-      relType: "split_from",
-      weight: 1,
-      createdAt: Date.now(),
-    };
-    userEdges(s, u).push(edge);
+    });
+    const r = wbPutEdge(w.s, w.u, {
+      from: node.id, to: newNode.id, relType: "split_from", weight: 1, at: Date.now(),
+    });
     saveGraphState();
     return {
       ok: true,
-      result: { original: node, newNode, edge, attributesMoved: Object.keys(moved) },
+      result: { original: wbGetNode(w.s, w.u, node.id), newNode, edge: r.edge, attributesMoved: Object.keys(moved) },
     };
   });
 
@@ -1037,16 +1039,15 @@ export default function registerEntityActions(registerLensAction) {
    *  undirected). params: { from, to } */
   registerLensAction("entity", "path-find", (ctx, _a, params = {}) => {
   try {
-    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const u = aid(ctx);
-    const nodes = userNodes(s, u);
+    const w = wb(ctx); if (!w) return { ok: false, error: "STATE unavailable" };
+    const nodes = wbListNodes(w.s, w.u);
     const fromNode = nodes.find(n => n.id === params.from);
     const toNode = nodes.find(n => n.id === params.to);
     if (!fromNode || !toNode) return { ok: false, error: "from or to node not found" };
     if (params.from === params.to) {
       return { ok: true, result: { found: true, hops: 0, path: [{ nodeId: fromNode.id, name: fromNode.name }] } };
     }
-    const edges = userEdges(s, u);
+    const edges = wbListEdges(w.s, w.u);
     const adj = {};
     for (const e of edges) {
       (adj[e.from] = adj[e.from] || []).push({ to: e.to, relType: e.relType });
@@ -1086,19 +1087,18 @@ export default function registerEntityActions(registerLensAction) {
   /** import-bulk — bulk-create nodes from parsed CSV/JSON rows.
    *  params: { rows:[{ name, entityType?, ...attrs }], source? } */
   registerLensAction("entity", "import-bulk", (ctx, _a, params = {}) => {
-    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const u = aid(ctx);
+    const w = wb(ctx); if (!w) return { ok: false, error: "STATE unavailable" };
     const rows = Array.isArray(params.rows) ? params.rows : [];
     if (rows.length === 0) return { ok: false, error: "no rows provided" };
     const source = String(params.source || "import");
-    const nodes = userNodes(s, u);
     const created = [];
     const skipped = [];
+    let count = wbListNodes(w.s, w.u).length;
     for (const row of rows.slice(0, 2000)) {
       if (!row || typeof row !== "object") { skipped.push({ reason: "not an object" }); continue; }
       const name = String(row.name || row.Name || row.label || "").trim();
       if (!name) { skipped.push({ reason: "missing name", row }); continue; }
-      if (graphFull(nodes, "nodes")) { skipped.push({ reason: "node_cap", row }); continue; }
+      if (count >= GRAPH_CAPS.nodes) { skipped.push({ reason: "node_cap", row }); continue; }
       const entityType = String(row.entityType || row.type || "generic");
       const attributes = {};
       for (const [k, v] of Object.entries(row)) {
@@ -1106,15 +1106,15 @@ export default function registerEntityActions(registerLensAction) {
         if (v == null || v === "") continue;
         attributes[k] = { value: v, source, at: Date.now() };
       }
-      const node = {
+      const node = wbPutNode(w.s, w.u, {
         id: gid(),
         name,
         entityType,
         attributes,
         wikidataId: null,
         createdAt: Date.now(),
-      };
-      nodes.push(node);
+      });
+      count++;
       created.push(node);
     }
     saveGraphState();
@@ -1128,15 +1128,14 @@ export default function registerEntityActions(registerLensAction) {
    *  or here) as a graph node with provenance set to 'wikidata'.
    *  params: { wikidataId, label, description?, claims?:{key:value} } */
   registerLensAction("entity", "import-wikidata", (ctx, _a, params = {}) => {
-    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const u = aid(ctx);
+    const w = wb(ctx); if (!w) return { ok: false, error: "STATE unavailable" };
     const wikidataId = String(params.wikidataId || "").trim();
     const label = String(params.label || "").trim();
     if (!wikidataId || !label) return { ok: false, error: "wikidataId and label required" };
-    const nodes = userNodes(s, u);
+    const nodes = wbListNodes(w.s, w.u);
     const existing = nodes.find(n => n.wikidataId === wikidataId);
     if (existing) return { ok: false, error: "wikidata entity already imported", existingId: existing.id };
-    if (graphFull(nodes, "nodes")) return { ok: false, error: "node_cap" };
+    if (nodes.length >= GRAPH_CAPS.nodes) return { ok: false, error: "node_cap" };
     const attributes = {};
     if (params.description) {
       attributes.description = { value: String(params.description), source: "wikidata", at: Date.now() };
@@ -1147,15 +1146,14 @@ export default function registerEntityActions(registerLensAction) {
         attributes[k] = { value: v, source: "wikidata", at: Date.now() };
       }
     }
-    const node = {
+    const node = wbPutNode(w.s, w.u, {
       id: gid(),
       name: label,
       entityType: String(params.entityType || "wikidata-entity"),
       attributes,
       wikidataId,
       createdAt: Date.now(),
-    };
-    nodes.push(node);
+    });
     saveGraphState();
     return { ok: true, result: { node } };
   });
@@ -1164,9 +1162,8 @@ export default function registerEntityActions(registerLensAction) {
    *  value, across the whole user graph. */
   registerLensAction("entity", "provenance-report", (ctx, _a, _p = {}) => {
   try {
-    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const u = aid(ctx);
-    const nodes = userNodes(s, u);
+    const w = wb(ctx); if (!w) return { ok: false, error: "STATE unavailable" };
+    const nodes = wbListNodes(w.s, w.u);
     const bySource = {};
     let totalAttributes = 0;
     const entries = [];

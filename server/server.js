@@ -45,6 +45,8 @@ import {
   actorFromReq,
 } from "./lib/log-access.js";
 import { dtuSkipsAutoTag } from "./lib/dtu-auto-tag.js";
+import { relationEdges as dtuRelationEdges } from "./lib/dtu-relations.js";
+import { substrateCounts, derivedLayerCounts } from "./lib/substrate-counts.js";
 import { hasUsableBrainInput, needsInputError } from "./lib/brain-action-input.js";
 import { aggregateTopicCounts } from "./lib/trending-topics.js";
 import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-tags.js";
@@ -17038,7 +17040,14 @@ register("worldmodel", "status", (ctx, _input = {}) => {
     snapshots: ctx.state.worldModel.snapshots.length,
     stats: ctx.state.worldModel.stats,
     config: ctx.state.worldModel.config,
-    invariants: WORLD_MODEL_INVARIANTS
+    invariants: WORLD_MODEL_INVARIANTS,
+    // #1715 S5: single-sourced accounting. The fields above count
+    // the world-model derived layer (living state, NOT the
+    // substrate); `derived` names that and counts the DTU-
+    // provenance link, `substrate` carries the canonical store's
+    // own counts from the same counting source as graph.stats.
+    derived: derivedLayerCounts(ctx.state),
+    substrate: substrateCounts(ctx.state, null),
   };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
@@ -35505,18 +35514,32 @@ register("settings", "status", (ctx, _input) => {
   register("graph", "stats", (ctx, _input = {}) => {
     try {
       _ensureGraphIndex();
+      const viewer = _graphViewer(ctx);
+      let visibleNodes = 0;
+      for (const id of GRAPH_INDEX?.nodes?.keys?.() || []) {
+        if (_graphCanSeeId(id, viewer)) visibleNodes++;
+      }
       return {
         ok: true,
         stats: {
+          // Legacy fields: these count the GRAPH_INDEX projection
+          // (DTUs + synthetic tag nodes; lineage + relation edges),
+          // not the substrate itself — `source` names the universe,
+          // and lib/substrate-counts.js is the single counting
+          // source (#1715 S4).
+          source: "graph-index",
           totalNodes: GRAPH_INDEX?.nodes?.size || 0,
           totalEdges: GRAPH_INDEX?.edges?.size || 0,
+          indexNodes: GRAPH_INDEX?.nodes?.size || 0,
+          indexEdges: GRAPH_INDEX?.edges?.size || 0,
           dirty: !!GRAPH_INDEX?.dirty,
+          substrate: substrateCounts(STATE, viewer, { index: GRAPH_INDEX, indexVisibleNodes: visibleNodes }),
         },
       };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
-  }, { description: "Graph index stats (nodes/edges)." });
+  }, { description: "Graph index stats (nodes/edges) with source-named substrate counts." });
 
   register("graph", "edges", (ctx, input = {}) => {
     try {
@@ -48596,6 +48619,11 @@ function rebuildGraphIndex() {
       if (!GRAPH_INDEX.nodes.has(tagNodeId)) GRAPH_INDEX.nodes.set(tagNodeId, { id: tagNodeId, type: "tag", label: tag });
       GRAPH_INDEX.edges.set(`${id}->tag:${tag}`, { source: id, target: tagNodeId, type: "tagged" });
     }
+    // #1715 S1: typed relations project alongside lineage/tag edges.
+    // Keyed by the edge's own id (carries `#type`), so a typed edge
+    // never overwrites a lineage edge between the same pair; readers'
+    // visibility filtering (_graphVisibleEdge) applies unchanged.
+    for (const e of dtuRelationEdges(dtu)) { GRAPH_INDEX.edges.set(e.id, e); }
   }
   // Compute lineage depths
   const roots = Array.from(STATE.dtus.values()).filter(d => !d.lineage?.parents?.length || d.tier === "core");
