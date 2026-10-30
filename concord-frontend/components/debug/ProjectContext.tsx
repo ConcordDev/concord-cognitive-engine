@@ -30,6 +30,7 @@ export interface DebugProjectCounts {
   metrics: number;
   alerts: number;
   releases: number;
+  ingestKeys: number;
 }
 
 export interface DebugProject {
