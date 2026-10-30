@@ -16928,6 +16928,11 @@ register("goals", "abandon", (ctx, input = {}) => {
 }, { public: false });
 
 register("goals", "delete", (ctx, input = {}) => {
+  // Permanent removal from the global goal registry (system/agent goals
+  // included), so it is not a member action — same gate as founder-approve.
+  if (!["owner", "admin", "founder"].includes(ctx.actor?.role)) {
+    return { ok: false, error: "Goal deletion requires owner/admin role" };
+  }
   enforceEthosInvariant("goals_delete");
   ensureGoalSystem();
 
