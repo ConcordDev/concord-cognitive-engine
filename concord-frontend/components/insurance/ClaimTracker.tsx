@@ -135,8 +135,8 @@ export function ClaimTracker() {
           <div className="flex items-center gap-2">
             <button onClick={fileNew} className="px-3 py-1 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">File claim</button>
             <button onClick={() => setAdding(false)} className="px-3 py-1 text-xs rounded border border-white/10 text-gray-400 hover:text-white">Cancel</button>
-            <button type="button" onClick={() => setShowPhotoForm(v => !v)} aria-label="Attach photos" title="Attach photos — they are added to the claim when you file it" className="ml-auto inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10">
-              <Camera className="w-3 h-3" /> Attach photos{draftPhotos.length > 0 ? ` (${draftPhotos.length})` : ''}
+            <button type="button" onClick={() => setShowPhotoForm(v => !v)} aria-label="Add photo references" title="Adds photo references (a label and an optional link) to the claim when you file it. No image file is uploaded or stored." className="ml-auto inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10">
+              <Camera className="w-3 h-3" /> Photo references{draftPhotos.length > 0 ? ` (${draftPhotos.length})` : ''}
             </button>
           </div>
           {showPhotoForm && (
@@ -150,10 +150,11 @@ export function ClaimTracker() {
                 </div>
               ))}
               <div className="flex items-center gap-2">
-                <input value={photoTitle} onChange={e => setPhotoTitle(e.target.value)} placeholder="Photo title (e.g. Front bumper damage)" className="flex-1 px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white" />
-                <input value={photoUrl} onChange={e => setPhotoUrl(e.target.value)} placeholder="URL (optional)" className="w-36 px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white" />
-                <button type="button" onClick={stagePhoto} className="px-2 py-1.5 rounded border border-white/10 text-gray-300 hover:text-white">Add photo</button>
+                <input value={photoTitle} onChange={e => setPhotoTitle(e.target.value)} placeholder="Photo label (e.g. Front bumper damage)" className="flex-1 px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white" />
+                <input value={photoUrl} onChange={e => setPhotoUrl(e.target.value)} placeholder="Link to the photo (optional)" className="w-36 px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white" />
+                <button type="button" onClick={stagePhoto} className="px-2 py-1.5 rounded border border-white/10 text-gray-300 hover:text-white">Add reference</button>
               </div>
+              <p className="text-[10px] text-gray-500">Concord records the label and link only; the image itself is not uploaded.</p>
             </div>
           )}
         </div>
@@ -192,8 +193,8 @@ export function ClaimTracker() {
                     {c.daysSinceSubmit != null && <span>{c.daysSinceSubmit}d in pipeline</span>}
                     {c.adjusterName && <span>Adjuster: {c.adjusterName}</span>}
                     <span>{c.documents} docs</span>
-                    <button type="button" onClick={() => openAttach(c.id)} className="inline-flex items-center gap-1 text-cyan-300 hover:text-cyan-200" aria-label={`Attach photos to claim ${c.id.slice(-6)}`}>
-                      <Camera className="w-3 h-3" /> Attach
+                    <button type="button" onClick={() => openAttach(c.id)} className="inline-flex items-center gap-1 text-cyan-300 hover:text-cyan-200" aria-label={`Add photo references to claim ${c.id.slice(-6)}`}>
+                      <Camera className="w-3 h-3" /> Photo refs
                     </button>
                   </div>
                   {attachFor === c.id && (
@@ -205,10 +206,10 @@ export function ClaimTracker() {
                           <span className="text-gray-500">{d.kind}</span>
                         </div>
                       ))}
-                      {claimDocs.length === 0 && <p className="text-[11px] text-gray-500">No photos or documents attached yet.</p>}
+                      {claimDocs.length === 0 && <p className="text-[11px] text-gray-500">No photo references or documents recorded yet.</p>}
                       <div className="flex items-center gap-2">
-                        <input value={attachTitle} onChange={e => setAttachTitle(e.target.value)} placeholder="Photo title (e.g. Front bumper damage)" className="flex-1 px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white text-xs" />
-                        <button type="button" onClick={() => addClaimPhoto(c.id)} className="px-2 py-1.5 text-xs rounded border border-white/10 text-gray-300 hover:text-white">Add photo</button>
+                        <input value={attachTitle} onChange={e => setAttachTitle(e.target.value)} placeholder="Photo label (e.g. Front bumper damage) — label only, no file is stored" className="flex-1 px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white text-xs" />
+                        <button type="button" onClick={() => addClaimPhoto(c.id)} className="px-2 py-1.5 text-xs rounded border border-white/10 text-gray-300 hover:text-white">Add reference</button>
                       </div>
                     </div>
                   )}

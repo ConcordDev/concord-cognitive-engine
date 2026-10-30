@@ -6,11 +6,15 @@
  * Wires the `debug` domain macros:
  *   issue-ingest · issue-list · issue-detail · issue-update · issue-delete
  *
+ * Scoped to the project selected in the workspace header (S10):
+ * list/ingest/detail carry the context's projectId.
+ *
  * Every value rendered comes from a real macro response.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { useDebugProject } from './ProjectContext';
 import { ChartKit } from '@/components/viz';
 import {
   AlertTriangle,
@@ -65,6 +69,7 @@ const LEVEL_TONE: Record<string, string> = {
 };
 
 export function IssueInbox() {
+  const { projectId } = useDebugProject();
   const [issues, setIssues] = useState<Issue[]>([]);
   const [summary, setSummary] = useState<IssueSummary | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | 'open' | 'resolved' | 'ignored'>('open');
@@ -88,6 +93,7 @@ export function IssueInbox() {
     setLoading(true);
     setError(null);
     const r = await lensRun('debug', 'issue-list', {
+      projectId,
       status: statusFilter || undefined,
       query: query || undefined,
       sort: 'last',
@@ -99,7 +105,7 @@ export function IssueInbox() {
       setError(r.data?.error || 'Failed to load issues');
     }
     setLoading(false);
-  }, [statusFilter, query]);
+  }, [statusFilter, query, projectId]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => void load());
@@ -110,6 +116,7 @@ export function IssueInbox() {
     if (!form.message.trim()) return;
     setBusyId('ingest');
     const r = await lensRun('debug', 'issue-ingest', {
+      projectId,
       type: form.type,
       message: form.message,
       culprit: form.culprit || undefined,
@@ -127,17 +134,17 @@ export function IssueInbox() {
     } else {
       setError(r.data?.error || 'Ingest failed');
     }
-  }, [form, load]);
+  }, [form, load, projectId]);
 
   const openDetail = useCallback(async (issue: Issue) => {
     setSelected(issue);
     setSparkline([]);
-    const r = await lensRun('debug', 'issue-detail', { id: issue.id });
+    const r = await lensRun('debug', 'issue-detail', { id: issue.id, projectId });
     if (r.data?.ok && r.data.result) {
       setSelected(r.data.result.issue);
       setSparkline(r.data.result.sparkline || []);
     }
-  }, []);
+  }, [projectId]);
 
   const updateIssue = useCallback(
     async (id: string, patch: { status?: string; assignee?: string }) => {

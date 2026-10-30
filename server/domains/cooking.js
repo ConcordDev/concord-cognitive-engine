@@ -534,15 +534,25 @@ export default function registerCookingActions(registerLensAction) {
     const items = [];
     for (const [, ing] of agg) {
       let needed = true;
+      let qty = ing.hasQty ? ing.qty : null;
       if (subtractPantry) {
         const inPantry = pantry.find(p => p.name.toLowerCase() === ing.name.toLowerCase() && (p.qty === null || p.qty > 0));
-        if (inPantry && inPantry.qty === null) needed = false; // "have it" with no count
+        if (inPantry && inPantry.qty === null) {
+          needed = false; // "have it" with no count
+        } else if (inPantry && qty !== null && (inPantry.unit || '').toLowerCase() === (ing.unit || '').toLowerCase()) {
+          // Q21: COUNTED stock subtracts — list only the shortfall.
+          // (Unit must match: the domain has no conversion table, and a
+          // mismatched unit leaves the full quantity rather than
+          // guessing a conversion.)
+          qty = Math.round((qty - inPantry.qty) * 1000) / 1000;
+          if (qty <= 0) needed = false; // pantry covers it
+        }
       }
       if (!needed) continue;
       items.push({
         id: uidCk('shop'),
         name: ing.name,
-        qty: ing.hasQty ? Math.round(ing.qty * 1000) / 1000 : null,
+        qty: qty !== null ? Math.round(qty * 1000) / 1000 : null,
         unit: ing.unit,
         aisle: classifyAisle(ing.name),
         checked: false,

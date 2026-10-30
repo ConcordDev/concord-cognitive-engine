@@ -2,6 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { ds } from '@/lib/design-system';
 
 describe('design-system tokens', () => {
+  describe('skeleton token (Q71/B#11)', () => {
+    it('ds.skeleton carries the loading-placeholder classes Skeleton.tsx used inline', () => {
+      expect(ds.skeleton).toContain('animate-pulse');
+      expect(ds.skeleton).toContain('bg-lattice-border/50');
+    });
+  });
+
   describe('panel tokens', () => {
     it('panel contains expected base classes', () => {
       expect(ds.panel).toContain('bg-lattice-surface');
