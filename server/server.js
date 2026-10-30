@@ -6403,6 +6403,7 @@ const STATE = {
   growth: null,          // growth OS state
   // v3: Generic lens artifact store (domain.type → artifact)
   lensArtifacts: new Map(), // artifactId → {id, domain, type, ownerId, title, data, meta, createdAt, updatedAt, version}
+  emergentLensProposals: new Map(), // proposalId → governance proposal record (lib/emergent-proposals.js)
   lensDomainIndex: new Map(), // domain → Set<artifactId> — O(1) domain lookup
   // v4: User Universes (local/global multiverse substrate)
   userUniverses: new Map(), // userId → { userId, localDTUs: Map, localLensArtifacts: Map, syncedFromGlobal: Set, preferences, stats, discoveryLog }
@@ -12936,6 +12937,7 @@ function _serializeState() {
     // is still a plain Map and we MUST keep serializing it or artifacts have
     // nowhere to live.
     ...(artifactStoreActive ? {} : { lensArtifacts: toArr(STATE.lensArtifacts) }),
+    emergentLensProposals: toArr(STATE.emergentLensProposals),
     _scopeSeparation: STATE._scopeSeparation || null,
     _autogenPipeline: STATE._autogenPipeline || null,
     // Entity growth profiles (persist across restarts)
@@ -13113,6 +13115,12 @@ function _hydrateState(obj) {
   if (Array.isArray(obj.lensArtifacts)) {
     STATE.lensArtifacts.clear();
     for (const a of obj.lensArtifacts) if (a && a.id) STATE.lensArtifacts.set(a.id, a);
+  }
+  // Emergent lens-action governance proposals (Q40) — same round-trip.
+  if (Array.isArray(obj.emergentLensProposals)) {
+    if (!(STATE.emergentLensProposals instanceof Map)) STATE.emergentLensProposals = new Map();
+    STATE.emergentLensProposals.clear();
+    for (const p of obj.emergentLensProposals) if (p && p.id) STATE.emergentLensProposals.set(p.id, p);
   }
   // Rebuild domain index
   _rebuildLensDomainIndex();
@@ -39825,6 +39833,19 @@ allowMacro("council", "vote", _ACL_MEMBER);
 allowMacro("council", "reviewGlobal", _ACL_MEMBER);
 allowMacro("council", "credibility", _ACL_MEMBER);
 allowMacro("council", "proposePromotion", _ACL_MEMBER);
+
+// SECURITY: federation peering (emergent/federation-peering.js). The
+// emergent domain is member-tier, but inbound HMAC is only as strong as
+// peer registration: a member who could register a peer with a secret of
+// their choosing could sign their own sync packages and proposals, and the
+// send* macros make this server POST our heartbeat / published DTUs to the
+// registered endpoint. Peer registration, inbound receive, and outbound
+// send are admin-only (humanMacroAclDenial enforces this for humans;
+// internal callers bypass). federation.metrics stays public.
+for (const n of [
+  "registerPeer", "heartbeat", "buildSync", "receiveSync", "receiveProposal",
+  "sendHeartbeat", "sendSync", "sendProposal",
+]) allowMacro("emergent", `federation.${n}`, _ACL_ADMIN);
 
 // Auth: whoami just echoes the caller's own actor/user/org back to them —
 // no other user's data, nothing sensitive. Overrides the domain-level
