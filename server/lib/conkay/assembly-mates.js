@@ -5,7 +5,11 @@
 // rotated by the minimal rotation that makes its free axis parallel to
 // the reference part's free axis, preserving its spin about that axis
 // as far as the geometry allows. Stored Euler triples are degrees in
-// the platform viewer's convention, R = Rz·Ry·Rx (THREE.Euler 'XYZ').
+// the renderer's convention: they are posted unchanged as Unity eulerAngles
+// (set_transform, lib/conkay/unity-bridge.ts), and Unity applies Z, then X,
+// then Y: R = Ry·Rx·Rz. (NOT THREE.Euler 'XYZ', which is Rx·Ry·Rz, and NOT
+// Rz·Ry·Rx — an earlier version of this file used that and parts that
+// looked aligned in its own tests rendered 11-85° off.)
 
 import {
   getPart,
@@ -38,18 +42,18 @@ function axisUnit(axis) {
   return { x: 1, y: 0, z: 0 };
 }
 
-// ── Euler (degrees, R = Rz·Ry·Rx) ↔ rotation matrix ─────────────────
+// ── Euler (degrees, Unity order R = Ry·Rx·Rz) ↔ rotation matrix ─────
 const DEG = Math.PI / 180;
 export function eulerToMatrix(rot) {
   const { x, y, z } = vec(rot);
   const cx = Math.cos(x * DEG), sx = Math.sin(x * DEG);
   const cy = Math.cos(y * DEG), sy = Math.sin(y * DEG);
   const cz = Math.cos(z * DEG), sz = Math.sin(z * DEG);
-  // R = Rz * Ry * Rx
+  // R = Ry * Rx * Rz (Unity eulerAngles: Z first, then X, then Y)
   return [
-    [cz * cy, cz * sy * sx - sz * cx, cz * sy * cx + sz * sx],
-    [sz * cy, sz * sy * sx + cz * cx, sz * sy * cx - cz * sx],
-    [-sy, cy * sx, cy * cx],
+    [cy * cz + sy * sx * sz, -cy * sz + sy * sx * cz, sy * cx],
+    [cx * sz, cx * cz, -sx],
+    [-sy * cz + cy * sx * sz, sy * sz + cy * sx * cz, cy * cx],
   ];
 }
 
@@ -58,16 +62,16 @@ export function matrixToEuler(R) {
     const r = Math.round(n * 1e6) / 1e6;
     return Object.is(r, -0) ? 0 : r;
   };
-  const sy = Math.max(-1, Math.min(1, -R[2][0]));
-  const y = Math.asin(sy) / DEG;
-  let x, z;
-  if (Math.abs(Math.cos(y * DEG)) > 1e-9) {
-    x = Math.atan2(R[2][1], R[2][2]) / DEG;
-    z = Math.atan2(R[1][0], R[0][0]) / DEG;
+  const sx = Math.max(-1, Math.min(1, -R[1][2]));
+  const x = Math.asin(sx) / DEG;
+  let y, z;
+  if (Math.abs(Math.cos(x * DEG)) > 1e-9) {
+    y = Math.atan2(R[0][2], R[2][2]) / DEG;
+    z = Math.atan2(R[1][0], R[1][1]) / DEG;
   } else {
-    // Gimbal lock: fold everything into x.
+    // Gimbal lock (x = ±90°): fold everything into y.
     z = 0;
-    x = Math.atan2(-R[0][1], R[1][1]) / DEG;
+    y = Math.atan2(-R[2][0], R[0][0]) / DEG;
   }
   return { x: round(x), y: round(y), z: round(z) };
 }

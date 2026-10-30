@@ -16,7 +16,7 @@ import {
   getAssemblyHistory,
   transformPart,
 } from '../lib/conkay/assembly-store.js';
-import { applyMate, solveMateTransform, MATE_TYPES, eulerToMatrix, solveAlignAxisRotation } from '../lib/conkay/assembly-mates.js';
+import { applyMate, solveMateTransform, MATE_TYPES, eulerToMatrix, matrixToEuler, solveAlignAxisRotation } from '../lib/conkay/assembly-mates.js';
 
 function axisDir(rot, axis) {
   const R = eulerToMatrix(rot);
@@ -93,6 +93,69 @@ describe('conkay mates v2 kinematic solve', () => {
       const refRot = { x: 25, y: -40, z: 130 };
       const solved = solveAlignAxisRotation({ axis, refRot, drivenRot: { x: -70, y: 15, z: 55 } });
       assertParallel(axisDir(solved, axis), axisDir(refRot, axis), `axis ${axis}`);
+    }
+  });
+
+  // Independent of the module's own eulerToMatrix: Unity's Quaternion.Euler(x,y,z) is qY * qX * qZ (Z applied
+  // first), and a rotated direction is q * v * q^-1. The stored triples are posted unchanged as Unity
+  // eulerAngles (lib/conkay/unity-bridge.ts set_transform), so this is the renderer's frame. The earlier
+  // Rz·Ry·Rx solve passed the self-referential tests above yet rendered 11-85° off here.
+  const qAxis = (ax, deg) => { const h = deg * Math.PI / 360, s = Math.sin(h); return { w: Math.cos(h), x: ax[0] * s, y: ax[1] * s, z: ax[2] * s }; };
+  const qMul = (a, b) => ({
+    w: a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
+    x: a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
+    y: a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
+    z: a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
+  });
+  const unityEuler = (r) => qMul(qMul(qAxis([0, 1, 0], r.y), qAxis([1, 0, 0], r.x)), qAxis([0, 0, 1], r.z));
+  const unityRotate = (r, v) => {
+    const q = unityEuler(r);
+    const p = qMul(qMul(q, { w: 0, x: v[0], y: v[1], z: v[2] }), { w: q.w, x: -q.x, y: -q.y, z: -q.z });
+    return [p.x, p.y, p.z];
+  };
+  const UNIT = { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] };
+
+  it('eulerToMatrix is Unity\'s Euler order (matches an independent quaternion implementation)', () => {
+    for (const rot of [{ x: 25, y: -40, z: 130 }, { x: -70, y: 15, z: 55 }, { x: 90, y: 30, z: -20 }, { x: 10, y: 170, z: 3 }]) {
+      for (const ax of ['x', 'y', 'z']) {
+        const got = axisDir(rot, ax);
+        const want = unityRotate(rot, UNIT[ax]);
+        for (let i = 0; i < 3; i++) assert.ok(Math.abs(got[i] - want[i]) < 1e-9, `${JSON.stringify(rot)} ${ax}[${i}] ${got[i]} vs ${want[i]}`);
+      }
+    }
+    // Known Unity facts: Euler(0,90,0) sends forward (0,0,1) to right (1,0,0); Euler(90,0,0) sends forward to down;
+    // Euler(0,0,90) sends right to up.
+    const near = (a, b) => a.every((n, i) => Math.abs(n - b[i]) < 1e-9);
+    assert.ok(near(unityRotate({ x: 0, y: 90, z: 0 }, [0, 0, 1]), [1, 0, 0]));
+    assert.ok(near(unityRotate({ x: 90, y: 0, z: 0 }, [0, 0, 1]), [0, -1, 0]));
+    assert.ok(near(unityRotate({ x: 0, y: 0, z: 90 }, [1, 0, 0]), [0, 1, 0]));
+    assert.ok(near(axisDir({ x: 0, y: 90, z: 0 }, 'z'), [1, 0, 0]));
+  });
+
+  it('align_axis result is parallel to the reference in the RENDERER frame (independent Unity check), across pairs and axes', () => {
+    const pairs = [
+      [{ x: 25, y: -40, z: 130 }, { x: -70, y: 15, z: 55 }],
+      [{ x: 0, y: 0, z: 90 }, { x: 33, y: 0, z: 0 }],
+      [{ x: -120, y: 60, z: 10 }, { x: 80, y: -75, z: 160 }],
+      [{ x: 15, y: 200, z: -35 }, { x: 0, y: 0, z: 0 }],
+    ];
+    for (const [refRot, drivenRot] of pairs) {
+      for (const axis of ['x', 'y', 'z']) {
+        const solved = solveAlignAxisRotation({ axis, refRot, drivenRot });
+        const a = unityRotate(solved, UNIT[axis]);
+        const b = unityRotate(refRot, UNIT[axis]);
+        const dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+        assert.ok(dot > 1 - 1e-6, `axis ${axis} ref ${JSON.stringify(refRot)} driven ${JSON.stringify(drivenRot)}: renderer-frame dot=${dot}`);
+      }
+    }
+  });
+
+  it('matrixToEuler round-trips in the Unity order, including gimbal (x = ±90°)', () => {
+    for (const rot of [{ x: 20, y: 40, z: 60 }, { x: -50, y: 170, z: -100 }, { x: 90, y: 25, z: 0 }, { x: -90, y: -60, z: 0 }]) {
+      const back = matrixToEuler(eulerToMatrix(rot));
+      const a = unityRotate(back, [0.3, -0.5, 0.8]);
+      const b = unityRotate(rot, [0.3, -0.5, 0.8]);
+      for (let i = 0; i < 3; i++) assert.ok(Math.abs(a[i] - b[i]) < 1e-6, `${JSON.stringify(rot)} -> ${JSON.stringify(back)}`);
     }
   });
 

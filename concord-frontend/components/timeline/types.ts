@@ -2,6 +2,8 @@
 // `timeline` domain macros (server/domains/timeline.js).
 
 export type Privacy = 'public' | 'friends' | 'private';
+/** S-TL-8: who may reply to a post (§5d B11). */
+export type ReplyGate = 'anyone' | 'friends' | 'mentioned' | 'none';
 export type ReactionKind = 'like' | 'love' | 'haha' | 'sad' | 'angry';
 export type MediaKind = 'photo' | 'video';
 
@@ -15,22 +17,45 @@ export interface MediaItem {
 export interface SharedFrom {
   postId: string;
   authorId: string;
+  /** S-TL-4: resolved display name; null when the account is unnamed. */
+  authorDisplayName?: string | null;
   content: string;
   media: MediaItem[];
   createdAt: string;
 }
 
+/** A prior version of a post, recorded by post-update (S-TL-2). */
+export interface PostVersion {
+  content: string;
+  media: MediaItem[];
+  privacy: Privacy;
+  editedAt: string;
+}
+
 export interface FeedPost {
   id: string;
   authorId: string;
+  /** S-TL-4: resolved display name; null when the account is unnamed —
+   *  surfaces show a neutral label, never the raw id. */
+  authorDisplayName?: string | null;
+  /** S-TL-4: tagged people resolved to names, parallel to taggedUserIds. */
+  taggedDisplayNames?: string[];
   content: string;
   media: MediaItem[];
   privacy: Privacy;
   taggedUserIds: string[];
   /** Set when another lens sent a saved DTU onto this post. */
   citedDtuId?: string | null;
+  /** S-TL-6: how many times this post has been shared (F9). */
+  shareCount?: number;
+  /** S-TL-8: who may reply; absent on older posts means 'anyone'. */
+  replyGate?: ReplyGate;
   sharedFrom: SharedFrom | null;
   createdAt: string;
+  /** S-TL-2: set when the post has been edited; editHistory holds the
+   *  versions it replaced, newest last. */
+  editedAt?: string | null;
+  editHistory?: PostVersion[];
   reactionCounts: Record<ReactionKind, number>;
   reactionTotal: number;
   userReaction: ReactionKind | null;
@@ -46,6 +71,14 @@ export interface Comment {
   isMine?: boolean;
   text: string;
   createdAt: string;
+  /** S-TL-2: set when the comment has been edited; editHistory holds
+   *  the texts it replaced, newest last. */
+  editedAt?: string | null;
+  editHistory?: { text: string; editedAt: string }[];
+  /** S-TL-6: comment reactions (F9), same shape as post reactions. */
+  reactionCounts?: Record<ReactionKind, number>;
+  reactionTotal?: number;
+  userReaction?: ReactionKind | null;
   replies: Comment[];
 }
 
@@ -54,6 +87,9 @@ export interface Album {
   ownerId: string;
   name: string;
   description: string;
+  /** S-TL-5: per-album audience; albums stored before tiers existed
+   *  arrive without it and are treated as private by the server. */
+  privacy?: Privacy;
   coverUrl: string | null;
   media: MediaItem[];
   createdAt: string;
@@ -63,6 +99,10 @@ export interface Profile {
   userId: string;
   coverUrl: string | null;
   avatarUrl: string | null;
+  /** S-TL-4: resolved display name (profile-set name wins, then the
+   *  account identity); username is the @handle when one exists. */
+  displayName?: string | null;
+  username?: string | null;
   bio: string;
   about: {
     work: string;
@@ -78,6 +118,8 @@ export interface Notification {
   id: string;
   type: 'reaction' | 'comment' | 'reply' | 'tag' | 'share';
   actorId: string;
+  /** S-TL-4: the actor's resolved display name; null when unnamed. */
+  actorDisplayName?: string | null;
   postId?: string;
   kind?: ReactionKind;
   preview?: string;

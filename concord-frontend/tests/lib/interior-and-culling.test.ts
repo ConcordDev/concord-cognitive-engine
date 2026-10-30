@@ -67,6 +67,26 @@ describe('decorateInterior', () => {
     decor.dispose();
   });
 
+  it('tower builds the promised spiral staircase — helical steps rising to a landing (B#13)', () => {
+    const decor = decorateInterior(THREE, { archetype: 'tower' });
+    let stair: THREE.Object3D | undefined;
+    decor.group.traverse((obj) => { if (obj.name === 'spiral-staircase') stair = obj; });
+    expect(stair).toBeDefined();
+    const ys: number[] = [];
+    stair!.traverse((obj) => {
+      if (obj instanceof THREE.Mesh && obj.geometry instanceof THREE.BoxGeometry) {
+        const wp = new THREE.Vector3();
+        obj.getWorldPosition(wp);
+        ys.push(wp.y);
+      }
+    });
+    // Many step/landing boxes at strictly increasing heights up the turn.
+    expect(ys.length).toBeGreaterThanOrEqual(10);
+    const sorted = [...ys].sort((a, b) => a - b);
+    expect(sorted[sorted.length - 1]).toBeGreaterThan(4); // climbs most of the 6m room
+    decor.dispose();
+  });
+
   it('upgrades table/rug to a real mesh and hides the primitive once loadAsset resolves', async () => {
     const decor = decorateInterior(THREE, { archetype: 'tavern' });
     // Let the fire-and-forget upgrade promises settle.

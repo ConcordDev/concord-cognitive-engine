@@ -215,13 +215,28 @@ describe("media-dtu", () => {
   // ── generateThumbnail ──────────────────────────────────────────────
 
   describe("generateThumbnail", () => {
-    it("sets thumbnail path on media DTU", () => {
-      const { mediaDTU } = createTestMedia();
+    it("adopts the real artifact thumbnail when artifact-store produced one", () => {
+      const posterPath = "/artifacts/abc123/thumbnail.jpg";
+      const { mediaDTU } = createTestMedia({
+        artifactRef: { type: "video/mp4", diskPath: "/artifacts/abc123/clip.mp4", thumbnail: posterPath },
+      });
       const result = generateThumbnail(STATE, mediaDTU.id);
 
       assert.equal(result.ok, true);
-      assert.ok(result.thumbnail.includes(mediaDTU.id));
-      assert.ok(result.thumbnail.endsWith(".jpg"));
+      assert.equal(result.thumbnail, posterPath);
+      assert.equal(getMediaDTU(STATE, mediaDTU.id).mediaDTU.thumbnail, posterPath);
+    });
+
+    it("fails honestly when no thumbnail was ever produced", () => {
+      // No stored bytes → no artifact descriptor → nothing to adopt.
+      // The old behaviour invented `thumbnails/<type>/<id>.jpg` and wrote
+      // no file; that fabrication is what Q26 removed.
+      const { mediaDTU } = createTestMedia();
+      const result = generateThumbnail(STATE, mediaDTU.id);
+
+      assert.equal(result.ok, false);
+      assert.equal(result.error, "no_thumbnail_available");
+      assert.equal(getMediaDTU(STATE, mediaDTU.id).mediaDTU.thumbnail, null);
     });
 
     it("returns error for non-existent media", () => {

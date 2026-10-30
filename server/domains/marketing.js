@@ -658,9 +658,8 @@ export default function registerMarketingActions(registerLensAction) {
   // An email is a block-based document. Sending is HONEST: with SMTP_*
   // configured it attempts real delivery via lib/email-service.js and
   // reports real delivered/failed counts; without a provider it records
-  // the campaign as queued_no_provider and sends nothing. Open/click
-  // engagement is NEVER synthesized — there are no tracking pixels, so
-  // opened/clicked are reported as null (unknown), not invented rates.
+  // the campaign as queued_no_provider and sends nothing. Concord does not
+  // track email: no open pixel, no click redirects, no engagement counts.
   const EMAIL_BLOCK_TYPES = ["heading", "text", "image", "button", "divider", "spacer"];
 
   registerLensAction("marketing", "email-create", (ctx, _a, params = {}) => {
@@ -711,17 +710,7 @@ export default function registerMarketingActions(registerLensAction) {
     const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
     const emails = (s.emails.get(mkAid(ctx)) || []).map((e) => {
       const sends = s.emailSends.get(e.id) || [];
-      const sent = sends.length;
-      const opened = sends.filter((x) => x.opened).length;
-      const clicked = sends.filter((x) => x.clicked).length;
-      return {
-        ...e, blockCount: e.blocks.length,
-        stats: {
-          sent, opened, clicked,
-          openRate: sent > 0 ? Math.round((opened / sent) * 1000) / 10 : 0,
-          clickRate: sent > 0 ? Math.round((clicked / sent) * 1000) / 10 : 0,
-        },
-      };
+      return { ...e, blockCount: e.blocks.length, stats: { sent: sends.length } };
     });
     return { ok: true, result: { emails, count: emails.length } };
   });
@@ -748,8 +737,7 @@ export default function registerMarketingActions(registerLensAction) {
 
   // Honest delivery: attempts real SMTP delivery when a provider is
   // configured; otherwise records the campaign as queued and sends
-  // NOTHING. Never fabricates opened/clicked — no tracking exists, so
-  // engagement is null (unknown), not a synthesized rate.
+  // NOTHING. Plain text only, links exactly as written, nothing tracked.
   const EMAIL_SEND_MAX_RECIPIENTS = 500;
   registerLensAction("marketing", "email-send", async (ctx, _a, params = {}) => {
   try {
@@ -778,8 +766,6 @@ export default function registerMarketingActions(registerLensAction) {
           status: "queued_no_provider",
           recipients: recipients.length,
           delivered: 0,
-          opened: null,
-          clicked: null,
           note: "No email provider configured — campaign recorded, nothing was sent. Set SMTP_* to enable delivery.",
         },
       };
@@ -794,13 +780,12 @@ export default function registerMarketingActions(registerLensAction) {
     let delivered = 0, failed = 0;
     const failures = [];
     for (const to of batch) {
+      const sendId = mkId("snd");
       try {
         const r = await sendEmail({ to, subject: e.subject, text });
         if (r && r.ok) {
           delivered++;
-          // opened/clicked are unknown (no tracking pixels) — stored as
-          // null so downstream stats count them as 0, never as invented.
-          sends.push({ id: mkId("snd"), to, sentAt: at, opened: null, clicked: null });
+          sends.push({ id: sendId, to, sentAt: at });
         } else {
           failed++;
           failures.push({ to, error: String(r?.error || "send failed") });
@@ -823,9 +808,6 @@ export default function registerMarketingActions(registerLensAction) {
         failed,
         ...(skipped > 0 ? { skipped } : {}),
         ...(failures.length > 0 ? { failures: failures.slice(0, 20) } : {}),
-        opened: null,
-        clicked: null,
-        note: "engagement tracking not implemented",
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
