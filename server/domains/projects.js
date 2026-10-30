@@ -1,5 +1,7 @@
 // server/domains/projects.js
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { createArtifactAcl, registerArtifactOwnerResolver } from "../lib/artifact-acl.js";
+import { lookupUserIdentity } from "../lib/user-identity.js";
 export default function registerProjectsActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("projects", "ganttGenerate", (ctx, artifact, _params) => { const tasks = artifact.data?.tasks || []; if (tasks.length === 0) return { ok: true, result: { message: "Add tasks with duration and dependencies." } }; let dayOffset = 0; const gantt = tasks.map(t => { const duration = parseInt(t.duration) || 5; const start = dayOffset; dayOffset += duration; return { task: t.name || t.title, startDay: start, endDay: start + duration, duration, dependencies: t.dependencies || [] }; }); return { ok: true, result: { tasks: gantt, totalDays: dayOffset, totalWeeks: Math.ceil(dayOffset / 5), criticalPath: gantt.map(t => t.task) } }; });
@@ -36,6 +38,22 @@ export default function registerProjectsActions(registerLensAction) {
   const pjClean = (v, max = 400) => String(v == null ? "" : v).trim().slice(0, max);
   const pjPick = (v, allowed, dflt) => (allowed.includes(String(v)) ? String(v) : dflt);
   const pjDay = (v) => pjClean(v, 10).slice(0, 10);
+  // Strict write-path date check (F7): a PROVIDED date must be a real
+  // calendar date with a four-digit year. Returns "" when absent, the
+  // day when valid, and null when provided-but-not-storable — callers
+  // reject with a named error instead of silently storing a corrupted
+  // year (the year-0002 bug) or substituting a default.
+  function pjDayStrict(v) {
+    if (v == null || v === "") return "";
+    const d = pjDay(v);
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
+    if (!m) return null;
+    const y = Number(m[1]), mo = Number(m[2]), da = Number(m[3]);
+    if (y < 1000 || mo < 1 || mo > 12 || da < 1 || da > 31) return null;
+    const dt = new Date(Date.UTC(y, mo - 1, da));
+    if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== da) return null;
+    return d;
+  }
   const PJ_DAY = 86400000;
 
   const PJ_STATUSES = ["backlog", "todo", "in_progress", "in_review", "done"];
@@ -51,13 +69,111 @@ export default function registerProjectsActions(registerLensAction) {
     return (s.projects.get(userId) || []).find((p) => p.id === projectId) || null;
   }
   // Append a per-task activity entry (audit log).
-  function pjLog(s, userId, taskId, action, detail) {
+  function pjLog(s, userId, taskId, action, detail, meta) {
     pjListB(s.activity, userId).push({
       id: pjId("act"), taskId, action,
       detail: detail == null ? null : String(detail).slice(0, 200),
       at: pjNow(),
+      ...(meta ? { meta } : {}),
     });
   }
+  // ── Assignment identity (S4 — F4; §8 Q2 ruling: real accounts only) ──
+  // Membership in a project IS the platform ACL: the owner plus every
+  // account holding an active grant on kind "project" (server/lib/
+  // artifact-acl.js, #1789). There is no Projects-local person record:
+  // task.assigneeId holds an account userId, and display names resolve
+  // from the account records at read time (lib/user-identity.js), never
+  // from a stored string. The platform db rides globalThis._concordSTATE
+  // (STATE.db, server.js) — the same object this domain already reads.
+  let _pjAcl = null, _pjAclDb = null;
+  function pjDb() { return globalThis._concordSTATE?.db || null; }
+  function pjAcl() {
+    const db = pjDb(); if (!db) return null;
+    if (!_pjAcl || _pjAclDb !== db) {
+      try { _pjAcl = createArtifactAcl(db, {}); _pjAclDb = db; } catch (_e) { _pjAcl = null; _pjAclDb = null; }
+    }
+    return _pjAcl;
+  }
+  try {
+    registerArtifactOwnerResolver("project", (projectId) => {
+      const st = getPjState(); if (!st) return null;
+      for (const [owner, list] of st.projects.entries()) {
+        if ((list || []).some((p) => p.id === projectId)) return owner;
+      }
+      return null;
+    });
+  } catch (_e) { /* resolver registration is best-effort */ }
+  function pjAccountDisplay(accountId) {
+    if (!accountId) return null;
+    const ident = lookupUserIdentity(pjDb(), accountId);
+    return ident.displayName || ident.username || null;
+  }
+  function pjResolveAccount(identifier) {
+    const db = pjDb(); if (!db) return null;
+    const raw = pjClean(identifier, 120); if (!raw) return null;
+    try {
+      const byId = db.prepare("SELECT id FROM users WHERE id = ?").get(raw);
+      if (byId) return byId.id;
+      const byName = db.prepare("SELECT id FROM users WHERE username = ?").get(raw.replace(/^@/, ""));
+      return byName ? byName.id : null;
+    } catch (_e) { return null; }
+  }
+  // The member set of a project in the caller's store: the owner (the
+  // caller — this store is the owner's) plus active grantees.
+  function pjMembers(userId, projectId) {
+    const out = [{ userId, level: "owner" }];
+    const acl = pjAcl();
+    if (acl) {
+      const r = acl.listGrants("project", projectId, userId);
+      if (r && r.ok) for (const g of r.grants) out.push({ userId: g.granteeId, level: g.level });
+    }
+    return out;
+  }
+  function pjAssigneeSet(userId, projectId) {
+    return new Set(pjMembers(userId, projectId).map((m) => m.userId));
+  }
+  function pjMemberRows(s, userId, projectId) {
+    const tasks = s.tasks.get(userId) || [];
+    return pjMembers(userId, projectId).map((m) => {
+      const ident = lookupUserIdentity(pjDb(), m.userId);
+      return {
+        id: m.userId, userId: m.userId, level: m.level,
+        name: ident.displayName || ident.username || (m.level === "owner" ? "You" : "Concord member"),
+        username: ident.username || null,
+        assigned: tasks.filter((x) => x.projectId === projectId && x.assigneeId === m.userId && x.status !== "done").length,
+      };
+    });
+  }
+  // Migration (S4 plan §4, remove-and-receipt): legacy free-text member
+  // records are name strings, not identities, and cannot be converted —
+  // matching a name to a same-named account would fabricate attribution.
+  // One idempotent pass per owner account: records deleted, their tasks
+  // unassigned, ONE activity receipt per affected project with counts.
+  function pjMigrateLegacyMembers(s, userId) {
+    const legacy = s.members.get(userId) || [];
+    if (!legacy.length) return;
+    const tasks = s.tasks.get(userId) || [];
+    const byProject = new Map();
+    for (const m of legacy) {
+      let cleared = 0;
+      for (const task of tasks) {
+        if (task.assigneeId === m.id) { task.assigneeId = null; cleared += 1; }
+      }
+      const agg = byProject.get(m.projectId) || { names: 0, cleared: 0 };
+      agg.names += 1; agg.cleared += cleared; byProject.set(m.projectId, agg);
+    }
+    s.members.set(userId, []);
+    for (const [projectId, agg] of byProject.entries()) {
+      const proj = pjProject(s, userId, projectId);
+      pjLog(s, userId, null, "members_migrated",
+        `${proj ? proj.name : "Project"}: assignment moved to Concord accounts — ${agg.names} legacy name(s) removed, ${agg.cleared} assignment(s) cleared. The names were not accounts and could not be carried over.`);
+      const acts = s.activity.get(userId) || [];
+      const last = acts[acts.length - 1];
+      if (last) last.projectId = projectId;
+    }
+    savePjState();
+  }
+
   // Evaluate automation rules for a project against a task event.
   function pjRunRules(s, userId, task, trigger) {
     const rules = (s.rules.get(userId) || []).filter(
@@ -74,7 +190,7 @@ export default function registerProjectsActions(registerLensAction) {
       } else if (rule.action === "set_priority" && PJ_PRIORITIES.includes(v)) {
         task.priority = v;
       } else if (rule.action === "set_assignee") {
-        if ((s.members.get(userId) || []).some((m) => m.id === v)) task.assigneeId = v;
+        if (pjAssigneeSet(userId, task.projectId).has(v)) task.assigneeId = v;
       } else if (rule.action === "add_label" && v) {
         if (!task.labels.includes(v)) task.labels = [...task.labels, v].slice(0, 12);
       } else if (rule.action === "set_sprint") {
@@ -85,27 +201,146 @@ export default function registerProjectsActions(registerLensAction) {
   }
 
   // ── Projects ────────────────────────────────────────────────────────
+  // S13 (F20): starter templates + the sample project. A starter is a
+  // small set of real issues seeded in the same call that creates the
+  // project, so a first project already demonstrates the loop
+  // (backlog → in progress → done) instead of opening empty.
+  const PJ_STARTERS = {
+    launch: [
+      { title: "Decide what success looks like", status: "done", points: 1 },
+      { title: "Build the launch checklist", status: "in_progress", points: 3 },
+      { title: "Write the launch announcement", status: "todo", points: 2 },
+      { title: "Publish day: ship it", status: "backlog", points: 1 },
+    ],
+    triage: [
+      { title: "Set up the triage queue", status: "done", points: 1 },
+      { title: "Review the oldest open bug", status: "in_progress", points: 2 },
+      { title: "Label the incoming issues", status: "todo", points: 1 },
+      { title: "Write the escalation rule", status: "backlog", points: 2 },
+    ],
+    content: [
+      { title: "Pick the series theme", status: "done", points: 1 },
+      { title: "Draft episode one", status: "in_progress", points: 3 },
+      { title: "Record episode one", status: "todo", points: 2 },
+      { title: "Publish and share episode one", status: "backlog", points: 1 },
+    ],
+  };
+  const PJ_SAMPLE_TASKS = [
+    { title: "Start here: this is an issue — click it to open the detail", status: "todo", points: 1 },
+    { title: "Drag issues across the Board to change their status", status: "in_progress", points: 1 },
+    { title: "A finished issue lands here, and goals count it automatically", status: "done", points: 1 },
+    { title: "Everything here is yours: edit it, move it, or delete the whole sample", status: "backlog", points: 0 },
+  ];
+  function pjSeedTasks(s, userId, project, defs) {
+    const arr = pjListB(s.tasks, userId);
+    const seeded = [];
+    for (const d of defs) {
+      project.seq += 1;
+      const task = {
+        id: pjId("tsk"), projectId: project.id,
+        ref: `${project.key}-${project.seq}`,
+        title: d.title, description: null, type: "task",
+        status: d.status || "backlog", priority: "none",
+        assigneeId: null, sprintId: null, milestoneId: null, parentId: null,
+        labels: [], customFields: {}, points: d.points || 0,
+        startDate: null, dueDate: null,
+        rank: arr.filter((x) => x.projectId === project.id).length,
+        createdAt: pjNow(), updatedAt: pjNow(),
+        completedAt: d.status === "done" ? pjNow() : null,
+      };
+      arr.push(task);
+      seeded.push(task);
+    }
+    return seeded;
+  }
+
   registerLensAction("projects", "project-create", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
     const name = pjClean(params.name, 160);
     if (!name) return { ok: false, error: "project name required" };
+    if (pjDayStrict(params.startDate) === null) return { ok: false, error: "invalid start date — use a real date with a four-digit year" };
+    if (pjDayStrict(params.targetDate) === null) return { ok: false, error: "invalid target date — use a real date with a four-digit year" };
+    // S10 (F13): the key is the identifier issue refs are built from
+    // (PR4-1 …), so it is unique per account. An explicitly requested
+    // key that is taken is rejected, naming the holder and suggesting
+    // the next free key; an auto-derived key uniquifies silently. A
+    // duplicate NAME is allowed only as an explicit, confirmed choice.
+    const mine = pjListB(s.projects, userId);
+    const normKey = (k) => String(k || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const keyTaken = (k) => mine.find((p) => normKey(p.key) === k);
+    const nextFreeKey = (base) => {
+      let n = 2;
+      let cand = base.slice(0, 5) + n;
+      while (keyTaken(cand) && n < 99) { n += 1; cand = base.slice(0, 6 - String(n).length) + n; }
+      return cand;
+    };
+    let key = (pjClean(params.key, 6) || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (key) {
+      const holder = keyTaken(key);
+      if (holder) {
+        const suggestion = nextFreeKey(key);
+        return { ok: false, code: "duplicate_key", suggestion,
+          error: `project key ${key} is already used by "${holder.name}" — issue refs like ${key}-1 must resolve to one project. Try ${suggestion}.` };
+      }
+    } else {
+      key = (name.replace(/[^A-Za-z]/g, "").slice(0, 4) || "PRJ").toUpperCase();
+      if (keyTaken(key)) key = nextFreeKey(key);
+    }
+    if (params.confirmDuplicateName !== true) {
+      const dup = mine.find((p) => p.name.toLowerCase() === name.toLowerCase());
+      if (dup) {
+        return { ok: false, code: "duplicate_name",
+          error: `a project named "${name}" already exists — create another with the same name only if that's really what you want` };
+      }
+    }
     const project = {
       id: pjId("prj"), name,
-      key: (pjClean(params.key, 6) || name.replace(/[^A-Za-z]/g, "").slice(0, 4) || "PRJ").toUpperCase(),
+      key,
       description: pjClean(params.description, 1000) || null,
       color: pjClean(params.color, 16) || "indigo",
       status: pjPick(params.status, PJ_PROJECT_STATUS, "planned"),
       health: pjPick(params.health, PJ_HEALTH, "on_track"),
       leadId: null,
-      startDate: pjDay(params.startDate) || null,
-      targetDate: pjDay(params.targetDate) || null,
+      startDate: pjDayStrict(params.startDate) || null,
+      targetDate: pjDayStrict(params.targetDate) || null,
       archived: false,
       seq: 0,
       createdAt: pjNow(), updatedAt: pjNow(),
     };
     pjListB(s.projects, pjAid(ctx)).push(project);
+    const starter = params.template ? PJ_STARTERS[String(params.template)] : null;
+    const seeded = starter ? pjSeedTasks(s, userId, project, starter) : [];
     savePjState();
-    return { ok: true, result: { project } };
+    return { ok: true, result: { project, seeded: seeded.length } };
+  });
+
+  // The worked example for the first-run empty state (F20): created
+  // once per account, clearly labelled, and it is a real project —
+  // the user can edit or delete it like any other.
+  registerLensAction("projects", "project-create-sample", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const mine = pjListB(s.projects, userId);
+    const existing = mine.find((p) => p.sample);
+    if (existing) return { ok: true, result: { project: existing, created: false } };
+    const normKey = (k) => String(k || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    let key = "SMP";
+    if (mine.some((p) => normKey(p.key) === key)) {
+      let n = 2; key = `SMP${n}`;
+      while (mine.some((p) => normKey(p.key) === key) && n < 99) { n += 1; key = `SMP${n}`; }
+    }
+    const project = {
+      id: pjId("prj"), name: "Sample — how Projects works", key,
+      description: "A worked example: real issues in a real project. Edit anything, or delete the whole sample when you're done looking.",
+      color: "indigo", status: "started", health: "on_track", leadId: null,
+      startDate: null, targetDate: null, archived: false, sample: true,
+      seq: 0, createdAt: pjNow(), updatedAt: pjNow(),
+    };
+    mine.push(project);
+    pjSeedTasks(s, userId, project, PJ_SAMPLE_TASKS);
+    savePjState();
+    return { ok: true, result: { project, created: true } };
   });
 
   registerLensAction("projects", "project-list", (ctx, _a, params = {}) => {
@@ -185,11 +420,19 @@ export default function registerProjectsActions(registerLensAction) {
     if (params.color != null) project.color = pjClean(params.color, 16) || project.color;
     if (params.status != null) project.status = pjPick(params.status, PJ_PROJECT_STATUS, project.status);
     if (params.health != null) project.health = pjPick(params.health, PJ_HEALTH, project.health);
-    if (params.startDate != null) project.startDate = pjDay(params.startDate) || null;
-    if (params.targetDate != null) project.targetDate = pjDay(params.targetDate) || null;
+    if (params.startDate != null) {
+      const d = pjDayStrict(params.startDate);
+      if (d === null) return { ok: false, error: "invalid start date — use a real date with a four-digit year" };
+      project.startDate = d || null;
+    }
+    if (params.targetDate != null) {
+      const d = pjDayStrict(params.targetDate);
+      if (d === null) return { ok: false, error: "invalid target date — use a real date with a four-digit year" };
+      project.targetDate = d || null;
+    }
     if (params.leadId !== undefined) {
       const l = params.leadId ? String(params.leadId) : null;
-      project.leadId = (l && (s.members.get(userId) || []).some((m) => m.id === l)) ? l : null;
+      project.leadId = (l && pjAssigneeSet(userId, project.id).has(l)) ? l : null;
     }
     project.updatedAt = pjNow();
     savePjState();
@@ -215,16 +458,87 @@ export default function registerProjectsActions(registerLensAction) {
     const i = arr.findIndex((p) => p.id === params.id);
     if (i < 0) return { ok: false, error: "project not found" };
     arr.splice(i, 1);
+    // Task-scoped stores are keyed by task, not by project — collect the
+    // project's task ids first so their comments, attachments, activity
+    // entries and relations go with it (the same set task-delete cleans
+    // up one task at a time).
+    const doomedTasks = new Set((s.tasks.get(userId) || [])
+      .filter((t) => t.projectId === params.id).map((t) => t.id));
     for (const k of ["tasks", "sprints", "members", "milestones", "labels", "customFields",
       "views", "rules", "templates", "risks", "goals", "wip"]) {
       const list = s[k].get(userId);
       if (list) s[k].set(userId, list.filter((x) => x.projectId !== params.id));
     }
+    for (const k of ["comments", "attachments", "activity"]) {
+      const list = s[k].get(userId);
+      if (list) s[k].set(userId, list.filter((x) => !doomedTasks.has(x.taskId)));
+    }
+    const rels = s.relations.get(userId);
+    if (rels) s.relations.set(userId, rels.filter(
+      (r) => !doomedTasks.has(r.fromTaskId) && !doomedTasks.has(r.toTaskId)));
+    // Project-scoped stores from the parity-backlog block are created
+    // lazily, so any of them may be absent: integrations and SLA policies
+    // by projectId, notifications by projectId or by a doomed taskId.
+    for (const k of ["integrations", "slaPolicies"]) {
+      const map = s[k];
+      const list = map instanceof Map ? map.get(userId) : null;
+      if (list) map.set(userId, list.filter((x) => x.projectId !== params.id));
+    }
+    const inbox = s.notifications instanceof Map ? s.notifications.get(userId) : null;
+    if (inbox) s.notifications.set(userId, inbox.filter(
+      (n) => n.projectId !== params.id && !doomedTasks.has(n.taskId)));
     savePjState();
     return { ok: true, result: { deleted: params.id } };
   });
 
   // ── Tasks / issues ──────────────────────────────────────────────────
+  // ── Status-transition gate (S8 — F10 WIP limits + F11 blocked-by) ──
+  // WIP: a column with a limit refuses entries past it, naming the
+  // limit. Blocked-by: an issue with an incomplete blocker cannot move
+  // to in_progress/done — unless the caller passes overrideBlocked, in
+  // which case the CALLER records the override in the activity feed
+  // (pjLogStatus below does it for the paths that log status changes).
+  function pjBlockers(s, userId, task) {
+    const all = s.tasks.get(userId) || [];
+    const out = [];
+    for (const r of (s.relations.get(userId) || [])) {
+      let blockerId = null;
+      if (r.toTaskId === task.id && r.kind === "blocks") blockerId = r.fromTaskId;
+      else if (r.fromTaskId === task.id && r.kind === "blocked_by") blockerId = r.toTaskId;
+      if (!blockerId) continue;
+      const b = all.find((x) => x.id === blockerId);
+      if (b && b.status !== "done") out.push(b);
+    }
+    return out;
+  }
+  function pjWipGate(s, userId, projectId, nextStatus, excludeId) {
+    const wip = (s.wip.get(userId) || []).find((w) => w.projectId === projectId && w.status === nextStatus);
+    if (!wip || !(wip.limit > 0)) return null;
+    const count = (s.tasks.get(userId) || [])
+      .filter((x) => x.projectId === projectId && x.status === nextStatus && x.id !== excludeId).length;
+    if (count >= wip.limit) {
+      return `${nextStatus.replace(/_/g, " ")} is at its WIP limit of ${wip.limit} — finish or move something out of that column before adding another`;
+    }
+    return null;
+  }
+  function pjStatusGate(s, userId, task, nextStatus, opts = {}) {
+    if (!task || nextStatus === task.status) return null;
+    if (nextStatus === "in_progress" || nextStatus === "done") {
+      const blockers = pjBlockers(s, userId, task);
+      if (blockers.length && !opts.overrideBlocked) {
+        return `${task.ref} is blocked by ${blockers.map((b) => b.ref).join(", ")} — complete the blocker first, or override to move it anyway (an override is recorded in Activity)`;
+      }
+    }
+    return pjWipGate(s, userId, task.projectId, nextStatus, task.id);
+  }
+  function pjLogOverride(s, userId, task, nextStatus) {
+    const blockers = pjBlockers(s, userId, task);
+    if (blockers.length) {
+      pjLog(s, userId, task.id, "override",
+        `moved to ${nextStatus.replace(/_/g, " ")} while blocked by ${blockers.map((b) => b.ref).join(", ")} — override`);
+    }
+  }
+
   registerLensAction("projects", "task-create", (ctx, _a, params = {}) => {
   try {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -233,12 +547,13 @@ export default function registerProjectsActions(registerLensAction) {
     if (!project) return { ok: false, error: "project not found" };
     const title = pjClean(params.title, 240);
     if (!title) return { ok: false, error: "task title required" };
+    if (pjDayStrict(params.startDate) === null) return { ok: false, error: "invalid start date — use a real date with a four-digit year" };
+    if (pjDayStrict(params.dueDate) === null) return { ok: false, error: "invalid due date — use a real date with a four-digit year" };
+    const wipErr = pjWipGate(s, userId, project.id, pjPick(params.status, PJ_STATUSES, "backlog"), null);
+    if (wipErr) return { ok: false, error: wipErr };
     let assigneeId = params.assigneeId ? String(params.assigneeId) : null;
-    if (assigneeId) {
-      const member = (s.members.get(userId) || []).find((m) => m.id === assigneeId);
-      if (!member || (member.projectId && member.projectId !== project.id)) {
-        return { ok: false, error: "assignee not found" };
-      }
+    if (assigneeId && !pjAssigneeSet(userId, project.id).has(assigneeId)) {
+      return { ok: false, error: "assignee is not a member of this project — add them in Team first" };
     }
     let sprintId = params.sprintId ? String(params.sprintId) : null;
     if (sprintId) {
@@ -269,8 +584,8 @@ export default function registerProjectsActions(registerLensAction) {
         ? [...new Set(params.labels.map((l) => pjClean(l, 30)).filter(Boolean))].slice(0, 12) : [],
       customFields: {},
       points: Math.max(0, Math.round(pjNum(params.points))),
-      startDate: pjDay(params.startDate) || null,
-      dueDate: pjDay(params.dueDate) || null,
+      startDate: pjDayStrict(params.startDate),
+      dueDate: pjDayStrict(params.dueDate),
       rank: siblings.length,
       createdAt: pjNow(), updatedAt: pjNow(), completedAt: null,
     };
@@ -334,14 +649,25 @@ export default function registerProjectsActions(registerLensAction) {
     if (params.type != null) task.type = pjPick(params.type, PJ_TYPES, task.type);
     if (params.priority != null) task.priority = pjPick(params.priority, PJ_PRIORITIES, task.priority);
     if (params.points != null) task.points = Math.max(0, Math.round(pjNum(params.points)));
-    if (params.startDate != null) task.startDate = pjDay(params.startDate) || null;
-    if (params.dueDate != null) task.dueDate = pjDay(params.dueDate) || null;
+    if (params.startDate != null) {
+      const d = pjDayStrict(params.startDate);
+      if (d === null) return { ok: false, error: "invalid start date — use a real date with a four-digit year" };
+      task.startDate = d || null;
+    }
+    if (params.dueDate != null) {
+      const d = pjDayStrict(params.dueDate);
+      if (d === null) return { ok: false, error: "invalid due date — use a real date with a four-digit year" };
+      task.dueDate = d || null;
+    }
     if (Array.isArray(params.labels)) {
       task.labels = [...new Set(params.labels.map((l) => pjClean(l, 30)).filter(Boolean))].slice(0, 12);
     }
     if (params.assigneeId !== undefined) {
       const a = params.assigneeId ? String(params.assigneeId) : null;
-      task.assigneeId = (a && (s.members.get(userId) || []).some((m) => m.id === a)) ? a : null;
+      if (a && !pjAssigneeSet(userId, task.projectId).has(a)) {
+        return { ok: false, error: "assignee is not a member of this project — add them in Team first" };
+      }
+      task.assigneeId = a;
     }
     if (params.sprintId !== undefined) {
       const sp = params.sprintId ? String(params.sprintId) : null;
@@ -357,7 +683,11 @@ export default function registerProjectsActions(registerLensAction) {
         && (s.tasks.get(userId) || []).some((t) => t.id === p && t.projectId === task.projectId)) ? p : null;
     }
     if (params.status != null) {
-      task.status = pjPick(params.status, PJ_STATUSES, task.status);
+      const next = pjPick(params.status, PJ_STATUSES, task.status);
+      const gate = pjStatusGate(s, userId, task, next, { overrideBlocked: params.overrideBlocked === true });
+      if (gate) return { ok: false, error: gate };
+      if (params.overrideBlocked === true && next !== task.status) pjLogOverride(s, userId, task, next);
+      task.status = next;
       task.completedAt = task.status === "done" ? (task.completedAt || pjNow()) : null;
     }
     if (prevStatus !== task.status) {
@@ -378,7 +708,11 @@ export default function registerProjectsActions(registerLensAction) {
     const task = (s.tasks.get(userId) || []).find((t) => t.id === params.id);
     if (!task) return { ok: false, error: "task not found" };
     const prev = task.status;
-    task.status = pjPick(params.status, PJ_STATUSES, task.status);
+    const next = pjPick(params.status, PJ_STATUSES, task.status);
+    const gate = pjStatusGate(s, userId, task, next, { overrideBlocked: params.overrideBlocked === true });
+    if (gate) return { ok: false, error: gate };
+    if (params.overrideBlocked === true && next !== prev) pjLogOverride(s, userId, task, next);
+    task.status = next;
     task.completedAt = task.status === "done" ? (task.completedAt || pjNow()) : null;
     task.updatedAt = pjNow();
     if (prev !== task.status) {
@@ -465,10 +799,16 @@ export default function registerProjectsActions(registerLensAction) {
     if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
     const name = pjClean(params.name, 120);
     if (!name) return { ok: false, error: "sprint name required" };
+    const startIn = pjDayStrict(params.startDate);
+    const endIn = pjDayStrict(params.endDate);
+    if (startIn === null) return { ok: false, error: "invalid sprint start date — use a real date with a four-digit year" };
+    if (endIn === null) return { ok: false, error: "invalid sprint end date — use a real date with a four-digit year" };
+    const startDate = startIn || pjDay(pjNow());
+    const endDate = endIn || new Date(Date.now() + 14 * PJ_DAY).toISOString().slice(0, 10);
+    if (endDate < startDate) return { ok: false, error: "sprint end date is before its start date — fix the dates; no sprint was created" };
     const sprint = {
       id: pjId("spr"), projectId: String(params.projectId), name,
-      startDate: pjDay(params.startDate) || pjDay(pjNow()),
-      endDate: pjDay(params.endDate) || new Date(Date.now() + 14 * PJ_DAY).toISOString().slice(0, 10),
+      startDate, endDate,
       status: "active", createdAt: pjNow(),
     };
     pjListB(s.sprints, userId).push(sprint);
@@ -500,7 +840,21 @@ export default function registerProjectsActions(registerLensAction) {
     const userId = pjAid(ctx);
     const sprint = (s.sprints.get(userId) || []).find((sp) => sp.id === params.id);
     if (!sprint) return { ok: false, error: "sprint not found" };
-    if (sprint.status === "completed") return { ok: true, unchanged: true, result: { id: sprint.id, status: "completed", carriedOver: 0 } };
+    // D1 (the Receipt): the settlement is computed BEFORE rollover,
+    // from the sprint as it actually finished — the numbers Reports
+    // reconciles from, stated once, in the open.
+    const inSprint = (s.tasks.get(userId) || []).filter((x) => x.sprintId === sprint.id);
+    const doneTasks = inSprint.filter((x) => x.status === "done");
+    const pointsTotal = inSprint.reduce((a, x) => a + (x.points || 0), 0);
+    const pointsDone = doneTasks.reduce((a, x) => a + (x.points || 0), 0);
+    const receipt = {
+      sprintId: sprint.id, sprintName: sprint.name,
+      issuesDone: doneTasks.length, issuesTotal: inSprint.length,
+      pointsDone, pointsTotal,
+      settledInFull: pointsTotal > 0 && pointsDone === pointsTotal,
+      carriedOver: 0,
+    };
+    if (sprint.status === "completed") return { ok: true, unchanged: true, result: { id: sprint.id, status: "completed", carriedOver: 0, receipt } };
     sprint.status = "completed";
     // carry unfinished tasks back to the backlog (Linear-style cycle rollover)
     let carried = 0;
@@ -509,8 +863,25 @@ export default function registerProjectsActions(registerLensAction) {
         if (t.sprintId === sprint.id && t.status !== "done") { t.sprintId = null; carried += 1; }
       }
     }
+    receipt.carriedOver = carried;
+    // The receipt is kept: one entry on every settled issue's feed
+    // (and therefore in the project Activity stream), with the full
+    // settlement line — it survives reload because it IS the record.
+    const line = `Sprint "${sprint.name}" settled: ${receipt.issuesDone}/${receipt.issuesTotal} issues, ${pointsDone}/${pointsTotal} points${receipt.settledInFull ? " — settled in full" : ""}${carried ? `; ${carried} carried over` : ""}`;
+    for (const t of doneTasks) pjLog(s, userId, t.id, "sprint_receipt", line);
+    // D1 remainder (R4 re-pass on #1720): the receipt must exist in
+    // the project's Activity as a record in its own right and survive
+    // reload — the per-issue lines alone left a zero-done sprint with
+    // no record at all, and no single card for the stream to render.
+    // One project-level summary entry carries the full settlement.
+    pjLog(s, userId, null, "sprint_receipt", line, {
+      projectId: sprint.projectId, sprintId: sprint.id, sprintName: sprint.name,
+      issuesDone: receipt.issuesDone, issuesTotal: receipt.issuesTotal,
+      pointsDone: receipt.pointsDone, pointsTotal: receipt.pointsTotal,
+      carriedOver: receipt.carriedOver, settledInFull: receipt.settledInFull,
+    });
     savePjState();
-    return { ok: true, result: { id: sprint.id, status: "completed", carriedOver: carried } };
+    return { ok: true, result: { id: sprint.id, status: "completed", carriedOver: carried, receipt } };
   });
 
   registerLensAction("projects", "sprint-burndown", (ctx, _a, params = {}) => {
@@ -548,48 +919,216 @@ export default function registerProjectsActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  // ── Duplicate — a structural copy that cites its source ────────────
+  // Copies the project's structure (members, labels, custom fields,
+  // sprints, milestones, tasks with their hierarchy/assignments, task
+  // relations, views, rules, templates, risks, goals, WIP limits) under
+  // a new id and key. History is NOT copied — comments, attachments and
+  // activity are the original's receipts, and a copy starts clean; nor
+  // are integrations, SLA policies or the triage inbox (external
+  // connections and other people's submissions). The copy records its
+  // provenance in `duplicatedFrom`, which is the citation surfaces show.
+  registerLensAction("projects", "project-duplicate", (ctx, _a, params = {}) => {
+  try {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const src = (s.projects.get(userId) || []).find((p) => p.id === params.id);
+    if (!src) return { ok: false, error: "project not found" };
+    const name = pjClean(params.name, 120) || `${src.name} (copy)`;
+    let key = params.key ? pjClean(params.key, 6).toUpperCase().replace(/[^A-Z0-9]/g, "") : "";
+    if (key) {
+      // A3 remainder (R4 re-pass on #1720): the S10 uniqueness gate
+      // covered project-create only — an explicitly keyed duplicate
+      // sailed past it and minted a second project with a taken key.
+      // The contract is the same here as at create: a taken key is
+      // refused, naming the holder and the next free key.
+      const mine = s.projects.get(userId) || [];
+      const holder = mine.find((p) => String(p.key || "").toUpperCase().replace(/[^A-Z0-9]/g, "") === key);
+      if (holder) {
+        const taken = new Set(mine.map((p) => String(p.key || "").toUpperCase().replace(/[^A-Z0-9]/g, "")));
+        let suggestion = null;
+        for (let n = 2; n < 100 && !suggestion; n += 1) {
+          const cand = key.slice(0, 6 - String(n).length) + n;
+          if (!taken.has(cand)) suggestion = cand;
+        }
+        return { ok: false, code: "duplicate_key", suggestion,
+          error: `project key ${key} is already used by "${holder.name}" — issue refs like ${key}-1 must resolve to one project.${suggestion ? ` Try ${suggestion}.` : ""}` };
+      }
+    } else {
+      const base = (name.replace(/[^A-Za-z]/g, "").slice(0, 4) || "PRJ").toUpperCase();
+      const taken = new Set((s.projects.get(userId) || []).map((p) => p.key));
+      key = base;
+      for (let n = 2; taken.has(key) && n < 100; n += 1) key = `${base.slice(0, 4)}${n}`;
+    }
+    const copy = {
+      ...src,
+      id: pjId("prj"), name, key,
+      seq: 0, archived: false,
+      createdAt: pjNow(), updatedAt: pjNow(),
+      duplicatedFrom: { projectId: src.id, name: src.name, key: src.key, at: pjNow() },
+    };
+    pjListB(s.projects, userId).push(copy);
+    const cloneInto = (store, remap) => {
+      const out = [];
+      for (const row of (s[store].get(userId) || []).filter((r) => r.projectId === src.id)) {
+        const c = remap({ ...row });
+        if (c) { out.push(c); pjListB(s[store], userId).push(c); }
+      }
+      return out;
+    };
+    const fieldMap = new Map(), sprintMap = new Map(), mileMap = new Map();
+    // S4: membership is NOT copied. Grants are the owner's deliberate
+    // act on one artifact; a copy is a new artifact and starts with the
+    // owner as its only member (see the S4 plan).
+    cloneInto("labels", (l) => ({ ...l, id: pjId("lbl"), projectId: copy.id }));
+    cloneInto("customFields", (f) => { const id = pjId("fld"); fieldMap.set(f.id, id); return { ...f, id, projectId: copy.id }; });
+    cloneInto("sprints", (sp) => { const id = pjId("spr"); sprintMap.set(sp.id, id); return { ...sp, id, projectId: copy.id }; });
+    cloneInto("milestones", (m) => { const id = pjId("mil"); mileMap.set(m.id, id); return { ...m, id, projectId: copy.id }; });
+    const taskMap = new Map();
+    const srcTasks = (s.tasks.get(userId) || []).filter((x) => x.projectId === src.id);
+    for (const tsk of srcTasks) taskMap.set(tsk.id, pjId("tsk"));
+    const copiedTasks = [];
+    for (const tsk of srcTasks) {
+      copy.seq += 1;
+      const fields = {};
+      for (const [fid, v] of Object.entries(tsk.customFields || {})) {
+        if (fieldMap.has(fid)) fields[fieldMap.get(fid)] = v;
+      }
+      const c = {
+        ...tsk,
+        id: taskMap.get(tsk.id), projectId: copy.id,
+        ref: `${copy.key}-${copy.seq}`,
+        parentId: tsk.parentId ? (taskMap.get(tsk.parentId) || null) : null,
+        sprintId: tsk.sprintId ? (sprintMap.get(tsk.sprintId) || null) : null,
+        milestoneId: tsk.milestoneId ? (mileMap.get(tsk.milestoneId) || null) : null,
+        assigneeId: tsk.assigneeId === userId ? userId : null,
+        customFields: fields,
+      };
+      copiedTasks.push(c); pjListB(s.tasks, userId).push(c);
+    }
+    let relationCount = 0;
+    for (const r of (s.relations.get(userId) || [])) {
+      if (taskMap.has(r.fromTaskId) && taskMap.has(r.toTaskId)) {
+        pjListB(s.relations, userId).push({ ...r, id: pjId("rel"),
+          fromTaskId: taskMap.get(r.fromTaskId), toTaskId: taskMap.get(r.toTaskId) });
+        relationCount += 1;
+      }
+    }
+    cloneInto("views", (v) => ({ ...v, id: pjId("view"), projectId: copy.id }));
+    cloneInto("rules", (r) => {
+      const c = { ...r, id: pjId("rule"), projectId: copy.id };
+      if (c.action === "set_assignee" && c.actionValue !== userId) c.actionValue = null;
+      if (c.action === "set_sprint" && sprintMap.has(c.actionValue)) c.actionValue = sprintMap.get(c.actionValue);
+      return c;
+    });
+    cloneInto("templates", (x) => ({ ...x, id: pjId("tpl"), projectId: copy.id }));
+    cloneInto("risks", (x) => ({ ...x, id: pjId("rsk"), projectId: copy.id }));
+    cloneInto("goals", (g) => ({ ...g, id: pjId("goal"), projectId: copy.id,
+      milestoneId: g.milestoneId ? (mileMap.get(g.milestoneId) || null) : null }));
+    cloneInto("wip", (w) => ({ ...w, id: pjId("wip"), projectId: copy.id }));
+    savePjState();
+    return { ok: true, result: { project: copy, copied: {
+      tasks: copiedTasks.length, relations: relationCount,
+      members: 1, sprints: sprintMap.size, milestones: mileMap.size } } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
   // ── Members ─────────────────────────────────────────────────────────
   registerLensAction("projects", "member-add", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
-    if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
-    const name = pjClean(params.name, 80);
-    if (!name) return { ok: false, error: "member name required" };
-    const member = {
-      id: pjId("mbr"), projectId: String(params.projectId), name,
-      role: pjClean(params.role, 40) || "contributor",
-      createdAt: pjNow(),
-    };
-    pjListB(s.members, userId).push(member);
-    savePjState();
-    return { ok: true, result: { member } };
+    const project = pjProject(s, userId, params.projectId);
+    if (!project) return { ok: false, error: "project not found" };
+    pjMigrateLegacyMembers(s, userId);
+    // S4: a member is a real Concord account, added by @username (or
+    // account id) and granted a level through the platform ACL. A bare
+    // name is not an identity and is refused as one.
+    const identifier = pjClean(params.account || params.username || "", 120);
+    if (!identifier) {
+      return { ok: false, error: "add members by their Concord username — free-text names are not supported" };
+    }
+    const acl = pjAcl();
+    if (!acl) return { ok: false, error: "member accounts are unavailable right now" };
+    const granteeId = pjResolveAccount(identifier);
+    if (!granteeId) return { ok: false, error: `no Concord account found for "${identifier}"` };
+    if (granteeId === userId) return { ok: false, error: "you are the project owner — you are already a member" };
+    const level = pjPick(params.level, ["view", "edit"], "edit");
+    const r = acl.grant({ kind: "project", id: project.id, granteeId, level, byUserId: userId });
+    if (!r.ok) return { ok: false, error: `could not add that member (${r.error})` };
+    const row = pjMemberRows(s, userId, project.id).find((m) => m.userId === granteeId);
+    return { ok: true, result: { member: row || { id: granteeId, userId: granteeId, level }, updated: !!r.updated } };
   });
 
   registerLensAction("projects", "member-list", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
-    const tasks = s.tasks.get(userId) || [];
-    const members = (s.members.get(userId) || [])
-      .filter((m) => m.projectId === String(params.projectId))
-      .map((m) => ({
-        ...m,
-        assigned: tasks.filter((t) => t.assigneeId === m.id && t.status !== "done").length,
-      }));
+    pjMigrateLegacyMembers(s, userId);
+    const projectId = String(params.projectId || "");
+    const members = pjProject(s, userId, projectId) ? pjMemberRows(s, userId, projectId) : [];
     return { ok: true, result: { members, count: members.length } };
   });
 
   registerLensAction("projects", "member-delete", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
-    const arr = s.members.get(userId) || [];
-    const i = arr.findIndex((m) => m.id === params.id);
-    if (i < 0) return { ok: false, error: "member not found" };
-    arr.splice(i, 1);
-    for (const t of s.tasks.get(userId) || []) {
-      if (t.assigneeId === params.id) t.assigneeId = null;
+    const project = pjProject(s, userId, params.projectId);
+    if (!project) return { ok: false, error: "project not found" };
+    const target = String(params.id || "");
+    if (target === userId) return { ok: false, error: "the project owner cannot be removed" };
+    const acl = pjAcl();
+    if (!acl) return { ok: false, error: "member accounts are unavailable right now" };
+    const r = acl.revoke({ kind: "project", id: project.id, granteeId: target, byUserId: userId });
+    if (!r.ok) return { ok: false, error: r.error === "no_active_grant" ? "that account is not a member of this project" : `could not remove that member (${r.error})` };
+    // Revoking access unassigns the account's work in this project —
+    // the same contract the legacy member-delete had, now recorded by
+    // the revocation itself in the ACL's audit rows.
+    for (const task of s.tasks.get(userId) || []) {
+      if (task.projectId === project.id && task.assigneeId === target) task.assigneeId = null;
     }
     savePjState();
-    return { ok: true, result: { deleted: params.id } };
+    return { ok: true, result: { deleted: target } };
+  });
+
+  // ── My Work + shared with me (D3 — depends on S4) ──────────────────
+  registerLensAction("projects", "my-work", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    pjMigrateLegacyMembers(s, userId);
+    const projects = new Map((s.projects.get(userId) || []).map((p) => [p.id, p]));
+    const tasks = (s.tasks.get(userId) || [])
+      .filter((x) => x.assigneeId === userId && x.status !== "done")
+      .map((x) => {
+        const p = projects.get(x.projectId);
+        return { ...x, projectName: p ? p.name : null, projectKey: p ? p.key : null,
+          assigneeName: pjAccountDisplay(userId) };
+      })
+      .sort((a, b) => String(a.dueDate || "9999").localeCompare(String(b.dueDate || "9999")));
+    return { ok: true, result: { tasks, count: tasks.length } };
+  });
+
+  registerLensAction("projects", "shared-with-me", (ctx, _a, _params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const acl = pjAcl();
+    if (!acl) return { ok: true, result: { projects: [], count: 0 } };
+    const r = acl.listSharedWith(userId);
+    if (!r.ok) return { ok: false, error: "shared projects are unavailable right now" };
+    // Discovery only: name/key/level from the artifact records. Task
+    // data inside another account's store rides the platform's
+    // shared-artifact read path (S4 plan §5) — not read from here.
+    const projects = r.grants
+      .filter((g) => g.artifactKind === "project")
+      .map((g) => {
+        let found = null;
+        for (const list of s.projects.values()) {
+          const hit = (list || []).find((p) => p.id === g.artifactId);
+          if (hit) { found = hit; break; }
+        }
+        return { projectId: g.artifactId, name: found ? found.name : null,
+          key: found ? found.key : null, level: g.level, ownerId: g.ownerId,
+          ownerName: pjAccountDisplay(g.ownerId) };
+      });
+    return { ok: true, result: { projects, count: projects.length } };
   });
 
   // ── Milestones ──────────────────────────────────────────────────────
@@ -599,9 +1138,10 @@ export default function registerProjectsActions(registerLensAction) {
     if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
     const name = pjClean(params.name, 120);
     if (!name) return { ok: false, error: "milestone name required" };
+    if (pjDayStrict(params.dueDate) === null) return { ok: false, error: "invalid milestone due date — use a real date with a four-digit year" };
     const milestone = {
       id: pjId("mil"), projectId: String(params.projectId), name,
-      dueDate: pjDay(params.dueDate) || null,
+      dueDate: pjDayStrict(params.dueDate),
       status: "open", createdAt: pjNow(),
     };
     pjListB(s.milestones, userId).push(milestone);
@@ -657,7 +1197,7 @@ export default function registerProjectsActions(registerLensAction) {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
     if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
-    const memberMap = new Map((s.members.get(userId) || []).map((m) => [m.id, m.name]));
+    const memberMap = new Map(pjMemberRows(s, userId, String(params.projectId)).map((m) => [m.userId, m.name]));
     let tasks = (s.tasks.get(userId) || []).filter((t) => t.projectId === String(params.projectId));
     if (params.sprintId) tasks = tasks.filter((t) => t.sprintId === String(params.sprintId));
     const columns = PJ_STATUSES.map((status) => ({
@@ -695,7 +1235,7 @@ export default function registerProjectsActions(registerLensAction) {
         overdue: tasks.filter((t) => t.dueDate && t.dueDate < today && t.status !== "done").length,
         activeSprints: (s.sprints.get(userId) || []).filter((sp) => sp.projectId === project.id && sp.status === "active").length,
         openMilestones: (s.milestones.get(userId) || []).filter((m) => m.projectId === project.id && m.status === "open").length,
-        members: (s.members.get(userId) || []).filter((m) => m.projectId === project.id).length,
+        members: pjMembers(userId, project.id).length,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -911,9 +1451,32 @@ export default function registerProjectsActions(registerLensAction) {
   // ── Activity log ────────────────────────────────────────────────────
   registerLensAction("projects", "activity-list", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const activity = (s.activity.get(pjAid(ctx)) || [])
-      .filter((a) => a.taskId === String(params.taskId))
-      .sort((a, b) => b.at.localeCompare(a.at));
+    const userId = pjAid(ctx);
+    const all = s.activity.get(userId) || [];
+    // With a taskId this is the per-issue feed (unchanged). WITHOUT
+    // one it is the project/account stream (S11 — F15): the global
+    // Activity surface called this macro with no taskId and the old
+    // filter (taskId === "undefined") matched nothing, so the feed
+    // read "No activity yet" forever while per-issue feeds filled.
+    // Stream rows are enriched with the issue's ref/title/project so
+    // a global surface can render receipts without a second lookup.
+    if (params.taskId) {
+      const activity = all
+        .filter((a) => a.taskId === String(params.taskId))
+        .sort((a, b) => b.at.localeCompare(a.at));
+      return { ok: true, result: { activity, count: activity.length } };
+    }
+    const taskById = new Map((s.tasks.get(userId) || []).map((x) => [x.id, x]));
+    const limit = Math.max(1, Math.min(200, Math.round(pjNum(params.limit, 50))));
+    const activity = all
+      .map((a) => {
+        const task = taskById.get(a.taskId);
+        return { ...a, taskRef: task ? task.ref : null, taskTitle: task ? task.title : null,
+          projectId: task ? task.projectId : (a.projectId || (a.meta && a.meta.projectId) || null) };
+      })
+      .filter((a) => (params.projectId ? a.projectId === String(params.projectId) : true))
+      .sort((a, b) => b.at.localeCompare(a.at))
+      .slice(0, limit);
     return { ok: true, result: { activity, count: activity.length } };
   });
 
@@ -1103,6 +1666,31 @@ export default function registerProjectsActions(registerLensAction) {
     const ids = Array.isArray(params.ids) ? params.ids.map(String) : [];
     if (!ids.length) return { ok: false, error: "ids required" };
     const patch = params.patch || {};
+    // S8: a bulk status move is gated as a unit — if any target is
+    // blocked or the column is at its WIP limit, the whole move is
+    // refused with the reason named, and nothing is half-applied.
+    if (patch.status != null) {
+      const next = pjPick(patch.status, PJ_STATUSES, "");
+      const targets = (s.tasks.get(userId) || []).filter((x) => ids.includes(x.id));
+      for (const task of targets) {
+        if (next === "in_progress" || next === "done") {
+          const blockers = pjBlockers(s, userId, task);
+          if (blockers.length) {
+            return { ok: false, error: `${task.ref} is blocked by ${blockers.map((b) => b.ref).join(", ")} — complete the blocker first, or override to move it anyway (an override is recorded in Activity)` };
+          }
+        }
+      }
+      // WIP is a group check: the column must fit ALL incoming tasks,
+      // not just each one against the pre-move count.
+      const wip = (s.wip.get(userId) || []).find((w) => w.status === next && targets.some((x) => x.projectId === w.projectId));
+      if (wip && wip.limit > 0) {
+        const incoming = targets.filter((x) => x.projectId === wip.projectId && x.status !== next).length;
+        const present = (s.tasks.get(userId) || []).filter((x) => x.projectId === wip.projectId && x.status === next).length;
+        if (present + incoming > wip.limit) {
+          return { ok: false, error: `${next.replace(/_/g, " ")} is at its WIP limit of ${wip.limit} — this move would put ${present + incoming} there` };
+        }
+      }
+    }
     let updated = 0;
     for (const task of s.tasks.get(userId) || []) {
       if (!ids.includes(task.id)) continue;
@@ -1119,7 +1707,7 @@ export default function registerProjectsActions(registerLensAction) {
       }
       if (patch.assigneeId !== undefined) {
         const a = patch.assigneeId ? String(patch.assigneeId) : null;
-        task.assigneeId = (a && (s.members.get(userId) || []).some((m) => m.id === a)) ? a : null;
+        task.assigneeId = (a && pjAssigneeSet(userId, task.projectId).has(a)) ? a : null;
       }
       if (patch.addLabel) {
         const l = pjClean(patch.addLabel, 30);
@@ -1177,7 +1765,7 @@ export default function registerProjectsActions(registerLensAction) {
     if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
     const groupBy = pjPick(params.groupBy, ["assignee", "epic", "priority", "type"], "assignee");
     const tasks = (s.tasks.get(userId) || []).filter((t) => t.projectId === String(params.projectId));
-    const memberMap = new Map((s.members.get(userId) || []).map((m) => [m.id, m.name]));
+    const memberMap = new Map(pjMemberRows(s, userId, String(params.projectId)).map((m) => [m.userId, m.name]));
     const keyOf = (t) => {
       if (groupBy === "assignee") return t.assigneeId || "_unassigned";
       if (groupBy === "epic") return t.parentId || "_none";
@@ -1351,14 +1939,46 @@ export default function registerProjectsActions(registerLensAction) {
     return { ok: true, result: { goal } };
   });
 
+  // ── Goal measures (S9 — F12) ─────────────────────────────────────
+  // A goal whose metric names a system measure (tasks done, points,
+  // issues closed — matched on the normalized metric text, so legacy
+  // free-text goals like "Tasks done" count) computes its current
+  // value LIVE from project state and reports the exact issues it
+  // counted. Anything else is a manual metric: the stored value is
+  // the value, and the surface labels it manual.
+  function pjGoalMeasure(s, userId, goal) {
+    const norm = String(goal.metric || "").toLowerCase().replace(/[^a-z]+/g, "_").replace(/^_+|_+$/g, "");
+    const done = (s.tasks.get(userId) || [])
+      .filter((x) => x.projectId === goal.projectId && x.status === "done");
+    if (["tasks_done", "tasks_completed", "completed_tasks", "done_tasks", "issues_closed", "closed_issues", "issues_done"].includes(norm)) {
+      return { key: norm.startsWith("issues") || norm.startsWith("closed") ? "issues_closed" : "tasks_done",
+        current: done.length, countedRefs: done.map((x) => x.ref) };
+    }
+    if (["points", "points_done", "story_points", "points_completed", "completed_points"].includes(norm)) {
+      const contributing = done.filter((x) => (x.points || 0) > 0);
+      return { key: "points_done",
+        current: contributing.reduce((sum, x) => sum + (x.points || 0), 0),
+        countedRefs: contributing.map((x) => x.ref) };
+    }
+    return null;
+  }
+
   registerLensAction("projects", "goal-list", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const goals = (s.goals.get(pjAid(ctx)) || [])
+    const userId = pjAid(ctx);
+    const goals = (s.goals.get(userId) || [])
       .filter((g) => g.projectId === String(params.projectId))
-      .map((g) => ({
-        ...g,
-        progressPct: g.target > 0 ? Math.round((g.current / g.target) * 100) : 0,
-      }));
+      .map((g) => {
+        const m = pjGoalMeasure(s, userId, g);
+        const current = m ? m.current : g.current;
+        return {
+          ...g,
+          current,
+          systemMetric: m ? m.key : null,
+          countedRefs: m ? m.countedRefs : [],
+          progressPct: g.target > 0 ? Math.round((current / g.target) * 100) : 0,
+        };
+      });
     return { ok: true, result: { goals, count: goals.length } };
   });
 
@@ -1366,6 +1986,9 @@ export default function registerProjectsActions(registerLensAction) {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const goal = (s.goals.get(pjAid(ctx)) || []).find((g) => g.id === params.id);
     if (!goal) return { ok: false, error: "goal not found" };
+    if (params.current != null && pjGoalMeasure(s, pjAid(ctx), goal)) {
+      return { ok: false, error: `this goal measures "${goal.metric}" from the project itself — its value cannot be typed; complete issues to move it` };
+    }
     if (params.current != null) goal.current = pjNum(params.current, goal.current);
     if (params.target != null) goal.target = pjNum(params.target, goal.target);
     savePjState();
@@ -1757,12 +2380,18 @@ export default function registerProjectsActions(registerLensAction) {
     const task = (s.tasks.get(userId) || []).find((t) => t.id === params.id);
     if (!task) return { ok: false, error: "task not found" };
     if (!task.isTriage) return { ok: false, error: "task is not in triage" };
+    if (params.status != null) {
+      const next = pjPick(params.status, PJ_STATUSES, task.status);
+      const gate = pjStatusGate(s, userId, task, next, { overrideBlocked: params.overrideBlocked === true });
+      if (gate) return { ok: false, error: gate };
+      if (params.overrideBlocked === true && next !== task.status) pjLogOverride(s, userId, task, next);
+      task.status = next;
+    }
     task.isTriage = false;
     if (params.priority != null) task.priority = pjPick(params.priority, PJ_PRIORITIES, task.priority);
-    if (params.status != null) task.status = pjPick(params.status, PJ_STATUSES, task.status);
     if (params.assigneeId) {
       const a = String(params.assigneeId);
-      if ((s.members.get(userId) || []).some((m) => m.id === a)) task.assigneeId = a;
+      if (pjAssigneeSet(userId, task.projectId).has(a)) task.assigneeId = a;
     }
     if (params.sprintId) {
       const sp = String(params.sprintId);

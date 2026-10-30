@@ -391,12 +391,43 @@ export function processPitchBlock(state: PitchState, input: Float32Array, output
   return state.meter;
 }
 
-export function processPitchSignal(input: Float32Array, settings: PitchSettings): { output: Float32Array; latency: number } {
+/**
+ * Cooperative stepping. The offline pitch and formant stages are CPU-bound (3 FFTs per hop), so they are
+ * written as generators that `yield` between small units of work. `runSteps` drains one synchronously (same
+ * result, same cost as before); `runStepsAsync` drains it in time-boxed slices and hands the event loop back
+ * between slices, so an export of a full vocal no longer freezes the tab.
+ */
+export function runSteps<T>(gen: Generator<void, T, void>): T {
+  for (;;) {
+    const r = gen.next();
+    if (r.done) return r.value;
+  }
+}
+
+export async function runStepsAsync<T>(
+  gen: Generator<void, T, void>,
+  opts: { signal?: AbortSignal; budgetMs?: number } = {},
+): Promise<T> {
+  const budget = Math.max(1, opts.budgetMs ?? 12);
+  const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  for (;;) {
+    if (opts.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    const sliceEnd = now() + budget;
+    do {
+      const r = gen.next();
+      if (r.done) return r.value;
+    } while (now() < sliceEnd);
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  }
+}
+
+export function* processPitchSignalSteps(input: Float32Array, settings: PitchSettings): Generator<void, { output: Float32Array; latency: number }, void> {
   const state = createPitchState(settings);
   const output = new Float32Array(input.length);
-  for (let i = 0; i < input.length; i += PITCH_BLOCK) {
+  for (let i = 0, blocks = 0; i < input.length; i += PITCH_BLOCK) {
     const n = Math.min(PITCH_BLOCK, input.length - i);
     processPitchBlock(state, input.subarray(i, i + n), output.subarray(i, i + n));
+    if ((++blocks & 15) === 0) yield;
   }
   // Formant stage (offline only): warps the spectral envelope of the
   // corrected signal by formantSemitones, pitch untouched. Adds no
@@ -404,9 +435,22 @@ export function processPitchSignal(input: Float32Array, settings: PitchSettings)
   // latency stays the shifter's.
   const semi = Math.max(-12, Math.min(12, settings.formantSemitones || 0));
   if (semi !== 0 && !settings.bypass) {
-    return { output: applyFormantShift(output, settings.sampleRate, semi), latency: state.latency };
+    return { output: yield* formantShiftSteps(output, settings.sampleRate, semi), latency: state.latency };
   }
   return { output, latency: state.latency };
+}
+
+export function processPitchSignal(input: Float32Array, settings: PitchSettings): { output: Float32Array; latency: number } {
+  return runSteps(processPitchSignalSteps(input, settings));
+}
+
+/** Same result as processPitchSignal, without monopolising the event loop. */
+export function processPitchSignalAsync(
+  input: Float32Array,
+  settings: PitchSettings,
+  opts: { signal?: AbortSignal; budgetMs?: number } = {},
+): Promise<{ output: Float32Array; latency: number }> {
+  return runStepsAsync(processPitchSignalSteps(input, settings), opts);
 }
 
 /** Drop the processor delay so a clip stays on the timeline. Live playback advances by the same amount instead. */
@@ -494,7 +538,7 @@ function fft(re: Float64Array, im: Float64Array, inverse: boolean): void {
  * shifting its pitch. Returns a new buffer of the same length; a zero
  * (or non-finite) shift returns an unchanged copy.
  */
-export function applyFormantShift(input: Float32Array, sampleRate: number, semitones: number): Float32Array {
+export function* formantShiftSteps(input: Float32Array, sampleRate: number, semitones: number): Generator<void, Float32Array, void> {
   const semi = Math.max(-12, Math.min(12, Number.isFinite(semitones) ? semitones : 0));
   if (semi === 0 || input.length === 0) return input.slice();
   const ratio = Math.pow(2, semi / 12);
@@ -519,6 +563,7 @@ export function applyFormantShift(input: Float32Array, sampleRate: number, semit
   const logMag = new Float64Array(N);
   const half = N >> 1;
 
+  let frames = 0;
   for (let start = 0; start + N <= paddedLen; start += hop) {
     for (let i = 0; i < N; i++) {
       re[i] = padded[start + i] * win[i];
@@ -565,6 +610,7 @@ export function applyFormantShift(input: Float32Array, sampleRate: number, semit
       out[start + i] += re[i] * win[i];
       winSum[start + i] += win[i] * win[i];
     }
+    if ((++frames & 7) === 0) yield;
   }
   const result = new Float32Array(input.length);
   for (let i = 0; i < input.length; i++) {
@@ -572,4 +618,17 @@ export function applyFormantShift(input: Float32Array, sampleRate: number, semit
     result[i] = w > 1e-6 ? out[pad + i] / w : 0;
   }
   return result;
+}
+
+export function applyFormantShift(input: Float32Array, sampleRate: number, semitones: number): Float32Array {
+  return runSteps(formantShiftSteps(input, sampleRate, semitones));
+}
+
+export function applyFormantShiftAsync(
+  input: Float32Array,
+  sampleRate: number,
+  semitones: number,
+  opts: { signal?: AbortSignal; budgetMs?: number } = {},
+): Promise<Float32Array> {
+  return runStepsAsync(formantShiftSteps(input, sampleRate, semitones), opts);
 }

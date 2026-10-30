@@ -329,6 +329,20 @@ module.exports = {
       exec_mode: 'fork',
       watch: false,
       max_memory_restart: '1G',
+      // Crash-loop guard — the restart defaults the backend and godot
+      // blocks in this file already carry, which this block lacked: a
+      // crash-looping frontend previously restarted unbounded at pm2's
+      // default (~0ms) pacing, with no graceful window for the proxy's
+      // WebSocket connections to drain. Mirrors the backend's evidenced
+      // values. wait_ready/listen_timeout are deliberately NOT set:
+      // server-proxy.js never sends process.send('ready'), so pm2 would
+      // wait out the full listen_timeout on every start.
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: '30s',              // must be stable 30s before the crash counter resets
+      restart_delay: 5000,            // 5s base grace — lets the port release between attempts
+      exp_backoff_restart_delay: 200, // steeper ramp: 5.2s, 5.4s, 5.6s …
+      kill_timeout: 15000,            // 15s graceful shutdown (drain proxied WS connections)
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
