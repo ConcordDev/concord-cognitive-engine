@@ -10,16 +10,19 @@ import { ThumbsUp, Heart, Laugh, Frown, Angry, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { lensRun } from '@/lib/api/client';
 import type { ReactionKind } from './types';
+import { timeAgo, exactTime } from './timeFormat';
 
 interface Reactor {
   userId: string;
   kind: ReactionKind;
   at: string;
+  /** S-TL-4: resolved display name; null when unnamed. */
+  displayName?: string | null;
 }
 interface BreakdownResult {
   total: number;
   counts: Record<ReactionKind, number>;
-  byKind: Record<ReactionKind, { userId: string; at: string }[]>;
+  byKind: Record<ReactionKind, { userId: string; at: string; displayName?: string | null }[]>;
   reactors: Reactor[];
 }
 
@@ -119,8 +122,8 @@ export function ReactionBreakdown({ postId, onClose }: { postId: string; onClose
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-white font-medium truncate">{r.userId}</p>
-                    <p className="text-[11px] text-gray-400">{new Date(r.at).toLocaleString()}</p>
+                    <p className="text-sm text-white font-medium truncate">{r.displayName || 'Member'}</p>
+                    <p className="text-[11px] text-gray-400" title={exactTime(r.at)}>{timeAgo(r.at)}</p>
                   </div>
                 </div>
               );

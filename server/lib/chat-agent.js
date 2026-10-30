@@ -1270,6 +1270,16 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           const { solveBeam } = await import("./conkay/chat/structures.js");
           const brief = parseChatBrief(text);
           const ir = brief.ok && brief.domain === "beam" ? brief.ir : null;
+          // "Size the beam." with no span, load or section: ask, do not hand back the legacy 200 mm I-beam as if it were a design.
+          if (ir && !ir.spanM && !ir.loads?.length && !ir.depthM && !ir.widthM) {
+            const missing = ["span (m)", "load and where it acts", "material", "width (mm)"];
+            return {
+              tool: call.tool, ok: false, key: "conkay_design.needs-inputs", input: { text },
+              error: `Not enough to size a beam: need ${missing.join(", ")}.`,
+              result: { kind: "needs-inputs", missing,
+                instruction: "Do not invent a beam. Ask the user for the missing inputs listed here, then call conkay_design again with the full brief." },
+            };
+          }
           if (ir && ir.support === "simply-supported" && ir.spanM && ir.widthM && !ir.depthM && ir.material && ir.loads?.length) {
             const beam = solveBeam(ir);
             if (beam.ok && beam.section) {

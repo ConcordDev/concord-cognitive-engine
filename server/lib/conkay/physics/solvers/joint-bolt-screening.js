@@ -627,7 +627,7 @@ export function boltScreening({ joints, warnUtilization = 0.90 } = {}) {
       "The AISC bolt checks assume concentric load; the equal-bolt-share demand is retained inside bolted-joint.js and only the joint-level demand is scaled by the adapter.",
       "joint.bolt-combined divides the TOTAL joint force by a PER-BOLT capacity (its own upstream convention). That is conservative for multi-bolt joints; it is not corrected here because bolted-joint.js is not modified.",
       "A limit state that cannot be synthesized or that the upstream solver refuses is reported NOT_COMPUTED with a reason naming the solver. No look-alike calculation is substituted.",
-      "Screening level only. Not a connection certification: no pre-tension verification, no prying (joint.prying-action), no slip-critical check, no fatigue, no corrosion.",
+      "Screening level only. Not a connection certification: no pre-tension verification, no prying (joint.prying-action), no slip-critical check. Fatigue and corrosion are covered by their own solvers (part.fatigue-screening, part.uniform-corrosion, joint.galvanic-corrosion), not by this adapter.",
     ],
   };
 }

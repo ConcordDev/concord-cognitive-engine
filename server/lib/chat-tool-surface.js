@@ -376,9 +376,17 @@ export async function dispatchChatDtuSearch(runMacro, ctx, params = {}) {
         .replace(/\s+/g, " ").trim().slice(0, 240),
       ...(Array.isArray(d.tags) && d.tags.length ? { tags: d.tags.slice(0, 6).map(String) } : {}),
     }));
+  // An id-shaped query ("DTU-48213") that no hit carries is a miss, even when fuzzy text matches came back.
+  const idTokens = [...new Set(query.match(/\bDTU[-_ ]?[A-Za-z0-9]*\d[A-Za-z0-9]*\b/gi) || [])];
+  const norm = (x) => String(x).toLowerCase().replace(/[-_ ]/g, "");
+  const missingIds = idTokens.filter((tok) => !dtus.some((d) => norm(d.id) === norm(tok)));
+  const note = missingIds.length
+    ? `No DTU has the id ${missingIds.join(", ")}. Say that plainly; do not describe or cite any of the other results as that DTU.`
+    : dtus.length ? "Cite only the ids and titles listed here." : "No DTU matched. Say so; do not invent DTU titles or ids.";
   return {
     tool: "dtu_search", ok: true, query, total: dtus.length, dtus,
-    note: dtus.length ? "Cite only the ids and titles listed here." : "No DTU matched. Say so; do not invent DTU titles or ids.",
+    ...(missingIds.length ? { exactIdMatch: false, missingIds } : {}),
+    note,
   };
 }
 

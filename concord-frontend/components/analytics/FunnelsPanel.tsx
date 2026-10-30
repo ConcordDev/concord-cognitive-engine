@@ -4,6 +4,16 @@
  * FunnelsPanel — surfaces the analytics lens's saved conversion funnels (the
  * analytics.funnel-* macros existed backend-side but had no UI). Define a named
  * funnel as an ordered list of steps, list, delete. A Mixpanel/Amplitude-core feature.
+ *
+ * Computed results (R3 / Review 4 F9): funnel-list already attaches each
+ * funnel's computed result server-side — domains/analytics.js maps every
+ * saved funnel to { ...f, result: computeFunnel(the actor's event log,
+ * f.steps) }. This panel used to type only { id, name, steps } and render
+ * the definition, silently dropping the computation (the tab read as
+ * definition-only in the review). The result now renders below the step
+ * chips in the Events builder's own funnel idiom (EventAnalytics). A
+ * funnel whose payload carries no result stays definition-only — absent
+ * data never renders as invented numbers.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -11,7 +21,11 @@ import { Filter, Plus, Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
-interface Funnel { id: string; name: string; steps?: string[] }
+// The computed shape funnel-list attaches (server computeFunnel; the same
+// shape EventAnalytics' funnel-build result renders).
+interface FunnelStepResult { step: number; event: string; count: number; conversionFromStart: number; conversionFromPrev: number }
+interface FunnelResult { steps: FunnelStepResult[]; totalStarters: number; overallConversion: number }
+interface Funnel { id: string; name: string; steps?: string[]; result?: FunnelResult }
 
 export function FunnelsPanel({ className }: { className?: string }) {
   const [funnels, setFunnels] = useState<Funnel[]>([]);
@@ -83,6 +97,24 @@ export function FunnelsPanel({ className }: { className?: string }) {
                     <span className="bg-amber-500/10 border border-amber-500/30 rounded px-1.5 py-0.5">{s}</span>
                   </span>
                 ))}
+              </div>
+            )}
+            {f.result && Array.isArray(f.result.steps) && (
+              <div className="space-y-1 mt-1.5 ml-0.5">
+                {f.result.steps.map((s) => (
+                  <div key={s.step} className="text-[11px]">
+                    <div className="flex justify-between text-zinc-300">
+                      <span>{s.step}. {s.event}</span>
+                      <span>{s.count} · {s.conversionFromStart}%</span>
+                    </div>
+                    <div className="h-1.5 bg-zinc-800 rounded overflow-hidden">
+                      <div className="h-full bg-amber-500" style={{ width: `${s.conversionFromStart}%` }} />
+                    </div>
+                  </div>
+                ))}
+                <p className="text-[10px] text-amber-300">
+                  Overall conversion: {f.result.overallConversion}% · {f.result.totalStarters} entered
+                </p>
               </div>
             )}
           </div>

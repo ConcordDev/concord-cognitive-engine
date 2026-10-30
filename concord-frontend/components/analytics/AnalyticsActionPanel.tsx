@@ -154,8 +154,21 @@ export function AnalyticsActionPanel() {
     try {
       const task = `Analytics review. ${funnelResult ? `Funnel: ${funnelResult.overallConversion}% conversion, worst drop at ${funnelResult.worstDropoff} (${funnelResult.worstDropoffRate}%).` : ''} ${cohortResult ? `Best cohort: ${cohortResult.bestCohort}.` : ''} ${anomResult ? `${anomResult.anomaliesFound} anomalies.` : ''} ${trendResult ? `Trend ${trendResult.trend}.` : ''} Identify the single biggest growth lever this quarter. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Lever ready.'); } else err('Agent returned empty.');
+      const result = r.data?.result as
+        | { answer?: unknown; reply?: unknown; summary?: unknown; output?: unknown; ok?: boolean; reason?: string; error?: string }
+        | undefined;
+      // chat_agent.do returns its analysis in `answer` (server/lib/chat-agent.js
+      // runAgentLoop: { ok, answer, toolCalls, ... } — the field AgentModePanel
+      // reads). This action used to read reply/summary/output only, so every
+      // successful run landed on "Agent returned empty." (Review 4 F4). The
+      // older aliases stay as fallbacks, and a macro-level failure surfaces
+      // its specific reason instead of the same empty message.
+      const reply = result?.answer ?? result?.reply ?? result?.summary ?? result?.output ?? r.data?.reply;
+      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Lever ready.'); }
+      else if (result?.ok === false || r.data?.ok === false) {
+        const reason = result?.reason || result?.error || r.data?.error;
+        err(reason ? `Agent unavailable: ${reason}.` : 'Agent returned empty.');
+      } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -183,15 +196,15 @@ export function AnalyticsActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div>
           <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Funnel JSON</label>
-          <textarea value={funnelText} onChange={(e) => setFunnelText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
+          <textarea value={funnelText} onChange={(e) => setFunnelText(e.target.value)} rows={5} placeholder='{"stages":[{"name":"Visit","count":1000},{"name":"Signup","count":400},{"name":"Buy","count":80}]}' className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">Cohorts JSON</label>
-          <textarea value={cohortText} onChange={(e) => setCohortText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
+          <textarea value={cohortText} onChange={(e) => setCohortText(e.target.value)} rows={5} placeholder='{"cohorts":[{"name":"2024-01","initialUsers":100,"retention":[80,60,45]}]}' className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">Time series JSON</label>
-          <textarea value={seriesText} onChange={(e) => setSeriesText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
+          <textarea value={seriesText} onChange={(e) => setSeriesText(e.target.value)} rows={5} placeholder='{"dataPoints":[{"date":"2024-01-01","value":100},{"date":"2024-01-02","value":102}]} — or a bare series: {"dataPoints":[100,102,98]}' className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
         </div>
         <div className="md:col-span-3 flex items-center gap-2 flex-wrap">
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
