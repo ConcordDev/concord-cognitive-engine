@@ -48,8 +48,7 @@ class FakeWorker {
         emit({ type: 'loading', id });
         queueMicrotask(() => { this.pyReady = true; emit({ type: 'ready', id, loadMs: 1234 }); });
         queueMicrotask(() => queueMicrotask(() => {
-          if (msg.code.includes('PYTHROW')) { emit({ type: 'stderr', id, text: 'Traceback: ValueError
-' }); emit({ type: 'done', id, exitCode: 1 }); }
+          if (msg.code.includes('PYTHROW')) { emit({ type: 'stderr', id, text: 'Traceback: ValueError\n' }); emit({ type: 'done', id, exitCode: 1 }); }
           else { emit({ type: 'stdout', id, text: 'py-hello\n' }); emit({ type: 'done', id, exitCode: 0 }); }
         }));
         return;
@@ -100,7 +99,7 @@ describe('advertised language scope', () => {
   it('gives user-word reasons for languages it does not run', () => {
     expect(localRunUnsupportedReason('python')).toBeNull();
     expect(localRunUnsupportedReason('tsx')).toMatch(/does not run JSX/);
-    expect(localRunUnsupportedReason('ruby')).toMatch(/runs JavaScript and TypeScript/);
+    expect(localRunUnsupportedReason('ruby')).toMatch(/runs JavaScript, TypeScript, and Python/);
     expect(localRunUnsupportedReason('javascript')).toBeNull();
   });
 });
