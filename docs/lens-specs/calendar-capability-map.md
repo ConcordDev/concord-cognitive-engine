@@ -1,5 +1,73 @@
 # Calendar Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **Rework (PR #1713, B7 — gap list of record: Product Review 5's frozen live
+> review, `lens-reviews/calendar.md`, routed 2026-10-28):** The L7
+> re-verification block this replaces is superseded by the live review.
+> Tier: **REDESIGN at the frozen review; slices S0–S15 all landed
+> 2026-10-28 (B7 build) — re-tiering belongs to Product Review 5's
+> re-pass, not to the builder.** Live pass 2026-10-28:
+> 79 features inventoried — 47 passed / 26 failed / 6 not run; acceptance
+> flows 8 PASS / 14 FAIL. Three-column mapping vs Google Calendar's full
+> feature list (frozen review §5d, 49 features): **have-and-works-live 7 ·
+> have-in-backend-unsurfaced-or-broken 24 · missing 18.**
+>
+> Findings F1–F14 map to build slices S1–S15 in the review's §7:
+> S1 one true time (F1, P0) · S2 one conflict truth (F2, P0) · S3 wire
+> Add calendar / Add task (F3, P0) · S4 description integrity (F4, P0) ·
+> S5 booking pages end to end, ungated (F5, P0) · S6 collaborators/invites
+> (F6) · S7 dashboard counts (F7) · S8 reminders (F8) · S9 Scheduler on
+> real data + crash paths (F9) · S10 recurring edit scope (F10) · S11
+> quick-add parse (F11; the top-level Export half is B2's audit queue) ·
+> S12 delete Undo + trash (F12) · S13 form/chrome state bundle (F13) ·
+> S14 sync/import honesty (F14) · S15 delight layer (§3b).
+> Re-review gate (Review 5): flows 2, 6, 12, 17, 19, 21 must clear.
+>
+> **Builder update (B7, 2026-10-28 — all slices landed; verdicts stay
+> with the re-pass):** S0 greeting removed (Calendar + Goals split
+> mechanics). S1 per-event IANA zones end to end — the form binds in
+> the event's zone, recurrence expansion is zone-aware per occurrence
+> (no DST drift), TZ Convert honours its From zone, detail shows a
+> conversion whisper; pre-fix stored events keep their stored instants
+> (not silently rewritten). S2 one conflict truth — pairwise
+> conflicts-check, zone-aware availability, the standalone analyzer
+> reads the real calendar. S3 Add calendar / Add task wired inline
+> (native prompt()/confirm() dialogs removed — they never surface in
+> embedded browsers). S4 description is per-event state; the shared
+> draft substrate no longer leaks it across events. S5 booking pages
+> work ungated: slots respect real events, booking creates a real
+> calendar event, schedules delete cleanly, in-platform booking link +
+> ?book= deep link, first-booking line. S6 events-update honours
+> attendees (the persistence break), collaborator entry validates
+> against the real user directory, invites send via invites-send and
+> RSVP state shows in the detail. S7 dashboard counts real calendar
+> days/weeks in the user's zone. S8 reminders fire at their nominal
+> time (never ~29 min early), with upcoming/missed states, snooze, an
+> in-lens banner, and correct copy; and fired reminders also land in the global
+> Notifications bell through the platform substrate
+> (createNotification — B2's scoping found the sanctioned path;
+> exactly once per materialization, S8 completion). S9 Scheduler bench rebuilt on real events/tasks — the
+> paste-JSON textareas and the '.slice' crash class are gone. S10
+> recurring edit honours scope incl. count preservation on splits;
+> the until off-by-one is fixed. S11 quick-add parses noon/midnight/
+> bare times in the caller's zone and shows a confirm preview. S12
+> soft delete + trash + Undo everywhere (status-events-list honours
+> it too). S13 fresh form per open, next-hour zone defaults, honest
+> default event type, single clearing banner, OOO all-day = the zoned
+> day + row delete. S14 feed connect validates before the account
+> exists, iCal import = preview then commit (UID-deduped), calendar
+> Export generates from the user's real events. S15 drag to move /
+> resize with the M3 Settle, M7 Quiet Success flash, view transitions,
+> solstice/equinox/leap-day markers, series milestones, empty-week
+> line. Backend surface is now **57 macros** (ical-import +
+> events-trash-list / events-restore / events-delete-permanent are
+> new; the older "51 macros / no backend changes" text below describes
+> the pre-rework L7 batch, not this PR). Server behaviour is covered
+> by server/tests/calendar-*.test.js (11 files); FE behaviour by
+> concord-frontend/tests/calendar-*.test.* + lib tests.
+> The Goals half of the original L7 batch is split out of this PR
+> (greeting changes reverted as split mechanics); Goals is its own PR.
+
+
 > Derived, not asserted. Every macro below was enumerated by reading
 > `server/domains/calendar.js` (1554 LOC) in full — the entire backend
 > surface for this lens (no inline registrations elsewhere; confirmed via

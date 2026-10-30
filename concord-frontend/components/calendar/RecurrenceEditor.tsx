@@ -9,6 +9,7 @@
 
 import { Repeat } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { browserTimeZone, calendarDateKey, fromZonedInputValue } from '@/lib/calendar-date';
 
 export interface UiRecurrence {
   frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -128,8 +129,8 @@ export function RecurrenceEditor({ value, start, onChange }: {
           </select>
           {ends === 'on' && (
             <input aria-label="Repeat end date" type="date" className={input}
-              value={value.endDate ? value.endDate.toISOString().slice(0, 10) : ''}
-              onChange={(e) => set({ endDate: e.target.value ? new Date(e.target.value) : undefined })} />
+              value={value.endDate ? calendarDateKey(value.endDate, browserTimeZone()) : ''}
+              onChange={(e) => set({ endDate: e.target.value ? (fromZonedInputValue(`${e.target.value}T00:00`, browserTimeZone()) || undefined) : undefined })} />
           )}
           {ends === 'after' && (
             <>

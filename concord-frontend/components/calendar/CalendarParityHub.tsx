@@ -18,7 +18,7 @@ import {
   LayoutDashboard, CalendarSearch, Send,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { calendarDateKey } from '@/lib/calendar-date';
+import { browserTimeZone, calendarDateKey, fromZonedInputValue, shiftDateKey, toZonedInputValue, zonedWallTimeToUtc } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
@@ -35,10 +35,11 @@ interface Share {
 }
 interface Reminder {
   id: string; eventTitle: string; occurrenceStart: string; offsetMin: number;
+  fireAt?: string; missed?: boolean; snoozedUntil?: string | null;
 }
 interface StatusEvent {
   id: string; title: string; eventCategory: string; start: string;
-  end: string; blocksAvailability: boolean;
+  end: string; blocksAvailability: boolean; allDay?: boolean;
 }
 interface CalEvent { id: string; title: string; start: string; conferenceLink?: string }
 interface Invite {
@@ -46,7 +47,7 @@ interface Invite {
   guest: string; rsvp: string;
 }
 
-type Tab = 'dashboard' | 'sync' | 'sharing' | 'reminders' | 'status' | 'conference' | 'invites' | 'conflicts';
+type Tab = 'dashboard' | 'sync' | 'sharing' | 'reminders' | 'status' | 'conference' | 'invites' | 'conflicts' | 'trash';
 
 const TABS: { id: Tab; label: string; icon: typeof RefreshCw }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -57,6 +58,7 @@ const TABS: { id: Tab; label: string; icon: typeof RefreshCw }[] = [
   { id: 'conference', label: 'Video Links', icon: Video },
   { id: 'invites', label: 'Guest RSVP', icon: MailCheck },
   { id: 'conflicts', label: 'Conflicts & Availability', icon: CalendarSearch },
+  { id: 'trash', label: 'Trash', icon: Trash2 },
 ];
 
 const RSVP_COLOR: Record<string, string> = {
@@ -107,6 +109,7 @@ export function CalendarParityHub() {
         {tab === 'conference' && <ConferencePanel />}
         {tab === 'invites' && <InvitesPanel />}
         {tab === 'conflicts' && <ConflictsAvailabilityPanel />}
+        {tab === 'trash' && <TrashPanel />}
       </div>
     </div>
   );
@@ -120,6 +123,7 @@ function SyncPanel() {
   const [err, setErr] = useState<string | null>(null);
   const [form, setForm] = useState({ provider: 'ics', label: '', icsUrl: '', direction: 'two-way' });
   const [pushOpenId, setPushOpenId] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
   const [pushForm, setPushForm] = useState({ title: '', start: '', end: '' });
   const [pushBusy, setPushBusy] = useState(false);
   const [pushResult, setPushResult] = useState<{ id: string; ok: boolean; msg: string } | null>(null);
@@ -133,15 +137,18 @@ function SyncPanel() {
 
   async function connect() {
     setErr(null);
+    setNote(null);
     if (!form.label.trim()) { setErr('Account label required.'); return; }
     if (!/^https?:\/\//i.test(form.icsUrl.trim())) { setErr('A valid https iCal feed URL is required.'); return; }
     setBusy('connect');
-    const r = await lensRun('calendar', 'accounts-connect', {
+    const r = await lensRun<{ validatedEventCount?: number }>('calendar', 'accounts-connect', {
       provider: form.provider, label: form.label.trim(),
       icsUrl: form.icsUrl.trim(), direction: form.direction,
     });
     setBusy(null);
     if (r.data?.ok) {
+      const n = r.data.result?.validatedEventCount;
+      setNote(`Connected — the feed was checked first and holds ${n ?? 0} event${n === 1 ? '' : 's'}. Sync pulls them into a dedicated calendar.`);
       setForm({ provider: 'ics', label: '', icsUrl: '', direction: 'two-way' });
       await refresh();
     } else { setErr(r.data?.error || 'Could not connect account.'); }
@@ -157,6 +164,12 @@ function SyncPanel() {
     setBusy(id);
     await lensRun('calendar', 'accounts-disconnect', { id });
     setBusy(null);
+    // F14: disconnect clears the panel's residual state — a stale sync
+    // error or push result for a gone account must not linger.
+    setErr(null);
+    setNote(null);
+    setPushResult((p) => (p && p.id === id ? null : p));
+    setPushOpenId((p) => (p === id ? null : p));
     await refresh();
   }
 
@@ -191,6 +204,7 @@ function SyncPanel() {
         Connect an external Google, Outlook or Apple calendar by its public/secret
         iCal feed URL. Sync pulls live events into a dedicated calendar.
       </p>
+      {note && <p className="text-xs text-emerald-300">{note}</p>}
       <div className="bg-lattice-elevated/70 border border-lattice-border rounded-lg p-3 grid sm:grid-cols-2 gap-2">
         <input value={form.label} onChange={e => setForm({ ...form, label: e.target.value })}
           placeholder="Account label (e.g. Work Google)"
@@ -369,7 +383,7 @@ function RemindersPanel() {
   const check = useCallback(async () => {
     setChecking(true);
     const r = await lensRun<{ pending: Reminder[]; firedNow: number }>(
-      'calendar', 'reminders-due', { lookAheadMin: 60 },
+      'calendar', 'reminders-due', {},
     );
     setChecking(false);
     if (r.data?.ok) {
@@ -384,6 +398,10 @@ function RemindersPanel() {
     await lensRun('calendar', 'reminders-acknowledge', { id });
     await check();
   }
+  async function snooze(id: string) {
+    await lensRun('calendar', 'reminders-acknowledge', { id, snoozeMin: 10 });
+    await check();
+  }
   async function ackAll() {
     await lensRun('calendar', 'reminders-acknowledge', { all: true });
     await check();
@@ -395,8 +413,8 @@ function RemindersPanel() {
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <p className="text-xs text-gray-400 flex-1">
-          Reminders fire automatically as each event approaches (checked every minute,
-          60-minute look-ahead window).
+          Reminders appear at their set time — never early. One that came due
+          while you were away is marked missed, not dropped.
         </p>
         <button onClick={check} disabled={checking}
           className="px-2 py-1 rounded text-[11px] bg-lattice-elevated hover:bg-lattice-border text-gray-200 inline-flex items-center gap-1 disabled:opacity-50">
@@ -425,9 +443,16 @@ function RemindersPanel() {
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-white truncate">{r.eventTitle}</p>
                 <p className="text-[10px] text-gray-400">
-                  starts <span className="tabular-nums">{fmt(r.occurrenceStart)} · {r.offsetMin} min</span> reminder
+                  due <span className="tabular-nums">{r.fireAt ? fmt(r.fireAt) : fmt(r.occurrenceStart)}</span>
+                  {' · '}starts <span className="tabular-nums">{fmt(r.occurrenceStart)}</span>
+                  {' · '}{r.offsetMin} min before
+                  {r.missed && <span className="ml-1 rounded bg-rose-500/20 px-1 py-px text-rose-300">missed</span>}
                 </p>
               </div>
+              <button onClick={() => snooze(r.id)}
+                className="px-2 py-1 rounded text-[11px] bg-lattice-elevated hover:bg-lattice-border text-gray-200">
+                Snooze 10m
+              </button>
               <button onClick={() => ack(r.id)}
                 className="px-2 py-1 rounded text-[11px] bg-lattice-elevated hover:bg-lattice-border text-gray-200 inline-flex items-center gap-1">
                 <Check className="w-3 h-3" /> Dismiss
@@ -447,7 +472,7 @@ function StatusPanel() {
   const [err, setErr] = useState<string | null>(null);
   const [form, setForm] = useState({
     kind: 'working-location', detail: '',
-    start: new Date().toISOString().slice(0, 16),
+    start: toZonedInputValue(new Date(), browserTimeZone()),
     end: '', allDay: false,
   });
 
@@ -460,14 +485,43 @@ function StatusPanel() {
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  async function removeStatus(id: string) {
+    // Two-step inline confirm; the delete is soft (F12) — the block
+    // leaves this list at once and sits in the Trash tab.
+    if (confirmDeleteId !== id) { setConfirmDeleteId(id); return; }
+    setConfirmDeleteId(null);
+    await lensRun('calendar', 'events-delete', { id });
+    await refresh();
+  }
+
   async function create() {
     setErr(null);
     if (!form.start) { setErr('Start date/time required.'); return; }
+    const tz = browserTimeZone();
+    let startIso: string;
+    let endIso: string | undefined;
+    if (form.allDay) {
+      // F13: "All day" means the calendar day in the user's zone —
+      // zoned midnight to zoned midnight, whatever time was picked.
+      const dateKey = form.start.slice(0, 10);
+      const [y, m, d] = dateKey.split('-').map(Number);
+      if (!y || !m || !d) { setErr('Start date required.'); return; }
+      startIso = zonedWallTimeToUtc(tz, { year: y, month: m, day: d, hour: 0, minute: 0, second: 0 }).toISOString();
+      const nk = shiftDateKey(dateKey, 1).split('-').map(Number);
+      endIso = zonedWallTimeToUtc(tz, { year: nk[0], month: nk[1], day: nk[2], hour: 0, minute: 0, second: 0 }).toISOString();
+    } else {
+      const s = fromZonedInputValue(form.start, tz);
+      if (!s) { setErr('Start date/time required.'); return; }
+      startIso = s.toISOString();
+      const e = form.end ? fromZonedInputValue(form.end, tz) : null;
+      endIso = e ? e.toISOString() : undefined;
+    }
     const r = await lensRun('calendar', 'status-event-create', {
       kind: form.kind,
       detail: form.detail.trim(),
-      start: new Date(form.start).toISOString(),
-      end: form.end ? new Date(form.end).toISOString() : undefined,
+      start: startIso,
+      end: endIso,
       allDay: form.allDay,
     });
     if (r.data?.ok) { setForm({ ...form, detail: '' }); await refresh(); }
@@ -530,12 +584,19 @@ function StatusPanel() {
               <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-white truncate">{e.title}</p>
-                <p className="text-[10px] text-gray-400 tabular-nums">{fmt(e.start)} → {fmt(e.end)}</p>
+                <p className="text-[10px] text-gray-400 tabular-nums">{e.allDay
+                  ? `All day · ${new Date(e.start).toLocaleDateString('en-US', { timeZone: browserTimeZone(), month: 'short', day: 'numeric' })}`
+                  : `${fmt(e.start)} → ${fmt(e.end)}`}</p>
               </div>
               <span className={cn('text-[10px] px-1.5 py-0.5 rounded',
                 e.blocksAvailability ? 'bg-rose-600/20 text-rose-300' : 'bg-lattice-border/40 text-gray-300')}>
                 {e.blocksAvailability ? 'blocks availability' : 'visible only'}
               </span>
+              <button onClick={() => void removeStatus(e.id)}
+                className={cn('px-2 py-1 rounded text-[11px] shrink-0', confirmDeleteId === e.id ? 'bg-rose-600 text-white font-semibold' : 'text-rose-300 hover:bg-rose-500/10')}
+                aria-label={confirmDeleteId === e.id ? `Confirm delete ${e.title}` : `Delete ${e.title}`}>
+                {confirmDeleteId === e.id ? 'Delete?' : <Trash2 className="w-3.5 h-3.5" />}
+              </button>
             </li>
           ))}
         </ul>
@@ -777,7 +838,7 @@ function DashboardPanel() {
 
   const refresh = useCallback(async () => {
     setLoading(true); setErr(null);
-    const r = await lensRun<DashboardSummary>('calendar', 'calendar-dashboard-summary', {});
+    const r = await lensRun<DashboardSummary>('calendar', 'calendar-dashboard-summary', { tz: browserTimeZone() });
     if (r.data?.ok) setSummary(r.data.result || null);
     else setErr(r.data?.error || 'Could not load dashboard summary.');
     setLoading(false);
@@ -848,7 +909,7 @@ function ConflictsAvailabilityPanel() {
 
   async function findSlots() {
     setAvailBusy(true); setAvailErr(null); setSlots(null);
-    const r = await lensRun<{ freeSlots: FreeSlot[] }>('calendar', 'availability-find', { day, durationMin });
+    const r = await lensRun<{ freeSlots: FreeSlot[] }>('calendar', 'availability-find', { day, durationMin, tz: browserTimeZone() });
     setAvailBusy(false);
     if (r.data?.ok) setSlots(r.data.result?.freeSlots || []);
     else setAvailErr(r.data?.error || 'Could not find availability.');
@@ -945,5 +1006,67 @@ function ErrLine({ msg }: { msg: string }) {
     <p className="text-[11px] text-rose-400 inline-flex items-center gap-1">
       <AlertCircle className="w-3 h-3" /> {msg}
     </p>
+  );
+}
+
+
+// ── Trash — soft-deleted events (F12) ────────────────────────────────
+interface TrashedEvent { id: string; title: string; start: string; end: string; deletedAt: string }
+function TrashPanel() {
+  const [items, setItems] = useState<TrashedEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [confirmPermanentId, setConfirmPermanentId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const r = await lensRun<{ events: TrashedEvent[]; count: number }>('calendar', 'events-trash-list', {});
+    setItems(r.data?.result?.events || []);
+    setLoading(false);
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+
+  async function restore(id: string) {
+    await lensRun('calendar', 'events-restore', { id });
+    await load();
+  }
+  async function destroy(id: string) {
+    if (confirmPermanentId !== id) { setConfirmPermanentId(id); return; }
+    setConfirmPermanentId(null);
+    await lensRun('calendar', 'events-delete-permanent', { id });
+    await load();
+  }
+
+  if (loading) return <Spin />;
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-gray-400">
+        Deleted events live here until you empty the trash. Restoring puts an event
+        back on your calendar exactly as it was.
+      </p>
+      {items.length === 0 ? (
+        <Empty msg="Trash is empty." />
+      ) : (
+        <ul className="space-y-1.5">
+          {items.map((e) => (
+            <li key={e.id} className="flex items-center gap-2 bg-lattice-elevated/50 border border-lattice-border rounded-lg px-3 py-2">
+              <Trash2 className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-white truncate">{e.title}</p>
+                <p className="text-[10px] text-gray-400 tabular-nums">
+                  {fmt(e.start)} · deleted {fmt(e.deletedAt)}
+                </p>
+              </div>
+              <button onClick={() => void restore(e.id)}
+                className="px-2 py-1 rounded text-[11px] bg-blue-600/20 text-blue-300 hover:bg-blue-600/30">
+                Restore
+              </button>
+              <button onClick={() => void destroy(e.id)}
+                className={cn('px-2 py-1 rounded text-[11px]', confirmPermanentId === e.id ? 'bg-rose-600 text-white font-semibold' : 'bg-lattice-elevated hover:bg-lattice-border text-rose-300')}>
+                {confirmPermanentId === e.id ? 'Delete forever?' : 'Delete forever'}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
