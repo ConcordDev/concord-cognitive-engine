@@ -146,20 +146,29 @@ export default function SRSLensPage() {
   }, [addMutation]);
 
   // Lens-scoped keyboard commands. Anki idiom: 1-4 rate, space flips.
+  // S1 (F1): these commands are deliberately NOT registered as
+  // form-field-firing. In that mode the keyboard hook dispatched
+  // them from inside form fields and swallowed the keystroke —
+  // space and 1-4 vanished from text typed anywhere in the
+  // Workbench (deck names, card fronts, cloze syntax, the import
+  // box), and in review state the same keys flipped/graded the card
+  // behind the form. Plain commands never dispatch from a form
+  // field, so typing is verbatim again; study keys still fire when
+  // focus is on the page body.
   const reviewCanFlip = view === 'review' && !!current && !revealed;
   const reviewCanRate = view === 'review' && !!current && revealed;
   useLensCommand(
     [
       { id: 'srs-flip', keys: 'space', description: 'Flip card / show answer', category: 'actions',
-        action: () => { if (reviewCanFlip) setRevealed(true); }, global: true },
+        action: () => { if (reviewCanFlip) setRevealed(true); } },
       { id: 'srs-again', keys: '1', description: 'Again (review again soon)', category: 'actions',
-        action: () => { if (reviewCanRate) handleReview(0); }, global: true },
+        action: () => { if (reviewCanRate) handleReview(0); } },
       { id: 'srs-hard', keys: '2', description: 'Hard', category: 'actions',
-        action: () => { if (reviewCanRate) handleReview(2); }, global: true },
+        action: () => { if (reviewCanRate) handleReview(2); } },
       { id: 'srs-good', keys: '3', description: 'Good', category: 'actions',
-        action: () => { if (reviewCanRate) handleReview(4); }, global: true },
+        action: () => { if (reviewCanRate) handleReview(4); } },
       { id: 'srs-easy', keys: '4', description: 'Easy', category: 'actions',
-        action: () => { if (reviewCanRate) handleReview(5); }, global: true },
+        action: () => { if (reviewCanRate) handleReview(5); } },
     ],
     { lensId: 'srs' }
   );

@@ -86,3 +86,82 @@ export const MODE_LABELS: Record<BoardMode, string> = {
 export const uid = () => `el_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 export const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 export const fmtDur = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+/* ---------- multi-selection model (Q57) ----------
+ * The canvas selection is a set of element ids. These pure helpers own
+ * the semantics so the studio component only wires them to events:
+ * plain click replaces (unless the clicked element is already in the
+ * set — then the set survives so a drag moves the whole group),
+ * shift/⌘-click toggles, click on empty canvas clears, ⌘A selects all.
+ */
+
+export type Selection = ReadonlySet<string>;
+
+export function clickSelection(current: Selection, clickedId: string | null, additive: boolean): Set<string> {
+  if (additive) {
+    const next = new Set(current);
+    if (clickedId) {
+      if (next.has(clickedId)) next.delete(clickedId);
+      else next.add(clickedId);
+    }
+    return next;
+  }
+  if (!clickedId) return new Set();
+  if (current.has(clickedId)) return new Set(current);
+  return new Set([clickedId]);
+}
+
+export function selectAllIds(elements: SketchElement[]): Set<string> {
+  return new Set(elements.map((el) => el.id));
+}
+
+/** Snapshot of where each selected element starts a drag. */
+export interface DragStart { x: number; y: number; points?: { x: number; y: number }[] }
+
+export function dragStarts(elements: SketchElement[], ids: Selection): Map<string, DragStart> {
+  const starts = new Map<string, DragStart>();
+  for (const el of elements) {
+    if (!ids.has(el.id)) continue;
+    starts.set(el.id, {
+      x: el.x,
+      y: el.y,
+      points: el.points ? el.points.map((p) => ({ ...p })) : undefined,
+    });
+  }
+  return starts;
+}
+
+/** Move every element in `starts` by (dx, dy) from its drag-start position. */
+export function moveSelection(elements: SketchElement[], starts: Map<string, DragStart>, dx: number, dy: number): SketchElement[] {
+  // A zero delta is NOT a no-op: dragging back to the grab point must restore the start positions, not leave
+  // the elements at the last intermediate move.
+  if (starts.size === 0) return elements;
+  return elements.map((el) => {
+    const start = starts.get(el.id);
+    if (!start) return el;
+    return {
+      ...el,
+      x: start.x + dx,
+      y: start.y + dy,
+      points: start.points ? start.points.map((p) => ({ x: p.x + dx, y: p.y + dy })) : el.points,
+    };
+  });
+}
+
+export function deleteSelection(elements: SketchElement[], ids: Selection): SketchElement[] {
+  if (ids.size === 0) return elements;
+  return elements.filter((el) => !ids.has(el.id));
+}
+
+/** Copies of every selected element, offset by (+16, +16), in board order. */
+export function duplicateSelection(elements: SketchElement[], ids: Selection, makeId: () => string): SketchElement[] {
+  return elements
+    .filter((el) => ids.has(el.id))
+    .map((el) => ({
+      ...el,
+      id: makeId(),
+      x: (el.x ?? 0) + 16,
+      y: (el.y ?? 0) + 16,
+      points: el.points ? el.points.map((p) => ({ x: p.x + 16, y: p.y + 16 })) : el.points,
+    }));
+}

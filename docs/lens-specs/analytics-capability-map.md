@@ -1,7 +1,7 @@
 # analytics — Capability Map (Frontend Rebuild Program, Wave 3)
 
 > Derived, not asserted. Reproduce the macro list:
-> `grep -c 'registerLensAction("analytics"' server/domains/analytics.js` → 30
+> `grep -c 'registerLensAction("analytics"' server/domains/analytics.js` → 32
 
 ## Reference app + parity target
 
@@ -122,3 +122,8 @@ covers the full Mixpanel/Amplitude/PostHog core surface (event model,
 funnels, retention, cohorts, alerts, paths, breakdowns, live stream, custom
 dashboards) plus platform-specific creator-economy analytics (royalties,
 citations, DTU tiers) those reference apps don't have an equivalent for.
+
+
+---
+
+*Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*
