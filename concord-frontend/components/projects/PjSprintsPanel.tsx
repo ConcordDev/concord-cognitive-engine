@@ -16,14 +16,31 @@ interface Sprint {
 }
 interface BurndownPoint { day: number; date: string; ideal: number; remaining: number }
 interface Burndown { sprint: string; totalPoints: number; donePoints: number; series: BurndownPoint[] }
+interface SprintReceipt {
+  sprintId: string; sprintName: string; issuesDone: number; issuesTotal: number;
+  pointsDone: number; pointsTotal: number; settledInFull: boolean; carriedOver: number;
+}
 
 export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onChange: () => void }) {
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', startDate: '', endDate: '' });
+  // A14 remainder (R4 re-pass on #1720): the create form opens with
+  // the default range VISIBLE (today -> +14d) instead of empty fields
+  // whose emptiness the domain silently replaced. What the form shows
+  // is what gets created; a field the user clears or leaves half-typed
+  // in a split-field date control reads back empty and is called out
+  // in words, never substituted behind their back.
+  const defaultRange = () => {
+    const start = new Date();
+    const end = new Date(Date.now() + 14 * 86400000);
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    return { startDate: iso(start), endDate: iso(end) };
+  };
+  const [form, setForm] = useState(() => ({ name: '', ...defaultRange() }));
   const [burndown, setBurndown] = useState<Burndown | null>(null);
+  const [receipt, setReceipt] = useState<SprintReceipt | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -43,17 +60,33 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
 
   const addSprint = async () => {
     if (!form.name.trim()) { setError('Sprint name is required.'); return; }
+    // F7: a reversed range is rejected here, in words — the domain
+    // rejects it too; entered dates are never silently replaced.
+    if (!form.startDate || !form.endDate) {
+      setError('Both sprint dates are needed — a date field is empty or half-typed. The range was pre-filled with the next two weeks; finish the dates or restore them. No sprint was created.');
+      return;
+    }
+    if (form.endDate < form.startDate) {
+      setError('Sprint end date is before its start date — fix the dates; no sprint was created.');
+      return;
+    }
     const r = await lensRun('projects', 'sprint-create', {
       projectId, name: form.name.trim(), startDate: form.startDate, endDate: form.endDate,
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
-    setForm({ name: '', startDate: '', endDate: '' });
+    setForm({ name: '', ...defaultRange() });
     setError(null);
     await refresh();
   };
 
   const complete = async (id: string) => {
-    await lensRun('projects', 'sprint-complete', { id });
+    // D1/D4: completing a sprint settles it — the domain returns the
+    // receipt (the same numbers Reports reconciles from) and keeps a
+    // copy on every settled issue's Activity. The card below is the
+    // ceremony: it stamps in (≤300 ms, static under reduced motion).
+    const r = await lensRun('projects', 'sprint-complete', { id });
+    const rc = (r.data?.result as { receipt?: SprintReceipt } | null)?.receipt;
+    if (rc && !(r.data as { unchanged?: boolean } | null)?.unchanged) setReceipt(rc);
     await refresh();
   };
 
@@ -91,6 +124,26 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
           <Plus className="w-3.5 h-3.5" /> Sprint
         </button>
       </section>
+
+      {receipt && (
+        <section aria-label={`Receipt for ${receipt.sprintName}`} className="relative overflow-hidden bg-lattice-surface/70 border-2 border-dashed border-emerald-800/70 rounded-xl p-4">
+          <style>{'@media (prefers-reduced-motion: no-preference) { @keyframes pj-stamp { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: scale(1); } } }'}</style>
+          <div className="flex items-start gap-3" style={{ animation: 'pj-stamp 250ms ease-out' }}>
+            <div className="flex-1">
+              <p className="text-xs font-semibold text-white">{receipt.sprintName} — settled</p>
+              <p className="text-[11px] text-gray-400 tabular-nums mt-0.5">
+                {receipt.issuesDone}/{receipt.issuesTotal} issues · {receipt.pointsDone}/{receipt.pointsTotal} points
+                {receipt.carriedOver > 0 && <> · {receipt.carriedOver} carried over</>}
+              </p>
+              <p className="text-[11px] text-gray-500 mt-1">Kept on the Activity feed of every settled issue — and in this project's Activity tab.</p>
+            </div>
+            <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-emerald-300 border-2 border-emerald-500/70 rounded px-2 py-1 -rotate-[1.5deg]">
+              {receipt.settledInFull ? 'Settled in full' : 'Settled'}
+            </span>
+            <button type="button" aria-label="Dismiss receipt" onClick={() => setReceipt(null)} className="text-gray-500 hover:text-gray-300 text-xs">✕</button>
+          </div>
+        </section>
+      )}
 
       {burndown && (
         <div className="bg-lattice-surface/70 border border-lattice-border rounded-xl p-3">
@@ -130,7 +183,12 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
                     <CheckCircle2 className="w-3 h-3" /> Complete
                   </button>
                 ) : (
-                  <span className="text-[10px] text-emerald-400 uppercase">completed</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-emerald-400 uppercase">completed</span>
+                    {sp.totalPoints > 0 && sp.donePoints === sp.totalPoints && (
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-300 border border-emerald-500/70 rounded px-1.5 py-0.5 -rotate-[1.5deg]">Settled in full.</span>
+                    )}
+                  </span>
                 )}
               </div>
             </li>

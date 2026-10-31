@@ -413,6 +413,7 @@ function EmbedsTab({ boardId }: { boardId: string }) {
         <ul className="space-y-1">
           {embeds.map(e => {
             const Icon = EMBED_ICON[e.kind];
+            const thumb = e.kind === 'image' ? e.url : e.previewImage;
             return (
               <li key={e.id} className="rounded border border-white/10 bg-black/30 px-2 py-1.5">
                 {editingId === e.id ? (
@@ -427,6 +428,11 @@ function EmbedsTab({ boardId }: { boardId: string }) {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
+                    {thumb && (
+                      <img src={thumb} alt={e.title || ''} loading="lazy"
+                        className="w-10 h-10 rounded object-cover flex-shrink-0 border border-white/10"
+                        onError={ev => { ev.currentTarget.style.display = 'none'; }} />
+                    )}
                     <Icon className="w-3.5 h-3.5 text-sky-300 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <a href={e.url} target="_blank" rel="noreferrer" className="truncate text-white hover:text-sky-300 block">{e.title || e.url}</a>

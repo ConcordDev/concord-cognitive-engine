@@ -15,12 +15,31 @@ import {
 } from '../lib/conkay/verticals/hospital-ops.js';
 import {
   buildParametricSocket,
+  checkSocketParams,
   digitalFitCheck,
   emitBioprintToolpath,
   runProstheticsCert,
 } from '../lib/conkay/verticals/prosthetics.js';
 import { aeroPanelProxy, aeroAlphaCurve, buildDefaultAirfoilMesh } from '../lib/conkay/verticals/aerodynamics.js';
 import { compileStudioShot } from '../lib/conkay/verticals/studio.js';
+
+const PROSTHETICS_OUT_ROOT = path.join(os.homedir(), '.zuko', 'remaining-work', 'conkay-prosthetics-out');
+const SLICER_REJECT_CODES = new Set(['BAD_LAYER_HEIGHT', 'SLICE_TOO_LARGE']);
+const TOOLPATH_OPT_KEYS = ['layerHeight', 'feedRate', 'tempNozzle', 'tempBed', 'material', 'lineWidth', 'filamentDiameter'];
+
+/** Per-user output dir under a fixed root; never caller-supplied. */
+function prostheticsOutDir(req) {
+  const uid = String(req.user?.id ?? 'anon').replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 64) || 'anon';
+  const dir = path.resolve(PROSTHETICS_OUT_ROOT, uid);
+  if (!dir.startsWith(PROSTHETICS_OUT_ROOT + path.sep)) throw new Error('bad output dir');
+  return dir;
+}
+
+function pickToolpathOpts(body) {
+  const out = {};
+  for (const k of TOOLPATH_OPT_KEYS) if (body[k] !== undefined) out[k] = body[k];
+  return out;
+}
 
 export default function createConkayVerticalsRouter({ requireAuth }) {
   const router = Router();
@@ -105,28 +124,32 @@ export default function createConkayVerticalsRouter({ requireAuth }) {
     }
   });
 
-  /** POST /api/conkay/prosthetics/toolpath — writes gcode+telemetry under ~/.zuko or body.outDir */
+  /**
+   * POST /api/conkay/prosthetics/toolpath — writes gcode+telemetry under a
+   * server-chosen per-user directory. body.outDir is ignored: a
+   * caller-supplied path let any signed-in user create directories and
+   * write files anywhere the backend user can (CodeQL js/path-injection).
+   */
   router.post('/prosthetics/toolpath', auth, (req, res) => {
     try {
-      const socket = buildParametricSocket(req.body?.socket || req.body || {});
-      const outDir =
-        req.body?.outDir ||
-        path.join(os.homedir(), '.zuko', 'remaining-work', 'conkay-prosthetics-out');
-      const fit = digitalFitCheck(socket.mesh, req.body || {});
-      const tool = emitBioprintToolpath(socket.mesh, { ...req.body, outDir });
+      const body = req.body || {};
+      const socketParams = body.socket || body;
+      const bad = checkSocketParams(socketParams);
+      if (bad) return res.status(400).json({ ok: false, ...bad });
+      const socket = buildParametricSocket(socketParams);
+      const fit = digitalFitCheck(socket.mesh, body);
+      const tool = emitBioprintToolpath(socket.mesh, { ...pickToolpathOpts(body), outDir: prostheticsOutDir(req) });
+      if (!tool.ok && SLICER_REJECT_CODES.has(tool.code)) return res.status(400).json({ ok: false, socket: null, fit, toolpath: tool });
       return res.json({ ok: tool.ok && fit.ok, socket, fit, toolpath: tool });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
     }
   });
 
-  /** POST /api/conkay/prosthetics/run */
+  /** POST /api/conkay/prosthetics/run — fixed default socket; output dir is server-chosen (body.outDir ignored). */
   router.post('/prosthetics/run', auth, (req, res) => {
     try {
-      const outDir =
-        req.body?.outDir ||
-        path.join(os.homedir(), '.zuko', 'remaining-work', 'conkay-prosthetics-out');
-      const cert = runProstheticsCert({ ...req.body, outDir });
+      const cert = runProstheticsCert({ tolMm: req.body?.tolMm, outDir: prostheticsOutDir(req) });
       return res.json({ ...cert, mesh: cert.socket?.mesh || null });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
