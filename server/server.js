@@ -2129,7 +2129,7 @@ import "./lib/validators/finance-validator.js";
 import "./lib/validators/healthcare-validator.js";
 import "./lib/validators/legal-validator.js";
 import "./lib/validators/music-validator.js";
-import { runIntegrityCheck } from "./lib/integrity-check.js";
+import { runIntegrityCheck, runIntegrityCheckAsync } from "./lib/integrity-check.js";
 import { fullRecoverySequence } from "./lib/cascade-recovery.js";
 import { getScalingStatus } from "./lib/horizontal-scaling.js";
 import { startAllIntervals, stopAllIntervals, getIntervalStatus } from "./lib/interval-registry.js";
@@ -50678,7 +50678,8 @@ app.get("/api/admin/integrity", requireOwner, asyncHandler(async (req, res) => {
 
   if (runFresh) {
     try {
-      results = runIntegrityCheck(STATE, log, { fix: true, verbose: true });
+      // Time-sliced: an owner hitting ?run=true must not freeze every other request for the length of the scan.
+      results = await runIntegrityCheckAsync(STATE, log, { fix: true, verbose: true });
       STATE._lastIntegrityCheck = { ...results, timestamp: Date.now() };
     } catch (e) {
       return res.status(500).json({ ok: false, error: "integrity_check_failed", detail: String(e?.message || e) });
@@ -79491,16 +79492,22 @@ try {
 
 // ── Periodic Integrity Check (every 6 hours) ────────────────────────────────
 const INTEGRITY_INTERVAL = 6 * 60 * 60 * 1000;
-throttledInterval(() => {
-  const results = runIntegrityCheck(STATE, log, { fix: true, verbose: false });
+// Time-sliced + attributed: this ran synchronously and held the main thread for 8-12 s on its first staggered fire
+// (~60-75 s after every boot; the block ended within ~5 ms of the periodic_integrity_check log line) and every 6 h
+// after. Registered with loopJobs so any remaining stall names itself.
+throttledInterval(() => loopJobs.withJob("integrity_check", async () => {
+  const results = await runIntegrityCheckAsync(STATE, log, { fix: true, verbose: false });
   STATE._lastIntegrityCheck = { ...results, timestamp: Date.now() };
   structuredLog("info", "periodic_integrity_check", {
-    economyOk: results.economy?.ok,
-    lineageOk: results.lineage?.ok,
-    socialOk: results.social?.ok,
-    fixes: results.fixes || 0,
+    // The summary has no top-level `fixes`; the old `results.fixes || 0` always logged 0.
+    economyOk: results.audits?.economy?.ok,
+    lineageOk: results.audits?.lineage?.ok,
+    socialOk: results.audits?.social?.ok,
+    fixes: Object.values(results.issuesFixed || {}).reduce((a, b) => a + b, 0),
+    elapsedMs: results.elapsedMs,
+    totalIssues: results.totalIssues,
   });
-}, INTEGRITY_INTERVAL, "integrity_check");
+}), INTEGRITY_INTERVAL, "integrity_check");
 
 // NOTE: Primary SIGINT/SIGTERM handlers are registered above via gracefulShutdown().
 // Register cleanup for timers as a shutdown callback instead of a duplicate handler.
