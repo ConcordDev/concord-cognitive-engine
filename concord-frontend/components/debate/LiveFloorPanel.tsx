@@ -605,7 +605,7 @@ export function LiveFloorPanel() {
         {/* evaluateArgument result */}
         {actionResult && actionResult.overallScore !== undefined && (
           <div className="space-y-3 pt-2 border-t border-white/5">
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className={`text-lg font-bold ${Number(actionResult.overallScore) >= 70 ? 'text-neon-green' : Number(actionResult.overallScore) >= 40 ? 'text-yellow-400' : 'text-red-400'}`}>{String(actionResult.overallScore)}</p>
                 <p className="text-[10px] text-gray-400">Overall Score</p>
@@ -688,7 +688,7 @@ export function LiveFloorPanel() {
         {/* scoreDebate result */}
         {actionResult && actionResult.winner !== undefined && actionResult.margin !== undefined && (
           <div className="space-y-3 pt-2 border-t border-white/5">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div className="p-2 bg-neon-green/5 border border-neon-green/20 rounded text-center">
                 <p className="text-xs font-bold text-neon-green uppercase truncate">{String(actionResult.winner ?? '—')}</p>
                 <p className="text-[10px] text-gray-400">Winner</p>
@@ -725,7 +725,7 @@ export function LiveFloorPanel() {
         {/* fallacyCheck result */}
         {actionResult && actionResult.logicalSoundness !== undefined && (
           <div className="space-y-3 pt-2 border-t border-white/5">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className={`text-lg font-bold ${Number(actionResult.count) === 0 ? 'text-neon-green' : Number(actionResult.count) <= 2 ? 'text-yellow-400' : 'text-red-400'}`}>{String(actionResult.count ?? 0)}</p>
                 <p className="text-[10px] text-gray-400">Fallacies</p>

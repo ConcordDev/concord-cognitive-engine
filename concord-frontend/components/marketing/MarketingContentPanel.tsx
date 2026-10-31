@@ -105,7 +105,7 @@ export function MarketingContentPanel({ onChange }: { onChange: () => void }) {
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <CalendarRange className="w-3.5 h-3.5 text-orange-400" /> Content calendar
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input placeholder="Title" value={cForm.title} onChange={(e) => setCForm({ ...cForm, title: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input type="date" value={cForm.scheduledDate} onChange={(e) => setCForm({ ...cForm, scheduledDate: e.target.value })}
@@ -148,7 +148,7 @@ export function MarketingContentPanel({ onChange }: { onChange: () => void }) {
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <FlaskConical className="w-3.5 h-3.5 text-orange-400" /> A/B tests
         </h3>
-        <div className="grid grid-cols-3 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
           <input placeholder="Test name" value={tForm.name} onChange={(e) => setTForm({ ...tForm, name: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input placeholder="Variant A" value={tForm.variantA} onChange={(e) => setTForm({ ...tForm, variantA: e.target.value })}

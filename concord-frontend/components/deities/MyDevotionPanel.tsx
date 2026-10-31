@@ -65,7 +65,7 @@ export function MyDevotionPanel({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 text-center">
           <div className="text-xl font-bold text-purple-300">{devotion.patronCount}</div>
           <div className="text-[10px] uppercase tracking-wider text-zinc-400">patrons</div>

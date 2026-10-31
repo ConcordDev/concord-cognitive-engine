@@ -69,7 +69,7 @@ export function PjPortfolioPanel({ onLifecycle }: { onLifecycle?: () => void }) 
   if (loading) {
     return (
       <div className="space-y-4" aria-busy="true">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <Skeleton variant="block" height={64} className="rounded-xl" />
           <Skeleton variant="block" height={64} className="rounded-xl" />
           <Skeleton variant="block" height={64} className="rounded-xl" />
@@ -95,7 +95,7 @@ export function PjPortfolioPanel({ onLifecycle }: { onLifecycle?: () => void }) 
   return (
     <div className="space-y-4">
       {actionError && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{actionError}</div>}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="bg-lattice-surface/70 border border-lattice-border rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-emerald-300 tabular-nums">{byHealth.on_track || 0}</p>
           <p className="text-[10px] text-gray-400 uppercase">On track</p>

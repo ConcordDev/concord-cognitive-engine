@@ -298,7 +298,7 @@ export function HrCompliancePanel() {
         </div>
 
         {i9Summary && (
-          <div className="grid grid-cols-4 gap-2 mb-3">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
             <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
               <p className={cn('text-base font-bold', i9Summary.compliancePct >= 100 ? 'text-emerald-400' : i9Summary.compliancePct >= 70 ? 'text-amber-400' : 'text-rose-400')}>{i9Summary.compliancePct}%</p>
               <p className="text-[9px] text-zinc-400 uppercase tracking-wide">Verified</p>

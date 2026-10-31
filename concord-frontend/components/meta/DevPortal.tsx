@@ -1196,7 +1196,7 @@ function AlertSurfacePanel() {
 
       {!loading && data && (
         <>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             <div
               className={`rounded border p-2 text-center ${
                 data.worst === 'clear'

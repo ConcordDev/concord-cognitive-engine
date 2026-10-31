@@ -67,7 +67,7 @@ export function SportsPredictionsPanel({ onChange }: { onChange: () => void }) {
   return (
     <div className="space-y-4">
       {record && (record.correct + record.incorrect + record.pending) > 0 && (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-2 text-center">
             <p className="text-lg font-bold text-emerald-400">{record.correct}</p>
             <p className="text-[10px] text-zinc-400 uppercase">Correct</p>

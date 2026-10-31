@@ -197,7 +197,7 @@ export function SRSReview({ cards, onReview, onClose, className }: SRSReviewProp
                 )}
 
                 {/* Quality buttons */}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   {QUALITY_OPTIONS.map(opt => {
                     const Icon = opt.icon;
                     return (

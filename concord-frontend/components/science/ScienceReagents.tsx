@@ -141,7 +141,7 @@ export function ScienceReagents() {
         </div>
         <input value={form.vendor || ''} onChange={(e) => setForm({ ...form, vendor: e.target.value })}
           placeholder="Vendor" className={inputCls} />
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <input type="number" value={form.quantity ?? ''}
             onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })}
             placeholder="Quantity" className={inputCls} />

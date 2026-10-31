@@ -110,7 +110,7 @@ function EngineeringDesk() {
         )}
 
         {summary && (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="rounded-2xl border border-white/10 bg-[#111] p-4 text-center">
               <p className="mb-1 text-xs text-gray-400">Max Displacement</p>
               <p className="font-mono text-lg font-bold text-neon-cyan">{summary.maxDisplacement.toFixed(4)}&quot;</p>

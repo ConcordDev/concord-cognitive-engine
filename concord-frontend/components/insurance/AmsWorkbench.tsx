@@ -1228,7 +1228,7 @@ function ESignBinder({ policies }: { policies: PolicyLite[] }) {
         </div>
         <div className="space-y-1.5">
           {signers.map((s, i) => (
-            <div key={i} className="grid grid-cols-3 gap-1.5">
+            <div key={i} className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
               <input className={inputCls} placeholder="Signer name" value={s.name} onChange={e => updateSigner(i, { name: e.target.value })} />
               <input className={inputCls} placeholder="Email" value={s.email} onChange={e => updateSigner(i, { email: e.target.value })} />
               <select className={inputCls} value={s.role} onChange={e => updateSigner(i, { role: e.target.value })}>

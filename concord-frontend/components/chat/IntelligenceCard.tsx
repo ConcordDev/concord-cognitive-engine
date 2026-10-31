@@ -93,7 +93,7 @@ function OverviewView({ metrics }: { metrics: IntelMetrics }) {
       </div>
 
       {/* Tier Summary */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="bg-zinc-800 rounded p-2 text-center">
           <Eye size={16} className="text-emerald-400 mx-auto mb-1" />
           <div className="text-xs text-zinc-400">Public</div>

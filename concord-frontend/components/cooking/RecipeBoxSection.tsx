@@ -473,7 +473,7 @@ export function RecipeBoxSection() {
             </header>
             <div className="p-4 space-y-2">
               <input value={editRecipe.title || ''} onChange={e => setEditRecipe({ ...editRecipe, title: e.target.value })} placeholder="Recipe title *" className="w-full px-2 py-1.5 text-sm bg-lattice-deep border border-lattice-border rounded text-white" />
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <label className="text-[10px] text-gray-400">Servings<input type="number" min={1} value={editRecipe.servings || 4} onChange={e => setEditRecipe({ ...editRecipe, servings: Number(e.target.value) })} className="w-full mt-0.5 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" /></label>
                 <label className="text-[10px] text-gray-400">Prep min<input type="number" min={0} value={editRecipe.prepMin || 0} onChange={e => setEditRecipe({ ...editRecipe, prepMin: Number(e.target.value) })} className="w-full mt-0.5 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" /></label>
                 <label className="text-[10px] text-gray-400">Cook min<input type="number" min={0} value={editRecipe.cookMin || 0} onChange={e => setEditRecipe({ ...editRecipe, cookMin: Number(e.target.value) })} className="w-full mt-0.5 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" /></label>

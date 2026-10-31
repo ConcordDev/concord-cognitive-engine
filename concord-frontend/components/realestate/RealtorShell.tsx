@@ -105,7 +105,7 @@ export function RealtorShell({
       )}
 
       {/* Top metrics */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <Tile icon={MapPin} label="Listings" value={String(totalCount)} />
         <Tile icon={TrendingUp} label="Median" value={medianPrice ? fmtPrice(medianPrice) : '—'} />
         <Tile icon={Heart} label="Favourites" value={String(favouriteCount)} />

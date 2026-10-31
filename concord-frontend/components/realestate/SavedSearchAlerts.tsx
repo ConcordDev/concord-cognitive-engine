@@ -123,7 +123,7 @@ export function SavedSearchAlerts({ onSelect }: { onSelect?: (l: Listing) => voi
       {adding && (
         <div className="p-3 border-b border-white/10 space-y-2 text-xs">
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Search name (e.g. 3BR Austin under $600K)" className="w-full px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white" />
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             <input type="number" value={form.minPrice} onChange={(e) => setForm({ ...form, minPrice: e.target.value })} placeholder="Min $" className="px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white" />
             <input type="number" value={form.maxPrice} onChange={(e) => setForm({ ...form, maxPrice: e.target.value })} placeholder="Max $" className="px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white" />
             <input type="number" value={form.minBeds} onChange={(e) => setForm({ ...form, minBeds: e.target.value })} placeholder="Min beds" className="px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white" />

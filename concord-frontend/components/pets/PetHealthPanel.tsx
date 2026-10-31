@@ -102,7 +102,7 @@ export function PetHealthPanel({ petId, onChange }: { petId: string; onChange: (
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <Syringe className="w-3.5 h-3.5 text-teal-400" /> Vaccinations
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input placeholder="Vaccine" value={vac.name} onChange={(e) => setVac({ ...vac, name: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input type="date" title="Given" value={vac.date} onChange={(e) => setVac({ ...vac, date: e.target.value })}
@@ -145,7 +145,7 @@ export function PetHealthPanel({ petId, onChange }: { petId: string; onChange: (
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <Pill className="w-3.5 h-3.5 text-teal-400" /> Medications
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input placeholder="Medication" value={med.name} onChange={(e) => setMed({ ...med, name: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input placeholder="Dosage" value={med.dosage} onChange={(e) => setMed({ ...med, dosage: e.target.value })}
@@ -182,7 +182,7 @@ export function PetHealthPanel({ petId, onChange }: { petId: string; onChange: (
           <Stethoscope className="w-3.5 h-3.5 text-teal-400" /> Vet visits
           {visitCost > 0 && <span className="text-[10px] text-zinc-400">· ${visitCost} total</span>}
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input placeholder="Reason" value={visit.reason} onChange={(e) => setVisit({ ...visit, reason: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input type="date" value={visit.date} onChange={(e) => setVisit({ ...visit, date: e.target.value })}

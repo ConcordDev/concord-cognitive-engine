@@ -998,7 +998,7 @@ function RangeCompare({ eventNames }: { eventNames: string[] }) {
 
       {result && (
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
-          <div className="grid grid-cols-3 gap-2 mb-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
             <div className="bg-zinc-950 border border-zinc-800 rounded p-2 text-center">
               <p className="text-lg font-bold text-zinc-100">{result.previous.value.toLocaleString()}</p>
               <p className="text-[9px] text-zinc-400 uppercase tracking-wide">Previous</p>

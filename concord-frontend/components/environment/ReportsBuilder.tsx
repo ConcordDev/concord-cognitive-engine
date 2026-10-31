@@ -100,7 +100,7 @@ export function ReportsBuilder() {
           <div className="text-center text-xs text-gray-400 py-6">No data yet.</div>
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-2 mb-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
               <Tile label="Scope 1" value={`${summary.ytdScope1.toFixed(1)} t`} />
               <Tile label="Scope 2" value={`${summary.ytdScope2.toFixed(1)} t`} />
               <Tile label="Scope 3" value={`${summary.ytdScope3.toFixed(1)} t`} />

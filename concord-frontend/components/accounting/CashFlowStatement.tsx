@@ -47,7 +47,7 @@ export function CashFlowStatement() {
 
       {loading ? (
         <div className="p-4 space-y-4" aria-busy="true">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} variant="block" height="4.5rem" />)}
           </div>
           <Skeleton variant="block" height="14rem" />
@@ -56,7 +56,7 @@ export function CashFlowStatement() {
         <div className="p-10 text-center text-xs text-gray-400">No cash activity in this period.</div>
       ) : (
         <div className="p-4 space-y-4">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Tile label="Cash in" value={cf.totalIn} tone="positive" />
             <Tile label="Cash out" value={cf.totalOut} tone="negative" />
             <Tile label="Net cash flow" value={cf.netCashFlow} tone={cf.netCashFlow >= 0 ? 'positive' : 'negative'} bold />

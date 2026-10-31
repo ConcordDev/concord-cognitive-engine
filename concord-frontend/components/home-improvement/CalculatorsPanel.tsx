@@ -146,7 +146,7 @@ export function CalculatorsPanel() {
           return (
             <div className="space-y-3 pt-2 border-t border-lattice-border">
               <h3 className="text-sm font-semibold text-neon-green">ROI Calculator</h3>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="lens-card text-center">
                   <p className="text-lg font-bold text-neon-green">{(d.avgROI || 0).toFixed(1)}%</p>
                   <p className="text-xs text-gray-400">Avg ROI</p>

@@ -620,7 +620,7 @@ function CompTab() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <Stat label="Total Comp" value={usd(data.totalComp)} />
         <Stat label="Headcount" value={String(data.headcount)} />
         <Stat label="Avg Comp" value={usd(data.avgComp)} />
@@ -841,7 +841,7 @@ function TenureTab() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <Stat label="Avg Tenure" value={`${data.avgTenureYears}y`} />
         <Stat label="Attrition" value={`${Math.round(data.attritionRate * 100)}%`} />
         <Stat label="High Flight-Risk" value={String(data.highRiskCount)} />

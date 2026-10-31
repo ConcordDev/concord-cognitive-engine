@@ -211,7 +211,7 @@ export function PersonaDetailPanel({
 
       {tab === 'stats' && stats && (
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Stat label="Installs" value={stats.installCount} />
             <Stat label="Chats" value={stats.chatCount} />
             <Stat label="Avg rating" value={stats.rating || 0} />

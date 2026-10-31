@@ -71,7 +71,7 @@ export function AgentRoster() {
         </button>
       </form>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <Cell label="Total" value={String(s.total ?? agents.length)} />
         <Cell label="Active" value={String(s.active ?? '—')} />
         <Cell label="Idle" value={String(s.idle ?? '—')} />

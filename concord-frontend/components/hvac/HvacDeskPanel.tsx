@@ -256,7 +256,7 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                   <label className={ds.label}>Scheduled Date</label>
                   <input type="date" className={ds.input} value={formScheduledDate} onChange={(e) => setFormScheduledDate(e.target.value)} />
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <label className={ds.label}>Labor Hrs</label>
                     <input type="number" className={ds.input} value={formLaborHours} onChange={(e) => setFormLaborHours(e.target.value)} />
@@ -402,7 +402,7 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
           <Fan className="w-5 h-5 text-cyan-400" />
           <div>

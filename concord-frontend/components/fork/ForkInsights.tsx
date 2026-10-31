@@ -310,7 +310,7 @@ function NetworkTab() {
       {err && <ErrLine msg={err} />}
       {data && (
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <StatTile label="forks" value={data.forkCount} />
             <StatTile label="repos charted" value={data.repos.length} />
             <StatTile label="total commits" value={data.grandTotalCommits} tone="text-cyan-300" />
@@ -483,7 +483,7 @@ function ReleasesTab() {
       {err && <ErrLine msg={err} />}
       {data && (
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <StatTile label="releases" value={data.releaseCount} />
             <StatTile label="tags" value={data.tagCount} />
             <StatTile label="asset downloads" value={data.totalAssetDownloads.toLocaleString()} tone="text-cyan-300" />

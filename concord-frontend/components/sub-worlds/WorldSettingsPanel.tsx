@@ -153,7 +153,7 @@ export function WorldSettingsPanel({
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <div>
             <label className="block text-[11px] uppercase tracking-wider text-zinc-400 mb-1">Privacy</label>
             <select

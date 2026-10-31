@@ -281,7 +281,7 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
             </button>
           </div>
         ))}
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-1.5">
           <input placeholder="New subtask" value={subForm.content} onChange={(e) => setSubForm({ ...subForm, content: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <select value={subForm.priority} onChange={(e) => setSubForm({ ...subForm, priority: e.target.value })}

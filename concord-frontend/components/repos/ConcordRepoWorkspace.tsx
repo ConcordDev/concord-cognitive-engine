@@ -1277,7 +1277,7 @@ function SecurityTab({ repoId }: { repoId: string }) {
         </button>
       </div>
       {scanned && (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           {(['critical', 'high', 'moderate', 'low'] as const).map((s) => (
             <div key={s} className={`rounded border px-2 py-1.5 text-center ${SEV_COLOR[s]}`}>
               <div className="font-mono text-lg">{bySeverity[s] || 0}</div>
@@ -1673,7 +1673,7 @@ function AnalysisTab({ repoId }: { repoId: string }) {
               <p className="text-[11px] text-zinc-400">{complexity.message}</p>
             ) : (
               <div className="space-y-2">
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                   <StatBox label="Modules" value={complexity.totalModules} />
                   <StatBox label="Functions" value={complexity.totalFunctions} />
                   <StatBox label="Avg complexity" value={complexity.overallAvgComplexity} tone={complexity.overallAvgComplexity > 10 ? 'bad' : 'good'} />
@@ -1702,7 +1702,7 @@ function AnalysisTab({ repoId }: { repoId: string }) {
               <p className="text-[11px] text-zinc-400">{commits.message}</p>
             ) : (
               <div className="space-y-2">
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                   <StatBox label="Commits" value={commits.totalCommits} />
                   <StatBox label="Bus factor" value={commits.busFactor} tone={commits.busFactorRisk === 'critical' || commits.busFactorRisk === 'high' ? 'bad' : 'good'} />
                   <StatBox label="Commits/day" value={commits.frequency.commitsPerDay} />
@@ -1731,7 +1731,7 @@ function AnalysisTab({ repoId }: { repoId: string }) {
               <p className="text-[11px] text-zinc-400">No dependency data.</p>
             ) : (
               <div className="space-y-2">
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                   <StatBox label="Deps" value={deps.totalDependencies} />
                   <StatBox label="Health" value={`${deps.healthScore} (${deps.healthGrade})`} tone={deps.healthScore < 60 ? 'bad' : 'good'} />
                   <StatBox label="Version conflicts" value={deps.duplicates.versionConflicts} tone={deps.duplicates.versionConflicts > 0 ? 'bad' : 'good'} />

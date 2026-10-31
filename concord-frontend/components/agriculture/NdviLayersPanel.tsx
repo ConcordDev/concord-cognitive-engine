@@ -216,7 +216,7 @@ export function NdviLayersPanel({
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
-              <div className="grid grid-cols-3 gap-2 mb-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
                 {[
                   { k: 'Latest', v: layer.latestIndex },
                   { k: 'Window avg', v: layer.avgIndex },

@@ -285,7 +285,7 @@ function HiveCascadeSection({ metrics }: { metrics: HiveMetrics }) {
       </h3>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-4 gap-2 mb-3">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
         {[
           { label: 'Cascades', value: metrics.totalCascades },
           { label: 'Hive DTUs', value: metrics.totalHiveDTUs },
@@ -301,7 +301,7 @@ function HiveCascadeSection({ metrics }: { metrics: HiveMetrics }) {
 
       {/* Processing path distribution */}
       <h4 className="text-[10px] uppercase text-gray-400 mb-1">Processing Paths</h4>
-      <div className="grid grid-cols-4 gap-1 mb-3">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-1 mb-3">
         {Object.entries(metrics.processingPathDistribution).map(([path, count]) => (
           <div key={path} className="text-center p-1 rounded bg-lattice-deep">
             <div className="text-xs text-neon-cyan">{count}</div>
@@ -347,7 +347,7 @@ function ExplorationSection({ metrics }: { metrics: ExplorationMetrics }) {
         Web Exploration
       </h3>
 
-      <div className="grid grid-cols-4 gap-2 mb-3">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
         {[
           { label: 'Explorations', value: metrics.totalExplorations },
           { label: 'Findings', value: metrics.totalFindings },
@@ -365,7 +365,7 @@ function ExplorationSection({ metrics }: { metrics: ExplorationMetrics }) {
       {Object.keys(metrics.sourceVisits).length > 0 && (
         <>
           <h4 className="text-[10px] uppercase text-gray-400 mb-1">Sources Visited</h4>
-          <div className="grid grid-cols-3 gap-1 mb-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-1 mb-2">
             {Object.entries(metrics.sourceVisits).map(([src, count]) => (
               <div key={src} className="text-center p-1 rounded bg-lattice-deep">
                 <div className="text-xs text-neon-green">{count}</div>
@@ -380,7 +380,7 @@ function ExplorationSection({ metrics }: { metrics: ExplorationMetrics }) {
       {Object.keys(metrics.domainHeatmap).length > 0 && (
         <>
           <h4 className="text-[10px] uppercase text-gray-400 mb-1">Domain Heatmap</h4>
-          <div className="grid grid-cols-4 gap-1">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-1">
             {Object.entries(metrics.domainHeatmap).map(([domain, count]) => (
               <div key={domain} className="text-center p-1 rounded bg-lattice-deep">
                 <div className="text-xs text-neon-cyan">{count}</div>

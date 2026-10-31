@@ -302,7 +302,7 @@ export default function TrainingRoomPage() {
             ) : frameStatus === 'loading' ? (
               <div className="space-y-3" role="status" aria-busy="true" aria-label="Loading frame data" data-testid="frame-loading">
                 <div className="h-6 w-1/3 animate-pulse rounded bg-white/5" />
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   {[0, 1, 2].map((i) => <div key={i} className="h-16 animate-pulse rounded bg-white/5" />)}
                 </div>
                 <div className="grid grid-cols-2 gap-2">

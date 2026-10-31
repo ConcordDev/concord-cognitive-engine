@@ -188,7 +188,7 @@ function ChartResultView({ result }: { result: ChartResult }) {
         <p className="text-[10px] text-gray-400 uppercase mb-2">
           Box plot — {result.valueColumn} ({result.n} values)
         </p>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           {cells.map(([k, v]) => (
             <div key={k}>
               <span className="text-gray-400 text-[10px]">{k}</span>

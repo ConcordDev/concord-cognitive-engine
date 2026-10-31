@@ -1173,7 +1173,7 @@ export function SecurityOpsPanel() {
             {/* evidenceChain */}
             {actionResult.investigationId !== undefined && (
               <div className="space-y-2">
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${actionResult.intact ? 'text-green-400' : 'text-red-400'}`}>{actionResult.intact ? 'Intact' : 'Issues'}</p>
                     <p className="text-[10px] text-gray-400">Chain Status</p>
@@ -1207,7 +1207,7 @@ export function SecurityOpsPanel() {
             {/* vulnerabilityScan — findings + severity rollup */}
             {actionResult.totalFindings !== undefined && Array.isArray(actionResult.findings) && (
               <div className="space-y-2">
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.totalFindings)}</p>
                     <p className="text-[10px] text-gray-400">Findings</p>
@@ -1260,7 +1260,7 @@ export function SecurityOpsPanel() {
             {/* threatAssessment — per-threat risk + overall */}
             {actionResult.overallRiskScore !== undefined && Array.isArray(actionResult.assessments) && (
               <div className="space-y-2">
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.overallRiskScore)}</p>
                     <p className="text-[10px] text-gray-400">Overall Risk</p>

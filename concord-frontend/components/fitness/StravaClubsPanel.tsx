@@ -86,7 +86,7 @@ export function StravaClubsPanel() {
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <Users className="w-3.5 h-3.5 text-orange-400" /> Clubs
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input placeholder="Club name" value={clubForm.name} onChange={(e) => setClubForm({ ...clubForm, name: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <select value={clubForm.sport} onChange={(e) => setClubForm({ ...clubForm, sport: e.target.value })}
@@ -124,7 +124,7 @@ export function StravaClubsPanel() {
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <Flag className="w-3.5 h-3.5 text-orange-400" /> Challenges
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input placeholder="Challenge name" value={chForm.name} onChange={(e) => setChForm({ ...chForm, name: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <select value={chForm.metric} onChange={(e) => setChForm({ ...chForm, metric: e.target.value })}

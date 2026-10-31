@@ -829,7 +829,7 @@ export function SceneStudio() {
                   {(['position', 'rotation', 'scale'] as const).map((field) => (
                     <div key={field}>
                       <label className={ds.label}>{field}</label>
-                      <div className="grid grid-cols-3 gap-1">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
                         {(['x', 'y', 'z'] as const).map((axis) => (
                           <input
                             key={axis}
@@ -1029,7 +1029,7 @@ export function SceneStudio() {
               <p className="text-sm text-gray-300">Image-target compiler</p>
               <p className={ds.textMuted}>Compile a marker image — scores trackability from resolution + feature density.</p>
               <input className={cn(ds.input, 'text-sm')} placeholder="Target name" value={tgName} onChange={(e) => setTgName(e.target.value)} />
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
                 <input className={cn(ds.input, 'text-xs')} placeholder="width px" value={tgW} onChange={(e) => setTgW(e.target.value)} aria-label="width" />
                 <input className={cn(ds.input, 'text-xs')} placeholder="height px" value={tgH} onChange={(e) => setTgH(e.target.value)} aria-label="height" />
                 <input className={cn(ds.input, 'text-xs')} placeholder="cm wide" value={tgPhysical} onChange={(e) => setTgPhysical(e.target.value)} aria-label="physical width" />

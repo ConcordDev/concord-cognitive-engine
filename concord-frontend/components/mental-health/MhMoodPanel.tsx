@@ -93,7 +93,7 @@ export function MhMoodPanel({ onChange }: { onChange: () => void }) {
 
       {/* Insights */}
       {insights && insights.entries > 0 && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
             <p className="text-lg font-bold text-zinc-100">{insights.average}</p>
             <p className="text-[10px] text-zinc-400 uppercase">Avg mood</p>

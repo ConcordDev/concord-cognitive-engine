@@ -98,7 +98,7 @@ function SubstrateWeather({ className }: { className?: string }) {
         </div>
 
         {/* Quick stats */}
-        <div className="grid grid-cols-4 gap-3 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-4">
           <div className="text-center">
             <p className="text-lg font-bold text-white">{stats.totalDTUs || 0}</p>
             <p className="text-[10px] text-gray-400">Total DTUs</p>

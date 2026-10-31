@@ -241,7 +241,7 @@ export function ProductCatalogPanel() {
               placeholder="Product name"
               className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100" />
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input type="number" value={draft.price} step="0.01" onChange={(e) => setDraft({ ...draft, price: e.target.value })}
               placeholder="Price" className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
             <input type="number" value={draft.stock} onChange={(e) => setDraft({ ...draft, stock: e.target.value })}
@@ -250,7 +250,7 @@ export function ProductCatalogPanel() {
               placeholder="Category" className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100" />
           </div>
           <p className="text-[10px] uppercase text-gray-500 pt-1">Sourcing &amp; forecasting</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input type="text" value={draft.supplier} onChange={(e) => setDraft({ ...draft, supplier: e.target.value })}
               placeholder="Supplier" className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100" />
             <input type="number" value={draft.leadTimeDays} onChange={(e) => setDraft({ ...draft, leadTimeDays: e.target.value })}

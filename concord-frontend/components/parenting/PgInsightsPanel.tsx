@@ -75,7 +75,7 @@ export function PgInsightsPanel({ childId }: { childId: string }) {
         </h3>
         {trends && trends.daysWithData > 0 ? (
           <>
-            <div className="grid grid-cols-3 gap-2 mb-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
               <Stat label="Feeds/day" value={trends.averages.feedsPerDay} />
               <Stat label="Sleep/day" value={`${Math.round((trends.averages.sleepMinPerDay / 60) * 10) / 10}h`} />
               <Stat label="Diapers/day" value={trends.averages.diapersPerDay} />

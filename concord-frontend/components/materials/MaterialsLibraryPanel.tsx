@@ -204,12 +204,12 @@ export function MaterialsLibraryPanel({ mode, onModeChange }: { mode: MaterialsC
 
             {activeArtifactType === 'Material' && (<>
               <div><label className={ds.label}>Grade / Alloy</label><input className={ds.input} value={formGrade} onChange={e => setFormGrade(e.target.value)} placeholder="e.g. 304, 6061-T6" /></div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div><label className={ds.label}>Density (g/cm3)</label><input type="number" step="0.01" className={ds.input} value={formDensity} onChange={e => setFormDensity(e.target.value)} /></div>
                 <div><label className={ds.label}>Tensile (MPa)</label><input type="number" className={ds.input} value={formTensileStrength} onChange={e => setFormTensileStrength(e.target.value)} /></div>
                 <div><label className={ds.label}>Hardness</label><input type="number" className={ds.input} value={formHardness} onChange={e => setFormHardness(e.target.value)} /></div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div><label className={ds.label}>Thermal K (W/mK)</label><input type="number" step="0.1" className={ds.input} value={formThermalConductivity} onChange={e => setFormThermalConductivity(e.target.value)} /></div>
                 <div><label className={ds.label}>Melting (C)</label><input type="number" className={ds.input} value={formMeltingPoint} onChange={e => setFormMeltingPoint(e.target.value)} /></div>
                 <div><label className={ds.label}>Young&apos;s (GPa)</label><input type="number" step="0.1" className={ds.input} value={formYoungsModulus} onChange={e => setFormYoungsModulus(e.target.value)} /></div>
@@ -235,7 +235,7 @@ export function MaterialsLibraryPanel({ mode, onModeChange }: { mode: MaterialsC
 
             {activeArtifactType === 'Supplier' && (<>
               <div><label className={ds.label}>Supplier Name</label><input className={ds.input} value={formSupplierName} onChange={e => setFormSupplierName(e.target.value)} /></div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div><label className={ds.label}>Lead Time</label><input className={ds.input} value={formLeadTime} onChange={e => setFormLeadTime(e.target.value)} placeholder="2 weeks" /></div>
                 <div><label className={ds.label}>MOQ</label><input type="number" className={ds.input} value={formMoq} onChange={e => setFormMoq(e.target.value)} /></div>
                 <div><label className={ds.label}>Price/Unit</label><input type="number" step="0.01" className={ds.input} value={formPricePerUnit} onChange={e => setFormPricePerUnit(e.target.value)} /></div>

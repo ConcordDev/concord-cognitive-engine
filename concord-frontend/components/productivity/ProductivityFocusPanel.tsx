@@ -73,7 +73,7 @@ export function ProductivityFocusPanel({ onChange }: { onChange: () => void }) {
           <Timer className="w-3.5 h-3.5 text-red-400" /> Pomodoro focus
         </h3>
         {stats && (
-          <div className="grid grid-cols-4 gap-2 mb-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
             <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
               <p className="text-sm font-bold text-zinc-100">{stats.todaySessions}</p>
               <p className="text-[10px] text-zinc-400 uppercase">Today</p>

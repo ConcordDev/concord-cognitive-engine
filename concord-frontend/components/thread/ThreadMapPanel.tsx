@@ -890,7 +890,7 @@ export function ThreadMapPanel({ onOpenComposer }: { onOpenComposer?: () => void
                 </div>
 
                 <div className="p-4 border-t border-lattice-border space-y-3">
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     <button
                       onClick={() => { setReplyTarget(selectedNode.id); setReplyOpen(true); }}
                       className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white flex flex-col items-center gap-1"

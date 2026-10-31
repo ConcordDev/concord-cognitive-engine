@@ -85,7 +85,7 @@ export function AnalysisWorkbench({ selected }: { selected: Headline[] }) {
   return (
     <div className="flex flex-col gap-3">
       {/* Engine selector */}
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
         {ENGINES.map((e) => {
           const Icon = e.icon;
           const active = engine === e.id;

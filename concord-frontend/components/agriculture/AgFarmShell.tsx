@@ -54,7 +54,7 @@ export function AgFarmShell({
   return (
     <div className={cn('flex flex-col gap-3 p-4 bg-[#0d1117] text-gray-100', className)}>
       {/* Metric strip */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <Metric icon={Wheat} label="Acres farmed" value={totalAcres.toFixed(0)} caption={`${totalFields} fields`} tone="emerald" />
         <Metric icon={Tractor} label="Equipment" value={`${equipmentWorking}/${equipmentCount}`} caption="working" tone="amber" />
         <Metric icon={BarChart3} label="Season yield" value={`${(seasonYieldBushels / 1000).toFixed(1)}K bu`} caption={`${avgYieldPerAcre}/ac avg`} tone="cyan" />

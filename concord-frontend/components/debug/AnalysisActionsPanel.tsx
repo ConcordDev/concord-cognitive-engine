@@ -46,7 +46,7 @@ export function AnalysisActionsPanel() {
     actionResult.totalLogs !== undefined &&
     actionResult.logsPerSecond !== undefined && (
       <div className="space-y-3 pt-2 border-t border-white/5">
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <div className="p-2 bg-lattice-surface rounded text-center">
             <p className="text-lg font-bold text-neon-cyan">
               {String(actionResult.totalLogs)}
@@ -149,7 +149,7 @@ export function AnalysisActionsPanel() {
     actionResult.uniqueClusters !== undefined &&
     actionResult.deduplicationRatio !== undefined && (
       <div className="space-y-3 pt-2 border-t border-white/5">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <div className="p-2 bg-lattice-surface rounded text-center">
             <p className="text-lg font-bold text-neon-cyan">
               {String(actionResult.totalErrors)}
@@ -221,7 +221,7 @@ export function AnalysisActionsPanel() {
     actionResult.totalDurationMs !== undefined &&
     actionResult.uniqueOperations !== undefined && (
       <div className="space-y-3 pt-2 border-t border-white/5">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <div className="p-2 bg-lattice-surface rounded text-center">
             <p className="text-lg font-bold text-neon-cyan">
               {String(actionResult.totalTraces)}
@@ -287,7 +287,7 @@ export function AnalysisActionsPanel() {
   {/* stackTraceAnalysis result */}
   {actionResult && actionResult.rootCauseCandidates !== undefined && (
     <div className="space-y-3 pt-2 border-t border-white/5">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="p-2 bg-lattice-surface rounded text-center">
           <p className="text-lg font-bold text-neon-cyan">
             {String(actionResult.totalTraces)}

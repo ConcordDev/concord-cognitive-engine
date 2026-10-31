@@ -35,7 +35,7 @@ export function BudgetPanel() {
     <div className="space-y-4">
       <div className="panel p-6">
         <h2 className="font-semibold mb-4 flex items-center gap-2"><DollarSign className="w-4 h-4 text-neon-green" />Budget Overview</h2>
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="text-center">
             <p className="text-xs text-gray-400 uppercase">Budget</p>
             <p className="text-xl font-bold text-neon-green">${stats.totalBudget.toLocaleString()}</p>

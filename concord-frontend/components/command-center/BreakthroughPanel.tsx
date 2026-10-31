@@ -46,7 +46,7 @@ export function BreakthroughPanel() {
     <div className="space-y-4">
       {/* Metrics summary */}
       {metricsData && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Stat label="Total Clusters" value={metricsData.totalClusters || 0} />
           <Stat label="Total DTUs" value={metricsData.totalDTUs || 0} />
           <Stat label="Research Jobs" value={metricsData.totalResearchJobs || 0} />

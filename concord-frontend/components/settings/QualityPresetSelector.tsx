@@ -42,7 +42,7 @@ export function QualityPresetSelector() {
         Trades shadow detail, bloom intensity, and post-processing for performance.
         Changes take effect after a page refresh.
       </p>
-      <div className="grid grid-cols-4 gap-2 mb-3">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
         {PRESETS.map((p) => (
           <button
             key={p}

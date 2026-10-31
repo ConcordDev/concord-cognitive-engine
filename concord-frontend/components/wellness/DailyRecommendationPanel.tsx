@@ -96,7 +96,7 @@ export function DailyRecommendationPanel() {
             ))}
           </ul>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Sig label="Sleep" value={rec.signals.sleepHours !== null ? `${rec.signals.sleepHours}h` : '—'} />
             <Sig label="HRV" value={rec.signals.hrvMs !== null ? `${rec.signals.hrvMs}` : '—'} />
             <Sig label="RHR" value={rec.signals.restingHr !== null ? `${rec.signals.restingHr}` : '—'} />

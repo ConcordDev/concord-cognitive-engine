@@ -308,7 +308,7 @@ function HeatmapPanel() {
           </div>
           {results && (
             <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <Stat label="Total clicks" value={results.totalClicks} />
                 <Stat label="First-click success" value={results.firstClickSuccessRate === null ? '—' : `${results.firstClickSuccessRate}%`}
                   color={(results.firstClickSuccessRate ?? 0) >= 70 ? 'text-neon-green' : 'text-yellow-400'} />

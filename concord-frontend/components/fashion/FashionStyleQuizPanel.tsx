@@ -85,7 +85,7 @@ export function FashionStyleQuizPanel() {
               <RotateCcw className="w-3 h-3" /> Retake
             </button>
           </div>
-          <div className="grid grid-cols-3 gap-2 mt-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
             {[
               ['Vibe', profile.style], ['Palette', profile.palette], ['Fit', profile.fit],
               ['Shopping', profile.spend], ['Priority', profile.priority],

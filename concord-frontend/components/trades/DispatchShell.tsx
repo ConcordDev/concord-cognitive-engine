@@ -76,7 +76,7 @@ export function DispatchShell({
   return (
     <div className={cn('flex flex-col gap-3 p-4 bg-[#0d1117] text-gray-100', className)}>
       {/* Metric strip */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <Metric icon={Calendar} label="Jobs today" value={String(jobsToday)} caption={date} tone="cyan" />
         <Metric icon={Users} label="Techs deployed" value={`${techsOnJob}/${techsTotal}`} caption="of total" tone="violet" />
         <Metric icon={DollarSign} label="Revenue" value={`$${revenueToday.toFixed(0)}`} caption="paid this period" tone="emerald" />

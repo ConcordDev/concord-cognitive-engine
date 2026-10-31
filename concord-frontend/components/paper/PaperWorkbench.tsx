@@ -416,7 +416,7 @@ function ReaderTab({ papers, busy, setBusy, setErr, onChanged }:
                   <Sparkles className="w-3 h-3 text-amber-400" />
                   <span className="text-[11px] font-semibold text-zinc-200">Semantic Scholar</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   {([['Citations', sel.enrichment.citationCount],
                      ['Influential', sel.enrichment.influentialCitationCount],
                      ['References', sel.enrichment.referenceCount]] as const).map(([l, v]) => (

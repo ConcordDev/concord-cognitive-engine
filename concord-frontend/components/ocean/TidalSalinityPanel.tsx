@@ -108,7 +108,7 @@ export function TidalSalinityPanel() {
                   <span className="font-mono text-lg text-emerald-200 capitalize">{salResult.waterMass}</span>
                   <span className="text-zinc-400">water mass</span>
                 </div>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
                   <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Avg PSU</div><div className="font-mono text-emerald-200">{salResult.avgSalinity}</div></div>
                   <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Max depth</div><div className="font-mono text-emerald-200">{salResult.maxDepth}m</div></div>
                   <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Halocline</div><div className="font-mono text-emerald-200">{salResult.haloclineDepth}</div></div>

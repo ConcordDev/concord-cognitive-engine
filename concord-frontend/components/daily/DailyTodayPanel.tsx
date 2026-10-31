@@ -990,7 +990,7 @@ export function DailyTodayPanel() {
                       <div className="w-full bg-lattice-bg rounded-full h-2">
                         <div className="bg-neon-green h-2 rounded-full" style={{ width: `${Math.min(Number(r.completionRate), 100)}%` }} />
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="font-bold text-neon-blue">{String(r.tasksCompleted)}/{String(r.totalTasks)}</p>
                           <p className="text-[10px] text-gray-400">Tasks</p>
@@ -1043,7 +1043,7 @@ export function DailyTodayPanel() {
                         <span className="text-gray-400">Date:</span>
                         <span className="text-gray-200">{String(r.date)}</span>
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="text-sm font-bold text-neon-green">{String(r.totalHours)}h</p>
                           <p className="text-[10px] text-gray-400">Focus Today</p>
@@ -1092,7 +1092,7 @@ export function DailyTodayPanel() {
                           <p className="text-[10px] text-gray-400">Focus Hours</p>
                         </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="font-bold text-gray-300">{String(r.daysTracked)}</p>
                           <p className="text-[10px] text-gray-400">Days</p>

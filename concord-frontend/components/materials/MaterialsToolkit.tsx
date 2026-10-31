@@ -525,7 +525,7 @@ function CompositeTab() {
       {result && result.message && <p className="text-xs italic text-zinc-400">{result.message}</p>}
       {result && !result.message && (
         <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 space-y-2 text-xs">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <div className="rounded border border-zinc-800 bg-zinc-900/50 p-2"><p className="text-[10px] text-zinc-400">Density</p><p className="font-bold text-zinc-100">{result.compositeProperties.density} g/cm³</p></div>
             <div className="rounded border border-zinc-800 bg-zinc-900/50 p-2"><p className="text-[10px] text-zinc-400">Tensile (Voigt / Reuss)</p><p className="font-bold text-zinc-100">{result.compositeProperties.tensileStrength.voigt} / {result.compositeProperties.tensileStrength.reuss} MPa</p></div>
             <div className="rounded border border-zinc-800 bg-zinc-900/50 p-2"><p className="text-[10px] text-zinc-400">Modulus (Voigt / Reuss)</p><p className="font-bold text-zinc-100">{result.compositeProperties.youngsModulus.voigt} / {result.compositeProperties.youngsModulus.reuss} GPa</p></div>

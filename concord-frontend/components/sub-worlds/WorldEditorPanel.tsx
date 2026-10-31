@@ -138,7 +138,7 @@ export function WorldEditorPanel({
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
             />
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             {(['x', 'y', 'z'] as const).map((axis) => (
               <input
                 key={axis}

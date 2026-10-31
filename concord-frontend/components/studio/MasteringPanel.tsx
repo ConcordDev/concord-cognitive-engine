@@ -265,7 +265,7 @@ export function MasteringPanel({
             RMS-based estimate captured live from the master bus AnalyserNode
             (~3s window) — an approximation, not full ITU-R BS.1770 K-weighted LUFS.
           </p>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-neon-green font-mono">{analysis.integratedLUFS.toFixed(1)}</div>
               <div className="text-[10px] text-gray-400">Integrated LUFS (approx)</div>

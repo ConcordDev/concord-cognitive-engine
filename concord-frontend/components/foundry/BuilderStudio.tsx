@@ -604,7 +604,7 @@ function PlaceBuildingCard({ worldId, ok, err }: TabProps) {
         </label>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <NumField label="Width (m)" value={widthNum} min={1} max={500}
           onChange={(v) => setWidth(String(v))} />
         <NumField label="Height (m)" value={heightNum} min={1} max={500}

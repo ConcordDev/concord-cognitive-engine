@@ -145,7 +145,7 @@ export function RfInsightsPanel() {
 
       {/* Streak */}
       {streak && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
             <p className="flex items-center justify-center gap-1 text-2xl font-bold text-orange-300">
               <Flame className="w-5 h-5" />{streak.currentStreak}

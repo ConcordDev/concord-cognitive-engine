@@ -51,7 +51,7 @@ export function ClassroomShell({
   return (
     <div className={cn('flex flex-col gap-4 p-5 bg-[#0e1117] text-gray-100', className)}>
       {/* Top hero: streak + points + level */}
-      <header className="grid grid-cols-3 gap-3">
+      <header className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <HeroTile icon={Flame} label="Day streak" value={streak.toString()} caption={streak === 0 ? 'Start today!' : `${streak} day${streak > 1 ? 's' : ''} in a row`} tone="orange" />
         <HeroTile icon={Zap} label="Energy points" value={energyPoints.toLocaleString()} caption={`+${pointsToday} today`} tone="amber" />
         <HeroTile icon={Trophy} label="Level" value={level.toString()} caption={`${proficientSkills}/${(level) * 5} skill points`} tone="violet" />
@@ -106,7 +106,7 @@ export function ClassroomShell({
       </section>
 
       {/* Skill + cert tiles */}
-      <section className="grid grid-cols-3 gap-3">
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <StatTile icon={Target} label="Skill points" value={proficientSkills.toString()} sub={`${totalSkills} skills total`} colour="emerald" />
         <StatTile icon={Award} label="Certificates" value={certificates.toString()} sub="earned" colour="amber" />
         <StatTile icon={GraduationCap} label="Enrolled" value={enrolledCourses.length.toString()} sub="courses in progress" colour="cyan" />

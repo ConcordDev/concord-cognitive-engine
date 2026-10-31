@@ -225,7 +225,7 @@ export function AnalysisToolsPanel() {
                   </div>
 
                   {/* Stats Row */}
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     <div className="lens-card text-center">
                       <p className="text-xs text-gray-400">Tokens</p>
                       <p className="text-sm font-mono font-bold">{String(sentimentResult.tokenCount)}</p>
@@ -367,7 +367,7 @@ export function AnalysisToolsPanel() {
 
                   {/* Arc Segments */}
                   {!!timelineResult.arcSegments && (
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                       {Object.entries(timelineResult.arcSegments as Record<string, number>).map(([seg, val]) => {
                         const arrow = val > 0.1
                           ? <ArrowUpRight className="w-3.5 h-3.5 text-green-400" />

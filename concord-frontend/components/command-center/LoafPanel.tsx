@@ -44,7 +44,7 @@ export function LoafPanel() {
 
       {/* Meta status */}
       {meta && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Stat label="Version" value={`v${meta.version || '?'}`} />
           <Stat label="Modules" value={meta.moduleCount ?? 0} />
           <Stat label="Status" value={meta.initialized ? 'Active' : 'Down'} />
@@ -55,7 +55,7 @@ export function LoafPanel() {
       {hyp?.ok && (
         <div className="bg-lattice-surface rounded-lg p-3 border border-lattice-border space-y-2">
           <p className="text-xs font-semibold text-amber-400">Hypothesis Market</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Stat label="Total" value={hyp.totalHypotheses ?? 0} />
             <Stat label="Proposed" value={hyp.byState?.proposed ?? 0} />
             <Stat label="Challenged" value={hyp.byState?.challenged ?? 0} />
@@ -73,7 +73,7 @@ export function LoafPanel() {
       {truth?.ok && (
         <div className="bg-lattice-surface rounded-lg p-3 border border-lattice-border space-y-2">
           <p className="text-xs font-semibold text-teal-400">Truth Lifecycle</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Stat label="Total Truths" value={truth.totalTruths ?? 0} />
             <Stat label="Rollbacks" value={truth.rollbackCount ?? 0} />
             <Stat label="Stabilized" value={truth.byState?.stabilized ?? 0} />
@@ -91,7 +91,7 @@ export function LoafPanel() {
       {safety?.ok && (
         <div className="bg-lattice-surface rounded-lg p-3 border border-lattice-border space-y-2">
           <p className="text-xs font-semibold text-red-400">Action Safety</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Stat label="Envelopes" value={safety.envelopes ?? 0} />
             <Stat label="Decisions" value={safety.decisions ?? 0} />
             <Stat label="Experiments" value={safety.experiments ?? 0} />
@@ -107,7 +107,7 @@ export function LoafPanel() {
       {coord && (
         <div className="bg-lattice-surface rounded-lg p-3 border border-lattice-border space-y-2">
           <p className="text-xs font-semibold text-indigo-400">Collective Action</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Stat label="Coalitions" value={coord.activeCoalitions ?? 0} />
             <Stat label="Commitments" value={coord.activeCommitments ?? 0} />
             <Stat label="Evidence Pools" value={coord.evidencePools ?? 0} />

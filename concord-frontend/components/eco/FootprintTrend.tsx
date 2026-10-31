@@ -173,7 +173,7 @@ export function FootprintTrend() {
 
         {!loading && data && data.count > 0 && (
           <>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div className="p-2 bg-white/[0.03] rounded text-center">
                 <p className={`text-sm font-bold flex items-center justify-center gap-1 ${TREND_TONE[data.trend]}`}>
                   <TrendIcon className="w-3.5 h-3.5" />

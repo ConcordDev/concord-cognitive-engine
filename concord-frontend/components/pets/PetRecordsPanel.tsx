@@ -296,7 +296,7 @@ export function PetRecordsPanel({
         <h3 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300 mb-2">
           <Users className="w-3.5 h-3.5 text-teal-400" /> Shared caregiver access
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input placeholder="Household member user id" value={grantForm.userId}
             onChange={(e) => setGrantForm({ ...grantForm, userId: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
@@ -335,7 +335,7 @@ export function PetRecordsPanel({
           <ImageIcon className="w-3.5 h-3.5 text-teal-400" /> Photo timeline
           <span className="text-[10px] text-zinc-400">· {photoCount} photo{photoCount === 1 ? '' : 's'}</span>
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input placeholder="Photo URL" value={photoForm.url} onChange={(e) => setPhotoForm({ ...photoForm, url: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input type="date" value={photoForm.takenOn} onChange={(e) => setPhotoForm({ ...photoForm, takenOn: e.target.value })}
@@ -346,7 +346,7 @@ export function PetRecordsPanel({
             {MILESTONES.map((m) => <option key={m} value={m}>{m.replace(/_/g, ' ')}</option>)}
           </select>
         </div>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input placeholder="Caption (optional)" value={photoForm.caption} onChange={(e) => setPhotoForm({ ...photoForm, caption: e.target.value })}
             className="col-span-3 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={addPhoto} disabled={busy === 'photo'}
@@ -391,7 +391,7 @@ export function PetRecordsPanel({
         <h3 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300 mb-2">
           <Stethoscope className="w-3.5 h-3.5 text-teal-400" /> Vet appointments
         </h3>
-        <div className="grid grid-cols-3 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
           <input type="date" value={apptForm.date} onChange={(e) => setApptForm({ ...apptForm, date: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input type="time" value={apptForm.time} onChange={(e) => setApptForm({ ...apptForm, time: e.target.value })}
@@ -401,7 +401,7 @@ export function PetRecordsPanel({
             {APPT_REASONS.map((r) => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
           </select>
         </div>
-        <div className="grid grid-cols-3 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
           <input placeholder="Clinic" value={apptForm.clinic} onChange={(e) => setApptForm({ ...apptForm, clinic: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input placeholder="Vet" value={apptForm.vet} onChange={(e) => setApptForm({ ...apptForm, vet: e.target.value })}

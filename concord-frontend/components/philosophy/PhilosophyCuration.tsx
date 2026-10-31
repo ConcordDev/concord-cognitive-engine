@@ -866,7 +866,7 @@ function GraphTab() {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         {[
           { label: 'Channels', value: graph.channelCount },
           { label: 'Blocks', value: graph.blockCount },

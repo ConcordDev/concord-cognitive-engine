@@ -88,7 +88,7 @@ export function FsDistributionPanel({ projectId }: { projectId: string }) {
 
       {/* Roll-up */}
       {data && data.count > 0 && (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <Stat label="Submissions" value={data.count} />
           <Stat label="Selected" value={data.selected} accent="text-emerald-400" />
           <Stat label="Pending" value={data.pending} accent="text-amber-400" />

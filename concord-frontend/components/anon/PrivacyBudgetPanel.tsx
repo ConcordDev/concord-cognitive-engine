@@ -145,7 +145,7 @@ export function PrivacyBudgetPanel({ refreshKey }: PrivacyBudgetPanelProps) {
 
       {status && (
         <>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <div className="rounded bg-lattice-surface p-2 text-center">
               <p data-testid="privacy-budget-spent" className="text-sm font-bold text-neon-purple">
                 {status.totalSpent.toFixed(2)}

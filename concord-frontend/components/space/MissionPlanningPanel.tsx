@@ -184,7 +184,7 @@ function LaunchWindowTool() {
   return (
     <div className="space-y-3">
       <p className="text-[11px] text-zinc-400">Launch windows per day for a target orbit, plus the dogleg-maneuver penalty when the site latitude doesn&apos;t match the target inclination.</p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <Field label="Target orbit">
           <select value={targetOrbit} onChange={(e) => setTargetOrbit(e.target.value)} className={inputCls}>
             {['LEO', 'MEO', 'GEO'].map((o) => <option key={o} value={o}>{o}</option>)}
@@ -237,7 +237,7 @@ function ReentryAnalysisTool() {
   return (
     <div className="space-y-3">
       <p className="text-[11px] text-zinc-400">Peak deceleration, peak heating, and reentry-corridor survivability from mass, velocity, and entry angle.</p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <Field label="Mass (kg)">
           <input inputMode="decimal" value={mass} onChange={(e) => setMass(e.target.value)} className={inputCls} />
         </Field>

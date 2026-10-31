@@ -242,7 +242,7 @@ export function GeometryEditor({
         </div>
         <div>
           <label className="text-xs text-gray-400">Primitive</label>
-          <div className="grid grid-cols-3 gap-1 mt-1">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-1 mt-1">
             {(Object.keys(KIND_FIELDS) as PrimitiveKind[]).map((k) => (
               <button
                 key={k}

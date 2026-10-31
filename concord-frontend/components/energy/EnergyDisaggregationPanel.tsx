@@ -82,7 +82,7 @@ export function EnergyDisaggregationPanel({ onChange }: { onChange: () => void }
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Stat label="Total kWh" value={total} />
             <Stat label="Attributed" value={data?.attributedKwh ?? 0} accent="text-lime-400" />
             <Stat label="Unattributed" value={data?.unattributedKwh ?? 0} accent="text-zinc-400" />

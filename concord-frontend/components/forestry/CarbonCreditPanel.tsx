@@ -104,7 +104,7 @@ export function CarbonCreditPanel() {
       </div>
 
       {list && list.count > 0 && (
-        <div className="grid grid-cols-4 gap-2 mb-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
           {([
             ['Total tons', list.totalTons.toLocaleString()],
             ['Verified', list.verifiedTons.toLocaleString()],

@@ -145,7 +145,7 @@ export function StravaTrainingPanel() {
               {freshness.formTrend}
             </span>
           </div>
-          <div className="grid grid-cols-3 gap-2 mb-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
             <FreshTile label="Fitness" value={freshness.fitness} accent="text-sky-400" />
             <FreshTile label="Form (TSB)" value={freshness.form}
               accent={freshness.form >= 0 ? 'text-emerald-400' : 'text-amber-400'} />

@@ -102,7 +102,7 @@ export function InsuranceVaultPanel({ onChange }: { onChange: () => void }) {
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <BellRing className="w-3.5 h-3.5 text-blue-400" /> Reminders
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input placeholder="Title" value={remForm.title} onChange={(e) => setRemForm({ ...remForm, title: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <select value={remForm.kind} onChange={(e) => setRemForm({ ...remForm, kind: e.target.value })}
@@ -141,7 +141,7 @@ export function InsuranceVaultPanel({ onChange }: { onChange: () => void }) {
           <Package className="w-3.5 h-3.5 text-blue-400" /> Covered assets
           {assetValue > 0 && <span className="text-[10px] text-zinc-400">· ${assetValue} total</span>}
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input placeholder="Asset name" value={assetForm.name} onChange={(e) => setAssetForm({ ...assetForm, name: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <select value={assetForm.kind} onChange={(e) => setAssetForm({ ...assetForm, kind: e.target.value })}
@@ -172,7 +172,7 @@ export function InsuranceVaultPanel({ onChange }: { onChange: () => void }) {
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <UserRound className="w-3.5 h-3.5 text-blue-400" /> Agents &amp; contacts
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input placeholder="Name" value={agentForm.name} onChange={(e) => setAgentForm({ ...agentForm, name: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input placeholder="Agency" value={agentForm.agency} onChange={(e) => setAgentForm({ ...agentForm, agency: e.target.value })}

@@ -37,7 +37,7 @@ export function MetaDerivationPanel() {
   return (
     <div className="space-y-4">
       {/* Summary stats */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <Stat label="Meta-Invariants" value={data?.invariantCount || 0} />
         <Stat label="Convergences" value={data?.convergenceCount || 0} />
         <Stat label="Pending Predictions" value={data?.pendingPredictions || 0} />

@@ -89,7 +89,7 @@ export function TaxEstimator() {
             <div className="text-xs text-gray-400">Edit inputs to see your tax estimate.</div>
           ) : (
             <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <Stat label="Taxable income" value={`$${result.taxableIncome.toLocaleString()}`} />
                 <Stat label="Total tax" value={`$${Math.round(result.totalTax).toLocaleString()}`} accent="text-yellow-300" />
                 <Stat label="Effective rate" value={`${(result.effectiveRate * 100).toFixed(1)}%`} />

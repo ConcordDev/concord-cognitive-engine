@@ -104,7 +104,7 @@ export function PetRemindersPanel({ petId, onChange }: { petId: string; onChange
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <BellRing className="w-3.5 h-3.5 text-teal-400" /> Reminders
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input placeholder="Title" value={rem.title} onChange={(e) => setRem({ ...rem, title: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <select value={rem.kind} onChange={(e) => setRem({ ...rem, kind: e.target.value })}
@@ -147,7 +147,7 @@ export function PetRemindersPanel({ petId, onChange }: { petId: string; onChange
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <FileText className="w-3.5 h-3.5 text-teal-400" /> Documents
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input placeholder="Document title" value={doc.title} onChange={(e) => setDoc({ ...doc, title: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <select value={doc.kind} onChange={(e) => setDoc({ ...doc, kind: e.target.value })}
@@ -178,7 +178,7 @@ export function PetRemindersPanel({ petId, onChange }: { petId: string; onChange
           <Receipt className="w-3.5 h-3.5 text-teal-400" /> Expenses
           <span className="text-[10px] text-zinc-400">· ${expenses.total} all-time · ${expenses.thisMonth} this month</span>
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <select value={exp.category} onChange={(e) => setExp({ ...exp, category: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {['food', 'vet', 'grooming', 'toys', 'insurance', 'boarding', 'other'].map((k) => <option key={k} value={k}>{k}</option>)}

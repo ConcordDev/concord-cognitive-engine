@@ -250,7 +250,7 @@ export default function AnonLensPage() {
               the current call. See server/domains/anon.js privacyBudgetStatus. */}
           <PrivacyBudgetPanel refreshKey={budgetRefreshKey} />
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <button
               onClick={() => handleAnonAction('anonymize')}
               disabled={isRunning !== null}

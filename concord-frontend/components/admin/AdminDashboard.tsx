@@ -132,7 +132,7 @@ function AdminDashboard({ stats, auditLogs, onRefresh, className }: AdminDashboa
         {activeTab === 'overview' && (
           <div className="space-y-6">
             {/* Stats cards */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <StatCard
                 title="Total Users"
                 value={stats.users.total}
@@ -274,7 +274,7 @@ function AdminDashboard({ stats, auditLogs, onRefresh, className }: AdminDashboa
               <Users className="w-6 h-6 text-neon-cyan" />
               <h2 className="text-lg font-semibold text-white">User Overview</h2>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4">
                 <p className="text-sm text-gray-400">Total Users</p>
                 <p className="text-2xl font-bold text-white">{stats.users.total}</p>

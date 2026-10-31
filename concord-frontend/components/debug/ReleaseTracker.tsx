@@ -200,7 +200,7 @@ export function ReleaseTracker() {
                 </button>
               </div>
               {rel.notes && <p className="text-xs text-gray-400 mt-1">{rel.notes}</p>}
-              <div className="grid grid-cols-4 gap-2 mt-2">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mt-2">
                 <div className="text-center">
                   <p className="text-sm font-bold text-gray-200">{rel.issueCount}</p>
                   <p className="text-[10px] text-gray-400">Issues</p>

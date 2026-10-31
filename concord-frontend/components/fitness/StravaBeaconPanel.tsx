@@ -285,7 +285,7 @@ export function StravaBeaconPanel() {
                 </button>
               </div>
               <p className="text-[11px] text-zinc-400">Share this token with people you want to track you live.</p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div className="rounded-lg bg-zinc-950 border border-zinc-800 px-2 py-1.5">
                   <p className="text-[10px] uppercase text-zinc-400">Time</p>
                   <p className="text-sm font-bold text-zinc-100">{durLabel(elapsed)}</p>
@@ -364,7 +364,7 @@ export function StravaBeaconPanel() {
           {followErr && <p className="text-xs text-rose-400">{followErr}</p>}
           {followed && (
             <>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div className="rounded-lg bg-zinc-950 border border-zinc-800 px-2 py-1.5">
                   <p className="text-[10px] uppercase text-zinc-400">Status</p>
                   <p className={cn('text-sm font-bold capitalize', followed.status === 'live' ? 'text-rose-400' : 'text-zinc-400')}>

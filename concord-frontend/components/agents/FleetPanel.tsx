@@ -481,7 +481,7 @@ export function FleetPanel() {
                         <p className="text-xs text-gray-400 mb-3 line-clamp-2">{agent.description || 'No description'}</p>
 
                         {/* Quick stats */}
-                        <div className="grid grid-cols-3 gap-2 mb-3">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
                           <div className="text-center p-1.5 bg-lattice-bg rounded">
                             <p className="text-xs font-bold text-white">{(agent.tickCount || 0).toLocaleString()}</p>
                             <p className="text-[9px] text-gray-400">Ticks</p>
@@ -817,7 +817,7 @@ export function FleetPanel() {
                             <p className="text-xs text-gray-400 mt-1">{actionResult.agentName as string}</p>
                           </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                           <div className="p-2 bg-lattice-bg rounded text-center">
                             <p className="text-sm font-bold text-neon-green">{actionResult.successRate as number}%</p>
                             <p className="text-[10px] text-gray-400">Success Rate</p>
@@ -961,7 +961,7 @@ export function FleetPanel() {
                           </span>
                           <span className="text-xs text-gray-400">{actionResult.goal as string}</span>
                         </div>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                           <div className="p-2 bg-lattice-bg rounded text-center">
                             <p className="text-sm font-bold text-neon-cyan">{actionResult.stepCount as number}</p>
                             <p className="text-[10px] text-gray-400">Steps</p>
@@ -1217,7 +1217,7 @@ export function FleetPanel() {
               </div>
 
               {/* Model config */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">Model</label>
                   <select value={newModel} onChange={(e) => setNewModel(e.target.value)} className="input-lattice w-full text-xs">

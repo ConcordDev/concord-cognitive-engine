@@ -104,7 +104,7 @@ function PaletteTool() {
       {result?.message && <HonestEmptyMessage message={result.message} />}
       {result && !result.message && (
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <div className="p-2 bg-white/5 rounded text-center">
               <p className="text-sm font-bold text-neon-pink">{result.harmonyScore}</p>
               <p className="text-[10px] text-gray-400 capitalize">{result.harmonyLabel} harmony</p>

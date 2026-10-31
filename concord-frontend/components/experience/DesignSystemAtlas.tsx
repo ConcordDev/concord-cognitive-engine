@@ -72,7 +72,7 @@ export function DesignSystemAtlas() {
       </header>
       {repos.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub results unavailable right now — nothing is being shown in their place.</div>}
       {repos.data?.stale && !repos.isError && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached GitHub results{repos.data.fetchedAt ? ` from ${new Date(repos.data.fetchedAt).toLocaleString()}` : ''} — live refresh is rate-limited.</div>}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
           <div className="text-[10px] uppercase tracking-wider text-zinc-400">Repos</div>
           <div className="mt-0.5 font-mono text-lg text-pink-300">{list.length}</div>

@@ -184,7 +184,7 @@ export function BrainPoolStatus() {
         </div>
       )}
       {status.isSuccess && !unexpected && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5" data-testid="brain-enabled-count">
             <div className="text-[10px] uppercase tracking-wider text-zinc-400">Enabled</div>
             <div className="mt-0.5 font-mono text-lg text-fuchsia-300">{online} <span className="text-[10px] text-zinc-400">/ {brains.length}</span></div>

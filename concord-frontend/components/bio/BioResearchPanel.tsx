@@ -304,7 +304,7 @@ export function BioResearchPanel() {
       {tool === 'pathway' && (
         <div className="space-y-2 text-xs">
           {pathwaySteps.map((s, i) => (
-            <div key={i} className="grid grid-cols-4 gap-1.5">
+            <div key={i} className="grid grid-cols-1 md:grid-cols-4 gap-1.5">
               <input value={s.substrate} onChange={(e) => setPathwaySteps(pathwaySteps.map((p, idx) => idx === i ? { ...p, substrate: e.target.value } : p))} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="substrate" />
               <input value={s.enzyme} onChange={(e) => setPathwaySteps(pathwaySteps.map((p, idx) => idx === i ? { ...p, enzyme: e.target.value } : p))} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="enzyme" />
               <input value={s.product} onChange={(e) => setPathwaySteps(pathwaySteps.map((p, idx) => idx === i ? { ...p, product: e.target.value } : p))} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="product" />
@@ -356,7 +356,7 @@ export function BioResearchPanel() {
 
       {tool === 'gene' && (
         <div className="space-y-2 text-xs">
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
             <input value={geneSymbol} onChange={(e) => setGeneSymbol(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white font-mono" placeholder="Gene symbol (TP53)" />
             <input value={geneOrganism} onChange={(e) => setGeneOrganism(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white" placeholder="Organism" />
             <input value={geneFunction} onChange={(e) => setGeneFunction(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white" placeholder="Known function (optional)" />

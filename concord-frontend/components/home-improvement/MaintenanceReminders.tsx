@@ -105,7 +105,7 @@ export function MaintenanceReminders() {
       {error && <p className="text-xs text-red-400">{error}</p>}
 
       {list && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <div className="lens-card text-center">
             <p className="text-lg font-bold text-red-400">{list.overdueCount}</p>
             <p className="text-xs text-gray-400">Overdue</p>

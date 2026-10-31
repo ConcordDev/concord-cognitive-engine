@@ -536,7 +536,7 @@ export function TaxPanel() {
       </header>
       {loading ? <Loading /> : !report ? <Empty label="No data." /> : (
         <div className="p-4 space-y-3">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             <Tile label="Short-term" value={`$${report.shortTermGainUsd.toLocaleString()}`} sub={`${report.realizedShortTerm.length} sale(s)`} tone={report.shortTermGainUsd >= 0 ? 'positive' : 'negative'} />
             <Tile label="Long-term" value={`$${report.longTermGainUsd.toLocaleString()}`} sub={`${report.realizedLongTerm.length} sale(s)`} tone={report.longTermGainUsd >= 0 ? 'positive' : 'negative'} />
             <Tile label="Total realized" value={`$${report.totalRealizedUsd.toLocaleString()}`} bold tone={report.totalRealizedUsd >= 0 ? 'positive' : 'negative'} />

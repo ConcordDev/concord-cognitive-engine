@@ -376,7 +376,7 @@ export function AgentAutonomyPanel() {
                     <>
                       {detail.description && <p className="text-[11px] text-zinc-400">{detail.description}</p>}
                       {detail.evaluation?.evaluatedAt && (
-                        <div className="grid grid-cols-4 gap-1.5">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-1.5">
                           {[
                             ['Feasibility', detail.evaluation.feasibility],
                             ['Alignment', detail.evaluation.alignment],

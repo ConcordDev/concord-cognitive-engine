@@ -335,7 +335,7 @@ function HeuristicEvalResult({ result }: { result: Record<string, unknown> }) {
 
   return (
     <div className="mt-2 space-y-3 border-t border-zinc-800 pt-3">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="bg-zinc-900 rounded-lg p-2 border border-zinc-800 text-center"><p className={`text-xl font-bold ${scoreColor(avgScore)}`}>{avgScore}</p><p className="text-[10px] text-gray-400">Avg / 10</p></div>
         <div className="bg-zinc-900 rounded-lg p-2 border border-zinc-800 text-center"><p className={`text-xl font-bold ${criticalIssues === 0 ? 'text-neon-green' : 'text-red-400'}`}>{criticalIssues}</p><p className="text-[10px] text-gray-400">Critical</p></div>
         <div className="bg-zinc-900 rounded-lg p-2 border border-zinc-800 text-center"><p className="text-xl font-bold text-neon-cyan">{evaluated}/{total}</p><p className="text-[10px] text-gray-400">Evaluated</p></div>

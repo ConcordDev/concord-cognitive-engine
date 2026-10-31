@@ -94,7 +94,7 @@ export function PgSleepPanel({ childId }: { childId: string }) {
 
       {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <Stat label="Naps today" value={stats.napsToday} />
           <Stat label="Longest stretch" value={`${Math.floor(stats.longestStretchMin / 60)}h ${stats.longestStretchMin % 60}m`} />
           <Stat label="7d avg / day" value={`${Math.floor(stats.avgDailyMin / 60)}h ${stats.avgDailyMin % 60}m`} />

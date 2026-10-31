@@ -100,7 +100,7 @@ export function ChatToolsDrawer({
                   <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
                     <Zap className="w-4 h-4 text-neon-yellow" /> Computational Actions
                   </h3>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <button
                       onClick={() => onChatAction('threadSummarize')}
                       disabled={chatActionRunning !== null}
@@ -215,7 +215,7 @@ export function ChatToolsDrawer({
                     </div>
                     <div className="space-y-2 text-sm text-gray-300">
                       {participantAnalysisResult.totalParticipants !== undefined && (
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                           <div className="p-2 bg-lattice-bg rounded text-center">
                             <p className="text-sm font-bold text-neon-purple">
                               {participantAnalysisResult.totalParticipants as number}

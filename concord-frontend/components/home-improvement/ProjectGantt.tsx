@@ -139,7 +139,7 @@ export function ProjectGantt() {
       ) : (
         <>
           {gantt && (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div className="lens-card text-center">
                 <p className="text-lg font-bold text-neon-cyan">{gantt.totalDays}d</p>
                 <p className="text-xs text-gray-400">Total span</p>

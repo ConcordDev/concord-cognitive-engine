@@ -108,7 +108,7 @@ export function ScienceFieldLog() {
       <div className="space-y-1.5">
         {rows.map((r, i) => (
           <div key={i} className="rounded border border-white/10 p-1.5 space-y-1">
-            <div className="grid grid-cols-3 gap-1">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
               <input type="date" value={r.date} onChange={(e) => setRow(i, { date: e.target.value })}
                 className="px-1.5 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-gray-100" />
               <input value={r.observer} onChange={(e) => setRow(i, { observer: e.target.value })}

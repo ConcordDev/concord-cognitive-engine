@@ -339,7 +339,7 @@ export function MentorDirectoryPanel() {
           </div>
           <textarea value={regForm.bio} onChange={(e) => setRegForm((p) => ({ ...p, bio: e.target.value }))} placeholder="Short bio" rows={2} className="input-lattice w-full" />
           <input value={regForm.skills} onChange={(e) => setRegForm((p) => ({ ...p, skills: e.target.value }))} placeholder="Skills (comma-separated)" className="input-lattice w-full" />
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input type="number" value={regForm.experienceYears} onChange={(e) => setRegForm((p) => ({ ...p, experienceYears: e.target.value }))} placeholder="Years" className="input-lattice" />
             <select value={regForm.availability} onChange={(e) => setRegForm((p) => ({ ...p, availability: e.target.value }))} className="input-lattice">
               <option value="weekly">Weekly</option><option value="biweekly">Biweekly</option>

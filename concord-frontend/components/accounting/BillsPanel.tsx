@@ -153,7 +153,7 @@ export function BillsPanel() {
       {aging && aging.totalOpen > 0 && (
         <div className="bg-[#0d1117] border border-emerald-500/15 rounded-lg p-3">
           <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">A/P aging · <span className="font-mono tabular-nums">${aging.totalOpen.toFixed(0)}</span> open</div>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             {aging.buckets.map(b => (
               <div key={b.key} className="rounded border border-white/10 bg-black/30 p-2">
                 <div className="text-[10px] text-gray-400">{b.label}</div>

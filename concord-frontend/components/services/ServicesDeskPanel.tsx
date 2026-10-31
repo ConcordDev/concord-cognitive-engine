@@ -971,7 +971,7 @@ export function ServicesDeskPanel() {
             {/* dailyCloseReport */}
             {actionResult.byProvider !== undefined && actionResult.date !== undefined && (
               <div className="space-y-2">
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-white">{String(actionResult.totalAppointments)}</p>
                     <p className="text-[10px] text-gray-400">Booked ({String(actionResult.date)})</p>
@@ -1019,7 +1019,7 @@ export function ServicesDeskPanel() {
             {/* clientRetentionReport */}
             {actionResult.atRiskClients !== undefined && (
               <div className="space-y-2">
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-white">{String(actionResult.totalClients)}</p>
                     <p className="text-[10px] text-gray-400">Clients</p>

@@ -82,7 +82,7 @@ export function PgTodayPanel({ childId }: { childId: string }) {
   return (
     <div className="space-y-4">
       {dash && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <Stat label="Feeds today" value={dash.feedsToday} />
           <Stat label="Sleep today" value={`${Math.floor(dash.sleepMinToday / 60)}h ${dash.sleepMinToday % 60}m`} />
           <Stat label="Diapers today" value={dash.diapersToday} />

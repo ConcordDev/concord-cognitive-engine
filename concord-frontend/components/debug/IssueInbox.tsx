@@ -192,7 +192,7 @@ export function IssueInbox() {
 
       {/* Summary */}
       {summary && (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <div className="p-2 bg-lattice-deep rounded text-center">
             <p className="text-lg font-bold text-red-400">{summary.open}</p>
             <p className="text-[10px] text-gray-400">Open</p>

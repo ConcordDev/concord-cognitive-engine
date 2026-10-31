@@ -323,6 +323,12 @@ export default function createAuthRouter({
     let user = null;
     if (username) {
       user = AuthDB.getUserByUsername(username);
+      // The login form has one box labelled "Username or Email". An address typed
+      // there arrives as `username`; fall back to the email lookup (exact, then
+      // lower-cased, matching how addresses are normalised at sign-up).
+      if (!user && username.includes("@")) {
+        user = AuthDB.getUserByEmail(username) || AuthDB.getUserByEmail(username.toLowerCase());
+      }
     } else if (email) {
       user = AuthDB.getUserByEmail(email);
     }

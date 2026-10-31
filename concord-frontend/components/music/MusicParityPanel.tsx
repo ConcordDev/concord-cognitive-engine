@@ -509,7 +509,7 @@ function DiscoverTab({ onChange }: { onChange: () => void }) {
       {/* Scheduled playlists */}
       <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
         <Head icon={Calendar} title="Scheduled Playlists" hint="Discover Weekly · Release Radar · Daylist" />
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           {(['discover_weekly', 'release_radar', 'daylist'] as const).map((kind) => {
             const sp = scheduled.find((s) => s.kind === kind);
             return (
@@ -826,7 +826,7 @@ function ArtistTab({ onChange }: { onChange: () => void }) {
         <Head icon={BarChart3} title="Streaming Analytics" hint="listeners · sources · top tracks" />
         {analytics && analytics.catalogSize > 0 ? (
           <>
-            <div className="grid grid-cols-3 gap-2 mb-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
               <Metric label="Streams" value={analytics.totalStreams} />
               <Metric label="Listeners" value={analytics.uniqueListeners} />
               <Metric label="Avg/track" value={analytics.avgStreamsPerTrack} />

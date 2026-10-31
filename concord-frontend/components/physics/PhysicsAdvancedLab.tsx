@@ -119,7 +119,7 @@ function KinematicsTab() {
   return (
     <div className="p-3 space-y-3">
       <p className="text-[11px] text-gray-400">Single-body 1D kinematics: v = u + at, s = ut + ½at².</p>
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
         <NumField label="u — initial velocity m/s" value={initialVelocity} onChange={setInitialVelocity} />
         <NumField label="a — acceleration m/s²" value={acceleration} onChange={setAcceleration} />
         <NumField label="t — time s (required)" value={time} onChange={setTime} />
@@ -166,7 +166,7 @@ function OrbitalTab() {
   return (
     <div className="p-3 space-y-3">
       <p className="text-[11px] text-gray-400">Newtonian two-body gravity about a central mass: F = Gm₁m₂/r², circular v = √(GM/r), T = 2π√(r³/GM).</p>
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
         <NumField label="m₁ — central mass kg" value={mass1} onChange={setMass1} />
         <NumField label="m₂ — orbiting mass kg" value={mass2} onChange={setMass2} />
         <NumField label="r — distance m" value={distance} onChange={setDistance} />
@@ -217,7 +217,7 @@ function WavesTab() {
   return (
     <div className="p-3 space-y-3">
       <p className="text-[11px] text-gray-400">Wavelength λ = v/f, and Doppler shift f&prime; = f·(v+v<sub>o</sub>)/(v&minus;v<sub>s</sub>) for a moving source/observer in a medium — computed independently.</p>
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
         <NumField label="frequency Hz (λ)" value={frequency} onChange={setFrequency} />
         <NumField label="wave speed m/s" value={waveSpeed} onChange={setWaveSpeed} />
         <div />
@@ -297,7 +297,7 @@ function ThermoTab() {
 
       <div className="space-y-1.5">
         <div className="text-[10px] uppercase tracking-wide text-amber-400 font-semibold">Ideal gas law — PV = nRT</div>
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-1.5">
           <NumField label="pressure Pa" value={pressure} onChange={setPressure} placeholder="solve" />
           <NumField label="volume m³" value={volume} onChange={setVolume} placeholder="solve" />
           <NumField label="moles mol" value={moles} onChange={setMoles} placeholder="solve" />
@@ -306,7 +306,7 @@ function ThermoTab() {
       </div>
       <div className="space-y-1.5">
         <div className="text-[10px] uppercase tracking-wide text-amber-400 font-semibold">Heat transfer — Q = mcΔT</div>
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
           <NumField label="mass kg" value={mass} onChange={setMass} />
           <NumField label="specific heat J/(kg·K)" value={specificHeat} onChange={setSpecificHeat} />
           <NumField label="ΔT K" value={deltaTemp} onChange={setDeltaTemp} />

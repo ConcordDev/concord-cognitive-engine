@@ -1222,7 +1222,7 @@ export function BoardPanel() {
                 <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Topic Clusters</p>
                 {(forumActionResult.message as string) ? <p className="text-sm text-gray-400">{forumActionResult.message as string}</p> : (
                   <>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       {[
                         { label: 'Total Threads', value: String(forumActionResult.totalThreads ?? 0), color: 'text-white' },
                         { label: 'Top Topic', value: String(forumActionResult.topTopic ?? '—'), color: 'text-neon-purple' },

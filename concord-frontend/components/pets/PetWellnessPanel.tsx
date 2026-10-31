@@ -141,7 +141,7 @@ export function PetWellnessPanel({ petId, onChange }: { petId: string; onChange:
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <Footprints className="w-3.5 h-3.5 text-teal-400" /> Care log
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <select value={actInput.kind} onChange={(e) => setActInput({ ...actInput, kind: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {ACTIVITY_KINDS.map((k) => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}
@@ -179,7 +179,7 @@ export function PetWellnessPanel({ petId, onChange }: { petId: string; onChange:
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <Activity className="w-3.5 h-3.5 text-teal-400" /> Symptom log
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input placeholder="Symptom" value={symInput.symptom} onChange={(e) => setSymInput({ ...symInput, symptom: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <select value={symInput.severity} onChange={(e) => setSymInput({ ...symInput, severity: e.target.value })}

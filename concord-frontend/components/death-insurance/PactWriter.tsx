@@ -163,7 +163,7 @@ export function PactWriter({ onWritten }: PactWriterProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div>
           <label className="block text-xs text-zinc-400">Payout ⚡</label>
           <input

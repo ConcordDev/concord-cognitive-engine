@@ -48,7 +48,7 @@ export function FederationStatusPanel() {
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <Stat label="Status" value={enabled ? 'Enabled' : 'Disabled'} />
         <Stat label="Trusted Nodes" value={trustedNodes || 0} />
         <Stat label="Peers" value={peerList.length} />
@@ -77,7 +77,7 @@ export function FederationStatusPanel() {
       {escalationStats?.ok && (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-gray-400">Federated DTU Count</p>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Stat label="Escalated" value={escalationStats.totalEscalated ?? escalationStats.count ?? 0} />
             <Stat label="Regional" value={escalationStats.regional ?? 0} />
             <Stat label="National" value={escalationStats.national ?? 0} />

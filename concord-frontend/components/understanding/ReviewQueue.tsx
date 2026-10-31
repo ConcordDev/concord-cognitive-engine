@@ -139,7 +139,7 @@ export function ReviewQueue({
                 {current.body || <span className="text-white/30 italic">(empty body)</span>}
               </pre>
               <p className="text-[10px] text-white/40 uppercase tracking-wide mb-1.5">How well did you recall this?</p>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                 {GRADES.map((g) => (
                   <button
                     key={g.label}

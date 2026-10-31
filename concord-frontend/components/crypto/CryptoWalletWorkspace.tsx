@@ -684,7 +684,7 @@ export function CryptoWalletWorkspace() {
       {isLoading ? (
         <div className="space-y-6" aria-busy="true">
           {/* Summary tiles skeleton — matches the 3-up KPI grid below */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="lens-card space-y-2">
                 <Skeleton variant="avatar" width={20} height={20} />
@@ -704,7 +704,7 @@ export function CryptoWalletWorkspace() {
           {/* Secondary stats — the total-value figure now lives once, in
               the hero above; this row doesn't repeat it. Three real
               counts, no decorative always-on glow tied to nothing. */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="lens-card">
               <BarChart3 className="w-5 h-5 text-neon-blue mb-2" />
               <p className="text-2xl font-bold font-mono tabular-nums">{chains.length}</p>
@@ -1622,7 +1622,7 @@ export function CryptoWalletWorkspace() {
                           <p className="text-[10px] text-gray-400">Congestion</p>
                         </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                         {(['slow', 'standard', 'fast'] as const).map(speed => (
                           <div key={speed} className="p-2 bg-lattice-deep rounded text-center space-y-0.5">
                             <p className="text-[10px] text-gray-400 capitalize">{speed}</p>
@@ -1641,7 +1641,7 @@ export function CryptoWalletWorkspace() {
                   {/* detectPatterns */}
                   {r?.patterns !== undefined && (
                     <div className="space-y-2">
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                         <div className="p-2 bg-lattice-deep rounded text-center">
                           <p className="font-bold text-red-400">{r.riskSummary?.high ?? 0}</p>
                           <p className="text-[10px] text-gray-400">High Risk</p>

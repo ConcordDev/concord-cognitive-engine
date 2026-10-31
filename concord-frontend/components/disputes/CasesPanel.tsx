@@ -787,7 +787,7 @@ export function CasesPanel() {
         {/* assessDispute result */}
         {actionResult && actionResult.complexity !== undefined && (
           <div className="space-y-3 pt-2 border-t border-white/5">
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-neon-blue">{String(actionResult.parties ?? 0)}</p>
                 <p className="text-[10px] text-gray-400">Parties</p>
@@ -832,7 +832,7 @@ export function CasesPanel() {
         {/* timelineTrack result */}
         {actionResult && actionResult.daysElapsed !== undefined && actionResult.totalEvents !== undefined && (
           <div className="space-y-3 pt-2 border-t border-white/5">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-neon-cyan">{String(actionResult.totalEvents)}</p>
                 <p className="text-[10px] text-gray-400">Events</p>
@@ -863,7 +863,7 @@ export function CasesPanel() {
         {/* settlementCalc result */}
         {actionResult && actionResult.settlementZone !== undefined && (
           <div className="space-y-3 pt-2 border-t border-white/5">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-neon-cyan">${String(actionResult.expectedValue ?? 0)}</p>
                 <p className="text-[10px] text-gray-400">Expected Value</p>
@@ -898,7 +898,7 @@ export function CasesPanel() {
         {/* evidenceStrength result */}
         {actionResult && actionResult.caseStrength !== undefined && (
           <div className="space-y-3 pt-2 border-t border-white/5">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-neon-cyan">{String(actionResult.totalPieces ?? 0)}</p>
                 <p className="text-[10px] text-gray-400">Evidence Items</p>

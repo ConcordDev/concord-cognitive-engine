@@ -165,7 +165,7 @@ export function AppsPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="panel p-3 flex items-center gap-3">
           <Boxes className="w-5 h-5 text-neon-cyan" />
           <div>
@@ -383,7 +383,7 @@ export function AppsPanel() {
               {TEMPLATES.find((t) => t.id === selectedTemplate)?.name}
             </span>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             {['Dashboard', 'Data View', 'Settings'].map((panel) => (
               <div key={panel} className="bg-white/5 rounded p-2 text-center">
                 <div className="h-8 bg-neon-cyan/5 rounded mb-1" />

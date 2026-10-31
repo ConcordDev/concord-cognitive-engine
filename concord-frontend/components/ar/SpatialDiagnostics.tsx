@@ -227,14 +227,14 @@ export function SpatialDiagnostics() {
                     <Trash2 className="w-3.5 h-3.5 text-red-400" />
                   </button>
                 </div>
-                <div className="grid grid-cols-3 gap-1">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
                   {(['x', 'y', 'z'] as const).map((axis) => (
                     <input key={axis} type="number" step={0.1} className={cn(ds.input, 'text-xs px-2 py-1')}
                       value={r[axis]} onChange={(e) => patchAnchor(r.id, { [axis]: e.target.value } as Partial<AnchorRow>)}
                       aria-label={`position ${axis}`} placeholder={`pos ${axis}`} />
                   ))}
                 </div>
-                <div className="grid grid-cols-3 gap-1">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
                   <input type="number" step={0.05} className={cn(ds.input, 'text-xs px-2 py-1')} value={r.w} onChange={(e) => patchAnchor(r.id, { w: e.target.value })} aria-label="width" placeholder="width" />
                   <input type="number" step={0.05} className={cn(ds.input, 'text-xs px-2 py-1')} value={r.h} onChange={(e) => patchAnchor(r.id, { h: e.target.value })} aria-label="height" placeholder="height" />
                   <input type="number" step={0.05} className={cn(ds.input, 'text-xs px-2 py-1')} value={r.d} onChange={(e) => patchAnchor(r.id, { d: e.target.value })} aria-label="depth" placeholder="depth" />
@@ -384,7 +384,7 @@ export function SpatialDiagnostics() {
                     {nodes.filter((n2) => n2.id !== r.id).map((n2) => <option key={n2.id} value={n2.id}>{n2.id}</option>)}
                   </select>
                 </div>
-                <div className="grid grid-cols-3 gap-1">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
                   {(['x', 'y', 'z'] as const).map((axis) => (
                     <input key={axis} type="number" step={0.1} className={cn(ds.input, 'text-xs px-2 py-1')} value={r[axis]} onChange={(e) => patchNode(r.id, { [axis]: e.target.value } as Partial<NodeRow>)} aria-label={`local position ${axis}`} placeholder={`pos ${axis}`} />
                   ))}

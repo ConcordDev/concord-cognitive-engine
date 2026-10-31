@@ -340,7 +340,7 @@ export function TicketQueuePanel() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
                   <input
                     value={replyDraft.author}
                     onChange={(e) => setReplyDraft({ ...replyDraft, author: e.target.value })}

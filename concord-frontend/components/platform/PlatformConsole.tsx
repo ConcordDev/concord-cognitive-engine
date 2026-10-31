@@ -518,7 +518,7 @@ function CostTab() {
       </div>
       {data && (
         <>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <div className={`${card} p-3 text-center`}>
               <p className="text-[10px] text-gray-400">Base plan</p>
               <p className="text-lg font-bold font-mono">${data.basePlanCost}</p>

@@ -73,7 +73,7 @@ export function WorldAnalyticsPanel({
 
         {data && (
           <>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
               <Stat icon={Eye} label="Visits" value={data.total_visits} />
               <Stat icon={Users} label="Unique" value={data.unique_visitors} />
               <Stat icon={Star} label="Favorites" value={data.favorites} />

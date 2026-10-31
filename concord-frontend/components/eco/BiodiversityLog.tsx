@@ -181,7 +181,7 @@ export function BiodiversityLog() {
           </div>
           {diversityError && <p className="text-[11px] text-red-400">{diversityError}</p>}
           {diversity && !diversity.message && (
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
               <div className="p-1.5 bg-white/[0.03] rounded text-center">
                 <p className="text-sm font-bold text-green-400">{diversity.speciesRichness}</p>
                 <p className="text-[9px] text-gray-400">species</p>

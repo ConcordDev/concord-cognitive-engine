@@ -170,7 +170,7 @@ export function ForkAnalysisLab() {
             <p className="text-xs text-zinc-400">{merge.message}</p>
           ) : (
             <>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-center">
                   <p className="text-lg font-bold text-cyan-300">{merge.complexity?.score}/100</p>
                   <p className="text-[9px] uppercase tracking-wide text-zinc-400">complexity</p>

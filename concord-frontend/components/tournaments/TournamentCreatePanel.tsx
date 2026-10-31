@@ -70,7 +70,7 @@ export function TournamentCreatePanel({
             </select>
           </Field>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Field label="Max entrants">
             <input
               type="number" value={maxEntrants} min={2} max={128}

@@ -110,7 +110,7 @@ export function HrPerformancePanel() {
           <Star className="w-3.5 h-3.5 text-emerald-400" /> Performance reviews
           {reviews.length > 0 && <span className="text-[10px] text-zinc-400">· avg {avgRating}</span>}
         </h3>
-        <div className="grid grid-cols-3 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
           <input placeholder="Period" value={reviewForm.period} onChange={(e) => setReviewForm({ ...reviewForm, period: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <select value={reviewForm.rating} onChange={(e) => setReviewForm({ ...reviewForm, rating: Number(e.target.value) })}

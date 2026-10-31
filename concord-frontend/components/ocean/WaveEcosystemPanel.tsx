@@ -50,7 +50,7 @@ export function WaveEcosystemPanel() {
         render: (
           <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
             <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Waves className="h-3 w-3" />Wave inputs</div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Height (m)</span>
                 <input type="number" step={0.1} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={wave.waveHeightMeters} onChange={(e) => setWave({ ...wave, waveHeightMeters: Number(e.target.value) || 0 })} /></label>
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Period (s)</span>
@@ -113,7 +113,7 @@ export function WaveEcosystemPanel() {
                   <span className={`font-mono text-2xl ${healthColour(ecoResult.ecosystemHealth)}`}>{ecoResult.ecosystemHealth}</span>
                   <span className="text-zinc-400">· Shannon {ecoResult.shannonDiversityIndex}</span>
                 </div>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
                   <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Species</div><div className="font-mono text-emerald-200">{ecoResult.speciesCount}</div></div>
                   <div className="rounded border border-amber-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Threatened</div><div className="font-mono text-amber-200">{ecoResult.threatened}</div></div>
                   <div className="rounded border border-rose-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Invasive</div><div className="font-mono text-rose-200">{ecoResult.invasive}</div></div>

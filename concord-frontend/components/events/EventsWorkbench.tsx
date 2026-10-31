@@ -1537,7 +1537,7 @@ export function EventsWorkbench({
                   <Crown className="w-4 h-4 text-amber-400" />
                   <span className="text-sm font-medium text-amber-400">Creator Dashboard</span>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="p-2 bg-lattice-elevated rounded-lg text-center">
                     <p className="text-xs text-gray-400">Tickets Sold</p>
                     <p className="text-lg font-bold text-neon-cyan">{attendees.length}</p>

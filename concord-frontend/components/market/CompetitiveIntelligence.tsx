@@ -388,7 +388,7 @@ function WinLossTab() {
   return (
     <div className="space-y-3">
       {data && data.totalDeals > 0 && (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           {([
             ['Win rate', data.winRate != null ? `${data.winRate}%` : '—'],
             ['Won', `${data.won}`],

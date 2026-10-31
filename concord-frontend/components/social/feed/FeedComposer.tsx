@@ -140,7 +140,7 @@ export function FeedComposer({ username, quotePost, onClearQuote, onPosted }: Fe
       )}
 
       {media.length > 0 && (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           {media.map((m, i) => (
             <div key={`${m.url.slice(0, 24)}-${i}`} className="relative rounded overflow-hidden border border-zinc-800">
               {m.kind === 'image' ? (

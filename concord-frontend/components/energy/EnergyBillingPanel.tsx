@@ -105,7 +105,7 @@ export function EnergyBillingPanel({ onChange }: { onChange: () => void }) {
           Current: <span className="text-zinc-200">${rate?.ratePerKwh}/kWh</span>
           {rate?.utility ? ` · ${rate.utility}` : ''}{isDefaultRate ? ' (default — set yours below)' : ''}
         </p>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <input placeholder="$/kWh" inputMode="decimal" value={rateForm.ratePerKwh} onChange={(e) => setRateForm({ ...rateForm, ratePerKwh: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input placeholder="Utility" value={rateForm.utility} onChange={(e) => setRateForm({ ...rateForm, utility: e.target.value })}
@@ -170,7 +170,7 @@ export function EnergyBillingPanel({ onChange }: { onChange: () => void }) {
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <Target className="w-3.5 h-3.5 text-lime-400" /> Savings goals
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input placeholder="Label" value={goalForm.label} onChange={(e) => setGoalForm({ ...goalForm, label: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input placeholder="Target kWh" inputMode="decimal" value={goalForm.targetKwh} onChange={(e) => setGoalForm({ ...goalForm, targetKwh: e.target.value })}

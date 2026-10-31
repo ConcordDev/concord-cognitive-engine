@@ -84,7 +84,7 @@ export function HealthPanel() {
                           : 'Emotional health is compromised. Immediate attention recommended for low-scoring dimensions.'}
                     </p>
                     {/* Compact dimension summary */}
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                       {dimValues.map((dim) => {
                         const adj = dim.key === 'f' ? 1 - dim.value : dim.value;
                         return (

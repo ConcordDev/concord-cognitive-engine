@@ -98,7 +98,7 @@ export function EnergyLivePanel({
     <div className="space-y-3">
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="relative bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center overflow-hidden">
           <span
             className="absolute top-1.5 right-1.5 flex items-center gap-1 text-[9px] uppercase tracking-wider text-lime-400"

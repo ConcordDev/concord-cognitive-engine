@@ -77,7 +77,7 @@ export function ActionsPanel({
         <Zap className="w-4 h-4 text-neon-cyan" />
         App Compute Actions
       </h3>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <button onClick={() => handleAppmakerAction('scaffoldApp')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-deep rounded-lg border border-lattice-border hover:border-neon-cyan/50 transition-colors disabled:opacity-50">
           {isRunning === 'scaffoldApp' ? <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" /> : <Code className="w-5 h-5 text-neon-cyan" />}
           <span className="text-xs text-gray-300">Scaffold App</span>

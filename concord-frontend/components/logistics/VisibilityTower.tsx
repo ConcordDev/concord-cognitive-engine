@@ -287,7 +287,7 @@ function GpsPanel() {
             placeholder="Shipment ID"
             className={INPUT}
           />
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input value={pingForm.lat} onChange={(e) => setPingForm({ ...pingForm, lat: e.target.value })} placeholder="Lat" className={INPUT} />
             <input value={pingForm.lng} onChange={(e) => setPingForm({ ...pingForm, lng: e.target.value })} placeholder="Lng" className={INPUT} />
             <input value={pingForm.speedMph} onChange={(e) => setPingForm({ ...pingForm, speedMph: e.target.value })} placeholder="mph" className={INPUT} />
@@ -470,7 +470,7 @@ function VrpPanel() {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <input value={depot.lat} onChange={(e) => setDepot({ ...depot, lat: e.target.value })} placeholder="Depot lat" className={INPUT} />
         <input value={depot.lng} onChange={(e) => setDepot({ ...depot, lng: e.target.value })} placeholder="Depot lng" className={INPUT} />
         <input value={vehicleCount} onChange={(e) => setVehicleCount(e.target.value)} placeholder="Vehicles" className={INPUT} />
@@ -511,7 +511,7 @@ function VrpPanel() {
 
       {result && (
         <div className="space-y-2">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             {[
               { label: 'Vehicles used', value: result.vehiclesUsed },
               { label: 'Total stops', value: result.totalStops },
@@ -772,7 +772,7 @@ function GeofencePanel() {
         <div className="p-3 bg-lattice-deep/40 border border-white/10 rounded space-y-2">
           <p className="text-[10px] uppercase font-semibold text-gray-400">Define geofence</p>
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Name (e.g. Houston DC)" className={INPUT} />
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input value={form.lat} onChange={(e) => setForm({ ...form, lat: e.target.value })} placeholder="lat" className={INPUT} />
             <input value={form.lng} onChange={(e) => setForm({ ...form, lng: e.target.value })} placeholder="lng" className={INPUT} />
             <input value={form.radiusMi} onChange={(e) => setForm({ ...form, radiusMi: e.target.value })} placeholder="radius mi" className={INPUT} />
@@ -940,7 +940,7 @@ function FreightPanel() {
       {err && <ErrLine msg={err} />}
 
       {summary && summary.invoiceCount > 0 && (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <SumStat icon={DollarSign} label="Invoiced" value={`$${summary.totalInvoiced}`} />
           <SumStat icon={Gauge} label="Variance" value={`$${summary.totalVarianceUsd}`} />
           <SumStat icon={AlertTriangle} label="Disputable" value={`$${summary.totalDisputableUsd}`} />
@@ -1105,7 +1105,7 @@ function ExceptionsPanel() {
         <Empty icon={AlertTriangle} text="No exceptions flagged. At-risk loads will appear here." />
       ) : (
         <>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             <SumStat icon={AlertTriangle} label="Open" value={String(dash.openCount)} />
             <SumStat icon={CircleDot} label="Critical" value={String(dash.criticalCount)} />
             <SumStat icon={Activity} label="Escalated" value={String(dash.escalatedCount)} />

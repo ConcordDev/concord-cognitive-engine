@@ -429,7 +429,7 @@ export function KnowledgeBaseWorkbench() {
           </div>
           {graph && (
             <>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                 {[
                   { label: 'Nodes', value: graph.stats.nodeCount },
                   { label: 'Edges', value: graph.stats.edgeCount },

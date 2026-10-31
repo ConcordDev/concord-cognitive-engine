@@ -173,7 +173,7 @@ function MolarityTab() {
   return (
     <div className="p-3 space-y-3">
       <p className="text-[11px] text-gray-400">Provide any 2 of moles / liters / molarity — solver fills the third.</p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         {[
           ['moles', 'Moles', moles, setMoles],
           ['liters', 'Liters', liters, setLiters],
@@ -226,7 +226,7 @@ function DilutionTab() {
   return (
     <div className="p-3 space-y-3">
       <p className="text-[11px] text-gray-400">M1V1 = M2V2 — provide any 3 of the 4 values.</p>
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         {[
           ['M1', m1, setM1],
           ['V1', v1, setV1],
@@ -332,7 +332,7 @@ function GasTab() {
   return (
     <div className="p-3 space-y-3">
       <p className="text-[11px] text-gray-400">PV = nRT — provide any 3 of P (atm), V (L), n (mol), T (K).</p>
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         {[
           ['P (atm)', P, setP],
           ['V (L)', V, setV],

@@ -60,7 +60,7 @@ export function RxPriceLookupPanel() {
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <DollarSign className="w-3.5 h-3.5 text-amber-400" /> Live drug price lookup
         </h3>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <input placeholder="Drug name (e.g. atorvastatin)" value={priceForm.drug}
             onChange={(e) => setPriceForm({ ...priceForm, drug: e.target.value })}
             onKeyDown={(e) => { if (e.key === 'Enter') void lookupPrice(); }}

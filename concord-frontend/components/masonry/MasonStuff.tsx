@@ -114,12 +114,12 @@ function MaterialEstimator() {
                   )}
                 </svg>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div className="rounded-lg border-2 border-red-500/40 bg-red-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-red-300">Units</div><div className="font-mono text-2xl text-red-100">{result.unitsNeeded?.toLocaleString()}</div><div className="text-[9px] text-zinc-400">incl. 5% waste</div></div>
                 <div className="rounded-lg border-2 border-amber-500/40 bg-amber-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-amber-300">Mortar bags</div><div className="font-mono text-2xl text-amber-100">{result.mortarBags80lb}</div><div className="text-[9px] text-zinc-400">80 lb</div></div>
                 <div className="rounded-lg border-2 border-emerald-500/40 bg-emerald-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-emerald-300">Material $</div><div className="font-mono text-2xl text-emerald-100">${result.materialCost?.toLocaleString()}</div></div>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div className="rounded-lg border border-zinc-700 bg-zinc-900/40 p-2"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Total material</div><div className="font-mono text-lg text-zinc-100">${result.totalMaterialCost?.toLocaleString()}</div></div>
                 <div className="rounded-lg border border-zinc-700 bg-zinc-900/40 p-2"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Labor est.</div><div className="font-mono text-lg text-zinc-100">${result.laborEstimate?.toLocaleString()}</div></div>
                 <div className="rounded-lg border-2 border-emerald-500/40 bg-emerald-500/10 p-2"><div className="text-[10px] uppercase tracking-wider text-emerald-300">Grand total</div><div className="font-mono text-lg text-emerald-100">${result.grandTotal?.toLocaleString()}</div></div>

@@ -314,7 +314,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <label className={ds.label}>Est. Hours</label>
                     <input
@@ -385,7 +385,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
 
             {activeArtifactType === 'Material' && (
               <>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <label className={ds.label}>Quantity</label>
                     <input

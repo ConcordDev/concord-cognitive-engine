@@ -175,7 +175,7 @@ function ShipmentsPanel({ notify }: { notify: (f: Feedback) => void }) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <Stat label="In transit" value={data?.inTransit ?? 0} tone="text-blue-300" />
         <Stat label="Delivered" value={data?.delivered ?? 0} tone="text-emerald-300" />
         <Stat label="Delayed" value={data?.delayed ?? 0} tone="text-rose-300" />
@@ -373,7 +373,7 @@ function EchelonPanel({ notify }: { notify: (f: Feedback) => void }) {
       {result?.message && <p className="text-[11px] text-zinc-400">{result.message}</p>}
       {result && !result.message && (
         <>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Stat label="Total safety stock" value={result.totalSafetyStock} tone="text-emerald-300" />
             <Stat label="Total target stock" value={result.totalTargetStock} />
             <Stat label="Need replenish" value={result.needsReplenish} tone="text-rose-300" />

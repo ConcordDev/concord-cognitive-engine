@@ -179,7 +179,7 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
         {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
         {/* Add episode */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <input placeholder="Episode title" value={epForm.title} onChange={(e) => setEpForm({ ...epForm, title: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input placeholder="Mins" inputMode="numeric" value={epForm.durationMin} onChange={(e) => setEpForm({ ...epForm, durationMin: e.target.value })}

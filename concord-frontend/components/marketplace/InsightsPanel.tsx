@@ -79,7 +79,7 @@ export function InsightsPanel() {
                 <Bookmark className="w-3 h-3" />Save
               </button>
             </div>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
               <Mini label="Own listings" value={String(result.ownListingCount)} />
               <Mini label="Impressions" value={result.impressions.toLocaleString()} />
               <Mini label="Clicks" value={result.clicks.toLocaleString()} />

@@ -83,7 +83,7 @@ export function StravaDashboardPanel() {
         <h3 className="text-xs font-semibold text-zinc-300 mb-2 flex items-center gap-1.5">
           <Gauge className="w-3.5 h-3.5 text-orange-400" /> Training load
         </h3>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <Tile icon={TrendingUp} label="Fitness (CTL)" value={String(d.trainingLoad.fitness)} accent="text-sky-400" />
           <Tile icon={Flame} label="Fatigue (ATL)" value={String(d.trainingLoad.fatigue)} accent="text-orange-400" />
           <Tile icon={Gauge} label="Form (TSB)" value={String(d.trainingLoad.form)} accent={d.trainingLoad.form >= 0 ? 'text-emerald-400' : 'text-amber-400'} />

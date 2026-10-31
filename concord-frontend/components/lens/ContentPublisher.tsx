@@ -225,7 +225,7 @@ export function ContentPublisher({
         className={cn(
           'flex items-center gap-1.5 rounded-lg transition-all',
           compact
-            ? 'px-2 py-1 text-xs text-gray-400 hover:text-neon-cyan hover:bg-neon-cyan/10'
+            ? 'min-h-[40px] min-w-[40px] justify-center md:min-h-0 md:min-w-0 px-2 py-1 text-xs text-gray-400 hover:text-neon-cyan hover:bg-neon-cyan/10'
             : 'px-3 py-1.5 text-sm text-gray-400 hover:text-neon-cyan hover:bg-neon-cyan/10 border border-transparent hover:border-neon-cyan/20'
         )}
         title="Publish or share this content"

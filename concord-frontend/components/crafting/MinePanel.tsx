@@ -361,7 +361,7 @@ function ListingModal({
         </label>
 
         {listUseTiers && (
-          <div className="grid grid-cols-3 gap-2 mb-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
             <div>
               <label className="block text-[11px] text-white/60 mb-1">Usage</label>
               <input type="number" min={0} value={listTierUsage}      onChange={(e) => setListTierUsage(e.target.value)}      className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-2 text-sm" />

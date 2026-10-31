@@ -332,7 +332,7 @@ function MessagingChannelsPanel() {
       ) : (
         <div>
           <p className="text-xs text-white/40 mb-2">Add platform</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             {Object.entries(PLATFORM_META).map(([key, meta]) => {
               const Icon = meta.icon;
               const isConnected = connectedPlatforms.has(key);

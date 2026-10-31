@@ -195,7 +195,7 @@ export function LightroomLibraryPanel({ onChange }: { onChange: () => void }) {
           {visiblePhotos.map((p) => (
             <li key={p.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
               {editing?.id === p.id ? (
-                <div className="grid grid-cols-3 gap-2 mb-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
                   <input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })}
                     placeholder="Title" className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100" />
                   <input value={editing.camera} onChange={(e) => setEditing({ ...editing, camera: e.target.value })}

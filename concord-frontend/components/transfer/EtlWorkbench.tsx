@@ -279,7 +279,7 @@ export function EtlWorkbench() {
             </select>
           </div>
           {cKind === 'url' ? (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <input value={cUrl} onChange={(e) => setCUrl(e.target.value)} placeholder="https://example.com/data.csv" aria-label="Source URL" className="input-lattice text-xs col-span-2 font-mono" />
               <select value={cFormat} onChange={(e) => setCFormat(e.target.value as any)} aria-label="Source format" className="input-lattice text-xs">
                 <option value="csv">CSV</option>
