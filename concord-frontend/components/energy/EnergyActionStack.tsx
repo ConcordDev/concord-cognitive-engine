@@ -250,7 +250,7 @@ export function EnergyActionStack() {
       )}
 
       {rate?.latest && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="rounded-lg border-2 border-amber-500/40 bg-zinc-900/60 p-3">
             <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Rate</div>
             <div className="text-2xl font-bold text-amber-300">{rate.latest.priceCentsPerKwh.toFixed(2)}<span className="text-sm ml-1">¢/kWh</span></div>

@@ -130,7 +130,7 @@ export default function LabLensPage() {
 
 
       {/* Stats Row */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }} className="rounded-2xl border border-white/10 bg-[#111] p-3 flex items-center gap-3">
           <FlaskConical className="w-5 h-5 text-neon-purple" />
           <div><p className="text-lg font-bold">{experiments.length}</p><p className="text-xs text-gray-400">Experiments</p></div>

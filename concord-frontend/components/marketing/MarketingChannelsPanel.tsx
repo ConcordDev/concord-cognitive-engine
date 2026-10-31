@@ -105,7 +105,7 @@ export function MarketingChannelsPanel() {
           <Users className="w-3.5 h-3.5 text-orange-400" /> Audience segments
           {totalReach > 0 && <span className="text-[10px] text-zinc-400">· {totalReach.toLocaleString()} total reach</span>}
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input placeholder="Segment name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input placeholder="Criteria" value={form.criteria} onChange={(e) => setForm({ ...form, criteria: e.target.value })}

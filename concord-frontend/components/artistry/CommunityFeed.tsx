@@ -69,7 +69,7 @@ export function CommunityFeed() {
         <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
           <Users className="w-4 h-4 text-neon-pink" /> Follow Graph
         </h3>
-        <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
           <div className="p-2 bg-white/5 rounded text-center">
             <div className="text-lg font-bold text-neon-pink">{graph?.followerCount ?? 0}</div>
             <div className="text-[10px] text-gray-400">Followers</div>

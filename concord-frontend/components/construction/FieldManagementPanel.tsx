@@ -129,7 +129,7 @@ function RfiTab() {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <Stat label="Open" value={summary.open} tone="text-yellow-400" />
         <Stat label="Overdue" value={summary.overdue} tone="text-red-400" />
         <Stat label="Total" value={summary.total} />
@@ -500,7 +500,7 @@ function DailyLogTab() {
             <div>
               <label className={ds.label}>Manpower</label>
               {manpower.map((m, i) => (
-                <div key={i} className="grid grid-cols-3 gap-2 mb-2">
+                <div key={i} className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
                   <input className={ds.input} placeholder="Trade" value={m.trade}
                     onChange={(e) => setManpower(manpower.map((x, j) => j === i ? { ...x, trade: e.target.value } : x))} />
                   <input type="number" className={ds.input} placeholder="Workers" value={m.workers}
@@ -568,7 +568,7 @@ function PunchTab() {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <Stat label="Open" value={summary.open} tone="text-orange-400" />
         <Stat label="Ready" value={summary.ready} tone="text-yellow-400" />
         <Stat label="Closed" value={summary.closed} tone="text-emerald-400" />
@@ -1131,7 +1131,7 @@ function BudgetTab() {
             <Field label="Description">
               <input className={ds.input} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} />
             </Field>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Field label="Budget ($)">
                 <input type="number" className={ds.input} value={f.budgetAmount} onChange={(e) => setF({ ...f, budgetAmount: e.target.value })} />
               </Field>

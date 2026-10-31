@@ -149,7 +149,7 @@ function TimingTool() {
       {r?.message && <p className="text-xs text-zinc-400 italic">{r.message}</p>}
       {r && r.totalDuration !== undefined && !r.message && (
         <div className="space-y-2 bg-zinc-950/50 rounded-lg p-3">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Stat label="Total duration" value={`${r.totalDuration}s`} color="text-purple-400" />
             <Stat label="Total frames" value={r.totalFrames} color="text-cyan-400" />
             <Stat label="Overlaps" value={r.overlappingPairs} color="text-orange-400" />
@@ -274,7 +274,7 @@ function StoryboardTool() {
       {r?.message && <p className="text-xs text-zinc-400 italic">{r.message}</p>}
       {r && r.scenes !== undefined && !r.message && (
         <div className="space-y-2 bg-zinc-950/50 rounded-lg p-3">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Stat label="Scenes" value={r.sceneCount} color="text-orange-400" />
             <Stat label="Total" value={`${r.totalDuration}s`} color="text-cyan-400" />
             <Stat label="Avg scene" value={`${r.avgSceneDuration}s`} color="text-purple-400" />

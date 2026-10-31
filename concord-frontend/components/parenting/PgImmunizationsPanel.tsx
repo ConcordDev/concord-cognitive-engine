@@ -108,7 +108,7 @@ export function PgImmunizationsPanel({ child }: { child: Child }) {
 
       {result && (
         <section className="space-y-2">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Stat label="Completed" value={`${result.summary.completed}/${result.summary.total}`} />
             <Stat label="Compliance" value={`${result.summary.complianceRate}%`} />
             <Stat label="Overdue" value={result.summary.overdue} tone={result.summary.overdue > 0 ? 'warn' : undefined} />

@@ -32,7 +32,7 @@ export function ForgettingPanel() {
 
       {status && (
         <>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Stat label="Tombstones" value={status.tombstones ?? 0} />
             <Stat label="Lifetime" value={status.lifetimeForgotten ?? 0} />
             <Stat label="Threshold" value={status.threshold ?? 0} />

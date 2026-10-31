@@ -431,7 +431,7 @@ export function MoodTracker() {
   return (
     <div className="space-y-5">
       {/* Streak header */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="panel p-4 flex items-center gap-3">
           <Flame className={`w-7 h-7 ${streak > 0 ? 'text-orange-400' : 'text-gray-600'}`} />
           <div>

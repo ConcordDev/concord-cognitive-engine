@@ -201,7 +201,7 @@ export function StravaGpsPanel() {
         </div>
 
         {recording && (
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <div className="rounded-lg bg-zinc-950 border border-zinc-800 px-2 py-1.5">
               <p className="text-[10px] uppercase text-zinc-400">Time</p>
               <p className="text-sm font-bold text-zinc-100 flex items-center gap-1">

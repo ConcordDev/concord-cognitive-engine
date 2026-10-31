@@ -877,7 +877,7 @@ function RunsTab({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         {[
           { label: 'Records loaded', value: totals.records.toLocaleString(), color: 'text-neon-green' },
           { label: 'Byte volume', value: fmtBytes(totals.bytes), color: 'text-neon-cyan' },

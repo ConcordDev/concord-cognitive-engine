@@ -50,7 +50,7 @@ export function TankMixesPanel() {
         <span className="ml-auto text-[10px] text-gray-400">{mixes.length}</span>
       </header>
       <div className="p-3 border-b border-white/10 space-y-2">
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <input value={name} onChange={e => setName(e.target.value)} placeholder="Mix name" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input type="number" value={carrier} onChange={e => setCarrier(e.target.value)} placeholder="Carrier gal/ac" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <button onClick={create} className="px-3 py-1.5 text-xs rounded bg-violet-500 text-white font-bold hover:bg-violet-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Create mix</button>

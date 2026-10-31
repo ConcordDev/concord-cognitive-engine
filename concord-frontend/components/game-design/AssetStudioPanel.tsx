@@ -358,7 +358,7 @@ export function AssetStudioPanel({ onChange }: { gameId: string; onChange: () =>
               />
             </label>
 
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
               <label className="block">
                 <span className="text-[10px] text-zinc-400">Width (m)</span>
                 <input
@@ -441,7 +441,7 @@ export function AssetStudioPanel({ onChange }: { gameId: string; onChange: () =>
                 />
               </label>
             </div>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
               <label className="block">
                 <span className="text-[10px] text-zinc-400">X</span>
                 <input aria-label="Position X" inputMode="decimal" value={form.posX}

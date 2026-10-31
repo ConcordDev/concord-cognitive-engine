@@ -76,7 +76,7 @@ export function ObligationTracker({ contracts }: { contracts: { id: string; titl
       </div>
 
       {s && (
-        <div className="grid grid-cols-4 gap-2 mb-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
           {([['Overdue', s.overdue, 'text-rose-400'], ['Urgent', s.urgent, 'text-amber-300'],
              ['Upcoming', s.upcoming, 'text-gray-300'], ['Done', s.completed, 'text-neon-green']] as const).map(([l, v, c]) => (
             <div key={l} className="bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-center">

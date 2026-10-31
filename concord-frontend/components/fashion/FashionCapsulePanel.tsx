@@ -95,7 +95,7 @@ export function FashionCapsulePanel() {
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <Package className="w-3.5 h-3.5 text-fuchsia-400" /> Capsule wardrobes
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input value={capForm.name} onChange={(e) => setCapForm({ ...capForm, name: e.target.value })}
             placeholder="Capsule name" className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <select value={capForm.season} onChange={(e) => setCapForm({ ...capForm, season: e.target.value })}

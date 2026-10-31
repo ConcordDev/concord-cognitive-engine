@@ -229,7 +229,7 @@ export function RxRefillsPanel({ onChange }: { onChange: () => void }) {
               Real search of the CMS NPPES NPI Registry (federal directory, no key required) — not a
               live inventory, hours, or ratings feed. Verify by calling ahead.
             </p>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
               <input placeholder="City" value={locateForm.city}
                 onChange={(e) => setLocateForm({ ...locateForm, city: e.target.value })}
                 onKeyDown={(e) => { if (e.key === 'Enter') void runLocate(); }}
@@ -277,7 +277,7 @@ export function RxRefillsPanel({ onChange }: { onChange: () => void }) {
         )}
 
         {showPh && (
-          <div className="grid grid-cols-3 gap-2 mb-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
             <input placeholder="Name" value={phForm.name} onChange={(e) => setPhForm({ ...phForm, name: e.target.value })}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <input placeholder="Address" value={phForm.address} onChange={(e) => setPhForm({ ...phForm, address: e.target.value })}

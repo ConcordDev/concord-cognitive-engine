@@ -300,7 +300,7 @@ export function MaterialActionMenu({ material, onClose }: { material: MaterialLi
                 <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Supplier user id</label>
                 <input type="text" value={supplierId} onChange={(e) => setSupplierId(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/40" placeholder="supplier username" autoFocus />
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div>
                   <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Quantity</label>
                   <input type="text" value={quoteQty} onChange={(e) => setQuoteQty(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-pink-400/40" />

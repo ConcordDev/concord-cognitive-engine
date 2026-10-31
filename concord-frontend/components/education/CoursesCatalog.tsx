@@ -319,7 +319,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
                           {isOwner ? (
                             addingLesson || editingLessonId ? (
                               <div className="mt-2 space-y-1.5 pb-2">
-                                <div className="grid grid-cols-4 gap-1.5">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-1.5">
                                   <input value={lessonForm.title} onChange={e => setLessonForm({ ...lessonForm, title: e.target.value })} placeholder="Lesson title" className="col-span-2 px-2 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
                                   <select value={lessonForm.kind} onChange={e => setLessonForm({ ...lessonForm, kind: e.target.value as (typeof LESSON_KINDS)[number] })} className="px-1.5 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white">
                                     {LESSON_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
