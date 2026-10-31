@@ -4,6 +4,9 @@
   "license": "SEE LICENSE IN LICENSE.txt",
   "private": true,
   "scripts": {
+    "vendor:pyodide": "node scripts/vendor-pyodide.mjs",
+    "predev": "node scripts/vendor-pyodide.mjs --soft",
+    "prebuild": "node scripts/vendor-pyodide.mjs --soft",
     "dev": "next dev",
     "build": "node ../server/scripts/prophet-check.js && next build && node ../scripts/sync-unity-web-to-standalone.mjs",
     "build:ci": "NODE_OPTIONS='--max-old-space-size=12288' next build",

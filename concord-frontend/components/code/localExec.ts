@@ -327,6 +327,13 @@ function runPythonOnce(
         stdout += String(msg.text || '');
       } else if (msg.type === 'stderr') {
         stderr += String(msg.text || '');
+      } else if (msg.type === 'unavailable') {
+        // The runtime files could not be loaded: report the runner as unavailable (nothing ran), and drop
+        // the worker so the next run starts fresh and can succeed once the files exist.
+        finish(outcome(
+          { supported: false, stderr: `Python runtime unavailable: ${String(msg.text || 'it could not be loaded.')}` },
+          { ranLocally: false },
+        ), true);
       } else if (msg.type === 'done') {
         finish(outcome({
           supported: true, stdout, stderr,
@@ -501,7 +508,12 @@ function runPythonGeneratedTests(input: {
         } else if (msg.type === 'stdout') stdout += String(msg.text || '');
         else if (msg.type === 'stderr') stderr += String(msg.text || '');
         else if (msg.type === 'test-summary') summary = msg.summary || null;
-        else if (msg.type === 'done') {
+        else if (msg.type === 'unavailable') {
+          finish({
+            result: { supported: false, stderr: `Python runtime unavailable: ${String(msg.text || 'it could not be loaded.')}` },
+            elapsedMs: Math.round(performance.now() - started), timedOut: false, ranLocally: false,
+          }, true);
+        } else if (msg.type === 'done') {
           finish({
             result: { supported: true, stdout, stderr, exitCode: Number.isFinite(msg.exitCode) ? Number(msg.exitCode) : 0 },
             elapsedMs: Math.round(performance.now() - started), timedOut: false, ranLocally: true,

@@ -20,6 +20,7 @@
  *        { type: 'ready', id, loadMs }         runtime ready (once)
  *        { type: 'stdout' | 'stderr', id, text }
  *        { type: 'done', id, exitCode }
+ *        { type: 'unavailable', id, text }      runtime files could not be loaded (nothing ran)
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -40,6 +41,9 @@ function ensureRuntime(id: number, indexURL: string): Promise<void> {
       pyodide.setStderr({ batched: (text: string) => scope.postMessage({ type: 'stderr', id: currentRunId, text: `${text}\n` }) });
       scope.postMessage({ type: 'ready', id, loadMs: Math.round(performance.now() - started) });
     })();
+    // A failed load must not be cached: a later run retries (the files may have been deployed since)
+    // instead of replaying the same rejection forever.
+    loadingPromise.catch(() => { loadingPromise = null; });
   }
   return loadingPromise;
 }
@@ -86,11 +90,12 @@ scope.onmessage = (ev: MessageEvent) => {
     try {
       await ensureRuntime(id, String(msg.indexURL || ''));
     } catch (err) {
+      // Not a script failure: the runtime itself is missing/unreachable. 'unavailable' lets the caller
+      // say so honestly (supported:false) instead of reporting a Python exit code for code that never ran.
       scope.postMessage({
-        type: 'stderr', id,
-        text: `The Python runtime could not load. Its files are served with Concord — if this persists, the deployment is missing them. (${err instanceof Error ? err.message : String(err)})\n`,
+        type: 'unavailable', id,
+        text: `its files are served with Concord and could not be loaded — if this persists, the deployment is missing them. (${err instanceof Error ? err.message : String(err)})`,
       });
-      scope.postMessage({ type: 'done', id, exitCode: 1 });
       return;
     }
     try {
