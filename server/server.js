@@ -44085,7 +44085,10 @@ function getDtuBridge() {
   }
   return _dtuBridgeSvc;
 }
-registerHeartbeat("dtu-bridge-pump", {
+// Kill-switch: DTU_BRIDGE_PUMP_DISABLED=1 (or DTU_BRIDGE_PUMP=0) skips
+// registering the pump at boot. Default unchanged (pump on).
+const _dtuBridgePumpEnabled = process.env.DTU_BRIDGE_PUMP_DISABLED !== "1" && process.env.DTU_BRIDGE_PUMP !== "0";
+if (_dtuBridgePumpEnabled) registerHeartbeat("dtu-bridge-pump", {
   frequency: 4,
   scope: "global",
   handler: async () => {
