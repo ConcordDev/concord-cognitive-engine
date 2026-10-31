@@ -57,7 +57,7 @@ export function UserMenu({ powerMode, onTogglePowerMode, placement = 'below' }: 
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((prev) => !prev)}
-        className="flex items-center gap-2 p-1.5 lg:p-2 rounded-lg hover:bg-lattice-elevated transition-colors"
+        className="flex min-h-[40px] min-w-[40px] items-center justify-center gap-2 p-1.5 lg:min-h-0 lg:min-w-0 lg:p-2 rounded-lg hover:bg-lattice-elevated transition-colors"
         aria-label="User menu"
         aria-expanded={open}
         aria-haspopup="true"
