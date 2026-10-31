@@ -415,6 +415,48 @@ export function createCraftingRouter({ db, requireAuth }) {
     }
   });
 
+  // ── Bench lifecycle (D2) ── rename / remove one of the caller's own
+  // saved pieces. Owner-scoped exactly like GET /recipes above: a piece
+  // that is not the caller's is a 404, never a write. The row's title and
+  // its spec name move together — the bench shows the title, the design
+  // carries the spec.
+  router.patch("/recipes/:id", (req, res) => {
+    try {
+      const userId = req.user.id;
+      const name = typeof req.body?.title === "string" ? req.body.title.trim() : "";
+      if (!name) return res.status(422).json({ ok: false, error: "name required" });
+      if (name.length > 200) return res.status(422).json({ ok: false, error: "name too long" });
+      const row = db.prepare(
+        "SELECT data FROM dtus WHERE id = ? AND creator_id = ? AND type = 'recipe'"
+      ).get(req.params.id, userId);
+      if (!row) return res.status(404).json({ ok: false, error: "recipe not found" });
+      let data = {};
+      try { data = JSON.parse(row.data || "{}"); } catch { data = {}; }
+      if (data && typeof data === "object" && data.spec && typeof data.spec === "object") {
+        data = { ...data, spec: { ...data.spec, name } };
+      }
+      db.prepare(
+        "UPDATE dtus SET title = ?, data = ? WHERE id = ? AND creator_id = ?"
+      ).run(name, JSON.stringify(data), req.params.id, userId);
+      res.json({ ok: true, recipe: { id: req.params.id, name } });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  router.delete("/recipes/:id", (req, res) => {
+    try {
+      const userId = req.user.id;
+      const out = db.prepare(
+        "DELETE FROM dtus WHERE id = ? AND creator_id = ? AND type = 'recipe'"
+      ).run(req.params.id, userId);
+      if (!out.changes) return res.status(404).json({ ok: false, error: "recipe not found" });
+      res.json({ ok: true, deleted: req.params.id });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   return router;
 }
 

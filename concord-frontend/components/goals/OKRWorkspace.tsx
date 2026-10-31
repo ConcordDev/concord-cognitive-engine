@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz/ChartKit';
+import { localDayKey, formatLocalDate, formatLocalDateTime } from '@/components/goals/goals-model';
 import {
   GitBranch, CalendarCheck, Users, LayoutTemplate, BarChart3,
   Bell, Link2, Loader2, Plus, Trash2, RefreshCw, Repeat, AlertTriangle,
@@ -26,6 +27,8 @@ import {
 interface AlignObjective {
   id: string; title: string; parentId: string | null; owner: string | null;
   team: string | null; level: string; keyResults: string[];
+  progress?: number | null; progressSource?: string | null;
+  blockedBy?: string[];
   children?: AlignObjective[];
 }
 interface AlignStats {
@@ -50,16 +53,22 @@ interface RecurringGoal {
   id: string; title: string; cadence: string; category: string | null;
   nextDue: string; occurrences: number;
 }
+interface Occurrence {
+  id: string; recurringId: string; title: string; category: string | null;
+  occurrence: number; dueAt: string;
+}
 interface ChartPoint { date: string; progress: number; }
+interface SeriesPoint { id: string; source: 'checkin' | 'manual'; date: string; progress: number; }
 interface TrendPoint extends Record<string, unknown> { date: string; progress: number; ideal: number; }
 interface BurndownPoint extends Record<string, unknown> { date: string; remaining: number; idealRemaining: number; }
 interface ChartStats {
   points: number; currentProgress: number; target: number; remaining: number;
-  velocityPerDay: number; varianceFromIdeal: number; pace: string;
+  velocityPerDay: number; varianceFromIdeal: number; pace: string | null;
 }
 interface Reminder {
   id: string; goalId: string | null; label: string; kind: string;
   cadence: string; dueAt: string; done: boolean; firedCount: number;
+  firedAt?: string | null;
 }
 interface DepEdge { id: string; from: string; to: string; kind: string; }
 interface DepResult {
@@ -135,6 +144,27 @@ export function OKRWorkspace() {
   );
 }
 
+// S10 (F11): the delete standard's shared pieces — a two-step inline
+// confirm where the trash icon was, and an Undo strip after a delete.
+function ConfirmDelete({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <button onClick={onConfirm} className="text-[10px] font-medium text-red-300 hover:text-red-200">Confirm delete</button>
+      <button onClick={onCancel} className="text-[10px] text-zinc-400 hover:text-zinc-300">Cancel</button>
+    </span>
+  );
+}
+
+function UndoStrip({ label, onUndo, onDismiss }: { label: string; onUndo: () => void; onDismiss: () => void }) {
+  return (
+    <div className="flex items-center gap-2 rounded border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-[11px] text-zinc-300" role="status">
+      <span className="flex-1">{label} deleted.</span>
+      <button onClick={onUndo} className="font-medium text-cyan-300 hover:text-cyan-200">Undo</button>
+      <button onClick={onDismiss} className="text-zinc-500 hover:text-zinc-300">Dismiss</button>
+    </div>
+  );
+}
+
 // --------------- Alignment Tree ---------------
 
 function AlignmentTab() {
@@ -147,6 +177,8 @@ function AlignmentTab() {
   const [team, setTeam] = useState('');
   const [level, setLevel] = useState('company');
   const [krText, setKrText] = useState('');
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [undo, setUndo] = useState<{ trashId: string; label: string } | null>(null);
 
   const load = useCallback(async () => {
     const r = await lensRun('goals', 'alignmentTree', { op: 'list' });
@@ -175,13 +207,26 @@ function AlignmentTab() {
     }
   };
 
-  const remove = async (id: string) => {
-    const r = await lensRun('goals', 'alignmentTree', { op: 'remove', id });
+  const remove = async (node: AlignObjective) => {
+    const r = await lensRun('goals', 'alignmentTree', { op: 'remove', id: node.id });
+    setConfirmId(null);
+    if (r.data?.ok && r.data.result) {
+      setFlat(r.data.result.flat || []);
+      setTree(r.data.result.tree || []);
+      setStats(r.data.result.stats || null);
+      if (r.data.result.trashId) setUndo({ trashId: r.data.result.trashId, label: `Objective "${node.title}"` });
+    }
+  };
+
+  const undoRemove = async () => {
+    if (!undo) return;
+    const r = await lensRun('goals', 'alignmentTree', { op: 'restore', trashId: undo.trashId });
     if (r.data?.ok && r.data.result) {
       setFlat(r.data.result.flat || []);
       setTree(r.data.result.tree || []);
       setStats(r.data.result.stats || null);
     }
+    setUndo(null);
   };
 
   const renderNode = (node: AlignObjective, depth: number) => (
@@ -192,8 +237,20 @@ function AlignmentTab() {
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-xs font-medium text-white">{node.title}</span>
             <span className="rounded bg-cyan-500/15 px-1 text-[9px] uppercase text-cyan-300">{node.level}</span>
+            {node.blockedBy && node.blockedBy.length > 0 && (
+              <span className="rounded bg-orange-500/15 px-1 text-[9px] uppercase text-orange-300" title={`Blocked by ${node.blockedBy.join(', ')}`}>Blocked</span>
+            )}
             {node.team && <span className="rounded bg-purple-500/15 px-1 text-[9px] text-purple-300">{node.team}</span>}
           </div>
+          {node.progress != null && (
+            <div className="mt-1 flex items-center gap-2">
+              <div className="h-1 flex-1 overflow-hidden rounded bg-zinc-800">
+                <div className="h-full rounded bg-cyan-400 transition-all duration-500" style={{ width: `${Math.min(100, Math.max(0, node.progress))}%` }} />
+              </div>
+              <span className="font-mono text-[10px] text-cyan-300">{Math.round(node.progress)}%</span>
+              <span className="text-[9px] text-zinc-500">{node.progressSource === 'rollup' ? 'rolled up from children' : 'from check-ins'}</span>
+            </div>
+          )}
           {node.keyResults.length > 0 && (
             <ul className="mt-1 space-y-0.5">
               {node.keyResults.map((kr, i) => (
@@ -202,9 +259,13 @@ function AlignmentTab() {
             </ul>
           )}
         </div>
-        <button aria-label="Delete" onClick={() => remove(node.id)} className="text-zinc-600 hover:text-red-400">
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        {confirmId === node.id ? (
+          <ConfirmDelete onConfirm={() => remove(node)} onCancel={() => setConfirmId(null)} />
+        ) : (
+          <button aria-label="Delete" onClick={() => setConfirmId(node.id)} className="text-zinc-600 hover:text-red-400">
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
       {(node.children || []).map((c) => renderNode(c, depth + 1))}
     </div>
@@ -252,6 +313,7 @@ function AlignmentTab() {
 
       <div className="space-y-1">
         {tree.map((n) => renderNode(n, 0))}
+      {undo && <UndoStrip label={undo.label} onUndo={undoRemove} onDismiss={() => setUndo(null)} />}
         {tree.length === 0 && <EmptyMsg text="No objectives yet. Add one to build your alignment tree." />}
       </div>
     </div>
@@ -268,6 +330,10 @@ function CheckinsTab() {
   const [progress, setProgress] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [objProgress, setObjProgress] = useState<{ progress: number | null; progressSource: string | null } | null>(null);
+  const [addError, setAddError] = useState('');
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [undo, setUndo] = useState<{ trashId: string; label: string } | null>(null);
 
   const load = useCallback(async () => {
     const r = await lensRun('goals', 'checkin', { op: 'list' });
@@ -284,21 +350,38 @@ function CheckinsTab() {
     const r = await lensRun('goals', 'checkin', {
       op: 'add', goalId: goalId.trim(), confidence,
       progress: progress ? Number(progress) : undefined, note: note.trim(),
+      period: localDayKey(new Date()), // the user's today, not UTC's (S12)
     });
     setBusy(false);
     if (r.data?.ok && r.data.result) {
       setCheckins(r.data.result.checkins || []);
       setStats(r.data.result.stats || null);
+      setObjProgress(r.data.result.objectiveProgress || null);
+      setAddError('');
       setNote(''); setProgress('');
+    } else {
+      setAddError(r.data?.error || 'That check-in was not saved.');
     }
   };
 
-  const remove = async (id: string) => {
-    const r = await lensRun('goals', 'checkin', { op: 'remove', id });
+  const remove = async (c: Checkin) => {
+    const r = await lensRun('goals', 'checkin', { op: 'remove', id: c.id });
+    setConfirmId(null);
+    if (r.data?.ok && r.data.result) {
+      setCheckins(r.data.result.checkins || []);
+      setStats(r.data.result.stats || null);
+      if (r.data.result.trashId) setUndo({ trashId: r.data.result.trashId, label: `Check-in for ${c.goalId}` });
+    }
+  };
+
+  const undoRemove = async () => {
+    if (!undo) return;
+    const r = await lensRun('goals', 'checkin', { op: 'restore', trashId: undo.trashId });
     if (r.data?.ok && r.data.result) {
       setCheckins(r.data.result.checkins || []);
       setStats(r.data.result.stats || null);
     }
+    setUndo(null);
   };
 
   return (
@@ -322,6 +405,13 @@ function CheckinsTab() {
         </button>
       </div>
 
+      {addError && <p className="text-[11px] text-rose-300" role="alert">{addError}</p>}
+      {undo && <UndoStrip label={undo.label} onUndo={undoRemove} onDismiss={() => setUndo(null)} />}
+      {objProgress?.progress != null && (
+        <p className="text-[11px] text-cyan-300" role="status">
+          That objective is now at {Math.round(objProgress.progress)}% — the alignment tree shows this same progress.
+        </p>
+      )}
       {stats && stats.count > 0 && (
         <div className="grid grid-cols-3 gap-2">
           <div className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-center">
@@ -356,9 +446,13 @@ function CheckinsTab() {
               </div>
               {c.note && <p className="mt-0.5 text-[10px] text-zinc-400">{c.note}</p>}
             </div>
-            <button aria-label="Delete" onClick={() => remove(c.id)} className="text-zinc-600 hover:text-red-400">
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            {confirmId === c.id ? (
+              <ConfirmDelete onConfirm={() => remove(c)} onCancel={() => setConfirmId(null)} />
+            ) : (
+              <button aria-label="Delete" onClick={() => setConfirmId(c.id)} className="text-zinc-600 hover:text-red-400">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         ))}
         {checkins.length === 0 && <EmptyMsg text="No check-ins yet. Log a weekly status to track confidence over time." />}
@@ -407,9 +501,23 @@ function TeamGoalsTab() {
     }
   };
 
-  const remove = async (id: string) => {
-    const r = await lensRun('goals', 'teamGoal', { op: 'remove', id });
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [undo, setUndo] = useState<{ trashId: string; label: string } | null>(null);
+
+  const remove = async (g: TeamGoal) => {
+    const r = await lensRun('goals', 'teamGoal', { op: 'remove', id: g.id });
+    setConfirmId(null);
+    if (r.data?.ok && r.data.result) {
+      setGoals(r.data.result.teamGoals || []);
+      if (r.data.result.trashId) setUndo({ trashId: r.data.result.trashId, label: `Team goal "${g.title}"` });
+    }
+  };
+
+  const undoRemove = async () => {
+    if (!undo) return;
+    const r = await lensRun('goals', 'teamGoal', { op: 'restore', trashId: undo.trashId });
     if (r.data?.ok && r.data.result) setGoals(r.data.result.teamGoals || []);
+    setUndo(null);
   };
 
   return (
@@ -423,6 +531,7 @@ function TeamGoalsTab() {
         </button>
       </div>
 
+      {undo && <UndoStrip label={undo.label} onUndo={undoRemove} onDismiss={() => setUndo(null)} />}
       <div className="space-y-2">
         {goals.map((g) => (
           <div key={g.id} className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
@@ -433,9 +542,13 @@ function TeamGoalsTab() {
                   {g.totalContributed} / {g.target} · {g.members.length} member{g.members.length !== 1 ? 's' : ''}
                 </p>
               </div>
-              <button aria-label="Delete" onClick={() => remove(g.id)} className="text-zinc-600 hover:text-red-400">
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              {confirmId === g.id ? (
+                <ConfirmDelete onConfirm={() => remove(g)} onCancel={() => setConfirmId(null)} />
+              ) : (
+                <button aria-label="Delete" onClick={() => setConfirmId(g.id)} className="text-zinc-600 hover:text-red-400">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
               <div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-purple-500" style={{ width: `${g.progress}%` }} />
@@ -487,6 +600,8 @@ function TemplatesTab() {
   const [cadence, setCadence] = useState('weekly');
   const [category, setCategory] = useState('');
   const [busy, setBusy] = useState(false);
+  const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
+  const [appliedNote, setAppliedNote] = useState('');
 
   const loadTemplates = useCallback(async () => {
     const r = await lensRun('goals', 'templates', { op: 'list' });
@@ -496,12 +611,30 @@ function TemplatesTab() {
     const r = await lensRun('goals', 'templates', { op: 'recurring-list' });
     if (r.data?.ok && r.data.result) setRecurring(r.data.result.recurringGoals || []);
   }, []);
-  useEffect(() => { loadTemplates(); loadRecurring(); }, [loadTemplates, loadRecurring]);
+  const loadOccurrences = useCallback(async () => {
+    const r = await lensRun('goals', 'templates', { op: 'occurrences-list' });
+    if (r.data?.ok && r.data.result) setOccurrences(r.data.result.occurrences || []);
+  }, []);
+  useEffect(() => { loadTemplates(); loadRecurring(); loadOccurrences(); }, [loadTemplates, loadRecurring, loadOccurrences]);
 
-  const applyTemplate = (t: GoalTemplate) => {
-    setTitle(t.name);
-    setCadence(t.cadence === 'once' ? 'weekly' : t.cadence);
-    setCategory(t.category);
+  // S6 (F6): "Use template" creates the structure the card promises —
+  // it no longer merely pre-fills a form for something else.
+  const applyTemplate = async (t: GoalTemplate) => {
+    setBusy(true);
+    setAppliedNote('');
+    const r = await lensRun('goals', 'templates', { op: 'apply', templateId: t.id });
+    setBusy(false);
+    if (r.data?.ok && r.data.result) {
+      const obj = r.data.result.objective;
+      const rec = r.data.result.recurring;
+      setAppliedNote(
+        `Created objective "${obj.title}" with ${obj.keyResults.length} key results — find it in the Alignment Tree.` +
+        (rec ? ` A ${rec.cadence} recurring goal was created too.` : ''),
+      );
+      void loadRecurring();
+    } else {
+      setAppliedNote(r.data?.error || 'That template could not be applied.');
+    }
   };
 
   const createRecurring = async () => {
@@ -518,14 +651,31 @@ function TemplatesTab() {
     }
   };
 
-  const removeRecurring = async (id: string) => {
-    const r = await lensRun('goals', 'templates', { op: 'recurring-remove', id });
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [undo, setUndo] = useState<{ trashId: string; label: string } | null>(null);
+
+  const removeRecurring = async (rg: RecurringGoal) => {
+    const r = await lensRun('goals', 'templates', { op: 'recurring-remove', id: rg.id });
+    setConfirmId(null);
+    if (r.data?.ok && r.data.result) {
+      setRecurring(r.data.result.recurringGoals || []);
+      if (r.data.result.trashId) setUndo({ trashId: r.data.result.trashId, label: `Recurring goal "${rg.title}"` });
+    }
+  };
+
+  const undoRemove = async () => {
+    if (!undo) return;
+    const r = await lensRun('goals', 'templates', { op: 'restore', trashId: undo.trashId });
     if (r.data?.ok && r.data.result) setRecurring(r.data.result.recurringGoals || []);
+    setUndo(null);
   };
 
   const runDue = async () => {
     const r = await lensRun('goals', 'templates', { op: 'recurring-run-due' });
-    if (r.data?.ok && r.data.result) setRecurring(r.data.result.recurringGoals || []);
+    if (r.data?.ok && r.data.result) {
+      setRecurring(r.data.result.recurringGoals || []);
+      if (r.data.result.occurrences) setOccurrences(r.data.result.occurrences);
+    }
   };
 
   return (
@@ -549,6 +699,8 @@ function TemplatesTab() {
           {templates.length === 0 && <EmptyMsg text="No templates available." />}
         </div>
       </div>
+
+      {appliedNote && <p className="text-[11px] text-cyan-300" role="status">{appliedNote}</p>}
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
         <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">New recurring goal</p>
@@ -574,6 +726,7 @@ function TemplatesTab() {
             </button>
           )}
         </div>
+      {undo && <UndoStrip label={undo.label} onUndo={undoRemove} onDismiss={() => setUndo(null)} />}
         <div className="space-y-1.5">
           {recurring.map((rg) => (
             <div key={rg.id} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
@@ -584,14 +737,32 @@ function TemplatesTab() {
                   {rg.cadence} · {rg.occurrences} run{rg.occurrences !== 1 ? 's' : ''} · next {rg.nextDue.slice(0, 10)}
                 </span>
               </div>
-              <button aria-label="Delete" onClick={() => removeRecurring(rg.id)} className="text-zinc-600 hover:text-red-400">
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              {confirmId === rg.id ? (
+                <ConfirmDelete onConfirm={() => removeRecurring(rg)} onCancel={() => setConfirmId(null)} />
+              ) : (
+                <button aria-label="Delete" onClick={() => setConfirmId(rg.id)} className="text-zinc-600 hover:text-red-400">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
           ))}
           {recurring.length === 0 && <EmptyMsg text="No recurring goals yet." />}
         </div>
       </div>
+
+      {occurrences.length > 0 && (
+        <div>
+          <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">Occurrences</p>
+          <div className="space-y-1.5">
+            {occurrences.map((o) => (
+              <div key={o.id} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
+                <span className="text-xs text-white">{o.title}</span>
+                <span className="text-[10px] text-zinc-400">#{o.occurrence} · due {formatLocalDate(o.dueAt)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -599,7 +770,9 @@ function TemplatesTab() {
 // --------------- Progress Charts ---------------
 
 function ChartsTab() {
-  const [points, setPoints] = useState<ChartPoint[]>([]);
+  const [objectives, setObjectives] = useState<AlignObjective[]>([]);
+  const [goalId, setGoalId] = useState('');
+  const [points, setPoints] = useState<SeriesPoint[]>([]);
   const [date, setDate] = useState('');
   const [progress, setProgress] = useState('');
   const [target, setTarget] = useState('100');
@@ -608,57 +781,104 @@ function ChartsTab() {
   const [stats, setStats] = useState<ChartStats | null>(null);
   const [view, setView] = useState<'trend' | 'burndown'>('trend');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
-  const compute = useCallback(async (pts: ChartPoint[]) => {
-    if (pts.length === 0) {
-      setTrend([]); setBurndown([]); setStats(null);
-      return;
-    }
+  const applySeries = useCallback((result: {
+    points?: SeriesPoint[]; trend?: TrendPoint[]; burndown?: BurndownPoint[];
+    stats?: ChartStats; empty?: boolean;
+  }) => {
+    setPoints(result.points || []);
+    setTrend(result.trend || []);
+    setBurndown(result.burndown || []);
+    setStats(result.empty ? null : (result.stats || null));
+  }, []);
+
+  const loadSeries = useCallback(async (gid: string, tgt: string) => {
+    if (!gid) { setPoints([]); setTrend([]); setBurndown([]); setStats(null); return; }
     setBusy(true);
-    const r = await lensRun('goals', 'progressChart', {
-      history: pts, target: Number(target) || 100,
-    });
+    const r = await lensRun('goals', 'progressChart', { op: 'series', goalId: gid, target: Number(tgt) || 100 });
     setBusy(false);
-    if (r.data?.ok && r.data.result) {
-      setTrend(r.data.result.trend || []);
-      setBurndown(r.data.result.burndown || []);
-      setStats(r.data.result.empty ? null : (r.data.result.stats || null));
-    }
-  }, [target]);
+    if (r.data?.ok && r.data.result) applySeries(r.data.result);
+  }, [applySeries]);
 
-  const addPoint = () => {
-    if (!date || progress === '') return;
-    const next = [...points, { date, progress: Number(progress) }];
-    setPoints(next);
-    setDate(''); setProgress('');
-    compute(next);
+  useEffect(() => {
+    (async () => {
+      const r = await lensRun('goals', 'alignmentTree', { op: 'list' });
+      if (r.data?.ok && r.data.result) {
+        const flat = (r.data.result.flat || []) as AlignObjective[];
+        setObjectives(flat);
+        const first = flat.find((o) => o.progress != null) || flat[0];
+        if (first) { setGoalId(first.id); void loadSeries(first.id, '100'); }
+      }
+    })();
+  }, [loadSeries]);
+
+  const addPoint = async () => {
+    if (!goalId || !date || progress === '') return;
+    setError('');
+    const r = await lensRun('goals', 'progressChart', {
+      op: 'add-point', goalId, date, progress: Number(progress), target: Number(target) || 100,
+    });
+    if (r.data?.ok && r.data.result) {
+      applySeries(r.data.result);
+      setDate(''); setProgress('');
+    } else {
+      setError(r.data?.error || 'Could not add that point.');
+    }
   };
 
-  const removePoint = (idx: number) => {
-    const next = points.filter((_, i) => i !== idx);
-    setPoints(next);
-    compute(next);
+  const [confirmPointId, setConfirmPointId] = useState<string | null>(null);
+  const [undo, setUndo] = useState<{ trashId: string; label: string } | null>(null);
+
+  const removePoint = async (pt: SeriesPoint) => {
+    const r = await lensRun('goals', 'progressChart', { op: 'remove-point', id: pt.id, goalId, target: Number(target) || 100 });
+    setConfirmPointId(null);
+    if (r.data?.ok && r.data.result) {
+      applySeries(r.data.result);
+      if (r.data.result.trashId) setUndo({ trashId: r.data.result.trashId, label: `Manual point ${pt.date}: ${pt.progress}%` });
+    }
+  };
+
+  const undoRemove = async () => {
+    if (!undo) return;
+    const r = await lensRun('goals', 'progressChart', { op: 'restore-point', trashId: undo.trashId, goalId, target: Number(target) || 100 });
+    if (r.data?.ok && r.data.result) applySeries(r.data.result);
+    setUndo(null);
   };
 
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-        <input value={date} onChange={(e) => setDate(e.target.value)} type="date" className={inputCls} />
-        <input value={progress} onChange={(e) => setProgress(e.target.value)} type="number" min={0} max={100} placeholder="Progress %" className={inputCls} />
-        <input value={target} onChange={(e) => { setTarget(e.target.value); compute(points); }} type="number" min={1} placeholder="Target" className={inputCls} />
-        <button onClick={addPoint} disabled={!date || progress === ''} className={`${btnCls} col-span-3 justify-center`}>
-          <Plus className="h-3.5 w-3.5" /> Add data point
+        <select value={goalId} onChange={(e) => { setGoalId(e.target.value); setError(''); void loadSeries(e.target.value, target); }} className={inputCls} aria-label="Objective">
+          {objectives.length === 0 && <option value="">No objectives</option>}
+          {objectives.map((o) => <option key={o.id} value={o.id}>{o.title}</option>)}
+        </select>
+        <input value={target} onChange={(e) => { setTarget(e.target.value); void loadSeries(goalId, e.target.value); }} type="number" min={1} placeholder="Target" className={inputCls} aria-label="Target" />
+        <span className="flex items-center text-[10px] text-zinc-500">Series = this objective's check-ins + manual points. Both persist.</span>
+        <input value={date} onChange={(e) => setDate(e.target.value)} type="date" className={inputCls} aria-label="Point date" />
+        <input value={progress} onChange={(e) => setProgress(e.target.value)} type="number" min={0} max={100} placeholder="Progress %" className={inputCls} aria-label="Point progress" />
+        <button onClick={addPoint} disabled={!goalId || !date || progress === ''} className={`${btnCls} justify-center`}>
+          <Plus className="h-3.5 w-3.5" /> Add manual point
         </button>
       </div>
 
+      {error && <p className="text-[11px] text-rose-300" role="alert">{error}</p>}
+      {undo && <UndoStrip label={undo.label} onUndo={undoRemove} onDismiss={() => setUndo(null)} />}
+
       {points.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {points.map((p, i) => (
-            <span key={i} className="flex items-center gap-1 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300">
-              {p.date}: {p.progress}%
-              <button aria-label="Delete" onClick={() => removePoint(i)} className="text-zinc-400 hover:text-red-400">
-                <Trash2 className="h-3 w-3" />
-              </button>
+          {points.map((pt) => (
+            <span key={pt.id} className="flex items-center gap-1 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300">
+              {pt.date}: {pt.progress}% · {pt.source}
+              {pt.source === 'manual' && (
+                confirmPointId === pt.id ? (
+                  <ConfirmDelete onConfirm={() => removePoint(pt)} onCancel={() => setConfirmPointId(null)} />
+                ) : (
+                  <button aria-label="Delete" onClick={() => setConfirmPointId(pt.id)} className="text-zinc-400 hover:text-red-400">
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )
+              )}
             </span>
           ))}
         </div>
@@ -670,7 +890,7 @@ function ChartsTab() {
             { label: 'Current', value: `${stats.currentProgress}%` },
             { label: 'Remaining', value: `${stats.remaining}` },
             { label: 'Velocity/day', value: stats.velocityPerDay },
-            { label: 'Pace', value: stats.pace.replace('_', ' ') },
+            { label: 'Pace', value: stats.pace ? stats.pace.replace('_', ' ') : '—' },
           ].map((s) => (
             <div key={s.label} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-center">
               <div className="font-mono text-sm text-cyan-300">{s.value}</div>
@@ -721,8 +941,11 @@ function ChartsTab() {
         </div>
       )}
 
-      {points.length === 0 && (
-        <EmptyMsg text="No progress data yet. Add dated data points to chart burndown and trend." />
+      {objectives.length === 0 && (
+        <EmptyMsg text="Create an objective first — charts are drawn per objective, from its check-ins." />
+      )}
+      {objectives.length > 0 && points.length === 0 && (
+        <EmptyMsg text="No progress data yet for this objective. Log a check-in or add a manual point — both persist here." />
       )}
       {busy && <div className="flex items-center gap-1.5 text-[10px] text-zinc-400"><Loader2 className="h-3 w-3 animate-spin" /> Computing…</div>}
     </div>
@@ -733,7 +956,7 @@ function ChartsTab() {
 
 function RemindersTab() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [stats, setStats] = useState<{ total: number; pending: number; overdue: number } | null>(null);
+  const [stats, setStats] = useState<{ total: number; pending: number; overdue: number; fired: number } | null>(null);
   const [label, setLabel] = useState('');
   const [dueAt, setDueAt] = useState('');
   const [kind, setKind] = useState('review');
@@ -754,7 +977,7 @@ function RemindersTab() {
     if (!label.trim() || !dueAt) return;
     setBusy(true);
     const r = await lensRun('goals', 'reminder', {
-      op: 'create', label: label.trim(), dueAt, kind, cadence,
+      op: 'create', label: label.trim(), dueAt: new Date(dueAt).toISOString(), kind, cadence,
       goalId: goalId.trim() || undefined,
     });
     setBusy(false);
@@ -773,9 +996,23 @@ function RemindersTab() {
     }
   };
 
-  const remove = async (id: string) => {
-    const r = await lensRun('goals', 'reminder', { op: 'remove', id });
-    if (r.data?.ok) await load();
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [undo, setUndo] = useState<{ trashId: string; label: string } | null>(null);
+
+  const remove = async (rm: Reminder) => {
+    const r = await lensRun('goals', 'reminder', { op: 'remove', id: rm.id });
+    setConfirmId(null);
+    if (r.data?.ok && r.data.result) {
+      if (r.data.result.trashId) setUndo({ trashId: r.data.result.trashId, label: `Reminder "${rm.label}"` });
+      await load();
+    }
+  };
+
+  const undoRemove = async () => {
+    if (!undo) return;
+    await lensRun('goals', 'reminder', { op: 'restore', trashId: undo.trashId });
+    setUndo(null);
+    await load();
   };
 
   const now = Date.now();
@@ -784,7 +1021,7 @@ function RemindersTab() {
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 md:grid-cols-3">
         <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Reminder label" className={`${inputCls} md:col-span-3`} />
-        <input value={dueAt} onChange={(e) => setDueAt(e.target.value)} type="date" className={inputCls} />
+        <input value={dueAt} onChange={(e) => setDueAt(e.target.value)} type="datetime-local" className={inputCls} aria-label="Due date and time" />
         <select value={kind} onChange={(e) => setKind(e.target.value)} className={inputCls}>
           {['review', 'checkin', 'deadline'].map((k) => <option key={k} value={k}>{k}</option>)}
         </select>
@@ -798,12 +1035,14 @@ function RemindersTab() {
         </button>
       </div>
 
+      {undo && <UndoStrip label={undo.label} onUndo={undoRemove} onDismiss={() => setUndo(null)} />}
       {stats && stats.total > 0 && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           {[
             { label: 'Total', value: stats.total, cls: 'text-cyan-300' },
             { label: 'Pending', value: stats.pending, cls: 'text-amber-300' },
             { label: 'Overdue', value: stats.overdue, cls: 'text-red-300' },
+            { label: 'Fired', value: stats.fired, cls: 'text-violet-300' },
           ].map((s) => (
             <div key={s.label} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-center">
               <div className={`font-mono text-base ${s.cls}`}>{s.value}</div>
@@ -824,16 +1063,21 @@ function RemindersTab() {
               <div className="min-w-0 flex-1">
                 <span className={`text-xs ${rm.done ? 'text-zinc-400 line-through' : 'text-white'}`}>{rm.label}</span>
                 <span className="ml-2 text-[10px] text-zinc-400">
-                  {rm.kind} · {rm.cadence} · due {rm.dueAt.slice(0, 10)}
+                  {rm.kind} · {rm.cadence} · due {formatLocalDateTime(rm.dueAt)}
+                  {rm.goalId && ` · ${rm.goalId}`}
                   {rm.firedCount > 0 && ` · fired ${rm.firedCount}×`}
                 </span>
               </div>
               {!rm.done && (
                 <button onClick={() => complete(rm.id)} className="text-[10px] text-emerald-400 hover:text-emerald-300">Complete</button>
               )}
-              <button aria-label="Delete" onClick={() => remove(rm.id)} className="text-zinc-600 hover:text-red-400">
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              {confirmId === rm.id ? (
+                <ConfirmDelete onConfirm={() => remove(rm)} onCancel={() => setConfirmId(null)} />
+              ) : (
+                <button aria-label="Delete" onClick={() => setConfirmId(rm.id)} className="text-zinc-600 hover:text-red-400">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
           );
         })}
@@ -872,9 +1116,23 @@ function DependenciesTab() {
     }
   };
 
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [undo, setUndo] = useState<{ trashId: string; label: string } | null>(null);
+
   const unlink = async (e: DepEdge) => {
     const r = await lensRun('goals', 'dependencies', { op: 'unlink', from: e.from, to: e.to });
+    setConfirmId(null);
+    if (r.data?.ok && r.data.result) {
+      setResult(r.data.result);
+      if (r.data.result.trashId) setUndo({ trashId: r.data.result.trashId, label: `Dependency ${e.from} → ${e.to}` });
+    }
+  };
+
+  const undoRemove = async () => {
+    if (!undo) return;
+    const r = await lensRun('goals', 'dependencies', { op: 'restore', trashId: undo.trashId });
     if (r.data?.ok && r.data.result) setResult(r.data.result);
+    setUndo(null);
   };
 
   return (
@@ -934,6 +1192,7 @@ function DependenciesTab() {
         </div>
       )}
 
+      {undo && <UndoStrip label={undo.label} onUndo={undoRemove} onDismiss={() => setUndo(null)} />}
       <div className="space-y-1.5">
         {(result?.edges || []).map((e) => (
           <div key={e.id} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
@@ -941,9 +1200,13 @@ function DependenciesTab() {
             <span className="font-mono text-[11px] text-zinc-300">{e.from}</span>
             <span className={`text-[10px] uppercase ${e.kind === 'blocks' ? 'text-red-400' : 'text-zinc-400'}`}>{e.kind}</span>
             <span className="font-mono text-[11px] text-zinc-300">{e.to}</span>
-            <button aria-label="Delete" onClick={() => unlink(e)} className="ml-auto text-zinc-600 hover:text-red-400">
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            {confirmId === e.id ? (
+              <span className="ml-auto"><ConfirmDelete onConfirm={() => unlink(e)} onCancel={() => setConfirmId(null)} /></span>
+            ) : (
+              <button aria-label="Delete" onClick={() => setConfirmId(e.id)} className="ml-auto text-zinc-600 hover:text-red-400">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         ))}
         {(!result || result.edges.length === 0) && (

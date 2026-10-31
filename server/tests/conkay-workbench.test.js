@@ -214,6 +214,14 @@ describe("the routes (signed in, owner only)", () => {
     assert.equal(u.body.view.revision, 0);
   });
 
+  it("undo with nothing to undo is HTTP 400, never a 200 around ok:false (INC-154)", async () => {
+    const s = await call("POST", "/api/conkay/workbench", "u1", { prompt: "Design a four-seat electric car that holds 140 mph" });
+    const u = await call("POST", `/api/conkay/workbench/${s.body.id}/undo`, "u1");
+    assert.equal(u.status, 400);
+    assert.equal(u.body.ok, false);
+    assert.match(u.body.error, /nothing to undo/);
+  });
+
   it("the knob endpoint (A1): a bad value is 400 invalid_input; a good one returns the fit-check diff, the re-run solvers and the compact assembly", async () => {
     const s = await call("POST", "/api/conkay/workbench", "u1", { prompt: "Design a four-seat electric car that holds 140 mph" });
     assert.equal(s.body.stage, "designed");
