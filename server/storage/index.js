@@ -56,7 +56,14 @@ export class LocalVolumeAdapter extends StorageAdapter {
 
   _uriToFilePath(uri) {
     // uri format: "local:///artifacts/abc/v1/file.wav"
-    const stripped = uri.replace(/^local:\/\//, "");
+    // _filePathToUri emits "local:///" + a base-relative path, so the
+    // remainder after the scheme can start with "/" — it is still a
+    // RELATIVE path under basePath. Strip the leading slashes before
+    // resolving: path.resolve(base, "/x") discards base entirely and
+    // the traversal check below then (correctly) rejected every URI
+    // this adapter itself had issued, so get() could never read back
+    // anything put() wrote.
+    const stripped = uri.replace(/^local:\/\//, "").replace(/^\/+/, "");
     const resolved = path.resolve(this.basePath, stripped);
     // Canonical CodeQL-recognised path-traversal sanitiser:
     //   path.relative(base, target) yields a path that:
