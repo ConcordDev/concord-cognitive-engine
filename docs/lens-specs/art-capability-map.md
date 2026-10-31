@@ -1,7 +1,7 @@
 # art — Capability Map (Frontend Rebuild Program, Wave 3)
 
 > Derived, not asserted. Reproduce the macro list:
-> `grep -c 'registerLensAction("art"' server/domains/art.js` → 71
+> `grep -c 'registerLensAction("art"' server/domains/art.js` → 73
 
 ## Reference app + parity target
 
@@ -131,3 +131,8 @@ closed only the missing caller, with no backend changes.
 - `npx vitest run tests/components/ArtCanvasSymmetryClipboard.test.tsx` — 5/5 passing.
 - `node scripts/verify-lens-backends.mjs` — `art` reports WIRED.
 - `node scripts/grade-ux-polish.mjs --honest` — `art`: `tier: "polished"`, `isGenericScaffold: false`, `bespokeRatio: 0.731`.
+
+
+---
+
+*Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*

@@ -7,6 +7,7 @@
 // pull/push/two-way direction). The legacy ICS pull (`accounts-sync`) stays.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 import { writeGoogleCalendarEvent, readGoogleCalendarEvents } from "../lib/connector-client.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { createNotification } from "../emergent/social-layer.js";
@@ -369,6 +370,28 @@ export default function registerCalendarActions(registerLensAction) {
     return seq;
   }
 
+  // Q79: register Calendar's state-resident records with the shared
+  // export (lib/lens-export.js). Calendar events/calendars/tasks live in
+  // STATE.calendarLens, not the generic artifact store, so an
+  // artifacts-only export contained none of the user's actual data.
+  // Scoped to the calling user, like every other calendar read.
+  registerLensExportProvider("calendar", (ctx) => {
+    const s = getCalState();
+    if (!s) return [];
+    const userId = aidCal(ctx);
+    const rows = [];
+    for (const c of listCal(s.calendars, userId)) {
+      rows.push({ id: c.id, type: "calendar", title: c.name || "Calendar", createdAt: c.createdAt, updatedAt: c.updatedAt || c.createdAt, data: c });
+    }
+    for (const e of listCal(s.events, userId)) {
+      rows.push({ id: e.id, type: "event", title: e.title || e.name || "Untitled event", createdAt: e.createdAt, updatedAt: e.updatedAt || e.createdAt, data: e });
+    }
+    for (const t of listCal(s.tasks, userId)) {
+      rows.push({ id: t.id, type: "task", title: t.title || t.name || "Untitled task", createdAt: t.createdAt, updatedAt: t.updatedAt || t.createdAt, data: t });
+    }
+    return rows;
+  });
+
   const CAL_COLORS = ['#4285f4', '#ea4335', '#34a853', '#fbbc04', '#a142f4', '#24c1e0', '#f538a0', '#f6911e'];
 
   function ensureDefaultCalendars(s, userId) {
@@ -672,6 +695,20 @@ export default function registerCalendarActions(registerLensAction) {
     } catch (e) { return handlerFailure(e); }
 });
 
+  // INC-84: an event whose end is not after its start corrupts every
+  // downstream consumer — conflict checks, availability search and
+  // occurrence expansion all assume a positive duration, and an
+  // inverted event silently poisons each of them. All-day events may
+  // end at the instant they start (single-day); timed events may not.
+  function invalidEventRange(startIso, endIso, allDay) {
+    const sMs = new Date(startIso).getTime();
+    const eMs = new Date(endIso).getTime();
+    if (isNaN(sMs) || isNaN(eMs)) return null; // malformed input is other validators' job
+    if (eMs < sMs) return "end must be after start";
+    if (eMs === sMs && !allDay) return "end must be after start";
+    return null;
+  }
+
   registerLensAction("calendar", "events-create", (ctx, _a, params = {}) => {
   try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -683,6 +720,8 @@ export default function registerCalendarActions(registerLensAction) {
     if (!start || isNaN(new Date(start).getTime())) return { ok: false, error: "valid start (ISO) required" };
     let end = String(params.end || "");
     if (!end || isNaN(new Date(end).getTime())) end = new Date(new Date(start).getTime() + 3_600_000).toISOString();
+    const rangeError = invalidEventRange(start, end, Boolean(params.allDay));
+    if (rangeError) return { ok: false, error: rangeError };
     let calendarId = String(params.calendarId || "");
     if (!calendars.find(c => c.id === calendarId)) calendarId = (calendars.find(c => c.isDefault) || calendars[0]).id;
     const recurrence = normalizeRecurrence(params.recurrence);
@@ -732,6 +771,13 @@ export default function registerCalendarActions(registerLensAction) {
         const ov = { ...(rec.overrides[keyIso] || {}) };
         for (const k of ['title','description','location','conferenceLink']) if (typeof params[k] === 'string') ov[k] = params[k];
         for (const k of ['start','end']) if (typeof params[k] === 'string' && !isNaN(new Date(params[k]).getTime())) ov[k] = new Date(params[k]).toISOString();
+        // INC-84: the override's effective range (its own start/end, or
+        // the occurrence's) must stay valid, same rule as the series.
+        const occDurationMs = new Date(e.end || e.start).getTime() - new Date(e.start).getTime();
+        const ovStart = ov.start || keyIso;
+        const ovEnd = ov.end || new Date(key.getTime() + occDurationMs).toISOString();
+        const ovRangeError = invalidEventRange(ovStart, ovEnd, e.allDay);
+        if (ovRangeError) return { ok: false, error: ovRangeError };
         rec.overrides = { ...rec.overrides, [keyIso]: ov };
         e.recurrence = rec;
         saveCal();
@@ -771,6 +817,14 @@ export default function registerCalendarActions(registerLensAction) {
   });
 
   function applyEventEdits(e, params, ctx, s, scope) {
+    // INC-84: validate the would-be range BEFORE mutating — an edit
+    // that inverts the event (or zeroes a timed event's duration) is
+    // rejected and the stored event is left untouched.
+    const nextStart = (typeof params.start === 'string' && !isNaN(new Date(params.start).getTime())) ? params.start : e.start;
+    const nextEnd = (typeof params.end === 'string' && !isNaN(new Date(params.end).getTime())) ? params.end : (e.end || e.start);
+    const nextAllDay = typeof params.allDay === 'boolean' ? params.allDay : e.allDay;
+    const rangeError = invalidEventRange(nextStart, nextEnd, nextAllDay);
+    if (rangeError) return { ok: false, error: rangeError };
     for (const k of ['title','description','location','conferenceLink']) if (typeof params[k] === 'string') e[k] = params[k];
     for (const k of ['start','end']) {
       if (typeof params[k] === 'string' && !isNaN(new Date(params[k]).getTime())) e[k] = params[k];

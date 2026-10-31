@@ -7,7 +7,7 @@
  *  - FSRS scheduler (per-deck option) + SM-2 study loop
  *  - Rich card types: basic / cloze / image-occlusion / templated
  *  - Media in cards: images + audio + browser TTS
- *  - Deck import / export (.apkg.json shared-deck bundle)
+ *  - Deck import / export (.srs.json shared-deck bundle)
  *  - Per-deck options: new/day, review caps, learning steps, scheduler
  *  - Card browser: search, filter, bulk edit, tags, suspend/bury
  *  - Review heatmap / streak calendar + forecast graph
@@ -18,7 +18,7 @@
  * data. All persistence flows through the srs.* macros.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Layers, Plus, Trash2, GraduationCap, Loader2, BarChart3, FolderTree,
   Filter, Image as ImageIcon, Volume2, Download, Upload, Settings2,
@@ -28,6 +28,8 @@ import {
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { SrsDeckMenu } from './SrsDeckMenu';
+import { dtuRecordId, dtuReadBackCall, dtuReadBackMatches } from './srsDeckReport';
+import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { ChartKit } from '@/components/viz';
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -36,6 +38,7 @@ interface DeckOptions {
   reviewsPerDay: number;
   learningSteps: number[];
   scheduler: 'fsrs' | 'sm2';
+  desiredRetention?: number;
 }
 interface Deck {
   id: string;
@@ -68,10 +71,15 @@ interface Card {
   stability?: number;
   difficulty?: number;
   cardType?: string;
+  image?: string;
+  occlusions?: { x: number; y: number; w: number; h: number; label: string }[];
+  hiddenRegion?: number;
+  noteId?: string;
   markup?: string;
   hint?: string;
   suspended?: boolean;
   buried?: boolean;
+  buriedDay?: string | null;
   due?: string;
   media?: {
     frontImage?: string | null;
@@ -229,6 +237,7 @@ function DecksTab({
   const [newParent, setNewParent] = useState('');
   const [filterName, setFilterName] = useState('');
   const [filterQuery, setFilterQuery] = useState('tag:hard');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   async function createDeck() {
     if (!newDeck.trim()) return;
@@ -253,11 +262,19 @@ function DecksTab({
     if (r.data?.ok) flash('Filtered deck created.');
     else if (r.data?.error) flash(r.data.error);
   }
-  async function deleteDeck(id: string) {
-    if (!confirm('Delete this deck and all its cards?')) return;
-    await lensRun('srs', 'deck-delete', { id });
-    if (active === id) setActive(null);
+  async function deleteDeck(n: DeckTreeNode) {
+    // S2: the old gate was a native confirm(), which never surfaces
+    // in the embedded browser — the click returned before the
+    // (working) deck-delete macro ever ran. Inline two-step instead:
+    // the first click arms the row and states the card fate; the
+    // second click deletes.
+    if (confirmDeleteId !== n.id) { setConfirmDeleteId(n.id); return; }
+    setConfirmDeleteId(null);
+    const r = await lensRun('srs', 'deck-delete', { id: n.id });
+    if (!r.data?.ok) { flash(r.data?.error || 'Could not delete that deck.'); return; }
+    if (active === n.id) setActive(null);
     await refreshDecks();
+    flash('Deck deleted.');
   }
   async function moveDeck(id: string, parentId: string) {
     const r = await lensRun('srs', 'deck-move', { id, parentId });
@@ -285,13 +302,21 @@ function DecksTab({
           </p>
           <p className="text-[10px] text-zinc-400">
             {n.ownCardCount} cards · <span className="text-sky-400">{n.newCount} new</span>
-            {' · '}<span className="text-emerald-400">{n.dueCount} due</span>
+            {' · '}<span className="text-emerald-400">{n.dueCount} due</span>{n.filtered && n.filterQuery && (<span className="text-zinc-500">{' · '}{n.filterQuery}</span>)}
           </p>
         </button>
-        <button onClick={() => deleteDeck(n.id)}
-          className="opacity-0 group-hover:opacity-100 p-1 text-rose-400" aria-label="Delete deck">
-          <Trash2 className="w-3 h-3" />
-        </button>
+        {confirmDeleteId === n.id ? (
+          <span className="flex items-center gap-1">
+            <span className="text-[10px] text-rose-300">Delete this deck and its {n.ownCardCount} card{n.ownCardCount === 1 ? '' : 's'}?{n.children.length > 0 ? ' Subdecks move up a level.' : ''}</span>
+            <button onClick={() => void deleteDeck(n)} className="px-1.5 py-0.5 text-[11px] font-medium text-rose-300 hover:bg-rose-500/10 rounded">Delete</button>
+            <button onClick={() => setConfirmDeleteId(null)} className="px-1.5 py-0.5 text-[11px] text-zinc-400 hover:bg-white/[0.05] rounded">Cancel</button>
+          </span>
+        ) : (
+          <button onClick={() => setConfirmDeleteId(n.id)}
+            className="opacity-0 group-hover:opacity-100 p-1 text-rose-400" aria-label="Delete deck">
+            <Trash2 className="w-3 h-3" />
+          </button>
+        )}
       </div>
       {n.children.map(c => renderNode(c, depth + 1))}
     </div>
@@ -390,6 +415,8 @@ function DeckOptionsPanel({
 }) {
   const [opts, setOpts] = useState<DeckOptions>(() => deck.options ?? ({} as DeckOptions));
   const [stepsText, setStepsText] = useState((deck.options?.learningSteps || []).join(' '));
+  const [nameText, setNameText] = useState(deck.name);
+  const [filterText, setFilterText] = useState(deck.filterQuery || '');
 
   useEffect(() => {
     let stale = false;
@@ -407,10 +434,13 @@ function DeckOptionsPanel({
       .filter(n => Number.isFinite(n) && n > 0);
     const r = await lensRun('srs', 'deck-options-update', {
       deckId: deck.id,
+      name: nameText.trim() && nameText.trim() !== deck.name ? nameText.trim() : undefined,
+      filterQuery: deck.filtered ? (filterText.trim() || undefined) : undefined,
       options: {
         newPerDay: opts.newPerDay,
         reviewsPerDay: opts.reviewsPerDay,
         scheduler: opts.scheduler,
+        desiredRetention: opts.desiredRetention,
         learningSteps: learningSteps.length ? learningSteps : undefined,
       },
     });
@@ -422,6 +452,24 @@ function DeckOptionsPanel({
       <p className="text-xs font-bold text-zinc-100 flex items-center gap-1.5">
         <Settings2 className="w-3.5 h-3.5 text-purple-400" />{deck.name} — Options
       </p>
+
+      <label className="block">
+        <span className="text-[10px] text-zinc-400 uppercase tracking-wide">Deck name</span>
+        <input value={nameText} onChange={e => setNameText(e.target.value)} maxLength={120}
+          className="mt-1 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+      </label>
+
+      {deck.filtered && (
+        <label className="block">
+          <span className="text-[10px] text-zinc-400 uppercase tracking-wide">Filter query</span>
+          <input value={filterText} onChange={e => setFilterText(e.target.value)} maxLength={200}
+            placeholder="tag:hard"
+            className="mt-1 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+          <span className="mt-1 block text-[10px] leading-relaxed text-zinc-500">
+            Cards matching this query, from across all your decks, are studied in this deck.
+          </span>
+        </label>
+      )}
 
       <label className="block">
         <span className="text-[10px] text-zinc-400 uppercase tracking-wide">Scheduler</span>
@@ -436,12 +484,34 @@ function DeckOptionsPanel({
           ))}
         </div>
       </label>
+      <p className="-mt-1 text-[10px] leading-relaxed text-zinc-500">
+        {opts.scheduler === 'fsrs'
+          ? 'FSRS tracks each card’s memory stability and schedules its review for the day you are about to forget it.'
+          : 'SM-2 is the classic algorithm: intervals grow by an ease factor each time you pass a card, and shrink when you lapse.'}
+      </p>
+
+      {opts.scheduler === 'fsrs' && (
+        <label className="block">
+          <span className="text-[10px] text-zinc-400 uppercase tracking-wide">Desired retention (%)</span>
+          <input type="number" min={70} max={97}
+            value={Math.round((opts.desiredRetention ?? 0.9) * 100)}
+            onChange={e => setOpts({ ...opts, desiredRetention: Math.max(70, Math.min(97, Number(e.target.value) || 90)) / 100 })}
+            className="mt-1 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+          <span className="mt-1 block text-[10px] leading-relaxed text-zinc-500">
+            The share of due cards you want to still remember when they come back. Higher means
+            shorter intervals and more reviews; 90% is the usual balance.
+          </span>
+        </label>
+      )}
 
       <label className="block">
         <span className="text-[10px] text-zinc-400 uppercase tracking-wide">New cards / day</span>
         <input type="number" min={0} max={9999} value={opts.newPerDay ?? ''}
           onChange={e => setOpts({ ...opts, newPerDay: Math.max(0, Number(e.target.value) || 0) })}
           className="mt-1 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+        <span className="mt-1 block text-[10px] leading-relaxed text-zinc-500">
+          Brand-new cards that may enter study each day. Cards you have already started are not affected.
+        </span>
       </label>
 
       <label className="block">
@@ -449,6 +519,9 @@ function DeckOptionsPanel({
         <input type="number" min={0} max={99999} value={opts.reviewsPerDay ?? ''}
           onChange={e => setOpts({ ...opts, reviewsPerDay: Math.max(0, Number(e.target.value) || 0) })}
           className="mt-1 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+        <span className="mt-1 block text-[10px] leading-relaxed text-zinc-500">
+          The most due review cards a day’s study will serve. Cards in their learning steps are never capped.
+        </span>
       </label>
 
       <label className="block">
@@ -456,6 +529,10 @@ function DeckOptionsPanel({
         <input value={stepsText} onChange={e => setStepsText(e.target.value)}
           placeholder="1 10"
           className="mt-1 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+        <span className="mt-1 block text-[10px] leading-relaxed text-zinc-500">
+          Minutes between repeats while a card is being learned: “1 10” brings a new card back
+          after 1 minute, then 10 minutes, then it graduates to daily reviews.
+        </span>
       </label>
 
       <label className="block">
@@ -468,6 +545,9 @@ function DeckOptionsPanel({
             <option key={d.id} value={d.id}>{d.name}</option>
           ))}
         </select>
+        <span className="mt-1 block text-[10px] leading-relaxed text-zinc-500">
+          A subdeck’s cards are studied together with its parent deck.
+        </span>
       </label>
 
       <button onClick={save}
@@ -493,7 +573,10 @@ function AddCardsTab({
   const [markup, setMarkup] = useState<'plain' | 'markdown' | 'html'>('plain');
   const [clozeText, setClozeText] = useState('');
   const [imageUrl, setImageUrl] = useState('');
-  const [occLabels, setOccLabels] = useState('');
+  const [occRegions, setOccRegions] = useState<{ x: number; y: number; w: number; h: number; label: string }[]>([]);
+  const [drawRect, setDrawRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const drawStart = useRef<{ x: number; y: number } | null>(null);
+  const [alsoReversed, setAlsoReversed] = useState(false);
   const [fieldsText, setFieldsText] = useState('Word=\nMeaning=');
   const [frontTpl, setFrontTpl] = useState('{{Word}}');
   const [backTpl, setBackTpl] = useState('{{Meaning}}');
@@ -519,19 +602,16 @@ function AddCardsTab({
     let params: Record<string, unknown> = common;
     if (cardType === 'basic') {
       if (!front.trim() || !back.trim()) { flash('Front and back required.'); return; }
-      params = { ...common, front: front.trim(), back: back.trim() };
+      params = { ...common, front: front.trim(), back: back.trim(), alsoReversed: alsoReversed || undefined };
     } else if (cardType === 'cloze') {
       if (!clozeText.trim()) { flash('Cloze text required.'); return; }
       params = { ...common, text: clozeText.trim() };
     } else if (cardType === 'image-occlusion') {
-      const labels = occLabels.split(',').map(l => l.trim()).filter(Boolean);
-      if (!imageUrl.trim() || labels.length === 0) { flash('Image URL and ≥1 label required.'); return; }
+      if (!imageUrl.trim() || occRegions.length === 0) { flash('Add an image and draw at least one mask box.'); return; }
+      if (occRegions.some(rg => !rg.label.trim())) { flash('Name every mask box — the name is the answer on its card.'); return; }
       params = {
         ...common, image: imageUrl.trim(),
-        occlusions: labels.map((label, i) => ({
-          x: 0.1 + (i % 3) * 0.28, y: 0.1 + Math.floor(i / 3) * 0.28,
-          w: 0.22, h: 0.16, label,
-        })),
+        occlusions: occRegions.map(rg => ({ ...rg, label: rg.label.trim() })),
       };
     } else {
       const fields: Record<string, string> = {};
@@ -548,7 +628,7 @@ function AddCardsTab({
     if (r.data?.ok) {
       const gen = r.data.result?.generated;
       flash(gen ? `${gen} card(s) generated.` : 'Card added.');
-      setFront(''); setBack(''); setClozeText(''); setOccLabels(''); setHint('');
+      setFront(''); setBack(''); setClozeText(''); setOccRegions([]); setHint('');
       await refreshDecks();
     } else if (r.data?.error) {
       flash(r.data.error);
@@ -591,6 +671,10 @@ function AddCardsTab({
             <textarea value={back} onChange={e => setBack(e.target.value)}
               placeholder="Back (answer)" rows={3}
               className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200 resize-none" />
+            <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
+              <input type="checkbox" checked={alsoReversed} onChange={e => setAlsoReversed(e.target.checked)} />
+              Also create the reversed card (back → front)
+            </label>
           </>
         )}
         {cardType === 'cloze' && (
@@ -607,16 +691,64 @@ function AddCardsTab({
         {cardType === 'image-occlusion' && (
           <>
             <input value={imageUrl} onChange={e => setImageUrl(e.target.value)}
-              placeholder="Image URL (https://…)"
+              placeholder="Image URL (https://…) — or Use an image from the media library below"
               className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
-            <input value={occLabels} onChange={e => setOccLabels(e.target.value)}
-              placeholder="Region labels, comma-separated (heart, lung, liver)"
-              className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
+            {imageUrl.trim() && (
+              <div className="relative inline-block max-w-full select-none">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imageUrl.trim()} alt="Occlusion source"
+                  className="max-h-64 rounded border border-zinc-800 pointer-events-none" draggable={false} />
+                <div className="absolute inset-0 cursor-crosshair touch-none"
+                  onPointerDown={e => {
+                    const r = e.currentTarget.getBoundingClientRect();
+                    drawStart.current = { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+                    setDrawRect(null);
+                  }}
+                  onPointerMove={e => {
+                    if (!drawStart.current) return;
+                    const r = e.currentTarget.getBoundingClientRect();
+                    const cx = (e.clientX - r.left) / r.width, cy = (e.clientY - r.top) / r.height;
+                    setDrawRect({
+                      x: Math.min(drawStart.current.x, cx), y: Math.min(drawStart.current.y, cy),
+                      w: Math.abs(cx - drawStart.current.x), h: Math.abs(cy - drawStart.current.y),
+                    });
+                  }}
+                  onPointerUp={() => {
+                    if (drawRect && drawRect.w > 0.02 && drawRect.h > 0.02) {
+                      setOccRegions(prev => [...prev, { ...drawRect, label: '' }]);
+                    }
+                    drawStart.current = null;
+                    setDrawRect(null);
+                  }}>
+                  {occRegions.map((rg, i) => (
+                    <div key={i} className="absolute bg-zinc-950/90 border border-purple-400"
+                      style={{ left: `${rg.x * 100}%`, top: `${rg.y * 100}%`, width: `${rg.w * 100}%`, height: `${rg.h * 100}%` }}>
+                      <span className="absolute top-0 left-0.5 text-[9px] text-purple-300">{i + 1}</span>
+                    </div>
+                  ))}
+                  {drawRect && (
+                    <div className="absolute border border-dashed border-purple-300 bg-purple-500/20"
+                      style={{ left: `${drawRect.x * 100}%`, top: `${drawRect.y * 100}%`, width: `${drawRect.w * 100}%`, height: `${drawRect.h * 100}%` }} />
+                  )}
+                </div>
+              </div>
+            )}
+            {occRegions.map((rg, i) => (
+              <div key={i} className="flex items-center gap-1.5">
+                <span className="text-[10px] text-purple-300 w-4">{i + 1}</span>
+                <input value={rg.label} onChange={e => setOccRegions(prev => prev.map((p, j) => j === i ? { ...p, label: e.target.value } : p))}
+                  placeholder="Name this part (the answer on its card)"
+                  className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+                <button onClick={() => setOccRegions(prev => prev.filter((_, j) => j !== i))}
+                  className="text-rose-400 text-[11px] px-1">Remove</button>
+              </div>
+            ))}
             <p className="text-[10px] text-zinc-400 flex items-center gap-1">
-              <ImageIcon className="w-3 h-3" />One card is created per masked region.
+              <ImageIcon className="w-3 h-3" />Draw a box over each part to hide, then name it. One card per box — in Study the part stays covered until you reveal the answer.
             </p>
           </>
         )}
+
         {cardType === 'templated' && (
           <>
             <textarea value={fieldsText} onChange={e => setFieldsText(e.target.value)}
@@ -685,17 +817,19 @@ function AddCardsTab({
         </button>
       </div>
 
-      <MediaLibrary flash={flash} />
+      <MediaLibrary flash={flash} onUse={u => setFrontImage(u)} />
     </div>
   );
 }
 
 // Reusable media asset library — register URLs once, reuse on cards.
-function MediaLibrary({ flash }: { flash: (m: string) => void }) {
+function MediaLibrary({ flash, onUse }: { flash: (m: string) => void; onUse?: (url: string) => void }) {
   const [media, setMedia] = useState<MediaAsset[]>([]);
   const [url, setUrl] = useState('');
   const [name, setName] = useState('');
   const [kind, setKind] = useState<'image' | 'audio'>('image');
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const refresh = useCallback(async () => {
     const r = await lensRun('srs', 'media-list', {});
@@ -712,7 +846,40 @@ function MediaLibrary({ flash }: { flash: (m: string) => void }) {
       flash('Media asset added to library.');
       setUrl(''); setName('');
       await refresh();
-    }
+    } else if (r.data?.error) flash(r.data.error);
+  }
+
+  // S11: upload a real file — it is stored in your library as a
+  // data URL in your account, capped at about 2 MB.
+  async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 2_000_000) { flash('That file is over the 2 MB upload cap.'); return; }
+    const dataUrl = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+    if (!dataUrl) { flash('Could not read that file.'); return; }
+    const r = await lensRun('srs', 'media-add', {
+      dataUrl, name: file.name,
+      kind: file.type.startsWith('audio/') ? 'audio' : 'image',
+    });
+    if (r.data?.ok) { flash('Uploaded ' + file.name + ' to your library.'); await refresh(); }
+    else flash(r.data?.error || 'Upload failed.');
+  }
+
+  // S11: removal is real and verified — the banner reports the
+  // macro's answer, and cards already using the asset keep theirs.
+  async function remove(m: MediaAsset) {
+    const r = await lensRun('srs', 'media-remove', { id: m.id });
+    if (r.data?.ok) {
+      flash('Removed ' + (r.data.result?.name || m.name) + ' from the library. Cards already using it keep their copy.');
+      setConfirmRemoveId(null);
+      await refresh();
+    } else flash(r.data?.error || 'Could not remove that asset.');
   }
 
   return (
@@ -737,9 +904,14 @@ function MediaLibrary({ flash }: { flash: (m: string) => void }) {
           className="px-2 py-1 rounded bg-pink-600 hover:bg-pink-500 text-white disabled:opacity-40">
           <Plus className="w-3.5 h-3.5" />
         </button>
+        <button onClick={() => fileRef.current?.click()}
+          className="px-2 py-1 rounded bg-zinc-700 hover:bg-zinc-600 text-white text-[11px]">
+          Upload file
+        </button>
+        <input ref={fileRef} type="file" accept="image/*,audio/*" onChange={onUpload} className="hidden" />
       </div>
       {media.length === 0 ? (
-        <p className="text-[11px] text-zinc-400 italic">No media yet — add image/audio URLs to reuse on cards.</p>
+        <p className="text-[11px] text-zinc-400 italic">No media yet — add image/audio URLs or upload a file (up to 2 MB) to reuse on cards.</p>
       ) : (
         <ul className="space-y-1 max-h-32 overflow-y-auto">
           {media.map(m => (
@@ -748,7 +920,15 @@ function MediaLibrary({ flash }: { flash: (m: string) => void }) {
                 ? <Volume2 className="w-3 h-3 text-pink-400 shrink-0" />
                 : <ImageIcon className="w-3 h-3 text-pink-400 shrink-0" />}
               <span className="truncate flex-1">{m.name}</span>
-              <span className="text-zinc-600 truncate max-w-[120px]">{m.url}</span>
+              <span className="text-zinc-600 truncate max-w-[120px]">{m.url.startsWith('data:') ? 'uploaded file' : m.url}</span>
+              {onUse && m.kind === 'image' && (
+                <button onClick={() => onUse(m.url)} className="text-purple-300 hover:text-purple-200 shrink-0">Use</button>
+              )}
+              {confirmRemoveId === m.id ? (
+                <button onClick={() => void remove(m)} className="text-rose-300 hover:text-rose-200 shrink-0">Confirm remove?</button>
+              ) : (
+                <button onClick={() => setConfirmRemoveId(m.id)} className="text-zinc-500 hover:text-rose-300 shrink-0">Remove</button>
+              )}
             </li>
           ))}
         </ul>
@@ -794,29 +974,45 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
   }
   const ids = () => [...selected];
 
+  // S6: banners report the macro's verified counts — never the
+  // selection size for an action that may have changed nothing.
   async function bulkSuspend(suspended: boolean) {
     if (selected.size === 0) return;
-    await lensRun('srs', 'card-suspend', { ids: ids(), suspended });
-    flash(`${selected.size} card(s) ${suspended ? 'suspended' : 'unsuspended'}.`);
+    const r = await lensRun('srs', 'card-suspend', { ids: ids(), suspended });
+    const updated = r.data?.result?.updated ?? 0;
+    const unchanged = r.data?.result?.unchanged ?? 0;
+    const unburied = r.data?.result?.unburied ?? 0;
+    if (!r.data?.ok) flash(r.data?.error || 'Could not update those cards.');
+    else if (updated > 0) flash(updated + ' card(s) ' + (suspended ? 'suspended' : 'unsuspended')
+      + (unburied ? ' — ' + unburied + ' of them also unburied' : '')
+      + (unchanged ? ' — ' + unchanged + ' already were.' : '.'));
+    else flash('No change — the selected card(s) were already ' + (suspended ? 'suspended' : 'unsuspended') + '.');
     setSelected(new Set());
     await refresh();
   }
-  async function bulkBury() {
+  async function bulkBury(buried: boolean) {
     if (selected.size === 0) return;
-    await lensRun('srs', 'card-bury', { ids: ids(), buried: true });
-    flash(`${selected.size} card(s) buried.`);
+    const r = await lensRun('srs', 'card-bury', { ids: ids(), buried });
+    const updated = r.data?.result?.updated ?? 0;
+    const unchanged = r.data?.result?.unchanged ?? 0;
+    if (!r.data?.ok) flash(r.data?.error || 'Could not update those cards.');
+    else if (updated > 0) flash(buried
+      ? updated + ' card(s) buried until tomorrow' + (unchanged ? ' — ' + unchanged + ' already were.' : '.')
+      : updated + ' card(s) unburied' + (unchanged ? ' — ' + unchanged + ' already were.' : '.'));
+    else flash('No change — the selected card(s) were already ' + (buried ? 'buried' : 'unburied') + '.');
     setSelected(new Set());
     await refresh();
   }
   async function bulkApply() {
     if (selected.size === 0) return;
     const addTags = bulkTags.split(',').map(t => t.trim()).filter(Boolean);
-    await lensRun('srs', 'card-bulk-edit', {
+    const r = await lensRun('srs', 'card-bulk-edit', {
       ids: ids(),
       addTags: addTags.length ? addTags : undefined,
       moveToDeckId: bulkDeck || undefined,
     });
-    flash(`${selected.size} card(s) updated.`);
+    if (r.data?.ok) flash((r.data.result?.updated ?? 0) + ' card(s) updated.');
+    else flash(r.data?.error || 'Could not update those cards.');
     setSelected(new Set()); setBulkTags(''); setBulkDeck('');
     await refresh();
   }
@@ -908,9 +1104,13 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
             className="px-2 py-1 text-[11px] rounded bg-zinc-700 hover:bg-zinc-600 text-white">
             Unsuspend
           </button>
-          <button onClick={bulkBury}
+          <button onClick={() => bulkBury(true)}
             className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded bg-zinc-700 hover:bg-zinc-600 text-white">
             <EyeOff className="w-3 h-3" />Bury
+          </button>
+          <button onClick={() => bulkBury(false)}
+            className="px-2 py-1 text-[11px] rounded bg-zinc-700 hover:bg-zinc-600 text-white">
+            Unbury
           </button>
           <input value={bulkTags} onChange={e => setBulkTags(e.target.value)}
             placeholder="add tags"
@@ -937,6 +1137,7 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
               <th className="p-2 w-20">Type</th>
               <th className="p-2 w-14 text-center">Reps</th>
               <th className="p-2 w-16 text-center">Interval</th>
+              <th className="p-2 w-24">Due</th>
               <th className="p-2 w-20">State</th>
               <th className="p-2 w-14"></th>
             </tr>
@@ -944,7 +1145,7 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
           <tbody>
             {cards.map(c => editing?.id === c.id ? (
               <tr key={c.id} className="border-b border-purple-500/30 bg-purple-950/20">
-                <td colSpan={7} className="p-2">
+                <td colSpan={8} className="p-2">
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <textarea aria-label="Front" rows={2} value={editing.front} onChange={e => setEditing({ ...editing, front: e.target.value })}
                       className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100" />
@@ -980,6 +1181,7 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
                 <td className="p-2 text-zinc-400">{c.cardType || 'basic'}</td>
                 <td className="p-2 text-center text-zinc-400 font-mono">{c.reps}</td>
                 <td className="p-2 text-center text-zinc-400 font-mono">{c.interval}d</td>
+                <td className="p-2 text-zinc-400">{c.state === 'new' || !c.due ? '—' : new Date(c.due).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                 <td className="p-2">
                   <span className={cn('text-[9px] px-1 rounded',
                     c.suspended ? 'bg-amber-900/50 text-amber-300'
@@ -1024,30 +1226,101 @@ function StudyTab({
   const [card, setCard] = useState<Card | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [remaining, setRemaining] = useState(0);
-  const [done, setDone] = useState(0);
+  const [today, setToday] = useState<{ reviews: number; agains: number; nextDueAt: string | null }>({ reviews: 0, agains: 0, nextDueAt: null });
   const [scheduler, setScheduler] = useState<string | null>(null);
-  const [nextDays, setNextDays] = useState<number | null>(null);
+  const [nextLabel, setNextLabel] = useState<string | null>(null);
+  const [previews, setPreviews] = useState<Record<string, string> | null>(null);
+  const [lastGrade, setLastGrade] = useState<string | null>(null);
+  const [canUndo, setCanUndo] = useState(false);
+  // Bury follow-up (founder ruling): the session's unbury-anyway
+  // control. Threaded through every study-next of the session.
+  const [includeBuried, setIncludeBuried] = useState(false);
 
   const deckId = active || decks[0]?.id;
   const deck = decks.find(d => d.id === deckId);
 
   const fetchNext = useCallback(async (id: string) => {
-    const r = await lensRun('srs', 'study-next', { deckId: id });
-    setCard((r.data?.result?.card as Card) || null);
+    const r = await lensRun('srs', 'study-next', { deckId: id, includeBuried });
+    const nextCard = (r.data?.result?.card as Card) || null;
+    setCard(nextCard);
     setRemaining(r.data?.result?.remaining || 0);
     setRevealed(false);
+    setPreviews(null);
+    if (nextCard) {
+      // S3: the grade buttons carry the interval each grade promises,
+      // from the same grading core study-answer applies.
+      const pv = await lensRun('srs', 'study-preview', { cardId: nextCard.id });
+      const p = pv.data?.result?.previews as Record<string, { label: string }> | undefined;
+      if (p) setPreviews(Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v.label])));
+    }
+  }, [includeBuried]);
+  // S14: progress reads the review log (study-stats, pool scope),
+  // so it survives leaving and returning mid-session.
+  const fetchToday = useCallback(async (id: string) => {
+    const r = await lensRun('srs', 'study-stats', { deckId: id });
+    const res = r.data?.result as { reviewsToday?: number; againToday?: number; nextDueAt?: string | null } | undefined;
+    if (res) setToday({ reviews: res.reviewsToday ?? 0, agains: res.againToday ?? 0, nextDueAt: res.nextDueAt ?? null });
   }, []);
-  useEffect(() => { if (deckId) void Promise.resolve().then(() => fetchNext(deckId)); }, [deckId, fetchNext]);
+  useEffect(() => {
+    if (!deckId) return;
+    void Promise.resolve().then(() => { void fetchNext(deckId); void fetchToday(deckId); });
+  }, [deckId, fetchNext, fetchToday]);
+
+  // S9: undo the last grade (button + Ctrl+Z). The key handler
+  // exempts form fields — keystrokes belong to the field (S1).
+  const undo = useCallback(async () => {
+    const r = await lensRun('srs', 'study-undo', {});
+    if (r.data?.ok) {
+      setLastGrade(null);
+      setCanUndo(false);
+      if (deckId) { await fetchNext(deckId); await fetchToday(deckId); }
+      await refreshDecks();
+    }
+  }, [deckId, fetchNext, fetchToday, refreshDecks]);
+  useEffect(() => {
+    if (!canUndo) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z') return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      e.preventDefault();
+      void undo();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [canUndo, undo]);
+
+  // S14: the study keys — Space reveals, 1-4 grade — printed on the
+  // surface under the card. Form fields are exempt (S1's rule), and
+  // modifier chords (incl. Ctrl+Z undo above) pass through.
+  useEffect(() => {
+    if (!card) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      if (!revealed && (e.key === ' ' || e.code === 'Space')) { e.preventDefault(); setRevealed(true); return; }
+      if (revealed && ['1', '2', '3', '4'].includes(e.key)) {
+        e.preventDefault();
+        void rate(RATINGS[Number(e.key) - 1].id);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  });
 
   async function rate(rating: string) {
     if (!card || !deckId) return;
     const r = await lensRun('srs', 'study-answer', { cardId: card.id, rating });
     if (r.data?.ok) {
       setScheduler(r.data.result?.scheduler as string);
-      setNextDays(r.data.result?.nextReviewInDays as number);
-      setDone(d => d + 1);
+      const label = r.data.result?.intervalLabel as string | undefined;
+      setNextLabel(label ?? null);
+      if (label) setLastGrade(card.front + ' · ' + rating + ' · back in ' + label);
+      setCanUndo(true);
     }
     await fetchNext(deckId);
+    if (deckId) await fetchToday(deckId);
     await refreshDecks();
   }
 
@@ -1066,25 +1339,58 @@ function StudyTab({
           className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200">
           {decks.map(d => (
             <option key={d.id} value={d.id}>
-              {d.name} ({d.studyCount} due)
+              {d.name} ({d.studyCount} to study)
             </option>
           ))}
         </select>
         <span className="text-[11px] text-zinc-400">
           Scheduler: <span className="text-purple-300">{deck?.options?.scheduler?.toUpperCase() || 'FSRS'}</span>
         </span>
-        <span className="ml-auto text-[11px] text-zinc-400">{done} studied this session</span>
+        <label className="flex items-center gap-1.5 text-[11px] text-zinc-400 cursor-pointer select-none">
+          <input type="checkbox" checked={includeBuried} onChange={e => setIncludeBuried(e.target.checked)}
+            className="accent-purple-500" aria-label="Include buried cards in this session" />
+          Include buried
+        </label>
+        <span className="ml-auto text-[11px] text-zinc-400">{today.reviews} studied today</span>
       </div>
+      {includeBuried && (
+        <p className="text-[11px] text-zinc-500">Buried cards are in this session. Buried cards return to the deck tomorrow either way.</p>
+      )}
+
+      {(lastGrade || canUndo) && (
+        <div className="flex items-center gap-3">
+          {lastGrade && <p className="text-[11px] text-zinc-500">{lastGrade}</p>}
+          {canUndo && (
+            <button onClick={() => void undo()} className="text-[11px] text-purple-300 hover:text-purple-200">Undo grade</button>
+          )}
+        </div>
+      )}
 
       {card ? (
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-5 text-center">
           <p className="text-[10px] text-zinc-400 mb-2">{remaining} left</p>
 
-          {card.media?.frontImage && (
+          {card.cardType === 'image-occlusion' && card.image && card.occlusions?.length ? (
+            <div className="relative inline-block max-w-full mb-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={card.image} alt="Occlusion card"
+                className="max-h-56 rounded border border-zinc-800" />
+              {card.occlusions.map((rg, i) => {
+                if (i !== (card.hiddenRegion ?? -1)) return null;
+                return revealed ? (
+                  <div key={i} className="absolute border-2 border-emerald-400"
+                    style={{ left: `${rg.x * 100}%`, top: `${rg.y * 100}%`, width: `${rg.w * 100}%`, height: `${rg.h * 100}%` }} />
+                ) : (
+                  <div key={i} className="absolute bg-zinc-950 border border-zinc-600"
+                    style={{ left: `${rg.x * 100}%`, top: `${rg.y * 100}%`, width: `${rg.w * 100}%`, height: `${rg.h * 100}%` }} />
+                );
+              })}
+            </div>
+          ) : card.media?.frontImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={card.media.frontImage} alt="Card front media"
               className="mx-auto mb-3 max-h-40 rounded border border-zinc-800" />
-          )}
+          ) : null}
           <p className="text-base text-zinc-100 whitespace-pre-wrap">{card.front}</p>
           {card.media?.tts && (
             <button onClick={() => speak(card.front)}
@@ -1114,25 +1420,42 @@ function StudyTab({
                   <button key={r.id} onClick={() => rate(r.id)}
                     className={cn('px-3 py-1.5 text-xs font-semibold rounded text-white', r.cls)}>
                     {r.label}
+                    {previews?.[r.id] && (
+                      <span className="block text-[10px] font-normal opacity-80">{previews[r.id]}</span>
+                    )}
                   </button>
                 ))}
               </div>
             ) : (
               <button onClick={() => setRevealed(true)}
                 className="px-4 py-1.5 text-xs font-semibold rounded bg-purple-600 hover:bg-purple-500 text-white">
-                Show answer
+                Show answer <span className="font-normal opacity-70">(Space)</span>
               </button>
             )}
           </div>
+          <p className="mt-2 text-[10px] text-zinc-600">
+            {revealed ? 'Keys: 1 Again · 2 Hard · 3 Good · 4 Easy' : 'Space reveals the answer'}
+          </p>
         </div>
       ) : (
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-8 text-center">
           <Sparkles className="w-7 h-7 text-emerald-400 mx-auto mb-2" />
           <p className="text-sm text-zinc-200">All caught up — nothing due in this deck.</p>
-          {scheduler && nextDays != null && (
+          {scheduler && nextLabel && (
             <p className="text-[11px] text-zinc-400 mt-1">
-              Last card scheduled +{nextDays}d via {scheduler.toUpperCase()}.
+              Last card scheduled +{nextLabel} via {scheduler.toUpperCase()}.
             </p>
+          )}
+          {today.reviews > 0 && (
+            <p className="text-[11px] text-zinc-400 mt-1">
+              Session complete — {today.reviews} card(s) reviewed today in this deck, {today.agains} marked Again.
+              {today.nextDueAt
+                ? ' Next due ' + new Date(today.nextDueAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '.'
+                : ' Nothing else is scheduled.'}
+            </p>
+          )}
+          {today.agains > 0 && (
+            <p className="mt-1 text-[11px] text-zinc-500">Agains are data, not failure — those cards come back sooner so they stick.</p>
           )}
         </div>
       )}
@@ -1323,7 +1646,113 @@ function Stat({
   );
 }
 
-// ═══ TRANSFER TAB — deck import / export (.apkg.json bundles) ═════════
+// ═══ SHARED DECKS — publish a deck as a DTU; add published decks ═══
+interface SharedBundle { deck?: { name?: string }; cards?: unknown[] }
+interface SharedDtu { id: string; title?: string; machine?: { kind?: string; bundle?: SharedBundle } }
+
+function SharedDecksPanel({
+  decks, refreshDecks, flash,
+}: {
+  decks: Deck[]; refreshDecks: () => Promise<void>; flash: (m: string) => void;
+}) {
+  const [shareDeck, setShareDeck] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [publishedId, setPublishedId] = useState('');
+  const { contextDTUs, isLoading } = useLensDTUs({ lens: 'srs' });
+  const shared = (contextDTUs || [])
+    .map(d => d as unknown as SharedDtu)
+    .filter(d => d.machine?.kind === 'srs_deck_bundle' && d.machine?.bundle);
+
+  // S13: publishing stores the deck's export bundle as a DTU the
+  // owner marks public — the platform's own rights model decides
+  // who can see it; the original deck is never touched.
+  async function publish() {
+    if (!shareDeck) return;
+    setBusy(true);
+    const r = await lensRun('srs', 'deck-export', { deckId: shareDeck });
+    const bundle = r.data?.result?.bundle as SharedBundle | undefined;
+    if (!r.data?.ok || !bundle) { setBusy(false); flash(r.data?.error || 'Could not read that deck.'); return; }
+    const deckName = bundle.deck?.name || 'Deck';
+    const created = await lensRun('dtu', 'create', {
+      title: deckName + ' (shared deck)',
+      tags: ['srs', 'shared-deck'],
+      source: 'srs-lens:shared-deck',
+      human: { summary: 'Shared SRS deck "' + deckName + '" — ' + (bundle.cards?.length ?? 0) + ' cards, published from the SRS lens. Adding it creates a copy in your own decks.' },
+      machine: { kind: 'srs_deck_bundle', version: 1, bundle },
+      meta: { visibility: 'public', consent: { allowCitations: true }, createdFrom: 'srs', srs: { deckId: shareDeck, deckName } },
+    });
+    const id = dtuRecordId(created.data);
+    if (!id) { setBusy(false); flash('Not published. ' + (created.data?.error || 'The record store refused it.')); return; }
+    const rb = dtuReadBackCall(id);
+    const back = await lensRun(rb.domain, 'get', rb.input);
+    setBusy(false);
+    if (!dtuReadBackMatches(id, back.data)) {
+      flash('Published as ' + id + ' but the read-back did not return it — check your DTU library before relying on it.');
+      return;
+    }
+    setPublishedId(id);
+    flash('Published "' + deckName + '" as DTU ' + id + '. Your original deck is unchanged.');
+  }
+
+  async function addShared(d: SharedDtu) {
+    const bundle = d.machine?.bundle;
+    if (!bundle) return;
+    setBusy(true);
+    const r = await lensRun('srs', 'deck-import', { bundle });
+    setBusy(false);
+    if (r.data?.ok) {
+      flash('Added "' + (bundle.deck?.name || 'shared deck') + '" — ' + (r.data.result?.imported ?? 0) + ' card(s) copied into your decks.');
+      await refreshDecks();
+    } else flash(r.data?.error || 'Could not add that deck.');
+  }
+
+  return (
+    <div className="grid md:grid-cols-2 gap-3">
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 space-y-2">
+        <p className="text-xs font-bold text-zinc-100">Share a deck</p>
+        <select value={shareDeck} onChange={e => setShareDeck(e.target.value)}
+          className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200">
+          <option value="">Select a deck…</option>
+          {decks.filter(d => !d.filtered).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+        </select>
+        <button onClick={() => void publish()} disabled={busy || !shareDeck}
+          className="w-full px-2 py-1.5 text-xs rounded bg-purple-600 hover:bg-purple-500 text-white font-semibold disabled:opacity-40">
+          Publish a shareable copy
+        </button>
+        <p className="text-[10px] text-zinc-400">
+          Publishing stores a copy of the deck (cards + scheduling) as a public DTU under your account.
+          Your original deck stays private and unchanged.
+          {publishedId && <> Published as <span className="text-zinc-200">{publishedId}</span>.</>}
+        </p>
+      </div>
+
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 space-y-2">
+        <p className="text-xs font-bold text-zinc-100">Shared decks</p>
+        {isLoading ? (
+          <p className="text-[11px] text-zinc-400 italic">Looking in the library…</p>
+        ) : shared.length === 0 ? (
+          <p className="text-[11px] text-zinc-400 italic">
+            No shared decks in the library yet. Publishing one above makes it findable here,
+            and for any other account it is visible to.
+          </p>
+        ) : (
+          <ul className="space-y-1 max-h-40 overflow-y-auto">
+            {shared.map(d => (
+              <li key={d.id} className="flex items-center gap-2 text-[11px] text-zinc-300 bg-zinc-900/50 rounded px-2 py-1">
+                <span className="truncate flex-1">{d.machine?.bundle?.deck?.name || d.title || d.id}</span>
+                <span className="text-zinc-500">{d.machine?.bundle?.cards?.length ?? 0} cards</span>
+                <button onClick={() => void addShared(d)} disabled={busy}
+                  className="text-purple-300 hover:text-purple-200 shrink-0 disabled:opacity-40">Add to my decks</button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ═══ TRANSFER TAB — deck import / export (.srs.json bundles) ═════════
 function TransferTab({
   decks, refreshDecks, flash,
 }: {
@@ -1343,7 +1772,7 @@ function TransferTab({
       const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = filename || 'deck.apkg.json';
+      a.href = url; a.download = filename || 'deck.srs.json';
       a.click();
       URL.revokeObjectURL(url);
       flash('Deck exported.');
@@ -1374,7 +1803,8 @@ function TransferTab({
   }
 
   return (
-    <div className="grid md:grid-cols-2 gap-3">
+    <div className="space-y-3">
+      <div className="grid md:grid-cols-2 gap-3">
       {/* Export */}
       <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 space-y-2">
         <p className="text-xs font-bold text-zinc-100 flex items-center gap-1.5">
@@ -1387,10 +1817,10 @@ function TransferTab({
         </select>
         <button onClick={doExport} disabled={busy || !exportDeck}
           className="w-full px-2 py-1.5 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold disabled:opacity-40 inline-flex items-center justify-center gap-1.5">
-          <Download className="w-3.5 h-3.5" />Download .apkg.json bundle
+          <Download className="w-3.5 h-3.5" />Download .srs.json bundle
         </button>
         <p className="text-[10px] text-zinc-400">
-          Exports all cards, tags, media references, and deck options as a portable shared-deck bundle.
+          Exports cards, tags, media references, deck options, and scheduling history as a Concord bundle (.srs.json). It is not an Anki .apkg file — Anki cannot open it.
         </p>
       </div>
 
@@ -1410,6 +1840,20 @@ function TransferTab({
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
           Import bundle
         </button>
+      </div>
+      </div>
+
+      <SharedDecksPanel decks={decks} refreshDecks={refreshDecks} flash={flash} />
+
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+        <p className="text-xs font-bold text-zinc-100">Where your deck data lives</p>
+        <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">
+          Your decks live in your Concord account’s SRS store on the server — not in this browser, and not in an
+          export file unless you download one. Exporting is your backup: the .srs.json bundle holds the cards and
+          their scheduling, and importing it always creates a new deck — it never overwrites one you have.
+          Publishing a shareable copy stores the deck as a DTU under your account; your original stays private and
+          unchanged, and anyone who adds the shared copy studies their own copy — their progress never touches yours.
+        </p>
       </div>
     </div>
   );

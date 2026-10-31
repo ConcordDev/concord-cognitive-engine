@@ -1,8 +1,8 @@
 # Services Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
 > Derived, not asserted. Reproduce the macro list:
-> `grep -c 'registerLensAction("services"' server/domains/services.js` → 31
-> `node scripts/lens-unsurfaced.mjs --lens services` → `0/31 macros never referenced in the frontend` (false negative for two macros — see below).
+> `grep -c 'registerLensAction("services"' server/domains/services.js` → 33
+> `node scripts/lens-unsurfaced.mjs --lens services` → `0/33 macros never referenced in the frontend` (false negative for two macros — see below).
 
 ## What this lens is
 
@@ -128,3 +128,8 @@ intent under the corrected architecture).
 - `node scripts/verify-lens-backends.mjs` — `{"WIRED":258,"NO-BACKEND-CALL":2}` total 260 (unchanged, services already WIRED).
 - `node scripts/grade-ux-polish.mjs --honest` — `services`: `tier: "polished"`, `isGenericScaffold: false`, `honestCapped: false`.
 - No `npx tsc --noEmit` run per standing rule (container OOM risk); manual review of the type shapes touched (mapped `AppointmentLite`/`AppointmentDataLite` objects match the pre-existing pattern already used for `tomorrowAppointments`).
+
+
+---
+
+*Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*

@@ -1,12 +1,12 @@
 # Council Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
 > Derived, not asserted. Reproduce the macro counts:
-> `grep -c 'registerLensAction("council"' server/domains/council.js` → 28
+> `grep -c 'registerLensAction("council"' server/domains/council.js` → 40
 > `grep -c 'registerLensAction("council"' server/server.js` → 4 (`debate`, `vote`, `simulate-budget`, `audit`)
-> `grep -c 'register("council"' server/server.js` → 8 (`understanding_for_proposal`, `evaluate`, `voices`, `reviewGlobal`, `weeklyDebateTick`, `vote`, `tally`, `credibility`)
+> `grep -c 'register("council"' server/server.js` → 12 (`understanding_for_proposal`, `evaluate`, `voices`, `reviewGlobal`, `weeklyDebateTick`, `vote`, `tally`, `credibility`)
 >
-> Total addressable `council.*` surface: **40 macro registrations** across
-> **39 distinct action names** — `council.vote` is registered twice: once via
+> Total addressable `council.*` surface: **56 macro registrations** across
+> **54 distinct action names** — `council.vote` is registered twice: once via
 > `register()` into the `MACROS` map (`server/server.js:35754` — a DTU-approval
 > vote keyed by `dtuId`/`persona`, feeding `council.tally`) and once via
 > `registerLensAction()` (`server/server.js:39886` — a generic per-artifact
@@ -82,8 +82,8 @@ not a content site), so this scores FEATURE parity, not content volume.
 | Governance/emergent proposal voting (separate REST family) | ALREADY REAL | `GovernanceVotingPanel.tsx` → `/api/council/propose-promotion`, `/vote`, `/proposals` |
 | Council-voices deterministic per-voice evaluation | ALREADY REAL | `CouncilVoices.tsx` → `/api/council/voices`, `/api/council/voices/evaluate` |
 | Budget modeler (line items, revenue/expense, approval workflow, category allocation viz) | ALREADY REAL | Budget tab, `useLensData('council','budget')` |
-| Budget **variance simulation** (low/high/expected projection, over-budget risk, confidence) | BACKEND-CAPABLE-BUT-UNSURFACED | `council.simulate-budget` exists (variance-weighted low/high/expected per line item + aggregate risk) but has zero frontend caller. Disposition: **scoped future build task** — a "Run Simulation" action on the Budget tab calling `simulate-budget` with the current `budgetItems`, rendering a projected range above the existing summary cards. Deferred: additive net-new UI, not a fix to something broken; this pass's budget went to the confirmed-broken items that block real usage today. |
-| Audit trail — derived process-completeness/vote-timeline/debate-turn trail from a real artifact | BACKEND-CAPABLE-BUT-UNSURFACED | `council.audit` computes a real derived trail (`totalVotes`, `uniqueVoters`, `choiceTally`, `debateTurns`, `processCompleteness`) but is never called. The Audit tab instead shows a manually-logged event list (`addAuditEntry` calls threaded through every UI action) — real, honestly-persisted data, just a shallower parallel mechanism, not fake. Disposition: **honest relabel** — the tab is legitimate and useful as-is; a future pass could add `council.audit`'s derived trail as a secondary "Process Completeness" card on a selected proposal. |
+| Budget **variance simulation** (low/high/expected projection, over-budget risk, confidence) | BACKEND-CAPABLE-BUT-UNSURFACED **[CORRECTED 2026-10-28: now wired — wired as the domain action `budget-simulate` in `CouncilChamber.tsx:1030` |.]** `council.simulate-budget` exists (variance-weighted low/high/expected per line item + aggregate risk) but has zero frontend caller. Disposition: **scoped future build task** — a "Run Simulation" action on the Budget tab calling `simulate-budget` with the current `budgetItems`, rendering a projected range above the existing summary cards. Deferred: additive net-new UI, not a fix to something broken; this pass's budget went to the confirmed-broken items that block real usage today. |
+| Audit trail — derived process-completeness/vote-timeline/debate-turn trail from a real artifact | BACKEND-CAPABLE-BUT-UNSURFACED **[CORRECTED 2026-10-28: now wired — the completeness formula is wired via `computeProcessCompleteness` (`lib/council/council-audit.ts`, used at `CouncilChamber.tsx:1754`) — a documented port, since the macro expects `data.votes` as an array while Proposals store a Record |.]** `council.audit` computes a real derived trail (`totalVotes`, `uniqueVoters`, `choiceTally`, `debateTurns`, `processCompleteness`) but is never called. The Audit tab instead shows a manually-logged event list (`addAuditEntry` calls threaded through every UI action) — real, honestly-persisted data, just a shallower parallel mechanism, not fake. Disposition: **honest relabel** — the tab is legitimate and useful as-is; a future pass could add `council.audit`'s derived trail as a secondary "Process Completeness" card on a selected proposal. |
 | Committee creation + chair/member management, incl. editable description | ALREADY REAL | Stakeholders tab, `useLensData('council','committee')` |
 | CSV export of the audit log | ALREADY REAL | `handleExportAudit` |
 
@@ -216,3 +216,13 @@ rather than re-touched.
   council-scoped changes (other modified files visible in the shared working
   tree belong to other concurrent Wave-3 agents' in-flight lenses, not
   touched here).
+
+
+---
+
+*Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*
+
+
+---
+
+*Dispositions corrected 2026-10-28 (remaining-work audit, fix queue Q67): the rows marked CORRECTED above were listed as unsurfaced when this map was written; each is now wired in the frontend, at the file:line cited in the correction. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows U1–U7.*

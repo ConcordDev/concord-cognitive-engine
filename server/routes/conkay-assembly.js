@@ -409,6 +409,17 @@ export default function createConkayAssemblyRouter({ requireAuth, db }) {
     return res.json(bom);
   });
 
+  /** POST /api/conkay/assemblies/:id/bom/erp — ERP BOM priced from an imported vendor price list.
+   * Body: { priceList: rows[] | CSV text | JSON string, overheadPct? }.
+   * Costs come only from the supplied list or per-part overrides (Q45). */
+  router.post('/assemblies/:id/bom/erp', auth, (req, res) => {
+    if (!needDb(res)) return;
+    const overheadPct = req.body?.overheadPct != null ? Number(req.body.overheadPct) : undefined;
+    const bom = buildErpBom(db, req.params.id, { overheadPct, priceList: req.body?.priceList });
+    if (!bom.ok) return res.status(404).json(bom);
+    return res.json(bom);
+  });
+
   /** GET /api/conkay/assemblies/:id/bom/erp.csv — ERP-shaped BOM CSV download */
   router.get('/assemblies/:id/bom/erp.csv', auth, (req, res) => {
     if (!needDb(res)) return;

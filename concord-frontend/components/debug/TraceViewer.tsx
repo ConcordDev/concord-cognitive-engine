@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { useDebugProject } from './ProjectContext';
 import { Activity, Loader2, Plus, RefreshCw } from 'lucide-react';
 
 interface Span {
@@ -57,6 +58,7 @@ function colorFor(service: string): string {
 }
 
 export function TraceViewer() {
+  const { projectId } = useDebugProject();
   const [traces, setTraces] = useState<TraceSummary[]>([]);
   const [detail, setDetail] = useState<TraceDetail | null>(null);
   const [rollup, setRollup] = useState<ServiceRollup[]>([]);
@@ -67,38 +69,39 @@ export function TraceViewer() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const r = await lensRun('debug', 'trace-list', {});
+    const r = await lensRun('debug', 'trace-list', { projectId });
     if (r.data?.ok && r.data.result) {
       setTraces(r.data.result.traces || []);
     } else {
       setError(r.data?.error || 'Failed to load traces');
     }
     setLoading(false);
-  }, []);
+  }, [projectId]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const openTrace = useCallback(async (id: string) => {
-    const r = await lensRun('debug', 'trace-detail', { id });
+    const r = await lensRun('debug', 'trace-detail', { id, projectId });
     if (r.data?.ok && r.data.result) {
       setDetail(r.data.result.trace);
       setRollup(r.data.result.serviceBreakdown || []);
     }
-  }, []);
+  }, [projectId]);
 
   // Records a real span tree captured from the running lens stack.
   const recordSample = useCallback(async () => {
     setBusy(true);
     const t0 = performance.now();
     // Capture genuine timings of in-page macro round-trips as spans.
-    const probe = await lensRun('debug', 'trace-list', {});
+    const probe = await lensRun('debug', 'trace-list', { projectId });
     const t1 = performance.now();
-    const probe2 = await lensRun('debug', 'alert-list', {});
+    const probe2 = await lensRun('debug', 'alert-list', { projectId });
     const t2 = performance.now();
     const base = Date.now();
     const r = await lensRun('debug', 'trace-record', {
+      projectId,
       name: 'lens.debug bootstrap',
       spans: [
         {
@@ -136,7 +139,7 @@ export function TraceViewer() {
     } else {
       setError(r.data?.error || 'Trace record failed');
     }
-  }, [load, openTrace]);
+  }, [load, openTrace, projectId]);
 
   return (
     <div className="space-y-4">

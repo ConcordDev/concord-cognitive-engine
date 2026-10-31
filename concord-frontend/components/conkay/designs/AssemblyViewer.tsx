@@ -19,6 +19,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { explodedShift, sectionPlane, toThree, type ExplodePart } from '@/lib/conkay/assembly-view';
 import { STUDIO_HDRI_URL, STUDIO_PAINTS, type StudioPaintId } from '@/lib/conkay/present-paint';
+import { workbenchClient, type FitCheckFlip, type WorkbenchClient, type WorkbenchKnob, type WorkbenchView } from '@/lib/conkay/workbench-api';
 
 export interface AssemblyMesh {
   positions: number[];
@@ -53,7 +54,7 @@ export interface VehicleAssembly {
     /** 'styling-loft': placed on the styled loft, which is not the analysed solid drawn here. */
     placedOn?: string;
   })[];
-  checks: { id: string; status: 'pass' | 'warn' | 'fail'; detail: string; outside?: string[] }[];
+  checks: { id: string; status: 'pass' | 'warn' | 'fail'; detail: string; outside?: string[]; parts?: string[] }[];
   surface: { source?: 'cad.body' | 'styling'; overlays?: SurfaceOverlays | null; mesh: { positions: number[]; normals: number[]; paint: number[]; glass: GlassField; arch?: AssemblyMesh; bounds: { min: number[]; max: number[] } } };
   wheel: { tire: AssemblyMesh; rim: AssemblyMesh; disc: AssemblyMesh; caliper: AssemblyMesh; spec?: { spokes?: number } };
   detail?: { lamp?: AssemblyMesh; grille?: AssemblyMesh };
@@ -174,6 +175,26 @@ function OverlayLayer({ overlays, mode, clip }: { overlays: SurfaceOverlays; mod
   );
 }
 
+/** A status outline around a part the fit checks name: the door outlines' line idiom, in the check's colour. */
+function MarkBox({ part, position, color, clip }: {
+  part: ExplodePart & { half: number[] | null };
+  position: [number, number, number];
+  color: string;
+  clip: THREE.Plane[];
+}) {
+  const edges = useMemo(() => new THREE.EdgesGeometry(new THREE.BoxGeometry((part.half?.[0] ?? 0) * 2 + 0.02, (part.half?.[2] ?? 0) * 2 + 0.02, (part.half?.[1] ?? 0) * 2 + 0.02)), [part]);
+  const mat = useMemo(() => new THREE.LineBasicMaterial({ color, clippingPlanes: clip }), [color, clip]);
+  const obj = useMemo(() => new THREE.LineSegments(edges, mat), [edges, mat]);
+  useEffect(() => () => { edges.dispose(); }, [edges]);
+  useEffect(() => () => { mat.dispose(); }, [mat]);
+  return <primitive object={obj} position={position} />;
+}
+
+/** The parts a fit check names as its own (containment's outside list today; a check's parts when present). */
+function checkParts(c: VehicleAssembly['checks'][number]): string[] {
+  return c.parts ?? c.outside ?? [];
+}
+
 function WheelMeshes({ assembly, explode, clip, opacity, visibleIds }: {
   assembly: VehicleAssembly; explode: number; clip: THREE.Plane[]; opacity: number; visibleIds: Set<string>;
 }) {
@@ -212,7 +233,7 @@ function WheelMeshes({ assembly, explode, clip, opacity, visibleIds }: {
   );
 }
 
-function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explode, section, opacity, hidden, isolated, onSelect }: {
+function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explode, section, opacity, hidden, isolated, onSelect, marks }: {
   assembly: VehicleAssembly;
   showOverlays: boolean;
   mode: 'studio' | 'engineering';
@@ -224,6 +245,8 @@ function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explode, sec
   hidden: Set<string>;
   isolated: string | null;
   onSelect: (id: string) => void;
+  /** Parts named by a failing (red) or warning (amber) fit check, outlined in the check's colour. */
+  marks: Map<string, 'fail' | 'warn'>;
 }) {
   const bounds = assembly.surface.mesh.bounds;
   const cx = (bounds.min[0] + bounds.max[0]) / 2;
@@ -327,6 +350,13 @@ function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explode, sec
             </mesh>
           );
         })}
+        {[...marks.entries()].map(([pid, sev]) => {
+          const c = assembly.components.find((x) => x.id === pid);
+          if (!c || !c.half || !show(c.id)) return null;
+          const [x, y, z] = explodedShift(c, explode);
+          const [tx, ty, tz] = toThree(x, y, z);
+          return <MarkBox key={pid} part={c} position={[tx, ty, tz]} color={sev === 'fail' ? '#fb7185' : '#fcd34d'} clip={clip} />;
+        })}
       </group>
       {mode === 'studio' && <ContactShadows position={[0, 0.001, 0]} opacity={0.42} scale={12} blur={2.6} far={3.2} />}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
@@ -338,20 +368,80 @@ function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explode, sec
   );
 }
 
-export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdriUrl = STUDIO_HDRI_URL }: {
+/** A live workbench session attached to the viewer (HANDOFF-3 A2): its knobs become editable in the inspector. */
+export interface ViewerWorkbench {
+  id: string;
+  view: WorkbenchView;
+  /** Injectable for tests; the real workbench client by default. */
+  client?: WorkbenchClient;
+  /** The page keeps its own copy of the view; every knob reply reports back through here. */
+  onView?: (view: WorkbenchView) => void;
+}
+
+interface EditDiff { flips: FitCheckFlip[]; changed: { field: string; before: unknown; after: unknown; unit?: string }[]; rerun: number }
+
+/** One driving-parameter knob in the inspector: range + number, committed through the workbench edit path. */
+function ViewerKnob({ k, busy, onCommit }: { k: WorkbenchKnob; busy: boolean; onCommit: (k: WorkbenchKnob, value: number) => void }) {
+  const [draft, setDraft] = useState<number>(typeof k.value === 'number' ? k.value : 0);
+  useEffect(() => { if (typeof k.value === 'number') setDraft(k.value); }, [k.value]);
+  const [lo, hi] = k.bounds as [number, number];
+  return (
+    <div className="flex flex-col gap-1" data-testid={`viewer-knob-${k.variable}`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-slate-200">{k.label}</span>
+        <span className="font-mono text-[10px] text-slate-500">{lo}–{hi} {k.unit ?? ''}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          aria-label={`${k.label} slider`}
+          data-testid={`viewer-knob-${k.variable}-range`}
+          type="range" min={lo} max={hi} step={k.step ?? 0.01}
+          disabled={k.locked || busy}
+          value={draft}
+          onChange={(e) => setDraft(Number(e.target.value))}
+          className="flex-1"
+        />
+        <input
+          aria-label={k.label}
+          data-testid={`viewer-knob-${k.variable}-input`}
+          type="number" min={lo} max={hi} step={k.step ?? 0.01}
+          disabled={k.locked || busy}
+          value={draft}
+          onChange={(e) => setDraft(Number(e.target.value))}
+          className="w-20 rounded border border-white/10 bg-black/30 px-1 py-0.5 font-mono text-[11px] text-slate-100 disabled:opacity-50"
+        />
+        <span className="text-slate-500">{k.unit ?? ''}</span>
+        <button
+          type="button"
+          data-testid={`viewer-knob-${k.variable}-set`}
+          disabled={k.locked || busy || draft === k.value}
+          onClick={() => onCommit(k, draft)}
+          className="rounded border border-white/10 px-1.5 py-0.5 text-slate-200 hover:bg-white/5 disabled:opacity-40"
+        >Set</button>
+      </div>
+      {k.locked && <p className="text-[10px] text-amber-200/80">{k.variable} is locked: unlock it to change it</p>}
+    </div>
+  );
+}
+
+export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdriUrl = STUDIO_HDRI_URL, workbench = null, onStartEditing, startingEdit = false }: {
   assembly: VehicleAssembly;
   viewOnly?: boolean;
   /** Presentation GLB of the analysed solid (offered for download in Studio); null hides the link. */
   glbUrl?: string | null;
   /** Equirectangular HDR for Studio lighting; null keeps the local RoomEnvironment. */
   hdriUrl?: string | null;
+  /** A live workbench session: the driving parameters become editable and edits swap the model in. */
+  workbench?: ViewerWorkbench | null;
+  /** Snapshot mode: create a workbench session from this design and swap the page into workbench mode. */
+  onStartEditing?: () => void;
+  startingEdit?: boolean;
 }) {
   const narrow = useNarrow();
   const locked = viewOnly || narrow;
   const [mode, setMode] = useState<'studio' | 'engineering'>('studio');
   const [paintId, setPaintId] = useState<StudioPaintId>('graphite');
   const [showOverlays, setShowOverlays] = useState(true);
-  const overlays = assembly.surface.source === 'cad.body' ? assembly.surface.overlays || null : null;
   const [selected, setSelected] = useState<string | null>(null);
   const [explode, setExplode] = useState(0);
   const [sectionAxis, setSectionAxis] = useState<'x' | 'y' | 'z' | null>(null);
@@ -359,15 +449,56 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
   const [opacity, setOpacity] = useState(1);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [isolated, setIsolated] = useState<string | null>(null);
-  const part = assembly.components.find((c) => c.id === selected) || null;
-  const bounds = assembly.surface.mesh.bounds;
+  // Workbench mode: the session's view, the last edit's assembly (swapped in over the snapshot), its diff.
+  const [wbView, setWbView] = useState<WorkbenchView | null>(workbench?.view ?? null);
+  const [live, setLive] = useState<VehicleAssembly | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [diff, setDiff] = useState<EditDiff | null>(null);
+  const [wbError, setWbError] = useState('');
+  useEffect(() => { if (workbench?.view) setWbView(workbench.view); }, [workbench?.view]);
+  useEffect(() => { setLive(null); setDiff(null); setWbError(''); }, [assembly]);
+  const shown = live ?? assembly;
+  const overlays = shown.surface.source === 'cad.body' ? shown.surface.overlays || null : null;
+  const marks = useMemo(() => {
+    const m = new Map<string, 'fail' | 'warn'>();
+    for (const c of shown.checks) {
+      if (c.status !== 'fail' && c.status !== 'warn') continue;
+      for (const p of checkParts(c)) if (c.status === 'fail' || !m.has(p)) m.set(p, c.status);
+    }
+    return m;
+  }, [shown]);
+  const commitKnob = async (k: WorkbenchKnob, value: number) => {
+    if (!workbench) return;
+    const client = workbench.client ?? workbenchClient;
+    setBusy(true);
+    setWbError('');
+    try {
+      const r = await client.knob(workbench.id, k.variable, value);
+      if (r.reply?.kind === 'locked') {
+        setWbError(r.reply.note || `${k.variable} is locked: unlock it to change it`);
+      } else if (r.reply?.kind === 'error') {
+        setWbError(r.reply.message || r.reply.error || 'The edit was refused.');
+      } else {
+        if (r.assembly) setLive(r.assembly as unknown as VehicleAssembly);
+        setDiff({ flips: r.fitCheckDiff ?? [], changed: r.reply?.diff?.changed ?? [], rerun: (r.rerun ?? []).length });
+      }
+      if (r.view) { setWbView(r.view); workbench.onView?.(r.view); }
+    } catch (e) {
+      const data = (e as { response?: { data?: { message?: string } } })?.response?.data;
+      setWbError(data?.message || (e instanceof Error ? e.message : 'The edit failed.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const part = shown.components.find((c) => c.id === selected) || null;
+  const bounds = shown.surface.mesh.bounds;
   const viewNose = bounds.min[0] - (bounds.min[0] + bounds.max[0]) / 2;
   const section = sectionAxis ? { axis: sectionAxis, position: sectionPos } : null;
   const span = sectionAxis === 'y' ? [bounds.min[1], bounds.max[1]] : sectionAxis === 'z' ? [bounds.min[2], bounds.max[2]] : [bounds.min[0], bounds.max[0]];
 
   return (
     <div className="flex flex-col gap-2" data-testid="assembly-viewer">
-      <p className="text-[11px] leading-relaxed text-slate-400">{assembly.verification?.statement}</p>
+      <p className="text-[11px] leading-relaxed text-slate-400">{shown.verification?.statement}</p>
       <div className={`grid gap-2 ${locked ? '' : 'lg:grid-cols-[220px_minmax(0,1fr)_240px]'}`}>
         {!locked && (
           <div className="flex max-h-[520px] flex-col gap-1 overflow-auto rounded-lg border border-white/10 p-2">
@@ -393,7 +524,7 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
                     />
                   );
                 })}
-                {glbUrl && assembly.surface.source === 'cad.body' && (
+                {glbUrl && shown.surface.source === 'cad.body' && (
                   <a data-testid="present-glb" href={glbUrl} download className="ml-auto rounded border border-white/15 px-1.5 py-0.5 text-slate-300 hover:border-sky-400/40 hover:text-sky-100" title="Analysed solid with normals and this clearcoat material (glTF 2.0)">GLB</a>
                 )}
               </div>
@@ -421,7 +552,7 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
               <input data-testid="opacity" type="range" min={0.15} max={1} step={0.01} value={opacity} onChange={(e) => setOpacity(Number(e.target.value))} className="w-full" />
             </label>
             <ul className="mt-1 space-y-0.5">
-              {assembly.components.filter((c) => c.role !== 'axle').map((c) => (
+              {shown.components.filter((c) => c.role !== 'axle').map((c) => (
                 <li key={c.id}>
                   <button type="button" data-testid={`part-${c.id}`} className={`w-full truncate rounded px-1 py-0.5 text-left text-[11px] ${selected === c.id ? 'bg-white/15' : 'text-slate-300'}`} onClick={() => setSelected(c.id)}>
                     {mode === 'engineering' ? `${c.id}  ${c.name}` : c.name}
@@ -437,7 +568,7 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
               data-testid="studio-preview-badge"
               className="pointer-events-none absolute left-2 top-2 z-10 rounded-md border border-amber-300/60 bg-slate-900/80 px-2 py-1 text-[11px] font-medium text-amber-200 shadow"
             >
-              {assembly.surface.source === 'cad.body'
+              {shown.surface.source === 'cad.body'
                 ? 'Studio · analysed body (cad.body solid)'
                 : 'Studio · styling preview — engineering geometry is authoritative'}
             </div>
@@ -448,11 +579,55 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
             dpr={narrow ? [1, 1] : [1, 1.5]}
           >
             <color attach="background" args={[mode === 'studio' ? '#d8d9db' : '#ececec']} />
-            <CarScene assembly={assembly} mode={mode} paintId={paintId} hdriUrl={hdriUrl} showOverlays={showOverlays} explode={explode} section={section} opacity={opacity} hidden={hidden} isolated={isolated} onSelect={setSelected} />
+            <CarScene assembly={shown} mode={mode} paintId={paintId} hdriUrl={hdriUrl} showOverlays={showOverlays} explode={explode} section={section} opacity={opacity} hidden={hidden} isolated={isolated} onSelect={setSelected} marks={marks} />
           </Canvas>
         </div>
         {!locked && (
           <aside className="max-h-[520px] overflow-auto rounded-lg border border-white/10 p-2 text-[11px] leading-relaxed" data-testid="inspector">
+            {workbench && wbView && (
+              <div className="mb-3 border-b border-white/10 pb-2" data-testid="wb-edit">
+                <h3 className="text-slate-200">Driving parameters</h3>
+                <div className="mt-1 flex flex-col gap-2">
+                  {wbView.knobs.filter((k) => k.bounds).map((k) => (
+                    <ViewerKnob key={k.variable} k={k} busy={busy} onCommit={(kk, v) => void commitKnob(kk, v)} />
+                  ))}
+                  {wbView.knobs.filter((k) => k.bounds).length === 0 && <p className="text-slate-500">This design has no editable driving parameters.</p>}
+                </div>
+                {busy && <p role="status" className="mt-1 text-sky-200">Recomputing…</p>}
+                {wbError && <p role="alert" className="mt-1 text-rose-300">{wbError}</p>}
+                {diff && !busy && (
+                  <div className="mt-2 rounded border border-white/10 p-1.5" data-testid="wb-diff">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-slate-200">Last edit</h4>
+                      <button type="button" className="text-slate-400 hover:text-slate-200" onClick={() => setDiff(null)}>Dismiss</button>
+                    </div>
+                    {diff.changed.map((ch, i) => (
+                      <p key={i} className="text-slate-300">{ch.field}: {String(ch.before)} → {String(ch.after)}{ch.unit ? ` ${ch.unit}` : ''}</p>
+                    ))}
+                    {diff.flips.length > 0 ? diff.flips.map((f) => (
+                      <p key={f.id} className={f.to === 'fail' ? 'text-rose-300' : f.to === 'warn' ? 'text-amber-200' : 'text-emerald-200'}>
+                        {f.id}: {f.from ?? '—'} → {f.to ?? '—'}
+                      </p>
+                    )) : <p className="text-slate-400">No fit checks flipped.</p>}
+                    <p className="text-slate-500">{diff.rerun} solver runs re-ran.</p>
+                  </div>
+                )}
+              </div>
+            )}
+            {!workbench && onStartEditing && (
+              <div className="mb-3 border-b border-white/10 pb-2" data-testid="wb-start">
+                <p className="text-slate-400">This is a saved snapshot — its numbers are fixed.</p>
+                <button
+                  type="button"
+                  data-testid="start-editing"
+                  disabled={startingEdit}
+                  onClick={onStartEditing}
+                  className="mt-1 rounded border border-sky-400/40 bg-sky-400/10 px-2 py-1 text-sky-100 hover:bg-sky-400/20 disabled:opacity-40"
+                >
+                  {startingEdit ? 'Starting…' : 'Start editing'}
+                </button>
+              </div>
+            )}
             {!part && <p className="text-slate-400">Select a part. The list and the model both select.</p>}
             {part && (
               <>
@@ -492,11 +667,16 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
             )}
             <h3 className="mt-3 text-slate-200">Fit</h3>
             <ul className="space-y-1">
-              {assembly.checks.map((c) => (
-                <li key={c.id} data-testid={`fit-${c.id}`} className={c.status === 'fail' ? 'text-rose-300' : c.status === 'warn' ? 'text-amber-200' : 'text-emerald-200'}>
-                  {c.status} {c.id}
-                </li>
-              ))}
+              {shown.checks.map((c) => {
+                const first = checkParts(c)[0];
+                return (
+                  <li key={c.id} data-testid={`fit-${c.id}`} className={c.status === 'fail' ? 'text-rose-300' : c.status === 'warn' ? 'text-amber-200' : 'text-emerald-200'}>
+                    {first
+                      ? <button type="button" className="hover:underline" onClick={() => setSelected(first)} title="Select the first part this check names">{c.status} {c.id}</button>
+                      : <>{c.status} {c.id}</>}
+                  </li>
+                );
+              })}
             </ul>
           </aside>
         )}

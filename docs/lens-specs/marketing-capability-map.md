@@ -1,7 +1,7 @@
 # Marketing Lens — Capability Map (Frontend Rebuild Program, Wave 2 batch 7, Docs/B2B SaaS archetype)
 
 Reproduce the macro count:
-`grep -c 'registerLensAction("marketing"' server/domains/marketing.js` → **64**
+`grep -c 'registerLensAction("marketing"' server/domains/marketing.js` → **66**
 
 ## Reference apps + parity target
 
@@ -144,3 +144,8 @@ full, one directory over**, and never wired into the page that mattered.
 - `npx vitest run tests/marketing-lens-states.test.tsx` — rewritten, 10/10 passing (was failing against the new page shape before the rewrite).
 - `node scripts/verify-lens-backends.mjs` — `marketing` still `WIRED`.
 - `node scripts/grade-ux-polish.mjs --honest` — `marketing`: was `tier: "functional"` / `isGenericScaffold: true`; now `tier: "polished"` / `isGenericScaffold: false` (`bespokeRatio` up to `0.945`, `pageLoc` down from 579 to 165).
+
+
+---
+
+*Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*

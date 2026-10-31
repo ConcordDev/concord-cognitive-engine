@@ -15,7 +15,7 @@ type BlockType = 'heading' | 'text' | 'image' | 'button' | 'divider' | 'spacer';
 const BLOCK_TYPES: BlockType[] = ['heading', 'text', 'image', 'button', 'divider', 'spacer'];
 
 interface EmailBlock { type: BlockType; content: string }
-interface EmailStats { sent: number; opened: number; clicked: number; openRate: number; clickRate: number }
+interface EmailStats { sent: number }
 interface EmailDoc {
   id: string; name: string; subject: string; preheader: string | null;
   fromName: string; blocks: EmailBlock[]; blockCount: number; status: string;
@@ -161,8 +161,6 @@ export function MarketingEmailPanel() {
               {e.stats.sent > 0 && (
                 <div className="mt-2 flex gap-4 text-[10px] text-zinc-400">
                   <span>{e.stats.sent} sent</span>
-                  <span className="text-blue-300">{e.stats.openRate}% open</span>
-                  <span className="text-emerald-300">{e.stats.clickRate}% click</span>
                 </div>
               )}
             </li>

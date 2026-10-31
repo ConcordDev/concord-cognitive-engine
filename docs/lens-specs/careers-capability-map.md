@@ -19,7 +19,7 @@ Wave 4 gap-closure pass below, closing checklist items 6 and 7.)
 | Macro | Real effect | Surfaced (before this pass) | Surfaced (after) |
 |---|---|---|---|
 | `tracks` | profession taxonomy (categories → tracks → activity) | DESIGNED | DESIGNED |
-| `ladder` | a track's 10-tier ladder | **UNSURFACED** | Still unsurfaced (see checklist item 6) |
+| `ladder` | a track's 10-tier ladder | **UNSURFACED** | Still unsurfaced (see checklist item 6) **[CORRECTED 2026-10-28: now wired — `app/lenses/careers/page.tsx:127` calls `lensRun('careers', 'ladder', …)` |.]**
 | `work` | PLAY a shift: skill-input → floor-gated performance resolver → sparks (credited via `creditSparks`, real DB write) + promotion XP | DESIGNED | DESIGNED |
 | `contracts` | my contracts (both employer- and worker-side, real `career_contracts` rows) | DESIGNED (read-only list) | DESIGNED — now with negotiation actions |
 | `offer` / `accept` / `counter` / `reject` | the full negotiation state machine (`career-contracts.js`): either party offers, the *other* party accepts/counters/rejects, signing bonus pays employer→worker in sparks on accept | **UNSURFACED** — contracts rendered as an inert read-only list even when `status` was `offered`/`countered` and awaiting the player's response | `accept`/`counter`/`reject` wired the Wave 3 pass. `offer` (originating a new negotiation from the player's side) is now wired too — ~~remains unsurfaced~~ **CLOSED (2026-07-12, `0b9fcd40`)**, see checklist item 6 |
@@ -119,3 +119,8 @@ Prior pass (contract negotiation response):
 - `concord-frontend/tests/careers-lens-states.test.tsx` — 2 new tests
   pinning the negotiation UI (offered contract exposes the 3 actions and
   Accept calls the real macro; an active contract shows none)
+
+
+---
+
+*Dispositions corrected 2026-10-28 (remaining-work audit, fix queue Q67): the rows marked CORRECTED above were listed as unsurfaced when this map was written; each is now wired in the frontend, at the file:line cited in the correction. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows U1–U7.*
