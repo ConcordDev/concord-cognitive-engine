@@ -341,6 +341,11 @@ const REVIEWED = {
   // alias that is the literal "d" or "" at the single call site; creator id is bound with `?`.
   // (Its PRAGMA table_info helper was parameterized.)
   "lib/sim-stats.js": 2,
+  // routes/artifacts.js (1) — #1778 durable-artifacts read path (reviewed 2026-10-31). `${cols}` and
+  // `${latestVersionJoin}` are module-local template-literal CONSTANTS (a fixed column list and a fixed
+  // LEFT JOIN on artifact_versions) interpolated into three prepared statements (get / list / listAll);
+  // nothing request-derived reaches SQL text. Every value (a.id, owner id, LIMIT) is bound with `?`.
+  "routes/artifacts.js": 1,
   // server.js 5 -> 6: the new site is the archive-embed hasEmbedding probe,
   // `SELECT 1 FROM ${getEmbeddingStatus(0).table || "embedding_cache"} WHERE dtu_id = ?` — the table name comes
   // from embeddings.js's embeddingState.table (PRIMARY_TABLE, or PRIMARY_TABLE + "__" + a model slug reduced to
