@@ -1024,10 +1024,10 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md', 'pdf', 'docx'],
     actions: ['check-compliance', 'analyze', 'draft', 'cite', 'clause_compare', 'precedent_search', 'risk_flag'],
     category: 'social',
-    dataTier: 'DEMO',
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: "Draft + check + cite.",
-      caption: "Case + clause + precedent \u2014 DEMO data; wire your own corpus when ready.",
+      caption: "Case + clause + precedent \u2014 live CourtListener case law and USPTO PatentsView patents.",
       firstActionLabel: "Open the workspace",
     },
     firstRunGuide: {
@@ -1771,7 +1771,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['capRate', 'cashFlow', 'closingTimeline', 'vacancyRate', 'comparableAnalysis', 'mortgageCalc', 'inspectionChecklist', 'netOperatingIncome'],
     category: 'finance',
-    dataTier: 'DEMO',
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: "Real estate workflow.",
       caption: "Listings, showings, transactions, rentals, deals \u2014 cap rate, NOI, comparables.",
@@ -2036,10 +2036,10 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'acord'],
     actions: ['coverageGap', 'premiumHistory', 'claimStatus', 'riskScore', 'renewalForecast', 'benefitComparison', 'fraudIndicator', 'lossRunReport'],
     category: 'finance',
-    dataTier: 'DEMO',
+    dataTier: 'SIM_GRADE_A',
     emptyState: {
       headline: "Insurance + risk.",
-      caption: "Policies, claims, benefits, renewals \u2014 DEMO data; wire your own carrier feeds.",
+      caption: "Policies, claims, benefits, renewals \u2014 modelled over your own records; no carrier feed is connected.",
       firstActionLabel: "Open the policy book",
     },
     firstRunGuide: {
@@ -2613,10 +2613,10 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
-    dataTier: 'DEMO',
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: "Automotive workflow.",
-      caption: "Vehicles, parts, services, diagnostics, recalls \u2014 DEMO data; wire your VIN feed when ready.",
+      caption: "Vehicles, parts, services, diagnostics, recalls \u2014 NHTSA recalls and vPIC VIN decode.",
       firstActionLabel: "Add a vehicle",
     },
     firstRunGuide: {
@@ -2951,10 +2951,10 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'government',
-    dataTier: 'DEMO',
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: "Defense workflow.",
-      caption: "Threats, assets, strategies, operations, intel \u2014 DEMO data; wire your own feeds.",
+      caption: "Threats, assets, strategies, operations, intel \u2014 federal spending from USAspending.",
       firstActionLabel: "Open the panel",
     },
     firstRunGuide: {
@@ -4328,10 +4328,10 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'operations',
-    dataTier: 'DEMO',
+    dataTier: 'SIM_GRADE_A',
     emptyState: {
       headline: "Telecom workspace.",
-      caption: "Networks, devices, signals, plans, coverage \u2014 DEMO data; wire your carrier when ready.",
+      caption: "Networks, devices, signals, plans, coverage \u2014 simulated over your own records; no carrier is connected.",
       firstActionLabel: "Open the panel",
     },
     firstRunGuide: {

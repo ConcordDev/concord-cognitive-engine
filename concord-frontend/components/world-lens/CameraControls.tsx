@@ -3,7 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   Camera, RotateCw, ZoomIn, ZoomOut, Maximize2, User, Eye,
-  Play, SkipBack, SkipForward, Monitor, ChevronDown,
+  Play, Pause, Square, SkipBack, SkipForward, Monitor, ChevronDown,
 } from 'lucide-react';
 
 const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
@@ -21,6 +21,10 @@ export interface CameraState {
   rotation: RotationAngle;
   followTarget: FollowTarget;
   cinematicPlaying: boolean;
+  /** True while a playing sequence is paused via the director's
+   *  transport. Optional so existing mounts that never pause still
+   *  type-check. */
+  cinematicPaused?: boolean;
   cinematicTime: number;
   cinematicDuration: number;
   transitioning: boolean;
@@ -32,6 +36,15 @@ interface CameraControlsProps {
   onZoom: (level: number) => void;
   onRotate: (angle: RotationAngle) => void;
   onTransition: (state: Partial<CameraState>) => void;
+  /** Stop the cinematic sequence currently playing (the director's
+   *  cancel). Only meaningful while cameraState.cinematicPlaying. */
+  onCinematicStop?: () => void;
+  /** Pause / resume the playing sequence (the director's transport). */
+  onCinematicPause?: () => void;
+  onCinematicResume?: () => void;
+  /** Skip to the previous / next shot boundary. */
+  onCinematicSkipBack?: () => void;
+  onCinematicSkipForward?: () => void;
 }
 
 // ── Constants ─────────────────────────────────────────────────────
@@ -78,6 +91,11 @@ export default function CameraControls({
   onZoom,
   onRotate,
   onTransition,
+  onCinematicStop,
+  onCinematicPause,
+  onCinematicResume,
+  onCinematicSkipBack,
+  onCinematicSkipForward,
 }: CameraControlsProps) {
   const [showPresets, setShowPresets] = useState(false);
   const currentZoomLevel = getCurrentZoomLevel(cameraState.zoom);
@@ -291,42 +309,115 @@ export default function CameraControls({
         </div>
       )}
 
-      {/* Cinematic timeline — cinematic-director.ts sequences time-scale +
-          audio for named camera shots but nothing yet moves the actual
-          THREE.js camera through them (see the plan's Phase 4). Until that
-          lands, this transport is inert-by-construction rather than
-          fake-wired: buttons are disabled, not silently no-op. */}
+      {/* Cinematic timeline — Phase 4 wired the camera itself:
+          ConcordiaScene interpolates the THREE camera through every
+          shot the director dispatches while in cinematic mode. This
+          transport reflects a live sequence (the parent feeds real
+          cinematicPlaying/Time/Duration from the director's
+          concordia:cinematic-start/-end events, re-based on its
+          concordia:cinematic-playback events) and drives the director's
+          transport: pause/resume freeze and continue the shot clock,
+          the skip buttons seek to the previous/next shot boundary,
+          and stop cancels the sequence. Controls render disabled only
+          when no handler was passed or no sequence is playing. */}
       {cameraState.mode === 'cinematic' && (
-        <div className={`${panel} p-2 opacity-50`} title="Cinematic camera movement isn't wired yet">
+        <div className={`${panel} p-2`}>
           <div className="text-[10px] text-gray-400 mb-1.5 uppercase tracking-wider">
-            Cinematic Timeline <span className="normal-case text-gray-600">(coming soon)</span>
+            Cinematic Timeline{' '}
+            {cameraState.cinematicPlaying && (
+              <span className="normal-case text-cyan-400">
+                {cameraState.cinematicPaused ? '· paused' : '· playing'}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
-            <button disabled className="p-1 rounded bg-white/5 cursor-not-allowed" aria-label="Previous track">
-              <SkipBack className="w-3.5 h-3.5 text-gray-600" />
+            <button
+              onClick={() => onCinematicSkipBack?.()}
+              disabled={!cameraState.cinematicPlaying || !onCinematicSkipBack}
+              className={
+                cameraState.cinematicPlaying && onCinematicSkipBack
+                  ? 'p-1 rounded bg-white/10 hover:bg-white/20 transition-colors'
+                  : 'p-1 rounded bg-white/5 cursor-not-allowed'
+              }
+              aria-label="Previous shot"
+              title="Skip to the previous shot"
+            >
+              <SkipBack
+                className={`w-3.5 h-3.5 ${cameraState.cinematicPlaying && onCinematicSkipBack ? 'text-cyan-300' : 'text-gray-600'}`}
+              />
             </button>
-            <button disabled className="p-1 rounded bg-white/5 cursor-not-allowed" aria-label="Play cinematic timeline (not yet wired)">
-              <Play className="w-3.5 h-3.5 text-gray-600" aria-hidden="true" />
-            </button>
+            {cameraState.cinematicPlaying && cameraState.cinematicPaused ? (
+              <button
+                onClick={() => onCinematicResume?.()}
+                disabled={!onCinematicResume}
+                className="p-1 rounded bg-white/10 hover:bg-white/20 transition-colors"
+                aria-label="Resume cinematic"
+                title="Resume the paused sequence"
+              >
+                <Play className="w-3.5 h-3.5 text-cyan-300" aria-hidden="true" />
+              </button>
+            ) : cameraState.cinematicPlaying ? (
+              <button
+                onClick={() => onCinematicPause?.()}
+                disabled={!onCinematicPause}
+                className="p-1 rounded bg-white/10 hover:bg-white/20 transition-colors"
+                aria-label="Pause cinematic"
+                title="Pause the playing sequence"
+              >
+                <Pause className="w-3.5 h-3.5 text-cyan-300" aria-hidden="true" />
+              </button>
+            ) : (
+              <button
+                disabled
+                className="p-1 rounded bg-white/5 cursor-not-allowed"
+                aria-label="Play cinematic timeline"
+                title="Cinematic sequences are triggered by world events"
+              >
+                <Play className="w-3.5 h-3.5 text-gray-600" aria-hidden="true" />
+              </button>
+            )}
+            {cameraState.cinematicPlaying && (
+              <button
+                onClick={() => onCinematicStop?.()}
+                disabled={!onCinematicStop}
+                className="p-1 rounded bg-white/10 hover:bg-white/20 transition-colors"
+                aria-label="Stop cinematic"
+                title="Stop the playing sequence"
+              >
+                <Square className="w-3.5 h-3.5 text-cyan-300" aria-hidden="true" />
+              </button>
+            )}
             <div className="flex-1 relative">
               <div className="h-1 rounded-full bg-white/10 overflow-hidden">
                 <div
-                  className="h-full bg-cyan-700 rounded-full"
+                  className={`h-full rounded-full ${cameraState.cinematicPlaying ? 'bg-cyan-400' : 'bg-cyan-700'}`}
                   style={{
                     width: `${
                       cameraState.cinematicDuration > 0
-                        ? (cameraState.cinematicTime / cameraState.cinematicDuration) * 100
+                        ? Math.min(100, (cameraState.cinematicTime / cameraState.cinematicDuration) * 100)
                         : 0
                     }%`,
                   }}
                 />
               </div>
             </div>
-            <button disabled className="p-1 rounded bg-white/5 cursor-not-allowed" aria-label="Next track">
-              <SkipForward className="w-3.5 h-3.5 text-gray-600" />
+            <button
+              onClick={() => onCinematicSkipForward?.()}
+              disabled={!cameraState.cinematicPlaying || !onCinematicSkipForward}
+              className={
+                cameraState.cinematicPlaying && onCinematicSkipForward
+                  ? 'p-1 rounded bg-white/10 hover:bg-white/20 transition-colors'
+                  : 'p-1 rounded bg-white/5 cursor-not-allowed'
+              }
+              aria-label="Next shot"
+              title="Skip to the next shot"
+            >
+              <SkipForward
+                className={`w-3.5 h-3.5 ${cameraState.cinematicPlaying && onCinematicSkipForward ? 'text-cyan-300' : 'text-gray-600'}`}
+              />
             </button>
           </div>
-          <div className="flex justify-between text-[9px] text-gray-600 mt-1">
+          <div className="flex justify-between text-[9px] text-gray-500 mt-1">
             <span>{formatTime(cameraState.cinematicTime)}</span>
             <span>{formatTime(cameraState.cinematicDuration)}</span>
           </div>

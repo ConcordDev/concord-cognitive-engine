@@ -3,7 +3,8 @@
 /**
  * Graphical Pitch Editor for a mono audio clip. Analysis runs in a worker.
  * Edits are project JSON. The engine renders the derived buffer.
- * Formant controls are omitted: the shifter does not change formants.
+ * Per-note formant controls are omitted here: formant shift is a
+ * device-level control on Pitch Correct (render/export path).
  */
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';

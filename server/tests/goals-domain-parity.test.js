@@ -189,7 +189,10 @@ describe("goals — reminder", () => {
     const after = call("reminder", ctxA, { op: "complete", id: recId });
     const found = after.result.reminders.find((r) => r.id === recId);
     assert.equal(found.done, false);
-    assert.equal(found.firedCount, 1);
+    // Manual completion advances the schedule; it is not a firing (S8 —
+    // firing is the due-observation pass, covered in goals-reminders.test.js).
+    assert.equal(found.firedCount, 0);
+    assert.equal(new Date(found.dueAt).toISOString().slice(0, 10), "2020-01-08");
 
     const once = call("reminder", ctxA, { op: "create", label: "One-off", dueAt: "2020-01-01" });
     const doneRes = call("reminder", ctxA, { op: "complete", id: once.result.reminder.id });

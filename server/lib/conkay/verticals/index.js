@@ -9,6 +9,8 @@ export {
 export {
   buildParametricSocket,
   digitalFitCheck,
+  sliceMeshAtY,
+  chainSegments,
   emitBioprintToolpath,
   runProstheticsCert,
 } from './prosthetics.js';
