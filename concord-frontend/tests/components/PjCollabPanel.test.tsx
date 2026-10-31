@@ -234,7 +234,9 @@ describe('PjCollabPanel', () => {
     fireEvent.click(screen.getByText(/Search projects & issues/));
     const dialogInput = await screen.findByPlaceholderText('Type to search or create…');
     fireEvent.change(dialogInput, { target: { value: 'fix bug' } });
-    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('projects', 'command-search', { projectId: 'proj-1', query: 'fix bug' }));
+    // S5 (F6): search is unscoped — the bar promises "projects & issues",
+    // not "this project's issues"; results carry their own projectId.
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('projects', 'command-search', { query: 'fix bug' }));
     const createBtn = await screen.findByText('Create task "fix bug"');
     fireEvent.click(createBtn);
     await waitFor(() => expect(lensRun).toHaveBeenCalledWith('projects', 'task-create', { projectId: 'proj-1', title: 'fix bug' }));
@@ -252,6 +254,49 @@ describe('PjCollabPanel', () => {
     await screen.findByText('Fix the thing');
     expect(screen.getByText('PJ-9')).toBeInTheDocument();
     expect(screen.getByText('in review')).toBeInTheDocument();
+  });
+
+  it('jumps to a task result on click and to a project result on Enter (S5/F6)', async () => {
+    mockLoad({
+      'command-search': ok({ commands: [], results: [
+        { kind: 'task', id: 't-9', projectId: 'proj-2', label: 'Fix the thing', sub: 'OT-9', status: 'todo' },
+        { kind: 'project', id: 'proj-2', label: 'Other Project', sub: 'OT' },
+      ] }),
+    });
+    const onOpenTask = vi.fn();
+    const onJumpToProject = vi.fn();
+    render(<PjCollabPanel projectId="proj-1" onChange={vi.fn()} onOpenTask={onOpenTask} onJumpToProject={onJumpToProject} />);
+    await waitFor(() => expect(screen.getByText(/Search projects & issues/)).toBeInTheDocument());
+    fireEvent.click(screen.getByText(/Search projects & issues/));
+    const dialogInput = await screen.findByPlaceholderText('Type to search or create…');
+    fireEvent.change(dialogInput, { target: { value: 'thing' } });
+    const taskRow = await screen.findByText('Fix the thing');
+    fireEvent.click(taskRow);
+    expect(onOpenTask).toHaveBeenCalledWith('proj-2', 't-9');
+    await waitFor(() => expect(screen.queryByPlaceholderText('Type to search or create…')).not.toBeInTheDocument());
+    // Reopen and take the keyboard path: ArrowDown past the task, Enter on the project.
+    fireEvent.click(screen.getByText(/Search projects & issues/));
+    const input2 = await screen.findByPlaceholderText('Type to search or create…');
+    await screen.findByText('Other Project');
+    fireEvent.keyDown(input2, { key: 'ArrowDown' });
+    fireEvent.keyDown(input2, { key: 'Enter' });
+    expect(onJumpToProject).toHaveBeenCalledWith('proj-2');
+  });
+
+  it('keeps the command bar open when Space is typed in its input — phrase search works (F22)', async () => {
+    mockLoad({ 'command-search': ok({ commands: [], results: [] }) });
+    renderPanel();
+    await waitFor(() => expect(screen.getByText(/Search projects & issues/)).toBeInTheDocument());
+    fireEvent.click(screen.getByText(/Search projects & issues/));
+    const dialogInput = await screen.findByPlaceholderText('Type to search or create…');
+    // A real spacebar keystroke: keydown on the input, the character
+    // lands, keyup. The palette must survive its own search field.
+    fireEvent.keyDown(dialogInput, { key: ' ' });
+    fireEvent.change(dialogInput, { target: { value: 'fix bug' } });
+    fireEvent.keyUp(dialogInput, { key: ' ' });
+    expect(screen.getByPlaceholderText('Type to search or create…')).toBeInTheDocument();
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('projects', 'command-search', { query: 'fix bug' }));
+    expect(screen.getByPlaceholderText('Type to search or create…')).toBeInTheDocument();
   });
 
   it('closes the command bar on Escape and on backdrop click', async () => {

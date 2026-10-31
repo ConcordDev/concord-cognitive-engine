@@ -91,6 +91,7 @@ import "./physics/solvers/reacting-chemistry.js";
 import "./physics/solvers/solid-stress.js";
 import "./physics/solvers/em-fdtd.js";
 import "./physics/solvers/em-magnetostatic.js";
+import "./physics/solvers/long-term-limit-states.js";
 import "./safety-case/solvers.js";
 
 export { listSolvers };
@@ -124,6 +125,12 @@ export class DesignSession {
   /** Edit with explicit ops: [{ node, path, value }] (SI values). */
   edit(ops) {
     return this.engine.applyEdits(ops, { source: "ops" });
+  }
+
+  /** The same edit through the yielding recompute — for request-path callers
+   * (the Workbench knob path), so a wide closure cannot freeze the event loop. */
+  async editAsync(ops) {
+    return this.engine.applyEditsAsync(ops, { source: "ops" });
   }
 
   /** Edit with a sentence. The parsed ops are returned with the report. */
