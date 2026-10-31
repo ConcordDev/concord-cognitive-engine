@@ -681,7 +681,7 @@ function ScorecardPanel() {
                   </p>
                 </div>
               </div>
-              <div className="mt-2 grid grid-cols-4 gap-2 text-[11px]">
+              <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
                 <Metric label="On-time" value={c.onTimePct != null ? `${c.onTimePct}%` : '—'} />
                 <Metric
                   label="Tender accept"

@@ -72,7 +72,7 @@ export function MaterialsPanel() {
                     {mat.category}
                   </span>
                 </div>
-                <div className="grid grid-cols-4 gap-2 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                   <div className="bg-black/20 rounded p-2 text-center">
                     <p className="text-gray-400">E</p>
                     <p className="font-mono text-neon-cyan">{(mat.E / 1000).toFixed(0)} GPa</p>
@@ -90,7 +90,7 @@ export function MaterialsPanel() {
                     <p className="font-mono text-yellow-400">{mat.density} kg/m³</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-4 gap-2 text-[11px] text-gray-400">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-gray-400">
                   <p>
                     ν <span className="text-white font-mono">{mat.poisson}</span>
                   </p>
