@@ -975,7 +975,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
         if (recurringEdit && typeof affected === 'number' && affected > 1) {
           flashNote(`Updated ${affected} occurrences of this series.`);
         } else {
-          flashNote(eventUpdatedSentence(id));
+          flashNote(eventUpdatedSentence(id) ?? 'Event updated.');
         }
       } else {
         const r = await lensRun({ domain: 'calendar', action: 'events-create', input: params });

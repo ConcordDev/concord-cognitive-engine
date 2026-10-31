@@ -103,7 +103,9 @@ vi.mock('@/lib/api/client', () => ({
 import { CalendarGridWorkbench } from '@/components/calendar/CalendarGridWorkbench';
 
 async function openCreateForm() {
-  const btn = await screen.findByRole('button', { name: 'Schedule Event' });
+  // The redesigned calendar opens the create form from the floating "New event (N)" button (the old
+  // sidebar "Schedule Event" button no longer renders).
+  const btn = await screen.findByTitle('New event (N)');
   fireEvent.click(btn);
   return screen.findByPlaceholderText('Add title');
 }

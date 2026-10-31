@@ -61,6 +61,12 @@ describe("nl-parse-event", () => {
     const p = parse("Midnight snack at midnight", TZ);
     assert.equal(p.title, "Midnight snack");
     assert.equal(partsIn(p.start, TZ).hour, "00");
+    // The title word survives when an explicit "at midnight/noon" supplied the time...
+    assert.equal(parse("Noon prayer at noon", TZ).title, "Noon prayer");
+    // ...and a bare time word with no explicit "at" is still read as the time and removed.
+    const bare = parse("Standup noon tomorrow", TZ);
+    assert.equal(bare.title, "Standup");
+    assert.equal(partsIn(bare.start, TZ).hour, "12");
     const legacy = parse("Lunch tomorrow at noon");
     assert.equal(legacy.title, "Lunch");
     assert.equal(new Date(legacy.start).getHours(), 12);

@@ -1172,6 +1172,7 @@ export default function registerCalendarActions(registerLensAction) {
     // Conference link
     const conf = /\b(zoom|google meet|meet|teams|webex)\b/.test(lower) ? (lower.match(/\b(zoom|google meet|meet|teams|webex)\b/) || [])[1] : '';
     // Title = text minus the parsed time/day/recurrence noise
+    const explicitNoonMidnight = /\bat\s+(noon|midnight)\b/i.test(text);
     let title = text
       .replace(/\bevery (day|week|month|year)\b/gi, '')
       .replace(/\b(daily|weekly|monthly|yearly|annually)\b/gi, '')
@@ -1179,7 +1180,9 @@ export default function registerCalendarActions(registerLensAction) {
       .replace(/\b(today|tomorrow)\b/gi, '')
       .replace(new RegExp(`\\b(${weekdays.join('|')})\\b`, 'gi'), '')
       .replace(/\bat\s+(noon|midnight)\b/gi, '')
-      .replace(/\b(noon|midnight)\b/gi, '')
+      // A bare noon/midnight is only a time expression when no explicit "at noon|midnight"
+      // already supplied the time; otherwise it is part of the title ("Midnight snack at midnight").
+      .replace(explicitNoonMidnight ? /(?!)/g : /\b(noon|midnight)\b/gi, '')
       .replace(/\bat\s+\d{1,2}(:\d{2})?\s*(am|pm)?\b/gi, '')
       .replace(/\b\d{1,2}(:\d{2})?\s*(am|pm)\b/gi, '')
       .replace(/\b\d{1,2}:\d{2}\b/gi, '')
