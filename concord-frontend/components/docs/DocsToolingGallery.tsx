@@ -64,7 +64,7 @@ export function DocsToolingGallery() {
               apiSource="github-docs-tooling"
               apiUrl={`https://github.com/topics/${topic}`}
               title={`GitHub docs tooling — topic:${topic} (${list.length})`}
-              content={list.slice(0, 20).map((r, i) => `${i + 1}. ★${r.stargazers_count.toLocaleString()} · ${r.full_name}${r.language ? ` · ${r.language}` : ''}\n   ${r.description || ''}\n   ${r.html_url}`).join('\n\n')}
+              content={list.slice(0, 20).map((r, i) => `${i + 1}. ★${(r.stargazers_count ?? 0).toLocaleString()} · ${r.full_name}${r.language ? ` · ${r.language}` : ''}\n   ${r.description || ''}\n   ${r.html_url}`).join('\n\n')}
               extraTags={['docs', 'github', 'documentation', topic]}
               rawData={{ topic, repos: list }}
             />
@@ -95,8 +95,8 @@ export function DocsToolingGallery() {
                 <p className="text-[12px] font-mono text-zinc-100">{r.full_name}</p>
                 {r.description && <p className="mt-0.5 line-clamp-2 text-[11px] text-zinc-300">{r.description}</p>}
                 <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[10px] text-zinc-400">
-                  <span className="flex items-center gap-0.5"><Star className="h-3 w-3" />{r.stargazers_count.toLocaleString()}</span>
-                  <span className="flex items-center gap-0.5"><GitBranch className="h-3 w-3" />{r.forks_count.toLocaleString()}</span>
+                  <span className="flex items-center gap-0.5"><Star className="h-3 w-3" />{(r.stargazers_count ?? 0).toLocaleString()}</span>
+                  <span className="flex items-center gap-0.5"><GitBranch className="h-3 w-3" />{(r.forks_count ?? 0).toLocaleString()}</span>
                   <span className="flex items-center gap-0.5"><AlertCircle className="h-3 w-3" />{r.open_issues_count}</span>
                   {r.language && <span className="rounded bg-zinc-800 px-1 font-mono text-[9px] text-zinc-300">{r.language}</span>}
                   {r.license?.spdx_id && <span className="rounded bg-cyan-500/20 px-1 font-mono text-[9px] text-cyan-200">{r.license.spdx_id}</span>}

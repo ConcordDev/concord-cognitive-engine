@@ -41927,6 +41927,8 @@ app.get("/mcp/tools", (_req, res) => {
 // user (req.authMethod !== "mcp-bypass") for these two tools specifically,
 // regardless of the general MCP bypass.
 const MCP_TOOLS_REQUIRE_REAL_AUTH = new Set([
+  // embedding_search runs a vector scan over embeddings_e5 — real auth only (cost + anon-trigger surface).
+  "embedding_search",
   "reflect_invoke",
   "reflect_rescan",
   // MCP Execution Bridge — never callable via the mcp-anonymous bypass.
