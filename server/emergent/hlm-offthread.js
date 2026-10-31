@@ -14,6 +14,7 @@ import { recordHLMPass } from "./hlm-engine.js";
 
 const WORKER_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "workers", "hlm-pass-worker.js");
 export const HLM_PROJECT_CHUNK = 2000;
+export const HLM_POST_CHUNK = 20000; // items per postMessage (each clone blocks the sender ~13-21 ms)
 const DEFAULT_TIMEOUT_MS = Number(process.env.CONCORD_HLM_PASS_TIMEOUT_MS) || 15 * 60 * 1000;
 const DEFAULT_HEAP_MB = Number(process.env.CONCORD_HLM_PASS_HEAP_MB) || 1536;
 
@@ -46,7 +47,7 @@ export async function projectDtus(source, { chunk = HLM_PROJECT_CHUNK } = {}) {
  * Run one pass off-thread. `source` is any iterable of DTUs (e.g. STATE.dtus.values()).
  * @returns {Promise<object>} the recorded pass, or { ok:false, error }
  */
-export async function runHLMPassOffThread(source, { timeoutMs = DEFAULT_TIMEOUT_MS, workerPath = WORKER_PATH, heapMb = DEFAULT_HEAP_MB } = {}) {
+export async function runHLMPassOffThread(source, { timeoutMs = DEFAULT_TIMEOUT_MS, workerPath = WORKER_PATH, heapMb = DEFAULT_HEAP_MB, postChunk = HLM_POST_CHUNK } = {}) {
   const dtus = await projectDtus(source);
   if (dtus.length === 0) return { ok: true, skipped: "no_dtus" };
   return new Promise((resolve) => {
@@ -72,6 +73,18 @@ export async function runHLMPassOffThread(source, { timeoutMs = DEFAULT_TIMEOUT_
     });
     worker.once("error", (e) => finish({ ok: false, error: `hlm_worker_error: ${e?.message || e}` }));
     worker.once("exit", (code) => finish({ ok: false, error: `hlm_worker_exit_${code}` }));
-    worker.postMessage({ dtus });
+    // Send in chunks with a yield between each: one postMessage of the whole store structured-clones it
+    // synchronously on THIS thread (measured ~0.5 s per 600k DTUs; the first live pass stalled main 1.15 s).
+    (async () => {
+      try {
+        for (let i = 0; i < dtus.length && !settled; i += postChunk) {
+          worker.postMessage({ chunk: dtus.slice(i, i + postChunk) });
+          await new Promise((r) => setImmediate(r));
+        }
+        if (!settled) worker.postMessage({ run: true });
+      } catch (e) {
+        finish({ ok: false, error: `hlm_worker_post_failed: ${e?.message || e}` });
+      }
+    })();
   });
 }
