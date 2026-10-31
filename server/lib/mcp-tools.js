@@ -124,7 +124,7 @@ export const MCP_TOOLS = [
   // ── DTU OPERATIONS ─────────────────────────────────────────────────────
   {
     name: "dtu_search",
-    description: "Search DTUs by free-text query. Uses FTS5 index when available, falls back to LIKE search. Returns matching DTU ids + titles + snippet.",
+    description: "Search DTUs by free-text query. Uses FTS5 index when available, falls back to LIKE search. Returns matching DTU ids + titles + snippet. Results are search hits across the published DTU corpus; this tool does not report any user's owned DTUs, and count is the total number of matching hits (returned is the page size; truncated is true when the total exceeds the page), not an ownership count.",
     inputSchema: jsonSchema({
       query: textProp("Free-text search query"),
       limit: intProp("Max results (default 10, max 50)", 10),
@@ -202,7 +202,7 @@ export const MCP_TOOLS = [
   // ── ATLAS ─────────────────────────────────────────────────────────────
   {
     name: "atlas_search",
-    description: "Search across the DTU atlas (nodes + edges + causal graph). Returns related DTUs ranked by relevance.",
+    description: "Search across the DTU atlas (nodes + edges + causal graph). Returns related DTUs ranked by relevance. Results are search hits across the DTU atlas, a distinct and smaller index than the published DTU corpus dtu_search reads — counts from the two tools are not comparable, and neither reports any user's owned DTUs; count is the total number of matching hits (returned is the page size; truncated is true when the total exceeds the page), not an ownership count.",
     inputSchema: jsonSchema({
       query: textProp("Search query"),
       limit: intProp("Max results (default 10, max 50)", 10)
@@ -973,10 +973,11 @@ export async function dtuSearch(db, args) {
   if (!query) return { ok: false, error: "query is required" };
 
   let rows = [];
+  let total = null;
   let fts5 = false;
   try {
     const ftsQuery = query.replace(/["\\]/g, " ").trim();
-    let sql, params;
+    let sql, params, countSql, countParams;
     // dtus_fts is an external-content FTS5 table declared `content='dtus',
     // content_rowid='rowid'` (migration 024) — its `rowid` mirrors dtus's
     // own IMPLICIT integer rowid, NOT the TEXT `id` primary key. Joining on
@@ -990,15 +991,24 @@ export async function dtuSearch(db, args) {
              WHERE dtus_fts MATCH ? AND d.tier = ?
              ORDER BY rank LIMIT ?`;
       params = [ftsQuery, tier, limit];
+      countSql = `SELECT COUNT(*) AS n
+             FROM dtus d JOIN dtus_fts f ON d.rowid = f.rowid
+             WHERE dtus_fts MATCH ? AND d.tier = ?`;
+      countParams = [ftsQuery, tier];
     } else {
       sql = `SELECT d.id, d.title, d.tier, d.type, substr(coalesce(d.content, ''), 1, 200) AS snippet, d.created_at
              FROM dtus d JOIN dtus_fts f ON d.rowid = f.rowid
              WHERE dtus_fts MATCH ?
              ORDER BY rank LIMIT ?`;
       params = [ftsQuery, limit];
+      countSql = `SELECT COUNT(*) AS n
+             FROM dtus d JOIN dtus_fts f ON d.rowid = f.rowid
+             WHERE dtus_fts MATCH ?`;
+      countParams = [ftsQuery];
     }
     rows = db.prepare(sql).all(...params);
     fts5 = rows.length > 0;
+    if (fts5) total = Number(db.prepare(countSql).get(...countParams)?.n ?? rows.length);
   } catch (_e) { /* FTS5 unavailable, fall through */ }
 
   if (!fts5) {
@@ -1008,16 +1018,27 @@ export async function dtuSearch(db, args) {
         rows = db.prepare(
           "SELECT id, title, tier, type, substr(coalesce(content, ''), 1, 200) AS snippet, created_at FROM dtus WHERE (title LIKE ? OR content LIKE ?) AND tier = ? ORDER BY created_at DESC LIMIT ?"
         ).all(like, like, tier, limit);
+        total = Number(db.prepare(
+          "SELECT COUNT(*) AS n FROM dtus WHERE (title LIKE ? OR content LIKE ?) AND tier = ?"
+        ).get(like, like, tier)?.n ?? rows.length);
       } else {
         rows = db.prepare(
           "SELECT id, title, tier, type, substr(coalesce(content, ''), 1, 200) AS snippet, created_at FROM dtus WHERE title LIKE ? OR content LIKE ? ORDER BY created_at DESC LIMIT ?"
         ).all(like, like, limit);
+        total = Number(db.prepare(
+          "SELECT COUNT(*) AS n FROM dtus WHERE title LIKE ? OR content LIKE ?"
+        ).get(like, like)?.n ?? rows.length);
       }
     } catch (e) {
       return { ok: false, error: "DB query failed: " + String(e?.message || e) };
     }
   }
-  return { ok: true, results: rows, count: rows.length, fts5 };
+  // Total labelling (MCP lane judgement 2026-10-30; reflect ruling's field
+  // names, B9's #1899 term): count is the TRUE match total before the
+  // slice — readers already read it as the total — with returned,
+  // truncated, and totalKind saying exactly what the number is.
+  const count = total ?? rows.length;
+  return { ok: true, results: rows, count, returned: rows.length, truncated: count > rows.length, totalKind: "search_hits", fts5 };
 }
 
 export async function dtuGet(db, args) {
@@ -1310,7 +1331,18 @@ export async function atlasSearch(db, args) {
          SELECT id, title AS name, 'dtu' AS type FROM dtus WHERE title LIKE ? LIMIT ?
        ) ORDER BY name LIMIT ?`
     ).all(like, limit, limit);
-    return { ok: true, results: rows, count: rows.length };
+    // Total labelling (MCP Platform lane follow-on spec, 2026-10-30;
+    // same discipline as dtu_search / reflect_search): count is the
+    // TRUE match total within the atlas corpus (matches before the
+    // slice), returned is the page size, truncated flags a cut page,
+    // and totalKind names what the total counts — search hits in this
+    // corpus, never an ownership count. The two tools' corpora differ,
+    // so their counts are not comparable (see the description).
+    const totalRow = db.prepare(
+      "SELECT COUNT(*) AS n FROM dtus WHERE title LIKE ?"
+    ).get(like);
+    const count = Number(totalRow?.n ?? rows.length);
+    return { ok: true, results: rows, count, returned: rows.length, truncated: count > rows.length, totalKind: "search_hits" };
   } catch (e) {
     return { ok: false, error: "DB query failed: " + String(e?.message || e) };
   }

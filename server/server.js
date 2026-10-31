@@ -12,6 +12,8 @@
  */
 
 import expressRateLimit from "express-rate-limit";
+import { podPick as _podPick } from "./lib/pod-profile.js";
+import { createDtuQualityService as _createDtuQualityService, dtuQualityMode as _dtuQualityMode } from "./lib/dtu-quality/service.js";
 import { router as p2pSignallingRouter } from "./lib/p2p-dtu-signalling.js";
 import { createPhotosRouter } from "./routes/photos.js";
 import { selfPinAwayFromOllama } from "./lib/cpu-self-pin.js";
@@ -43,6 +45,8 @@ import {
   actorFromReq,
 } from "./lib/log-access.js";
 import { dtuSkipsAutoTag } from "./lib/dtu-auto-tag.js";
+import { relationEdges as dtuRelationEdges } from "./lib/dtu-relations.js";
+import { substrateCounts, derivedLayerCounts } from "./lib/substrate-counts.js";
 import { hasUsableBrainInput, needsInputError } from "./lib/brain-action-input.js";
 import { aggregateTopicCounts } from "./lib/trending-topics.js";
 import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-tags.js";
@@ -101,8 +105,11 @@ import cors from "cors";
 import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
+import { buildAnalyticsGroundingBlock, groundingUserId } from "./lib/lens-grounding.js";
+import { createSqliteBridgeService } from "./lib/dtu-bridge/service.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
 import { chatContextPool, makeChatMayUse } from "./lib/chat/context-pool.js";
+import { chatProgress as _chatProgress, withToolProgress as _chatWithToolProgress, readOllamaChatStream as _readOllamaChatStream } from "./lib/chat/progress.js";
 import { filterVisibleSearchHits, materializeIndexedHits, searchCandidateLimit } from "./lib/dtu-search-hits.js";
 import { handleArchaeology, handleSubstrateDiff, handleTimeCrystalDetect } from "./lib/knowledge-archaeology.js";
 import { artifactDtuForViewer, publicArtifactRef } from "./lib/artifact-access.js";
@@ -1985,7 +1992,7 @@ import {
 import { serverError, configureHttpErrorLogger, httpStatusLogLevel, opensRepairSignal } from "./lib/http-errors.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
 import configureMiddleware from "./middleware/index.js";
-import { createCsrfMiddleware, PUBLIC_PROOF_COMMENT_RE, INGEST_WEBHOOK_RE } from "./middleware/csrf.js";
+import { createCsrfMiddleware, PUBLIC_PROOF_COMMENT_RE, INGEST_WEBHOOK_RE, DEBUG_INGEST_RE } from "./middleware/csrf.js";
 import { readReplicaGate } from "./lib/read-replica-allowlist.js";
 import { createLLMQueue } from "./lib/llm-queue.js";
 import { bindNpcCoalescerQueue } from "./lib/npc-prompt-coalescer.js";
@@ -2166,10 +2173,10 @@ import createEmergentRouter from "./routes/emergent.js";
 import registerOperationRoutes from "./routes/operations.js";
 import createQualiaRouter from "./routes/qualia.js";
 import createSovereignRouter from "./routes/sovereign.js";
+import createDebugIngestRouter from "./routes/debug-ingest.js";
 import createSovereignEmergentRouter from "./routes/sovereign-emergent.js";
 import { createUserDispatchRouter } from "./routes/user-dispatch.js";
 import createFederationRouter from "./routes/federation.js";
-import { createMarketingTrackRouter } from "./routes/marketing-track.js";
 import registerOAuthRoutes from "./routes/oauth.js";
 import registerConnectorOAuthRoutes from "./routes/connector-oauth.js";
 import { mountDxOAuth } from "./routes/dx-oauth.js";
@@ -2451,7 +2458,7 @@ import {
   findCrossDomainConnections, embedDTU, storeEmbedding, getEmbedding,
   removeEmbedding, backfillEmbeddings, getEmbeddingStatus, isEmbeddingAvailable,
   trimEmbeddingCache, getEmbeddingCacheSize, setLocalEmbedder, reprobeEmbeddings,
-  embeddingEntries,
+  embeddingEntries, scheduleEmbeddingReprobe, embeddingWarmupPending,
 } from "./embeddings.js";
 import { consolidatedVisibility, applyConsolidatedVisibility, absorbVisibility, backfillConsolidatedVisibility } from "./lib/consolidated-visibility.js";
 import { isPublicFeedSource, backfillPublicFeedItems, asPublicFeedMember } from "./lib/public-feed-sources.js";
@@ -6416,6 +6423,7 @@ const STATE = {
   growth: null,          // growth OS state
   // v3: Generic lens artifact store (domain.type → artifact)
   lensArtifacts: new Map(), // artifactId → {id, domain, type, ownerId, title, data, meta, createdAt, updatedAt, version}
+  emergentLensProposals: new Map(), // proposalId → governance proposal record (lib/emergent-proposals.js)
   lensDomainIndex: new Map(), // domain → Set<artifactId> — O(1) domain lookup
   // v4: User Universes (local/global multiverse substrate)
   userUniverses: new Map(), // userId → { userId, localDTUs: Map, localLensArtifacts: Map, syncedFromGlobal: Set, preferences, stats, discoveryLog }
@@ -8708,16 +8716,15 @@ function authMiddleware(req, res, next) {
   // widened to any other action or envelope.
   if (req.method === "GET" && /^\/api\/esign\/[^/]+$/.test(req.path)) return next();
   if (req.method === "POST" && /^\/api\/esign\/[^/]+\/sign$/.test(req.path)) return next();
-  // Marketing email beacons (routes/marketing-track.js) — an email client
-  // fetches the open pixel and follows click redirects with no session.
-  // GET-only, exact shape. The open beacon always returns the same 1×1 GIF
-  // (no send-id probing); the click beacon only redirects to a link recorded
-  // in that send at send time, so it is not an open redirector.
-  if (req.method === "GET" && /^\/api\/marketing\/track\/(open|click)\/[^/]+$/.test(req.path)) return next();
   // INC-72: inbound ingest webhook. The 32-hex token in the path is the only
   // credential; the handler resolves it to exactly one user's endpoint and can
   // only append records to that user's webhook inbox.
   if (req.method === "POST" && INGEST_WEBHOOK_RE.test(req.path)) return next();
+  // Debug lens Sentry-compatible ingest (exact route, never a prefix).
+  // The cdi_ ingest key in the X-Sentry-Auth header is the only
+  // credential; it resolves server-side to exactly one project of one
+  // user and can only append grouped error issues there.
+  if (req.method === "POST" && DEBUG_INGEST_RE.test(req.path)) return next();
 
   // Animation public share viewer (Wave 4 gap closure,
   // `docs/lens-specs/animation-capability-map.md` checklist item 17) — an
@@ -8960,6 +8967,9 @@ function productionWriteAuthMiddleware(req, res, next) {
   if (method === "POST" && PUBLIC_PROOF_COMMENT_RE.test(req.path)) return next();
   // INC-72: token-scoped inbound ingest webhook (exact route, not a prefix).
   if (method === "POST" && INGEST_WEBHOOK_RE.test(req.path)) return next();
+  // Debug lens Sentry-compatible ingest: key-scoped (exact route, not a
+  // prefix) — the cdi_ key is verified in the handler before any write.
+  if (method === "POST" && DEBUG_INGEST_RE.test(req.path)) return next();
   // POST /api/receipts/verify checks an Ed25519 signature and writes nothing.
   // Exact path, not a prefix, so no other route under /api/receipts/ is opened.
   // Rate limit: write.receipt-verify. See routes/receipts.js.
@@ -10247,6 +10257,10 @@ function botGuardMiddleware(req, res, next) {
   // INC-72: inbound ingest webhooks are sent by external automation (Zapier,
   // cron jobs, curl). The 32-hex token in the exact route is the credential.
   if (req.method === "POST" && INGEST_WEBHOOK_RE.test(req.path)) return next();
+  // Debug lens Sentry-compatible ingest: external error reporters
+  // (Sentry SDKs, curl harnesses) are automated clients by design; the
+  // cdi_ key in the X-Sentry-Auth header is the credential.
+  if (req.method === "POST" && DEBUG_INGEST_RE.test(req.path)) return next();
   const ua = req.headers["user-agent"] || "";
   if (!ua || _BOT_UA_RE.test(ua)) {
     return res.status(403).json({
@@ -10266,7 +10280,7 @@ const _CONCURRENCY = {
     // bulk_import 4 → 32 (heavy I/O + GPU embed work paralellizes well);
     // simulation 6 → 32 (per-tick simulation jobs want to fan out so
     // emergent modules don't queue behind each other).
-    llm_call:    Number(process.env.LLM_CONCURRENCY_LIMIT || 64),
+    llm_call:    Number(process.env.LLM_CONCURRENCY_LIMIT || _podPick(64, 192)),
     bulk_import: Number(process.env.BULK_IMPORT_CONCURRENCY || 32),
     simulation:  Number(process.env.SIM_CONCURRENCY || 32),
     ml_infer: 6,
@@ -12943,6 +12957,7 @@ function _serializeState() {
     // is still a plain Map and we MUST keep serializing it or artifacts have
     // nowhere to live.
     ...(artifactStoreActive ? {} : { lensArtifacts: toArr(STATE.lensArtifacts) }),
+    emergentLensProposals: toArr(STATE.emergentLensProposals),
     _scopeSeparation: STATE._scopeSeparation || null,
     _autogenPipeline: STATE._autogenPipeline || null,
     // Entity growth profiles (persist across restarts)
@@ -13120,6 +13135,12 @@ function _hydrateState(obj) {
   if (Array.isArray(obj.lensArtifacts)) {
     STATE.lensArtifacts.clear();
     for (const a of obj.lensArtifacts) if (a && a.id) STATE.lensArtifacts.set(a.id, a);
+  }
+  // Emergent lens-action governance proposals (Q40) — same round-trip.
+  if (Array.isArray(obj.emergentLensProposals)) {
+    if (!(STATE.emergentLensProposals instanceof Map)) STATE.emergentLensProposals = new Map();
+    STATE.emergentLensProposals.clear();
+    for (const p of obj.emergentLensProposals) if (p && p.id) STATE.emergentLensProposals.set(p.id, p);
   }
   // Rebuild domain index
   _rebuildLensDomainIndex();
@@ -16722,6 +16743,36 @@ register("tools","web_search", (ctx, input={}) => {
 
 // ===== GOAL SYSTEM MACROS =====
 
+// S7 (Review 5 F8): the status header stats are DERIVED from the
+// registry at read time. The stored record was a set of cumulative
+// event counters incremented by hand at some call sites and never
+// decremented — evaluateGoal transitions PROPOSED -> APPROVED /
+// ABANDONED without touching any counter, so an evaluated goal read
+// APPROVED 0 in the header beside its APPROVED card, and an abandoned
+// goal stayed counted as proposed forever. Counting current states
+// cannot drift from the cards the panel lists. Field names are the
+// ones the panel already reads; avgCompletionTime is still carried
+// from the stored record (it is a duration average, not a count).
+function deriveGoalStats(goalsState) {
+  const stats = {
+    proposed: 0, evaluating: 0, approved: 0, active: 0,
+    paused: 0, completed: 0, abandoned: 0, blocked: 0,
+    total: 0,
+    avgCompletionTime: goalsState?.stats?.avgCompletionTime || 0
+  };
+  const known = ["proposed", "evaluating", "approved", "active",
+    "paused", "completed", "abandoned", "blocked"];
+  const registry = goalsState?.registry;
+  if (registry && typeof registry.values === "function") {
+    for (const g of registry.values()) {
+      if (!g) continue;
+      stats.total++;
+      if (known.includes(g.state)) stats[g.state]++;
+    }
+  }
+  return stats;
+}
+
 register("goals", "status", (ctx, _input = {}) => {
   try {
   enforceEthosInvariant("goals_status");
@@ -16746,7 +16797,7 @@ register("goals", "status", (ctx, _input = {}) => {
     active: activeGoals,
     activeCount: activeGoals.length,
     proposalCount,
-    stats: ctx.state.goals.stats,
+    stats: deriveGoalStats(ctx.state.goals),
     config: ctx.state.goals.config,
     invariants: GOAL_INVARIANTS
   };
@@ -16896,6 +16947,21 @@ register("goals", "abandon", (ctx, input = {}) => {
   return abandonGoal(goalId, reason);
 }, { public: false });
 
+register("goals", "delete", (ctx, input = {}) => {
+  // Permanent removal from the global goal registry (system/agent goals
+  // included), so it is not a member action — same gate as founder-approve.
+  if (!["owner", "admin", "founder"].includes(ctx.actor?.role)) {
+    return { ok: false, error: "Goal deletion requires owner/admin role" };
+  }
+  enforceEthosInvariant("goals_delete");
+  ensureGoalSystem();
+
+  const goalId = String(input.goalId || input.id || "");
+  if (!goalId) return { ok: false, error: "goalId required" };
+
+  return deleteGoal(goalId);
+}, { public: false });
+
 register("goals", "list", (ctx, input = {}) => {
   try {
   enforceEthosInvariant("goals_list");
@@ -16992,7 +17058,14 @@ register("worldmodel", "status", (ctx, _input = {}) => {
     snapshots: ctx.state.worldModel.snapshots.length,
     stats: ctx.state.worldModel.stats,
     config: ctx.state.worldModel.config,
-    invariants: WORLD_MODEL_INVARIANTS
+    invariants: WORLD_MODEL_INVARIANTS,
+    // #1715 S5: single-sourced accounting. The fields above count
+    // the world-model derived layer (living state, NOT the
+    // substrate); `derived` names that and counts the DTU-
+    // provenance link, `substrate` carries the canonical store's
+    // own counts from the same counting source as graph.stats.
+    derived: derivedLayerCounts(ctx.state),
+    substrate: substrateCounts(ctx.state, null),
   };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
@@ -19257,6 +19330,42 @@ function dtusByIds(ids=[]) {
   }
   return out;
 }
+// DTU classification + quality gates (lib/dtu-quality). Lazy so nothing runs at module-eval time.
+let _dqSvc = null;
+let _dqIter = null;
+function getDtuQuality() {
+  if (_dqSvc) return _dqSvc;
+  _dqSvc = _createDtuQualityService({
+    deps: { exists: (id) => STATE.dtus.has(id), yieldNow: () => new Promise((resolve) => { setImmediate(resolve); }) },
+    store: {
+      // resumable pass over the DTU map: a few hundred entries per call, never the whole store at once
+      scan: (maxExamine, maxNeeds) => {
+        if (!_dqIter) _dqIter = STATE.dtus.values();
+        const needs = []; const counted = []; let examined = 0; let done = false;
+        while (examined < maxExamine && needs.length < maxNeeds) {
+          const n = _dqIter.next();
+          if (n.done) { _dqIter = null; done = true; break; }
+          examined++;
+          const d = n.value;
+          if (!d?.id) continue;
+          if (_dqSvc.isCurrent(d)) counted.push(d.meta.classification); else needs.push(d);
+        }
+        return { examined, needs, counted, done };
+      },
+      write: (id, rec) => {
+        const d = STATE.dtus.get(id); if (!d) return;
+        d.meta = { ...(d.meta || {}), classification: rec };
+        if (rec.quality.gate === "low_quality" || rec.quality.gate === "refuted") {
+          d.tags = [...new Set([...(Array.isArray(d.tags) ? d.tags : []), "quality:low"])];
+          d.meta.rankPenalty = Math.round((1 - rec.quality.score) * 100) / 100;
+        }
+        upsertDTU(d, { broadcast: false });
+      },
+    },
+  });
+  return _dqSvc;
+}
+
 function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
   // Sidecar cache is refreshed from SQLite on a timer. Record the write so
   // dtu.list can fall back while that cache is behind.
@@ -19336,6 +19445,9 @@ function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
 
   // Auto-tag DTU with lens domain classifications
   try { if (typeof applyAutoTagging === "function") applyAutoTagging(dtu); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+
+  // Auto-sort on write: kind, origin, domain and a quality score with reasons (additive meta; never blocks the write).
+  try { if (_dtuQualityMode() === "on") getDtuQuality().annotateInPlace(dtu); } catch (_e) { logger.debug("server", "dtu-quality annotate", { error: _e?.message }); }
 
   STATE.dtus.set(dtu.id, dtu);
   saveStateDebounced();
@@ -20894,11 +21006,11 @@ _unrefInTest(setTimeout(() => initLLMPipeline(), 100));
 // a local Ollama slot can spill to an operator-funded external endpoint
 // instead of competing for the same 9 cores.
 const _llmQueue = createLLMQueue({
-  concurrency: parseInt(process.env.LLM_CONCURRENCY || "32", 10),
+  concurrency: parseInt(process.env.LLM_CONCURRENCY || String(_podPick(32, 96)), 10),
   // Was hardcoded 200, which always won over llm-queue.js's own
   // `opts.maxQueueDepth || CONCORD_LLM_QUEUE_DEPTH || 1000` fallback —
   // silently making CONCORD_LLM_QUEUE_DEPTH dead (audit 2026-07-27).
-  maxQueueDepth: parseInt(process.env.CONCORD_LLM_QUEUE_DEPTH || "200", 10),
+  maxQueueDepth: parseInt(process.env.CONCORD_LLM_QUEUE_DEPTH || String(_podPick(200, 1000)), 10),
   onReject: (priority, reason) => {
     structuredLog("warn", "llm_queue_reject", { priority, reason });
   },
@@ -21450,11 +21562,15 @@ async function initGhostFleet() {
     register("hlm", "metrics", () => ghostFleetOk(hlm.getHLMMetrics()));
 
     // HLM slow interval: every 20 minutes — graph computation, CPU-intensive
+    let _hlmRunning = false; // in-flight guard: a slow pass over a big store must not overlap the next tick (#1839 pattern)
     const hlmTimer = setInterval(async () => {
+      if (_hlmRunning) return;
+      _hlmRunning = true;
       try {
         const dtus = typeof STATE.dtus?.values === 'function' ? Array.from(STATE.dtus.values()) : [];
         if (dtus.length > 0) await hlm.runHLMPass(dtus);
       } catch (e) { observe(e, "hlm_slow_interval"); }
+      finally { _hlmRunning = false; }
     }, 1_200_000);
     if (hlmTimer.unref) hlmTimer.unref();
 
@@ -22351,7 +22467,9 @@ async function initGhostFleet() {
       // Entity economy cycle (inflation/deflation, UBI, trade expiry)
       const econ = await import("./emergent/entity-economy.js").catch(() => null);
       if (econ?.runEconomicCycle) {
-        try { econ.runEconomicCycle(); } catch (e) { observe(e, "ghost_fleet_economy_cycle"); }
+        // The governor heartbeat already runs the economic cycle (every 100th tick, ~25 min). Skip here unless it has not
+        // run for twice that, so enabling the fleet never doubles UBI/inflation passes.
+        try { econ.runEconomicCycle({ skipIfRecentMs: 50 * 60_000 }); } catch (e) { observe(e, "ghost_fleet_economy_cycle"); }
       }
 
       // History era transitions
@@ -22492,6 +22610,8 @@ _unrefInTest(setTimeout(async () => {
 
     // Initialize embeddings
     await initEmbeddings({ db, ollamaUrls, structuredLog });
+    // Not on the Ollama embedder yet (tunnel or model still coming up): retry on a short backoff instead of waiting ~25 min.
+    try { scheduleEmbeddingReprobe({ onChanged: () => startSemanticBackfill("boot-reprobe") }); } catch (_e) { logger.debug("server", "embedding reprobe schedule", { error: _e?.message }); }
 
     // Initialize downstream modules
     initSemanticCache({ structuredLog });
@@ -28314,6 +28434,23 @@ const _mentionsSelf = Array.from(_selfTokens).some(t => _pLow.includes(t));
     if (!sess_pre.crossDomainContext) sess_pre.crossDomainContext = {};
   }
 
+  // Analytics grounding (R1, Review 4 A19/A20): when this conversation is on
+  // the Analytics lens, compose the account facts from the surface's own
+  // stores and append them to the system prompt at both assembly paths
+  // below. This assembly never reads a client-supplied systemPrompt, so the
+  // grounding must be injected here — the seam where the prompt is built.
+  // Lens-gated and best-effort: any failure leaves the turn exactly as it
+  // was (the block itself carries the decline instruction when reads fail).
+  let _analyticsGrounding = "";
+  if ((currentLens || sess_pre.currentLens) === "analytics") {
+    try {
+      _analyticsGrounding = await buildAnalyticsGroundingBlock({
+        runMacro, ctx, STATE,
+        userId: groundingUserId(ctx),
+      });
+    } catch (_groundErr) { _analyticsGrounding = ""; }
+  }
+
   // Session-adaptive style vector (mutable)
   const styleSignal = input.styleSignal || null; // {kind:'like'|'dislike'} or {field,dir,amount}
   let styleVec = getSessionStyleVector(sessionId);
@@ -29810,6 +29947,10 @@ Available tools:
   "physics.beamDeflection" with {loadLbs:1000,lengthFt:20,modulusE:29000000,momentI:200}, "quantum.simulateCircuit" with {qubits:2,gates:[{"type":"H","target":0},{"type":"CNOT","control":0,"target":1}]},
   "engineering.columnBuckling" with {loadLbs:50000,lengthFt:12,area:8.25,momentI:82.8,elasticModulus:29000000},
   "statistics.linearRegression" with {x:[1,2,3],y:[2,4,6]}, "chemistry.gibbsFreeEnergy" with {deltaH:-286,deltaS:-163,tempK:298}
+- dtu_search: Search the knowledge base (DTUs) the user can see. Read-only. Use it BEFORE citing any DTU; only the ids and titles it returns may be cited. Params: {"query": "search terms", "limit": 8}
+- get_live_data: Read-only live data with source, timestamp and licence. kind "compound" (PubChem: formula, molar mass, CAS; optional property density|boiling_point|melting_point) or kind "fx" (ECB reference rates). Cite the source and retrievedAt. Params: {"kind": "compound", "name": "ethanol", "property": "boiling_point"} or {"kind": "fx", "base": "EUR", "symbols": ["USD"]}
+- list_recipes: List tested multi-step recipes (beam sizing, column buckling, unit conversion, material comparison, wall conduction, pipe flow) and their inputs. Check it FIRST for an engineering calculation. Params: {"query": "what you want to do"}
+- run_recipe: Run a recipe in SI; returns result, pass/fail checks and a receipt. Quote only numbers from its result. Params: {"recipe": "beam_sizing", "inputs": {"spanM": 4, "loadN": 10000, "widthM": "60 mm", "material": "steel-a36", "safetyFactor": 2}}
 - browse_url: Fetch and read any web page. Params: {"url": "https://...", "selector": "optional css selector"}
   Use when the user pastes a URL or asks about a specific web page.
 - create_dtu: Create a new DTU (Decision/Thought Unit) from the conversation. Params: {"title": "DTU title", "summary": "brief summary", "tags": ["tag1", "tag2"]}
@@ -30000,12 +30141,29 @@ ${_operatorV6Block}` : "";
             const { loadComputeModule } = await import("./lib/compute/index.js");
             const mod = await loadComputeModule(modName);
             if (!mod) return { tool: call.tool, ok: false, error: `Unknown compute module: ${modName}` };
-            if (typeof mod[fnName] !== "function") return { tool: call.tool, ok: false, error: `Unknown function ${fnName} in ${modName}` };
-            const computeResult = mod[fnName](computeInput);
+            if (typeof mod[fnName] !== "function") {
+              const { closestComputeKeys: _closest } = await import("./lib/chat/compute-si.js");
+              return { tool: call.tool, ok: false, error: `Unknown function ${fnName} in ${modName}`, closestKeys: await _closest(computeKey).catch(() => []) };
+            }
+            const { runChatCompute: _runChatCompute } = await import("./lib/chat/compute-si.js");
+            const computeResult = _runChatCompute(computeKey, mod, fnName, computeInput);
             return { tool: call.tool, ok: true, key: computeKey, result: computeResult };
           } catch (_ce) {
             return { tool: call.tool, ok: false, error: `Compute error: ${_ce?.message}` };
           }
+        }
+        case "dtu_search": {
+          const { dispatchChatDtuSearch: _dtuSearch } = await import("./lib/chat-tool-surface.js");
+          return _dtuSearch(runMacro, _toolCtx, call.params);
+        }
+        case "get_live_data": {
+          const { getLiveData: _liveData } = await import("./lib/chat/live-data.js");
+          return _liveData(_toolCtx, call.params);
+        }
+        case "list_recipes":
+        case "run_recipe": {
+          const { dispatchChatRecipe: _recipe } = await import("./lib/chat-tool-surface.js");
+          return _recipe(call.tool, call.params);
         }
         case "browse_url": {
           const { url: browseUrl = "", selector: browseSelector } = call.params;
@@ -30104,7 +30262,8 @@ ${_operatorV6Block}` : "";
       if (_gate && _gate.ok === false) {
         result = { tool: call.tool, ok: false, error: _gate.reason || "csl_rejected" };
       } else {
-        result = await _executeToolCall(call);
+        // running/done reach a streaming client as the call really starts and ends
+        result = await _chatWithToolProgress(ctx, call, () => _executeToolCall(call));
       }
       if (_gate) {
         result.cslRouted = !!_gate.cslRouted;
@@ -30341,7 +30500,7 @@ ${_operatorV6Block}` : "";
       voice_exemplars: _voiceExemplarsForPrompt(),
       moodColor: _chatMoodColor,
       actor: ctx?.actor || null,
-    }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : "") + _currentTurnAnchor, mode);
+    }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : "") + (_analyticsGrounding ? ("\n\n" + _analyticsGrounding) : "") + _currentTurnAnchor, mode);
     const _userContent = _computeGroundTruth
       ? `${_computeGroundTruth.groundTruthBlock}\n\n${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`
       : `${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`;
@@ -30353,6 +30512,7 @@ ${_operatorV6Block}` : "";
     if (_chatTodayLine) messages = [{ role: "system", content: _chatTodayLine }, ...messages];
     if (_conversationalChat) messages = withChatToneReminder(messages);
     const _llmSpan = startSpan("llm.chat", { mode, sessionId, promptLength: prompt.length });
+    _chatProgress(ctx, { stage: "thinking", label: "Thinking" });
     _selfContSystem = system + _selfContBlock + smallModelPromptSuffix(brainModel);
     const r = await ctx.llm.chat({
       system: _selfContSystem, messages, temperature: _llmTemp, maxTokens: _selfContFirstTokens(_llmMaxTokens),
@@ -30438,7 +30598,7 @@ ${_operatorV6Block}` : "";
         styleHints: buildStyleHints(styleVec),
         voice_exemplars: _voiceExemplarsForPrompt(),
         moodColor: _chatMoodColor,
-      }) + _toolSystemPrompt + _lensHintSuffix + _currentTurnAnchor, mode);
+      }) + _toolSystemPrompt + _lensHintSuffix + (_analyticsGrounding ? ("\n\n" + _analyticsGrounding) : "") + _currentTurnAnchor, mode);
       _selfContSystem = _directSystem + _selfContBlock + smallModelPromptSuffix(brainModel);
       const _directMessages = [
         { role: "system", content: _selfContSystem },
@@ -30601,19 +30761,24 @@ ${_operatorV6Block}` : "";
           const _fuAc = new AbortController();
           const _fuTimeout = setTimeout(() => _fuAc.abort(), 120000);
           const _fuStart = Date.now();
+          // A streaming client gets the answer's tokens as the brain writes them.
+          const _fuStream = typeof ctx?.chatToken === "function";
+          _chatProgress(ctx, { stage: "writing", label: "Writing the answer" });
           const _fuRes = await fetch(`${brainUrl}/api/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               model: brainModel,
               messages: [{ role: "system", content: _followUpSystem }, ..._followUpMessages],
-              stream: false,
+              stream: _fuStream,
               think: false,
               options: { temperature: 0.4, num_predict: _chatMaxTokens }
             }),
             signal: _fuAc.signal
-          }).finally(() => clearTimeout(_fuTimeout));
-          const _fuJson = await _fuRes.json().catch(() => ({}));
+          }).finally(() => { if (!_fuStream) clearTimeout(_fuTimeout); });
+          const _fuJson = _fuStream && _fuRes.ok
+            ? await _readOllamaChatStream(_fuRes, ctx.chatToken).catch(() => ({})).finally(() => clearTimeout(_fuTimeout))
+            : await _fuRes.json().catch(() => ({}));
           const _fuElapsed = Date.now() - _fuStart;
           BRAIN.conscious.stats.requests++;
           BRAIN.conscious.stats.totalMs += _fuElapsed;
@@ -30875,6 +31040,20 @@ ${_operatorV6Block}` : "";
         finalReply = _g.text;
         _dtuRefsRemoved = _g.removed;
         ctx.log("chat", "Removed DTU references that were not retrieved", { sessionId, count: _g.removed.length });
+      }
+    } catch { /* guard optional */ }
+  }
+
+  // Figures with units must trace to a tool result or the user's message (lib/chat/numeric-trace.js).
+  let _untracedNumbers = [];
+  if (!_lockedReply && llmUsed && typeof finalReply === "string" && finalReply && _toolCallsExecuted.length) {
+    try {
+      const { guardNumericTrace: _guardNumericTrace } = await import("./lib/chat/numeric-trace.js");
+      const _nt = _guardNumericTrace(finalReply, _toolCallsExecuted, { prompt });
+      if (_nt.untraced.length) {
+        finalReply = _nt.text;
+        _untracedNumbers = _nt.untraced;
+        ctx.log("chat", "Flagged figures not traceable to a tool result", { sessionId, count: _nt.untraced.length });
       }
     } catch { /* guard optional */ }
   }
@@ -31155,6 +31334,7 @@ ${_operatorV6Block}` : "";
     ...(_answerTag || {}),
     ...(_selfContMeta ? { selfContinuation: _selfContMeta } : {}),
     ...(_dtuRefsRemoved.length ? { dtuRefsRemoved: _dtuRefsRemoved } : {}),
+    ...(_untracedNumbers.length ? { untracedNumbers: _untracedNumbers } : {}),
     ...(_imageTurn?.artifact ? { artifact: _imageTurn.artifact } : {}),
     ...(_turnArtifacts.length ? { artifacts: _turnArtifacts } : {}),
     ...(_aiUnavailable ? {
@@ -35352,18 +35532,32 @@ register("settings", "status", (ctx, _input) => {
   register("graph", "stats", (ctx, _input = {}) => {
     try {
       _ensureGraphIndex();
+      const viewer = _graphViewer(ctx);
+      let visibleNodes = 0;
+      for (const id of GRAPH_INDEX?.nodes?.keys?.() || []) {
+        if (_graphCanSeeId(id, viewer)) visibleNodes++;
+      }
       return {
         ok: true,
         stats: {
+          // Legacy fields: these count the GRAPH_INDEX projection
+          // (DTUs + synthetic tag nodes; lineage + relation edges),
+          // not the substrate itself — `source` names the universe,
+          // and lib/substrate-counts.js is the single counting
+          // source (#1715 S4).
+          source: "graph-index",
           totalNodes: GRAPH_INDEX?.nodes?.size || 0,
           totalEdges: GRAPH_INDEX?.edges?.size || 0,
+          indexNodes: GRAPH_INDEX?.nodes?.size || 0,
+          indexEdges: GRAPH_INDEX?.edges?.size || 0,
           dirty: !!GRAPH_INDEX?.dirty,
+          substrate: substrateCounts(STATE, viewer, { index: GRAPH_INDEX, indexVisibleNodes: visibleNodes }),
         },
       };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
-  }, { description: "Graph index stats (nodes/edges)." });
+  }, { description: "Graph index stats (nodes/edges) with source-named substrate counts." });
 
   register("graph", "edges", (ctx, input = {}) => {
     try {
@@ -39726,6 +39920,19 @@ allowMacro("council", "reviewGlobal", _ACL_MEMBER);
 allowMacro("council", "credibility", _ACL_MEMBER);
 allowMacro("council", "proposePromotion", _ACL_MEMBER);
 
+// SECURITY: federation peering (emergent/federation-peering.js). The
+// emergent domain is member-tier, but inbound HMAC is only as strong as
+// peer registration: a member who could register a peer with a secret of
+// their choosing could sign their own sync packages and proposals, and the
+// send* macros make this server POST our heartbeat / published DTUs to the
+// registered endpoint. Peer registration, inbound receive, and outbound
+// send are admin-only (humanMacroAclDenial enforces this for humans;
+// internal callers bypass). federation.metrics stays public.
+for (const n of [
+  "registerPeer", "heartbeat", "buildSync", "receiveSync", "receiveProposal",
+  "sendHeartbeat", "sendSync", "sendProposal",
+]) allowMacro("emergent", `federation.${n}`, _ACL_ADMIN);
+
 // Auth: whoami just echoes the caller's own actor/user/org back to them —
 // no other user's data, nothing sensitive. Overrides the domain-level
 // _ACL_OWNER so any authenticated (or public-read) request can call it;
@@ -41015,9 +41222,9 @@ app.use("/api/emergent", createEmergentRouter({ makeCtx, runMacro }));
 app.use("/api/qualia", createQualiaRouter());
 app.use("/api/sovereign", createSovereignRouter({ STATE, makeCtx, runMacro, saveStateDebounced })); // includes /api/sovereign/dashboard, /pulse, /decree, /audit, /eval
 app.use("/api/sovereign-emergent", createSovereignEmergentRouter({ STATE }));
+app.use("/api/debug", createDebugIngestRouter()); // Sentry-compatible envelope ingest (POST /api/debug/ingest/:projectId/envelope, cdi_ key auth)
 app.use("/api", createUserDispatchRouter({ STATE })); // non-sovereign user action dispatch (POST /api/run)
 app.use("/api/federation", createFederationRouter({ db }));
-app.use("/api/marketing/track", createMarketingTrackRouter()); // public email beacons (open pixel + click redirect); handlers are probe/redirect-safe by design — see routes/marketing-track.js
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PROMOTION PIPELINE — HTTP routes for council voting UI
@@ -43875,6 +44082,58 @@ function _runNewsFeedWarm(_tick) {
     .catch((e) => { structuredLog("warn", "feed_cache_warm_tick", { error: String(e?.message || e) }); })
     .finally(() => { _newsWarmRunning = false; });
 }
+// DTU bridge wiring (slices 0–5 go live): a periodic sweep captures
+// live DTUs into the bridge outbox and the pump drains the outbox
+// through the conflict rule into the local bridge replica
+// (dtu_bridge_records). Capture is by sweep, not write-path hooks, so
+// every DTU writer is covered; the sweep is idempotent, so only real
+// content changes ever move. The Postgres target (slice 6) swaps in
+// behind the same service when configured. Failure-isolated: a bridge
+// fault logs and returns, never breaking a tick or a DTU write.
+let _dtuBridgeSvc = null;
+function getDtuBridge() {
+  if (_dtuBridgeSvc) return _dtuBridgeSvc;
+  try {
+    if (!db) return null;
+    _dtuBridgeSvc = createSqliteBridgeService({ db, sourceNode: "concord-server" });
+  } catch (e) {
+    structuredLog("warn", "dtu_bridge_init_failed", { error: e?.message });
+    return null;
+  }
+  return _dtuBridgeSvc;
+}
+registerHeartbeat("dtu-bridge-pump", {
+  frequency: 4,
+  scope: "global",
+  handler: async () => {
+    try {
+      const svc = getDtuBridge();
+      if (!svc) return { ok: true, skipped: "no_db" };
+      const swept = svc.sweep(dtusArray(), { limit: 200 });
+      const drained = svc.drain(50);
+      return { ok: true, swept, drained };
+    } catch (err) {
+      structuredLog("warn", "dtu_bridge_pump_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
+
+// Backfill DTU classification in small budgeted batches (existing DTUs without a current classification).
+registerHeartbeat("dtu-quality-backfill", {
+  frequency: 4,
+  scope: "global",
+  handler: async () => {
+    try {
+      if (_dtuQualityMode() !== "on") return { ok: true, skipped: "off" };
+      return { ok: true, ...(await getDtuQuality().cycle()) };
+    } catch (err) {
+      structuredLog("warn", "dtu_quality_backfill_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
+
 registerHeartbeat("news-feed-warm", {
   frequency: 5, // ~75 s at the 15 s heartbeat (same cadence as the old REALTIME_DATA slot)
   handler: ({ tickCount } = {}) => { _runNewsFeedWarm(Number(tickCount) || 0); },
@@ -44624,7 +44883,7 @@ async function governorTick(reason="heartbeat") {
           // The boot backfill can be skipped (idle gate) or stop early, and
           // nothing else re-runs it; resume while vectors are missing.
           if (embStatus?.available && embStatus.cached < embStatus.totalDTUs) startSemanticBackfill("resume");
-          if (!embStatus?.available) {
+          if (!embStatus?.available && !embeddingWarmupPending()) {
             structuredLog("warn", "embeddings_degraded", {
               reason: embStatus?.reason || "unknown",
               fallback: "keyword_extraction",
@@ -44782,10 +45041,13 @@ async function governorTick(reason="heartbeat") {
             const visionMod = await import("./lib/vision-inference.js").catch(() => null);
             const atlasMod  = await import("./emergent/atlas-store.js").catch(() => null);
             const guardMod  = await import("./emergent/atlas-write-guard.js").catch(() => null);
-            // Multimodal image gen is not wired in this build. EvoAsset's
-            // refinement passes detect a null callImageGen and skip the
-            // detail-maps pass without crashing.
-            const callImageGen = async () => null;
+            // Image gen for the detail-maps pass: the real adapter over
+            // lib/pollinations-image.js (GPU-first) lives in
+            // lib/evo-asset/detail-maps-deps.js. If that module ever
+            // fails to load, fall back to the null stub — the pass
+            // detects it and skips without crashing.
+            const detailDeps = await import("./lib/evo-asset/detail-maps-deps.js").catch(() => null);
+            const callImageGen = detailDeps?.callImageGen ?? (async () => null);
             const stats = await evoSched.runEvolutionTick(STATE, db, {
               callVision:        visionMod?.callVision,
               callImageGen,
@@ -48466,6 +48728,11 @@ function rebuildGraphIndex() {
       if (!GRAPH_INDEX.nodes.has(tagNodeId)) GRAPH_INDEX.nodes.set(tagNodeId, { id: tagNodeId, type: "tag", label: tag });
       GRAPH_INDEX.edges.set(`${id}->tag:${tag}`, { source: id, target: tagNodeId, type: "tagged" });
     }
+    // #1715 S1: typed relations project alongside lineage/tag edges.
+    // Keyed by the edge's own id (carries `#type`), so a typed edge
+    // never overwrites a lineage edge between the same pair; readers'
+    // visibility filtering (_graphVisibleEdge) applies unchanged.
+    for (const e of dtuRelationEdges(dtu)) { GRAPH_INDEX.edges.set(e.id, e); }
   }
   // Compute lineage depths
   const roots = Array.from(STATE.dtus.values()).filter(d => !d.lineage?.parents?.length || d.tier === "core");
@@ -58124,6 +58391,28 @@ function initChatSocketHandlers(io) {
               }
             } catch (_e) { /* context building is best-effort */ }
 
+            // Analytics grounding (R1, Review 4 A19/A20): on the Analytics
+            // lens, label the retrieved DTU material as conversation context
+            // (not account data) and append the grounded account facts,
+            // composed server-side from the surface's own stores — this
+            // streaming assembly builds its prompt here, so this is the seam.
+            // Lens-gated and best-effort, exactly like the context build above.
+            let _streamGrounding = '';
+            if (lens === 'analytics') {
+              try {
+                _streamGrounding = await buildAnalyticsGroundingBlock({
+                  runMacro, ctx: { actor: { userId: socket.data?.userId || null }, userId: socket.data?.userId || null },
+                  STATE, userId: socket.data?.userId || null,
+                });
+              } catch (_groundErr) { _streamGrounding = ''; }
+              if (_streamGrounding && _streamDtuContext) {
+                _streamDtuContext = _streamDtuContext.replace(
+                  'Relevant knowledge from your substrate:',
+                  'Relevant knowledge from your substrate (conversation context — retrieved material, NOT account data):',
+                );
+              }
+            }
+
             // Build system prompt for streaming
             const _streamConsciousParams = getConsciousParams({ exchange_count: (_streamSess.messages || []).length });
             const _streamStyleVec = getSessionStyleVector(sessionId);
@@ -58132,7 +58421,7 @@ function initChatSocketHandlers(io) {
               dtu_count: STATE.dtus?.size || 0,
               domain_count: Object.keys(STATE.domains || {}).length,
               lens: lens || "general",
-              context: _streamDtuContext + (_webContext ? `\n\nWeb search results (use to inform your answer, cite sources naturally):\n${_webContext}` : ""),
+              context: _streamDtuContext + (_webContext ? `\n\nWeb search results (use to inform your answer, cite sources naturally):\n${_webContext}` : "") + (_streamGrounding ? `\n\n${_streamGrounding}` : ""),
               conversation_history: (_streamSess.messages || []).slice(-20),
               personality_state: getPersonality(STATE),
               active_wants: _activeWantsForPrompt(),
@@ -60707,7 +60996,7 @@ async function runMigrations() {
 
 register("db", "status", (ctx, _input) => {
   const denied = dbMacroDenied(ctx); if (denied) return denied;
-  return { ok: true, postgres: { enabled: PG_CONFIG.enabled, connected: !!pgPool, pool: pgPool ? { total: pgPool.totalCount, idle: pgPool.idleCount, waiting: pgPool.waitingCount } : null }, redis: { enabled: REDIS_CONFIG.enabled, connected: !!redisClient }, mode: pgPool ? "postgresql" : "in-memory" };
+  return { ok: true, postgres: { enabled: PG_CONFIG.enabled, connected: !!pgPool, pool: pgPool ? { total: pgPool.totalCount, idle: pgPool.idleCount, waiting: pgPool.waitingCount } : null }, redis: { enabled: REDIS_CONFIG.enabled, connected: !!redisClient }, mode: pgPool ? "postgresql" : "in-memory", dtuBridge: (() => { try { const svc = getDtuBridge(); return svc ? svc.stats() : null; } catch (_e) { return null; } })() };
 });
 
 register("db", "migrate", (ctx, _input) => { const denied = dbMacroDenied(ctx); if (denied) return denied; return runMigrations(); });
@@ -63355,6 +63644,14 @@ app.get("/api/admin/background-governor", requireRole("owner", "admin", "soverei
 app.post("/api/admin/background-governor/mode", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
   try { res.json({ ok: true, mode: setBgGovernorMode(req.body?.mode ?? null) }); }
   catch (e) { res.status(400).json({ ok: false, error: String(e?.message || e) }); }
+});
+
+app.get("/api/admin/dtu-quality", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try {
+    return res.json({ ok: true, totalDtus: STATE.dtus.size, ...getDtuQuality().metrics() });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 
 app.get("/api/admin/verify-gate", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
@@ -79920,6 +80217,30 @@ function abandonGoal(goalId, reason = "user_requested") {
 
   saveStateDebounced();
   return { ok: true, goal };
+}
+
+function deleteGoal(goalId) {
+  ensureGoalSystem();
+  const goal = STATE.goals.registry.get(goalId);
+  if (!goal) return { ok: false, error: "Goal not found" };
+
+  // S1/S7 (Review 5 F1): agent goals and system proposals were
+  // undeletable — the registry had no removal path at all. Removal is
+  // total and stated: registry entry, active-set membership, any
+  // pending proposal-queue entry, and the completed-history record
+  // all go, and the response names the removed goal so the deletion
+  // is never silent. Dependents keep the id in deps.requiredGoals:
+  // activation already refuses on a missing dependency and names it,
+  // so a deleted dependency blocks loudly instead of passing silently.
+  STATE.goals.registry.delete(goalId);
+  STATE.goals.active.delete(goalId);
+  if (STATE.queues && Array.isArray(STATE.queues.goalProposals)) {
+    STATE.queues.goalProposals = STATE.queues.goalProposals.filter(p => p.id !== goalId);
+  }
+  STATE.goals.completed = STATE.goals.completed.filter(c => c.id !== goalId);
+
+  saveStateDebounced();
+  return { ok: true, deleted: true, goal: { id: goal.id, title: goal.title, state: goal.state } };
 }
 
 function generateAutoGoalProposals(_ctx = {}) {

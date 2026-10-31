@@ -33,11 +33,41 @@
       icon="AllIcons.Actions.Find"
       factoryClass="ai.concord.jetbrains.toolwindow.ConcordToolWindowFactory"/>
 
-    <!-- LSP server registration via LSP4IJ. The actual server.js binary
-         is bundled with the plugin; LSP4IJ launches it via stdio. The
-         LSP definition is registered programmatically in a follow-up
-         commit so we can read the apiUrl + token from PasswordSafe at
-         server-start time. -->
+  </extensions>
+
+  <!-- LSP server registration via LSP4IJ: the bundled concord-lsp is
+       launched via stdio by ConcordLanguageServer (lsp/ package), which
+       reads apiUrl from settings and the token from PasswordSafe at
+       server-start time and passes both as initializationOptions. -->
+  <extensions defaultExtensionNs="com.redhat.devtools.lsp4ij">
+    <server id="concordLanguageServer"
+            name="Concord DX"
+            factoryClass="ai.concord.jetbrains.lsp.ConcordLanguageServerFactory">
+      <description><![CDATA[
+        Concord DX language server (concord-lsp). Detector findings stream
+        as inline highlights; repair proposals appear as Accept / Ignore /
+        Reject prompts. Configure the API URL and sign-in under
+        Settings → Tools → Concord.
+      ]]></description>
+    </server>
+    <fileNamePatternMapping patterns="*.js;*.mjs;*.cjs"
+                            serverId="concordLanguageServer"
+                            languageId="javascript"/>
+    <fileNamePatternMapping patterns="*.jsx"
+                            serverId="concordLanguageServer"
+                            languageId="javascriptreact"/>
+    <fileNamePatternMapping patterns="*.ts"
+                            serverId="concordLanguageServer"
+                            languageId="typescript"/>
+    <fileNamePatternMapping patterns="*.tsx"
+                            serverId="concordLanguageServer"
+                            languageId="typescriptreact"/>
+    <fileNamePatternMapping patterns="*.py"
+                            serverId="concordLanguageServer"
+                            languageId="python"/>
+    <fileNamePatternMapping patterns="*.json"
+                            serverId="concordLanguageServer"
+                            languageId="json"/>
   </extensions>
 
   <actions>
@@ -50,8 +80,4 @@
     </action>
   </actions>
 
-  <applicationListeners>
-    <!-- Future: project-open listener wires the LSP startup hook once
-         lsp4ij integration lands in v0.3. -->
-  </applicationListeners>
 </idea-plugin>

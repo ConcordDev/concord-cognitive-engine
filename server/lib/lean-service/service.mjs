@@ -12,7 +12,7 @@
 // user on a box that holds nothing else of value (the pod).
 //
 // Env: LEAN_SERVICE_PORT (11437), LEAN_PROJECT_DIR (/root/lean/concord_verify), LEAN_SERVICE_TOKEN,
-//      LEAN_MAX_TIMEOUT_S (120), LEAN_QUEUE_MAX (8), LEAN_MEM_KB (8388608), LEAN_BIN_DIR (~/.elan/bin).
+//      LEAN_MAX_TIMEOUT_S (120), LEAN_QUEUE_MAX (8), LEAN_MEM_KB (33554432 = 32 GB; Mathlib imports fail below ~16 GB), LEAN_BIN_DIR (~/.elan/bin).
 
 import http from "node:http";
 import { spawn } from "node:child_process";
@@ -26,7 +26,7 @@ const PROJECT = process.env.LEAN_PROJECT_DIR || "/root/lean/concord_verify";
 const TOKEN = process.env.LEAN_SERVICE_TOKEN || "";
 const MAX_TIMEOUT_S = Number(process.env.LEAN_MAX_TIMEOUT_S || 120);
 const QUEUE_MAX = Number(process.env.LEAN_QUEUE_MAX || 8);
-const MEM_KB = Number(process.env.LEAN_MEM_KB || 8 * 1024 * 1024);
+const MEM_KB = Number(process.env.LEAN_MEM_KB || 32 * 1024 * 1024);
 const BIN_DIR = process.env.LEAN_BIN_DIR || `${process.env.HOME || "/root"}/.elan/bin`;
 
 let running = false;

@@ -3,6 +3,9 @@
  *
  * The page loads GET /api/crafting/recipes and saves with
  * POST /api/crafting/design, then requires that same id on the next GET.
+ * D1: a saved piece is then registered as a canonical lens artifact
+ * (POST /api/lens/crafting, data.recipeId joins the two) so the shared
+ * Export and publish paths can see it.
  * It does not call the locker, favorites, character, or balance endpoints.
  */
 
@@ -106,6 +109,10 @@ describe('crafting bench', () => {
     authAndRecipes([]);
     const { getByRole, getByLabelText } = render(<CraftingPage />);
     const button = await waitFor(() => getByRole('button', { name: '+ Start a piece' }));
+    // The click must wait for readiness: D1's load resolves the canonical
+    // list before the bench is ready, and a click on the disabled button
+    // is a silent no-op.
+    await waitFor(() => expect(button).not.toBeDisabled());
     await act(async () => { fireEvent.click(button); });
     expect(getByLabelText('Piece name')).toBeInTheDocument();
     await act(async () => { fireEvent.click(button); });
@@ -119,7 +126,13 @@ describe('crafting bench', () => {
       if (url === '/api/crafting/recipes') return ok({ ok: true, recipes });
       return ok({});
     });
-    apiPost.mockImplementation((url: string, body: { name: string }) => {
+    apiPost.mockImplementation((url: string, body: { name: string; type?: string; data?: { recipeId?: string } }) => {
+      if (url === '/api/lens/crafting') {
+        // D1 canonical registration, joined to the recipe by data.recipeId.
+        expect(body.type).toBe('recipe');
+        expect(body.data?.recipeId).toBe('r-new');
+        return ok({ ok: true, artifact: { id: 'a-new' } });
+      }
       expect(url).toBe('/api/crafting/design');
       expect(body).toEqual(pieceDesignBody('Bench hook'));
       recipes = [{ id: 'r-new', title: body.name, type: 'recipe' }];
@@ -128,13 +141,18 @@ describe('crafting bench', () => {
 
     const { getByRole, getByLabelText, getByText, queryByText } = render(<CraftingPage />);
     const button = await waitFor(() => getByRole('button', { name: '+ Start a piece' }));
+    // The click must wait for readiness: D1's load resolves the canonical
+    // list before the bench is ready, and a click on the disabled button
+    // is a silent no-op.
+    await waitFor(() => expect(button).not.toBeDisabled());
     await act(async () => { fireEvent.click(button); });
     fireEvent.change(getByLabelText('Piece name'), { target: { value: 'Bench hook' } });
     await act(async () => { fireEvent.click(button); });
 
     await waitFor(() => expect(getByText('Bench hook')).toBeInTheDocument());
     expect(queryByText('Piece name')).toBeNull();
-    expect(apiPost).toHaveBeenCalledTimes(1);
+    // Two posts: the design save, then the D1 canonical registration.
+    expect(apiPost).toHaveBeenCalledTimes(2);
   });
 
   it('shows the validator error and does not invent a row', async () => {
@@ -144,6 +162,10 @@ describe('crafting bench', () => {
     });
     const { getByRole, getByLabelText } = render(<CraftingPage />);
     const button = await waitFor(() => getByRole('button', { name: '+ Start a piece' }));
+    // The click must wait for readiness: D1's load resolves the canonical
+    // list before the bench is ready, and a click on the disabled button
+    // is a silent no-op.
+    await waitFor(() => expect(button).not.toBeDisabled());
     await act(async () => { fireEvent.click(button); });
     fireEvent.change(getByLabelText('Piece name'), { target: { value: 'Iron Sword' } });
     await act(async () => { fireEvent.click(button); });
@@ -156,6 +178,10 @@ describe('crafting bench', () => {
     apiPost.mockResolvedValue({ data: { ok: true, recipe: { id: 'missing', name: 'Ghost' } } });
     const { getByRole, getByLabelText, queryByText } = render(<CraftingPage />);
     const button = await waitFor(() => getByRole('button', { name: '+ Start a piece' }));
+    // The click must wait for readiness: D1's load resolves the canonical
+    // list before the bench is ready, and a click on the disabled button
+    // is a silent no-op.
+    await waitFor(() => expect(button).not.toBeDisabled());
     await act(async () => { fireEvent.click(button); });
     fireEvent.change(getByLabelText('Piece name'), { target: { value: 'Ghost' } });
     await act(async () => { fireEvent.click(button); });

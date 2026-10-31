@@ -37,6 +37,7 @@ export function newPitchCorrect(): EffectInstance {
     flexCents: 200,
     preserveVibrato: 0,
     transpose: 0,
+    formantSemitones: 0,
     quality: 0,
     range: 1,
     useProject: 1,
@@ -182,6 +183,7 @@ export function PitchCorrectCard({
           <Slider label="Humanize" min={0} max={100} step={1} value={num(fx.params.humanize, 0)} unit="%" onChange={(v) => patch({ humanize: v }, `fx-${fx.id}-humanize`)} />
           <Slider label="Within" min={0} max={200} step={1} value={num(fx.params.flexCents, 200)} unit="cents" onChange={(v) => patch({ flexCents: v }, `fx-${fx.id}-flex`)} />
           <Slider label="Transpose" min={-12} max={12} step={1} value={num(fx.params.transpose, 0)} unit="st" onChange={(v) => patch({ transpose: v }, `fx-${fx.id}-transpose`)} />
+          <Slider label="Formant" min={-12} max={12} step={1} value={num(fx.params.formantSemitones, 0)} unit="st" onChange={(v) => patch({ formantSemitones: v }, `fx-${fx.id}-formant`)} />
           <Slider label="Mix" min={0} max={100} step={1} value={Math.round(num(fx.wet, 1) * 100)} unit="%" onChange={(v) => onChange({ ...fx, wet: v / 100 }, `fx-${fx.id}-wet`)} />
           <label className="flex items-center gap-2 text-[10px] text-zinc-300">
             <input type="checkbox" checked={num(fx.params.preserveVibrato, 0) !== 0} onChange={(e) => patch({ preserveVibrato: e.target.checked ? 1 : 0 }, `fx-${fx.id}-vibrato`)} />
@@ -212,7 +214,7 @@ export function PitchCorrectCard({
           )}
           <p className="text-[10px] leading-relaxed text-zinc-500">
             <span ref={delayRef}>Processor delay is the analysis window, one 512-sample hop, and one period of the lowest note in this range.</span>
-            {' '}Quality mode is a longer window of the same shifter. Stereo input is summed to mono. Formant shift is not on this device.
+            {' '}Quality mode is a longer window of the same shifter. Stereo input is summed to mono. Formant shift moves the vocal-tract resonances without moving pitch, and applies when a clip is exported or rendered — live playback does not shift formants, so what you hear live is the unshifted voice.
             {' '}Notes farther than Within stay unchanged. Humanize slows the retune after a note has held for 200 ms.
             {' '}Export corrects each audio clip on this track at the clip sample rate, then runs the other inserts. Live playback corrects here and starts the clip early by this delay. A clip at the start of the song cannot begin before zero, so that opening is trimmed. Instrument notes are corrected live only.
           </p>
