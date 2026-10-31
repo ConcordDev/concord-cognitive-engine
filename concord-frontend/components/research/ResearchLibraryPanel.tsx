@@ -5,17 +5,27 @@
  * reference detail showing citations, annotations and related items.
  */
 
-import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, BookMarked, ChevronLeft, ChevronDown, Trash2, Copy, FileText, ExternalLink, Pencil, Link2, X, Tag, Highlighter, ScanSearch } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Loader2, Plus, BookMarked, BookOpen, ChevronLeft, ChevronDown, Trash2, Copy, FileText, ExternalLink, Pencil, Link2, X, Tag, Highlighter, Upload, BarChart3, ScanSearch } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
+import { ResearchPdfReader } from './ResearchPdfReader';
 
 interface Reference {
   id: string; title: string; authors: string | null; year: number | null;
   type: string; journal: string | null; doi: string | null; tags: string[]; status: string;
+  source?: string | null;
 }
-interface Annotation { id: string; page: number | null; quote: string | null; text: string | null; color: string }
+
+const SOURCE_LABEL: Record<string, string> = { crossref: 'Crossref', openalex: 'OpenAlex', arxiv: 'arXiv' };
+const sourceLabel = (s: string) => SOURCE_LABEL[s] || s;
+interface Annotation {
+  id: string; page: number | null; quote: string | null; text: string | null; color: string;
+  // S4: reader-created annotations carry a structured anchor (page +
+  // passage offsets; offsets null until the platform has a PDF text layer).
+  anchor?: { page: number | null; startOffset: number | null; endOffset: number | null } | null;
+}
 interface LibraryAnnotation extends Annotation { referenceId: string }
 interface PdfAttachment { id: string; referenceId: string; url: string; filename: string; pages: number | null }
 interface TagCount { tag: string; count: number }
@@ -88,6 +98,230 @@ function HighlightsSection({ onOpenReference }: { onOpenReference: (ref: Referen
   );
 }
 
+interface AnalysisItemRead { id: string; title: string; year: number | null }
+interface AnalysisEvaluation {
+  referenceId: string; title: string; credibility?: string; signals?: string[]; status?: string; error?: string;
+}
+interface AnalysisGapEntry {
+  kind: string; count?: number; references?: { id: string; title: string }[]; year?: number; tags?: string[];
+}
+interface AnalysisResult {
+  question: string | null;
+  itemsRead: AnalysisItemRead[];
+  evaluations: AnalysisEvaluation[];
+  gaps: { referenceCount: number; gaps: AnalysisGapEntry[]; byYear: Record<string, number> } | null;
+  matches: {
+    question: string; matchCount: number;
+    matches: { referenceId: string; title: string; score: number; matchedTokens: string[] }[];
+  } | null;
+}
+interface AnalysisJob {
+  id: string; status: string; question: string | null; itemCount: number;
+  createdAt: string; completedAt?: string | null;
+  result?: AnalysisResult | null; error?: string | null;
+}
+
+const CREDIBILITY_COLOR: Record<string, string> = {
+  high: 'text-emerald-300 border-emerald-800/60 bg-emerald-950/30',
+  moderate: 'text-amber-300 border-amber-800/60 bg-amber-950/30',
+  low: 'text-rose-300 border-rose-800/60 bg-rose-950/30',
+};
+
+/**
+ * AnalyzeLibrarySection — S5 (F3): the library-level "Analyze library"
+ * surface. Starts the research.analyze-library background job (source
+ * evaluation + gap detection + question matching over the user's own
+ * references), polls analysis-get while it runs, and renders what the
+ * job produced. Per §7 S5 every output names the items it read: the
+ * read list, per-reference evaluations, gap entries and matches all
+ * carry titles. On revisit the latest completed run is restored from
+ * analysis-list so the surface is not blank. An empty library gets the
+ * macro's honest no_references refusal, never a template.
+ */
+function AnalyzeLibrarySection({ references, onOpenReference }: {
+  references: Reference[];
+  onOpenReference: (ref: Reference) => Promise<void> | void;
+}) {
+  const [question, setQuestion] = useState('');
+  const [job, setJob] = useState<AnalysisJob | null>(null);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const pollRef = useRef<number | null>(null);
+
+  useEffect(() => () => { if (pollRef.current) window.clearTimeout(pollRef.current); }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await lensRun<{ analyses: AnalysisJob[] }>('research', 'analysis-list', {});
+        const latest = (r.data?.result?.analyses || []).find((a) => a.status === 'complete');
+        if (!latest || cancelled) return;
+        const g = await lensRun<{ job: AnalysisJob }>('research', 'analysis-get', { id: latest.id });
+        if (!cancelled && g.data?.result?.job) setJob(g.data.result.job);
+      } catch { /* restoring the last run is best-effort */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const poll = useCallback(async (id: string, tries: number) => {
+    try {
+      const g = await lensRun<{ job: AnalysisJob }>('research', 'analysis-get', { id });
+      const j = g.data?.result?.job;
+      if (j) setJob(j);
+      if (j && j.status === 'running' && tries > 0) {
+        pollRef.current = window.setTimeout(() => { void poll(id, tries - 1); }, 1200);
+        return;
+      }
+      setRunning(false);
+    } catch {
+      if (tries > 0) {
+        pollRef.current = window.setTimeout(() => { void poll(id, tries - 1); }, 1200);
+      } else {
+        setRunning(false);
+      }
+    }
+  }, []);
+
+  const run = useCallback(async () => {
+    setError(null);
+    setRunning(true);
+    try {
+      const r = await lensRun<{ job: AnalysisJob }>('research', 'analyze-library', { question: question.trim() });
+      if (r.data?.ok === false) {
+        setRunning(false);
+        setError(r.data?.reason === 'no_references'
+          ? 'Your library is empty — add references first; there is nothing to analyse yet.'
+          : (r.data?.error || 'Analysis could not be started.'));
+        return;
+      }
+      const j = r.data?.result?.job;
+      if (j) {
+        setJob(j);
+        void poll(j.id, 40);
+      } else {
+        setRunning(false);
+      }
+    } catch {
+      setRunning(false);
+      setError('Analysis could not be started.');
+    }
+  }, [question, poll]);
+
+  const result = job?.status === 'complete' ? job.result : null;
+
+  return (
+    <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
+      <div className="flex items-center gap-1.5">
+        <BarChart3 className="w-3.5 h-3.5 text-red-400" />
+        <h4 className="text-xs font-semibold text-zinc-200">Analyze library</h4>
+      </div>
+      <p className="text-[11px] text-zinc-400">
+        Runs source evaluation, gap detection and question matching over your references as a
+        background job. Every result names the items it read.
+      </p>
+      <div className="flex gap-2">
+        <input value={question} onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !running) void run(); }}
+          placeholder="Optional: a research question to match against your library"
+          className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+        <button type="button" onClick={() => void run()} disabled={running}
+          className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white rounded-lg">
+          {running ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+          {running ? 'Analyzing…' : 'Analyze library'}
+        </button>
+      </div>
+      {error && <p className="text-[11px] text-rose-300">{error}</p>}
+      {job?.status === 'running' && (
+        <p className="text-[11px] text-zinc-400 flex items-center gap-1.5">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          Analyzing your library — reading {job.itemCount} reference{job.itemCount === 1 ? '' : 's'}…
+        </p>
+      )}
+      {job?.status === 'failed' && (
+        <p className="text-[11px] text-rose-300">That analysis run failed{job.error ? `: ${job.error}` : '.'}</p>
+      )}
+      {result && (
+        <div className="space-y-3 pt-1">
+          <div>
+            <p className="text-[11px] text-zinc-400">
+              Read {result.itemsRead.length} reference{result.itemsRead.length === 1 ? '' : 's'}
+              {result.question ? <> for &ldquo;{result.question}&rdquo;</> : ''}
+              {job?.completedAt ? <> · {new Date(job.completedAt).toLocaleString()}</> : ''}:
+            </p>
+            <ul className="mt-1 space-y-0.5">
+              {result.itemsRead.map((i) => (
+                <li key={i.id} className="text-[11px] text-zinc-300 truncate">
+                  • {i.title}{i.year ? <span className="text-zinc-500"> ({i.year})</span> : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-zinc-300 mb-1">Source evaluations</p>
+            <ul className="space-y-1">
+              {result.evaluations.map((e) => (
+                <li key={e.referenceId} className="flex items-center gap-2 text-[11px]">
+                  <span className="text-zinc-300 truncate flex-1">{e.title}</span>
+                  {e.error ? (
+                    <span className="text-rose-300 shrink-0">{e.error}</span>
+                  ) : (
+                    <span className={cn('px-1.5 py-0.5 rounded border shrink-0', CREDIBILITY_COLOR[e.credibility || ''] || 'text-zinc-300 border-zinc-700')}>
+                      {e.credibility} · {(e.signals || []).join(', ')}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-zinc-300 mb-1">Gaps</p>
+            {!result.gaps ? (
+              <p className="text-[11px] text-zinc-500 italic">Gap detection returned nothing for this run.</p>
+            ) : result.gaps.gaps.length === 0 ? (
+              <p className="text-[11px] text-zinc-400">
+                No gaps found — every reference carries an abstract, coverage is continuous, and no tag is used only once.
+              </p>
+            ) : (
+              <ul className="space-y-0.5">
+                {result.gaps.gaps.map((g, i) => (
+                  <li key={`${g.kind}-${i}`} className="text-[11px] text-zinc-300">
+                    {g.kind === 'missing_abstract' && (
+                      <>Missing an abstract: {(g.references || []).map((r) => r.title).join('; ') || `${g.count ?? 0} reference(s)`}</>
+                    )}
+                    {g.kind === 'year_gap' && <>No references from {g.year} — a hole in the timeline.</>}
+                    {g.kind === 'singleton_tags' && <>Tags used only once: {(g.tags || []).join(', ')}</>}
+                    {g.kind !== 'missing_abstract' && g.kind !== 'year_gap' && g.kind !== 'singleton_tags' && <>{g.kind}</>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-zinc-300 mb-1">Question matches</p>
+            {!result.question ? (
+              <p className="text-[11px] text-zinc-500 italic">
+                No question was given for this run — add one above to match it against your library.
+              </p>
+            ) : !result.matches || result.matches.matchCount === 0 ? (
+              <p className="text-[11px] text-zinc-400">No references mention that question&rsquo;s terms.</p>
+            ) : (
+              <ul className="space-y-0.5">
+                {result.matches.matches.map((m) => (
+                  <li key={m.referenceId} className="text-[11px] text-zinc-300 truncate">
+                    • {m.title} <span className="text-zinc-500">— matched: {m.matchedTokens.join(', ')}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+      <AnalyzeQuickTools references={references} onOpenReference={onOpenReference} />
+    </div>
+  );
+}
+
 interface GapEntry { kind: string; count?: number; referenceIds?: string[]; year?: number; tags?: string[] }
 interface GapResult { referenceCount: number; topic: string | null; gaps: GapEntry[]; byYear: Record<string, number> }
 interface MatchEntry { referenceId: string; title: string; score: number; matchedTokens: string[] }
@@ -97,7 +331,7 @@ interface EvalResult { referenceId: string; title: string; credibility: string; 
 const SIGNAL_LABEL: Record<string, string> = {
   has_doi: 'DOI', has_venue: 'Venue', has_year: 'Year', has_abstract: 'Abstract', has_authors: 'Authors',
 };
-const CREDIBILITY_COLOR: Record<string, string> = {
+const CREDIBILITY_BADGE: Record<string, string> = {
   high: 'text-emerald-400 border-emerald-700/60', moderate: 'text-amber-400 border-amber-700/60', low: 'text-red-400 border-red-800/60',
 };
 
@@ -109,21 +343,18 @@ function gapText(g: GapEntry): string {
 }
 
 /**
- * AnalyzeLibrarySection — the "Analyze library" tools. Three real backend
- * actions (`research.find-gaps`, `research.match-questions`,
- * `research.evaluate-source`) had no frontend surface anywhere — the
- * library could be browsed and cited but never analyzed. This section
- * wires all three against the caller's own library: coverage gaps
- * (missing abstracts, year gaps, singleton tags), question→reference
- * matching, and a per-source credibility readout from the metadata
- * signals the backend actually checks. Errors surface as-is (an empty
- * library gets the backend's "references required", not a fake result).
+ * AnalyzeQuickTools — the per-tool half of the Analyze surface, from
+ * main (PR #1898, Q62): the three backend actions (research.find-gaps,
+ * research.match-questions, research.evaluate-source) called directly
+ * with a topic, a question, or a single chosen source. Kept intact in
+ * the #1723 wrap merge alongside the S5 whole-library job above: the
+ * job runs all three over the whole library and names its inputs;
+ * these run one tool at a time. Errors surface as-is.
  */
-export function AnalyzeLibrarySection({ references, onOpenReference }: {
+export function AnalyzeQuickTools({ references, onOpenReference }: {
   references: Reference[];
   onOpenReference: (ref: Reference) => Promise<void> | void;
 }) {
-  const [open, setOpen] = useState(false);
   const [topic, setTopic] = useState('');
   const [gapResult, setGapResult] = useState<GapResult | null>(null);
   const [gapError, setGapError] = useState<string | null>(null);
@@ -175,17 +406,11 @@ export function AnalyzeLibrarySection({ references, onOpenReference }: {
   const btnCls = 'px-2.5 py-1.5 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-100 rounded-lg disabled:opacity-50';
 
   return (
-    <div className="border border-zinc-800 rounded-xl overflow-hidden">
-      <button type="button" onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-zinc-300 bg-zinc-900/70 hover:bg-zinc-900 transition-colors">
-        <span className="flex items-center gap-1.5">
-          <ScanSearch className="w-3.5 h-3.5 text-sky-400" /> Analyze library
-        </span>
-        <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', open && 'rotate-180')} />
-      </button>
-      {open && (
-        <div className="p-3 space-y-4 bg-zinc-950/40">
-          <div className="space-y-1.5">
+    <div className="space-y-4 border-t border-zinc-800 pt-3">
+      <p className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-300">
+        <ScanSearch className="w-3.5 h-3.5 text-sky-400" /> Quick checks — one tool at a time
+      </p>
+<div className="space-y-1.5">
             <p className="text-[11px] font-semibold text-zinc-300">Coverage gaps</p>
             <div className="flex gap-2">
               <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Topic (optional)"
@@ -252,7 +477,7 @@ export function AnalyzeLibrarySection({ references, onOpenReference }: {
             {evalError && <p className="text-[11px] text-red-400">{evalError}</p>}
             {evalResult && (
               <div className="flex items-center gap-2 flex-wrap">
-                <span className={cn('text-[11px] px-1.5 py-0.5 rounded border capitalize', CREDIBILITY_COLOR[evalResult.credibility] || 'text-zinc-300 border-zinc-700')}>
+                <span className={cn('text-[11px] px-1.5 py-0.5 rounded border capitalize', CREDIBILITY_BADGE[evalResult.credibility] || 'text-zinc-300 border-zinc-700')}>
                   {evalResult.credibility} credibility
                 </span>
                 {evalResult.signals.map((s) => (
@@ -261,8 +486,6 @@ export function AnalyzeLibrarySection({ references, onOpenReference }: {
               </div>
             )}
           </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -277,23 +500,43 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
   const [tags, setTags] = useState<TagCount[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ title: '', authors: '', year: '', type: 'article', journal: '', doi: '', tags: '' });
+  const [identifier, setIdentifier] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [duplicateNote, setDuplicateNote] = useState<Reference | null>(null);
+  const hasLoadedRef = useRef(false);
   const [selected, setSelected] = useState<Reference | null>(null);
-  const [citations, setCitations] = useState<{ apa: string; mla: string; bibtex: string; chicago?: string } | null>(null);
+  const [citations, setCitations] = useState<{ apa: string; mla: string; bibtex: string; chicago?: string; vancouver?: string } | null>(null);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [annForm, setAnnForm] = useState({ page: '', quote: '', text: '' });
+  const [addingAnn, setAddingAnn] = useState(false);
   const [pdfs, setPdfs] = useState<PdfAttachment[]>([]);
   const [pdfForm, setPdfForm] = useState({ url: '', filename: '', pages: '' });
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ title: '', authors: '', year: '', journal: '', doi: '', tags: '' });
   const [related, setRelated] = useState<Reference[]>([]);
   const [relateQuery, setRelateQuery] = useState('');
+  // S4 (F2): the in-app reader replaces the detail view while open.
+  // pdfUrl/source are set when opened from a specific attachment; left
+  // unset when opened via server-side resolution (reference-pdf).
+  const [reader, setReader] = useState<{ page?: number; pdfUrl?: string; source?: string } | null>(null);
+  const pdfFileInputRef = useRef<HTMLInputElement>(null);
 
+  // S3 (F6): the library is loaded whole and the search box filters it
+  // client-side, live — the note search's model (a local, exact filter),
+  // not a server round-trip per keystroke. The old wiring re-ran
+  // reference-list on every keystroke with setLoading(true) up front,
+  // and the render below swaps the WHOLE panel (search input included)
+  // for a spinner while loading — the input unmounted on the first
+  // keystroke, focus died with it, and racing responses could restore a
+  // stale list, so in the live surface the box accepted text and the
+  // list never filtered. Filtering locally removes that whole chain:
+  // no fetch, no unmount, no race. The server-side reference-list query
+  // stays for other consumers.
   const refresh = useCallback(async () => {
-    setLoading(true);
-    const params: Record<string, string> = {};
-    if (query.trim()) params.query = query.trim();
-    if (activeTag) params.tag = activeTag;
-    const r = await lensRun('research', 'reference-list', params);
+    if (!hasLoadedRef.current) setLoading(true);
+    const r = await lensRun('research', 'reference-list', {});
     if (r.data?.ok === false) {
       setLoadError(r.data?.error || 'Could not load the library.');
       setLoading(false);
@@ -301,8 +544,24 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
     }
     setLoadError(null);
     setReferences(r.data?.result?.references || []);
+    hasLoadedRef.current = true;
     setLoading(false);
-  }, [query, activeTag]);
+  }, []);
+
+  // Case-insensitive substring over title / authors / journal / DOI /
+  // tags — the same field set reference-list's query matches server-side.
+  const visibleReferences = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return references.filter((r) => {
+      if (activeTag && !r.tags.includes(activeTag)) return false;
+      if (!q) return true;
+      return r.title.toLowerCase().includes(q)
+        || (r.authors || '').toLowerCase().includes(q)
+        || (r.journal || '').toLowerCase().includes(q)
+        || (r.doi || '').toLowerCase().includes(q)
+        || r.tags.some((t) => t.includes(q));
+    });
+  }, [references, query, activeTag]);
 
   const refreshTags = useCallback(async () => {
     const r = await lensRun<{ tags: TagCount[] }>('research', 'tag-list', {});
@@ -319,6 +578,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
 
   const openRef = useCallback(async (ref: Reference) => {
     setSelected(ref);
+    setReader(null);
     setEditing(false);
     const r = await lensRun('research', 'reference-detail', { id: ref.id });
     if (r.data?.ok === false) {
@@ -332,11 +592,16 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
     const p = await lensRun<{ pdfs: PdfAttachment[] }>('research', 'reference-pdfs', { referenceId: ref.id });
     setPdfs(p.data?.result?.pdfs || []);
     await loadRelated(ref.id);
-    // reference-detail only returns apa/mla/bibtex — fetch chicago via cite-format
-    // so all four citation styles this domain supports are actually reachable.
+    // Fetch chicago + vancouver via cite-format as well, so every
+    // citation style this domain supports is actually reachable here
+    // (reference-detail's own citations object also carries them now).
     const chi = await lensRun<{ citation: string }>('research', 'cite-format', { id: ref.id, style: 'chicago' });
     if (chi.data?.ok !== false) {
       setCitations((prev) => (prev ? { ...prev, chicago: chi.data?.result?.citation } : prev));
+    }
+    const van = await lensRun<{ citation: string }>('research', 'cite-format', { id: ref.id, style: 'vancouver' });
+    if (van.data?.ok !== false) {
+      setCitations((prev) => (prev ? { ...prev, vancouver: van.data?.result?.citation } : prev));
     }
   }, [loadRelated]);
 
@@ -398,6 +663,44 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
     await openRef(selected);
   };
 
+  // S4 (F2): upload a PDF file through the platform's existing artifact
+  // story — POST /api/artifact/upload stores the bytes as the user's own
+  // artifact (the ArtifactUploader pattern: raw body + X- headers), and
+  // the ACL-gated /api/artifact/:dtuId/stream URL is filed on the
+  // reference through the existing reference-attach-pdf macro. No new
+  // storage or serving mechanism is introduced here.
+  const uploadPdfFile = async (file: File): Promise<boolean> => {
+    if (!selected) return false;
+    try {
+      const res = await fetch('/api/artifact/upload', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': file.type || 'application/pdf',
+          'X-Filename': encodeURIComponent(file.name),
+          'X-Title': encodeURIComponent(file.name),
+          'X-Domain': 'research',
+        },
+        body: file,
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok || !data.dtuId) {
+        setError(data?.error || `Upload failed (${res.status})`);
+        return false;
+      }
+      const r = await lensRun('research', 'reference-attach-pdf', {
+        referenceId: selected.id, url: `/api/artifact/${data.dtuId}/stream`, filename: file.name,
+      });
+      if (r.data?.ok === false) { setError(r.data?.error || 'Failed to attach the uploaded PDF'); return false; }
+      setError(null);
+      onChange();
+      return true;
+    } catch {
+      setError('Upload failed — the file could not be sent.');
+      return false;
+    }
+  };
+
   const add = async () => {
     if (!form.title.trim()) { setError('Title is required.'); return; }
     const r = await lensRun('research', 'reference-add', {
@@ -407,8 +710,44 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
       tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    // S3 (F8): reference-add passes the same duplicate gate as imports.
+    // On a hit nothing was filed — say so, keep the form open, and offer
+    // the existing record instead of silently "adding" a twin.
+    const dupRef = (r.data?.result as { duplicate?: boolean; reference?: Reference } | undefined)?.duplicate
+      ? (r.data?.result as { reference?: Reference }).reference
+      : undefined;
+    if (dupRef) {
+      setDuplicateNote(dupRef);
+      setError(null);
+      await refresh(); await refreshTags(); onChange();
+      return;
+    }
+    setDuplicateNote(null);
     setForm({ title: '', authors: '', year: '', type: 'article', journal: '', doi: '', tags: '' });
     setShowAdd(false); setError(null);
+    await refresh(); await refreshTags(); onChange();
+  };
+  const addByIdentifier = async () => {
+    const id = identifier.trim();
+    if (!id) { setImportError('Paste a DOI, an arXiv ID, or a doi.org / arxiv.org link.'); setImportMsg(null); return; }
+    setImporting(true); setImportMsg(null); setImportError(null);
+    const r = await lensRun('research', 'academic-resolve-import', { identifier: id });
+    setImporting(false);
+    const ref = r.data?.result?.reference as Reference | undefined;
+    if (r.data?.ok === false || !ref) {
+      setImportError(
+        r.data?.error === 'not_found'
+          ? 'No reference found for that identifier.'
+          : ((r.data as { message?: string } | undefined)?.message || r.data?.error || 'Could not resolve that identifier.'),
+      );
+      return;
+    }
+    if ((r.data?.result as { duplicate?: boolean } | undefined)?.duplicate) {
+      setImportMsg(`Already in your library: "${ref.title}" is already filed.`);
+    } else {
+      setImportMsg(`Imported "${ref.title}" via ${ref.source ? sourceLabel(ref.source) : 'the scholarly record'}.`);
+    }
+    setIdentifier('');
     await refresh(); await refreshTags(); onChange();
   };
   const del = async (id: string) => { await lensRun('research', 'reference-delete', { id }); await refresh(); await refreshTags(); onChange(); };
@@ -417,13 +756,27 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
     await refresh(); onChange();
     if (selected?.id === ref.id) setSelected({ ...ref, status });
   };
+  // S9 (F12d): this handler used to ignore the result envelope — a
+  // failed annotation-add (ok:false) still cleared the form and
+  // reloaded, so the click "silently did nothing": the typed text
+  // vanished and no annotation appeared, indistinguishable from a
+  // dead button. Now the first click either saves visibly or says
+  // why not, the form survives a failure, and the button cannot
+  // double-fire while a save is in flight. (The S4 reader's annotate
+  // form already checked the envelope; this form now matches it.)
   const addAnnotation = async () => {
-    if (!selected) return;
+    if (!selected || addingAnn) return;
     if (!annForm.quote.trim() && !annForm.text.trim()) { setError('Add a quote or note.'); return; }
-    await lensRun('research', 'annotation-add', {
+    setAddingAnn(true);
+    const r = await lensRun('research', 'annotation-add', {
       referenceId: selected.id, page: annForm.page ? Number(annForm.page) : undefined,
       quote: annForm.quote.trim(), text: annForm.text.trim(),
     });
+    setAddingAnn(false);
+    if (r.data?.ok === false) {
+      setError(r.data?.error || 'Could not save the annotation.');
+      return;
+    }
     setAnnForm({ page: '', quote: '', text: '' });
     setError(null);
     await openRef(selected); onChange();
@@ -432,6 +785,22 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  // ── In-app reader (S4) ──
+  if (selected && reader) {
+    return (
+      <ResearchPdfReader
+        referenceId={selected.id}
+        title={selected.title}
+        initialPage={reader.page}
+        initialPdfUrl={reader.pdfUrl}
+        initialSource={reader.source}
+        onClose={() => { void openRef(selected); }}
+        onUpload={uploadPdfFile}
+        onChanged={onChange}
+      />
+    );
   }
 
   // ── Reference detail ──
@@ -476,6 +845,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
               <p className="text-xs text-zinc-400">
                 {selected.authors || 'Unknown'}{selected.year ? ` · ${selected.year}` : ''}
                 {selected.journal ? ` · ${selected.journal}` : ''} · {selected.type}
+                {selected.source ? ` · via ${sourceLabel(selected.source)}` : ''}
               </p>
               <div className="flex gap-1 mt-2">
                 {['to_read', 'reading', 'read'].map((st) => (
@@ -495,7 +865,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
         {citations && (
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-1.5">
             <h4 className="text-xs font-semibold text-zinc-300">Citations</h4>
-            {(['apa', 'mla', 'chicago', 'bibtex'] as const).filter((style) => citations[style]).map((style) => (
+            {(['apa', 'mla', 'chicago', 'vancouver', 'bibtex'] as const).filter((style) => citations[style]).map((style) => (
               <div key={style} className="flex items-start gap-2">
                 <span className="text-[10px] uppercase text-zinc-400 w-12 shrink-0 pt-0.5">{style}</span>
                 <code className="flex-1 text-[10px] text-zinc-400 break-all whitespace-pre-wrap">{citations[style]}</code>
@@ -508,7 +878,25 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
         )}
 
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-          <h4 className="text-xs font-semibold text-zinc-300 mb-2">PDF attachments</h4>
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-xs font-semibold text-zinc-300">PDF attachments</h4>
+            <div className="flex items-center gap-1.5">
+              <button type="button" onClick={() => setReader({})}
+                className="flex items-center gap-1 text-[10px] font-medium bg-red-600 hover:bg-red-500 text-white rounded px-2 py-1">
+                <BookOpen className="w-3 h-3" /> Read in Concord
+              </button>
+              <button type="button" onClick={() => pdfFileInputRef.current?.click()}
+                className="flex items-center gap-1 text-[10px] text-zinc-300 hover:text-zinc-100 border border-zinc-700 rounded px-2 py-1">
+                <Upload className="w-3 h-3" /> Upload PDF
+              </button>
+              <input ref={pdfFileInputRef} type="file" accept="application/pdf,.pdf" className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = '';
+                  if (f) void uploadPdfFile(f).then((ok) => { if (ok && selected) void openRef(selected); });
+                }} />
+            </div>
+          </div>
           <div className="grid grid-cols-6 gap-2 mb-2">
             <input placeholder="PDF URL (https://…)" value={pdfForm.url} onChange={(e) => setPdfForm({ ...pdfForm, url: e.target.value })}
               className="col-span-3 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
@@ -520,7 +908,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
               className="col-span-6 bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Attach PDF</button>
           </div>
           {pdfs.length === 0 ? (
-            <p className="text-[11px] text-zinc-400 italic">No PDFs attached.</p>
+            <p className="text-[11px] text-zinc-400 italic">No PDFs attached — “Read in Concord” still checks arXiv and open-access sources for this reference.</p>
           ) : (
             <ul className="space-y-1">
               {pdfs.map((p) => (
@@ -532,9 +920,16 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
                     {p.pages ? <span className="text-zinc-600">· {p.pages}p</span> : null}
                     <ExternalLink className="w-3 h-3 shrink-0" />
                   </a>
-                  <button type="button" onClick={() => deletePdf(p.id)} aria-label="Delete PDF" className="text-zinc-600 hover:text-rose-400 shrink-0">
-                    <Trash2 className="w-3 h-3" />
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button type="button"
+                      onClick={() => setReader({ pdfUrl: p.url, source: p.url.startsWith('/api/artifact/') ? 'upload' : 'attached' })}
+                      aria-label="Read PDF in Concord" className="text-zinc-400 hover:text-red-300">
+                      <BookOpen className="w-3.5 h-3.5" />
+                    </button>
+                    <button type="button" onClick={() => deletePdf(p.id)} aria-label="Delete PDF" className="text-zinc-600 hover:text-rose-400">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -550,17 +945,31 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
               className="col-span-3 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <input placeholder="Your note" value={annForm.text} onChange={(e) => setAnnForm({ ...annForm, text: e.target.value })}
               className="col-span-3 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-            <button type="button" onClick={addAnnotation}
-              className="bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-lg">Add</button>
+            <button type="button" onClick={addAnnotation} disabled={addingAnn}
+              className="bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-medium rounded-lg">{addingAnn ? 'Adding…' : 'Add'}</button>
           </div>
           {annotations.length > 0 && (
             <ul className="space-y-1">
-              {annotations.map((a) => (
-                <li key={a.id} className="text-[11px] border-l-2 border-amber-600/50 pl-2">
-                  {a.quote && <p className="text-zinc-300 italic">&ldquo;{a.quote}&rdquo;{a.page ? ` (p.${a.page})` : ''}</p>}
-                  {a.text && <p className="text-zinc-400">{a.text}</p>}
-                </li>
-              ))}
+              {annotations.map((a) => {
+                const target = a.anchor?.page || a.page;
+                const body = (
+                  <>
+                    {a.quote && <p className="text-zinc-300 italic">&ldquo;{a.quote}&rdquo;{target ? ` (p.${target})` : ''}</p>}
+                    {a.text && <p className="text-zinc-400">{a.text}</p>}
+                  </>
+                );
+                // S4: an annotation with a page opens the reader at that
+                // page — the passage's home is the document, not this list.
+                return (
+                  <li key={a.id} className="text-[11px] border-l-2 border-amber-600/50 pl-2">
+                    {target ? (
+                      <button type="button" onClick={() => setReader({ page: target })} className="text-left w-full hover:bg-zinc-800/40 rounded-r px-1 -ml-1">
+                        {body}
+                      </button>
+                    ) : body}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -607,7 +1016,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
       <div className="flex gap-2">
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search title, author, journal…"
           className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100" />
-        <button type="button" onClick={() => setShowAdd((v) => !v)}
+        <button type="button" onClick={() => { setDuplicateNote(null); setShowAdd((v) => !v); }}
           className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg">
           <Plus className="w-3.5 h-3.5" /> Add
         </button>
@@ -656,6 +1065,29 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={add}
             className="col-span-2 bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Add reference</button>
+          {duplicateNote && (
+            <div className="col-span-2 flex items-center gap-2 text-[11px] text-amber-300 bg-amber-950/30 border border-amber-900/40 rounded-lg px-2 py-1.5">
+              <span className="flex-1">Already in your library: &ldquo;{duplicateNote.title}&rdquo; is already filed — nothing new was added.</span>
+              <button type="button"
+                onClick={() => { setShowAdd(false); setDuplicateNote(null); void openRef(duplicateNote); }}
+                className="underline hover:text-amber-200 shrink-0">Open it</button>
+            </div>
+          )}
+          <div className="col-span-2 border-t border-zinc-800 pt-2">
+            <p className="text-[11px] text-zinc-400 mb-1.5">…or add by identifier — a DOI, an arXiv ID, or a doi.org / arxiv.org link, resolved from the scholarly record:</p>
+            <div className="flex gap-2">
+              <input placeholder="10.1038/nature16961 or 1706.03762" value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') void addByIdentifier(); }}
+                className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <button type="button" onClick={addByIdentifier} disabled={importing || !identifier.trim()}
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-zinc-100 rounded-lg border border-zinc-700">
+                {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Import'}
+              </button>
+            </div>
+            {importMsg && <p className="text-[11px] text-emerald-300 mt-1.5">{importMsg}</p>}
+            {importError && <p className="text-[11px] text-rose-300 mt-1.5">{importError}</p>}
+          </div>
         </div>
       )}
 
@@ -663,9 +1095,19 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
         <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No references. Add papers and books to build your library.
         </div>
+      ) : visibleReferences.length === 0 ? (
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
+          {query.trim()
+            ? `No references match "${query.trim()}".`
+            : 'No references carry the selected tag.'}
+        </div>
       ) : (
+        <>
+        {(query.trim() || activeTag) && (
+          <p className="text-[11px] text-zinc-500">Showing {visibleReferences.length} of {references.length} references</p>
+        )}
         <ul className="space-y-2">
-          {references.map((r) => (
+          {visibleReferences.map((r) => (
             <li key={r.id} className="flex items-start justify-between bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
               <button type="button" onClick={() => openRef(r)} className="text-left flex items-start gap-2 min-w-0">
                 <BookMarked className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
@@ -673,6 +1115,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
                   <p className="text-sm font-semibold text-zinc-100">{r.title}</p>
                   <p className="text-[11px] text-zinc-400 truncate">
                     {r.authors || 'Unknown'}{r.year ? ` · ${r.year}` : ''}{r.journal ? ` · ${r.journal}` : ''}
+                    {r.source ? ` · via ${sourceLabel(r.source)}` : ''}
                   </p>
                   {r.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">
@@ -692,6 +1135,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
             </li>
           ))}
         </ul>
+        </>
       )}
     </div>
   );

@@ -13,11 +13,17 @@ export function ResearchArxiv() {
 
   const list = papers.data || [];
 
+  // The URL recorded as this result set's source — built exactly the
+  // way the server now builds it (S8, F9): one `all:` clause per term,
+  // AND-joined. A single encoded blob is parsed by arXiv as an OR of
+  // the words, which is what made this view a feed wearing a search box.
+  const searchedUrl = `https://export.arxiv.org/api/query?search_query=${q.split(/\s+/).map((t) => t.replace(/["()]/g, '')).filter(Boolean).slice(0, 10).map((t) => `all:${encodeURIComponent(t)}`).join('+AND+')}`;
+
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
         <div className="flex items-center gap-2"><Microscope className="h-5 w-5 text-emerald-400" /><h2 className="text-sm font-semibold text-white">arXiv research search</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">arxiv · live</span></div>
-        {list.length > 0 && <SaveAsDtuButton compact apiSource="arxiv-research" apiUrl={`https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(q)}`} title={`arXiv research — "${q}" (${list.length})`} content={list.slice(0, 15).map((p, i) => `${i + 1}. ${p.title}\n   ${p.authors.slice(0, 3).join(', ')} · ${p.published.slice(0, 10)}\n   ${p.link}`).join('\n\n')} extraTags={['research', 'arxiv', q.toLowerCase().replace(/\s+/g, '-')]} rawData={{ query: q, papers: list }} defaultContentClass="knowledge" />}
+        {list.length > 0 && <SaveAsDtuButton compact apiSource="arxiv-research" apiUrl={searchedUrl} title={`arXiv research — "${q}" (${list.length})`} content={list.slice(0, 15).map((p, i) => `${i + 1}. ${p.title}\n   ${p.authors.slice(0, 3).join(', ')} · ${p.published.slice(0, 10)}\n   ${p.link}`).join('\n\n')} extraTags={['research', 'arxiv', q.toLowerCase().replace(/\s+/g, '-')]} rawData={{ query: q, papers: list }} defaultContentClass="knowledge" />}
       </header>
       <form onSubmit={(e) => { e.preventDefault(); setQ(draft.trim()); }} className="flex items-center gap-2">
         <div className="relative flex-1">
@@ -27,6 +33,9 @@ export function ResearchArxiv() {
         <button type="submit" className="rounded border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-mono text-emerald-200 hover:bg-emerald-500/20">search</button>
       </form>
       {papers.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">arXiv unreachable.</div>}
+      {!papers.isError && !papers.isPending && list.length > 0 && q.length >= 2 && (
+        <p className="text-[11px] text-zinc-500">{list.length} {list.length === 1 ? 'result' : 'results'} for &ldquo;{q}&rdquo; — every term must match, ranked by relevance</p>
+      )}
       <div className="space-y-1.5 max-h-[500px] overflow-y-auto">
         {list.map((p) => (
           <a key={p.id} href={p.link} target="_blank" rel="noopener noreferrer" className="block rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2.5 hover:border-emerald-500/40">
@@ -39,7 +48,7 @@ export function ResearchArxiv() {
             </div>
           </a>
         ))}
-        {list.length === 0 && !papers.isPending && !papers.isError && q.length >= 2 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No papers.</div>}
+        {list.length === 0 && !papers.isPending && !papers.isError && q.length >= 2 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No papers match &ldquo;{q}&rdquo; — every term must appear. Try fewer or broader terms.</div>}
       </div>
       {papers.isPending && q.length >= 2 && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
     </div>

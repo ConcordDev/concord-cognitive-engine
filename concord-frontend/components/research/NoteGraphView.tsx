@@ -158,6 +158,14 @@ export function NoteGraphView({ onOpenNote }: { onOpenNote: (id: string) => void
         </div>
       )}
 
+      {/* E-RS-1 — staged on the graph's own verified orphan count: the
+          caption appears only while orphans exist and disappears at zero. */}
+      {stats && stats.orphanCount > 0 && (
+        <p className="text-[11px] text-amber-200/80 italic">
+          {stats.orphanCount} orphan(s) — notes waiting for their first link.
+        </p>
+      )}
+
       <div
         ref={wrapRef}
         className="relative rounded-lg border border-white/10 bg-black/30 overflow-hidden"

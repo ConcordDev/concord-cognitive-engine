@@ -1,4 +1,26 @@
-# research — Capability Map (Frontend Rebuild Program, Wave 3)
+# Research Lens — Capability Map (Flagship Rebuild)
+
+> **Re-verification (HANDOFF-3 batch L15a, 2026-10-28, against main 02910bbb):**
+> The rebuild audit below is kept as history. Current truth:
+>
+> - **57/61 macros named in the frontend** (fresh scan). Of the 4
+>   unnamed: `generate-bibliography` is a redundant sibling of the
+>   wired `bibliography-build` (same styles, same state — the
+>   reading-queue panel builds from the latter). The other three —
+>   `evaluate-source`, `find-gaps`, `match-questions` — are real,
+>   state-based library-analysis tools (source quality scoring, gap
+>   detection across the reference library, question→reference
+>   matching) with **no UI anywhere**: a genuine missing feature
+>   (an "Analyze library" surface, est. M), recorded here for the
+>   ranked fix queue rather than half-built in a greeting batch.
+> - **Shipped in this batch:** the concept's serif headline — "What
+>   are you reading, {username}" — as the page header
+>   (`data-testid="research-greeting"`, `tests/research-greeting.test.tsx`).
+> - Server suites run locally this pass: research-domain-parity
+>   passes except one academic-search test that calls the live
+>   OpenAlex API (this sandbox sinkholes its DNS; the SSRF guard
+>   correctly refuses) — Mac-run.
+
 
 > Derived, not asserted. Reproduce the macro list:
 > `node scripts/lens-unsurfaced.mjs --lens research` → `0/54 macros never referenced in the frontend`
