@@ -202,7 +202,7 @@ export const MCP_TOOLS = [
   // ── ATLAS ─────────────────────────────────────────────────────────────
   {
     name: "atlas_search",
-    description: "Search across the DTU atlas (nodes + edges + causal graph). Returns related DTUs ranked by relevance.",
+    description: "Search across the DTU atlas (nodes + edges + causal graph). Returns related DTUs ranked by relevance. Results are search hits across the DTU atlas, a distinct and smaller index than the published DTU corpus dtu_search reads — counts from the two tools are not comparable, and neither reports any user's owned DTUs; count is the total number of matching hits (returned is the page size; truncated is true when the total exceeds the page), not an ownership count.",
     inputSchema: jsonSchema({
       query: textProp("Search query"),
       limit: intProp("Max results (default 10, max 50)", 10)
@@ -1331,7 +1331,18 @@ export async function atlasSearch(db, args) {
          SELECT id, title AS name, 'dtu' AS type FROM dtus WHERE title LIKE ? LIMIT ?
        ) ORDER BY name LIMIT ?`
     ).all(like, limit, limit);
-    return { ok: true, results: rows, count: rows.length };
+    // Total labelling (MCP Platform lane follow-on spec, 2026-10-30;
+    // same discipline as dtu_search / reflect_search): count is the
+    // TRUE match total within the atlas corpus (matches before the
+    // slice), returned is the page size, truncated flags a cut page,
+    // and totalKind names what the total counts — search hits in this
+    // corpus, never an ownership count. The two tools' corpora differ,
+    // so their counts are not comparable (see the description).
+    const totalRow = db.prepare(
+      "SELECT COUNT(*) AS n FROM dtus WHERE title LIKE ?"
+    ).get(like);
+    const count = Number(totalRow?.n ?? rows.length);
+    return { ok: true, results: rows, count, returned: rows.length, truncated: count > rows.length, totalKind: "search_hits" };
   } catch (e) {
     return { ok: false, error: "DB query failed: " + String(e?.message || e) };
   }
