@@ -11,6 +11,7 @@ import { registerLensExportProvider } from "../lib/lens-export.js";
 import { writeGoogleCalendarEvent, readGoogleCalendarEvents } from "../lib/connector-client.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { createNotification } from "../emergent/social-layer.js";
+import { fetchIcsText, icsUrlProblem } from "../lib/ics-fetch.js";
 
 export default function registerCalendarActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -1559,17 +1560,15 @@ export default function registerCalendarActions(registerLensAction) {
     const icsUrl = String(params.icsUrl || "").trim();
     if (!label) return { ok: false, error: "label required" };
     if (!/^https?:\/\//i.test(icsUrl)) return { ok: false, error: "valid icsUrl (https) required" };
-    // F14: validate the feed BEFORE the account exists — fetch it and
-    // parse-check it, so a bogus URL can never become a "connected"
-    // account that only fails later at Sync time.
-    let icsText;
-    try {
-      const r = await fetch(icsUrl);
-      if (!r.ok) return { ok: false, error: `feed responded ${r.status} — check the URL and try again` };
-      icsText = await r.text();
-    } catch (e) {
-      return { ok: false, error: `feed unreachable: ${e instanceof Error ? e.message : String(e)}` };
-    }
+    // Refuse loopback/private/link-local/metadata/credentialed feed URLs before any request.
+    const icsProblem = icsUrlProblem(icsUrl);
+    if (icsProblem) return { ok: false, error: `icsUrl refused: ${icsProblem}` };
+    // F14: validate the feed BEFORE the account exists — fetch it and parse-check it, so a bogus URL can never
+    // become a "connected" account that only fails later at Sync time. The fetch is SSRF-guarded
+    // (lib/ics-fetch.js -> lib/public-fetch): DNS/private-IP pin, per-hop redirect validation, timeout, size cap.
+    const fetched = await fetchIcsText(icsUrl);
+    if (!fetched.ok) return { ok: false, error: fetched.status ? `${fetched.error} — check the URL and try again` : fetched.error };
+    const icsText = fetched.text;
     if (!icsText.includes("BEGIN:VCALENDAR")) return { ok: false, error: "that URL did not return an iCalendar (VCALENDAR) feed" };
     const validatedEventCount = (icsText.match(/BEGIN:VEVENT/g) || []).length;
     const account = {
@@ -1698,14 +1697,11 @@ export default function registerCalendarActions(registerLensAction) {
     const userId = aidCal(ctx);
     const account = listCal(s.connectedAccounts, userId).find(a => a.id === String(params.id || ""));
     if (!account) return { ok: false, error: "account not found" };
-    let ics;
-    try {
-      const r = await fetch(account.icsUrl);
-      if (!r.ok) return { ok: false, error: `feed responded ${r.status}` };
-      ics = await r.text();
-    } catch (e) {
-      return { ok: false, error: `feed unreachable: ${e instanceof Error ? e.message : String(e)}` };
-    }
+    // SSRF-guarded: the URL is user-supplied. lib/ics-fetch.js goes through lib/public-fetch (scheme + private-IP +
+    // DNS-rebinding pin), re-validates every redirect hop, and caps time and size.
+    const fetched = await fetchIcsText(account.icsUrl);
+    if (!fetched.ok) return { ok: false, error: fetched.error };
+    const ics = fetched.text;
     if (!ics.includes("BEGIN:VCALENDAR")) return { ok: false, error: "feed did not return a valid VCALENDAR" };
     // Reuse the ical-parse logic.
     const unfolded = ics.replace(/\r\n[ \t]/g, "");

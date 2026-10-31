@@ -3,6 +3,7 @@
 
 import { describe, it, before, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
+import { __setPublicFetchTestTransport } from "../lib/public-fetch.js";
 import registerCalendarActions from "../domains/calendar.js";
 
 const ACTIONS = new Map();
@@ -396,14 +397,13 @@ const ctxBL2 = { actor: { userId: "bl_u2" }, userId: "bl_u2" };
 
 describe("calendar — external account sync (item 1)", () => {
   // accounts-connect fetches + parse-checks the feed before connecting, so default to a valid empty
-  // VCALENDAR; individual tests override globalThis.fetch with their own feed.
-  const realFetch = globalThis.fetch;
+  // VCALENDAR; individual tests override the transport with their own feed.
   beforeEach(() => {
     globalThis._concordSTATE = { dtus: new Map() };
     globalThis._concordSaveStateDebounced = () => {};
-    globalThis.fetch = async () => ({ ok: true, status: 200, text: async () => "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR" });
+    __setPublicFetchTestTransport(async () => ({ ok: true, status: 200, text: async () => "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR" }));
   });
-  afterEach(() => { globalThis.fetch = realFetch; });
+  afterEach(() => __setPublicFetchTestTransport(null));
 
   it("accounts-connect validates the ICS URL and stores the account", async () => {
     assert.equal((await call("accounts-connect", ctxBL, { label: "Work", icsUrl: "ftp://bad" })).ok, false);
@@ -427,7 +427,8 @@ describe("calendar — external account sync (item 1)", () => {
       "BEGIN:VEVENT", "UID:ext-1@g", "DTSTART:20260601T090000Z", "DTEND:20260601T100000Z", "SUMMARY:External meeting", "END:VEVENT",
       "END:VCALENDAR",
     ].join("\r\n");
-    globalThis.fetch = async () => ({ ok: true, status: 200, text: async () => feed });
+    // connect and sync fetch through the SSRF-guarded lib/public-fetch; its test transport replaces real egress.
+    __setPublicFetchTestTransport(async () => ({ ok: true, status: 200, text: async () => feed }));
     const a = (await call("accounts-connect", ctxBL, { label: "Synced", icsUrl: "https://x.com/sync.ics" })).result.account;
     const r = await call("accounts-sync", ctxBL, { id: a.id });
     assert.equal(r.ok, true);

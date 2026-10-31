@@ -11,6 +11,7 @@ import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 
 import registerCalendarActions from "../domains/calendar.js";
+import { __setPublicFetchTestTransport } from "../lib/public-fetch.js";
 
 const map = new Map();
 registerCalendarActions((_d, n, fn) => map.set(n, fn));
@@ -35,11 +36,11 @@ const FEED = [
   "END:VCALENDAR",
 ].join("\r\n");
 
-const realFetch = globalThis.fetch;
-function stubFetch(impl) { globalThis.fetch = impl; }
+// connect/sync fetch through the SSRF-guarded lib/public-fetch; its test transport replaces real egress.
+function stubFetch(impl) { __setPublicFetchTestTransport(impl); }
 
 beforeEach(() => { globalThis._concordSTATE = {}; });
-afterEach(() => { globalThis.fetch = realFetch; });
+afterEach(() => { __setPublicFetchTestTransport(null); });
 
 describe("accounts-connect validates before it connects", () => {
   it("a 404 feed creates NO account", async () => {

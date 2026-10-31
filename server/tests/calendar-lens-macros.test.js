@@ -37,6 +37,7 @@
 import { describe, it, before, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import registerCalendarActions from "../domains/calendar.js";
+import { __setPublicFetchTestTransport } from "../lib/public-fetch.js";
 
 const ACTIONS = new Map();
 function registerLensAction(domain, name, fn) {
@@ -373,9 +374,8 @@ describe("calendar — appointment booking round-trip", () => {
 describe("calendar — connector macros: network-free validation-rejection", () => {
   // accounts-connect validates the feed (fetch + VCALENDAR check) before it connects, so the cases that
   // need a connected account stub the feed; nothing here touches the network.
-  const realFetch = globalThis.fetch;
-  beforeEach(() => { globalThis.fetch = async () => ({ ok: true, status: 200, text: async () => "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR" }); });
-  afterEach(() => { globalThis.fetch = realFetch; });
+  beforeEach(() => { __setPublicFetchTestTransport(async () => ({ ok: true, status: 200, text: async () => "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR" })); });
+  afterEach(() => { __setPublicFetchTestTransport(null); });
   it("accounts-connect-google returns the OAuth authorize URL (deterministic, no network)", () => {
     const r = call("accounts-connect-google", ctxA, { redirect: "/lenses/calendar" });
     assert.equal(r.ok, true);
