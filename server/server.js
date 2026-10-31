@@ -393,6 +393,7 @@ registerHeartbeat("economy-anomaly-cycle", {
 // bridges from literary chunk-DTUs into other lenses (lib/literary-resonance.js).
 // Bounded per pass, try/catch isolated. Kill-switch CONCORD_LITERARY_RESONANCE=0.
 import { runLiteraryResonanceCycle } from "./emergent/literary-resonance-cycle.js";
+import { mountGutenbergIngestRoutes } from "./lib/literary-gutenberg.js";
 registerHeartbeat("literary-resonance-cycle", {
   frequency: 200,
   scope: "global",
@@ -63574,6 +63575,11 @@ app.post("/api/admin/background-governor/mode", requireRole("owner", "admin", "s
   try { res.json({ ok: true, mode: setBgGovernorMode(req.body?.mode ?? null) }); }
   catch (e) { res.status(400).json({ ok: false, error: String(e?.message || e) }); }
 });
+
+// Literary (Project Gutenberg) ingest, in-process on the running server's db handle —
+// replaces running scripts/ingest-gutenberg.mjs against the live DB. Admin-only,
+// single-flight, rate-limited, idempotent. See lib/literary-gutenberg.js.
+mountGutenbergIngestRoutes(app, { requireRole, getDb: () => db, log: structuredLog });
 
 app.get("/api/admin/dtu-quality", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
   try {
