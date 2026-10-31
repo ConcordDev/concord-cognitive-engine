@@ -12,7 +12,7 @@ import { AnalysisActionsPanel } from '@/components/debug/AnalysisActionsPanel';
 
 export function StatusPanel() {
   const {
-    status, jobs, dbStatus, perfMetrics, isLoading, isError, errorMessage, refetchAll,
+    status, jobs, dbStatus, isDbAdmin, perfMetrics, isLoading, isError, errorMessage, refetchAll,
   } = useDebugDesk();
 
   if (isLoading) {
@@ -34,11 +34,13 @@ export function StatusPanel() {
       status: (status?.ok ? 'ok' : 'error') as 'ok' | 'warn' | 'error',
       detail: status?.version || 'unknown',
     },
-    {
+    // Members cannot read /api/db/status (admin-only), so there is nothing honest to show: omit the card
+    // rather than render "checking" forever or a fabricated state.
+    ...(isDbAdmin ? [{
       label: 'Database',
       status: (dbStatus?.ok !== false ? 'ok' : 'error') as 'ok' | 'warn' | 'error',
       detail: dbStatus?.engine || 'checking',
-    },
+    }] : []),
     {
       label: 'Jobs',
       status: (jobs?.active !== undefined ? 'ok' : 'warn') as 'ok' | 'warn' | 'error',
