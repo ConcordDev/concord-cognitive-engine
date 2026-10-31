@@ -1925,8 +1925,9 @@ registerHeartbeat("qualia-persist", {
   handler: async ({ db: ctxDb }) => {
     if (!ctxDb) return { ok: false, reason: "no_db" };
     try {
-      const { persistQualiaState } = await import("./existential/hooks.js");
-      const res = persistQualiaState(ctxDb);
+      const { persistQualiaStateAsync } = await import("./existential/hooks.js");
+      // Chunked + yielding: the synchronous version was a ~2 s main-thread block at the size seen live.
+      const res = await persistQualiaStateAsync(ctxDb);
       // Loud on the exact regression that hid for so long: the persist wire going
       // dead (engine.snapshot() missing) used to return a `reason` nobody read.
       if (res?.reason === "no_snapshot_export") {
@@ -44275,7 +44276,12 @@ async function governorTick(reason="heartbeat") {
     // and the tick counter they schedule on froze. Run the registry, minus
     // CPU-class modules, under the same guards as the low-memory path.
     let registry = "skipped_low_memory";
-    if (shouldPauseBackgroundOrchestration() === false) {
+    // The non-idle path returns early on settings.heartbeatEnabled === false; this idle path did not, so with the
+    // setting off (admin toggle, or the memory watchdog's runtime pause) a still-armed timer kept dispatching the
+    // whole registry whenever nobody was online. Liveness above still ticks; only the dispatch is gated.
+    if (STATE.settings?.heartbeatEnabled === false) {
+      registry = "heartbeat_disabled";
+    } else if (shouldPauseBackgroundOrchestration() === false) {
       const g = getBgGovernorStatus();
       if (g.mode === "killed" || g.breaker.state === "open") {
         registry = g.mode === "killed" ? "governor_killed" : "governor_open";
