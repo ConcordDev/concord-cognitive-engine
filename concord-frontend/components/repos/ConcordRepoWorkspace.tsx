@@ -22,12 +22,12 @@ import {
   AlertTriangle, Activity,
 } from 'lucide-react';
 
-type Tab = 'code' | 'issues' | 'pulls' | 'actions' | 'security' | 'insights' | 'branches' | 'analysis';
+type Tab = 'code' | 'issues' | 'pulls' | 'actions' | 'security' | 'insights' | 'branches' | 'analysis' | 'settings';
 
 interface RepoSummary {
   id: string; name: string; description: string; language: string;
   isPrivate: boolean; fileCount: number; branchCount: number;
-  openIssues: number; openPulls: number; updatedAt: string;
+  openIssues: number; openPulls: number; updatedAt: string; defaultBranch?: string;
 }
 interface TreeFileNode {
   name: string; type: 'file' | 'dir'; path: string; size?: number;
@@ -37,18 +37,23 @@ interface FileContent { path: string; content: string; language: string; lineCou
 interface BranchRow { name: string; head: string; protected: boolean; isDefault: boolean; commits: number; }
 interface TagRow { name: string; commit: string; message?: string; createdAt: string; }
 interface IssueRow { number: number; title: string; state: string; labels: string[]; author: string; comments: number; createdAt: string; }
-interface IssueDetail { number: number; title: string; body: string; state: string; author: string; labels: string[]; comments: Array<{ id: string; author: string; body: string; createdAt: string }>; createdAt: string; }
+interface IssueDetail { number: number; title: string; body: string; state: string; author: string; labels: string[]; comments: Array<{ id: string; author: string; body: string; createdAt: string }>; createdAt: string; linkedPulls?: Array<{ number: number; title: string; state: string }>; }
 interface PullRow { number: number; title: string; state: string; base: string; head: string; author: string; reviews: number; comments: number; }
-interface DiffHunk { type: 'add' | 'del' | 'ctx'; line: string; }
+interface DiffHunk { type: 'add' | 'del' | 'ctx'; line: string; oldLine?: number | null; newLine?: number | null; }
+interface PullComment { id: string; author: string; body: string; createdAt: string; path?: string; line?: number; }
+interface PullConflict { path: string; lines?: number[]; reason?: string; }
 interface PullDetail {
-  pull: { number: number; title: string; body: string; state: string; base: string; head: string; author: string };
-  diff: { files: Array<{ path: string; language: string; additions: number; deletions: number; hunks: DiffHunk[] }>; additions: number; fileCount: number };
+  pull: { number: number; title: string; body: string; state: string; base: string; head: string; author: string; linkedIssues?: number[] };
+  diff: { files: Array<{ path: string; language: string; status?: string; additions: number; deletions: number; hunks: DiffHunk[]; hunksTruncated?: boolean }>; additions: number; deletions: number; fileCount: number } | null;
+  diffUnavailable?: string;
+  conflicts: PullConflict[] | null;
   reviews: Array<{ id: string; reviewer: string; verdict: string; body: string; createdAt: string }>;
+  comments: PullComment[];
   mergeable: boolean; approvals: number; changesRequested: number;
 }
 interface WorkflowRow { id: string; number: number; workflow: string; branch: string; conclusion: string; durationMs: number; createdAt: string; }
 interface WorkflowStep { name: string; conclusion: string; durationMs: number; logs: string[]; }
-interface SecurityAlert { kind: string; severity: string; package?: string; version?: string; summary?: string; fixedIn?: string; path?: string; line?: number; rule?: string; message?: string; }
+interface SecurityAlert { kind: string; severity: string; package?: string; version?: string; summary?: string; fixedIn?: string; osvId?: string; path?: string; line?: number; rule?: string; message?: string; }
 interface CommitGraphNode { sha: string; message: string; author: string; branch: string; date: string; additions: number; deletions: number; files: string[]; }
 
 const DOMAIN = 'repos';
@@ -64,19 +69,27 @@ const DOMAIN = 'repos';
  * runX() interprets both layers correctly and every call site below reads
  * both `ok` and `error` off it — never just the transport layer.
  */
-interface Envelope<T> { ok: boolean; data: T | null; error: string | null; }
+interface Envelope<T> { ok: boolean; data: T | null; error: string | null; code: string | null; }
 
 async function runX<T = any>(name: string, params: Record<string, unknown>): Promise<Envelope<T>> {
   try {
     const r = await lensRun<any>(DOMAIN, name, params);
-    if (!r.data?.ok) return { ok: false, data: null, error: 'network error' };
+    if (!r.data?.ok) return { ok: false, data: null, error: 'network error', code: null };
     const inner = r.data.result;
     if (inner && typeof inner === 'object' && inner.ok === false) {
-      return { ok: false, data: null, error: String(inner.error || 'request failed') };
+      // The macro's human `message` is what the user reads; the
+      // machine `error` code rides along separately for flows that
+      // branch on it (e.g. the empty-content confirm). Showing the
+      // raw code as the explanation was transport language as UI.
+      return {
+        ok: false, data: null,
+        error: String(inner.message || inner.error || 'request failed'),
+        code: inner.error ? String(inner.error) : null,
+      };
     }
-    return { ok: true, data: inner as T, error: null };
+    return { ok: true, data: inner as T, error: null, code: null };
   } catch (e) {
-    return { ok: false, data: null, error: e instanceof Error ? e.message : String(e) };
+    return { ok: false, data: null, error: e instanceof Error ? e.message : String(e), code: null };
   }
 }
 
@@ -118,29 +131,46 @@ export function ConcordRepoWorkspace() {
   const [repos, setRepos] = useState<RepoSummary[]>([]);
   const [activeRepo, setActiveRepo] = useState<RepoSummary | null>(null);
   const [tab, setTab] = useState<Tab>('code');
+  // The branch the Code view is standing on — shared so the Branches
+  // tab can check a branch out into the Code view (Review S1).
+  const [currentBranch, setCurrentBranch] = useState<string>('main');
   const [loading, setLoading] = useState(true);
+  const [loadedOnce, setLoadedOnce] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [listErr, setListErr] = useState<string | null>(null);
+  const [listNotice, setListNotice] = useState<string | null>(null);
 
   // Repo create
   const [newRepoName, setNewRepoName] = useState('');
 
+  // Only the FIRST load gates the view behind the spinner. Later
+  // refreshes (a Settings save, a delete) must not unmount the open
+  // repo view: unmounting destroyed every tab's local state — which
+  // is why a Settings save's own success banner never survived to be
+  // seen in the follow-up re-pass (receipts round, PR #1837).
   const loadRepos = useCallback(async () => {
-    setLoading(true);
+    if (!loadedOnce) setLoading(true);
     const res = await runX<{ repos: RepoSummary[] }>('repo-list', {});
     if (res.ok) { setRepos(res.data?.repos || []); setListErr(null); }
     else { setListErr(res.error); }
     setLoading(false);
-  }, []);
+    setLoadedOnce(true);
+  }, [loadedOnce]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadRepos(); }, []);
 
   const createRepo = async () => {
     if (!newRepoName.trim()) return;
+    const name = newRepoName.trim();
     setBusy('create-repo');
-    const r = await runX('repo-create', { name: newRepoName.trim(), description: 'A Concord repository' });
-    if (r.ok) { setNewRepoName(''); setListErr(null); await loadRepos(); }
+    setListNotice(null);
+    const r = await runX('repo-create', { name, description: 'A Concord repository' });
+    if (r.ok) {
+      setNewRepoName(''); setListErr(null);
+      setListNotice(`Created "${name}" — seeded with the starter tree (README.md, package.json, src/). Open it below to start editing.`);
+      await loadRepos();
+    }
     else { setListErr(r.error); }
     setBusy(null);
   };
@@ -148,12 +178,20 @@ export function ConcordRepoWorkspace() {
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
-        <div className="flex items-center gap-2">
-          <GitBranch className="h-5 w-5 text-cyan-400" />
-          <h2 className="text-sm font-semibold text-white">Concord Code Host</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-            substrate · {repos.length} repos
-          </span>
+        <div>
+          <div className="flex items-center gap-2">
+            <GitBranch className="h-5 w-5 text-cyan-400" />
+            <h2 className="text-sm font-semibold text-white">Concord Code Host</h2>
+            <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
+              {repos.length} repos
+            </span>
+          </div>
+          {/* S9: say what a Concord repo is, in words a user knows. */}
+          <p className="mt-1 max-w-xl text-[11px] text-zinc-400">
+            A Concord repo lives in Concord: versioned files, branches and reviews —
+            no git remote, nothing to clone, nothing to push. What you commit here is
+            recorded here, with its history.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <input
@@ -174,7 +212,18 @@ export function ConcordRepoWorkspace() {
         </div>
       </header>
 
+      {!activeRepo && (
+        <p className="-mt-2 text-[10px] text-zinc-500">
+          New repos are seeded with a starter tree — README.md, package.json and src/ — so there is something real to edit from the first minute. It is scaffolding, disclosed as such: make it yours.
+        </p>
+      )}
+
       <ErrorBanner err={listErr} />
+      {listNotice && !activeRepo && (
+        <p className="flex items-center gap-1.5 rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-[10px] text-green-300">
+          <CheckCircle className="h-3 w-3 shrink-0" /> {listNotice}
+        </p>
+      )}
 
       {loading && (
         <div className="flex items-center gap-2 text-xs text-zinc-400">
@@ -186,13 +235,14 @@ export function ConcordRepoWorkspace() {
         <div className="space-y-2">
           {repos.length === 0 && (
             <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-400">
-              No repos yet. Create one above to get a file tree, branches, issues, PRs and CI.
+              No repos yet. Create one above to get a file tree, branches, issues, PRs and CI —
+              it starts with a small starter tree (README, package.json, src/) seeded by Concord.
             </div>
           )}
           {repos.map((r) => (
             <button
               key={r.id}
-              onClick={() => { setActiveRepo(r); setTab('code'); }}
+              onClick={() => { setActiveRepo(r); setTab('code'); setCurrentBranch(r.defaultBranch || 'main'); setListNotice(null); }}
               className="block w-full rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-left hover:border-cyan-500/40"
             >
               <div className="flex items-center gap-2">
@@ -232,6 +282,7 @@ export function ConcordRepoWorkspace() {
               ['security', 'Security', Shield],
               ['insights', 'Insights', BarChart3],
               ['analysis', 'Analysis', Activity],
+              ['settings', 'Settings', Shield],
             ] as Array<[Tab, string, any]>).map(([id, label, Icon]) => (
               <button
                 key={id}
@@ -246,14 +297,26 @@ export function ConcordRepoWorkspace() {
             ))}
           </nav>
 
-          {tab === 'code' && <CodeTab repoId={activeRepo.id} />}
-          {tab === 'branches' && <BranchesTab repoId={activeRepo.id} />}
+          {tab === 'code' && <CodeTab repoId={activeRepo.id} branch={currentBranch} onBranchChange={setCurrentBranch} />}
+          {tab === 'branches' && (
+            <BranchesTab
+              repoId={activeRepo.id}
+              onCheckout={(name) => { setCurrentBranch(name); setTab('code'); }}
+            />
+          )}
           {tab === 'issues' && <IssuesTab repoId={activeRepo.id} />}
           {tab === 'pulls' && <PullsTab repoId={activeRepo.id} />}
           {tab === 'actions' && <ActionsTab repoId={activeRepo.id} />}
           {tab === 'security' && <SecurityTab repoId={activeRepo.id} />}
           {tab === 'insights' && <InsightsTab repoId={activeRepo.id} />}
           {tab === 'analysis' && <AnalysisTab repoId={activeRepo.id} />}
+          {tab === 'settings' && (
+            <SettingsTab
+              repo={activeRepo}
+              onUpdated={(r) => { setActiveRepo(r); void loadRepos(); }}
+              onDeleted={(name) => { setActiveRepo(null); setListNotice(`Deleted "${name}" — the repo and its history are gone.`); void loadRepos(); }}
+            />
+          )}
         </div>
       )}
     </div>
@@ -261,65 +324,171 @@ export function ConcordRepoWorkspace() {
 }
 
 // ── Code tab — file tree + viewer + editor ───────────────────────────
-function CodeTab({ repoId }: { repoId: string }) {
+function CodeTab({ repoId, branch, onBranchChange }: {
+  repoId: string;
+  branch: string;
+  onBranchChange: (b: string) => void;
+}) {
   const [tree, setTree] = useState<TreeFileNode[]>([]);
+  const [branches, setBranches] = useState<BranchRow[]>([]);
   const [file, setFile] = useState<FileContent | null>(null);
   const [editing, setEditing] = useState(false);
+  const [isNewFile, setIsNewFile] = useState(false);
+  const [newPath, setNewPath] = useState('');
   const [draft, setDraft] = useState('');
   const [commitMsg, setCommitMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [confirmEmptyArmed, setConfirmEmptyArmed] = useState(false);
+  const [confirmDeleteArmed, setConfirmDeleteArmed] = useState(false);
 
   const loadTree = useCallback(async () => {
-    const res = await runX<{ tree: TreeFileNode[] }>('file-tree', { repoId });
-    if (res.ok) setTree(res.data?.tree || []);
+    const res = await runX<{ tree: TreeFileNode[] }>('file-tree', { repoId, branch });
+    if (res.ok) { setTree(res.data?.tree || []); setErr(null); }
+    else { setErr(res.error); }
+  }, [repoId, branch]);
+
+  const loadBranches = useCallback(async () => {
+    const res = await runX<{ branches: BranchRow[] }>('branch-list', { repoId });
+    if (res.ok) setBranches(res.data?.branches || []);
   }, [repoId]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { loadTree(); }, [repoId]);
+  useEffect(() => { loadTree(); loadBranches(); setFile(null); setEditing(false); setNotice(null); }, [repoId, branch]);
 
   const openFile = async (path: string) => {
-    const res = await runX<FileContent>('file-read', { repoId, path });
-    if (res.ok && res.data) { setFile(res.data); setDraft(res.data.content); setEditing(false); setErr(null); }
+    const res = await runX<FileContent>('file-read', { repoId, path, branch });
+    if (res.ok && res.data) { setFile(res.data); setDraft(res.data.content); setEditing(false); setIsNewFile(false); setErr(null); }
     else { setErr(res.error); }
+  };
+
+  const startNewFile = () => {
+    const path = newPath.trim();
+    if (!path) return;
+    setFile({ path, content: '', language: 'Text', lineCount: 0 });
+    setDraft('');
+    setCommitMsg(`Add ${path}`);
+    setEditing(true);
+    setIsNewFile(true);
+    setErr(null);
+    setNotice(null);
   };
 
   const saveFile = async () => {
     if (!file) return;
     setBusy(true);
-    const r = await runX('file-save', { repoId, path: file.path, content: draft, message: commitMsg || `Update ${file.path}` });
+    const r = await runX<{ branch: string; created: boolean; commit: { sha: string; additions: number; deletions: number } }>(
+      'file-save',
+      {
+        repoId, branch, path: file.path, content: draft,
+        // S6, live form (Review 2 re-pass, checkpoint 5d): send the
+        // message EXACTLY as it stands in the box. The suggestion is
+        // prefilled into the input when editing starts (visible,
+        // editable, deletable) — an earlier build silently
+        // substituted it for an emptied box here, which defeated the
+        // server's empty-message guard: the user's blank committed
+        // "successfully" under words they never typed. An emptied
+        // box now reaches the server and its refusal surfaces below.
+        message: commitMsg,
+        ...(confirmEmptyArmed ? { confirmEmpty: true } : {}),
+      },
+    );
     setBusy(false);
-    if (r.ok) {
+    if (r.ok && r.data) {
+      setNotice(`Committed ${r.data.commit.sha.slice(0, 7)} on ${r.data.branch} — ${file.path} (+${r.data.commit.additions} −${r.data.commit.deletions})`);
       setCommitMsg('');
       setEditing(false);
+      setIsNewFile(false);
+      setConfirmEmptyArmed(false);
       setErr(null);
       await openFile(file.path);
       await loadTree();
+      await loadBranches();
+    } else if (r.code === 'empty_content') {
+      // S6: emptying a file is a choice the user makes out loud,
+      // never a silence — arm the confirm and say what happens next.
+      setConfirmEmptyArmed(true);
+      setErr(`${r.error} Press Commit again to confirm — the commit will record that you emptied it deliberately.`);
     } else {
       setErr(r.error);
     }
   };
 
+  const deleteFile = async () => {
+    if (!file) return;
+    if (!confirmDeleteArmed) { setConfirmDeleteArmed(true); return; }
+    setBusy(true);
+    const r = await runX<{ commit: { sha: string } }>('file-delete', { repoId, branch, path: file.path });
+    setBusy(false);
+    setConfirmDeleteArmed(false);
+    if (r.ok && r.data) {
+      setNotice(`Deleted ${file.path} on ${branch} — commit ${r.data.commit.sha.slice(0, 7)}. The file's history is still in the commit graph.`);
+      setFile(null);
+      setErr(null);
+      await loadTree();
+      await loadBranches();
+    } else { setErr(r.error); }
+  };
+
   return (
     <div className="space-y-2">
       <ErrorBanner err={err} />
+      {notice && (
+        <p className="flex items-center gap-1.5 rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-[10px] text-green-300">
+          <CheckCircle className="h-3 w-3 shrink-0" /> {notice}
+        </p>
+      )}
+      {/* S1: the branch context is always visible, and switching it is
+          one control — commits land on the branch named here. */}
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2">
+        <GitBranch className="h-3.5 w-3.5 text-cyan-400" />
+        <span className="text-[11px] text-zinc-300">You are editing</span>
+        <select
+          value={branch}
+          onChange={(e) => onBranchChange(e.target.value)}
+          className="rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 font-mono text-[11px] text-white"
+        >
+          {branches.map((b) => (
+            <option key={b.name} value={b.name}>{b.name}{b.isDefault ? ' (default)' : ''}</option>
+          ))}
+          {branches.length === 0 && <option value={branch}>{branch}</option>}
+        </select>
+        <span className="text-[10px] text-zinc-500">Commits go to this branch and no other.</span>
+        <span className="ml-auto text-[10px] text-zinc-500">
+          {branches.find((b) => b.name === branch)?.commits ?? '—'} commits on this branch
+        </span>
+      </div>
       <div className="grid grid-cols-12 gap-3">
         <div className="col-span-4 rounded-lg border border-zinc-800 bg-zinc-950 p-2">
-          <h3 className="mb-2 px-1 text-[10px] uppercase tracking-wider text-zinc-400">File tree</h3>
+          <h3 className="mb-2 px-1 text-[10px] uppercase tracking-wider text-zinc-400">File tree · {branch}</h3>
           {tree.length === 0
             ? <p className="px-1 text-[11px] text-zinc-400">empty</p>
             : <TreeDiagram root={toTreeNodes(tree)} onSelect={(n) => openFile(n.id)} />}
+          <div className="mt-3 border-t border-zinc-800/60 px-1 pt-2">
+            <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Add a file</p>
+            <div className="flex gap-1">
+              <input
+                value={newPath}
+                onChange={(e) => setNewPath(e.target.value)}
+                placeholder="src/new-file.ts"
+                className="w-full min-w-0 rounded border border-zinc-800 bg-zinc-900 px-1.5 py-0.5 font-mono text-[10px] text-white"
+              />
+              <button onClick={startNewFile} disabled={!newPath.trim()} className="shrink-0 rounded bg-green-600 px-1.5 py-0.5 text-[10px] text-white disabled:opacity-50">New</button>
+            </div>
+            <p className="mt-1 text-[9px] text-zinc-600">Opens an editor; your first Commit creates the file on {branch}.</p>
+          </div>
         </div>
         <div className="col-span-8 rounded-lg border border-zinc-800 bg-zinc-950">
           {!file ? (
             <div className="p-8 text-center text-xs text-zinc-400">
               <FileText className="mx-auto mb-2 h-8 w-8 text-zinc-700" />
-              Select a file from the tree to view its source.
+              Select a file from the tree to view its source on {branch}.
             </div>
           ) : (
             <div>
               <div className="flex items-center justify-between border-b border-zinc-800 px-3 py-2">
-                <span className="font-mono text-xs text-cyan-300">{file.path}</span>
+                <span className="font-mono text-xs text-cyan-300">{file.path}{isNewFile && <span className="ml-2 rounded bg-green-500/15 px-1 text-[9px] text-green-300">new on {branch}</span>}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-zinc-400">{file.language} · {file.lineCount} lines</span>
                   {editing ? (
@@ -331,12 +500,23 @@ function CodeTab({ repoId }: { repoId: string }) {
                         className="rounded border border-zinc-800 bg-zinc-900 px-1.5 py-0.5 text-[10px] text-white"
                       />
                       <button onClick={saveFile} disabled={busy} className="rounded bg-green-600 px-2 py-0.5 text-[10px] text-white disabled:opacity-50">
-                        {busy ? 'Committing…' : 'Commit'}
+                        {busy ? 'Committing…' : confirmEmptyArmed ? 'Commit (confirm empty)' : 'Commit'}
                       </button>
-                      <button onClick={() => { setEditing(false); setDraft(file.content); }} className="text-[10px] text-zinc-400 hover:text-white">Cancel</button>
+                      <button onClick={() => { setEditing(false); setDraft(file.content); setConfirmEmptyArmed(false); }} className="text-[10px] text-zinc-400 hover:text-white">Cancel</button>
                     </>
                   ) : (
-                    <button onClick={() => setEditing(true)} className="rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800">Edit</button>
+                    <>
+                      <button onClick={() => { setCommitMsg(`Update ${file.path}`); setEditing(true); }} className="rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800">Edit</button>
+                      {!isNewFile && (
+                        <button
+                          onClick={deleteFile}
+                          disabled={busy}
+                          className={`rounded border px-2 py-0.5 text-[10px] disabled:opacity-50 ${confirmDeleteArmed ? 'border-rose-500 bg-rose-600 text-white' : 'border-zinc-700 text-zinc-300 hover:bg-zinc-800'}`}
+                        >
+                          {confirmDeleteArmed ? `Confirm delete from ${branch}` : 'Delete'}
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -366,20 +546,32 @@ function CodeTab({ repoId }: { repoId: string }) {
 }
 
 // ── Branches tab — branch + tag mgmt + commit graph ──────────────────
-function BranchesTab({ repoId }: { repoId: string }) {
+function BranchesTab({ repoId, onCheckout }: { repoId: string; onCheckout: (name: string) => void }) {
   const [branches, setBranches] = useState<BranchRow[]>([]);
   const [tags, setTags] = useState<TagRow[]>([]);
   const [graph, setGraph] = useState<TimelineEvent[]>([]);
+  const [nodes, setNodes] = useState<CommitGraphNode[]>([]);
+  const [commitDetail, setCommitDetail] = useState<{
+    commit: { sha: string; message: string; author: string; branch: string; date: string };
+    diff: { files: Array<{ path: string; status?: string; additions: number; deletions: number; hunks: DiffHunk[] }>; additions: number; deletions: number; fileCount: number } | null;
+    diffUnavailable?: string;
+  } | null>(null);
   const [newBranch, setNewBranch] = useState('');
   const [newTag, setNewTag] = useState('');
+  // Tag receipts also render inside the Tags panel itself: the tab-top
+  // banner alone was missed in the follow-up re-pass (tag delete read
+  // as silent), so the outcome shows where the action happened.
+  const [tagNote, setTagNote] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const b = await runX<{ branches: BranchRow[]; tags: TagRow[] }>('branch-list', { repoId });
     if (b.ok) { setBranches(b.data?.branches || []); setTags(b.data?.tags || []); }
     const g = await runX<{ nodes: CommitGraphNode[] }>('commit-graph', { repoId });
     if (g.ok) {
+      setNodes(g.data?.nodes || []);
       setGraph((g.data?.nodes || []).map((n) => ({
         id: n.sha,
         label: `${n.message} · ${n.branch}`,
@@ -398,19 +590,42 @@ function BranchesTab({ repoId }: { repoId: string }) {
     setBusy('branch'); setErr(null);
     const r = await runX('branch-create', { repoId, name: newBranch.trim() });
     setBusy(null);
-    if (r.ok) { setNewBranch(''); await load(); } else { setErr(r.error); }
+    if (r.ok) { setNewBranch(''); setNotice(`Branch "${newBranch.trim()}" created from the current tip — check it out in the Code view to work on it.`); await load(); } else { setErr(r.error); }
   };
   const createTag = async () => {
     if (!newTag.trim()) return;
     setBusy('tag'); setErr(null);
-    const r = await runX('tag-create', { repoId, name: newTag.trim() });
+    const name = newTag.trim();
+    const r = await runX('tag-create', { repoId, name });
     setBusy(null);
-    if (r.ok) { setNewTag(''); await load(); } else { setErr(r.error); }
+    if (r.ok) { setNewTag(''); setTagNote(`Tag "${name}" created at the current tip.`); setNotice(`Tag "${name}" created at the current tip.`); await load(); } else { setErr(r.error); }
+  };
+  const deleteBranch = async (name: string) => {
+    setBusy(`del-branch-${name}`); setErr(null); setNotice(null);
+    const r = await runX('branch-delete', { repoId, name });
+    setBusy(null);
+    if (r.ok) { setNotice(`Branch "${name}" deleted. Its commits stay in the history.`); await load(); } else { setErr(r.error); }
+  };
+  const deleteTag = async (name: string) => {
+    setBusy(`del-tag-${name}`); setErr(null);
+    const r = await runX('tag-delete', { repoId, name });
+    setBusy(null);
+    if (r.ok) { setTagNote(`Tag "${name}" deleted.`); setNotice(`Tag "${name}" deleted.`); await load(); } else { setErr(r.error); }
+  };
+  const openCommit = async (sha: string) => {
+    const r = await runX('commit-detail', { repoId, sha });
+    if (r.ok && r.data) { setCommitDetail(r.data as typeof commitDetail); setErr(null); }
+    else { setErr(r.error); }
   };
 
   return (
     <div className="space-y-3">
       <ErrorBanner err={err} />
+      {notice && (
+        <p className="flex items-center gap-1.5 rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-[10px] text-green-300">
+          <CheckCircle className="h-3 w-3 shrink-0" /> {notice}
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
           <div className="mb-2 flex items-center justify-between">
@@ -421,13 +636,19 @@ function BranchesTab({ repoId }: { repoId: string }) {
             </div>
           </div>
           {branches.map((b) => (
-            <div key={b.name} className="flex items-center justify-between border-t border-zinc-800/60 py-1 text-[11px]">
+            <div key={b.name} className="flex items-center justify-between gap-2 border-t border-zinc-800/60 py-1 text-[11px]">
               <span className="flex items-center gap-1.5 font-mono text-zinc-200">
                 <GitBranch className="h-3 w-3 text-zinc-400" />{b.name}
                 {b.isDefault && <span className="rounded bg-blue-500/15 px-1 text-[8px] text-blue-300">default</span>}
                 {b.protected && <span className="rounded bg-amber-500/15 px-1 text-[8px] text-amber-300">protected</span>}
               </span>
-              <span className="text-zinc-600">{b.commits} commits · {b.head}</span>
+              <span className="flex items-center gap-2">
+                <span className="text-zinc-600">{b.commits} commits · {b.head}</span>
+                <button onClick={() => onCheckout(b.name)} className="rounded border border-zinc-700 px-1.5 py-0.5 text-[9px] text-zinc-300 hover:bg-zinc-800">Open in Code</button>
+                {!b.isDefault && (
+                  <button onClick={() => deleteBranch(b.name)} disabled={busy === `del-branch-${b.name}`} className="rounded border border-zinc-700 px-1.5 py-0.5 text-[9px] text-rose-300 hover:bg-rose-500/10 disabled:opacity-50">Delete</button>
+                )}
+              </span>
             </div>
           ))}
         </div>
@@ -439,12 +660,18 @@ function BranchesTab({ repoId }: { repoId: string }) {
               <button onClick={createTag} disabled={busy === 'tag'} className="rounded bg-green-600 px-1.5 py-0.5 text-[10px] text-white disabled:opacity-50">+</button>
             </div>
           </div>
+          {tagNote && (
+            <p className="mb-1 flex items-center gap-1.5 rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-[10px] text-green-300">
+              <CheckCircle className="h-3 w-3 shrink-0" /> {tagNote}
+            </p>
+          )}
           {tags.length === 0 && <p className="text-[11px] text-zinc-400">No tags yet.</p>}
           {tags.map((t) => (
             <div key={t.name} className="flex items-center gap-1.5 border-t border-zinc-800/60 py-1 text-[11px]">
               <Tag className="h-3 w-3 text-zinc-400" />
               <span className="font-mono text-zinc-200">{t.name}</span>
-              <span className="text-zinc-600">{t.commit}</span>
+              <span className="flex-1 text-zinc-600">{t.commit}</span>
+              <button onClick={() => deleteTag(t.name)} disabled={busy === `del-tag-${t.name}`} className="rounded border border-zinc-700 px-1.5 py-0.5 text-[9px] text-rose-300 hover:bg-rose-500/10 disabled:opacity-50">Delete</button>
             </div>
           ))}
         </div>
@@ -454,6 +681,56 @@ function BranchesTab({ repoId }: { repoId: string }) {
           <GitCommit className="h-3.5 w-3.5" /> Commit history graph
         </h3>
         {graph.length === 0 ? <p className="text-[11px] text-zinc-400">No commits.</p> : <TimelineView events={graph} />}
+        {nodes.length > 0 && (
+          <div className="mt-3 border-t border-zinc-800/60 pt-2">
+            <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Commits — select one to see exactly what it changed</p>
+            <div className="max-h-44 overflow-auto">
+              {[...nodes].reverse().map((n) => (
+                <button key={n.sha} onClick={() => openCommit(n.sha)} className="flex w-full items-center gap-2 border-t border-zinc-800/40 py-1 text-left text-[11px] first:border-0 hover:bg-zinc-900">
+                  <span className="font-mono text-zinc-500">{n.sha.slice(0, 7)}</span>
+                  <span className="flex-1 truncate text-zinc-200">{n.message}</span>
+                  <span className="font-mono text-[10px] text-zinc-500">{n.branch}</span>
+                  <span className="text-[10px]"><span className="text-green-400">+{n.additions}</span> <span className="text-rose-400">−{n.deletions}</span></span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {commitDetail && (
+          <div className="mt-3 rounded border border-zinc-800 bg-[#0d1117] p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-[11px] font-semibold text-white">{commitDetail.commit.message}</p>
+                <p className="text-[10px] text-zinc-500">{commitDetail.commit.sha} · {commitDetail.commit.branch} · {commitDetail.commit.author}</p>
+              </div>
+              <button onClick={() => setCommitDetail(null)} className="text-[10px] text-zinc-400 hover:text-white">close</button>
+            </div>
+            {commitDetail.diffUnavailable && (
+              <p className="mt-2 text-[11px] text-amber-300">{commitDetail.diffUnavailable}</p>
+            )}
+            {commitDetail.diff && (
+              <div className="mt-2 space-y-2">
+                <p className="text-[10px] text-zinc-400">
+                  {commitDetail.diff.fileCount} file{commitDetail.diff.fileCount === 1 ? '' : 's'} · <span className="text-green-400">+{commitDetail.diff.additions}</span> <span className="text-rose-400">−{commitDetail.diff.deletions}</span>
+                </p>
+                {commitDetail.diff.files.map((f) => (
+                  <div key={f.path} className="rounded border border-zinc-800">
+                    <div className="border-b border-zinc-800 px-2 py-1 font-mono text-[10px] text-cyan-300">
+                      {f.path} <span className="text-zinc-500">{f.status}</span> <span className="text-green-400">+{f.additions}</span> <span className="text-rose-400">−{f.deletions}</span>
+                    </div>
+                    <pre className="max-h-40 overflow-auto p-2 text-[10px] leading-4">
+                      {f.hunks.map((h, i) => (
+                        <div key={i} className={h.type === 'add' ? 'text-green-400' : h.type === 'del' ? 'text-rose-400' : 'text-zinc-400'}>
+                          {h.type === 'add' ? '+ ' : h.type === 'del' ? '- ' : '  '}{h.line}
+                        </div>
+                      ))}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -519,6 +796,17 @@ function IssuesTab({ repoId }: { repoId: string }) {
           </button>
         </div>
         {detail.body && <p className="mt-2 rounded border border-zinc-800 bg-zinc-900 p-2 text-[11px] text-zinc-300">{detail.body}</p>}
+        {detail.linkedPulls && detail.linkedPulls.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px]">
+            <span className="text-zinc-500">Linked pull requests:</span>
+            {detail.linkedPulls.map((p) => (
+              <span key={p.number} className={`rounded border px-1.5 py-0.5 ${p.state === 'merged' ? 'border-purple-500/40 text-purple-300' : 'border-zinc-700 text-zinc-300'}`}>
+                #{p.number} {p.title} · {p.state}
+              </span>
+            ))}
+            <span className="text-zinc-600">Merging a linked pull request closes this issue.</span>
+          </div>
+        )}
         <div className="mt-3 space-y-2">
           {detail.comments.map((c) => (
             <div key={c.id} className="rounded border border-zinc-800 bg-zinc-900 p-2 text-[11px]">
@@ -570,17 +858,25 @@ function PullsTab({ repoId }: { repoId: string }) {
   const [pulls, setPulls] = useState<PullRow[]>([]);
   const [detail, setDetail] = useState<PullDetail | null>(null);
   const [branches, setBranches] = useState<string[]>([]);
+  const [openIssues, setOpenIssues] = useState<IssueRow[]>([]);
   const [newTitle, setNewTitle] = useState('');
   const [headBranch, setHeadBranch] = useState('');
   const [reviewBody, setReviewBody] = useState('');
+  const [commentBody, setCommentBody] = useState('');
+  const [lineDraft, setLineDraft] = useState<{ path: string; line: number } | null>(null);
+  const [lineBody, setLineBody] = useState('');
+  const [linkIssue, setLinkIssue] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const r = await runX<{ pulls: PullRow[] }>('pull-list', { repoId, state: 'all' });
     if (r.ok) setPulls(r.data?.pulls || []);
     const b = await runX<{ branches: Array<{ name: string }> }>('branch-list', { repoId });
     if (b.ok) setBranches((b.data?.branches || []).map((x) => x.name));
+    const i = await runX<{ issues: IssueRow[] }>('issue-list', { repoId, state: 'open' });
+    if (i.ok) setOpenIssues(i.data?.issues || []);
   }, [repoId]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -591,36 +887,87 @@ function PullsTab({ repoId }: { repoId: string }) {
     if (r.ok && r.data) { setDetail(r.data); setErr(null); } else { setErr(r.error); }
   };
   const createPull = async () => {
-    if (!newTitle.trim() || !headBranch) { setErr('title + head branch required'); return; }
-    setBusy('create'); setErr(null);
-    const r = await runX('pull-create', { repoId, title: newTitle.trim(), head: headBranch });
+    if (!newTitle.trim() || !headBranch) { setErr('Title and head branch are both required.'); return; }
+    setBusy('create'); setErr(null); setNotice(null);
+    const r = await runX<{ pull: { number: number; head: string; base: string } }>('pull-create', { repoId, title: newTitle.trim(), head: headBranch });
     setBusy(null);
-    if (r.ok) { setNewTitle(''); setHeadBranch(''); await load(); } else { setErr(r.error || 'pull-create failed'); }
+    if (r.ok && r.data) {
+      setNotice(`Pull request #${r.data.pull.number} opened — ${r.data.pull.head} → ${r.data.pull.base}.`);
+      setNewTitle(''); setHeadBranch('');
+      await load();
+    } else { setErr(r.error || 'pull-create failed'); }
   };
   const submitReview = async (verdict: string) => {
     if (!detail) return;
     setBusy('review'); setErr(null);
     const r = await runX('pull-review', { repoId, number: detail.pull.number, verdict, body: reviewBody });
     setBusy(null);
-    if (r.ok) { setReviewBody(''); await openDetail(detail.pull.number); } else { setErr(r.error); }
+    if (r.ok) {
+      setReviewBody('');
+      setNotice(verdict === 'approve'
+        ? 'Review recorded — you approved this pull request.'
+        : verdict === 'request-changes'
+          ? 'Review recorded — changes requested on this pull request.'
+          : 'Review recorded — comment posted as a review.');
+      await openDetail(detail.pull.number);
+    } else { setErr(r.error); }
   };
   const merge = async () => {
     if (!detail) return;
-    setBusy('merge'); setErr(null);
-    const r = await runX('pull-merge', { repoId, number: detail.pull.number });
+    setBusy('merge'); setErr(null); setNotice(null);
+    const r = await runX<{ mergeCommit: string; filesChanged: number; additions: number; deletions: number; closedIssues: number[] }>(
+      'pull-merge', { repoId, number: detail.pull.number },
+    );
     setBusy(null);
-    if (r.ok) { await openDetail(detail.pull.number); await load(); } else { setErr(r.error || 'merge failed'); }
+    if (r.ok && r.data) {
+      setNotice(
+        `Merged into ${detail.pull.base} as commit ${r.data.mergeCommit.slice(0, 7)} — ${r.data.filesChanged} file${r.data.filesChanged === 1 ? '' : 's'}, +${r.data.additions} −${r.data.deletions}` +
+        (r.data.closedIssues.length ? `; closed linked issue${r.data.closedIssues.length === 1 ? '' : 's'} ${r.data.closedIssues.map((n) => `#${n}`).join(', ')}` : '') + '.',
+      );
+      await openDetail(detail.pull.number);
+      await load();
+    } else { setErr(r.error || 'merge failed'); }
+  };
+  const postComment = async () => {
+    if (!detail || !commentBody.trim()) return;
+    setBusy('comment'); setErr(null);
+    const r = await runX('pull-comment', { repoId, number: detail.pull.number, body: commentBody.trim() });
+    setBusy(null);
+    if (r.ok) { setCommentBody(''); await openDetail(detail.pull.number); } else { setErr(r.error); }
+  };
+  const postLineComment = async () => {
+    if (!detail || !lineDraft || !lineBody.trim()) return;
+    setBusy('line-comment'); setErr(null);
+    const r = await runX('pull-comment', { repoId, number: detail.pull.number, body: lineBody.trim(), path: lineDraft.path, line: lineDraft.line });
+    setBusy(null);
+    if (r.ok) { setLineBody(''); setLineDraft(null); await openDetail(detail.pull.number); } else { setErr(r.error); }
+  };
+  const setIssueLink = async (issueNumber: number, unlink: boolean) => {
+    if (!detail) return;
+    setBusy('link'); setErr(null);
+    const r = await runX('pull-link-issue', { repoId, number: detail.pull.number, issueNumber, ...(unlink ? { unlink: true } : {}) });
+    setBusy(null);
+    if (r.ok) { setLinkIssue(''); await openDetail(detail.pull.number); } else { setErr(r.error); }
   };
 
   if (detail) {
+    const conflicts = detail.conflicts || [];
+    const lineCommentsFor = (path: string, line: number) =>
+      (detail.comments || []).filter((c) => c.path === path && c.line === line);
     return (
       <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
         <button onClick={() => setDetail(null)} className="mb-2 text-xs text-cyan-400 hover:underline">← All pull requests</button>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-sm font-semibold text-white">#{detail.pull.number} {detail.pull.title}</h3>
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-white">
+              #{detail.pull.number} {detail.pull.title}
+              {/* S10: the merged state gets a visual identity, not a lowercase word (F14). */}
+              {detail.pull.state === 'merged' && <span className="rounded-full bg-purple-600 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white">Merged</span>}
+              {detail.pull.state === 'open' && <span className="rounded-full bg-green-600 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white">Open</span>}
+              {detail.pull.state === 'closed' && <span className="rounded-full bg-zinc-600 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white">Closed</span>}
+            </h3>
             <p className="mt-0.5 text-[10px] text-zinc-400">
-              <span className="font-mono">{detail.pull.head}</span> → <span className="font-mono">{detail.pull.base}</span> · {detail.pull.state}
+              <span className="font-mono">{detail.pull.head}</span> → <span className="font-mono">{detail.pull.base}</span> · opened by {detail.pull.author}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -633,41 +980,158 @@ function PullsTab({ repoId }: { repoId: string }) {
             )}
           </div>
         </div>
+        {detail.pull.state === 'open' && (
+          <p className="mt-1.5 text-[10px] text-zinc-500">
+            {conflicts.length > 0
+              ? 'Merge is blocked by the conflicting lines below.'
+              : detail.changesRequested > 0
+                ? 'Merge is blocked: changes were requested. A fresh approving review is the way through.'
+                : 'Merging first checks the lines each branch changed since the branch point; lines both sides changed block the merge with an explanation.'}
+          </p>
+        )}
         {err && <p className="mt-2 rounded border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[10px] text-rose-300">{err}</p>}
+        {notice && (
+          <p className="mt-2 flex items-center gap-1.5 rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-[10px] text-green-300">
+            <CheckCircle className="h-3 w-3 shrink-0" /> {notice}
+          </p>
+        )}
+        {conflicts.length > 0 && (
+          <div className="mt-3 rounded border border-amber-500/40 bg-amber-500/10 p-2.5">
+            <p className="text-[11px] font-semibold text-amber-300">This merge is blocked — both branches changed the same content</p>
+            <ul className="mt-1 space-y-0.5 text-[11px] text-amber-200/90">
+              {conflicts.map((c) => (
+                <li key={c.path} className="font-mono">
+                  {c.path}
+                  {c.lines ? ` — line${c.lines.length > 1 ? 's' : ''} ${c.lines.join(', ')}` : ` — ${c.reason || 'changed on both sides'}`}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-1 text-[10px] text-amber-200/70">
+              Concord compared the lines each side changed since the branch point. Where they overlap, a person has to
+              decide — edit one branch until the same lines no longer disagree, then merge. Nothing was merged.
+            </p>
+          </div>
+        )}
+        {/* Linked issues (S10) */}
+        <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[10px]">
+          <span className="text-zinc-500">Linked issues:</span>
+          {(detail.pull.linkedIssues || []).map((n) => {
+            const iss = openIssues.find((i) => i.number === n);
+            return (
+              <span key={n} className="flex items-center gap-1 rounded border border-zinc-700 px-1.5 py-0.5 text-zinc-300">
+                #{n}{iss ? ` ${iss.title}` : ''}
+                {detail.pull.state === 'open' && (
+                  <button onClick={() => setIssueLink(n, true)} disabled={busy === 'link'} className="text-zinc-500 hover:text-rose-300" title="Unlink">×</button>
+                )}
+              </span>
+            );
+          })}
+          {(detail.pull.linkedIssues || []).length === 0 && <span className="text-zinc-600">none — link one and merging this PR will close it</span>}
+          {detail.pull.state === 'open' && (
+            <span className="ml-1 flex items-center gap-1">
+              <select value={linkIssue} onChange={(e) => setLinkIssue(e.target.value)} className="rounded border border-zinc-800 bg-zinc-900 px-1 py-0.5 text-[10px] text-white">
+                <option value="">link an issue…</option>
+                {openIssues.filter((i) => !(detail.pull.linkedIssues || []).includes(i.number)).map((i) => (
+                  <option key={i.number} value={i.number}>#{i.number} {i.title}</option>
+                ))}
+              </select>
+              <button onClick={() => linkIssue && setIssueLink(Number(linkIssue), false)} disabled={busy === 'link' || !linkIssue} className="rounded bg-zinc-700 px-1.5 py-0.5 text-[10px] text-white disabled:opacity-50">Link</button>
+            </span>
+          )}
+        </div>
         <div className="mt-3">
-          <h4 className="text-[10px] uppercase tracking-wider text-zinc-400">Diff · +{detail.diff.additions} across {detail.diff.fileCount} files</h4>
+          <h4 className="text-[10px] uppercase tracking-wider text-zinc-400">
+            {detail.diff
+              ? <>Diff · <span className="text-green-400">+{detail.diff.additions}</span> <span className="text-rose-400">−{detail.diff.deletions}</span> across {detail.diff.fileCount} file{detail.diff.fileCount === 1 ? '' : 's'}</>
+              : 'Diff'}
+          </h4>
+          {detail.diffUnavailable && (
+            <p className="mt-1.5 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-200">{detail.diffUnavailable}</p>
+          )}
+          {detail.diff && detail.diff.fileCount === 0 && (
+            <p className="mt-1.5 text-[11px] text-zinc-400">No file changes relative to the branch point.</p>
+          )}
           <div className="mt-1.5 space-y-2">
-            {detail.diff.files.map((f) => (
+            {(detail.diff?.files || []).map((f) => (
               <div key={f.path} className="rounded border border-zinc-800 bg-[#0d1117]">
-                <div className="border-b border-zinc-800 px-2 py-1 font-mono text-[10px] text-cyan-300">{f.path} <span className="text-green-400">+{f.additions}</span></div>
-                <pre className="max-h-40 overflow-auto p-2 text-[10px] leading-4">
+                <div className="border-b border-zinc-800 px-2 py-1 font-mono text-[10px] text-cyan-300">
+                  {f.path} {f.status && <span className="text-zinc-500">{f.status}</span>} <span className="text-green-400">+{f.additions}</span> <span className="text-rose-400">−{f.deletions}</span>
+                </div>
+                <div className="max-h-56 overflow-auto p-2 font-mono text-[10px] leading-4">
                   {f.hunks.map((h, i) => (
-                    <div key={i} className={h.type === 'add' ? 'text-green-400' : h.type === 'del' ? 'text-rose-400' : 'text-zinc-400'}>
-                      {h.type === 'add' ? '+ ' : h.type === 'del' ? '- ' : '  '}{h.line}
+                    <div key={i}>
+                      <div className={`flex items-baseline gap-2 ${h.type === 'add' ? 'text-green-400' : h.type === 'del' ? 'text-rose-400' : 'text-zinc-400'}`}>
+                        <span className="w-8 shrink-0 select-none text-right text-zinc-700">{h.oldLine ?? ''}</span>
+                        <span className="w-8 shrink-0 select-none text-right text-zinc-700">{h.newLine ?? ''}</span>
+                        <span className="w-3 shrink-0 select-none">{h.type === 'add' ? '+' : h.type === 'del' ? '−' : ' '}</span>
+                        <span className="flex-1 whitespace-pre-wrap">{h.line}</span>
+                        {detail.pull.state === 'open' && h.newLine != null && (
+                          <button
+                            onClick={() => { setLineDraft({ path: f.path, line: h.newLine as number }); setLineBody(''); }}
+                            className="shrink-0 rounded border border-zinc-700 px-1 text-[9px] text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                            title={`Comment on ${f.path}:${h.newLine}`}
+                          >
+                            comment
+                          </button>
+                        )}
+                      </div>
+                      {h.newLine != null && lineCommentsFor(f.path, h.newLine).map((c) => (
+                        <div key={c.id} className="ml-24 rounded border border-cyan-500/20 bg-cyan-500/5 px-2 py-1 text-[10px] text-zinc-300">
+                          <span className="text-cyan-300">{c.author}</span> · {c.body}
+                        </div>
+                      ))}
+                      {lineDraft && lineDraft.path === f.path && lineDraft.line === h.newLine && (
+                        <div className="ml-24 mt-1 flex gap-1">
+                          <input
+                            value={lineBody}
+                            onChange={(e) => setLineBody(e.target.value)}
+                            placeholder={`Comment on ${f.path}:${lineDraft.line}…`}
+                            className="flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-[10px] text-white"
+                          />
+                          <button onClick={postLineComment} disabled={busy === 'line-comment' || !lineBody.trim()} className="rounded bg-cyan-600 px-2 py-1 text-[10px] text-white disabled:opacity-50">Post</button>
+                          <button onClick={() => setLineDraft(null)} className="text-[10px] text-zinc-400 hover:text-white">Cancel</button>
+                        </div>
+                      )}
                     </div>
                   ))}
-                </pre>
+                  {f.hunksTruncated && <div className="text-zinc-600">… diff truncated at 200 lines for this file; the counts above are complete.</div>}
+                </div>
               </div>
             ))}
           </div>
         </div>
+        {/* Discussion: reviews + general comments */}
         <div className="mt-3 space-y-1.5">
           {detail.reviews.map((rv) => (
             <div key={rv.id} className="rounded border border-zinc-800 bg-zinc-900 p-2 text-[11px]">
               <span className={rv.verdict === 'approve' ? 'text-green-400' : rv.verdict === 'request-changes' ? 'text-rose-400' : 'text-zinc-400'}>
                 {rv.reviewer} · {rv.verdict}
+                {/* F11 honesty: an approval by the author is labelled as one. */}
+                {rv.verdict === 'approve' && rv.reviewer === detail.pull.author && (
+                  <span className="ml-1 rounded bg-amber-500/15 px-1 text-[9px] text-amber-300">approved by the author</span>
+                )}
               </span>
               {rv.body && <p className="mt-0.5 text-zinc-300">{rv.body}</p>}
+            </div>
+          ))}
+          {(detail.comments || []).filter((c) => !c.path).map((c) => (
+            <div key={c.id} className="rounded border border-zinc-800 bg-zinc-900 p-2 text-[11px]">
+              <span className="text-zinc-400">{c.author} · comment</span>
+              <p className="mt-0.5 text-zinc-200">{c.body}</p>
             </div>
           ))}
         </div>
         {detail.pull.state === 'open' && (
           <div className="mt-3 space-y-2">
-            <input value={reviewBody} onChange={(e) => setReviewBody(e.target.value)} placeholder="Review comment…" className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
+            <div className="flex gap-2">
+              <input value={commentBody} onChange={(e) => setCommentBody(e.target.value)} placeholder="Add a comment…" className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
+              <button onClick={postComment} disabled={busy === 'comment' || !commentBody.trim()} className="rounded bg-zinc-700 px-2 py-1 text-[10px] text-white disabled:opacity-50">Comment</button>
+            </div>
+            <input value={reviewBody} onChange={(e) => setReviewBody(e.target.value)} placeholder="Review summary (optional)…" className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
             <div className="flex gap-2">
               <button onClick={() => submitReview('approve')} disabled={busy === 'review'} className="rounded bg-green-600 px-2 py-1 text-[10px] text-white disabled:opacity-50">Approve</button>
               <button onClick={() => submitReview('request-changes')} disabled={busy === 'review'} className="rounded bg-rose-600 px-2 py-1 text-[10px] text-white disabled:opacity-50">Request changes</button>
-              <button onClick={() => submitReview('comment')} disabled={busy === 'review'} className="rounded bg-zinc-700 px-2 py-1 text-[10px] text-white disabled:opacity-50">Comment</button>
+              <button onClick={() => submitReview('comment')} disabled={busy === 'review'} className="rounded bg-zinc-700 px-2 py-1 text-[10px] text-white disabled:opacity-50">Comment as review</button>
             </div>
           </div>
         )}
@@ -677,6 +1141,11 @@ function PullsTab({ repoId }: { repoId: string }) {
 
   return (
     <div className="space-y-3">
+      {notice && (
+        <p className="flex items-center gap-1.5 rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-[10px] text-green-300">
+          <CheckCircle className="h-3 w-3 shrink-0" /> {notice}
+        </p>
+      )}
       <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
         <h3 className="mb-2 text-xs font-semibold text-white">Open a pull request</h3>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -695,6 +1164,8 @@ function PullsTab({ repoId }: { repoId: string }) {
           <button key={p.number} onClick={() => openDetail(p.number)} className="flex w-full items-center gap-2 border-b border-zinc-800/60 px-3 py-2 text-left text-[11px] last:border-0 hover:bg-zinc-900">
             <GitPullRequest className={`h-3.5 w-3.5 ${p.state === 'merged' ? 'text-purple-500' : p.state === 'open' ? 'text-green-500' : 'text-zinc-400'}`} />
             <span className="flex-1 text-zinc-200">{p.title}</span>
+            {p.state === 'merged' && <span className="rounded-full bg-purple-600 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-white">Merged</span>}
+            {p.state === 'open' && <span className="rounded-full bg-green-600/80 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-white">Open</span>}
             <span className="font-mono text-zinc-600">{p.head}→{p.base}</span>
             <span className="text-zinc-600">#{p.number} · {p.reviews} reviews</span>
           </button>
@@ -748,7 +1219,7 @@ function ActionsTab({ repoId }: { repoId: string }) {
               : <X className="h-3.5 w-3.5 text-rose-500" />}
             <span className="flex-1 text-zinc-200">{r.workflow} #{r.number}</span>
             <span className="font-mono text-zinc-600">{r.branch}</span>
-            <span className="text-zinc-600">{(r.durationMs / 1000).toFixed(1)}s</span>
+            <span className="text-zinc-600">{r.durationMs >= 1000 ? `${(r.durationMs / 1000).toFixed(1)}s` : `${Math.round(r.durationMs)}ms`}</span>
           </button>
         ))}
       </div>
@@ -761,7 +1232,7 @@ function ActionsTab({ repoId }: { repoId: string }) {
           {logs.steps.map((st, i) => (
             <div key={i} className="mb-2">
               <p className={`text-[11px] font-semibold ${st.conclusion === 'success' ? 'text-green-400' : st.conclusion === 'failure' ? 'text-rose-400' : 'text-zinc-400'}`}>
-                {st.conclusion === 'success' ? '✓' : st.conclusion === 'failure' ? '✗' : '○'} {st.name} ({(st.durationMs / 1000).toFixed(1)}s)
+                {st.conclusion === 'success' ? '✓' : st.conclusion === 'failure' ? '✗' : '○'} {st.name} ({st.durationMs >= 1000 ? `${(st.durationMs / 1000).toFixed(1)}s` : `${Math.round(st.durationMs)}ms`})
               </p>
               <pre className="ml-3 text-[10px] text-zinc-400">{st.logs.join('\n')}</pre>
             </div>
@@ -772,19 +1243,27 @@ function ActionsTab({ repoId }: { repoId: string }) {
   );
 }
 
-// ── Security tab — Dependabot + code scanning ────────────────────────
+// ── Security tab — dependency alerts (OSV.dev) + code scanning ──────
 function SecurityTab({ repoId }: { repoId: string }) {
   const [alerts, setAlerts] = useState<SecurityAlert[]>([]);
   const [bySeverity, setBySeverity] = useState<Record<string, number>>({});
+  const [depSource, setDepSource] = useState<string | null>(null);
+  const [depUnreachable, setDepUnreachable] = useState(false);
   const [busy, setBusy] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const scan = async () => {
     setBusy(true); setErr(null);
-    const r = await runX<{ alerts: SecurityAlert[]; bySeverity: Record<string, number> }>('security-scan', { repoId });
+    const r = await runX<{ alerts: SecurityAlert[]; bySeverity: Record<string, number>; dependencySource?: string; dependencyScanUnreachable?: boolean }>('security-scan', { repoId });
     setBusy(false);
-    if (r.ok) { setAlerts(r.data?.alerts || []); setBySeverity(r.data?.bySeverity || {}); setScanned(true); }
+    if (r.ok) {
+      setAlerts(r.data?.alerts || []);
+      setBySeverity(r.data?.bySeverity || {});
+      setDepSource(r.data?.dependencySource || null);
+      setDepUnreachable(!!r.data?.dependencyScanUnreachable);
+      setScanned(true);
+    }
     else { setErr(r.error); }
   };
 
@@ -807,8 +1286,16 @@ function SecurityTab({ repoId }: { repoId: string }) {
           ))}
         </div>
       )}
+      {scanned && (
+        <p className="text-[10px] text-zinc-500">
+          {/* S8: provenance, named — every dependency alert below carries its advisory ID. */}
+          Dependency alerts are queried live from <span className="text-zinc-300">{depSource === 'osv.dev' ? 'OSV.dev' : depSource || 'the vulnerability database'}</span> against this repo&apos;s package.json at scan time
+          {depUnreachable && <span className="text-amber-300"> — the database was unreachable for this scan, so dependency results are incomplete; code scanning below is unaffected</span>}.
+          Code scanning runs Concord&apos;s own rules over this repo&apos;s files.
+        </p>
+      )}
       <div className="rounded-lg border border-zinc-800 bg-zinc-950">
-        {!scanned && <p className="p-4 text-center text-[11px] text-zinc-400">Run a scan to see Dependabot alerts + code scanning results.</p>}
+        {!scanned && <p className="p-4 text-center text-[11px] text-zinc-400">Run a scan to see dependency alerts (from OSV.dev, with advisory IDs) and code scanning results (Concord&apos;s rules over this repo&apos;s files).</p>}
         {scanned && alerts.length === 0 && <p className="p-4 text-center text-[11px] text-green-400">No security alerts. Clean.</p>}
         {alerts.map((a, i) => (
           <div key={i} className="flex items-start gap-2 border-b border-zinc-800/60 px-3 py-2 text-[11px] last:border-0">
@@ -817,12 +1304,15 @@ function SecurityTab({ repoId }: { repoId: string }) {
               {a.kind === 'dependency' ? (
                 <>
                   <p className="text-zinc-200">{a.package}@{a.version} — {a.summary}</p>
-                  <p className="text-[10px] text-zinc-400">Dependabot · fixed in {a.fixedIn}</p>
+                  <p className="text-[10px] text-zinc-400">
+                    {a.osvId && <span className="font-mono text-cyan-300">{a.osvId}</span>}
+                    {a.osvId && ' · '}Source: OSV.dev{a.fixedIn ? ` · fixed in ${a.fixedIn}` : ' · no fixed version published'}
+                  </p>
                 </>
               ) : (
                 <>
                   <p className="text-zinc-200">{a.message}</p>
-                  <p className="font-mono text-[10px] text-zinc-400">{a.path}:{a.line} · {a.rule}</p>
+                  <p className="font-mono text-[10px] text-zinc-400">{a.path}:{a.line} · {a.rule} · code scanning (Concord rules)</p>
                 </>
               )}
             </div>
@@ -889,6 +1379,13 @@ function InsightsTab({ repoId }: { repoId: string }) {
               <span className="text-zinc-400">{c.commits} commits · <span className="text-green-400">+{c.additions}</span> <span className="text-rose-400">-{c.deletions}</span></span>
             </div>
           ))}
+          {/* E-RP-1: staged on this panel's own verified numbers — it
+              shows only while the contributor count is exactly one. */}
+          {data.contributors.length === 1 && (
+            <p className="mt-2 font-serif text-[11px] italic text-zinc-500">
+              A one-person codebase. Every line is yours — for better or worse.
+            </p>
+          )}
         </div>
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
           <h3 className="mb-2 text-xs font-semibold text-white">Languages</h3>
@@ -902,6 +1399,90 @@ function InsightsTab({ repoId }: { repoId: string }) {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Settings tab — rename / description / visibility / delete (S5) ──
+function SettingsTab({ repo, onUpdated, onDeleted }: {
+  repo: RepoSummary;
+  onUpdated: (r: RepoSummary) => void;
+  onDeleted: (name: string) => void;
+}) {
+  const [name, setName] = useState(repo.name);
+  const [description, setDescription] = useState(repo.description || '');
+  const [isPrivate, setIsPrivate] = useState(!!repo.isPrivate);
+  const [confirmName, setConfirmName] = useState('');
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const save = async () => {
+    setBusy('save'); setErr(null); setNotice(null);
+    const r = await runX<{ repo: { id: string; name: string; description: string; isPrivate: boolean } }>(
+      'repo-update', { repoId: repo.id, name: name.trim(), description, isPrivate },
+    );
+    setBusy(null);
+    if (r.ok && r.data) {
+      onUpdated({ ...repo, name: r.data.repo.name, description: r.data.repo.description, isPrivate: r.data.repo.isPrivate });
+      setNotice(`Saved — this repo is now "${r.data.repo.name}", ${r.data.repo.isPrivate ? 'private' : 'public'} in your account.`);
+    } else { setErr(r.error); }
+  };
+
+  const del = async () => {
+    setBusy('delete'); setErr(null);
+    const r = await runX('repo-delete', { repoId: repo.id, confirmName });
+    setBusy(null);
+    if (r.ok) { onDeleted(repo.name); } else { setErr(r.error); }
+  };
+
+  return (
+    <div className="space-y-3">
+      <ErrorBanner err={err} />
+      {notice && (
+        <p className="flex items-center gap-1.5 rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-[10px] text-green-300">
+          <CheckCircle className="h-3 w-3 shrink-0" /> {notice}
+        </p>
+      )}
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 space-y-2">
+        <h3 className="text-xs font-semibold text-white">General</h3>
+        <label className="block text-[10px] text-zinc-400">Name
+          <input value={name} onChange={(e) => setName(e.target.value)} className="mt-0.5 w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
+        </label>
+        <label className="block text-[10px] text-zinc-400">Description
+          <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What is this repo?" className="mt-0.5 w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
+        </label>
+        <label className="flex items-center gap-2 text-[11px] text-zinc-300">
+          <input type="checkbox" checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} />
+          Private — visible only in your account
+          <span className="text-[10px] text-zinc-500">(sharing with other accounts rides Concord&apos;s platform access grants, not a per-repo switch)</span>
+        </label>
+        <button onClick={save} disabled={busy === 'save' || !name.trim()} className="rounded bg-green-600 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">
+          {busy === 'save' ? 'Saving…' : 'Save changes'}
+        </button>
+      </div>
+      <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-3 space-y-2">
+        <h3 className="text-xs font-semibold text-rose-300">Delete this repo</h3>
+        <p className="text-[11px] text-zinc-400">
+          Deletes the repo, its branches, commits, issues and pull requests from your account. There is no undo.
+          Type the repo name to confirm — the server checks it too.
+        </p>
+        <div className="flex gap-2">
+          <input
+            value={confirmName}
+            onChange={(e) => setConfirmName(e.target.value)}
+            placeholder={repo.name}
+            className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 font-mono text-[11px] text-white"
+          />
+          <button
+            onClick={del}
+            disabled={busy === 'delete' || confirmName !== repo.name}
+            className="rounded bg-rose-600 px-2.5 py-1 text-[11px] text-white disabled:opacity-40"
+          >
+            {busy === 'delete' ? 'Deleting…' : 'Delete repo'}
+          </button>
         </div>
       </div>
     </div>
@@ -947,7 +1528,10 @@ interface DependencyAuditResult {
   totalDependencies: number; healthScore: number; healthGrade: string;
   depth: { max: number; avgDepth: number };
   duplicates: { versionConflicts: number };
-  vulnerabilities: { total: number; affectedDeps: number };
+  // total/affectedDeps are null when the live OSV check was requested
+  // but unreachable — unknown, never a printed 0 (re-pass checkpoint 3).
+  vulnerabilities: { total: number | null; affectedDeps: number | null; source?: string; checked?: boolean; unreachable?: boolean };
+  dependencyList?: Array<{ name: string; version: string; vulnerabilities: number | null; advisories: string[] }>;
   freshness: { avgScore: number; criticalUpdates: number; stalePackages: number };
   licenses: { risks: Array<{ license: string; count: number }> };
 }
@@ -958,6 +1542,8 @@ function AnalysisTab({ repoId }: { repoId: string }) {
   const [ranOnce, setRanOnce] = useState(false);
   const [filesCapped, setFilesCapped] = useState(false);
   const [complexity, setComplexity] = useState<ComplexityResult | null>(null);
+  const [cxError, setCxError] = useState<string | null>(null);
+  const [cxMeta, setCxMeta] = useState<{ matched: number; unreadable: number }>({ matched: 0, unreadable: 0 });
   const [commits, setCommits] = useState<CommitAnalysisResult | null>(null);
   const [deps, setDeps] = useState<DependencyAuditResult | null>(null);
   const [noPackageJson, setNoPackageJson] = useState(false);
@@ -972,17 +1558,27 @@ function AnalysisTab({ repoId }: { repoId: string }) {
       // round-tripped and AST-parsed into a meaningless near-empty record.
       const treeRes = await runX<{ tree: TreeFileNode[] }>('file-tree', { repoId });
       if (!treeRes.ok) throw new Error(treeRes.error || 'file-tree failed');
-      const flat = flattenFiles(treeRes.data?.tree || []).filter((f) => AST_ANALYZABLE_RE.test(f.path));
+      const allFiles = flattenFiles(treeRes.data?.tree || []);
+      const flat = allFiles.filter((f) => AST_ANALYZABLE_RE.test(f.path));
       setFilesCapped(flat.length > COMPLEXITY_FILE_CAP);
       const capped = flat.slice(0, COMPLEXITY_FILE_CAP);
       const sourceFiles: Array<{ path: string; content: string }> = [];
+      let unreadable = 0;
       for (const f of capped) {
         const fr = await runX<FileContent>('file-read', { repoId, path: f.path });
-        if (!fr.ok || !fr.data) continue;
+        if (!fr.ok || !fr.data) { unreadable++; continue; }
         sourceFiles.push({ path: f.path, content: fr.data.content });
       }
+      // The card renders the macro's ACTUAL outcome (re-pass
+      // checkpoint 3): a failed call shows its message, never the
+      // empty-state text — "No files to analyze" over a repo full of
+      // files was the silent wrong answer, whatever the server's
+      // reason (e.g. its parser package not loading).
+      setCxMeta({ matched: flat.length, unreadable });
       const cx = await runX<ComplexityResult>('codeComplexity', { sourceFiles });
-      setComplexity(cx.ok ? cx.data : null);
+      if (cx.ok) { setComplexity(cx.data); setCxError(null); }
+      else { setComplexity(null); setCxError(cx.error); }
+      if (!cx.ok && cx.error) setErr(cx.error);
 
       // 2) Commit-pattern analysis — real commit-graph, field-mapped to the
       // macro's expected shape (sha -> hash).
@@ -999,7 +1595,10 @@ function AnalysisTab({ repoId }: { repoId: string }) {
       }
 
       // 3) Dependency audit — real package.json, when this repo has one.
-      const pkgFile = flat.find((f) => f.path === 'package.json');
+      // Look in the UNFILTERED file list: package.json is JSON, so the
+      // AST-filtered list above can never contain it (that lookup is
+      // why this card always reported "No package.json" — Review F6).
+      const pkgFile = allFiles.find((f) => f.path === 'package.json');
       if (pkgFile) {
         const pr = await runX<FileContent>('file-read', { repoId, path: 'package.json' });
         if (pr.ok && pr.data) {
@@ -1009,7 +1608,10 @@ function AnalysisTab({ repoId }: { repoId: string }) {
             const dependencies = Object.entries(depEntries).map(([name, version]) => ({ name, version: String(version) }));
             if (dependencies.length === 0) { setNoPackageJson(true); setDeps(null); }
             else {
-              const da = await runX<DependencyAuditResult>('dependencyAudit', { dependencies });
+              // liveVulnCheck: the audit asks the same OSV.dev source
+              // the Security tab scans with, so the two tabs' counts
+              // agree by construction (re-pass checkpoint 3).
+              const da = await runX<DependencyAuditResult>('dependencyAudit', { dependencies, liveVulnCheck: true });
               setDeps(da.ok ? da.data : null);
               setNoPackageJson(false);
             }
@@ -1058,7 +1660,15 @@ function AnalysisTab({ repoId }: { repoId: string }) {
           <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
             <h4 className="mb-2 text-xs font-semibold text-white">Code complexity</h4>
             {!complexity ? (
-              <p className="text-[11px] text-zinc-400">No files to analyze.</p>
+              cxError ? (
+                <p className="text-[11px] text-amber-400">{cxError}</p>
+              ) : cxMeta.matched === 0 ? (
+                <p className="text-[11px] text-zinc-400">No JS/TS files in this repo — the complexity engine parses JavaScript and TypeScript only.</p>
+              ) : cxMeta.unreadable >= cxMeta.matched ? (
+                <p className="text-[11px] text-amber-400">{cxMeta.matched} JS/TS file(s) are in this repo, but none could be read, so there was nothing to send for analysis.</p>
+              ) : (
+                <p className="text-[11px] text-zinc-400">No files to analyze.</p>
+              )
             ) : complexity.message ? (
               <p className="text-[11px] text-zinc-400">{complexity.message}</p>
             ) : (
@@ -1120,11 +1730,34 @@ function AnalysisTab({ repoId }: { repoId: string }) {
             ) : !deps ? (
               <p className="text-[11px] text-zinc-400">No dependency data.</p>
             ) : (
-              <div className="grid grid-cols-4 gap-2">
-                <StatBox label="Deps" value={deps.totalDependencies} />
-                <StatBox label="Health" value={`${deps.healthScore} (${deps.healthGrade})`} tone={deps.healthScore < 60 ? 'bad' : 'good'} />
-                <StatBox label="Version conflicts" value={deps.duplicates.versionConflicts} tone={deps.duplicates.versionConflicts > 0 ? 'bad' : 'good'} />
-                <StatBox label="Vulnerable" value={deps.vulnerabilities.affectedDeps} tone={deps.vulnerabilities.affectedDeps > 0 ? 'bad' : 'good'} />
+              <div className="space-y-2">
+                <div className="grid grid-cols-4 gap-2">
+                  <StatBox label="Deps" value={deps.totalDependencies} />
+                  <StatBox label="Health" value={`${deps.healthScore} (${deps.healthGrade})`} tone={deps.healthScore < 60 ? 'bad' : 'good'} />
+                  <StatBox label="Version conflicts" value={deps.duplicates.versionConflicts} tone={deps.duplicates.versionConflicts > 0 ? 'bad' : 'good'} />
+                  <StatBox label="Vulnerable" value={deps.vulnerabilities.affectedDeps ?? 'unknown'} tone={(deps.vulnerabilities.affectedDeps ?? 0) > 0 ? 'bad' : 'good'} />
+                </div>
+                {deps.vulnerabilities.unreachable ? (
+                  <p className="text-[10px] text-amber-400">Vulnerability check: OSV.dev could not be reached at audit time — the counts are unknown, not zero.</p>
+                ) : deps.vulnerabilities.checked ? (
+                  <p className="text-[10px] text-zinc-500">Vulnerability data: OSV.dev, queried live at audit time — the same source the Security tab scans with.</p>
+                ) : null}
+                {deps.dependencyList && deps.dependencyList.length > 0 && (
+                  <div>
+                    {deps.dependencyList.map((d) => (
+                      <div key={d.name} className="flex items-center justify-between border-t border-zinc-800/60 py-1 text-[11px] first:border-0">
+                        <span className="truncate font-mono text-zinc-200">{d.name}@{d.version}</span>
+                        {d.vulnerabilities === null ? (
+                          <span className="shrink-0 text-zinc-500">vulnerabilities unknown</span>
+                        ) : d.vulnerabilities === 0 ? (
+                          <span className="shrink-0 text-zinc-500">no known advisories</span>
+                        ) : (
+                          <span className="shrink-0 text-rose-300">{d.vulnerabilities} advisor{d.vulnerabilities === 1 ? 'y' : 'ies'}: {d.advisories.join(', ')}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

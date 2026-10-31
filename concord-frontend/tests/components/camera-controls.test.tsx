@@ -20,10 +20,22 @@
  * ISOMETRIC_ANGLES/isometricAngleRef in ConcordiaScene.tsx) and wired the
  * Rotation compass for real — it's only shown in isometric mode now (the
  * only mode that reads it), and its buttons call the real onRotate prop.
- * Follow Target (NPC/Event) and the Cinematic Timeline transport remain
- * disabled — no NPC/event camera-target plumbing exists yet, and
- * cinematic-director.ts's shots don't (yet) expose scrub/seek — so those
- * two contracts are still pinned as-is.
+ * Follow Target (NPC/Event) remains disabled — no NPC/event
+ * camera-target plumbing exists yet.
+ *
+ * The Cinematic Timeline moved past inert: Phase 4 wired the camera
+ * itself (ConcordiaScene interpolates every director shot), and the
+ * transport reflected a live sequence — the parent feeds real
+ * cinematicPlaying/Time/Duration from the director's start/end events —
+ * with a working Stop (the director's cancel). The skip buttons stayed
+ * disabled then: the director exposed no per-shot seek, so there was
+ * nothing honest for them to call.
+ *
+ * Q56 remainder: the director grew a real transport (pause/resume/seek/
+ * per-shot skip, with concordia:cinematic-playback events carrying the
+ * true position), so the transport now wires Pause/Resume and both skip
+ * buttons for real. They render disabled only when no handler was
+ * passed or no sequence is playing — the same honesty rule as before.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
@@ -159,7 +171,96 @@ describe('CameraControls', () => {
         onTransition={() => {}}
       />,
     );
-    expect(screen.getByLabelText('Previous track')).toBeDisabled();
-    expect(screen.getByLabelText('Next track')).toBeDisabled();
+    expect(screen.getByLabelText('Previous shot')).toBeDisabled();
+    expect(screen.getByLabelText('Next shot')).toBeDisabled();
+    // Nothing is playing, and sequences start from world events — the
+    // play button has nothing honest to start from this panel.
+    expect(screen.getByLabelText('Play cinematic timeline')).toBeDisabled();
+    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument();
+  });
+
+  it('shows live progress and a working Stop while a sequence plays', () => {
+    const onCinematicStop = vi.fn();
+    render(
+      <CameraControls
+        cameraState={baseState({ mode: 'cinematic', cinematicPlaying: true, cinematicTime: 5, cinematicDuration: 10 })}
+        onModeChange={() => {}}
+        onZoom={() => {}}
+        onRotate={() => {}}
+        onTransition={() => {}}
+        onCinematicStop={onCinematicStop}
+      />,
+    );
+    expect(screen.getByText('0:05')).toBeInTheDocument();
+    expect(screen.getByText('0:10')).toBeInTheDocument();
+    const stop = screen.getByLabelText('Stop cinematic');
+    expect(stop).not.toBeDisabled();
+    fireEvent.click(stop);
+    expect(onCinematicStop).toHaveBeenCalledTimes(1);
+    // No transport handlers were passed at this mount — the skip and
+    // pause buttons have nothing to call, so they stay disabled.
+    expect(screen.getByLabelText('Previous shot')).toBeDisabled();
+    expect(screen.getByLabelText('Next shot')).toBeDisabled();
+    expect(screen.getByLabelText('Pause cinematic')).toBeDisabled();
+  });
+
+  it('wires Pause and both skips while playing when handlers are passed', () => {
+    const onCinematicPause = vi.fn();
+    const onCinematicSkipBack = vi.fn();
+    const onCinematicSkipForward = vi.fn();
+    render(
+      <CameraControls
+        cameraState={baseState({ mode: 'cinematic', cinematicPlaying: true, cinematicTime: 5, cinematicDuration: 10 })}
+        onModeChange={() => {}}
+        onZoom={() => {}}
+        onRotate={() => {}}
+        onTransition={() => {}}
+        onCinematicStop={() => {}}
+        onCinematicPause={onCinematicPause}
+        onCinematicSkipBack={onCinematicSkipBack}
+        onCinematicSkipForward={onCinematicSkipForward}
+      />,
+    );
+    const pause = screen.getByLabelText('Pause cinematic');
+    expect(pause).not.toBeDisabled();
+    fireEvent.click(pause);
+    expect(onCinematicPause).toHaveBeenCalledTimes(1);
+    const back = screen.getByLabelText('Previous shot');
+    const fwd = screen.getByLabelText('Next shot');
+    expect(back).not.toBeDisabled();
+    expect(fwd).not.toBeDisabled();
+    fireEvent.click(back);
+    expect(onCinematicSkipBack).toHaveBeenCalledTimes(1);
+    fireEvent.click(fwd);
+    expect(onCinematicSkipForward).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers Resume (not Pause) while the sequence is paused', () => {
+    const onCinematicResume = vi.fn();
+    render(
+      <CameraControls
+        cameraState={baseState({
+          mode: 'cinematic', cinematicPlaying: true, cinematicPaused: true,
+          cinematicTime: 5, cinematicDuration: 10,
+        })}
+        onModeChange={() => {}}
+        onZoom={() => {}}
+        onRotate={() => {}}
+        onTransition={() => {}}
+        onCinematicStop={() => {}}
+        onCinematicResume={onCinematicResume}
+        onCinematicSkipBack={() => {}}
+        onCinematicSkipForward={() => {}}
+      />,
+    );
+    expect(screen.getByText(/paused/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Pause cinematic')).not.toBeInTheDocument();
+    const resume = screen.getByLabelText('Resume cinematic');
+    expect(resume).not.toBeDisabled();
+    fireEvent.click(resume);
+    expect(onCinematicResume).toHaveBeenCalledTimes(1);
+    // Stop and skips stay live while paused.
+    expect(screen.getByLabelText('Stop cinematic')).not.toBeDisabled();
+    expect(screen.getByLabelText('Next shot')).not.toBeDisabled();
   });
 });

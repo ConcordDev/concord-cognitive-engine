@@ -1,7 +1,7 @@
 # Metalearning Lens — Capability Map (Frontend Rebuild Program, Wave 2)
 
 Reproduce the macro list:
-`grep -c 'registerLensAction("metalearning"' server/domains/metalearning.js` → 19
+`grep -c 'registerLensAction("metalearning"' server/domains/metalearning.js` → 20
 Plus a separate real-REST macro-learning system registered inline in
 `server/server.js` (`register("metalearning", "status"|"define_strategy"|
 "record_outcome"|"adapt"|"curriculum"|"best_strategy"|"list_strategies"|
@@ -98,3 +98,8 @@ working-looking UI:
 - `node scripts/verify-lens-backends.mjs` — `metalearning` still `WIRED`; total unchanged at 258 WIRED / 2 NO-BACKEND-CALL.
 - `node scripts/grade-ux-polish.mjs --honest` — `metalearning`: `tier: "polished"`, `isGenericScaffold: false`.
 - No existing metalearning-lens test file (confirmed by search) — nothing to update.
+
+
+---
+
+*Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*

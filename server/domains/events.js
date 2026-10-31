@@ -560,11 +560,19 @@ export default function registerEventsActions(registerLensAction) {
     if (!table) return { ok: false, error: "table not found" };
     const guestName = evClean(params.guestName, 160);
     if (!guestName) return { ok: false, error: "guest name required" };
-    // Remove the guest from any other table first (no double-seating).
+    // Q18: validate BEFORE mutating. The old order removed the guest
+    // from every table first and only then checked capacity — a
+    // "table is full" refusal left the guest unseated, losing the seat
+    // they already had. Effective occupancy discounts the guest's own
+    // seat at the target table, so re-assigning them where they
+    // already sit stays a no-op success even when the table is full.
+    const alreadyAtTarget = table.seats.some((g) => g.guestName === guestName);
+    const effectiveOccupancy = table.seats.length - (alreadyAtTarget ? 1 : 0);
+    if (effectiveOccupancy >= table.capacity) return { ok: false, error: "table is full" };
+    // Remove the guest from any other table (no double-seating).
     event.seatTables.forEach((t) => {
       t.seats = t.seats.filter((g) => g.guestName !== guestName);
     });
-    if (table.seats.length >= table.capacity) return { ok: false, error: "table is full" };
     const seat = { guestName, registrationId: evClean(params.registrationId, 60) || null };
     table.seats.push(seat);
     saveEvents();

@@ -10,13 +10,25 @@ consumer apps: **PouchDB/CouchDB replication** (bidirectional push/pull,
 caching strategies, install/update lifecycle) — both patterns this lens's
 backend + browser-API surface already implements.
 
+**Scope — what this sync is and is not (wording corrected 2026-10-28,
+remaining-work audit D5/Q68, founder decision):** the replication surface
+is **personal local synchronization**: this browser's IndexedDB store
+syncing with the in-memory, per-user replication state
+(`STATE.offlineLens` in `server/domains/offline.js`) on the user's own
+Concord server instance, over a PouchDB-style changes-feed protocol. It
+is **not** hosted cloud sync, not cross-server replication, and not a
+device mesh — the server side is in-memory (it does not survive a server
+restart) and nothing here routes between separate Concord instances.
+Any earlier phrasing in these specs that could be read as "live cloud
+sync" is superseded by this paragraph.
+
 ## Backend macro surface (verified via reading `server/domains/offline.js`)
 
 `registerLensAction("offline", ...)` — 10 macros, all pure compute or
 in-memory per-user replication/changes-feed state:
 
 - **Sync intelligence (pure compute)**: `syncConflict`, `cacheStrategy`, `deltaCompute`
-- **Replication (PouchDB-style)**: `replicationPull`, `replicationPush`, `replicationStatus`, `syncCheckpoint`
+- **Replication (PouchDB-style protocol, personal local sync — see Scope)**: `replicationPull`, `replicationPush`, `replicationStatus`, `syncCheckpoint`
 - **Retry**: `backoffSchedule`
 - **Conflict resolution**: `mergeResolve`
 - **Service worker**: `swManifest`
@@ -81,9 +93,9 @@ store were found anywhere in the lens.
 | Capability | Disposition | Where |
 |---|---|---|
 | Local-first durable writes (survive offline) | ALREADY REAL | `ReplicationPanel` (IndexedDB `local-store.ts`) |
-| Bidirectional push/pull replication | ALREADY REAL | `ReplicationPanel` (`replicationPush`/`replicationPull`) |
+| Bidirectional push/pull replication (browser ⇄ own server instance) | ALREADY REAL | `ReplicationPanel` (`replicationPush`/`replicationPull`) |
 | Incremental changes-feed with checkpoint | ALREADY REAL | `ReplicationPanel` (`replicationStatus`/`syncCheckpoint`) |
-| Continuous (live) replication mode | ALREADY REAL | `ReplicationPanel` (12s poll toggle) |
+| Continuous replication mode (12s poll, same local scope) | ALREADY REAL | `ReplicationPanel` (12s poll toggle) |
 | Revision-conflict detection + side-by-side resolution | ALREADY REAL | `ReplicationPanel` (surfaces conflicts) + `ConflictMergePanel` (`mergeResolve`) |
 | Exponential-backoff retry scheduling | ALREADY REAL | `BackoffPanel` (`backoffSchedule`) |
 | Service-worker registration + cache manifest | ALREADY REAL | `ServiceWorkerPanel` (`swManifest`) |
