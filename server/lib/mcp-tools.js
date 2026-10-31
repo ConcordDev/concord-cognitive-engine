@@ -1450,43 +1450,49 @@ export async function embeddingSearch(db, args, deps = {}) {
       return { ok: false, error: "embedding model unavailable — semantic search cannot run right now" };
     }
 
-    // Bounded cost: the scan is over the MOST RECENT `maxScan` vectors (deterministic
-    // ORDER BY, not arbitrary rowid order), streamed with .iterate() — never all
-    // loaded into the heap at once — and the event loop is yielded between chunks of
-    // SCAN_CHUNK rows so a 1024-dim cosine pass cannot block other requests. The cap
-    // is configurable (deps.maxScan / CONCORD_EMBEDDING_SEARCH_MAX_SCAN); k is capped at 50.
+    // Bounded cost: the scan is over the MOST RECENT `maxScan` vectors (deterministic ORDER BY) and
+    // the event loop is yielded between chunks of SCAN_CHUNK rows so a 1024-dim cosine pass cannot
+    // block other requests. The cap is configurable (deps.maxScan / CONCORD_EMBEDDING_SEARCH_MAX_SCAN);
+    // k is capped at 50.
+    //
+    // better-sqlite3 marks the connection busy while a statement cursor (.iterate()) is open, and any
+    // other statement on the same handle during that window throws "This database connection is busy
+    // executing a query" — so NO cursor may stay open across an await. Step 1 reads just the newest
+    // row ids (small, no vectors) with .all(); step 2 loads the vectors for one chunk of ids at a
+    // time with .all() (ids passed as one JSON array parameter, so the SQL text is constant), scores
+    // the chunk synchronously, and only then yields.
     const envMax = Number(process.env.CONCORD_EMBEDDING_SEARCH_MAX_SCAN);
     const MAX_SCAN = Math.max(1, Math.floor(Number(deps.maxScan) || (Number.isFinite(envMax) && envMax > 0 ? envMax : EMBEDDING_SEARCH_MAX_SCAN)));
-    const SCAN_CHUNK = 250;
-    const stmt = db.prepare(
-      `SELECT dtu_id, vector, dim, model, source, created_at FROM embeddings_e5 ORDER BY created_at DESC LIMIT ?`
+    const SCAN_CHUNK = Math.max(1, Math.floor(Number(deps.scanChunk) || 250));
+    const idRows = db.prepare(
+      `SELECT id FROM embeddings_e5 ORDER BY created_at DESC, id DESC LIMIT ?`
+    ).all(MAX_SCAN + 1);
+    const truncated = idRows.length > MAX_SCAN;
+    const ids = idRows.slice(0, MAX_SCAN).map((r) => r.id);
+    const chunkStmt = db.prepare(
+      `SELECT id, dtu_id, vector, dim, model, source, created_at FROM embeddings_e5 WHERE id IN (SELECT value FROM json_each(?))`
     );
 
     let skippedDimMismatch = 0;
     let skippedMissingVector = 0;
-    let seen = 0;
     const scored = [];
-    for (const row of stmt.iterate(MAX_SCAN + 1)) {
-      if (seen >= MAX_SCAN) { seen++; break; } // one past the cap => truncated
-      seen++;
-      if (!row.vector) { skippedMissingVector++; }
-      else {
+    for (let off = 0; off < ids.length; off += SCAN_CHUNK) {
+      const rows = chunkStmt.all(JSON.stringify(ids.slice(off, off + SCAN_CHUNK)));
+      for (const row of rows) {
+        if (!row.vector) { skippedMissingVector++; continue; }
         const vec = new Float32Array(row.vector.buffer, row.vector.byteOffset, row.vector.byteLength / Float32Array.BYTES_PER_ELEMENT);
         // Rule from embeddings.js: never mix models/dimensions in one space.
-        if (vec.length !== queryVec.length) { skippedDimMismatch++; }
-        else {
-          scored.push({
-            dtu_id: row.dtu_id,
-            model: row.model,
-            source: row.source,
-            created_at: row.created_at,
-            score: cosineFn(queryVec, vec),
-          });
-        }
+        if (vec.length !== queryVec.length) { skippedDimMismatch++; continue; }
+        scored.push({
+          dtu_id: row.dtu_id,
+          model: row.model,
+          source: row.source,
+          created_at: row.created_at,
+          score: cosineFn(queryVec, vec),
+        });
       }
-      if (seen % SCAN_CHUNK === 0) await new Promise((r) => setImmediate(r));
+      if (off + SCAN_CHUNK < ids.length) await new Promise((r) => setImmediate(r)); // no open cursor here
     }
-    const truncated = seen > MAX_SCAN;
     scored.sort((a, b) => b.score - a.score);
     const results = scored.slice(0, limit);
     return {

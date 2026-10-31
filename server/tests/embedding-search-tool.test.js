@@ -20,32 +20,36 @@ import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { embeddingSearch, _resetEmbeddingSearchLimiter } from "../lib/mcp-tools.js";
 import { cosineSimilarity } from "../embeddings.js";
 
 const vec = (xs) => Buffer.from(new Float32Array(xs).buffer);
+const Database = createRequire(import.meta.url)("better-sqlite3");
 
 // Scrambled insertion order on purpose: ranking must come from
 // cosine, never from recency/insertion order.
 const ROWS = [
-  { dtu_id: "dtu_orthogonal", vector: vec([0, 1, 0, 0]), dim: 4, model: "mxbai-embed-large", source: "dtu.creti", created_at: "2026-10-03T00:00:00.000Z" },
-  { dtu_id: "dtu_identical", vector: vec([1, 0, 0, 0]), dim: 4, model: "mxbai-embed-large", source: "dtu.creti", created_at: "2026-10-01T00:00:00.000Z" },
-  { dtu_id: "dtu_missing", vector: null, dim: 4, model: "mxbai-embed-large", source: "dtu.creti", created_at: "2026-10-05T00:00:00.000Z" },
-  { dtu_id: "dtu_diagonal", vector: vec([Math.SQRT1_2, Math.SQRT1_2, 0, 0]), dim: 4, model: "mxbai-embed-large", source: "dtu.creti", created_at: "2026-10-02T00:00:00.000Z" },
-  { dtu_id: "dtu_wrong_dim", vector: vec([1, 0, 0]), dim: 3, model: "all-minilm", source: "dtu.creti", created_at: "2026-10-04T00:00:00.000Z" },
+  { dtu_id: "dtu_orthogonal", vector: vec([0, 1, 0, 0]), dim: 4, model: "mxbai-embed-large", source: "dtu.creti", created_at: 3 },
+  { dtu_id: "dtu_identical", vector: vec([1, 0, 0, 0]), dim: 4, model: "mxbai-embed-large", source: "dtu.creti", created_at: 1 },
+  { dtu_id: "dtu_missing", vector: null, dim: 4, model: "mxbai-embed-large", source: "dtu.creti", created_at: 5 },
+  { dtu_id: "dtu_diagonal", vector: vec([Math.SQRT1_2, Math.SQRT1_2, 0, 0]), dim: 4, model: "mxbai-embed-large", source: "dtu.creti", created_at: 2 },
+  { dtu_id: "dtu_wrong_dim", vector: vec([1, 0, 0]), dim: 3, model: "all-minilm", source: "dtu.creti", created_at: 4 },
 ];
 
-const fakeDb = {
-  prepare(sql) {
-    assert.match(sql, /FROM embeddings_e5/);
-    return { iterate: (n) => ROWS.slice(0, n)[Symbol.iterator]() };
-  },
-};
-const dbOf = (rows, sqls = []) => ({
-  prepare(sql) { sqls.push(sql); return { iterate: (n) => rows.slice(0, n)[Symbol.iterator]() }; },
-});
+// A real in-memory better-sqlite3 table with the production embeddings_e5 shape (migration 405), so the
+// scan's actual SQL runs — including the busy-connection behaviour.
+function mkDb(rows) {
+  const db = new Database(":memory:");
+  db.exec(`CREATE TABLE embeddings_e5 (id INTEGER PRIMARY KEY AUTOINCREMENT, dtu_id TEXT NOT NULL, vector BLOB, dim INTEGER DEFAULT 1024, model TEXT DEFAULT 'mxbai-embed-large', source TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL DEFAULT 0)`);
+  const ins = db.prepare("INSERT INTO embeddings_e5 (dtu_id, vector, dim, model, source, created_at) VALUES (?, ?, ?, ?, ?, ?)");
+  for (const r of rows) ins.run(r.dtu_id, r.vector, r.dim, r.model, r.source, r.created_at);
+  return db;
+}
+const fakeDb = mkDb(ROWS);
+const dbOf = (rows) => mkDb(rows);
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 const fakeEmbed = async (text, type) => {
@@ -104,16 +108,61 @@ describe("embedding_search: auth + bounded cost", () => {
     assert.match(src, /MCP_TOOLS_REQUIRE_REAL_AUTH\.has\(tool\) && \(!req\.user \|\| req\.authMethod === "mcp-bypass"\)\) \{\s*return res\.status\(403\)/);
   });
 
-  it("the scan is over the most recent rows, newest first, and the candidate cap is respected", async () => {
-    const sqls = [];
-    const many = Array.from({ length: 50 }, (_, i) => ({ dtu_id: `d${i}`, vector: vec([1, 0, 0, 0]), dim: 4, model: "m", source: "s", created_at: `2026-10-${String(50 - i).padStart(2, "0")}` }));
-    const r = await embeddingSearch(dbOf(many, sqls), { query: "q", limit: 5 }, { embed: async () => new Float32Array([1, 0, 0, 0]), cosineSimilarity, maxScan: 20 });
+  it("the scan is over the most recent rows only, and the candidate cap is respected", async () => {
+    // 50 rows, all equally similar to the query; created_at 1..50 (50 newest). Cap 20 => only ids
+    // with created_at 31..50 may be scored.
+    const many = Array.from({ length: 50 }, (_, i) => ({ dtu_id: `d${i + 1}`, vector: vec([1, 0, 0, 0]), dim: 4, model: "m", source: "s", created_at: i + 1 }));
+    const r = await embeddingSearch(dbOf(many), { query: "q", limit: 50 }, { embed: async () => new Float32Array([1, 0, 0, 0]), cosineSimilarity, maxScan: 20, scanChunk: 7 });
     assert.equal(r.ok, true);
     assert.equal(r.scanned, 20, "only maxScan rows are scored");
     assert.equal(r.truncated, true);
     assert.equal(r.scan_cap, 20);
     assert.equal(r.scan_scope, "most_recent");
-    assert.match(sqls[0], /ORDER BY created_at DESC LIMIT \?/);
+    assert.equal(r.count, 20);
+    assert.ok(r.results.every((x) => x.created_at >= 31), "every scored row is among the 20 newest");
+  });
+
+  it("a chunk size that does not divide the cap still scores every candidate exactly once", async () => {
+    const many = Array.from({ length: 23 }, (_, i) => ({ dtu_id: `d${i}`, vector: vec([1, 0, 0, 0]), dim: 4, model: "m", source: "s", created_at: i + 1 }));
+    const r = await embeddingSearch(dbOf(many), { query: "q", limit: 50 }, { embed: async () => new Float32Array([1, 0, 0, 0]), cosineSimilarity, scanChunk: 5 });
+    assert.equal(r.scanned, 23);
+    assert.equal(new Set(r.results.map((x) => x.dtu_id)).size, 23);
+    assert.equal(r.truncated, undefined);
+  });
+
+  it("never holds a cursor open across an await: other statements on the SAME connection keep working mid-scan", async () => {
+    const many = Array.from({ length: 2000 }, (_, i) => ({ dtu_id: `d${i}`, vector: vec([1, 0, 0, 0]), dim: 4, model: "m", source: "s", created_at: i + 1 }));
+    const db = dbOf(many);
+    db.exec("CREATE TABLE other (x INTEGER)");
+    const errors = [];
+    let ran = 0;
+    let scanning = true;
+    // Interleave a write and a read on the same handle every time the scan yields to the event loop.
+    const poke = () => {
+      if (!scanning) return;
+      try { db.prepare("SELECT 1").get(); db.prepare("INSERT INTO other (x) VALUES (1)").run(); ran++; } catch (e) { errors.push(e.message); }
+      setImmediate(poke);
+    };
+    setImmediate(poke);
+    const r = await embeddingSearch(db, { query: "q", limit: 5 }, { embed: async () => new Float32Array([1, 0, 0, 0]), cosineSimilarity, scanChunk: 50, maxScan: 2000 });
+    scanning = false;
+    assert.equal(r.ok, true);
+    assert.equal(r.scanned, 2000);
+    assert.ok(ran >= 5, `other statements ran during the scan (${ran})`);
+    assert.deepEqual(errors, [], "no 'database connection is busy' errors");
+  });
+
+  it("control: an open .iterate() cursor across an await DOES make a concurrent WRITE throw (the hazard guarded above)", async () => {
+    const db = dbOf([{ dtu_id: "a", vector: vec([1, 0, 0, 0]), dim: 4, model: "m", source: "s", created_at: 1 }, { dtu_id: "b", vector: vec([1, 0, 0, 0]), dim: 4, model: "m", source: "s", created_at: 2 }]);
+    let threw = null;
+    db.exec("CREATE TABLE other (x INTEGER)");
+    const it = db.prepare("SELECT id FROM embeddings_e5").iterate();
+    it.next();
+    await new Promise((r) => setImmediate(r));
+    // Reads still work during an open cursor; writes (heartbeat saves, other requests) throw.
+    try { db.prepare("INSERT INTO other (x) VALUES (1)").run(); } catch (e) { threw = e; }
+    it.return?.();
+    assert.ok(threw && /busy/i.test(threw.message), "better-sqlite3 refuses a write while a cursor is open");
   });
 
   it("max k is 50", async () => {
