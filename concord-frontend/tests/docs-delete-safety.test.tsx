@@ -35,7 +35,7 @@ vi.mock('@/lib/api/client', () => ({
 import {
   requestDelete, undoDelete, isDeletePending, getDeleteSafetySnapshot,
   resetDeleteSafetyForTests, DELETE_UNDO_WINDOW_MS,
-} from '@/components/docs/deleteSafety';
+} from '@/components/docs/delete-safety-store';
 import { ConfirmDeleteButton, DeleteReceiptToast } from '@/components/docs/DeleteSafety';
 import { DatabaseViews } from '@/components/docs/DatabaseViews';
 

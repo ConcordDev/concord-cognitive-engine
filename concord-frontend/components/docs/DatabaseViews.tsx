@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { requestDelete } from './deleteSafety';
+import { requestDelete } from './delete-safety-store';
 import { ConfirmDeleteButton, useDeleteSafety } from './DeleteSafety';
 import type { DbColumn, DocDatabase } from './types';
 

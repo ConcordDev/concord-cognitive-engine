@@ -3,7 +3,7 @@
 /**
  * Delete-safety UI for the Docs lens (S1 / F1): the inline two-step
  * confirmation and the receipt toast, over the undo-window registry
- * in deleteSafety.ts.
+ * in delete-safety-store.ts.
  *
  * The confirmation follows the fleet's inline-confirm idiom
  * (components/social/OwnPostDelete.tsx): the delete control swaps IN
@@ -19,7 +19,7 @@ import { Trash2 } from 'lucide-react';
 import {
   getDeleteSafetySnapshot, subscribeDeleteSafety, undoDelete,
   type DeleteSafetySnapshot,
-} from './deleteSafety';
+} from './delete-safety-store';
 
 export function useDeleteSafety(): DeleteSafetySnapshot {
   return useSyncExternalStore(subscribeDeleteSafety, getDeleteSafetySnapshot, getDeleteSafetySnapshot);

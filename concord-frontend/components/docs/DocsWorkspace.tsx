@@ -18,7 +18,7 @@ import { lensRun } from '@/lib/api/client';
 import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { cn } from '@/lib/utils';
 import { setDocsWorkspaceSnapshot } from './docsSession';
-import { requestDelete } from './deleteSafety';
+import { requestDelete } from './delete-safety-store';
 import { ConfirmDeleteButton, DeleteReceiptToast, useDeleteSafety } from './DeleteSafety';
 import { BlockEditorRow } from './BlockEditorRow';
 import { TemplatePicker } from './TemplatePicker';
