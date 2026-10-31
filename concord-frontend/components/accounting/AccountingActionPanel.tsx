@@ -176,7 +176,7 @@ export function AccountingActionPanel() {
     try {
       const task = `CFO brief. ${plResult ? `Net income $${plResult.netIncome.toLocaleString()} on $${plResult.revenue.total.toLocaleString()} revenue (${plResult.netMarginPct}% margin).` : ''} ${agingResult ? `AR outstanding $${agingResult.totalOutstanding.toLocaleString()}, overdue $${agingResult.totalOverdue.toLocaleString()}, ${agingResult.avgDaysOutstanding}d avg.` : ''} ${varResult ? `Budget variance ${varResult.totalVariance >= 0 ? '+' : ''}$${varResult.totalVariance.toLocaleString()} (${varOverallStatus(varResult)}).` : ''} Identify single biggest cash-flow lever this month + one cost to address. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) {
         const text = typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2);
         setAgentReply(text); pipe.publish('accounting.agentReply', text, { label: 'CFO brief' });

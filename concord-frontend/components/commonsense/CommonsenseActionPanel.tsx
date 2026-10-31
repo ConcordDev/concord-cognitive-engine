@@ -270,7 +270,7 @@ export function CommonsenseActionPanel() {
     try {
       const task = `Commonsense reasoning brief. ${edgesResult ? `Concept "${edgesResult.concept}": ${edgesResult.count} edges, top: ${edgesResult.edges.slice(0, 3).map(e => e.surfaceText || `${e.relation}: ${e.end}`).join('; ')}.` : ''} ${relResult ? `Relatedness ${relResult.concept1} ↔ ${relResult.concept2}: ${relResult.relatedness.toFixed(2)} (${relResult.interpretation}).` : ''} ${plausResult ? `Statement plausibility: ${plausResult.plausibilityLabel} (${plausResult.plausibilityScore}%).` : ''} Synthesize the most interesting commonsense observation + one follow-up query. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) {
         const text = typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2);
         setAgentReply(text); pipe.publish('commonsense.agentReply', text, { label: 'KG observation' });

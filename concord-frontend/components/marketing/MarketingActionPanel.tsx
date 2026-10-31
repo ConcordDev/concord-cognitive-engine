@@ -141,7 +141,7 @@ export function MarketingActionPanel() {
     try {
       const task = `Growth marketing review. ${roiResult ? `Campaign ${roiResult.campaign}: ROI ${roiResult.roi}% (${roiResult.grade}).` : ''} ${abResult ? `A/B: ${abResult.recommendation}.` : ''} ${funnelResult ? `Funnel leak: ${funnelResult.biggestLeakage} (${funnelResult.leakageRate}%).` : ''} ${segResult?.highValue ? `High-value segment: ${segResult.highValue}.` : ''} Identify the single highest-ROI next action this quarter. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Play ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

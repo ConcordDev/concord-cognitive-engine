@@ -115,7 +115,7 @@ export function OpenLibrarySearch() {
     try {
       const task = `Curriculum advisor. Book: "${focus.title}"${focus.authors?.[0] ? ` by ${focus.authors[0]}` : ''}${focus.subjects?.length ? `. Subjects: ${focus.subjects.slice(0, 5).join(', ')}` : ''}. Suggest a one-week reading plan with a discussion question. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
       else setAgentReply('The agent returned an empty plan — try again.');
     } catch (e) { setAgentReply(`Could not reach the agent: ${pickMessage(e)}`); }

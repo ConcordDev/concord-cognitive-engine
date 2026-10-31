@@ -140,7 +140,7 @@ export function VoiceActionPanel() {
     try {
       const task = `Transcript review. ${analyzeResult ? `${analyzeResult.wordCount} words, ${analyzeResult.speakingRate}, ${analyzeResult.fillerRate} filler rate, ${analyzeResult.complexityRating} complexity.` : ''} ${diarizeResult ? `${diarizeResult.speakerCount} speakers, balance ${diarizeResult.balanceRatio}%.` : ''} ${sentimentResult ? `Sentiment: ${sentimentResult.overallLabel} (${sentimentResult.sentimentArc} arc).` : ''} Identify the single biggest coaching point for the dominant speaker + one positive note. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Coaching ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

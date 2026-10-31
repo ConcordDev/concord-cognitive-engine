@@ -191,7 +191,7 @@ export function ChemActionPanel() {
     try {
       const task = `Chem bench review. ${mwResult ? `${mwResult.formula} → ${mwResult.molecularWeight} g/mol (largest contributor: ${mwResult.components[0]?.element} ${mwResult.components[0]?.percentMass}%).` : ''} ${phResult ? `pH ${phResult.pH} — ${phResult.classification}.` : ''} ${molarityResult ? `Solution at ${molarityResult.molarity} M.` : ''} Identify the most likely lab use case and one safety note. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Brief ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
