@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Plus, KanbanSquare, ListChecks, CalendarRange, Repeat, BarChart3,
-  Flag, Users, Settings2, Briefcase, Radio,
+  Flag, Users, Settings2, Briefcase, Radio, History, Inbox, ListTodo,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -24,15 +24,23 @@ import { PjTeamPanel } from './PjTeamPanel';
 import { PjSettingsPanel } from './PjSettingsPanel';
 import { PjPortfolioPanel } from './PjPortfolioPanel';
 import { PjCollabPanel } from './PjCollabPanel';
+import { PjActivityPanel } from './PjActivityPanel';
+import { PjMyWorkPanel } from './PjMyWorkPanel';
 import { ProjectsKeepMenu } from './ProjectsKeepMenu';
 
-interface Project { id: string; name: string; key: string; color: string; status: string; health: string; archived: boolean }
+interface Project {
+  id: string; name: string; key: string; color: string; status: string; health: string; archived: boolean;
+  description?: string | null; startDate?: string | null; targetDate?: string | null;
+  duplicatedFrom?: { projectId: string; name: string; key: string; at: string } | null;
+  sample?: boolean;
+}
 interface Dash {
   name: string; totalTasks: number; done: number; completionPct: number;
   overdue: number; activeSprints: number; openMilestones: number; members: number;
 }
-type TabId = 'board' | 'backlog' | 'timeline' | 'sprints' | 'reports' | 'planning' | 'team' | 'collab' | 'settings' | 'portfolio';
+type TabId = 'mywork' | 'board' | 'backlog' | 'timeline' | 'sprints' | 'reports' | 'planning' | 'team' | 'collab' | 'activity' | 'settings' | 'portfolio';
 const TABS: { id: TabId; label: string; icon: typeof KanbanSquare }[] = [
+  { id: 'mywork', label: 'My Work', icon: ListTodo },
   { id: 'board', label: 'Board', icon: KanbanSquare },
   { id: 'backlog', label: 'Backlog', icon: ListChecks },
   { id: 'timeline', label: 'Timeline', icon: CalendarRange },
@@ -41,6 +49,7 @@ const TABS: { id: TabId; label: string; icon: typeof KanbanSquare }[] = [
   { id: 'planning', label: 'Planning', icon: Flag },
   { id: 'team', label: 'Team', icon: Users },
   { id: 'collab', label: 'Collab', icon: Radio },
+  { id: 'activity', label: 'Activity', icon: History },
   { id: 'settings', label: 'Settings', icon: Settings2 },
   { id: 'portfolio', label: 'Portfolio', icon: Briefcase },
 ];
@@ -57,7 +66,51 @@ export function ProjectsSection() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', key: '' });
   const [composerOpen, setComposerOpen] = useState(false);
+  const [closedIds, setClosedIds] = useState<string[]>([]);
+  const [confirming, setConfirming] = useState<'archive' | 'delete' | null>(null);
+  const [dupOpen, setDupOpen] = useState(false);
+  const [dupForm, setDupForm] = useState({ name: '', key: '' });
+  const [cmdPending, setCmdPending] = useState(false);
+  const [boardOpenRequest, setBoardOpenRequest] = useState<string | null>(null);
+
+  // S5 (F6): the lens advertises "Search projects & issues … ⌘K" — so
+  // while this lens is mounted, ⌘K belongs to its own palette. The
+  // global palette listens on document (bubble phase); a capture-phase
+  // window listener runs first. Outside this lens nothing changes.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        e.stopPropagation();
+        setTab('collab');
+        setCmdPending(true);
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, []);
+
+  useEffect(() => {
+    if (tab === 'collab' && cmdPending) {
+      window.dispatchEvent(new Event('projects:open-command'));
+      setCmdPending(false);
+    }
+  }, [tab, cmdPending]);
+
+  const jumpToProject = useCallback((pid: string) => {
+    setClosedIds((prev) => prev.filter((x) => x !== pid));
+    setActiveProject(pid);
+    setTab('board');
+  }, []);
+
+  const openTaskFromPalette = useCallback((pid: string, taskId: string) => {
+    setClosedIds((prev) => prev.filter((x) => x !== pid));
+    setActiveProject(pid);
+    setBoardOpenRequest(taskId);
+    setTab('board');
+  }, []);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const landedRef = useRef(false);
 
   const openComposer = useCallback(() => {
     setComposerOpen(true);
@@ -84,6 +137,17 @@ export function ProjectsSection() {
     setProjects(list);
     setActiveProject((prev) => (list.some((p) => p.id === prev) ? prev : list[0]?.id || ''));
     setLoading(false);
+    // D3 landing: exactly once per mount, if the caller has open work
+    // assigned to them, My Work is the landing view (the morning
+    // surface). The decision runs before the panels render, so it
+    // never yanks a tab the user picked.
+    if (!landedRef.current) {
+      landedRef.current = true;
+      if (list.length > 0) {
+        const mine = await lensRun('projects', 'my-work', {});
+        if ((mine.data?.result?.count || 0) > 0) setTab('mywork');
+      }
+    }
   }, []);
 
   const refreshDash = useCallback(async () => {
@@ -95,34 +159,118 @@ export function ProjectsSection() {
   useEffect(() => { void refreshProjects(); }, [refreshProjects]);
   useEffect(() => { void refreshDash(); }, [refreshDash]);
 
-  const addProject = async () => {
+  // D2 (triage as the front door): when the open project has
+  // un-triaged issues, the lens says so at the top — one click to
+  // the intake room in Collab, instead of the inbox sitting three
+  // clicks deep. Rechecked whenever the project or tab changes, so
+  // emptying the queue clears the banner on return.
+  const [triageCount, setTriageCount] = useState(0);
+  useEffect(() => {
+    if (!activeProject) { setTriageCount(0); return; }
+    let stale = false;
+    void (async () => {
+      const r = await lensRun('projects', 'triage-queue', { projectId: activeProject });
+      if (!stale) setTriageCount((r.data?.result as { count?: number } | null)?.count || 0);
+    })();
+    return () => { stale = true; };
+  }, [activeProject, tab]);
+
+  const [dupNameWarn, setDupNameWarn] = useState(false);
+  const [starter, setStarter] = useState('');
+  const addProject = async (confirmDuplicateName = false) => {
     if (!form.name.trim()) { setError('Project name is required.'); return; }
-    const r = await lensRun('projects', 'project-create', { name: form.name.trim(), key: form.key.trim() });
-    if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    const r = await lensRun('projects', 'project-create', {
+      name: form.name.trim(), key: form.key.trim(),
+      ...(starter ? { template: starter } : {}),
+      ...(confirmDuplicateName ? { confirmDuplicateName: true } : {}),
+    });
+    if (r.data?.ok === false) {
+      // S10 (F13): a duplicate name is a warning the user confirms
+      // in place; a duplicate key is refused outright (its message
+      // names the holder project and the next free key).
+      if ((r.data as { code?: string } | null)?.code === 'duplicate_name') {
+        setDupNameWarn(true);
+        setError(null);
+        return;
+      }
+      setDupNameWarn(false);
+      setError(r.data?.error || 'Failed');
+      return;
+    }
     const createdId = (r.data?.result as { project?: { id?: string } } | null)?.project?.id;
     setForm({ name: '', key: '' });
+    setStarter('');
+    setDupNameWarn(false);
     setComposerOpen(false);
     setError(null);
     await refreshProjects();
     if (createdId) setActiveProject(createdId);
   };
 
-  const delProject = async (id: string) => {
-    await lensRun('projects', 'project-delete', { id });
+  // Chip × is a deselect, never a delete (Review 4, F3): the project
+  // stays in Portfolio and reopens in one click from the closed row.
+  const closeChip = (id: string) => {
+    setClosedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  };
+
+  const reopenProject = (id: string) => {
+    setClosedIds((prev) => prev.filter((x) => x !== id));
+    setActiveProject(id);
+  };
+
+  const deleteProject = async (id: string) => {
+    const r = await lensRun('projects', 'project-delete', { id });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not delete the project.'); return; }
+    setError(null);
+    setConfirming(null);
+    setClosedIds((prev) => prev.filter((x) => x !== id));
     await refreshProjects();
   };
 
-  const project = projects.find((p) => p.id === activeProject) || null;
+  const openProjects = projects.filter((p) => !closedIds.includes(p.id));
+  const closedProjects = projects.filter((p) => closedIds.includes(p.id));
+  const project = openProjects.find((p) => p.id === activeProject) || openProjects[0] || null;
+
+  useEffect(() => {
+    const want = project?.id || '';
+    if (want !== activeProject) setActiveProject(want);
+  }, [project, activeProject]);
 
   const updateProject = async (patch: Record<string, unknown>) => {
     if (!project) return;
-    await lensRun('projects', 'project-update', { id: project.id, ...patch });
+    const pid = project.id;
+    // S12 (F18): the header's own write renders in the same
+    // interaction — apply the patch to local state immediately and
+    // let the refetch reconcile. Before this, the select showed the
+    // previous value until a later interaction refreshed the list,
+    // and Portfolio inherited the stale value on first entry.
+    setProjects((prev) => prev.map((p) => (p.id === pid ? { ...p, ...(patch as Partial<Project>) } : p)));
+    const r = await lensRun('projects', 'project-update', { id: pid, ...patch });
+    if (r.data?.ok === false) setError(r.data?.error || 'Could not update the project.');
     await refreshProjects();
+  };
+
+  const duplicateProject = async () => {
+    if (!project) return;
+    const r = await lensRun('projects', 'project-duplicate', {
+      id: project.id,
+      name: dupForm.name.trim() || undefined,
+      key: dupForm.key.trim() || undefined,
+    });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not duplicate the project.'); return; }
+    setError(null);
+    setDupOpen(false);
+    const copyId = r.data?.result?.project?.id as string | undefined;
+    await refreshProjects();
+    if (copyId) setActiveProject(copyId);
   };
 
   const archiveProject = async () => {
     if (!project) return;
-    await lensRun('projects', 'project-archive', { id: project.id, archived: true });
+    const r = await lensRun('projects', 'project-archive', { id: project.id, archived: true });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not archive the project.'); return; }
+    setError(null);
+    setConfirming(null);
     await refreshProjects();
   };
 
@@ -146,16 +294,29 @@ export function ProjectsSection() {
         <>
           <div className="px-4 py-3 border-b border-lattice-border space-y-2">
             <div className="flex flex-wrap items-center gap-1.5">
-              {projects.map((p) => (
+              {openProjects.map((p) => (
                 <span key={p.id} className={cn('flex items-center gap-1.5 text-[11px] pl-2.5 pr-1.5 py-1 rounded-lg',
-                  activeProject === p.id ? 'bg-indigo-600 text-white' : 'bg-lattice-elevated text-gray-300')}>
+                  project?.id === p.id ? 'bg-indigo-600 text-white' : 'bg-lattice-elevated text-gray-300')}>
                   <button type="button" onClick={() => setActiveProject(p.id)}>
                     <span className="font-mono opacity-70">{p.key}</span> {p.name}
                   </button>
-                  <button type="button" onClick={() => delProject(p.id)} className="text-gray-300/70 hover:text-rose-200">×</button>
+                  <button type="button" onClick={() => closeChip(p.id)} aria-label={`Close ${p.name}`}
+                    title="Close — the project stays in Portfolio"
+                    className="text-gray-300/70 hover:text-white">×</button>
                 </span>
               ))}
             </div>
+            {closedProjects.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-gray-400">
+                <span>Closed:</span>
+                {closedProjects.map((p) => (
+                  <button key={p.id} type="button" onClick={() => reopenProject(p.id)}
+                    className="px-2 py-0.5 rounded-lg bg-lattice-elevated text-gray-300 hover:text-white">
+                    + {p.name}
+                  </button>
+                ))}
+              </div>
+            )}
             {composerOpen && (
               <div
                 className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4"
@@ -170,10 +331,39 @@ export function ProjectsSection() {
                   onSubmit={(e) => { e.preventDefault(); void addProject(); }}
                 >
                   <h2 className="text-sm font-semibold text-zinc-100">New project</h2>
-                  <input ref={nameInputRef} aria-label="New project name" placeholder="New project name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  <div className="flex flex-wrap gap-1.5" role="group" aria-label="Start from">
+                    {[
+                      { id: '', label: 'Blank' },
+                      { id: 'launch', label: 'Product launch' },
+                      { id: 'triage', label: 'Bug triage' },
+                      { id: 'content', label: 'Content series' },
+                    ].map((s) => (
+                      <button key={s.id || 'blank'} type="button" aria-pressed={starter === s.id}
+                        onClick={() => {
+                          setStarter(s.id);
+                          if (s.id && !form.name.trim()) setForm({ ...form, name: s.label });
+                        }}
+                        className={starter === s.id
+                          ? 'px-2 py-1 text-[11px] rounded-lg bg-teal-400 text-black font-medium'
+                          : 'px-2 py-1 text-[11px] rounded-lg bg-lattice-elevated text-gray-300 hover:bg-lattice-border'}>
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                  {starter && <p className="text-[11px] text-gray-500">Starts with example issues already in it — one is already done, so goals and progress have something true to count.</p>}
+                  <input ref={nameInputRef} aria-label="New project name" placeholder="New project name" value={form.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); setDupNameWarn(false); }}
                     className="w-full bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
-                  <input aria-label="Project key" placeholder="KEY" value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })}
+                  <input aria-label="Project key" placeholder="KEY" value={form.key} onChange={(e) => { setForm({ ...form, key: e.target.value }); setDupNameWarn(false); }}
                     className="w-full bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white uppercase" />
+                  {dupNameWarn && (
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-amber-300 bg-amber-950/40 border border-amber-900/50 rounded-lg px-3 py-2">
+                      <span>A project named “{form.name.trim()}” already exists.</span>
+                      <button type="button" onClick={() => void addProject(true)}
+                        className="px-2 py-0.5 bg-amber-900 hover:bg-amber-800 text-amber-100 rounded">
+                        Create anyway
+                      </button>
+                    </div>
+                  )}
                   <div className="flex justify-end gap-2">
                     <button type="button" onClick={() => setComposerOpen(false)}
                       className="px-3 py-1.5 text-xs text-zinc-300">
@@ -189,11 +379,43 @@ export function ProjectsSection() {
             )}
           </div>
 
-          {!activeProject || !project ? (
-            <p className="text-[11px] text-gray-400 italic px-4 py-8 text-center">Nothing in the substrate. Use New project to start one.</p>
+          {!project ? (
+            projects.length === 0 ? (
+              <div className="px-4 py-10 max-w-xl mx-auto text-center space-y-3">
+                <p className="text-sm text-gray-200 font-medium">A project is one piece of work, tracked as issues.</p>
+                <p className="text-xs text-gray-400">
+                  Issues live on a board, move from backlog to done, roll up into goals and reports —
+                  and everything you make here can be kept, shared and traded as a DTU.
+                </p>
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  <button type="button" onClick={openComposer}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-teal-400 text-black rounded-lg">
+                    <Plus className="w-3.5 h-3.5" /> New project
+                  </button>
+                  <button type="button"
+                    onClick={async () => {
+                      const r = await lensRun('projects', 'project-create-sample', {});
+                      const pid = (r.data?.result as { project?: { id?: string } } | null)?.project?.id;
+                      await refreshProjects();
+                      if (pid) setActiveProject(pid);
+                    }}
+                    className="px-3 py-1.5 text-xs text-gray-200 bg-lattice-elevated hover:bg-lattice-border rounded-lg">
+                    Open the sample project
+                  </button>
+                </div>
+                <p className="text-[11px] text-gray-500">The sample is a real project with example issues — edit or delete it freely.</p>
+              </div>
+            ) : (
+              <p className="text-[11px] text-gray-400 italic px-4 py-8 text-center">No project open. Reopen one from the Closed row above, or start a new project.</p>
+            )
           ) : (
             <>
               <ProjectsKeepMenu project={project} />
+              {project.sample && (
+                <p className="px-4 py-1.5 text-[11px] text-indigo-300 bg-indigo-950/40 border-b border-indigo-900/50">
+                  Sample project — a worked example with real issues. Edit anything, or delete it when you're done looking.
+                </p>
+              )}
               <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-lattice-border">
                 <select value={project.status} onChange={(e) => updateProject({ status: e.target.value })}
                   className="bg-lattice-void border border-lattice-border rounded-lg px-2 py-1 text-[11px] text-white capitalize">
@@ -203,9 +425,46 @@ export function ProjectsSection() {
                   className="bg-lattice-void border border-lattice-border rounded-lg px-2 py-1 text-[11px] text-white">
                   {HEALTH.map((h) => <option key={h} value={h}>{h.replace(/_/g, ' ')}</option>)}
                 </select>
-                <button type="button" onClick={archiveProject}
+                <button type="button" onClick={() => setConfirming('archive')}
                   className="text-[11px] px-2 py-1 bg-lattice-elevated hover:bg-lattice-border text-gray-300 rounded-lg">Archive</button>
+                <button type="button" onClick={() => setConfirming('delete')}
+                  className="text-[11px] px-2 py-1 bg-lattice-elevated hover:bg-rose-900 text-rose-200 rounded-lg">Delete</button>
+                <button type="button" onClick={() => { setDupForm({ name: `${project.name} (copy)`, key: '' }); setDupOpen((v) => !v); }}
+                  className="text-[11px] px-2 py-1 bg-lattice-elevated hover:bg-lattice-border text-gray-300 rounded-lg">Duplicate</button>
               </div>
+              {dupOpen && (
+                <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-lattice-border">
+                  <span className="text-[11px] text-gray-300">Copy of “{project.name}” — issues, sprints and structure come along; comments and history stay with the original. The copy names “{project.name}” as its source.</span>
+                  <input aria-label="Copy name" value={dupForm.name}
+                    onChange={(e) => setDupForm({ ...dupForm, name: e.target.value })}
+                    className="px-2 py-1 text-[11px] bg-lattice-elevated border border-lattice-border rounded-lg text-gray-200 w-44" />
+                  <input aria-label="Copy key (optional)" value={dupForm.key} placeholder="Key (optional)"
+                    onChange={(e) => setDupForm({ ...dupForm, key: e.target.value })}
+                    className="px-2 py-1 text-[11px] bg-lattice-elevated border border-lattice-border rounded-lg text-gray-200 w-28" />
+                  <button type="button" onClick={() => void duplicateProject()}
+                    className="px-2 py-1 text-[11px] font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">Create copy</button>
+                  <button type="button" onClick={() => setDupOpen(false)}
+                    className="px-2 py-1 text-[11px] text-zinc-300">Cancel</button>
+                </div>
+              )}
+              {confirming === 'archive' && (
+                <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-lattice-border">
+                  <span className="text-[11px] text-amber-200">Archive “{project.name}”? It leaves the switcher; you can restore it from Portfolio.</span>
+                  <button type="button" onClick={archiveProject}
+                    className="px-2 py-1 text-[11px] font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">Archive project</button>
+                  <button type="button" onClick={() => setConfirming(null)}
+                    className="px-2 py-1 text-[11px] text-zinc-300">Cancel</button>
+                </div>
+              )}
+              {confirming === 'delete' && (
+                <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-lattice-border">
+                  <span className="text-[11px] text-rose-200">Delete “{project.name}” for good? Its issues, sprints and everything in it are deleted. Copies you saved as DTUs are separate and are not deleted.</span>
+                  <button type="button" onClick={() => void deleteProject(project.id)}
+                    className="px-2 py-1 text-[11px] font-medium bg-rose-600 hover:bg-rose-500 text-white rounded-lg">Delete project</button>
+                  <button type="button" onClick={() => setConfirming(null)}
+                    className="px-2 py-1 text-[11px] text-zinc-300">Cancel</button>
+                </div>
+              )}
               <nav className="mx-4 mt-3 inline-flex max-w-[calc(100%-2rem)] items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Project views">
                 {TABS.map((t) => {
                   const Icon = t.icon;
@@ -220,17 +479,29 @@ export function ProjectsSection() {
                   );
                 })}
               </nav>
+              {triageCount > 0 && tab !== 'collab' && (
+                <div className="mx-4 mt-4 flex flex-wrap items-center gap-2 text-xs text-amber-200 bg-amber-950/50 border border-amber-800/60 rounded-xl px-3 py-2">
+                  <Inbox className="w-4 h-4 text-amber-300" />
+                  <span><strong>{triageCount}</strong> {triageCount === 1 ? 'issue needs' : 'issues need'} triage in this project.</span>
+                  <button type="button" onClick={() => setTab('collab')}
+                    className="px-2 py-0.5 bg-amber-900 hover:bg-amber-800 text-amber-100 rounded-lg">
+                    Review triage
+                  </button>
+                </div>
+              )}
               <div className="p-4">
-                {tab === 'board' && <PjBoardPanel projectId={activeProject} onChange={refreshDash} />}
+                {tab === 'mywork' && <PjMyWorkPanel onOpenTask={openTaskFromPalette} />}
+                {tab === 'board' && <PjBoardPanel projectId={activeProject} onChange={refreshDash} openTaskRequest={boardOpenRequest} onOpenTaskRequestHandled={() => setBoardOpenRequest(null)} />}
                 {tab === 'backlog' && <PjBacklogPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'timeline' && <PjTimelinePanel projectId={activeProject} />}
                 {tab === 'sprints' && <PjSprintsPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'reports' && <PjReportsPanel projectId={activeProject} project={project} dashboard={dash} />}
                 {tab === 'planning' && <PjPlanningPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'team' && <PjTeamPanel projectId={activeProject} onChange={refreshDash} />}
-                {tab === 'collab' && <PjCollabPanel projectId={activeProject} onChange={refreshDash} />}
-                {tab === 'settings' && <PjSettingsPanel projectId={activeProject} onChange={refreshDash} />}
-                {tab === 'portfolio' && <PjPortfolioPanel />}
+                {tab === 'collab' && <PjCollabPanel projectId={activeProject} onChange={refreshDash} onJumpToProject={jumpToProject} onOpenTask={openTaskFromPalette} />}
+                {tab === 'activity' && <PjActivityPanel projectId={activeProject} />}
+                {tab === 'settings' && <PjSettingsPanel projectId={activeProject} project={project} onProjectSaved={refreshProjects} onChange={refreshDash} />}
+                {tab === 'portfolio' && <PjPortfolioPanel onLifecycle={refreshProjects} />}
               </div>
             </>
           )}

@@ -9,9 +9,11 @@
  *   3. Distributed governance — cross-lattice proposal routing
  *   4. Trust propagation — peer trust influences import trust
  *
- * NOTE: This module does NOT make actual HTTP calls.
- * It defines the protocol and state management.
- * Actual transport is handled by the WebSocket/HTTP layer.
+ * NOTE: This module is the protocol + state layer and makes no network
+ * calls itself. The HTTP transport lives in
+ * server/lib/federation-peering-transport.js (outbound, SSRF-guarded)
+ * with inbound endpoints in server/routes/federation-peering.js
+ * (mounted under /api/federation/v1).
  */
 
 import { getEmergentState } from "./store.js";
@@ -58,6 +60,65 @@ export function verifyPackageSignature(secret, pkg, signature) {
   }
 }
 
+/** Stable stringify (sorted object keys) for proposal signing payloads. */
+function stableStringify(v) {
+  if (v === null || typeof v !== "object") return JSON.stringify(v);
+  if (Array.isArray(v)) return `[${v.map(stableStringify).join(",")}]`;
+  return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${stableStringify(v[k])}`).join(",")}}`;
+}
+
+/**
+ * Compute the HMAC signature for a governance proposal from a peer.
+ * Proposals are authenticated exactly like sync packages: the claimed
+ * sender is only believable under its shared secret.
+ * @param {string} secret - Per-peer shared secret
+ * @param {string} fromPeerId - The sending peer's id
+ * @param {Object} proposal - The proposal being sent
+ * @returns {string} Hex-encoded HMAC
+ */
+export function signProposal(secret, fromPeerId, proposal) {
+  const payload = stableStringify({ from: fromPeerId, proposal });
+  return crypto.createHmac(HMAC_ALGO, secret).update(payload).digest("hex");
+}
+
+/**
+ * Verify the HMAC signature on a received governance proposal.
+ * @param {string} secret - Per-peer shared secret
+ * @param {string} fromPeerId - The claimed sending peer
+ * @param {Object} proposal - The received proposal
+ * @param {string} signature - The claimed signature
+ * @returns {boolean}
+ */
+export function verifyProposalSignature(secret, fromPeerId, proposal, signature) {
+  if (!secret || !signature) return false;
+  const expected = signProposal(secret, fromPeerId, proposal);
+  try {
+    return crypto.timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(signature, "hex"));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Compute the HMAC signature for a heartbeat. Heartbeats carry only
+ * lattice summaries, but the reply carries OUR summary, so an inbound
+ * heartbeat must prove the sender holds the peer's shared secret too.
+ */
+export function signHeartbeat(secret, fromPeerId, heartbeat) {
+  const payload = stableStringify({ kind: "heartbeat", from: fromPeerId, heartbeat });
+  return crypto.createHmac(HMAC_ALGO, secret).update(payload).digest("hex");
+}
+
+export function verifyHeartbeatSignature(secret, fromPeerId, heartbeat, signature) {
+  if (!secret || !signature) return false;
+  const expected = signHeartbeat(secret, fromPeerId, heartbeat);
+  try {
+    return crypto.timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(signature, "hex"));
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Validate a single DTU in an inbound sync package.
  * @param {Object} dtu
@@ -74,6 +135,16 @@ function validateSyncDtu(dtu) {
   if (dtu.tier && typeof dtu.tier !== "string")
     {return { valid: false, reason: "invalid_tier" };}
   return { valid: true };
+}
+
+/**
+ * Look up a registered peer's record (endpoint, trust, shared secret).
+ * The transport layer reads connection details through here rather than
+ * reaching into the peering store. Returns null for unknown peers.
+ */
+export function getRegisteredPeer(STATE, peerId) {
+  const store = getPeeringStore(STATE);
+  return store.peers.get(peerId) || null;
 }
 
 // ── Peering State ────────────────────────────────────────────────────────────
@@ -125,12 +196,24 @@ function getPeeringStore(STATE) {
  * @param {string} [peer.sharedSecret] - HMAC shared secret for signing
  * @returns {{ ok, peerId }}
  */
+export const MIN_SHARED_SECRET_LEN = 16;
+
 export function registerPeer(STATE, peer = {}) {
   if (!peer.peerId || !peer.endpoint) {
     return { ok: false, error: "peerId_and_endpoint_required" };
   }
+  // Inbound HMAC is only as strong as the secret registered here, so a
+  // peer without one is never admitted (receive paths also fail closed
+  // for any secretless record restored from older state).
+  if (typeof peer.sharedSecret !== "string" || peer.sharedSecret.length < MIN_SHARED_SECRET_LEN) {
+    return { ok: false, error: "shared_secret_required", minLength: MIN_SHARED_SECRET_LEN };
+  }
 
   const store = getPeeringStore(STATE);
+  // Never silently replace an existing peer's endpoint, trust or secret.
+  if (store.peers.has(peer.peerId)) {
+    return { ok: false, error: "peer_exists", peerId: peer.peerId };
+  }
 
   const record = {
     peerId: peer.peerId,
@@ -166,6 +249,20 @@ export function registerPeer(STATE, peer = {}) {
  * @param {string[]} heartbeat.recentDtuIds - Last 10 DTU IDs for sync diff
  * @returns {{ ok, syncNeeded }}
  */
+/**
+ * Inbound HTTP heartbeat: the sender must be a registered peer with a
+ * shared secret and must sign the heartbeat under it. Fail-closed.
+ */
+export function receiveSignedHeartbeat(STATE, peerId, heartbeat = {}, signature = null) {
+  const peer = getPeeringStore(STATE).peers.get(peerId);
+  if (!peer) return { ok: false, error: "unknown_peer" };
+  if (!peer.sharedSecret || !signature) return { ok: false, error: "signature_required" };
+  if (!verifyHeartbeatSignature(peer.sharedSecret, peerId, heartbeat, signature)) {
+    return { ok: false, error: "signature_invalid" };
+  }
+  return receiveHeartbeat(STATE, peerId, heartbeat);
+}
+
 export function receiveHeartbeat(STATE, peerId, heartbeat = {}) {
   const store = getPeeringStore(STATE);
   const peer = store.peers.get(peerId);
@@ -313,14 +410,15 @@ export function receiveSyncPackage(STATE, peerId, pkg = {}) {
     return { ok: false, error: "package_too_large", limit: MAX_SYNC_DTUS, received: inboundDtus.length };
   }
 
-  // ── HMAC verification (if peer has shared secret) ──
-  if (peer.sharedSecret) {
-    if (!pkg.signature) {
-      return { ok: false, error: "signature_required" };
-    }
-    if (!verifyPackageSignature(peer.sharedSecret, pkg, pkg.signature)) {
-      return { ok: false, error: "signature_invalid" };
-    }
+  // ── HMAC verification (mandatory) ──
+  // The shared secret is what authenticates the claimed peerId: a peer
+  // without one cannot sync at all, and an unsigned or badly signed
+  // package is indistinguishable from a spoofed one. Fail closed.
+  if (!peer.sharedSecret || !pkg.signature) {
+    return { ok: false, error: "signature_required" };
+  }
+  if (!verifyPackageSignature(peer.sharedSecret, pkg, pkg.signature)) {
+    return { ok: false, error: "signature_invalid" };
   }
 
   // ── Schema validation per DTU ──
@@ -383,6 +481,46 @@ export function routeProposalToPeer(STATE, peerId, proposal = {}) {
     routedTo: peerId,
     timestamp: new Date().toISOString(),
   };
+}
+
+/**
+ * Receive a governance proposal from a peer (the inbound half of
+ * routeProposalToPeer — the store's inboundProposals map existed for
+ * this and was never written). The trust gate mirrors the outbound
+ * one: proposals only flow between peers at trust >= 0.5. The claimed
+ * sender is authenticated like a sync package: the proposal must carry
+ * a valid HMAC under the peer's shared secret, and a peer without one
+ * cannot propose at all — otherwise the trust gate would be checking
+ * an unverified claim.
+ *
+ * @param {Object} STATE
+ * @param {string} peerId - The sending peer (must be registered)
+ * @param {Object} proposal - Must carry a proposalId
+ * @param {string} signature - HMAC over the proposal (signProposal)
+ * @returns {{ ok, proposalId }}
+ */
+export function receiveProposal(STATE, peerId, proposal = {}, signature = null) {
+  const store = getPeeringStore(STATE);
+  const peer = store.peers.get(peerId);
+  if (!peer) return { ok: false, error: "unknown_peer" };
+  if (peer.trust < 0.5) return { ok: false, error: "insufficient_trust_for_proposals" };
+  if (!proposal.proposalId || typeof proposal.proposalId !== "string") {
+    return { ok: false, error: "proposal_id_required" };
+  }
+  if (!peer.sharedSecret || !signature) {
+    return { ok: false, error: "signature_required" };
+  }
+  if (!verifyProposalSignature(peer.sharedSecret, peerId, proposal, signature)) {
+    return { ok: false, error: "signature_invalid" };
+  }
+
+  store.inboundProposals.set(proposal.proposalId, {
+    fromPeer: peerId,
+    receivedAt: new Date().toISOString(),
+    proposal,
+  });
+
+  return { ok: true, proposalId: proposal.proposalId };
 }
 
 // ── Stale Peer Detection ─────────────────────────────────────────────────────

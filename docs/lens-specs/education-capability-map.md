@@ -1,8 +1,8 @@
 # education — Capability Map (Frontend Rebuild Program, Wave 3)
 
 > Derived, not asserted. Reproduce the macro list:
-> `grep -c 'registerLensAction("education"' server/domains/education.js` → 68
-> `node scripts/lens-unsurfaced.mjs --lens education` → `0/68 macros never referenced in the frontend`
+> `grep -c 'registerLensAction("education"' server/domains/education.js` → 72
+> `node scripts/lens-unsurfaced.mjs --lens education` → `1/72 macros never referenced in the frontend` (`courses-update`, re-run 2026-10-28)
 > `node scripts/verify-lens-backends.mjs` → `{"WIRED":258,"NO-BACKEND-CALL":2}` total 260
 > `node scripts/grade-ux-polish.mjs --honest` → `education: tier "polished", isGenericScaffold:false`
 
@@ -242,3 +242,8 @@ in both modes.
   existing patterns in sibling components). Documented here explicitly per
   the task's own instruction to not claim "clean" without running the
   linter.
+
+
+---
+
+*Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*

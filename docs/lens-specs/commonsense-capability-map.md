@@ -1,7 +1,7 @@
 # Commonsense Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
 > Derived, not asserted. Reproduce the macro list:
-> `grep -c 'registerLensAction("commonsense"' server/domains/commonsense.js` → 15
+> `grep -c 'registerLensAction("commonsense"' server/domains/commonsense.js` → 20
 
 ## Reference apps + parity target
 
@@ -155,3 +155,8 @@ scaffold standing in front of real depth, no dead/duplicate controls.
 - `npx tsc --noEmit -p .` — 0 errors introduced (one pre-existing/unrelated error surfaced in `components/diy/ProjectWorkshop.tsx` from a concurrent sibling agent's in-progress edit on a different lens; not touched by this rebuild).
 - `node scripts/verify-lens-backends.mjs` — commonsense stays WIRED (`258 WIRED / 2 by-design NO-BACKEND-CALL`, commonsense not in the NO-BACKEND-CALL list).
 - `node scripts/grade-ux-polish.mjs --honest` — commonsense: `tier: "polished"`, `isGenericScaffold: false`.
+
+
+---
+
+*Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*
