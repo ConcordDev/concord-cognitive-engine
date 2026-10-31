@@ -168,6 +168,7 @@ import { init as initEmergent } from "./emergent/index.js";
 import { tickAllRegistered, registerHeartbeat, getRegistryScheduleSummary, getRegistrySkipStats } from "./emergent/heartbeat-registry.js";
 import * as presenceIdle from "./lib/presence-idle.js";
 import * as loopJobs from "./lib/loop-job-tracker.js";
+import { createLoopBlockSampler } from "./lib/loop-block-attribution.js";
 import { HUB_WORLD_ID, canonicalWorldId } from "./lib/world-ids.js";
 import { uniqueTmpPath, writeFileAtomicSync, createSnapshotOrdering, sweepStaleStateTmps } from "./lib/state-file-write.js";
 import { runConsolidationCycle } from "./lib/consolidation-cycle.js";
@@ -77931,11 +77932,16 @@ if (process.env.CONCORD_LOOP_BLOCK_ALERT !== "0") {
     const _DRIFT_RATE_LIMIT_MS = 5000;
     let _driftExpected = Date.now() + _DRIFT_INTERVAL_MS;
     let _lastDriftAlertAt = 0;
+    // CPU vs wall, page faults and GC for the window the loop was stuck, so a
+    // jobs:[] block says whether it was running (cpu/gc) or waiting (page-in/swap).
+    const _blockSampler = createLoopBlockSampler();
     const _driftTimer = setInterval(() => {
       try {
         const now = Date.now();
         const blockedMs = now - _driftExpected;
         _driftExpected = now + _DRIFT_INTERVAL_MS;
+        const _blockDetail = blockedMs >= _DRIFT_THRESHOLD_MS ? _blockSampler.describeBlock(blockedMs) : null;
+        _blockSampler.tick();
         if (!Number.isFinite(blockedMs) || blockedMs < _DRIFT_THRESHOLD_MS) return;
         const severe = blockedMs >= 5000;
         if (!severe && (now - _lastDriftAlertAt) < _DRIFT_RATE_LIMIT_MS) return;
@@ -77949,6 +77955,8 @@ if (process.env.CONCORD_LOOP_BLOCK_ALERT !== "0") {
           lastTimer: globalThis.__lastLagProbeName || null,
           rssMb: Math.round(mem.rss / 1024 / 1024),
           heapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+          uptimeS: Math.round(process.uptime()),
+          ...(_blockDetail || {}),
         });
       } catch { /* probe must never throw */ }
     }, _DRIFT_INTERVAL_MS);
