@@ -236,6 +236,17 @@ function isShuttingDownResponse(error: AxiosError): boolean {
   return error.response?.status === 503 && isShuttingDownPayload(error.response?.data);
 }
 
+/** True when the body is the geocoder's opt-in outage shape (atlas). */
+export function isGeocoderUnavailablePayload(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false;
+  const body = data as { code?: string; error?: string };
+  return body.code === 'geocoder_unavailable' || body.error === 'geocoder_unavailable';
+}
+
+function isGeocoderUnavailableResponse(error: AxiosError): boolean {
+  return error.response?.status === 503 && isGeocoderUnavailablePayload(error.response?.data);
+}
+
 /** Idempotent reads only. A write during restart must fail honestly. */
 function isIdempotentRead(method: string | undefined): boolean {
   const m = (method || '').toLowerCase();
@@ -292,6 +303,13 @@ api.interceptors.response.use(undefined, async (error: AxiosError) => {
   const status = error.response?.status;
   const warmingOrOverloaded = isServiceWarmingOrOverloaded(error);
   const shuttingDown = isShuttingDownResponse(error);
+  // A geocoder_unavailable 503 is never auto-retried: its retryAfterS is a
+  // hint for the user (the Atlas panels render "try again in N s"), and the
+  // geocoder's door is rate-limited to 1 req/s — retrying would only queue
+  // more lookups behind an outage.
+  if (isGeocoderUnavailableResponse(error)) {
+    return Promise.reject(error);
+  }
   // A restart 503 is not a transient overload. Retry idempotent GETs with
   // a bounded backoff (the server is back in ~10–20s). Writes reject here
   // so a later retry cannot look like the write succeeded.
@@ -649,17 +667,22 @@ api.interceptors.response.use(
           } else if (code === 'PERMISSION_DENIED' && data?.permission) {
             store.addToast({ type: 'error', message: `Permission denied: ${data.permission}` });
           } else if (!isBackgroundFetch) {
-            // A user action hit a bare 403 (no PERMISSION_DENIED code). Far more
-            // often a stale CSRF cookie — common on mobile Safari's stricter
-            // SameSite/Secure/partitioned-cookie handling — than a real authz
-            // denial. Don't cry "permission denied"; tell them to refresh.
-            store.addToast({ type: 'warning', message: 'That action was blocked — your session may have expired. Refresh the page and try again.' });
+            // A user action hit a bare 403 (no stamped code). Two unlike
+            // causes share this shape — a stale session/CSRF state AND
+            // real authorization denials from server paths that don't
+            // stamp codes (role gates, sovereign gates, route-level
+            // 403s) — so the copy names the block and at most both
+            // causes. It must not claim session expiry or prescribe a
+            // refresh: for a true denial, refreshing can never succeed
+            // (Q83 interim copy; the durable fix is the server stamping
+            // a code on every 403, a separate sweep).
+            store.addToast({ type: 'warning', message: 'That action was blocked. It may be a permission restriction, or your session may have expired.' });
           }
           // Background GET 403 (e.g. role-gated telemetry polls hitting a
           // non-admin session): stay silent — the caller handles it.
         } else if (toastStatus === 429) {
           store.addToast({ type: 'warning', message: 'Too many requests. Please wait a moment.' });
-        } else if (toastStatus && toastStatus >= 500 && !isBackgroundFetch) {
+        } else if (toastStatus && toastStatus >= 500 && !isBackgroundFetch && !isGeocoderUnavailableResponse(error)) {
           store.addToast({ type: 'error', message: 'Something went wrong on our end. Please try again.' });
         } else if (!error.response && !isBackgroundFetch) {
           store.addToast({ type: 'error', message: 'Unable to reach the local Concord API. If you are on this machine, the backend may be down — this is not your internet.' });
@@ -668,6 +691,10 @@ api.interceptors.response.use(
         }
       }
     }
+    // Keep the raw axios error for a geocoder outage: the Atlas panels and
+    // lensRun read code / retryAfterS from error.response.data, which the
+    // ConcordError conversion would drop.
+    if (isGeocoderUnavailableResponse(error)) return Promise.reject(error);
     return Promise.reject(fromAxiosError(error));
   }
 );
@@ -700,9 +727,17 @@ interface LensRunSpec {
  * bodies stay `{ ok, result, error }` so a validation `reason` does not
  * start appearing on callers that never read one.
  */
-function honestKeyFields(node: unknown): { reason?: string; envVar?: string; signupUrl?: string } {
+function honestKeyFields(node: unknown): { reason?: string; envVar?: string; signupUrl?: string; code?: string; retryAfterS?: number } {
   if (!node || typeof node !== 'object') return {};
   const n = node as Record<string, unknown>;
+  // A geocoder outage keeps its code + retry hint through the unwrap so
+  // panels can render "Geocoder unavailable — try again in N s" instead of
+  // a raw error token.
+  if (n.code === 'geocoder_unavailable' || n.error === 'geocoder_unavailable') {
+    const out: { code: string; retryAfterS?: number } = { code: 'geocoder_unavailable' };
+    if (typeof n.retryAfterS === 'number') out.retryAfterS = n.retryAfterS;
+    return out;
+  }
   const reason = typeof n.reason === 'string' ? n.reason : undefined;
   const error = typeof n.error === 'string' ? n.error : undefined;
   if (reason !== 'missing_api_key' && error !== 'missing_api_key') return {};
@@ -739,7 +774,7 @@ export async function lensRun<T = any>(
   action?: string,
   input: Record<string, unknown> = {},
   runId?: string,
-): Promise<{ data: { ok: boolean; result: T | null; error: string | null; reason?: string; envVar?: string; signupUrl?: string } }> {
+): Promise<{ data: { ok: boolean; result: T | null; error: string | null; reason?: string; envVar?: string; signupUrl?: string; code?: string; retryAfterS?: number } }> {
   try {
     let domain: string;
     let act: string;
@@ -1475,6 +1510,7 @@ export const apiHelpers = {
     complete: (goalId: string) => api.post(`/api/goals/${goalId}/complete`, {}),
     activate: (goalId: string) => api.post(`/api/goals/${goalId}/activate`, {}),
     abandon: (goalId: string, reason?: string) => api.post(`/api/goals/${goalId}/abandon`, { reason }),
+    remove: (goalId: string) => api.delete(`/api/goals/${goalId}`),
     status: () => api.get('/api/goals/status'),
     autoPropose: () => api.post('/api/goals/auto-propose', {}),
     config: (data?: Record<string, unknown>) => (data ? api.post('/api/goals/config', data) : api.get('/api/goals/config')),
@@ -2049,6 +2085,10 @@ export const apiHelpers = {
   lens: {
     list: (domain: string, params?: { type?: string; search?: string; tags?: string; status?: string; limit?: number; offset?: number }) =>
       api.get(`/api/lens/${domain}`, { params }),
+    // Q79: the export read — artifacts (scaffolding excluded) merged with
+    // the domain's state-resident records when it has an export provider.
+    exportList: (domain: string, params?: { limit?: number }) =>
+      api.get(`/api/lens/${domain}/export`, { params }),
     get: (domain: string, id: string) =>
       api.get(`/api/lens/${domain}/${id}`),
     create: (domain: string, data: { type: string; title?: string; data?: Record<string, unknown>; meta?: Record<string, unknown> }) =>

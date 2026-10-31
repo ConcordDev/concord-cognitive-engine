@@ -60,6 +60,11 @@ const DTU_TARGET_RATIO = parseFloat(process.env.DTU_TARGET_RATIO || "0.65"); // 
 const DTU_TARGET_COUNT = Math.round(DTU_MEMORY_CEILING * DTU_TARGET_RATIO); // ~110,500
 // Max DTUs to forget per cycle to prevent batch-delete lag.
 const MAX_FORGET_PER_CYCLE = parseInt(process.env.MAX_FORGET_PER_CYCLE || "500", 10);
+// Owner rule (2026-10-29): weak DTUs are LABELED and RANKED LOWER, never deleted or tombstoned; any
+// further action is the owner's call. The cycle therefore labels by default. The old tombstone path is
+// unreachable unless a caller passes {mode:"tombstone"} AND CONCORD_FORGETTING_ALLOW_TOMBSTONE=1 is set.
+const ALLOW_TOMBSTONE = process.env.CONCORD_FORGETTING_ALLOW_TOMBSTONE === "1";
+const SCORE_YIELD_EVERY = 500;
 // Second-chance / CLOCK-style grace window: a DTU that crosses below the
 // forget threshold isn't tombstoned in the same cycle it's first found low.
 // It gets GRACE_CYCLES real (non-dry-run) cycles to recover (e.g. via a
@@ -75,6 +80,8 @@ let _lastRun = null;
 let _lastResult = null;
 let _lifetimeForgotten = 0;
 let _lifetimeTombstones = 0;
+let _lifetimeLabeled = 0;
+let _lifetimeUnlabeled = 0;
 // Advances by 1 on every real (non-dry-run) runForgettingCycle call. Pure
 // bookkeeping for the grace-window mechanism below — not a general clock.
 let _cycleCount = 0;
@@ -219,6 +226,37 @@ async function forgetDTU(dtu, STATE, reason) {
 
 // ── Forgetting Cycle ────────────────────────────────────────────────────────
 
+const QUALITY_BY = "forgetting-engine";
+
+/** Mark a weak DTU: meta.quality + meta.rankWeight + a `quality:weak` tag. Content, id and lineage are untouched. */
+function labelWeak(dtu, STATE, score, threshold) {
+  const q = dtu.meta?.quality;
+  if (q?.label === "weak" && q.by === QUALITY_BY) return false; // already labeled: no rewrite
+  const ratio = threshold > 0 ? score / threshold : 0;
+  dtu.meta = {
+    ...(dtu.meta || {}),
+    quality: {
+      label: "weak", by: QUALITY_BY,
+      reason: `retention_score=${score.toFixed(4)}_below_threshold=${threshold}`,
+      score: Number(score.toFixed(4)), labeledAt: nowISO(), cycle: _cycleCount,
+    },
+    rankWeight: Math.round(Math.max(0.1, Math.min(0.9, ratio)) * 100) / 100,
+  };
+  dtu.tags = [...new Set([...(Array.isArray(dtu.tags) ? dtu.tags : []), "quality:weak"])];
+  STATE.dtus.set(dtu.id, dtu);
+  return true;
+}
+
+/** A labeled DTU that recovered above threshold loses the label (only labels this engine set). */
+function clearWeak(dtu, STATE) {
+  if (dtu.meta?.quality?.by !== QUALITY_BY) return false;
+  const { quality, rankWeight, ...rest } = dtu.meta;
+  dtu.meta = rest;
+  if (Array.isArray(dtu.tags)) dtu.tags = dtu.tags.filter((t) => t !== "quality:weak");
+  STATE.dtus.set(dtu.id, dtu);
+  return true;
+}
+
 let _cycleRunning = false;
 
 export async function runForgettingCycle(dryRun = false, opts = {}) {
@@ -242,6 +280,7 @@ export async function runForgettingCycle(dryRun = false, opts = {}) {
     }
 
     const candidates = [];
+    let _unlabeledThisCycle = 0;
     const allDTUs = Array.from(STATE.dtus.values());
 
     // Sprint 32 — child-index hoist. Previously countChildren() walked the
@@ -281,8 +320,11 @@ export async function runForgettingCycle(dryRun = false, opts = {}) {
     // grace state) since they're a preview, not a mutation.
     globalThis._forgettingChildIndex = _childCounts;
     try {
+      let _scored = 0;
       for (const dtu of allDTUs) {
         if (dtu.type === "tombstone") continue;
+        // Scoring is a long synchronous walk on a big store; yield so HTTP and the heartbeat keep running (#1839).
+        if ((++_scored % SCORE_YIELD_EVERY) === 0) await new Promise((r) => { setImmediate(r); });
         const score = retentionScore(dtu, STATE);
         dtu._retentionScore = score;
 
@@ -304,9 +346,12 @@ export async function runForgettingCycle(dryRun = false, opts = {}) {
           candidates.push({ dtu, score });
         }
         // else: still within its grace window — wait for a later cycle.
-      } else if (dtu._graceUntil != null) {
-        // Recovered above threshold during grace — clear it.
-        delete dtu._graceUntil;
+      } else {
+        if (dtu._graceUntil != null) {
+          // Recovered above threshold during grace — clear it.
+          delete dtu._graceUntil;
+        }
+        try { if (clearWeak(dtu, STATE)) _unlabeledThisCycle++; } catch (_e) { logger.debug('emergent:forgetting-engine', 'unlabel skip', { error: _e?.message }); }
       }
       }
     } finally {
@@ -334,22 +379,23 @@ export async function runForgettingCycle(dryRun = false, opts = {}) {
       };
     }
 
-    // Execute forgetting
+    // Execute: label by default (nothing is removed). Batch-limited and yielding every YIELD_EVERY items.
+    const mode = opts?.mode === "tombstone" && ALLOW_TOMBSTONE ? "tombstone" : "label";
     const forgotten = [];
-    // Sprint 32 — yield to the event loop every YIELD_EVERY tombstones so
-    // a 500-tombstone cycle doesn't block the loop for ~30s straight
-    // (pre-fix: heartbeat_block_slow module=forgetting ms=47733 at the
-    // OLD 50/cycle; at 500/cycle that would scale to ~8 minutes of pure
-    // main-loop block). Each forgetDTU is mostly a SQLite write plus a
-    // small in-memory mutation, so 25 per batch is plenty small for the
-    // event loop to handle a few HTTP requests between batches.
+    const labeled = [];
     const YIELD_EVERY = 25;
-    const _targets = candidates.slice(0, MAX_FORGET_PER_CYCLE);
+    // Already-labeled DTUs are skipped so each batch reaches new ones instead of re-visiting the lowest scores.
+    const _pool = mode === "label" ? candidates.filter((c) => !(c.dtu.meta?.quality?.label === "weak" && c.dtu.meta.quality.by === QUALITY_BY)) : candidates;
+    const _targets = _pool.slice(0, opts?.maxForget || MAX_FORGET_PER_CYCLE);
     for (let i = 0; i < _targets.length; i++) {
       const { dtu, score } = _targets[i];
       try {
-        const tombstone = await forgetDTU(dtu, STATE, `retention_score=${score.toFixed(4)}_below_threshold=${_threshold}`);
-        forgotten.push({ id: dtu.id, tombstoneId: tombstone.id, score });
+        if (mode === "tombstone") {
+          const tombstone = await forgetDTU(dtu, STATE, `retention_score=${score.toFixed(4)}_below_threshold=${_threshold}`);
+          forgotten.push({ id: dtu.id, tombstoneId: tombstone.id, score });
+        } else if (labelWeak(dtu, STATE, score, effectiveThreshold)) {
+          labeled.push({ id: dtu.id, score });
+        }
       } catch (_e) { logger.debug('emergent:forgetting-engine', 'skip on error', { error: _e?.message }); }
       if ((i + 1) % YIELD_EVERY === 0) {
         await new Promise((r) => {
@@ -360,12 +406,18 @@ export async function runForgettingCycle(dryRun = false, opts = {}) {
 
     _lifetimeForgotten += forgotten.length;
     _lifetimeTombstones += forgotten.length;
+    _lifetimeLabeled += labeled.length;
+    _lifetimeUnlabeled += _unlabeledThisCycle;
 
     const result = {
       ok: true,
       timestamp: nowISO(),
       totalDTUs: allDTUs.length,
       candidateCount: candidates.length,
+      mode,
+      labeledCount: labeled.length,
+      unlabeledCount: _unlabeledThisCycle,
+      labeled: labeled.slice(0, 20).map(f => ({ id: f.id, score: f.score.toFixed(4) })),
       forgottenCount: forgotten.length,
       forgotten: forgotten.slice(0, 20).map(f => ({ id: f.id, score: f.score.toFixed(4) })),
       threshold: effectiveThreshold,
@@ -391,6 +443,7 @@ export async function runForgettingCycle(dryRun = false, opts = {}) {
     if (typeof globalThis.realtimeEmit === "function") {
       globalThis.realtimeEmit("forgetting:cycle_complete", {
         forgottenCount: forgotten.length,
+        labeledCount: labeled.length,
         totalDTUs: allDTUs.length - forgotten.length,
         tombstones: countTombstones(STATE),
         timestamp: nowISO(),
@@ -587,6 +640,9 @@ export function getStatus() {
     nextRun: _lastRun ? new Date(new Date(_lastRun).getTime() + FORGETTING_INTERVAL_MS).toISOString() : null,
     lifetimeForgotten: _lifetimeForgotten,
     lifetimeTombstones: _lifetimeTombstones,
+    lifetimeLabeled: _lifetimeLabeled,
+    lifetimeUnlabeled: _lifetimeUnlabeled,
+    mode: ALLOW_TOMBSTONE ? "label (tombstone only on explicit opt-in)" : "label",
     tombstones: STATE ? countTombstones(STATE) : 0,
     interval: FORGETTING_INTERVAL_MS,
   };

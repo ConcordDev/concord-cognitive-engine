@@ -89,6 +89,31 @@ describe("shapeLensRunHttp", () => {
     }
   });
 
+  it("maps the opt-in geocoder_unavailable code to 503; other domains unchanged", () => {
+    const shaped = shapeLensRunHttp({
+      ok: false,
+      status: "unavailable",
+      code: "geocoder_unavailable",
+      error: "geocoder_unavailable",
+      reason: "upstream_error: nominatim 503",
+      lastOkAt: null,
+      retryAfterS: 30,
+    });
+    assert.equal(shaped.status, 503);
+    assert.equal(shaped.body.ok, false);
+    assert.equal(shaped.body.code, "geocoder_unavailable");
+    assert.equal(shaped.body.retryAfterS, 30);
+    // The code channel alone is enough, and so is the bare error string.
+    assert.equal(httpStatusForLensFailure("lens_failed", { code: "geocoder_unavailable" }), 503);
+    assert.equal(httpStatusForLensFailure("geocoder_unavailable"), 503);
+    // A similar-looking upstream failure WITHOUT the opt-in code keeps the
+    // generic upstream treatment (200 via the reason channel).
+    assert.equal(
+      shapeLensRunHttp({ ok: false, error: "nominatim unreachable: geocoder unavailable: upstream_error", reason: "upstream_unavailable" }).status,
+      200,
+    );
+  });
+
   it("peels one success envelope and lifts a failure nested under one", () => {
     const ok = shapeLensRunHttp({ ok: true, result: { position: { id: "stk_1" } } });
     assert.equal(ok.status, 200);

@@ -195,6 +195,36 @@ export async function reprobeEmbeddings() {
   }
 }
 
+// Boot warm-up: the first probe can run before the tunnel or the embedding model answers, which used to
+// leave embeddings "unavailable" (and a degraded warning on every deploy) until the 100th-tick reprobe.
+// Retry on a short backoff instead; the flag clears the moment a probe succeeds.
+let _warmupPending = false;
+let _warmupTimers = [];
+export function embeddingWarmupPending() { return _warmupPending; }
+
+export function scheduleEmbeddingReprobe({ delaysMs = [3000, 10000, 30000, 90000], onChanged = null, setTimer = setTimeout } = {}) {
+  if (embeddingState.backend === "ollama" || !_ollamaUrls.length) return { scheduled: false };
+  for (const t of _warmupTimers) clearTimeout(t);
+  _warmupTimers = [];
+  _warmupPending = true;
+  let i = 0;
+  const step = async () => {
+    try {
+      const re = await reprobeEmbeddings();
+      if (re.changed) { _warmupPending = false; if (onChanged) { try { onChanged(re); } catch { /* caller's hook */ } } return; }
+    } catch { /* probe is best-effort */ }
+    if (embeddingState.backend === "ollama") { _warmupPending = false; return; }
+    if (++i >= delaysMs.length) { _warmupPending = false; return; }
+    const t = setTimer(step, delaysMs[i]);
+    t?.unref?.();
+    _warmupTimers.push(t);
+  };
+  const t0 = setTimer(step, delaysMs[0]);
+  t0?.unref?.();
+  _warmupTimers.push(t0);
+  return { scheduled: true, attempts: delaysMs.length };
+}
+
 // ── Initialisation ─────────────────────────────────────────────────────────
 
 /**
@@ -759,6 +789,7 @@ export function getEmbeddingStatus(totalDTUs = 0) {
     backend: embeddingState.backend,
     table: embeddingState.table,
     reason: embeddingState.reason,
+    warmingUp: _warmupPending,
     dimension: embeddingState.dimension,
     ollamaUrl: embeddingState.ollamaUrl,
     cached,
@@ -937,6 +968,8 @@ export default {
   initEmbeddings,
   setLocalEmbedder,
   reprobeEmbeddings,
+  scheduleEmbeddingReprobe,
+  embeddingWarmupPending,
   tableForModel,
   embed,
   cosineSimilarity,

@@ -1,7 +1,7 @@
 # Docs Lens — Capability Map (Frontend Rebuild Program, Wave 3 — confirming, no changes)
 
-Reproduce the macro list: `grep -c 'registerLensAction("docs"' server/domains/docs.js` → 42
-Reproduce unsurfaced check: `node scripts/lens-unsurfaced.mjs --lens docs` → `docs: 0/42 macros never referenced in the frontend`
+Reproduce the macro list: `grep -c 'registerLensAction("docs"' server/domains/docs.js` → 43
+Reproduce unsurfaced check: `node scripts/lens-unsurfaced.mjs --lens docs` → `docs: 1/43 macros never referenced in the frontend` (`share-public`, re-run 2026-10-28)
 
 ## Reference apps
 
@@ -82,3 +82,8 @@ GENUINELY MISSING items found; no changes made.
 - `node scripts/grade-ux-polish.mjs --honest` — `docs`: `tier: "polished"`,
   `isGenericScaffold: false`, bespoke ratio 0.615 (10 files, 2,652 LOC
   total, 1,630 LOC bespoke-component).
+
+
+---
+
+*Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*

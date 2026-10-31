@@ -262,6 +262,21 @@ export default function registerChatRoutes(app, {
       ctx.chatTransport = "sse";
 
       startSSE(res);
+      // Real progress: chat.respond reports each actual step (brain call, each
+      // tool, writing the answer) and it goes out as soon as it happens, so the
+      // client has something to show for the 60+ seconds a tool turn can take.
+      const sendProgress = (progress) => {
+        if (res.writableEnded || res.destroyed) return;
+        res.write(`data: ${JSON.stringify({ ok: true, progress, done: false })}\n\n`);
+      };
+      ctx.chatProgress = sendProgress;
+      // Previews of the answer as the brain writes it. The final, checked text still
+      // arrives as `chunk` events and replaces any preview.
+      ctx.chatToken = (token) => {
+        if (res.writableEnded || res.destroyed) return;
+        res.write(`data: ${JSON.stringify({ ok: true, token, done: false })}\n\n`);
+      };
+      sendProgress({ stage: "accepted", label: "Working on it" });
 
       const out = scrubChatFields(await runMacro("chat","respond", req.body, ctx), chatUserText(req.body));
       kernelTick({ type: "USER_MSG", meta: { path: req.path, stream: true }, signals: { benefit: out?.ok?0.2:0, error: out?.ok?0:0.2 } });

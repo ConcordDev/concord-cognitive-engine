@@ -26,7 +26,7 @@ import {
 } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
-interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
+interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; code?: string; retryAfterS?: number }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
   const r = await apiHelpers.lens.runDomain('atlas', action, { input });
   const data = (r as { data?: { ok: boolean; result?: T } }).data;
@@ -37,7 +37,21 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 type ActionId = 'geo' | 'rev' | 'poi' | 'dist' | 'mint' | 'dm' | 'publish' | 'agent';
-function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
+function pickMessage(e: unknown): string {
+  const ax = e as { response?: { data?: { error?: string; code?: string; retryAfterS?: number } }; message?: string };
+  const d = ax?.response?.data;
+  if (d && (d.code === 'geocoder_unavailable' || d.error === 'geocoder_unavailable')) {
+    return `Geocoder unavailable — try again in ${typeof d.retryAfterS === 'number' ? d.retryAfterS : 30}s.`;
+  }
+  return d?.error ?? ax?.message ?? 'request failed';
+}
+/** The honest outage line for a resolved-but-failed geocoder envelope. */
+function geoFailureText(r: { code?: string; error?: string; retryAfterS?: number }): string | null {
+  if (r.code === 'geocoder_unavailable' || r.error === 'geocoder_unavailable') {
+    return `Geocoder unavailable — try again in ${typeof r.retryAfterS === 'number' ? r.retryAfterS : 30}s.`;
+  }
+  return null;
+}
 
 interface Place { displayName: string; latitude: number; longitude: number; category?: string; type?: string; importance?: number }
 interface GeoResult { query: string; places: Place[]; count: number }
@@ -101,7 +115,7 @@ export function AtlasActionPanel() {
         const first = r.result.places[0];
         if (first) { setLat(String(first.latitude)); setLng(String(first.longitude)); }
         ok(`${r.result.count} places · ${first?.displayName.slice(0, 50) ?? ''}.`);
-      } else err(r.error ?? 'geo failed');
+      } else err(geoFailureText(r) ?? r.error ?? 'geo failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actRev() {
@@ -114,7 +128,7 @@ export function AtlasActionPanel() {
         setRevResult(r.result);
         pipe.publish('atlas.rev', r.result, { label: `Reverse: ${r.result.displayName.slice(0, 40)}` });
         ok(`${r.result.displayName.slice(0, 50)}.`);
-      } else err(r.error ?? 'rev failed');
+      } else err(geoFailureText(r) ?? r.error ?? 'rev failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPoi() {

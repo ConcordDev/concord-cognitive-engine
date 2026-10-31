@@ -46,10 +46,10 @@ export interface ConKayVoice {
   /**
    * Live 0..1 amplitude envelope of ConKay's OWN speech while `speaking` is
    * true, sampled every animation frame from the real playback via
-   * `PiperPlaybackHandle#getEnvelopeAt` (Piper: real decoded-audio bins; the
-   * Web-Speech fallback path returns its own pre-existing synthetic-square
-   * stub — honestly passed through, not something this hook fabricates on
-   * top of). A ref (not state) so consumers can read it in a per-frame loop
+   * `PiperPlaybackHandle#getEnvelopeAt` (Piper: real decoded-audio bins;
+   * the Web-Speech fallback returns an event-driven speech-activity level
+   * — the Web Speech API exposes no amplitude, so none is fabricated).
+   * A ref (not state) so consumers can read it in a per-frame loop
    * (e.g. the Three.js scene) without forcing React re-renders — same
    * pattern as `useMicAmplitude`. Always 0 while not speaking.
    */

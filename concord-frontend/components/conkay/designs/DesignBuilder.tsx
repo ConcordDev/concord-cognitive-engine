@@ -122,6 +122,35 @@ export function DesignBuilder({ id }: { id: string }) {
 
   const push = (m: ChatMessage) => setMessages((ms) => [...ms, m]);
 
+  // "Start editing" on the snapshot's viewer: create a workbench session from
+  // the same design through the chat design route (the design's own brief),
+  // then the page — viewer included — is in workbench mode.
+  const [startingEdit, setStartingEdit] = useState(false);
+  const startEditing = async () => {
+    if (!design || startingEdit || wbId) return;
+    setStartingEdit(true);
+    try {
+      const r = (await api.post('/api/conkay/workbench', { prompt: design.brief })).data as WorkbenchStartReply;
+      if (r.id) {
+        setPendingId(null);
+        setWbId(r.id);
+        setWbView(r.view ?? null);
+        setWbOpen(true);
+        router.replace(`/conkay/designs/${id}?wb=${encodeURIComponent(r.id)}`);
+        push({ role: 'conkay', text: 'Workbench session started from this design. The driving parameters are editable in the model inspector.', view: r.view ?? null });
+      } else if (r.stage === 'questions' && r.pendingId) {
+        setPendingId(r.pendingId);
+        setWbNote('ConKay needs more detail before this design can be edited live — answer in the chat and the session will start.');
+      } else {
+        setWbNote(r.outcome?.binding?.[0]?.why || 'This design could not be opened for editing.');
+      }
+    } catch (e) {
+      setWbNote(e instanceof Error ? e.message : 'Starting editing failed.');
+    } finally {
+      setStartingEdit(false);
+    }
+  };
+
   const send = async () => {
     const t = text.trim();
     if (!t || sending) return;
@@ -200,7 +229,15 @@ export function DesignBuilder({ id }: { id: string }) {
                   </section>
                 )}
                 {design ? (
-                  <DrawingsPanel designId={design.id} drawings={design.drawings} model3d={design.model3d} assembly={design.assembly} />
+                  <DrawingsPanel
+                    designId={design.id}
+                    drawings={design.drawings}
+                    model3d={design.model3d}
+                    assembly={design.assembly}
+                    workbench={wbId && wbView ? { id: wbId, view: wbView, onView: (v) => setWbView(v) } : null}
+                    onStartEditing={!wbId ? () => void startEditing() : undefined}
+                    startingEdit={startingEdit}
+                  />
                 ) : (
                   <section className={PANEL} aria-label="Live workbench session">
                     <h2 className="text-sm font-semibold">A live workbench session</h2>

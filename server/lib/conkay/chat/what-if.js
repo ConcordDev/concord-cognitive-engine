@@ -20,10 +20,20 @@ import { orchestrate } from "./orchestrator.js";
 import { resolveMaterialName } from "../materials/index.js";
 import { parseEdit } from "../compiler/edit-parser.js";
 import { listComponents } from "../components/index.js";
+import { packageScene } from "../packaging/checks.js";
 
 export const WHAT_IF_VERSION = "1.0.0";
 export const TAIL_STEP_M = 0.1; // the repair table's tail step (chat/repair-rules.js)
 export const TAIL_BOUNDS_M = [0, 1.0];
+/** Declared bounds for the assembly knobs (HANDOFF-3 A1): packaging ranges a designer may move a
+ *  family car within; the fit checks, not the bounds, judge whether a given car still works. */
+export const WHEELBASE_BOUNDS_M = [2.4, 3.6];
+export const TRACK_BOUNDS_M = [1.3, 1.85];
+export const FLOOR_Z_BOUNDS_M = [0.09, 0.3];
+export const HPOINT_X_BOUNDS_M = [2.0, 3.2];
+export const HPOINT_Z_BOUNDS_M = [0.28, 0.6];
+/** SAE J1100 Class A H30 range, cited in the h30 design choice's own basis (compiler/car-layout.js). */
+export const H30_RANGE_M = [0.127, 0.405];
 /** The one package the car compiler derives (compiler/car-layout.js): two rows, four occupants. */
 export const PACKAGE_SEATS = 4;
 
@@ -119,7 +129,13 @@ const getPath = (o, p) => p.split(".").reduce((x, k) => (x == null ? undefined :
  * ask(text) for each follow-up, undo() to step back.
  */
 export class DesignConversation {
-  constructor({ evaluate, rules, requirements, state, final, budget }) {
+  constructor({ evaluate, rules, requirements, state, final, budget, settleDeadlineMs }) {
+    // INC-154: a request never waits on external kernels longer than this; the edit is committed with its kernels
+    // honestly pending and the settle finishes in the background (see settling).
+    this.settleDeadlineMs = Number(settleDeadlineMs ?? process.env.CONCORD_CONKAY_SETTLE_DEADLINE_MS) || 15000;
+    // one exclusive operation per conversation, from the start of the edit until it is fully done (a timed-out
+    // settle keeps it held until the background settle really finishes)
+    this.busy = false;
     this.evaluate = evaluate;
     this.rules = rules;
     this.budget = budget;
@@ -128,6 +144,24 @@ export class DesignConversation {
   }
 
   get current() { return this.revisions.at(-1); }
+
+  /** True while an edit, rebuild or undo (or its background settle) owns the conversation. */
+  get settling() { return this.busy; }
+
+  /**
+   * Run fn as the conversation's only operation. A second caller gets `busyReply` at once instead of
+   * interleaving. fn may call hold(promise) to keep the conversation busy past its own return (a background
+   * settle); the flag clears when that promise settles.
+   */
+  async _exclusive(fn, busyReply = { kind: "error", error: "busy", busy: true }) {
+    if (this.busy) return busyReply;
+    this.busy = true;
+    let held = null;
+    try { return await fn((p) => { held = p; }); } finally {
+      if (held) Promise.resolve(held).catch(() => {}).finally(() => { this.busy = false; });
+      else this.busy = false;
+    }
+  }
 
   async ask(text) {
     const cur = this.current;
@@ -143,13 +177,12 @@ export class DesignConversation {
   async setKnob(variable, value) {
     if (this.locked.has(variable)) return { kind: "locked", variable, note: `${variable} is locked: unlock it to change it` };
     const knob = knobsOf(this).find((k) => k.variable === variable);
-    if (!knob) return { kind: "error", error: `no knob "${variable}"` };
-    if (knob.options && !knob.options.includes(value)) return { kind: "error", error: `${variable} must be one of ${knob.options.join(", ")}` };
-    if (knob.bounds && !(typeof value === "number" && value >= knob.bounds[0] && value <= knob.bounds[1])) return { kind: "error", error: `${variable} must be within ${knob.bounds[0]}..${knob.bounds[1]} ${knob.unit || ""}`.trim() };
-    if (variable === "tailExtensionM") {
-      const before = this.current.final.session.engine.graph.node("BODY_SHELL")?.geometry?.tailExtension;
-      return this._apply({ kind: "parameter", ops: [{ node: "BODY_SHELL", path: "geometry.tailExtension", value }], changes: [{ field: "BODY_SHELL tail", before, after: value, unit: "m", source: "Workbench knob" }], stateUpdate: { tailExtensionM: value } }, `knob ${variable} = ${value}`);
-    }
+    if (!knob) return { kind: "error", error: "invalid_input", field: variable, reason: "unknown_variable", message: `no knob "${variable}"` };
+    if (knob.options && !knob.options.includes(value)) return { kind: "error", error: "invalid_input", field: variable, reason: "not_an_option", message: `${variable} must be one of ${knob.options.join(", ")}` };
+    if (knob.bounds && !(typeof value === "number" && Number.isFinite(value) && value >= knob.bounds[0] && value <= knob.bounds[1])) return { kind: "error", error: "invalid_input", field: variable, reason: "out_of_range", message: `${variable} must be within ${knob.bounds[0]}..${knob.bounds[1]} ${knob.unit || ""}`.trim() };
+    const edit = knobEdit(this, variable, value);
+    if (edit?.error) return { kind: "error", ...edit.error };
+    if (edit) return this._apply({ kind: "parameter", ops: edit.ops, changes: edit.changes, stateUpdate: edit.stateUpdate || {} }, `knob ${variable} = ${value}`);
     // a component choice (the drive unit): the compiler rebuilds the car with it, and the orchestrator resumes on
     // whatever else fails (never moving a locked variable)
     return this._rebuild({ ...this.current.state, [variable]: value }, { field: variable, before: this.current.state[variable] ?? knob.value, after: value, source: "Workbench knob" }, `knob ${variable} = ${value}`);
@@ -158,7 +191,9 @@ export class DesignConversation {
   lock(variable) { if (!knobsOf(this).some((k) => k.variable === variable)) return { ok: false, error: `no knob "${variable}"` }; this.locked.add(variable); return { ok: true, locked: [...this.locked].sort() }; }
   unlock(variable) { this.locked.delete(variable); return { ok: true, locked: [...this.locked].sort() }; }
 
-  async _rebuild(state, change, text) {
+  _rebuild(state, change, text) { return this._exclusive(() => this._rebuildLocked(state, change, text)); }
+
+  async _rebuildLocked(state, change, text) {
     const cur = this.current;
     const before = new Map(cur.final.envelopes);
     const run = await orchestrate({ evaluate: this.evaluate, rules: this.rules, initialState: state, budget: this.budget, locked: [...this.locked] });
@@ -168,7 +203,9 @@ export class DesignConversation {
     return { kind: "variable", ok: true, revision: this.revisions.length - 1, diff: { changed: [change], flipped: flips(before, run.final.envelopes), rerun: "rebuilt: a component choice feeds the compiler" }, outcome: run.outcome, receipt: rev.receipt };
   }
 
-  async _apply(w, text) {
+  _apply(w, text) { return this._exclusive((hold) => this._applyLocked(w, text, hold)); }
+
+  async _applyLocked(w, text, hold) {
     const cur = this.current;
     const before = new Map(cur.final.envelopes);
     if (w.kind === "requirement") {
@@ -184,17 +221,31 @@ export class DesignConversation {
     // a design-variable edit, applied to the live graph
     const session = cur.final.session;
     const reads = new Map([...session.engine.runs].map(([id, run]) => [id, new Set(run.reads)]));
-    const r = session.edit(w.ops);
+    const r = await session.editAsync(w.ops);
     if (!r.ok) return { kind: "error", error: r.error };
-    const settled = await session.settle();
+    // the inverse is read from the engine's own record of this edit NOW, before any await, so a later edit or
+    // undo cannot make history.at(-1) a different entry
+    const inverse = session.engine.graph.history.at(-1).ops.map((o) => ({ node: o.node, path: o.path, value: o.before }));
+    const sw = this._settleWithin(session);
+    let settled;
+    try { settled = await sw.result; } catch (e) {
+      // a settle that threw leaves no trace: put the previous values back and record no revision
+      const back = await session.editAsync(inverse);
+      return { kind: "error", error: `settle_failed: ${String(e?.message || e)}`, restored: back.ok };
+    }
     const after = envMap(session);
     const rerun = [...new Set([...r.rerun, ...settled.rerun])].sort();
     const final = { ...cur.final, envelopes: after };
     const state = { ...cur.state, ...w.stateUpdate };
-    // the inverse: the engine's own record of each op's previous value
-    const inverse = session.engine.graph.history.at(-1).ops.map((o) => ({ node: o.node, path: o.path, value: o.before }));
     const rev = { kind: "parameter", text, ops: w.ops, inverse, editedSession: session, state, final, requirements: cur.requirements, receipt: designReceipt(after), readsBefore: reads, changedKeys: r.changedKeys };
     this.revisions.push(rev);
+    if (settled.timedOut) {
+      // committed, kernels still pending: refresh the revision when the background settle lands
+      hold(sw.done.then(() => {
+        rev.final = { ...rev.final, envelopes: envMap(session) };
+        rev.receipt = designReceipt(rev.final.envelopes);
+      }));
+    }
     const newFails = flips(before, after).filter((f) => f.to === "FAIL").map((f) => f.runId);
     let resumed = null;
     if (newFails.length && Object.keys(w.stateUpdate).length) {
@@ -207,23 +258,151 @@ export class DesignConversation {
       kind: "parameter", ok: true, revision: this.revisions.length - 1,
       diff: { changed: w.changes, flipped: flips(before, rev.final.envelopes), rerun, reused: r.reused.length },
       newFailures: newFails, resumed, receipt: rev.receipt, ...(w.notes?.length ? { notes: w.notes } : {}),
+      ...(settled.timedOut ? { pending: true, pendingNote: "NOT_COMPUTED: external kernels still running; this edit is committed and results refresh when they finish" } : {}),
     };
   }
 
+  /**
+   * Settle the session's kernels, but give the caller an answer within settleDeadlineMs. `result` resolves with
+   * { rounds, kernels, rerun, timedOut }; `done` resolves when the underlying settle really finishes.
+   */
+  _settleWithin(session) {
+    const done = session.settle();
+    let timer;
+    const deadline = new Promise((resolve) => { timer = setTimeout(() => resolve({ rounds: 0, kernels: 0, rerun: [], pending: true, timedOut: true }), this.settleDeadlineMs); });
+    const result = Promise.race([done, deadline]).finally(() => clearTimeout(timer));
+    done.catch(() => {});
+    return { result, done };
+  }
+
   /** Step back one revision. Graph edits are reversed on the live graph; a rebuild returns to the kept design. */
-  async undo() {
+  undo() { return this._exclusive((hold) => this._undoLocked(hold), { ok: false, error: "busy", busy: true }); }
+
+  async _undoLocked(hold) {
     if (this.revisions.length < 2) return { ok: false, error: "nothing to undo" };
     const rev = this.revisions.pop();
     const prev = this.current;
+    let pending = false;
     if (rev.kind === "parameter") {
       // reverse the edit on the session it was applied to (even if the orchestrator then moved on to a rebuild)
-      const r = rev.editedSession.edit(rev.inverse);
-      if (!r.ok) return { ok: false, error: r.error };
-      await rev.editedSession.settle();
+      const r = await rev.editedSession.editAsync(rev.inverse);
+      if (!r.ok) { this.revisions.push(rev); return { ok: false, error: r.error }; }
+      const sw = this._settleWithin(rev.editedSession);
+      let settled;
+      try { settled = await sw.result; } catch (e) {
+        // the undo's settle threw: put the edit back so the graph and the revision list agree
+        await rev.editedSession.editAsync(rev.ops);
+        this.revisions.push(rev);
+        return { ok: false, error: `settle_failed: ${String(e?.message || e)}` };
+      }
       prev.final = { ...prev.final, envelopes: envMap(rev.editedSession) };
+      if (settled.timedOut) {
+        pending = true;
+        hold(sw.done.then(() => {
+          prev.final = { ...prev.final, envelopes: envMap(rev.editedSession) };
+          prev.receipt = designReceipt(prev.final.envelopes);
+        }));
+      }
     }
     const receipt = designReceipt(prev.final.envelopes);
-    return { ok: true, revision: this.revisions.length - 1, receipt, matches: receipt === prev.receipt };
+    return {
+      ok: true, revision: this.revisions.length - 1, receipt, matches: pending ? null : receipt === prev.receipt,
+      ...(pending ? { pending: true, pendingNote: "NOT_COMPUTED: external kernels still running; the undo is applied and results refresh when they finish" } : {}),
+    };
+  }
+}
+
+const r4 = (v) => Math.round(v * 1e4) / 1e4;
+
+/** The packaging scene (SgRPs, floor) for the conversation's live graph, or null when it has no package. */
+function sceneOf(graph) {
+  const pkg = graph?.node("VEH")?.props?.vehicle?.packaging;
+  if (!pkg) return null;
+  const centers = {};
+  for (const n of graph.nodes.values()) if (n.position && Number.isFinite(+n.position.x)) centers[n.id] = { x: +n.position.x, y: +n.position.y, z: +n.position.z };
+  try { return packageScene({ pkg, centers }); } catch { return null; }
+}
+
+/**
+ * The graph edit behind a knob, or null when the knob is not a graph edit (the drive unit rebuilds instead).
+ * Every op writes a value the solvers already read — the same paths the compiler wrote at build time:
+ *   wheelbase   VEH props.vehicle.rearAxleX (the front axle stays; the rear tyres follow their axle)
+ *   track       the two tyre centres' y, moved symmetrically about the centreline
+ *   ride height the package design choice floorZ (the cabin floor the whole J1100 scene stands on)
+ *   H-point x   the design choice ahpX: packageScene's UMTRI relation moves the front SgRP 1:1 with the
+ *               heel point (its seat-track clamp shifts with it), so the knob sets the SgRP and the edit
+ *               shifts ahpX by the same delta
+ *   H-point z   the design choice h30: SgRP z is floorZ + H30, so the edit sets H30 = target − floorZ and
+ *               refuses when that leaves the J1100 Class A H30 range the choice's own basis cites
+ * Returns { ops, changes, stateUpdate } or { error } (a validation refusal in the invalid_input shape).
+ */
+function knobEdit(conv, variable, value) {
+  const graph = conv.current.final.session.engine.graph;
+  const veh = graph.node("VEH");
+  const dc = veh?.props?.vehicle?.packaging?.designChoices;
+  const pos = (id) => graph.node(id)?.position;
+  const DC = "props.vehicle.packaging.designChoices";
+  switch (variable) {
+    case "tailExtensionM": {
+      const before = graph.node("BODY_SHELL")?.geometry?.tailExtension;
+      return { ops: [{ node: "BODY_SHELL", path: "geometry.tailExtension", value }], changes: [{ field: "BODY_SHELL tail", before, after: value, unit: "m", source: "Workbench knob" }], stateUpdate: { tailExtensionM: value } };
+    }
+    case "wheelbaseM": {
+      const fa = veh.props.vehicle.frontAxleX, ra = veh.props.vehicle.rearAxleX;
+      const rearX = r4(fa + value);
+      return {
+        ops: [
+          { node: "VEH", path: "props.vehicle.rearAxleX", value: rearX },
+          { node: "TIRE_RL", path: "position.x", value: rearX },
+          { node: "TIRE_RR", path: "position.x", value: rearX },
+        ],
+        changes: [{ field: "wheelbase", before: r4(ra - fa), after: value, unit: "m", source: "Workbench knob" }],
+        stateUpdate: {},
+      };
+    }
+    case "frontTrackM":
+    case "rearTrackM": {
+      const [l, r] = variable === "frontTrackM" ? ["TIRE_FL", "TIRE_FR"] : ["TIRE_RL", "TIRE_RR"];
+      return {
+        ops: [
+          { node: l, path: "position.y", value: -value / 2 },
+          { node: r, path: "position.y", value: value / 2 },
+        ],
+        changes: [{ field: variable === "frontTrackM" ? "front track" : "rear track", before: r4(Math.abs(pos(r).y - pos(l).y)), after: value, unit: "m", source: "Workbench knob" }],
+        stateUpdate: {},
+      };
+    }
+    case "rideHeightM": {
+      return {
+        ops: [{ node: "VEH", path: `${DC}.floorZ.value`, value }],
+        changes: [{ field: "ride height (cabin floor)", before: dc.floorZ.value, after: value, unit: "m", source: "Workbench knob" }],
+        stateUpdate: {},
+      };
+    }
+    case "seatHPointXM": {
+      const scene = sceneOf(graph);
+      if (!scene) return null;
+      return {
+        ops: [{ node: "VEH", path: `${DC}.ahpX.value`, value: r4(dc.ahpX.value + (value - scene.sgRPFront.x)) }],
+        changes: [{ field: "seat H-point x (via the heel point)", before: r4(scene.sgRPFront.x), after: value, unit: "m", source: "Workbench knob" }],
+        stateUpdate: {},
+      };
+    }
+    case "seatHPointZM": {
+      const scene = sceneOf(graph);
+      if (!scene) return null;
+      const h30 = value - scene.floorZ;
+      if (!(h30 >= H30_RANGE_M[0] && h30 <= H30_RANGE_M[1])) {
+        return { error: { error: "invalid_input", field: variable, reason: "out_of_range", message: `a seat H-point z of ${value} m at this floor height (${scene.floorZ} m) implies H30 ${r4(h30)} m, outside the J1100 Class A range ${H30_RANGE_M[0]}..${H30_RANGE_M[1]} m` } };
+      }
+      return {
+        ops: [{ node: "VEH", path: `${DC}.h30.value`, value: r4(h30) }],
+        changes: [{ field: "seat H-point z (via H30)", before: r4(scene.sgRPFront.z), after: value, unit: "m", source: "Workbench knob" }],
+        stateUpdate: {},
+      };
+    }
+    default:
+      return null;
   }
 }
 
@@ -241,6 +420,23 @@ export function knobsOf(conv) {
     const options = listComponents("engine_or_motor").filter((c) => (electric ? /^motor\./ : /^engine\./).test(c.id)).map((c) => c.id).sort();
     if (options.length) out.push({ variable: "motorId", label: "Drive unit", value: sel.chosen, options, locked: conv.locked.has("motorId"), source: "components/library.json (the compiler checks the one picked)" });
   }
+  // the assembly's driving parameters (HANDOFF-3 A1): shown when the design carries the values they read
+  const graph = cur.final.session?.engine?.graph;
+  const veh = graph?.node?.("VEH");
+  const pkg = veh?.props?.vehicle?.packaging;
+  const dc = pkg?.designChoices;
+  const fa = veh?.props?.vehicle?.frontAxleX, ra = veh?.props?.vehicle?.rearAxleX;
+  const locked = (v) => conv.locked.has(v);
+  if (Number.isFinite(fa) && Number.isFinite(ra)) out.push({ variable: "wheelbaseM", label: "Wheelbase", value: r4(ra - fa), unit: "m", bounds: WHEELBASE_BOUNDS_M, step: 0.01, locked: locked("wheelbaseM"), source: "VEH props.vehicle frontAxleX/rearAxleX (packaging/checks.js); the rear axle moves and its tyres follow, the front axle stays — the compiler's own convention (compiler/car-from-library.js)" });
+  const trackOf = (l, r) => { const a = graph?.node?.(l)?.position, b = graph?.node?.(r)?.position; return a && b && Number.isFinite(a.y) && Number.isFinite(b.y) ? r4(Math.abs(b.y - a.y)) : null; };
+  const ft = trackOf("TIRE_FL", "TIRE_FR");
+  if (ft != null) out.push({ variable: "frontTrackM", label: "Front track", value: ft, unit: "m", bounds: TRACK_BOUNDS_M, step: 0.005, locked: locked("frontTrackM"), source: "the front tyre centres' y positions (packaging/checks.js); both tyres move symmetrically about the centreline" });
+  const rt = trackOf("TIRE_RL", "TIRE_RR");
+  if (rt != null) out.push({ variable: "rearTrackM", label: "Rear track", value: rt, unit: "m", bounds: TRACK_BOUNDS_M, step: 0.005, locked: locked("rearTrackM"), source: "the rear tyre centres' y positions (packaging/checks.js); both tyres move symmetrically about the centreline" });
+  if (dc && Number.isFinite(dc.floorZ?.value)) out.push({ variable: "rideHeightM", label: "Ride height (cabin floor)", value: dc.floorZ.value, unit: "m", bounds: FLOOR_Z_BOUNDS_M, step: 0.005, locked: locked("rideHeightM"), source: "the package design choice floorZ (compiler/car-layout.js): the cabin floor height above ground the J1100 scene stands on; ground clearance is floorZ minus the skin offset (assembly/build.js)" });
+  const scene = pkg ? sceneOf(graph) : null;
+  if (scene && dc && Number.isFinite(dc.ahpX?.value)) out.push({ variable: "seatHPointXM", label: "Seat H-point x", value: r4(scene.sgRPFront.x), unit: "m", bounds: HPOINT_X_BOUNDS_M, step: 0.01, locked: locked("seatHPointXM"), source: "the front SgRP from packageScene (packaging/checks.js): the UMTRI H-point follows the heel point (design choice ahpX) 1:1, so the edit shifts ahpX by the same delta" });
+  if (scene && dc && Number.isFinite(dc.h30?.value)) out.push({ variable: "seatHPointZM", label: "Seat H-point z", value: r4(scene.sgRPFront.z), unit: "m", bounds: HPOINT_Z_BOUNDS_M, step: 0.005, locked: locked("seatHPointZM"), source: "the front SgRP from packageScene (packaging/checks.js): SgRP z is floorZ + H30 (design choice h30, SAE J1100), so the edit sets H30 and refuses outside its Class A range" });
   return out;
 }
 
