@@ -7,6 +7,16 @@
  * One action: a name, then POST /api/crafting/design, then the same GET
  * must contain the new id before the title is shown.
  *
+ * D1: a saved piece is also a canonical lens artifact (POST
+ * /api/lens/crafting, data.recipeId joins the two). The artifact is the
+ * piece's platform identity — the shared Export reads lens artifacts —
+ * so a piece the bench can show is a piece the platform can hold. Each
+ * joined piece carries the bench's own Publish act (POST
+ * /api/lens/crafting/:artifactId/publish). Pieces saved before D1 gain
+ * their artifact when the bench loads (owner-scoped: /recipes only ever
+ * returns the caller's own rows). If registration fails, the piece still
+ * shows and the bench says so; the next load retries.
+ *
  * Locker DTUs, forge, marketplace, skills, and the in-memory workbench
  * are other stores. They are not on this screen.
  */
@@ -16,21 +26,26 @@ import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { api } from '@/lib/api/client';
 import {
+  artifactsFromList,
+  joinPieces,
+  pieceArtifactBody,
   pieceDesignBody,
   recipesFromList,
   saveErrorFrom,
-  type BenchRecipe,
+  specsFromRecipesList,
+  type BenchPiece,
 } from '@/components/crafting/bench';
 
 export default function CraftingPage() {
   const nameId = useId();
-  const [recipes, setRecipes] = useState<BenchRecipe[]>([]);
+  const [recipes, setRecipes] = useState<BenchPiece[]>([]);
   const [phase, setPhase] = useState<'loading' | 'ready' | 'error'>('loading');
   const [loadError, setLoadError] = useState('');
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [notice, setNotice] = useState('');
 
   const pull = useCallback(async () => {
     const res = await api.get('/api/crafting/recipes');
@@ -39,18 +54,66 @@ export default function CraftingPage() {
       const error = typeof body.error === 'string' && body.error ? body.error : 'The bench did not answer.';
       return { ok: false as const, error };
     }
-    return { ok: true as const, recipes: recipesFromList(body) };
+    return { ok: true as const, recipes: recipesFromList(body), specs: specsFromRecipesList(body) };
   }, []);
 
-  const applyPull = useCallback((result: Awaited<ReturnType<typeof pull>>) => {
+  // The canonical layer is additive: its failure never errors the bench.
+  // ok:false means "unknown" — callers must not backfill against it, or a
+  // failed list would mint duplicate artifacts for pieces that have one.
+  const pullArtifacts = useCallback(async () => {
+    try {
+      const res = await api.get('/api/lens/crafting', { params: { limit: 200 } });
+      const body = res.data as { ok?: boolean } | null;
+      if (!body || body.ok === false) return { ok: false as const, rows: [] };
+      return { ok: true as const, rows: artifactsFromList(body) };
+    } catch {
+      return { ok: false as const, rows: [] };
+    }
+  }, []);
+
+  const registerPiece = useCallback(async (piece: { id: string; title: string; spec?: unknown }) => {
+    try {
+      const res = await api.post('/api/lens/crafting', pieceArtifactBody(piece));
+      const artifact = (res.data as { artifact?: { id?: unknown } } | null)?.artifact;
+      return typeof artifact?.id === 'string' && artifact.id ? artifact.id : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const applyPull = useCallback(async (result: Awaited<ReturnType<typeof pull>>) => {
     if (!result.ok) {
       setPhase('error');
       setLoadError(result.error);
       return;
     }
-    setRecipes(result.recipes);
     setPhase('ready');
-  }, []);
+    const listed = await pullArtifacts();
+    if (!listed.ok) {
+      setRecipes(result.recipes);
+      return;
+    }
+    let pieces = joinPieces(result.recipes, listed.rows);
+    // Backfill: pieces saved before D1 have no artifact yet. Registration
+    // is owner-scoped by construction (the recipes list is the caller's).
+    const missing = pieces.filter((p) => !p.artifactId);
+    if (missing.length > 0) {
+      let createdAny = false;
+      for (const piece of missing) {
+        const artifactId = await registerPiece({
+          id: piece.id,
+          title: piece.title,
+          spec: result.specs.get(piece.id),
+        });
+        if (artifactId) createdAny = true;
+      }
+      if (createdAny) {
+        const refreshed = await pullArtifacts();
+        if (refreshed.ok) pieces = joinPieces(result.recipes, refreshed.rows);
+      }
+    }
+    setRecipes(pieces);
+  }, [pullArtifacts, registerPiece]);
 
   const failPull = useCallback((err: unknown) => {
     setPhase('error');
@@ -60,7 +123,7 @@ export default function CraftingPage() {
   useEffect(() => {
     let cancelled = false;
     pull()
-      .then((result) => { if (!cancelled) applyPull(result); })
+      .then((result) => { if (!cancelled) void applyPull(result); })
       .catch((err) => { if (!cancelled) failPull(err); });
     return () => { cancelled = true; };
   }, [pull, applyPull, failPull]);
@@ -85,7 +148,8 @@ export default function CraftingPage() {
     setSaving(true);
     setSaveError('');
     try {
-      const res = await api.post('/api/crafting/design', pieceDesignBody(title));
+      const design = pieceDesignBody(title);
+      const res = await api.post('/api/crafting/design', design);
       const body = res.data as { ok?: boolean; error?: unknown; recipe?: { id?: unknown } };
       const id = typeof body?.recipe?.id === 'string' ? body.recipe.id : '';
       if (!body?.ok || !id) {
@@ -94,11 +158,22 @@ export default function CraftingPage() {
       }
       const listed = await api.get('/api/crafting/recipes');
       const rows = recipesFromList(listed.data);
-      setRecipes(rows);
       setPhase('ready');
       if (!rows.some((row) => row.id === id)) {
+        setRecipes(rows);
         setSaveError('Saved, but the bench did not read it back.');
         return;
+      }
+      // D1: register the piece canonically so export and publish can see
+      // it. The piece is saved either way; a failed registration is said
+      // out loud and retried by the next load's backfill.
+      const artifactId = await registerPiece({ id, title, spec: design.spec });
+      const known = recipes
+        .filter((p) => p.artifactId)
+        .map((p) => ({ id: p.artifactId as string, recipeId: p.id, published: Boolean(p.published) }));
+      setRecipes(joinPieces(rows, artifactId ? [...known, { id: artifactId, recipeId: id, published: false }] : known));
+      if (!artifactId) {
+        setNotice('Saved to the bench. Its platform record could not be created yet — it will be completed when the bench reloads.');
       }
       setName('');
       setOpen(false);
@@ -107,7 +182,27 @@ export default function CraftingPage() {
     } finally {
       setSaving(false);
     }
-  }, [name, saving]);
+  }, [name, saving, registerPiece, recipes]);
+
+  const [publishingId, setPublishingId] = useState<string | null>(null);
+
+  // D1's publish act: the piece's canonical artifact is what publish acts
+  // on (POST /api/lens/crafting/:artifactId/publish flips its visibility).
+  // A piece with no artifact yet has nothing to publish — no button.
+  const publishPiece = useCallback(async (piece: BenchPiece) => {
+    if (!piece.artifactId || publishingId) return;
+    setPublishingId(piece.id);
+    try {
+      const res = await api.post(`/api/lens/crafting/${piece.artifactId}/publish`, {});
+      const body = res.data as { ok?: boolean } | null;
+      if (!body || body.ok === false) throw new Error('publish refused');
+      setRecipes((prev) => prev.map((p) => (p.id === piece.id ? { ...p, published: true } : p)));
+    } catch {
+      setNotice('That piece could not be published. It is still on your bench.');
+    } finally {
+      setPublishingId(null);
+    }
+  }, [publishingId]);
 
   const onPrimary = useCallback(() => {
     if (!open) {
@@ -143,14 +238,29 @@ export default function CraftingPage() {
               </button>
             </div>
           )}
+          {phase === 'ready' && notice && (
+            <p role="status" className="mb-4 max-w-xl text-center text-[13px] text-zinc-400">{notice}</p>
+          )}
           {phase === 'ready' && recipes.length === 0 && !open && (
             <p className="text-[14px] text-zinc-500">The bench is clear.</p>
           )}
           {phase === 'ready' && recipes.length > 0 && (
             <ul className="w-full max-w-xl self-stretch">
               {recipes.map((row) => (
-                <li key={row.id} className="border-b border-white/10 py-3 text-[16px] text-zinc-100">
-                  {row.title}
+                <li key={row.id} className="flex items-baseline justify-between gap-4 border-b border-white/10 py-3 text-[16px] text-zinc-100">
+                  <span>{row.title}</span>
+                  {row.published ? (
+                    <span className="shrink-0 text-[12px] text-zinc-500">Published</span>
+                  ) : row.artifactId ? (
+                    <button
+                      type="button"
+                      onClick={() => void publishPiece(row)}
+                      disabled={publishingId === row.id}
+                      className="shrink-0 text-[13px] text-zinc-300 underline disabled:opacity-60"
+                    >
+                      Publish
+                    </button>
+                  ) : null}
                 </li>
               ))}
             </ul>

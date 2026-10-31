@@ -3,6 +3,9 @@
  *
  * The page loads GET /api/crafting/recipes and saves with
  * POST /api/crafting/design, then requires that same id on the next GET.
+ * D1: a saved piece is then registered as a canonical lens artifact
+ * (POST /api/lens/crafting, data.recipeId joins the two) so the shared
+ * Export and publish paths can see it.
  * It does not call the locker, favorites, character, or balance endpoints.
  */
 
@@ -119,7 +122,13 @@ describe('crafting bench', () => {
       if (url === '/api/crafting/recipes') return ok({ ok: true, recipes });
       return ok({});
     });
-    apiPost.mockImplementation((url: string, body: { name: string }) => {
+    apiPost.mockImplementation((url: string, body: { name: string; type?: string; data?: { recipeId?: string } }) => {
+      if (url === '/api/lens/crafting') {
+        // D1 canonical registration, joined to the recipe by data.recipeId.
+        expect(body.type).toBe('recipe');
+        expect(body.data?.recipeId).toBe('r-new');
+        return ok({ ok: true, artifact: { id: 'a-new' } });
+      }
       expect(url).toBe('/api/crafting/design');
       expect(body).toEqual(pieceDesignBody('Bench hook'));
       recipes = [{ id: 'r-new', title: body.name, type: 'recipe' }];
@@ -134,7 +143,8 @@ describe('crafting bench', () => {
 
     await waitFor(() => expect(getByText('Bench hook')).toBeInTheDocument());
     expect(queryByText('Piece name')).toBeNull();
-    expect(apiPost).toHaveBeenCalledTimes(1);
+    // Two posts: the design save, then the D1 canonical registration.
+    expect(apiPost).toHaveBeenCalledTimes(2);
   });
 
   it('shows the validator error and does not invent a row', async () => {
