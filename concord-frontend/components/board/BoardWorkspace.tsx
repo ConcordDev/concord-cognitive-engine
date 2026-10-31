@@ -271,7 +271,7 @@ export function BoardWorkspace() {
   useEffect(() => {
     let cancelled = false;
     boardMacro<{ reminders: WsDueReminder[] }>('due-reminders', { withinHours: 48 }).then((r) => {
-      if (!cancelled && r.ok && r.result) setReminders(r.result.reminders);
+      if (!cancelled && r.ok && r.result) setReminders(Array.isArray(r.result.reminders) ? r.result.reminders : []);
     });
     return () => { cancelled = true; };
   }, [boards.length, board?.cards]);

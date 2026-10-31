@@ -81,6 +81,7 @@ function freshBoard(): AnyRec {
 
 let board: AnyRec;
 let reminders: AnyRec[];
+let remindersOmitted = false; // due-reminders answers ok with NO reminders field
 const calls: { name: string; params: AnyRec }[] = [];
 
 function ok(result: unknown) {
@@ -101,6 +102,7 @@ function installFake() {
       case 'board-dashboard':
         return Promise.resolve(ok({ boards: 1, totalCards: board.cards.length, overdue: 1, withChecklists: 0 }));
       case 'due-reminders':
+        if (remindersOmitted) return Promise.resolve(ok({}));
         return Promise.resolve(ok({ reminders, overdueCount: reminders.filter((r) => r.overdue).length, dueSoonCount: reminders.filter((r) => !r.overdue).length, withinHours: 48 }));
       case 'card-template-list':
         return Promise.resolve(ok({ templates: board.templates }));
@@ -209,6 +211,7 @@ beforeEach(() => {
   calls.length = 0;
   board = freshBoard();
   reminders = [];
+  remindersOmitted = false;
   installFake();
 });
 
@@ -309,7 +312,19 @@ describe('board rework — workspace', () => {
     await waitFor(() =>
       expect(calledWith('card-create-from-template')[0]?.params).toMatchObject({ templateId: 'tpl_9', columnId: 'col_todo' })
     );
-    await waitFor(() => expect(utils.getByText('Weekly report')).toBeInTheDocument());
+    // 'Weekly report' is legitimately on screen twice: the template's <option> in the picker and the
+    // new card. Assert the card (a non-<option> match), not a unique text.
+    await waitFor(() =>
+      expect(utils.getAllByText('Weekly report').filter((el) => el.tagName !== 'OPTION').length).toBeGreaterThan(0)
+    );
+  });
+
+  it('a due-reminders response with no reminders field does not white-screen the board', async () => {
+    remindersOmitted = true;
+    const utils = await renderWorkspace();
+    // The board still renders (a card from the seeded board is on screen) and shows no reminders strip.
+    await waitFor(() => expect(utils.getAllByText(/Ship the audit|Sprint/i).length).toBeGreaterThan(0));
+    expect(utils.queryByText(/overdue/)).not.toBeInTheDocument();
   });
 
   it('shows the due-reminders strip from board.due-reminders data', async () => {
@@ -368,7 +383,8 @@ describe('board rework — card detail modal', () => {
       expect(calledWith('card-comment-update')[0]?.params).toMatchObject({ commentId: 'cmt_mine', text: 'my edited note' })
     );
     await waitFor(() => expect(utils.getByText('my edited note')).toBeInTheDocument());
-    expect(utils.getByText(/edited/)).toBeInTheDocument();
+    // The "· edited" marker, not the comment body (which also contains the word "edited").
+    expect(utils.getByText(/· edited$/)).toBeInTheDocument();
   });
 
   it('archives the card through card-archive and offers restore when archived', async () => {
