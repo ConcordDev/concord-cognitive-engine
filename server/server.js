@@ -14513,6 +14513,55 @@ function log(type, message, meta={}, actorUserId=null) {
   return entry;
 }
 
+// ---- Lens activity recording (§5 convergence item 4, fix for the #1906
+// arm FAIL) ----
+// The events feed (/api/events/paginated) assembles DTU timeline rows,
+// audit rows (auth/economy/admin only), STATE.logs and the economy
+// ledger — ordinary lens actions wrote to none of them, so every lens's
+// Activity panel read empty for members even after full working
+// sessions (R3 arm verdict 0/12 on #1906). This recorder is the write
+// side: the /api/lens/run handler calls it after a successful,
+// non-internal dispatch on BOTH dispatch branches, stamping one
+// STATE.logs row with the acting user's id. The route's Source 3 turns
+// such rows into feed rows visible to their actor (type = the lens
+// domain, which the shared ActivityTimeline matches to the lens and
+// classifies as "You"). The object label is best-effort from the call
+// or its result (name/title/label, then a first line of text input) —
+// never fabricated: a call carrying no object names the action alone.
+// Recording must never break a lens run: every failure is swallowed.
+function _lensActivityObjectLabel(input, result) {
+  const clean = (v) => (typeof v === "string" ? v.trim().replace(/\s+/g, " ").slice(0, 80) : "");
+  const fromObj = (o) => {
+    if (!o || typeof o !== "object") return "";
+    for (const k of ["name", "title", "label"]) { const s = clean(o[k]); if (s) return s; }
+    return "";
+  };
+  let label = fromObj(input) || fromObj(result);
+  if (!label && result && typeof result === "object") {
+    for (const k of ["experiment", "artifact", "item", "created", "entry", "record"]) {
+      label = fromObj(result[k]);
+      if (label) break;
+    }
+  }
+  if (!label) {
+    const t = clean(input?.text);
+    if (t) label = t.split("\n")[0].slice(0, 80);
+  }
+  return label;
+}
+
+function _recordLensActivity(domain, action, ctx, input, result) {
+  try {
+    const userId = ctx?.userId || ctx?.actor?.userId || null;
+    if (!userId || userId === "anon" || userId === "system") return;
+    if (ctx?.internal === true || ctx?.actor?.internal === true) return;
+    if (typeof domain !== "string" || !domain || typeof action !== "string" || !action) return;
+    const verb = action.replace(/[-_]+/g, " ").trim();
+    const label = _lensActivityObjectLabel(input, result);
+    log(domain, label ? `${verb}: ${label}` : verb, { domain, action }, userId);
+  } catch { /* activity recording must never break a lens run */ }
+}
+
 
 // ===== CHICKEN2 CORE (Reality Substrate + Continuity + Safe Emergence) =====
 function _c2now(){ return Date.now(); }
@@ -51011,6 +51060,7 @@ app.post("/api/lens/run", async (req, res) => {
       // use (already mirrored to a connected Godot client — no new room).
       const _verdictEmit = _deriveConkayVerdictEmit(domain, action, result);
       if (_verdictEmit) emitMacroLife("conkay:verdict", _verdictEmit);
+      if (shaped.body.ok !== false) _recordLensActivity(domain, action, ctx, rest, result);
       return res.status(shaped.status).json(shaped.body);
     }
     // Fall back to MACROS (canonical macro registry: register(domain, name, ...)).
@@ -51030,6 +51080,7 @@ app.post("/api/lens/run", async (req, res) => {
       emitMacroLife("macro:completed", { ok: shaped.body.ok !== false, ms: Date.now() - _lifeStartedAt });
       const _verdictEmit = _deriveConkayVerdictEmit(domain, action, result);
       if (_verdictEmit) emitMacroLife("conkay:verdict", _verdictEmit);
+      if (shaped.body.ok !== false) _recordLensActivity(domain, action, ctx, rest, result);
       return res.status(shaped.status).json(shaped.body);
     }
     // No registered macro for this (domain, action).
@@ -59965,8 +60016,18 @@ app.get("/api/events/paginated", (req, res) => {
       } catch (_) { /* table may not exist */ }
     }
 
-    // Source 3: Recent structured logs
-    for (const logEntry of (STATE.logs || []).slice(-200)) {
+    // Source 3: structured logs. The recency slice alone churns
+    // user-attributed rows (lens activity, stamped with the actor's
+    // id) out of the feed under system noise on a busy log, so
+    // attributed rows are collected from the whole store first
+    // (filter-before-slice, bounded by the store's 2000-entry cap);
+    // unattributed rows keep the last-200 window exactly as before.
+    const _allLogs = STATE.logs || [];
+    const _logWindow = new Set(_allLogs.slice(-200));
+    for (const e of _allLogs) {
+      if (e && (e.userId || e.meta?.userId)) _logWindow.add(e);
+    }
+    for (const logEntry of _logWindow) {
       const parties = [logEntry.userId, logEntry.meta?.userId];
       const sessOwner = logEntry.meta?.sessionId ? sessionOwner(logEntry.meta.sessionId) : null;
       if (sessOwner) parties.push(sessOwner);
