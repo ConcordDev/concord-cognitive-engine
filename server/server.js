@@ -11,6 +11,10 @@
  * @see ../README.md for architecture overview
  */
 
+// Must stay the first import: it wraps node:fs's sync calls before the later modules bind them,
+// so a blocking syscall that stalls the event loop is named (slow_sync_io / event_loop_block.syncIo).
+import { installSlowSyncIoOnce, setSlowSyncIoReporter, slowSyncIoSince } from "./lib/slow-sync-io.js";
+installSlowSyncIoOnce();
 import expressRateLimit from "express-rate-limit";
 import { podPick as _podPick } from "./lib/pod-profile.js";
 import { createDtuQualityService as _createDtuQualityService, dtuQualityMode as _dtuQualityMode } from "./lib/dtu-quality/service.js";
@@ -3910,6 +3914,7 @@ function structuredLog(level, event, data = {}) {
 // Inject structuredLog into the http-errors helper so 5xx leak responses
 // log through the same pipeline as the rest of the server. Until this
 // runs, the helper falls back to console.error — safe but louder.
+setSlowSyncIoReporter((e) => structuredLog("warn", "slow_sync_io", { fn: e.fn, target: e.target, ms: e.ms, frames: e.frames }));
 configureHttpErrorLogger(structuredLog);
 
 // INC-67: reject a template FRONTEND_URL before any signing link or redirect
@@ -77948,6 +77953,8 @@ if (process.env.CONCORD_LOOP_BLOCK_ALERT !== "0") {
         _lastDriftAlertAt = now;
         const mem = process.memoryUsage();
         const jobs = loopJobs.jobsInWindow(Math.max(blockedMs, _DRIFT_RATE_LIMIT_MS) + _DRIFT_INTERVAL_MS, now, 8);
+        // Sync fs calls >=150 ms inside the stuck window (a blocking syscall leaves no job or timer tag).
+        const _syncIo = slowSyncIoSince(now - blockedMs - _DRIFT_INTERVAL_MS).map((e) => ({ fn: e.fn, target: e.target, ms: e.ms, at: e.frames[0] || null }));
         structuredLog("warn", "event_loop_block", {
           blockedMs,
           jobs,
@@ -77957,6 +77964,7 @@ if (process.env.CONCORD_LOOP_BLOCK_ALERT !== "0") {
           heapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
           uptimeS: Math.round(process.uptime()),
           ...(_blockDetail || {}),
+          ...(_syncIo.length ? { syncIo: _syncIo } : {}),
         });
       } catch { /* probe must never throw */ }
     }, _DRIFT_INTERVAL_MS);
