@@ -6,15 +6,23 @@
 // for 7-13 s+ each time. A fresh worker is spawned per pass and terminated afterwards (hlm-offthread.js), so
 // it holds no memory between passes.
 //
-//   in : { dtus: [{ id, tags, parentId, domain, tier, createdAt, authority, human }] }   (slim projection)
+//   in : { chunk: [slim DTUs] } x N, then { run: true }   (or one legacy { dtus: [...] })
+//        slim DTU = { id, tags, parentId, domain, tier, createdAt, authority, human }
 //   out: { ok: true, pass } | { ok: false, error }
 
 import { parentPort } from "node:worker_threads";
 import { computeHLMPass } from "../emergent/hlm-engine.js";
 
-parentPort.once("message", (msg) => {
+// Input arrives either as one legacy message { dtus } or, from hlm-offthread.js, as { chunk } messages followed by
+// { run: true } — chunked so the SENDER never holds its event loop for the structured clone of the whole store
+// (postMessage serialises synchronously: ~0.5 s per 600k DTUs measured).
+const received = [];
+parentPort.on("message", (msg) => {
   try {
-    const pass = computeHLMPass(Array.isArray(msg?.dtus) ? msg.dtus : []);
+    if (Array.isArray(msg?.chunk)) { for (const d of msg.chunk) received.push(d); return; }
+    if (!msg?.run && !Array.isArray(msg?.dtus)) return;
+    const dtus = Array.isArray(msg?.dtus) ? msg.dtus : received;
+    const pass = computeHLMPass(dtus);
     parentPort.postMessage(pass?.ok ? { ok: true, pass } : { ok: false, error: pass?.error || "hlm_pass_failed" });
   } catch (e) {
     parentPort.postMessage({ ok: false, error: String(e?.message || e) });

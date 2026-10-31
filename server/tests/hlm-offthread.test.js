@@ -68,6 +68,15 @@ describe("runHLMPassOffThread", () => {
     assert.ok(maxGap < syncMs / 3);
   });
 
+  it("sends the input in chunks (result identical to the single-message result; every chunk reaches the worker)", async () => {
+    const dtus = fixture(900);
+    const inProc = computeHLMPass(dtus);
+    const chunked = await runHLMPassOffThread(dtus, { postChunk: 70 }); // 13 messages
+    assert.equal(chunked.ok, true);
+    assert.deepEqual(norm(chunked), norm(inProc));
+    assert.equal(chunked.summary.totalDtus, 900, "no DTU lost across chunk boundaries");
+  });
+
   it("projection yields to the event loop between chunks", async () => {
     // A competing setImmediate chain can only advance when projectDtus hands the loop back.
     let running = true; let interleaved = 0;
