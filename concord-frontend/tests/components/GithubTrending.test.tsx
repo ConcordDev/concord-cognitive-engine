@@ -3,8 +3,10 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
+const lensRunMock = vi.fn();
 vi.mock('@/lib/api/client', () => ({
   apiHelpers: { dtus: { create: vi.fn() } },
+  lensRun: (...args: unknown[]) => lensRunMock(...args),
 }));
 
 vi.mock('@/store/ui', () => ({
@@ -28,7 +30,7 @@ import { GithubTrending } from '@/components/code/GithubTrending';
 
 function repo(overrides: Partial<{
   id: number; full_name: string; description: string; html_url: string;
-  stargazers_count: number; forks_count: number; watchers_count: number;
+  stargazers_count: number; forks_count: number;
   language: string; topics: string[]; pushed_at: string;
 }> = {}) {
   return {
@@ -38,7 +40,6 @@ function repo(overrides: Partial<{
     html_url: 'https://github.com/concorddev/concord-cognitive-engine',
     stargazers_count: 1234,
     forks_count: 56,
-    watchers_count: 78,
     language: 'JavaScript',
     topics: ['ai', 'os', 'agents', 'llm', 'sim', 'extra1', 'extra2'],
     pushed_at: '2026-01-01T00:00:00Z',
@@ -52,78 +53,94 @@ function renderTrending() {
   return render(<QueryClientProvider client={qc}>{<GithubTrending />}</QueryClientProvider>);
 }
 
+const ok = (items: unknown[], extra: Record<string, unknown> = {}) => ({ data: { ok: true, result: { items, ...extra }, error: null } });
+
 describe('GithubTrending', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    vi.stubGlobal('fetch', vi.fn());
+    lensRunMock.mockReset();
   });
 
   afterEach(() => {
     cleanup();
-    vi.unstubAllGlobals();
   });
 
   it('shows a loading state before the first response lands', () => {
-    (fetch as ReturnType<typeof vi.fn>).mockReturnValue(new Promise(() => {}));
+    lensRunMock.mockReturnValue(new Promise(() => {}));
     renderTrending();
     expect(screen.getByText(/Searching trending repos/i)).toBeInTheDocument();
   });
 
-  it('hits the GitHub search API with a "week" default window and renders results', async () => {
-    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, json: async () => ({ items: [repo()] }) });
+  it('asks the server (repos.github-trending) for a 7-day window by default and renders results', async () => {
+    lensRunMock.mockResolvedValue(ok([repo()]));
     renderTrending();
     await waitFor(() => expect(screen.getByText('concorddev/concord-cognitive-engine')).toBeInTheDocument());
-    expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('https://api.github.com/search/repositories?q='),
-      expect.objectContaining({ headers: { Accept: 'application/vnd.github+json' } }),
-    );
+    expect(lensRunMock).toHaveBeenCalledWith('repos', 'github-trending', { sinceDays: 7, lang: undefined });
     expect(screen.getByText('1,234')).toBeInTheDocument();
     expect(screen.getByText('56')).toBeInTheDocument();
-    expect(screen.getByText('78')).toBeInTheDocument();
     // topics capped at 6 of the 7 provided
     expect(screen.getAllByText(/^(ai|os|agents|llm|sim|extra1|extra2)$/)).toHaveLength(6);
   });
 
-  it('shows an error banner when the GitHub API responds non-OK', async () => {
-    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false, status: 403, json: async () => ({}) });
+  it('does not crash on a row shaped like the real server trim (no watchers_count) or missing counts', async () => {
+    // server/lib/github-feed-sources.js TRIM keeps stargazers/forks/open_issues but NOT watchers_count;
+    // rendering r.watchers_count.toLocaleString() threw on the first row (Code lens "GitHub trending").
+    const noForks = repo({ id: 2, full_name: 'a/no-forks' });
+    delete (noForks as Partial<typeof noForks>).forks_count;
+    const noStars = repo({ id: 3, full_name: 'a/no-stars' });
+    delete (noStars as Partial<typeof noStars>).stargazers_count;
+    lensRunMock.mockResolvedValue(ok([repo({ id: 1 }), noForks, noStars]));
     renderTrending();
-    await waitFor(() => expect(screen.getByText(/GitHub unreachable/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('a/no-forks')).toBeInTheDocument());
+    expect(screen.getByText('a/no-stars')).toBeInTheDocument();
+    expect(screen.getByText('concorddev/concord-cognitive-engine')).toBeInTheDocument();
+    // no watchers column at all (it only duplicated stars on search results)
+    expect(screen.queryByText('78')).not.toBeInTheDocument();
   });
 
-  it('re-queries with a language filter in the query string when a language is picked', async () => {
-    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, json: async () => ({ items: [] }) });
+  it('shows an error banner when the server reports GitHub unavailable', async () => {
+    lensRunMock.mockResolvedValue({ data: { ok: false, result: null, error: 'github_unavailable' } });
     renderTrending();
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByText(/GitHub results unavailable/i)).toBeInTheDocument());
+  });
+
+  it('shows the stale banner when the server serves cached results', async () => {
+    lensRunMock.mockResolvedValue(ok([repo()], { stale: true, fetchedAt: 1760000000000 }));
+    renderTrending();
+    await waitFor(() => expect(screen.getByText(/Showing cached GitHub results/i)).toBeInTheDocument());
+  });
+
+  it('re-queries with a language filter when a language is picked', async () => {
+    lensRunMock.mockResolvedValue(ok([]));
+    renderTrending();
+    await waitFor(() => expect(lensRunMock).toHaveBeenCalledTimes(1));
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Rust' } });
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
-    const [url] = (fetch as ReturnType<typeof vi.fn>).mock.calls[1];
-    expect(decodeURIComponent(url as string)).toContain('language:Rust');
+    await waitFor(() => expect(lensRunMock).toHaveBeenCalledTimes(2));
+    expect(lensRunMock.mock.calls[1]).toEqual(['repos', 'github-trending', { sinceDays: 7, lang: 'Rust' }]);
   });
 
   it('re-queries with a shorter window when "today" is picked, and highlights it', async () => {
-    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, json: async () => ({ items: [] }) });
+    lensRunMock.mockResolvedValue(ok([]));
     renderTrending();
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(lensRunMock).toHaveBeenCalledTimes(1));
     fireEvent.click(screen.getByRole('button', { name: 'today' }));
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(lensRunMock).toHaveBeenCalledTimes(2));
+    expect(lensRunMock.mock.calls[1][2]).toMatchObject({ sinceDays: 1 });
     expect(screen.getByRole('button', { name: 'today' })).toHaveClass('bg-cyan-500/20');
   });
 
   it('renders the save-as-DTU affordance once results exist, not before', async () => {
-    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, json: async () => ({ items: [] }) });
+    lensRunMock.mockResolvedValue(ok([]));
     renderTrending();
-    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    await waitFor(() => expect(lensRunMock).toHaveBeenCalled());
     expect(screen.queryByTitle(/save/i)).not.toBeInTheDocument();
-    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, json: async () => ({ items: [repo()] }) });
+    lensRunMock.mockResolvedValue(ok([repo()]));
     fireEvent.click(screen.getByRole('button', { name: '30d' }));
     await waitFor(() => expect(screen.getByText('concorddev/concord-cognitive-engine')).toBeInTheDocument());
   });
 
   it('omits the description paragraph and topics row when a repo has neither', async () => {
-    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      json: async () => ({ items: [repo({ description: undefined, topics: undefined, language: undefined })] }),
-    });
+    lensRunMock.mockResolvedValue(ok([repo({ description: undefined, topics: undefined, language: undefined })]));
     renderTrending();
     await waitFor(() => expect(screen.getByText('concorddev/concord-cognitive-engine')).toBeInTheDocument());
     const link = screen.getByText('concorddev/concord-cognitive-engine').closest('a')!;
