@@ -576,46 +576,51 @@ function _recordPersist(reason, persisted, logged) {
   _qualiaPersistMetrics.lastAt = Date.now();
 }
 
-export function persistQualiaState(db) {
-  if (!db) { _recordPersist("no_db", 0, 0); return { ok: false, persisted: 0, logged: 0, reason: "no_db" }; }
-  const engine = getEngine();
-  if (!engine) { _recordPersist("no_engine", 0, 0); return { ok: false, persisted: 0, logged: 0, reason: "no_engine" }; }
-  let persisted = 0;
-  let logged = 0;
-  try {
-    const snapshot =
-      (typeof engine.snapshot === "function" && engine.snapshot()) ||
-      (typeof engine.dump === "function" && engine.dump()) ||
-      null;
-    if (!snapshot || typeof snapshot !== "object") {
-      _recordPersist("no_snapshot_export", 0, 0);
-      return { ok: true, persisted: 0, logged: 0, reason: "no_snapshot_export" };
-    }
-    const logStmt = db.prepare(
-      `INSERT INTO qualia_log (id, entity_id, channel, prev_value, new_value, delta, source)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    );
-    for (const entityId of Object.keys(snapshot)) {
+// Statements are prepared ONCE per db handle. The old loop ran db.prepare(...) twice per channel (a SELECT and
+// the UPSERT) and committed each write on its own: at ~18k channels that is ~36k Statement objects of garbage
+// plus ~18k autocommits, a 0.8-1.3 s synchronous block (measured; ~2.2 s at the size seen live).
+// Monotonic suffix so two deltas logged in the same millisecond can never collide on the log id (the old
+// ms+random(1e6) id could, and the collision was swallowed as a "per-channel failure", silently dropping the row).
+let _qualiaLogSeq = 0;
+const _qualiaStmts = new WeakMap();
+function _stmtsFor(db) {
+  let st = _qualiaStmts.get(db);
+  if (!st) {
+    st = {
+      prev: db.prepare(`SELECT value FROM qualia_state WHERE entity_id = ? AND channel = ?`),
+      upsert: db.prepare(
+        `INSERT INTO qualia_state (entity_id, channel, value, last_updated_at)
+         VALUES (?, ?, ?, unixepoch())
+         ON CONFLICT(entity_id, channel) DO UPDATE SET value = excluded.value, last_updated_at = excluded.last_updated_at`,
+      ),
+      log: db.prepare(
+        `INSERT INTO qualia_log (id, entity_id, channel, prev_value, new_value, delta, source)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ),
+    };
+    _qualiaStmts.set(db, st);
+  }
+  return st;
+}
+
+/** Persist one chunk of entities in a single transaction. Same per-channel semantics as before. */
+function _persistEntities(db, engine, snapshot, entityIds, acc) {
+  const st = _stmtsFor(db);
+  const tx = db.transaction((ids) => {
+    for (const entityId of ids) {
       const channels = snapshot[entityId];
       if (!channels || typeof channels !== "object") continue;
       for (const channel of Object.keys(channels)) {
         const value = Number(channels[channel]);
         if (!Number.isFinite(value)) continue;
         try {
-          const prevRow = db.prepare(
-            `SELECT value FROM qualia_state WHERE entity_id = ? AND channel = ?`,
-          ).get(entityId, channel);
-          const prevValue = prevRow?.value;
-          db.prepare(
-            `INSERT INTO qualia_state (entity_id, channel, value, last_updated_at)
-             VALUES (?, ?, ?, unixepoch())
-             ON CONFLICT(entity_id, channel) DO UPDATE SET value = excluded.value, last_updated_at = excluded.last_updated_at`,
-          ).run(entityId, channel, value);
-          persisted++;
+          const prevValue = st.prev.get(entityId, channel)?.value;
+          st.upsert.run(entityId, channel, value);
+          acc.persisted++;
           if (prevValue !== undefined && Math.abs(value - prevValue) >= 0.05) {
-            const id = `ql_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
-            logStmt.run(id, entityId, channel, prevValue, value, value - prevValue, "qualia-persist-tick");
-            logged++;
+            const id = `ql_${Date.now()}_${(_qualiaLogSeq = (_qualiaLogSeq + 1) % 1e9)}_${Math.floor(Math.random() * 1e6)}`;
+            st.log.run(id, entityId, channel, prevValue, value, value - prevValue, "qualia-persist-tick");
+            acc.logged++;
           }
         } catch { /* per-channel failure is non-fatal */ }
       }
@@ -624,11 +629,66 @@ export function persistQualiaState(db) {
       // snapshotQualia() was previously never called by anything.
       try { engine.snapshotQualia?.(entityId); } catch { /* non-fatal */ }
     }
-    _recordPersist(persisted > 0 ? "ok" : "empty", persisted, logged);
-    return { ok: true, persisted, logged };
+  });
+  tx(entityIds);
+}
+
+function _qualiaSnapshot(engine) {
+  const snapshot =
+    (typeof engine.snapshot === "function" && engine.snapshot()) ||
+    (typeof engine.dump === "function" && engine.dump()) ||
+    null;
+  return snapshot && typeof snapshot === "object" ? snapshot : null;
+}
+
+export const QUALIA_PERSIST_CHUNK = 200;
+
+export function persistQualiaState(db, { chunk = QUALIA_PERSIST_CHUNK } = {}) {
+  if (!db) { _recordPersist("no_db", 0, 0); return { ok: false, persisted: 0, logged: 0, reason: "no_db" }; }
+  const engine = getEngine();
+  if (!engine) { _recordPersist("no_engine", 0, 0); return { ok: false, persisted: 0, logged: 0, reason: "no_engine" }; }
+  const acc = { persisted: 0, logged: 0 };
+  try {
+    const snapshot = _qualiaSnapshot(engine);
+    if (!snapshot) {
+      _recordPersist("no_snapshot_export", 0, 0);
+      return { ok: true, persisted: 0, logged: 0, reason: "no_snapshot_export" };
+    }
+    const ids = Object.keys(snapshot);
+    for (let i = 0; i < ids.length; i += chunk) _persistEntities(db, engine, snapshot, ids.slice(i, i + chunk), acc);
+    _recordPersist(acc.persisted > 0 ? "ok" : "empty", acc.persisted, acc.logged);
+    return { ok: true, persisted: acc.persisted, logged: acc.logged };
   } catch (e) {
-    _recordPersist("exception", persisted, logged);
-    return { ok: false, persisted, logged, error: e?.message };
+    _recordPersist("exception", acc.persisted, acc.logged);
+    return { ok: false, persisted: acc.persisted, logged: acc.logged, error: e?.message };
+  }
+}
+
+/**
+ * Same as persistQualiaState but yields to the event loop between chunks, so a large engine is many short
+ * main-thread turns instead of one long one (the heartbeat uses this).
+ */
+export async function persistQualiaStateAsync(db, { chunk = QUALIA_PERSIST_CHUNK } = {}) {
+  if (!db) { _recordPersist("no_db", 0, 0); return { ok: false, persisted: 0, logged: 0, reason: "no_db" }; }
+  const engine = getEngine();
+  if (!engine) { _recordPersist("no_engine", 0, 0); return { ok: false, persisted: 0, logged: 0, reason: "no_engine" }; }
+  const acc = { persisted: 0, logged: 0 };
+  try {
+    const snapshot = _qualiaSnapshot(engine);
+    if (!snapshot) {
+      _recordPersist("no_snapshot_export", 0, 0);
+      return { ok: true, persisted: 0, logged: 0, reason: "no_snapshot_export" };
+    }
+    const ids = Object.keys(snapshot);
+    for (let i = 0; i < ids.length; i += chunk) {
+      _persistEntities(db, engine, snapshot, ids.slice(i, i + chunk), acc);
+      if (i + chunk < ids.length) await new Promise((r) => setImmediate(r));
+    }
+    _recordPersist(acc.persisted > 0 ? "ok" : "empty", acc.persisted, acc.logged);
+    return { ok: true, persisted: acc.persisted, logged: acc.logged };
+  } catch (e) {
+    _recordPersist("exception", acc.persisted, acc.logged);
+    return { ok: false, persisted: acc.persisted, logged: acc.logged, error: e?.message };
   }
 }
 
