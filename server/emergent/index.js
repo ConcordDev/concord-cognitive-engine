@@ -165,6 +165,9 @@ import {
   checkEmergentLensAccess, executeEmergentLensAction,
   getLensIntegrationMetrics,
 } from "./lens-integration.js";
+import {
+  GOVERNANCE_ROLES, listLensProposals, decideLensProposal,
+} from "../lib/emergent-proposals.js";
 
 // ── Shadow Graph Upgrade ──────────────────────────────────────────────────────
 
@@ -237,9 +240,14 @@ import {
 
 import {
   registerPeer as registerFedPeer, receiveHeartbeat, buildHeartbeat,
-  buildSyncPackage, receiveSyncPackage,
+  buildSyncPackage, receiveSyncPackage, receiveProposal,
   detectStalePeers, getFederationPeeringMetrics,
 } from "./federation-peering.js";
+import {
+  sendHeartbeat as sendFedHeartbeat,
+  sendSync as sendFedSync,
+  sendProposal as sendFedProposal,
+} from "../lib/federation-peering-transport.js";
 
 // ── User Feedback Loop ───────────────────────────────────────────────────────
 
@@ -1485,18 +1493,55 @@ function init({ register, STATE, helpers }) {
   }, { description: "Check if emergent can execute a lens action", public: true });
 
   register("emergent", "lens.emergentAction", (_ctx, input = {}) => {
+    // Internal-only. Mutating requests are persisted as governance
+    // proposals, so an HTTP caller here could file unbounded proposals
+    // under any emergent's name. Server-side emergent processes run with
+    // an internal ctx and no reqMeta; an emergent actor's own id wins over
+    // input.emergentId so a proposal can't be filed under another name.
+    const internal = _ctx?.internal === true || _ctx?.actor?.internal === true;
+    if (!internal || _ctx?.reqMeta) return { ok: false, error: "internal_only" };
+    const actorId = String(_ctx?.actor?.userId || "");
+    const emergentId = actorId.startsWith("emergent:") ? actorId.slice("emergent:".length) : input.emergentId;
+    if (!emergentId) return { ok: false, error: "emergentId_required" };
     return executeEmergentLensAction(STATE, {
-      emergentId: input.emergentId,
+      emergentId,
       artifactId: input.artifactId,
       action: input.action,
       params: input.params,
       justification: input.justification,
+      submittedBy: actorId || null,
     });
-  }, { description: "Execute lens action on behalf of emergent agent", public: false });
+  }, { description: "Execute lens action on behalf of emergent agent (internal callers only)", public: false });
 
   register("emergent", "lens.integrationMetrics", (_ctx) => {
     return getLensIntegrationMetrics();
   }, { description: "Get lens integration metrics", public: true });
+
+  register("emergent", "lens.proposals", (_ctx, input = {}) => {
+    const role = _ctx?.actor?.role || null;
+    if (!GOVERNANCE_ROLES.has(role)) return { ok: false, error: "not_governance_role" };
+    const proposals = listLensProposals(STATE, { status: input.status });
+    return { ok: true, proposals, count: proposals.length };
+  }, { description: "List emergent lens-action proposals in the governance queue (governance roles only)", public: false });
+
+  register("emergent", "lens.decideProposal", (_ctx, input = {}) => {
+    const actor = _ctx?.actor || {};
+    const decided = decideLensProposal(STATE, input.proposalId, {
+      decision: input.decision,
+      decidedBy: actor.userId || null,
+      decidedByRole: actor.role || null,
+      internal: _ctx?.internal === true || actor.internal === true,
+    });
+    if (!decided.ok) return decided;
+    if (decided.proposal.status === "approved") {
+      // No server-side apply path is wired yet: applyEmergentLensProposal
+      // needs the server's async macro runner, which the emergent module
+      // does not receive. An approved proposal rests at "approved" — a
+      // visible state, never a silent drop or a pretend success.
+      return { ...decided, apply: { live: false, note: "Approved. Automatic apply is not wired yet; the proposal stays 'approved' until it is." } };
+    }
+    return decided;
+  }, { description: "Approve or reject an emergent lens-action proposal (human governance roles only; emergents can never decide)", public: false });
 
   // ══════════════════════════════════════════════════════════════════════════
   // SHADOW GRAPH — unified access, activation, conversation, promotion
@@ -1735,6 +1780,22 @@ function init({ register, STATE, helpers }) {
   register("emergent", "federation.receiveSync", (_ctx, input = {}) => {
     return receiveSyncPackage(STATE, input.peerId, input.package);
   }, { description: "Receive DTU sync package from a peer", public: false });
+
+  register("emergent", "federation.receiveProposal", (_ctx, input = {}) => {
+    return receiveProposal(STATE, input.peerId, input.proposal, input.signature);
+  }, { description: "Receive a governance proposal from a peer", public: false });
+
+  register("emergent", "federation.sendHeartbeat", async (_ctx, input = {}) => {
+    return sendFedHeartbeat(STATE, input.selfPeerId || process.env.CONCORD_PEER_ID, input.peerId);
+  }, { description: "Exchange heartbeats with a peer over HTTP (federation peering transport)", public: false });
+
+  register("emergent", "federation.sendSync", async (_ctx, input = {}) => {
+    return sendFedSync(STATE, input.selfPeerId || process.env.CONCORD_PEER_ID, input.peerId, { dtuIds: input.dtuIds, limit: input.limit });
+  }, { description: "Deliver a DTU sync package to a peer over HTTP (federation peering transport)", public: false });
+
+  register("emergent", "federation.sendProposal", async (_ctx, input = {}) => {
+    return sendFedProposal(STATE, input.selfPeerId || process.env.CONCORD_PEER_ID, input.peerId, input.proposal);
+  }, { description: "Deliver a governance proposal to a peer over HTTP (federation peering transport)", public: false });
 
   register("emergent", "federation.stalePeers", (_ctx) => {
     return detectStalePeers(STATE);

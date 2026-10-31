@@ -31,12 +31,12 @@
 | `currency-convert` | `{from, to, amount, rate, converted, date, source}` | DESIGNED (`TripPlannerPanel`) | DESIGNED — Destination Reference tab |
 | `trip-create` | `{trip}` | DESIGNED, but via a component (`TravelTripsPanel`) duplicating a SECOND, disconnected trip system in the page itself | DESIGNED — single trip workspace (`TripWorkspaceSection` → `TripWorkspace`) |
 | `trip-list` | `{trips[], count}` | DESIGNED (duplicated, see above) | DESIGNED — My Trips tab |
-| `trip-update` | `{trip}` | UNSURFACED (no caller anywhere in the travel components) | UNSURFACED — no rename/notes-edit UI exists yet; flagged below (not a rebuild blocker, see checklist) |
+| `trip-update` | `{trip}` | UNSURFACED (no caller anywhere in the travel components) | UNSURFACED — no rename/notes-edit UI exists yet; flagged below (not a rebuild blocker, see checklist) **[CORRECTED 2026-10-28: now wired — `TripWorkspace.tsx:313` calls `trip-update` |.]**
 | `trip-delete` | `{deleted}` | DESIGNED (duplicated) | DESIGNED — My Trips tab |
 | `trip-detail` | `{trip, itineraryCount, bookings[], bookedCost, checklistOpen}` | UNSURFACED (no caller — `TripWorkspace` composes the same data from itinerary-list/booking-list/checklist-list directly instead) | UNSURFACED — harmless, the equivalent view is assembled from the other real macros already surfaced |
 | `itinerary-add` | `{item}` | UNSURFACED in `TripWorkspace` (only `TravelTripsPanel`'s separate itinerary form called it) | DESIGNED — Itinerary tab (moved into `TripWorkspace`) |
 | `itinerary-list` | `{items[], byDay{}, count}` | DESIGNED (`TripWorkspace` Map tab, read-only) | DESIGNED — Itinerary + Map tabs |
-| `itinerary-update` | `{item}` | UNSURFACED (no caller anywhere) | UNSURFACED — flagged below (edit-in-place, not just add/delete) |
+| `itinerary-update` | `{item}` | UNSURFACED (no caller anywhere) | UNSURFACED — flagged below (edit-in-place, not just add/delete) **[CORRECTED 2026-10-28: now wired — `TripWorkspace.tsx:357` calls `itinerary-update`; `budget-set` below is likewise wired at `TripWorkspace.tsx:533` |.]**
 | `itinerary-delete` | `{deleted}` | DESIGNED (`TravelTripsPanel` only) | DESIGNED — Itinerary tab |
 | `place-add` | `{place}` | DESIGNED (`TravelExplorePanel`) | DESIGNED — My Trips → Explore sub-tab |
 | `place-list` | `{places[], count}` | DESIGNED | DESIGNED |
@@ -51,7 +51,7 @@
 | `price-watch-list` | `{watches[], count, triggered}` | DESIGNED | DESIGNED |
 | `price-watch-update` | `{watch}` | DESIGNED | DESIGNED |
 | `price-watch-delete` | `{deleted}` | DESIGNED | DESIGNED |
-| `budget-set` | `{budget}` | **UNSURFACED entirely** — no component anywhere called this; `budget-summary`/`budget-breakdown` are read-only views of a budget nobody could ever set | DESIGNED — new "Planned budget by category" form in the Budget tab |
+| `budget-set` | `{budget}` | **UNSURFACED entirely** — no component anywhere called this; `budget-summary`/`budget-breakdown` are read-only views of a budget nobody could ever set **[CORRECTED 2026-10-28: now wired — `TripWorkspace.tsx:533` calls `budget-set` |.]** DESIGNED — new "Planned budget by category" form in the Budget tab |
 | `budget-summary` | `{categories, planned, booked, remaining, overBudget}` | DESIGNED (`TravelTripsPanel` only, superseded by `budget-breakdown`) | superseded by `budget-breakdown` (same data, richer) — not separately re-wired |
 | `travel-doc-add` | `{document}` | DESIGNED (`TravelDocsPanel`) | DESIGNED — My Trips → Documents sub-tab |
 | `travel-doc-list` | `{documents[], count}` | DESIGNED | DESIGNED |
@@ -271,3 +271,8 @@ GENUINELY MISSING item above carries an explicit disposition.
   clean; see the frontend agent's full report for the reproduction
   detail.) `audit/`/`reports/` reverted via `git checkout` after grading,
   per repo convention (transient regenerated artifacts, never committed).
+
+
+---
+
+*Dispositions corrected 2026-10-28 (remaining-work audit, fix queue Q67): the rows marked CORRECTED above were listed as unsurfaced when this map was written; each is now wired in the frontend, at the file:line cited in the correction. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows U1–U7.*

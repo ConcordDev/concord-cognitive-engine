@@ -145,8 +145,10 @@ export default function createConkayWorkbenchRouter({ requireAuth, store = new M
     // an invalid knob value is an input error (HTTP 400 invalid_input), never a 200 with an error string;
     // a successful edit also returns what it changed in the solved assembly: the fit checks that flipped,
     // the solver runs that re-ran, and the new compact assembly (HANDOFF-3 A1)
+    if (c.conv.settling) return res.status(409).json({ ok: false, error: "busy", message: "a previous edit is still settling its kernels" });
     const before = assemblySnapshot(c.conv);
     const reply = await c.conv.setKnob(String(req.body?.variable || ""), req.body?.value);
+    if (reply?.busy) return res.status(409).json({ ok: false, error: "busy" });
     if (reply?.error === "invalid_input") {
       return res.status(400).json({ ok: false, error: "invalid_input", field: reply.field, reason: reply.reason, message: reply.message });
     }
@@ -172,12 +174,15 @@ export default function createConkayWorkbenchRouter({ requireAuth, store = new M
   router.post("/workbench/:id/ask", auth, handle(async (req, res) => {
     const c = own(req, res); if (!c) return;
     const reply = await c.conv.ask(String(req.body?.text || ""));
+    if (reply?.busy) return res.status(409).json({ ok: false, error: "busy" });
     res.json({ ok: true, reply: plain(reply), view: workbenchView(c.conv) });
   }));
 
   router.post("/workbench/:id/undo", auth, handle(async (req, res) => {
     const c = own(req, res); if (!c) return;
     const reply = await c.conv.undo();
+    // never a 200 around a refused undo
+    if (reply?.ok === false) return res.status(reply.busy ? 409 : 400).json({ ok: false, error: reply.error, view: workbenchView(c.conv) });
     res.json({ ok: true, reply, view: workbenchView(c.conv) });
   }));
 

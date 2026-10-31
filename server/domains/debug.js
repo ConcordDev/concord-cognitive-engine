@@ -8,12 +8,21 @@
 // distributed trace viewer (span waterfall), alert rules (threshold
 // breach detection), time-series metric charts, and release tracking.
 
+import { createHash, randomBytes } from "node:crypto";
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { createNotification } from "../emergent/social-layer.js";
 import { registerHeartbeat } from "../emergent/heartbeat-registry.js";
 import { fetchPublicUrl, assessPublicUrl } from "../lib/public-fetch.js";
 
 const MAX_ISSUES_PER_USER = Math.max(10, Number(process.env.CONCORD_DEBUG_MAX_ISSUES) || 1000);
+
+// Hooks the public ingest route (server/routes/debug-ingest.js) calls
+// into this domain through. Populated when the domain registers (boot);
+// the route answers 503 while `ingestEvent` is null. All debug-state
+// knowledge stays inside this module — the route owns HTTP concerns
+// only (envelope bytes, status codes, rate limiting).
+export const debugIngest = { ingestEvent: null, verifyKey: null, touchKey: null };
+
 export default function registerDebugActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── Per-user observability state ───────────────────────────────
@@ -29,6 +38,7 @@ export default function registerDebugActions(registerLensAction) {
     if (!(d.releases instanceof Map)) d.releases = new Map();    // userId -> Array<release>
     if (!(d.monitors instanceof Map)) d.monitors = new Map();    // userId -> Array<monitor>
     if (!(d.projects instanceof Map)) d.projects = new Map();    // userId -> Array<project> (S10)
+    if (!(d.ingestKeys instanceof Map)) d.ingestKeys = new Map();// userId -> Array<keyRecord> (Q1 ingest)
     return d;
   }
   function saveDebug() {
@@ -101,6 +111,7 @@ export default function registerDebugActions(registerLensAction) {
       metrics: count(s.metrics),
       alerts: count(s.alertRules),
       releases: count(s.releases),
+      ingestKeys: count(s.ingestKeys),
     };
   }
 
@@ -183,7 +194,7 @@ export default function registerDebugActions(registerLensAction) {
         return { ok: false, error: "the default project can't be deleted — it holds everything recorded before projects" };
       }
       const counts = dbgProjectCounts(s, userId, project.id, def.id);
-      const total = counts.issues + counts.traces + counts.metrics + counts.alerts + counts.releases;
+      const total = counts.issues + counts.traces + counts.metrics + counts.alerts + counts.releases + counts.ingestKeys;
       if (total > 0 && params.confirm !== true) {
         return {
           ok: false,
@@ -198,6 +209,7 @@ export default function registerDebugActions(registerLensAction) {
         if (next.length !== arr.length) map.set(userId, next);
       };
       purge(s.issues); purge(s.traces); purge(s.metrics); purge(s.alertRules); purge(s.releases);
+      purge(s.ingestKeys); // a deleted project's keys die with it — no orphaned credentials
       list.splice(idx, 1);
       saveDebug();
       return { ok: true, result: { deleted: project.id, name: project.name, removed: counts } };
@@ -206,7 +218,180 @@ export default function registerDebugActions(registerLensAction) {
     }
   });
 
+  // ─── Ingest keys (Q1 — Sentry-compatible external ingest) ─────────
+  // A per-project, submit-only credential: it can POST error events to
+  // one project and read nothing. Discipline follows lib/api-keys.js —
+  // only the SHA-256 hash is stored; the raw key is returned once, by
+  // ingest-key-create, and never logged or listed afterwards.
+  const hashIngestKey = (raw) => createHash("sha256").update(raw).digest("hex");
+  const publicKeyRecord = (r) => ({
+    id: r.id, projectId: r.projectId, label: r.label, prefix: r.prefix,
+    createdAt: r.createdAt, lastUsedAt: r.lastUsedAt, revokedAt: r.revokedAt,
+  });
+  function dbgIngestKeys(s, userId) { return dbgList(s.ingestKeys, userId); }
+
+  registerLensAction("debug", "ingest-key-create", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const userId = dbgActor(ctx);
+      if (!params.projectId) return { ok: false, error: "projectId required" };
+      const resolved = dbgResolveProject(s, userId, params);
+      if (resolved.error) return { ok: false, error: resolved.error };
+      const raw = `cdi_${randomBytes(32).toString("hex")}`;
+      const record = {
+        id: dbgId("key"),
+        projectId: resolved.project.id,
+        label: dbgClean(params.label, 60) || "Ingest key",
+        hash: hashIngestKey(raw),
+        prefix: `${raw.slice(0, 12)}...`,
+        createdAt: new Date().toISOString(),
+        lastUsedAt: null,
+        revokedAt: null,
+      };
+      dbgIngestKeys(s, userId).push(record);
+      saveDebug();
+      return {
+        ok: true,
+        result: {
+          key: raw, // shown once — only its hash is kept
+          keyRecord: publicKeyRecord(record),
+          dsnPath: `/api/debug/ingest/${resolved.project.id}/envelope/`,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("debug", "ingest-key-list", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const userId = dbgActor(ctx);
+      if (!params.projectId) return { ok: false, error: "projectId required" };
+      const resolved = dbgResolveProject(s, userId, params);
+      if (resolved.error) return { ok: false, error: resolved.error };
+      const keys = dbgIngestKeys(s, userId)
+        .filter((r) => r.projectId === resolved.project.id)
+        .map(publicKeyRecord);
+      return { ok: true, result: { keys, count: keys.length, projectId: resolved.project.id } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("debug", "ingest-key-revoke", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const userId = dbgActor(ctx);
+      const record = dbgIngestKeys(s, userId).find((r) => r.id === params.id);
+      if (!record) return { ok: false, error: "key not found" };
+      if (!record.revokedAt) {
+        record.revokedAt = new Date().toISOString();
+        saveDebug();
+      }
+      return { ok: true, result: { keyRecord: publicKeyRecord(record) } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // Route hooks (see the debugIngest export at the top of this file).
+  debugIngest.verifyKey = (rawKey) => {
+    const s = getDebugState();
+    if (!s || typeof rawKey !== "string" || !rawKey.startsWith("cdi_")) return null;
+    const hash = hashIngestKey(rawKey);
+    for (const [userId, records] of s.ingestKeys.entries()) {
+      const record = records.find((r) => r.hash === hash);
+      if (record) return record.revokedAt ? null : { userId, record };
+    }
+    return null;
+  };
+  debugIngest.touchKey = (userId, keyId) => {
+    const s = getDebugState();
+    if (!s) return;
+    const record = dbgIngestKeys(s, userId).find((r) => r.id === keyId);
+    if (record) {
+      record.lastUsedAt = new Date().toISOString();
+      saveDebug();
+    }
+  };
+  debugIngest.ingestEvent = (userId, projectId, fields) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const resolved = dbgResolveProject(s, userId, { projectId });
+    if (resolved.error) return { ok: false, error: resolved.error };
+    return ingestIssueCore(s, userId, resolved, fields);
+  };
+
   // ─── FEATURE: Live error stream / issue inbox ───────────────────
+  // The one grouping implementation: the issue-ingest macro and the
+  // public envelope endpoint (via debugIngest.ingestEvent) both land
+  // here, so an error groups identically however it arrives. `fields`
+  // are pre-cleaned; occurredAt/environment are endpoint-shaped extras
+  // the manual macro doesn't pass.
+  function ingestIssueCore(s, userId, resolved, fields) {
+    const { type, message, culprit, level, release, stack, breadcrumbs } = fields;
+    const now = fields.occurredAt || new Date().toISOString();
+    const fp = fingerprint(type, message, culprit);
+    const list = dbgList(s.issues, userId);
+    // S10: grouping is per-project — the same error in two projects
+    // is two issues, one in each.
+    let issue = list.find((i) => i.fingerprint === fp
+      && dbgRecordProject(i, resolved.defaultId) === resolved.project.id);
+    let regressedNow = false;
+    let isNew = false;
+    if (issue) {
+      issue.count += 1;
+      if (now > issue.lastSeen) issue.lastSeen = now;
+      if (release) issue.releases = [...new Set([...(issue.releases || []), release])].slice(-10);
+      // Latest occurrence's breadcrumb trail wins; keep last 30.
+      if (breadcrumbs.length) issue.breadcrumbs = breadcrumbs;
+      if (stack) issue.stack = stack;
+      if (fields.environment) issue.environment = fields.environment;
+      issue.occurrenceTimes = [...(issue.occurrenceTimes || []), now].slice(-200);
+      // A new occurrence reopens a resolved issue (regression).
+      if (issue.status === "resolved") { issue.status = "open"; issue.regressed = true; regressedNow = true; }
+    } else {
+      isNew = true;
+      issue = {
+        id: dbgId("issue"),
+        fingerprint: fp,
+        projectId: resolved.project.id,
+        type, message, culprit, level, stack,
+        environment: fields.environment || null,
+        status: "open",
+        assignee: null,
+        regressed: false,
+        count: 1,
+        breadcrumbs,
+        releases: release ? [release] : [],
+        firstSeen: now,
+        lastSeen: now,
+        occurrenceTimes: [now],
+      };
+      list.push(issue);
+      // Bounded per user: distinct messages make distinct issues, and this core is fed by client errors from every
+      // signed-in account AND the public envelope endpoint, so evict the stalest (resolved first) instead of
+      // growing STATE without limit.
+      if (list.length > MAX_ISSUES_PER_USER) {
+        const rank = (i) => (i.status === "resolved" ? 0 : 1);
+        list.sort((a, b) => rank(a) - rank(b) || String(a.lastSeen || "").localeCompare(String(b.lastSeen || "")));
+        list.splice(0, list.length - MAX_ISSUES_PER_USER);
+        list.sort((a, b) => String(a.firstSeen || a.lastSeen || "").localeCompare(String(b.firstSeen || b.lastSeen || "")));
+      }
+    }
+    saveDebug();
+    // Alert rules of kind issue/regression reach the owner through Concord notifications (S6). Each event fires
+    // at most once per rule: creation happens once, and regressedNow is true only on the resolved→open
+    // transition, never on repeat occurrences. Both entry points (the macro and the envelope endpoint) get this.
+    if (isNew) fireIssueRules(s, userId, "issue", issue);
+    if (regressedNow) fireIssueRules(s, userId, "regression", issue);
+    return { ok: true, result: { issue, isNew } };
+  }
+
   // Ingest a runtime exception; groups by fingerprint into an issue
   // with occurrence count, breadcrumb trail, and release tag.
   registerLensAction("debug", "issue-ingest", (ctx, _a, params = {}) => {
@@ -231,59 +416,9 @@ export default function registerDebugActions(registerLensAction) {
       const userId = dbgActor(ctx);
       const resolved = dbgResolveProject(s, userId, params);
       if (resolved.error) return { ok: false, error: resolved.error };
-      const fp = fingerprint(type, message, culprit);
-      const list = dbgList(s.issues, userId);
-      const now = new Date().toISOString();
-      // S10: grouping is per-project — the same error in two projects
-      // is two issues, one in each.
-      let issue = list.find((i) => i.fingerprint === fp
-        && dbgRecordProject(i, resolved.defaultId) === resolved.project.id);
-      let regressedNow = false;
-      if (issue) {
-        issue.count += 1;
-        issue.lastSeen = now;
-        if (release) issue.releases = [...new Set([...(issue.releases || []), release])].slice(-10);
-        // Latest occurrence's breadcrumb trail wins; keep last 30.
-        if (breadcrumbs.length) issue.breadcrumbs = breadcrumbs;
-        if (stack) issue.stack = stack;
-        issue.occurrenceTimes = [...(issue.occurrenceTimes || []), now].slice(-200);
-        // A new occurrence reopens a resolved issue (regression).
-        if (issue.status === "resolved") { issue.status = "open"; issue.regressed = true; regressedNow = true; }
-      } else {
-        issue = {
-          id: dbgId("issue"),
-          fingerprint: fp,
-          projectId: resolved.project.id,
-          type, message, culprit, level, stack,
-          status: "open",
-          assignee: null,
-          regressed: false,
-          count: 1,
-          breadcrumbs,
-          releases: release ? [release] : [],
-          firstSeen: now,
-          lastSeen: now,
-          occurrenceTimes: [now],
-        };
-        list.push(issue);
-        // Bounded per user: distinct messages make distinct issues and this is fed by client errors from every
-        // signed-in account, so evict the stalest (resolved first) instead of growing STATE without limit.
-        if (list.length > MAX_ISSUES_PER_USER) {
-          const rank = (i) => (i.status === "resolved" ? 0 : 1);
-          list.sort((a, b) => rank(a) - rank(b) || String(a.lastSeen || "").localeCompare(String(b.lastSeen || "")));
-          list.splice(0, list.length - MAX_ISSUES_PER_USER);
-          list.sort((a, b) => String(a.firstSeen || a.lastSeen || "").localeCompare(String(b.firstSeen || b.lastSeen || "")));
-        }
-      }
-      saveDebug();
-      // Alert rules of kind issue/regression reach the owner through
-      // Concord notifications (S6). Each event fires at most once per
-      // rule: creation happens once, and regressedNow is true only on
-      // the resolved→open transition, never on repeat occurrences.
-      const isNew = issue.count === 1;
-      if (isNew) fireIssueRules(s, dbgActor(ctx), "issue", issue);
-      if (regressedNow) fireIssueRules(s, dbgActor(ctx), "regression", issue);
-      return { ok: true, result: { issue, isNew } };
+      return ingestIssueCore(s, userId, resolved, {
+        type, message, culprit, level, release, stack, breadcrumbs,
+      });
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }

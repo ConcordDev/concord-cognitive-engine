@@ -13,7 +13,7 @@
 
 1. **The Etsy-shape seller/buyer shop** — `server/domains/marketplace.js`
    (`grep -c 'registerLensAction("marketplace"' server/domains/marketplace.js`
-   → **56** macros: shop settings, listings CRUD, orders, coupons,
+   → **59** macros: shop settings, listings CRUD, orders, coupons,
    promotions, reviews, messages, shipping profiles, saved searches,
    analytics, AI listing tools, cart/checkout). Mounted via
    `<ShopfrontSection />` at the very top of `page.tsx` (always visible,
@@ -258,3 +258,8 @@ optimistic-forever.
 - **Seller tooling (coupons/promotions/shipping-profiles/saved-searches)** —
   already real and wired via `ShopfrontSection`'s panel components (see the
   Wave-3 audit doc referenced above). Not re-scoped this pass.
+
+
+---
+
+*Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*

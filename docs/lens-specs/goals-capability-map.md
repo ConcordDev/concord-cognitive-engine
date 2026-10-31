@@ -239,3 +239,61 @@ feature-breaking bug in "New Goal" creation.
   number. `processGoalHeartbeat` and its lifecycle helpers were added to the
   `__TEST__` export surface (additive) since this heartbeat has no HTTP
   route or macro of its own to drive a behavioral test through.
+
+## Builder update — Review 5 rework (PR #1809, B7, 2026-10-29)
+
+Built to Review 5's frozen `goals.md` (48 features, F1–F14, slices
+S1–S14 in §7 order). The paired Product Review seat re-reviews; this
+section records what the build changed, not a verdict.
+
+**Domain (`server/domains/goals.js`)** — macros 10 → 10, ops added:
+`alignmentTree` (progress + `progressSource` + `blockedBy` derived at
+read; soft `remove`/`restore`), `checkin` (`objectiveProgress` in the
+add/list response; faithful-or-refused values; soft remove/restore),
+`progressChart` (`series`/`add-point`/`remove-point`/`restore-point`
+over one shared series helper), `templates` (`apply` instantiates;
+occurrences persist as objects), `reminder` (due reminders fire via
+the shared `createNotification` bell path, once per due instance;
+pending/overdue mutually exclusive), `teamGoal` and `dependencies`
+soft remove/restore. One progress rule serves tree, chart, and
+forecast: latest check-in wins; a parent with no check-in of its own
+rolls up as the mean of its children; no data reads as null, never a
+fabricated 0. A shared trash substrate backs every OKR delete with
+its original list position and a kind-checked restore.
+
+**Agent-goal system (`server/server.js`, `server/routes/domain.js`)** —
+two isolated commits under an Overseer ruling (Interim 4): the
+`status` macro derives its header stats from the registry at read
+time (`deriveGoalStats`) instead of reading hand-incremented counters
+evaluation never updated; a `deleteGoal` core + non-public `delete`
+macro + `DELETE /api/goals/:goalId` make agent goals and system
+proposals deletable (the anonymous/public macro allowlist is
+deliberately unchanged and test-pinned). The Autonomy panel states
+the capacity refusal on the card, prints blocked-by, and carries a
+two-step Delete.
+
+**Frontend** — personal goals and challenges gained Edit/Delete with
+Undo (S1); every OKR delete is two-step with an Undo strip (S10);
+check-ins send the user's local date and all day counts/dates compute
+in the user's timezone (`localDayKey`, calendar-day `daysUntil`,
+S12); the weekly-focus chip opens a real picker and the chosen goal
+wears "This week's focus" (S13); XP rules are stated where XP is
+shown and completed-challenge XP counts in the Milestones total
+(S13); completed goals keep a real-data record ("N steps · D days")
+on the card and the timeline (S13/§3b); "Review OKRs" is relabelled
+"Open OKRs" (navigation labelled as navigation); `GoalSearch` adds
+in-lens search across personal goals, challenges, and objectives
+(S14).
+
+**Declared limits** — F2 (line collapse) was not reproducible in any
+readable layer on current main; byte-level round-trip evidence is
+pinned by tests (`goals-line-integrity`) and the discrepancy is
+Review 5's §9 flow-3 re-run to settle. The CrossLens "refresh" button
+was scoped with code evidence: wired to a real reload, disabled only
+while a load is in flight, panel hidden when empty by the page's own
+`hideWhenEmpty` choice — no defect reproduced in code. Agent-goal
+delete has no Undo (a recreated proposal would be a different goal);
+the safeguard is the two-step confirm plus a response naming the
+removed goal. Frontend vitest suites are authored per slice and run
+in CI/Mac (NEEDS-MAC from this seat); live flows are Review 5's §9
+gate.

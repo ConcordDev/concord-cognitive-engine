@@ -4,6 +4,8 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
+import { convergeUserMaps } from "../lib/map-convergence.js";
+import { substrateCounts } from "../lib/substrate-counts.js";
 export default function registerGraphActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -635,6 +637,7 @@ export default function registerGraphActions(registerLensAction) {
     const central = { id: gphId("nd"), label: title, notes: "", central: true };
     const map = { id: gphId("mp"), title, nodes: [central], edges: [], createdAt: new Date().toISOString() };
     gphMaps(s, gphActor(ctx)).push(map);
+    convergeMaps(ctx);
     saveGraph();
     return { ok: true, result: { map } };
   });
@@ -651,6 +654,7 @@ export default function registerGraphActions(registerLensAction) {
     const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const m = gphMaps(s, gphActor(ctx)).find((x) => x.id === params.id);
     if (!m) return { ok: false, error: "map not found" };
+    convergeMaps(ctx);
     return { ok: true, result: { map: m } };
   });
 
@@ -660,11 +664,29 @@ export default function registerGraphActions(registerLensAction) {
     const i = arr.findIndex((x) => x.id === params.id);
     if (i < 0) return { ok: false, error: "map not found" };
     arr.splice(i, 1);
+    convergeMaps(ctx);
     saveGraph();
     return { ok: true, result: { deleted: params.id } };
   });
 
   function findMap(s, ctx, id) { return gphMaps(s, gphActor(ctx)).find((x) => x.id === id); }
+
+  // #1715 S3: reconcile the caller's maps onto the DTU substrate
+  // (backing DTUs for standalone nodes; map edges as typed relations).
+  // A convergence failure must never fail the map operation itself —
+  // the map is the user's working surface and the reconcile retries
+  // on the next touch — so errors are recorded on the lens state for
+  // diagnosability instead of thrown.
+  function convergeMaps(ctx) {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE || !STATE.dtus) return;
+    try {
+      convergeUserMaps(STATE, gphActor(ctx), () => gphId("dt"));
+      if (STATE.graphLens) delete STATE.graphLens.lastConvergenceError;
+    } catch (e) {
+      if (STATE.graphLens) STATE.graphLens.lastConvergenceError = String(e?.message || e);
+    }
+  }
 
   registerLensAction("graph", "node-add", (ctx, _a, params = {}) => {
     const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -682,6 +704,7 @@ export default function registerGraphActions(registerLensAction) {
         m.edges.push(edge);
       }
     }
+    convergeMaps(ctx);
     saveGraph();
     return { ok: true, result: { node, edge } };
   });
@@ -694,6 +717,7 @@ export default function registerGraphActions(registerLensAction) {
     if (!node) return { ok: false, error: "node not found" };
     if (params.label != null) node.label = gphClean(params.label, 240) || node.label;
     if (params.notes != null) node.notes = gphClean(params.notes, 2000);
+    convergeMaps(ctx);
     saveGraph();
     return { ok: true, result: { node } };
   });
@@ -707,6 +731,7 @@ export default function registerGraphActions(registerLensAction) {
     if (node.central) return { ok: false, error: "cannot delete the central node" };
     m.nodes = m.nodes.filter((n) => n.id !== params.nodeId);
     m.edges = m.edges.filter((e) => e.from !== params.nodeId && e.to !== params.nodeId);
+    convergeMaps(ctx);
     saveGraph();
     return { ok: true, result: { deleted: params.nodeId } };
   });
@@ -722,6 +747,7 @@ export default function registerGraphActions(registerLensAction) {
     if (m.edges.some((e) => e.from === from.id && e.to === to.id)) return { ok: false, error: "edge already exists" };
     const edge = { id: gphId("ed"), from: from.id, to: to.id, label: gphClean(params.label, 80) || "" };
     m.edges.push(edge);
+    convergeMaps(ctx);
     saveGraph();
     return { ok: true, result: { edge } };
   });
@@ -733,6 +759,7 @@ export default function registerGraphActions(registerLensAction) {
     const i = m.edges.findIndex((e) => e.id === params.edgeId);
     if (i < 0) return { ok: false, error: "edge not found" };
     m.edges.splice(i, 1);
+    convergeMaps(ctx);
     saveGraph();
     return { ok: true, result: { deleted: params.edgeId } };
   });
@@ -841,6 +868,7 @@ export default function registerGraphActions(registerLensAction) {
     // Remove the losing node from the map.
     m.nodes = m.nodes.filter((n) => n.id !== loseId);
 
+    convergeMaps(ctx);
     saveGraph();
     return {
       ok: true,
@@ -890,9 +918,16 @@ export default function registerGraphActions(registerLensAction) {
     return {
       ok: true,
       result: {
+        // Legacy fields: these count the caller's MAPS only (the
+        // field names predate the convergence and are kept for
+        // existing consumers; `source` names the universe).
+        source: "user-maps",
         maps: maps.length,
         totalNodes: maps.reduce((n, m) => n + m.nodes.length, 0),
         totalEdges: maps.reduce((n, m) => n + m.edges.length, 0),
+        // #1715 S4: the single counting source — substrate counts
+        // under source-named fields, from lib/substrate-counts.js.
+        counts: substrateCounts(globalThis._concordSTATE, gphActor(ctx)),
       },
     };
     } catch (e) { return handlerFailure(e); }
@@ -925,6 +960,7 @@ export default function registerGraphActions(registerLensAction) {
     if (!m) return { ok: false, error: "map not found" };
     const root = m.nodes.find((n) => n.id === params.nodeId);
     if (!root) return { ok: false, error: "node not found" };
+    convergeMaps(ctx);
     const depth = Math.max(1, Math.min(6, parseInt(params.depth, 10) || 1));
     const adj = buildAdjacency(m);
 

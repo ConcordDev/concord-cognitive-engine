@@ -184,3 +184,8 @@ two competing, confusing "fork" actions in an already load-bearing page.
   share page's 3 honest states (sign-in prompt / real content / invalid
   token error)
 - No backend changes — `server/domains/chat.js` was already complete
+
+
+---
+
+*Dispositions corrected 2026-10-28 (remaining-work audit, fix queue Q67): the rows marked CORRECTED above were listed as unsurfaced when this map was written; each is now wired in the frontend, at the file:line cited in the correction. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows U1–U7.*

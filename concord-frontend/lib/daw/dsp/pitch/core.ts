@@ -6,7 +6,14 @@
  * hopped every 512 samples (a full YIN on every 128-sample block of a long
  * window is too much work for one audio thread). The shifter is a time-domain
  * delay reader. At ratio 1 it is a pure delay of `latencySamples`, which is
- * the number the device reports. Formant shift is not implemented.
+ * the number the device reports.
+ *
+ * Formant shift IS implemented, as an offline stage: `applyFormantShift`
+ * (cepstral spectral-envelope warp, below) runs inside
+ * `processPitchSignal` when `settings.formantSemitones` is non-zero, so
+ * exported/rendered clips get formants shifted independently of pitch.
+ * The live block path (`processPitchBlock`) does not shift formants —
+ * the device copy says exactly that.
  */
 
 export const PITCH_BLOCK = 128;
@@ -51,6 +58,8 @@ export interface PitchSettings {
   flexCents: number;
   preserveVibrato: boolean;
   transpose: number;
+  /** Formant shift in semitones, −12..+12. Offline render only (see header). 0 = off. */
+  formantSemitones: number;
   mix: number;
   mode: PitchMode;
   minHz: number;
@@ -382,14 +391,66 @@ export function processPitchBlock(state: PitchState, input: Float32Array, output
   return state.meter;
 }
 
-export function processPitchSignal(input: Float32Array, settings: PitchSettings): { output: Float32Array; latency: number } {
+/**
+ * Cooperative stepping. The offline pitch and formant stages are CPU-bound (3 FFTs per hop), so they are
+ * written as generators that `yield` between small units of work. `runSteps` drains one synchronously (same
+ * result, same cost as before); `runStepsAsync` drains it in time-boxed slices and hands the event loop back
+ * between slices, so an export of a full vocal no longer freezes the tab.
+ */
+export function runSteps<T>(gen: Generator<void, T, void>): T {
+  for (;;) {
+    const r = gen.next();
+    if (r.done) return r.value;
+  }
+}
+
+export async function runStepsAsync<T>(
+  gen: Generator<void, T, void>,
+  opts: { signal?: AbortSignal; budgetMs?: number } = {},
+): Promise<T> {
+  const budget = Math.max(1, opts.budgetMs ?? 12);
+  const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  for (;;) {
+    if (opts.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    const sliceEnd = now() + budget;
+    do {
+      const r = gen.next();
+      if (r.done) return r.value;
+    } while (now() < sliceEnd);
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  }
+}
+
+export function* processPitchSignalSteps(input: Float32Array, settings: PitchSettings): Generator<void, { output: Float32Array; latency: number }, void> {
   const state = createPitchState(settings);
   const output = new Float32Array(input.length);
-  for (let i = 0; i < input.length; i += PITCH_BLOCK) {
+  for (let i = 0, blocks = 0; i < input.length; i += PITCH_BLOCK) {
     const n = Math.min(PITCH_BLOCK, input.length - i);
     processPitchBlock(state, input.subarray(i, i + n), output.subarray(i, i + n));
+    if ((++blocks & 15) === 0) yield;
+  }
+  // Formant stage (offline only): warps the spectral envelope of the
+  // corrected signal by formantSemitones, pitch untouched. Adds no
+  // latency — the STFT stage is delay-compensated — so the reported
+  // latency stays the shifter's.
+  const semi = Math.max(-12, Math.min(12, settings.formantSemitones || 0));
+  if (semi !== 0 && !settings.bypass) {
+    return { output: yield* formantShiftSteps(output, settings.sampleRate, semi), latency: state.latency };
   }
   return { output, latency: state.latency };
+}
+
+export function processPitchSignal(input: Float32Array, settings: PitchSettings): { output: Float32Array; latency: number } {
+  return runSteps(processPitchSignalSteps(input, settings));
+}
+
+/** Same result as processPitchSignal, without monopolising the event loop. */
+export function processPitchSignalAsync(
+  input: Float32Array,
+  settings: PitchSettings,
+  opts: { signal?: AbortSignal; budgetMs?: number } = {},
+): Promise<{ output: Float32Array; latency: number }> {
+  return runStepsAsync(processPitchSignalSteps(input, settings), opts);
 }
 
 /** Drop the processor delay so a clip stays on the timeline. Live playback advances by the same amount instead. */
@@ -419,4 +480,155 @@ export function shiftSignalByRatio(
     output[i] = shiftSample(shift, input[i], Math.max(0.25, Math.min(4, ratio))).wet;
   }
   return { output, latency };
+}
+
+// ─── Formant shift (offline) ─────────────────────────────────────────
+// Cepstral spectral-envelope warp in the STFT domain: per frame, the
+// log-magnitude spectrum is liftered (low-quefrency cepstrum) to get
+// the smooth spectral envelope — the part of the spectrum the vocal
+// tract's resonances (formants) shape — and the envelope is re-sampled
+// at warped frequencies. The excitation (magnitude ÷ envelope, which
+// carries the harmonic spacing, i.e. the pitch) is left alone, then
+// recombined with the warped envelope under the original phase. This
+// is the standard source–filter formant shift; it moves vowel identity
+// without moving pitch.
+
+/** Iterative radix-2 FFT in place. `inverse` scales by 1/n. */
+function fft(re: Float64Array, im: Float64Array, inverse: boolean): void {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) {
+      const tr = re[i]; re[i] = re[j]; re[j] = tr;
+      const ti = im[i]; im[i] = im[j]; im[j] = ti;
+    }
+  }
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = ((inverse ? 2 : -2) * Math.PI) / len;
+    const wr = Math.cos(ang);
+    const wi = Math.sin(ang);
+    const half = len >> 1;
+    for (let i = 0; i < n; i += len) {
+      let cwr = 1;
+      let cwi = 0;
+      for (let k = 0; k < half; k++) {
+        const ur = re[i + k];
+        const ui = im[i + k];
+        const vr = re[i + k + half] * cwr - im[i + k + half] * cwi;
+        const vi = re[i + k + half] * cwi + im[i + k + half] * cwr;
+        re[i + k] = ur + vr;
+        im[i + k] = ui + vi;
+        re[i + k + half] = ur - vr;
+        im[i + k + half] = ui - vi;
+        const nwr = cwr * wr - cwi * wi;
+        cwi = cwr * wi + cwi * wr;
+        cwr = nwr;
+      }
+    }
+  }
+  if (inverse) {
+    for (let i = 0; i < n; i++) { re[i] /= n; im[i] /= n; }
+  }
+}
+
+/**
+ * Shift the formants of a mono signal by `semitones` (−12..+12) without
+ * shifting its pitch. Returns a new buffer of the same length; a zero
+ * (or non-finite) shift returns an unchanged copy.
+ */
+export function* formantShiftSteps(input: Float32Array, sampleRate: number, semitones: number): Generator<void, Float32Array, void> {
+  const semi = Math.max(-12, Math.min(12, Number.isFinite(semitones) ? semitones : 0));
+  if (semi === 0 || input.length === 0) return input.slice();
+  const ratio = Math.pow(2, semi / 12);
+  const N = sampleRate >= 32000 ? 2048 : 1024;
+  const hop = N >> 2;
+  // Lifter cutoff: keep cepstral coefficients below ~1.5 ms of
+  // quefrency — smooth enough to follow formants, too smooth to
+  // follow individual harmonics at voice pitches.
+  const lifter = Math.max(16, Math.min(128, Math.round(sampleRate * 0.0015)));
+  const win = new Float64Array(N);
+  for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / N);
+
+  const pad = N;
+  const paddedLen = input.length + pad * 2;
+  const padded = new Float64Array(paddedLen);
+  padded.set(input, pad);
+  const out = new Float64Array(paddedLen);
+  const winSum = new Float64Array(paddedLen);
+
+  const re = new Float64Array(N);
+  const im = new Float64Array(N);
+  const logMag = new Float64Array(N);
+  const half = N >> 1;
+
+  let frames = 0;
+  for (let start = 0; start + N <= paddedLen; start += hop) {
+    for (let i = 0; i < N; i++) {
+      re[i] = padded[start + i] * win[i];
+      im[i] = 0;
+    }
+    fft(re, im, false);
+    // Log-magnitude → cepstrum (real, via inverse FFT of the symmetric
+    // log spectrum) → lifter → FFT → envelope (positive frequencies).
+    for (let k = 0; k < N; k++) {
+      const mag = Math.hypot(re[k], im[k]);
+      logMag[k] = Math.log(Math.max(mag, 1e-8));
+    }
+    const cre = new Float64Array(logMag);
+    const cim = new Float64Array(N);
+    fft(cre, cim, true);
+    for (let q = lifter + 1; q < N - lifter; q++) cre[q] = 0;
+    // The cepstrum of a real signal is real; drop numerical imag dust.
+    cim.fill(0);
+    fft(cre, cim, false);
+    // cre[k] is now the log-envelope at bin k (k ≤ N/2 meaningful).
+    const envAt = (binPos: number): number => {
+      const b = Math.max(0, Math.min(half, binPos));
+      const i0 = Math.floor(b);
+      const i1 = Math.min(half, i0 + 1);
+      const f = b - i0;
+      return Math.exp(cre[i0] * (1 - f) + cre[i1] * f);
+    };
+    for (let k = 0; k <= half; k++) {
+      const mag = Math.hypot(re[k], im[k]);
+      if (mag <= 1e-8) continue;
+      const env = Math.max(Math.exp(cre[k]), 1e-6);
+      const warped = envAt(k / ratio);
+      const newMag = (mag / env) * warped;
+      const scale = newMag / mag;
+      re[k] *= scale;
+      im[k] *= scale;
+      if (k > 0 && k < half) {
+        re[N - k] *= scale;
+        im[N - k] *= scale;
+      }
+    }
+    fft(re, im, true);
+    for (let i = 0; i < N; i++) {
+      out[start + i] += re[i] * win[i];
+      winSum[start + i] += win[i] * win[i];
+    }
+    if ((++frames & 7) === 0) yield;
+  }
+  const result = new Float32Array(input.length);
+  for (let i = 0; i < input.length; i++) {
+    const w = winSum[pad + i];
+    result[i] = w > 1e-6 ? out[pad + i] / w : 0;
+  }
+  return result;
+}
+
+export function applyFormantShift(input: Float32Array, sampleRate: number, semitones: number): Float32Array {
+  return runSteps(formantShiftSteps(input, sampleRate, semitones));
+}
+
+export function applyFormantShiftAsync(
+  input: Float32Array,
+  sampleRate: number,
+  semitones: number,
+  opts: { signal?: AbortSignal; budgetMs?: number } = {},
+): Promise<Float32Array> {
+  return runStepsAsync(formantShiftSteps(input, sampleRate, semitones), opts);
 }

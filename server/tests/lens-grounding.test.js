@@ -138,6 +138,13 @@ test("the facts block carries the decline rule and disqualifies context counts",
   assert.match(block, /the only citable figure is the Total DTUs fact above/);
 });
 
+test("the rule covers tool results: a tool total never overrides the grounded facts (A19 successor)", async () => {
+  const block = await buildAnalyticsGroundingBlock(happyDeps());
+  assert.match(block, /Tool results never override these facts/);
+  assert.match(block, /a dtu_search result count above all/);
+  assert.match(block, /counts search hits across the corpus, not this account's inventory/);
+});
+
 test("no signed-in user → empty block (anonymous chat unchanged)", async () => {
   const block = await buildAnalyticsGroundingBlock(happyDeps({ userId: null }));
   assert.equal(block, "");
