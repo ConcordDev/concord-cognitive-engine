@@ -112,7 +112,7 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
         } else if (r.data?.error === 'not_found') {
           setResolveError('No reference found for that DOI in Crossref or OpenAlex.');
         } else {
-          setResolveError(r.data?.message || r.data?.error || 'Could not resolve that DOI.');
+          setResolveError((r.data as { message?: string } | undefined)?.message || r.data?.error || 'Could not resolve that DOI.');
         }
       } catch {
         setResolveError('Could not resolve that DOI.');

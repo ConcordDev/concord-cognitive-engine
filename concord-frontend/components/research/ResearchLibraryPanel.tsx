@@ -738,7 +738,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
       setImportError(
         r.data?.error === 'not_found'
           ? 'No reference found for that identifier.'
-          : (r.data?.message || r.data?.error || 'Could not resolve that identifier.'),
+          : ((r.data as { message?: string } | undefined)?.message || r.data?.error || 'Could not resolve that identifier.'),
       );
       return;
     }
