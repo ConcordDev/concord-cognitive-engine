@@ -72,6 +72,16 @@ interface ActiveSequence {
   /** Resolves when the sequence ends. */
   finishPromise: Promise<void>;
   cancel:        () => void;
+  /** Set by cancel(); the playback loop checks it on every tick. */
+  cancelled:     boolean;
+  /** Transport state (Q56 remainder): pause folds the current shot's
+   *  effective elapsed into shotBaseMs and freezes it; resume restarts
+   *  shotStartedAt. seekRequest is consumed by the playback loop, which
+   *  jumps to the target shot and re-applies its state. */
+  paused:        boolean;
+  shotBaseMs:    number;
+  shotStartedAt: number;
+  seekRequest:   { shotIndex: number; offsetMs: number } | null;
 }
 
 const sequences = new Map<string, CinematicSequence>();
@@ -228,7 +238,6 @@ export function playSequence(triggerName: string, eventDetail: unknown = null): 
     return Promise.resolve();
   }
 
-  let cancelled = false;
   let resolveFn: () => void = () => undefined;
   const finishPromise = new Promise<void>((resolve) => { resolveFn = resolve; });
 
@@ -237,20 +246,26 @@ export function playSequence(triggerName: string, eventDetail: unknown = null): 
     shots, skippable_after_ms: skippable, music_track: musicTrack,
   };
 
-  active = {
+  const record: ActiveSequence = {
     seq: sequence,
     startedAt: performance.now(),
     currentShot: 0,
     finishPromise,
-    cancel: () => { cancelled = true; },
+    cancel: () => { record.cancelled = true; },
+    cancelled: false,
+    paused: false,
+    shotBaseMs: 0,
+    shotStartedAt: performance.now(),
+    seekRequest: null,
   };
+  active = record;
 
-  // ESC handler — only effective after skippable window.
+  // ESC handler — only effective after skippable window. The window is
+  // measured in playback time, so pausing doesn't unlock the skip.
   const escHandler = (e: KeyboardEvent) => {
     if (e.key !== 'Escape') return;
     if (!active) return;
-    const elapsed = performance.now() - active.startedAt;
-    if (elapsed > active.seq.skippable_after_ms) active.cancel();
+    if (sequenceElapsedMs(active) > active.seq.skippable_after_ms) active.cancel();
   };
   if (typeof window !== 'undefined') window.addEventListener('keydown', escHandler);
 
@@ -261,12 +276,15 @@ export function playSequence(triggerName: string, eventDetail: unknown = null): 
     }));
   }
 
-  // Run shots sequentially.
+  // Run shots sequentially. The wait is polled rather than a bare
+  // setTimeout so the transport can pause it, seek within/across shots,
+  // and cancel it while paused (Q56 remainder).
   (async () => {
-    for (let i = 0; i < shots.length; i++) {
-      if (cancelled) break;
-      if (!active) break;
-      active.currentShot = i;
+    let i = 0;
+    let pendingOffsetMs = 0;
+    while (i < shots.length) {
+      if (record.cancelled || active !== record) break;
+      record.currentShot = i;
       const shot = shots[i];
       // Apply time-scale + music layer + audio sting + camera.
       if (typeof shot.time_scale === 'number') {
@@ -277,20 +295,167 @@ export function playSequence(triggerName: string, eventDetail: unknown = null): 
           detail: { sequenceId: id, shotIndex: i, ...shot },
         }));
       }
-      await new Promise<void>(r => setTimeout(r, shot.duration_ms));
+      record.shotBaseMs = pendingOffsetMs;
+      pendingOffsetMs = 0;
+      record.shotStartedAt = performance.now();
+      const outcome = await waitCurrentShot(record, shot.duration_ms);
+      if (outcome === 'seek' && record.seekRequest) {
+        i = record.seekRequest.shotIndex;
+        pendingOffsetMs = record.seekRequest.offsetMs;
+        record.seekRequest = null;
+        continue;
+      }
+      if (outcome === 'cancelled') break;
+      i += 1;
     }
     if (typeof window !== 'undefined') {
       window.removeEventListener('keydown', escHandler);
       window.dispatchEvent(new CustomEvent('concordia:cinematic-end', {
-        detail: { id, cancelled },
+        detail: { id, cancelled: record.cancelled },
       }));
     }
-    active = null;
+    if (active === record) active = null;
     setTimeScale(1.0);   // ensure normal time restored
     resolveFn();
   })();
 
   return finishPromise;
+}
+
+/** Effective elapsed within the active shot: the banked base plus the
+ *  running segment — frozen while paused. */
+function shotElapsedMs(record: ActiveSequence): number {
+  if (record.paused) return record.shotBaseMs;
+  return record.shotBaseMs + (performance.now() - record.shotStartedAt);
+}
+
+/** Playback-position elapsed for the whole sequence. */
+function sequenceElapsedMs(record: ActiveSequence): number {
+  let prior = 0;
+  const shots = record.seq.shots;
+  for (let k = 0; k < record.currentShot && k < shots.length; k++) {
+    prior += shots[k].duration_ms;
+  }
+  const current = shots[record.currentShot];
+  const within = current ? Math.min(shotElapsedMs(record), current.duration_ms) : 0;
+  return Math.min(prior + within, record.seq.duration_ms);
+}
+
+type ShotWaitOutcome = 'done' | 'cancelled' | 'seek';
+
+/** Poll the current shot's clock until it completes, the sequence is
+ *  cancelled, or a seek is requested. Polling (25ms) is what makes the
+ *  wait pausable and seekable; the tick checks seek/cancel even while
+ *  paused, so neither can deadlock against a frozen clock. */
+function waitCurrentShot(record: ActiveSequence, durationMs: number): Promise<ShotWaitOutcome> {
+  return new Promise((resolve) => {
+    const tick = () => {
+      if (record.cancelled || active !== record) return resolve('cancelled');
+      if (record.seekRequest) return resolve('seek');
+      if (shotElapsedMs(record) >= durationMs) return resolve('done');
+      setTimeout(tick, 25);
+    };
+    setTimeout(tick, 25);
+  });
+}
+
+function emitPlayback(record: ActiveSequence): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('concordia:cinematic-playback', {
+    detail: {
+      id: record.seq.id,
+      paused: record.paused,
+      elapsedMs: sequenceElapsedMs(record),
+      durationMs: record.seq.duration_ms,
+      currentShot: record.currentShot,
+      shotCount: record.seq.shots.length,
+    },
+  }));
+}
+
+/** Snapshot of the transport state for UIs (the world surface's clock,
+ *  the camera-controls transport). Null when nothing is playing. */
+export function getPlaybackState(): {
+  id: string; paused: boolean; elapsedMs: number; durationMs: number;
+  currentShot: number; shotCount: number;
+} | null {
+  if (!active) return null;
+  return {
+    id: active.seq.id,
+    paused: active.paused,
+    elapsedMs: sequenceElapsedMs(active),
+    durationMs: active.seq.duration_ms,
+    currentShot: active.currentShot,
+    shotCount: active.seq.shots.length,
+  };
+}
+
+/** Freeze playback at the current position. No-op when idle or already
+ *  paused. The sequence clock (and the ESC skippable window) freeze
+ *  with it; the camera holds the current shot. */
+export function pauseActiveSequence(): void {
+  if (!active || active.paused) return;
+  active.shotBaseMs = shotElapsedMs(active);
+  active.paused = true;
+  emitPlayback(active);
+}
+
+/** Resume a paused sequence from the frozen position. */
+export function resumeActiveSequence(): void {
+  if (!active || !active.paused) return;
+  active.paused = false;
+  active.shotStartedAt = performance.now();
+  emitPlayback(active);
+}
+
+/** Seek to an absolute playback position (ms, clamped to the sequence).
+ *  The target shot's state (camera, time-scale, sting) is re-applied as
+ *  the loop lands on it. Works while paused — the position moves and
+ *  playback stays frozen there until resumed. */
+export function seekActiveSequence(elapsedMs: number): void {
+  if (!active) return;
+  const shots = active.seq.shots;
+  const target = Math.max(0, Math.min(elapsedMs, active.seq.duration_ms));
+  let acc = 0;
+  let shotIndex = shots.length - 1;
+  let offsetMs = shots.length ? shots[shots.length - 1].duration_ms : 0;
+  for (let k = 0; k < shots.length; k++) {
+    if (target < acc + shots[k].duration_ms || k === shots.length - 1) {
+      shotIndex = k;
+      offsetMs = target - acc;
+      break;
+    }
+    acc += shots[k].duration_ms;
+  }
+  active.seekRequest = { shotIndex, offsetMs };
+  // The playback event reports the requested position immediately; the
+  // loop applies it on its next tick (≤25ms) and re-emits the shot.
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('concordia:cinematic-playback', {
+      detail: {
+        id: active.seq.id, paused: active.paused, elapsedMs: target,
+        durationMs: active.seq.duration_ms, currentShot: shotIndex,
+        shotCount: shots.length, seek: true,
+      },
+    }));
+  }
+}
+
+/** Skip to the previous/next shot boundary (the transport's skip
+ *  buttons). delta is in shots, typically ±1. */
+export function skipActiveShot(delta: number): void {
+  if (!active) return;
+  const shots = active.seq.shots;
+  const targetShot = Math.max(0, Math.min(active.currentShot + delta, shots.length - 1));
+  let acc = 0;
+  for (let k = 0; k < targetShot; k++) acc += shots[k].duration_ms;
+  // Skipping forward from the last shot goes to the end (the sequence
+  // finishes); anywhere else it lands on the target shot's start.
+  if (delta > 0 && active.currentShot === shots.length - 1) {
+    seekActiveSequence(active.seq.duration_ms);
+    return;
+  }
+  seekActiveSequence(acc);
 }
 
 export function isCinematicActive(): boolean {

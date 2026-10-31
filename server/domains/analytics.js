@@ -16,6 +16,20 @@ export default function registerAnalyticsActions(registerLensAction) {
   const finInt = (v) => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : 0; };
   // Round but never emit Infinity/NaN (defence-in-depth; finNum already gates inputs).
   const safeRound = (v, p = 100) => { const n = v * p; return Number.isFinite(n) ? Math.round(n) / p : 0; };
+  // Bench series input (detectAnomalies / trendForecast): the documented
+  // shape is data.dataPoints = [{ date|label, value }]. Two natural variants
+  // are accepted as the same series instead of being silently misread:
+  // bare-number points ([100, 102, ...] — finNum(d?.value) used to zero every
+  // one, so the tool returned a computed-looking result over zeros) and the
+  // container aliases users reach for (data.series / data.values).
+  // Normalising here keeps ONE computation path for every accepted shape.
+  const benchPoints = (data) => {
+    const raw = Array.isArray(data?.dataPoints) ? data.dataPoints
+      : Array.isArray(data?.series) ? data.series
+      : Array.isArray(data?.values) ? data.values
+      : [];
+    return raw.map((d) => (typeof d === "number" ? { value: d } : d));
+  };
 
   registerLensAction("analytics", "funnelAnalysis", (ctx, artifact, _params) => {
     try {
@@ -52,7 +66,7 @@ export default function registerAnalyticsActions(registerLensAction) {
 
   registerLensAction("analytics", "detectAnomalies", (ctx, artifact, _params) => {
     try {
-      const dataPoints = Array.isArray(artifact.data?.dataPoints) ? artifact.data.dataPoints : [];
+      const dataPoints = benchPoints(artifact.data);
       if (dataPoints.length < 5) return { ok: true, result: { message: "Need at least 5 data points for anomaly detection." } };
       const values = dataPoints.map(d => finNum(d?.value));
       const mean = values.reduce((s, v) => s + v, 0) / values.length;
@@ -69,7 +83,7 @@ export default function registerAnalyticsActions(registerLensAction) {
 
   registerLensAction("analytics", "trendForecast", (ctx, artifact, _params) => {
     try {
-      const dataPoints = Array.isArray(artifact.data?.dataPoints) ? artifact.data.dataPoints : [];
+      const dataPoints = benchPoints(artifact.data);
       if (dataPoints.length < 3) return { ok: true, result: { message: "Need at least 3 data points for forecasting." } };
       const values = dataPoints.map(d => finNum(d?.value));
       const n = values.length;
@@ -185,6 +199,20 @@ export default function registerAnalyticsActions(registerLensAction) {
     if (params.distinctId) log = log.filter((e) => e.distinctId === params.distinctId);
     log.sort((a, b) => b.at.localeCompare(a.at));
     return { ok: true, result: { events: log.slice(0, 100), total: log.length } };
+  });
+
+  // event-delete — the event family's delete, in the same idiom as
+  // funnel-delete / dashboard-delete / alert-delete: the actor's own log
+  // is the only collection searched (actor-scoped by construction), the
+  // row is spliced out and persisted, and a miss is a named error.
+  registerLensAction("analytics", "event-delete", (ctx, _a, params = {}) => {
+    const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const log = anEvents(s, anActor(ctx));
+    const i = log.findIndex((e) => e.id === params.id);
+    if (i < 0) return { ok: false, error: "event not found" };
+    log.splice(i, 1);
+    saveAnalytics();
+    return { ok: true, result: { deleted: params.id } };
   });
 
   registerLensAction("analytics", "event-stats", (ctx, _a, _params = {}) => {

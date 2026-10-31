@@ -6,7 +6,7 @@
 import { runDistrictStressTest, loadStandingBuildings } from "../domains/world.js";
 import { listDistrictSnapshots } from "../domains/district.js";
 import { listGallery } from "./plugin-gallery.js";
-import { readOwnBuildings, readOwnCitations } from "./sim-stats.js";
+import { readOwnBuildings, readOwnCitations, readOwnListings, readOwnRoyalties } from "./sim-stats.js";
 import { recentEvents, unregisteredEventStats } from "./runtime/event-bus.js";
 import { stats as eventTimelineStats } from "./event-timeline.js";
 import { getPoolStats as getMacroPoolStats } from "../workers/macro-pool.js";
@@ -610,7 +610,7 @@ export function readMobileDashboard(db, userId) {
   };
 }
 
-const READ_ACTIONS = new Set(["check-builds", "view-citations"]);
+const READ_ACTIONS = new Set(["check-builds", "view-citations", "view-marketplace", "view-royalties"]);
 const WIRED_ACTIONS = ["manage-inventory", "quick-chat", "toggle-notifications"];
 const READ_OPS = new Set(["get", "read", "view", "list"]);
 const QUICK_CHAT_MAX = 4000;
@@ -724,7 +724,10 @@ export function runQuickAction(db, userId, body) {
       message: "Notification settings are saved per account by companion push-prefs-set; this route does not change them.",
     };
   }
-  const read = action === "check-builds" ? readOwnBuildings(db, userId) : readOwnCitations(db, userId);
+  const read = action === "check-builds" ? readOwnBuildings(db, userId)
+    : action === "view-citations" ? readOwnCitations(db, userId)
+    : action === "view-marketplace" ? readOwnListings(db, userId)
+    : readOwnRoyalties(db, userId);
   if (!read.ok) {
     if (read.status) return read;
     return {
@@ -735,7 +738,11 @@ export function runQuickAction(db, userId, body) {
       action,
       missing: action === "check-builds"
         ? "Buildings cannot be attributed to a user from the world_buildings table as stored."
-        : "DTU or citation tables are missing or unreadable.",
+        : action === "view-marketplace"
+          ? "Marketplace listings table is missing or unreadable."
+          : action === "view-royalties"
+            ? "Economy ledger is missing or unreadable."
+            : "DTU or citation tables are missing or unreadable.",
     };
   }
   const { ok, ...rest } = read;

@@ -27,6 +27,7 @@ import { MilestonesPanel } from '@/components/goals/MilestonesPanel';
 import { OKRWorkspace } from '@/components/goals/OKRWorkspace';
 import { GoalsAnalyticsTools } from '@/components/goals/GoalsAnalyticsTools';
 import { AgentAutonomyPanel } from '@/components/goals/AgentAutonomyPanel';
+import { GoalSearch } from '@/components/goals/GoalSearch';
 import { ProductivityFeed } from '@/components/goals/ProductivityFeed';
 import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
 import type { GoalTab } from '@/components/goals/goals-model';
@@ -93,7 +94,7 @@ export default function GoalsLensPage() {
         <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">Goals</h1>
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" onClick={() => setActive('okr')} className={chip}>
-            <Sparkles className="h-4 w-4 text-violet-400" /> Review OKRs
+            <Sparkles className="h-4 w-4 text-violet-400" /> Open OKRs
           </button>
           <button
             type="button"
@@ -103,6 +104,7 @@ export default function GoalsLensPage() {
             <Target className="h-4 w-4 text-violet-400" /> Set a weekly focus
           </button>
         </div>
+        <GoalSearch onNavigate={(v) => setActive(v)} />
         <nav className="mt-6 mb-2 flex flex-wrap gap-4 text-[13px]" aria-label="Goals views">
           {navViews.map((v) => {
             const on = active === v.id;

@@ -526,6 +526,10 @@ export default function registerDomainRoutes(app, {
     const out = await runMacro("goals", "abandon", { ...req.body, goalId: req.params.goalId }, makeCtx(req));
     return res.json(out);
   }));
+  app.delete("/api/goals/:goalId", asyncHandler(async (req, res) => {
+    const out = await runMacro("goals", "delete", { goalId: req.params.goalId }, makeCtx(req));
+    return res.json(out);
+  }));
   app.post("/api/goals/auto-propose", asyncHandler(async (req, res) => {
     const out = await runMacro("goals", "auto_propose", req.body, makeCtx(req));
     return res.json(out);

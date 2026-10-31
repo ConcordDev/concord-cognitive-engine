@@ -1181,7 +1181,7 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
                 <td className="p-2 text-zinc-400">{c.cardType || 'basic'}</td>
                 <td className="p-2 text-center text-zinc-400 font-mono">{c.reps}</td>
                 <td className="p-2 text-center text-zinc-400 font-mono">{c.interval}d</td>
-                <td className="p-2 text-zinc-400">{c.state === 'new' ? '—' : new Date(c.due).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                <td className="p-2 text-zinc-400">{c.state === 'new' || !c.due ? '—' : new Date(c.due).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                 <td className="p-2">
                   <span className={cn('text-[9px] px-1 rounded',
                     c.suspended ? 'bg-amber-900/50 text-amber-300'
@@ -1273,7 +1273,6 @@ function StudyTab({
     if (r.data?.ok) {
       setLastGrade(null);
       setCanUndo(false);
-      setDone(d => Math.max(0, d - 1));
       if (deckId) { await fetchNext(deckId); await fetchToday(deckId); }
       await refreshDecks();
     }
