@@ -393,6 +393,7 @@ registerHeartbeat("economy-anomaly-cycle", {
 // bridges from literary chunk-DTUs into other lenses (lib/literary-resonance.js).
 // Bounded per pass, try/catch isolated. Kill-switch CONCORD_LITERARY_RESONANCE=0.
 import { runLiteraryResonanceCycle } from "./emergent/literary-resonance-cycle.js";
+import { mountAdminHeartbeatRoutes } from "./lib/admin-heartbeat.js";
 import { applyVerifyAdmins, mountUserRoleRoute } from "./lib/verify-admins.js";
 registerHeartbeat("literary-resonance-cycle", {
   frequency: 200,
@@ -2132,7 +2133,7 @@ import { runIntegrityCheck } from "./lib/integrity-check.js";
 import { fullRecoverySequence } from "./lib/cascade-recovery.js";
 import { getScalingStatus } from "./lib/horizontal-scaling.js";
 import { startAllIntervals, stopAllIntervals, getIntervalStatus } from "./lib/interval-registry.js";
-import { getMemoryPressureLevel, initMemoryWatchdog } from "./lib/memory-pressure.js";
+import { getMemoryPressureLevel, initMemoryWatchdog, persistableSettings, clearMemoryPause } from "./lib/memory-pressure.js";
 import { initStateSync, getSyncStatus, stopSync } from "./lib/state-sync.js";
 import * as cityStreaming from "./lib/city-streaming.js";
 import { createRequire } from "module";
@@ -12920,7 +12921,8 @@ function _serializeState() {
     organs: toArr(STATE.organs),
     growth: STATE.growth,
     abstraction: STATE.abstraction,
-    settings: STATE.settings,
+    // Never persist the memory watchdog's runtime pause (see persistableSettings).
+    settings: persistableSettings(STATE),
     logs: STATE.logs.slice(-500),
     crawlQueue: (STATE.crawlQueue || []).filter(c => c.status !== "done" && c.status !== "error").slice(-200),
     queues: {
@@ -35916,6 +35918,7 @@ register("settings", "status", (ctx, _input) => {
 register("settings", "set", (ctx, input) => {
   const s = input.settings && typeof input.settings === "object" ? input.settings : {};
   ctx.state.settings = { ...ctx.state.settings, ...s };
+  clearMemoryPause(ctx.state, Object.keys(s)); // an explicit write supersedes a watchdog pause record
   ctx.log("settings.set", "Settings updated", { keys: Object.keys(s) });
   return { ok:true, settings: ctx.state.settings };
 });
@@ -63593,6 +63596,9 @@ app.post("/api/admin/background-governor/mode", requireRole("owner", "admin", "s
 
 // Owner/founder-only role grant/revoke (admin|member), audit-logged — see lib/verify-admins.js.
 mountUserRoleRoute(app, { requireRole, getDb: () => db, bustUserCache, log: structuredLog });
+
+// Admin-tier heartbeat switch (owner|admin|founder; only heartbeatEnabled) — see lib/admin-heartbeat.js.
+mountAdminHeartbeatRoutes(app, { requireRole, getState: () => STATE, save: () => saveStateSync(), clearMemoryPause, persistableSettings, log: structuredLog });
 
 app.get("/api/admin/dtu-quality", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
   try {

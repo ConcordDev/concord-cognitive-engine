@@ -208,7 +208,7 @@ function _evictOldSessions(STATE) {
   }
 }
 
-function _pauseBackgroundWork(STATE) {
+export function _pauseBackgroundWork(STATE) {
   if (!STATE?.settings) return;
   if (!STATE._memoryPausedFeatures) {
     STATE._memoryPausedFeatures = {};
@@ -227,7 +227,37 @@ function _pauseBackgroundWork(STATE) {
   }
 }
 
-function _resumeBackgroundWork(STATE) {
+/**
+ * The settings object to PERSIST. The watchdog's pause writes STATE.settings[f]=false so every runtime
+ * reader pauses, and records the owner's real value in STATE._memoryPausedFeatures. That record is
+ * in-memory only, so persisting STATE.settings as-is wrote the pause to disk: after any restart the
+ * features loaded false and nothing ever resumed them (live heartbeat/autogen/dream/evolution/synth were
+ * all off on every boot since 2026-10-30 17:38 ET). Persist the owner's value for every feature that is
+ * paused right now and still reads false; the pause itself stays runtime-only.
+ */
+export function persistableSettings(STATE) {
+  const s = STATE?.settings;
+  const paused = STATE?._memoryPausedFeatures;
+  if (!s || !paused) return s;
+  let out = null;
+  for (const [f, was] of Object.entries(paused)) {
+    if (was && s[f] === false) { out = out || { ...s }; out[f] = true; }
+  }
+  return out || s;
+}
+
+/**
+ * An explicit write to a paused feature supersedes the pause record: the writer's value is now the
+ * owner's value, so persistableSettings() must not "restore" an older one, and a later resume must not
+ * overwrite it. Call from every path that deliberately sets a feature flag.
+ */
+export function clearMemoryPause(STATE, keys) {
+  const paused = STATE?._memoryPausedFeatures;
+  if (!paused) return;
+  for (const k of keys) delete paused[k];
+}
+
+export function _resumeBackgroundWork(STATE) {
   if (!STATE?.settings || !STATE._memoryPausedFeatures) return;
   for (const [f, was] of Object.entries(STATE._memoryPausedFeatures)) {
     if (was) STATE.settings[f] = true;
