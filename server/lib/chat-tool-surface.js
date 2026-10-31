@@ -397,10 +397,20 @@ export async function dispatchChatDtuSearch(runMacro, ctx, params = {}) {
   const note = missingIds.length
     ? `No DTU has the id ${missingIds.join(", ")}. Say that plainly; do not describe or cite any of the other results as that DTU.`
     : dtus.length ? "Cite only the ids and titles listed here." : "No DTU matched. Say so; do not invent DTU titles or ids.";
+  // The total is a SEARCH-HIT count: matches across the whole searchable
+  // corpus, sliced to the result limit (default 8). It is not the user's
+  // owned DTU total and must never be quoted as one — Review 4's A19
+  // successor (2026-10-30) is exactly that failure: the analyst answered
+  // "You have 8 DTUs" from this total, where 8 was the default limit and
+  // the account's grounded Total DTUs fact was 1. The label rides in the
+  // result the model reads (totalKind + the scope sentence), not only in
+  // this comment.
+  const scopeNote =
+    "total counts search hits across the searchable corpus, sliced to the result limit — it is NOT the user's owned DTU total; never quote it as how many DTUs the user has (owned totals come from the account's grounded facts).";
   return {
-    tool: "dtu_search", ok: true, query, total: dtus.length, dtus,
+    tool: "dtu_search", ok: true, query, total: dtus.length, totalKind: "search_hits", dtus,
     ...(missingIds.length ? { exactIdMatch: false, missingIds } : {}),
-    note,
+    note: `${note} ${scopeNote}`,
   };
 }
 
