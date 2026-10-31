@@ -148,6 +148,29 @@ export default function registerSrsActions(registerLensAction) {
     return card.state !== "new" && new Date(card.due).getTime() <= Date.now();
   }
 
+  // Bury semantics (founder ruling 2026-10-29 — the Anki model): a
+  // buried card stays out until the next day. The day is the domain's
+  // day — the same UTC day key due dates, caps and forecasts use —
+  // so no surface can disagree about when "tomorrow" starts.
+  // buriedDay stamps the day the bury landed. A card buried before
+  // stamps existed carries no buriedDay and stays buried until it is
+  // unburied: pre-ruling data is never released silently.
+  const srsTodayKey = () => new Date().toISOString().slice(0, 10);
+  function srsBuriedNow(c) {
+    return !!c.buried && (c.buriedDay == null || c.buriedDay === srsTodayKey());
+  }
+  // Lazy expiry: the first touch after rollover clears an expired
+  // bury, so stored state matches what every surface already shows.
+  function srsExpireBuries(s, userId) {
+    let changed = false;
+    for (const c of srsList(s.cards, userId)) {
+      if (c.buried && c.buriedDay != null && c.buriedDay !== srsTodayKey()) {
+        c.buried = false; c.buriedDay = null; changed = true;
+      }
+    }
+    if (changed) saveSrs();
+  }
+
   // Per-deck study options (Anki-shape) with defensive defaults.
   function defaultDeckOptions() {
     return {
@@ -201,6 +224,7 @@ export default function registerSrsActions(registerLensAction) {
   registerLensAction("srs", "deck-list", (ctx, _a, _params = {}) => {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = srsActor(ctx);
+    srsExpireBuries(s, userId);
     const decks = srsList(s.decks, userId).map((d) => ({ ...d, ...deckCounts(s, userId, d) }));
     return { ok: true, result: { decks, count: decks.length } };
   });
@@ -261,7 +285,7 @@ export default function registerSrsActions(registerLensAction) {
       ease: 2.5, interval: 0, reps: 0, lapses: 0,
       stability: 0, difficulty: 0,
       state: "new", due: srsNow(), createdAt: srsNow(), lastReviewedAt: null,
-      suspended: false, buried: false,
+      suspended: false, buried: false, buriedDay: null,
       cardType,
       hint: srsClean(params.hint, 500),
       markup: params.markup === "markdown" || params.markup === "html" ? params.markup : "plain",
@@ -449,7 +473,7 @@ export default function registerSrsActions(registerLensAction) {
     return null;
   }
   function studyableCard(c) {
-    return !c.suspended && !c.buried;
+    return !c.suspended && !srsBuriedNow(c);
   }
   // The deck's full card set, before studyability: filtered decks
   // match their saved query across the collection; regular decks
@@ -518,7 +542,13 @@ export default function registerSrsActions(registerLensAction) {
     const userId = srsActor(ctx);
     const deck = srsList(s.decks, userId).find((d) => d.id === params.deckId);
     if (!deck) return { ok: true, result: { card: null, remaining: 0 } };
-    const cs = studyPool(s, userId, deck);
+    srsExpireBuries(s, userId);
+    // "Include buried" (the ruling's unbury-anyway control): a
+    // session that asks for them studies in-force buried cards too.
+    // Suspended cards stay out either way.
+    const cs = params.includeBuried
+      ? poolCardsAll(s, userId, deck).filter((c) => !c.suspended && (studyableCard(c) || srsBuriedNow(c)))
+      : studyPool(s, userId, deck);
     const opts = normaliseOptions(deck.options || {});
     const today = new Date().toISOString().slice(0, 10);
     const poolDeckIds = new Set(cs.map((c) => c.deckId));
@@ -826,6 +856,7 @@ export default function registerSrsActions(registerLensAction) {
   registerLensAction("srs", "srs-dashboard", (ctx, _a, _params = {}) => {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = srsActor(ctx);
+    srsExpireBuries(s, userId);
     const decks = srsList(s.decks, userId);
     const cards = srsList(s.cards, userId);
     return {
@@ -945,6 +976,7 @@ export default function registerSrsActions(registerLensAction) {
   registerLensAction("srs", "card-browse", (ctx, _a, params = {}) => {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = srsActor(ctx);
+    srsExpireBuries(s, userId);
     let cards = srsList(s.cards, userId).slice();
     const q = srsClean(params.query, 200).toLowerCase();
     if (params.deckId) cards = cards.filter((c) => c.deckId === params.deckId);
@@ -975,33 +1007,39 @@ export default function registerSrsActions(registerLensAction) {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const ids = Array.isArray(params.ids) ? params.ids : (params.id ? [params.id] : []);
     if (ids.length === 0) return { ok: false, error: "id or ids required" };
+    srsExpireBuries(s, srsActor(ctx));
     const cards = srsList(s.cards, srsActor(ctx));
     // S6: count only cards whose flag actually changes — a banner
     // may only ever claim verified state changes.
-    let n = 0, unchanged = 0;
+    let n = 0, unchanged = 0, unburied = 0;
     for (const card of cards.filter((c) => ids.includes(c.id))) {
       const target = params.suspended != null ? !!params.suspended : !card.suspended;
       if (card.suspended === target) { unchanged++; continue; }
       card.suspended = target;
-      if (card.suspended) card.buried = false;
+      // Suspending a buried card lifts its bury — a real side effect,
+      // so it is counted and reported, never done silently.
+      if (card.suspended && card.buried) { card.buried = false; card.buriedDay = null; unburied++; }
       n++;
     }
     if (n === 0 && unchanged === 0) return { ok: false, error: "no matching cards" };
     saveSrs();
-    return { ok: true, result: { updated: n, unchanged } };
+    return { ok: true, result: { updated: n, unchanged, unburied } };
   });
 
   registerLensAction("srs", "card-bury", (ctx, _a, params = {}) => {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const ids = Array.isArray(params.ids) ? params.ids : (params.id ? [params.id] : []);
     if (ids.length === 0) return { ok: false, error: "id or ids required" };
+    srsExpireBuries(s, srsActor(ctx));
     const cards = srsList(s.cards, srsActor(ctx));
     // S6: same honesty rule as suspend — count real changes only.
+    // Bury stamps its day; the bury lifts at the next day rollover.
     let n = 0, unchanged = 0;
     for (const card of cards.filter((c) => ids.includes(c.id))) {
       const target = params.buried != null ? !!params.buried : !card.buried;
       if (card.buried === target) { unchanged++; continue; }
       card.buried = target;
+      card.buriedDay = target ? srsTodayKey() : null;
       n++;
     }
     if (n === 0 && unchanged === 0) return { ok: false, error: "no matching cards" };
@@ -1129,7 +1167,7 @@ export default function registerSrsActions(registerLensAction) {
         due: c.due, lastReviewedAt: c.lastReviewedAt || null,
         introducedAt: c.introducedAt || null,
         inSteps: !!c.inSteps, stepIndex: c.stepIndex || 0,
-        suspended: !!c.suspended, buried: !!c.buried,
+        suspended: !!c.suspended, buried: srsBuriedNow(c),
       },
     }));
     const bundle = {
@@ -1184,7 +1222,7 @@ export default function registerSrsActions(registerLensAction) {
         tags: Array.isArray(raw.tags) ? raw.tags.map((t) => srsClean(t, 30)).filter(Boolean).slice(0, 8) : [],
         ease: 2.5, interval: 0, reps: 0, lapses: 0, stability: 0, difficulty: 0,
         state: "new", due: srsNow(), createdAt: srsNow(), lastReviewedAt: null,
-        suspended: false, buried: false,
+        suspended: false, buried: false, buriedDay: null,
         cardType: ["basic", "cloze", "image-occlusion", "templated"].includes(raw.cardType) ? raw.cardType : "basic",
         hint: srsClean(raw.hint, 500),
         markup: raw.markup === "markdown" || raw.markup === "html" ? raw.markup : "plain",
