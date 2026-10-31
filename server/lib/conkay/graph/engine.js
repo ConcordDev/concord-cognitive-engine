@@ -280,8 +280,8 @@ export class DesignEngine {
     }
   }
 
-  /** Recompute the given runs and everything that read their results (e.g. after an external kernel finished). */
-  rerun(ids) {
+  /** The downstream closure of the given runs: everything that read their results. */
+  _rerunClosure(ids) {
     const stale = new Set(ids.filter((id) => this.runs.has(id)));
     let grew = true;
     while (grew) {
@@ -291,9 +291,29 @@ export class DesignEngine {
         if ([...run.reads].some((r) => r.startsWith("result:") && stale.has(r.slice(7)))) { stale.add(id); grew = true; }
       }
     }
+    return stale;
+  }
+
+  /** Recompute the given runs and everything that read their results (e.g. after an external kernel finished). */
+  rerun(ids) {
+    const stale = this._rerunClosure(ids);
     for (const id of stale) this.runs.get(id).stale = true;
     this.computedThisPass = [];
     for (const id of stale) this.ensure(id);
+    return [...this.computedThisPass];
+  }
+
+  /** rerun for the request path: the same recompute, yielding to the event
+   * loop between runs — a heavyweight solver's downstream closure (the
+   * per-part analysis re-run) cannot freeze the loop for its whole duration. */
+  async rerunAsync(ids) {
+    const stale = this._rerunClosure(ids);
+    for (const id of stale) this.runs.get(id).stale = true;
+    this.computedThisPass = [];
+    for (const id of stale) {
+      this.ensure(id);
+      await new Promise((r) => { setImmediate(r); });
+    }
     return [...this.computedThisPass];
   }
 
