@@ -57,6 +57,11 @@ export function createMemoryStore() {
         .sort((a, b) => a.createdAt - b.createdAt)
         .slice(0, limit),
     all: () => [...rows.values()],
+    counts: () => {
+      const c = {};
+      for (const r of rows.values()) c[r.status] = (c[r.status] || 0) + 1;
+      return c;
+    },
   };
 }
 
@@ -90,6 +95,7 @@ export function createSqliteStore(db) {
       ORDER BY created_at ASC LIMIT ?
     `),
     all: db.prepare("SELECT * FROM dtu_bridge_outbox ORDER BY created_at ASC"),
+    counts: db.prepare("SELECT status, COUNT(*) AS n FROM dtu_bridge_outbox GROUP BY status"),
   };
   const toRow = (r) =>
     r && {
@@ -129,6 +135,10 @@ export function createSqliteStore(db) {
     },
     due: (nowMs, limit) => stmts.due.all(nowMs, limit).map(toRow),
     all: () => stmts.all.all().map(toRow),
+    // Per-status counts without materialising rows: `all()` pulls every row
+    // (pack_json included) into the JS heap, and delivered rows are never
+    // purged, so a status read was O(table) heap.
+    counts: () => Object.fromEntries(stmts.counts.all().map((r) => [r.status, r.n])),
   };
 }
 
@@ -227,6 +237,10 @@ export function createOutbox(store, { maxAttempts = OUTBOX_MAX_ATTEMPTS, backoff
 
     stats() {
       const counts = { pending: 0, in_flight: 0, failed: 0, delivered: 0, abandoned: 0 };
+      if (typeof store.counts === "function") {
+        for (const [status, n] of Object.entries(store.counts())) counts[status] = n;
+        return counts;
+      }
       for (const r of store.all()) counts[r.status] = (counts[r.status] || 0) + 1;
       return counts;
     },

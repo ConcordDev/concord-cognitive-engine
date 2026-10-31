@@ -393,6 +393,7 @@ registerHeartbeat("economy-anomaly-cycle", {
 // bridges from literary chunk-DTUs into other lenses (lib/literary-resonance.js).
 // Bounded per pass, try/catch isolated. Kill-switch CONCORD_LITERARY_RESONANCE=0.
 import { runLiteraryResonanceCycle } from "./emergent/literary-resonance-cycle.js";
+import { applyVerifyAdmins, mountUserRoleRoute } from "./lib/verify-admins.js";
 import { mountGutenbergIngestRoutes } from "./lib/literary-gutenberg.js";
 registerHeartbeat("literary-resonance-cycle", {
   frequency: 200,
@@ -7539,6 +7540,18 @@ if (AuthDB.getUserCount() === 0 && bcrypt) {
     });
     structuredLog("info", "auth_admin_created", { username: "admin" });
   }
+}
+
+// Verify-admin allowlist (server/config/verify-admins.json): grant role "admin" to a listed
+// dedicated verification account whose username AND id both match. Only ever grants admin,
+// never touches owner/founder/sovereign, never creates users or touches passwords. Idempotent.
+try {
+  if (db) {
+    applyVerifyAdmins({ db, log: structuredLog });
+    bustUserCache();
+  }
+} catch (e) {
+  structuredLog("warn", "verify_admin_apply_failed", { error: e?.message });
 }
 
 // Auth helper functions
@@ -41912,6 +41925,8 @@ app.get("/mcp/tools", (_req, res) => {
 // user (req.authMethod !== "mcp-bypass") for these two tools specifically,
 // regardless of the general MCP bypass.
 const MCP_TOOLS_REQUIRE_REAL_AUTH = new Set([
+  // embedding_search runs a vector scan over embeddings_e5 — real auth only (cost + anon-trigger surface).
+  "embedding_search",
   "reflect_invoke",
   "reflect_rescan",
   // MCP Execution Bridge — never callable via the mcp-anonymous bypass.
@@ -44086,7 +44101,10 @@ function getDtuBridge() {
   }
   return _dtuBridgeSvc;
 }
-registerHeartbeat("dtu-bridge-pump", {
+// Kill-switch: DTU_BRIDGE_PUMP_DISABLED=1 (or DTU_BRIDGE_PUMP=0) skips
+// registering the pump at boot. Default unchanged (pump on).
+const _dtuBridgePumpEnabled = process.env.DTU_BRIDGE_PUMP_DISABLED !== "1" && process.env.DTU_BRIDGE_PUMP !== "0";
+if (_dtuBridgePumpEnabled) registerHeartbeat("dtu-bridge-pump", {
   frequency: 4,
   scope: "global",
   handler: async () => {
@@ -63575,6 +63593,9 @@ app.post("/api/admin/background-governor/mode", requireRole("owner", "admin", "s
   try { res.json({ ok: true, mode: setBgGovernorMode(req.body?.mode ?? null) }); }
   catch (e) { res.status(400).json({ ok: false, error: String(e?.message || e) }); }
 });
+
+// Owner/founder-only role grant/revoke (admin|member), audit-logged — see lib/verify-admins.js.
+mountUserRoleRoute(app, { requireRole, getDb: () => db, bustUserCache, log: structuredLog });
 
 // Literary (Project Gutenberg) ingest, in-process on the running server's db handle —
 // replaces running scripts/ingest-gutenberg.mjs against the live DB. Admin-only,
