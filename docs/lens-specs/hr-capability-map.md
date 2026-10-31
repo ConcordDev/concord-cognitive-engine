@@ -1,7 +1,7 @@
 # HR Lens — Capability Map (Frontend Rebuild Program, Wave 2 batch 7, Docs/B2B SaaS archetype)
 
 Reproduce the macro count:
-`grep -c 'registerLensAction("hr"' server/domains/hr.js` → **63** (was 56 before the 2026-07-12 I-9/E-Verify closure added 7 macros)
+`grep -c 'registerLensAction("hr"' server/domains/hr.js` → **64** (was 56 before the 2026-07-12 I-9/E-Verify closure added 7 macros; +1 more since, re-counted 2026-10-28)
 
 ## Reference apps + parity target
 
@@ -132,3 +132,8 @@ missing-backend problem.
 - `npx vitest run tests/hr-lens-states.test.tsx` — 5/5 passing, unchanged (it targets `HrActionPanel` directly, which this pass didn't modify).
 - `node scripts/verify-lens-backends.mjs` — `hr` still `WIRED`.
 - `node scripts/grade-ux-polish.mjs --honest` — `hr`: was `tier: "functional"` / `isGenericScaffold: true`; now `tier: "polished"` / `isGenericScaffold: false` (`bespokeRatio` up to `0.961`, `pageLoc` down from 449 to 104).
+
+
+---
+
+*Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*

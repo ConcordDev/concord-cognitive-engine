@@ -79,6 +79,30 @@ describe('ErpBomPanel', () => {
     );
   });
 
+  it('an unpriced BOM shows "cost not computed", never $0.00 or "$—", plus the reason', async () => {
+    fetchErpBom.mockResolvedValue({
+      ...BOM,
+      lines: BOM.lines.map((l) => ({ ...l, extendedCostUsd: null })),
+      rollup: { totalMassKg: 1.7, materialCostUsd: null, overheadPct: 0.1, overheadUsd: null, rollupCostUsd: null, pricedLines: 0, unpricedLines: 2, costComplete: false, costNote: 'No line has a price source: cost is not computed.', currency: 'USD' },
+    });
+    render(<ErpBomPanel />);
+    fireEvent.change(screen.getByTestId('ck-erp-bom-assembly-id'), { target: { value: 'asm_1' } });
+    fireEvent.click(screen.getByTestId('ck-erp-bom-reload'));
+    const box = await screen.findByTestId('ck-erp-bom-rollup');
+    expect(box).toHaveTextContent('rollup cost not computed');
+    expect(box.textContent).not.toMatch(/\$0\.00|\$—/);
+    expect(await screen.findByTestId('ck-erp-bom-cost-note')).toHaveTextContent(/not computed/);
+    await waitFor(() => expect(screen.getByTestId('ck-erp-bom-status')).toHaveTextContent(/cost not computed/));
+  });
+
+  it('a partially priced BOM is labelled partial', async () => {
+    fetchErpBom.mockResolvedValue({ ...BOM, rollup: { ...BOM.rollup, pricedLines: 1, unpricedLines: 1, costComplete: false, costNote: 'Partial: 1 of 2 line(s) have no price.' } });
+    render(<ErpBomPanel />);
+    fireEvent.change(screen.getByTestId('ck-erp-bom-assembly-id'), { target: { value: 'asm_1' } });
+    fireEvent.click(screen.getByTestId('ck-erp-bom-reload'));
+    expect(await screen.findByTestId('ck-erp-bom-rollup')).toHaveTextContent('rollup $55.00 USD (partial)');
+  });
+
   it('an ok:false BOM response shows the real honest failure reason, not fabricated rows', async () => {
     fetchErpBom.mockResolvedValue({ ok: false, reason: 'assembly_not_found' });
     render(<ErpBomPanel />);

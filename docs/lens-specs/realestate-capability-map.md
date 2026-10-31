@@ -6,7 +6,7 @@
 ## Backend surface — TWO domains, one lens
 
 ```
-grep -c 'registerLensAction("realestate"' server/domains/realestate.js   # → 55
+grep -c 'registerLensAction("realestate"' server/domains/realestate.js   # → 56
 grep -c 'register("real_estate"'          server/domains/real-estate.js # → 10
 ```
 
@@ -242,3 +242,8 @@ macro.
   `tier: "polished"`, `isGenericScaffold: false`, `honestCapped: false`,
   `pillarsPresent: 5`, `antiPatterns: 0`. `audit/` reverted after the run
   (`git checkout -- audit/`).
+
+
+---
+
+*Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*

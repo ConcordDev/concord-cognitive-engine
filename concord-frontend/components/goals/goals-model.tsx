@@ -32,6 +32,10 @@ export interface Goal {
    * the derived Milestones timeline can order/date completions. Not part of
    * the persisted `data` shape. */
   completedAt?: string;
+  /** When the artifact was created (item.createdAt) — feeds the completion record. */
+  createdAt?: string;
+  /** S13 (F14/§3b): the user-chosen weekly focus. One goal at a time. */
+  weeklyFocus?: boolean;
 }
 
 export interface Challenge {
@@ -92,9 +96,63 @@ export const priorityFlame: Record<string, string> = {
 
 // --------------- Helpers ---------------
 
+// S12 (F13): calendar math in the USER's timezone. The browser's
+// local zone is the user's zone; a date-only string names a calendar
+// day in that zone, not a UTC instant.
+export function localDayKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function parseDay(dateStr: string): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return new Date(dateStr);
+}
+
 export function daysUntil(dateStr: string): number {
-  const diff = new Date(dateStr).getTime() - Date.now();
-  return Math.max(0, Math.ceil(diff / 86400000));
+  // Whole calendar days from the user's today to the target day —
+  // not a 24-hour quotient, which over/under-counts by a day
+  // depending on the time of day and the zone offset (F13).
+  const target = parseDay(dateStr);
+  if (isNaN(target.getTime())) return 0;
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  return Math.max(0, Math.round((startOfDay(target) - startOfDay(new Date())) / 86400000));
+}
+
+export function formatLocalDate(iso: string): string {
+  const d = parseDay(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+export function formatLocalDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+export function daysBetween(fromIso: string, toIso: string): number {
+  const a = parseDay(fromIso);
+  const b = parseDay(toIso);
+  if (isNaN(a.getTime()) || isNaN(b.getTime())) return 0;
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  return Math.max(0, Math.round((startOfDay(b) - startOfDay(a)) / 86400000));
+}
+
+// §3b proposal 3: a completed goal's record, from its real data —
+// what it took, kept by the card and the Milestones timeline.
+export function completionRecord(g: { subtasks?: SubTask[]; createdAt?: string; completedAt?: string }): string {
+  const parts: string[] = [];
+  const steps = g.subtasks?.length || 0;
+  if (steps > 0) parts.push(`${steps} step${steps !== 1 ? 's' : ''}`);
+  if (g.createdAt && g.completedAt) {
+    const days = daysBetween(g.createdAt, g.completedAt);
+    parts.push(days > 0 ? `${days} day${days !== 1 ? 's' : ''}` : 'same day');
+  }
+  return parts.join(' · ');
 }
 
 export function getLevel(xp: number): { label: string; color: string; next: number } {

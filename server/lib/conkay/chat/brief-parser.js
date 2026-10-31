@@ -39,7 +39,10 @@ export function detectDomain(text) {
   if (/\bsentinel\b|\bm1\b/.test(t) && /\b(knee|hip|ankle|actuator|bracket|mount|link|part)\b/.test(t)) return "sentinel-part";
   if (/\btruss\b|\bwarren\b|\bpratt\b|\bhowe\b/.test(t)) return "truss";
   // A bridge / footbridge / pedestrian bridge is designed as a planar truss (Pratt unless named); a "beam bridge" stays a beam.
-  if (BRIDGE_RE.test(t) && !/\b(?:beam|girder)\s+bridge\b/.test(t)) return "truss";
+  // A "footbridge beam", "bridge girder", or a simply supported bridge beam is the member itself, not a truss.
+  const bridgeMember = /\b(?:beam|girder)s?\s+(?:foot)?bridge\b|\b(?:foot)?bridge\s+(?:beam|girder)s?\b/.test(t)
+    || (/\bsimply[- ]supported\b/.test(t) && /\b(?:beam|girder)\b/.test(t));
+  if (BRIDGE_RE.test(t) && !bridgeMember) return "truss";
   if (/\bbracket\b|\bcantilever(?:ed)?\s+plate\b/.test(t)) return "bracket";
   if (/\bbeam\b|\bjoist\b|\bgirder\b/.test(t)) return "beam";
   if (/\b(car|vehicle|sedan|coupe|hatchback|suv|ev|roadster|supercar)\b/.test(t)) return "car";
@@ -61,6 +64,13 @@ function readMaterial(text, kind) {
   if (!r) return claim("material", "material", null, { status: STATUS.UNKNOWN, source: `"${m[1]}"`, note: `no library entry for "${m[1]}": give a grade the library carries (for example A36 steel or 6061-T6 aluminium)` });
   if (GRADE_SPECIFIC.test(word)) return claim("material", "material", r.id, { source: `"${m[1]}"` });
   return claim("material", "material", r.id, { status: STATUS.DEFAULT, source: `"${m[1]}" read through the material library (server/lib/conkay/materials/index.js): ${r.note || `"${word}" -> ${r.id}`}`, note: "a grade was not named; name one to make it a design input" });
+}
+
+/** "span/360", "L/360", "L / 360" or "deflection limit of 360": the allowed midspan deflection is span / ratio. */
+function readDeflectionLimit(text) {
+  const m = text.match(/\b(?:span|l)\s*\/\s*(\d{2,4})\b/i) || text.match(/\bdeflection\s+(?:limit|criterion)\s*(?:of|=|:|is)?\s*(?:span|l)?\s*\/?\s*(\d{2,4})\b/i);
+  if (!m) return null;
+  return claim("deflectionLimit", "deflection limit (span / n)", Number(m[1]), { unit: "1", display: `span/${m[1]}`, source: `"${m[0].trim()}"` });
 }
 
 function readSafetyFactor(text, material) {
@@ -208,6 +218,8 @@ function parseBeam(text, scan, assumptions) {
   if (mat) claims.material = mat;
   const sf = readSafetyFactor(text, mat);
   if (sf) claims.safetyFactor = sf;
+  const dl = readDeflectionLimit(text);
+  if (dl) claims.deflectionLimit = dl;
   return { claims, loads };
 }
 
@@ -308,7 +320,7 @@ export function parseChatBrief(text, { llm = false, mapPhrases = null } = {}) {
   let ir;
   if (domain === "car") ir = carIr(Object.fromEntries(Object.entries(claims).filter(([, c]) => c.status !== STATUS.UNKNOWN)));
   else if (domain === "bracket") ir = { kind: "bracket", support: "cantilever", lengthM: v("length"), loadN: v("load"), loadAt: parsed.loads[0]?.at ?? (v("load") != null ? "tip" : null), otherLoads: parsed.loads.slice(1), material: v("material"), safetyFactor: v("safetyFactor"), thicknessM: v("thickness"), widthM: v("width"), section: null };
-  else if (domain === "beam") ir = { kind: "beam", spanM: v("span"), support: v("support"), loads: v("loads") || [], material: v("material"), safetyFactor: v("safetyFactor"), widthM: v("width"), depthM: v("depth"), section: null };
+  else if (domain === "beam") ir = { kind: "beam", spanM: v("span"), support: v("support"), loads: v("loads") || [], material: v("material"), safetyFactor: v("safetyFactor"), widthM: v("width"), depthM: v("depth"), deflectionLimit: v("deflectionLimit"), section: null };
   else if (domain === "truss") ir = { kind: "truss", type: v("type"), panels: v("panels"), spanM: v("span"), heightM: v("height"), loads: v("loads") || [], supports: v("support"), material: v("material") };
   else ir = { kind: "sentinel-part", robot: v("robot"), joint: v("joint"), part: v("part"), loadCase: v("loadCase"), material: v("material"), safetyFactor: v("safetyFactor"), armor: v("armor") === true ? "requested (refused: armor stays off M1)" : "off" };
 

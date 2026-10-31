@@ -56,7 +56,12 @@ import {
 } from '@/lib/world-lens/world-data-state';
 import { themeForWorldId, CONCORDIA_THEMES, sunDiskForWorld, buildingStyleForWorld } from '@/lib/world-lens/concordia-theme';
 import { DEFAULT_CAMERA_ZOOM } from '@/lib/world-lens/camera-zoom';
-import { cancelActiveSequence } from '@/lib/world-lens/cinematic-director';
+import {
+  cancelActiveSequence,
+  pauseActiveSequence,
+  resumeActiveSequence,
+  skipActiveShot,
+} from '@/lib/world-lens/cinematic-director';
 import { hudCornerStyle } from '@/lib/world-lens/hud-corner-registry';
 import { shouldTogglePhotoMode, resolvePhotoModeCanvas } from '@/lib/world-lens/photo-mode-key';
 import { weatherTypeToIcon } from '@/lib/world-lens/weather-icon';
@@ -2249,6 +2254,7 @@ export default function WorldOsSurface() {
   // cinematic-start carries the sequence duration; a 250ms ticker
   // advances the elapsed time while playing; cinematic-end stops it.
   const [cinematicPlaying, setCinematicPlaying] = useState(false);
+  const [cinematicPaused, setCinematicPaused] = useState(false);
   const [cinematicTime, setCinematicTime] = useState(0);
   const [cinematicDuration, setCinematicDuration] = useState(0);
   const cinematicStartedAtRef = useRef<number | null>(null);
@@ -2258,21 +2264,39 @@ export default function WorldOsSurface() {
       cinematicStartedAtRef.current = performance.now();
       setCinematicDuration(typeof durationMs === 'number' ? durationMs / 1000 : 0);
       setCinematicTime(0);
+      setCinematicPaused(false);
       setCinematicPlaying(true);
     }
     function onEnd() {
       cinematicStartedAtRef.current = null;
+      setCinematicPaused(false);
       setCinematicPlaying(false);
+    }
+    // The director's transport (pause/resume/seek) reports the true
+    // playback position; the display clock re-bases off it so the
+    // timeline can't drift from the director's own clock.
+    function onPlayback(e: Event) {
+      const detail = (e as CustomEvent).detail ?? {};
+      const elapsedMs = typeof detail.elapsedMs === 'number' ? detail.elapsedMs : null;
+      if (elapsedMs != null) setCinematicTime(elapsedMs / 1000);
+      setCinematicPaused(!!detail.paused);
+      if (detail.paused) {
+        cinematicStartedAtRef.current = null;
+      } else if (elapsedMs != null) {
+        cinematicStartedAtRef.current = performance.now() - elapsedMs;
+      }
     }
     window.addEventListener('concordia:cinematic-start', onStart);
     window.addEventListener('concordia:cinematic-end', onEnd);
+    window.addEventListener('concordia:cinematic-playback', onPlayback);
     return () => {
       window.removeEventListener('concordia:cinematic-start', onStart);
       window.removeEventListener('concordia:cinematic-end', onEnd);
+      window.removeEventListener('concordia:cinematic-playback', onPlayback);
     };
   }, []);
   useEffect(() => {
-    if (!cinematicPlaying) return;
+    if (!cinematicPlaying || cinematicPaused) return;
     const id = window.setInterval(() => {
       const startedAt = cinematicStartedAtRef.current;
       if (startedAt == null) return;
@@ -2280,7 +2304,7 @@ export default function WorldOsSurface() {
       setCinematicTime(cinematicDuration > 0 ? Math.min(elapsed, cinematicDuration) : elapsed);
     }, 250);
     return () => window.clearInterval(id);
-  }, [cinematicPlaying, cinematicDuration]);
+  }, [cinematicPlaying, cinematicPaused, cinematicDuration]);
   // Camera Mode panel's zoom slider — previously wired to a no-op onZoom
   // handler (CameraControls rendered a live-looking slider that did
   // nothing). Real state now, consumed by ConcordiaScene's cameraZoom prop
@@ -5655,6 +5679,7 @@ export default function WorldOsSurface() {
                 rotation: cameraRotation,
                 followTarget: 'avatar',
                 cinematicPlaying,
+                cinematicPaused,
                 cinematicTime,
                 cinematicDuration,
                 transitioning: false,
@@ -5664,6 +5689,10 @@ export default function WorldOsSurface() {
               onRotate={setCameraRotation}
               onTransition={() => {}}
               onCinematicStop={() => cancelActiveSequence()}
+              onCinematicPause={() => pauseActiveSequence()}
+              onCinematicResume={() => resumeActiveSequence()}
+              onCinematicSkipBack={() => skipActiveShot(-1)}
+              onCinematicSkipForward={() => skipActiveShot(1)}
             />
           </div>
           {/* HUD overlay — mode drives the top-bar label */}
