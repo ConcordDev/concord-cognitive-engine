@@ -1,7 +1,7 @@
 # attention — Capability Map (Frontend Rebuild Program, Wave 3)
 
 > Derived, not asserted. Reproduce the macro list:
-> `grep -c 'registerLensAction("attention"' server/domains/attention.js` → 21 (script reports 22 macros exercised — the count includes an alias; the 21 distinct action names above are the ground truth from the grep).
+> `grep -c 'registerLensAction("attention"' server/domains/attention.js` → 22.
 
 ## Reference app + parity target
 
@@ -70,3 +70,8 @@ Toolkit above), replacing the old, impossible-to-satisfy hint.
 - `npx tsc --noEmit -p .` — 0 errors attributable to this file.
 - `node scripts/verify-lens-backends.mjs` — `attention` reports WIRED.
 - `node scripts/grade-ux-polish.mjs --honest` — `attention`: `tier: "polished"`, `isGenericScaffold: false`, `bespokeRatio: 0.41`.
+
+
+---
+
+*Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*

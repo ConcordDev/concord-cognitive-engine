@@ -96,7 +96,7 @@ describe("Solver registry", () => {
 
 describe("Acceptance: change one bolt to stainless", () => {
   // mass.cg@A1 reads the bolt's mass, so it reruns too (it stays NOT_COMPUTED: the bracket has no positions).
-  const AFFECTED = ["mass.part@B1", "cost.part@B1", "joint.bolt-shear@J1", "mass.assembly@A1", "mass.cg@A1", "cost.assembly@A1", "requirement.check@R1"].sort();
+  const AFFECTED = ["mass.part@B1", "cost.part@B1", "joint.bolt-shear@J1", "mass.assembly@A1", "mass.cg@A1", "cost.assembly@A1", "requirement.check@R1", "part.uniform-corrosion@B1"].sort(); // + uniform-corrosion since Q42: it reads the bolt's material
 
   it("reruns only what depends on the bolt's material", () => {
     const s = open(bracket());
@@ -192,15 +192,18 @@ describe("Honesty", () => {
     assert.equal(s.result("cost.part@P1").status, "PASS", "A36 has a library price");
   });
 
-  it("coverage reports physics with no solver as gaps", () => {
+  it("coverage reports the long-term domains as solver-backed since Q42 (NOT_COMPUTED without declarations, never gaps)", () => {
     const s = open(bracket());
     const j1 = s.coverage().find((c) => c.node === "J1");
     const galvanic = j1.domains.find((d) => d.domain === "corrosion.galvanic");
-    assert.equal(galvanic.status, "not computed");
-    assert.match(galvanic.reason, /no corrosion.galvanic solver/);
+    assert.equal(galvanic.solver, "joint.galvanic-corrosion");
+    assert.equal(galvanic.status, "NOT_COMPUTED"); // bracket() declares no environment
+    assert.match(galvanic.reason, /props\.environment/);
     const b1 = s.coverage().find((c) => c.node === "B1");
     assert.equal(b1.domains.find((d) => d.domain === "structural.shear").solver, "joint.bolt-shear");
-    assert.equal(b1.domains.find((d) => d.domain === "fatigue").status, "not computed");
+    const fatigue = b1.domains.find((d) => d.domain === "fatigue");
+    assert.equal(fatigue.solver, "joint.fatigue"); // the joint's fatigue envelope covers its bolts
+    assert.equal(fatigue.status, "NOT_COMPUTED");
   });
 
   it("the bolt mass says the head and nut are not modelled", () => {

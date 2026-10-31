@@ -174,10 +174,52 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
     );
   }
 
-  if (profileLoading || !userId) {
+  if (profileLoading) {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="w-8 h-8 text-neon-cyan animate-spin" />
+      </div>
+    );
+  }
+
+  // Resolved, but this account has no social profile: profiles are created
+  // by an explicit upsert (POST /api/social/profile), never at signup, and
+  // the own-profile read answers 200 with an ok:false body for a
+  // profile-less account — so the query succeeds with no userId. That is a
+  // permanent, legitimate state, not a load still in flight: render its
+  // terminal empty state instead of spinning forever (Review 4 Addendum 5:
+  // a fresh account's Overview / Revenue / Actions never rendered, while
+  // the tabs that don't ride this panel worked).
+  if (!userId) {
+    // F15 (Review 4 Addendum 7): the Actions bench is the exception to
+    // this gate. AnalyticsActionPanel is profile-independent — it takes
+    // no profile props, reads no profile state, and every call it makes
+    // (bench computations, dtu.create, DM, the Lever) takes its actor
+    // from the session server-side — so a profile-less account still
+    // gets its bench. The terminal state below scopes to the
+    // profile-based modes its own text names (overview / revenue /
+    // dtus ride the profile-derived userId; un-gating those needs a
+    // session-sourced account id, a separate step).
+    if (mode === 'actions') {
+      return (
+        <div className="space-y-4">
+          <PipingProvider>
+            <AnalyticsActionPanel />
+          </PipingProvider>
+        </div>
+      );
+    }
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="text-center max-w-sm px-4">
+          <p className="text-sm text-zinc-200 mb-2">No social profile yet</p>
+          <p className="text-xs text-zinc-500 leading-relaxed">
+            This account hasn&rsquo;t created a social profile, so follower and
+            creator analytics have nothing to read yet. Events, funnels and
+            the other tabs still work — profile-based stats appear here once
+            a profile exists (profiles are created from the Social lens).
+          </p>
+        </div>
       </div>
     );
   }

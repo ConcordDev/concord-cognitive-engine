@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Filter, Plus, Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { cn } from '@/lib/utils';
 
 // The computed shape funnel-list attaches (server computeFunnel; the same
@@ -31,9 +32,24 @@ export function FunnelsPanel({ className }: { className?: string }) {
   const [funnels, setFunnels] = useState<Funnel[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [name, setName] = useState('');
-  const [stepsText, setStepsText] = useState('');
+  // Draft persistence (A23 successor, Review 4 Addenda 5 + 8): the
+  // funnel-builder draft rides the lens state store under a funnelDraft
+  // key — restored once on mount, re-persisted on change. The lens page
+  // replaces its whole body on a tab switch, so plain useState drafts
+  // died on every switch; these two fields are the A23 protocol's graded
+  // pair. Same idiom as the bench drafts (AnalyticsActionPanel).
+  const { restore, persist } = useLensStatePersistence('analytics');
+  const [savedFunnelDraft] = useState(() => {
+    const d = restore()?.funnelDraft;
+    return d && typeof d === 'object' ? (d as Record<string, unknown>) : {};
+  });
+  const [name, setName] = useState(() => String(savedFunnelDraft.name ?? ''));
+  const [stepsText, setStepsText] = useState(() => String(savedFunnelDraft.stepsText ?? ''));
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    persist({ ...(restore() ?? {}), funnelDraft: { name, stepsText } });
+  }, [name, stepsText, persist, restore]);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
