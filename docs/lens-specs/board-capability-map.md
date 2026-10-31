@@ -89,7 +89,7 @@
 > missing.
 
 Reproduce the macro list:
-`grep -c 'registerLensAction("board"' server/domains/board.js` → 36 (2026-10-28)
+`grep -c 'registerLensAction("board"' server/domains/board.js` → 50 (2026-10-31)
 
 ## Reference apps
 
