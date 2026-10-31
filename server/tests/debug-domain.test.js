@@ -33,7 +33,7 @@ const ANON = { actor: { userId: "anon", role: "viewer" } };
 
 describe("debug domain (S1 unwalled workspace)", () => {
   it("registers the review's 21 macros plus the build's alert-test and S11 monitors", () => {
-    assert.equal(handlers.size, 31);  // 27 + the four project macros main added (S10)
+    assert.equal(handlers.size, 34);  // 27 + the four project macros main added (S10) + the three ingest-key macros (PR 1861)
   });
 
   it("a normal account ingests, lists, works and deletes its own issue", () => {
