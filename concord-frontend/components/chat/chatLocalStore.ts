@@ -25,6 +25,7 @@ export const MAX_BASE64_SIZE = 512 * 1024; // 512KB — encode files smaller tha
 const STORAGE_KEY_CONVERSATIONS = 'concord_chat_conversations';
 const STORAGE_KEY_SESSION = 'concord_chat_session';
 const STORAGE_KEY_MESSAGES_PREFIX = 'concord_chat_msgs_';
+const STORAGE_KEY_OWNER = 'concord_chat_owner';
 
 // ──────────────────────────────────────────────
 // Helper: UUID generation
@@ -149,3 +150,37 @@ export function fileToBase64(file: File): Promise<string> {
 // call — never a guessed spinner).
 // ──────────────────────────────────────────────
 
+
+/**
+ * Chat storage is per browser, not per account. Record who wrote it and, when a
+ * different account signs in, drop the previous account's session id,
+ * conversation list and cached threads: the server refuses their session ids
+ * (session_forbidden) and the user would otherwise be stuck on a dead session.
+ * Data written before the owner was recorded has an unknown owner: only its
+ * session id is dropped (the conversation list is kept; opening a foreign one
+ * is handled by the send path). Returns true when anything was cleared.
+ */
+export function adoptChatOwner(userId: string | null | undefined): boolean {
+  if (typeof window === 'undefined' || !userId) return false;
+  try {
+    const prev = localStorage.getItem(STORAGE_KEY_OWNER);
+    if (prev === userId) return false;
+    let cleared = false;
+    if (prev) {
+      const doomed: string[] = [STORAGE_KEY_SESSION, STORAGE_KEY_CONVERSATIONS];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(STORAGE_KEY_MESSAGES_PREFIX)) doomed.push(k);
+      }
+      for (const k of doomed) localStorage.removeItem(k);
+      cleared = true;
+    } else if (localStorage.getItem(STORAGE_KEY_SESSION)) {
+      localStorage.removeItem(STORAGE_KEY_SESSION);
+      cleared = true;
+    }
+    localStorage.setItem(STORAGE_KEY_OWNER, userId);
+    return cleared;
+  } catch {
+    return false;
+  }
+}
