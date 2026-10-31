@@ -21565,8 +21565,13 @@ async function initGhostFleet() {
       if (_hlmRunning) return;
       _hlmRunning = true;
       try {
-        const dtus = typeof STATE.dtus?.values === 'function' ? Array.from(STATE.dtus.values()) : [];
-        if (dtus.length > 0) await hlm.runHLMPass(dtus);
+        // Off the main thread: runHLMPass is O(n²) over the whole store (3.1 s at 5k DTUs, 41.6 s at 20k) and
+        // ran synchronously here, freezing the whole backend for 7-13 s+ every 20 minutes. The worker gets a
+        // slim projection (built in yielding chunks); the result is recorded back into hlm-engine's state.
+        // Registered with loopJobs so any remaining block is attributed to it.
+        const { runHLMPassOffThread } = await import("./emergent/hlm-offthread.js");
+        const out = await loopJobs.withJob("hlm_pass", () => runHLMPassOffThread(typeof STATE.dtus?.values === 'function' ? STATE.dtus.values() : []));
+        if (out && out.ok === false) observe(new Error(out.error || "hlm_pass_failed"), "hlm_slow_interval");
       } catch (e) { observe(e, "hlm_slow_interval"); }
       finally { _hlmRunning = false; }
     }, 1_200_000);
