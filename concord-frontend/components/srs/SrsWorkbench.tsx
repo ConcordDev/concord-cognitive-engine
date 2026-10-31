@@ -79,6 +79,7 @@ interface Card {
   hint?: string;
   suspended?: boolean;
   buried?: boolean;
+  buriedDay?: string | null;
   due?: string;
   media?: {
     frontImage?: string | null;
@@ -980,8 +981,11 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
     const r = await lensRun('srs', 'card-suspend', { ids: ids(), suspended });
     const updated = r.data?.result?.updated ?? 0;
     const unchanged = r.data?.result?.unchanged ?? 0;
+    const unburied = r.data?.result?.unburied ?? 0;
     if (!r.data?.ok) flash(r.data?.error || 'Could not update those cards.');
-    else if (updated > 0) flash(updated + ' card(s) ' + (suspended ? 'suspended' : 'unsuspended') + (unchanged ? ' — ' + unchanged + ' already were.' : '.'));
+    else if (updated > 0) flash(updated + ' card(s) ' + (suspended ? 'suspended' : 'unsuspended')
+      + (unburied ? ' — ' + unburied + ' of them also unburied' : '')
+      + (unchanged ? ' — ' + unchanged + ' already were.' : '.'));
     else flash('No change — the selected card(s) were already ' + (suspended ? 'suspended' : 'unsuspended') + '.');
     setSelected(new Set());
     await refresh();
@@ -992,7 +996,9 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
     const updated = r.data?.result?.updated ?? 0;
     const unchanged = r.data?.result?.unchanged ?? 0;
     if (!r.data?.ok) flash(r.data?.error || 'Could not update those cards.');
-    else if (updated > 0) flash(updated + ' card(s) ' + (buried ? 'buried' : 'unburied') + (unchanged ? ' — ' + unchanged + ' already were.' : '.'));
+    else if (updated > 0) flash(buried
+      ? updated + ' card(s) buried until tomorrow' + (unchanged ? ' — ' + unchanged + ' already were.' : '.')
+      : updated + ' card(s) unburied' + (unchanged ? ' — ' + unchanged + ' already were.' : '.'));
     else flash('No change — the selected card(s) were already ' + (buried ? 'buried' : 'unburied') + '.');
     setSelected(new Set());
     await refresh();
@@ -1226,12 +1232,15 @@ function StudyTab({
   const [previews, setPreviews] = useState<Record<string, string> | null>(null);
   const [lastGrade, setLastGrade] = useState<string | null>(null);
   const [canUndo, setCanUndo] = useState(false);
+  // Bury follow-up (founder ruling): the session's unbury-anyway
+  // control. Threaded through every study-next of the session.
+  const [includeBuried, setIncludeBuried] = useState(false);
 
   const deckId = active || decks[0]?.id;
   const deck = decks.find(d => d.id === deckId);
 
   const fetchNext = useCallback(async (id: string) => {
-    const r = await lensRun('srs', 'study-next', { deckId: id });
+    const r = await lensRun('srs', 'study-next', { deckId: id, includeBuried });
     const nextCard = (r.data?.result?.card as Card) || null;
     setCard(nextCard);
     setRemaining(r.data?.result?.remaining || 0);
@@ -1244,7 +1253,7 @@ function StudyTab({
       const p = pv.data?.result?.previews as Record<string, { label: string }> | undefined;
       if (p) setPreviews(Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v.label])));
     }
-  }, []);
+  }, [includeBuried]);
   // S14: progress reads the review log (study-stats, pool scope),
   // so it survives leaving and returning mid-session.
   const fetchToday = useCallback(async (id: string) => {
@@ -1337,8 +1346,16 @@ function StudyTab({
         <span className="text-[11px] text-zinc-400">
           Scheduler: <span className="text-purple-300">{deck?.options?.scheduler?.toUpperCase() || 'FSRS'}</span>
         </span>
+        <label className="flex items-center gap-1.5 text-[11px] text-zinc-400 cursor-pointer select-none">
+          <input type="checkbox" checked={includeBuried} onChange={e => setIncludeBuried(e.target.checked)}
+            className="accent-purple-500" aria-label="Include buried cards in this session" />
+          Include buried
+        </label>
         <span className="ml-auto text-[11px] text-zinc-400">{today.reviews} studied today</span>
       </div>
+      {includeBuried && (
+        <p className="text-[11px] text-zinc-500">Buried cards are in this session. Buried cards return to the deck tomorrow either way.</p>
+      )}
 
       {(lastGrade || canUndo) && (
         <div className="flex items-center gap-3">
