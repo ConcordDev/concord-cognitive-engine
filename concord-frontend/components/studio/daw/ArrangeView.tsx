@@ -363,7 +363,7 @@ export function ArrangeView(p: ArrangeViewProps) {
         <div className="flex">
           <div className="sticky left-0 z-10 border-r border-white/5 bg-[#101016] p-2" style={{ width: HEADER_W }}>
             {addOpen ? (
-              <div className="grid grid-cols-3 gap-1">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
                 {([['audio', 'Audio', Mic], ['instrument', 'Instrument', Piano], ['drums', 'Drums', Drum]] as const).map(([k, label, Icon]) => (
                   <button key={k} onClick={() => { p.onAddTrack(k); setAddOpen(false); }} className="flex flex-col items-center gap-0.5 rounded bg-white/5 py-1.5 text-[10px] text-zinc-300 hover:bg-white/10" data-testid={`studio-add-${k}`}>
                     <Icon className="h-3.5 w-3.5" />{label}

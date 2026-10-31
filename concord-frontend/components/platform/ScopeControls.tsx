@@ -255,7 +255,7 @@ function ScopeControls() {
         )}
 
         {/* Scope cards */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {Object.entries(SCOPE_META).map(([scope, meta]) => {
             const Icon = meta.icon;
             const count = scopeCounts[scope] || 0;

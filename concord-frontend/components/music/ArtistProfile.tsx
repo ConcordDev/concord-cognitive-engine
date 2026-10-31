@@ -191,7 +191,7 @@ export function ArtistProfile({ artist, tracks, albums, onAlbumClick, onBack }: 
             {/* Revenue breakdown (artist's own view) */}
             <div>
               <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Revenue</h3>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {[
                   { label: 'Direct Sales', value: artist.stats.totalRevenue, icon: DollarSign },
                   { label: 'Citation Royalties', value: artist.stats.citationRoyaltyIncome, icon: BarChart3 },

@@ -124,7 +124,7 @@ export function InsightsPanel({ onPlayed }: { onPlayed?: () => void }) {
                 </div>
               </div>
             )}
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               {mile.badges.map((b) => (
                 <div key={b.id}
                   className={cn('rounded-lg border p-2 text-center',

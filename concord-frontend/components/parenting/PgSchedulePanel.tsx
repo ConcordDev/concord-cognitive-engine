@@ -65,7 +65,7 @@ export function PgSchedulePanel({ childId }: { childId: string }) {
           className="px-2 py-1 text-[11px] rounded-lg bg-zinc-800 text-zinc-300 hover:bg-zinc-700">Refresh</button>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <Stat label="Wake window" value={`${sched.wakeWindow.typical}m`} />
         <Stat label="Typical nap" value={`${sched.learnedNapMin}m`} />
         <Stat label="Naps left" value={Math.max(0, sched.napsPerDay - sched.napsLogged)} />

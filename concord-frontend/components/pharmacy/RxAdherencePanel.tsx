@@ -141,7 +141,7 @@ export function RxAdherencePanel() {
           <Flame className="w-3.5 h-3.5 text-amber-400" /> Adherence streak
         </h3>
         {streak && (
-          <div className="grid grid-cols-3 gap-2 mb-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
             <Stat label="Current streak" value={`${streak.currentStreak}d`} highlight={streak.currentStreak >= 3} />
             <Stat label="Best streak" value={`${streak.bestStreak}d`} />
             <Stat label="Doses logged" value={streak.totalDosesTaken} />
@@ -279,7 +279,7 @@ export function RxAdherencePanel() {
         {meds.length === 0 ? (
           <p className="text-[11px] text-zinc-400 italic">Add a medication first to set auto-reorder.</p>
         ) : (
-          <div className="grid grid-cols-3 gap-2 mb-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
             <select value={reorderForm.medId} onChange={(e) => setReorderForm({ ...reorderForm, medId: e.target.value })}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
               <option value="">Choose medication…</option>

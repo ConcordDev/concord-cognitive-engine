@@ -1581,7 +1581,7 @@ export function ClinicalArtifactsPanel() {
               {/* checkInteractions */}
               {actionResult.interactionsFound !== undefined && (
                 <div className="space-y-2">
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     <div className="p-2 bg-lattice-surface rounded text-center">
                       <p className="text-sm font-bold text-neon-cyan">
                         {String(actionResult.totalChecked)}
@@ -1630,7 +1630,7 @@ export function ClinicalArtifactsPanel() {
               {/* protocolMatch */}
               {actionResult.conditionsEvaluated !== undefined && (
                 <div className="space-y-2">
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     <div className="p-2 bg-lattice-surface rounded text-center">
                       <p className="text-sm font-bold text-neon-cyan">
                         {String(actionResult.conditionsEvaluated)}
@@ -1674,7 +1674,7 @@ export function ClinicalArtifactsPanel() {
                       {String(actionResult.patientName)} &bull; Last{' '}
                       {String(actionResult.periodDays)} days
                     </p>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                       <div className="p-2 bg-lattice-surface rounded text-center">
                         <p className="text-sm font-bold text-neon-cyan">
                           {String((actionResult.encounterSummary as { total: number }).total)}

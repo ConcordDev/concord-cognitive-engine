@@ -283,7 +283,7 @@ function RunsPanel({ agents, onChange }: { agents: AgentLite[]; onChange: () => 
           <p className="py-8 text-center text-[11px] text-zinc-400">Run an agent or pick a run to inspect each step.</p>
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <Stat label="Steps" value={selectedRun.stepCount} />
               <Stat label="Latency" value={`${selectedRun.totalLatencyMs}ms`} />
               <Stat label="Tokens" value={selectedRun.totalTokens} />
@@ -542,7 +542,7 @@ function SchedulesPanel({ agents, onChange }: { agents: AgentLite[]; onChange: (
           <option value="">Select agent…</option>
           {agents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
-        <div className="grid grid-cols-4 gap-1">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-1">
           {(['interval', 'cron', 'webhook', 'event'] as const).map((k) => (
             <button
               key={k} onClick={() => setKind(k)}

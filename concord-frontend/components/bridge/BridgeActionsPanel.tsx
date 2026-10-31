@@ -93,7 +93,7 @@ export function BridgeActionsPanel() {
                   </span>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div className="p-2 bg-zinc-900 rounded text-center">
                   <p className="text-sm font-bold text-green-400">{actionResult.healthy as number}</p>
                   <p className="text-[10px] text-zinc-400">Healthy</p>
@@ -145,7 +145,7 @@ export function BridgeActionsPanel() {
                   style={{ width: `${actionResult.coverage as number}%` }}
                 />
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div className="p-2 bg-zinc-900 rounded text-center">
                   <p className="text-sm font-bold text-zinc-200">{actionResult.total as number}</p>
                   <p className="text-[10px] text-zinc-400">Total</p>
@@ -229,7 +229,7 @@ export function BridgeActionsPanel() {
                   <span className="text-xs text-zinc-400">{actionResult.dataPoints as number} data points</span>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div className="p-2 bg-zinc-900 rounded text-center">
                   <p className="text-sm font-bold text-green-400">{actionResult.peakRPS as number}</p>
                   <p className="text-[10px] text-zinc-400">Peak RPS</p>

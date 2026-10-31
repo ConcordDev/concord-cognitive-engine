@@ -64,7 +64,7 @@ export function ForecastAccuracy({ worldId }: { worldId: string }) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2">
           <div className="text-[10px] uppercase tracking-wider text-zinc-400">Samples</div>
           <div className="mt-0.5 font-mono text-lg text-zinc-100">{summary.sample_count}</div>

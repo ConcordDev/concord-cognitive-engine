@@ -903,7 +903,7 @@ function EsignPanel() {
       </div>
       {showForm && (
         <div className={cn(ds.panel, 'space-y-2')}>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input className={ds.input} placeholder="Estimate ID" value={estimateId} onChange={(e) => setEstimateId(e.target.value)} />
             <input className={ds.input} placeholder="Client" value={client} onChange={(e) => setClient(e.target.value)} />
             <input type="number" className={ds.input} placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} />

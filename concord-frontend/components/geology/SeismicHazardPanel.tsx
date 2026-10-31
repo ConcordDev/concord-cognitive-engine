@@ -117,7 +117,7 @@ export function SeismicHazardPanel() {
                   <span className="font-mono text-lg text-blue-200">SDC {designResult.sdc}</span>
                   <span className="text-zinc-400">site class {designResult.siteClass}</span>
                 </div>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
                   <div className="rounded border border-blue-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Sds</div><div className="font-mono text-blue-200">{designResult.sds}</div></div>
                   <div className="rounded border border-blue-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Sd1</div><div className="font-mono text-blue-200">{designResult.sd1}</div></div>
                   <div className="rounded border border-blue-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">PGA</div><div className="font-mono text-blue-200">{designResult.pga}</div></div>

@@ -182,7 +182,7 @@ export function AuditActionPanel() {
           <label className="text-[10px] uppercase tracking-wider text-red-400 font-semibold">Risk JSON</label>
           <textarea value={riskText} onChange={(e) => setRiskText(e.target.value)} rows={4} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
           <div className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold mt-1">Sample plan</div>
-          <div className="grid grid-cols-3 gap-1 mt-1">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-1 mt-1">
             <input type="text" value={populationSize} onChange={(e) => setPopulationSize(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="N" />
             <input type="text" value={confidence} onChange={(e) => setConfidence(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Conf %" />
             <input type="text" value={tolerableError} onChange={(e) => setTolerableError(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Tol %" />

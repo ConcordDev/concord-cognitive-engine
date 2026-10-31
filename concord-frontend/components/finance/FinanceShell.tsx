@@ -221,7 +221,7 @@ export function FinanceShell({
       </header>
 
       {/* Action triple */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <ActionTile icon={ArrowUpRight} label="Trade" onClick={onTrade} />
         <ActionTile icon={ArrowLeftRight} label="Transfer" onClick={onTransfer} />
         <ActionTile icon={Target} label="Budget" onClick={onBudget} />

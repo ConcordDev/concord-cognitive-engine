@@ -1136,7 +1136,7 @@ function ArchivePanel() {
       </div>
 
       {meta && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <div className="rounded-md border border-zinc-800 px-3 py-2">
             <p className="text-lg font-bold text-zinc-200">{meta.total}</p>
             <p className="text-[10px] uppercase tracking-wider text-zinc-400">Closed Cases</p>

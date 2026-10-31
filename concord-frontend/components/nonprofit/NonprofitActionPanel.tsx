@@ -257,7 +257,7 @@ export function NonprofitActionPanel() {
         {/* Campaign pace calculator */}
         <div className="space-y-1.5 rounded-md border border-zinc-800 p-2.5">
           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-orange-300"><Target className="w-3.5 h-3.5" /> Campaign pace calculator (ad-hoc, unpersisted)</div>
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
             <input value={cGoal} onChange={(e) => setCGoal(e.target.value)} className={inp} placeholder="Goal $" />
             <input value={cRaised} onChange={(e) => setCRaised(e.target.value)} className={inp} placeholder="Raised $" />
             <input value={cDonors} onChange={(e) => setCDonors(e.target.value)} className={inp} placeholder="Donors" />

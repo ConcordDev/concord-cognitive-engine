@@ -565,7 +565,7 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
         <span className="text-xs text-neon-cyan animate-pulse">AI processing...</span>
       )}
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
           <Hammer className="w-5 h-5 text-orange-400" />
           <div>

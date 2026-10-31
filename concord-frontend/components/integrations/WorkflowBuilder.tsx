@@ -254,7 +254,7 @@ function StepCard({
       )}
       {step.kind === 'path' && <PathEditor step={step} onChange={onChange} />}
       {step.kind === 'formatter' && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <select value={step.op ?? 'uppercase'} onChange={(e) => onChange({ op: e.target.value })}
             className="px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-xs">
             {FORMATTER_OPS.map((o) => <option key={o} value={o}>{o}</option>)}

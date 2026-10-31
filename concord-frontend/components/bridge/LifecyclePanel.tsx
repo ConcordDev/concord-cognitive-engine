@@ -23,7 +23,7 @@ export function LifecyclePanel({ births, status }: { births: BirthCert[]; status
             </span>
             <span className="text-xs text-zinc-400 ml-auto">{new Date(cert.at).toLocaleDateString()}</span>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             {cert.governanceReviews.map((review, i) => (
               <div key={i} className="p-2 bg-zinc-800 rounded text-xs">
                 <div className="flex items-center gap-1">

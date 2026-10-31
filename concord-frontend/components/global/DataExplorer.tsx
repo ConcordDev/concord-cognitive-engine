@@ -399,7 +399,7 @@ export function DataExplorer() {
             </h3>
             <span className="text-xs text-zinc-400">{timeseries.source}</span>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
               <div className="text-[10px] uppercase tracking-wider text-zinc-400">Latest ({timeseries.latest.year})</div>
               <div className="mt-0.5 font-mono text-lg text-neon-cyan">{fmt(timeseries.latest.value, timeseries.indicator)}</div>

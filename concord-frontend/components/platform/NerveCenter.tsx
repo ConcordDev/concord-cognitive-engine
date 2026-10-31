@@ -359,7 +359,7 @@ function NerveCenter() {
             <Layers className="w-4 h-4 text-neon-blue" />
             Scope Distribution
           </h3>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {['global', 'marketplace', 'local'].map((scope) => {
               const count = scopeData[scope]?.count ?? scopeData[`${scope}Count`] ?? '?';
               const colors: Record<string, string> = {

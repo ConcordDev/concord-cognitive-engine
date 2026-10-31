@@ -138,7 +138,7 @@ function ForecastTab() {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <Field label="Latitude"><input className={inputCls} placeholder="e.g. 37.7" value={lat} onChange={(e) => setLat(e.target.value)} /></Field>
         <Field label="Longitude"><input className={inputCls} placeholder="e.g. -122.5" value={lon} onChange={(e) => setLon(e.target.value)} /></Field>
         <Field label="Hours (max 168)"><input className={inputCls} placeholder="48" value={hours} onChange={(e) => setHours(e.target.value)} /></Field>
@@ -195,7 +195,7 @@ function AisTab() {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <Field label="Lat min"><input className={inputCls} value={box.latMin} onChange={(e) => setBox({ ...box, latMin: e.target.value })} /></Field>
         <Field label="Lat max"><input className={inputCls} value={box.latMax} onChange={(e) => setBox({ ...box, latMax: e.target.value })} /></Field>
         <Field label="Lon min"><input className={inputCls} value={box.lonMin} onChange={(e) => setBox({ ...box, lonMin: e.target.value })} /></Field>
@@ -268,7 +268,7 @@ function BuoyTab() {
       {res && (
         <div className="space-y-2">
           <p className="text-[11px] text-zinc-400">Buoy {res.buoyId} · observed {res.observedAt} · NOAA NDBC</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             {stat('Wave height', res.waveHeightM, ' m')}
             {stat('Dom. period', res.dominantWavePeriodS, ' s')}
             {stat('Wave dir', res.meanWaveDirectionDeg, '°')}
