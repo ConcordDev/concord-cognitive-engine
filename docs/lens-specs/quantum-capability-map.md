@@ -1,7 +1,7 @@
 # Quantum Lens — Capability Map (Frontend Rebuild Program, Wave 2 batch 6)
 
 > Derived, not asserted. Reproduce the macro list:
-> `grep -c 'registerLensAction("quantum"' server/domains/quantum.js` → 13
+> `grep -c 'registerLensAction("quantum"' server/domains/quantum.js` → 17
 
 ## Reference apps + parity target
 
@@ -77,3 +77,8 @@ wired against real `quantum.*` macros or real external data (arXiv).
 - No lens-specific vitest file exists for quantum (`find . -iname "*quantum*test*"` → none) — nothing to run; the existing bespoke composer already had no test coverage before this rebuild and this change made no behavioral change to it.
 - `node scripts/verify-lens-backends.mjs` — quantum stays WIRED.
 - `node scripts/grade-ux-polish.mjs --honest` — quantum: `tier: "polished"`, `isGenericScaffold: false` (was `functional` / `isGenericScaffold: true` before this rebuild, solely due to the redundant fallback listing above).
+
+
+---
+
+*Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*
