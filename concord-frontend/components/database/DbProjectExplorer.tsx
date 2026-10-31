@@ -38,7 +38,7 @@ export function DbProjectExplorer() {
             apiSource="github"
             apiUrl={`https://github.com/topics/${topic}`}
             title={`Top GitHub repos · topic:${topic}`}
-            content={(repos.data?.items || []).map((r, i) => `#${i + 1} ${r.full_name} · ⭐${r.stargazers_count.toLocaleString()} · ${r.language || '?'}\n   ${r.description || ''}`).join('\n')}
+            content={(repos.data?.items || []).map((r, i) => `#${i + 1} ${r.full_name} · ⭐${(r.stargazers_count ?? 0).toLocaleString()} · ${r.language || '?'}\n   ${r.description || ''}`).join('\n')}
             extraTags={['database', 'github', topic]}
             rawData={{ topic, repos: repos.data?.items }}
           />
@@ -65,8 +65,8 @@ export function DbProjectExplorer() {
                 {r.description && <p className="mt-0.5 line-clamp-2 text-[11px] text-zinc-400">{r.description}</p>}
               </div>
               <div className="flex flex-col items-end gap-0.5 text-[10px] font-mono text-zinc-400">
-                <span className="flex items-center gap-0.5"><Star className="h-3 w-3" />{r.stargazers_count.toLocaleString()}</span>
-                <span className="flex items-center gap-0.5"><GitFork className="h-3 w-3" />{r.forks_count.toLocaleString()}</span>
+                <span className="flex items-center gap-0.5"><Star className="h-3 w-3" />{(r.stargazers_count ?? 0).toLocaleString()}</span>
+                <span className="flex items-center gap-0.5"><GitFork className="h-3 w-3" />{(r.forks_count ?? 0).toLocaleString()}</span>
                 <ExternalLink className="h-3 w-3 text-zinc-400" />
               </div>
             </div>
