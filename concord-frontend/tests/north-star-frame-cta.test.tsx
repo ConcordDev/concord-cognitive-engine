@@ -7,7 +7,7 @@ vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({
 }));
 
 describe('NorthStarFrame CTA — mobile tab bar clearance (F3)', () => {
-  it('places the primary CTA above the mobile nav (bottom-20) and restores desktop bottom-8', () => {
+  it('clears the mobile nav on the HelpButton line, left of it, and restores desktop bottom-8/right-8', () => {
     const onClick = vi.fn();
     render(
       <NorthStarFrame
@@ -20,8 +20,12 @@ describe('NorthStarFrame CTA — mobile tab bar clearance (F3)', () => {
     );
 
     const btn = screen.getByRole('button', { name: 'Compose' });
-    expect(btn.className).toMatch(/bottom-\[calc\(5rem\+env\(safe-area-inset-bottom/);
+    // Same bottom offset as HelpButton (4rem + safe area, above the h-14 bar) and
+    // pushed left of its 44px circle (right-4) so the two never overlap.
+    expect(btn.className).toMatch(/bottom-\[calc\(4rem\+env\(safe-area-inset-bottom/);
+    expect(btn.className).toMatch(/\bright-\[4\.75rem\]/);
     expect(btn.className).toMatch(/\bmd:bottom-8\b/);
+    expect(btn.className).toMatch(/\blg:right-8\b/);
   });
 
   it('opens via a real click when the CTA is the hit target', () => {

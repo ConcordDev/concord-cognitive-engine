@@ -72,7 +72,7 @@ export function LensToolbar({ domain, domainLabel }: { domain: string; domainLab
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className="relative flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100"
+          className="relative flex h-10 w-10 items-center justify-center rounded-md text-zinc-400 md:h-7 md:w-7 transition-colors hover:bg-white/[0.06] hover:text-zinc-100"
           aria-label="Lens tools"
           aria-expanded={open}
           aria-haspopup="menu"
