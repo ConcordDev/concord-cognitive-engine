@@ -393,6 +393,7 @@ registerHeartbeat("economy-anomaly-cycle", {
 // bridges from literary chunk-DTUs into other lenses (lib/literary-resonance.js).
 // Bounded per pass, try/catch isolated. Kill-switch CONCORD_LITERARY_RESONANCE=0.
 import { runLiteraryResonanceCycle } from "./emergent/literary-resonance-cycle.js";
+import { applyVerifyAdmins, mountUserRoleRoute } from "./lib/verify-admins.js";
 registerHeartbeat("literary-resonance-cycle", {
   frequency: 200,
   scope: "global",
@@ -7538,6 +7539,18 @@ if (AuthDB.getUserCount() === 0 && bcrypt) {
     });
     structuredLog("info", "auth_admin_created", { username: "admin" });
   }
+}
+
+// Verify-admin allowlist (server/config/verify-admins.json): grant role "admin" to a listed
+// dedicated verification account whose username AND id both match. Only ever grants admin,
+// never touches owner/founder/sovereign, never creates users or touches passwords. Idempotent.
+try {
+  if (db) {
+    applyVerifyAdmins({ db, log: structuredLog });
+    bustUserCache();
+  }
+} catch (e) {
+  structuredLog("warn", "verify_admin_apply_failed", { error: e?.message });
 }
 
 // Auth helper functions
@@ -63574,6 +63587,9 @@ app.post("/api/admin/background-governor/mode", requireRole("owner", "admin", "s
   try { res.json({ ok: true, mode: setBgGovernorMode(req.body?.mode ?? null) }); }
   catch (e) { res.status(400).json({ ok: false, error: String(e?.message || e) }); }
 });
+
+// Owner/founder-only role grant/revoke (admin|member), audit-logged — see lib/verify-admins.js.
+mountUserRoleRoute(app, { requireRole, getDb: () => db, bustUserCache, log: structuredLog });
 
 app.get("/api/admin/dtu-quality", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
   try {
