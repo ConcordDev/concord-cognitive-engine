@@ -9,6 +9,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const getCalls: { url: string; params?: unknown }[] = [];
 const EVENTS = [
@@ -32,11 +33,16 @@ vi.mock('@/lib/api/client', () => ({
 }));
 
 import { ActivityTimeline } from '../components/common/ActivityTimeline';
-import { __toggles } from '../lib/lens-dock';
+import { openLensTool } from '../lib/lens-dock';
 
 async function openPanel(domain: string) {
-  render(<ActivityTimeline domain={domain} />);
-  await act(async () => { __toggles['activity']?.(); });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}>
+      <ActivityTimeline domain={domain} />
+    </QueryClientProvider>,
+  );
+  await act(async () => { openLensTool('activity'); });
 }
 
 describe('ActivityTimeline — reads the real event store (§5 item 4)', () => {
