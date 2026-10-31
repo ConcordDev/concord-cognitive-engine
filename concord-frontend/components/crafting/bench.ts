@@ -19,7 +19,7 @@ export type BenchRecipe = { id: string; title: string };
  */
 export type BenchPiece = BenchRecipe & { artifactId?: string; published?: boolean };
 
-export type CanonicalArtifactRow = { id: string; recipeId: string; published: boolean };
+export type CanonicalArtifactRow = { id: string; recipeId: string; title: string; published: boolean };
 
 export function artifactsFromList(data: unknown): CanonicalArtifactRow[] {
   const rows = (data as { artifacts?: unknown } | null)?.artifacts;
@@ -28,13 +28,25 @@ export function artifactsFromList(data: unknown): CanonicalArtifactRow[] {
   for (const row of rows) {
     if (!row || typeof row !== 'object') continue;
     const id = (row as { id?: unknown }).id;
+    const title = (row as { title?: unknown }).title;
     const recipeId = (row as { data?: { recipeId?: unknown } }).data?.recipeId;
     const visibility = (row as { meta?: { visibility?: unknown } }).meta?.visibility;
     if (typeof id !== 'string' || !id) continue;
     if (typeof recipeId !== 'string' || !recipeId) continue;
-    out.push({ id, recipeId, published: visibility === 'published' });
+    out.push({ id, recipeId, title: typeof title === 'string' ? title : '', published: visibility === 'published' });
   }
   return out;
+}
+
+/**
+ * F6's duplicate notice: the typed name (trimmed, case-insensitive)
+ * already sits on the bench. The piece being edited does not count
+ * against itself.
+ */
+export function isDuplicateName(name: string, pieces: BenchRecipe[], excludeId?: string): boolean {
+  const wanted = name.trim().toLowerCase();
+  if (!wanted) return false;
+  return pieces.some((p) => p.id !== excludeId && p.title.trim().toLowerCase() === wanted);
 }
 
 export function joinPieces(recipes: BenchRecipe[], artifacts: CanonicalArtifactRow[]): BenchPiece[] {

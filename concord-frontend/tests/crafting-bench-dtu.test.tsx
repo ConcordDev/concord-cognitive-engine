@@ -62,7 +62,7 @@ describe('bench D1 helpers', () => {
   it('joins pieces to artifacts by recipeId and leaves the rest unjoined', () => {
     const joined = joinPieces(
       [{ id: 'r1', title: 'One' }, { id: 'r2', title: 'Two' }],
-      [{ id: 'a1', recipeId: 'r2', published: true }],
+      [{ id: 'a1', recipeId: 'r2', title: 'Two', published: true }],
     );
     expect(joined[0].artifactId).toBeUndefined();
     expect(joined[1].artifactId).toBe('a1');
@@ -78,7 +78,7 @@ describe('bench D1 helpers', () => {
         null,
       ],
     });
-    expect(rows).toEqual([{ id: 'a1', recipeId: 'r1', published: true }]);
+    expect(rows).toEqual([{ id: 'a1', recipeId: 'r1', title: '', published: true }]);
   });
 
   it('builds the canonical body with the join key and the spec', () => {

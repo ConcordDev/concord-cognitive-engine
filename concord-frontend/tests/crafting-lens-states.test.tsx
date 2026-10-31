@@ -109,6 +109,10 @@ describe('crafting bench', () => {
     authAndRecipes([]);
     const { getByRole, getByLabelText } = render(<CraftingPage />);
     const button = await waitFor(() => getByRole('button', { name: '+ Start a piece' }));
+    // The click must wait for readiness: D1's load resolves the canonical
+    // list before the bench is ready, and a click on the disabled button
+    // is a silent no-op.
+    await waitFor(() => expect(button).not.toBeDisabled());
     await act(async () => { fireEvent.click(button); });
     expect(getByLabelText('Piece name')).toBeInTheDocument();
     await act(async () => { fireEvent.click(button); });
@@ -137,6 +141,10 @@ describe('crafting bench', () => {
 
     const { getByRole, getByLabelText, getByText, queryByText } = render(<CraftingPage />);
     const button = await waitFor(() => getByRole('button', { name: '+ Start a piece' }));
+    // The click must wait for readiness: D1's load resolves the canonical
+    // list before the bench is ready, and a click on the disabled button
+    // is a silent no-op.
+    await waitFor(() => expect(button).not.toBeDisabled());
     await act(async () => { fireEvent.click(button); });
     fireEvent.change(getByLabelText('Piece name'), { target: { value: 'Bench hook' } });
     await act(async () => { fireEvent.click(button); });
@@ -154,6 +162,10 @@ describe('crafting bench', () => {
     });
     const { getByRole, getByLabelText } = render(<CraftingPage />);
     const button = await waitFor(() => getByRole('button', { name: '+ Start a piece' }));
+    // The click must wait for readiness: D1's load resolves the canonical
+    // list before the bench is ready, and a click on the disabled button
+    // is a silent no-op.
+    await waitFor(() => expect(button).not.toBeDisabled());
     await act(async () => { fireEvent.click(button); });
     fireEvent.change(getByLabelText('Piece name'), { target: { value: 'Iron Sword' } });
     await act(async () => { fireEvent.click(button); });
@@ -166,6 +178,10 @@ describe('crafting bench', () => {
     apiPost.mockResolvedValue({ data: { ok: true, recipe: { id: 'missing', name: 'Ghost' } } });
     const { getByRole, getByLabelText, queryByText } = render(<CraftingPage />);
     const button = await waitFor(() => getByRole('button', { name: '+ Start a piece' }));
+    // The click must wait for readiness: D1's load resolves the canonical
+    // list before the bench is ready, and a click on the disabled button
+    // is a silent no-op.
+    await waitFor(() => expect(button).not.toBeDisabled());
     await act(async () => { fireEvent.click(button); });
     fireEvent.change(getByLabelText('Piece name'), { target: { value: 'Ghost' } });
     await act(async () => { fireEvent.click(button); });

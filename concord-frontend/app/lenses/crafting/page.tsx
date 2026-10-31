@@ -17,6 +17,15 @@
  * returns the caller's own rows). If registration fails, the piece still
  * shows and the bench says so; the next load retries.
  *
+ * D2: a piece can be renamed and removed. Rename and delete act on both
+ * stores — PATCH/DELETE /api/crafting/recipes/:id for the bench row,
+ * PUT/DELETE /api/lens/crafting/:artifactId for the platform record —
+ * and a title that diverged (a rename whose platform half failed) is
+ * converged by the next load. The name being typed is a lens draft
+ * (useLensDraft): leaving the lens no longer destroys it, and a
+ * successful save clears it. Typing a name already on the bench says so
+ * under the field — a notice, not a wall.
+ *
  * Locker DTUs, forge, marketplace, skills, and the in-memory workbench
  * are other stores. They are not on this screen.
  */
@@ -24,9 +33,11 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useLensDraft } from '@/hooks/useLensDraft';
 import { api } from '@/lib/api/client';
 import {
   artifactsFromList,
+  isDuplicateName,
   joinPieces,
   pieceArtifactBody,
   pieceDesignBody,
@@ -42,7 +53,13 @@ export default function CraftingPage() {
   const [phase, setPhase] = useState<'loading' | 'ready' | 'error'>('loading');
   const [loadError, setLoadError] = useState('');
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
+  // F5: the name being typed for a new piece is a lens draft — it
+  // survives leaving the lens and is cleared only by a successful save.
+  const { value: name, setValue: setName, clear: clearDraft } = useLensDraft<string>('crafting', 'benchPieceName', { initial: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [notice, setNotice] = useState('');
@@ -93,7 +110,8 @@ export default function CraftingPage() {
       setRecipes(result.recipes);
       return;
     }
-    let pieces = joinPieces(result.recipes, listed.rows);
+    let finalRows = listed.rows;
+    let pieces = joinPieces(result.recipes, finalRows);
     // Backfill: pieces saved before D1 have no artifact yet. Registration
     // is owner-scoped by construction (the recipes list is the caller's).
     const missing = pieces.filter((p) => !p.artifactId);
@@ -109,7 +127,20 @@ export default function CraftingPage() {
       }
       if (createdAny) {
         const refreshed = await pullArtifacts();
-        if (refreshed.ok) pieces = joinPieces(result.recipes, refreshed.rows);
+        if (refreshed.ok) {
+          finalRows = refreshed.rows;
+          pieces = joinPieces(result.recipes, finalRows);
+        }
+      }
+    }
+    // Title convergence (D2): the bench row is the title of record. A
+    // joined artifact still carrying an older title — a rename whose
+    // platform half failed — is brought back in line, best-effort.
+    for (const piece of pieces) {
+      if (!piece.artifactId) continue;
+      const listedRow = finalRows.find((a) => a.id === piece.artifactId);
+      if (listedRow && listedRow.title && listedRow.title !== piece.title) {
+        void api.put(`/api/lens/crafting/${piece.artifactId}`, { title: piece.title }).catch(() => {});
       }
     }
     setRecipes(pieces);
@@ -135,6 +166,7 @@ export default function CraftingPage() {
   }, [pull, applyPull, failPull]);
 
   const start = useCallback(() => {
+    setEditingId(null);
     setOpen(true);
     setSaveError('');
   }, []);
@@ -170,19 +202,19 @@ export default function CraftingPage() {
       const artifactId = await registerPiece({ id, title, spec: design.spec });
       const known = recipes
         .filter((p) => p.artifactId)
-        .map((p) => ({ id: p.artifactId as string, recipeId: p.id, published: Boolean(p.published) }));
-      setRecipes(joinPieces(rows, artifactId ? [...known, { id: artifactId, recipeId: id, published: false }] : known));
+        .map((p) => ({ id: p.artifactId as string, recipeId: p.id, title: p.title, published: Boolean(p.published) }));
+      setRecipes(joinPieces(rows, artifactId ? [...known, { id: artifactId, recipeId: id, title, published: false }] : known));
       if (!artifactId) {
         setNotice('Saved to the bench. Its platform record could not be created yet — it will be completed when the bench reloads.');
       }
-      setName('');
+      void clearDraft();
       setOpen(false);
     } catch (err) {
       setSaveError(saveErrorFrom(err, 'The bench did not keep that piece.'));
     } finally {
       setSaving(false);
     }
-  }, [name, saving, registerPiece, recipes]);
+  }, [name, saving, registerPiece, recipes, clearDraft]);
 
   const [publishingId, setPublishingId] = useState<string | null>(null);
 
@@ -204,13 +236,85 @@ export default function CraftingPage() {
     }
   }, [publishingId]);
 
+  const startEdit = useCallback((piece: BenchPiece) => {
+    setEditingId(piece.id);
+    setEditName(piece.title);
+    setConfirmingId(null);
+    setSaveError('');
+    setOpen(true);
+  }, []);
+
+  // D2 rename: the bench row first (PATCH is the title of record), then
+  // the platform record. A failed platform half is converged by the next
+  // load's title sync; a failed bench half keeps the old name everywhere.
+  const saveEdit = useCallback(async () => {
+    const piece = recipes.find((p) => p.id === editingId);
+    const title = editName.trim();
+    if (!piece || !title || saving) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      const res = await api.patch(`/api/crafting/recipes/${piece.id}`, { title });
+      const body = res.data as { ok?: boolean } | null;
+      if (!body || body.ok === false) throw new Error('rename refused');
+      if (piece.artifactId) {
+        try {
+          await api.put(`/api/lens/crafting/${piece.artifactId}`, { title });
+        } catch {
+          // Converged on the next load; the bench name already moved.
+        }
+      }
+      setRecipes((prev) => prev.map((p) => (p.id === piece.id ? { ...p, title } : p)));
+      setEditingId(null);
+      setOpen(false);
+    } catch {
+      setSaveError('That name could not be saved. The piece keeps its old name.');
+    } finally {
+      setSaving(false);
+    }
+  }, [recipes, editingId, editName, saving]);
+
+  // D2 delete: two-step on the row (first click arms, second confirms).
+  // The bench row goes first; a platform record that cannot be removed
+  // is said out loud, never left silent.
+  const deletePiece = useCallback(async (piece: BenchPiece) => {
+    if (deletingId) return;
+    setDeletingId(piece.id);
+    try {
+      const res = await api.delete(`/api/crafting/recipes/${piece.id}`);
+      const body = res.data as { ok?: boolean } | null;
+      if (body && body.ok === false) throw new Error('delete refused');
+      if (piece.artifactId) {
+        try {
+          await api.delete(`/api/lens/crafting/${piece.artifactId}`);
+        } catch {
+          setNotice('The piece was removed from your bench. Its platform record could not be removed, so it may still appear in exports.');
+        }
+      }
+      setRecipes((prev) => prev.filter((p) => p.id !== piece.id));
+      setConfirmingId(null);
+      if (editingId === piece.id) {
+        setEditingId(null);
+        setOpen(false);
+      }
+    } catch {
+      setNotice('That piece could not be deleted. It is still on your bench.');
+    } finally {
+      setDeletingId(null);
+    }
+  }, [deletingId, editingId]);
+
   const onPrimary = useCallback(() => {
     if (!open) {
       start();
       return;
     }
+    if (editingId) {
+      void saveEdit();
+      return;
+    }
     void putOnBench();
-  }, [open, start, putOnBench]);
+  }, [open, start, putOnBench, editingId, saveEdit]);
 
   useLensCommand(
     [{ id: 'start-piece', keys: 'n', description: 'Start a piece', category: 'actions' as const, action: start }],
@@ -249,18 +353,45 @@ export default function CraftingPage() {
               {recipes.map((row) => (
                 <li key={row.id} className="flex items-baseline justify-between gap-4 border-b border-white/10 py-3 text-[16px] text-zinc-100">
                   <span>{row.title}</span>
-                  {row.published ? (
-                    <span className="shrink-0 text-[12px] text-zinc-500">Published</span>
-                  ) : row.artifactId ? (
+                  <span className="flex shrink-0 items-baseline gap-3">
+                    {row.published ? (
+                      <span className="text-[12px] text-zinc-500">Published</span>
+                    ) : row.artifactId ? (
+                      <button
+                        type="button"
+                        onClick={() => void publishPiece(row)}
+                        disabled={publishingId === row.id}
+                        className="text-[13px] text-zinc-300 underline disabled:opacity-60"
+                      >
+                        Publish
+                      </button>
+                    ) : null}
                     <button
                       type="button"
-                      onClick={() => void publishPiece(row)}
-                      disabled={publishingId === row.id}
-                      className="shrink-0 text-[13px] text-zinc-300 underline disabled:opacity-60"
+                      onClick={() => startEdit(row)}
+                      className="text-[13px] text-zinc-300 underline"
                     >
-                      Publish
+                      Edit
                     </button>
-                  ) : null}
+                    {confirmingId === row.id ? (
+                      <button
+                        type="button"
+                        onClick={() => void deletePiece(row)}
+                        disabled={deletingId === row.id}
+                        className="text-[13px] text-zinc-100 underline disabled:opacity-60"
+                      >
+                        Delete this piece?
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingId(row.id)}
+                        className="text-[13px] text-zinc-300 underline"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -268,22 +399,29 @@ export default function CraftingPage() {
           {phase === 'ready' && open && (
             <form
               className="mt-6 w-full max-w-md"
-              onSubmit={(event) => { event.preventDefault(); void putOnBench(); }}
+              onSubmit={(event) => { event.preventDefault(); onPrimary(); }}
             >
               <label htmlFor={nameId} className="block text-[13px] text-zinc-400">Piece name</label>
               <input
                 id={nameId}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
+                value={editingId ? editName : name}
+                onChange={(event) => {
+                  if (editingId) setEditName(event.target.value);
+                  else setName(event.target.value);
+                }}
                 onKeyDown={(event) => {
                   if (event.key === 'Escape') {
                     setOpen(false);
+                    setEditingId(null);
                     setSaveError('');
                   }
                 }}
                 autoFocus
                 className="mt-2 w-full border-b border-white/20 bg-transparent py-2 text-[18px] text-zinc-100 outline-none"
               />
+              {isDuplicateName(editingId ? editName : name, recipes, editingId ?? undefined) ? (
+                <p className="mt-2 text-[13px] text-zinc-400">A piece with this name is already on the bench.</p>
+              ) : null}
               {saveError ? <p role="alert" className="mt-3 text-[14px] text-zinc-300">{saveError}</p> : null}
               {saving ? <p role="status" className="mt-3 text-[14px] text-zinc-500">Saving the piece.</p> : null}
             </form>
@@ -297,7 +435,7 @@ export default function CraftingPage() {
           title="Start a piece (N)"
           className="fixed bottom-8 right-8 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black disabled:opacity-60"
         >
-          + Start a piece
+          {open && editingId ? 'Save the name' : '+ Start a piece'}
         </button>
       </div>
     </LensShell>
