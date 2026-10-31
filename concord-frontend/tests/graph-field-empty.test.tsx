@@ -9,7 +9,7 @@
  * real empty graph in the exact envelope the component consumes.
  */
 
-import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -33,14 +33,8 @@ vi.mock('@/components/dtu/DTUDetailView', () => ({ DTUDetailView: () => null }))
 
 import { GraphField } from '@/components/graph/GraphField';
 
-beforeAll(() => {
-  // jsdom has no ResizeObserver; GraphField observes its canvas box.
-  vi.stubGlobal('ResizeObserver', class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  });
-});
+// ResizeObserver: tests/setup.ts already installs a no-op mock (non-configurable), so a
+// per-file stub would throw "Cannot redefine property" at load; GraphField uses that one.
 
 describe('GraphField — empty lattice', () => {
   it('shows the honest empty cue with no greeting headline', async () => {

@@ -38,7 +38,7 @@ describe('useLensCommand form-field discipline', () => {
         <Harness onAction={onAction} />
       </KeyboardProvider>,
     );
-    fireEvent.keyDown(screen.getByLabelText('Node label'), { key: 'p' });
+    fireEvent.keyDown(screen.getByLabelText('Node label'), { key: 'p', code: 'KeyP' });
     expect(onAction).not.toHaveBeenCalled();
   });
 
@@ -49,7 +49,7 @@ describe('useLensCommand form-field discipline', () => {
         <Harness onAction={onAction} />
       </KeyboardProvider>,
     );
-    fireEvent.keyDown(document.body, { key: 'p' });
+    fireEvent.keyDown(document.body, { key: 'p', code: 'KeyP' });
     expect(onAction).toHaveBeenCalledWith('p');
   });
 });

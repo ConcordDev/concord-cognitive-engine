@@ -278,10 +278,12 @@ export function MindMapBuilder() {
   async function undoDelete() {
     if (!active) return;
     const r = await lensRun('graph', 'map-undo-delete', { mapId: active.id });
+    // Reload first: reload() clears the undo note (a fresh map load drops stale status),
+    // so setting the note before it wiped the "Restored…" confirmation immediately.
+    if (r.data?.ok) { await reload(); await refresh(); }
     setUndoNote(r.data?.ok
       ? `Restored the deleted ${r.data.result?.restored === 'edge' ? 'link' : 'node'}.`
       : (r.data?.error || 'Nothing to undo.'));
-    if (r.data?.ok) { await reload(); await refresh(); }
   }
 
   // graph.map-orphans — the unlinked-node view.
