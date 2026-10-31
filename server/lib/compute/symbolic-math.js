@@ -756,6 +756,19 @@ function subst(ast, v, rep) {
 // Evaluate
 // ---------------------------------------------------------------------------
 
+// Names evaluate() resolves when the caller has not bound them. A caller's own
+// assignment always wins, so `e` or `phi` can still be an ordinary variable.
+export const CONSTANTS = Object.freeze({
+  pi: Math.PI,
+  e: Math.E,
+  tau: 2 * Math.PI,
+  phi: (1 + Math.sqrt(5)) / 2,
+  g0: 9.80665, // standard gravity, m/s^2
+  c0: 299792458, // speed of light, m/s
+  N_A: 6.02214076e23, // Avogadro, 1/mol
+  k_B: 1.380649e-23, // Boltzmann, J/K
+});
+
 export function evaluate(expression, assignment = {}) {
   const ast = typeof expression === 'string' ? parse(expression) : expression;
   return evalAst(ast, assignment);
@@ -767,8 +780,12 @@ function evalAst(ast, env) {
     case 'num':
       return ast.value;
     case 'var':
-      if (!(ast.name in env)) throw new Error(`symbolic-math: unbound variable ${ast.name}`);
-      return env[ast.name];
+      if (ast.name in env) return env[ast.name];
+      if (Object.hasOwn(CONSTANTS, ast.name)) return CONSTANTS[ast.name];
+      throw new Error(
+        `symbolic-math: unbound variable ${ast.name}. Pass a value for it in "values" (e.g. {"${ast.name}": 2}); `
+        + `bound: ${Object.keys(env).join(', ') || 'none'}; built-in constants: ${Object.keys(CONSTANTS).join(', ')}`,
+      );
     case 'neg':
       return -evalAst(ast.arg, env);
     case 'fn': {

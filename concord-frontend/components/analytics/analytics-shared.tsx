@@ -29,6 +29,12 @@ export interface DTUSummary {
   citationCount?: number;
   tags?: string[];
   tier?: string;
+  // Carried by the /api/dtus/mine payload (full DTU records): the lens a DTU
+  // belongs to is `domain`, falling back to `meta.lens` (server/lib/art-dtu-filter.js).
+  domain?: string;
+  meta?: { lens?: string };
+  timestamp?: string;
+  createdAt?: string;
 }
 
 export type AnalyticsView =
@@ -82,7 +88,7 @@ export function StatCard({
     >
       <Icon className={cn('w-4 h-4 mb-2', color)} />
       <div className={cn('text-2xl font-bold', color)}>
-        {raw ? value : formatNumber(value as number)}
+        {raw ? value : value === '—' ? '—' : formatNumber(value as number)}
       </div>
       <div className="text-xs text-gray-400 mt-1">{label}</div>
     </motion.div>

@@ -85,6 +85,83 @@ export function registerComputerUseGate() {
   }, { priority: 5, name: "computer-use-constitutional-gate" });
 }
 
+// ── Browser sessions (audit A#36) ────────────────────────────────────
+// One browser per sandbox session, reused across actions. Previously a
+// fresh Chromium launched — and closed — for every single action, so no
+// URL, cookie, or page state ever survived between calls and a
+// multi-step flow (navigate → click → type) acted on about:blank every
+// time. Sessions are keyed by sandboxId (the schema's own semantics:
+// "Uses default if not specified"), else by the calling user, else
+// "default". Lifecycle replaces the old per-action destruction: an idle
+// TTL swept on access, an LRU cap, eviction on disconnect, and
+// transparent relaunch after a crash.
+
+export const COMPUTER_USE_SESSION_IDLE_TTL_MS = Number(process.env.COMPUTER_USE_SESSION_IDLE_TTL_MS) > 0
+  ? Number(process.env.COMPUTER_USE_SESSION_IDLE_TTL_MS)
+  : 10 * 60 * 1000;
+export const COMPUTER_USE_MAX_SESSIONS = 4;
+
+const _sessions = new Map(); // key -> { browser, context, page, lastUsedAt, ready }
+let _playwrightOverride = null;
+
+/** Test seam (the codebase's seam idiom): substitute the playwright module. */
+export function _setComputerUsePlaywrightForTests(pw) { _playwrightOverride = pw; }
+
+async function loadPlaywright() {
+  if (_playwrightOverride) return _playwrightOverride;
+  return import("playwright").catch(() => null);
+}
+
+export function computerUseSessionCount() { return _sessions.size; }
+
+async function closeSessionEntry(key) {
+  const entry = _sessions.get(key);
+  if (!entry) return;
+  _sessions.delete(key);
+  try { await entry.browser?.close(); } catch { /* already gone */ }
+}
+
+export async function closeComputerUseSession(key) { await closeSessionEntry(key); }
+
+export async function closeAllComputerUseSessions() {
+  await Promise.all([..._sessions.keys()].map((k) => closeSessionEntry(k)));
+}
+
+async function getSessionEntry(playwright, key) {
+  const now = Date.now();
+  for (const [k, e] of _sessions) {
+    if (now - e.lastUsedAt > COMPUTER_USE_SESSION_IDLE_TTL_MS) await closeSessionEntry(k);
+  }
+  let entry = _sessions.get(key);
+  if (entry && entry.browser && entry.browser.isConnected?.() === false) {
+    await closeSessionEntry(key);
+    entry = null;
+  }
+  if (!entry) {
+    while (_sessions.size >= COMPUTER_USE_MAX_SESSIONS) {
+      let lruKey = null;
+      let lruAt = Infinity;
+      for (const [k, e] of _sessions) { if (e.lastUsedAt < lruAt) { lruAt = e.lastUsedAt; lruKey = k; } }
+      if (lruKey === null) break;
+      await closeSessionEntry(lruKey);
+    }
+    entry = { browser: null, context: null, page: null, lastUsedAt: now, ready: null };
+    _sessions.set(key, entry);
+    entry.ready = (async () => {
+      entry.browser = await playwright.chromium.launch({ headless: true });
+      entry.browser.on?.("disconnected", () => { if (_sessions.get(key) === entry) _sessions.delete(key); });
+      entry.context = await entry.browser.newContext();
+      entry.page = await entry.context.newPage();
+    })();
+    try { await entry.ready; } catch (err) { _sessions.delete(key); throw err; }
+  } else if (entry.ready) {
+    await entry.ready;
+  }
+  entry.lastUsedAt = now;
+  if (entry.page.isClosed?.()) entry.page = await entry.context.newPage();
+  return entry;
+}
+
 /**
  * Execute a computer use action.
  * Routes to Playwright-backed implementation when available, otherwise returns stub.
@@ -102,19 +179,18 @@ export async function executeComputerUse(call, opts = {}) {
 
   const { action, selector, text, url, scrollDirection, scrollAmount = 300, sandboxId } = call.args || {};
 
-  // Get or create browser context
-  let page = null;
+  // Get or create the sandbox's browser session (A#36): the browser is
+  // launched once per session and reused, never closed per action.
+  const sessionKey = sandboxId || (opts.userId ? `user:${opts.userId}` : "default");
+  let entry = null;
   try {
-    const playwright = await import("playwright").catch(() => null);
+    const playwright = await loadPlaywright();
     if (!playwright) {
       return JSON.stringify({ ok: false, error: "playwright_not_installed: run npm install playwright in server/" });
     }
 
-    // In full impl, get browser from sandbox manager.
-    // For now: launch ephemeral browser for action.
-    const browser = await playwright.chromium.launch({ headless: true });
-    const context = await browser.newContext();
-    page = await context.newPage();
+    entry = await getSessionEntry(playwright, sessionKey);
+    const page = entry.page;
 
     let result;
     switch (action) {
@@ -180,11 +256,12 @@ export async function executeComputerUse(call, opts = {}) {
         result = { ok: false, error: `unknown_action: ${action}` };
     }
 
-    await browser.close();
     return JSON.stringify(result);
   } catch (err) {
-    if (page) {
-      try { await page?.context()?.browser()?.close(); } catch { /* ignore */ }
+    // A dead browser/page must not poison the session: evict it so the
+    // next call relaunches cleanly instead of failing forever.
+    if (entry && (entry.page?.isClosed?.() || entry.browser?.isConnected?.() === false)) {
+      await closeSessionEntry(sessionKey);
     }
     return JSON.stringify({ ok: false, error: err?.message || "computer_use_error" });
   }

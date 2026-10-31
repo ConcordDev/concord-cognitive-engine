@@ -11,6 +11,7 @@ import { useState, useMemo, useCallback, useEffect, useRef} from 'react';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { PostInsightsPanel } from '@/components/forum/PostInsightsPanel';
 import { useLensCommand } from "@/hooks/useLensCommand";
+import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -83,6 +84,8 @@ interface Comment {
   awards: string[];
   replies: Comment[];
   collapsed: boolean;
+  // Per-user ballot ledger written by the backend forum.post-vote action.
+  voters?: Record<string, number>;
 }
 
 interface Post {
@@ -109,6 +112,11 @@ interface Post {
   moderationStatus?: string;
   moderatedAt?: string;
   moderatedBy?: string;
+  // Written by the backend forum.post-vote / forum.post-save lens-actions:
+  // the per-user ballot ledger and save list. The viewer's own userVote /
+  // saved flags are derived from these on sync (see the postItems effect).
+  voters?: Record<string, number>;
+  savedBy?: string[];
 }
 
 interface Community {
@@ -200,6 +208,20 @@ function countAllComments(comments: Comment[]): number {
   return comments.reduce((sum, c) => sum + 1 + countAllComments(c.replies), 0);
 }
 
+// The viewer's own ballot on each comment, derived from the per-user
+// voters ledger the backend forum.post-vote action maintains.
+function deriveCommentVotes(comments: Comment[], viewerId: string | null): Comment[] {
+  return comments.map(c => ({
+    ...c,
+    userVote: viewerId && c.voters ? (c.voters[viewerId] ?? 0) : c.userVote,
+    replies: deriveCommentVotes(c.replies, viewerId),
+  }));
+}
+
+function commentTreeHas(comments: Comment[], id: string): boolean {
+  return comments.some(c => c.id === id || commentTreeHas(c.replies, id));
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -256,6 +278,19 @@ export function BoardPanel() {
 
   // Backend action wiring
   const runForumAction = useRunArtifact('forum');
+  const { user: authUser } = useAuth();
+
+  // Interaction persistence: votes, comments, saves and awards go through
+  // the forum.post-* server actions, which apply ONLY the caller's own
+  // change to the post artifact. (They used to rewrite the whole post via
+  // lens.update — the generic write path SEC Fix 7 closes to non-owners.)
+  // On any refusal or failure the panel refetches, so server truth wins
+  // over the optimistic local state.
+  const persistInteraction = useCallback((id: string, action: string, params: Record<string, unknown>) => {
+    runForumAction.mutateAsync({ id, action, params })
+      .then((res) => { if ((res as { ok?: boolean })?.ok === false) refetch(); })
+      .catch(() => { refetch(); });
+  }, [runForumAction, refetch]);
   const [forumActionResult, setForumActionResult] = useState<Record<string, unknown> | null>(null);
   const [forumRunning, setForumRunning] = useState<string | null>(null);
 
@@ -311,9 +346,19 @@ export function BoardPanel() {
   // subsequent update/delete calls send the correct ID to the backend.
   useEffect(() => {
     if (postItems.length > 0) {
-      setPosts(postItems.map(i => ({ ...(i.data as unknown as Post), id: i.id })));
+      const viewerId = authUser?.id ?? null;
+      setPosts(postItems.map(i => {
+        const d = i.data as unknown as Post;
+        return {
+          ...d,
+          id: i.id,
+          userVote: viewerId && d.voters ? (d.voters[viewerId] ?? 0) : d.userVote,
+          saved: viewerId && Array.isArray(d.savedBy) ? d.savedBy.includes(viewerId) : d.saved,
+          comments: deriveCommentVotes(d.comments || [], viewerId),
+        };
+      }));
     }
-  }, [postItems]);
+  }, [postItems, authUser?.id]);
 
   useEffect(() => {
     if (communityItems.length > 0) {
@@ -353,28 +398,14 @@ export function BoardPanel() {
 
   // ----- Actions -----
   const handleVote = useCallback((postId: string, direction: number) => {
-    setPosts(prev => {
-      const updated = prev.map(p => {
-        if (p.id !== postId) return p;
-        const newVote = p.userVote === direction ? 0 : direction;
-        const scoreDelta = newVote - p.userVote;
-        return { ...p, userVote: newVote, score: p.score + scoreDelta };
-      });
-      // Persist voted post to backend via lens API
-      const post = updated.find(p => p.id === postId);
-      if (post) {
-        updateForumPost(postId, { data: post as unknown as Record<string, unknown> }).catch(() => {
-          // Rollback on failure
-          setPosts(prev2 => prev2.map(p => {
-            if (p.id !== postId) return p;
-            const revertedVote = p.userVote === direction ? 0 : direction;
-            return { ...p, userVote: revertedVote === direction ? 0 : p.userVote, score: p.score };
-          }));
-        });
-      }
-      return updated;
-    });
-  }, [updateForumPost]);
+    setPosts(prev => prev.map(p => {
+      if (p.id !== postId) return p;
+      const newVote = p.userVote === direction ? 0 : direction;
+      return { ...p, userVote: newVote, score: p.score + (newVote - p.userVote) };
+    }));
+    // Server applies only this caller's ballot (forum.post-vote).
+    persistInteraction(postId, 'post-vote', { direction });
+  }, [persistInteraction]);
 
   const handleCommentVote = useCallback((commentId: string, direction: number) => {
     function updateComment(comments: Comment[]): Comment[] {
@@ -386,16 +417,12 @@ export function BoardPanel() {
         return { ...c, replies: updateComment(c.replies) };
       });
     }
-    setPosts(prev => {
-      const updated = prev.map(p => ({ ...p, comments: updateComment(p.comments) }));
-      // Persist the post containing the comment to backend
-      const postWithComment = updated.find(p => JSON.stringify(p.comments).includes(commentId));
-      if (postWithComment) {
-        updateForumPost(postWithComment.id, { data: postWithComment as unknown as Record<string, unknown> });
-      }
-      return updated;
-    });
-  }, [updateForumPost]);
+    const ownerPost = posts.find(p => commentTreeHas(p.comments, commentId));
+    setPosts(prev => prev.map(p => ({ ...p, comments: updateComment(p.comments) })));
+    if (ownerPost) {
+      persistInteraction(ownerPost.id, 'post-vote', { direction, targetId: commentId });
+    }
+  }, [posts, persistInteraction]);
 
   const handleCreatePost = useCallback(() => {
     if (!newPostTitle.trim() || !newPostCommunity) return;
@@ -443,47 +470,29 @@ export function BoardPanel() {
         return { ...c, replies: insertReply(c.replies) };
       });
     }
-    setPosts(prev => {
-      const updated = prev.map(p => {
-        if (p.id !== postId) return p;
-        const updatedComments = parentCommentId ? insertReply(p.comments) : [...p.comments, newComment];
-        return { ...p, comments: updatedComments, commentCount: countAllComments(updatedComments) };
-      });
-      // Persist the updated post with new comment to backend
-      const updatedPost = updated.find(p => p.id === postId);
-      if (updatedPost) {
-        updateForumPost(postId, { data: updatedPost as unknown as Record<string, unknown> });
-      }
-      return updated;
-    });
+    setPosts(prev => prev.map(p => {
+      if (p.id !== postId) return p;
+      const updatedComments = parentCommentId ? insertReply(p.comments) : [...p.comments, newComment];
+      return { ...p, comments: updatedComments, commentCount: countAllComments(updatedComments) };
+    }));
+    // Server appends only this comment (forum.post-comment); the local id
+    // is offered so the optimistic comment and the stored one are the same.
+    persistInteraction(postId, 'post-comment', { id: newComment.id, parentId: parentCommentId, content });
     setReplyTo(null); setReplyContent(''); setPostReplyContent('');
-  }, [updateForumPost]);
+  }, [persistInteraction]);
 
   const handleToggleSave = useCallback((postId: string) => {
-    setPosts(prev => {
-      const updated = prev.map(p => p.id === postId ? { ...p, saved: !p.saved } : p);
-      const post = updated.find(p => p.id === postId);
-      if (post) {
-        updateForumPost(postId, { data: post as unknown as Record<string, unknown> })
-          .catch(() => {
-            // Rollback on failure
-            setPosts(prev2 => prev2.map(p => p.id === postId ? { ...p, saved: !p.saved } : p));
-          });
-      }
-      return updated;
-    });
-  }, [updateForumPost]);
+    setPosts(prev => prev.map(p => p.id === postId ? { ...p, saved: !p.saved } : p));
+    // Server toggles only this caller's save (forum.post-save).
+    persistInteraction(postId, 'post-save', {});
+  }, [persistInteraction]);
 
   const handleGiveAward = useCallback((awardEmoji: string) => {
     if (!showAwardModal) return;
     if (showAwardModal.type === 'post') {
-      setPosts(prev => {
-        const updated = prev.map(p => p.id === showAwardModal.id ? { ...p, awards: [...p.awards, awardEmoji], score: p.score + 10 } : p);
-        // Persist award to backend
-        const post = updated.find(p => p.id === showAwardModal.id);
-        if (post) updateForumPost(showAwardModal.id, { data: post as unknown as Record<string, unknown> });
-        return updated;
-      });
+      setPosts(prev => prev.map(p => p.id === showAwardModal.id ? { ...p, awards: [...p.awards, awardEmoji], score: p.score + 10 } : p));
+      // Server appends only this award (forum.post-award).
+      persistInteraction(showAwardModal.id, 'post-award', { award: awardEmoji });
     } else {
       function addAward(comments: Comment[]): Comment[] {
         return comments.map(c => {
@@ -491,16 +500,14 @@ export function BoardPanel() {
           return { ...c, replies: addAward(c.replies) };
         });
       }
-      setPosts(prev => {
-        const updated = prev.map(p => ({ ...p, comments: addAward(p.comments) }));
-        // Persist the post containing the awarded comment
-        const postWithAward = updated.find(p => JSON.stringify(p.comments).includes(showAwardModal!.id));
-        if (postWithAward) updateForumPost(postWithAward.id, { data: postWithAward as unknown as Record<string, unknown> });
-        return updated;
-      });
+      const ownerPost = posts.find(p => commentTreeHas(p.comments, showAwardModal.id));
+      setPosts(prev => prev.map(p => ({ ...p, comments: addAward(p.comments) })));
+      if (ownerPost) {
+        persistInteraction(ownerPost.id, 'post-award', { award: awardEmoji, targetId: showAwardModal.id });
+      }
     }
     setShowAwardModal(null);
-  }, [showAwardModal, updateForumPost]);
+  }, [showAwardModal, posts, persistInteraction]);
 
   const handleModAction = useCallback((postId: string, action: 'pin' | 'lock' | 'remove') => {
     const wasPinned = posts.find(p => p.id === postId)?.pinned ?? false;
@@ -520,8 +527,11 @@ export function BoardPanel() {
         setPosts(prev => prev.map(p => p.id === postId ? { ...p, pinned: wasPinned } : p));
       });
     } else {
-      // No backend macro tracks post-level lock — persist directly, same as
-      // vote/save (a real, working equivalent path; see forum-capability-map.md).
+      // Post-level lock stays on the generic lens.update write: it is a
+      // moderator action, and SEC Fix 7 (which closes lens.update to
+      // non-owners on social domains) keeps it working for moderator
+      // actors specifically. Votes/comments/saves/awards no longer use
+      // this path — they run through the forum.post-* server actions.
       const post = posts.find(p => p.id === postId);
       if (post) {
         const updated = { ...post, locked: !post.locked };

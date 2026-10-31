@@ -101,8 +101,12 @@ export async function runEvolutionTick(STATE, db, deps = {}) {
       //       extractMeshData → the pass returns null (single-primitive only).
       //   (b) sources over 1500 input tris still refuse subdivision (the
       //       pre-existing subdivideGeometry cap — unchanged).
-      //   (c) detail_maps still needs callImageGen, wired to an async()=>null
-      //       stub in this build — OUT OF SCOPE, deferred as before.
+      //   (c) detail_maps runs when the caller injects vision + image-gen
+      //       deps; server.js's governor does (vision-inference callVision
+      //       + evo-asset/detail-maps-deps.js over the GPU-first
+      //       pollinations-image generator). A gen result without image
+      //       bytes (URL-only fallback while the GPU is down) skips the
+      //       pass honestly for that tick.
 
       // Compute interaction density for the wear pass.
       const interactionDensity = (() => {

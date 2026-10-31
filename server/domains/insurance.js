@@ -656,6 +656,35 @@ export default function registerInsuranceActions(register) {
     return { ok: true, result: { documents: (s.documents.get(String(params.policyId)) || []).slice().reverse() } };
   });
 
+  // ── Claim documents (photos of damage, repair estimates, ...) ─────────
+  // Same store and shape as policy documents, keyed by the claim's id —
+  // claim ids (`clm_…`) and policy ids (`pol_…`) never collide in the
+  // shared documents map. The claim's `documents` count is maintained on
+  // every add, exactly like policy.documents.
+  registerLensAction("insurance", "claim-document-add", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const claim = findClaim(s, insAid(ctx), params.claimId);
+    if (!claim) return { ok: false, error: "claim not found" };
+    const title = insClean(params.title, 120);
+    if (!title) return { ok: false, error: "title required" };
+    const doc = {
+      id: insId("doc"), claimId: claim.id, title,
+      kind: insClean(params.kind, 40).toLowerCase() || "photo",
+      url: insClean(params.url, 500) || null,
+      createdAt: insNow(),
+    };
+    insListB(s.documents, claim.id).push(doc);
+    claim.documents = s.documents.get(claim.id).length;
+    saveInsState();
+    return { ok: true, result: { document: doc } };
+  });
+
+  registerLensAction("insurance", "claim-document-list", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findClaim(s, insAid(ctx), params.claimId)) return { ok: false, error: "claim not found" };
+    return { ok: true, result: { documents: (s.documents.get(String(params.claimId)) || []).slice().reverse() } };
+  });
+
   // ── Premium payments ────────────────────────────────────────────────
   registerLensAction("insurance", "payment-log", (ctx, _a, params = {}) => {
     const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -752,6 +781,7 @@ export default function registerInsuranceActions(register) {
     const i = arr.findIndex((c) => c.id === params.id);
     if (i < 0) return { ok: false, error: "claim not found" };
     arr.splice(i, 1);
+    s.documents.delete(params.id);
     saveInsState();
     return { ok: true, result: { deleted: params.id } };
   });

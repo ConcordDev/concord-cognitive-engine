@@ -115,10 +115,15 @@ export function tickFlock(db, state, worldId, opts = {}) {
   // weights this same bundle differently per species. signalsForWorld degrades to
   // { hasData:false } when the embodied substrate is empty, so perception is a
   // graceful no-op on minimal builds.
+  // creature-flock-cycle reads it beforehand with signalsForWorldCooperative
+  // (paged, yielding) and passes it in as opts.worldSignals.
   let worldSignals = null;
   if (affect) {
-    try { worldSignals = signalsForWorld(db, worldId); }
-    catch { worldSignals = { hasData: false }; }
+    if (opts.worldSignals) worldSignals = opts.worldSignals;
+    else {
+      try { worldSignals = signalsForWorld(db, worldId); }
+      catch { worldSignals = { hasData: false }; }
+    }
   }
   // Per-species memoisation so the catalog lookups (umwelt/resting-drives/releasers)
   // run once per species per tick, not once per creature.

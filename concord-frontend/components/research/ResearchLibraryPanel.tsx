@@ -351,7 +351,7 @@ function gapText(g: GapEntry): string {
  * job runs all three over the whole library and names its inputs;
  * these run one tool at a time. Errors surface as-is.
  */
-function AnalyzeQuickTools({ references, onOpenReference }: {
+export function AnalyzeQuickTools({ references, onOpenReference }: {
   references: Reference[];
   onOpenReference: (ref: Reference) => Promise<void> | void;
 }) {

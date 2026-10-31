@@ -47,8 +47,8 @@ export const KIND_DOMAINS = {
     "structural.slip-critical",  // AISC §J3.8
     // Prying only applies to T-stub geometries
     "structural.prying",         // AISC §9 / DG9
-    // Long-term limit states (not yet implemented; listed so the gap
-    // is visible to the user, not hidden)
+    // Long-term limit states (screening solvers in
+    // physics/solvers/long-term-limit-states.js, Q42)
     "corrosion.galvanic",
   ],
   Assembly: ["mass", "mass.cg", "cost"],
@@ -85,6 +85,7 @@ export const JOINT_CONDITIONAL_DOMAINS = {
   "structural.combined": "design declares both shear AND tension (load.shear > 0 AND load.tension > 0)",
   "structural.slip-critical": "design declares a slip-critical joint (props.fayingSurface set)",
   "structural.prying": "design declares a T-stub geometry (props.flangeThickness, tStubA, tStubB)",
+  "corrosion.galvanic": "design declares an environment (props.environment)",
 };
 
 export function coverage(graph, envelopes) {
