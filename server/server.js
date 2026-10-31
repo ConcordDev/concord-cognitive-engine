@@ -45602,6 +45602,7 @@ function _startGovernorHeartbeat() {
     if (s.heartbeatEnabled === false) return { ok:false, reason:"heartbeat_disabled" };
     logAbsentGovernorMacrosOnce(MACROS, structuredLog);
     __governorTimer = _unrefInTest(setInterval(() => { governorTick("interval").catch(()=>{}); }, ms));
+    __governorIntervalMs = ms;
     structuredLog("info", "governor_heartbeat_active", { intervalSec: (ms/1000).toFixed(2) });
     // fire once on boot (after a short delay so macros/STATE are warmed)
     _unrefInTest(setTimeout(() => { governorTick("boot").catch(()=>{}); }, 2000));
@@ -45610,6 +45611,26 @@ function _startGovernorHeartbeat() {
     console.warn("[Governor] failed to start:", String(e?.message||e));
     return { ok:false, error:String(e?.message||e) };
   }
+}
+
+// Live control used by the admin heartbeat toggle (lib/admin-heartbeat.js). _startGovernorHeartbeat() only ever ran
+// once, at boot (T+50s), and returned heartbeat_disabled when the setting was false — so flipping the setting
+// later could not create the dispatcher on a running process. These make the toggle real in both directions.
+let __governorIntervalMs = null;
+function startGovernorDispatcherLive() {
+  if (READ_REPLICA) return { ok: false, reason: "read_replica" };
+  return _startGovernorHeartbeat() || { ok: false };
+}
+function stopGovernorDispatcherLive() {
+  if (!__governorTimer) return { ok: true, stopped: false };
+  clearInterval(__governorTimer);
+  __governorTimer = null;
+  __governorIntervalMs = null;
+  structuredLog("info", "governor_heartbeat_stopped", { by: "admin_toggle" });
+  return { ok: true, stopped: true };
+}
+function governorDispatcherStatus() {
+  return { running: !!__governorTimer, intervalMs: __governorTimer ? __governorIntervalMs : null };
 }
 // ===== END GOVERNOR =====
 
@@ -63605,7 +63626,8 @@ app.post("/api/admin/background-governor/mode", requireRole("owner", "admin", "s
 mountUserRoleRoute(app, { requireRole, getDb: () => db, bustUserCache, log: structuredLog });
 
 // Admin-tier heartbeat switch (owner|admin|founder; only heartbeatEnabled) — see lib/admin-heartbeat.js.
-mountAdminHeartbeatRoutes(app, { requireRole, getState: () => STATE, save: () => saveStateSync(), clearMemoryPause, persistableSettings, log: structuredLog });
+mountAdminHeartbeatRoutes(app, { requireRole, getState: () => STATE, save: () => saveStateSync(), clearMemoryPause, persistableSettings, log: structuredLog,
+  startDispatcher: () => startGovernorDispatcherLive(), stopDispatcher: () => stopGovernorDispatcherLive(), dispatcherStatus: () => governorDispatcherStatus() });
 
 app.get("/api/admin/dtu-quality", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
   try {
