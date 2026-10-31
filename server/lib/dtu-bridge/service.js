@@ -64,7 +64,12 @@ export function dtuContentPayload(dtu) {
   };
 }
 
-export function createDtuBridgeService({ store, target, sourceNode = "concord-sqlite" } = {}) {
+// The id → head-hash memo is a pure cache (headFor re-reads the target's
+// chain head on a miss), so it is capped: without a cap it gained one entry
+// per distinct DTU id the sweep ever touched, for the life of the process.
+export const HEAD_CACHE_MAX_DEFAULT = 50000;
+
+export function createDtuBridgeService({ store, target, sourceNode = "concord-sqlite", headCacheMax } = {}) {
   if (!store) throw new TypeError("createDtuBridgeService: a store is required");
   if (!target) throw new TypeError("createDtuBridgeService: a target is required");
   const outbox = createOutbox(store);
@@ -72,12 +77,25 @@ export function createDtuBridgeService({ store, target, sourceNode = "concord-sq
   // (seeded lazily from the target's applied chain head). Lets a sweep
   // recognise an unchanged DTU without re-packing it.
   const headHashById = new Map();
+  const envMax = Number(process.env.DTU_BRIDGE_HEAD_CACHE_MAX);
+  const headMax = Math.max(
+    1,
+    Number.isFinite(headCacheMax) ? headCacheMax : Number.isFinite(envMax) && envMax > 0 ? envMax : HEAD_CACHE_MAX_DEFAULT,
+  );
+
+  function rememberHead(id, head) {
+    // Re-insert so the Map's insertion order is recency order, then evict the
+    // oldest entries past the cap.
+    headHashById.delete(id);
+    headHashById.set(id, head);
+    while (headHashById.size > headMax) headHashById.delete(headHashById.keys().next().value);
+  }
 
   function headFor(id) {
     if (headHashById.has(id)) return headHashById.get(id);
     const chain = target.getChain(DTU_BRIDGE_TABLE, id);
     const head = chain.length > 0 ? chain[chain.length - 1].provenance.contentHash : null;
-    headHashById.set(id, head);
+    rememberHead(id, head);
     return head;
   }
 
@@ -97,7 +115,7 @@ export function createDtuBridgeService({ store, target, sourceNode = "concord-sq
       provenance: makeProvenance(payload, parent),
     };
     const res = outbox.enqueuePack(buildPack({ sourceNode, records: [record] }));
-    if (res.ok && res.enqueued > 0) headHashById.set(dtu.id, hash);
+    if (res.ok && res.enqueued > 0) rememberHead(dtu.id, hash);
     return { enqueued: res.enqueued || 0, deduped: res.deduped || 0, skipped: 0 };
   }
 
@@ -138,6 +156,7 @@ export function createDtuBridgeService({ store, target, sourceNode = "concord-sq
   function stats() {
     return {
       cursor: sweepCursor,
+      headCache: headHashById.size,
       outbox: outbox.stats(),
       chains:
         typeof target.countChains === "function"
