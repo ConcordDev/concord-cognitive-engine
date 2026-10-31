@@ -353,10 +353,13 @@ describe("Withdrawal Workflow", () => {
     const ts = new Date(Date.now() - hoursAgo * 3600 * 1000)
       .toISOString().replace("T", " ").replace("Z", "");
     const from = type === "MARKETPLACE_PURCHASE" ? null : PLATFORM_ACCOUNT_ID;
+    // Royalty rows carry the real cascade writer's stamp (metadata role
+    // "royalty"); since C1 only system-stamped royalty rows count as earned.
+    const metadata = type === "ROYALTY_PAYOUT" ? JSON.stringify({ role: "royalty" }) : "{}";
     db.prepare(`
-      INSERT INTO economy_ledger (id, type, from_user_id, to_user_id, amount, fee, net, status, created_at)
-      VALUES (?, ?, ?, ?, ?, 0, ?, 'complete', ?)
-    `).run("txn_seed_" + Math.random().toString(36).slice(2, 14), type, from, userId, net, net, ts);
+      INSERT INTO economy_ledger (id, type, from_user_id, to_user_id, amount, fee, net, status, metadata_json, created_at)
+      VALUES (?, ?, ?, ?, ?, 0, ?, 'complete', ?, ?)
+    `).run("txn_seed_" + Math.random().toString(36).slice(2, 14), type, from, userId, net, net, metadata, ts);
   }
 
   it("purchased-only CC is NOT withdrawable (closed-loop store credit)", () => {

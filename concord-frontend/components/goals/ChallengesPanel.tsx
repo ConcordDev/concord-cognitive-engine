@@ -25,8 +25,11 @@ export function ChallengesPanel() {
   const [newChallengeDifficulty, setNewChallengeDifficulty] = useState<Challenge['difficulty']>('Easy');
   const [newChallengeTarget, setNewChallengeTarget] = useState(7);
   const [newChallengeDeadline, setNewChallengeDeadline] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [undoChallenge, setUndoChallenge] = useState<{ title: string; data: Record<string, unknown> } | null>(null);
+  const [deleteError, setDeleteError] = useState('');
 
-  const { isLoading, isError, error, refetch, items: challengeItems, create: createChallengeItem, update: updateChallengeItem } = useLensData<Record<string, unknown>>('goals', 'challenge', {
+  const { isLoading, isError, error, refetch, items: challengeItems, create: createChallengeItem, update: updateChallengeItem, remove: removeChallengeItem } = useLensData<Record<string, unknown>>('goals', 'challenge', {
     seed: CHALLENGES_FALLBACK.map(c => ({ title: c.title, data: c as unknown as Record<string, unknown> })),
   });
 
@@ -44,6 +47,30 @@ export function ChallengesPanel() {
     if (challenge) {
       updateChallengeItem(id, { data: { ...challenge, progress: Math.min(challenge.progress + 1, challenge.target) } as unknown as Record<string, unknown> }).catch((err) => console.error('Failed to update challenge progress:', err instanceof Error ? err.message : err));
     }
+  };
+
+  // S1 (F1): challenges get a delete path — two-step, recoverable.
+  const deleteChallenge = (ch: Challenge) => {
+    setDeleteError('');
+    removeChallengeItem(ch.id).then(() => {
+      setUndoChallenge({
+        title: ch.title,
+        data: {
+          title: ch.title, description: ch.description, type: ch.type,
+          difficulty: ch.difficulty, xp: ch.xp, progress: ch.progress,
+          target: ch.target, deadline: ch.deadline, accepted: ch.accepted,
+        } as unknown as Record<string, unknown>,
+      });
+      setConfirmDeleteId(null);
+    }).catch(() => setDeleteError('Could not delete that challenge — it is still in your list.'));
+  };
+
+  const undoDeleteChallenge = () => {
+    if (!undoChallenge) return;
+    const snap = undoChallenge;
+    setUndoChallenge(null);
+    createChallengeItem({ title: snap.title, data: snap.data })
+      .catch(() => setDeleteError('Undo failed — the challenge was not restored.'));
   };
 
   const handleCreateChallenge = () => {
@@ -80,6 +107,17 @@ export function ChallengesPanel() {
 
   return (
         <div className="space-y-4">
+          {(undoChallenge || deleteError) && (
+            <div className="panel flex items-center gap-3 px-4 py-2.5 text-[13px] text-zinc-300" role="status">
+              {deleteError
+                ? <span className="text-rose-300">{deleteError}</span>
+                : <span>Deleted "{undoChallenge?.title}".</span>}
+              {undoChallenge && (
+                <button type="button" onClick={undoDeleteChallenge} className="text-teal-300 hover:text-teal-200">Undo</button>
+              )}
+              <button type="button" onClick={() => { setUndoChallenge(null); setDeleteError(''); }} className="ml-auto text-zinc-500 hover:text-zinc-300">Dismiss</button>
+            </div>
+          )}
           {/* Challenge type filter summary */}
           <div className="flex items-center justify-between gap-4">
             <div className="flex gap-4 text-xs text-gray-400">
@@ -148,13 +186,21 @@ export function ChallengesPanel() {
                 <div className="text-right flex-shrink-0 ml-4">
                   <div className="flex items-center gap-1 text-yellow-400 text-sm font-bold">
                     <Zap className="w-4 h-4" />
-                    {ch.xp} XP
+                    {ch.xp} XP on completion
                   </div>
                   {ch.deadline && (
                     <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1 justify-end">
                       <Clock className="w-3 h-3" />
                       {daysUntil(ch.deadline) === 0 ? 'Due today' : `${daysUntil(ch.deadline)}d left`}
                     </p>
+                  )}
+                  {confirmDeleteId === ch.id ? (
+                    <div className="mt-2 flex items-center gap-2 justify-end">
+                      <button type="button" onClick={() => deleteChallenge(ch)} className="text-[11px] font-medium text-rose-300">Confirm delete</button>
+                      <button type="button" onClick={() => setConfirmDeleteId(null)} className="text-[11px] text-gray-400">Cancel</button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setConfirmDeleteId(ch.id)} className="mt-2 ml-auto block text-[11px] text-gray-500 hover:text-rose-300">Delete</button>
                   )}
                 </div>
               </div>

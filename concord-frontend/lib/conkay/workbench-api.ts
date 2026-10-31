@@ -4,6 +4,7 @@
  */
 
 import { api } from '@/lib/api/client';
+import type { DesignSnapshot } from './designs-api';
 
 export interface WorkbenchKnob {
   variable: string; label: string; value: string | number; unit?: string;
@@ -58,13 +59,28 @@ export interface WorkbenchView {
 
 export interface WorkbenchReply {
   kind: string; ok?: boolean; note?: string; error?: string; question?: string;
-  diff?: { changed: { field: string; before: unknown; after: unknown; source: string }[]; flipped: { runId: string; from: string | null; to: string | null }[]; rerun: string[] | string };
+  /** Structured refusals (HANDOFF-3 A1): error 'invalid_input' with the field and reason named. */
+  field?: string; reason?: string; message?: string;
+  diff?: { changed: { field: string; before: unknown; after: unknown; unit?: string; source: string }[]; flipped: { runId: string; from: string | null; to: string | null }[]; rerun: string[] | string };
   outcome?: { kind: string; binding?: { variable: string | null; why: string }[] };
   matches?: boolean;
 }
 
+/** One assembly fit check whose status flipped across a knob edit (HANDOFF-3 A1). */
+export interface FitCheckFlip { id: string; from: string | null; to: string | null }
+
+/** POST /workbench/:id/knob: the reply, the updated view, and what the edit did to the solved assembly. */
+export interface KnobResponse {
+  reply: WorkbenchReply;
+  view: WorkbenchView;
+  fitCheckDiff: FitCheckFlip[];
+  rerun: string[];
+  /** The new assembly, hydrated for the viewer (null when the session has no assembly run). */
+  assembly: DesignSnapshot['assembly'];
+}
+
 export interface WorkbenchClient {
-  knob(id: string, variable: string, value: string | number): Promise<{ reply: WorkbenchReply; view: WorkbenchView }>;
+  knob(id: string, variable: string, value: string | number): Promise<KnobResponse>;
   lock(id: string, variable: string, locked: boolean): Promise<{ view: WorkbenchView }>;
   ask(id: string, text: string): Promise<{ reply: WorkbenchReply; view: WorkbenchView }>;
   undo(id: string): Promise<{ reply: WorkbenchReply; view: WorkbenchView }>;

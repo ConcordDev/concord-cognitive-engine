@@ -357,6 +357,7 @@ export default function registerTravelActions(registerLensAction) {
       "trips", "itinerary", "places", "placeReviews", "bookings",
       "priceWatches", "budgets", "travelDocs", "checklists",
       "travelDocAttachments", "loyaltyAccounts", "loyaltyPointsLog",
+      "savedPlaces", // Q17: userId -> Array<placeId>, the per-user save relation
     ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
@@ -386,6 +387,12 @@ export default function registerTravelActions(registerLensAction) {
     if (!destination) return { ok: false, error: "destination required" };
     const startDate = tvday(params.startDate);
     const endDate = tvday(params.endDate) || startDate;
+    // Q24: an inverted range is rejected, not clamped into a fake
+    // 1-day trip (the Math.max(1, …) below used to store end-before-
+    // start silently, and trip-list then mislabelled its status).
+    if (startDate && endDate && endDate < startDate) {
+      return { ok: false, error: "endDate must be on or after startDate" };
+    }
     const trip = {
       id: tvid("trip"), name, destination, startDate: startDate || null, endDate: endDate || null,
       travelers: Math.max(1, Math.round(tvnum(params.travelers, 1))),
@@ -414,6 +421,14 @@ export default function registerTravelActions(registerLensAction) {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const trip = findTrip(s, tvaid(ctx), params.id);
     if (!trip) return { ok: false, error: "trip not found" };
+    // Q24: validate the POST-update date pair before mutating
+    // anything — a rejected update changes nothing (no partial write
+    // of the name/destination fields that accompany the bad dates).
+    const nextStart = params.startDate != null ? (tvday(params.startDate) || null) : trip.startDate;
+    const nextEnd = params.endDate != null ? (tvday(params.endDate) || null) : trip.endDate;
+    if (nextStart && nextEnd && nextEnd < nextStart) {
+      return { ok: false, error: "endDate must be on or after startDate" };
+    }
     if (params.name != null) { const n = tvclean(params.name, 120); if (n) trip.name = n; }
     if (params.destination != null) { const d = tvclean(params.destination, 120); if (d) trip.destination = d; }
     if (params.startDate != null) trip.startDate = tvday(params.startDate) || null;
@@ -538,15 +553,31 @@ export default function registerTravelActions(registerLensAction) {
       addedBy: tvaid(ctx), createdAt: tvnow(),
     };
     s.places.set(place.id, place);
+    // Q17: a place added with saved:true enters the CONTRIBUTOR's own
+    // save relation (the record flag stays as their legacy mirror).
+    if (place.saved) tvlistB(s.savedPlaces, place.addedBy).push(place.id);
     saveTravelState();
     return { ok: true, result: { place } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
-  function placeView(s, place) {
+  // Q17: "saved" is a per-user relation, not a flag on the shared place
+  // record. savedPlaces maps userId -> [placeId]. Legacy rows are
+  // honoured: before this fix the only meaningful writer of place.saved
+  // was the contributor (place-add's saved param), so a legacy
+  // saved=true reads as the CONTRIBUTOR's save — and only the
+  // contributor's own place-save calls keep that flag in sync now.
+  function isPlaceSaved(s, place, userId) {
+    const mine = s.savedPlaces.get(userId);
+    if (mine && mine.includes(place.id)) return true;
+    return place.saved === true && place.addedBy === userId;
+  }
+
+  function placeView(s, place, userId) {
     const reviews = s.placeReviews.get(place.id) || [];
     return {
       ...place,
+      saved: userId ? isPlaceSaved(s, place, userId) : place.saved === true,
       reviewCount: reviews.length,
       rating: reviews.length ? Math.round((reviews.reduce((a, r) => a + r.rating, 0) / reviews.length) * 10) / 10 : 0,
     };
@@ -560,8 +591,8 @@ export default function registerTravelActions(registerLensAction) {
       const d = String(params.destination).toLowerCase();
       places = places.filter((p) => (p.destination || "").toLowerCase().includes(d));
     }
-    if (params.savedOnly) places = places.filter((p) => p.saved && p.addedBy === tvaid(ctx));
-    places = places.map((p) => placeView(s, p)).sort((a, b) => b.rating - a.rating);
+    if (params.savedOnly) places = places.filter((p) => isPlaceSaved(s, p, tvaid(ctx)));
+    places = places.map((p) => placeView(s, p, tvaid(ctx))).sort((a, b) => b.rating - a.rating);
     return { ok: true, result: { places, count: places.length } };
   });
 
@@ -571,7 +602,7 @@ export default function registerTravelActions(registerLensAction) {
     if (!place) return { ok: false, error: "place not found" };
     return {
       ok: true,
-      result: { place: placeView(s, place), reviews: (s.placeReviews.get(place.id) || []).slice().reverse() },
+      result: { place: placeView(s, place, tvaid(ctx)), reviews: (s.placeReviews.get(place.id) || []).slice().reverse() },
     };
   });
 
@@ -593,16 +624,28 @@ export default function registerTravelActions(registerLensAction) {
       reviews.push(review);
     }
     saveTravelState();
-    return { ok: true, result: { review, aggregate: placeView(s, place) } };
+    return { ok: true, result: { review, aggregate: placeView(s, place, tvaid(ctx)) } };
   });
 
   registerLensAction("travel", "place-save", (ctx, _a, params = {}) => {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const place = s.places.get(String(params.id));
     if (!place) return { ok: false, error: "place not found" };
-    place.saved = !(params.unsave === true);
+    // Q17: update only the CALLER's save relation. The old code flipped
+    // a global boolean on the shared record — a stranger could unsave
+    // the contributor's place, and a non-contributor's save never
+    // showed in their own list (readers required addedBy === caller).
+    const userId = tvaid(ctx);
+    const wantSaved = !(params.unsave === true);
+    const mine = tvlistB(s.savedPlaces, userId);
+    const i = mine.indexOf(place.id);
+    if (wantSaved && i < 0) mine.push(place.id);
+    if (!wantSaved && i >= 0) mine.splice(i, 1);
+    // The legacy flag mirrors the CONTRIBUTOR's relation only, and
+    // only their own actions may move it.
+    if (place.addedBy === userId) place.saved = wantSaved;
     saveTravelState();
-    return { ok: true, result: { placeId: place.id, saved: place.saved } };
+    return { ok: true, result: { placeId: place.id, saved: isPlaceSaved(s, place, userId) } };
   });
 
   registerLensAction("travel", "place-delete", (ctx, _a, params = {}) => {
@@ -612,6 +655,11 @@ export default function registerTravelActions(registerLensAction) {
     if (place.addedBy !== tvaid(ctx)) return { ok: false, error: "only the contributor can remove this place" };
     s.places.delete(place.id);
     s.placeReviews.delete(place.id);
+    // Q17: purge the deleted place from every user's save relation.
+    for (const ids of s.savedPlaces.values()) {
+      const i = ids.indexOf(place.id);
+      if (i >= 0) ids.splice(i, 1);
+    }
     saveTravelState();
     return { ok: true, result: { deleted: place.id } };
   });
@@ -1090,7 +1138,7 @@ export default function registerTravelActions(registerLensAction) {
         nextTrip: nextTrip ? { id: nextTrip.id, name: nextTrip.name, destination: nextTrip.destination, startDate: nextTrip.startDate } : null,
         priceWatches: watches.length,
         watchesTriggered: watches.filter((w) => w.belowTarget).length,
-        savedPlaces: [...s.places.values()].filter((p) => p.saved && p.addedBy === userId).length,
+        savedPlaces: [...s.places.values()].filter((p) => isPlaceSaved(s, p, userId)).length,
         totalBooked: Math.round(bookedCost * 100) / 100,
       },
     };

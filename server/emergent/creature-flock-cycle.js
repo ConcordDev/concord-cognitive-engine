@@ -16,6 +16,7 @@
 import logger from "../logger.js";
 import { tickFlock } from "../lib/ecosystem/creature-behaviors.js";
 import { recordEncounter } from "../lib/creature-crossbreeding.js";
+import { signalsForWorldCooperative } from "../lib/embodied/signals.js";
 
 const MAX_WORLDS_PER_PASS = 8;
 const ENCOUNTER_RADIUS_M = 12;
@@ -128,7 +129,15 @@ export async function runCreatureFlockCycle({ db, state, io, tickCount: _t, budg
     processed++;
     (stats.worldIds ||= []).push(worldId);
     try {
-      const r = tickFlock(db, state ?? {}, worldId);
+      // The whole-world signal read was the slow, synchronous part of a pass
+      // (1.5–5.4 s on the live box). Read it in yielding pages first; tickFlock
+      // then folds the same bundle it would have read itself.
+      let worldSignals;
+      if (process.env.CONCORD_CREATURE_ECOLOGY !== "0" && process.env.CONCORD_AFFECT_INSTINCT !== "0") {
+        try { worldSignals = await signalsForWorldCooperative(db, worldId, { yieldFn: _yieldLoop }); }
+        catch { worldSignals = undefined; }
+      }
+      const r = tickFlock(db, state ?? {}, worldId, worldSignals ? { worldSignals } : {});
       if (r?.ok) {
         stats.worldsTouched++;
         stats.totalMoved += r.moved ?? 0;

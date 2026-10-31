@@ -1,7 +1,7 @@
 # paper — Capability Map (Frontend Rebuild Program, Wave 3)
 
 > Derived, not asserted. Reproduce the macro list:
-> `grep -c 'registerLensAction("paper"' server/domains/paper.js` → 37
+> `grep -c 'registerLensAction("paper"' server/domains/paper.js` → 41
 > plus 3 inline `register("paper", ...)` macros in `server.js` (a separate
 > deterministic "build a paper from DTUs" compiler: `create`/`build`/`export`)
 > and 4 inline `registerLensAction("paper", ...)` macros also in `server.js`
@@ -199,3 +199,8 @@ keyless, and functioning (aside from the two envelope bugs above).
 - `node scripts/grade-ux-polish.mjs --honest` — paper: `tier: "polished"`, `isGenericScaffold: false` (unchanged; these were correctness + surfacing fixes, not polish-tier fixes).
 - `node scripts/lens-unsurfaced.mjs --lens paper` (after fix): `2/37` — `paper-detail` (not a gap, see above) and `revisionDiff` (genuinely deferred, see above) are the only two remaining, both explained.
 - Backend tests (no backend files touched, but re-ran clean): `node --test tests/depth/paper-export-behavior.test.js tests/depth/paper-behavior.test.js tests/paper-domain-parity.test.js tests/paper-library-domain-parity.test.js` — 27/27 passing, 0 fail.
+
+
+---
+
+*Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*

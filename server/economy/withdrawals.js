@@ -43,7 +43,13 @@ export const WITHDRAWABLE_EARNED_TYPES = ["MARKETPLACE_PURCHASE", "ROYALTY_PAYOU
  *                   credit rows + royalty payouts). For marketplace we take ONLY
  *                   the seller CREDIT row (from_user_id IS NULL) so the
  *                   buyer→seller debit row (which also carries to_user_id =
- *                   seller) is not double-counted.
+ *                   seller) is not double-counted. For royalties we count ONLY
+ *                   rows the system itself stamped as royalty distributions
+ *                   (metadata role "creative_royalty_cascade" or "royalty" —
+ *                   the two real writers). A peer transfer's credit row always
+ *                   carries role "credit", so it never counts as earned no
+ *                   matter what type label a row claims: fail closed on any
+ *                   ROYALTY_PAYOUT row without a system royalty stamp.
  *   claimed       = everything ever withdrawn or in-flight (pending/approved/
  *                   processing/complete) — it already claims earned headroom.
  *
@@ -58,7 +64,8 @@ export function earnedWithdrawableBalance(db, userId) {
       AND created_at <= datetime('now', '-${WITHDRAWAL_HOLD_HOURS} hours')
       AND (
         (type = 'MARKETPLACE_PURCHASE' AND from_user_id IS NULL)
-        OR type = 'ROYALTY_PAYOUT'
+        OR (type = 'ROYALTY_PAYOUT'
+            AND json_extract(metadata_json, '$.role') IN ('creative_royalty_cascade', 'royalty'))
       )
   `).get(userId)?.cents || 0;
 

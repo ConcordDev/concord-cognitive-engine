@@ -56,6 +56,12 @@ import {
 } from '@/lib/world-lens/world-data-state';
 import { themeForWorldId, CONCORDIA_THEMES, sunDiskForWorld, buildingStyleForWorld } from '@/lib/world-lens/concordia-theme';
 import { DEFAULT_CAMERA_ZOOM } from '@/lib/world-lens/camera-zoom';
+import {
+  cancelActiveSequence,
+  pauseActiveSequence,
+  resumeActiveSequence,
+  skipActiveShot,
+} from '@/lib/world-lens/cinematic-director';
 import { hudCornerStyle } from '@/lib/world-lens/hud-corner-registry';
 import { shouldTogglePhotoMode, resolvePhotoModeCanvas } from '@/lib/world-lens/photo-mode-key';
 import { weatherTypeToIcon } from '@/lib/world-lens/weather-icon';
@@ -2240,6 +2246,65 @@ export default function WorldOsSurface() {
       window.removeEventListener('concordia:cinematic-end', onCinematicEnd);
     };
   }, []);
+  // Cinematic transport state for the Camera Mode panel — previously the
+  // CameraControls mount below hardcoded cinematicPlaying:false /
+  // cinematicTime:0 / cinematicDuration:0, so the timeline could never
+  // show a playing sequence even though the director + scene wiring is
+  // live. Fed from the same director events as the mode switch above:
+  // cinematic-start carries the sequence duration; a 250ms ticker
+  // advances the elapsed time while playing; cinematic-end stops it.
+  const [cinematicPlaying, setCinematicPlaying] = useState(false);
+  const [cinematicPaused, setCinematicPaused] = useState(false);
+  const [cinematicTime, setCinematicTime] = useState(0);
+  const [cinematicDuration, setCinematicDuration] = useState(0);
+  const cinematicStartedAtRef = useRef<number | null>(null);
+  useEffect(() => {
+    function onStart(e: Event) {
+      const durationMs = (e as CustomEvent).detail?.durationMs;
+      cinematicStartedAtRef.current = performance.now();
+      setCinematicDuration(typeof durationMs === 'number' ? durationMs / 1000 : 0);
+      setCinematicTime(0);
+      setCinematicPaused(false);
+      setCinematicPlaying(true);
+    }
+    function onEnd() {
+      cinematicStartedAtRef.current = null;
+      setCinematicPaused(false);
+      setCinematicPlaying(false);
+    }
+    // The director's transport (pause/resume/seek) reports the true
+    // playback position; the display clock re-bases off it so the
+    // timeline can't drift from the director's own clock.
+    function onPlayback(e: Event) {
+      const detail = (e as CustomEvent).detail ?? {};
+      const elapsedMs = typeof detail.elapsedMs === 'number' ? detail.elapsedMs : null;
+      if (elapsedMs != null) setCinematicTime(elapsedMs / 1000);
+      setCinematicPaused(!!detail.paused);
+      if (detail.paused) {
+        cinematicStartedAtRef.current = null;
+      } else if (elapsedMs != null) {
+        cinematicStartedAtRef.current = performance.now() - elapsedMs;
+      }
+    }
+    window.addEventListener('concordia:cinematic-start', onStart);
+    window.addEventListener('concordia:cinematic-end', onEnd);
+    window.addEventListener('concordia:cinematic-playback', onPlayback);
+    return () => {
+      window.removeEventListener('concordia:cinematic-start', onStart);
+      window.removeEventListener('concordia:cinematic-end', onEnd);
+      window.removeEventListener('concordia:cinematic-playback', onPlayback);
+    };
+  }, []);
+  useEffect(() => {
+    if (!cinematicPlaying || cinematicPaused) return;
+    const id = window.setInterval(() => {
+      const startedAt = cinematicStartedAtRef.current;
+      if (startedAt == null) return;
+      const elapsed = (performance.now() - startedAt) / 1000;
+      setCinematicTime(cinematicDuration > 0 ? Math.min(elapsed, cinematicDuration) : elapsed);
+    }, 250);
+    return () => window.clearInterval(id);
+  }, [cinematicPlaying, cinematicPaused, cinematicDuration]);
   // Camera Mode panel's zoom slider — previously wired to a no-op onZoom
   // handler (CameraControls rendered a live-looking slider that did
   // nothing). Real state now, consumed by ConcordiaScene's cameraZoom prop
@@ -4662,33 +4727,13 @@ export default function WorldOsSurface() {
         m.recordAssetInteraction('authored', building.dtuId, 'building_inspect', 1.0),
       ).catch(() => { /* network errors silent */ });
     } catch { /* import failure silent */ }
-    // Generate mock citations for demo
-    setCitations([
-      {
-        id: 'c1',
-        citingDTU: building.dtuId,
-        citedDTU: 'comp-concrete-found-v2',
-        citedCreator: '@engineer_jane',
-        timestamp: new Date().toISOString(),
-        context: 'foundation',
-      },
-      {
-        id: 'c2',
-        citingDTU: building.dtuId,
-        citedDTU: 'mat-usb-a',
-        citedCreator: '@materials_lab',
-        timestamp: new Date().toISOString(),
-        context: 'beam material',
-      },
-      {
-        id: 'c3',
-        citingDTU: building.dtuId,
-        citedDTU: 'infra-water-1',
-        citedCreator: '@civil_sara',
-        timestamp: new Date().toISOString(),
-        context: 'water connection',
-      },
-    ]);
+    // No citations are loaded for a building here — a real per-DTU
+    // citation lookup is not wired into this surface yet. This handler
+    // used to fabricate three citations (invented DTU ids and creator
+    // handles) and the Inspector rendered them as real provenance;
+    // removed. The Inspector's Citations section renders only when the
+    // list is non-empty, so an empty list is the honest state.
+    setCitations([]);
   }, []);
 
   const handleInfraClick = useCallback((infra: InfrastructureDTU) => {
@@ -5633,15 +5678,21 @@ export default function WorldOsSurface() {
                 zoom: cameraZoom,
                 rotation: cameraRotation,
                 followTarget: 'avatar',
-                cinematicPlaying: false,
-                cinematicTime: 0,
-                cinematicDuration: 0,
+                cinematicPlaying,
+                cinematicPaused,
+                cinematicTime,
+                cinematicDuration,
                 transitioning: false,
               }}
               onModeChange={(mode) => setCameraMode(mode as typeof cameraMode)}
               onZoom={setCameraZoom}
               onRotate={setCameraRotation}
               onTransition={() => {}}
+              onCinematicStop={() => cancelActiveSequence()}
+              onCinematicPause={() => pauseActiveSequence()}
+              onCinematicResume={() => resumeActiveSequence()}
+              onCinematicSkipBack={() => skipActiveShot(-1)}
+              onCinematicSkipForward={() => skipActiveShot(1)}
             />
           </div>
           {/* HUD overlay — mode drives the top-bar label */}

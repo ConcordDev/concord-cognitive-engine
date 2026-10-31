@@ -1,0 +1,59 @@
+name: JetBrains Plugin
+
+# concord-jetbrains/ (Kotlin, IntelliJ Platform plugin + LSP4IJ language server wiring) had no CI, so nothing
+# ever compiled it. This builds the bundled concord-lsp and runs `./gradlew buildPlugin` (Gradle 8.5 via the
+# committed wrapper; the org.jetbrains.intellij 1.x plugin does not run on Gradle 9) on every change to the
+# plugin or the server it bundles, and uploads the plugin zip as the build evidence.
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'concord-jetbrains/**'
+      - 'concord-lsp/**'
+      - '.github/workflows/jetbrains-plugin.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'concord-jetbrains/**'
+      - 'concord-lsp/**'
+      - '.github/workflows/jetbrains-plugin.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build-plugin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Build the bundled language server (concord-lsp)
+        run: |
+          npm --prefix concord-lsp ci
+          npm --prefix concord-lsp run compile
+          test -f concord-lsp/out/server.js
+      - name: Build the plugin
+        working-directory: concord-jetbrains
+        run: |
+          # The runner image ships JDK 17; the build pins jvmToolchain(17).
+          export JAVA_HOME="$JAVA_HOME_17_X64"
+          ./gradlew --no-daemon buildPlugin
+      - name: Plugin zip carries the language server
+        working-directory: concord-jetbrains
+        run: |
+          zip=$(ls build/distributions/*.zip | head -n1)
+          echo "built: $zip"
+          unzip -l "$zip" | grep -E "lsp/server\.js"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: concord-jetbrains-plugin
+          path: concord-jetbrains/build/distributions/*.zip
+          if-no-files-found: error

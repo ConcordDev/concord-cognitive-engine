@@ -8,6 +8,7 @@ import { Bell, ThumbsUp, MessageCircle, CornerDownRight, AtSign, Share2, Loader2
 import { cn } from '@/lib/utils';
 import { lensRun } from '@/lib/api/client';
 import type { Notification } from './types';
+import { timeAgo, exactTime } from './timeFormat';
 
 interface NotifResult {
   notifications: Notification[];
@@ -22,16 +23,6 @@ const ICONS: Record<Notification['type'], { icon: typeof Bell; color: string; ve
   tag: { icon: AtSign, color: 'text-purple-400', verb: 'tagged you in a post' },
   share: { icon: Share2, color: 'text-orange-400', verb: 'shared your post' },
 };
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return 'now';
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
-  return `${Math.floor(h / 24)}d`;
-}
 
 export function NotificationsPanel() {
   const qc = useQueryClient();
@@ -105,10 +96,10 @@ export function NotificationsPanel() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-gray-200">
-                    <span className="font-semibold text-white">{n.actorId}</span> {meta.verb}
+                    <span className="font-semibold text-white">{n.actorDisplayName || 'Member'}</span> {meta.verb}
                   </p>
                   {n.preview && <p className="text-xs text-gray-400 truncate">&ldquo;{n.preview}&rdquo;</p>}
-                  <p className="text-[11px] text-gray-400 mt-0.5">{timeAgo(n.at)}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5" title={exactTime(n.at)}>{timeAgo(n.at)}</p>
                 </div>
                 {!n.read && <span className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0 mt-1" />}
               </button>

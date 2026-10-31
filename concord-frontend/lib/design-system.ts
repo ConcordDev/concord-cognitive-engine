@@ -137,6 +137,11 @@ const tabActive = (color: string = 'neon-blue') =>
 const tabInactive =
   'flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px text-gray-400 border-transparent hover:text-white hover:border-gray-600 transition-colors';
 
+/** Loading placeholder — the skeleton/shimmer token. Single source for
+ * every loading-state surface (components/ui/Skeleton.tsx migrated to it
+ * in audit Q71/B#11; components/common/Skeleton.tsx uses the same tone). */
+const skeleton = 'animate-pulse bg-lattice-border/50';
+
 /** Focus ring utility — visible focus for keyboard navigation */
 const focusRing =
   'focus:outline-none focus-visible:ring-2 focus-visible:ring-neon-blue focus-visible:ring-offset-2 focus-visible:ring-offset-lattice-void';
@@ -488,6 +493,7 @@ export const ds = {
   tabBar,
   tabActive,
   tabInactive,
+  skeleton,
   focusRing,
   modalBackdrop,
   modalContainer,

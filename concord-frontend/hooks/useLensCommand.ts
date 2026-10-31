@@ -37,6 +37,18 @@ export interface UseLensCommandOptions {
 }
 
 /**
+ * Did this keystroke originate in a form field? Mirrors the tag set
+ * react-hotkeys-hook's enableOnFormTags covers, plus contentEditable.
+ */
+function isFormFieldEvent(event: KeyboardEvent): boolean {
+  const t = event.target as (HTMLElement & { isContentEditable?: boolean }) | null;
+  if (!t || typeof t !== 'object') return false;
+  if (t.isContentEditable) return true;
+  const tag = t.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+}
+
+/**
  * Register an array of commands for the duration of the calling lens's
  * mount. Commands are reconciled (registered / updated / removed) when
  * the input array changes by id+keys+description.
@@ -121,30 +133,27 @@ export function useLensCommand(commands: LensCommand[], options: UseLensCommandO
   useHotkeys(
     allKeys || 'f24', // dummy when empty so hook is stable
     (event, handler) => {
-      if (!namespacedCommands.length) return;
+      // Read the current command set from the ref, not the closure:
+      // the binding's deps key on allKeys only, so a `global` flag can
+      // change without a rebind.
+      const cmds = commandsRef.current;
+      if (!cmds.length) return;
       const fired = (handler as { hotkey?: string; keys?: string[] }).hotkey
         ?? (handler as { keys?: string[] }).keys?.join('+');
-      const matched = namespacedCommands.find((c) =>
+      const matched = cmds.find((c) =>
         c.keys === fired || c.keys.replace(/\s+/g, '') === fired
       );
-      if (matched && (matched.enabled ?? true)) {
-        // Per-command form-field discipline: enableOnFormTags below is
-        // an aggregate over the whole lens (one binding), so when ANY
-        // command is `global`, react-hotkeys-hook lets EVERY command
-        // fire from inside form fields — and the preventDefault then
-        // swallows the typed character. That is how typing "Alpha"
-        // into the Explorer's Add Node field lost its "p" (the
-        // pathfinder shortcut) and its spaces (the pause shortcut) and
-        // came out "Alha". A non-global command must never fire — or
-        // eat a keystroke — while the user is typing; `global` is the
-        // documented opt-in for firing from form fields.
-        const target = event.target as HTMLElement | null;
-        const tag = target?.tagName;
-        const inFormField = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || !!target?.isContentEditable;
-        if (inFormField && !matched.global) return;
-        event.preventDefault();
-        liveActions.current.get(matched.namespacedId)?.();
-      }
+      if (!matched || !(matched.enabled ?? true)) return;
+      // Per-command form-tag discipline (Q82): enableOnFormTags below
+      // must be on whenever ANY command in the instance is global, so
+      // this handler also receives form-field keystrokes for NON-global
+      // commands. Those keystrokes belong to the field — return without
+      // preventDefault or dispatch, and the character lands with focus
+      // untouched. Only a command that is itself global may fire from
+      // inside a form field.
+      if (!(matched.global ?? false) && isFormFieldEvent(event)) return;
+      event.preventDefault();
+      liveActions.current.get(matched.namespacedId)?.();
     },
     {
       enableOnFormTags: namespacedCommands.some((c) => c.global)

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { explodedShift, sectionPlane } from '@/lib/conkay/assembly-view';
+import type { KnobResponse, WorkbenchClient, WorkbenchView } from '@/lib/conkay/workbench-api';
 
 vi.mock('@react-three/fiber', () => ({
   Canvas: () => <div data-testid="webgl" />,
@@ -139,5 +140,93 @@ describe('AssemblyViewer', () => {
     expect(screen.getByText(/View only/)).toBeTruthy();
     expect(screen.getByTestId('webgl')).toBeTruthy();
     expect(screen.getByTestId('studio-preview-badge').textContent).toMatch(/engineering geometry is authoritative/);
+  });
+});
+
+describe('AssemblyViewer workbench mode (HANDOFF-3 A2)', () => {
+  const wbView = (wheelbase: number, lockedWb = false): WorkbenchView => ({
+    version: '1.1.0', revision: 0, receipt: 'r0', state: {},
+    knobs: [
+      { variable: 'wheelbaseM', label: 'Wheelbase', value: wheelbase, unit: 'm', bounds: [2.4, 3.6], step: 0.01, locked: lockedWb, source: 'VEH props.vehicle' },
+      { variable: 'seatHPointZM', label: 'Seat H-point z', value: 0.34, unit: 'm', bounds: [0.28, 0.6], step: 0.005, locked: true, source: 'package design choice h30' },
+    ],
+    locked: ['seatHPointZM'],
+    graph: { nodes: [], edges: [] },
+    checks: [],
+  });
+  const editedAssembly: VehicleAssembly = {
+    ...assembly,
+    components: assembly.components.map((c) => (c.id === 'BODY_SHELL'
+      ? { ...c, parameters: [{ id: 'overallHeight', name: 'Overall height', value: 9.99, unit: 'm', provenance: { state: 'calculated' } }] }
+      : c)),
+    checks: [
+      { id: 'head-M95', status: 'pass', detail: 'clears' },
+      { id: 'wheel-footwell', status: 'fail', detail: 'foot boxes reach the steering sweep' },
+      { id: 'containment', status: 'fail', detail: 'a part sits outside the body', outside: ['TIRE_FL'] },
+    ],
+  };
+  const response = (wheelbase: number): KnobResponse => ({
+    reply: {
+      kind: 'parameter', ok: true,
+      diff: { changed: [{ field: 'wheelbase', before: 3.019, after: wheelbase, unit: 'm', source: 'Workbench knob' }], flipped: [{ runId: 'assembly.vehicle@VEH', from: 'PASS', to: 'FAIL' }], rerun: ['assembly.vehicle@VEH'] },
+    },
+    view: wbView(wheelbase),
+    fitCheckDiff: [{ id: 'wheel-footwell', from: 'pass', to: 'fail' }],
+    rerun: ['assembly.vehicle@VEH', 'package.occupant-fit@VEH'],
+    assembly: editedAssembly as unknown as KnobResponse['assembly'],
+  });
+
+  it('commits a knob edit, swaps the model in and shows the fit-check diff', async () => {
+    const knob = vi.fn(async () => response(2.8));
+    const client = { knob } as unknown as WorkbenchClient;
+    const onView = vi.fn();
+    render(<AssemblyViewer assembly={assembly} workbench={{ id: 'wb-1', view: wbView(3.019), client, onView }} />);
+    const input = screen.getByTestId('viewer-knob-wheelbaseM-input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '2.8' } });
+    fireEvent.click(screen.getByTestId('viewer-knob-wheelbaseM-set'));
+    const diff = await screen.findByTestId('wb-diff');
+    expect(knob).toHaveBeenCalledWith('wb-1', 'wheelbaseM', 2.8);
+    expect(diff.textContent).toMatch(/wheelbase: 3\.019 → 2\.8 m/);
+    expect(diff.textContent).toMatch(/wheel-footwell: pass → fail/);
+    expect(diff.textContent).toMatch(/2 solver runs re-ran/);
+    expect(onView).toHaveBeenCalled();
+    // the model swapped: the Fit list is the edited assembly's, and its own parameter values show
+    expect(screen.getByTestId('fit-wheel-footwell').textContent).toMatch(/fail/);
+    fireEvent.click(screen.getByTestId('part-BODY_SHELL'));
+    expect(screen.getByTestId('inspector').textContent).toMatch(/9\.99/);
+  });
+
+  it('a locked knob renders locked and cannot be set', () => {
+    const knob = vi.fn(async () => response(2.8));
+    const client = { knob } as unknown as WorkbenchClient;
+    render(<AssemblyViewer assembly={assembly} workbench={{ id: 'wb-1', view: wbView(3.019), client }} />);
+    const input = screen.getByTestId('viewer-knob-seatHPointZM-input') as HTMLInputElement;
+    expect(input.disabled).toBe(true);
+    expect((screen.getByTestId('viewer-knob-seatHPointZM-set') as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByTestId('viewer-knob-seatHPointZM').textContent).toMatch(/is locked: unlock it to change it/);
+    expect(knob).not.toHaveBeenCalled();
+  });
+
+  it('a refused edit shows the server message and keeps the model', async () => {
+    const knob = vi.fn(async () => { throw { response: { data: { message: 'wheelbaseM must be within 2.4..3.6 m' } } }; });
+    const client = { knob } as unknown as WorkbenchClient;
+    render(<AssemblyViewer assembly={assembly} workbench={{ id: 'wb-1', view: wbView(3.019), client }} />);
+    fireEvent.change(screen.getByTestId('viewer-knob-wheelbaseM-input'), { target: { value: '3.5' } });
+    fireEvent.click(screen.getByTestId('viewer-knob-wheelbaseM-set'));
+    expect((await screen.findByRole('alert')).textContent).toMatch(/must be within 2\.4\.\.3\.6 m/);
+    expect(screen.queryByTestId('wb-diff')).toBeNull();
+    expect(screen.queryByTestId('fit-wheel-footwell')).toBeNull();
+  });
+
+  it('snapshot mode offers Start editing; plain mode offers neither', () => {
+    const onStart = vi.fn();
+    const { unmount } = render(<AssemblyViewer assembly={assembly} onStartEditing={onStart} />);
+    fireEvent.click(screen.getByTestId('start-editing'));
+    expect(onStart).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('wb-edit')).toBeNull();
+    unmount();
+    render(<AssemblyViewer assembly={assembly} />);
+    expect(screen.queryByTestId('start-editing')).toBeNull();
+    expect(screen.queryByTestId('wb-edit')).toBeNull();
   });
 });
