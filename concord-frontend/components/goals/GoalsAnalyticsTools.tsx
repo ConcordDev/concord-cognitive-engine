@@ -22,11 +22,35 @@
  * tab) instead of asking the user to retype numbers that already exist.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import {
   Target, GitBranch, TrendingUp, Loader2, Plus, Trash2, ChevronDown, ChevronUp,
 } from 'lucide-react';
+
+// §9 fix: the forecast keys on the objective's real id (obj_N), which
+// is displayed nowhere in the lens — the free-text id field it used to
+// show could never be filled in correctly, so the forecast read an
+// empty series for every human entry. It now binds to the caller's
+// own objective list, like the OKR workspace forms (same fix there).
+interface ObjectiveOption { id: string; title: string; keyResults: string[]; progress: number | null; }
+
+function useObjectiveOptions(): ObjectiveOption[] {
+  const [objectives, setObjectives] = useState<ObjectiveOption[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const r = await lensRun('goals', 'alignmentTree', { op: 'list' });
+      if (!cancelled && r.data?.ok && r.data.result) {
+        setObjectives((r.data.result.flat || []).map((o) => ({
+          id: o.id, title: o.title, keyResults: o.keyResults || [], progress: o.progress ?? null,
+        })));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  return objectives;
+}
 
 const inputCls = 'rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px] text-white placeholder:text-zinc-600';
 const btnCls = 'flex items-center gap-1.5 rounded border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] text-zinc-200 hover:border-cyan-500/40 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-40';
@@ -63,6 +87,36 @@ function ScorecardTool() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadedNote, setLoadedNote] = useState<string | null>(null);
+
+  // §9 fix: the scorecard used to open as a blank re-type calculator —
+  // nothing populated it from the objectives and check-ins the user
+  // already has. This fills the form from the stored objectives: each
+  // stored key result becomes a row whose Current is the objective's
+  // derived progress (its latest check-in, per the domain's one
+  // progress rule). The form stays fully editable before scoring.
+  const loadMine = async () => {
+    setError(null);
+    setLoadedNote(null);
+    const r = await lensRun('goals', 'alignmentTree', { op: 'list' });
+    if (r.data?.ok && r.data.result) {
+      const flat = (r.data.result.flat || []) as { id: string; title: string; keyResults: string[]; progress: number | null }[];
+      if (flat.length === 0) {
+        setLoadedNote('No stored objectives yet — add some in the OKR workspace first.');
+        return;
+      }
+      setObjectives(flat.map((o) => ({
+        title: o.title,
+        weight: '1',
+        krs: (o.keyResults && o.keyResults.length > 0 ? o.keyResults : ['Overall progress']).map((kr) => ({
+          title: kr, target: '100', current: String(Math.round(o.progress ?? 0)), unit: '%', confidence: 1, weight: '1',
+        })),
+      })));
+      setLoadedNote(`Loaded ${flat.length} objective${flat.length === 1 ? '' : 's'} — each key result's Current is that objective's latest check-in progress. Adjust anything before scoring.`);
+    } else {
+      setError(r.data?.error || 'Could not load your objectives.');
+    }
+  };
 
   const run = async () => {
     setBusy(true); setError(null);
@@ -109,10 +163,12 @@ function ScorecardTool() {
       ))}
       <div className="flex items-center gap-2">
         <button onClick={() => setObjectives((os) => [...os, blankObj()])} className={btnCls}><Plus className="h-3 w-3" /> Objective</button>
+        <button onClick={loadMine} className={btnCls}><Target className="h-3 w-3" /> Load my objectives</button>
         <button onClick={run} disabled={busy || !objectives.some((o) => o.title.trim())} className={btnCls}>
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Target className="h-3.5 w-3.5" />} Score
         </button>
       </div>
+      {loadedNote && <p className="text-[11px] text-zinc-400" role="status">{loadedNote}</p>}
       {error && <p className="text-[11px] text-red-400">{error}</p>}
       {result && (
         <div className="space-y-2 rounded border border-zinc-800 bg-zinc-950 p-2.5">
@@ -207,6 +263,7 @@ function DecompositionTool() {
 // --------------- Forecast (from real check-in history) ---------------
 
 function ForecastTool() {
+  const objectives = useObjectiveOptions();
   const [goalId, setGoalId] = useState('');
   const [target, setTarget] = useState('100');
   const [busy, setBusy] = useState(false);
@@ -233,12 +290,15 @@ function ForecastTool() {
   return (
     <div className="space-y-3">
       <p className="text-[11px] text-zinc-500">
-        Pulls the real check-in history you&apos;ve logged for a goal/objective id in the
-        Check-ins tab below and fits a linear-regression forecast with confidence bands —
+        Pulls the real check-in history you&apos;ve logged for the objective you pick
+        and fits a linear-regression forecast with confidence bands —
         no re-typed numbers.
       </p>
       <div className="flex flex-wrap items-center gap-2">
-        <input value={goalId} onChange={(e) => setGoalId(e.target.value)} placeholder="Goal / objective id (as used in Check-ins)" className={`${inputCls} flex-1`} />
+        <select value={goalId} onChange={(e) => setGoalId(e.target.value)} className={`${inputCls} flex-1`} aria-label="Objective">
+          <option value="">Select an objective…</option>
+          {objectives.map((o) => <option key={o.id} value={o.id}>{o.title}</option>)}
+        </select>
         <input value={target} onChange={(e) => setTarget(e.target.value)} type="number" placeholder="Target %" className={`${inputCls} w-24`} />
         <button onClick={run} disabled={busy || !goalId.trim()} className={btnCls}>
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <TrendingUp className="h-3.5 w-3.5" />} Forecast
