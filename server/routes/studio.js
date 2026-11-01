@@ -2,8 +2,9 @@
  * Studio Routes — REST surface for creative project management.
  *
  * Manages multi-track creative projects (audio, video, documents, presentations).
- * Projects are backed by SQLite. Render jobs are queued but executed
- * synchronously in this MVP (no background worker yet).
+ * Projects are backed by SQLite. No audio/video worker is connected to this
+ * server, so a render request is recorded and then FAILED honestly
+ * (audio_worker_unavailable) instead of being marked complete with no output.
  *
  * Mounts under /api/studio via app.use("/api/studio", ...).
  *
@@ -32,6 +33,10 @@ import expressRateLimit from "express-rate-limit";
 function uid() {
   return crypto.randomUUID();
 }
+
+// Same wording as server/durable.js (AUDIO_WORKER_UNAVAILABLE): one honest reason for "no renderer here".
+const AUDIO_WORKER_UNAVAILABLE =
+  "audio_worker_unavailable: no audio worker is connected to this server, so this job cannot be processed";
 
 export default function createStudioRouter({ db, requireAuth }) {
   const router = Router();
@@ -365,11 +370,14 @@ export default function createStudioRouter({ db, requireAuth }) {
       const safeQuality = validQualities.includes(quality) ? quality : "medium";
       const renderId = uid();
       stmts.insertRender.run(renderId, req.params.projectId, safeFormat, safeQuality, userId);
-      // In this MVP, mark as "complete" immediately (no background worker)
-      // A real renderer would enqueue and update asynchronously
+      // No renderer is connected, so nothing can be produced. Record the request and fail it with the
+      // same reason server/durable.js gives its render job (it used to be marked "complete" with no
+      // output_path: a success that wrote nothing). The row stays queryable (GET /renders/:id) as
+      // failed, with the reason, and no artifact exists. When a real worker claims renders, it
+      // replaces this refusal.
       const now = new Date().toISOString();
-      stmts.updateRender.run("complete", now, now, null, null, renderId);
-      res.json({ ok: true, renderId, status: "complete", format: safeFormat, quality: safeQuality });
+      stmts.updateRender.run("failed", now, now, null, AUDIO_WORKER_UNAVAILABLE, renderId);
+      res.json({ ok: false, renderId, status: "failed", format: safeFormat, quality: safeQuality, error: AUDIO_WORKER_UNAVAILABLE });
     } catch (err) {
       console.error("[studio] POST /:projectId/render error:", err);
       res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
