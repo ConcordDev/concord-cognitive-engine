@@ -1323,16 +1323,34 @@ export const HLM_MAX_REDUNDANCIES = Math.max(1, Number(process.env.CONCORD_HLM_M
  * recommendations are re-derived from them, and the true total is recorded (`redundancies.total`, `summary`).
  */
 export function boundHLMPass(pass, max = HLM_MAX_REDUNDANCIES) {
-  const all = pass?.redundancies?.redundancies;
-  if (!pass?.ok || !Array.isArray(all) || all.length <= max) return pass;
-  const keep = all.slice().sort((a, b) => (b.similarity - a.similarity) || (a.redundancyId < b.redundancyId ? -1 : 1)).slice(0, max);
-  const topology = { ...pass.topology, redundancies: keep };
-  return {
-    ...pass,
-    topology,
-    redundancies: { redundancies: keep, total: all.length, truncated: true },
-    recommendations: getRecommendations(topology),
-  };
+  if (!pass?.ok) return pass;
+  const allRed = pass.redundancies?.redundancies;
+  const allGaps = pass.gaps?.gaps;
+  const redOver = Array.isArray(allRed) && allRed.length > max;
+  const gapOver = Array.isArray(allGaps) && allGaps.length > max;
+  const staleOver = Array.isArray(pass.freshness?.stale) && pass.freshness.stale.length > max;
+  const issuesOver = Array.isArray(pass.hierarchy?.issues) && pass.hierarchy.issues.length > max;
+  if (!redOver && !gapOver && !staleOver && !issuesOver) return pass;
+
+  const out = { ...pass };
+  let topology = pass.topology;
+  if (redOver) {
+    const keep = allRed.slice().sort((a, b) => (b.similarity - a.similarity) || (a.redundancyId < b.redundancyId ? -1 : 1)).slice(0, max);
+    topology = { ...topology, redundancies: keep };
+    out.redundancies = { redundancies: keep, total: allRed.length, truncated: true };
+  }
+  if (gapOver) {
+    // Gaps are tag PAIRS inside a cluster (quadratic in tags) and were carried three times: topology.gaps, gaps.gaps and one
+    // fill_gap recommendation each (measured 34k gaps = ~32 MB per pass on a 3k-DTU store). Keep the best-supported pairs.
+    const keep = allGaps.slice().sort((a, b) => ((b.tagACount + b.tagBCount) - (a.tagACount + a.tagBCount)) || (a.gapId < b.gapId ? -1 : 1)).slice(0, max);
+    topology = { ...topology, gaps: keep };
+    out.gaps = { gaps: keep, total: allGaps.length, truncated: true };
+  }
+  out.topology = topology;
+  if (redOver || gapOver) out.recommendations = getRecommendations(topology);
+  if (staleOver) out.freshness = { ...pass.freshness, stale: pass.freshness.stale.slice(0, max), staleTotal: pass.freshness.stale.length, truncated: true };
+  if (issuesOver) out.hierarchy = { ...pass.hierarchy, issues: pass.hierarchy.issues.slice(0, max), issuesTotal: pass.hierarchy.issues.length, truncated: true };
+  return out;
 }
 
 /**
@@ -1358,7 +1376,7 @@ export function recordHLMPass(pass, { replayRecommendations = false } = {}) {
   hlmMetricsStore.totalClusters += pass.clusters.clusters.length;
   hlmMetricsStore.totalOrphans += pass.orphans.orphans.length;
   hlmMetricsStore.totalRedundancies += pass.redundancies.total ?? pass.redundancies.redundancies.length;
-  hlmMetricsStore.totalGaps += pass.gaps.gaps.length;
+  hlmMetricsStore.totalGaps += pass.gaps.total ?? pass.gaps.gaps.length;
   hlmMetricsStore.lastPassAt = pass.completedAt;
   hlmMetricsStore.lastPassId = pass.passId;
   return pass;
