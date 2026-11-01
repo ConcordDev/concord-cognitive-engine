@@ -15,11 +15,21 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { analyzeSourceComplexity, astEngineAvailable } from "../lib/code-ast-complexity.js";
+import { createRequire } from "node:module";
+import { analyzeSourceComplexity, astEngineAvailable, hasCompilerApi } from "../lib/code-ast-complexity.js";
 
 describe("code-ast-complexity — engine availability", () => {
   it("the typescript compiler package is loadable (hard server dependency)", () => {
-    assert.equal(astEngineAvailable(), true);
+    // "Available" must mean the compiler API is actually usable, not
+    // merely that a module object came back from require: typescript
+    // v7's package root is a version-only module, and the old
+    // truthiness check reported it available while the walker threw
+    // on first use (Review F6). Availability now agrees with the
+    // installed package's real API surface — true on a classic-API
+    // install, honestly false on a version-only one.
+    let installed = null;
+    try { installed = createRequire(import.meta.url)("typescript"); } catch { installed = null; }
+    assert.equal(astEngineAvailable(), hasCompilerApi(installed));
   });
 });
 
