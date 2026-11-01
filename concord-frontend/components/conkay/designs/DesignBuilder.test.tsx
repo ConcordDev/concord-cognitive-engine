@@ -217,7 +217,8 @@ describe('DesignBuilder', () => {
     expect(checks.textContent).toMatch(/aero\.drag-buildup@VEH · margins not computed/);
     // the Workbench panel is kept on the same revision the chat just reached
     await waitFor(() => expect(apiGet).toHaveBeenCalledWith('/api/conkay/workbench/w1'));
-    expect(apiGet.mock.calls.length).toBe(2); // once on load, once after the ask
+    // session GETs only: once on load, once after the ask (the per-part-analyses assembly GET is a separate path)
+    expect(apiGet.mock.calls.filter((c) => c[0] === '/api/conkay/workbench/w1').length).toBe(2);
   });
 
   it('a workbench UUID that is not a showcase id still opens here as a live session', async () => {

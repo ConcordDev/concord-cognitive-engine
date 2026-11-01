@@ -4,8 +4,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { buildCarFromLibrary } from "../lib/conkay/compiler/car-from-library.js";
-import { assemblyFromIr, fitStatus } from "../lib/conkay/assembly/build.js";
-import { partInsideEnvelope } from "../lib/conkay/assembly/surface.js";
+import { assemblyFromIr, fitStatus, partAnalyses, withPartAnalyses } from "../lib/conkay/assembly/build.js";
+import { partInsideEnvelope, loftBody } from "../lib/conkay/assembly/surface.js";
 import { validateAssembly } from "../lib/conkay/assembly/schema.js";
 import { j941Centroid } from "../lib/conkay/assembly/j941.js";
 import { buildPackagingSheet } from "../lib/conkay/drawings/ga-drawing.js";
@@ -335,6 +335,88 @@ describe("check parts attribution (HANDOFF-3 A3)", () => {
   });
 });
 
+describe("part analyses join (HANDOFF-3 A4)", () => {
+  const doc = car();
+  const env = (id, target, status, outputs = {}, extra = {}) => ({
+    runId: `${id}@${target}`,
+    solver: { id, version: "9.9.9" },
+    target,
+    status,
+    outputs,
+    covers: extra.covers ?? [target],
+    ...(extra.reason ? { reason: extra.reason } : {}),
+    ...(extra.inputs ? { inputs: extra.inputs } : {}),
+    provenance: { computedAt: "2026-10-28T00:00:00.000Z", ...(extra.noHash ? {} : { inputHash: `hash-${id}` }) },
+  });
+
+  it("with no envelopes, every mapped solver is an honest not_run and unmapped parts get an empty list", () => {
+    const map = partAnalyses(doc, []);
+    assert.equal(map["RADIATOR"][0].solver, "fluid.cooling-opening");
+    assert.equal(map["RADIATOR"][0].status, "not_run");
+    assert.equal(map["RADIATOR"][0].receipt, null);
+    assert.deepEqual(map["ENGINE"].map((a) => a.solver), ["electrical.motor-thermal", "vehicle.required-power"]);
+    assert.ok(map["ENGINE"].every((a) => a.status === "not_run"));
+    assert.deepEqual(map["BODY_SHELL"].map((a) => a.solver), ["aero.shape", "aero.cfd"]);
+    assert.match(map["BODY_SHELL"][1].reason, /OpenFOAM runs on the GPU pod/);
+    assert.deepEqual(map["SEAT_1"], []);
+    const tub = doc.components.find((c) => c.role === "frame");
+    assert.deepEqual(map[tub.id].map((a) => a.solver), ["structure.frame"]);
+    assert.equal(map[tub.id][0].status, "not_run");
+  });
+
+  it("a frame run links to exactly the members its covers list, with its receipt and key outputs", () => {
+    const frameEnv = env("structure.frame", "CHASSIS", "WARN", {
+      "bending.maxVonMises": { value: 3.02e7, unit: "Pa" },
+      "bending.maxTranslation": { value: 0.0015, unit: "m" },
+      "stiffness.torsional": { value: 770804.5, unit: "N·m/rad" },
+      "stiffness.torsional.specific": { value: { tubMassKg: 90 } },
+    }, { covers: ["CHASSIS", "TUB_FLOOR_L", "TUB_FLOOR_R"] });
+    frameEnv.margins = [{ check: "yield", demand: 10, capacity: 20, utilization: 0.5 }, { check: "buckling", demand: 9, capacity: 10, utilization: 0.9 }];
+    const map = partAnalyses(doc, [frameEnv]);
+    const rec = map["TUB_FLOOR_L"][0];
+    assert.equal(rec.status, "warn");
+    assert.equal(rec.version, "9.9.9");
+    assert.equal(rec.receipt.runId, "structure.frame@CHASSIS");
+    assert.equal(rec.receipt.inputHash, "hash-structure.frame");
+    assert.equal(rec.ranAt, "2026-10-28T00:00:00.000Z");
+    assert.equal(rec.utilization, 0.9);
+    assert.deepEqual(rec.keyOutputs.map((o) => o.id), ["bending.maxVonMises", "bending.maxTranslation", "stiffness.torsional"]);
+    assert.equal(rec.keyOutputs[0].value, 3.02e7);
+    // a frame member the run did not cover was not solved by it
+    const uncovered = doc.components.find((c) => c.role === "frame" && c.id !== "TUB_FLOOR_L" && c.id !== "TUB_FLOOR_R");
+    assert.equal(map[uncovered.id][0].status, "not_run");
+    assert.match(map[uncovered.id][0].reason, /did not cover this member/);
+  });
+
+  it("cooling, required-power and aero records carry the envelope's own numbers and statuses", () => {
+    const map = partAnalyses(doc, [
+      env("fluid.cooling-opening", "RADIATOR", "PASS", { openingAreaM2: { value: 0.21, unit: "m^2" }, riseK: { value: 11.5, unit: "K" } }),
+      env("vehicle.required-power", "VEH", "PASS", { requiredPower: { value: 187000, unit: "W" } }),
+      env("electrical.motor-thermal", "ENGINE", "NOT_COMPUTED", {}, { reason: "no winding resistance on the motor node", noHash: true }),
+      env("aero.shape", "VEH", "PASS", { verdict: { value: "lower drag, slant clear" }, reportedCd: { value: 0.31 } }),
+      env("aero.cfd", "VEH", "PASS", { dragCoefficient: { value: 0.29 } }, { inputs: { run: { value: { importedAt: "2026-09-01T00:00:00.000Z" } } } }),
+    ]);
+    assert.equal(map["RADIATOR"][0].status, "pass");
+    assert.deepEqual(map["RADIATOR"][0].keyOutputs.map((o) => o.id), ["openingAreaM2", "riseK"]); // absent picks are dropped, never invented
+    const [motor, power] = map["ENGINE"];
+    assert.equal(motor.status, "not_computed");
+    assert.equal(motor.reason, "no winding resistance on the motor node");
+    assert.equal(motor.receipt.inputHash, null); // a NOT_COMPUTED envelope has no inputs hash; the record says so
+    assert.equal(power.status, "pass");
+    assert.deepEqual(power.keyOutputs, [{ id: "requiredPower", value: 187000, unit: "W" }]);
+    const [shape, cfd] = map["BODY_SHELL"];
+    assert.deepEqual(shape.keyOutputs, [{ id: "verdict", value: "lower drag, slant clear" }, { id: "reportedCd", value: 0.31 }]);
+    assert.equal(cfd.recordedAt, "2026-09-01T00:00:00.000Z");
+    assert.deepEqual(cfd.keyOutputs, [{ id: "dragCoefficient", value: 0.29 }]);
+  });
+
+  it("withPartAnalyses attaches without mutating the source document", () => {
+    const joined = withPartAnalyses(doc, []);
+    assert.equal(doc.components.find((c) => c.id === "ENGINE").analyses, undefined);
+    assert.equal(joined.components.find((c) => c.id === "ENGINE").analyses.length, 2);
+  });
+});
+
 describe("chat summary", () => {
   it("states the rigid-joint upper bound and the bond-line range", () => {
     const text = frameTorsionSummary({
@@ -361,5 +443,56 @@ describe("chat summary", () => {
     const line = carChatSummary(session);
     assert.match(line, /Frame\/torsion/);
     assert.match(line, /Packaging fit: fail/);
+  });
+});
+
+describe("styling never moves the analysed solid (HANDOFF-3 A6)", () => {
+  it("the document is byte-stable in everything analysed — checks, components, parameters, spec", () => {
+    const doc = car();
+    const again = car();
+    assert.deepEqual(again.checks, doc.checks);
+    assert.deepEqual(
+      again.components.map((c) => [c.id, c.placement, c.half, c.parameters]),
+      doc.components.map((c) => [c.id, c.placement, c.half, c.parameters]),
+    );
+    assert.deepEqual(again.surface.spec, doc.surface.spec);
+    assert.deepEqual(again.wheel.spec, doc.wheel.spec);
+  });
+
+  it("a presentation resample leaves the design-defining spec fields and the skin's extents untouched", () => {
+    const doc = car();
+    const full = loftBody(doc.surface.spec);
+    const mobile = loftBody(doc.surface.spec, { quality: "mobile" });
+    // The resample really happened — a different tessellation of the same solid.
+    assert.notEqual(full.capped.triangles, mobile.capped.triangles);
+    // Every design-defining spec field is identical. Excluded are the sampling
+    // markers (quality, cageLevels) and the three values DERIVED from the sampled
+    // mesh — the limit-surface samples (limitCrown, limitWidth) and the
+    // highlightContinuity report. Analysis reads them only from the document's
+    // own full-quality loft: envelope verdicts and fit checks are computed once,
+    // in the document path, and a presentation resample is never fed back in.
+    const strip = (s) => { const { quality, cageLevels, highlightContinuity, limitCrown, limitWidth, ...rest } = s; return rest; };
+    assert.deepEqual(strip(mobile.spec), strip(full.spec));
+    // The limit samples still describe the same curve: across the stations both
+    // samplings share, the coarse one tracks the full one (measured on this car:
+    // mean |Δ| ≈ 0.002, worst ≈ 0.026 at the high-curvature tail).
+    const mobileCrown = new Map(mobile.spec.limitCrown.map((p) => [p.x, p.v]));
+    let shared = 0, maxD = 0, sumD = 0;
+    for (const p of full.spec.limitCrown) {
+      const mv = mobileCrown.get(p.x);
+      if (mv === undefined) continue;
+      shared++;
+      const d = Math.abs(mv - p.v);
+      if (d > maxD) maxD = d;
+      sumD += d;
+    }
+    assert.ok(shared >= 30, `only ${shared} shared crown stations`);
+    assert.ok(maxD < 0.03, `limit crown worst deviation ${maxD}`);
+    assert.ok(sumD / shared < 0.005, `limit crown mean deviation ${sumD / shared}`);
+    // Mesh bounds agree to sampling tolerance — the skin did not move.
+    for (let k = 0; k < 3; k++) {
+      assert.ok(Math.abs(full.bounds.min[k] - mobile.bounds.min[k]) < 0.002, `bounds.min[${k}]`);
+      assert.ok(Math.abs(full.bounds.max[k] - mobile.bounds.max[k]) < 0.002, `bounds.max[${k}]`);
+    }
   });
 });

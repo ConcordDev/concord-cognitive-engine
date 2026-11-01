@@ -14,7 +14,7 @@
 import { knobsOf } from "./what-if.js";
 import { sectionProps } from "../structural/frame-fe.js";
 import { getMaterial } from "../materials/index.js";
-import { compactAssembly } from "../assembly/build.js";
+import { compactAssembly, withPartAnalyses } from "../assembly/build.js";
 
 export const WORKBENCH_VERSION = "1.1.0";
 
@@ -157,6 +157,18 @@ export function assemblySnapshot(conv) {
   if (!doc) return null;
   const checks = (e.outputs?.fit?.value?.checks || doc.checks || []).map((c) => ({ id: c.id, status: c.status }));
   return { checks, compact: compactAssembly(doc) };
+}
+
+/**
+ * An assembly document with each component's analysis links joined from THIS conversation's own
+ * envelopes (HANDOFF-3 A4): the runs that evaluated the part, their key outputs and receipts, or an
+ * honest not_run. Only this session's envelopes are ever passed to the join, so a receipt from
+ * another design cannot appear here.
+ */
+export function attachSessionAnalyses(conv, doc) {
+  const envs = conv?.current?.final?.envelopes;
+  if (!doc || !envs) return doc;
+  return withPartAnalyses(doc, [...envs.values()]);
 }
 
 /** Fit checks whose status flipped between two snapshots: [{ id, from, to }], from/to null when a check appears or vanishes. */
