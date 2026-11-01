@@ -37,7 +37,11 @@ test("trash list + restore round-trips the board whole; saves cannot resurrect i
   await call("board-save", { id: "board_t", title: "Trashed", scene: SCENE });
   assert.equal((await call("board-list", {})).result.boards.length, 0);
   const trash = await call("boards-trash-list", {});
-  assert.equal(trash.result.boards.length, 1);
+  // This file shares one store across its tests, so earlier tests' trashed boards (board_d) are listed too:
+  // assert on THIS board. Exactly one entry means the post-delete save neither revived it into the live list
+  // nor minted a second trash copy.
+  assert.equal(trash.result.boards.filter((b) => b.id === "board_t").length, 1);
+  assert.ok(trash.result.boards.every((b) => b.deletedAt), "everything in trash is deleted");
   assert.equal((await call("board-restore", { id: "board_t" })).ok, true);
   assert.equal((await call("board-load", { id: "board_t" })).result.board.scene.elements.length, 1);
 });
