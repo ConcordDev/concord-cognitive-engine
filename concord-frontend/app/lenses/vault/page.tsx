@@ -201,6 +201,11 @@ export default function VaultPage() {
     () => (curatorFilter ? admitted.filter((r) => r.curatorId === curatorFilter) : admitted),
     [admitted, curatorFilter],
   );
+  const curatorNames = useMemo(() => {
+    const names: Record<string, string> = {};
+    for (const c of roster) if (c.display_name?.trim()) names[c.curator_id] = c.display_name.trim();
+    return names;
+  }, [roster]);
   const entries: VaultCabinetEntry[] = useMemo(
     () => shown.map((record) => ({ id: record.id, record, state: 'ready' as const, error: null })),
     [shown],
@@ -268,6 +273,7 @@ export default function VaultPage() {
                       setCursor(entries.findIndex((e) => e.id === id));
                     }}
                     onSelectCurator={(id) => { setCuratorFilter((f) => (f === id ? null : id)); setCursor(-1); setOpenId(null); }}
+                    curatorNames={curatorNames}
                     curatorFilter={curatorFilter}
                     shortcuts={[
                       { keys: '↑ ↓', label: 'Move between drawers' },

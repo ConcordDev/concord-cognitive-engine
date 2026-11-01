@@ -316,4 +316,26 @@ describe('vault page: the public hall', () => {
     fireEvent.click(await view.findByRole('button', { name: /Showing only this curator/ }));
     expect(view.getAllByTestId('vault-record')).toHaveLength(2);
   });
+
+  it('signs a drawer with the curator display name from the roster, never the raw id', async () => {
+    const id = 'curator_f9a8e7c1';
+    backend({
+      records: [rec('vsub_1', 'Night tape', id)] as unknown as Sub[],
+      curators: [{ curator_id: id, display_name: 'Ada Founder', role: 'founding_curator', invited_by: null, invited_at: 1, active: 1, retired_at: null }],
+    });
+    const view = render(<VaultPage />);
+    fireEvent.click(await view.findByRole('button', { name: /Night tape/ }));
+    const sig = await view.findByTestId('vault-statement-attribution');
+    expect(sig.textContent).toBe('Written and signed by Ada Founder, Founding curator');
+    expect(view.getByTestId('vault-hall').textContent).not.toContain(id);
+  });
+
+  it('a curator missing from the roster is signed "a founding curator", still no raw id', async () => {
+    const id = 'curator_0d11aa22';
+    backend({ records: [rec('vsub_1', 'Night tape', id)] as unknown as Sub[], curators: [] });
+    const view = render(<VaultPage />);
+    fireEvent.click(await view.findByRole('button', { name: /Night tape/ }));
+    expect((await view.findByTestId('vault-statement-attribution')).textContent).toBe('Written and signed by a founding curator');
+    expect(view.getByTestId('vault-hall').textContent).not.toContain(id);
+  });
 });

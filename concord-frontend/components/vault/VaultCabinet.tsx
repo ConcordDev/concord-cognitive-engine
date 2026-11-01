@@ -39,6 +39,8 @@ export interface VaultCabinetProps {
   onToggle: (id: string) => void;
   onRetryEntry?: (id: string) => void;
   onSelectCurator?: (curatorId: string) => void;
+  /** Roster display names by curator id (statement signatures). */
+  curatorNames?: Record<string, string>;
   curatorFilter?: string | null;
   /** Keyboard hints, rendered so the shortcuts are discoverable rather than hidden. */
   shortcuts?: ReadonlyArray<{ keys: string; label: string }>;
@@ -51,6 +53,7 @@ export function VaultCabinet({
   onToggle,
   onRetryEntry,
   onSelectCurator,
+  curatorNames,
   curatorFilter,
   shortcuts,
 }: VaultCabinetProps) {
@@ -68,6 +71,7 @@ export function VaultCabinet({
               onToggle={() => onToggle(entry.id)}
               onRetry={onRetryEntry ? () => onRetryEntry(entry.id) : undefined}
               onSelectCurator={onSelectCurator}
+              curatorNames={curatorNames}
               curatorFilter={curatorFilter}
             />
           ))}
