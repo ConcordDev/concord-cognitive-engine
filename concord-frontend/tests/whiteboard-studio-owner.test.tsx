@@ -173,9 +173,15 @@ describe('WhiteboardStudio owner actions', () => {
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Renamed to Plan v2.'));
     expect(patchMock).toHaveBeenCalledWith('/api/whiteboard/wb_1', { title: 'Plan v2' });
 
+    // Delete is a window, not an instant (S2): the board leaves every list at once and an Undo
+    // toast appears; the DTU delete only commits when the window lapses. Nothing is destroyed yet.
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete board' }));
-    await waitFor(() => expect(deleteMock).toHaveBeenCalledWith('/api/whiteboard/wb_1'));
+    // inline confirm (S2): the menu item only arms it
+    fireEvent.click(screen.getByRole('button', { name: 'Delete board' }));
+    await waitFor(() => expect(screen.getByText(/Board .*Plan.* deleted\./)).toBeTruthy());
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
     await waitFor(() => expect(screen.getByText(/Start a board and sketch/)).toBeTruthy());
+    expect(deleteMock).not.toHaveBeenCalled();
   });
 
   it('draws, switches tools, and exports the board that was read back', async () => {

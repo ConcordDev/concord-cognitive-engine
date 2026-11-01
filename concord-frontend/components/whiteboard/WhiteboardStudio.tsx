@@ -83,6 +83,8 @@ const wbCrc32 = (bytes: Uint8Array) => {
   return (c ^ 0xffffffff) >>> 0;
 };
 const wbPngWithReceipt = (png: Uint8Array, receiptJson: string): Uint8Array => {
+  // Not a PNG we can splice into (shorter than signature + IHDR): hand it back untouched rather than throw.
+  if (png.length < 33) return png;
   const enc = new TextEncoder();
   const keyword = enc.encode('concord-whiteboard');
   const chunkData = new Uint8Array(keyword.length + 1 + enc.encode(receiptJson).length);
