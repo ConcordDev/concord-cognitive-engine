@@ -17,7 +17,7 @@
  *   DELETE /api/media/:id           - Delete media
  */
 
-import { Router } from "express";
+import express, { Router } from "express";
 import * as fsp from "node:fs/promises";
 import path from "node:path";
 import { asyncHandler } from "../lib/async-handler.js";
@@ -46,6 +46,7 @@ import {
   MAX_FILE_SIZES,
 } from "../lib/media-dtu.js";
 import { storeArtifact, retrieveArtifact, isSupportedType } from "../lib/artifact-store.js";
+import { AV_ACCEPTED_MIMES, canonicalMime, inferMime, sniffMatches, formatForMime } from "../lib/media-formats.js";
 import { resolveAudioDurationSec } from "../lib/artifact-transcoder.js";
 import { screenForPublish, screenLocalSync } from "../lib/content-safety/index.js";
 import {
@@ -53,6 +54,8 @@ import {
   pricedCreateOrCommercial,
   resolvePlaybackBuffer,
   sendRangedBuffer,
+  sliceAnonymousPreview,
+  ANON_PREVIEW_SECONDS,
   viewerMayStreamFull,
 } from "../lib/media-preview-window.js";
 
@@ -74,6 +77,16 @@ function _mediaProviderConfigured() {
   return !!(process.env.CONCORD_MODERATION_API_KEY || process.env.OPENAI_API_KEY || process.env.CONCORD_CSAM_PROVIDER);
 }
 
+// Single-segment GET paths that are routes of their own. `GET /:id` is registered before them, so without this
+// guard Express matched "feed" / "metrics" / "constants" as a media id and answered 404 "Media not found"
+// (the Discovery feed's GET /api/media/feed?tab=trending was a 404 for every caller). `next("route")` hands the
+// request to the next matching route, which is the real handler.
+const RESERVED_MEDIA_SEGMENTS = new Set(["feed", "metrics", "constants"]);
+function _skipReservedMediaSegment(req, _res, next) {
+  if (RESERVED_MEDIA_SEGMENTS.has(req.params.id)) return next("route");
+  return next();
+}
+
 /**
  * Create the media routes router.
  * Follows the same pattern as film-studio and connective-tissue routes.
@@ -87,12 +100,14 @@ function _mediaProviderConfigured() {
 
 const ALLOWED_UPLOAD_MIMES = new Set([
   'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
-  'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/flac', 'audio/aac',
+  // Every audio/video container (and the aliases browsers send for them,
+  // e.g. audio/x-m4a, audio/x-wav, video/quicktime) comes from the shared
+  // table in lib/media-formats.js so route, store and DTU lib agree.
+  ...AV_ACCEPTED_MIMES,
   // audio/webm — the container MediaRecorder.getUserMedia produces in every
   // Chromium/Firefox browser (e.g. the podcast lens's in-browser recorder).
   // Same trusted container as the already-allowed video/webm, audio-only.
   'audio/webm',
-  'video/mp4', 'video/webm',
   'application/pdf',
   'text/plain', 'text/markdown', 'text/csv',
   'application/json',
@@ -104,11 +119,7 @@ const MAGIC_BYTE_SIGNATURES = {
   'image/png':   [[0x89, 0x50, 0x4E, 0x47]],
   'image/gif':   [[0x47, 0x49, 0x46, 0x38]],
   'image/webp':  [[0x52, 0x49, 0x46, 0x46]], // RIFF header
-  'audio/mpeg':  [[0xFF, 0xFB], [0xFF, 0xF3], [0xFF, 0xF2], [0x49, 0x44, 0x33]], // MP3 + ID3
-  'audio/ogg':   [[0x4F, 0x67, 0x67, 0x53]],
-  'audio/flac':  [[0x66, 0x4C, 0x61, 0x43]],
-  'video/mp4':   [[0x00, 0x00, 0x00], [0x66, 0x74, 0x79, 0x70]], // ftyp
-  'audio/webm':  [[0x1A, 0x45, 0xDF, 0xA3]], // EBML/Matroska container header
+  // audio/video magic checks live in lib/media-formats.js (sniffMatches).
   'application/pdf': [[0x25, 0x50, 0x44, 0x46]],
 };
 
@@ -121,6 +132,15 @@ const MAGIC_BYTE_SIGNATURES = {
 function validateMediaMimeType(mimeType, dataOrBuffer) {
   if (!ALLOWED_UPLOAD_MIMES.has(mimeType)) {
     return { ok: false, error: `File type not allowed: ${mimeType}` };
+  }
+  if (formatForMime(mimeType)) {
+    const head = typeof dataOrBuffer === 'string'
+      ? Buffer.from(dataOrBuffer.slice(0, 100), 'base64')
+      : (Buffer.isBuffer(dataOrBuffer) ? dataOrBuffer.subarray(0, 100) : null);
+    if (head && head.length >= 2 && sniffMatches(mimeType, head) === false) {
+      return { ok: false, error: `File content does not match declared type ${canonicalMime(mimeType)} (magic bytes mismatch)` };
+    }
+    return { ok: true };
   }
   const rules = MAGIC_BYTE_SIGNATURES[mimeType];
   if (rules && dataOrBuffer) {
@@ -155,6 +175,9 @@ async function validateUrl(urlString) {
   return { ok: true };
 }
 
+// Raw upload transport cap (see POST /upload-raw). MAX_FILE_SIZES still applies per type.
+const RAW_UPLOAD_LIMIT_BYTES = Number(process.env.CONCORD_MEDIA_UPLOAD_MAX_BYTES) || 200 * 1024 * 1024;
+
 export default function createMediaRouter({ STATE }) {
   const router = Router();
 
@@ -186,13 +209,57 @@ export default function createMediaRouter({ STATE }) {
   router.post("/upload", asyncHandler(async (req, res) => {
     const authorId = req.user?.id;
     if (!authorId) return res.status(401).json({ ok: false, error: "Authentication required" });
+    return uploadMedia(req, res, authorId, req.body || {}, null);
+  }));
 
+  /**
+   * POST /upload-raw — the real upload transport for audio/video/anything big.
+   * The request body IS the file (Content-Type = its MIME, empty/octet-stream
+   * is fine: the extension + magic bytes decide). Metadata rides the query
+   * string: title (required), filename, description, mediaType, duration,
+   * codec, bitrate, tags (comma list), privacy, tier, tiers (JSON),
+   * previewStart, previewDuration. No base64, no JSON cap, no sanitizer
+   * truncation; cap is CONCORD_MEDIA_UPLOAD_MAX_BYTES (default 200 MB, which
+   * sits under Cloudflare's 100 MB edge cap only for direct-to-origin use).
+   */
+  router.post(
+    "/upload-raw",
+    express.raw({ type: () => true, limit: RAW_UPLOAD_LIMIT_BYTES }),
+    asyncHandler(async (req, res) => {
+      const authorId = req.user?.id;
+      if (!authorId) return res.status(401).json({ ok: false, error: "Authentication required" });
+      const buf = Buffer.isBuffer(req.body) ? req.body : null;
+      if (!buf || buf.length === 0) throw new ValidationError("empty upload body");
+      const q = req.query || {};
+      let tiers;
+      if (q.tiers) { try { tiers = JSON.parse(String(q.tiers)); } catch { throw new ValidationError("tiers must be JSON"); } }
+      const fields = {
+        title: q.title,
+        description: q.description,
+        mediaType: q.mediaType,
+        mimeType: req.headers?.["content-type"] || "",
+        originalFilename: q.filename,
+        duration: q.duration !== undefined ? Number(q.duration) : undefined,
+        codec: q.codec,
+        bitrate: q.bitrate !== undefined ? Number(q.bitrate) : undefined,
+        tags: q.tags ? String(q.tags).split(",").map((t) => t.trim()).filter(Boolean) : undefined,
+        privacy: q.privacy,
+        tier: q.tier,
+        previewStart: q.previewStart !== undefined ? Number(q.previewStart) : undefined,
+        previewDuration: q.previewDuration !== undefined ? Number(q.previewDuration) : undefined,
+        tiers,
+      };
+      return uploadMedia(req, res, authorId, fields, buf);
+    }),
+  );
+
+  async function uploadMedia(req, res, authorId, fields, rawBuffer) {
     const {
       title,
       description,
       mediaType,
-      mimeType,
-      fileSize = 0,
+      mimeType: declaredMime,
+      fileSize: declaredFileSize = 0,
       originalFilename,
       duration,
       resolution,
@@ -205,13 +272,37 @@ export default function createMediaRouter({ STATE }) {
       previewStart,
       previewDuration,
       tiers,
-    } = req.body;
+    } = fields;
+    let mimeType = declaredMime;
 
     if (!title) throw new ValidationError("title is required");
 
-    // ── MIME allowlist + magic bytes validation ──────────────────────────
+    // ── Bytes: raw body, or base64 `data` (small callers) ────────────────
+    let audioBuffer = rawBuffer;
+    if (!audioBuffer && data && typeof data === "string") {
+      audioBuffer = Buffer.from(data, "base64");
+      // Never silently keep a cut-off file. If fewer bytes arrived than the
+      // client says it sent (the global sanitizer cuts every JSON string to
+      // 10,000 chars = 7,500 bytes), refuse instead of storing a corrupt file.
+      if (Number(declaredFileSize) > audioBuffer.length) {
+        return res.status(413).json({
+          ok: false,
+          error: "upload_truncated",
+          message: `Only ${audioBuffer.length} of ${Number(declaredFileSize)} bytes arrived. Use POST /api/media/upload-raw for files larger than a few KB.`,
+          receivedBytes: audioBuffer.length,
+          declaredBytes: Number(declaredFileSize),
+        });
+      }
+    }
+    const fileSize = audioBuffer ? audioBuffer.length : declaredFileSize;
+
+    // ── MIME: canonicalise aliases; extension + magic bytes when the browser
+    // sent nothing useful (empty / octet-stream) ────────────────────────────
+    if (mimeType || audioBuffer) {
+      mimeType = inferMime({ declared: mimeType, filename: originalFilename, buffer: audioBuffer });
+    }
     if (mimeType) {
-      const mimeCheck = validateMediaMimeType(mimeType, data || null);
+      const mimeCheck = validateMediaMimeType(mimeType, audioBuffer || null);
       if (!mimeCheck.ok) throw new ValidationError(mimeCheck.error);
     }
 
@@ -219,6 +310,14 @@ export default function createMediaRouter({ STATE }) {
     const resolvedMediaType = mediaType || (mimeType ? detectMediaType(mimeType) : null);
     if (!resolvedMediaType) {
       throw new ValidationError("mediaType or mimeType is required");
+    }
+    const maxBytes = MAX_FILE_SIZES[resolvedMediaType];
+    if (maxBytes && fileSize > maxBytes) {
+      return res.status(413).json({
+        ok: false, error: "file_too_large",
+        message: `File is ${fileSize} bytes; the ${resolvedMediaType} limit is ${maxBytes} bytes.`,
+        maxBytes,
+      });
     }
 
     // #3 — content-safety screen before persisting. Sync local text checks always
@@ -237,7 +336,7 @@ export default function createMediaRouter({ STATE }) {
           {
             targetScope: screenScope,
             contentType: resolvedMediaType,
-            mediaBuffer: data && typeof data === "string" ? Buffer.from(data, "base64") : null,
+            mediaBuffer: audioBuffer,
             userId: authorId,
           },
         );
@@ -253,10 +352,8 @@ export default function createMediaRouter({ STATE }) {
     // bytes ever landed on disk. The artifactRef hash is then attached
     // to the media DTU so the stream + thumbnail endpoints can resolve.
     let artifactRef = null;
-    let audioBuffer = null;
-    if (data && typeof data === "string") {
+    if (audioBuffer) {
       try {
-        audioBuffer = Buffer.from(data, "base64");
         const safeMime = mimeType && isSupportedType(mimeType)
           ? mimeType
           : "application/octet-stream";
@@ -321,11 +418,11 @@ export default function createMediaRouter({ STATE }) {
       }
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       ok: true,
       mediaDTU: result.mediaDTU,
     });
-  }));
+  }
 
   // ── Upload via URL ────────────────────────────────────────────────────
 
@@ -398,7 +495,7 @@ export default function createMediaRouter({ STATE }) {
    * Enforces privacy: private uploads are only readable by their author,
    * followers-only uploads by the author or an active follower.
    */
-  router.get("/:id", asyncHandler(async (req, res) => {
+  router.get("/:id", _skipReservedMediaSegment, asyncHandler(async (req, res) => {
     const viewerId = req.user?.id || null;
     const gated = getMediaDTUForViewer(STATE, req.params.id, viewerId);
     if (!gated.ok) {
@@ -465,14 +562,37 @@ export default function createMediaRouter({ STATE }) {
       // already the right behaviour for a missing artifact.
       const buffer = retrieveArtifact(mediaDTU.id, artifactRef);
       if (buffer && Buffer.isBuffer(buffer)) {
+        const contentType = artifactRef.type || mediaDTU.mimeType || "application/octet-stream";
+        // Signed-out visitors get only the first ANON_PREVIEW_SECONDS of a PUBLIC
+        // track/video (getMediaDTUForViewer above already refused anything not
+        // public to an anonymous caller). The cut happens here, on the server,
+        // and the ranged send below is applied to the cut buffer, so no Range
+        // or repeated request can reach the rest. Signed-in viewers fall through
+        // to the normal (owner / license / priced-tier) logic unchanged.
+        res.set("Vary", "Authorization, Cookie");
+        if (!viewerId) {
+          const anon = sliceAnonymousPreview(buffer, mediaDTU);
+          res.set({
+            "X-Concord-Preview": "true",
+            "X-Concord-Preview-Seconds": String(ANON_PREVIEW_SECONDS),
+            "X-Concord-Preview-Method": anon.method,
+            "X-Concord-Full-Requires": "sign-in",
+          });
+          return sendRangedBuffer(res, anon.buffer, contentType, req.headers.range, { privateCache: true });
+        }
         const resolved = resolvePlaybackBuffer(buffer, mediaDTU, viewerId, STATE);
         if (!resolved.ok) {
           return res.status(resolved.status).json({ ok: false, error: resolved.error });
         }
-        const contentType = artifactRef.type || mediaDTU.mimeType || "application/octet-stream";
         const priced = pricedCreateOrCommercial(mediaDTU);
+        if (resolved.preview) {
+          res.set({ "X-Concord-Preview": "true", "X-Concord-Full-Requires": "license" });
+        }
         return sendRangedBuffer(res, resolved.buffer, contentType, req.headers.range, {
           privateCache: resolved.preview || priced,
+          // Never a shared/CDN cache: the same URL serves a 30 s preview to a
+          // signed-out visitor and the full file to a signed-in one.
+          cacheControl: resolved.preview || priced ? null : "private, max-age=3600",
         });
       }
     }

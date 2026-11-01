@@ -368,3 +368,29 @@ describe("defense secure comms (comms-*)", () => {
     assert.equal(call("comms-log", ctxA, {}).result.total, 0);
   });
 });
+
+describe("defense coordinates: null/empty mean 'no coordinates', never 0", () => {
+  for (const blank of [null, undefined, "", "  ", true, false, []]) {
+    it(`cop-add rejects lat/lon ${JSON.stringify(blank)}`, () => {
+      assert.equal(call("cop-add", ctxA, { kind: "asset", label: "x", lat: blank, lon: 0 }).ok, false);
+      assert.equal(call("cop-add", ctxA, { kind: "asset", label: "x", lat: 0, lon: blank }).ok, false);
+    });
+  }
+
+  it("an asset/threat saved without coordinates stores null (not 0) and stays off the COP", () => {
+    call("asset-upsert", ctxA, { designation: "No-coords", lat: null, lon: "" });
+    call("threat-add", ctxA, { name: "No-coords-threat", lat: null, lon: null });
+    const map = call("cop-map", ctxA, {});
+    assert.equal(map.result.count, 0);
+    const st = globalThis._concordSTATE.defenseLens;
+    const rows = [...st.assets.get("user_a").values(), ...st.threats.get("user_a").values()];
+    assert.equal(rows.length, 2);
+    for (const r of rows) { assert.equal(r.lat, null); assert.equal(r.lon, null); }
+  });
+
+  it("valid numeric and numeric-string coordinates are unchanged, including 0", () => {
+    assert.equal(call("cop-add", ctxA, { kind: "asset", label: "zero", lat: 0, lon: 0 }).ok, true);
+    assert.equal(call("cop-add", ctxA, { kind: "asset", label: "str", lat: "38.9", lon: "-77" }).ok, true);
+    assert.equal(call("cop-map", ctxA, {}).result.count, 2);
+  });
+});

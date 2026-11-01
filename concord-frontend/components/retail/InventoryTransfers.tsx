@@ -65,7 +65,7 @@ export function InventoryTransfers() {
       </header>
 
       <div className="p-3 border-b border-white/10 space-y-2">
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <input value={form.fromLocation} onChange={e => setForm({ ...form, fromLocation: e.target.value })} placeholder="From (Warehouse A)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={form.toLocation} onChange={e => setForm({ ...form, toLocation: e.target.value })} placeholder="To (Store 1)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value.toUpperCase() })} placeholder="SKU" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />

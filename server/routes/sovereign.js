@@ -12,6 +12,7 @@ import crypto from "crypto";
 import vm from "node:vm";
 import { asyncHandler } from "../lib/async-handler.js";
 import logger from '../logger.js';
+import { clearMemoryPause } from "../lib/memory-pressure.js";
 
 // SECURITY: the sovereign role is god-mode (god decree, sovereign override,
 // arbitrary state mutation). The username that maps to it MUST be set
@@ -362,6 +363,7 @@ export default function createSovereignRouter({ STATE, makeCtx, runMacro, saveSt
           if (!S.settings) S.settings = Object.create(null);
           const prev = S.settings[jobKey];
           S.settings[jobKey] = enabled;
+          clearMemoryPause(S, [jobKey]);
           trySave();
 
           result = { ok: true, job: jobKey, previous: prev, current: enabled };
@@ -380,6 +382,7 @@ export default function createSovereignRouter({ STATE, makeCtx, runMacro, saveSt
               frozen.push(key);
             }
           }
+          clearMemoryPause(S, frozen);
           trySave();
 
           result = { ok: true, frozen, message: `Froze ${frozen.length} jobs` };
@@ -398,6 +401,7 @@ export default function createSovereignRouter({ STATE, makeCtx, runMacro, saveSt
               thawed.push(key);
             }
           }
+          clearMemoryPause(S, thawed);
           trySave();
 
           result = { ok: true, thawed, message: `Thawed ${thawed.length} jobs` };
@@ -597,6 +601,7 @@ export default function createSovereignRouter({ STATE, makeCtx, runMacro, saveSt
             for (const [key, val] of Object.entries(incoming)) {
               if (ALLOWED_SETTINGS.has(key) && typeof val === "boolean") {
                 S.settings[key] = val;
+                clearMemoryPause(S, [key]);
                 updated++;
               }
             }

@@ -52,7 +52,11 @@ const STALE_DAYS = 90;
 
 // ── In-Memory State ─────────────────────────────────────────────────────────
 
-const hlmPasses = new Map();        // passId → pass result
+// A full pass (clusters, orphans, gaps, hierarchy/lineage/tag issues) measured ~34 MB per 3k DTUs and nothing reads an
+// old pass back (only the count is exposed), so keeping 50-100 of them grew the heap ~2 GB over 2.5 h of idle uptime
+// (heapUsedPct 25% -> 85%). Keep only the latest few; counters in hlmMetricsStore carry the history.
+export const HLM_MAX_STORED_PASSES = Math.max(1, Number(process.env.CONCORD_HLM_STORED_PASSES) || 2);
+const hlmPasses = new Map();        // passId → pass result (insertion order = age)
 const hlmRecommendations = new LruMap(); // recId → recommendation
 const hlmMetricsStore = {
   totalPasses: 0,
@@ -1236,7 +1240,7 @@ function lineageAudit(dtus) {
  * @param {Object[]} dtus - Array of DTU objects
  * @returns {Object} Full HLM pass result
  */
-export function runHLMPass(dtus) {
+export function computeHLMPass(dtus) {
   try {
     if (!Array.isArray(dtus)) {
       return { ok: false, error: "dtus_must_be_array" };
@@ -1300,26 +1304,88 @@ export function runHLMPass(dtus) {
       },
     };
 
-    // Store the pass
-    hlmPasses.set(passId, pass);
-    if (hlmPasses.size > 100) {
-      const oldest = Array.from(hlmPasses.keys()).slice(0, hlmPasses.size - 50);
-      for (const k of oldest) hlmPasses.delete(k);
-    }
-
-    // Update metrics
-    hlmMetricsStore.totalPasses++;
-    hlmMetricsStore.totalClusters += clusterResult.clusters.length;
-    hlmMetricsStore.totalOrphans += orphanResult.orphans.length;
-    hlmMetricsStore.totalRedundancies += redundancyResult.redundancies.length;
-    hlmMetricsStore.totalGaps += gapResult.gaps.length;
-    hlmMetricsStore.lastPassAt = pass.completedAt;
-    hlmMetricsStore.lastPassId = passId;
-
     return pass;
   } catch {
     return { ok: false, error: "hlm_pass_failed" };
   }
+}
+
+// The redundancy list is quadratic in near-duplicate DTUs and is carried three times in a pass (redundancies,
+// topology.redundancies, one merge_redundant recommendation each). Measured on a tag-overlapping 5k store the
+// pass was 207 MB and its structured-clone deserialisation froze the receiving (main) thread 2.3 s, growing
+// quadratically; live passes froze the loop 6-33 s right as the worker's message arrived. The pass that crosses
+// the thread boundary (and is then retained) keeps only the strongest pairs; counts stay exact.
+export const HLM_MAX_REDUNDANCIES = Math.max(1, Number(process.env.CONCORD_HLM_MAX_REDUNDANCIES) || 2000);
+
+/**
+ * Bound a computed pass before it is posted off the worker and retained. A pass at or under `max` redundancies is
+ * returned untouched (same object). Otherwise the top-`max` pairs by similarity are kept, merge_redundant
+ * recommendations are re-derived from them, and the true total is recorded (`redundancies.total`, `summary`).
+ */
+export function boundHLMPass(pass, max = HLM_MAX_REDUNDANCIES) {
+  if (!pass?.ok) return pass;
+  const allRed = pass.redundancies?.redundancies;
+  const allGaps = pass.gaps?.gaps;
+  const redOver = Array.isArray(allRed) && allRed.length > max;
+  const gapOver = Array.isArray(allGaps) && allGaps.length > max;
+  const staleOver = Array.isArray(pass.freshness?.stale) && pass.freshness.stale.length > max;
+  const issuesOver = Array.isArray(pass.hierarchy?.issues) && pass.hierarchy.issues.length > max;
+  if (!redOver && !gapOver && !staleOver && !issuesOver) return pass;
+
+  const out = { ...pass };
+  let topology = pass.topology;
+  if (redOver) {
+    const keep = allRed.slice().sort((a, b) => (b.similarity - a.similarity) || (a.redundancyId < b.redundancyId ? -1 : 1)).slice(0, max);
+    topology = { ...topology, redundancies: keep };
+    out.redundancies = { redundancies: keep, total: allRed.length, truncated: true };
+  }
+  if (gapOver) {
+    // Gaps are tag PAIRS inside a cluster (quadratic in tags) and were carried three times: topology.gaps, gaps.gaps and one
+    // fill_gap recommendation each (measured 34k gaps = ~32 MB per pass on a 3k-DTU store). Keep the best-supported pairs.
+    const keep = allGaps.slice().sort((a, b) => ((b.tagACount + b.tagBCount) - (a.tagACount + a.tagBCount)) || (a.gapId < b.gapId ? -1 : 1)).slice(0, max);
+    topology = { ...topology, gaps: keep };
+    out.gaps = { gaps: keep, total: allGaps.length, truncated: true };
+  }
+  out.topology = topology;
+  if (redOver || gapOver) out.recommendations = getRecommendations(topology);
+  if (staleOver) out.freshness = { ...pass.freshness, stale: pass.freshness.stale.slice(0, max), staleTotal: pass.freshness.stale.length, truncated: true };
+  if (issuesOver) out.hierarchy = { ...pass.hierarchy, issues: pass.hierarchy.issues.slice(0, max), issuesTotal: pass.hierarchy.issues.length, truncated: true };
+  return out;
+}
+
+/**
+ * Record a computed pass in this module's stores and metrics. runHLMPass() does this for a pass it computed
+ * in-process; the off-thread path (hlm-offthread.js) computes in a worker thread whose module state is
+ * discarded, so it records the returned pass here on the main thread. `replayRecommendations` re-registers
+ * the recommendations getRecommendations() had registered in the worker's copy of the module.
+ */
+export function recordHLMPass(pass, { replayRecommendations = false } = {}) {
+  if (!pass || pass.ok !== true) return pass;
+  if (replayRecommendations) {
+    const recs = pass.recommendations?.recommendations || [];
+    for (const rec of recs) if (rec?.recId) hlmRecommendations.set(rec.recId, rec);
+    hlmMetricsStore.totalRecommendations += recs.length;
+  }
+
+  // Store the pass
+  hlmPasses.set(pass.passId, pass);
+  while (hlmPasses.size > HLM_MAX_STORED_PASSES) hlmPasses.delete(hlmPasses.keys().next().value);
+
+  // Update metrics
+  hlmMetricsStore.totalPasses++;
+  hlmMetricsStore.totalClusters += pass.clusters.clusters.length;
+  hlmMetricsStore.totalOrphans += pass.orphans.orphans.length;
+  hlmMetricsStore.totalRedundancies += pass.redundancies.total ?? pass.redundancies.redundancies.length;
+  hlmMetricsStore.totalGaps += pass.gaps.total ?? pass.gaps.gaps.length;
+  hlmMetricsStore.lastPassAt = pass.completedAt;
+  hlmMetricsStore.lastPassId = pass.passId;
+  return pass;
+}
+
+/** Synchronous in-process pass (macros / tests). The 20-minute timer uses the off-thread variant. */
+export function runHLMPass(dtus) {
+  const pass = computeHLMPass(dtus);
+  return recordHLMPass(pass);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

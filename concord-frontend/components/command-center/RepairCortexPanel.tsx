@@ -18,7 +18,7 @@ export function RepairCortexPanel() {
       <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Repair Cortex</h3>
       {status ? (
         <>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Stat label="Cycles" value={status.cycleCount ?? 0} />
             <Stat label="Error Accum" value={status.errorAccumulatorSize ?? 0} />
             <Stat label="Executors" value={`${status.executorsReady ?? 0}/${status.executorCount ?? 0}`} />

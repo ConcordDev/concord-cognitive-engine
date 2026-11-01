@@ -15,8 +15,9 @@ interface CopMarker {
   id: string;
   kind: 'asset' | 'threat' | 'operation';
   label: string;
-  lat: number;
-  lon: number;
+  // null/missing for an asset or threat saved without coordinates (the Assets editor has no coordinate fields)
+  lat: number | null;
+  lon: number | null;
   affiliation?: string;
   status?: string;
   severity?: string;
@@ -35,6 +36,9 @@ const AFFIL_TONE: Record<string, MapMarker['tone']> = {
   neutral: 'info',
   unknown: 'default',
 };
+
+const hasCoords = (m: CopMarker): m is CopMarker & { lat: number; lon: number } =>
+  typeof m.lat === 'number' && Number.isFinite(m.lat) && typeof m.lon === 'number' && Number.isFinite(m.lon);
 
 export function CommonOperatingPicture() {
   const [markers, setMarkers] = useState<CopMarker[]>([]);
@@ -103,7 +107,7 @@ export function CommonOperatingPicture() {
     setBusy(false);
   }, [refresh]);
 
-  const mapMarkers: MapMarker[] = markers.map((m) => ({
+  const mapMarkers: MapMarker[] = markers.filter(hasCoords).map((m) => ({
     id: m.id,
     lat: m.lat,
     lon: m.lon,
@@ -216,7 +220,7 @@ export function CommonOperatingPicture() {
                 />
                 <span className="text-xs text-white truncate">{m.label}</span>
                 <span className="text-[10px] text-zinc-400 font-mono shrink-0">
-                  {m.lat.toFixed(2)}, {m.lon.toFixed(2)}
+                  {hasCoords(m) ? `${m.lat.toFixed(2)}, ${m.lon.toFixed(2)}` : 'no coordinates'}
                 </span>
                 <span className="text-[10px] text-zinc-400 shrink-0">{m.kind}</span>
               </div>

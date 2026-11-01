@@ -1,12 +1,23 @@
 // Domain-level role gate for platform-internal lens actions.
 //
-// debug, ops, and system are operator surfaces. Every action in those
-// domains is checked once, on the lens-run dispatch path, with the same
-// requireRole middleware admin routes already use. Handlers are not copied
-// per action. Sentinel is intentionally absent: its state is per-account
+// ops and system are operator surfaces. Every action in those domains is
+// checked once, on the lens-run dispatch path, with the same requireRole
+// middleware admin routes already use. Handlers are not copied per
+// action. Sentinel is intentionally absent: its state is per-account
 // and is scoped in domains/sentinel.js. organ and root stay out of this set.
+//
+// debug was in this set until 2026-10-28 and was REMOVED on the founder's
+// ruling (Product Review 2, debug.md §8: the wall was a bug, not a
+// privileged-gating design). Every macro in domains/debug.js operates on
+// per-account state (issues/traces/metrics/alerts/releases keyed by
+// actor) or on caller-supplied artifacts (the analysis quartet) — it is
+// a per-user observability workspace, not platform internals. The
+// operator surfaces shown inside the Debug lens (events, logs,
+// diagnostics) are served by the ops/system domains and substrate
+// endpoints, which remain gated here. Anonymous writes inside debug
+// stay refused by guardAnonWrites in the domain itself.
 
-export const PLATFORM_INTERNAL_LENS_DOMAINS = Object.freeze(["debug", "ops", "system"]);
+export const PLATFORM_INTERNAL_LENS_DOMAINS = Object.freeze(["ops", "system"]);
 
 // Same list sibling admin routes pass to requireRole.
 export const PLATFORM_INTERNAL_LENS_ROLES = Object.freeze(["owner", "admin", "sovereign", "founder"]);

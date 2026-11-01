@@ -147,7 +147,7 @@ export function DefenseActionPanel() {
     try {
       const task = `Defense planning review. ${threatResult ? `Top threat: ${threatResult.topThreat} (${threatResult.overallThreatLevel}).` : ''} ${readyResult ? `Readiness ${readyResult.overallReadiness}% (${readyResult.status})${readyResult.gaps.length > 0 ? `, gaps: ${readyResult.gaps.join(', ')}` : ''}.` : ''} ${incResult ? `Active incident: ${incResult.incidentType} (${incResult.severity}).` : ''} Identify the single most urgent action and one 30-day planning priority. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Brief ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

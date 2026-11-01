@@ -53,7 +53,7 @@ export function PickupsPanel() {
         <span className="ml-auto text-[10px] text-gray-400">{pickups.filter(p => p.status === 'scheduled').length} scheduled</span>
       </header>
 
-      <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
+      <div className="p-3 border-b border-white/10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
         <select value={form.carrierId} onChange={e => setForm({ ...form, carrierId: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="">Select carrier…</option>
           {carriers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -65,8 +65,8 @@ export function PickupsPanel() {
         </select>
         <input type="number" value={form.packageCount} onChange={e => setForm({ ...form, packageCount: e.target.value })} placeholder="Pkg count" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <input value={form.confirmationNumber} onChange={e => setForm({ ...form, confirmationNumber: e.target.value })} placeholder="Carrier conf. # (optional)" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <p className="col-span-5 text-[10px] text-gray-500">Concord does not contact the carrier. Book the pickup with them, then record it here with their confirmation number.</p>
-        <button onClick={schedule} className="col-span-5 px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Schedule pickup</button>
+        <p className="col-span-full text-[10px] text-gray-500">Concord does not contact the carrier. Book the pickup with them, then record it here with their confirmation number.</p>
+        <button onClick={schedule} className="col-span-full px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Schedule pickup</button>
       </div>
 
       <div className="max-h-80 overflow-y-auto">

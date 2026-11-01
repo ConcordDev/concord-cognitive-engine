@@ -138,7 +138,7 @@ export function MinePlanWorkbench() {
         {/* ── Pit design ── */}
         <div className="space-y-2">
           <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Open-pit shell design</div>
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
             <Field label="Surface RL m" value={surfaceRL} onChange={setSurfaceRL} />
             <Field label="Pit depth m" value={pitDepth} onChange={setPitDepth} />
             <Field label="Bench ht m" value={benchHeight} onChange={setBenchHeight} />
@@ -153,7 +153,7 @@ export function MinePlanWorkbench() {
 
           {pit && (
             <div className="rounded-lg border border-orange-500/20 bg-zinc-900/40 p-3 space-y-2">
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                 <Stat label="Benches" value={String(pit.benchCount)} />
                 <Stat label="Total t" value={pit.totalTonnage.toLocaleString()} />
                 <Stat label="Ore t" value={pit.oreTonnage.toLocaleString()} accent="#22c55e" />
@@ -189,7 +189,7 @@ export function MinePlanWorkbench() {
         {/* ── Reserve report ── */}
         <div className="space-y-2">
           <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Reserve / resource statement</div>
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
             <Field label="Tonnage" value={rTonnage} onChange={setRTonnage} />
             <Field label="Avg grade %" value={rGrade} onChange={setRGrade} />
             <Field label="Drill spacing m" value={drillSpacing} onChange={setDrillSpacing} />
@@ -257,7 +257,7 @@ export function MinePlanWorkbench() {
           inverse-distance-weighted block model as Geology. Requires logged drill-holes with
           positive-grade intervals (Geology tab).
         </div>
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-1.5">
           <Field label="Block size m" value={optBlockSize} onChange={setOptBlockSize} />
           <Field label="Slope °" value={optSlopeAngle} onChange={setOptSlopeAngle} />
           <Field label="Price $/t" value={optPrice} onChange={setOptPrice} />

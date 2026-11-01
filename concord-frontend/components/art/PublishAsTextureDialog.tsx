@@ -182,7 +182,7 @@ export function PublishAsTextureDialog({ canvas, artworkId, onClose }: PublishAs
 
             <label className="block">
               <span className="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">PBR channel</span>
-              <div className="grid grid-cols-4 gap-1">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-1">
                 {CHANNELS.map((ch) => {
                   const slot = coverage?.channels[ch];
                   const isActive = channel === ch;

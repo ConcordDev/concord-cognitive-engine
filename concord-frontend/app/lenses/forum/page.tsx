@@ -40,12 +40,12 @@ export default function ForumLensPage() {
   return (
     <LensShell lensId="forum" asMain={false}>
       <DepthBadge lensId="forum" size="sm" className="ml-2" />
-      <div data-lens-theme="forum" className="relative min-h-full px-8 pb-28 pt-6">
-        <div className="flex items-start justify-between gap-4">
+      <div data-lens-theme="forum" className="relative min-h-full px-4 pb-28 pt-6 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0">
             <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Forum</h1>
           </div>
-          <div className="flex shrink-0 items-center gap-3 pt-2">
+          <div className="flex flex-wrap items-center gap-3 sm:shrink-0 sm:pt-2">
             {realtimeAlerts.length > 0 && (
               <span className="rounded-full bg-amber-400/10 px-2.5 py-1 text-[12px] text-amber-300">
                 {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
@@ -67,7 +67,7 @@ export default function ForumLensPage() {
           type="button"
           onClick={startDiscussion}
           title="Start a discussion (N)"
-          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+          className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] right-[4.75rem] z-30 min-h-[44px] md:bottom-8 lg:right-8 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
         >
           <Plus className="h-4 w-4" />
           Start a discussion

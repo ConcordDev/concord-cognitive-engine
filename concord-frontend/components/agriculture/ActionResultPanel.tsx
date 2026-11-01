@@ -62,7 +62,7 @@ export function ActionResultPanel() {
         </div>
       )}
       {actionResult.overdueCount !== undefined && actionResult.totalGallonsAllFields === undefined && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <Stat label="Overdue" value={String(actionResult.overdueCount)} tone="text-red-400" />
           <Stat label="Upcoming" value={String(actionResult.upcomingCount)} tone="text-amber-400" />
           <Stat label="Total Equipment" value={String(actionResult.totalEquipment)} />
@@ -79,7 +79,7 @@ export function ActionResultPanel() {
       )}
       {actionResult.recommended !== undefined && actionResult.plantingWindow !== undefined && (
         <div className="space-y-2">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Stat label="Recommended Next" value={String(actionResult.recommended)} tone="text-green-400 capitalize" />
             <Stat
               label="Planting Window"
@@ -115,7 +115,7 @@ export function ActionResultPanel() {
       )}
       {actionResult.estimatedYieldPerAcre !== undefined && (
         <div className="space-y-2">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Stat
               label="Per Acre"
               value={`${String(actionResult.estimatedYieldPerAcre)} ${String(actionResult.unit || '')}/ac`}
@@ -138,7 +138,7 @@ export function ActionResultPanel() {
       )}
       {actionResult.recommendations !== undefined && actionResult.trends !== undefined && (
         <div className="space-y-2">
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
             {Object.entries(
               actionResult.trends as Record<string, { latest?: number | null; status?: string }>,
             ).map(([key, t]) => (

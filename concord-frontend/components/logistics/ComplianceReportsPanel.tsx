@@ -298,7 +298,7 @@ export function ComplianceReportsPanel() {
           runLabel="Run fleet report"
         >
           {fleetReport && (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <Stat label="Active" value={fleetReport.activeCount} color="text-green-400" />
               <Stat label="Idle" value={fleetReport.idleCount} color="text-gray-300" />
               <Stat label="Maint. due" value={fleetReport.maintenanceDueCount} color="text-amber-400" />

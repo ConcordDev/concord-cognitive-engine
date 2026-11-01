@@ -90,7 +90,7 @@ export function InvoiceManager({ engagements }: { engagements: EngagementOption[
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         {([['Outstanding', totals.outstanding, 'text-amber-400'], ['Overdue', totals.overdue, 'text-rose-400'], ['Collected', totals.collected, 'text-emerald-400']] as const).map(([l, v, c]) => (
           <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2 text-center">
             <p className={`text-base font-bold ${c}`}>${v.toLocaleString()}</p>

@@ -9,7 +9,7 @@
  * No seed/mock data — every card and column is real user input.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Kanban,
   Plus,
@@ -24,6 +24,12 @@ import {
   AlertTriangle,
   CheckSquare,
   Layers,
+  Archive,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  Search,
+  Bell,
 } from 'lucide-react';
 import {
   boardMacro,
@@ -31,6 +37,8 @@ import {
   useBoardDetail,
   WsCard,
   WsCalendar,
+  WsDueReminder,
+  WsTemplate,
   LABEL_COLOR_DOT,
 } from './workspace-types';
 import { CardDetailModal } from './CardDetailModal';
@@ -52,18 +60,28 @@ export function BoardWorkspace() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const { board, loading: boardLoading, error: boardError, reload: reloadBoard } = useBoardDetail(activeId);
 
-  const [view, setView] = useState<'board' | 'calendar'>('board');
+  const [view, setView] = useState<'board' | 'calendar' | 'archived'>('board');
   const [newBoardName, setNewBoardName] = useState('');
   const [newColName, setNewColName] = useState('');
   const [quickAdd, setQuickAdd] = useState<Record<string, string>>({});
+  const [quickErr, setQuickErr] = useState<Record<string, string>>({});
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [boardOwner, setBoardOwner] = useState<string>('');
   const [dragCardId, setDragCardId] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   const [filterLabel, setFilterLabel] = useState<string>('all');
+  const [filterText, setFilterText] = useState('');
+  const [filterAssignee, setFilterAssignee] = useState<string>('all');
+  const [filterDue, setFilterDue] = useState<string>('all');
+  const [boardNameDraft, setBoardNameDraft] = useState<string | null>(null);
+  const [editingColId, setEditingColId] = useState<string | null>(null);
+  const [colNameDraft, setColNameDraft] = useState('');
+  const [reminders, setReminders] = useState<WsDueReminder[]>([]);
+  const [templates, setTemplates] = useState<WsTemplate[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   // pick first board automatically once the list resolves
   if (!activeId && boards.length > 0 && !listLoading) {
@@ -90,7 +108,7 @@ export function BoardWorkspace() {
   }, [activeId]);
 
   const switchView = useCallback(
-    (v: 'board' | 'calendar') => {
+    (v: 'board' | 'calendar' | 'archived') => {
       setView(v);
       if (v === 'calendar') loadCalendar();
     },
@@ -155,13 +173,134 @@ export function BoardWorkspace() {
   const createCard = useCallback(
     async (columnId: string) => {
       const title = (quickAdd[columnId] || '').trim();
-      if (!title || !activeId) return;
-      await boardMacro('card-create', { boardId: activeId, columnId, title });
+      if (!activeId) return;
+      if (!title) {
+        setQuickErr((p) => ({ ...p, [columnId]: 'Card title required' }));
+        return;
+      }
+      const r = await boardMacro('card-create', { boardId: activeId, columnId, title });
+      if (!r.ok) {
+        setQuickErr((p) => ({ ...p, [columnId]: r.error || 'failed to create card' }));
+        return;
+      }
+      setQuickErr((p) => ({ ...p, [columnId]: '' }));
       setQuickAdd((p) => ({ ...p, [columnId]: '' }));
       reloadBoard();
     },
     [quickAdd, activeId, reloadBoard]
   );
+
+  const createFromTemplate = useCallback(
+    async (columnId: string, templateId: string) => {
+      if (!activeId || !templateId) return;
+      const r = await boardMacro('card-create-from-template', {
+        boardId: activeId,
+        columnId,
+        templateId,
+      });
+      if (!r.ok) setErr(r.error || 'failed to create card from template');
+      else reloadBoard();
+    },
+    [activeId, reloadBoard]
+  );
+
+  const renameBoard = useCallback(async () => {
+    if (!activeId || boardNameDraft == null) return;
+    const name = boardNameDraft.trim();
+    setBoardNameDraft(null);
+    if (!name || name === board?.name) return;
+    const r = await boardMacro('board-update', { id: activeId, name });
+    if (!r.ok) setErr(r.error || 'failed to rename board');
+    else {
+      reloadBoard();
+      reloadList();
+    }
+  }, [activeId, boardNameDraft, board?.name, reloadBoard, reloadList]);
+
+  const renameColumn = useCallback(
+    async (columnId: string) => {
+      const name = colNameDraft.trim();
+      setEditingColId(null);
+      if (!activeId || !name) return;
+      const r = await boardMacro('column-update', { boardId: activeId, columnId, name });
+      if (!r.ok) setErr(r.error || 'failed to rename column');
+      else reloadBoard();
+    },
+    [activeId, colNameDraft, reloadBoard]
+  );
+
+  const moveColumn = useCallback(
+    async (columnId: string, toIndex: number) => {
+      if (!activeId) return;
+      const r = await boardMacro('column-update', { boardId: activeId, columnId, toIndex });
+      if (!r.ok) setErr(r.error || 'failed to reorder column');
+      else reloadBoard();
+    },
+    [activeId, reloadBoard]
+  );
+
+  const archiveColumn = useCallback(
+    async (columnId: string) => {
+      if (!activeId) return;
+      await boardMacro('column-archive', { boardId: activeId, columnId });
+      reloadBoard();
+    },
+    [activeId, reloadBoard]
+  );
+
+  const restoreColumn = useCallback(
+    async (columnId: string) => {
+      if (!activeId) return;
+      await boardMacro('column-restore', { boardId: activeId, columnId });
+      reloadBoard();
+    },
+    [activeId, reloadBoard]
+  );
+
+  const restoreCard = useCallback(
+    async (cardId: string) => {
+      if (!activeId) return;
+      await boardMacro('card-restore', { boardId: activeId, cardId });
+      reloadBoard();
+    },
+    [activeId, reloadBoard]
+  );
+
+  // Due reminders (board.due-reminders) — computed from real due dates
+  // across every board this user owns; archived cards excluded server-side.
+  useEffect(() => {
+    let cancelled = false;
+    boardMacro<{ reminders: WsDueReminder[] }>('due-reminders', { withinHours: 48 }).then((r) => {
+      if (!cancelled && r.ok && r.result) setReminders(Array.isArray(r.result.reminders) ? r.result.reminders : []);
+    });
+    return () => { cancelled = true; };
+  }, [boards.length, board?.cards]);
+
+  // Card templates for the active board (for the per-column picker).
+  useEffect(() => {
+    let cancelled = false;
+    if (!activeId) {
+      setTemplates([]);
+      return;
+    }
+    boardMacro<{ templates: WsTemplate[] }>('card-template-list', { boardId: activeId }).then((r) => {
+      if (!cancelled && r.ok && r.result) setTemplates(r.result.templates);
+    });
+    return () => { cancelled = true; };
+  }, [activeId, board?.cards]);
+
+  // Keyboard: "/" focuses the card search from anywhere outside an input.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== '/') return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+      e.preventDefault();
+      searchRef.current?.focus();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const onDrop = useCallback(
     async (toColumnId: string) => {
@@ -185,11 +324,37 @@ export function BoardWorkspace() {
   }, [reloadBoard, view, loadCalendar]);
 
   const labelDefs = useMemo(() => board?.labelDefs || [], [board]);
+  const assignees = useMemo(() => {
+    if (!board) return [] as string[];
+    return [...new Set(board.cards.map((c) => c.assignee).filter(Boolean) as string[])].sort();
+  }, [board]);
   const filteredCards = useMemo(() => {
     if (!board) return [] as WsCard[];
-    if (filterLabel === 'all') return board.cards;
-    return board.cards.filter((c) => (c.labels || []).includes(filterLabel));
-  }, [board, filterLabel]);
+    const now = Date.now();
+    const soon = now + 48 * 3600 * 1000;
+    return board.cards.filter((c) => {
+      if (c.archived) return false;
+      if (filterLabel !== 'all' && !(c.labels || []).includes(filterLabel)) return false;
+      if (filterAssignee !== 'all' && c.assignee !== filterAssignee) return false;
+      if (filterText && !`${c.title} ${c.description || ''}`.toLowerCase().includes(filterText.toLowerCase())) return false;
+      if (filterDue === 'none' && c.dueDate) return false;
+      if (filterDue === 'overdue' && !(c.dueDate && new Date(c.dueDate).getTime() < now)) return false;
+      if (filterDue === 'soon' && !(c.dueDate && new Date(c.dueDate).getTime() >= now && new Date(c.dueDate).getTime() <= soon)) return false;
+      return true;
+    });
+  }, [board, filterLabel, filterAssignee, filterText, filterDue]);
+  const visibleColumns = useMemo(
+    () => (board ? board.columns.filter((c) => !c.archived) : []),
+    [board]
+  );
+  const archivedColumns = useMemo(
+    () => (board ? board.columns.filter((c) => c.archived) : []),
+    [board]
+  );
+  const archivedCards = useMemo(
+    () => (board ? board.cards.filter((c) => c.archived) : []),
+    [board]
+  );
 
   const cardsIn = useCallback(
     (columnId: string) =>
@@ -290,6 +455,31 @@ export function BoardWorkspace() {
         </div>
       )}
 
+      {/* Due reminders — real due dates from board.due-reminders */}
+      {reminders.length > 0 && (
+        <div className="mb-4 px-3 py-2 rounded-lg bg-amber-500/[0.07] border border-amber-500/20">
+          <p className="flex items-center gap-1.5 text-xs text-amber-300 mb-1">
+            <Bell className="w-3.5 h-3.5" />
+            {reminders.filter((r) => r.overdue).length} overdue ·{' '}
+            {reminders.filter((r) => !r.overdue).length} due in the next 48 hours
+          </p>
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+            {reminders.slice(0, 5).map((r) => (
+              <button
+                key={r.cardId}
+                onClick={() => {
+                  setActiveId(r.boardId);
+                  setOpenCardId(r.cardId);
+                }}
+                className={`text-[11px] hover:underline ${r.overdue ? 'text-red-300' : 'text-amber-200'}`}
+              >
+                {r.title} · {r.boardName} · {String(r.dueDate).slice(0, 10)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Keep this board as a DTU + draft in Thread */}
       {board && <BoardKeepMenu board={board} />}
 
@@ -355,13 +545,29 @@ export function BoardWorkspace() {
 
       {board && (
         <>
-          {/* View toggle + filter */}
+          {/* Board title — click to rename (board-update) */}
+          <div className="flex items-center gap-2 mb-2">
+            <input
+              data-testid="board-name-input"
+              type="text"
+              value={boardNameDraft ?? board.name}
+              onChange={(e) => setBoardNameDraft(e.target.value)}
+              onBlur={renameBoard}
+              onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+              className="text-lg font-bold text-white bg-transparent border border-transparent hover:border-white/10 focus:border-purple-500/40 rounded-md px-1.5 py-0.5 focus:outline-none min-w-0 flex-1"
+              aria-label="Board name"
+            />
+            <Pencil className="w-3.5 h-3.5 text-gray-600 shrink-0" />
+          </div>
+
+          {/* View toggle + filters */}
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <div className="flex items-center gap-1 p-1 bg-white/5 rounded-lg border border-white/10">
               {(
                 [
                   { v: 'board' as const, icon: LayoutGrid, label: 'Board' },
                   { v: 'calendar' as const, icon: CalendarDays, label: 'Calendar' },
+                  { v: 'archived' as const, icon: Archive, label: 'Archived' },
                 ] as const
               ).map(({ v, icon: Icon, label }) => (
                 <button
@@ -378,23 +584,63 @@ export function BoardWorkspace() {
                 </button>
               ))}
             </div>
-            {labelDefs.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
               <div className="flex items-center gap-1.5">
-                <Filter className="w-3.5 h-3.5 text-gray-400" />
+                <Search className="w-3.5 h-3.5 text-gray-400" />
+                <input
+                  ref={searchRef}
+                  type="text"
+                  value={filterText}
+                  onChange={(e) => setFilterText(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Escape' && setFilterText('')}
+                  placeholder="Search cards (/)"
+                  className="px-2 py-1 text-xs rounded-md bg-white/5 border border-white/10 text-gray-300 placeholder-gray-600 focus:outline-none focus:border-purple-500/40 w-36"
+                />
+              </div>
+              {labelDefs.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <Filter className="w-3.5 h-3.5 text-gray-400" />
+                  <select
+                    value={filterLabel}
+                    onChange={(e) => setFilterLabel(e.target.value)}
+                    className="px-2 py-1 text-xs rounded-md bg-white/5 border border-white/10 text-gray-300 focus:outline-none focus:border-purple-500/40"
+                  >
+                    <option value="all">All labels</option>
+                    {labelDefs.map((l) => (
+                      <option key={l.id} value={l.name}>
+                        {l.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {assignees.length > 0 && (
                 <select
-                  value={filterLabel}
-                  onChange={(e) => setFilterLabel(e.target.value)}
+                  value={filterAssignee}
+                  onChange={(e) => setFilterAssignee(e.target.value)}
                   className="px-2 py-1 text-xs rounded-md bg-white/5 border border-white/10 text-gray-300 focus:outline-none focus:border-purple-500/40"
+                  aria-label="Filter by assignee"
                 >
-                  <option value="all">All labels</option>
-                  {labelDefs.map((l) => (
-                    <option key={l.id} value={l.name}>
-                      {l.name}
+                  <option value="all">All members</option>
+                  {assignees.map((a) => (
+                    <option key={a} value={a}>
+                      {a}
                     </option>
                   ))}
                 </select>
-              </div>
-            )}
+              )}
+              <select
+                value={filterDue}
+                onChange={(e) => setFilterDue(e.target.value)}
+                className="px-2 py-1 text-xs rounded-md bg-white/5 border border-white/10 text-gray-300 focus:outline-none focus:border-purple-500/40"
+                aria-label="Filter by due date"
+              >
+                <option value="all">Any due date</option>
+                <option value="overdue">Overdue</option>
+                <option value="soon">Due in 48h</option>
+                <option value="none">No due date</option>
+              </select>
+            </div>
           </div>
 
           {boardLoading && (
@@ -407,7 +653,7 @@ export function BoardWorkspace() {
           {!boardLoading && view === 'board' && (
             <div className="overflow-x-auto pb-2">
               <div className="flex gap-3 min-w-max items-start">
-                {board.columns.map((col) => {
+                {visibleColumns.map((col, colIdx) => {
                   const colCards = cardsIn(col.id);
                   return (
                     <div
@@ -425,11 +671,57 @@ export function BoardWorkspace() {
                       }`}
                     >
                       <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]">
-                        <span className="text-sm font-semibold text-gray-200">{col.name}</span>
-                        <div className="flex items-center gap-1.5">
+                        {editingColId === col.id ? (
+                          <input
+                            data-testid="column-name-input"
+                            type="text"
+                            value={colNameDraft}
+                            autoFocus
+                            onChange={(e) => setColNameDraft(e.target.value)}
+                            onBlur={() => renameColumn(col.id)}
+                            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                            className="text-sm font-semibold text-gray-200 bg-white/5 border border-purple-500/40 rounded px-1 py-0.5 focus:outline-none w-28"
+                            aria-label="Column name"
+                          />
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setEditingColId(col.id);
+                              setColNameDraft(col.name);
+                            }}
+                            className="text-sm font-semibold text-gray-200 hover:text-white text-left"
+                            title="Rename list"
+                          >
+                            {col.name}
+                          </button>
+                        )}
+                        <div className="flex items-center gap-1">
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/5 text-gray-400">
                             {colCards.length}
                           </span>
+                          <button
+                            onClick={() => moveColumn(col.id, colIdx - 1)}
+                            disabled={colIdx === 0}
+                            className="text-gray-600 hover:text-gray-300 disabled:opacity-30"
+                            aria-label="Move column left"
+                          >
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => moveColumn(col.id, colIdx + 1)}
+                            disabled={colIdx === visibleColumns.length - 1}
+                            className="text-gray-600 hover:text-gray-300 disabled:opacity-30"
+                            aria-label="Move column right"
+                          >
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => archiveColumn(col.id)}
+                            className="text-gray-600 hover:text-amber-400"
+                            aria-label="Archive column"
+                          >
+                            <Archive className="w-3.5 h-3.5" />
+                          </button>
                           <button
                             onClick={() => deleteColumn(col.id)}
                             className="text-gray-600 hover:text-red-400"
@@ -522,6 +814,29 @@ export function BoardWorkspace() {
                             <Plus className="w-3.5 h-3.5" />
                           </button>
                         </div>
+                        {quickErr[col.id] && (
+                          <p className="text-[11px] text-red-400 px-0.5" role="alert">
+                            {quickErr[col.id]}
+                          </p>
+                        )}
+                        {templates.length > 0 && (
+                          <select
+                            defaultValue=""
+                            onChange={(e) => {
+                              createFromTemplate(col.id, e.target.value);
+                              e.target.value = '';
+                            }}
+                            className="w-full px-2 py-1 text-[11px] rounded-md bg-white/5 border border-white/10 text-gray-400 focus:outline-none focus:border-purple-500/40"
+                            aria-label="Create card from template"
+                          >
+                            <option value="">New card from template…</option>
+                            {templates.map((t) => (
+                              <option key={t.id} value={t.id}>
+                                {t.name}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </div>
                     </div>
                   );
@@ -630,6 +945,72 @@ export function BoardWorkspace() {
                     </ol>
                   )}
                 </>
+              )}
+            </div>
+          )}
+
+          {/* ARCHIVED VIEW — archived cards + lists, all restorable */}
+          {!boardLoading && view === 'archived' && (
+            <div className="space-y-4">
+              {archivedCards.length === 0 && archivedColumns.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-8">
+                  Nothing archived. Archive a card or a list and it lands here, restorable any time.
+                </p>
+              )}
+              {archivedColumns.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-300 mb-2">Archived lists</h3>
+                  <div className="space-y-1.5">
+                    {archivedColumns.map((col) => (
+                      <div
+                        key={col.id}
+                        className="flex items-center justify-between px-3 py-2 rounded-md bg-white/[0.03] border border-white/[0.06]"
+                      >
+                        <span className="text-sm text-gray-300">
+                          {col.name}
+                          <span className="text-[11px] text-gray-500 ml-2">
+                            {board.cards.filter((c) => c.columnId === col.id).length} cards
+                          </span>
+                        </span>
+                        <button
+                          onClick={() => restoreColumn(col.id)}
+                          className="px-2.5 py-1 text-xs rounded-md bg-purple-500/20 text-purple-300 hover:bg-purple-500/30"
+                        >
+                          Restore
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {archivedCards.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-300 mb-2">Archived cards</h3>
+                  <div className="space-y-1.5">
+                    {archivedCards.map((card) => (
+                      <div
+                        key={card.id}
+                        className="flex items-center justify-between px-3 py-2 rounded-md bg-white/[0.03] border border-white/[0.06]"
+                      >
+                        <button
+                          onClick={() => setOpenCardId(card.id)}
+                          className="text-sm text-gray-300 hover:text-white text-left flex-1 truncate"
+                        >
+                          {card.title}
+                          <span className="text-[11px] text-gray-500 ml-2">
+                            {board.columns.find((c) => c.id === card.columnId)?.name || ''}
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => restoreCard(card.id)}
+                          className="px-2.5 py-1 text-xs rounded-md bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 shrink-0"
+                        >
+                          Restore
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           )}

@@ -389,7 +389,7 @@ export function DisplaysPanel() {
                 <div className="border-t border-white/10 pt-2">
                   <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Log impressions (manual count)</div>
                   <p className="text-[9px] text-gray-600 mb-1.5">Staff-observed foot-traffic count — Concord has no automated in-store sensor.</p>
-                  <div className="grid grid-cols-3 gap-1.5">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
                     <input
                       value={impressionDraft.count}
                       onChange={(e) => setImpressionDraft({ ...impressionDraft, count: e.target.value })}
@@ -421,7 +421,7 @@ export function DisplaysPanel() {
                 <div className="border-t border-white/10 pt-2">
                   <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Record conversion</div>
                   <p className="text-[9px] text-gray-600 mb-1.5">Must be a real order from your order book — never a free-floating count.</p>
-                  <div className="grid grid-cols-3 gap-1.5">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
                     <select
                       value={convertOrderId}
                       onChange={(e) => setConvertOrderId(e.target.value)}

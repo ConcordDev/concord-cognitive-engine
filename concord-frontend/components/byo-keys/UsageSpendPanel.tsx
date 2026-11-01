@@ -66,7 +66,7 @@ export function UsageSpendPanel() {
 
       {!loading && hasUsage && data && (
         <>
-          <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
             <div className="rounded-lg bg-zinc-950 ring-1 ring-zinc-800 p-3">
               <div className="text-[10px] uppercase tracking-wide text-zinc-400">Est. spend (all time)</div>
               <div className="text-lg font-semibold text-emerald-400">{fmtUsd(data.totals.costUsd)}</div>

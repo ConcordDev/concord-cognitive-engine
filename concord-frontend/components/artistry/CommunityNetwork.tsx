@@ -118,7 +118,7 @@ export function CommunityNetwork() {
       {/* Follow graph */}
       <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
         <h3 className="text-sm font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-neon-pink" /> Your Network</h3>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           {[
             { label: 'Following', value: graph?.followingCount ?? 0 },
             { label: 'Followers', value: graph?.followerCount ?? 0 },

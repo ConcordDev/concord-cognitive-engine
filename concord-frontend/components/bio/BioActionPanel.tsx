@@ -146,7 +146,7 @@ export function BioActionPanel() {
     try {
       const task = `Molecular bio bench. ${seqResult ? `${seqResult.length} ${seqKind === 'protein' ? 'aa' : 'bp'} ${seqKind.toUpperCase()}, GC ${seqResult.gcPercent ?? '-'}%, Tm ${seqResult.tm ?? '-'}°C${(seqResult.orfs?.length ?? 0) > 0 ? `, ${seqResult.orfs?.length} ORFs` : ''}.` : ''} ${primerResult ? `Primer Tm: F=${primerResult.forward.tm}°C / R=${primerResult.reverse.tm}°C.` : ''} ${alignResult ? `Alignment identity ${alignResult.identity}%.` : ''} Identify the most likely experimental purpose + one optimization. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Bench brief ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

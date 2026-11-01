@@ -171,7 +171,7 @@ export default function registerReposActions(registerLensAction) {
           return {
             ok: false,
             error: "ast_engine_unavailable",
-            message: "The TypeScript parser package is not loadable on this server, so complexity can't be honestly computed from source text.",
+            message: "The TypeScript parser package's compiler API is not available on this server, so complexity can't be honestly computed from source text.",
           };
         }
         analyzed.push(m);

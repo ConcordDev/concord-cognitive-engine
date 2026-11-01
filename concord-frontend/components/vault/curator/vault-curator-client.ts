@@ -94,7 +94,15 @@ export async function runVaultMacro<T = Record<string, unknown>>(
     }
     return { ok: true, result: payload as T, reason: null, detail: null };
   } catch (e) {
-    const status = (e as { response?: { status?: number } })?.response?.status;
+    const resp = (e as { response?: { status?: number; data?: unknown } })?.response;
+    const status = resp?.status;
+    // /api/lens/run answers a handler refusal ({ ok:false, reason }) with an HTTP 4xx and the refusal in the
+    // body (lib/lens-run-http.js), which axios throws. Read the reason out of it so `not_a_curator`,
+    // `curator_statement_too_short` and the rest reach `refusalCopy` instead of reading as "unreachable".
+    const body = resp?.data && typeof resp.data === 'object' ? (resp.data as RawEnvelope) : null;
+    if (body && typeof body.reason === 'string' && body.reason) {
+      return { ok: false, result: null, reason: body.reason, detail: typeof body.detail === 'string' ? body.detail : null };
+    }
     if (status === 401) return { ok: false, result: null, reason: 'transport_auth_required', detail: null };
     if (status === 403) return { ok: false, result: null, reason: 'transport_forbidden', detail: null };
     return {

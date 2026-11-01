@@ -9,7 +9,7 @@ import React from 'react';
 
 const { lensRun, authUser } = vi.hoisted(() => ({
   lensRun: vi.fn(),
-  authUser: { current: null as { username: string } | null },
+  authUser: { current: null as { id: string; username: string } | null },
 }));
 
 vi.mock('@/components/lens/LensShell', () => ({
@@ -17,6 +17,7 @@ vi.mock('@/components/lens/LensShell', () => ({
     React.createElement('div', null, children),
 }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: authUser.current, isLoading: false, isAuthenticated: !!authUser.current }),
 }));
@@ -39,13 +40,16 @@ const own = {
 
 beforeEach(() => {
   lensRun.mockReset();
-  authUser.current = null;
+  authUser.current = { id: 'u1', username: 'ramaj' };
 });
 
 function cabinet() {
   lensRun.mockImplementation(async (domain: string, action: string, input?: { content?: string; citedDtuId?: string }) => {
     if (domain === 'vault' && action === 'browse') {
       return { data: { ok: true, result: { records: [{ id: 'vsub_pub', title: 'Public tape', status: 'admitted' }] }, error: null } };
+    }
+    if (domain === 'vault' && action === 'curators') {
+      return { data: { ok: true, result: { curators: [] }, error: null } };
     }
     if (domain === 'vault' && action === 'my_submissions') {
       return { data: { ok: true, result: { submissions: [own] }, error: null } };
@@ -106,8 +110,11 @@ describe('vault submission keep', () => {
   it('does not offer Keep on an admitted work that is not the user\'s submission', async () => {
     cabinet();
     const view = render(<VaultPage />);
-    fireEvent.click(await view.findByRole('button', { name: /Public tape/ }));
-    expect(await view.findByRole('heading', { name: 'Public tape' })).toBeTruthy();
-    await waitFor(() => expect(view.queryByRole('button', { name: 'Keep as DTU' })).toBeNull());
+    expect(await view.findByTestId('vault-hall')).toHaveTextContent('Public tape');
+    fireEvent.click(view.getByRole('button', { name: /Public tape/ }));
+    expect(view.queryByRole('button', { name: 'Keep as DTU' })).toBeNull();
+    // Keep only appears once the user's own submission is opened.
+    fireEvent.click(await view.findByRole('button', { name: /Night tape/ }));
+    await waitFor(() => expect(view.queryByRole('button', { name: 'Keep as DTU' })).not.toBeNull());
   });
 });

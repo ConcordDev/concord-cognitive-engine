@@ -45,10 +45,10 @@ export function RunwayForecast() {
 
       {loading ? (
         <div className="p-4 space-y-3" aria-busy="true">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} variant="block" height="3.5rem" />)}
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} variant="block" height="3.5rem" />)}
           </div>
           <Skeleton variant="block" height="14rem" />
@@ -57,13 +57,13 @@ export function RunwayForecast() {
         <div className="p-10 text-center text-xs text-gray-400">No forecast data yet.</div>
       ) : (
         <div className="p-4 space-y-3">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             <Tile label="Cash" value={`$${data.cashOnHand.toLocaleString()}`} />
             <Tile label="+ A/R" value={`$${data.openInvTotal.toLocaleString()}`} />
             <Tile label="− A/P" value={`$${data.openBillsTotal.toLocaleString()}`} />
             <Tile label="Liquidity" value={`$${data.liquidity.toLocaleString()}`} bold />
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Tile label="Net monthly" value={`${data.monthlyNet >= 0 ? '+' : ''}$${data.monthlyNet.toLocaleString()}`} tone={data.monthlyNet >= 0 ? 'positive' : 'negative'} />
             <Tile label="Monthly burn" value={`$${data.monthlyBurn.toLocaleString()}`} tone="negative" />
             <Tile label="Runway" value={data.runwayMonths !== null ? `${data.runwayMonths} mo` : 'profitable'} tone={data.runwayMonths === null ? 'positive' : data.runwayMonths < 6 ? 'negative' : 'neutral'} bold />

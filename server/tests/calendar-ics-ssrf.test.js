@@ -37,7 +37,9 @@ describe("icsUrlProblem (save-time check)", () => {
 });
 
 describe("accounts-connect", () => {
-  it("refuses hostile feed URLs with no account stored and no outbound request", async () => {
+  // accounts-connect is async since F14: it fetches + parse-checks the feed (through the same SSRF-guarded
+  // transport) before the account exists, so a bogus URL can never become a "connected" account.
+  it("refuses hostile feed URLs with no account stored and makes no request", async () => {
     let requests = 0;
     __setPublicFetchTestTransport(async () => { requests++; return { ok: true, status: 200, text: async () => FEED }; });
     for (const u of HOSTILE.filter((x) => /^https?:/i.test(x))) {
@@ -45,10 +47,10 @@ describe("accounts-connect", () => {
       assert.equal(r.ok, false, u);
       assert.match(r.error, /icsUrl/, u);
     }
+    assert.equal(requests, 0, "hostile URLs are refused before any outbound request");
     assert.equal(call("accounts-list", ctx).result.accounts.length, 0);
-    assert.equal(requests, 0, "no feed request was made for any hostile URL");
   });
-  it("still connects a public feed URL (validated through the guarded transport)", async () => {
+  it("still connects a public feed URL (its feed validates)", async () => {
     __setPublicFetchTestTransport(async () => ({ ok: true, status: 200, text: async () => FEED }));
     assert.equal((await call("accounts-connect", ctx, { label: "ok", icsUrl: "https://calendar.google.com/x.ics" })).ok, true);
   });
@@ -59,7 +61,7 @@ describe("accounts-sync", () => {
     let requests = 0;
     __setPublicFetchTestTransport(async () => { requests++; return { ok: true, status: 200, text: async () => FEED }; });
     const a = (await call("accounts-connect", ctx, { label: "legacy", icsUrl: "https://calendar.google.com/x.ics" })).result.account;
-    requests = 0; // the connect-time validation fetch is allowed; the SYNC of a hostile stored URL is not
+    requests = 0; // connect validated the feed once; the sync below must make none
     a.icsUrl = "http://169.254.169.254/latest/meta-data/";
     const r = await call("accounts-sync", ctx, { id: a.id });
     assert.equal(r.ok, false);
@@ -126,11 +128,10 @@ describe("fetchIcsText", () => {
 });
 
 describe("wiring", () => {
-  it("calendar.js has no bare fetch(icsUrl)/fetch(account.icsUrl); connect and sync both use the guarded helper", () => {
+  it("calendar.js has no bare fetch(icsUrl)/fetch(account.icsUrl)", () => {
     const src = fs.readFileSync(path.join(here, "..", "domains", "calendar.js"), "utf8");
     assert.ok(!/fetch\((account\.)?icsUrl\)/.test(src));
     assert.match(src, /fetchIcsText\(account\.icsUrl\)/);
-    assert.match(src, /fetchIcsText\(icsUrl\)/);
     assert.match(src, /icsUrlProblem\(icsUrl\)/);
   });
 });

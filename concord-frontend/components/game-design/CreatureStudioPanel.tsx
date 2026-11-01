@@ -235,7 +235,7 @@ export function CreatureStudioPanel({ onChange }: { gameId: string; onChange: ()
 
             <div>
               <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide mb-1.5">Body plan (topology)</p>
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
                 {TOPOLOGIES.map((t) => {
                   const active = topology === t.id;
                   return (
