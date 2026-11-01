@@ -180,6 +180,8 @@ import { createLoopBlockSampler } from "./lib/loop-block-attribution.js";
 import { HUB_WORLD_ID, canonicalWorldId } from "./lib/world-ids.js";
 import { uniqueTmpPath, writeFileAtomicSync, createSnapshotOrdering, sweepStaleStateTmps } from "./lib/state-file-write.js";
 import { runConsolidationCycle } from "./lib/consolidation-cycle.js";
+import { createVerifyGateService } from "./lib/verify-gate/service.js";
+import { proveClaim as _vgProveClaim } from "./lib/proof-gate.js";
 import { consolidatedTitle, stripTierPrefix, screenClusterMembers, memberSetKey, createRejectionCache, bump as _consoBump } from "./lib/consolidation-dedupe.js";
 import { budgetDemotions, clusterTitleSeed, synthesizeConsolidatedBody, absorbTarget as _consoAbsorbTarget, growConsolidatedNode } from "./lib/consolidation-synthesis.js";
 // Clusters the quality gates rejected: not rebuilt for 24h (lib/consolidation-dedupe.js).
@@ -1859,6 +1861,21 @@ registerHeartbeat("scheduled-posts", {
 // the window so the heartbeat can fire harmlessly at any tick. We
 // schedule every 60 ticks (~15 min) so the window is reliably hit
 // even if the heartbeat misses a tick under load.
+// Verification gate: drain the queue (a few candidates, time-boxed, yielding) and re-check a small batch of
+// existing megas/hypers that have no receipt yet. Parent-only: it reads the live DTU map.
+registerHeartbeat("verify-gate-cycle", {
+  frequency: 8,
+  scope: "global",
+  handler: async () => {
+    try {
+      return { ok: true, ...(await getVerifyGate().cycle()) };
+    } catch (err) {
+      structuredLog("warn", "verify_gate_cycle_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
+
 registerHeartbeat("brain-daily-refresh", {
   frequency: 60,
   // Track A — brain in-context training runs against the shared model
@@ -45613,6 +45630,58 @@ async function absorbConsolidatedPromotion(promotionResult, cluster) {
 // committed and absorbed at least one member. It used to count every cluster
 // it looked at (done++ before the try), so skipped and rejected clusters
 // showed up as megaPromoted/hyperPromoted.
+// ── Verification gate (lib/verify-gate/*) ───────────────────────────────────
+// Theories, megas and hypers only stay if their claims check out. Lazy singleton so nothing here runs at
+// module-eval time. Mode via CONCORD_VERIFY_GATE_MODE: off | observe (default) | enforce.
+let _verifyGateSvc = null;
+let _vgIter = null;
+function getVerifyGate() {
+  if (_verifyGateSvc) return _verifyGateSvc;
+  _verifyGateSvc = createVerifyGateService({
+    store: {
+      get: (id) => STATE.dtus.get(id) || null,
+      annotate: (id, v) => { const d = STATE.dtus.get(id); if (!d) return; d.meta = { ...(d.meta || {}), verification: v }; upsertDTU(d, { broadcast: false }); },
+      demote: (id, { tier, tag, from }) => {
+        const d = STATE.dtus.get(id); if (!d) return;
+        d.meta = { ...(d.meta || {}), demotedFrom: from, demotedBy: "verify-gate", demotedAt: new Date().toISOString() };
+        d.tier = tier;
+        d.tags = [...new Set([...(Array.isArray(d.tags) ? d.tags : []), tag])];
+        upsertDTU(d, { broadcast: false });
+      },
+      quarantine: (id, reason) => {
+        const d = STATE.dtus.get(id); if (!d) return;
+        d.tags = [...new Set([...(Array.isArray(d.tags) ? d.tags : []), `quarantine:${reason}`])];
+        upsertDTU(d, { broadcast: false });
+      },
+      // resumable pass over the DTU map, a few hundred entries per call, never the whole store at once
+      scan: (maxExamine) => {
+        if (!_vgIter) _vgIter = STATE.dtus.values();
+        const found = []; let examined = 0;
+        while (examined < maxExamine) {
+          const n = _vgIter.next();
+          if (n.done) { _vgIter = null; break; }
+          examined++;
+          const d = n.value;
+          if ((d?.tier === "mega" || d?.tier === "hyper") && (!d.meta?.verification || d.meta.verification.outcome === "PENDING")) found.push(d);
+        }
+        return { examined, found };
+      },
+    },
+    deps: {
+      dtuExists: async (id) => STATE.dtus.has(id) || Boolean(db?.prepare?.("SELECT 1 FROM dtus WHERE id = ? LIMIT 1").get(id)),
+      yieldNow: () => new Promise((resolve) => { setImmediate(resolve); }),
+      proveClaim: _vgProveClaim,
+      brainFn: async (messages) => {
+        const c = makeInternalCtx("verify-gate");
+        const sys = messages.find((m) => m.role === "system")?.content || null;
+        const r = await c.llm.chat({ system: sys, messages: messages.filter((m) => m.role !== "system"), slot: "subconscious", timeoutMs: 60000, maxTokens: 1500 });
+        return { text: r?.ok ? String(r.content || "") : "" };
+      },
+    },
+  });
+  return _verifyGateSvc;
+}
+
 async function _promoteClusterBatch(ctx, clusters, { tier, minCluster, budgetMs, startedAt }) {
   let attempted = 0;
   let promotedCount = 0;
@@ -45678,6 +45747,8 @@ async function _promoteClusterBatch(ctx, clusters, { tier, minCluster, budgetMs,
       logger.debug('server', 'silent catch', { error: _e?.message });
     }
   }
+  // New and grown nodes go to the verification gate (async, budgeted; observe mode only annotates).
+  try { for (const id of [...megaIds, ...grownIds]) getVerifyGate().submit(id); } catch (_e) { logger.debug("server", "verify-gate submit", { error: _e?.message }); }
   structuredLog("info", "consolidation_promote_batch", {
     tier, candidates: batch.length, attempted, promoted: promotedCount, absorbed: absorbedTotal,
     grown, absorbedIntoExisting: absorbedExisting, skips, megaIds: megaIds.slice(0, 8), grownIds: grownIds.slice(0, 8),
@@ -63815,6 +63886,15 @@ mountAdminHeartbeatRoutes(app, { requireRole, getState: () => STATE, save: () =>
 app.get("/api/admin/dtu-quality", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
   try {
     return res.json({ ok: true, totalDtus: STATE.dtus.size, ...getDtuQuality().metrics() });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/admin/verify-gate", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try {
+    const svc = getVerifyGate();
+    return res.json({ ok: true, ...svc.metrics(), rejected: svc.rejected().slice(-20) });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
