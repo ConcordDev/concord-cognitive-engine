@@ -59,22 +59,38 @@ interface CommitGraphNode { sha: string; message: string; author: string; branch
 const DOMAIN = 'repos';
 
 /**
- * Envelope helper — /api/lens/run wraps a macro's own return as
- * { ok: true, result: <macro return> }. The macro's own return is itself
- * either { ok:true, result:<data> } (peeled server-side to just <data>) or
- * { ok:false, error } (passed through unchanged, still under transport
- * `ok:true`). So a transport-level `ok:true` does NOT mean the macro
- * succeeded — reading only that field mislabels a real macro failure as
- * success data (the exact envelope-unwrap bug this program watches for).
- * runX() interprets both layers correctly and every call site below reads
- * both `ok` and `error` off it — never just the transport layer.
+ * Envelope helper — the current server contract (server/lib/
+ * lens-run-http.js): a macro success is { ok:true, result:<data> },
+ * peeled server-side to just <data>; a macro refusal is shaped to a
+ * 4xx whose body is the macro's own { ok:false, error:<code>,
+ * message:<human> } at the top level, and lensRun surfaces it as
+ * data { ok:false, error:<code>, message:<human> }. A transport-level
+ * `ok:true` therefore does NOT mean the macro succeeded, and a
+ * failure's `error` is a machine code, not display text — the display
+ * text is `message`. runX() interprets both layers: call sites read
+ * `ok`, the human `error` (for banners), and the machine `code` (for
+ * branching, e.g. the empty-content confirm) off it.
  */
 interface Envelope<T> { ok: boolean; data: T | null; error: string | null; code: string | null; }
 
 async function runX<T = any>(name: string, params: Record<string, unknown>): Promise<Envelope<T>> {
   try {
     const r = await lensRun<any>(DOMAIN, name, params);
-    if (!r.data?.ok) return { ok: false, data: null, error: 'network error', code: null };
+    if (!r.data?.ok) {
+      // A shaped macro refusal (see the envelope note above): show the
+      // server's human message, keep the machine code in `code` for
+      // branch-on-code flows. Collapsing every refusal to the literal
+      // 'network error' was the F15 pattern — business rules (a branch
+      // under an open PR, an empty commit message) bannered as
+      // transport failures while their real reasons sat in the body.
+      const code = r.data?.error ? String(r.data.error) : null;
+      const human = (r.data as { message?: string | null })?.message;
+      return {
+        ok: false, data: null,
+        error: human || (code ? code.replace(/_/g, ' ') : 'request failed'),
+        code,
+      };
+    }
     const inner = r.data.result;
     if (inner && typeof inner === 'object' && inner.ok === false) {
       // The macro's human `message` is what the user reads; the
@@ -928,6 +944,22 @@ function PullsTab({ repoId }: { repoId: string }) {
       await load();
     } else { setErr(r.error || 'merge failed'); }
   };
+  // F15: the close path — a PR could only leave OPEN by merging, so a
+  // stale pull (and any branch under it, whose delete guard reads
+  // "merge or close it first") was stuck forever.
+  const setPullState = async (state: 'open' | 'closed') => {
+    if (!detail) return;
+    setBusy('state'); setErr(null); setNotice(null);
+    const r = await runX('pull-set-state', { repoId, number: detail.pull.number, state });
+    setBusy(null);
+    if (r.ok) {
+      setNotice(state === 'closed'
+        ? `Pull request #${detail.pull.number} closed — nothing was merged. It can be reopened from here.`
+        : `Pull request #${detail.pull.number} reopened.`);
+      await openDetail(detail.pull.number);
+      await load();
+    } else { setErr(r.error); }
+  };
   const postComment = async () => {
     if (!detail || !commentBody.trim()) return;
     setBusy('comment'); setErr(null);
@@ -976,6 +1008,16 @@ function PullsTab({ repoId }: { repoId: string }) {
             {detail.pull.state === 'open' && (
               <button onClick={merge} disabled={busy === 'merge' || !detail.mergeable} className="rounded bg-purple-600 px-2 py-1 text-[10px] text-white disabled:opacity-40">
                 {busy === 'merge' ? 'Merging…' : 'Merge'}
+              </button>
+            )}
+            {detail.pull.state === 'open' && (
+              <button onClick={() => setPullState('closed')} disabled={busy === 'state'} className="rounded border border-zinc-600 px-2 py-1 text-[10px] text-zinc-200 hover:border-rose-500/60 hover:text-rose-300 disabled:opacity-40">
+                {busy === 'state' ? 'Closing…' : 'Close'}
+              </button>
+            )}
+            {detail.pull.state === 'closed' && (
+              <button onClick={() => setPullState('open')} disabled={busy === 'state'} className="rounded border border-zinc-600 px-2 py-1 text-[10px] text-zinc-200 hover:border-green-500/60 hover:text-green-300 disabled:opacity-40">
+                {busy === 'state' ? 'Reopening…' : 'Reopen'}
               </button>
             )}
           </div>
