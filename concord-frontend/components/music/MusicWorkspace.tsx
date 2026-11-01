@@ -80,6 +80,7 @@ import { TrackCard } from '@/components/music/TrackCard';
 import { ArtistProfile } from '@/components/music/ArtistProfile';
 // AlbumView unused — album support pending
 import { UploadFlow } from '@/components/music/UploadFlow';
+import { ArrangementSketch } from '@/components/studio/ArrangementSketch';
 import { PreviewAwareMedia } from '@/components/media/PreviewAwareMedia';
 import { describeUploadError, freeListenOnlyTiers, normalizeTrackRow, rawUploadQuery } from '@/lib/music/upload';
 import { PlaylistView } from '@/components/music/PlaylistView';
@@ -961,6 +962,9 @@ export function MusicWorkspace() {
                     </motion.div>
                   ))}
                 </div>
+
+                {/* Arrangement Sketch: Section Markers + Audio Pins on a Studio project (same records the Studio sees) */}
+                <ArrangementSketch lens="music" />
 
                 {/* Genre Color Tags */}
                 {Object.keys(genreGroups).length > 0 && (
