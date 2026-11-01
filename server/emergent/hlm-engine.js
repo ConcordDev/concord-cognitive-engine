@@ -52,7 +52,11 @@ const STALE_DAYS = 90;
 
 // ── In-Memory State ─────────────────────────────────────────────────────────
 
-const hlmPasses = new Map();        // passId → pass result
+// A full pass (clusters, orphans, gaps, hierarchy/lineage/tag issues) measured ~34 MB per 3k DTUs and nothing reads an
+// old pass back (only the count is exposed), so keeping 50-100 of them grew the heap ~2 GB over 2.5 h of idle uptime
+// (heapUsedPct 25% -> 85%). Keep only the latest few; counters in hlmMetricsStore carry the history.
+export const HLM_MAX_STORED_PASSES = Math.max(1, Number(process.env.CONCORD_HLM_STORED_PASSES) || 2);
+const hlmPasses = new Map();        // passId → pass result (insertion order = age)
 const hlmRecommendations = new LruMap(); // recId → recommendation
 const hlmMetricsStore = {
   totalPasses: 0,
@@ -1347,10 +1351,7 @@ export function recordHLMPass(pass, { replayRecommendations = false } = {}) {
 
   // Store the pass
   hlmPasses.set(pass.passId, pass);
-  if (hlmPasses.size > 100) {
-    const oldest = Array.from(hlmPasses.keys()).slice(0, hlmPasses.size - 50);
-    for (const k of oldest) hlmPasses.delete(k);
-  }
+  while (hlmPasses.size > HLM_MAX_STORED_PASSES) hlmPasses.delete(hlmPasses.keys().next().value);
 
   // Update metrics
   hlmMetricsStore.totalPasses++;
