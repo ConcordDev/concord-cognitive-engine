@@ -3572,6 +3572,11 @@ async function gracefulShutdown(signal) {
   } catch (e) {
     console.error("[Shutdown] State save failed:", e.message);
   }
+  // Drain the WAL off-thread NOW: the state snapshot just written is the last big write, and db.close() will skip
+  // its own checkpoint (the worker's connection is open, so it is not the last one). The worker copies it during
+  // the feed-flush wait below. Fire-and-forget: it must not add to the ~5 s launchd stop window (a synchronous
+  // TRUNCATE here did, #1962), and a TDZ/absent worker just means no drain.
+  try { _walCheckpointer?.checkpointNow?.(); } catch { /* informational */ }
 
   // Final DB backup on every graceful shutdown (2026-08-24 — local-disk DB
   // migration). DB_PATH now lives on the container's ephemeral local disk
@@ -6693,7 +6698,8 @@ function initDatabase() {
       _walCheckpointer = startWalCheckpointer(DB_PATH, {
         thresholdBytes: walPages * 4096,
         onReady: () => { db.pragma("wal_autocheckpoint = 0"); structuredLog("info", "wal_checkpointer_started", { thresholdBytes: walPages * 4096 }); },
-        onResult: (r) => { if (r.early && !r.failed && !r.busy && r.ms < 100) return; structuredLog(r.failed || r.busy ? "warn" : "info", "wal_checkpoint", { ms: r.ms, walBytes: r.walBytes, busy: r.busy, log: r.log, checkpointed: r.checkpointed, error: r.error }); },
+        onBacklog: (b) => structuredLog("info", "wal_boot_backlog", { frames: b.log, checkpointed: b.checkpointed, pending: b.log != null && b.checkpointed != null ? b.log - b.checkpointed : null }),
+        onResult: (r) => { if (r.early && !r.forced && !r.failed && !r.busy && r.ms < 100) return; structuredLog(r.failed || r.busy ? "warn" : "info", "wal_checkpoint", { ms: r.ms, walBytes: r.walBytes, busy: r.busy, log: r.log, checkpointed: r.checkpointed, error: r.error }); },
         onFallback: (reason) => { try { db.pragma(`wal_autocheckpoint = ${walPages}`); } catch { /* db closing */ } structuredLog("warn", "wal_checkpointer_fallback", { reason }); },
       });
       // WAL size at open (file metadata only): tells the next boot-stall read whether
