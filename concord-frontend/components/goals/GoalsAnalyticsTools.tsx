@@ -40,7 +40,7 @@ function useObjectiveOptions(): ObjectiveOption[] {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const r = await lensRun('goals', 'alignmentTree', { op: 'list' });
+      const r = await lensRun<{ flat?: Array<{ id: string; title: string; keyResults?: string[]; progress?: number | null }> }>('goals', 'alignmentTree', { op: 'list' });
       if (!cancelled && r.data?.ok && r.data.result) {
         setObjectives((r.data.result.flat || []).map((o) => ({
           id: o.id, title: o.title, keyResults: o.keyResults || [], progress: o.progress ?? null,
