@@ -44,6 +44,7 @@ describe("media router reserved single-segment GET paths", () => {
   it("source pin: /:id carries the reserved-segment guard", () => {
     const src = fs.readFileSync(new URL("../routes/media.js", import.meta.url), "utf8");
     assert.match(src, /router\.get\("\/:id", _skipReservedMediaSegment,/);
-    assert.match(src, /RESERVED_MEDIA_SEGMENTS = new Set\(\["feed", "metrics", "constants"\]\)/);
+    // "public-feed" is the signed-out visitor catalog (GB-0664); it must never be read as a media id.
+    assert.match(src, /RESERVED_MEDIA_SEGMENTS = new Set\(\["feed", "public-feed", "metrics", "constants"\]\)/);
   });
 });

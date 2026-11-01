@@ -1081,6 +1081,60 @@ function computeEngagementScore(dtu, now) {
 /**
  * Get author display name from social profiles.
  */
+/**
+ * Public, signed-out-safe catalog of media (the Music / Market lenses' visitor browse).
+ *
+ * Only `privacy === "public"` items that are not an unpublished podcast draft appear;
+ * private, followers-only and scheduled items never do. Every field is whitelisted: no
+ * author user id, no licence holders, no storage paths, no tier prices, no per-viewer
+ * flags. `authorName` is a profile display name only, never a raw user id.
+ */
+export const PUBLIC_PREVIEW_SECONDS = 30;
+export function getPublicMediaCatalog(STATE, options = {}) {
+  const media = getMediaState(STATE);
+  const tab = options.tab === "trending" ? "trending" : "latest";
+  const limit = Math.max(1, Math.min(50, Number(options.limit) || 20));
+  const offset = Math.max(0, Number(options.offset) || 0);
+  const mediaType = ["audio", "video"].includes(options.mediaType) ? options.mediaType : null;
+  const q = options.q ? String(options.q).toLowerCase().trim().slice(0, 80) : "";
+
+  let items = Array.from(media.mediaDTUs.values()).filter((dtu) =>
+    (dtu.privacy || "public") === "public"
+    && canAccessMediaDTU(STATE, dtu, null).allowed
+    && !draftMediaHiddenFromViewer(STATE, dtu, null)
+    && (!mediaType ? ["audio", "video"].includes(dtu.mediaType) : dtu.mediaType === mediaType));
+  if (q) {
+    items = items.filter((d) => `${d.title || ""} ${d.description || ""} ${(d.tags || []).join(" ")}`.toLowerCase().includes(q));
+  }
+  const now = Date.now();
+  if (tab === "trending") items.sort((a, b) => computeEngagementScore(b, now) - computeEngagementScore(a, now));
+  else items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const social = STATE._social;
+  const displayName = (id) => {
+    const p = social?.profiles?.get?.(id);
+    const name = typeof p?.displayName === "string" ? p.displayName.trim() : "";
+    // A display name that looks like an email address is contact data, not a byline: never show it.
+    return name && !name.includes("@") ? name.slice(0, 80) : null;
+  };
+  const page = items.slice(offset, offset + limit).map((d) => ({
+    id: d.id,
+    title: String(d.title || "").slice(0, 200),
+    description: String(d.description || "").slice(0, 400),
+    mediaType: d.mediaType,
+    mimeType: d.mimeType || null,
+    duration: Number(d.duration) > 0 ? Number(d.duration) : null,
+    tags: Array.isArray(d.tags) ? d.tags.slice(0, 12).map((t) => String(t).slice(0, 40)) : [],
+    createdAt: d.createdAt,
+    authorName: displayName(d.author),
+    views: d.engagement?.views || 0,
+    likes: d.engagement?.likes || 0,
+    streamUrl: `/api/media/${d.id}/stream`,
+    previewSeconds: PUBLIC_PREVIEW_SECONDS,
+  }));
+  return { ok: true, items: page, total: items.length, limit, offset, previewSeconds: PUBLIC_PREVIEW_SECONDS };
+}
+
 function getAuthorName(STATE, authorId) {
   const social = STATE._social;
   if (social && social.profiles.has(authorId)) {
