@@ -406,6 +406,7 @@ registerHeartbeat("economy-anomaly-cycle", {
 import { runLiteraryResonanceCycle } from "./emergent/literary-resonance-cycle.js";
 import { mountAdminHeartbeatRoutes } from "./lib/admin-heartbeat.js";
 import { applyVerifyAdmins, mountUserRoleRoute } from "./lib/verify-admins.js";
+import { mountGutenbergIngestRoutes } from "./lib/literary-gutenberg.js";
 registerHeartbeat("literary-resonance-cycle", {
   frequency: 200,
   scope: "global",
@@ -63949,6 +63950,11 @@ mountUserRoleRoute(app, { requireRole, getDb: () => db, bustUserCache, log: stru
 // Admin-tier heartbeat switch (owner|admin|founder; only heartbeatEnabled) — see lib/admin-heartbeat.js.
 mountAdminHeartbeatRoutes(app, { requireRole, getState: () => STATE, save: () => saveStateSync(), clearMemoryPause, persistableSettings, log: structuredLog,
   startDispatcher: () => startGovernorDispatcherLive(), stopDispatcher: () => stopGovernorDispatcherLive(), dispatcherStatus: () => governorDispatcherStatus() });
+
+// Literary (Project Gutenberg) ingest, in-process on the running server's db handle —
+// replaces running scripts/ingest-gutenberg.mjs against the live DB. Admin-only,
+// single-flight, rate-limited, idempotent. See lib/literary-gutenberg.js.
+mountGutenbergIngestRoutes(app, { requireRole, getDb: () => db, log: structuredLog });
 
 app.get("/api/admin/dtu-quality", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
   try {

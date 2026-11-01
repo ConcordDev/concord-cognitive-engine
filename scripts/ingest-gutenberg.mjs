@@ -14,14 +14,23 @@
  *   node scripts/ingest-gutenberg.mjs --db=/path/concord.db
  *   node scripts/ingest-gutenberg.mjs --self-test  # offline: ingest one bundled passage
  *
+ * LIVE SERVER: do NOT run this against the database a running backend has open
+ * (second writer + migrations under a live server). It refuses the default live
+ * path server/data/concord.db. On a live deploy use the admin route instead:
+ *   POST /api/admin/literary-ingest/gutenberg   (owner/admin; GET for progress)
+ * which runs the same manifest through the same ingestWork() inside the server.
+ * This script remains a dev/offline tool for a non-live database (--db=...).
+ *
  * Sovereignty: reads from the public mirror only; writes locally; no telemetry.
  */
 
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
 import { runMigrations } from "../server/migrate.js";
 import { ingestWork } from "../server/lib/literary-ingest.js";
+import { GUTENBERG_MANIFEST as MANIFEST, fetchGutenbergText as fetchText, stripGutenbergBoilerplate as stripBoilerplate } from "../server/lib/literary-gutenberg.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // better-sqlite3 lives in server/node_modules — resolve from there.
@@ -38,65 +47,6 @@ const MAX = Number(getArg("max", Infinity));
 const SELF_TEST = args.includes("--self-test");
 const DB_PATH = getArg("db", process.env.DB_PATH || path.join(__dirname, "..", "server", "data", "concord.db"));
 
-// ── Tier-1 manifest (cross-domain "highest resonance" starter set) ────────────
-// gutenbergId is the canonical PG number; metadata is authored here so the
-// corpus is tagged even if the work's own front-matter is sparse.
-const MANIFEST = [
-  { gutenbergId: "1524", title: "Hamlet", author: "William Shakespeare", era: "renaissance", genre: "drama", themes: ["mortality", "revenge", "madness"] },
-  { gutenbergId: "1513", title: "Romeo and Juliet", author: "William Shakespeare", era: "renaissance", genre: "drama", themes: ["love", "fate", "feud"] },
-  { gutenbergId: "1727", title: "The Odyssey", author: "Homer", era: "antiquity", genre: "epic", themes: ["journey", "cunning", "homecoming"] },
-  { gutenbergId: "1342", title: "Pride and Prejudice", author: "Jane Austen", era: "regency", genre: "novel", themes: ["class", "marriage", "pride"] },
-  { gutenbergId: "1400", title: "Great Expectations", author: "Charles Dickens", era: "victorian", genre: "novel", themes: ["ambition", "guilt", "redemption"] },
-  { gutenbergId: "2701", title: "Moby Dick", author: "Herman Melville", era: "romantic", genre: "novel", themes: ["obsession", "nature", "fate"] },
-  { gutenbergId: "1080", title: "A Modest Proposal", author: "Jonathan Swift", era: "enlightenment", genre: "satire", themes: ["irony", "ethics", "poverty"] },
-  { gutenbergId: "1497", title: "The Republic", author: "Plato", era: "antiquity", genre: "philosophy", themes: ["justice", "power", "the-good"] },
-  { gutenbergId: "1232", title: "The Prince", author: "Niccolo Machiavelli", era: "renaissance", genre: "philosophy", themes: ["power", "statecraft", "virtue"] },
-  { gutenbergId: "844", title: "The Importance of Being Earnest", author: "Oscar Wilde", era: "victorian", genre: "drama", themes: ["identity", "wit", "society"] },
-  { gutenbergId: "98", title: "A Tale of Two Cities", author: "Charles Dickens", era: "victorian", genre: "novel", themes: ["sacrifice", "revolution", "resurrection"] },
-  { gutenbergId: "11", title: "Alice's Adventures in Wonderland", author: "Lewis Carroll", era: "victorian", genre: "novel", themes: ["nonsense", "growth", "logic"] },
-];
-
-// Candidate plain-text URLs for a Gutenberg id (the layout varies by vintage).
-function urlsFor(id) {
-  return [
-    `https://www.gutenberg.org/files/${id}/${id}-0.txt`,
-    `https://www.gutenberg.org/files/${id}/${id}.txt`,
-    `https://www.gutenberg.org/cache/epub/${id}/pg${id}.txt`,
-  ];
-}
-
-async function fetchText(id) {
-  for (const url of urlsFor(id)) {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const controller = new AbortController();
-        const t = setTimeout(() => controller.abort(), 30000);
-        const res = await fetch(url, { signal: controller.signal, headers: { "user-agent": "ConcordLRL/0.1 (public-domain ingest)" } });
-        clearTimeout(t);
-        if (res.ok) {
-          const text = await res.text();
-          if (text && text.length > 1000) return { text, url };
-        }
-      } catch {
-        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
-      }
-    }
-  }
-  return null;
-}
-
-// Strip the Project Gutenberg legal header/footer so only the work remains.
-function stripBoilerplate(text) {
-  let t = text.replace(/\r\n/g, "\n");
-  const startRe = /\*\*\*\s*START OF (THE|THIS) PROJECT GUTENBERG EBOOK[^*]*\*\*\*/i;
-  const endRe = /\*\*\*\s*END OF (THE|THIS) PROJECT GUTENBERG EBOOK[^*]*\*\*\*/i;
-  const s = t.match(startRe);
-  if (s) t = t.slice(s.index + s[0].length);
-  const e = t.match(endRe);
-  if (e) t = t.slice(0, e.index);
-  return t.trim();
-}
-
 const SELF_TEST_TEXT = `
 CHAPTER I. The Question
 
@@ -108,7 +58,24 @@ And by opposing end them.
 ${"Thus conscience does make cowards of us all, and the native hue of resolution is sicklied o'er with the pale cast of thought. ".repeat(30)}
 `;
 
+// Refuse the live database: the running backend owns it (second writer + migrations
+// under a live server are not allowed). Use the admin route there instead.
+const LIVE_DB = path.resolve(__dirname, "..", "server", "data", "concord.db");
+function sameFile(a, b) {
+  const live = (p) => path.resolve(p).split(path.sep).slice(-3).join("/") === "server/data/concord.db";
+  try { return fs.realpathSync(a) === fs.realpathSync(b) || live(a); } catch { return path.resolve(a) === path.resolve(b) || live(a); }
+}
+
 async function main() {
+  if (sameFile(DB_PATH, LIVE_DB)) {
+    console.error(
+      "[gutenberg] refusing to open the live database " + LIVE_DB + ".\n" +
+      "  A running backend owns it. Use the admin route instead:\n" +
+      "    POST /api/admin/literary-ingest/gutenberg   (owner/admin session; GET for progress)\n" +
+      "  This script is for a non-live database: pass --db=/path/to/other.db",
+    );
+    process.exit(2);
+  }
   const db = new Database(DB_PATH);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
