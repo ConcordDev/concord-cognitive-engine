@@ -3,7 +3,8 @@ import { Providers } from '@/components/Providers';
 import type { Metadata, Viewport } from 'next';
 import { DM_Sans, JetBrains_Mono, Source_Serif_4 } from 'next/font/google';
 import { headers } from 'next/headers';
-import { AnonBrowseProvider, ANON_BROWSE_HEADER } from '@/lib/anon-browse';
+import { AnonBrowseProvider } from '@/lib/anon-browse';
+import { ANON_BROWSE_HEADER } from '@/lib/anon-browse-constants';
 
 /**
  * Self-hosted fonts via next/font — no render-blocking @import in globals.css.
