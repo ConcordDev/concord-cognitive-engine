@@ -290,6 +290,10 @@ const REVIEWED = {
   "lib/trivia.js": 1,
   "lib/understanding-consumers.js": 1,
   "lib/understanding-evolve.js": 3,
+  // lib/user-email-lookup.js (2) — `${COLS}` is a module-level string constant
+  // (a fixed column list, never input); the email is bound with `?` in both the
+  // exact and the lower(email) lookups.
+  "lib/user-email-lookup.js": 2,
   // lib/user-identity.js (1) — `display` is either "" or the literal
   // ", display_name AS displayName", chosen only when PRAGMA table_info
   // lists that column. The user id is bound with `?`.
