@@ -266,7 +266,7 @@ function EnergyAudit() {
           {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Enter bill + sqft + age.</div>}
           {result && (
             <>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div className="rounded border border-green-500/30 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Annual cost</div><div className="font-mono text-lg text-green-200">${result.annualCost?.toLocaleString()}</div></div>
                 <div className="rounded border border-green-500/30 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">$/sqft</div><div className="font-mono text-lg text-green-200">${result.costPerSqFt}</div></div>
                 <div className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5"><div className="text-[9px] text-emerald-300">Save up to</div><div className="font-mono text-lg text-emerald-100">${result.estimatedAnnualSavings?.toLocaleString()}/yr</div></div>

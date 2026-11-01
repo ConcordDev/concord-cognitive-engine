@@ -59,7 +59,15 @@ export async function screenForPublish(content, {
   // 2) CSAM hash-match on media — legally mandatory when configured; checked at all
   // tiers. A match hard-blocks + flags for an NCMEC report.
   if (mediaBuffer && contentType !== "text") {
-    const hm = await csamHashMatch(mediaBuffer, { userId }).catch(() => ({ ok: false }));
+    // Provider isolation (founder decision 2026-10-28): the cloud CSAM check
+    // receives ONLY an already-public image URL, and only when this screen is
+    // a publish-boundary crossing (published tier or higher — social /
+    // marketplace / global reach). Personal-tier screens, media bytes and
+    // text never leave the box; the local checks above already ran offline.
+    const hm = await csamHashMatch(mediaBuffer, {
+      userId,
+      imageUrl: tier >= 1 ? (content?.imageUrl || null) : null,
+    }).catch(() => ({ ok: false }));
     if (hm?.ok && hm.match) {
       return { allowed: false, reason: "csam_detected", flags: [...flags, "csam_hash_match"], csam: true, report: "ncmec" };
     }

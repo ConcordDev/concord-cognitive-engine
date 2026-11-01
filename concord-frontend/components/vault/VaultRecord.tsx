@@ -57,6 +57,8 @@ export interface VaultRecordProps {
   /** Re-dispatch the real `vault.record` read for a drawer that failed to load. */
   onRetry?: () => void;
   onSelectCurator?: (curatorId: string) => void;
+  /** Roster display names by curator id, for the statement's signature. */
+  curatorNames?: Record<string, string>;
   curatorFilter?: string | null;
 }
 
@@ -68,6 +70,7 @@ export function VaultRecord({
   onToggle,
   onRetry,
   onSelectCurator,
+  curatorNames,
   curatorFilter,
 }: VaultRecordProps) {
   const reactId = useId();
@@ -187,6 +190,7 @@ export function VaultRecord({
                 <CuratorStatement
                   statement={record.curatorStatement}
                   curatorId={record.curatorId}
+                  curatorName={record.curatorId ? curatorNames?.[record.curatorId] : null}
                   curatorRole={record.curatorRole}
                   onSelectCurator={onSelectCurator}
                   curatorFilterActive={!!curatorFilter && curatorFilter === record.curatorId}

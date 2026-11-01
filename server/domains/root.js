@@ -480,9 +480,12 @@ export default function registerRootActions(registerLensAction) {
     const list = rootList(s.computations, rootActor(ctx));
     const idx = list.findIndex((c) => c.id === String(params.id || ""));
     if (idx < 0) return { ok: false, error: "computation not found" };
-    list.splice(idx, 1);
+    const [removed] = list.splice(idx, 1);
     saveRoot();
-    return { ok: true, result: { deleted: params.id, total: list.length } };
+    // The removed entry rides the result so the activity recorder can
+    // name what was deleted (delete rows carry the same object
+    // standard as creates — #1906 re-sitting, Root leg).
+    return { ok: true, result: { deleted: params.id, computation: removed, total: list.length } };
   });
 
   // ─── 4. Shareable computation link ────────────────────────────────────

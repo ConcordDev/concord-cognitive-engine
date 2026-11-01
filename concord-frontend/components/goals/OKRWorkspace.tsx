@@ -325,7 +325,7 @@ function AlignmentTab() {
       </div>
 
       {stats && stats.objectiveCount > 0 && (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           {[
             { label: 'Objectives', value: stats.objectiveCount },
             { label: 'Roots', value: stats.rootCount },
@@ -449,7 +449,7 @@ function CheckinsTab() {
         </p>
       )}
       {stats && stats.count > 0 && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <div className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-center">
             <div className="font-mono text-base text-cyan-300">{stats.count}</div>
             <div className="text-[9px] uppercase tracking-wider text-zinc-400">Check-ins</div>
@@ -740,7 +740,7 @@ function TemplatesTab() {
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
         <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">New recurring goal</p>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Goal title" className={`${inputCls} col-span-3`} />
           <select value={cadence} onChange={(e) => setCadence(e.target.value)} className={inputCls}>
             {['daily', 'weekly', 'monthly', 'quarterly'].map((c) => <option key={c} value={c}>{c}</option>)}
@@ -921,7 +921,7 @@ function ChartsTab() {
       )}
 
       {stats && (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           {[
             { label: 'Current', value: `${stats.currentProgress}%` },
             { label: 'Remaining', value: `${stats.remaining}` },
@@ -1073,7 +1073,7 @@ function RemindersTab() {
 
       {undo && <UndoStrip label={undo.label} onUndo={undoRemove} onDismiss={() => setUndo(null)} />}
       {stats && stats.total > 0 && (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           {[
             { label: 'Total', value: stats.total, cls: 'text-cyan-300' },
             { label: 'Pending', value: stats.pending, cls: 'text-amber-300' },
@@ -1198,7 +1198,7 @@ function DependenciesTab() {
       )}
 
       {result && result.stats.edgeCount > 0 && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           {[
             { label: 'Edges', value: result.stats.edgeCount },
             { label: 'Blocking', value: result.stats.blockingCount },

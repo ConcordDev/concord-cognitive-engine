@@ -20,14 +20,21 @@ import {
   gunzipSync,
   deflateSync,
   inflateSync,
+  zstdCompressSync,
+  zstdDecompressSync,
   constants as zlibConstants,
 } from "zlib";
+
+// Zstd lives in Node's core zlib since v22.15 (stable in v24). Feature-
+// detect so an older runtime degrades honestly: id 3 is never selected
+// and never silently substituted (see compress/decompress below).
+export const ZSTD_AVAILABLE = typeof zstdCompressSync === "function" && typeof zstdDecompressSync === "function";
 
 // ── Algorithm identifiers (match DTU_FORMAT_CONSTANTS) ────────────────
 export const COMPRESSION_NONE = 0;
 export const COMPRESSION_GZIP = 1;
 export const COMPRESSION_BROTLI = 2;
-export const COMPRESSION_ZSTD = 3;  // Placeholder — not in Node.js core
+export const COMPRESSION_ZSTD = 3;  // Zstd via core zlib (Node >= 22.15); see ZSTD_AVAILABLE
 export const COMPRESSION_DEFLATE = 4;
 
 // Algorithm name mapping
@@ -41,6 +48,9 @@ const ALGORITHM_NAMES = {
 
 // Minimum size to bother compressing (bytes)
 const MIN_COMPRESS_SIZE = 256;
+
+// Minimum size for Zstd selection on generic binary content (bytes)
+const ZSTD_MIN_SIZE = 64 * 1024;
 
 // Content types that are already compressed (compression would increase size)
 const PRECOMPRESSED_TYPES = new Set([
@@ -76,6 +86,7 @@ export function createCompressionPipeline(opts = {}) {
   const log = opts.log || (() => {});
   const brotliQuality = opts.brotliQuality ?? 6;
   const gzipLevel = opts.gzipLevel ?? 6;
+  const zstdLevel = opts.zstdLevel ?? 3;
 
   // Track cumulative stats
   let totalOriginalBytes = 0;
@@ -125,6 +136,17 @@ export function createCompressionPipeline(opts = {}) {
         algorithm: COMPRESSION_BROTLI,
         algorithmName: "brotli",
         reason: `Structured data "${ct}" — Brotli optimal`,
+      };
+    }
+
+    // Large binary artifacts — Zstd (core zlib) beats Gzip on both speed
+    // and ratio at this size; below the threshold Gzip's lower overhead
+    // wins. Only when the runtime actually has Zstd (ZSTD_AVAILABLE).
+    if ((ct.startsWith("application/") || ct.startsWith("model/")) && ZSTD_AVAILABLE && size >= ZSTD_MIN_SIZE) {
+      return {
+        algorithm: COMPRESSION_ZSTD,
+        algorithmName: "zstd",
+        reason: `Large binary content "${ct}" (${size} bytes) — Zstd optimal`,
       };
     }
 
@@ -186,6 +208,10 @@ export function createCompressionPipeline(opts = {}) {
         compressed = gzipSync(buffer, { level: gzipLevel });
       } else if (selection.algorithm === COMPRESSION_DEFLATE) {
         compressed = deflateSync(buffer, { level: gzipLevel });
+      } else if (selection.algorithm === COMPRESSION_ZSTD) {
+        // selectAlgorithm only picks Zstd when ZSTD_AVAILABLE, so this
+        // never silently substitutes another codec for id 3.
+        compressed = zstdCompressSync(buffer, { level: zstdLevel });
       } else {
         // Fallback to gzip
         compressed = gzipSync(buffer, { level: gzipLevel });
@@ -273,6 +299,11 @@ export function createCompressionPipeline(opts = {}) {
         decompressed = gunzipSync(buffer);
       } else if (algorithm === COMPRESSION_DEFLATE) {
         decompressed = inflateSync(buffer);
+      } else if (algorithm === COMPRESSION_ZSTD) {
+        if (!ZSTD_AVAILABLE) {
+          throw new Error("Zstd payload (algorithm=3) cannot be decoded: this Node runtime lacks zlib Zstd support (needs >= 22.15)");
+        }
+        decompressed = zstdDecompressSync(buffer);
       } else {
         // Try gzip as fallback
         decompressed = gunzipSync(buffer);

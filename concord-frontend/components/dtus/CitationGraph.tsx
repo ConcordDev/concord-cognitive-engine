@@ -101,7 +101,7 @@ export function CitationGraph({
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <Stat label="Nodes" value={result.stats.nodeCount} />
         <Stat label="Edges" value={result.stats.edgeCount} />
         <Stat label="Isolated" value={result.stats.isolated} />

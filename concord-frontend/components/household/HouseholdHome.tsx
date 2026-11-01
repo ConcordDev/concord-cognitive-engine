@@ -1779,7 +1779,7 @@ export function HouseholdHome() {
             {/* generateGroceryList */}
             {actionResult.uniqueItems !== undefined && (
               <div className="space-y-2">
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.uniqueItems)}</p>
                     <p className="text-[10px] text-gray-400">Items Needed</p>
@@ -1803,7 +1803,7 @@ export function HouseholdHome() {
             )}
             {/* maintenanceDue */}
             {actionResult.overdueCount !== undefined && actionResult.uniqueItems === undefined && (
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-sm font-bold text-red-400">{String(actionResult.overdueCount)}</p>
                   <p className="text-[10px] text-gray-400">Overdue</p>

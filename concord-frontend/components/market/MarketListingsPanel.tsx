@@ -28,6 +28,10 @@ interface MarketListingItem {
   owner_user_id?: string;
   sellerId?: string;
   seller_id?: string;
+  /** Uploaded media listed free + listen-only (no purchase). */
+  listenOnly?: boolean;
+  streamUrl?: string;
+  mediaType?: string;
 }
 
 function isSystemListing(listing: MarketListingItem) {
@@ -56,6 +60,28 @@ function StatCard({
         </div>
       </div>
       <p className="text-sm text-gray-400 mt-2">{label}</p>
+    </div>
+  );
+}
+
+/** An uploaded track/film listed free + listen-only: a player, no price, no purchase. */
+function MediaListenCard({ listing }: { listing: MarketListingItem }) {
+  const isVideo = listing.mediaType === 'video';
+  return (
+    <div data-lens-theme="market" className="lens-card space-y-2" data-testid="media-listen-card">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="font-semibold truncate">{listing.title || 'Untitled'}</h3>
+        <span className="text-[10px] px-2 py-0.5 rounded bg-neon-green/20 text-neon-green shrink-0">Free · listen only</span>
+      </div>
+      {listing.description && <p className="text-xs text-gray-400">{listing.description}</p>}
+      {isVideo ? (
+        <video controls preload="none" src={listing.streamUrl} className="w-full rounded" />
+      ) : (
+        <audio controls preload="none" src={listing.streamUrl} className="w-full" />
+      )}
+      {listing.tags && listing.tags.length > 0 && (
+        <p className="text-[10px] text-gray-500">{listing.tags.map((t) => `#${t}`).join(' ')}</p>
+      )}
     </div>
   );
 }
@@ -329,7 +355,11 @@ export function MarketListingsPanel() {
                     <div className="w-6 h-6 border-2 border-neon-purple border-t-transparent rounded-full animate-spin" />
                   </div>
                 )}
-                <MarketEmpireListing listing={listing} onPurchase={() => setShowPurchaseConfirm(listing)} />
+                {listing.listenOnly && listing.streamUrl ? (
+                  <MediaListenCard listing={listing} />
+                ) : (
+                  <MarketEmpireListing listing={listing} onPurchase={() => setShowPurchaseConfirm(listing)} />
+                )}
               </motion.div>
             ))
           )}

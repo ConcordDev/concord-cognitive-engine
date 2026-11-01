@@ -189,7 +189,7 @@ export function CompareMergePanel({
             <span className="text-xs text-gray-400">similarity</span>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Bar label="Title" value={compare.similarity.title} />
             <Bar label="Body" value={compare.similarity.body} />
             <Bar label="Tags" value={compare.similarity.tags} />

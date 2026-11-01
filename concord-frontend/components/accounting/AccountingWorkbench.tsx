@@ -223,7 +223,7 @@ function ChartOfAccountsTab() {
 
       {creating && (
         <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input
               type="text"
               value={draft.code}
@@ -411,7 +411,7 @@ function JournalEntryTab() {
 
   return (
     <div className="p-3 space-y-3">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <input
           type="date"
           value={date}
@@ -923,7 +923,7 @@ function AgingTab() {
             placeholder="Customer name"
             className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100"
           />
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input
               type="number"
               step="0.01"

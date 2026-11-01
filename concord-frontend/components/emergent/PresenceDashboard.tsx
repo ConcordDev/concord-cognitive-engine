@@ -249,7 +249,7 @@ export default function PresenceDashboard({
           <div className="text-[10px] text-zinc-400 uppercase tracking-wider mb-2">
             Planetary State
           </div>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             {[
               { label: 'Tectonic', value: planetary.tectonicActivity, icon: Mountain },
               { label: 'Atmospheric', value: planetary.atmosphericState, icon: Cloud },

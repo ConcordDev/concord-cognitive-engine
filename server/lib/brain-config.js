@@ -122,6 +122,36 @@ export function getLocalUnifiedModel() {
   const m = String(process.env.BRAIN_LOCAL_UNIFIED_MODEL || "").trim();
   return m || null;
 }
+/** The Mac fallback proxy (Ollama behind the local proxy, 2B models only). */
+const _MAC_FALLBACK_PORT = "11480";
+function _isMacFallbackUrl(u) {
+  try {
+    const x = new URL(String(u).trim());
+    return ["127.0.0.1", "localhost", "[::1]"].includes(x.hostname) && x.port === _MAC_FALLBACK_PORT;
+  } catch {
+    return false;
+  }
+}
+/**
+ * True when answers are being served by the Mac local fallback rather than the
+ * pod. BRAIN_LOCAL_UNIFIED_MODEL is NOT a usable signal: in pod mode it names
+ * the pod's model (concord-core-v6), so a model-name match cannot tell the two
+ * apart. Decided from the routing, read at call time:
+ *   1. BRAINS_MODE, when set, wins ("mac" -> true, anything else -> false).
+ *   2. otherwise the Mac proxy: OLLAMA_PROXY_URL, or any BRAIN_CONSCIOUS/UTILITY
+ *      URL(S), pointing at loopback :11480.
+ * Pod tunnels (:11435/:11436 etc.) and an unset environment are not fallback.
+ */
+export function isMacFallbackMode(env = process.env) {
+  const mode = String(env.BRAINS_MODE || "").trim().toLowerCase();
+  if (mode) return mode === "mac";
+  const urls = [
+    env.OLLAMA_PROXY_URL,
+    ...String(env.BRAIN_CONSCIOUS_URLS || env.BRAIN_CONSCIOUS_URL || "").split(","),
+    ...String(env.BRAIN_UTILITY_URLS || env.BRAIN_UTILITY_URL || "").split(","),
+  ].filter(Boolean);
+  return urls.some(_isMacFallbackUrl);
+}
 function _isLocalHttpEndpoint(u) {
   return typeof u === "string" && /^https?:\/\//i.test(u);
 }

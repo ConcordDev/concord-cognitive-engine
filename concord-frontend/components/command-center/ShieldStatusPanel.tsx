@@ -61,7 +61,7 @@ export function ShieldStatusPanel() {
         </span>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <Stat label="Total Scans" value={stats.totalScans ?? 0} />
         <Stat label="Threats Blocked" value={stats.threatsDetected ?? 0} />
         <Stat label="Clean Files" value={stats.cleanFiles ?? 0} />

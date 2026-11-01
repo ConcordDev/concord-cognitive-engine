@@ -77,7 +77,7 @@ export function DesertWeatherWatch() {
           />
         )}
       </header>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
           <div className="text-[10px] uppercase tracking-wider text-zinc-400">Avg temp</div>
           <div className="mt-0.5 font-mono text-lg text-amber-300">{loaded.length > 0 ? `${avgTemp.toFixed(1)}°C` : '—'}</div>

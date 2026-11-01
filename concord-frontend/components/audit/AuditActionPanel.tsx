@@ -145,7 +145,7 @@ export function AuditActionPanel() {
     try {
       const task = `Internal audit memo. ${compResult ? `${compResult.framework}: ${compResult.complianceRate}% compliance.${(compResult.gaps?.length ?? 0) > 0 ? ` Gaps: ${compResult.gaps?.map(g => g.requirement).slice(0, 3).join(', ')}.` : ''}` : ''} ${riskResult ? `Audit risk ${riskResult.auditRisk}, ${riskResult.riskLevel}.` : ''} ${trailResult?.anomalies?.length ? `${trailResult.anomalies.length} trail anomalies.` : ''} Identify single highest-priority finding for management response + suggested remediation timeline. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Memo ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -182,7 +182,7 @@ export function AuditActionPanel() {
           <label className="text-[10px] uppercase tracking-wider text-red-400 font-semibold">Risk JSON</label>
           <textarea value={riskText} onChange={(e) => setRiskText(e.target.value)} rows={4} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
           <div className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold mt-1">Sample plan</div>
-          <div className="grid grid-cols-3 gap-1 mt-1">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-1 mt-1">
             <input type="text" value={populationSize} onChange={(e) => setPopulationSize(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="N" />
             <input type="text" value={confidence} onChange={(e) => setConfidence(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Conf %" />
             <input type="text" value={tolerableError} onChange={(e) => setTolerableError(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Tol %" />

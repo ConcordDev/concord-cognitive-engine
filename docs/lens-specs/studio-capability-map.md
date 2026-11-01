@@ -1,5 +1,79 @@
 # Studio lens — capability map (Wave 3 audit, 2026-07-11)
 
+> **Re-verification (HANDOFF-3 batch L5, 2026-10-28, against main 31ac4719):**
+> The Wave-3 findings below are kept as history; the lens has since been
+> REBUILT and several rows are stale. Current truth:
+>
+> - **Structure changed.** `app/lenses/studio/page.tsx` is a 4-line shell
+>   over `components/studio/StudioDawWorkspace.tsx`, which loads the new
+>   DAW at `components/studio/daw/StudioApp.tsx` (Opener → Editor). The
+>   3,150-LOC page and its always-mounted workbench described below no
+>   longer exist in that form.
+> - **The HANDOFF-3 known notes are FIXED in current code.** "Create
+>   Project fails silently (`validation_failed`) and is lost on reload"
+>   was INC-SWEEP studio F1: the DAW used to save only a generic lens
+>   artifact while every read path used the parity Map. Create/save/
+>   list/get now all go through the dedicated store
+>   (`server/domains/studio.js` project-create/-save/-get/-list with the
+>   DAW snapshot in `daw`), persisted via `studioLens` in
+>   `LENS_STATE_KEYS` (`server/lib/lens-state-persistence.js`) +
+>   `saveStudioState()`, with a 20-deep version history
+>   (project-versions/-snapshot/-version-restore). The browser transport
+>   is `lib/daw/studio-api.ts` over those macros. "Projects FAB dead"
+>   referred to the pre-rebuild page; the current project entry is the
+>   Opener (templates + recents, both wired to that transport).
+> - **81 macros in `domains/studio.js`; 79 named somewhere in the
+>   frontend.** The 2 never-surfaced are legacy generic-artifact helpers:
+>   `assetTracker` (summarizes `artifact.data.assets` — no current data
+>   source) and `versionCompare` (diffs `artifact.data` v1/v2 —
+>   superseded by the real project-versions system). Honest relabels,
+>   not gaps.
+> - **Reachability finding (this batch's named open item).** Only the
+>   ~11 project/library macros are called from the rebuilt DAW. The 16
+>   "Session workbench" parity panels plus `StudioActionPanel` /
+>   `DawWorkbenchSection` — which surface most of the remaining ~57
+>   parity macros (clips-*, midi-*, automation-*, drumrack-*, fx-rack-*,
+>   midi-map-*, scenes-*, sends-*, tempo-*, markers-*, takes-*,
+>   presets-*, collab-*, bounce/renders-list, export-stems,
+>   project-import/export) — are mounted NOWHERE in the app since the
+>   rebuild (grep-verified: no importer outside their own files and FE
+>   tests). The panels and macros are real and Wave-3-verified; they
+>   are unreachable UI. Whether to remount the workbench as a second
+>   Studio surface or retire the panels is a product decision for the
+>   founder — recorded here, not decided in this PR. Exceptions that ARE
+>   reachable elsewhere: `bounce` via Chat's `SongArtifactPlayer`,
+>   `list-adaptive-music` via World's `AdaptiveMusicBridge`,
+>   `dashboard-summary`/`clips-list`/`scenes-list` via the shared
+>   `ShellPreview`.
+> - **Durable fake jobs — fixed separately in PR #1708**
+>   (`fix/studio-durable-honest-jobs`): `server/durable.js` render /
+>   vocal-analyze / vocal-process / master endpoints completed jobs
+>   with zero-filled stub buffers and invented analysis numbers
+>   (REMAINING-WORK-AUDIT row A#2). They now fail honestly with
+>   `audio_worker_unavailable` and write no artifacts.
+> - **BouncePanel 220 Hz placeholder (audit row B#3) — disclosed, and
+>   superseded.** The panel labels the tone in its own UI ("a generated
+>   placeholder tone (4s, 220Hz), not your project mix") and is itself
+>   unmounted per the finding above; the DAW's real publish path
+>   (`daw/PublishDialog` → `lib/daw/render`) renders the actual project
+>   mix. `studio.bounce` itself is honest (see
+>   `tests/studio-bounce-panel-states.test.tsx`).
+> - **Carried open item from Wave 3:** `collab-edit` logging still
+>   covers only track/effect/clip mutations; the other ~13 parity
+>   panels' mutations don't log to the collab feed (moot for reachability
+>   until the workbench question above is decided).
+> - **Shipped in this batch:** the concept's serif greeting —
+>   "What are we making, {username}" — on the Opener
+>   (`data-testid="studio-greeting"`, `tests/studio-opener-greeting.test.tsx`).
+>   Competitor check (BandLab / Ableton Live, public pages, 2026-10):
+>   multitrack editing, MIDI, drum machine, synth, FX, automation,
+>   mastering, recording/takes, collaboration, stems export — all exist
+>   in Concord across the DAW + parity backend above; no new buildable
+>   gap found beyond the reachability item. Out of scope with reason:
+>   VST/AU plugin hosting (native-binary surface, not a web lens) and a
+>   sample marketplace (already the Music lens + marketplace).
+
+
 ## What this lens actually is
 
 An Ableton Live/Logic Pro-shape DAW: transport, mixer, piano roll, drum

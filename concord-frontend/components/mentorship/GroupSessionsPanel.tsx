@@ -274,7 +274,7 @@ export function GroupSessionsPanel() {
         <div className="panel p-4 space-y-2">
           <h4 className="font-semibold text-sm">Host a group session</h4>
           <input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} placeholder="Session title *" className="input-lattice w-full" />
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input type="datetime-local" value={form.startAt} onChange={(e) => setForm((p) => ({ ...p, startAt: e.target.value }))} className="input-lattice col-span-2" />
             <input type="number" min={2} value={form.capacity} onChange={(e) => setForm((p) => ({ ...p, capacity: e.target.value }))} placeholder="Capacity *" className="input-lattice" />
           </div>

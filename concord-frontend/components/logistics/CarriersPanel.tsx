@@ -53,7 +53,7 @@ export function CarriersPanel() {
       </header>
 
       <div className="p-3 border-b border-white/10 space-y-2">
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
           <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Name (FedEx)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="Code (FDX)" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
           <input value={form.scac} onChange={e => setForm({ ...form, scac: e.target.value.toUpperCase() })} placeholder="SCAC" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />

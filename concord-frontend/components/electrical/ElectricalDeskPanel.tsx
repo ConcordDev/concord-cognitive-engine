@@ -325,7 +325,7 @@ export function ElectricalDeskPanel({
                     onChange={(e) => setFormScheduledDate(e.target.value)}
                   />
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <label className={ds.label}>Labor Hours</label>
                     <input
@@ -587,7 +587,7 @@ export function ElectricalDeskPanel({
         const safetyScore =
           allItems.length > 0 ? ((completedCount / allItems.length) * 100).toFixed(0) : '100';
         return (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
               <Bolt className="w-5 h-5 text-yellow-400" />
               <div>

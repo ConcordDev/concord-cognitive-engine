@@ -230,7 +230,7 @@ export function CollabActionPanel() {
     try {
       const task = `Team facilitator brief. ${sessionResult ? `Session balance: ${sessionResult.balanceRating} (Gini ${sessionResult.participationBalance}, ${sessionResult.totalMessages} msgs across ${sessionResult.totalParticipants} ppl).` : ''} ${contribResult ? `Top contributor: ${contribResult.topContributor}.` : ''} ${consResult ? `${consResult.status}.` : ''} ${loadResult ? `${loadResult.overloadedMembers} overloaded teammates.` : ''} Identify single most important facilitation move + one structural change. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) {
         const text = typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2);
         setAgentReply(text);

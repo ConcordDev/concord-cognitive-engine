@@ -219,7 +219,12 @@ export function ConcordRepoWorkspace() {
       )}
 
       <ErrorBanner err={listErr} />
-      {listNotice && !activeRepo && (
+      {/* The workspace receipt renders in BOTH views (Review F14): the
+          create form lives in this always-rendered header, so a repo
+          created while another repo is open set a notice the old
+          !activeRepo condition never painted — success read as silent
+          in the re-pass. Opening a repo from the list clears it. */}
+      {listNotice && (
         <p className="flex items-center gap-1.5 rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-[10px] text-green-300">
           <CheckCircle className="h-3 w-3 shrink-0" /> {listNotice}
         </p>
@@ -313,6 +318,7 @@ export function ConcordRepoWorkspace() {
           {tab === 'settings' && (
             <SettingsTab
               repo={activeRepo}
+              onNotice={(text) => setListNotice(text)}
               onUpdated={(r) => { setActiveRepo(r); void loadRepos(); }}
               onDeleted={(name) => { setActiveRepo(null); setListNotice(`Deleted "${name}" — the repo and its history are gone.`); void loadRepos(); }}
             />
@@ -1277,7 +1283,7 @@ function SecurityTab({ repoId }: { repoId: string }) {
         </button>
       </div>
       {scanned && (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           {(['critical', 'high', 'moderate', 'low'] as const).map((s) => (
             <div key={s} className={`rounded border px-2 py-1.5 text-center ${SEV_COLOR[s]}`}>
               <div className="font-mono text-lg">{bySeverity[s] || 0}</div>
@@ -1406,10 +1412,11 @@ function InsightsTab({ repoId }: { repoId: string }) {
 }
 
 // ── Settings tab — rename / description / visibility / delete (S5) ──
-function SettingsTab({ repo, onUpdated, onDeleted }: {
+function SettingsTab({ repo, onUpdated, onDeleted, onNotice }: {
   repo: RepoSummary;
   onUpdated: (r: RepoSummary) => void;
   onDeleted: (name: string) => void;
+  onNotice: (text: string) => void;
 }) {
   const [name, setName] = useState(repo.name);
   const [description, setDescription] = useState(repo.description || '');
@@ -1417,17 +1424,22 @@ function SettingsTab({ repo, onUpdated, onDeleted }: {
   const [confirmName, setConfirmName] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const save = async () => {
-    setBusy('save'); setErr(null); setNotice(null);
+    setBusy('save'); setErr(null);
     const r = await runX<{ repo: { id: string; name: string; description: string; isPrivate: boolean } }>(
       'repo-update', { repoId: repo.id, name: name.trim(), description, isPrivate },
     );
     setBusy(null);
     if (r.ok && r.data) {
       onUpdated({ ...repo, name: r.data.repo.name, description: r.data.repo.description, isPrivate: r.data.repo.isPrivate });
-      setNotice(`Saved — this repo is now "${r.data.repo.name}", ${r.data.repo.isPrivate ? 'private' : 'public'} in your account.`);
+      const saved = `Saved — this repo is now "${r.data.repo.name}", ${r.data.repo.isPrivate ? 'private' : 'public'} in your account.`;
+      // The receipt lives in the workspace-level notice only (Review
+      // F14): this panel unmounts on a tab switch, which would take a
+      // local receipt with it, and rendering both showed the same
+      // green line twice. The workspace banner sits above the tabs, so
+      // it is visible here and survives the round-trip.
+      onNotice(saved);
     } else { setErr(r.error); }
   };
 
@@ -1441,11 +1453,6 @@ function SettingsTab({ repo, onUpdated, onDeleted }: {
   return (
     <div className="space-y-3">
       <ErrorBanner err={err} />
-      {notice && (
-        <p className="flex items-center gap-1.5 rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-[10px] text-green-300">
-          <CheckCircle className="h-3 w-3 shrink-0" /> {notice}
-        </p>
-      )}
       <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 space-y-2">
         <h3 className="text-xs font-semibold text-white">General</h3>
         <label className="block text-[10px] text-zinc-400">Name
@@ -1546,7 +1553,13 @@ function AnalysisTab({ repoId }: { repoId: string }) {
   const [cxMeta, setCxMeta] = useState<{ matched: number; unreadable: number }>({ matched: 0, unreadable: 0 });
   const [commits, setCommits] = useState<CommitAnalysisResult | null>(null);
   const [deps, setDeps] = useState<DependencyAuditResult | null>(null);
-  const [noPackageJson, setNoPackageJson] = useState(false);
+  // Why the dependency card has nothing to audit, when it doesn't:
+  // "missing" (no package.json in this repo), "empty" (package.json
+  // exists but declares no dependencies), "unreadable" (the file exists
+  // but couldn't be read or parsed). The three read differently to the
+  // user — folding them into one "No package.json (or no dependencies)"
+  // line implied a missing file that exists (Review F6 framing nit).
+  const [depsNote, setDepsNote] = useState<null | "missing" | "empty" | "unreadable">(null);
 
   const runAnalysis = async () => {
     setBusy(true); setErr(null);
@@ -1606,23 +1619,23 @@ function AnalysisTab({ repoId }: { repoId: string }) {
             const parsed = JSON.parse(pr.data.content || '{}');
             const depEntries: Record<string, string> = { ...(parsed.dependencies || {}), ...(parsed.devDependencies || {}) };
             const dependencies = Object.entries(depEntries).map(([name, version]) => ({ name, version: String(version) }));
-            if (dependencies.length === 0) { setNoPackageJson(true); setDeps(null); }
+            if (dependencies.length === 0) { setDepsNote("empty"); setDeps(null); }
             else {
               // liveVulnCheck: the audit asks the same OSV.dev source
               // the Security tab scans with, so the two tabs' counts
               // agree by construction (re-pass checkpoint 3).
               const da = await runX<DependencyAuditResult>('dependencyAudit', { dependencies, liveVulnCheck: true });
               setDeps(da.ok ? da.data : null);
-              setNoPackageJson(false);
+              setDepsNote(null);
             }
           } catch {
-            setNoPackageJson(true); setDeps(null);
+            setDepsNote("unreadable"); setDeps(null);
           }
         } else {
-          setNoPackageJson(true); setDeps(null);
+          setDepsNote("unreadable"); setDeps(null);
         }
       } else {
-        setNoPackageJson(true); setDeps(null);
+        setDepsNote("missing"); setDeps(null);
       }
       setRanOnce(true);
     } catch (e) {
@@ -1673,7 +1686,7 @@ function AnalysisTab({ repoId }: { repoId: string }) {
               <p className="text-[11px] text-zinc-400">{complexity.message}</p>
             ) : (
               <div className="space-y-2">
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                   <StatBox label="Modules" value={complexity.totalModules} />
                   <StatBox label="Functions" value={complexity.totalFunctions} />
                   <StatBox label="Avg complexity" value={complexity.overallAvgComplexity} tone={complexity.overallAvgComplexity > 10 ? 'bad' : 'good'} />
@@ -1702,7 +1715,7 @@ function AnalysisTab({ repoId }: { repoId: string }) {
               <p className="text-[11px] text-zinc-400">{commits.message}</p>
             ) : (
               <div className="space-y-2">
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                   <StatBox label="Commits" value={commits.totalCommits} />
                   <StatBox label="Bus factor" value={commits.busFactor} tone={commits.busFactorRisk === 'critical' || commits.busFactorRisk === 'high' ? 'bad' : 'good'} />
                   <StatBox label="Commits/day" value={commits.frequency.commitsPerDay} />
@@ -1725,13 +1738,17 @@ function AnalysisTab({ repoId }: { repoId: string }) {
 
           <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
             <h4 className="mb-2 text-xs font-semibold text-white">Dependency audit</h4>
-            {noPackageJson ? (
-              <p className="text-[11px] text-zinc-400">No package.json (or no dependencies) in this repo — nothing to audit.</p>
+            {depsNote ? (
+              <p className="text-[11px] text-zinc-400">{depsNote === "missing"
+                ? "No package.json in this repo — nothing to audit."
+                : depsNote === "empty"
+                  ? "This repo's package.json declares no dependencies — nothing to audit."
+                  : "This repo's package.json couldn't be read — nothing to audit."}</p>
             ) : !deps ? (
               <p className="text-[11px] text-zinc-400">No dependency data.</p>
             ) : (
               <div className="space-y-2">
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                   <StatBox label="Deps" value={deps.totalDependencies} />
                   <StatBox label="Health" value={`${deps.healthScore} (${deps.healthGrade})`} tone={deps.healthScore < 60 ? 'bad' : 'good'} />
                   <StatBox label="Version conflicts" value={deps.duplicates.versionConflicts} tone={deps.duplicates.versionConflicts > 0 ? 'bad' : 'good'} />

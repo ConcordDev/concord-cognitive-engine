@@ -665,7 +665,7 @@ function ProjectDetail({
       </div>
 
       {/* progress summary */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <Stat label="Progress" value={`${project.progressPct}%`} />
         <Stat label="Steps" value={`${project.completeSteps}/${project.stepCount}`} />
         <Stat label="Materials" value={`$${project.materialsCost.toFixed(0)}`} />
@@ -1041,7 +1041,7 @@ function BomEditor({
   return (
     <div className="space-y-3">
       {rollup && rollup.lineCount > 0 && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <Stat label="Total cost" value={`$${rollup.totalCost.toFixed(2)}`} />
           <Stat label="Owned value" value={`$${rollup.ownedValue.toFixed(2)}`} />
           <Stat label="Still to buy" value={`$${rollup.toBuyCost.toFixed(2)}`} />
@@ -1144,7 +1144,7 @@ function BomEditor({
           <Plus className="h-3.5 w-3.5" /> Add a material
         </div>
         <input className={ds.input} placeholder="Material name" value={item} onChange={(e) => setItem(e.target.value)} />
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <input type="number" className={ds.input} placeholder="Qty" value={qty} onChange={(e) => setQty(e.target.value)} />
           <input className={ds.input} placeholder="Unit" value={unit} onChange={(e) => setUnit(e.target.value)} />
           <input
@@ -1331,7 +1331,7 @@ function CutListPanel({
       <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 space-y-2">
         <label className={ds.label}>Stock board length (inches)</label>
         <input type="number" className={cn(ds.input, 'w-40')} value={stock} onChange={(e) => setStock(e.target.value)} />
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <input className={ds.input} placeholder="Label" value={cLabel} onChange={(e) => setCLabel(e.target.value)} />
           <input
             type="number"
@@ -1371,7 +1371,7 @@ function CutListPanel({
 
       {result && result.boards && (
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Stat label="Boards needed" value={`${result.boardsNeeded}`} />
             <Stat label="Efficiency" value={`${result.efficiency}%`} />
             <Stat label="Total waste" value={`${result.totalWaste}"`} />
@@ -1474,7 +1474,7 @@ function InsightsPanel({
         </div>
         {estimate ? (
           <div className="space-y-1.5">
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
               <Stat label="Total" value={`$${estimate.totalEstimate.toFixed(0)}`} />
               <Stat label="Materials" value={`$${estimate.breakdown.adjustedMaterials.toFixed(0)}`} />
               <Stat label="Labor" value={`$${estimate.breakdown.laborCost.toFixed(0)}`} />
@@ -1538,7 +1538,7 @@ function InsightsPanel({
         </div>
         {buildTime ? (
           <div className="space-y-1.5">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <Stat label="Total time" value={`${buildTime.grandTotalHours}h`} />
               <Stat label="Setup/cleanup" value={`${buildTime.setupCleanupMinutes}m`} />
               <Stat label="Weekends" value={`${buildTime.weekends}`} />

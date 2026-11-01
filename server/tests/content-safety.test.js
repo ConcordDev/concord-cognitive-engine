@@ -13,7 +13,7 @@
 import { describe, it, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { screenForPublish, screenLocalSync } from "../lib/content-safety/index.js";
-import { openaiModeration } from "../lib/content-safety/providers.js";
+import { openaiModeration, webpurifyImageCheck, csamHashMatch } from "../lib/content-safety/providers.js";
 
 afterEach(() => { delete process.env.CONCORD_UGC_DENYLIST; delete process.env.CONCORD_UGC_SAFETY; });
 
@@ -108,5 +108,92 @@ describe("openaiModeration adapter (graceful)", () => {
     assert.equal(r.reason, "no_key");
     if (saved) process.env.OPENAI_API_KEY = saved;
     if (saved2) process.env.CONCORD_MODERATION_API_KEY = saved2;
+  });
+});
+
+describe("WebPurify CSAM provider (founder decision 2026-10-28)", () => {
+  const TESTKEY = "test" + "-key";
+  const savedFetch = globalThis.fetch;
+  const savedEnv = { ...process.env };
+  afterEach(() => {
+    globalThis.fetch = savedFetch;
+    for (const k of ["CONCORD_CSAM_PROVIDER", "WEBPURIFY_API_KEY", "WEBPURIFY_CSAM_THRESHOLD", "WEBPURIFY_FLAG_THRESHOLD"]) {
+      if (savedEnv[k] === undefined) delete process.env[k]; else Object.assign(process.env, { [k]: savedEnv[k] });
+    }
+  });
+  const aimResponse = (scores) => async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ rsp: { "@attributes": { stat: "ok" }, ...scores } }),
+  });
+
+  it("webpurifyImageCheck parses AIM probabilities and flags at threshold", async () => {
+    globalThis.fetch = aimResponse({ csam: "87", porn: "12" });
+    const r = await webpurifyImageCheck("https://example.test/img.png", { apiKey: "<redacted>" });
+    assert.equal(r.ok, true);
+    assert.equal(r.scores.csam, 87);
+    assert.equal(r.flagged, true);
+    assert.deepEqual(r.categories, ["csam"]);
+  });
+
+  it("webpurifyImageCheck never throws on an API error body", async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ rsp: { "@attributes": { stat: "fail" }, err: { "@attributes": { code: "100", msg: "Invalid API Key" } } } }),
+    });
+    const r = await webpurifyImageCheck("https://example.test/img.png", { apiKey: "<redacted>" });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "webpurify_100");
+  });
+
+  it("csamHashMatch: unconfigured stays not_configured; webpurify without a URL cannot clear", async () => {
+    delete process.env.CONCORD_CSAM_PROVIDER;
+    assert.deepEqual(await csamHashMatch(Buffer.from([1]), {}), { ok: false, reason: "not_configured" });
+    process.env.CONCORD_CSAM_PROVIDER = "webpurify";
+    process.env.WEBPURIFY_API_KEY = "<redacted>";
+    const r = await csamHashMatch(Buffer.from([1]), {});
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "url_required");
+  });
+
+  it("csamHashMatch: webpurify csam score at/above threshold is a match", async () => {
+    process.env.CONCORD_CSAM_PROVIDER = "webpurify";
+    process.env.WEBPURIFY_API_KEY = "<redacted>";
+    globalThis.fetch = aimResponse({ csam: "97", porn: "3" });
+    const hit = await csamHashMatch(Buffer.from([1]), { imageUrl: "https://example.test/a.png" });
+    assert.equal(hit.ok, true);
+    assert.equal(hit.match, true);
+    globalThis.fetch = aimResponse({ csam: "4", porn: "2" });
+    const miss = await csamHashMatch(Buffer.from([1]), { imageUrl: "https://example.test/b.png" });
+    assert.equal(miss.ok, true);
+    assert.equal(miss.match, false);
+  });
+
+  it("screenForPublish hard-blocks on a WebPurify CSAM match at the publish boundary", async () => {
+    process.env.CONCORD_CSAM_PROVIDER = "webpurify";
+    process.env.WEBPURIFY_API_KEY = "<redacted>";
+    globalThis.fetch = aimResponse({ csam: "99", porn: "0" });
+    const r = await screenForPublish(
+      { text: "listing photo", imageUrl: "https://example.test/listing.png" },
+      { targetScope: "marketplace", contentType: "image", mediaBuffer: Buffer.from([1, 2, 3]) },
+    );
+    assert.equal(r.allowed, false);
+    assert.equal(r.reason, "csam_detected");
+    assert.equal(r.csam, true);
+    assert.equal(r.report, "ncmec");
+  });
+
+  it("provider isolation: a personal-tier screen never sends the image URL", async () => {
+    process.env.CONCORD_CSAM_PROVIDER = "webpurify";
+    process.env.WEBPURIFY_API_KEY = "<redacted>";
+    let fetchCalls = 0;
+    globalThis.fetch = async () => { fetchCalls += 1; return { ok: true, status: 200, json: async () => ({ rsp: { csam: "99" } }) }; };
+    const r = await screenForPublish(
+      { text: "private photo", imageUrl: "https://example.test/private.png" },
+      { targetScope: "personal", contentType: "image", mediaBuffer: Buffer.from([1, 2, 3]) },
+    );
+    assert.equal(fetchCalls, 0);
+    assert.equal(r.allowed, true);
   });
 });

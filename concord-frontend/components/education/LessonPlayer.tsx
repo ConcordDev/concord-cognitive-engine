@@ -138,7 +138,7 @@ export function LessonPlayer() {
           Enroll in a course to start watching lessons.
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-0">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
           {/* Lesson list (left rail) */}
           <aside className="border-r border-white/10 max-h-[28rem] overflow-y-auto">
             {lessons.length === 0 ? (

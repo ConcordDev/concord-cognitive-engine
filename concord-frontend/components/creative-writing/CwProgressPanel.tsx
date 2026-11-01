@@ -76,7 +76,7 @@ export function CwProgressPanel({ projectId }: { projectId: string }) {
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <Stat label="Words today" value={stats.wordsToday.toLocaleString()} />
         <Stat label="Sessions" value={stats.sessionCount} />
         <Stat label="Day streak" value={stats.streak} icon />
