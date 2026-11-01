@@ -26,6 +26,7 @@ import logger from '../logger.js';
 import { transcodeImage, transcodeAudio, transcodeVideo, generateVideoDerivatives, isTranscodingAvailable } from './artifact-transcoder.js';
 import { checkBudget, downgradePlan } from './artifact-budget.js';
 import { ARTIFACT, FEEDBACK } from './artifact-constants.js';
+import { AV_FORMATS } from './media-formats.js';
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
 // Prefer network volume (/workspace/concord-data) over root disk for artifact storage.
@@ -67,7 +68,7 @@ export function previewCacheStats() {
   return { size: _previewCache.size, max: PREVIEW_CACHE_MAX, ttlMs: PREVIEW_CACHE_TTL };
 }
 
-const SUPPORTED_TYPES = Object.freeze({
+const BASE_TYPES = {
   "audio/wav": { ext: "wav", compressible: true, previewable: true },
   "audio/mpeg": { ext: "mp3", compressible: false, previewable: true },
   "audio/ogg": { ext: "ogg", compressible: false, previewable: true },
@@ -93,6 +94,17 @@ const SUPPORTED_TYPES = Object.freeze({
   // Generic fallback for the universal-DTU file format. Any mime not in
   // the known list above lands here so any binary can ride inside a .dtu.
   "application/octet-stream": { ext: "bin", compressible: false, previewable: false },
+};
+
+const SUPPORTED_TYPES = Object.freeze({
+  ...BASE_TYPES,
+  // Every audio/video container the upload route accepts (m4a, aac, webm audio,
+  // mov, m4v …) — derived from the shared table so the store cannot disagree
+  // with the route. Without this they were kept as application/octet-stream
+  // and streamed back with that Content-Type. Existing explicit rows win.
+  ...Object.fromEntries(
+    AV_FORMATS.filter((f) => !BASE_TYPES[f.mime]).map((f) => [f.mime, { ext: f.ext, compressible: false, previewable: true }]),
+  ),
 });
 
 export function isSupportedType(mimeType) {
