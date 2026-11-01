@@ -17,14 +17,14 @@ export const UNIVERSAL_FEE_RATE = 0.0146;
 
 // Fee revenue split: how collected fees are allocated
 export const FEE_SPLIT = {
-  RESERVES: 0.80,
+  TREASURY: 0.80,
   OPERATING_COSTS: 0.10,
   PAYROLL: 0.10,
 };
 
 // Platform account IDs
 export const PLATFORM_ACCOUNT_ID = "__PLATFORM__";
-export const RESERVES_ACCOUNT_ID = "__RESERVES__";
+export const TREASURY_ACCOUNT_ID = "__TREASURY__";
 export const OPERATING_ACCOUNT_ID = "__OPERATING__";
 export const PAYROLL_ACCOUNT_ID = "__PAYROLL__";
 
