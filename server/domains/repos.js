@@ -1919,6 +1919,34 @@ export default function registerReposActions(registerLensAction) {
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
+  // F15: a pull request could only ever leave OPEN by merging — there
+  // was no close path at all, so a stale or unwanted PR (and any branch
+  // under it, whose delete guard reads "merge or close it first") was
+  // stuck forever. Mirrors issue-set-state's shape, with the one guard
+  // issues don't need: merged is terminal history, not a state the
+  // lifecycle can move out of or overwrite.
+  registerLensAction("repos", "pull-set-state", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const pull = repo.pulls.find((p) => p.number === rpNum(params.number, -1));
+      if (!pull) return { ok: false, error: "pull not found" };
+      const state = params.state === "open" ? "open" : params.state === "closed" ? "closed" : null;
+      if (!state) return { ok: false, error: "invalid_state", message: "State must be \"open\" or \"closed\"." };
+      if (pull.state === "merged") {
+        return { ok: false, error: "pull_merged", message: `Pull request #${pull.number} is merged — a merged pull can't be closed or reopened.` };
+      }
+      pull.state = state;
+      if (state === "closed") pull.closedAt = rpNow();
+      else delete pull.closedAt;
+      pull.updatedAt = rpNow();
+      repo.updatedAt = rpNow();
+      rpSave();
+      return { ok: true, result: { number: pull.number, state } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
   registerLensAction("repos", "pull-merge", (ctx, _a, params = {}) => {
     try {
       const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
