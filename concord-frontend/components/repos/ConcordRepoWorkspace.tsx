@@ -1424,10 +1424,9 @@ function SettingsTab({ repo, onUpdated, onDeleted, onNotice }: {
   const [confirmName, setConfirmName] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const save = async () => {
-    setBusy('save'); setErr(null); setNotice(null);
+    setBusy('save'); setErr(null);
     const r = await runX<{ repo: { id: string; name: string; description: string; isPrivate: boolean } }>(
       'repo-update', { repoId: repo.id, name: name.trim(), description, isPrivate },
     );
@@ -1435,11 +1434,11 @@ function SettingsTab({ repo, onUpdated, onDeleted, onNotice }: {
     if (r.ok && r.data) {
       onUpdated({ ...repo, name: r.data.repo.name, description: r.data.repo.description, isPrivate: r.data.repo.isPrivate });
       const saved = `Saved — this repo is now "${r.data.repo.name}", ${r.data.repo.isPrivate ? 'private' : 'public'} in your account.`;
-      setNotice(saved);
-      // Mirror to the workspace-level notice (Review F14): this panel
-      // unmounts on a tab switch, which takes its local receipt with
-      // it — the mirror survives the round-trip. The same dual-render
-      // pattern the tag receipts already use (panel + tab-top).
+      // The receipt lives in the workspace-level notice only (Review
+      // F14): this panel unmounts on a tab switch, which would take a
+      // local receipt with it, and rendering both showed the same
+      // green line twice. The workspace banner sits above the tabs, so
+      // it is visible here and survives the round-trip.
       onNotice(saved);
     } else { setErr(r.error); }
   };
@@ -1454,11 +1453,6 @@ function SettingsTab({ repo, onUpdated, onDeleted, onNotice }: {
   return (
     <div className="space-y-3">
       <ErrorBanner err={err} />
-      {notice && (
-        <p className="flex items-center gap-1.5 rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-[10px] text-green-300">
-          <CheckCircle className="h-3 w-3 shrink-0" /> {notice}
-        </p>
-      )}
       <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 space-y-2">
         <h3 className="text-xs font-semibold text-white">General</h3>
         <label className="block text-[10px] text-zinc-400">Name
