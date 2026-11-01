@@ -26,17 +26,25 @@ vi.mock('@/lib/api/client', () => ({
   lensRun: (...args: unknown[]) => lensRun(...args),
 }));
 
+// The room itself (admit, decline, evidence, statement) is pinned by tests/vault-curator.test.tsx; here only
+// whether the page shows it.
+vi.mock('@/components/vault/curator', () => ({
+  CuratorQueue: ({ onChange }: { onChange?: () => void }) =>
+    React.createElement('button', { 'data-testid': 'curator-queue-stub', onClick: () => onChange?.() }, 'queue'),
+}));
+
 import VaultPage from '@/app/lenses/vault/page';
 
 interface Sub { id: string; title: string; status: string; workKind?: string; description?: string; body?: string; declineReason?: string; curatorStatement?: string }
 
 const ok = (result: unknown) => ({ data: { ok: true, result, error: null } });
 
-function backend(opts: { records?: Sub[]; submissions?: Sub[]; onSubmit?: (input: Record<string, unknown>) => unknown; onWithdraw?: (input: Record<string, unknown>) => unknown } = {}) {
+function backend(opts: { curators?: Array<Record<string, unknown>>; records?: Sub[]; submissions?: Sub[]; onSubmit?: (input: Record<string, unknown>) => unknown; onWithdraw?: (input: Record<string, unknown>) => unknown } = {}) {
   const submissions = opts.submissions ?? [];
   lensRun.mockImplementation(async (_d: string, action: string, input: Record<string, unknown> = {}) => {
     if (action === 'browse') return ok({ ok: true, records: opts.records ?? [] });
     if (action === 'my_submissions') return ok({ ok: true, submissions });
+    if (action === 'curators') return ok({ ok: true, curators: opts.curators ?? [] });
     if (action === 'submit') {
       if (opts.onSubmit) return opts.onSubmit(input);
       submissions.unshift({ id: 'vsub_1', title: String(input.title), status: 'submitted', workKind: String(input.workKind), description: String(input.description), body: String(input.body) });
@@ -184,5 +192,56 @@ describe('vault page: my submissions, withdraw, privacy', () => {
     // the admitted list is the browse result only
     expect(view.getByTestId('vault-admitted')).toHaveTextContent('Public tape');
     expect(view.getByTestId('vault-admitted')).not.toHaveTextContent(/Declined tape|Not documented/);
+  });
+});
+
+describe('vault page: curator room is for curators only', () => {
+  const row = (id: string, active = 1) => ({ curator_id: id, display_name: 'C', role: 'guest_curator', invited_by: null, invited_at: 1, active, retired_at: null });
+
+  it('hidden for a signed-in non-curator, even when others are curators', async () => {
+    backend({ curators: [row('someone_else')] });
+    const view = render(<VaultPage />);
+    expect(await view.findByTestId('vault-empty')).toBeInTheDocument();
+    expect(view.queryByTestId('vault-curator-room')).toBeNull();
+    expect(view.queryByTestId('curator-queue-stub')).toBeNull();
+  });
+
+  it('hidden for a retired curator', async () => {
+    backend({ curators: [row('u1', 0)] });
+    const view = render(<VaultPage />);
+    expect(await view.findByTestId('vault-empty')).toBeInTheDocument();
+    expect(view.queryByTestId('vault-curator-room')).toBeNull();
+  });
+
+  it('hidden when signed out, and the roster is not even read', async () => {
+    authUser.current = null;
+    backend({ curators: [row('u1')] });
+    const view = render(<VaultPage />);
+    expect(await view.findByTestId('vault-signin')).toBeInTheDocument();
+    expect(view.queryByTestId('vault-curator-room')).toBeNull();
+    expect(calls('curators')).toHaveLength(0);
+  });
+
+  it('shown for an active curator, and an admission or decline refreshes the page reads', async () => {
+    backend({ curators: [row('u1')] });
+    const view = render(<VaultPage />);
+    expect(await view.findByTestId('curator-queue-stub')).toBeInTheDocument();
+    const before = calls('browse').length;
+    fireEvent.click(view.getByTestId('curator-queue-stub'));
+    await waitFor(() => expect(calls('browse').length).toBeGreaterThan(before));
+    // the page itself never calls the curator actions; the room owns them
+    for (const a of ['admit', 'decline', 'open_review', 'queue']) expect(calls(a)).toHaveLength(0);
+  });
+
+  it('a failed roster read hides the room but does not break the page', async () => {
+    lensRun.mockImplementation(async (_d: string, action: string) => {
+      if (action === 'browse') return ok({ ok: true, records: [] });
+      if (action === 'my_submissions') return ok({ ok: true, submissions: [] });
+      if (action === 'curators') return { data: { ok: false, result: null, error: 'no_db' } };
+      throw new Error(action);
+    });
+    const view = render(<VaultPage />);
+    expect(await view.findByTestId('vault-empty')).toBeInTheDocument();
+    expect(view.queryByTestId('vault-curator-room')).toBeNull();
   });
 });
