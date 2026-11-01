@@ -147,7 +147,7 @@ import { stringifyChunked } from "./lib/chunked-json.js";
 import { writeFileChunkedYielding } from "./lib/chunked-write.js";
 import { createLensArtifactStore } from "./lib/lens-artifact-store.js";
 import fs from "fs";
-import { startWalCheckpointer } from "./lib/wal-checkpointer.js";
+import { startWalCheckpointer, walCheckpointerEnabled } from "./lib/wal-checkpointer.js";
 import path from "path";
 import zlib from "zlib";
 import { pruneJsonStateBackups, summarizeDatedDbBackups } from "./lib/backup-retention.js";
@@ -6676,12 +6676,19 @@ function initDatabase() {
       db.pragma(`cache_size = -${cacheMb * 1024}`);
       db.pragma("temp_store = MEMORY");       // Temp tables in RAM
       db.pragma(`busy_timeout = ${busyTimeoutMs}`); // 10s default retry — burst-safe under concurrent writers
-      db.pragma(`wal_autocheckpoint = ${walPages}`); // Checkpoint cadence
+      // Checkpoint cadence. When the checkpoint worker will run, the inline auto-checkpoint is OFF from open
+      // (not only once the worker reports ready): boot is synchronous up to listen, so "ready" cannot arrive
+      // before it, and the first COMMIT after boot (the dtu-ownership INSERT OR REPLACE, 14,190 ms in #1955's
+      // syncIo) was running SQLite's inline checkpoint over the WAL the previous run left behind (64 MB, i.e.
+      // over the 8192-page threshold). Reproduced locally: first write after reopening a 124 MB WAL costs ~400 ms
+      // with wal_autocheckpoint 1000 or 8192 and 0 ms with 0. The inline checkpoint comes back if the worker
+      // fails to start, dies, starves, or does not report ready in time (onFallback below).
+      const _walWorkerOn = walCheckpointerEnabled(DB_PATH);
+      db.pragma(`wal_autocheckpoint = ${_walWorkerOn ? 0 : walPages}`);
       db.pragma(`journal_size_limit = ${walSizeLimitMb * 1024 * 1024}`); // hard cap — see comment above
       // Checkpoints run on a worker thread's connection instead of inside whichever
       // COMMIT crosses wal_autocheckpoint (a 10.5 s COMMIT in the NPC flush, #1940
-      // syncIo). Inline auto-checkpoint stays on until the worker is ready and comes
-      // back on if it fails; CONCORD_WAL_CHECKPOINT_WORKER=0 disables the worker.
+      // syncIo). CONCORD_WAL_CHECKPOINT_WORKER=0 disables the worker (and keeps inline checkpointing).
       _walCheckpointer = startWalCheckpointer(DB_PATH, {
         thresholdBytes: walPages * 4096,
         onReady: () => { db.pragma("wal_autocheckpoint = 0"); structuredLog("info", "wal_checkpointer_started", { thresholdBytes: walPages * 4096 }); },

@@ -9,7 +9,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { EventEmitter } from "node:events";
 import Database from "better-sqlite3";
-import { startWalCheckpointer } from "../lib/wal-checkpointer.js";
+import { spawnSync } from "node:child_process";
+import { startWalCheckpointer, walCheckpointerEnabled } from "../lib/wal-checkpointer.js";
 
 const wal = (p) => { try { return statSync(`${p}-wal`).size; } catch { return 0; } };
 const until = async (fn, ms = 8000) => { const t = Date.now(); while (!fn()) { if (Date.now() - t > ms) throw new Error("timeout"); await new Promise((r) => setTimeout(r, 25)); } };
@@ -108,5 +109,83 @@ describe("server.js wiring", () => {
     assert.match(src, /onFallback: \(reason\) => \{ try \{ db\.pragma\(`wal_autocheckpoint = \$\{walPages\}`\)/);
     assert.match(src, /_walCheckpointer\?\.stop\(\);[^\n]*\n\s*structuredLog\("info", "shutdown_closing_database"/);
     assert.match(src, /db\.pragma\("analysis_limit = 1000"\);/);
+  });
+});
+
+describe("walCheckpointerEnabled mirrors the start gating", () => {
+  it("agrees with startWalCheckpointer for the kill switch, test env, :memory: and force", () => {
+    assert.equal(walCheckpointerEnabled("/x/db", { env: { CONCORD_WAL_CHECKPOINT_WORKER: "0" } }), false);
+    assert.equal(walCheckpointerEnabled("/x/db", { env: { NODE_ENV: "test" } }), false);
+    assert.equal(walCheckpointerEnabled("/x/db", { env: { CONCORD_NO_LISTEN: "true" } }), false);
+    assert.equal(walCheckpointerEnabled(":memory:", { env: {}, force: true }), false);
+    assert.equal(walCheckpointerEnabled("", { env: {} }), false);
+    assert.equal(walCheckpointerEnabled("/x/db", { env: {} }), true);
+    assert.equal(walCheckpointerEnabled("/x/db", { env: { NODE_ENV: "test" }, force: true }), true);
+  });
+});
+
+describe("inline checkpoint stays off until the worker is up, and comes back if it never is", () => {
+  const fakeWorker = (sendReady) => class extends EventEmitter {
+    constructor() { super(); if (sendReady) setTimeout(() => this.emit("message", { type: "ready" }), 5); }
+    terminate() {} unref() {}
+  };
+  it("no ready within readyTimeoutMs -> onFallback('ready_timeout_...'), so the caller re-enables inline checkpointing", async () => {
+    let reason = null; let ready = false;
+    startWalCheckpointer("/x/db", { thresholdBytes: 1, env: {}, readyTimeoutMs: 40, WorkerCtor: fakeWorker(false), onReady() { ready = true; }, onFallback(r) { reason = r; } });
+    await until(() => reason !== null, 2000);
+    assert.match(reason, /^ready_timeout_40ms$/);
+    assert.equal(ready, false);
+  });
+  it("a ready worker cancels the timeout (no late fallback)", async () => {
+    let reason = null; let ready = false;
+    startWalCheckpointer("/x/db", { thresholdBytes: 1, env: {}, readyTimeoutMs: 60, WorkerCtor: fakeWorker(true), onReady() { ready = true; }, onFallback(r) { reason = r; } });
+    await until(() => ready, 2000);
+    await new Promise((r) => setTimeout(r, 120));
+    assert.equal(reason, null);
+  });
+});
+
+describe("the first write after reopening a big WAL (the dtu-ownership boot INSERT, 14 s live)", () => {
+  // A child writes ~30 MB into the WAL with autocheckpoint off and SIGKILLs itself, leaving an unclean WAL
+  // exactly like a restart of the live server (64 MB WAL, nothing backfilled).
+  function leaveBigWal() {
+    const dir = mkdtempSync(join(tmpdir(), "walfirst-"));
+    const p = join(dir, "t.db");
+    const code = `const D=require(${JSON.stringify(createRequireTarget())});const db=new D(process.argv[1]);
+      db.pragma("journal_mode=WAL");db.pragma("wal_autocheckpoint=0");db.pragma("synchronous=NORMAL");
+      db.exec("CREATE TABLE t(id INTEGER PRIMARY KEY, v TEXT)");const i=db.prepare("INSERT INTO t VALUES(?,?)");
+      db.transaction(()=>{for(let n=0;n<10000;n++)i.run(n,"x".repeat(3000))})();process.kill(process.pid,"SIGKILL");`;
+    spawnSync(process.execPath, ["-e", code, p]);
+    return p;
+  }
+  function createRequireTarget() { return new URL("../node_modules/better-sqlite3", import.meta.url).pathname; }
+  const dbSize = (p) => statSync(p).size;
+
+  it("with the inline auto-checkpoint on (autocheckpoint 8192 pages = the old setting) the first COMMIT backfills the WAL synchronously", () => {
+    const p = leaveBigWal();
+    assert.ok(wal(p) > 8 * 1024 * 1024, `unclean WAL left behind: ${wal(p)}`);
+    const db = new Database(p);
+    db.pragma("journal_mode = WAL"); db.pragma("wal_autocheckpoint = 8192");
+    const before = dbSize(p);
+    db.prepare("INSERT OR REPLACE INTO t VALUES (?, ?)").run(5, "y");
+    assert.ok(dbSize(p) > before + 1024 * 1024, "the first write ran the checkpoint inline (main db file grew by the backfilled pages)");
+    db.close(); rmSync(p.replace(/t\.db$/, ""), { recursive: true, force: true });
+  });
+
+  it("with wal_autocheckpoint = 0 from open (what server.js now sets when the worker will run) the first COMMIT does no checkpoint work", () => {
+    const p = leaveBigWal();
+    const db = new Database(p);
+    db.pragma("journal_mode = WAL"); db.pragma("wal_autocheckpoint = 0");
+    const before = dbSize(p);
+    db.prepare("INSERT OR REPLACE INTO t VALUES (?, ?)").run(5, "y");
+    assert.equal(dbSize(p), before, "no backfill into the main db file on the main thread");
+    db.close(); rmSync(p.replace(/t\.db$/, ""), { recursive: true, force: true });
+  });
+});
+
+describe("server.js opens with the inline checkpoint already off when the worker will run", () => {
+  const src = readFileSync(new URL("../server.js", import.meta.url), "utf8");
+  it("wal_autocheckpoint is derived from walCheckpointerEnabled at open", () => {
+    assert.match(src, /const _walWorkerOn = walCheckpointerEnabled\(DB_PATH\);\s*\n\s*db\.pragma\(`wal_autocheckpoint = \$\{_walWorkerOn \? 0 : walPages\}`\);/);
   });
 });
