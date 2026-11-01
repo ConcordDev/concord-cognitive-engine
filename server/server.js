@@ -13,7 +13,7 @@
 
 // Must stay the first import: it wraps node:fs's sync calls before the later modules bind them,
 // so a blocking syscall that stalls the event loop is named (slow_sync_io / event_loop_block.syncIo).
-import { installSlowSyncIoOnce, setSlowSyncIoReporter, slowSyncIoSince } from "./lib/slow-sync-io.js";
+import { installSlowSyncIoOnce, installSlowNativeOnce, setSlowSyncIoReporter, slowSyncIoSince } from "./lib/slow-sync-io.js";
 installSlowSyncIoOnce();
 import expressRateLimit from "express-rate-limit";
 import { findActiveUserRowByEmail, emailsMatchIgnoreCase } from "./lib/user-email-lookup.js";
@@ -2651,6 +2651,7 @@ try { helmet = (await importWithRetry("helmet")).default; } catch (e) {
 }
 try { compression = (await import("compression")).default; } catch (_e) { logger.debug('server', 'optional in all envs', { error: _e?.message }); }
 try { Database = (await import("better-sqlite3")).default; } catch (_e) { logger.debug('server', 'optional - falls back to JSON', { error: _e?.message }); }
+installSlowNativeOnce(Database); // times better-sqlite3 + child_process sync calls into event_loop_block.syncIo
 
 // Sentry — only activates when SENTRY_DSN is set; completely no-op otherwise
 if (process.env.SENTRY_DSN) {
