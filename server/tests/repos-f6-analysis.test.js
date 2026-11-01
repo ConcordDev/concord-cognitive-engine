@@ -36,7 +36,12 @@ const dispatch = (name, input) =>
   handlers.get(`repos:${name}`)(U1, { id: null, domain: "repos", type: "domain_action", data: input, meta: {} }, input);
 
 const installedTs = (() => {
-  try { return createRequire(import.meta.url)("typescript"); } catch { return null; }
+  // Same order the walker uses: the `typescript5` alias first, then `typescript`.
+  const req = createRequire(import.meta.url);
+  for (const name of ["typescript5", "typescript"]) {
+    try { const m = req(name); if (hasCompilerApi(m)) return m; } catch { /* next */ }
+  }
+  return null;
 })();
 const apiHere = hasCompilerApi(installedTs);
 

@@ -28,8 +28,18 @@ function ts() {
   if (_loadFailed) return null;
   try {
     // CJS module — require via createRequire so this stays sync inside macros.
-    _ts = _require("typescript");
-    return _ts;
+    // `typescript5` (npm alias for TS5) first: the main `typescript` pin is
+    // v7, which has no JS compiler API. Accept `typescript` only if it works.
+    for (const name of ["typescript5", "typescript"]) {
+      let mod = null;
+      try { mod = _require(name); } catch { continue; }
+      if (mod && typeof mod.createSourceFile === "function" && typeof mod.createLanguageService === "function") {
+        _ts = mod;
+        return _ts;
+      }
+    }
+    _loadFailed = true;
+    return null;
   } catch {
     _loadFailed = true;
     return null;
