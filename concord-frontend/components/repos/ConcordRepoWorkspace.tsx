@@ -34,7 +34,7 @@ interface TreeFileNode {
   children?: TreeFileNode[];
 }
 interface FileContent { path: string; content: string; language: string; lineCount: number; }
-interface BranchRow { name: string; head: string; protected: boolean; isDefault: boolean; commits: number; }
+interface BranchRow { name: string; head: string; protected: boolean; isDefault: boolean; commits: number; ahead?: number; behind?: number; }
 interface TagRow { name: string; commit: string; message?: string; createdAt: string; }
 interface IssueRow { number: number; title: string; state: string; labels: string[]; author: string; comments: number; createdAt: string; }
 interface IssueDetail { number: number; title: string; body: string; state: string; author: string; labels: string[]; comments: Array<{ id: string; author: string; body: string; createdAt: string }>; createdAt: string; linkedPulls?: Array<{ number: number; title: string; state: string }>; }
@@ -50,6 +50,7 @@ interface PullDetail {
   reviews: Array<{ id: string; reviewer: string; verdict: string; body: string; createdAt: string }>;
   comments: PullComment[];
   mergeable: boolean; approvals: number; changesRequested: number;
+  ahead?: number; behind?: number;
 }
 interface WorkflowRow { id: string; number: number; workflow: string; branch: string; conclusion: string; durationMs: number; createdAt: string; }
 interface WorkflowStep { name: string; conclusion: string; durationMs: number; logs: string[]; }
@@ -437,6 +438,12 @@ function CodeTab({ repoId, branch, onBranchChange }: {
     } else { setErr(r.error); }
   };
 
+  // Ahead/behind of the checked-out branch vs the default branch —
+  // the branch view header is one of the three canonical locations in
+  // Review 2's ahead-counts residual. branch-list already supplies
+  // both numbers (loaded above for the switcher).
+  const branchInfo = branches.find((b) => b.name === branch);
+
   return (
     <div className="space-y-2">
       <ErrorBanner err={err} />
@@ -460,6 +467,9 @@ function CodeTab({ repoId, branch, onBranchChange }: {
           ))}
           {branches.length === 0 && <option value={branch}>{branch}</option>}
         </select>
+        {branchInfo && !branchInfo.isDefault && branchInfo.ahead != null && (
+          <span className="text-[10px] text-zinc-400">↑{branchInfo.ahead} ahead · ↓{branchInfo.behind ?? 0} behind the default branch</span>
+        )}
         <span className="text-[10px] text-zinc-500">Commits go to this branch and no other.</span>
         <span className="ml-auto text-[10px] text-zinc-500">
           {branches.find((b) => b.name === branch)?.commits ?? '—'} commits on this branch
@@ -649,7 +659,7 @@ function BranchesTab({ repoId, onCheckout }: { repoId: string; onCheckout: (name
                 {b.protected && <span className="rounded bg-amber-500/15 px-1 text-[8px] text-amber-300">protected</span>}
               </span>
               <span className="flex items-center gap-2">
-                <span className="text-zinc-600">{b.commits} commits · {b.head}</span>
+                <span className="text-zinc-600">{b.commits} commits · {b.head}{!b.isDefault && b.ahead != null ? ` · ↑${b.ahead} ahead · ↓${b.behind ?? 0} behind` : ''}</span>
                 <button onClick={() => onCheckout(b.name)} className="rounded border border-zinc-700 px-1.5 py-0.5 text-[9px] text-zinc-300 hover:bg-zinc-800">Open in Code</button>
                 {!b.isDefault && (
                   <button onClick={() => deleteBranch(b.name)} disabled={busy === `del-branch-${b.name}`} className="rounded border border-zinc-700 px-1.5 py-0.5 text-[9px] text-rose-300 hover:bg-rose-500/10 disabled:opacity-50">Delete</button>
@@ -974,6 +984,7 @@ function PullsTab({ repoId }: { repoId: string }) {
             </h3>
             <p className="mt-0.5 text-[10px] text-zinc-400">
               <span className="font-mono">{detail.pull.head}</span> → <span className="font-mono">{detail.pull.base}</span> · opened by {detail.pull.author}
+              {detail.ahead != null && <> · {detail.ahead} ahead · {detail.behind ?? 0} behind</>}
             </p>
           </div>
           <div className="flex items-center gap-2">
