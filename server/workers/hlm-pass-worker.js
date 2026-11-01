@@ -11,7 +11,7 @@
 //   out: { ok: true, pass } | { ok: false, error }
 
 import { parentPort } from "node:worker_threads";
-import { computeHLMPass } from "../emergent/hlm-engine.js";
+import { computeHLMPass, boundHLMPass } from "../emergent/hlm-engine.js";
 
 // Input arrives either as one legacy message { dtus } or, from hlm-offthread.js, as { chunk } messages followed by
 // { run: true } — chunked so the SENDER never holds its event loop for the structured clone of the whole store
@@ -22,7 +22,8 @@ parentPort.on("message", (msg) => {
     if (Array.isArray(msg?.chunk)) { for (const d of msg.chunk) received.push(d); return; }
     if (!msg?.run && !Array.isArray(msg?.dtus)) return;
     const dtus = Array.isArray(msg?.dtus) ? msg.dtus : received;
-    const pass = computeHLMPass(dtus);
+    // Bounded BEFORE the post: the clone is deserialised on the main thread (see boundHLMPass).
+    const pass = boundHLMPass(computeHLMPass(dtus));
     parentPort.postMessage(pass?.ok ? { ok: true, pass } : { ok: false, error: pass?.error || "hlm_pass_failed" });
   } catch (e) {
     parentPort.postMessage({ ok: false, error: String(e?.message || e) });
