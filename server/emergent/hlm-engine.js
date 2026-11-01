@@ -1236,7 +1236,7 @@ function lineageAudit(dtus) {
  * @param {Object[]} dtus - Array of DTU objects
  * @returns {Object} Full HLM pass result
  */
-export function runHLMPass(dtus) {
+export function computeHLMPass(dtus) {
   try {
     if (!Array.isArray(dtus)) {
       return { ok: false, error: "dtus_must_be_array" };
@@ -1300,26 +1300,48 @@ export function runHLMPass(dtus) {
       },
     };
 
-    // Store the pass
-    hlmPasses.set(passId, pass);
-    if (hlmPasses.size > 100) {
-      const oldest = Array.from(hlmPasses.keys()).slice(0, hlmPasses.size - 50);
-      for (const k of oldest) hlmPasses.delete(k);
-    }
-
-    // Update metrics
-    hlmMetricsStore.totalPasses++;
-    hlmMetricsStore.totalClusters += clusterResult.clusters.length;
-    hlmMetricsStore.totalOrphans += orphanResult.orphans.length;
-    hlmMetricsStore.totalRedundancies += redundancyResult.redundancies.length;
-    hlmMetricsStore.totalGaps += gapResult.gaps.length;
-    hlmMetricsStore.lastPassAt = pass.completedAt;
-    hlmMetricsStore.lastPassId = passId;
-
     return pass;
   } catch {
     return { ok: false, error: "hlm_pass_failed" };
   }
+}
+
+/**
+ * Record a computed pass in this module's stores and metrics. runHLMPass() does this for a pass it computed
+ * in-process; the off-thread path (hlm-offthread.js) computes in a worker thread whose module state is
+ * discarded, so it records the returned pass here on the main thread. `replayRecommendations` re-registers
+ * the recommendations getRecommendations() had registered in the worker's copy of the module.
+ */
+export function recordHLMPass(pass, { replayRecommendations = false } = {}) {
+  if (!pass || pass.ok !== true) return pass;
+  if (replayRecommendations) {
+    const recs = pass.recommendations?.recommendations || [];
+    for (const rec of recs) if (rec?.recId) hlmRecommendations.set(rec.recId, rec);
+    hlmMetricsStore.totalRecommendations += recs.length;
+  }
+
+  // Store the pass
+  hlmPasses.set(pass.passId, pass);
+  if (hlmPasses.size > 100) {
+    const oldest = Array.from(hlmPasses.keys()).slice(0, hlmPasses.size - 50);
+    for (const k of oldest) hlmPasses.delete(k);
+  }
+
+  // Update metrics
+  hlmMetricsStore.totalPasses++;
+  hlmMetricsStore.totalClusters += pass.clusters.clusters.length;
+  hlmMetricsStore.totalOrphans += pass.orphans.orphans.length;
+  hlmMetricsStore.totalRedundancies += pass.redundancies.redundancies.length;
+  hlmMetricsStore.totalGaps += pass.gaps.gaps.length;
+  hlmMetricsStore.lastPassAt = pass.completedAt;
+  hlmMetricsStore.lastPassId = pass.passId;
+  return pass;
+}
+
+/** Synchronous in-process pass (macros / tests). The 20-minute timer uses the off-thread variant. */
+export function runHLMPass(dtus) {
+  const pass = computeHLMPass(dtus);
+  return recordHLMPass(pass);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

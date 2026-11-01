@@ -50,7 +50,7 @@ export function ActionResultPanel({
         </div>
       )}
       {result.totalTime !== undefined && result.picTime !== undefined && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <div className="p-2 bg-lattice-surface rounded text-center">
             <p className="text-sm font-bold text-neon-cyan">{String(result.totalTime)}h</p>
             <p className="text-[10px] text-gray-400">Total Time</p>
@@ -86,7 +86,7 @@ export function ActionResultPanel({
           <div className="h-2 bg-white/5 rounded-full overflow-hidden">
             <div className="h-full bg-neon-cyan rounded-full transition-all" style={{ width: `${result.utilization}%` }} />
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <div className="p-2 bg-lattice-surface rounded text-center">
               <p className="text-sm font-bold text-green-400">{String(result.occupied)}</p>
               <p className="text-[10px] text-gray-400">Occupied</p>
@@ -104,7 +104,7 @@ export function ActionResultPanel({
       )}
       {result.grossWeight !== undefined && result.cg !== undefined && result.stations !== undefined && (
         <div className="space-y-2" data-testid="wb-result">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <div className="p-2 bg-lattice-surface rounded text-center">
               <p className="text-sm font-bold text-neon-cyan">{String(result.grossWeight)}<span className="text-[10px] text-gray-400"> lb</span></p>
               <p className="text-[10px] text-gray-400">Gross Weight</p>
@@ -172,7 +172,7 @@ export function ActionResultPanel({
         </div>
       )}
       {result.totalHours !== undefined && result.averageDuration !== undefined && (
-        <div className="grid grid-cols-3 gap-2" data-testid="flight-summary-result">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2" data-testid="flight-summary-result">
           <div className="p-2 bg-lattice-surface rounded text-center">
             <p className="text-sm font-bold text-neon-cyan">{String(result.totalHours)}h</p>
             <p className="text-[10px] text-gray-400">Total Hours</p>

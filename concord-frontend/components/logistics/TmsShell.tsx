@@ -67,7 +67,7 @@ export function TmsShell({
   return (
     <div className={cn('flex flex-col gap-3 p-4 bg-[#0d1117] text-gray-100', className)}>
       {/* Metric strip */}
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
         <Metric icon={Package} label="Total" value={String(totalShipments)} caption="shipments" tone="cyan" />
         <Metric icon={Truck} label="In transit" value={String(inTransit)} caption="active" tone="cyan" />
         <Metric icon={TrendingUp} label="On time" value={`${onTimePct}%`} caption="delivery rate" tone="emerald" />

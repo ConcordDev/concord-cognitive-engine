@@ -254,7 +254,7 @@ export function NavigationMode() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div className="rounded border border-lattice-border bg-lattice-surface/40 p-2 text-center">
                 <p className="font-mono tabular-nums text-sm text-white capitalize">{session.mode}</p>
                 <p className="text-[9px] text-gray-400">Mode</p>

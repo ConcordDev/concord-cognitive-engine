@@ -350,7 +350,7 @@ export function AlbumsPanel() {
               {active.media.length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-6">No media in this album yet.</p>
               ) : (
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   {active.media.map((m: MediaItem) => (
                     <div key={m.id ?? m.url} className="aspect-square bg-[#3a3b3c] rounded overflow-hidden relative group">
                       {m.kind === 'video' ? (

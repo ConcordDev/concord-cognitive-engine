@@ -85,7 +85,7 @@ export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void 
       </div>
 
       {creating && (
-        <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
+        <div className="p-3 border-b border-white/10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
           <input value={form.origin} onChange={e => setForm({ ...form, origin: e.target.value })} placeholder="Origin" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={form.destination} onChange={e => setForm({ ...form, destination: e.target.value })} placeholder="Destination" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <select value={form.mode} onChange={e => setForm({ ...form, mode: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">

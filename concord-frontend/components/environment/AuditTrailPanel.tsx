@@ -134,7 +134,7 @@ export function AuditTrailPanel() {
         <div className="p-3 space-y-3">
           {/* Status rollup */}
           {audit && (
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
               {STATUSES.map((st) => {
                 const tone = STATUS_TONE[st];
                 const Icon = tone.icon;

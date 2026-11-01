@@ -658,7 +658,7 @@ export function FractalRenderer() {
               Measured from a {GRID_N}×{GRID_N} escape-time re-sample of exactly what&apos;s on screen — pan/zoom
               first, then analyze.
             </p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <button onClick={runDimensionAnalysis} disabled={!!analysisBusy} className={btn} title="fractal.fractalDimension">
                 {analysisBusy === 'dimension' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Ruler className="h-3 w-3" />}
                 Dimension

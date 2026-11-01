@@ -11,13 +11,22 @@
 // background flags (autogen/dream/evolution/synth) stay owner-only. A write clears any watchdog pause record
 // for heartbeatEnabled (an explicit write supersedes the pause), is persisted immediately, and audit-logged.
 
-export function mountAdminHeartbeatRoutes(app, { requireRole, getState, save, clearMemoryPause, persistableSettings, log = () => {} }) {
+export function mountAdminHeartbeatRoutes(app, {
+  requireRole, getState, save, clearMemoryPause, persistableSettings, log = () => {},
+  // Live dispatcher control (server.js). The setting alone cannot start the registry dispatcher on a running
+  // process: _startGovernorHeartbeat() ran once at boot and returned heartbeat_disabled. Optional so the route
+  // still works against a bare STATE (tests, minimal builds); defaults report "not running".
+  startDispatcher = () => ({ ok: false, reason: "no_dispatcher" }),
+  stopDispatcher = () => ({ ok: true, stopped: false }),
+  dispatcherStatus = () => ({ running: false, intervalMs: null }),
+}) {
   const gate = requireRole("owner", "admin", "founder");
 
   const view = (STATE) => ({
     current: STATE.settings?.heartbeatEnabled ?? null,
     persisted: persistableSettings(STATE)?.heartbeatEnabled ?? null,
     memoryPaused: Object.keys(STATE._memoryPausedFeatures || {}),
+    dispatcher: dispatcherStatus(),
   });
 
   app.get("/api/admin/heartbeat", gate, (req, res) => {
@@ -40,8 +49,15 @@ export function mountAdminHeartbeatRoutes(app, { requireRole, getState, save, cl
       STATE.settings.heartbeatEnabled = enabled;
       clearMemoryPause(STATE, ["heartbeatEnabled"]);
       save();
-      log("warn", "admin_heartbeat_toggle", { by: req.user?.username || req.user?.id || null, role: req.user?.role || null, previous, current: enabled });
-      return res.json({ ok: true, previous, current: enabled, memoryPaused: Object.keys(STATE._memoryPausedFeatures || {}) });
+      // Make it real: start the dispatcher (idempotent — no second timer) or stop it (clearInterval), not just
+      // flip the flag the tick checks.
+      let dispatcherResult;
+      try { dispatcherResult = enabled ? startDispatcher() : stopDispatcher(); }
+      catch (e) { dispatcherResult = { ok: false, error: String(e?.message || e) }; }
+      log("warn", "admin_heartbeat_toggle", { by: req.user?.username || req.user?.id || null, role: req.user?.role || null, previous, current: enabled, dispatcherRunning: dispatcherStatus().running });
+      const dispatcher = dispatcherStatus();
+      if (enabled && !dispatcher.running && dispatcherResult?.reason) dispatcher.reason = dispatcherResult.reason;
+      return res.json({ ok: true, previous, current: enabled, memoryPaused: Object.keys(STATE._memoryPausedFeatures || {}), dispatcher });
     } catch (e) {
       return res.status(500).json({ ok: false, error: String(e?.message || e) });
     }

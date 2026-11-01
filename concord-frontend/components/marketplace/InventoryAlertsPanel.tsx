@@ -91,7 +91,7 @@ export function InventoryAlertsPanel() {
 
         {loading ? (
           <div className="px-4 py-3 space-y-3">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} variant="block" height={54} />)}
             </div>
             <Skeleton variant="block" height={140} />

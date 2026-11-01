@@ -11,6 +11,10 @@
  * @see ../README.md for architecture overview
  */
 
+// Must stay the first import: it wraps node:fs's sync calls before the later modules bind them,
+// so a blocking syscall that stalls the event loop is named (slow_sync_io / event_loop_block.syncIo).
+import { installSlowSyncIoOnce, setSlowSyncIoReporter, slowSyncIoSince } from "./lib/slow-sync-io.js";
+installSlowSyncIoOnce();
 import expressRateLimit from "express-rate-limit";
 import { podPick as _podPick } from "./lib/pod-profile.js";
 import { createDtuQualityService as _createDtuQualityService, dtuQualityMode as _dtuQualityMode } from "./lib/dtu-quality/service.js";
@@ -168,6 +172,7 @@ import { init as initEmergent } from "./emergent/index.js";
 import { tickAllRegistered, registerHeartbeat, getRegistryScheduleSummary, getRegistrySkipStats } from "./emergent/heartbeat-registry.js";
 import * as presenceIdle from "./lib/presence-idle.js";
 import * as loopJobs from "./lib/loop-job-tracker.js";
+import { createLoopBlockSampler } from "./lib/loop-block-attribution.js";
 import { HUB_WORLD_ID, canonicalWorldId } from "./lib/world-ids.js";
 import { uniqueTmpPath, writeFileAtomicSync, createSnapshotOrdering, sweepStaleStateTmps } from "./lib/state-file-write.js";
 import { runConsolidationCycle } from "./lib/consolidation-cycle.js";
@@ -1925,8 +1930,9 @@ registerHeartbeat("qualia-persist", {
   handler: async ({ db: ctxDb }) => {
     if (!ctxDb) return { ok: false, reason: "no_db" };
     try {
-      const { persistQualiaState } = await import("./existential/hooks.js");
-      const res = persistQualiaState(ctxDb);
+      const { persistQualiaStateAsync } = await import("./existential/hooks.js");
+      // Chunked + yielding: the synchronous version was a ~2 s main-thread block at the size seen live.
+      const res = await persistQualiaStateAsync(ctxDb);
       // Loud on the exact regression that hid for so long: the persist wire going
       // dead (engine.snapshot() missing) used to return a `reason` nobody read.
       if (res?.reason === "no_snapshot_export") {
@@ -2129,7 +2135,7 @@ import "./lib/validators/finance-validator.js";
 import "./lib/validators/healthcare-validator.js";
 import "./lib/validators/legal-validator.js";
 import "./lib/validators/music-validator.js";
-import { runIntegrityCheck } from "./lib/integrity-check.js";
+import { runIntegrityCheck, runIntegrityCheckAsync } from "./lib/integrity-check.js";
 import { fullRecoverySequence } from "./lib/cascade-recovery.js";
 import { getScalingStatus } from "./lib/horizontal-scaling.js";
 import { startAllIntervals, stopAllIntervals, getIntervalStatus } from "./lib/interval-registry.js";
@@ -3908,6 +3914,7 @@ function structuredLog(level, event, data = {}) {
 // Inject structuredLog into the http-errors helper so 5xx leak responses
 // log through the same pipeline as the rest of the server. Until this
 // runs, the helper falls back to console.error — safe but louder.
+setSlowSyncIoReporter((e) => structuredLog("warn", "slow_sync_io", { fn: e.fn, target: e.target, ms: e.ms, frames: e.frames }));
 configureHttpErrorLogger(structuredLog);
 
 // INC-67: reject a template FRONTEND_URL before any signing link or redirect
@@ -14528,6 +14535,55 @@ function log(type, message, meta={}, actorUserId=null) {
   return entry;
 }
 
+// ---- Lens activity recording (§5 convergence item 4, fix for the #1906
+// arm FAIL) ----
+// The events feed (/api/events/paginated) assembles DTU timeline rows,
+// audit rows (auth/economy/admin only), STATE.logs and the economy
+// ledger — ordinary lens actions wrote to none of them, so every lens's
+// Activity panel read empty for members even after full working
+// sessions (R3 arm verdict 0/12 on #1906). This recorder is the write
+// side: the /api/lens/run handler calls it after a successful,
+// non-internal dispatch on BOTH dispatch branches, stamping one
+// STATE.logs row with the acting user's id. The route's Source 3 turns
+// such rows into feed rows visible to their actor (type = the lens
+// domain, which the shared ActivityTimeline matches to the lens and
+// classifies as "You"). The object label is best-effort from the call
+// or its result (name/title/label, then a first line of text input) —
+// never fabricated: a call carrying no object names the action alone.
+// Recording must never break a lens run: every failure is swallowed.
+function _lensActivityObjectLabel(input, result) {
+  const clean = (v) => (typeof v === "string" ? v.trim().replace(/\s+/g, " ").slice(0, 80) : "");
+  const fromObj = (o) => {
+    if (!o || typeof o !== "object") return "";
+    for (const k of ["name", "title", "label"]) { const s = clean(o[k]); if (s) return s; }
+    return "";
+  };
+  let label = fromObj(input) || fromObj(result);
+  if (!label && result && typeof result === "object") {
+    for (const k of ["experiment", "artifact", "item", "created", "entry", "record"]) {
+      label = fromObj(result[k]);
+      if (label) break;
+    }
+  }
+  if (!label) {
+    const t = clean(input?.text);
+    if (t) label = t.split("\n")[0].slice(0, 80);
+  }
+  return label;
+}
+
+function _recordLensActivity(domain, action, ctx, input, result) {
+  try {
+    const userId = ctx?.userId || ctx?.actor?.userId || null;
+    if (!userId || userId === "anon" || userId === "system") return;
+    if (ctx?.internal === true || ctx?.actor?.internal === true) return;
+    if (typeof domain !== "string" || !domain || typeof action !== "string" || !action) return;
+    const verb = action.replace(/[-_]+/g, " ").trim();
+    const label = _lensActivityObjectLabel(input, result);
+    log(domain, label ? `${verb}: ${label}` : verb, { domain, action }, userId);
+  } catch { /* activity recording must never break a lens run */ }
+}
+
 
 // ===== CHICKEN2 CORE (Reality Substrate + Continuity + Safe Emergence) =====
 function _c2now(){ return Date.now(); }
@@ -21565,8 +21621,13 @@ async function initGhostFleet() {
       if (_hlmRunning) return;
       _hlmRunning = true;
       try {
-        const dtus = typeof STATE.dtus?.values === 'function' ? Array.from(STATE.dtus.values()) : [];
-        if (dtus.length > 0) await hlm.runHLMPass(dtus);
+        // Off the main thread: runHLMPass is O(n²) over the whole store (3.1 s at 5k DTUs, 41.6 s at 20k) and
+        // ran synchronously here, freezing the whole backend for 7-13 s+ every 20 minutes. The worker gets a
+        // slim projection (built in yielding chunks); the result is recorded back into hlm-engine's state.
+        // Registered with loopJobs so any remaining block is attributed to it.
+        const { runHLMPassOffThread } = await import("./emergent/hlm-offthread.js");
+        const out = await loopJobs.withJob("hlm_pass", () => runHLMPassOffThread(typeof STATE.dtus?.values === 'function' ? STATE.dtus.values() : []));
+        if (out && out.ok === false) observe(new Error(out.error || "hlm_pass_failed"), "hlm_slow_interval");
       } catch (e) { observe(e, "hlm_slow_interval"); }
       finally { _hlmRunning = false; }
     }, 1_200_000);
@@ -44270,7 +44331,12 @@ async function governorTick(reason="heartbeat") {
     // and the tick counter they schedule on froze. Run the registry, minus
     // CPU-class modules, under the same guards as the low-memory path.
     let registry = "skipped_low_memory";
-    if (shouldPauseBackgroundOrchestration() === false) {
+    // The non-idle path returns early on settings.heartbeatEnabled === false; this idle path did not, so with the
+    // setting off (admin toggle, or the memory watchdog's runtime pause) a still-armed timer kept dispatching the
+    // whole registry whenever nobody was online. Liveness above still ticks; only the dispatch is gated.
+    if (STATE.settings?.heartbeatEnabled === false) {
+      registry = "heartbeat_disabled";
+    } else if (shouldPauseBackgroundOrchestration() === false) {
       const g = getBgGovernorStatus();
       if (g.mode === "killed" || g.breaker.state === "open") {
         registry = g.mode === "killed" ? "governor_killed" : "governor_open";
@@ -45597,6 +45663,7 @@ function _startGovernorHeartbeat() {
     if (s.heartbeatEnabled === false) return { ok:false, reason:"heartbeat_disabled" };
     logAbsentGovernorMacrosOnce(MACROS, structuredLog);
     __governorTimer = _unrefInTest(setInterval(() => { governorTick("interval").catch(()=>{}); }, ms));
+    __governorIntervalMs = ms;
     structuredLog("info", "governor_heartbeat_active", { intervalSec: (ms/1000).toFixed(2) });
     // fire once on boot (after a short delay so macros/STATE are warmed)
     _unrefInTest(setTimeout(() => { governorTick("boot").catch(()=>{}); }, 2000));
@@ -45605,6 +45672,26 @@ function _startGovernorHeartbeat() {
     console.warn("[Governor] failed to start:", String(e?.message||e));
     return { ok:false, error:String(e?.message||e) };
   }
+}
+
+// Live control used by the admin heartbeat toggle (lib/admin-heartbeat.js). _startGovernorHeartbeat() only ever ran
+// once, at boot (T+50s), and returned heartbeat_disabled when the setting was false — so flipping the setting
+// later could not create the dispatcher on a running process. These make the toggle real in both directions.
+let __governorIntervalMs = null;
+function startGovernorDispatcherLive() {
+  if (READ_REPLICA) return { ok: false, reason: "read_replica" };
+  return _startGovernorHeartbeat() || { ok: false };
+}
+function stopGovernorDispatcherLive() {
+  if (!__governorTimer) return { ok: true, stopped: false };
+  clearInterval(__governorTimer);
+  __governorTimer = null;
+  __governorIntervalMs = null;
+  structuredLog("info", "governor_heartbeat_stopped", { by: "admin_toggle" });
+  return { ok: true, stopped: true };
+}
+function governorDispatcherStatus() {
+  return { running: !!__governorTimer, intervalMs: __governorTimer ? __governorIntervalMs : null };
 }
 // ===== END GOVERNOR =====
 
@@ -50673,7 +50760,8 @@ app.get("/api/admin/integrity", requireOwner, asyncHandler(async (req, res) => {
 
   if (runFresh) {
     try {
-      results = runIntegrityCheck(STATE, log, { fix: true, verbose: true });
+      // Time-sliced: an owner hitting ?run=true must not freeze every other request for the length of the scan.
+      results = await runIntegrityCheckAsync(STATE, log, { fix: true, verbose: true });
       STATE._lastIntegrityCheck = { ...results, timestamp: Date.now() };
     } catch (e) {
       return res.status(500).json({ ok: false, error: "integrity_check_failed", detail: String(e?.message || e) });
@@ -51032,6 +51120,7 @@ app.post("/api/lens/run", async (req, res) => {
       // use (already mirrored to a connected Godot client — no new room).
       const _verdictEmit = _deriveConkayVerdictEmit(domain, action, result);
       if (_verdictEmit) emitMacroLife("conkay:verdict", _verdictEmit);
+      if (shaped.body.ok !== false) _recordLensActivity(domain, action, ctx, rest, result);
       return res.status(shaped.status).json(shaped.body);
     }
     // Fall back to MACROS (canonical macro registry: register(domain, name, ...)).
@@ -51051,6 +51140,7 @@ app.post("/api/lens/run", async (req, res) => {
       emitMacroLife("macro:completed", { ok: shaped.body.ok !== false, ms: Date.now() - _lifeStartedAt });
       const _verdictEmit = _deriveConkayVerdictEmit(domain, action, result);
       if (_verdictEmit) emitMacroLife("conkay:verdict", _verdictEmit);
+      if (shaped.body.ok !== false) _recordLensActivity(domain, action, ctx, rest, result);
       return res.status(shaped.status).json(shaped.body);
     }
     // No registered macro for this (domain, action).
@@ -59986,8 +60076,18 @@ app.get("/api/events/paginated", (req, res) => {
       } catch (_) { /* table may not exist */ }
     }
 
-    // Source 3: Recent structured logs
-    for (const logEntry of (STATE.logs || []).slice(-200)) {
+    // Source 3: structured logs. The recency slice alone churns
+    // user-attributed rows (lens activity, stamped with the actor's
+    // id) out of the feed under system noise on a busy log, so
+    // attributed rows are collected from the whole store first
+    // (filter-before-slice, bounded by the store's 2000-entry cap);
+    // unattributed rows keep the last-200 window exactly as before.
+    const _allLogs = STATE.logs || [];
+    const _logWindow = new Set(_allLogs.slice(-200));
+    for (const e of _allLogs) {
+      if (e && (e.userId || e.meta?.userId)) _logWindow.add(e);
+    }
+    for (const logEntry of _logWindow) {
       const parties = [logEntry.userId, logEntry.meta?.userId];
       const sessOwner = logEntry.meta?.sessionId ? sessionOwner(logEntry.meta.sessionId) : null;
       if (sessOwner) parties.push(sessOwner);
@@ -63600,7 +63700,8 @@ app.post("/api/admin/background-governor/mode", requireRole("owner", "admin", "s
 mountUserRoleRoute(app, { requireRole, getDb: () => db, bustUserCache, log: structuredLog });
 
 // Admin-tier heartbeat switch (owner|admin|founder; only heartbeatEnabled) — see lib/admin-heartbeat.js.
-mountAdminHeartbeatRoutes(app, { requireRole, getState: () => STATE, save: () => saveStateSync(), clearMemoryPause, persistableSettings, log: structuredLog });
+mountAdminHeartbeatRoutes(app, { requireRole, getState: () => STATE, save: () => saveStateSync(), clearMemoryPause, persistableSettings, log: structuredLog,
+  startDispatcher: () => startGovernorDispatcherLive(), stopDispatcher: () => stopGovernorDispatcherLive(), dispatcherStatus: () => governorDispatcherStatus() });
 
 app.get("/api/admin/dtu-quality", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
   try {
@@ -77897,17 +77998,24 @@ if (process.env.CONCORD_LOOP_BLOCK_ALERT !== "0") {
     const _DRIFT_RATE_LIMIT_MS = 5000;
     let _driftExpected = Date.now() + _DRIFT_INTERVAL_MS;
     let _lastDriftAlertAt = 0;
+    // CPU vs wall, page faults and GC for the window the loop was stuck, so a
+    // jobs:[] block says whether it was running (cpu/gc) or waiting (page-in/swap).
+    const _blockSampler = createLoopBlockSampler();
     const _driftTimer = setInterval(() => {
       try {
         const now = Date.now();
         const blockedMs = now - _driftExpected;
         _driftExpected = now + _DRIFT_INTERVAL_MS;
+        const _blockDetail = blockedMs >= _DRIFT_THRESHOLD_MS ? _blockSampler.describeBlock(blockedMs) : null;
+        _blockSampler.tick();
         if (!Number.isFinite(blockedMs) || blockedMs < _DRIFT_THRESHOLD_MS) return;
         const severe = blockedMs >= 5000;
         if (!severe && (now - _lastDriftAlertAt) < _DRIFT_RATE_LIMIT_MS) return;
         _lastDriftAlertAt = now;
         const mem = process.memoryUsage();
         const jobs = loopJobs.jobsInWindow(Math.max(blockedMs, _DRIFT_RATE_LIMIT_MS) + _DRIFT_INTERVAL_MS, now, 8);
+        // Sync fs calls >=150 ms inside the stuck window (a blocking syscall leaves no job or timer tag).
+        const _syncIo = slowSyncIoSince(now - blockedMs - _DRIFT_INTERVAL_MS).map((e) => ({ fn: e.fn, target: e.target, ms: e.ms, at: e.frames[0] || null }));
         structuredLog("warn", "event_loop_block", {
           blockedMs,
           jobs,
@@ -77915,6 +78023,9 @@ if (process.env.CONCORD_LOOP_BLOCK_ALERT !== "0") {
           lastTimer: globalThis.__lastLagProbeName || null,
           rssMb: Math.round(mem.rss / 1024 / 1024),
           heapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+          uptimeS: Math.round(process.uptime()),
+          ...(_blockDetail || {}),
+          ...(_syncIo.length ? { syncIo: _syncIo } : {}),
         });
       } catch { /* probe must never throw */ }
     }, _DRIFT_INTERVAL_MS);
@@ -79486,16 +79597,22 @@ try {
 
 // ── Periodic Integrity Check (every 6 hours) ────────────────────────────────
 const INTEGRITY_INTERVAL = 6 * 60 * 60 * 1000;
-throttledInterval(() => {
-  const results = runIntegrityCheck(STATE, log, { fix: true, verbose: false });
+// Time-sliced + attributed: this ran synchronously and held the main thread for 8-12 s on its first staggered fire
+// (~60-75 s after every boot; the block ended within ~5 ms of the periodic_integrity_check log line) and every 6 h
+// after. Registered with loopJobs so any remaining stall names itself.
+throttledInterval(() => loopJobs.withJob("integrity_check", async () => {
+  const results = await runIntegrityCheckAsync(STATE, log, { fix: true, verbose: false });
   STATE._lastIntegrityCheck = { ...results, timestamp: Date.now() };
   structuredLog("info", "periodic_integrity_check", {
-    economyOk: results.economy?.ok,
-    lineageOk: results.lineage?.ok,
-    socialOk: results.social?.ok,
-    fixes: results.fixes || 0,
+    // The summary has no top-level `fixes`; the old `results.fixes || 0` always logged 0.
+    economyOk: results.audits?.economy?.ok,
+    lineageOk: results.audits?.lineage?.ok,
+    socialOk: results.audits?.social?.ok,
+    fixes: Object.values(results.issuesFixed || {}).reduce((a, b) => a + b, 0),
+    elapsedMs: results.elapsedMs,
+    totalIssues: results.totalIssues,
   });
-}, INTEGRITY_INTERVAL, "integrity_check");
+}), INTEGRITY_INTERVAL, "integrity_check");
 
 // NOTE: Primary SIGINT/SIGTERM handlers are registered above via gracefulShutdown().
 // Register cleanup for timers as a shutdown callback instead of a duplicate handler.

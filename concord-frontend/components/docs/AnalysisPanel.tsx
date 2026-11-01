@@ -73,7 +73,7 @@ export function AnalysisPanel() {
           actionResult.metrics !== undefined &&
           actionResult.summary !== undefined && (
             <div className="space-y-3 pt-2 border-t border-white/5">
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p
                     className={`text-lg font-bold ${Number((actionResult.metrics as Record<string, number>)?.fleschReadingEase) >= 60 ? 'text-neon-green' : Number((actionResult.metrics as Record<string, number>)?.fleschReadingEase) >= 30 ? 'text-yellow-400' : 'text-red-400'}`}
@@ -177,7 +177,7 @@ export function AnalysisPanel() {
           actionResult.graphDensity !== undefined &&
           actionResult.totalPages !== undefined && (
             <div className="space-y-3 pt-2 border-t border-white/5">
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-lg font-bold text-neon-cyan">
                     {String(actionResult.totalPages)}
@@ -238,7 +238,7 @@ export function AnalysisPanel() {
           actionResult.summary !== undefined &&
           actionResult.wordDelta !== undefined && (
             <div className="space-y-3 pt-2 border-t border-white/5">
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p
                     className={`text-lg font-bold ${Number(actionResult.changeSignificance) >= 70 ? 'text-red-400' : Number(actionResult.changeSignificance) >= 40 ? 'text-yellow-400' : 'text-neon-green'}`}

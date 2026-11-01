@@ -39,7 +39,7 @@ export function WorkspaceTabs({
             key={tab.id}
             href={tab.path}
             className={cn(
-              'flex h-7 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-[13px] transition-colors',
+              'flex h-10 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-[13px] md:h-7 transition-colors',
               isActive
                 ? 'bg-white/[0.09] text-zinc-50'
                 : 'text-zinc-500 hover:text-zinc-200',

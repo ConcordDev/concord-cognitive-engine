@@ -444,7 +444,7 @@ function PlansTab() {
               placeholder="To (KLAX)" maxLength={4}
               className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono uppercase" />
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input type="number" value={draft.altitude}
               onChange={(e) => setDraft({ ...draft, altitude: Number(e.target.value) })}
               placeholder="Altitude ft"

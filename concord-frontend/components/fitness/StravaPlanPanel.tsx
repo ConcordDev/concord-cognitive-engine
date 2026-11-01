@@ -154,7 +154,7 @@ export function StravaPlanPanel() {
 
       {showForm && (
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input placeholder="Plan name" value={name} onChange={(e) => setName(e.target.value)}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <input placeholder="Goal race (optional)" value={goalRace} onChange={(e) => setGoalRace(e.target.value)}

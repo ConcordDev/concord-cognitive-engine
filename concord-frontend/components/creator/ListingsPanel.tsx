@@ -380,7 +380,7 @@ function ListingRow({ listing, onUpdate, onWithdraw, onRelist }: ListingRowProps
             Tier pricing (usage / remix / commercial)
           </label>
           {useTiers && (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <input value={tierUsage}      onChange={(e) => setTierUsage(e.target.value)}      placeholder="usage"      className="bg-black/60 border border-white/10 rounded px-2 py-1 text-xs text-gray-200" />
               <input value={tierRemix}      onChange={(e) => setTierRemix(e.target.value)}      placeholder="remix"      className="bg-black/60 border border-white/10 rounded px-2 py-1 text-xs text-gray-200" />
               <input value={tierCommercial} onChange={(e) => setTierCommercial(e.target.value)} placeholder="commercial" className="bg-black/60 border border-white/10 rounded px-2 py-1 text-xs text-gray-200" />

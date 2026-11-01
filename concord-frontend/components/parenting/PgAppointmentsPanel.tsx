@@ -115,7 +115,7 @@ export function PgAppointmentsPanel({ childId }: { childId: string }) {
         <input placeholder="Title (e.g. 12-month checkup)" value={form.title}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
           className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 capitalize">
             {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}

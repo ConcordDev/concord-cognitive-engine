@@ -97,7 +97,7 @@ export function FmProfilePanel({ onOpenTopic }: { onOpenTopic?: (id: string) => 
             <div key={t} className={cn('flex-1 h-1.5 rounded-full', i <= tierIdx ? 'bg-orange-500' : 'bg-zinc-800')} />
           ))}
         </div>
-        <div className="grid grid-cols-4 gap-2 mt-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mt-3">
           <Stat label="Topics" value={profile.topics} />
           <Stat label="Replies" value={profile.replies} />
           <Stat label="Karma" value={profile.karma} />

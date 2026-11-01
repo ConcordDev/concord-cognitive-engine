@@ -73,3 +73,17 @@ describe("ChatWorkspacePanel paths stay wired (regression guard)", () => {
     assert.ok(panel.includes("<LowConfidenceTag confidence={message.confidence} reason={message.confidenceReason} />"));
   });
 });
+
+describe("the label is gated on the Mac fallback, not on the model name", () => {
+  const ac = readFileSync(join(here, "../lib/answer-confidence.js"), "utf8");
+  const bc = readFileSync(join(here, "../lib/brain-config.js"), "utf8");
+  it("answerConfidence and the prompt guard both require isMacFallbackMode()", () => {
+    assert.ok(ac.includes('import { getLocalUnifiedModel, isMacFallbackMode } from "./brain-config.js";'));
+    assert.equal(count(ac, "if (!isMacFallbackMode())"), 2);
+  });
+  it("brain-config exports it and recognises the loopback :11480 proxy and BRAINS_MODE", () => {
+    assert.ok(bc.includes("export function isMacFallbackMode("));
+    assert.ok(bc.includes('"11480"'));
+    assert.ok(bc.includes("env.BRAINS_MODE"));
+  });
+});
