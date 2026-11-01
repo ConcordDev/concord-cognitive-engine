@@ -257,7 +257,7 @@ export default function TrainingRoomPage() {
                 <p className="text-[12px] text-amber-200">Couldn&apos;t load your skills.</p>
                 <button
                   onClick={refreshSkills}
-                  className="mt-2 rounded border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-[11px] text-amber-100 hover:bg-amber-500/20"
+                  className="min-h-[40px] md:min-h-0 mt-2 rounded border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-[11px] text-amber-100 hover:bg-amber-500/20"
                 >
                   Retry
                 </button>
@@ -273,7 +273,7 @@ export default function TrainingRoomPage() {
                     <button
                       onClick={() => setSelectedSkillId(s.id)}
                       aria-pressed={selectedSkillId === s.id}
-                      className={`flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-[12px] ${
+                      className={`flex min-h-[40px] md:min-h-0 w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-[12px] ${
                         selectedSkillId === s.id
                           ? 'bg-cyan-500/20 text-cyan-100'
                           : 'text-slate-300 hover:bg-slate-800/50'
@@ -316,7 +316,7 @@ export default function TrainingRoomPage() {
                 <p className="mt-1 text-[11px] text-slate-500">It may not be a recognised combat skill yet.</p>
                 <button
                   onClick={retryFrame}
-                  className="mt-3 rounded border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-[11px] text-amber-100 hover:bg-amber-500/20"
+                  className="min-h-[40px] md:min-h-0 mt-3 rounded border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-[11px] text-amber-100 hover:bg-amber-500/20"
                 >
                   Retry
                 </button>
@@ -373,7 +373,7 @@ export default function TrainingRoomPage() {
                   <button
                     onClick={playReplay}
                     disabled={replayPhase !== 'idle'}
-                    className="w-full rounded-md border border-cyan-500/40 bg-cyan-500/20 px-3 py-1.5 text-[12px] text-cyan-100 hover:bg-cyan-500/30 disabled:opacity-40"
+                    className="min-h-[40px] md:min-h-0 w-full rounded-md border border-cyan-500/40 bg-cyan-500/20 px-3 py-1.5 text-[12px] text-cyan-100 hover:bg-cyan-500/30 disabled:opacity-40"
                   >
                     {replayPhase === 'idle' ? 'Play replay' : `Phase: ${replayPhase}`}
                   </button>
