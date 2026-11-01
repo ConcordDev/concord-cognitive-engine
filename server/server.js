@@ -16,6 +16,7 @@
 import { installSlowSyncIoOnce, setSlowSyncIoReporter, slowSyncIoSince } from "./lib/slow-sync-io.js";
 installSlowSyncIoOnce();
 import expressRateLimit from "express-rate-limit";
+import { findActiveUserRowByEmail, emailsMatchIgnoreCase } from "./lib/user-email-lookup.js";
 import { podPick as _podPick } from "./lib/pod-profile.js";
 import { createDtuQualityService as _createDtuQualityService, dtuQualityMode as _dtuQualityMode } from "./lib/dtu-quality/service.js";
 import { router as p2pSignallingRouter } from "./lib/p2p-dtu-signalling.js";
@@ -7141,8 +7142,7 @@ const AuthDB = {
 
   getUserByEmail(email) {
     if (db) {
-      const stmt = db.prepare("SELECT id, username, email, password_hash, role, scopes, created_at, last_login_at FROM users WHERE email = ? AND is_active = 1");
-      const row = stmt.get(email);
+      const row = findActiveUserRowByEmail(db, email);
       if (row) {
         return {
           id: row.id,
@@ -7159,6 +7159,9 @@ const AuthDB = {
     }
     for (const [, user] of AUTH.users) {
       if (user.email === email) return user;
+    }
+    for (const [, user] of AUTH.users) {
+      if (emailsMatchIgnoreCase(user.email, email)) return user;
     }
     return null;
   },
