@@ -33,9 +33,11 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
   // in a split-field date control reads back empty and is called out
   // in words, never substituted behind their back.
   const defaultRange = () => {
+    // Local calendar dates: toISOString() is the UTC date, which is already "tomorrow" from ~8 PM US Eastern.
     const start = new Date();
-    const end = new Date(Date.now() + 14 * 86400000);
-    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 14);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     return { startDate: iso(start), endDate: iso(end) };
   };
   const [form, setForm] = useState(() => ({ name: '', ...defaultRange() }));
