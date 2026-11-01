@@ -10,6 +10,7 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import { registerLensExportProvider } from "../lib/lens-export.js";
 import { writeGoogleCalendarEvent, readGoogleCalendarEvents } from "../lib/connector-client.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { createNotification } from "../emergent/social-layer.js";
 import { fetchIcsText, icsUrlProblem } from "../lib/ics-fetch.js";
 
 export default function registerCalendarActions(registerLensAction) {
@@ -218,6 +219,85 @@ export default function registerCalendarActions(registerLensAction) {
 });
 
   /**
+   * ical-import — the COMMIT step behind ical-parse's preview (F14).
+   * Re-parses the same document server-side (the client's parse is a
+   * preview, never the source of truth), creates the events on the
+   * default calendar (or params.calendarId), and dedupes by source
+   * UID so importing the same file twice does not double it.
+   * Recurrence rules are noted, not carried: an RRULE event imports as
+   * its first occurrence, and the count is reported, never hidden.
+   *
+   * params: { ics: string, calendarId?: string }
+   * Returns: { imported, skipped, withRecurrence, calendarId, calendarName }
+   */
+  registerLensAction("calendar", "ical-import", (ctx, _a, params = {}) => {
+  try {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidCal(ctx);
+    const ics = String(params.ics || "");
+    if (!ics.trim()) return { ok: false, error: "ics string required" };
+    if (!ics.includes("BEGIN:VCALENDAR")) return { ok: false, error: "input is not a VCALENDAR document" };
+    const unfolded = ics.replace(/\r\n[ \t]/g, "");
+    const incoming = [];
+    let cur = null;
+    for (const line of unfolded.split(/\r?\n/)) {
+      if (line === "BEGIN:VEVENT") { cur = {}; continue; }
+      if (line === "END:VEVENT") { if (cur) incoming.push(cur); cur = null; continue; }
+      if (!cur) continue;
+      const sep = line.indexOf(":");
+      if (sep < 0) continue;
+      const key = line.slice(0, sep).split(";")[0].toUpperCase();
+      const value = line.slice(sep + 1);
+      if (key === "UID") cur.uid = value;
+      else if (key === "SUMMARY") cur.summary = icsUnescape(value);
+      else if (key === "DESCRIPTION") cur.description = icsUnescape(value);
+      else if (key === "LOCATION") cur.location = icsUnescape(value);
+      else if (key === "DTSTART") cur.start = parseIcsDate(value);
+      else if (key === "DTEND") cur.end = parseIcsDate(value);
+      else if (key === "RRULE") cur.rrule = value;
+      else if (key === "ATTENDEE") (cur.attendeeEmails ||= []).push(value.replace(/^mailto:/i, ""));
+    }
+    const calendars = ensureDefaultCalendars(s, userId);
+    const target = params.calendarId
+      ? calendars.find(c => c.id === String(params.calendarId))
+      : (calendars.find(c => c.isDefault) || calendars[0]);
+    if (!target) return { ok: false, error: "calendar not found" };
+    const events = listCal(s.events, userId);
+    const seq = ensureSeqCal(s, userId);
+    let imported = 0, skipped = 0, withRecurrence = 0;
+    for (const inc of incoming) {
+      if (!inc.start || isNaN(new Date(inc.start).getTime())) { skipped++; continue; }
+      const extKey = inc.uid ? `ical-import:${inc.uid}` : null;
+      if (extKey && events.some(e => e.externalKey === extKey)) { skipped++; continue; }
+      if (inc.rrule) withRecurrence++;
+      const end = inc.end && !isNaN(new Date(inc.end).getTime())
+        ? inc.end
+        : new Date(new Date(inc.start).getTime() + 3_600_000).toISOString();
+      events.push({
+        id: uidCal('evt'),
+        number: `EV-${String(seq.evt).padStart(6, '0')}`,
+        calendarId: target.id,
+        title: inc.summary || "Untitled event",
+        description: inc.description || "",
+        location: inc.location || "",
+        start: inc.start, end,
+        allDay: false,
+        recurrence: null,
+        reminders: [],
+        attendees: inc.attendeeEmails || [],
+        conferenceLink: "",
+        externalKey: extKey,
+        createdAt: isoCal(),
+      });
+      seq.evt++;
+      imported++;
+    }
+    saveCal();
+    return { ok: true, result: { imported, skipped, withRecurrence, calendarId: target.id, calendarName: target.name } };
+    } catch (e) { return handlerFailure(e); }
+});
+
+  /**
    * timezone-convert — Converts a date/time from one IANA timezone to
    * another. Uses Node's built-in Intl.DateTimeFormat (no dep).
    *
@@ -398,6 +478,53 @@ export default function registerCalendarActions(registerLensAction) {
   const WEEKDAYS = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
   const DAY_MS = 86_400_000;
 
+  // ── Time zones (S1: one true time) ─────────────────────────────
+  // An event stores a true UTC instant (start/end ISO strings) plus the
+  // IANA zone it was authored in (event.tz, mirrored onto its recurrence
+  // rule). Recurrence expansion walks the series in the AUTHOR's wall
+  // clock and converts each occurrence's wall time to an instant with
+  // the offset in force ON THAT DATE — a fixed creation-time offset
+  // drifts the whole series by an hour across a DST change.
+
+  function isValidZoneName(tz) {
+    if (typeof tz !== "string" || !tz || tz.length > 64) return false;
+    try { new Intl.DateTimeFormat("en-US", { timeZone: tz }); return true; } catch { return false; }
+  }
+
+  const _zonePartsFmt = new Map();
+  function zonePartsAt(tz, utcMs) {
+    let fmt = _zonePartsFmt.get(tz);
+    if (!fmt) {
+      fmt = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz, hourCycle: "h23",
+        year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", second: "2-digit",
+      });
+      _zonePartsFmt.set(tz, fmt);
+    }
+    const parts = {};
+    for (const p of fmt.formatToParts(new Date(utcMs))) {
+      if (p.type !== "literal") parts[p.type] = Number(p.value);
+    }
+    return parts; // { year, month, day, hour, minute, second } in tz
+  }
+
+  /** Offset (wall − UTC) of `tz` at the instant `utcMs`, in ms. */
+  function zoneOffsetMsAt(tz, utcMs) {
+    const p = zonePartsAt(tz, utcMs);
+    const wallAsUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+    return wallAsUtc - Math.floor(utcMs / 1000) * 1000;
+  }
+
+  /** UTC instant (ms) for a wall-clock time in `tz`. */
+  function wallTimeInZoneToUtcMs(tz, year, month, day, hour, minute, second = 0) {
+    const wallAsUtc = Date.UTC(year, month - 1, day, hour, minute, second);
+    let utc = wallAsUtc - zoneOffsetMsAt(tz, wallAsUtc);
+    const refined = wallAsUtc - zoneOffsetMsAt(tz, utc);
+    if (refined !== utc) utc = refined; // transition-adjacent: settle on the offset in force at the result
+    return utc;
+  }
+
   function normalizeRecurrence(raw) {
     if (!raw || typeof raw !== "object" || !["daily", "weekly", "monthly", "yearly"].includes(raw.freq)) return null;
     const byDay = Array.isArray(raw.byDay) ? [...new Set(raw.byDay.map((d) => String(d).toUpperCase()).filter((d) => WEEKDAYS.includes(d)))] : [];
@@ -412,6 +539,11 @@ export default function registerCalendarActions(registerLensAction) {
       // Minutes UTC − local (Date#getTimezoneOffset) of the author, so weekday
       // and day-of-month rules follow their wall clock, not UTC.
       tzOffset: Number.isFinite(Number(raw.tzOffset)) ? Math.max(-840, Math.min(840, Math.round(Number(raw.tzOffset)))) : 0,
+      // IANA zone the series was authored in. When present, expansion
+      // converts each occurrence's wall time with the offset in force on
+      // that occurrence's own date (DST-correct); tzOffset above remains
+      // the fallback for rules written before zones were stored.
+      tz: isValidZoneName(raw.tz) ? String(raw.tz) : (isValidZoneName(raw.timeZone) ? String(raw.timeZone) : null),
       exdates: Array.isArray(raw.exdates) ? raw.exdates.map(String) : [],
       overrides: raw.overrides && typeof raw.overrides === "object" ? raw.overrides : {},
     };
@@ -472,6 +604,7 @@ export default function registerCalendarActions(registerLensAction) {
   }
 
   function expandOccurrences(event, rangeStart, rangeEnd) {
+    if (event.deletedAt) return []; // F12: trashed events are invisible everywhere
     const start = new Date(event.start);
     const end = new Date(event.end || event.start);
     const durationMs = end.getTime() - start.getTime();
@@ -480,17 +613,45 @@ export default function registerCalendarActions(registerLensAction) {
       if (start <= rangeEnd && end >= rangeStart) return [{ ...event, occurrenceStart: event.start, occurrenceEnd: event.end || event.start, occurrenceKey: event.start }];
       return [];
     }
-    const untilMs = rec.until ? new Date(rec.until).getTime() + (rec.until.length <= 10 ? DAY_MS - 1 : 0) : Infinity;
+    // Series generation happens on a wall-clock timeline (pseudo-UTC Dates
+    // carrying the author's wall fields); each candidate is then mapped to
+    // a true instant. With a stored zone the mapping uses the offset in
+    // force on the candidate's own date, so a 2 PM series stays 2 PM wall
+    // clock across a DST change. Without one, the legacy fixed creation
+    // offset applies, exactly as before.
+    const tz = rec.tz && isValidZoneName(rec.tz) ? rec.tz : null;
+    let seriesAnchor;
+    let toInstant;
+    if (tz) {
+      const w = zonePartsAt(tz, start.getTime());
+      seriesAnchor = new Date(Date.UTC(w.year, w.month - 1, w.day, w.hour, w.minute, w.second));
+      toInstant = (localStart) => new Date(wallTimeInZoneToUtcMs(tz,
+        localStart.getUTCFullYear(), localStart.getUTCMonth() + 1, localStart.getUTCDate(),
+        localStart.getUTCHours(), localStart.getUTCMinutes(), localStart.getUTCSeconds()));
+    } else {
+      const shift = rec.tzOffset * 60_000;
+      seriesAnchor = new Date(start.getTime() - shift);
+      toInstant = (localStart) => new Date(localStart.getTime() + shift);
+    }
+    // A date-only `until` names a wall-clock day in the series' own frame:
+    // in the zone path it is compared to the candidate's wall date (an
+    // instant comparison would cut the last day early east of UTC and
+    // late west of it). The legacy path keeps its instant comparison.
+    const untilWallKey = tz && rec.until && rec.until.length <= 10 ? rec.until : null;
+    const untilMs = rec.until && !untilWallKey ? new Date(rec.until).getTime() + (rec.until.length <= 10 ? DAY_MS - 1 : 0) : Infinity;
     const maxCount = rec.count || Infinity;
     const ex = new Set(rec.exdates.map((d) => new Date(d).toISOString()));
     const out = [];
     let emitted = 0;
     let guard = 0;
-    const shift = rec.tzOffset * 60_000;
-    for (const localStart of seriesStarts(new Date(start.getTime() - shift), rec)) {
-      const occStart = new Date(localStart.getTime() + shift);
+    for (const localStart of seriesStarts(seriesAnchor, rec)) {
       if (++guard > 20000) break;
       if (emitted >= maxCount) break;
+      if (untilWallKey) {
+        const wallKey = `${localStart.getUTCFullYear()}-${String(localStart.getUTCMonth() + 1).padStart(2, "0")}-${String(localStart.getUTCDate()).padStart(2, "0")}`;
+        if (wallKey > untilWallKey) break;
+      }
+      const occStart = toInstant(localStart);
       if (occStart.getTime() > untilMs) break;
       if (occStart.getTime() > rangeEnd.getTime() + Math.max(0, durationMs)) break;
       emitted++;
@@ -565,6 +726,8 @@ export default function registerCalendarActions(registerLensAction) {
     let calendarId = String(params.calendarId || "");
     if (!calendars.find(c => c.id === calendarId)) calendarId = (calendars.find(c => c.isDefault) || calendars[0]).id;
     const recurrence = normalizeRecurrence(params.recurrence);
+    const tz = isValidZoneName(params.tz) ? String(params.tz) : null;
+    if (recurrence && !recurrence.tz && tz) recurrence.tz = tz;
     const seq = ensureSeqCal(s, userId);
     const event = {
       id: uidCal('evt'),
@@ -574,6 +737,7 @@ export default function registerCalendarActions(registerLensAction) {
       description: String(params.description || ""),
       location: String(params.location || ""),
       start, end,
+      tz,
       allDay: Boolean(params.allDay),
       recurrence,
       reminders: Array.isArray(params.reminders) ? params.reminders.map(r => Math.max(0, Number(r) || 0)) : [10],
@@ -597,7 +761,7 @@ export default function registerCalendarActions(registerLensAction) {
     const userId = aidCal(ctx);
     const list = listCal(s.events, userId);
     const e = list.find(x => x.id === String(params.id || ""));
-    if (!e) return { ok: false, error: "event not found" };
+    if (!e || e.deletedAt) return { ok: false, error: "event not found" };
     const scope = params.scope === "this" || params.scope === "following" ? params.scope : "all";
     if (scope !== "all" && e.recurrence) {
       const key = params.occurrenceKey ? new Date(params.occurrenceKey) : null;
@@ -618,7 +782,7 @@ export default function registerCalendarActions(registerLensAction) {
         rec.overrides = { ...rec.overrides, [keyIso]: ov };
         e.recurrence = rec;
         saveCal();
-        return { ok: true, result: { event: e, scope } };
+        return { ok: true, result: { event: e, scope, occurrencesAffected: 1 } };
       }
       // "following": end the original series the moment before this occurrence,
       // and start a new series here carrying the edits.
@@ -626,6 +790,14 @@ export default function registerCalendarActions(registerLensAction) {
         // editing "following" from the very first occurrence is the whole series
       } else {
         const durationMs = new Date(e.end || e.start).getTime() - new Date(e.start).getTime();
+        // F10: a count-bounded series keeps its remaining count on the
+        // tail — dropping it turned "10 times" into an infinite series.
+        let tailCount = null;
+        if (rec.count != null) {
+          const before = expandOccurrences(e, new Date(e.start), new Date(key.getTime()))
+            .filter((o) => new Date(o.occurrenceStart).getTime() < key.getTime()).length;
+          tailCount = Math.max(0, rec.count - before);
+        }
         e.recurrence = { ...rec, count: null, until: new Date(key.getTime() - 1000).toISOString() };
         const seq = ensureSeqCal(s, userId);
         const tail = {
@@ -634,7 +806,7 @@ export default function registerCalendarActions(registerLensAction) {
           number: `EV-${String(seq.evt).padStart(6, '0')}`,
           start: keyIso,
           end: new Date(key.getTime() + durationMs).toISOString(),
-          recurrence: { ...rec, until: rec.until, count: null, exdates: rec.exdates.filter((d) => new Date(d) >= key), overrides: Object.fromEntries(Object.entries(rec.overrides).filter(([k]) => new Date(k) >= key)) },
+          recurrence: { ...rec, until: rec.until, count: tailCount, exdates: rec.exdates.filter((d) => new Date(d) >= key), overrides: Object.fromEntries(Object.entries(rec.overrides).filter(([k]) => new Date(k) >= key)) },
           createdAt: isoCal(),
         };
         seq.evt++;
@@ -663,7 +835,12 @@ export default function registerCalendarActions(registerLensAction) {
       if (cal) e.calendarId = cal.id;
     }
     if (typeof params.allDay === 'boolean') e.allDay = params.allDay;
+    if (isValidZoneName(params.tz)) e.tz = String(params.tz);
+    else if (params.tz === null) e.tz = null;
     if (Array.isArray(params.reminders)) e.reminders = params.reminders.map(r => Math.max(0, Number(r) || 0));
+    // F6: applyEventEdits used to ignore attendees entirely, so a
+    // collaborator edit silently kept the original list forever.
+    if (Array.isArray(params.attendees)) e.attendees = [...new Set(params.attendees.map(a => String(a).trim()).filter(Boolean))];
     if (params.recurrence === null) e.recurrence = null;
     else if (params.recurrence) {
       const next = normalizeRecurrence(params.recurrence);
@@ -672,11 +849,23 @@ export default function registerCalendarActions(registerLensAction) {
         const prev = normalizeRecurrence(e.recurrence);
         if (prev && !Array.isArray(params.recurrence.exdates)) next.exdates = prev.exdates;
         if (prev && !params.recurrence.overrides) next.overrides = prev.overrides;
+        if (!next.tz && isValidZoneName(params.tz)) next.tz = String(params.tz);
+        // A 'following' save re-sends the form's rule (which describes
+        // the pre-split series); the split's remaining count wins
+        // unless the client explicitly sets a new one.
+        if (scope === 'following' && next.count == null && prev && prev.count != null) next.count = prev.count;
         e.recurrence = next;
       }
     }
     saveCal();
-    return { ok: true, result: { event: e, scope } };
+    // F10: report how many occurrences this edit actually touched.
+    let occurrencesAffected = null;
+    if (e.recurrence) {
+      const from = new Date(e.start);
+      const horizon = new Date(from.getTime() + 10 * 365 * 86_400_000);
+      occurrencesAffected = expandOccurrences(e, from, horizon).length;
+    }
+    return { ok: true, result: { event: e, scope, occurrencesAffected } };
   }
 
   registerLensAction("calendar", "events-delete", (ctx, _a, params = {}) => {
@@ -685,6 +874,7 @@ export default function registerCalendarActions(registerLensAction) {
     const i = list.findIndex(e => e.id === String(params.id || ""));
     if (i < 0) return { ok: false, error: "event not found" };
     const ev = list[i];
+    if (ev.deletedAt) return { ok: false, error: "event not found" };
     const scope = params.scope === "this" || params.scope === "following" ? params.scope : "all";
     if (scope !== "all" && ev.recurrence) {
       const key = params.occurrenceKey ? new Date(params.occurrenceKey) : null;
@@ -702,9 +892,40 @@ export default function registerCalendarActions(registerLensAction) {
         return { ok: true, result: { deleted: true, scope } };
       }
     }
+    // F12: a full delete is a SOFT delete — the event leaves every
+    // surface (expansion returns nothing for it) but can be restored
+    // from the trash until it is permanently deleted.
+    ev.deletedAt = isoCal();
+    saveCal();
+    return { ok: true, result: { deleted: true, soft: true } };
+  });
+
+  registerLensAction("calendar", "events-trash-list", (ctx, _a, _p = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const events = listCal(s.events, aidCal(ctx))
+      .filter(e => e.deletedAt)
+      .map(e => ({ id: e.id, title: e.title, start: e.start, end: e.end, deletedAt: e.deletedAt }))
+      .sort((a, b) => b.deletedAt.localeCompare(a.deletedAt));
+    return { ok: true, result: { events, count: events.length } };
+  });
+
+  registerLensAction("calendar", "events-restore", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const e = listCal(s.events, aidCal(ctx)).find(x => x.id === String(params.id || ""));
+    if (!e || !e.deletedAt) return { ok: false, error: "trashed event not found" };
+    delete e.deletedAt;
+    saveCal();
+    return { ok: true, result: { restored: e.id, event: e } };
+  });
+
+  registerLensAction("calendar", "events-delete-permanent", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = listCal(s.events, aidCal(ctx));
+    const i = list.findIndex(e => e.id === String(params.id || "") && e.deletedAt);
+    if (i < 0) return { ok: false, error: "trashed event not found" };
     list.splice(i, 1);
     saveCal();
-    return { ok: true, result: { deleted: true } };
+    return { ok: true, result: { deletedPermanently: params.id } };
   });
 
   // ── Conflict detection (real, STATE-backed) ───────────────────
@@ -730,7 +951,23 @@ export default function registerCalendarActions(registerLensAction) {
         }
       }
     }
-    return { ok: true, result: { hasConflict: conflicts.length > 0, conflicts } };
+    const result = { hasConflict: conflicts.length > 0, conflicts };
+    if (params.pairwise === true) {
+      // All overlapping occurrence pairs in the window (the standalone
+      // analyzer's view). Same occurrences, same expansion — one truth.
+      const sorted = [...conflicts].sort((a, b) => a.start.localeCompare(b.start));
+      const pairs = [];
+      for (let i = 0; i < sorted.length; i++) {
+        for (let j = i + 1; j < sorted.length; j++) {
+          if (sorted[j].start >= sorted[i].end) break;
+          if (sorted[i].eventId === sorted[j].eventId) continue;
+          const overlapMinutes = Math.round((Math.min(new Date(sorted[i].end).getTime(), new Date(sorted[j].end).getTime()) - new Date(sorted[j].start).getTime()) / 60000);
+          if (overlapMinutes > 0) pairs.push({ a: sorted[i], b: sorted[j], overlapMinutes });
+        }
+      }
+      result.pairs = pairs;
+    }
+    return { ok: true, result };
     } catch (e) { return handlerFailure(e); }
 });
 
@@ -744,10 +981,22 @@ export default function registerCalendarActions(registerLensAction) {
     const durationMin = Math.max(15, Math.min(480, Number(params.durationMin) || 30));
     const workStartHour = Number.isFinite(Number(params.workStartHour)) ? Number(params.workStartHour) : 9;
     const workEndHour = Number.isFinite(Number(params.workEndHour)) ? Number(params.workEndHour) : 18;
-    const dayStart = new Date(`${day}T00:00:00.000Z`);
-    if (isNaN(dayStart.getTime())) return { ok: false, error: "invalid day" };
-    const winStart = new Date(dayStart.getTime() + workStartHour * 3_600_000);
-    const winEnd = new Date(dayStart.getTime() + workEndHour * 3_600_000);
+    // With a zone, the work window is wall-clock in that zone (9 AM in
+    // New York is 13:00Z, not 09:00Z — the F1/F2 shifted-frame bug).
+    // Without one, the legacy UTC framing stands.
+    const tz = isValidZoneName(params.tz) ? String(params.tz) : null;
+    let winStart, winEnd;
+    if (tz) {
+      const [yy, mm, dd] = day.split("-").map(Number);
+      if (!yy || !mm || !dd) return { ok: false, error: "invalid day" };
+      winStart = new Date(wallTimeInZoneToUtcMs(tz, yy, mm, dd, workStartHour, 0));
+      winEnd = new Date(wallTimeInZoneToUtcMs(tz, yy, mm, dd, workEndHour, 0));
+    } else {
+      const dayStart = new Date(`${day}T00:00:00.000Z`);
+      if (isNaN(dayStart.getTime())) return { ok: false, error: "invalid day" };
+      winStart = new Date(dayStart.getTime() + workStartHour * 3_600_000);
+      winEnd = new Date(dayStart.getTime() + workEndHour * 3_600_000);
+    }
     // Collect busy blocks
     const busy = [];
     for (const e of listCal(s.events, userId)) {
@@ -765,7 +1014,7 @@ export default function registerCalendarActions(registerLensAction) {
       cursor = Math.max(cursor, be);
     }
     if (winEnd.getTime() - cursor >= durMs) slots.push({ start: new Date(cursor).toISOString(), end: winEnd.toISOString() });
-    return { ok: true, result: { day, durationMin, freeSlots: slots, busyBlockCount: busy.length } };
+    return { ok: true, result: { day, durationMin, freeSlots: slots, busyBlockCount: busy.length, tz: tz || "UTC", windowStart: winStart.toISOString(), windowEnd: winEnd.toISOString() } };
     } catch (e) { return handlerFailure(e); }
 });
 
@@ -873,29 +1122,50 @@ export default function registerCalendarActions(registerLensAction) {
     else if (/\bevery week\b|\bweekly\b|\bevery (mon|tue|wed|thu|fri|sat|sun)/.test(lower)) recurrence = { freq: 'weekly', interval: 1 };
     else if (/\bevery month\b|\bmonthly\b/.test(lower)) recurrence = { freq: 'monthly', interval: 1 };
     else if (/\bevery year\b|\bannually\b|\byearly\b/.test(lower)) recurrence = { freq: 'yearly', interval: 1 };
-    // Time
+    // Time — am/pm, 24h after "at", a bare HH:MM, or the words
+    // noon/midnight (F11: "tomorrow at noon" used to keep "at noon"
+    // in the title and default to 9 AM).
     let hour = 9, minute = 0;
     const tm = lower.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/);
     if (tm) {
       hour = parseInt(tm[1], 10) % 12;
       if (tm[3] === 'pm') hour += 12;
       minute = tm[2] ? parseInt(tm[2], 10) : 0;
+    } else if (/\bnoon\b/.test(lower)) {
+      hour = 12; minute = 0;
+    } else if (/\bmidnight\b/.test(lower)) {
+      hour = 0; minute = 0;
     } else {
-      const tm24 = lower.match(/\bat\s+(\d{1,2}):(\d{2})\b/);
+      const tm24 = lower.match(/\b(\d{1,2}):(\d{2})\b/);
       if (tm24) { hour = parseInt(tm24[1], 10); minute = parseInt(tm24[2], 10); }
     }
-    // Day
-    const target = new Date(now);
+    // Day — resolved as a WALL DATE in the caller's zone when one is
+    // given (F1's frame rule), else in the server's local frame.
     const weekdays = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
     const dowMatch = weekdays.findIndex(d => lower.includes(d) || lower.includes(d.slice(0, 3)));
-    if (/\btomorrow\b/.test(lower)) target.setDate(target.getDate() + 1);
-    else if (/\btoday\b/.test(lower)) { /* keep */ }
-    else if (dowMatch >= 0) {
-      let delta = (dowMatch - target.getDay() + 7) % 7;
-      if (delta === 0) delta = 7; // "next monday" semantics
-      target.setDate(target.getDate() + delta);
+    let dayDelta = 0;
+    const tz = isValidZoneName(params.tz) ? String(params.tz) : null;
+    let target;
+    if (tz) {
+      const p = zonePartsAt(tz, now.getTime());
+      const todayDow = new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay();
+      if (/\btomorrow\b/.test(lower)) dayDelta = 1;
+      else if (dowMatch >= 0) {
+        dayDelta = (dowMatch - todayDow + 7) % 7;
+        if (dayDelta === 0) dayDelta = 7; // "next monday" semantics
+      }
+      target = new Date(wallTimeInZoneToUtcMs(tz, p.year, p.month, p.day + dayDelta, hour, minute));
+    } else {
+      target = new Date(now);
+      if (/\btomorrow\b/.test(lower)) target.setDate(target.getDate() + 1);
+      else if (/\btoday\b/.test(lower)) { /* keep */ }
+      else if (dowMatch >= 0) {
+        let delta = (dowMatch - target.getDay() + 7) % 7;
+        if (delta === 0) delta = 7;
+        target.setDate(target.getDate() + delta);
+      }
+      target.setHours(hour, minute, 0, 0);
     }
-    target.setHours(hour, minute, 0, 0);
     // Duration
     let durMin = 60;
     const durM = lower.match(/\bfor\s+(\d{1,3})\s*(min|minute|hour|hr)/);
@@ -903,13 +1173,20 @@ export default function registerCalendarActions(registerLensAction) {
     // Conference link
     const conf = /\b(zoom|google meet|meet|teams|webex)\b/.test(lower) ? (lower.match(/\b(zoom|google meet|meet|teams|webex)\b/) || [])[1] : '';
     // Title = text minus the parsed time/day/recurrence noise
+    const explicitNoonMidnight = /\bat\s+(noon|midnight)\b/i.test(text);
     let title = text
       .replace(/\bevery (day|week|month|year)\b/gi, '')
       .replace(/\b(daily|weekly|monthly|yearly|annually)\b/gi, '')
       .replace(/\bevery (mon|tue|wed|thu|fri|sat|sun)\w*/gi, '')
       .replace(/\b(today|tomorrow)\b/gi, '')
       .replace(new RegExp(`\\b(${weekdays.join('|')})\\b`, 'gi'), '')
+      .replace(/\bat\s+(noon|midnight)\b/gi, '')
+      // A bare noon/midnight is only a time expression when no explicit "at noon|midnight"
+      // already supplied the time; otherwise it is part of the title ("Midnight snack at midnight").
+      .replace(explicitNoonMidnight ? /(?!)/g : /\b(noon|midnight)\b/gi, '')
       .replace(/\bat\s+\d{1,2}(:\d{2})?\s*(am|pm)?\b/gi, '')
+      .replace(/\b\d{1,2}(:\d{2})?\s*(am|pm)\b/gi, '')
+      .replace(/\b\d{1,2}:\d{2}\b/gi, '')
       .replace(/\bfor\s+\d{1,3}\s*(min|minute|minutes|hour|hours|hr)\b/gi, '')
       .replace(/\bon\b/gi, '')
       .replace(/\s{2,}/g, ' ')
@@ -942,10 +1219,21 @@ export default function registerCalendarActions(registerLensAction) {
     const day = String(params.day || new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
     const workStartHour = Number.isFinite(Number(params.workStartHour)) ? Number(params.workStartHour) : 9;
     const workEndHour = Number.isFinite(Number(params.workEndHour)) ? Number(params.workEndHour) : 18;
-    const dayStart = new Date(`${day}T00:00:00.000Z`);
-    if (isNaN(dayStart.getTime())) return { ok: false, error: "invalid day" };
-    const winStart = dayStart.getTime() + workStartHour * 3_600_000;
-    const winEnd = dayStart.getTime() + workEndHour * 3_600_000;
+    // Same zone treatment as availability-find (S2): with a zone the
+    // work window is wall-clock there; without one, legacy UTC framing.
+    const tz = isValidZoneName(params.tz) ? String(params.tz) : null;
+    let winStart, winEnd;
+    if (tz) {
+      const [yy, mm, dd] = day.split("-").map(Number);
+      if (!yy || !mm || !dd) return { ok: false, error: "invalid day" };
+      winStart = wallTimeInZoneToUtcMs(tz, yy, mm, dd, workStartHour, 0);
+      winEnd = wallTimeInZoneToUtcMs(tz, yy, mm, dd, workEndHour, 0);
+    } else {
+      const dayStart = new Date(`${day}T00:00:00.000Z`);
+      if (isNaN(dayStart.getTime())) return { ok: false, error: "invalid day" };
+      winStart = dayStart.getTime() + workStartHour * 3_600_000;
+      winEnd = dayStart.getTime() + workEndHour * 3_600_000;
+    }
     // Busy blocks for the day
     const busy = [];
     for (const e of listCal(s.events, userId)) {
@@ -992,6 +1280,7 @@ export default function registerCalendarActions(registerLensAction) {
         proposals,
         scheduledCount: proposals.length,
         unscheduledCount: tasks.length - proposals.length,
+        tz: tz || "UTC",
         note: "Proposals only — call tasks-time-block to commit each one.",
       },
     };
@@ -1000,19 +1289,40 @@ export default function registerCalendarActions(registerLensAction) {
 
   // ── Dashboard summary ────────────────────────────────────────
 
-  registerLensAction("calendar", "calendar-dashboard-summary", (ctx, _a, _p = {}) => {
+  registerLensAction("calendar", "calendar-dashboard-summary", (ctx, _a, params = {}) => {
   try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCal(ctx);
     const calendars = ensureDefaultCalendars(s, userId);
     const now = new Date();
-    const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
-    const weekEnd = new Date(now.getTime() + 7 * 86_400_000);
+    // F7: the tiles used to expand occurrences from NOW, so everything
+    // earlier today vanished from "Events today" and the tiles read
+    // 0–2 against 3–4 real events. The counts now cover the user's
+    // actual day and calendar week (Sunday-start, as the grid renders)
+    // in their zone — the same store and instants as the grid.
+    const tz = isValidZoneName(params.tz) ? String(params.tz) : null;
+    let dayStartMs, dayEndMs, weekStartMs, weekEndMs;
+    if (tz) {
+      const p = zonePartsAt(tz, now.getTime());
+      const dow = new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay();
+      dayStartMs = wallTimeInZoneToUtcMs(tz, p.year, p.month, p.day, 0, 0);
+      dayEndMs = wallTimeInZoneToUtcMs(tz, p.year, p.month, p.day + 1, 0, 0);
+      weekStartMs = wallTimeInZoneToUtcMs(tz, p.year, p.month, p.day - dow, 0, 0);
+      weekEndMs = wallTimeInZoneToUtcMs(tz, p.year, p.month, p.day - dow + 7, 0, 0);
+    } else {
+      const sod = new Date(now); sod.setHours(0, 0, 0, 0);
+      const eod = new Date(sod); eod.setDate(eod.getDate() + 1);
+      const sow = new Date(sod); sow.setDate(sow.getDate() - sow.getDay());
+      const eow = new Date(sow); eow.setDate(eow.getDate() + 7);
+      dayStartMs = sod.getTime(); dayEndMs = eod.getTime();
+      weekStartMs = sow.getTime(); weekEndMs = eow.getTime();
+    }
     let todayCount = 0, weekCount = 0;
     for (const e of listCal(s.events, userId)) {
-      for (const occ of expandOccurrences(e, now, weekEnd)) {
-        weekCount++;
-        if (new Date(occ.occurrenceStart) <= todayEnd) todayCount++;
+      for (const occ of expandOccurrences(e, new Date(weekStartMs), new Date(weekEndMs))) {
+        const os = new Date(occ.occurrenceStart).getTime();
+        if (os >= weekStartMs && os < weekEndMs) weekCount++;
+        if (os >= dayStartMs && os < dayEndMs) todayCount++;
       }
     }
     const tasks = listCal(s.tasks, userId);
@@ -1027,6 +1337,7 @@ export default function registerCalendarActions(registerLensAction) {
         openTasks,
         overdueTasks,
         unblockedTasks: tasks.filter(t => t.status === 'todo' && !t.blockedEventId).length,
+        tz: tz || "local",
       },
     };
     } catch (e) { return handlerFailure(e); }
@@ -1078,10 +1389,30 @@ export default function registerCalendarActions(registerLensAction) {
     const arr = listCal(s.appointmentSchedules, aidCal(ctx));
     const i = arr.findIndex((sc) => sc.id === params.id);
     if (i < 0) return { ok: false, error: "schedule not found" };
+    const doomed = new Set((arr[i].bookings || []).map((b) => b.eventId).filter(Boolean));
+    if (doomed.size > 0) {
+      const evList = listCal(s.events, aidCal(ctx));
+      for (let k = evList.length - 1; k >= 0; k--) if (doomed.has(evList[k].id)) evList.splice(k, 1);
+    }
     arr.splice(i, 1);
     saveCal();
     return { ok: true, result: { deleted: params.id } };
   });
+
+  // F5: a bookable slot must respect the owner's REAL calendar (events
+  // expanded over the slot window), not just other bookings.
+  function slotEventConflict(s, userId, slotStartMs, slotEndMs) {
+    const winStart = new Date(slotStartMs - 7 * 86_400_000);
+    const winEnd = new Date(slotEndMs + 7 * 86_400_000);
+    for (const e of listCal(s.events, userId)) {
+      for (const occ of expandOccurrences(e, winStart, winEnd)) {
+        const os = new Date(occ.occurrenceStart).getTime();
+        const oe = new Date(occ.occurrenceEnd).getTime();
+        if (os < slotEndMs && oe > slotStartMs) return e;
+      }
+    }
+    return null;
+  }
 
   registerLensAction("calendar", "appointment-slots", (ctx, _a, params = {}) => {
   try {
@@ -1096,6 +1427,7 @@ export default function registerCalendarActions(registerLensAction) {
       return { ok: true, result: { date: dateStr, weekday: WEEKDAY_NAMES[weekday], slots: [], reason: "not an available weekday" } };
     }
     const booked = new Set(schedule.bookings.map((b) => b.slotStart));
+    const userId = aidCal(ctx);
     const slots = [];
     const now = Date.now();
     for (let mins = schedule.availability.startHour * 60; mins + schedule.durationMin <= schedule.availability.endHour * 60; mins += schedule.durationMin) {
@@ -1103,10 +1435,14 @@ export default function registerCalendarActions(registerLensAction) {
       const m = String(mins % 60).padStart(2, '0');
       const slotStart = `${dateStr}T${h}:${m}:00`;
       const slotMs = new Date(slotStart).getTime();
+      const clash = slotMs > now && !booked.has(slotStart)
+        ? slotEventConflict(s, userId, slotMs, slotMs + schedule.durationMin * 60_000)
+        : null;
       slots.push({
         slotStart,
         label: `${h}:${m}`,
-        available: !booked.has(slotStart) && slotMs > now,
+        available: !booked.has(slotStart) && slotMs > now && !clash,
+        ...(clash ? { conflictTitle: clash.title } : {}),
       });
     }
     return { ok: true, result: { date: dateStr, weekday: WEEKDAY_NAMES[weekday], durationMin: schedule.durationMin, slots } };
@@ -1123,13 +1459,46 @@ export default function registerCalendarActions(registerLensAction) {
     if (schedule.bookings.some((b) => b.slotStart === slotStart)) return { ok: false, error: "slot already booked" };
     const bookerName = String(params.bookerName || "").trim().slice(0, 120);
     if (!bookerName) return { ok: false, error: "bookerName required" };
+    const slotMs = new Date(slotStart).getTime();
+    if (isNaN(slotMs)) return { ok: false, error: "valid slotStart required" };
+    if (slotMs <= Date.now()) return { ok: false, error: "slot is in the past" };
+    const userId = aidCal(ctx);
+    const clash = slotEventConflict(s, userId, slotMs, slotMs + schedule.durationMin * 60_000);
+    if (clash) return { ok: false, error: `slot conflicts with "${clash.title}" on your calendar` };
     const booking = {
       id: uidCal("bk"),
       slotStart,
       bookerName,
       note: String(params.note || "").trim().slice(0, 400),
       bookedAt: isoCal(),
+      eventId: null,
     };
+    // A booking is a real calendar event: it shows on the grid, blocks
+    // the slot through the ordinary busy path, and dies with the booking.
+    const calendars = ensureDefaultCalendars(s, userId);
+    const seq = ensureSeqCal(s, userId);
+    const mirror = {
+      id: uidCal('evt'),
+      number: `EV-${String(seq.evt).padStart(6, '0')}`,
+      calendarId: (calendars.find(c => c.isDefault) || calendars[0]).id,
+      title: `${schedule.title} — ${bookerName}`,
+      description: booking.note,
+      location: "",
+      start: new Date(slotMs).toISOString(),
+      end: new Date(slotMs + schedule.durationMin * 60_000).toISOString(),
+      tz: null,
+      allDay: false,
+      recurrence: null,
+      reminders: [10],
+      attendees: [],
+      conferenceLink: "",
+      createdAt: isoCal(),
+      bookingId: booking.id,
+      appointmentScheduleId: schedule.id,
+    };
+    seq.evt++;
+    listCal(s.events, userId).push(mirror);
+    booking.eventId = mirror.id;
     schedule.bookings.push(booking);
     schedule.bookings.sort((a, b) => a.slotStart.localeCompare(b.slotStart));
     saveCal();
@@ -1151,7 +1520,12 @@ export default function registerCalendarActions(registerLensAction) {
     if (!schedule) return { ok: false, error: "schedule not found" };
     const i = schedule.bookings.findIndex((b) => b.id === params.bookingId);
     if (i < 0) return { ok: false, error: "booking not found" };
-    schedule.bookings.splice(i, 1);
+    const [removed] = schedule.bookings.splice(i, 1);
+    if (removed.eventId) {
+      const evList = listCal(s.events, aidCal(ctx));
+      const ei = evList.findIndex((e) => e.id === removed.eventId);
+      if (ei >= 0) evList.splice(ei, 1);
+    }
     saveCal();
     return { ok: true, result: { cancelled: params.bookingId } };
   });
@@ -1176,7 +1550,7 @@ export default function registerCalendarActions(registerLensAction) {
   // sync pulls live events from that feed via cachedFetchJson-equivalent
   // fetch + ical-parse, importing them into a dedicated calendar.
 
-  registerLensAction("calendar", "accounts-connect", (ctx, _a, params = {}) => {
+  registerLensAction("calendar", "accounts-connect", async (ctx, _a, params = {}) => {
   try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     ensureBacklogMaps(s);
@@ -1186,10 +1560,17 @@ export default function registerCalendarActions(registerLensAction) {
     const icsUrl = String(params.icsUrl || "").trim();
     if (!label) return { ok: false, error: "label required" };
     if (!/^https?:\/\//i.test(icsUrl)) return { ok: false, error: "valid icsUrl (https) required" };
-    // Refuse loopback/private/link-local/metadata/credentialed feed URLs at save time (the fetch path re-checks
-    // with DNS at sync time).
+    // Refuse loopback/private/link-local/metadata/credentialed feed URLs before any request.
     const icsProblem = icsUrlProblem(icsUrl);
     if (icsProblem) return { ok: false, error: `icsUrl refused: ${icsProblem}` };
+    // F14: validate the feed BEFORE the account exists — fetch it and parse-check it, so a bogus URL can never
+    // become a "connected" account that only fails later at Sync time. The fetch is SSRF-guarded
+    // (lib/ics-fetch.js -> lib/public-fetch): DNS/private-IP pin, per-hop redirect validation, timeout, size cap.
+    const fetched = await fetchIcsText(icsUrl);
+    if (!fetched.ok) return { ok: false, error: fetched.status ? `${fetched.error} — check the URL and try again` : fetched.error };
+    const icsText = fetched.text;
+    if (!icsText.includes("BEGIN:VCALENDAR")) return { ok: false, error: "that URL did not return an iCalendar (VCALENDAR) feed" };
+    const validatedEventCount = (icsText.match(/BEGIN:VEVENT/g) || []).length;
     const account = {
       id: uidCal('acct'),
       provider,
@@ -1198,11 +1579,12 @@ export default function registerCalendarActions(registerLensAction) {
       direction: ['pull', 'push', 'two-way'].includes(params.direction) ? params.direction : 'two-way',
       lastSyncAt: null,
       lastSyncCount: 0,
+      validatedEventCount,
       connectedAt: isoCal(),
     };
     listCal(s.connectedAccounts, userId).push(account);
     saveCal();
-    return { ok: true, result: { account } };
+    return { ok: true, result: { account, validatedEventCount } };
     } catch (e) { return handlerFailure(e); }
 });
 
@@ -1458,18 +1840,54 @@ export default function registerCalendarActions(registerLensAction) {
   // reminders-due computes which event-reminder offsets are now in
   // the firing window and emits them as persisted notifications.
 
+  // S8 completion — the bell half. A fired reminder also lands in the
+  // global Notifications bell through the platform notification
+  // substrate (createNotification, server/emergent/social-layer.js) —
+  // the same write path likes/comments/DMs use, read back by
+  // server/routes/social-core.js for GET /api/social/notifications,
+  // and pushed live over the social:notification socket. The payload
+  // mirrors the budget-alert cycle's scheduler precedent: { userId,
+  // type, content } — no fromUserId/postId (a reminder is not a post
+  // and has no other actor). Fire-and-forget, artistry-style: a
+  // substrate failure must never fail a calendar action. Called ONLY
+  // from the materialization branch of reminders-due, which the
+  // firedKeys guard runs exactly once per (event, occurrence,
+  // offset) — re-polls can never duplicate a bell entry.
+  function notifyReminderBell(userId, note) {
+    try {
+      const STATE = globalThis._concordSTATE;
+      if (!STATE || !userId) return;
+      createNotification(STATE, {
+        userId,
+        type: "reminder",
+        content: note.missed
+          ? `Missed reminder: "${note.eventTitle}" started at ${note.occurrenceStart} (its ${note.offsetMin}-minute reminder).`
+          : `Reminder: "${note.eventTitle}" starts at ${note.occurrenceStart} (${note.offsetMin} min before).`,
+      });
+    } catch (_e) { /* best effort — never break reminders over the bell */ }
+  }
+
   registerLensAction("calendar", "reminders-due", (ctx, _a, params = {}) => {
   try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     ensureBacklogMaps(s);
     const userId = aidCal(ctx);
     const now = Date.now();
+    const nowIso = new Date(now).toISOString();
     const lookAheadMin = Math.max(0, Math.min(1440, Number(params.lookAheadMin) || 0));
     const queue = listCal(s.reminderQueue, userId);
     const firedKeys = new Set(queue.map(n => n.key));
-    const winStart = new Date(now);
+    // F8: a reminder fires at its NOMINAL time (event start − offset).
+    // The old code materialized anything inside the caller's look-ahead
+    // as already "fired" (~29 min early in the review) and silently
+    // dropped reminders whose event had already started. Now: due
+    // reminders materialize once fireAt <= now; ones whose event has
+    // begun are marked missed (24 h window — older history stays
+    // history); look-ahead only feeds the separate `upcoming` list.
+    const winStart = new Date(now - 86_400_000);
     const winEnd = new Date(now + 30 * 86_400_000);
     let firedNow = 0;
+    const upcoming = [];
     for (const e of listCal(s.events, userId)) {
       const reminders = Array.isArray(e.reminders) ? e.reminders : [];
       if (reminders.length === 0) continue;
@@ -1479,8 +1897,7 @@ export default function registerCalendarActions(registerLensAction) {
           const fireAt = occMs - Number(offsetMin) * 60_000;
           const key = `${e.id}:${occ.occurrenceStart}:${offsetMin}`;
           if (firedKeys.has(key)) continue;
-          // Fires once the wall clock reaches fireAt (plus lookAhead grace).
-          if (fireAt <= now + lookAheadMin * 60_000 && occMs > now) {
+          if (fireAt <= now && occMs > now - 86_400_000) {
             const note = {
               id: uidCal('ntf'),
               key,
@@ -1488,19 +1905,33 @@ export default function registerCalendarActions(registerLensAction) {
               eventTitle: e.title,
               occurrenceStart: occ.occurrenceStart,
               offsetMin: Number(offsetMin),
-              firedAt: isoCal(),
+              fireAt: new Date(fireAt).toISOString(),
+              surfacedAt: isoCal(),
+              missed: occMs <= now,
               acknowledged: false,
+              snoozedUntil: null,
             };
             queue.push(note);
+            notifyReminderBell(userId, note);
             firedKeys.add(key);
             firedNow++;
+          } else if (lookAheadMin > 0 && fireAt > now && fireAt <= now + lookAheadMin * 60_000) {
+            upcoming.push({
+              eventId: e.id, eventTitle: e.title,
+              occurrenceStart: occ.occurrenceStart,
+              offsetMin: Number(offsetMin),
+              fireAt: new Date(fireAt).toISOString(),
+            });
           }
         }
       }
     }
     if (firedNow > 0) saveCal();
-    const pending = queue.filter(n => !n.acknowledged).sort((a, b) => a.occurrenceStart.localeCompare(b.occurrenceStart));
-    return { ok: true, result: { firedNow, pending, pendingCount: pending.length } };
+    const pending = queue
+      .filter(n => !n.acknowledged && (!n.snoozedUntil || n.snoozedUntil <= nowIso))
+      .sort((a, b) => String(a.fireAt || a.occurrenceStart).localeCompare(String(b.fireAt || b.occurrenceStart)));
+    upcoming.sort((a, b) => a.fireAt.localeCompare(b.fireAt));
+    return { ok: true, result: { firedNow, pending, pendingCount: pending.length, upcoming } };
     } catch (e) { return handlerFailure(e); }
 });
 
@@ -1516,6 +1947,14 @@ export default function registerCalendarActions(registerLensAction) {
     }
     const note = queue.find(x => x.id === String(params.id || ""));
     if (!note) return { ok: false, error: "notification not found" };
+    // Snooze is not dismiss (F8): it hides the reminder until the snooze
+    // expires without consuming it.
+    const snoozeMin = Math.max(0, Math.min(1440, Number(params.snoozeMin) || 0));
+    if (snoozeMin > 0) {
+      note.snoozedUntil = new Date(Date.now() + snoozeMin * 60_000).toISOString();
+      saveCal();
+      return { ok: true, result: { notification: note, snoozedUntil: note.snoozedUntil } };
+    }
     note.acknowledged = true;
     note.acknowledgedAt = isoCal();
     saveCal();
@@ -1573,7 +2012,7 @@ export default function registerCalendarActions(registerLensAction) {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const now = Date.now();
     const list = listCal(s.events, aidCal(ctx))
-      .filter(e => e.eventCategory && ['working-location', 'out-of-office', 'focus-time'].includes(e.eventCategory))
+      .filter(e => !e.deletedAt && e.eventCategory && ['working-location', 'out-of-office', 'focus-time'].includes(e.eventCategory))
       .filter(e => params.includeAll === true || new Date(e.end || e.start).getTime() >= now)
       .sort((a, b) => a.start.localeCompare(b.start));
     return { ok: true, result: { statusEvents: list, count: list.length } };
@@ -1598,7 +2037,7 @@ export default function registerCalendarActions(registerLensAction) {
     let attached = false;
     if (params.eventId) {
       const e = listCal(s.events, userId).find(x => x.id === String(params.eventId));
-      if (e) { e.conferenceLink = url; e.conferenceProvider = provider; e.conferenceRoom = room; attached = true; saveCal(); }
+      if (e && !e.deletedAt) { e.conferenceLink = url; e.conferenceProvider = provider; e.conferenceRoom = room; attached = true; saveCal(); }
     }
     return { ok: true, result: { provider, room, url, attachedToEvent: attached, eventId: params.eventId || null } };
   });
@@ -1606,7 +2045,7 @@ export default function registerCalendarActions(registerLensAction) {
   registerLensAction("calendar", "conference-clear", (ctx, _a, params = {}) => {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const e = listCal(s.events, aidCal(ctx)).find(x => x.id === String(params.eventId || ""));
-    if (!e) return { ok: false, error: "event not found" };
+    if (!e || e.deletedAt) return { ok: false, error: "event not found" };
     e.conferenceLink = '';
     delete e.conferenceProvider;
     delete e.conferenceRoom;
@@ -1625,7 +2064,7 @@ export default function registerCalendarActions(registerLensAction) {
     ensureBacklogMaps(s);
     const userId = aidCal(ctx);
     const event = listCal(s.events, userId).find(e => e.id === String(params.eventId || ""));
-    if (!event) return { ok: false, error: "event not found" };
+    if (!event || event.deletedAt) return { ok: false, error: "event not found" };
     const guests = Array.isArray(params.guests) ? params.guests.map(g => String(g).trim()).filter(Boolean) : [];
     if (guests.length === 0) return { ok: false, error: "guests array (emails/identifiers) required" };
     const list = listCal(s.eventInvites, userId);

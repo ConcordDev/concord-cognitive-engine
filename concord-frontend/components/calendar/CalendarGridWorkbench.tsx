@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
-import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
+import { useState, useEffect, useMemo, useCallback, useRef, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -13,11 +13,12 @@ import {
   Play, Timer, Loader2, AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { lensRun } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/common/EmptyState';
 import { Skeleton } from '@/components/ui';
 import { EventActionRail } from '@/components/calendar/EventActionRail';
 import { eventIdFromResult, eventNotSavedSentence, eventOnCalendarSentence, eventSavedSentence, eventUpdatedSentence } from '@/components/calendar/calendarKeep';
+import { browserTimeZone, calendarDateKey, COMMON_TIME_ZONES, fromZonedInputValue, nextHourSlotInZone, profileTimeZone, resolveCalendarTimeZone, shiftDateKey, toZonedInputValue, zoneAbbrev, zoneCityLabel } from '@/lib/calendar-date';
 import { RecurrenceEditor, RecurrenceScopeDialog, describeRecurrence, type RecurrenceScope, type UiRecurrence } from '@/components/calendar/RecurrenceEditor';
 import Link from 'next/link';
 
@@ -52,6 +53,8 @@ interface CalendarEvent {
   artworkColor?: string;
   /** Real calendar (calendars-list) this event lives on — multi-calendar support. */
   calendarId?: string;
+  /** IANA zone the event was authored in; instants render in the viewer's zone. */
+  tz?: string;
 }
 
 interface CalendarCategory {
@@ -67,6 +70,8 @@ export type ViewMode = 'month' | 'week' | 'day' | 'agenda';
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
+
+const CALENDAR_COLORS = ['#4285f4', '#ea4335', '#34a853', '#fbbc04', '#a142f4', '#24c1e0', '#f538a0', '#f6911e'];
 
 const EVENT_TYPE_META: Record<EventType, { label: string; color: string }> = {
   release:   { label: 'Launches',        color: '#22c55e' },
@@ -90,6 +95,45 @@ const COLORS = [
 
 const PLATFORMS = ['Web', 'Mobile', 'Desktop', 'API', 'Social', 'Email', 'Print'];
 
+// ── §3b real-date awareness ──────────────────────────────────────────
+// Solstice/equinox dates (Northern Hemisphere) by year. The table is
+// deliberately finite: outside it the grid shows no marker rather than
+// a guessed date.
+const SEASON_DATES: Record<number, Record<string, string>> = {
+  2025: { '03-20': 'Spring equinox', '06-20': 'Summer solstice', '09-22': 'Autumn equinox', '12-21': 'Winter solstice' },
+  2026: { '03-20': 'Spring equinox', '06-21': 'Summer solstice', '09-22': 'Autumn equinox', '12-21': 'Winter solstice' },
+  2027: { '03-20': 'Spring equinox', '06-21': 'Summer solstice', '09-23': 'Autumn equinox', '12-21': 'Winter solstice' },
+  2028: { '03-19': 'Spring equinox', '06-20': 'Summer solstice', '09-22': 'Autumn equinox', '12-21': 'Winter solstice' },
+};
+
+export function seasonMarkerFor(date: Date): string | null {
+  if (date.getMonth() === 1 && date.getDate() === 29) return 'Leap day';
+  const key = `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  return SEASON_DATES[date.getFullYear()]?.[key] ?? null;
+}
+
+export function isLeapFebruary(date: Date): boolean {
+  if (date.getMonth() !== 1) return false;
+  const y = date.getFullYear();
+  return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+}
+
+// One live drag gesture on an event block (see beginDrag/moveDrag).
+interface CalDragGesture {
+  key: string;
+  event: CalendarEvent;
+  mode: 'move' | 'resize';
+  startX: number;
+  startY: number;
+  cellW: number;
+  cellH: number;
+  pxPerHour: number;
+  month: boolean;
+  dxDays: number;
+  dyMinutes: number;
+  moved: boolean;
+}
+
 const INITIAL_PROJECTS: string[] = [];
 
 const REMINDER_OPTIONS = [
@@ -97,6 +141,8 @@ const REMINDER_OPTIONS = [
   { label: '3 days before',  time: 3, unit: 'days' as const },
   { label: '1 day before',   time: 1, unit: 'days' as const },
   { label: '1 hour before',  time: 1, unit: 'hours' as const },
+  { label: '30 minutes before', time: 30, unit: 'minutes' as const },
+  { label: '10 minutes before', time: 10, unit: 'minutes' as const },
 ];
 
 
@@ -149,6 +195,7 @@ interface BackendRecurrence {
   byDay?: string[];
   monthlyMode?: 'dayOfMonth' | 'nthWeekday';
   lastWeek?: boolean;
+  tz?: string | null;
 }
 
 interface BackendEvent {
@@ -165,6 +212,7 @@ interface BackendEvent {
   reminders: number[];
   attendees: string[];
   conferenceLink: string;
+  tz?: string | null;
   createdAt: string;
   occurrenceStart?: string;
   occurrenceEnd?: string;
@@ -253,7 +301,14 @@ function fromBackendEvent(e: BackendEvent): CalendarEvent {
       ? {
         frequency: e.recurrence.freq,
         interval: e.recurrence.interval,
-        endDate: e.recurrence.until ? new Date(e.recurrence.until) : undefined,
+        // A date-only until is a WALL DATE in the event's zone — parsing
+        // it as a UTC instant rendered it a day early west of UTC
+        // (form said Jan 30, detail said Jan 29 — F10).
+        endDate: e.recurrence.until
+          ? (e.recurrence.until.length <= 10
+            ? fromZonedInputValue(`${e.recurrence.until}T00:00`, e.tz || e.recurrence.tz || browserTimeZone()) || new Date(e.recurrence.until)
+            : new Date(e.recurrence.until))
+          : undefined,
         count: e.recurrence.count || undefined,
         byDay: e.recurrence.byDay?.length ? e.recurrence.byDay : undefined,
         monthlyMode: e.recurrence.monthlyMode,
@@ -265,6 +320,7 @@ function fromBackendEvent(e: BackendEvent): CalendarEvent {
     seriesEnd: new Date(e.end),
     artworkColor: meta.artworkColor,
     calendarId: e.calendarId,
+    tz: e.tz || e.recurrence?.tz || undefined,
   };
 }
 
@@ -288,16 +344,18 @@ function toBackendEventParams(ev: CalendarEvent): Record<string, unknown> {
     reminders: remindersToMinutes(ev.reminders),
     attendees: ev.collaborators || [],
     conferenceLink: ev.url || '',
+    tz: ev.tz || undefined,
     recurrence: ev.recurrence
       ? {
         freq: ev.recurrence.frequency,
         interval: ev.recurrence.interval,
-        until: ev.recurrence.endDate ? ev.recurrence.endDate.toISOString().slice(0, 10) : null,
+        until: ev.recurrence.endDate ? calendarDateKey(ev.recurrence.endDate, ev.tz || browserTimeZone()) : null,
         count: ev.recurrence.count || null,
         byDay: ev.recurrence.frequency === 'weekly' ? ev.recurrence.byDay : undefined,
         monthlyMode: ev.recurrence.frequency === 'monthly' ? ev.recurrence.monthlyMode : undefined,
         lastWeek: ev.recurrence.lastWeek,
         tzOffset: ev.startDate.getTimezoneOffset(),
+        tz: ev.tz || undefined,
       }
       : null,
   };
@@ -310,6 +368,8 @@ function toBackendEventParams(ev: CalendarEvent): Record<string, unknown> {
 // ---------------------------------------------------------------------------
 
 export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode } = {}) {
+  const { user } = useAuth();
+  const accountTz = resolveCalendarTimeZone(profileTimeZone(user));
 
   // State
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -317,6 +377,10 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [calendars, setCalendars] = useState<BackendCalendar[]>([]);
+  const [showCalForm, setShowCalForm] = useState(false);
+  const [calForm, setCalForm] = useState({ name: '', color: '#34a853' });
+  const [calFormError, setCalFormError] = useState<string | null>(null);
+  const [confirmDeleteCalId, setConfirmDeleteCalId] = useState<string | null>(null);
 
   // Categories are the event-type filter (Launches/Work Sessions/Deadlines/…) —
   // a fixed, always-real set derived from EVENT_TYPE_META. (Previously this read
@@ -343,6 +407,55 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   const [error, setError] = useState<{ message: string } | null>(null);
 
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [detailInvites, setDetailInvites] = useState<Array<{ id: string; guest: string; rsvp: string }>>([]);
+  const [dueReminders, setDueReminders] = useState<Array<{ id: string; eventTitle: string; occurrenceStart: string; offsetMin: number; fireAt?: string; missed?: boolean }>>([]);
+  const [lastDeleted, setLastDeleted] = useState<{ id: string; title: string } | null>(null);
+  // S15 (§3b): drag gestures, the M3 settle marker, the M7 flash.
+  const dragRef = useRef<CalDragGesture | null>(null);
+  const [dragView, setDragView] = useState<{ key: string; dxPx: number; dyPx: number; dhPx: number } | null>(null);
+  const suppressClickAt = useRef(0);
+  const [justMovedStart, setJustMovedStart] = useState<string | null>(null);
+  const [noteSeq, setNoteSeq] = useState(0);
+  const flashNote = (msg: string) => { setActivityNote(msg); setNoteSeq((n) => n + 1); };
+  useEffect(() => {
+    if (!lastDeleted) return;
+    const id = setTimeout(() => setLastDeleted(null), 12_000);
+    return () => clearTimeout(id);
+  }, [lastDeleted]);
+  const undoDelete = async () => {
+    if (!lastDeleted) return;
+    const target = lastDeleted;
+    setLastDeleted(null);
+    try {
+      const r = await lensRun({ domain: 'calendar', action: 'events-restore', input: { id: target.id } });
+      if (r.data.ok === false) throw new Error(r.data.error || 'Could not restore');
+      await fetchData();
+    } catch (e) {
+      useUIStore.getState().addToast({ type: 'error', message: e instanceof Error ? e.message : 'Could not restore that event' });
+    }
+  };
+
+  // F8: due reminders surface at the top of the lens itself — the user
+  // should not have to open Sync & share → Reminders to be reminded.
+  const refreshDueReminders = useCallback(async () => {
+    try {
+      const r = await lensRun({ domain: 'calendar', action: 'reminders-due', input: {} });
+      setDueReminders(((r.data?.result as { pending?: typeof dueReminders } | null)?.pending) || []);
+    } catch { /* best-effort banner; the Reminders tab is the full surface */ }
+  }, []);
+  useEffect(() => {
+    void refreshDueReminders();
+    const id = setInterval(() => { void refreshDueReminders(); }, 60_000);
+    return () => clearInterval(id);
+  }, [refreshDueReminders]);
+  const ackReminder = async (id: string) => {
+    await lensRun({ domain: 'calendar', action: 'reminders-acknowledge', input: { id } });
+    await refreshDueReminders();
+  };
+  const snoozeReminder = async (id: string) => {
+    await lensRun({ domain: 'calendar', action: 'reminders-acknowledge', input: { id, snoozeMin: 10 } });
+    await refreshDueReminders();
+  };
   const [showEventModal, setShowEventModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
@@ -353,19 +466,27 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   const [showSidebar, setShowSidebar] = useState(false);
 
   // New event form
-  const [newEvent, setNewEvent] = useState<Partial<CalendarEvent>>({
-    title: '',
-    description: '',
-    startDate: new Date(),
-    endDate: new Date(),
-    allDay: false,
-    color: COLORS[0].value,
-    category: EVENT_TYPE_META.release.label,
-    eventType: 'release',
-    platforms: [],
-    collaborators: [],
-    linkedProject: '',
-    reminders: [],
+  const [newEvent, setNewEvent] = useState<Partial<CalendarEvent>>(() => {
+    // F13: a fresh form starts at the next clean hour in the user's
+    // zone (never Start = End at the current instant) with the honest
+    // default type — 'session' (Work Sessions), the same type the
+    // decoder falls back to, so the highlight matches what saves.
+    const slot = nextHourSlotInZone(accountTz);
+    return {
+      title: '',
+      description: '',
+      startDate: slot.start,
+      endDate: slot.end,
+      allDay: false,
+      color: EVENT_TYPE_META.session.color,
+      category: EVENT_TYPE_META.session.label,
+      eventType: 'session',
+      platforms: [],
+      collaborators: [],
+      linkedProject: '',
+      reminders: [],
+      tz: accountTz,
+    };
   });
 
 
@@ -376,6 +497,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   // A feature the generic artifact-CRUD store could never offer (it had no
   // notion of "my other real events").
   const [conflicts, setConflicts] = useState<BackendConflict[]>([]);
+  const [nearestSlot, setNearestSlot] = useState<{ start: string; end: string } | null>(null);
   const [checkingConflicts, setCheckingConflicts] = useState(false);
   const [activityNote, setActivityNote] = useState<string | null>(null);
 
@@ -414,6 +536,20 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
 
   useEffect(() => { void Promise.resolve().then(fetchData); }, [fetchData]);
 
+  // RSVP state for the open event's invites (F6: shown on the detail,
+  // not only in the Sync & share tab).
+  useEffect(() => {
+    if (!showEventModal || !selectedEvent) { setDetailInvites([]); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await lensRun({ domain: 'calendar', action: 'invites-list', input: { eventId: selectedEvent.id } });
+        if (!cancelled) setDetailInvites(((r.data?.result as { invites?: Array<{ id: string; guest: string; rsvp: string }> } | null)?.invites) || []);
+      } catch { if (!cancelled) setDetailInvites([]); }
+    })();
+    return () => { cancelled = true; };
+  }, [showEventModal, selectedEvent]);
+
   // Debounced live conflict check while the composer is open.
   useEffect(() => {
     if (!showCreateModal || !newEvent.startDate || !newEvent.endDate) { queueMicrotask(() => setConflicts([])); return; }
@@ -429,7 +565,26 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
           input: { start: start.toISOString(), end: end.toISOString(), excludeEventId: editingEventId || undefined },
         });
         if (cancelled) return;
-        setConflicts(r.data.ok === false ? [] : ((r.data.result as { conflicts?: BackendConflict[] } | null)?.conflicts || []));
+        const found = r.data.ok === false ? [] : ((r.data.result as { conflicts?: BackendConflict[] } | null)?.conflicts || []);
+        setConflicts(found);
+        // Conflict-with-grace (F2/§3b-4): offer the nearest free slot for
+        // this event's length on its own day, in its own zone.
+        if (found.length > 0) {
+          try {
+            const durationMin = Math.max(15, Math.round((end.getTime() - start.getTime()) / 60000));
+            const av = await lensRun({
+              domain: 'calendar',
+              action: 'availability-find',
+              input: { day: calendarDateKey(start, formTz), durationMin, tz: formTz },
+            });
+            if (!cancelled) {
+              const free = (av.data?.result as { freeSlots?: Array<{ start: string; end: string }> } | null)?.freeSlots || [];
+              setNearestSlot(free[0] || null);
+            }
+          } catch { if (!cancelled) setNearestSlot(null); }
+        } else {
+          setNearestSlot(null);
+        }
       } catch {
         if (!cancelled) setConflicts([]);
       } finally {
@@ -577,31 +732,69 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
     setNewEvent({ ...newEvent, reminders: updated });
   };
 
-  const handleAddCollaborator = () => {
-    if (!collaboratorInput.trim()) return;
-    const tag = collaboratorInput.startsWith('@') ? collaboratorInput : `@${collaboratorInput}`;
-    setNewEvent({ ...newEvent, collaborators: [...(newEvent.collaborators || []), tag] });
-    setCollaboratorInput('');
+  const [collaboratorError, setCollaboratorError] = useState('');
+  const [validatingCollaborator, setValidatingCollaborator] = useState(false);
+
+  // F6: a collaborator chip used to accept ANY string and then not
+  // persist. Persistence is fixed server-side (events-update now honours
+  // attendees); here the add is validated against the real user
+  // directory (the same /api/social/users/search the message lens uses)
+  // so an unknown @handle is rejected inline instead of inviting nobody.
+  // Email-shaped entries are external guests and pass as-is.
+  const handleAddCollaborator = async () => {
+    const raw = collaboratorInput.trim();
+    if (!raw) return;
+    const existing = newEvent.collaborators || [];
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) {
+      if (existing.some((c) => c.toLowerCase() === raw.toLowerCase())) { setCollaboratorError('Already added.'); return; }
+      setNewEvent({ ...newEvent, collaborators: [...existing, raw] });
+      setCollaboratorInput('');
+      setCollaboratorError('');
+      return;
+    }
+    const handle = raw.startsWith('@') ? raw.slice(1) : raw;
+    if (!/^[A-Za-z0-9_.-]{2,}$/.test(handle)) { setCollaboratorError('Enter a @username or an email address.'); return; }
+    if (existing.some((c) => c.toLowerCase() === `@${handle}`.toLowerCase())) { setCollaboratorError('Already added.'); return; }
+    setValidatingCollaborator(true);
+    try {
+      const r = await api.get('/api/social/users/search', { params: { q: handle } });
+      const users = (r.data?.users ?? []) as Array<{ id: string; username: string; displayName: string }>;
+      const match = Array.isArray(users) ? users.find((u) => u.username.toLowerCase() === handle.toLowerCase()) : undefined;
+      if (!match) { setCollaboratorError(`No Concord user @${handle} — check the name, or invite by email instead.`); return; }
+      setNewEvent({ ...newEvent, collaborators: [...existing, `@${match.username}`] });
+      setCollaboratorInput('');
+      setCollaboratorError('');
+    } catch {
+      setCollaboratorError('Could not check the user directory just now — try again.');
+    } finally {
+      setValidatingCollaborator(false);
+    }
   };
 
   const handleRemoveCollaborator = (tag: string) => {
     setNewEvent({ ...newEvent, collaborators: (newEvent.collaborators || []).filter((c) => c !== tag) });
   };
 
-  const defaultNewEventForm = (): Partial<CalendarEvent> => ({
-    title: '',
-    description: '',
-    startDate: new Date(),
-    endDate: new Date(),
-    allDay: false,
-    color: COLORS[0].value,
-    category: EVENT_TYPE_META.release.label,
-    eventType: 'release',
-    platforms: [],
-    collaborators: [],
-    linkedProject: '',
-    reminders: [],
-  });
+  const formTz = newEvent.tz || accountTz;
+
+  const defaultNewEventForm = (): Partial<CalendarEvent> => {
+    const slot = nextHourSlotInZone(accountTz);
+    return {
+      title: '',
+      description: '',
+      startDate: slot.start,
+      endDate: slot.end,
+      allDay: false,
+      color: EVENT_TYPE_META.session.color,
+      category: EVENT_TYPE_META.session.label,
+      eventType: 'session',
+      platforms: [],
+      collaborators: [],
+      linkedProject: '',
+      reminders: [],
+      tz: accountTz,
+    };
+  };
 
   /** "+ Event": a one-hour slot at 10:00 on the selected day. */
   const openCreateFor = (day: Date) => {
@@ -610,11 +803,112 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
     const end = new Date(start);
     end.setHours(11);
     setEditingEventId(null);
+    setActivityNote(null);
     setNewEvent({ ...defaultNewEventForm(), startDate: start, endDate: end, eventType: 'session', category: EVENT_TYPE_META.session.label, color: EVENT_TYPE_META.session.color });
     setShowCreateModal(true);
   };
 
+  // ── S15 drag: move / resize event blocks ──────────────────────────
+  const dragKeyOf = (event: CalendarEvent) => `${event.id}|${event.occurrenceKey || ''}`;
+
+  const beginDrag = (e: ReactPointerEvent<HTMLButtonElement>, event: CalendarEvent, pxPerHour: number, allowResize: boolean, month: boolean) => {
+    if (e.button !== 0 || event.allDay) return;
+    const el = e.currentTarget;
+    const cell = month ? el.parentElement?.parentElement : el.parentElement;
+    const cellRect = cell?.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    dragRef.current = {
+      key: dragKeyOf(event), event,
+      mode: allowResize && e.clientY - elRect.top > elRect.height - 10 ? 'resize' : 'move',
+      startX: e.clientX, startY: e.clientY,
+      cellW: cellRect?.width || 120, cellH: cellRect?.height || 72,
+      pxPerHour, month, dxDays: 0, dyMinutes: 0, moved: false,
+    };
+    try { el.setPointerCapture(e.pointerId); } catch { /* capture is an enhancement */ }
+  };
+
+  const moveDrag = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const dx = e.clientX - d.startX;
+    const dy = e.clientY - d.startY;
+    if (!d.moved && Math.abs(dx) + Math.abs(dy) <= 4) return;
+    d.moved = true;
+    if (d.month) {
+      const cols = Math.round(dx / d.cellW);
+      const rows = Math.round(dy / d.cellH);
+      d.dxDays = cols + 7 * rows;
+      setDragView({ key: d.key, dxPx: cols * d.cellW, dyPx: rows * d.cellH, dhPx: 0 });
+    } else if (d.mode === 'resize') {
+      const durMin = Math.round((new Date(d.event.endDate).getTime() - new Date(d.event.startDate).getTime()) / 60000);
+      d.dyMinutes = Math.max(15 - durMin, Math.round(((dy / d.pxPerHour) * 60) / 15) * 15);
+      setDragView({ key: d.key, dxPx: 0, dyPx: 0, dhPx: (d.dyMinutes / 60) * d.pxPerHour });
+    } else {
+      d.dxDays = Math.round(dx / d.cellW);
+      d.dyMinutes = Math.round(((dy / d.pxPerHour) * 60) / 15) * 15;
+      setDragView({ key: d.key, dxPx: d.dxDays * d.cellW, dyPx: (d.dyMinutes / 60) * d.pxPerHour, dhPx: 0 });
+    }
+  };
+
+  const endDrag = () => {
+    const d = dragRef.current;
+    dragRef.current = null;
+    setDragView(null);
+    if (!d || !d.moved) return;
+    suppressClickAt.current = Date.now();
+    void commitDrag(d);
+  };
+
+  const cancelDrag = () => { dragRef.current = null; setDragView(null); };
+
+  const consumeDragClick = () => {
+    if (Date.now() - suppressClickAt.current < 400) { suppressClickAt.current = 0; return true; }
+    return false;
+  };
+
+  const commitDrag = async (d: CalDragGesture) => {
+    const event = d.event;
+    const start0 = new Date(event.startDate).getTime();
+    const end0 = new Date(event.endDate).getTime();
+    let newStart = start0;
+    let newEnd = end0;
+    if (d.mode === 'resize') {
+      newEnd = end0 + d.dyMinutes * 60000;
+      if (newEnd - newStart < 900_000) return;
+    } else {
+      const delta = d.dxDays * 86_400_000 + d.dyMinutes * 60_000;
+      if (delta === 0) return;
+      newStart += delta;
+      newEnd += delta;
+    }
+    const movedEvent: CalendarEvent = { ...event, startDate: new Date(newStart), endDate: new Date(newEnd) };
+    try {
+      const params = toBackendEventParams(movedEvent) as Record<string, unknown>;
+      params.id = event.id;
+      const recurring = !!(event.recurrence && event.occurrenceKey);
+      if (recurring) {
+        // Dragging one occurrence moves just that occurrence.
+        params.scope = 'this';
+        params.occurrenceKey = event.occurrenceKey;
+        delete params.recurrence;
+      }
+      setActivityNote(null);
+      const r = await lensRun({ domain: 'calendar', action: 'events-update', input: params });
+      if (r.data.ok === false) throw new Error(r.data.error || 'Could not move that event');
+      await fetchData();
+      // M3 The Settle: the landed block eases into place once.
+      setJustMovedStart(new Date(newStart).toISOString());
+      setTimeout(() => setJustMovedStart(null), 320);
+      flashNote(recurring
+        ? `Moved just this occurrence of “${event.title}”.`
+        : `Moved “${event.title}” to ${formatTime(new Date(newStart))}.`);
+    } catch (err) {
+      setActivityNote(`Could not move “${event.title}” — ${err instanceof Error ? err.message : 'it stayed where it was'}.`);
+    }
+  };
+
   const handleCreateEvent = async (scope?: RecurrenceScope) => {
+    setActivityNote(null);
     if (!newEvent.title) return;
     const original = editingEventId ? editingOriginal : null;
     const recurringEdit = !!(original?.recurrence && original.occurrenceKey);
@@ -641,6 +935,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
       linkedProject: newEvent.linkedProject,
       reminders: newEvent.reminders,
       recurrence: newEvent.recurrence,
+      tz: newEvent.tz,
       artworkColor: newEvent.artworkColor,
       calendarId: newEvent.calendarId || defaultCalId,
     };
@@ -676,20 +971,26 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
         if (r.data.ok === false) throw new Error(r.data.error || 'Failed to update event');
         const id = eventIdFromResult(r.data);
         if (!id) throw new Error('The server returned no event id');
-        setActivityNote(eventUpdatedSentence(id));
+        const affected = (r.data.result as { occurrencesAffected?: number | null } | null)?.occurrencesAffected;
+        if (recurringEdit && typeof affected === 'number' && affected > 1) {
+          flashNote(`Updated ${affected} occurrences of this series.`);
+        } else {
+          flashNote(eventUpdatedSentence(id) ?? 'Event updated.');
+        }
       } else {
         const r = await lensRun({ domain: 'calendar', action: 'events-create', input: params });
         if (r.data.ok === false) throw new Error(r.data.error || 'Failed to create event');
         const id = eventIdFromResult(r.data);
         if (!id) throw new Error('The server returned no event id');
-        setActivityNote(eventSavedSentence(id));
+        flashNote(eventSavedSentence(id) + (calendarDateKey(event.startDate).endsWith('-02-29') ? ' A day that only sometimes exists.' : ''));
       }
       await fetchData();
     } catch (e) {
       setEvents(previousEvents);
       const message = e instanceof Error ? e.message : 'Failed to save event';
+      // One surface per failure (F13): the banner above the grid is the
+      // save report — a duplicate toast for the same failure is noise.
       setActivityNote(eventNotSavedSentence(message));
-      useUIStore.getState().addToast({ type: 'error', message });
     }
   };
 
@@ -717,6 +1018,33 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
     else if (viewMode === 'week') shiftDate(-7);
     else shiftDate(-1);
   };
+
+  // §3b series milestones: count this occurrence's position in its
+  // series from the real series start, and name the 10th / 52nd.
+  const [seriesMilestone, setSeriesMilestone] = useState<string | null>(null);
+  useEffect(() => {
+    setSeriesMilestone(null);
+    const ev = selectedEvent;
+    if (!showEventModal || !ev?.recurrence || !ev.occurrenceKey || !ev.seriesStart) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await lensRun({
+          domain: 'calendar', action: 'events-list',
+          input: {
+            rangeStart: calendarDateKey(ev.seriesStart!),
+            rangeEnd: shiftDateKey(calendarDateKey(new Date(ev.occurrenceKey!)), 1),
+          },
+        });
+        const occ = ((r.data.result as { events?: Array<{ id: string; occurrenceStart: string }> } | null)?.events || [])
+          .filter((o) => o.id === ev.id && o.occurrenceStart <= ev.occurrenceKey!);
+        if (cancelled) return;
+        if (occ.length === 10) setSeriesMilestone(`The 10th ${ev.title} — ten in the books.`);
+        else if (occ.length === 52) setSeriesMilestone(`The 52nd ${ev.title} — a year of showing up.`);
+      } catch { /* a milestone is garnish; its absence is honest */ }
+    })();
+    return () => { cancelled = true; };
+  }, [showEventModal, selectedEvent]);
 
   useLensCommand(
     [
@@ -756,6 +1084,9 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
       if (recurring) { input.scope = scope; input.occurrenceKey = target.occurrenceKey; }
       const r = await lensRun({ domain: 'calendar', action: 'events-delete', input });
       if (r.data.ok === false) throw new Error(r.data.error || 'Failed to delete event');
+      // F12: the delete names the event and offers Undo (soft delete —
+      // the event also sits in Sync & share → Trash until emptied).
+      if (!recurring) setLastDeleted({ id: eventId, title: target.title });
     } catch (e) {
       setEvents(previousEvents);
       useUIStore.getState().addToast({ type: 'error', message: e instanceof Error ? e.message : 'Failed to delete event' });
@@ -780,15 +1111,34 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
     }
   };
 
-  const handleAddCalendar = async () => {
-    const name = typeof window !== 'undefined' ? window.prompt('New calendar name?') : null;
-    if (!name?.trim()) return;
+  // F3: the Add-calendar control opens an in-lens form. (It used to call
+  // window.prompt(), which never surfaces in embedded/automated browsers
+  // and reads as a dead button.)
+  const handleAddCalendar = () => { setCalFormError(null); setShowCalForm((v) => !v); };
+
+  const submitCalForm = async () => {
+    const name = calForm.name.trim();
+    if (!name) { setCalFormError('Give the calendar a name.'); return; }
     try {
-      const r = await lensRun({ domain: 'calendar', action: 'calendars-create', input: { name: name.trim() } });
+      const r = await lensRun({ domain: 'calendar', action: 'calendars-create', input: { name, color: calForm.color } });
       if (r.data.ok === false) throw new Error(r.data.error || 'Failed to create calendar');
+      setCalForm({ name: '', color: '#34a853' });
+      setShowCalForm(false);
+      setCalFormError(null);
       await fetchData();
     } catch (e) {
-      useUIStore.getState().addToast({ type: 'error', message: e instanceof Error ? e.message : 'Failed to create calendar' });
+      setCalFormError(e instanceof Error ? e.message : 'Failed to create calendar');
+    }
+  };
+
+  const deleteCalendar = async (cal: BackendCalendar) => {
+    try {
+      const r = await lensRun({ domain: 'calendar', action: 'calendars-delete', input: { id: cal.id } });
+      if (r.data.ok === false) throw new Error(r.data.error || 'Failed to delete calendar');
+      setConfirmDeleteCalId(null);
+      await fetchData();
+    } catch (e) {
+      useUIStore.getState().addToast({ type: 'error', message: e instanceof Error ? e.message : 'Failed to delete calendar' });
     }
   };
 
@@ -819,6 +1169,9 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
 
     return (
       <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.015]">
+        {isLeapFebruary(currentDate) && (
+          <p className="border-b border-white/[0.06] py-1.5 text-center font-serif text-[13px] italic text-violet-200/90">A bonus day. Spend it like one.</p>
+        )}
         <div className="grid grid-cols-7 border-b border-white/[0.06]">
           {DAY_NAMES.map((day) => (
             <div key={day} className="py-3 text-center text-[12px] uppercase tracking-[0.12em] text-zinc-500">
@@ -832,6 +1185,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
             if (!date) return <div key={index} />;
 
             const isCurrentMonth = date.getMonth() === currentDate.getMonth();
+            const marker = seasonMarkerFor(date);
             const dayEvents = getEventsForDay(date);
             const isSelected = isSameDay(date, selectedDate);
             const today = isToday(date);
@@ -859,6 +1213,9 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                 >
                   {date.getDate()}
                 </span>
+                {marker && (
+                  <span className="text-[9px] uppercase tracking-[0.14em] text-violet-300/80">{marker}</span>
+                )}
 
                 <div className="w-full space-y-1">
                   {dayEvents.slice(0, 2).map((event) => (
@@ -867,10 +1224,22 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (consumeDragClick()) return;
                         setSelectedEvent(event);
                         setShowEventModal(true);
                       }}
-                      className="w-full rounded-lg border border-white/[0.08] bg-black/40 px-2 py-1 text-left transition-colors hover:border-white/20"
+                      onPointerDown={(e) => beginDrag(e, event, 0, false, true)}
+                      onPointerMove={moveDrag}
+                      onPointerUp={endDrag}
+                      onPointerCancel={cancelDrag}
+                      className={cn(
+                        'w-full rounded-lg border border-white/[0.08] bg-black/40 px-2 py-1 text-left transition-colors hover:border-white/20 cursor-grab touch-none',
+                        dragView?.key === dragKeyOf(event) && 'shadow-xl ring-1 ring-white/40 relative z-50',
+                        justMovedStart === new Date(event.startDate).toISOString() && 'cal-settle',
+                      )}
+                      style={{
+                        transform: dragView?.key === dragKeyOf(event) ? `translate(${dragView.dxPx}px, ${dragView.dyPx}px)` : undefined,
+                      }}
                     >
                       <span className="flex items-center gap-1.5 truncate text-[12px] text-zinc-100">
                         <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ backgroundColor: event.color }} aria-hidden="true" />
@@ -884,7 +1253,13 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     </button>
                   ))}
                   {dayEvents.length > 2 && (
-                    <span className="block text-center text-[11px] tabular-nums text-zinc-500">+{dayEvents.length - 2} more</span>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setSelectedDate(date); setViewMode('day'); }}
+                      className="block w-full text-center text-[11px] tabular-nums text-zinc-500 transition-colors hover:text-zinc-100"
+                    >
+                      +{dayEvents.length - 2} more
+                    </button>
                   )}
                 </div>
               </div>
@@ -946,6 +1321,12 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
           })}
         </div>
 
+        {weekDates.every((d) => getEventsForDay(d).length === 0) && (
+          <p className="border-b border-lattice-border py-3 text-center text-[13px] text-zinc-400">
+            Nothing booked the week of {weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — yet.
+          </p>
+        )}
+
         <div className="flex-1 overflow-y-auto">
           <div className="relative">
             {hours.map((hour) => (
@@ -964,7 +1345,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                         newStart.setHours(hour, 0, 0, 0);
                         const newEnd = new Date(newStart);
                         newEnd.setHours(hour + 1);
-                        setNewEvent({ ...newEvent, startDate: newStart, endDate: newEnd });
+                        setNewEvent({ ...defaultNewEventForm(), startDate: newStart, endDate: newEnd });
                         setEditingEventId(null);
                         setShowCreateModal(true);
                       }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
@@ -980,16 +1361,27 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                             key={event.id}
                             onClick={(e) => {
                               e.stopPropagation();
+                              if (consumeDragClick()) return;
                               setSelectedEvent(event);
                               setShowEventModal(true);
                             }}
-                            className="absolute left-1 right-1 rounded px-2 py-1 text-xs font-medium overflow-hidden z-10"
+                            onPointerDown={(e) => beginDrag(e, event, 64, true, false)}
+                            onPointerMove={moveDrag}
+                            onPointerUp={endDrag}
+                            onPointerCancel={cancelDrag}
+                            className={cn(
+                              'absolute left-1 right-1 rounded px-2 py-1 text-xs font-medium overflow-hidden z-10 cursor-grab touch-none',
+                              dragView?.key === dragKeyOf(event) && 'shadow-xl ring-1 ring-white/40 cursor-grabbing',
+                              justMovedStart === new Date(event.startDate).toISOString() && 'cal-settle',
+                            )}
                             style={{
                               top: `${top}px`,
-                              height: `${height}px`,
+                              height: dragView?.key === dragKeyOf(event) && dragView.dhPx ? `${height + dragView.dhPx}px` : `${height}px`,
                               backgroundColor: event.color + '30',
                               color: event.color,
                               borderLeft: `3px solid ${event.color}`,
+                              transform: dragView?.key === dragKeyOf(event) ? `translate(${dragView.dxPx}px, ${dragView.dyPx}px)` : undefined,
+                              zIndex: dragView?.key === dragKeyOf(event) ? 50 : undefined,
                             }}
                           >
                             <p className="font-semibold truncate flex items-center gap-1">
@@ -1048,6 +1440,12 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
           </div>
         )}
 
+        {dayEvents.length === 0 && (
+          <p className="py-3 text-center text-[13px] text-zinc-400">
+            Nothing booked on {selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} — yet.
+          </p>
+        )}
+
         <div className="flex-1 overflow-y-auto">
           {hours.map((hour) => {
             const hourEvents = getEventsForHour(selectedDate, hour);
@@ -1064,7 +1462,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     newStart.setHours(hour, 0, 0, 0);
                     const newEnd = new Date(newStart);
                     newEnd.setHours(hour + 1);
-                    setNewEvent({ ...newEvent, startDate: newStart, endDate: newEnd });
+                    setNewEvent({ ...defaultNewEventForm(), startDate: newStart, endDate: newEnd });
                     setEditingEventId(null);
                     setShowCreateModal(true);
                   }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
@@ -1080,16 +1478,27 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                         key={event.id}
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (consumeDragClick()) return;
                           setSelectedEvent(event);
                           setShowEventModal(true);
                         }}
-                        className="absolute left-2 right-2 rounded-lg px-3 py-2 text-sm overflow-hidden"
+                        onPointerDown={(e) => beginDrag(e, event, 80, true, false)}
+                        onPointerMove={moveDrag}
+                        onPointerUp={endDrag}
+                        onPointerCancel={cancelDrag}
+                        className={cn(
+                          'absolute left-2 right-2 rounded-lg px-3 py-2 text-sm overflow-hidden cursor-grab touch-none',
+                          dragView?.key === dragKeyOf(event) && 'shadow-xl ring-1 ring-white/40 cursor-grabbing',
+                          justMovedStart === new Date(event.startDate).toISOString() && 'cal-settle',
+                        )}
                         style={{
                           top: `${top}px`,
-                          height: `${height}px`,
+                          height: dragView?.key === dragKeyOf(event) && dragView.dhPx ? `${height + dragView.dhPx}px` : `${height}px`,
                           backgroundColor: event.color + '30',
                           color: event.color,
                           borderLeft: `4px solid ${event.color}`,
+                          transform: dragView?.key === dragKeyOf(event) ? `translate(${dragView.dxPx}px, ${dragView.dyPx}px)` : undefined,
+                          zIndex: dragView?.key === dragKeyOf(event) ? 50 : undefined,
                         }}
                       >
                         <p className="font-semibold flex items-center gap-1">
@@ -1287,7 +1696,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
               <CalendarDays className="w-16 h-16 mb-4 opacity-30" />
               <p>No upcoming events</p>
               <button
-                onClick={() => { setEditingEventId(null); setShowCreateModal(true); }}
+                onClick={() => openCreateFor(selectedDate)}
                 className="mt-4 btn-neon"
               >
                 Schedule Something
@@ -1372,7 +1781,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
 
             {/* Create button */}
             <button
-              onClick={() => { setEditingEventId(null); setShowCreateModal(true); }}
+              onClick={() => openCreateFor(selectedDate)}
               className="w-full btn-neon flex items-center justify-center gap-2"
             >
               <Plus className="w-4 h-4" />
@@ -1394,29 +1803,59 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                   <Plus className="w-3.5 h-3.5" />
                 </button>
               </div>
+              {showCalForm && (
+                <div className="mb-3 space-y-2 rounded-lg border border-lattice-border bg-lattice-deep p-3">
+                  <input
+                    aria-label="New calendar name"
+                    value={calForm.name}
+                    onChange={(e) => setCalForm({ ...calForm, name: e.target.value })}
+                    placeholder="Calendar name"
+                    className="w-full bg-lattice-surface rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
+                  />
+                  <div className="flex items-center gap-1.5">
+                    {CALENDAR_COLORS.map((c) => (
+                      <button key={c} type="button" aria-label={`Colour ${c}`} onClick={() => setCalForm({ ...calForm, color: c })}
+                        className={cn('w-5 h-5 rounded-full border-2', calForm.color === c ? 'border-white' : 'border-transparent')} style={{ backgroundColor: c }} />
+                    ))}
+                  </div>
+                  {calFormError && <p className="text-xs text-rose-300">{calFormError}</p>}
+                  <div className="flex gap-2">
+                    <button onClick={() => void submitCalForm()} disabled={!calForm.name.trim()} className="flex-1 py-1.5 rounded bg-neon-cyan text-black text-xs font-semibold disabled:opacity-50">Create calendar</button>
+                    <button onClick={() => setShowCalForm(false)} className="flex-1 py-1.5 rounded border border-lattice-border text-xs">Cancel</button>
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 {calendars.length === 0 && (
                   <p className="text-xs text-gray-400 py-2">No calendars yet.</p>
                 )}
                 {calendars.map((cal) => (
-                  <button
-                    key={cal.id}
-                    onClick={() => toggleCalendarVisibility(cal)}
-                    className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-lattice-elevated transition-colors"
-                  >
-                    <div
-                      className={cn(
-                        'w-4 h-4 rounded flex items-center justify-center',
-                        cal.visible ? 'opacity-100' : 'opacity-30'
-                      )}
-                      style={{ backgroundColor: cal.color }}
+                  <div key={cal.id} className="group flex items-center gap-1">
+                    <button
+                      onClick={() => toggleCalendarVisibility(cal)}
+                      className="flex-1 flex items-center gap-3 p-2 rounded-lg hover:bg-lattice-elevated transition-colors"
                     >
-                      {cal.visible && <Check className="w-3 h-3 text-white" />}
-                    </div>
-                    <span className={cn('text-sm', !cal.visible && 'text-gray-400')}>
-                      {cal.name}
-                    </span>
-                  </button>
+                      <div
+                        className={cn(
+                          'w-4 h-4 rounded flex items-center justify-center',
+                          cal.visible ? 'opacity-100' : 'opacity-30'
+                        )}
+                        style={{ backgroundColor: cal.color }}
+                      >
+                        {cal.visible && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <span className={cn('text-sm', !cal.visible && 'text-gray-400')}>
+                        {cal.name}
+                      </span>
+                    </button>
+                    {!cal.isDefault && (
+                      confirmDeleteCalId === cal.id ? (
+                        <button onClick={() => void deleteCalendar(cal)} aria-label={`Confirm delete calendar ${cal.name}`} className="px-2 py-1 text-[11px] rounded bg-rose-500/15 text-rose-300">Delete?</button>
+                      ) : (
+                        <button onClick={() => setConfirmDeleteCalId(cal.id)} aria-label={`Delete calendar ${cal.name}`} title="Delete calendar (its events are removed too)" className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-rose-300"><Trash2 className="w-3.5 h-3.5" /></button>
+                      )
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
@@ -1590,8 +2029,35 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
               Today
             </button>
           </div>
+          <style>{`@keyframes cal-settle{from{transform:translateY(-4px);opacity:.55}to{transform:translateY(0);opacity:1}}@keyframes cal-view-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}@keyframes cal-note-flash{0%{box-shadow:inset 0 0 0 0 rgba(45,212,191,0)}30%{box-shadow:inset 0 0 0 1px rgba(45,212,191,.55)}100%{box-shadow:inset 0 0 0 0 rgba(45,212,191,0)}}.cal-settle{animation:cal-settle 140ms ease-out}.cal-view-in{animation:cal-view-in 220ms ease-out}.cal-note-flash{animation:cal-note-flash 650ms ease-out;border-radius:6px;padding-left:6px;margin-left:-6px}@media (prefers-reduced-motion: reduce){.cal-settle,.cal-view-in,.cal-note-flash{animation:none}}`}</style>
           {activityNote && (
-            <p className="mt-2 text-[13px] text-zinc-300" role="status">{activityNote}</p>
+            <p key={noteSeq} className={cn('mt-2 text-[13px] text-zinc-300', noteSeq > 0 && 'cal-note-flash')} role="status">{activityNote}</p>
+          )}
+          {lastDeleted && (
+            <div className="mt-2 flex items-center gap-2 rounded-lg border border-white/10 bg-lattice-elevated px-3 py-1.5 text-[13px] text-zinc-300" role="status">
+              <span className="flex-1 truncate">Deleted “{lastDeleted.title}”.</span>
+              <button onClick={() => void undoDelete()} className="shrink-0 rounded px-2 py-0.5 text-[11px] font-semibold bg-white/[0.08] hover:bg-white/[0.16] text-white">Undo</button>
+              <button onClick={() => setLastDeleted(null)} className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-zinc-500 hover:text-zinc-300" aria-label="Dismiss">✕</button>
+            </div>
+          )}
+          {dueReminders.length > 0 && (
+            <div className="mt-2 space-y-1" role="alert">
+              {dueReminders.slice(0, 3).map((n) => (
+                <div key={n.id} className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[13px] text-amber-200">
+                  <Bell className="h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1 truncate">
+                    {n.missed ? 'Missed reminder: ' : 'Reminder: '}
+                    <span className="text-white">{n.eventTitle}</span>
+                    <span className="text-amber-200/70"> · starts {new Date(n.occurrenceStart).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} · {n.offsetMin} min before</span>
+                  </span>
+                  <button onClick={() => void snoozeReminder(n.id)} className="shrink-0 rounded px-2 py-0.5 text-[11px] bg-white/[0.06] hover:bg-white/[0.12] text-amber-100">Snooze 10m</button>
+                  <button onClick={() => void ackReminder(n.id)} className="shrink-0 rounded px-2 py-0.5 text-[11px] bg-white/[0.06] hover:bg-white/[0.12] text-amber-100">Dismiss</button>
+                </div>
+              ))}
+              {dueReminders.length > 3 && (
+                <p className="text-[11px] text-amber-200/70">+{dueReminders.length - 3} more in Sync &amp; share → Reminders</p>
+              )}
+            </div>
           )}
         </div>
 
@@ -1628,10 +2094,12 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
         {renderSidebar()}
 
         <main className="relative flex flex-1 flex-col overflow-hidden px-8">
-          {viewMode === 'month' && renderMonthView()}
-          {viewMode === 'week' && renderWeekView()}
-          {viewMode === 'day' && renderDayView()}
-          {viewMode === 'agenda' && renderAgendaView()}
+          <div key={viewMode} className="flex flex-1 flex-col overflow-hidden cal-view-in">
+            {viewMode === 'month' && renderMonthView()}
+            {viewMode === 'week' && renderWeekView()}
+            {viewMode === 'day' && renderDayView()}
+            {viewMode === 'agenda' && renderAgendaView()}
+          </div>
 
           <div className="pointer-events-none flex flex-col items-center gap-2 py-5">
             {events.length === 0 && (
@@ -1716,6 +2184,11 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     <p className="text-sm">
                       {formatDateRange(new Date(selectedEvent.startDate), new Date(selectedEvent.endDate), selectedEvent.allDay)}
                     </p>
+                    {selectedEvent.tz && selectedEvent.tz !== browserTimeZone() && (
+                      <p className="text-xs text-gray-500 tabular-nums">
+                        {new Date(selectedEvent.startDate).toLocaleTimeString('en-US', { timeZone: selectedEvent.tz, hour: 'numeric', minute: '2-digit' })} {zoneAbbrev(selectedEvent.tz, new Date(selectedEvent.startDate))} in {zoneCityLabel(selectedEvent.tz)} · {new Date(selectedEvent.startDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} your time
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -1764,10 +2237,28 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                   </div>
                 )}
 
-                {selectedEvent.recurrence && (
+                {detailInvites.length > 0 && (
                   <div className="flex items-center gap-3 text-gray-400">
-                    <Repeat className="w-5 h-5" />
-                    <span>{describeRecurrence(selectedEvent.recurrence, selectedEvent.seriesStart || selectedEvent.startDate)}</span>
+                    <Check className="w-5 h-5" />
+                    <div className="flex flex-wrap gap-1">
+                      {detailInvites.map((iv) => (
+                        <span key={iv.id} className="text-xs px-2 py-0.5 rounded-full bg-lattice-elevated text-gray-300">
+                          {iv.guest} · <span className="capitalize">{iv.rsvp}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedEvent.recurrence && (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-3 text-gray-400">
+                      <Repeat className="w-5 h-5" />
+                      <span>{describeRecurrence(selectedEvent.recurrence, selectedEvent.seriesStart || selectedEvent.startDate)}</span>
+                    </div>
+                    {seriesMilestone && (
+                      <p className="pl-8 text-[13px] text-violet-200/90">{seriesMilestone}</p>
+                    )}
                   </div>
                 )}
 
@@ -1775,7 +2266,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                   <div className="flex items-center gap-3 text-gray-400">
                     <Bell className="w-5 h-5" />
                     <span className="tabular-nums">
-                      {selectedEvent.reminders.map((r) => `${r.time} ${r.unit}`).join(', ')} before
+                      {selectedEvent.reminders.map((r) => `${r.time} ${r.time === 1 ? r.unit.replace(/s$/, '') : r.unit}`).join(', ')} before
                     </span>
                   </div>
                 )}
@@ -1898,8 +2389,8 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     <label className="text-xs text-gray-400 mb-1 block">Start</label>
                     <input
                       type="datetime-local"
-                      value={newEvent.startDate?.toISOString().slice(0, 16) || ''}
-                      onChange={(e) => setNewEvent({ ...newEvent, startDate: new Date(e.target.value) })}
+                      value={newEvent.startDate ? toZonedInputValue(newEvent.startDate, formTz) : ''}
+                      onChange={(e) => { const d = fromZonedInputValue(e.target.value, formTz); if (d) setNewEvent({ ...newEvent, startDate: d }); }}
                       className="w-full bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
                     />
                   </div>
@@ -1907,11 +2398,33 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     <label className="text-xs text-gray-400 mb-1 block">End</label>
                     <input
                       type="datetime-local"
-                      value={newEvent.endDate?.toISOString().slice(0, 16) || ''}
-                      onChange={(e) => setNewEvent({ ...newEvent, endDate: new Date(e.target.value) })}
+                      value={newEvent.endDate ? toZonedInputValue(newEvent.endDate, formTz) : ''}
+                      onChange={(e) => { const d = fromZonedInputValue(e.target.value, formTz); if (d) setNewEvent({ ...newEvent, endDate: d }); }}
                       className="w-full bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">Time zone</label>
+                  <select
+                    aria-label="Event time zone"
+                    value={formTz}
+                    onChange={(e) => {
+                      const nextTz = e.target.value;
+                      setNewEvent({
+                        ...newEvent,
+                        tz: nextTz,
+                        startDate: newEvent.startDate ? fromZonedInputValue(toZonedInputValue(newEvent.startDate, formTz), nextTz) || newEvent.startDate : newEvent.startDate,
+                        endDate: newEvent.endDate ? fromZonedInputValue(toZonedInputValue(newEvent.endDate, formTz), nextTz) || newEvent.endDate : newEvent.endDate,
+                      });
+                    }}
+                    className="w-full bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
+                  >
+                    {Array.from(new Set([formTz, accountTz, ...COMMON_TIME_ZONES])).map((z) => (
+                      <option key={z} value={z}>{z.replace(/_/g, ' ')}</option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Live conflict check — real STATE-backed calendar.conflicts-check
@@ -1932,6 +2445,11 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                         {c.title} — {new Date(c.start).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                       </div>
                     ))}
+                    {nearestSlot && (
+                      <div className="mt-1.5 text-emerald-300 tabular-nums">
+                        Nearest free slot: {new Date(nearestSlot.start).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} – {new Date(nearestSlot.end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -2008,18 +2526,20 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                         type="text"
                         value={collaboratorInput}
                         onChange={(e) => setCollaboratorInput(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCollaborator(); } }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddCollaborator(); } }}
                         placeholder="@username"
                         className="w-full bg-lattice-deep rounded-lg pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
                       />
                     </div>
                     <button
-                      onClick={handleAddCollaborator}
-                      className="px-3 py-2 rounded-lg border border-lattice-border hover:bg-lattice-elevated text-sm"
+                      onClick={() => void handleAddCollaborator()}
+                      disabled={validatingCollaborator}
+                      className="px-3 py-2 rounded-lg border border-lattice-border hover:bg-lattice-elevated text-sm disabled:opacity-50"
                     >
-                      Add
+                      {validatingCollaborator ? 'Checking…' : 'Add'}
                     </button>
                   </div>
+                  {collaboratorError && <p className="text-[11px] text-rose-300 mt-1">{collaboratorError}</p>}
                   {(newEvent.collaborators || []).length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
                       {(newEvent.collaborators || []).map((c) => (
@@ -2036,11 +2556,17 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
 
                 {/* Color */}
                 <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Color</label>
+                  <label className="text-xs text-gray-400 mb-1 block">
+                    Color{COLORS.find((c) => c.value === newEvent.color) ? ` — ${COLORS.find((c) => c.value === newEvent.color)!.name}` : ''}
+                  </label>
                   <div className="flex items-center gap-2">
                     {COLORS.map((color) => (
                       <button
                         key={color.value}
+                        type="button"
+                        title={color.name}
+                        aria-label={`Colour ${color.name}`}
+                        aria-pressed={newEvent.color === color.value}
                         onClick={() => setNewEvent({ ...newEvent, color: color.value })}
                         className={cn(
                           'w-8 h-8 rounded-full transition-transform',
@@ -2097,11 +2623,14 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                 {/* Description */}
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">Description (optional)</label>
-                  <DraftedTextarea
-                    lensId="calendar"
-                    draftKey="event-description"
-                    initial={newEvent.description || ''}
-                    onValueChange={(v) => setNewEvent({ ...newEvent, description: v })}
+                  {/* Per-event data, bound to this form's own state. This field
+                      was a DraftedTextarea on a single lens-wide draft, which
+                      hydrated the previous event's description into every
+                      fresh form and saved it into the next event (F4). */}
+                  <textarea
+                    aria-label="Description (optional)"
+                    value={newEvent.description || ''}
+                    onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
                     placeholder="Add notes, details, links..."
                     rows={3}
                     className="w-full bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan resize-none"

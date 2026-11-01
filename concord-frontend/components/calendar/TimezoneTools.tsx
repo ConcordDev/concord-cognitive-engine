@@ -5,7 +5,8 @@
  * for the calendar lens. Backed by:
  *   calendar.timezone-convert — IANA → IANA conversion via Intl.DateTimeFormat
  *   calendar.ical-export      — events → RFC 5545 .ics blob
- *   calendar.ical-parse       — .ics → event list
+ *   calendar.ical-parse       — .ics → event list (preview)
+ *   calendar.ical-import      — .ics → real events (the commit step)
  *
  * Per category-leader research (Google Calendar, Apple Calendar,
  * Fantastical, Notion Calendar, Outlook, Cal.com): persistent TZ rail
@@ -13,11 +14,12 @@
  * with dry-run preview.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Calendar, Globe2, Upload, Download, Loader2, AlertTriangle, ArrowRight } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
+import { browserTimeZone, calendarDateKey, fromZonedInputValue, shiftDateKey, toZonedInputValue } from '@/lib/calendar-date';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
@@ -75,14 +77,18 @@ export function TimezoneTools() {
 }
 
 function TzConverter() {
-  const [iso, setIso] = useState(() => new Date().toISOString().slice(0, 16));
-  const [fromTz, setFromTz] = useState('UTC');
+  const [iso, setIso] = useState(() => toZonedInputValue(new Date(), browserTimeZone()));
+  const [fromTz, setFromTz] = useState(() => browserTimeZone());
   const [toTz, setToTz] = useState('America/Los_Angeles');
   const [result, setResult] = useState<{ inFromTz: string; inToTz: string; epochMs: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const conv = useMutation({
-    mutationFn: async () => callMacro<{ inFromTz: string; inToTz: string; epochMs: number }>('timezone-convert', { isoString: iso, fromTz, toTz }),
+    mutationFn: async () => {
+      const instant = fromZonedInputValue(iso, fromTz);
+      if (!instant) return { ok: false, error: 'Enter a valid date and time.' } as MacroEnvelope<{ inFromTz: string; inToTz: string; epochMs: number }>;
+      return callMacro<{ inFromTz: string; inToTz: string; epochMs: number }>('timezone-convert', { isoString: instant.toISOString(), fromTz, toTz });
+    },
     onSuccess: (env) => {
       if (env.ok && env.result) { setResult(env.result); setError(null); }
       else { setResult(null); setError(env.error || 'failed'); }
@@ -93,7 +99,7 @@ function TzConverter() {
     <div className="space-y-3">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <div>
-          <label className="mb-1 block text-[10px] uppercase tracking-wider text-gray-400">Time (local-ish)</label>
+          <label className="mb-1 block text-[10px] uppercase tracking-wider text-gray-400">Time (wall clock in From TZ)</label>
           <input type="datetime-local" value={iso} onChange={(e) => setIso(e.target.value)} className="w-full rounded border border-lattice-border bg-lattice-deep px-2 py-1 text-xs text-white" />
         </div>
         <div>
@@ -147,12 +153,36 @@ function IcalImport() {
   const [icsText, setIcsText] = useState('');
   const [events, setEvents] = useState<Array<{ uid: string; summary: string; start: string; end?: string; location?: string }>>([]);
   const [error, setError] = useState<string | null>(null);
+  const [importNote, setImportNote] = useState<string | null>(null);
 
   const parse = useMutation({
     mutationFn: async () => callMacro<{ events: Array<{ uid: string; summary: string; start: string; end?: string; location?: string }> }>('ical-parse', { ics: icsText }),
     onSuccess: (env) => {
+      setImportNote(null);
       if (env.ok && env.result) { setEvents(env.result.events); setError(null); }
       else { setEvents([]); setError(env.error || 'parse failed'); }
+    },
+  });
+
+  // F14: the commit step. The preview above is a dry run; this is what
+  // actually creates the events (the server re-parses the document —
+  // the preview is never the source of truth).
+  const commit = useMutation({
+    mutationFn: async () => callMacro<{ imported: number; skipped: number; withRecurrence: number; calendarName: string }>('ical-import', { ics: icsText }),
+    onSuccess: (env) => {
+      if (env.ok && env.result) {
+        const r = env.result;
+        setImportNote(
+          `Imported ${r.imported} event${r.imported === 1 ? '' : 's'} into ${r.calendarName}.`
+          + (r.skipped ? ` ${r.skipped} skipped (already imported, or no readable start time).` : '')
+          + (r.withRecurrence ? ` ${r.withRecurrence} recurring event${r.withRecurrence === 1 ? '' : 's'} imported as single occurrences — recurrence rules are not carried over.` : ''),
+        );
+        setEvents([]);
+        setError(null);
+      } else {
+        setImportNote(null);
+        setError(env.error || 'import failed');
+      }
     },
   });
 
@@ -167,18 +197,23 @@ function IcalImport() {
       />
       <button type="button" onClick={() => parse.mutate()} disabled={!icsText.trim() || parse.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
         {parse.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-        Parse (dry-run)
+        Preview events
       </button>
       {error && <div className="flex items-center gap-2 rounded border border-amber-500/20 bg-amber-500/5 p-2 text-xs text-amber-300"><AlertTriangle className="h-3 w-3" /> {error}</div>}
+      {importNote && <div className="rounded border border-emerald-500/20 bg-emerald-500/5 p-2 text-xs text-emerald-300">{importNote}</div>}
       {events.length > 0 && (
         <div className="space-y-1">
-          <div className="text-[10px] uppercase tracking-wider text-gray-400">Parsed {events.length} events</div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-400">Parsed {events.length} events — check them, then import</div>
           {events.slice(0, 30).map((ev) => (
             <div key={ev.uid} className="rounded border border-lattice-border bg-lattice-deep p-2 text-xs">
               <div className="font-medium text-white">{ev.summary}</div>
               <div className="font-mono tabular-nums text-[10px] text-gray-400">{ev.start}{ev.end ? ` → ${ev.end}` : ''}{ev.location ? ` · ${ev.location}` : ''}</div>
             </div>
           ))}
+          <button type="button" onClick={() => commit.mutate()} disabled={commit.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50">
+            {commit.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+            Import {events.length} event{events.length === 1 ? '' : 's'}
+          </button>
         </div>
       )}
     </div>
@@ -187,16 +222,45 @@ function IcalImport() {
 
 function IcalExport() {
   const [title, setTitle] = useState('');
-  const [eventsJson, setEventsJson] = useState('');
   const [ics, setIcs] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [census, setCensus] = useState<{ count: number; from: string; to: string } | null>(null);
+  const [sourceEvents, setSourceEvents] = useState<Array<{ id: string; title: string; occurrenceStart: string; occurrenceEnd: string; description?: string; location?: string }>>([]);
+
+  // F14: export means YOUR calendar. The old surface asked for pasted
+  // event JSON and failed silently on anything else; this one reads
+  // the real events (occurrences in a five-year window) and feeds the
+  // same ical-export the single-event download uses.
+  const loadCensus = async () => {
+    const today = new Date();
+    const from = shiftDateKey(calendarDateKey(today), -730);
+    const to = shiftDateKey(calendarDateKey(today), 1095);
+    const env = await callMacro<{ events: typeof sourceEvents; count: number }>('events-list', { rangeStart: from, rangeEnd: to });
+    if (env.ok && env.result) {
+      setSourceEvents(env.result.events);
+      setCensus({ count: env.result.events.length, from, to });
+    } else {
+      setError(env.error || 'Could not read your calendar.');
+    }
+  };
+  useEffect(() => { void loadCensus(); }, []);
 
   const exp = useMutation({
     mutationFn: async () => {
-      let events: unknown;
-      try { events = JSON.parse(eventsJson); } catch { return { ok: false as const, error: 'invalid JSON' }; }
-      return callMacro<{ ics: string }>('ical-export', { calendarName: title, events });
+      const events = sourceEvents.map((e) => ({
+        uid: `${e.id}-${e.occurrenceStart}@concord-os`,
+        title: e.title,
+        start: e.occurrenceStart,
+        end: e.occurrenceEnd,
+        description: e.description || '',
+        location: e.location || '',
+      }));
+      return callMacro<{ ics: string }>('ical-export', { calendarName: title || 'Concord Calendar', calendarTz: browserTimeZone(), events });
     },
-    onSuccess: (env) => { if (env.ok && env.result) setIcs(env.result.ics); else setIcs(null); },
+    onSuccess: (env) => {
+      if (env.ok && env.result) { setIcs(env.result.ics); setError(null); }
+      else { setIcs(null); setError(env.error || 'Export failed.'); }
+    },
   });
 
   const download = () => {
@@ -204,15 +268,22 @@ function IcalExport() {
     const blob = new Blob([ics], { type: 'text/calendar' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `${title.replace(/[^a-z0-9]+/gi, '-')}.ics`; a.click();
+    a.href = url; a.download = `${(title || 'concord-calendar').replace(/[^a-z0-9]+/gi, '-')}.ics`; a.click();
     URL.revokeObjectURL(url);
   };
 
   return (
     <div className="space-y-3">
       <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Calendar name" className="w-full rounded border border-lattice-border bg-lattice-deep px-2 py-1 text-xs text-white" />
-      <textarea value={eventsJson} onChange={(e) => setEventsJson(e.target.value)} rows={6} className="w-full rounded-md border border-lattice-border bg-lattice-deep px-3 py-2 font-mono text-xs text-white" />
-      <button type="button" onClick={() => exp.mutate()} disabled={exp.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
+      <p className="text-xs text-gray-400">
+        {census === null
+          ? 'Reading your calendar…'
+          : census.count === 0
+            ? 'No events in the export window — nothing to export yet.'
+            : `${census.count} event${census.count === 1 ? '' : 's'} between ${census.from} and ${census.to}. Recurring events export as their occurrences in that window.`}
+      </p>
+      {error && <div className="flex items-center gap-2 rounded border border-amber-500/20 bg-amber-500/5 p-2 text-xs text-amber-300"><AlertTriangle className="h-3 w-3" /> {error}</div>}
+      <button type="button" onClick={() => exp.mutate()} disabled={!census || census.count === 0 || exp.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
         {exp.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
         Generate .ics
       </button>
@@ -224,7 +295,7 @@ function IcalExport() {
             <SaveAsDtuButton
               compact
               apiSource="rfc-5545"
-              title={`iCal export — ${title}`}
+              title={`iCal export — ${title || 'Concord Calendar'}`}
               content={ics}
               extraTags={['calendar', 'ical', 'export']}
               rawData={{ title, ics }}

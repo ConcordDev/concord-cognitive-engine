@@ -35,7 +35,8 @@ type NotificationType =
   | 'mention'
   | 'system'
   | 'achievement'
-  | 'content_update';
+  | 'content_update'
+  | 'reminder';
 
 type NotificationFilter = 'all' | 'unread' | NotificationType;
 
@@ -126,6 +127,12 @@ const NOTIFICATION_CONFIG: Record<
     icon: AlertCircle,
     color: 'text-neon-blue',
     bgColor: 'bg-neon-blue/10',
+  },
+  // Calendar reminders (server/domains/calendar.js via the substrate).
+  reminder: {
+    icon: Bell,
+    color: 'text-teal-300',
+    bgColor: 'bg-teal-300/10',
   },
 };
 

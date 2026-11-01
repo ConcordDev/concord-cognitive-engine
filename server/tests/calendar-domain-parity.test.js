@@ -396,23 +396,26 @@ const ctxBL = { actor: { userId: "bl_u" }, userId: "bl_u" };
 const ctxBL2 = { actor: { userId: "bl_u2" }, userId: "bl_u2" };
 
 describe("calendar — external account sync (item 1)", () => {
+  // accounts-connect fetches + parse-checks the feed before connecting, so default to a valid empty
+  // VCALENDAR; individual tests override the transport with their own feed.
   beforeEach(() => {
     globalThis._concordSTATE = { dtus: new Map() };
     globalThis._concordSaveStateDebounced = () => {};
+    __setPublicFetchTestTransport(async () => ({ ok: true, status: 200, text: async () => "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR" }));
   });
   afterEach(() => __setPublicFetchTestTransport(null));
 
-  it("accounts-connect validates the ICS URL and stores the account", () => {
-    assert.equal(call("accounts-connect", ctxBL, { label: "Work", icsUrl: "ftp://bad" }).ok, false);
-    assert.equal(call("accounts-connect", ctxBL, { icsUrl: "https://x.com/c.ics" }).ok, false);
-    const r = call("accounts-connect", ctxBL, { provider: "google", label: "My Google", icsUrl: "https://calendar.google.com/feed.ics" });
+  it("accounts-connect validates the ICS URL and stores the account", async () => {
+    assert.equal((await call("accounts-connect", ctxBL, { label: "Work", icsUrl: "ftp://bad" })).ok, false);
+    assert.equal((await call("accounts-connect", ctxBL, { icsUrl: "https://x.com/c.ics" })).ok, false);
+    const r = await call("accounts-connect", ctxBL, { provider: "google", label: "My Google", icsUrl: "https://calendar.google.com/feed.ics" });
     assert.equal(r.ok, true);
     assert.equal(r.result.account.provider, "google");
     assert.equal(r.result.account.direction, "two-way");
   });
 
-  it("accounts-list + accounts-disconnect round-trip", () => {
-    const a = call("accounts-connect", ctxBL, { label: "A", icsUrl: "https://x.com/a.ics" }).result.account;
+  it("accounts-list + accounts-disconnect round-trip", async () => {
+    const a = (await call("accounts-connect", ctxBL, { label: "A", icsUrl: "https://x.com/a.ics" })).result.account;
     assert.equal(call("accounts-list", ctxBL).result.accounts.length, 1);
     assert.equal(call("accounts-disconnect", ctxBL, { id: a.id }).ok, true);
     assert.equal(call("accounts-list", ctxBL).result.accounts.length, 0);
@@ -424,9 +427,9 @@ describe("calendar — external account sync (item 1)", () => {
       "BEGIN:VEVENT", "UID:ext-1@g", "DTSTART:20260601T090000Z", "DTEND:20260601T100000Z", "SUMMARY:External meeting", "END:VEVENT",
       "END:VCALENDAR",
     ].join("\r\n");
-    // accounts-sync fetches through the SSRF-guarded lib/public-fetch; its test transport replaces real egress.
+    // connect and sync fetch through the SSRF-guarded lib/public-fetch; its test transport replaces real egress.
     __setPublicFetchTestTransport(async () => ({ ok: true, status: 200, text: async () => feed }));
-    const a = call("accounts-connect", ctxBL, { label: "Synced", icsUrl: "https://x.com/sync.ics" }).result.account;
+    const a = (await call("accounts-connect", ctxBL, { label: "Synced", icsUrl: "https://x.com/sync.ics" })).result.account;
     const r = await call("accounts-sync", ctxBL, { id: a.id });
     assert.equal(r.ok, true);
     assert.equal(r.result.imported, 1);

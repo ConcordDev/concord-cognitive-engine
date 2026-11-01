@@ -1,15 +1,25 @@
 'use client';
 
 /**
- * CalendarActionPanel — scheduler bench.
- * detectConflicts / findAvailability / scheduleOptimize / ical-export +
- * mint/DM/publish/agent.
+ * CalendarActionPanel — scheduler bench over the user's REAL calendar.
+ *
+ * F9: this panel used to demand pasted JSON in an undocumented schema
+ * and feed it to the generic artifact calculators; plausible input
+ * (start/end keys) crashed the whole lens with a TypeError, and the
+ * artifact macros' startTime/endTime schema silently disabled every
+ * button. It now reads the same STATE-backed engine as the rest of the
+ * lens — events-list / tasks-list for the census, conflicts-check
+ * (pairwise) for conflicts, availability-find for free time,
+ * ai-auto-schedule for task placement, ical-export for the .ics — and
+ * every result is shape-checked before it is stored, so a malformed
+ * response becomes inline feedback, never a render crash.
  */
 
-import { useState } from 'react';
-import { Calendar, AlertOctagon, Clock, ListChecks, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, Download } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Calendar, AlertOctagon, Clock, ListChecks, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, Download, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
+import { browserTimeZone, calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
@@ -27,25 +37,28 @@ type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 type ActionId = 'conf' | 'avail' | 'opt' | 'ical' | 'mint' | 'dm' | 'publish' | 'agent';
 function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
 
-interface Conflict { event1: string; event2: string; overlapMinutes: number }
-interface ConflictResult { totalEvents: number; conflicts: Conflict[]; conflictCount: number; conflictFree: boolean }
-interface Slot { start: string; end: string; minutes: number }
-interface AvailResult { date: string; workHours: string; eventsToday: number; availableSlots: Slot[]; totalFreeMinutes: number }
-interface OptResult { optimizedOrder: string[]; morningBlock: string[]; afternoonBlock: string[]; totalMinutes: number; totalHours: number; fitsInWorkday: boolean }
+interface RealEvent { id: string; title: string; start: string; end: string; occurrenceStart?: string; occurrenceEnd?: string }
+interface ConflictPair { a: { title: string; start: string; end: string }; b: { title: string; start: string; end: string }; overlapMinutes: number }
+interface ConfResult { pairs: ConflictPair[]; totalEvents: number }
+interface FreeSlot { start: string; end: string; minutes: number }
+interface AvailResult { date: string; freeSlots: FreeSlot[]; totalFreeMinutes: number; busyBlockCount: number }
+interface Proposal { taskId: string; title: string; priority: string; estimateMin: number; proposedStart: string; proposedEnd: string }
+interface OptResult { day: string; proposals: Proposal[]; scheduledCount: number; unscheduledCount: number }
 interface IcalResult { ics: string; eventCount: number; contentType: string }
 
-// TODAY is the actual current date — not seed data.
-const TODAY = new Date().toISOString().split('T')[0];
+const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+const TODAY = calendarDateKey();
 
-// No seeded events/tasks — paste real calendar JSON.
 export function CalendarActionPanel() {
-  const [eventsText, setEventsText] = useState('');
-  const [tasksText, setTasksText] = useState('');
   const [recipient, setRecipient] = useState('');
+  const [events, setEvents] = useState<RealEvent[]>([]);
+  const [openTasks, setOpenTasks] = useState(0);
+  const [loadError, setLoadError] = useState('');
+  const [committed, setCommitted] = useState<Set<string>>(new Set());
 
   const [busy, setBusy] = useState<ActionId | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
-  const [confResult, setConfResult] = useState<ConflictResult | null>(null);
+  const [confResult, setConfResult] = useState<ConfResult | null>(null);
   const [availResult, setAvailResult] = useState<AvailResult | null>(null);
   const [optResult, setOptResult] = useState<OptResult | null>(null);
   const [icalResult, setIcalResult] = useState<IcalResult | null>(null);
@@ -56,45 +69,109 @@ export function CalendarActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
-  function parseJSON<T>(text: string): T | null { try { return JSON.parse(text) as T; } catch { return null; } }
-
   const pipe = usePipe();
   const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
   const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
 
+  // The bench reads the real store: a month of events around today and
+  // the open task list. Nothing is pasted; nothing is seeded.
+  const loadReal = useCallback(async () => {
+    const now = Date.now();
+    const [ev, tk] = await Promise.all([
+      callMacro<{ events: RealEvent[] }>('events-list', {
+        rangeStart: new Date(now - 7 * 86_400_000).toISOString(),
+        rangeEnd: new Date(now + 30 * 86_400_000).toISOString(),
+      }),
+      callMacro<{ tasks: Array<{ status: string }> }>('tasks-list', { status: 'todo' }),
+    ]);
+    if (ev.ok && ev.result && Array.isArray(ev.result.events)) {
+      setEvents(ev.result.events);
+      setLoadError('');
+    } else {
+      setLoadError(ev.error || 'Could not load your calendar events.');
+    }
+    if (tk.ok && tk.result && Array.isArray(tk.result.tasks)) setOpenTasks(tk.result.tasks.length);
+  }, []);
+  useEffect(() => { void loadReal(); }, [loadReal]);
+
   async function actConf() {
-    if (!eventsText.trim()) { err('Paste events JSON first.'); return; }
-    const parsed = parseJSON<{ events: unknown[] }>(eventsText); if (!parsed) { err('Invalid events JSON.'); return; }
     setBusy('conf'); setFeedback(null);
     try {
-      const r = await callMacro<ConflictResult>('detectConflicts', { artifact: { data: parsed } });
-      if (r.ok && r.result) { setConfResult(r.result); pipe.publish('calendar.conf', r.result, { label: `Conf ${r.result.conflictCount}` }); ok(`${r.result.conflictCount} conflicts in ${r.result.totalEvents} events.`); } else err(r.error ?? 'conf failed');
+      const start = new Date(); start.setHours(0, 0, 0, 0);
+      const end = new Date(start.getTime() + 7 * 86_400_000);
+      const r = await callMacro<{ pairs: ConflictPair[]; conflicts: unknown[] }>('conflicts-check', {
+        start: start.toISOString(), end: end.toISOString(), pairwise: true,
+      });
+      if (r.ok && r.result && Array.isArray(r.result.pairs)) {
+        const result: ConfResult = { pairs: r.result.pairs, totalEvents: events.length };
+        setConfResult(result);
+        pipe.publish('calendar.conf', result, { label: `Conf ${result.pairs.length}` });
+        ok(`${result.pairs.length} conflict${result.pairs.length === 1 ? '' : 's'} across ${result.totalEvents} events this week.`);
+      } else err(r.error ?? 'Conflicts check returned an unexpected shape.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
+
   async function actAvail() {
-    if (!eventsText.trim()) { err('Paste events JSON first.'); return; }
-    const parsed = parseJSON<Record<string, unknown>>(eventsText); if (!parsed) { err('Invalid events JSON.'); return; }
     setBusy('avail'); setFeedback(null);
     try {
-      const r = await callMacro<AvailResult>('findAvailability', { artifact: { data: parsed } });
-      if (r.ok && r.result) { setAvailResult(r.result); pipe.publish('calendar.avail', r.result, { label: `Avail ${r.result.totalFreeMinutes}min` }); ok(`${r.result.availableSlots.length} slots · ${r.result.totalFreeMinutes}min free.`); } else err(r.error ?? 'avail failed');
+      const r = await callMacro<{ freeSlots: Array<{ start: string; end: string }>; busyBlockCount: number }>('availability-find', {
+        day: TODAY, durationMin: 30, tz: browserTimeZone(),
+      });
+      if (r.ok && r.result && Array.isArray(r.result.freeSlots)) {
+        const freeSlots: FreeSlot[] = r.result.freeSlots.map((s) => ({
+          start: s.start, end: s.end,
+          minutes: Math.round((new Date(s.end).getTime() - new Date(s.start).getTime()) / 60000),
+        }));
+        const result: AvailResult = {
+          date: TODAY, freeSlots,
+          totalFreeMinutes: freeSlots.reduce((sum, s) => sum + s.minutes, 0),
+          busyBlockCount: r.result.busyBlockCount || 0,
+        };
+        setAvailResult(result);
+        pipe.publish('calendar.avail', result, { label: `Avail ${result.totalFreeMinutes}min` });
+        ok(`${freeSlots.length} free slots · ${result.totalFreeMinutes} min free today.`);
+      } else err(r.error ?? 'Availability returned an unexpected shape.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
+
   async function actOpt() {
-    if (!tasksText.trim()) { err('Paste tasks JSON first.'); return; }
-    const parsed = parseJSON<{ tasks: unknown[] }>(tasksText); if (!parsed) { err('Invalid tasks JSON.'); return; }
     setBusy('opt'); setFeedback(null);
     try {
-      const r = await callMacro<OptResult>('scheduleOptimize', { artifact: { data: parsed } });
-      if (r.ok && r.result) { setOptResult(r.result); pipe.publish('calendar.opt', r.result, { label: `Opt ${r.result.totalHours}h` }); ok(`${r.result.totalHours}h · ${r.result.fitsInWorkday ? 'fits' : 'overflows'}.`); } else err(r.error ?? 'opt failed');
+      const r = await callMacro<OptResult>('ai-auto-schedule', { day: TODAY, tz: browserTimeZone() });
+      if (r.ok && r.result && Array.isArray(r.result.proposals)) {
+        setOptResult(r.result);
+        pipe.publish('calendar.opt', r.result, { label: `Opt ${r.result.scheduledCount}` });
+        ok(`${r.result.scheduledCount} task${r.result.scheduledCount === 1 ? '' : 's'} placed${r.result.unscheduledCount ? `, ${r.result.unscheduledCount} didn't fit` : ''}.`);
+      } else err(r.error ?? 'Auto-schedule returned an unexpected shape.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
-  async function actIcal() {
-    const parsed = parseJSON<{ events: unknown[] }>(eventsText); if (!parsed) { err('Invalid events JSON.'); return; }
-    setBusy('ical'); setFeedback(null);
-    try { const r = await callMacro<IcalResult>('ical-export', { artifact: { data: { events: parsed.events }, title: 'Concord Calendar' }, calendarName: 'Concord Calendar' }); if (r.ok && r.result) { setIcalResult(r.result); ok(`ICS: ${r.result.eventCount} events.`); } else err(r.error ?? 'ical failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+
+  async function commitProposal(p: Proposal) {
+    const r = await callMacro('tasks-time-block', { taskId: p.taskId, start: p.proposedStart });
+    if (r.ok) {
+      setCommitted((prev) => new Set(prev).add(p.taskId));
+      ok(`Blocked "${p.title}" at ${fmtTime(p.proposedStart)}.`);
+      await loadReal();
+    } else {
+      err(r.error ?? 'Could not commit that proposal.');
+    }
   }
+
+  async function actIcal() {
+    setBusy('ical'); setFeedback(null);
+    try {
+      const r = await callMacro<IcalResult>('ical-export', {
+        calendarName: 'Concord Calendar',
+        events: events.map((e) => ({
+          uid: e.id, summary: e.title,
+          start: e.occurrenceStart || e.start, end: e.occurrenceEnd || e.end,
+        })),
+      });
+      if (r.ok && r.result && typeof r.result.ics === 'string') { setIcalResult(r.result); ok(`ICS: ${r.result.eventCount} events.`); }
+      else err(r.error ?? 'iCal export returned an unexpected shape.');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+  }
+
   function downloadIcs() {
     if (!icalResult) return;
     const blob = new Blob([icalResult.ics], { type: 'text/calendar' });
@@ -102,6 +179,7 @@ export function CalendarActionPanel() {
     const a = document.createElement('a'); a.href = url; a.download = `concord-${TODAY}.ics`; a.click();
     URL.revokeObjectURL(url);
   }
+
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
@@ -110,13 +188,14 @@ export function CalendarActionPanel() {
       if (id) { setMintedDtuId(id); pipe.publish('calendar.mintedDtuId', id, { label: `Plan DTU ${id.slice(0, 8)}…` }); ok(`Plan DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
+
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`📅 Day plan ${TODAY}`, '',
-      confResult ? `Conflicts: ${confResult.conflictCount}${confResult.conflicts[0] ? ` (${confResult.conflicts[0].event1} ⨯ ${confResult.conflicts[0].event2} = ${confResult.conflicts[0].overlapMinutes}min)` : ''}` : '',
-      availResult ? `Free: ${availResult.availableSlots.length} slots / ${availResult.totalFreeMinutes}min in ${availResult.workHours}` : '',
-      optResult ? `Schedule: ${optResult.totalHours}h ${optResult.fitsInWorkday ? '✓ fits' : '⚠ overflows'} · AM: ${optResult.morningBlock.join(', ')}` : '',
+      confResult ? `Conflicts: ${confResult.pairs.length}${confResult.pairs[0] ? ` (${confResult.pairs[0].a.title} ⨯ ${confResult.pairs[0].b.title} = ${confResult.pairs[0].overlapMinutes}min)` : ''}` : '',
+      availResult ? `Free: ${availResult.freeSlots.length} slots / ${availResult.totalFreeMinutes}min today` : '',
+      optResult ? `Tasks placed: ${optResult.scheduledCount}${optResult.unscheduledCount ? ` (${optResult.unscheduledCount} didn't fit)` : ''}` : '',
       mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
@@ -128,8 +207,9 @@ export function CalendarActionPanel() {
       if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
+
   async function actPublish() {
-    if (!optResult) { err('Run schedule optimize first.'); return; }
+    if (!optResult) { err('Run optimize first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
@@ -143,10 +223,11 @@ export function CalendarActionPanel() {
       if (id) { setPublishedDtuId(id); pipe.publish('calendar.publishedDtuId', id, { label: `Public day plan ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
+
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
-      const task = `Day planner. ${confResult ? `${confResult.conflictCount} calendar conflicts.` : ''} ${availResult ? `${availResult.availableSlots.length} free slots totaling ${availResult.totalFreeMinutes}min.` : ''} ${optResult ? `Task load: ${optResult.totalHours}h, ${optResult.fitsInWorkday ? 'fits in workday' : 'overflows'}.` : ''} Recommend the single biggest schedule change for today + one task to defer. Plain text, 3 sentences max.`;
+      const task = `Day planner. ${confResult ? `${confResult.pairs.length} calendar conflicts.` : ''} ${availResult ? `${availResult.freeSlots.length} free slots totaling ${availResult.totalFreeMinutes}min.` : ''} ${optResult ? `${optResult.scheduledCount} tasks placed, ${optResult.unscheduledCount} unplaced.` : ''} Recommend the single biggest schedule change for today + one task to defer. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Plan ready.'); } else err('Agent returned empty.');
@@ -154,10 +235,10 @@ export function CalendarActionPanel() {
   }
 
   const actions = [
-    { id: 'conf' as ActionId, label: 'Conflicts', desc: 'detectConflicts', icon: AlertOctagon, accent: '#ef4444', handler: actConf },
-    { id: 'avail' as ActionId, label: 'Free time', desc: 'findAvailability', icon: Clock, accent: '#22c55e', handler: actAvail },
-    { id: 'opt' as ActionId, label: 'Optimize', desc: 'scheduleOptimize', icon: ListChecks, accent: '#a855f7', handler: actOpt },
-    { id: 'ical' as ActionId, label: 'ICS', desc: 'ical-export (RFC 5545)', icon: Download, accent: '#06b6d4', handler: actIcal },
+    { id: 'conf' as ActionId, label: 'Conflicts', desc: 'This week, real events', icon: AlertOctagon, accent: '#ef4444', handler: actConf },
+    { id: 'avail' as ActionId, label: 'Free time', desc: 'Today, your work hours', icon: Clock, accent: '#22c55e', handler: actAvail },
+    { id: 'opt' as ActionId, label: 'Optimize', desc: 'Place open tasks', icon: ListChecks, accent: '#a855f7', handler: actOpt },
+    { id: 'ical' as ActionId, label: 'ICS', desc: 'Export real events', icon: Download, accent: '#06b6d4', handler: actIcal },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private plan DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send day plan', icon: Send, accent: '#ec4899', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public template', icon: Globe, accent: '#15803d', handler: actPublish },
@@ -168,24 +249,22 @@ export function CalendarActionPanel() {
     <div className="rounded-lg border border-blue-500/20 bg-lattice-deep/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-blue-500/10 pb-2">
         <Calendar className="h-4 w-4 text-blue-400" />
-        <h3 className="text-sm font-semibold text-white">Scheduler bench</h3>
+        <h3 className="text-sm font-semibold text-white">Scheduler</h3>
         <span className="rounded bg-lattice-elevated px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-gray-400">conflicts · availability · optimize · ICS</span>
+        <span className="ml-auto text-[11px] text-gray-400 tabular-nums">{events.length} real events · {openTasks} open tasks</span>
+        <button type="button" onClick={() => void loadReal()} className="p-1 text-gray-400 hover:text-white" aria-label="Reload calendar data">
+          <RefreshCw className="w-3.5 h-3.5" />
+        </button>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Events JSON</label>
-          <textarea value={eventsText} onChange={(e) => setEventsText(e.target.value)} rows={8} className="w-full bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
-        </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">Tasks JSON (for optimize)</label>
-          <textarea value={tasksText} onChange={(e) => setTasksText(e.target.value)} rows={8} className="w-full bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
-        </div>
-        <div className="md:col-span-2 flex items-center gap-2 flex-wrap">
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
-          <RecallSlot ctl={dmRecall} />
-          <RecallSlot ctl={publishRecall} />
-        </div>
+      {loadError && (
+        <p className="text-[11px] text-rose-300 rounded border border-rose-500/25 bg-rose-500/5 px-2 py-1.5">{loadError}</p>
+      )}
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
@@ -206,28 +285,36 @@ export function CalendarActionPanel() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {confResult && (
-          <div className={cn('rounded-md border p-2.5', confResult.conflictFree ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5')}>
-            <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: confResult.conflictFree ? '#86efac' : '#fca5a5' }}>Conflicts</div>
-            <div className={cn('text-2xl font-bold', confResult.conflictFree ? 'text-emerald-300' : 'text-red-300')}>{confResult.conflictCount}</div>
-            <div className="text-[10px] text-gray-400">of {confResult.totalEvents} events</div>
-            {confResult.conflicts.slice(0, 3).map((c, i) => <div key={i} className="text-[10px] text-red-200 mt-0.5">{c.event1} ⨯ {c.event2} · {c.overlapMinutes}min</div>)}
+          <div className={cn('rounded-md border p-2.5', confResult.pairs.length === 0 ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5')}>
+            <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: confResult.pairs.length === 0 ? '#86efac' : '#fca5a5' }}>Conflicts this week</div>
+            <div className={cn('text-2xl font-bold', confResult.pairs.length === 0 ? 'text-emerald-300' : 'text-red-300')}>{confResult.pairs.length}</div>
+            <div className="text-[10px] text-gray-400">across {confResult.totalEvents} events</div>
+            {confResult.pairs.slice(0, 3).map((c, i) => <div key={i} className="text-[10px] text-red-200 mt-0.5">{c.a.title} ⨯ {c.b.title} · {c.overlapMinutes}min</div>)}
           </div>
         )}
         {availResult && (
           <div className="rounded-md border border-green-500/30 bg-green-500/5 p-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Free time · {availResult.workHours}</div>
+            <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Free time today</div>
             <div className="text-2xl font-bold text-green-300">{availResult.totalFreeMinutes}<span className="text-xs text-gray-400"> min</span></div>
-            <div className="text-[10px] text-gray-400">{availResult.availableSlots.length} slots · {availResult.eventsToday} events today</div>
-            {availResult.availableSlots.slice(0, 4).map((s, i) => <div key={i} className="text-[10px] text-green-200 mt-0.5 font-mono">{s.start}–{s.end} ({s.minutes}m)</div>)}
+            <div className="text-[10px] text-gray-400">{availResult.freeSlots.length} slots · {availResult.busyBlockCount} busy blocks</div>
+            {availResult.freeSlots.slice(0, 4).map((s, i) => <div key={i} className="text-[10px] text-green-200 mt-0.5 font-mono tabular-nums">{fmtTime(s.start)}–{fmtTime(s.end)} ({s.minutes}m)</div>)}
           </div>
         )}
         {optResult && (
-          <div className={cn('rounded-md border p-2.5 md:col-span-2', optResult.fitsInWorkday ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-amber-500/30 bg-amber-500/5')}>
-            <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Optimized · {optResult.totalHours}h {optResult.fitsInWorkday ? '✓ fits' : '⚠ overflows'}</div>
-            <div className="grid grid-cols-2 gap-2 mt-1">
-              <div className="text-[10px]"><div className="text-amber-300 font-semibold uppercase tracking-wider mb-0.5">Morning (high energy)</div>{optResult.morningBlock.map((t, i) => <div key={i} className="text-gray-300">→ {t}</div>)}</div>
-              <div className="text-[10px]"><div className="text-blue-300 font-semibold uppercase tracking-wider mb-0.5">Afternoon (low energy)</div>{optResult.afternoonBlock.map((t, i) => <div key={i} className="text-gray-300">→ {t}</div>)}</div>
+          <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 md:col-span-2">
+            <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">
+              Task placement · {optResult.scheduledCount} placed{optResult.unscheduledCount > 0 ? ` · ${optResult.unscheduledCount} didn't fit` : ''}
             </div>
+            {optResult.proposals.length === 0 && <div className="text-[10px] text-gray-400 mt-1">No open unblocked tasks to place.</div>}
+            {optResult.proposals.map((p) => (
+              <div key={p.taskId} className="flex items-center gap-2 text-[11px] text-gray-200 mt-1">
+                <span className="flex-1 truncate">→ {p.title} <span className="text-gray-500">({p.priority} · {p.estimateMin}m)</span></span>
+                <span className="font-mono tabular-nums text-gray-400">{fmtTime(p.proposedStart)}–{fmtTime(p.proposedEnd)}</span>
+                {committed.has(p.taskId)
+                  ? <span className="text-emerald-300 inline-flex items-center gap-1"><Check className="w-3 h-3" />Blocked</span>
+                  : <button type="button" onClick={() => void commitProposal(p)} className="px-2 py-0.5 rounded bg-purple-600/30 hover:bg-purple-600/50 text-purple-100">Block</button>}
+              </div>
+            ))}
           </div>
         )}
         {icalResult && (
