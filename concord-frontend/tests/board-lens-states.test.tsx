@@ -102,6 +102,7 @@ describe('board workspace — EMPTY', () => {
     await waitFor(() => expect(utils.getByText(/No boards yet/i)).toBeInTheDocument());
     expect(utils.container.textContent).not.toMatch(/Could not load boards/i);
   });
+
 });
 
 describe('board workspace — ERROR (not swallowed → silent empty)', () => {
