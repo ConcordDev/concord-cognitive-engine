@@ -232,6 +232,77 @@ describe("shutdown does no synchronous checkpoint (the launchd stop window is ~5
     assert.ok(cb.length > 200, "found the db shutdown callback");
     assert.doesNotMatch(cb, /wal_checkpoint|truncateWalForShutdown/);
     assert.match(cb, /db\.close\(\);/);
-    assert.match(src, /if \(r\.early && !r\.failed && !r\.busy && r\.ms < 100\) return;/);
+    assert.match(src, /if \(r\.early && !r\.forced && !r\.failed && !r\.busy && r\.ms < 100\) return;/);
+  });
+});
+
+describe("shutdown drain: checkpointNow() empties the backlog off the main thread", () => {
+  async function leftBehind(askNow) {
+    const dir = mkdtempSync(join(tmpdir(), "waldrain-"));
+    const p = join(dir, "t.db");
+    const db = new Database(p);
+    db.pragma("journal_mode = WAL"); db.pragma("synchronous = NORMAL"); db.pragma("wal_autocheckpoint = 0");
+    bigWrite(db, 6000); // ~9 MB of frames, all un-backfilled: main db file is still tiny
+    const base = statSync(p).size;
+    const results = [];
+    const h = startWalCheckpointer(p, {
+      thresholdBytes: 1_000_000_000, // the periodic tick would NOT checkpoint (below threshold) ...
+      intervalMs: 600_000, bootWindowMs: 0, force: true, env: {},
+      onReady() {}, onFallback() {}, onResult: (r) => results.push(r),
+    });
+    await new Promise((r) => setTimeout(r, 300)); // worker up
+    const t0 = Date.now();
+    if (askNow) h.checkpointNow(); // ... but a shutdown drain request must, regardless of the threshold
+    let grew = false;
+    while (Date.now() - t0 < 3000) { if (statSync(p).size > base + 1024 * 1024) { grew = true; break; } await new Promise((r) => setTimeout(r, 25)); }
+    const drainedMs = Date.now() - t0;
+    if (askNow) { try { await until(() => results.some((r) => r.forced), 3000); } catch { /* asserted by the caller */ } } // the result message trails the file growth
+    h.stop(); db.close(); rmSync(dir, { recursive: true, force: true });
+    return { grew, drainedMs, results };
+  }
+  it("a drain request backfills the WAL into the main db file (even below the periodic threshold); without it nothing happens", async () => {
+    const control = await leftBehind(false);
+    assert.equal(control.grew, false, "control: no request, no checkpoint");
+    const drained = await leftBehind(true);
+    assert.equal(drained.grew, true, "the worker checkpointed on request");
+    assert.ok(drained.drainedMs < 2500, `drained in ${drained.drainedMs} ms, off the caller's thread`);
+    assert.ok(drained.results.some((r) => r.forced === true && r.busy === 0), "reported as a forced result");
+  });
+  it("checkpointNow is a no-op after stop() and never throws", () => {
+    const fake = class extends EventEmitter { postMessage() { throw new Error("gone"); } terminate() {} unref() {} };
+    const h = startWalCheckpointer("/x/db", { thresholdBytes: 1, env: {}, WorkerCtor: fake, onReady() {}, onFallback() {} });
+    h.checkpointNow(); // postMessage throws: swallowed
+    h.stop(); h.checkpointNow();
+  });
+  it("server.js asks for the drain right after the final state save, before the feed-flush wait, and never checkpoints synchronously", () => {
+    const src = readFileSync(new URL("../server.js", import.meta.url), "utf8");
+    assert.match(src, /"shutdown_state_saved", \{\}\);[\s\S]*?\} catch \(e\) \{\s*\n\s*console\.error\("\[Shutdown\] State save failed:", e\.message\);\s*\n\s*\}\s*\n[\s\S]*?try \{ _walCheckpointer\?\.checkpointNow\?\.\(\); \} catch/);
+    const cb = src.slice(src.indexOf("registerShutdownCallback(() => {\n    if (_shutdownDbClosed) return;"), src.indexOf('structuredLog("info", "shutdown_database_closed"'));
+    assert.doesNotMatch(cb, /wal_checkpoint/);
+  });
+});
+
+describe("the worker reports what the previous process left un-copied", () => {
+  it("a database with an un-backfilled WAL yields a backlog message (log > checkpointed) before ready, and copies nothing", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "walbl-"));
+    const p = join(dir, "t.db");
+    const db = new Database(p);
+    db.pragma("journal_mode = WAL"); db.pragma("wal_autocheckpoint = 0");
+    bigWrite(db, 3000);
+    const base = statSync(p).size;
+    let backlog = null; let ready = false; let order = "";
+    const h = startWalCheckpointer(p, {
+      thresholdBytes: 1_000_000_000, intervalMs: 600_000, bootWindowMs: 0, force: true, env: {},
+      onBacklog: (b) => { backlog = b; order += "b"; }, onReady() { ready = true; order += "r"; }, onFallback() {},
+    });
+    await until(() => ready, 4000);
+    h.stop();
+    assert.ok(backlog && backlog.log > 100 && backlog.checkpointed === 0, JSON.stringify(backlog));
+    assert.equal(order, "br", "backlog is reported before ready");
+    assert.equal(statSync(p).size, base, "the probe copied nothing");
+    db.close(); rmSync(dir, { recursive: true, force: true });
+  });
+  it("server.js logs it as wal_boot_backlog", () => {
+    assert.match(readFileSync(new URL("../server.js", import.meta.url), "utf8"), /onBacklog: \(b\) => structuredLog\("info", "wal_boot_backlog"/);
   });
 });

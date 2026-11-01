@@ -25,6 +25,12 @@ try {
   db = new Database(dbPath, { fileMustExist: true });
   db.pragma("busy_timeout = 2000");
   db.pragma("wal_autocheckpoint = 0"); // this connection never writes; belt and braces
+  // What the previous process left un-copied (NOOP copies nothing): tells the next boot-stall read whether a
+  // big first checkpoint is a leftover from a killed/crashed process or this boot's own writes.
+  try {
+    const [n] = db.pragma("wal_checkpoint(NOOP)");
+    parentPort.postMessage({ type: "backlog", log: n?.log ?? null, checkpointed: n?.checkpointed ?? null });
+  } catch { /* older SQLite without NOOP: skip */ }
   parentPort.postMessage({ type: "ready" });
 } catch (e) {
   parentPort.postMessage({ type: "fatal", error: String(e?.message || e) });
@@ -32,19 +38,20 @@ try {
 }
 
 let running = false;
-function tick() {
+function tick(force = false) {
   if (running) return;
   running = true;
   try {
     let walBytes = 0;
     try { walBytes = statSync(walPath).size; } catch { /* no WAL yet */ }
-    if (walBytes < thresholdBytes) return;
+    if (!force && walBytes < thresholdBytes) return;
     const t0 = performance.now();
     const [r] = db.pragma("wal_checkpoint(PASSIVE)");
     parentPort.postMessage({
       type: "result",
       ms: Math.round(performance.now() - t0),
       early: Date.now() - startedAt < bootWindowMs,
+      forced: force,
       walBytes,
       busy: r?.busy ?? null,
       log: r?.log ?? null,
@@ -62,3 +69,7 @@ function schedule() {
   void t;
 }
 schedule();
+// Shutdown drain: the main thread asks for a checkpoint now (after its final state save), so the WAL it leaves
+// behind is small even though close() skips its own checkpoint while this connection is open (it is not the last
+// connection). Runs here, off the main thread, so it cannot eat the ~5 s launchd stop window.
+parentPort.on("message", (m) => { if (m && m.type === "now") tick(true); });

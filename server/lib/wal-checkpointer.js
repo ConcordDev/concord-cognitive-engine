@@ -48,12 +48,13 @@ export function walCheckpointerEnabled(dbPath, opts = {}) {
  * @param {number} [opts.bootIntervalMs=1000] checkpoint cadence during the first bootWindowMs (small slices)
  * @param {number} [opts.bootWindowMs=90000]
  * @param {number} [opts.readyTimeoutMs=120000] no ready by then: onFallback (inline checkpointing comes back)
+ * @param {(info: { log: number|null, checkpointed: number|null }) => void} [opts.onBacklog] frames the previous process left un-copied, read at worker start
  * @param {(info: object) => void} [opts.onResult]
  * @param {(reason: string) => void} opts.onFallback  caller re-enables inline auto-checkpoint
  * @param {object} [opts.env]
  * @param {typeof Worker} [opts.WorkerCtor]
  * @param {URL} [opts.workerUrl]
- * @returns {{ stop(): void } | null}
+ * @returns {{ stop(): void, checkpointNow(): void } | null}
  */
 export function startWalCheckpointer(dbPath, opts) {
   if (!walCheckpointerEnabled(dbPath, opts)) return null;
@@ -89,6 +90,8 @@ export function startWalCheckpointer(dbPath, opts) {
       active = true;
       clearTimeout(readyTimer);
       try { opts.onReady(); } catch (e) { fallback(`ready_failed: ${e?.message || e}`); }
+    } else if (msg.type === "backlog") {
+      try { opts.onBacklog?.(msg); } catch { /* informational */ }
     } else if (msg.type === "result") {
       try { opts.onResult?.(msg); } catch { /* informational */ }
       // A big WAL alone is not starvation (a fresh boot's migrations leave one and
@@ -104,5 +107,9 @@ export function startWalCheckpointer(dbPath, opts) {
   });
   worker.on("error", (e) => fallback(`worker_error: ${e?.message || e}`));
   worker.on("exit", (code) => { if (!done) fallback(`worker_exit_${code}`); });
-  return { stop() { done = true; clearTimeout(readyTimer); try { worker.terminate(); } catch { /* already gone */ } } };
+  return {
+    /** Ask the worker to checkpoint right now (shutdown drain). Fire-and-forget; never blocks the caller. */
+    checkpointNow() { if (!done) { try { worker.postMessage({ type: "now" }); } catch { /* worker gone */ } } },
+    stop() { done = true; clearTimeout(readyTimer); try { worker.terminate(); } catch { /* already gone */ } },
+  };
 }
