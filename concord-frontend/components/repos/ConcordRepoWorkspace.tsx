@@ -219,7 +219,12 @@ export function ConcordRepoWorkspace() {
       )}
 
       <ErrorBanner err={listErr} />
-      {listNotice && !activeRepo && (
+      {/* The workspace receipt renders in BOTH views (Review F14): the
+          create form lives in this always-rendered header, so a repo
+          created while another repo is open set a notice the old
+          !activeRepo condition never painted — success read as silent
+          in the re-pass. Opening a repo from the list clears it. */}
+      {listNotice && (
         <p className="flex items-center gap-1.5 rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-[10px] text-green-300">
           <CheckCircle className="h-3 w-3 shrink-0" /> {listNotice}
         </p>
@@ -313,6 +318,7 @@ export function ConcordRepoWorkspace() {
           {tab === 'settings' && (
             <SettingsTab
               repo={activeRepo}
+              onNotice={(text) => setListNotice(text)}
               onUpdated={(r) => { setActiveRepo(r); void loadRepos(); }}
               onDeleted={(name) => { setActiveRepo(null); setListNotice(`Deleted "${name}" — the repo and its history are gone.`); void loadRepos(); }}
             />
@@ -1406,10 +1412,11 @@ function InsightsTab({ repoId }: { repoId: string }) {
 }
 
 // ── Settings tab — rename / description / visibility / delete (S5) ──
-function SettingsTab({ repo, onUpdated, onDeleted }: {
+function SettingsTab({ repo, onUpdated, onDeleted, onNotice }: {
   repo: RepoSummary;
   onUpdated: (r: RepoSummary) => void;
   onDeleted: (name: string) => void;
+  onNotice: (text: string) => void;
 }) {
   const [name, setName] = useState(repo.name);
   const [description, setDescription] = useState(repo.description || '');
@@ -1427,7 +1434,13 @@ function SettingsTab({ repo, onUpdated, onDeleted }: {
     setBusy(null);
     if (r.ok && r.data) {
       onUpdated({ ...repo, name: r.data.repo.name, description: r.data.repo.description, isPrivate: r.data.repo.isPrivate });
-      setNotice(`Saved — this repo is now "${r.data.repo.name}", ${r.data.repo.isPrivate ? 'private' : 'public'} in your account.`);
+      const saved = `Saved — this repo is now "${r.data.repo.name}", ${r.data.repo.isPrivate ? 'private' : 'public'} in your account.`;
+      setNotice(saved);
+      // Mirror to the workspace-level notice (Review F14): this panel
+      // unmounts on a tab switch, which takes its local receipt with
+      // it — the mirror survives the round-trip. The same dual-render
+      // pattern the tag receipts already use (panel + tab-top).
+      onNotice(saved);
     } else { setErr(r.error); }
   };
 
