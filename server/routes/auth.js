@@ -105,6 +105,7 @@ export default function createAuthRouter({
   clearLockerKey,
 }) {
   const router = express.Router();
+  let _dummyPasswordHash = null; // lazily-built hash for the unknown-user login compare
 
   // Apply stricter rate limiting to auth endpoints
   const authRateLimitMiddleware = authRateLimiter || ((req, res, next) => next());
@@ -144,7 +145,13 @@ export default function createAuthRouter({
 
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/register", authRateLimitMiddleware, validate("userRegister"), async (req, res) => {
-    const { username, email, password, dateOfBirth } = req.validated || req.body;
+    const { username, password, dateOfBirth } = req.validated || req.body;
+    // Stored lower-cased so login (exact, then lower-cased lookup) and the duplicate
+    // check agree. Rows registered before this keep their original case and still
+    // match through the exact-first lookup.
+    const email = typeof (req.validated || req.body).email === "string"
+      ? (req.validated || req.body).email.trim().toLowerCase()
+      : (req.validated || req.body).email;
 
     // ── Age gate (18+) ──────────────────────────────────────────────
     // Concordia contains mature/violent content, so registration requires the
@@ -330,7 +337,17 @@ export default function createAuthRouter({
         user = AuthDB.getUserByEmail(username) || AuthDB.getUserByEmail(username.toLowerCase());
       }
     } else if (email) {
-      user = AuthDB.getUserByEmail(email);
+      user = AuthDB.getUserByEmail(email) || AuthDB.getUserByEmail(String(email).toLowerCase());
+    }
+
+    // Unknown user: still pay for one password compare so the response time does not
+    // tell an attacker which accounts exist. Same hash function (same cost) as a real
+    // account; the hash is built once, from a random secret nobody holds.
+    if (!user) {
+      try {
+        _dummyPasswordHash ||= hashPassword(crypto.randomBytes(24).toString("hex"));
+        await verifyPassword(password, await _dummyPasswordHash);
+      } catch (_e) { logger.debug('auth', 'dummy compare failed', { error: _e?.message }); }
     }
 
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
