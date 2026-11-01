@@ -23,7 +23,7 @@ function safe(fn, fallback) {
 
 function hasColumn(db, table, column) {
   try {
-    return db.prepare(`PRAGMA table_info(${table})`).all().some((row) => row.name === column);
+    return db.prepare("SELECT name FROM pragma_table_info(?)").all(table).some((row) => row.name === column);
   } catch {
     return false;
   }

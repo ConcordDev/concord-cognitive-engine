@@ -319,7 +319,38 @@ const REVIEWED = {
   "routes/training-match.js": 1,
   "routes/wagers.js": 6,
   "routes/worlds.js": 1,
-  "server.js": 5,
+  // ── Reviewed 2026-10-31 (the ratchet was red on clean main: 7 files + 1 site went in unreviewed) ──
+  // lib/archive-embed-backfill.js (6) — `${PROGRESS_TABLE}` is a module constant string literal
+  // ("archive_embed_progress_v3") at 4 sites; `${phase.table}` / `${phase.where}` (2 sites) come from the
+  // Object.freeze'd PHASES array of literals (table names + fixed WHERE fragments). The only runtime
+  // values (rowid cursor, LIMIT, timestamps) are bound with `?`; nothing request-derived reaches SQL text.
+  "lib/archive-embed-backfill.js": 6,
+  // lib/dtu-bridge/outbox.js (1) — the dynamic part of the UPDATE is `sets`, built ONLY from the fixed
+  // `cols` map {status, attempts, lastError, nextDueAt, updatedAt} -> literal column names; any other key
+  // throws TypeError("unpatchable field") before SQL is built. Every value is bound with `?`.
+  "lib/dtu-bridge/outbox.js": 1,
+  // lib/liveness-report.js (1) — `skipStarter` is starterExclusion(): the literal fragment
+  // " AND NOT (IFNULL(type, '') = 'material' AND id LIKE 'mat_%')" or "" (gated on a column check).
+  // (Its PRAGMA table_info(${table}) helper was parameterized: pragma_table_info(?).)
+  "lib/liveness-report.js": 1,
+  // lib/sim-infra.js (2) — `d.${ownerCol}` is gated by OWNER_COLS.has(ownerCol) (a Set of two literals:
+  // creator_id, owner_user_id) before the query runs; `${where}` is the literal "WHERE delisted_at IS NULL"
+  // or "" chosen by a PRAGMA column check. (Its PRAGMA table_info helper was parameterized.)
+  "lib/sim-infra.js": 2,
+  // lib/sim-stats.js (2) — `${skipStarter}` is authoredOnly(): a literal fragment parameterized only by an
+  // alias that is the literal "d" or "" at the single call site; creator id is bound with `?`.
+  // (Its PRAGMA table_info helper was parameterized.)
+  "lib/sim-stats.js": 2,
+  // routes/artifacts.js (1) — #1778 durable-artifacts read path (reviewed 2026-10-31). `${cols}` and
+  // `${latestVersionJoin}` are module-local template-literal CONSTANTS (a fixed column list and a fixed
+  // LEFT JOIN on artifact_versions) interpolated into three prepared statements (get / list / listAll);
+  // nothing request-derived reaches SQL text. Every value (a.id, owner id, LIMIT) is bound with `?`.
+  "routes/artifacts.js": 1,
+  // server.js 5 -> 6: the new site is the archive-embed hasEmbedding probe,
+  // `SELECT 1 FROM ${getEmbeddingStatus(0).table || "embedding_cache"} WHERE dtu_id = ?` — the table name comes
+  // from embeddings.js's embeddingState.table (PRIMARY_TABLE, or PRIMARY_TABLE + "__" + a model slug reduced to
+  // [a-z0-9_] by tableForModel(), the same source as the 4 reviewed embeddings.js sites); dtu_id is bound.
+  "server.js": 6,
 };
 
 function walk(dir, out = []) {
