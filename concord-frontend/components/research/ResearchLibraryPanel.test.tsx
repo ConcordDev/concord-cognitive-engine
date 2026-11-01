@@ -1,7 +1,7 @@
 /// <reference types="@testing-library/jest-dom/vitest" />
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { AnalyzeLibrarySection } from './ResearchLibraryPanel';
+import { AnalyzeQuickTools } from './ResearchLibraryPanel';
 
 const lensRunMock = vi.fn();
 vi.mock('@/lib/api/client', () => ({
@@ -20,11 +20,12 @@ function fail(error: string) {
   return { data: { ok: false, result: null, error } };
 }
 
-async function openSection() {
-  fireEvent.click(screen.getByRole('button', { name: /analyze library/i }));
-}
+// The per-tool section is always open under the S5 whole-library job (#1723
+// replaced #1898's collapsed "Analyze library" toggle), so there is nothing to
+// open; kept as a no-op so each case still reads the same.
+async function openSection() {}
 
-describe('AnalyzeLibrarySection (research.find-gaps / match-questions / evaluate-source)', () => {
+describe('AnalyzeQuickTools (research.find-gaps / match-questions / evaluate-source)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -39,7 +40,7 @@ describe('AnalyzeLibrarySection (research.find-gaps / match-questions / evaluate
       ],
       byYear: { 2017: 3, 2020: 2 },
     }));
-    render(<AnalyzeLibrarySection references={[REF]} onOpenReference={vi.fn()} />);
+    render(<AnalyzeQuickTools references={[REF]} onOpenReference={vi.fn()} />);
     await openSection();
     fireEvent.click(screen.getByRole('button', { name: 'Find gaps' }));
     await waitFor(() => expect(lensRunMock).toHaveBeenCalledWith('research', 'find-gaps', {}));
@@ -50,7 +51,7 @@ describe('AnalyzeLibrarySection (research.find-gaps / match-questions / evaluate
 
   it('find-gaps surfaces the backend error instead of a fake result (empty library)', async () => {
     lensRunMock.mockResolvedValue(fail('references required'));
-    render(<AnalyzeLibrarySection references={[]} onOpenReference={vi.fn()} />);
+    render(<AnalyzeQuickTools references={[]} onOpenReference={vi.fn()} />);
     await openSection();
     fireEvent.click(screen.getByRole('button', { name: 'Find gaps' }));
     await waitFor(() => expect(screen.getByText('references required')).toBeInTheDocument());
@@ -68,7 +69,7 @@ describe('AnalyzeLibrarySection (research.find-gaps / match-questions / evaluate
       if (action === 'reference-detail') return Promise.resolve(ok({ reference: REF }));
       return Promise.resolve(ok(null));
     });
-    render(<AnalyzeLibrarySection references={[REF]} onOpenReference={onOpen} />);
+    render(<AnalyzeQuickTools references={[REF]} onOpenReference={onOpen} />);
     await openSection();
     fireEvent.change(screen.getByPlaceholderText(/what are you trying to answer/i), { target: { value: 'how do transformers scale' } });
     fireEvent.click(screen.getByRole('button', { name: 'Match' }));
@@ -84,7 +85,7 @@ describe('AnalyzeLibrarySection (research.find-gaps / match-questions / evaluate
       referenceId: 'ref-1', title: 'Attention Is All You Need', credibility: 'high',
       signals: ['has_doi', 'has_venue', 'has_year', 'has_authors'], status: 'read',
     }));
-    render(<AnalyzeLibrarySection references={[REF]} onOpenReference={vi.fn()} />);
+    render(<AnalyzeQuickTools references={[REF]} onOpenReference={vi.fn()} />);
     await openSection();
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'ref-1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Evaluate' }));

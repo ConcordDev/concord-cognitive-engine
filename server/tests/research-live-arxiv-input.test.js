@@ -43,8 +43,11 @@ describe("live_arxiv input handling", () => {
   it("keeps the domain default when no new input is given", async () => {
     const r = await h({}, { query: "foo bar" });
     assert.equal(r.ok, true);
-    assert.equal(q(urls[0]), "cat:cs.AI AND all:foo bar");
-    assert.ok(urls[0].startsWith("http://export.arxiv.org/api/query?search_query=cat:cs.AI+AND+all:foo%20bar&"));
+    // Research S8 / F9: one field clause PER TERM, AND-joined. A single multi-word value
+    // (`all:foo bar`) is read by arXiv as an OR of the words, i.e. a feed, not a search.
+    assert.equal(q(urls[0]), "cat:cs.AI AND all:foo AND all:bar");
+    assert.ok(urls[0].startsWith("http://export.arxiv.org/api/query?search_query=cat:cs.AI+AND+all:foo+AND+all:bar&"));
+    assert.ok(urls[0].includes("sortBy=relevance"), "a query ranks by relevance");
     assert.equal(r.category, "cs.AI");
   });
 
@@ -72,7 +75,8 @@ describe("live_arxiv input handling", () => {
     const r = await h({}, { anyCategory: true, query: "a&b=c d", limit: 5 });
     assert.equal(r.ok, true);
     assert.equal(r.category, null);
-    assert.ok(urls[0].includes("search_query=all:a%26b%3Dc%20d&"));
+    // per-term clauses, each term still percent-encoded (the & and = stay data, not URL syntax)
+    assert.ok(urls[0].includes("search_query=all:a%26b%3Dc+AND+all:d&"));
     assert.ok(urls[0].includes("max_results=5"));
     assert.ok(!urls[0].includes("cat:"));
   });
