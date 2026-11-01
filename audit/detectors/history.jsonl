@@ -1,3 +1,6 @@
 {"generatedAt":"2026-05-08T21:00:51.878Z","totals":{"critical":0,"high":24,"medium":562,"low":248,"info":459,"total":1293},"detectorCount":8,"durationMs":27235,"gitSha":null,"deltaVsBaseline":{"added":0,"removed":0}}
 {"generatedAt":"2026-10-03T13:33:52.066Z","totals":{"critical":0,"high":27,"medium":106,"low":211,"info":364,"total":708},"detectorCount":52,"durationMs":263103,"gitSha":null,"deltaVsBaseline":{"added":173,"removed":252}}
 {"generatedAt":"2026-10-04T02:57:55.071Z","totals":{"critical":0,"high":27,"medium":110,"low":325,"info":364,"total":826},"detectorCount":52,"durationMs":278819,"gitSha":null,"deltaVsBaseline":{"added":173,"removed":252}}
+{"generatedAt":"2026-10-20T10:40:27.020Z","totals":{"critical":2,"high":59,"medium":130,"low":697,"info":118,"total":1006},"detectorCount":52,"durationMs":151080,"gitSha":null,"deltaVsBaseline":{"added":138,"removed":8}}
+{"generatedAt":"2026-10-23T09:14:22.388Z","totals":{"critical":3,"high":68,"medium":134,"low":702,"info":123,"total":1030},"detectorCount":52,"durationMs":209068,"gitSha":null,"deltaVsBaseline":{"added":163,"removed":8}}
+{"generatedAt":"2026-10-25T05:28:01.202Z","totals":{"critical":1,"high":70,"medium":168,"low":197,"info":123,"total":559},"detectorCount":52,"durationMs":216926,"gitSha":null,"deltaVsBaseline":{"added":164,"removed":8}}

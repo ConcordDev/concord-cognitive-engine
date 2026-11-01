@@ -1,6 +1,6 @@
 # UX Polish Audit — HONEST mode
 
-Generated: 2026-10-16T01:01:01.317Z
+Generated: 2026-11-01T01:00:45.936Z
 
 Mode: **honest**
 
@@ -20,10 +20,10 @@ Lenses scanned: 267
 | Tier | Count | % | Weight |
 |---|---:|---:|---:|
 | raw | 0 | 0.0% | 0.2 |
-| functional | 3 | 1.1% | 0.6 |
-| polished | 264 | 98.9% | 1 |
+| functional | 5 | 1.9% | 0.6 |
+| polished | 262 | 98.1% | 1 |
 
-**Weighted UX polish score: 0.996** (1.0 = all polished)
+**Weighted UX polish score: 0.993** (1.0 = all polished)
 
 ## Signal coverage (% of lenses)
 
@@ -35,14 +35,14 @@ Lenses scanned: 267
 | aria | 266 | 99.6% |
 | keyboardHandlers | 175 | 65.5% |
 | nativeButtons | 266 | 99.6% |
-| responsive | 261 | 97.8% |
+| responsive | 263 | 98.5% |
 | animation | 267 | 100.0% |
 | toasts | 65 | 24.3% |
 | altOnImages | 266 | 99.6% |
 
 ## Anti-patterns
 
-- Lenses with at least one `<div onClick>` (missing keyboard handler / role / tabIndex): **3** (total instances: 4)
+- Lenses with at least one `<div onClick>` (missing keyboard handler / role / tabIndex): **5** (total instances: 15)
 - Lenses with inline hex colours (bypassing design tokens): **0** (total instances: 0)
 
 ## Generic-scaffold lenses capped this run (polished → functional)
@@ -61,7 +61,9 @@ Sorted by smallest gap first. Items with anti-patterns surface first within each
 |---|---:|---|---:|
 | `conkay` | 5/5 | anti-patterns(1 div-button, 0 inline-hex) | 1 |
 | `government` | 5/5 | anti-patterns(2 div-button, 0 inline-hex) | 1 |
-| `projects` | 5/5 | anti-patterns(1 div-button, 0 inline-hex) | 1 |
+| `projects` | 5/5 | anti-patterns(3 div-button, 0 inline-hex) | 1 |
+| `studio` | 5/5 | anti-patterns(6 div-button, 0 inline-hex) | 1 |
+| `timeline` | 5/5 | anti-patterns(3 div-button, 0 inline-hex) | 1 |
 
 ## What this audit does NOT measure
 

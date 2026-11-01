@@ -31,6 +31,7 @@
       "prom-client": "^15.1.0",
       "pyodide": "^314.0.3",
       "redis": "^4.7.1",
+      "sharp": "^0.35.5",
       "socket.io": "^4.7.4",
       "sqlite-vec": "^0.1.9",
       "stripe": "^22.4.0",
@@ -45,11 +46,12 @@
       "zod": "^4.4.3",
       "@eslint/js": "^10.0.1",
       "@types/express": "^5.0.6",
-      "@types/node": "^26.1.2",
-      "eslint": "^10.8.0",
-      "globals": "^17.8.0"
+      "@types/node": "^26.6.4",
+      "eslint": "^10.11.0",
+      "globals": "^17.13.0"
     },
     "/Users/dutch/concord vs code/concord-cognitive-engine/concord-frontend/package.json": {
+      "@breezystack/lamejs": "^1.2.7",
       "@conform-to/zod": "^1.20.2",
       "@dimforge/rapier3d-compat": "^0.19.3",
       "@excalidraw/excalidraw": "^0.18.0",
@@ -131,6 +133,7 @@
       "@testing-library/dom": "^10.4.0",
       "@testing-library/jest-dom": "^7.0.0",
       "@testing-library/react": "^16.0.0",
+      "@testing-library/user-event": "^14.6.8",
       "@types/node": "^26.1.2",
       "@types/react": "^18.2.48",
       "@types/react-dom": "^18.2.18",
