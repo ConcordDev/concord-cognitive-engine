@@ -2,6 +2,8 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useStreamPreview } from '@/hooks/useStreamPreview';
+import { MediaPreviewNotice } from '@/components/media/MediaPreviewNotice';
 import {
   Play,
   Pause,
@@ -131,6 +133,9 @@ function AudioPlayer({
     () => `/api/media/${encodeURIComponent(mediaDTU.id)}/stream`,
     [mediaDTU.id],
   );
+  // Signed-out visitors get a server-clamped preview of public items; the server says so (headers).
+  const preview = useStreamPreview(audioSrc);
+  const [ended, setEnded] = useState(false);
 
   const togglePlay = useCallback(() => {
     // Optimistic flip — onPlay/onPause from the real element will
@@ -184,7 +189,7 @@ function AudioPlayer({
         autoPlay={autoplay ?? false}
         preload="metadata"
         className="hidden"
-        onPlay={() => setPlaying(true)}
+        onPlay={() => { setPlaying(true); setEnded(false); }}
         onPause={() => setPlaying(false)}
         onTimeUpdate={(e) => {
           const t = e.currentTarget.currentTime;
@@ -196,8 +201,9 @@ function AudioPlayer({
             setAudioDuration(e.currentTarget.duration);
           }
         }}
-        onEnded={() => { setPlaying(false); onEnd?.(); }}
+        onEnded={() => { setPlaying(false); setEnded(true); onEnd?.(); }}
       />
+      <MediaPreviewNotice preview={preview} currentTime={currentTime} ended={ended} kind="track" />
       {/* Album art / thumbnail area */}
       <div className="relative h-48 bg-gradient-to-br from-neon-purple/20 to-neon-cyan/20 flex items-center justify-center">
         <div className="absolute inset-0 backdrop-blur-sm" />
@@ -328,6 +334,8 @@ function VideoPlayer({
     const q = selectedQuality === 'auto' ? '' : `?quality=${encodeURIComponent(selectedQuality)}`;
     return `/api/media/${encodeURIComponent(mediaDTU.id)}/stream${q}`;
   }, [mediaDTU.id, selectedQuality]);
+  const preview = useStreamPreview(`/api/media/${encodeURIComponent(mediaDTU.id)}/stream`);
+  const [ended, setEnded] = useState(false);
 
   const togglePlay = useCallback(() => {
     const el = videoRef.current;
@@ -392,6 +400,7 @@ function VideoPlayer({
       onMouseMove={handleMouseMove}
       onMouseLeave={() => playing && setShowControls(false)}
     >
+      <MediaPreviewNotice preview={preview} currentTime={currentTime} ended={ended} kind="video" />
       {/* Video area */}
       <div
         className="relative aspect-video bg-black flex items-center justify-center cursor-pointer"
@@ -404,7 +413,7 @@ function VideoPlayer({
           playsInline
           preload="metadata"
           className="w-full h-full object-contain"
-          onPlay={() => setPlaying(true)}
+          onPlay={() => { setPlaying(true); setEnded(false); }}
           onPause={() => setPlaying(false)}
           onWaiting={() => setBuffering(true)}
           onPlaying={() => setBuffering(false)}
@@ -419,7 +428,7 @@ function VideoPlayer({
               setVideoDuration(e.currentTarget.duration);
             }
           }}
-          onEnded={() => { setPlaying(false); onEnd?.(); }}
+          onEnded={() => { setPlaying(false); setEnded(true); onEnd?.(); }}
         />
 
         {mediaDTU.resolution && (

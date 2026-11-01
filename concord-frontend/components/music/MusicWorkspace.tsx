@@ -81,6 +81,7 @@ import { ArtistProfile } from '@/components/music/ArtistProfile';
 // AlbumView unused — album support pending
 import { UploadFlow } from '@/components/music/UploadFlow';
 import { ArrangementSketch } from '@/components/studio/ArrangementSketch';
+import { PreviewAwareMedia } from '@/components/media/PreviewAwareMedia';
 import { describeUploadError, freeListenOnlyTiers, normalizeTrackRow, rawUploadQuery } from '@/lib/music/upload';
 import { PlaylistView } from '@/components/music/PlaylistView';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -1570,7 +1571,7 @@ export function MusicWorkspace() {
                     {listedUploads.map((u) => (
                       <div key={u.id} className="flex items-center gap-3 rounded-lg border border-white/10 p-2">
                         <span className="text-sm truncate w-40">{u.title}</span>
-                        <audio controls preload="none" src={u.streamUrl} className="flex-1 h-8" />
+                        <div className="flex-1"><PreviewAwareMedia src={u.streamUrl} kind="audio" className="h-8 w-full" /></div>
                       </div>
                     ))}
                   </section>

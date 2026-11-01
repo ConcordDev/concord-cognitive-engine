@@ -9,7 +9,8 @@
  * boilerplate at the ~260 call sites that will eventually want it.
  */
 
-import { ClipboardCopy } from 'lucide-react';
+import { useState } from 'react';
+import { ClipboardCopy, Check } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import type { DTU } from '@/lib/api/generated-types';
@@ -27,12 +28,16 @@ export interface WorkspaceBusCopyButtonProps {
 export function WorkspaceBusCopyButton({ dtu, compact, className, onCopied }: WorkspaceBusCopyButtonProps) {
   const bus = useWorkspaceBus();
   const activeLens = useUIStore((s) => s.activeLens);
+  const [sent, setSent] = useState(false);
 
   return (
     <button
       type="button"
       onClick={() => {
         bus.publish(dtu, { sourceLensId: activeLens });
+        // Feedback (F9): the publish used to be invisible — confirm it.
+        setSent(true);
+        window.setTimeout(() => setSent(false), 1600);
         onCopied?.();
       }}
       title="Send to Workspace Bus (Cmd/Ctrl+Shift+V to paste elsewhere)"
@@ -43,9 +48,10 @@ export function WorkspaceBusCopyButton({ dtu, compact, className, onCopied }: Wo
         className
       )}
       aria-label="Send to Workspace Bus"
+      aria-live="polite"
     >
-      <ClipboardCopy className={compact ? 'w-2.5 h-2.5' : 'w-3 h-3'} />
-      {!compact && 'To Bus'}
+      {sent ? <Check className={compact ? 'w-2.5 h-2.5 text-emerald-400' : 'w-3 h-3 text-emerald-400'} /> : <ClipboardCopy className={compact ? 'w-2.5 h-2.5' : 'w-3 h-3'} />}
+      {!compact && (sent ? 'Sent' : 'To Bus')}
     </button>
   );
 }

@@ -182,6 +182,7 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
 
   // Core graph state
   const [zoom, setZoom] = useState(1);
+  const [canvasFocused, setCanvasFocused] = useState(false);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -234,7 +235,7 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
       { id: 'graph-zoom-out',    keys: 'mod+-', description: 'Zoom out',                  category: 'view',       action: () => setZoom((z) => Math.max(z / 1.2, 0.25)), global: true, enabled: interactive },
       { id: 'graph-zoom-reset',  keys: 'mod+0', description: 'Reset zoom',                category: 'view',       action: () => { setZoom(1); setOffset({ x: 0, y: 0 }); }, global: true, enabled: interactive },
       { id: 'graph-focus-search', keys: '/',     description: 'Focus search',             category: 'navigation', action: () => searchInputRef.current?.focus(), enabled: interactive },
-      { id: 'graph-clear',       keys: 'esc',   description: 'Clear selection',           category: 'navigation', action: () => { setSelectedNode(null); setConnectMode(false); setConnectSource(null); }, enabled: interactive },
+      { id: 'graph-clear',       keys: 'esc',   description: 'Clear selection & close panels', category: 'navigation', action: () => { setSelectedNode(null); setConnectMode(false); setConnectSource(null); setShowPathfinder(false); setShowSettings(false); setShowAddNode(false); setContextMenu(null); }, enabled: interactive },
     ],
     { lensId: 'graph' }
   );
@@ -246,7 +247,6 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
   const [localEdges, setLocalEdges] = useState<GraphEdge[]>([]);
   const [filterRelated, setFilterRelated] = useState<string | null>(null);
   const [searchType, setSearchType] = useState<string>('all');
-  const [bpmRange, setBpmRange] = useState<[number, number]>([0, 300]);
   const [hiddenEdgeTypes, setHiddenEdgeTypes] = useState<Set<string>>(new Set());
   const [hiddenNodeTypes, setHiddenNodeTypes] = useState<Set<string>>(new Set());
   const [focusedNodeIndex, setFocusedNodeIndex] = useState(-1);
@@ -288,29 +288,12 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
     staleTime: 30000,
   });
 
-  // graph.nodeAnalysis / clusterDetect / graphMetrics (server/domains/graph.js)
-  // are real algorithms (Brandes' betweenness centrality, BFS closeness,
-  // connected-components fragmentation, density/diameter/clustering
-  // coefficient) written against `artifact.data.{nodes,edges}`. The
-  // previous wiring ran them via useRunArtifact against a "graph-data"
-  // artifact that NOTHING in this lens ever creates (no creation form
-  // anywhere) — graphArtifacts[0]?.id was permanently undefined, so these
-  // three buttons were permanently disabled in any real deployment. Fixed:
-  // run them directly against the real, currently-loaded DTU graph
-  // (POST /api/lens/run builds a virtual artifact whose .data IS the input
-  // body — server.js:39566 — so no persisted artifact is needed at all).
-  const handleGraphAction = useCallback(async (action: string) => {
-    const nodes = (graphVisualData?.nodes || graphForceData?.nodes || []).map((n: { id: string }) => ({ id: n.id }));
-    const edges = (graphVisualData?.edges || graphForceData?.links || graphForceData?.edges || []).map((e: { source: string; target: string }) => ({ source: e.source, target: e.target }));
-    if (nodes.length === 0) return;
-    setGraphActionPending(true);
-    try {
-      const res = await lensRun('graph', action, { nodes, edges });
-      if (res.data?.ok && res.data.result) setGraphActionResult({ action, data: res.data.result });
-    } finally {
-      setGraphActionPending(false);
-    }
-  }, [graphVisualData, graphForceData]);
+  // graph.nodeAnalysis / clusterDetect / graphMetrics run against the
+  // loaded graph set (graphData, defined below) — exactly the nodes
+  // and edges on the canvas, so the analytics panel's "runs against
+  // the N nodes / M edges currently loaded above" is the same N and M
+  // the header counts (S5). The callback is defined after graphData;
+  // the buttons that call it render later still.
 
   // Subscribe to live DTU creation events for real-time graph updates
   useEffect(() => {
@@ -391,9 +374,47 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
   }, [dtus]);
 
   const initializeGraphData = useCallback(() => {
-    let dtuList = dtus?.dtus || [];
-    // Normalize: backend force graph returns 'links', visual returns 'edges'
-    const linkList = links?.links || links?.edges || graphForceData?.links || graphForceData?.edges || graphVisualData?.edges || graphVisualData?.links || [];
+    // One loaded set, normalized from every real source (S1/S5). The
+    // three endpoints name endpoints three different ways — worldmodel
+    // relations arrive as { relations: [{ from, to }] }, force as
+    // { links: [{ source, target }] }, visual as { edges: [{ source,
+    // target }] } — and this function previously read a fourth naming
+    // (sourceId/targetId) that NONE of them send, plus a `links` key
+    // the relations response doesn't have. Every node therefore
+    // computed connections = 0, the default isolated-filter hid the
+    // entire node set, and the Explorer canvas rendered empty while
+    // its header counted nodes from another source. Normalize all of
+    // it to { sourceId, targetId } pairs, deduped by directed pair.
+    const rawLinks: Record<string, unknown>[] = [
+      ...((links as { relations?: Record<string, unknown>[] } | undefined)?.relations || []),
+      ...(links?.links || []), ...(links?.edges || []),
+      ...(graphForceData?.links || []), ...(graphForceData?.edges || []),
+      ...(graphVisualData?.edges || []), ...(graphVisualData?.links || []),
+    ];
+    const seenPairs = new Set<string>();
+    const linkList: Record<string, unknown>[] = [];
+    for (const l of rawLinks) {
+      const sourceId = (l.source ?? l.sourceId ?? l.from) as string | undefined;
+      const targetId = (l.target ?? l.targetId ?? l.to) as string | undefined;
+      if (!sourceId || !targetId || sourceId === targetId) continue;
+      const pairKey = `${sourceId}->${targetId}`;
+      if (seenPairs.has(pairKey)) continue;
+      seenPairs.add(pairKey);
+      linkList.push({ sourceId, targetId, type: (l.type as string) || 'semantic', weight: (l.weight as number) ?? (l.strength as number) ?? 0.5 });
+    }
+    // Node set = UNION of the graph-index nodes (the set the edges
+    // actually reference, from visual/force) and the paginated DTUs
+    // (which carry the richer fields), keyed by id — so every edge
+    // endpoint exists on the canvas and the counts below describe
+    // exactly what is drawn.
+    const byId = new Map<string, Record<string, unknown>>();
+    for (const n of [...(graphVisualData?.nodes || []), ...(graphForceData?.nodes || [])] as Record<string, unknown>[]) {
+      if (n?.id) byId.set(n.id as string, { id: n.id, title: (n.label as string) || (n.title as string) || '', tier: n.tier, tags: n.tags || [], createdAt: n.createdAt });
+    }
+    for (const d of (dtus?.dtus || []) as Record<string, unknown>[]) {
+      if (d?.id) byId.set(d.id as string, { ...(byId.get(d.id as string) || {}), ...d });
+    }
+    let dtuList = [...byId.values()];
 
     // Filter out autogenerated DTUs by default (pattern: truncated form descriptions)
     if (!showAutogen) {
@@ -458,6 +479,19 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
   }, [dtus, links, dimensions, layoutMode, viewMode, clusterCount, assignClusters, localEdges, showAutogen, nodeLimit, graphForceData, graphVisualData]);
 
   const graphData = useMemo(() => initializeGraphData(), [initializeGraphData]);
+
+  const handleGraphAction = useCallback(async (action: string) => {
+    const nodes = graphData.nodes.map((n) => ({ id: n.id }));
+    const edges = graphData.edges.map((e) => ({ source: e.source, target: e.target }));
+    if (nodes.length === 0) return;
+    setGraphActionPending(true);
+    try {
+      const res = await lensRun('graph', action, { nodes, edges });
+      if (res.data?.ok && res.data.result) setGraphActionResult({ action, data: res.data.result });
+    } finally {
+      setGraphActionPending(false);
+    }
+  }, [graphData]);
 
   // --- Physics simulation ---
 
@@ -629,7 +663,6 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
           if (!matchLabel && !matchTag && !matchGenre) return false;
         }
         if (searchType !== 'all' && n.tier !== searchType) return false;
-        if (n.bpm !== undefined && (n.bpm < bpmRange[0] || n.bpm > bpmRange[1])) return false;
 
         // View mode filters
         if (viewMode === 'sample_tree') {
@@ -832,7 +865,7 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
     render();
   }, [graphData, dimensions, zoom, offset, filterTiers, searchQuery, showLabels, selectedNode,
       hoveredNode, foundPath, pathStart, pathEnd, viewMode, showEdgeTypes, isSimulating, layoutMode,
-      connectMode, connectSource, hiddenEdgeTypes, hiddenNodeTypes, relatedNodeIds, searchType, bpmRange,
+      connectMode, connectSource, hiddenEdgeTypes, hiddenNodeTypes, relatedNodeIds, searchType,
       showIsolated, interactive]);
 
   // --- Mouse / interaction handlers ---
@@ -928,6 +961,12 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
   };
 
   const handleWheel = (e: React.WheelEvent) => {
+    // F1: page scroll was captured as canvas zoom (the reviewer hit
+    // 800% without ever clicking a zoom control). Wheel zooms only
+    // once the canvas has focus (click or tab into it), or for
+    // ctrl+wheel — the pinch-zoom convention. Otherwise the event is
+    // left alone and the page scrolls normally.
+    if (!canvasFocused && !e.ctrlKey) return;
     e.preventDefault();
     setZoom(z => Math.min(Math.max(z * (e.deltaY > 0 ? 0.9 : 1.1), 0.1), 8));
   };
@@ -1067,20 +1106,34 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
   };
 
   // --- Stats ---
-
+  // ONE source per number, labelled (S5/F7): Nodes / Edges / Density /
+  // Avg Links all describe the LOADED graph set (graphData — the same
+  // set the canvas draws and the analytics run against). Density is
+  // computed over unique undirected pairs inside that set, so it can
+  // never exceed 100%. The previous version divided the lattice-wide
+  // topology edge count by a differently-sourced node count, which is
+  // how prod displayed 433.3% density. Lattice-wide topology figures
+  // are exposed separately (latticeNodes/latticeEdges) and labelled
+  // as lattice-wide wherever they are shown.
   const stats = useMemo(() => {
-    const nodes = nodesRef.current;
-    const edges = graphData.edges;
+    const nodes = graphData.nodes;
+    const ids = new Set(nodes.map(n => n.id));
+    const pairs = new Set<string>();
+    for (const e of graphData.edges) {
+      if (!ids.has(e.source) || !ids.has(e.target) || e.source === e.target) continue;
+      pairs.add(e.source < e.target ? `${e.source}|${e.target}` : `${e.target}|${e.source}`);
+    }
     const typeCounts: Record<string, number> = {};
     Object.keys(NODE_COLORS).forEach(k => { typeCounts[k] = nodes.filter(n => n.tier === k).length; });
-    // Prefer real-time topology stats from the lattice store when available
-    const nodeCount = topologyStats.nodes || nodes.length;
-    const edgeCount = topologyStats.edges || edges.length;
+    const nodeCount = nodes.length;
+    const edgeCount = pairs.size;
     return {
-      avgConnections: nodes.length > 0 ? nodes.reduce((sum, n) => sum + n.connections, 0) / nodes.length : 0,
+      avgConnections: nodeCount > 0 ? (2 * edgeCount) / nodeCount : 0,
       density: nodeCount > 1 ? (edgeCount / (nodeCount * (nodeCount - 1) / 2)) * 100 : 0,
       typeCounts, nodeCount, edgeCount,
       clusterCount: topologyStats.clusters || 0,
+      latticeNodes: topologyStats.nodes || 0,
+      latticeEdges: topologyStats.edges || 0,
     };
   }, [graphData, topologyStats]);
 
@@ -1119,7 +1172,7 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
         {[
           { label: 'Nodes', value: stats.nodeCount, color: 'text-cyan-400', bg: 'bg-cyan-400/10' },
           { label: 'Edges', value: stats.edgeCount, color: 'text-purple-400', bg: 'bg-purple-400/10' },
-          ...(stats.clusterCount > 0 ? [{ label: 'Clusters', value: stats.clusterCount, color: 'text-pink-400', bg: 'bg-pink-400/10' }] : []),
+          ...(stats.clusterCount > 0 ? [{ label: 'Lattice clusters', value: stats.clusterCount, color: 'text-pink-400', bg: 'bg-pink-400/10' }] : []),
           { label: 'Density', value: `${stats.density.toFixed(1)}%`, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
           { label: 'Avg Connections', value: stats.avgConnections.toFixed(1), color: 'text-amber-400', bg: 'bg-amber-400/10' },
         ].map((s, i) => (
@@ -1134,6 +1187,9 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
             <span className="text-[10px] text-gray-400 uppercase tracking-wider">{s.label}</span>
           </motion.div>
         ))}
+        {stats.latticeNodes > 0 && (
+          <span className="text-[10px] text-gray-500 font-mono flex-shrink-0">lattice-wide: {stats.latticeNodes} DTUs · {stats.latticeEdges} links</span>
+        )}
         {/* Connection visualization mini-graph */}
         <div className="flex items-center gap-1 ml-auto flex-shrink-0">
           <div className="flex items-center gap-0.5">
@@ -1163,10 +1219,13 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
         ref={containerRef}
         className="flex-1 relative overflow-hidden"
         role="application"
-        aria-label={`Knowledge graph with ${stats.nodeCount} nodes and ${stats.edgeCount} edges. Use arrow keys to navigate between nodes, Enter or Space to select, Escape to deselect.`}
+        aria-label={`Knowledge graph with ${stats.nodeCount} nodes and ${stats.edgeCount} edges loaded. Use arrow keys to navigate between nodes, Enter or Space to select, Escape to deselect.`}
         aria-roledescription="interactive graph"
         tabIndex={0}
         onKeyDown={handleGraphKeyDown}
+        onFocus={() => setCanvasFocused(true)}
+        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setCanvasFocused(false); }}
+        onMouseDown={() => { if (document.activeElement !== containerRef.current) containerRef.current?.focus(); }}
       >
         {viewMode === 'interactive' ? (
           <InteractiveGraph
@@ -1276,7 +1335,7 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
         </div>
 
         {/* --- Top-left: Search + Filters --- */}
-        <div className="absolute top-4 left-4 space-y-3 max-w-xs">
+        <div className="absolute top-4 left-4 space-y-3 max-w-xs max-h-[calc(100%-2rem)] overflow-y-auto pr-1 pb-1">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cyan-600" />
             <input ref={searchInputRef} type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
@@ -1290,22 +1349,15 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
               className="px-2 py-1.5 bg-lattice-surface/90 backdrop-blur border border-lattice-border rounded-lg text-xs text-white">
               <option value="all">All Types</option>
               {Object.entries(NODE_COLORS)
-                .filter(([k]) => hasMusicDomain || !['track', 'artist', 'sample', 'release'].includes(k))
+                .filter(([k]) => !['track', 'artist', 'sample', 'release'].includes(k))
                 .map(([k, v]) => (
                   <option key={k} value={k}>{v.name}</option>
                 ))}
             </select>
-            {/* BPM filter — only shown when music domain DTUs exist */}
-            {hasMusicDomain && (
-              <div className="flex items-center gap-1 bg-lattice-surface/90 backdrop-blur border border-lattice-border rounded-lg px-2">
-                <span className="text-xs text-gray-400">BPM</span>
-                <input type="number" value={bpmRange[0]} onChange={e => setBpmRange([+e.target.value, bpmRange[1]])}
-                  className="w-12 bg-transparent text-xs text-white text-center focus:outline-none" placeholder="0" />
-                <span className="text-xs text-gray-400">-</span>
-                <input type="number" value={bpmRange[1]} onChange={e => setBpmRange([bpmRange[0], +e.target.value])}
-                  className="w-12 bg-transparent text-xs text-white text-center focus:outline-none" placeholder="300" />
-              </div>
-            )}
+            {/* BPM spinbuttons removed (S11/F11): they filter a
+                music-production field, not graph structure — and in
+                this Explorer they changed nothing a user could see.
+                The Music lens owns BPM. */}
           </div>
 
           {/* Toggle controls */}
@@ -1330,7 +1382,7 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
           {/* Tier filter chips — only show universal types by default, music types when detected */}
           <div className="flex flex-wrap gap-1.5 bg-[#0d1117]/80 backdrop-blur-md border border-cyan-900/20 rounded-xl p-2">
             {Object.entries(NODE_COLORS)
-              .filter(([k]) => hasMusicDomain || !['track', 'artist', 'sample', 'release'].includes(k))
+              .filter(([k]) => !['track', 'artist', 'sample', 'release'].includes(k))
               .map(([tier, colors]) => (
                 <button key={tier} onClick={() => toggleTier(tier)}
                   className={cn('flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-colors',
@@ -1395,12 +1447,16 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
           <button onClick={() => { setConnectMode(!connectMode); setConnectSource(null); }} className={cn('p-2 backdrop-blur border border-lattice-border rounded-lg', connectMode ? 'bg-neon-cyan/20 text-neon-cyan' : 'bg-lattice-surface/90 text-gray-400')} title="Connect Mode">
             <Link2 className="w-5 h-5" />
           </button>
-          <button onClick={() => setViewMode(viewMode === 'sample_tree' ? 'default' : 'sample_tree')} className={cn('p-2 backdrop-blur border border-lattice-border rounded-lg', viewMode === 'sample_tree' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-lattice-surface/90 text-gray-400')} title="Sample Tree View">
-            <TreePine className="w-5 h-5" />
-          </button>
-          <button onClick={() => setViewMode(viewMode === 'collab_network' ? 'default' : 'collab_network')} className={cn('p-2 backdrop-blur border border-lattice-border rounded-lg', viewMode === 'collab_network' ? 'bg-violet-500/20 text-violet-400' : 'bg-lattice-surface/90 text-gray-400')} title="Collab Network View">
-            <Users className="w-5 h-5" />
-          </button>
+          {hasMusicDomain && (
+            <button onClick={() => setViewMode(viewMode === 'sample_tree' ? 'default' : 'sample_tree')} className={cn('p-2 backdrop-blur border border-lattice-border rounded-lg', viewMode === 'sample_tree' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-lattice-surface/90 text-gray-400')} title="Sample Tree View">
+              <TreePine className="w-5 h-5" />
+            </button>
+          )}
+          {hasMusicDomain && (
+            <button onClick={() => setViewMode(viewMode === 'collab_network' ? 'default' : 'collab_network')} className={cn('p-2 backdrop-blur border border-lattice-border rounded-lg', viewMode === 'collab_network' ? 'bg-violet-500/20 text-violet-400' : 'bg-lattice-surface/90 text-gray-400')} title="Collab Network View">
+              <Users className="w-5 h-5" />
+            </button>
+          )}
           <button onClick={() => setShowShadowConnections(!showShadowConnections)} className={cn('p-2 backdrop-blur border border-lattice-border rounded-lg', showShadowConnections ? 'bg-gray-500/20 text-gray-300' : 'bg-lattice-surface/90 text-gray-400')} title="Show Shadow Connections">
             <Layers className="w-5 h-5" />
           </button>
@@ -1448,12 +1504,13 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
               className="absolute top-20 left-1/2 -translate-x-1/2 bg-lattice-surface/95 backdrop-blur border border-lattice-border rounded-lg p-4 w-80">
               <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
                 <Plus className="w-4 h-4 text-neon-cyan" /> Add Node
+                <button type="button" aria-label="Close add node" onClick={() => setShowAddNode(false)} className="ml-auto text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
               </h3>
               <div className="space-y-3">
                 <input type="text" value={addNodeLabel} onChange={e => setAddNodeLabel(e.target.value)}
                   placeholder="Node label..." className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan" />
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-1.5">
-                  {(Object.keys(NODE_COLORS) as NodeType[]).map(t => (
+                  {(Object.keys(NODE_COLORS) as NodeType[]).filter(t => !['track', 'artist', 'sample', 'release'].includes(t)).map(t => (
                     <button key={t} onClick={() => setAddNodeType(t)}
                       className={cn('px-2 py-1.5 rounded text-xs font-medium border transition-colors',
                         addNodeType === t ? 'border-white text-white bg-lattice-bg' : 'border-lattice-border text-gray-400 hover:text-white')}
@@ -1478,19 +1535,35 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
               className="absolute top-20 left-1/2 -translate-x-1/2 bg-lattice-surface/95 backdrop-blur border border-lattice-border rounded-lg p-4 w-80">
               <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
                 <GitBranch className="w-4 h-4 text-neon-purple" /> Path Finder
+                <button type="button" aria-label="Close path finder" onClick={() => setShowPathfinder(false)} className="ml-auto text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
               </h3>
-              <p className="text-xs text-gray-400 mb-3">Click two nodes to find shortest path</p>
               <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-neon-green" />
-                  <span className="text-sm text-gray-300">{pathStart ? nodesRef.current.find(n => n.id === pathStart)?.label || 'Start' : 'Click start node'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-neon-pink" />
-                  <span className="text-sm text-gray-300">{pathEnd ? nodesRef.current.find(n => n.id === pathEnd)?.label || 'End' : 'Click end node'}</span>
-                </div>
-                {foundPath.length > 0 && <div className="mt-2 p-2 bg-lattice-bg rounded text-xs text-neon-green">Path found: {foundPath.length} nodes</div>}
-                {pathStart && pathEnd && foundPath.length === 0 && <div className="mt-2 p-2 bg-lattice-bg rounded text-xs text-red-400">No path found</div>}
+                <label className="block">
+                  <span className="text-xs text-gray-400">From</span>
+                  <select aria-label="Path start" value={pathStart || ''} onChange={e => setPathStart(e.target.value || null)}
+                    className="mt-0.5 w-full px-2 py-1.5 bg-lattice-bg border border-lattice-border rounded-lg text-sm text-white">
+                    <option value="">Choose a node…</option>
+                    {graphData.nodes.map(n => <option key={n.id} value={n.id}>{n.label}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="text-xs text-gray-400">To</span>
+                  <select aria-label="Path end" value={pathEnd || ''} onChange={e => setPathEnd(e.target.value || null)}
+                    className="mt-0.5 w-full px-2 py-1.5 bg-lattice-bg border border-lattice-border rounded-lg text-sm text-white">
+                    <option value="">Choose a node…</option>
+                    {graphData.nodes.map(n => <option key={n.id} value={n.id}>{n.label}</option>)}
+                  </select>
+                </label>
+                <p className="text-xs text-gray-500">…or click two nodes on the canvas.</p>
+                {foundPath.length > 1 && (
+                  <div className="mt-2 p-2 bg-lattice-bg rounded text-xs text-neon-green">
+                    {foundPath.map(id => nodesRef.current.find(n => n.id === id)?.label || id).join(' → ')}
+                    <span className="text-gray-400"> · {foundPath.length - 1} hop{foundPath.length === 2 ? '' : 's'}</span>
+                  </div>
+                )}
+                {pathStart && pathEnd && pathStart !== pathEnd && foundPath.length === 0 && (
+                  <div className="mt-2 p-2 bg-lattice-bg rounded text-xs text-gray-300">No path between these nodes in the loaded graph.</div>
+                )}
               </div>
               <button onClick={() => { setPathStart(null); setPathEnd(null); }} className="mt-3 w-full py-1.5 text-sm bg-lattice-bg text-gray-300 rounded hover:bg-lattice-elevated">Clear Path</button>
             </motion.div>
@@ -1504,6 +1577,7 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
               className="absolute top-4 right-20 bg-lattice-surface/95 backdrop-blur border border-lattice-border rounded-lg p-4 w-64">
               <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
                 <Settings className="w-4 h-4 text-gray-400" /> Simulation Settings
+                <button type="button" aria-label="Close settings" onClick={() => setShowSettings(false)} className="ml-auto text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
               </h3>
               <div className="space-y-4">
                 <div><label className="text-xs text-gray-400 block mb-1">Repulsion: {simParams.repulsion}</label>
@@ -1526,7 +1600,7 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
         </AnimatePresence>
 
         {/* --- Bottom-left: Stats + Legend --- */}
-        <div className="absolute bottom-4 left-4 space-y-2 max-w-md">
+        <div className="absolute bottom-4 left-4 space-y-2 max-w-md max-h-[42%] overflow-y-auto pr-1">
           {/* Empty state hint when no edges */}
           {stats.edgeCount === 0 && stats.nodeCount > 0 && (
             <div className="bg-lattice-surface/90 backdrop-blur border border-neon-cyan/20 rounded-lg p-4 text-center">
@@ -1538,6 +1612,7 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
 
           {/* Stats bar */}
           <div className="bg-lattice-surface/90 backdrop-blur border border-lattice-border rounded-lg p-4">
+            <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">Loaded graph — what the canvas shows</p>
             <div className="grid grid-cols-4 gap-6 text-sm">
               <div><p className="text-gray-400">Nodes</p><p className="text-2xl font-bold text-white">{stats.nodeCount}</p></div>
               <div><p className="text-gray-400">Edges</p><p className="text-2xl font-bold text-white">{stats.edgeCount}</p></div>
@@ -1562,7 +1637,7 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
                 <p className="text-xs font-semibold text-gray-300 mb-2">Node Types</p>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-1 mb-3">
                   {(Object.entries(NODE_COLORS) as [NodeType, typeof NODE_COLORS[NodeType]][])
-                    .filter(([type]) => hasMusicDomain || !['track', 'artist', 'sample', 'release'].includes(type))
+                    .filter(([type]) => !['track', 'artist', 'sample', 'release'].includes(type))
                     .map(([type, colors]) => (
                     <button key={type} onClick={() => {
                       setHiddenNodeTypes(prev => {
@@ -1579,7 +1654,7 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
                 <p className="text-xs font-semibold text-gray-300 mb-2">Edge Types</p>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-1">
                   {(Object.entries(EDGE_COLORS) as [EdgeType, string][])
-                    .filter(([type]) => hasMusicDomain || !['sampled_from', 'remixed_by', 'collaborated_with', 'released_on'].includes(type))
+                    .filter(([type]) => !['sampled_from', 'remixed_by', 'collaborated_with', 'released_on'].includes(type))
                     .map(([type, color]) => (
                     <button key={type} onClick={() => {
                       setHiddenEdgeTypes(prev => {
@@ -1829,7 +1904,7 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
           <Network className="w-4 h-4 text-neon-cyan" /> Graph Analytics Actions
         </h2>
         <p className="text-xs text-gray-500 -mt-2">
-          Runs against the {(graphVisualData?.nodes?.length || graphForceData?.nodes?.length || 0).toLocaleString()} nodes / {(graphVisualData?.edges?.length || graphForceData?.links?.length || 0).toLocaleString()} edges currently loaded above.
+          Runs against the {graphData.nodes.length.toLocaleString()} nodes / {graphData.edges.length.toLocaleString()} edges currently loaded above — the same set the canvas draws and the header counts.
           Shortest-path lookups already live in the Pathfinder panel (P) with visual highlighting.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1841,7 +1916,7 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
             <button
               key={action}
               onClick={() => handleGraphAction(action)}
-              disabled={graphActionPending || (!graphVisualData?.nodes?.length && !graphForceData?.nodes?.length)}
+              disabled={graphActionPending || graphData.nodes.length === 0}
               className="p-3 rounded-lg border text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-lattice-surface border-lattice-border hover:border-white/20"
             >
               <div className="flex items-center gap-2 mb-1">

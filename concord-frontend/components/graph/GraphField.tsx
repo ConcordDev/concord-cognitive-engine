@@ -252,9 +252,11 @@ export function GraphField() {
             <button type="button" className="text-teal-300 hover:underline" onClick={(e) => { e.stopPropagation(); graphQ.refetch(); }}>Retry</button>
           </p>
         ) : placed.length === 0 ? (
-          <p className="absolute inset-0 flex items-center justify-center text-[14px] text-zinc-500">
-            The lattice has no nodes yet. Add one to start.
-          </p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+            <p className="text-[14px] text-zinc-500">
+              The lattice has no nodes yet. Add one to start.
+            </p>
+          </div>
         ) : (
           <svg width={size.w} height={size.h} className="absolute inset-0 select-none" role="img" aria-label={`Graph of ${placed.length} nodes`}>
             {links.map((l, i) => {
