@@ -147,7 +147,7 @@ import { stringifyChunked } from "./lib/chunked-json.js";
 import { writeFileChunkedYielding } from "./lib/chunked-write.js";
 import { createLensArtifactStore } from "./lib/lens-artifact-store.js";
 import fs from "fs";
-import { startWalCheckpointer, walCheckpointerEnabled, truncateWalForShutdown } from "./lib/wal-checkpointer.js";
+import { startWalCheckpointer, walCheckpointerEnabled } from "./lib/wal-checkpointer.js";
 import path from "path";
 import zlib from "zlib";
 import { pruneJsonStateBackups, summarizeDatedDbBackups } from "./lib/backup-retention.js";
@@ -6693,7 +6693,7 @@ function initDatabase() {
       _walCheckpointer = startWalCheckpointer(DB_PATH, {
         thresholdBytes: walPages * 4096,
         onReady: () => { db.pragma("wal_autocheckpoint = 0"); structuredLog("info", "wal_checkpointer_started", { thresholdBytes: walPages * 4096 }); },
-        onResult: (r) => structuredLog(r.failed || r.busy ? "warn" : "info", "wal_checkpoint", { ms: r.ms, walBytes: r.walBytes, busy: r.busy, log: r.log, checkpointed: r.checkpointed, error: r.error }),
+        onResult: (r) => { if (r.early && !r.failed && !r.busy && r.ms < 100) return; structuredLog(r.failed || r.busy ? "warn" : "info", "wal_checkpoint", { ms: r.ms, walBytes: r.walBytes, busy: r.busy, log: r.log, checkpointed: r.checkpointed, error: r.error }); },
         onFallback: (reason) => { try { db.pragma(`wal_autocheckpoint = ${walPages}`); } catch { /* db closing */ } structuredLog("warn", "wal_checkpointer_fallback", { reason }); },
       });
       // WAL size at open (file metadata only): tells the next boot-stall read whether
@@ -7029,13 +7029,9 @@ if (db) {
       structuredLog("error", "shutdown_database_seal_failed", { error: e?.message, stack: e?.stack });
     }
     try { _walCheckpointer?.stop(); } catch { /* informational */ }
-    // db.close() only checkpoints when it is the LAST connection, and the checkpoint worker's connection is
-    // still open here (shutdown_database_closed took 22 ms with a 64-88 MB WAL left behind), so empty the WAL
-    // explicitly: the next boot then has nothing to checkpoint while serving (lib/wal-checkpointer.js).
-    if (!READ_REPLICA) {
-      const wal = truncateWalForShutdown(db);
-      structuredLog(wal.ok ? "info" : "warn", "shutdown_wal_truncate", wal);
-    }
+    // No synchronous checkpoint here. A TRUNCATE in this callback (#1962) ran past the ~5 s launchd stop window
+    // and the process was killed before db.close(), which used to be reached at +2.6-3.5 s. The WAL is kept small
+    // by the worker's cadence (small slices during boot), not by shutdown work.
     structuredLog("info", "shutdown_closing_database", {});
     const __t0 = process.hrtime.bigint();
     try {

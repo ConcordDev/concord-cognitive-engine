@@ -12,6 +12,13 @@ import { statSync } from "node:fs";
 import Database from "better-sqlite3";
 
 const { dbPath, intervalMs, thresholdBytes } = workerData;
+// Boot window: the process writes ~80 MB of WAL while it boots (20,652 frames in the #1961 boot) with the main
+// connection's inline checkpoint off. One checkpoint 10 s in copied all of it in one go (8.5 s, with the main
+// thread's reads queueing behind it: a 7.3 s npc_schedules SELECT, an 11.4 s macro_call_log INSERT). Checkpointing
+// every bootIntervalMs for the first bootWindowMs copies the same frames in small slices instead.
+const bootIntervalMs = Number(workerData.bootIntervalMs) > 0 ? Number(workerData.bootIntervalMs) : 1000;
+const bootWindowMs = Number(workerData.bootWindowMs) >= 0 ? Number(workerData.bootWindowMs) : 90_000;
+const startedAt = Date.now();
 const walPath = `${dbPath}-wal`;
 let db;
 try {
@@ -37,6 +44,7 @@ function tick() {
     parentPort.postMessage({
       type: "result",
       ms: Math.round(performance.now() - t0),
+      early: Date.now() - startedAt < bootWindowMs,
       walBytes,
       busy: r?.busy ?? null,
       log: r?.log ?? null,
@@ -48,4 +56,9 @@ function tick() {
     running = false;
   }
 }
-setInterval(tick, intervalMs);
+function schedule() {
+  const early = Date.now() - startedAt < bootWindowMs;
+  const t = setTimeout(() => { tick(); schedule(); }, early ? Math.min(bootIntervalMs, intervalMs) : intervalMs);
+  void t;
+}
+schedule();

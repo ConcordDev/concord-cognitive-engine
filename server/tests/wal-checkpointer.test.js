@@ -10,8 +10,7 @@ import { join } from "node:path";
 import { EventEmitter } from "node:events";
 import Database from "better-sqlite3";
 import { spawnSync } from "node:child_process";
-import { startWalCheckpointer, walCheckpointerEnabled, truncateWalForShutdown } from "../lib/wal-checkpointer.js";
-import { sealDatabaseWrites } from "../lib/shutdown-http.js";
+import { startWalCheckpointer, walCheckpointerEnabled } from "../lib/wal-checkpointer.js";
 
 const wal = (p) => { try { return statSync(`${p}-wal`).size; } catch { return 0; } };
 const until = async (fn, ms = 8000) => { const t = Date.now(); while (!fn()) { if (Date.now() - t > ms) throw new Error("timeout"); await new Promise((r) => setTimeout(r, 25)); } };
@@ -191,63 +190,48 @@ describe("server.js opens with the inline checkpoint already off when the worker
   });
 });
 
-describe("graceful shutdown empties the WAL (the boot after it has nothing to checkpoint)", () => {
-  function bigWalDb() {
-    const dir = mkdtempSync(join(tmpdir(), "walshut-"));
+describe("boot window: the worker copies the boot's WAL in small slices, not one multi-second burst", () => {
+  // The #1961 boot wrote ~20k frames (80 MB) with the main connection's inline checkpoint off; one checkpoint 10 s
+  // in copied it all in one go (8.5 s), and the main thread's reads queued behind it (7.3 s and 11.4 s blocks).
+  async function run(workerOpts) {
+    const dir = mkdtempSync(join(tmpdir(), "walboot-"));
     const p = join(dir, "t.db");
     const db = new Database(p);
     db.pragma("journal_mode = WAL"); db.pragma("synchronous = NORMAL"); db.pragma("wal_autocheckpoint = 0");
-    bigWrite(db, 6000);
-    return { dir, p, db };
+    bigWrite(db, 10);
+    const results = [];
+    const h = startWalCheckpointer(p, {
+      thresholdBytes: 1, force: true, env: {}, ...workerOpts,
+      onReady() {}, onFallback() {}, onResult: (r) => results.push(r),
+    });
+    const end = Date.now() + 2600;
+    let i = 0;
+    while (Date.now() < end) { // a boot-like writer: steady ~150 frames per 100 ms
+      db.transaction(() => { const ins = db.prepare("INSERT OR REPLACE INTO t VALUES (?, ?)"); for (let k = 0; k < 400; k++) ins.run((i++) % 9000, "x".repeat(1500)); })();
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    await new Promise((r) => setTimeout(r, 300));
+    h.stop(); db.close(); rmSync(dir, { recursive: true, force: true });
+    return results.filter((r) => typeof r.log === "number");
   }
-
-  it("with a second connection open (the checkpoint worker's), close() alone leaves the WAL behind: the bug", () => {
-    const { dir, p, db } = bigWalDb();
-    const worker = new Database(p);
-    worker.prepare("SELECT count(*) FROM t").get(); // a connection that has joined the WAL (as the worker has by its first tick)
-    assert.ok(wal(p) > 4 * 1024 * 1024);
-    db.close();
-    assert.ok(wal(p) > 4 * 1024 * 1024, "not the last connection, so no close-time checkpoint");
-    worker.close(); rmSync(dir, { recursive: true, force: true });
+  it("fast boot cadence keeps each checkpoint to a slice of what a single late checkpoint copies", async () => {
+    const slow = await run({ intervalMs: 1500, bootWindowMs: 0 });          // old behaviour: first checkpoint at the interval
+    const fast = await run({ intervalMs: 1500, bootIntervalMs: 100, bootWindowMs: 60_000 });
+    const max = (rs) => Math.max(...rs.map((r) => r.log));
+    assert.ok(slow.length >= 1 && fast.length >= 5, `slow=${slow.length} fast=${fast.length}`);
+    assert.ok(max(fast) * 3 < max(slow), `largest single slice: fast ${max(fast)} frames vs one late checkpoint ${max(slow)}`);
+    assert.ok(fast.every((r) => r.busy === 0), "never busy: PASSIVE does not block the writer");
+    assert.ok(fast.every((r) => r.early === true) && slow.every((r) => r.early === false), "results are tagged early only inside the boot window");
   });
+});
 
-  it("truncateWalForShutdown on a SEALED connection with the worker connection still open leaves a 0-byte WAL, and the next first write is free", () => {
-    const { dir, p, db } = bigWalDb();
-    const worker = new Database(p); // idle, like the worker between ticks
-    worker.prepare("SELECT count(*) FROM t").get();
-    sealDatabaseWrites(db);
-    const r = truncateWalForShutdown(db);
-    assert.equal(r.ok, true, JSON.stringify(r));
-    assert.equal(r.walBytes, 0);
-    assert.equal(wal(p), 0);
-    db.close(); worker.close();
-    // reopen like the next boot, with the OLD inline setting that used to checkpoint on the first COMMIT
-    const next = new Database(p);
-    next.pragma("journal_mode = WAL"); next.pragma("wal_autocheckpoint = 8192");
-    const before = statSync(p).size;
-    next.prepare("INSERT OR REPLACE INTO t VALUES (?, ?)").run(5, "y");
-    assert.equal(statSync(p).size, before, "no checkpoint backfill on the first write after a truncated shutdown");
-    next.close(); rmSync(dir, { recursive: true, force: true });
-  });
-
-  it("is bounded and never throws: a reader pinning the WAL makes it report busy quickly, a closed or in-memory db is not applicable", () => {
-    const { dir, p, db } = bigWalDb();
-    const reader = new Database(p);
-    reader.exec("BEGIN"); reader.prepare("SELECT count(*) FROM t").get(); // holds a read snapshot
-    db.exec("INSERT INTO t VALUES (99999, 'late')"); // frames after the reader's snapshot
-    const t0 = Date.now();
-    const r = truncateWalForShutdown(db, { busyTimeoutMs: 150 });
-    assert.ok(Date.now() - t0 < 3000, "bounded wait");
-    assert.equal(r.ok, false);
-    assert.ok(wal(p) > 0, "left as it is today");
-    reader.exec("ROLLBACK"); reader.close(); db.close();
-    assert.equal(truncateWalForShutdown(db).ok, false, "closed db");
-    assert.equal(truncateWalForShutdown(new Database(":memory:")).error, "not_applicable");
-    rmSync(dir, { recursive: true, force: true });
-  });
-
-  it("server.js truncates in the shutdown callback after stopping the worker and before db.close()", () => {
-    const src = readFileSync(new URL("../server.js", import.meta.url), "utf8");
-    assert.match(src, /_walCheckpointer\?\.stop\(\);[^\n]*\n[\s\S]*?if \(!READ_REPLICA\) \{\s*\n\s*const wal = truncateWalForShutdown\(db\);[\s\S]*?"shutdown_wal_truncate"[\s\S]*?"shutdown_closing_database"[\s\S]*?db\.close\(\);/);
+describe("shutdown does no synchronous checkpoint (the launchd stop window is ~5 s)", () => {
+  const src = readFileSync(new URL("../server.js", import.meta.url), "utf8");
+  it("the shutdown callback never runs wal_checkpoint, and early fast results are not logged unless slow", () => {
+    const cb = src.slice(src.indexOf("registerShutdownCallback(() => {\n    if (_shutdownDbClosed) return;"), src.indexOf('structuredLog("info", "shutdown_database_closed"'));
+    assert.ok(cb.length > 200, "found the db shutdown callback");
+    assert.doesNotMatch(cb, /wal_checkpoint|truncateWalForShutdown/);
+    assert.match(cb, /db\.close\(\);/);
+    assert.match(src, /if \(r\.early && !r\.failed && !r\.busy && r\.ms < 100\) return;/);
   });
 });
