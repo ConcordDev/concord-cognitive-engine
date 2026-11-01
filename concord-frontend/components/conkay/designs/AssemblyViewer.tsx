@@ -267,7 +267,7 @@ function WheelMeshes({ assembly, explodeFor, clip, opacity, visibleIds, checkCol
               <meshStandardMaterial color={checkColors?.get(w.id) || '#161616'} roughness={0.94} side={THREE.DoubleSide} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
             </mesh>
             <mesh name="rim" geometry={rim}>
-              <meshPhysicalMaterial color="#8a8e94" metalness={1} roughness={0.22} clearcoat={0.45} clearcoatRoughness={0.12} side={THREE.DoubleSide} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
+              <meshPhysicalMaterial color="#33363b" metalness={1} roughness={0.34} clearcoat={0.45} clearcoatRoughness={0.12} side={THREE.DoubleSide} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
             </mesh>
             <mesh name="disc" geometry={disc}>
               <meshStandardMaterial color="#3e4248" metalness={0.9} roughness={0.32} side={THREE.DoubleSide} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
@@ -339,8 +339,13 @@ function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explodeFor, 
     <>
       {mode === 'studio' && <StudioEnv hdriUrl={hdriUrl} />}
       <ambientLight intensity={mode === 'studio' ? 0.35 : 0.7} />
-      <directionalLight position={[4, 8, 3]} intensity={mode === 'studio' ? 2.2 : 1} castShadow />
+      <directionalLight position={[4, 8, 3]} intensity={mode === 'studio' ? 2.2 : 1} color={mode === 'studio' ? '#fff4ea' : undefined} castShadow />
       <directionalLight position={[-4, 3, -2]} intensity={0.6} color="#d7e2f0" />
+      {/* Studio rig completion (HANDOFF-3 A6): the rim and kicker lights from the headless
+          studio render's proven setup — the rim is what sweeps the bright edge highlight
+          along the shoulder toward the visual target; the kicker warms the nose. */}
+      {mode === 'studio' && <directionalLight position={[-3.6, 2.8, -4.2]} intensity={2} color="#e7eeff" />}
+      {mode === 'studio' && <directionalLight position={[4.8, 1.6, -1.2]} intensity={0.9} color="#fff1e0" />}
       <group position={[-cx, 0, 0]}>
         {show('BODY_SHELL') && (
           <mesh geometry={paint} castShadow receiveShadow onClick={(e) => { e.stopPropagation(); onSelect('BODY_SHELL'); }}>

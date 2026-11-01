@@ -16,7 +16,9 @@ export interface StudioPaint {
 
 export const STUDIO_PAINTS = {
   graphite: { label: 'Graphite', baseColor: [0.1, 0.11, 0.13], metallic: 0.7, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.03 },
-  silver: { label: 'Silver', baseColor: [0.79, 0.8, 0.85], metallic: 0.9, roughness: 0.16, clearcoat: 1, clearcoatRoughness: 0.05 },
+  // Silver matches the headless studio render's paint (render-vehicle-assembly.mjs:
+  // 0xe4e7ee, metallic 0.92, roughness 0.11) so the app and the renders show one car.
+  silver: { label: 'Silver', baseColor: [0.79, 0.8, 0.85], metallic: 0.92, roughness: 0.11, clearcoat: 1, clearcoatRoughness: 0.04 },
 } satisfies Record<string, StudioPaint>;
 
 export type StudioPaintId = keyof typeof STUDIO_PAINTS;
