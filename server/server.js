@@ -146,6 +146,7 @@ import { stringifyChunked } from "./lib/chunked-json.js";
 import { writeFileChunkedYielding } from "./lib/chunked-write.js";
 import { createLensArtifactStore } from "./lib/lens-artifact-store.js";
 import fs from "fs";
+import { startWalCheckpointer } from "./lib/wal-checkpointer.js";
 import path from "path";
 import zlib from "zlib";
 import { pruneJsonStateBackups, summarizeDatedDbBackups } from "./lib/backup-retention.js";
@@ -6573,6 +6574,7 @@ installSharedStateWriteThrough();
 // ---- SQLite Database for Auth & Audit ----
 const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, "concord.db");
 let db = null;
+let _walCheckpointer = null; // off-loop WAL checkpoint worker (lib/wal-checkpointer.js)
 
 function initDatabase() {
   if (!Database) {
@@ -6675,6 +6677,19 @@ function initDatabase() {
       db.pragma(`busy_timeout = ${busyTimeoutMs}`); // 10s default retry — burst-safe under concurrent writers
       db.pragma(`wal_autocheckpoint = ${walPages}`); // Checkpoint cadence
       db.pragma(`journal_size_limit = ${walSizeLimitMb * 1024 * 1024}`); // hard cap — see comment above
+      // Checkpoints run on a worker thread's connection instead of inside whichever
+      // COMMIT crosses wal_autocheckpoint (a 10.5 s COMMIT in the NPC flush, #1940
+      // syncIo). Inline auto-checkpoint stays on until the worker is ready and comes
+      // back on if it fails; CONCORD_WAL_CHECKPOINT_WORKER=0 disables the worker.
+      _walCheckpointer = startWalCheckpointer(DB_PATH, {
+        thresholdBytes: walPages * 4096,
+        onReady: () => { db.pragma("wal_autocheckpoint = 0"); structuredLog("info", "wal_checkpointer_started", { thresholdBytes: walPages * 4096 }); },
+        onResult: (r) => structuredLog(r.failed || r.busy ? "warn" : "info", "wal_checkpoint", { ms: r.ms, walBytes: r.walBytes, busy: r.busy, log: r.log, checkpointed: r.checkpointed, error: r.error }),
+        onFallback: (reason) => { try { db.pragma(`wal_autocheckpoint = ${walPages}`); } catch { /* db closing */ } structuredLog("warn", "wal_checkpointer_fallback", { reason }); },
+      });
+      // WAL size at open (file metadata only): tells the next boot-stall read whether
+      // a large WAL left by the previous run / a migration index build is in play.
+      try { structuredLog("info", "db_wal_state", { walBytes: fs.statSync(`${DB_PATH}-wal`).size, autocheckpointPages: walPages }); } catch { /* no WAL file yet */ }
       // REMOVED (audit 2026-07-27): `db.pragma("page_size = 8192")` used to
       // sit here. SQLite's own docs are explicit that page_size "cannot be
       // changed while in WAL journal mode... not even on an empty
@@ -6687,6 +6702,10 @@ function initDatabase() {
       // require setting it BEFORE journal_mode=WAL on a genuinely fresh
       // (pre-existing-file) database, or a VACUUM on an existing one —
       // out of scope for what was a minor I/O-amortization tweak.
+      // analysis_limit bounds the ANALYZE work optimize may do (SQLite's own
+      // recommendation): without it, a boot that follows a migration adding an
+      // index made optimize scan the new index in full (3.2 s, #1940 syncIo).
+      db.pragma("analysis_limit = 1000");
       db.pragma("optimize");                  // Refresh query-planner stats at boot (idempotent, fast)
       // INC-100: that boot-time optimize is a no-op (plain optimize only looks
       // at tables this connection has already queried — none yet), so
@@ -6995,6 +7014,7 @@ if (db) {
     catch (e) {
       structuredLog("error", "shutdown_database_seal_failed", { error: e?.message, stack: e?.stack });
     }
+    try { _walCheckpointer?.stop(); } catch { /* informational */ } // db.close() below does the final checkpoint
     structuredLog("info", "shutdown_closing_database", {});
     const __t0 = process.hrtime.bigint();
     try {
