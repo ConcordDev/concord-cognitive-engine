@@ -24,16 +24,29 @@ function ActivityTimeline({ domain }: ActivityTimelineProps) {
   const [filter, setFilter] = useState<'all' | 'user' | 'system'>('all');
   useLensTool('activity', useCallback(() => setIsOpen((o) => !o), []));
 
-  // S15: read the platform event log — the same source the Guide's
-  // Recent Activity reads (/api/events/paginated) — filtered to
-  // this lens's objects. This panel previously listed lens
-  // ARTIFACTS as if they were activity and showed "No activity
-  // yet" after full working sessions.
+  // §5 convergence item 4 ("Activity reads the real store"): read the
+  // platform event log — the same source the Guide's Recent Activity
+  // reads (/api/events/paginated) — filtered to this lens's objects.
+  // This panel previously listed lens ARTIFACTS as if they were
+  // activity and showed "No activity yet" after full working sessions
+  // (ML F17, Reasoning F14). Shape ported from B7's S15 fix (#1714
+  // branch, never merged); three adaptations to the live event shape,
+  // each verified against the Guide's own rendering of the same feed:
+  // titles prefer message, then summary (the Guide's field); times
+  // accept createdAt as well as timestamp; dotted event types
+  // (dtu.create, dtu.reject — the forms R3 observed live) count as DTU
+  // events for membership and classification.
   const { data, isLoading } = useQuery({
     queryKey: ['activity-timeline', domain],
     queryFn: () =>
       api
-        .get('/api/events/paginated', { params: { limit: 50 } })
+        // The widest page the route serves: this panel filters a
+        // single global page down to one lens client-side, so a
+        // narrow page let a member's own action rows rotate out
+        // under other traffic (#1906 re-sitting). Read dispatches no
+        // longer record at all (server-side); the wide page is the
+        // second layer of the same fix.
+        .get('/api/events/paginated', { params: { limit: 200 } })
         .then((r) => r.data)
         .catch(() => ({ items: [] })),
     staleTime: 30000,
@@ -42,27 +55,32 @@ function ActivityTimeline({ domain }: ActivityTimelineProps) {
 
   type RawEvent = {
     id?: string; type?: string; action?: string; message?: string;
-    entityType?: string; timestamp?: string; meta?: Record<string, unknown>;
+    summary?: string; entityType?: string; timestamp?: string;
+    createdAt?: string; meta?: Record<string, unknown>;
   };
+  const isDtuEvent = (e: RawEvent): boolean =>
+    e.type === 'dtu' || (typeof e.type === 'string' && e.type.startsWith('dtu.'));
   const belongsToLens = (e: RawEvent): boolean => {
     if (e.type === domain || e.entityType === domain) return true;
     if (e.meta?.domain === domain || e.meta?.lens === domain) return true;
     // DTU events for this lens's objects: lens DTUs are titled
     // "<Lens>: <name>" (a whiteboard board DTU is "Whiteboard: …").
     const title = e.meta?.title;
-    return e.type === 'dtu' && typeof title === 'string'
+    return isDtuEvent(e) && typeof title === 'string'
       && title.toLowerCase().startsWith(`${domain.toLowerCase()}:`);
   };
   const items = ((data?.items || []) as RawEvent[])
     .filter(belongsToLens)
     .map((e) => ({
       id: e.id,
-      title: e.message || `${e.type || 'event'} ${e.action || ''}`.trim(),
-      updatedAt: e.timestamp,
-      // The user's own DTU work and sign-ins are "You"; the rest is
-      // system activity. (The event log has no per-row source field;
-      // this matches how the Guide presents the same events.)
-      source: e.type === 'dtu' || e.type === 'auth' ? 'user' : 'system',
+      title: e.message || e.summary || `${e.type || 'event'} ${e.action || ''}`.trim(),
+      updatedAt: e.timestamp || e.createdAt,
+      // "You" = the session's own actions: DTU work, sign-ins, and
+      // events the lens itself emitted (a domain-typed event is the
+      // record of a lens action the user ran). The rest is system
+      // activity. (The event log has no per-row source field; the
+      // Guide presents the same events unclassified.)
+      source: isDtuEvent(e) || e.type === 'auth' || e.type === domain ? 'user' : 'system',
     })) as Array<Record<string, unknown>>;
   const filtered = items.filter((item) => {
     if (filter === 'all') return true;

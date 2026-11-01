@@ -149,7 +149,9 @@ describe("governorTick — low memory does not freeze the liveness counter", () 
     "utf8",
   );
   const start = src.indexOf("async function governorTick(");
-  const body = src.slice(start, start + 8000);
+  // governorTick grows over time; the markers below were within 8000 chars until the ingest/crawl call
+  // slid to the window edge (7994) and stopped matching. Keep generous headroom.
+  const body = src.slice(start, start + 24000);
 
   it("the idle skip uses isIdle, and the tick counter runs before the low-memory pause", () => {
     assert.ok(start > 0, "governorTick present");

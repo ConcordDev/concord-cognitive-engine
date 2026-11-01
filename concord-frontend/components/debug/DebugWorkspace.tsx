@@ -13,6 +13,7 @@ import {
   FileCode,
   Gauge,
   GitBranch,
+  Globe,
   Loader2,
   Radio,
   RefreshCw,
@@ -46,12 +47,16 @@ import { ComputeDeskPanel } from './ComputeDeskPanel';
 import { TemplatesPanel } from './TemplatesPanel';
 import { CvePanel } from './CvePanel';
 import { TestConsolePanel } from './TestConsolePanel';
+import { MonitorsPanel } from './MonitorsPanel';
+import { DebugProjectProvider } from './ProjectContext';
+import { ProjectSwitcher } from './ProjectSwitcher';
 
 type DebugTool =
   | 'overview'
   | 'issues'
   | 'traces'
   | 'metrics'
+  | 'monitors'
   | 'releases'
   | 'events'
   | 'logs'
@@ -78,13 +83,14 @@ const TOOLS: {
   { id: 'issues', label: 'Issues', description: 'Authored exception registry', group: 'Observe', key: '2', icon: AlertCircle },
   { id: 'traces', label: 'Traces', description: 'Measured request waterfalls', group: 'Observe', key: '3', icon: GitBranch },
   { id: 'metrics', label: 'Metrics', description: 'Runtime samples and alert rules', group: 'Observe', key: '4', icon: BarChart3 },
+  { id: 'monitors', label: 'Uptime', description: 'URLs Concord probes for you', group: 'Observe', key: 'u', icon: Globe },
   { id: 'releases', label: 'Releases', description: 'Deploy and linked-issue tracking', group: 'Observe', key: '5', icon: Tag },
   { id: 'events', label: 'Events', description: 'Recent platform events', group: 'Investigate', key: '6', icon: Radio },
   { id: 'logs', label: 'Logs', description: 'Filtered event log', group: 'Investigate', key: '7', icon: Terminal },
   { id: 'inspector', label: 'Inspector', description: 'Inspect a known object ID', group: 'Investigate', key: '8', icon: Search },
   { id: 'context', label: 'Context', description: 'Working set and pinned DTUs', group: 'Investigate', key: '9', icon: Eye },
   { id: 'monitoring', label: 'Inference', description: 'Transcripts, SLOs, provenance', group: 'Investigate', key: '0', icon: Gauge },
-  { id: 'cve', label: 'CVE feed', description: 'Live NVD vulnerability data', group: 'Investigate', key: 'v', icon: ShieldAlert },
+  { id: 'cve', label: 'CVE feed', description: 'NVD vulnerability data, dated as returned', group: 'Investigate', key: 'v', icon: ShieldAlert },
   { id: 'compute', label: 'Compute', description: 'Compute diagnostics', group: 'Operate', key: 'c', icon: Cpu },
   { id: 'templates', label: 'Templates', description: 'Lens template generator', group: 'Operate', key: 't', icon: FileCode },
   { id: 'test', label: 'Diagnostics', description: 'Named privileged diagnostics', group: 'Operate', key: 'd', icon: Play },
@@ -99,6 +105,7 @@ const PANELS: Partial<Record<DebugTool, ComponentType>> = {
   issues: IssuesPanel,
   traces: TracesPanel,
   metrics: MetricsPanel,
+  monitors: MonitorsPanel,
   releases: ReleasesPanel,
   events: EventsPanel,
   logs: LogsPanel,
@@ -175,22 +182,26 @@ export function DebugWorkspace() {
   );
 
   return (
+    <DebugProjectProvider>
     <div data-lens-theme="debug" className="min-h-full bg-[#080a0c] px-4 pb-24 pt-5 sm:px-7">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-5">
         <div>
           <h1 className="font-vault mt-1 text-4xl leading-tight text-zinc-100 sm:text-5xl">Debug</h1>
           <p className="mt-2 text-sm text-zinc-500">{active.description}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => void refresh()}
-          disabled={refreshing}
-          className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-300 hover:bg-white/[0.08] disabled:opacity-60"
-        >
-          {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          Refresh
-          <kbd aria-hidden="true" className="font-mono text-[10px] text-white/30">⇧R</kbd>
-        </button>
+        <div className="flex flex-wrap items-start gap-3">
+          <ProjectSwitcher />
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-300 hover:bg-white/[0.08] disabled:opacity-60"
+          >
+            {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            Refresh
+            <kbd aria-hidden="true" className="font-mono text-[10px] text-white/30">⇧R</kbd>
+          </button>
+        </div>
       </header>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[11rem_minmax(0,1fr)]">
@@ -242,5 +253,6 @@ export function DebugWorkspace() {
         </motion.main>
       </div>
     </div>
+    </DebugProjectProvider>
   );
 }

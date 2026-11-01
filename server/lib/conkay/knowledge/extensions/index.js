@@ -2,13 +2,15 @@
 //
 // Discipline extensions. An entity carries `extensions: { <discipline>: {...} }`.
 // Each discipline registers a JSON Schema (validated with json-schema-lite)
-// and, optionally, extra rules. "materials" is implemented; the others are
-// registered as stubs that list the fields the spec asks for, so a record can
-// already carry them, but they are not validated yet: validateExtensions
-// reports that as a warning, never as a pass.
+// and, optionally, extra rules. All twelve disciplines are implemented
+// (materials + the eleven in disciplines.js, Q43/A#29): extension data
+// is validated for real. The registry still supports "stub" entries for
+// future disciplines — validateExtensions reports those as a warning,
+// never as a pass.
 
 import { validateAgainst } from "../json-schema-lite.js";
 import { materialsExtension } from "./materials.js";
+import { disciplineExtensions } from "./disciplines.js";
 
 const registry = new Map();
 
@@ -42,34 +44,5 @@ export function validateExtensions(entity) {
 }
 
 // The spec's discipline list (CONKAY-UNIVERSAL-KNOWLEDGE-LAYER-2026-10-09.md).
-const STUBS = {
-  chemistry: {
-    description: "Chemical substances and reactions. Solvers planned: atom and charge balance, limiting reactant, concentration conversion, equilibrium, reaction energy. Unverified predictions kept separate.",
-    plannedFields: ["identifiers (CAS, PubChem CID, InChIKey)", "formula", "structure", "purity", "concentration", "phase", "stoichiometry", "products", "conditions", "kinetics", "thermodynamics", "compatibility", "hazards"],
-  },
-  fluids: {
-    description: "Fluids, mixtures and fuels; sources NIST Chemistry WebBook, REFPROP.",
-    plannedFields: ["composition", "basis", "density", "viscosity", "vapor pressure", "Cp", "thermal conductivity", "phase behavior", "compressibility", "flash point", "T/P dependence"],
-  },
-  recipes: {
-    description: "Recipes. Scaling is not linear when heat transfer, mixing, evaporation or safety changes; culinary-tested vs lab-tested vs calculated are distinct statuses.",
-    plannedFields: ["quantities", "yield", "serving size", "sequence", "time", "temperature", "equipment", "substitutions", "storage", "allergens", "nutrition", "tested_as (culinary|lab|calculated)"],
-  },
-  engineering: {
-    description: "Engineered objects (bridges to the #1032 design graph and #1037 component library).",
-    plannedFields: ["geometry", "materials", "dimensions", "tolerances", "joints", "mass properties", "loads", "boundary conditions", "operating envelope", "manufacturing", "service life", "standards"],
-  },
-  math: {
-    description: "Formulas and algorithms. Every formula executable and tested against known solutions before it drives a decision.",
-    plannedFields: ["equations", "variable definitions", "units", "assumptions", "domain of validity", "initial/boundary conditions", "solver requirements", "tolerances", "reference cases", "error bounds"],
-  },
-  electronics: { description: "Electronics (extensibility placeholder).", plannedFields: [] },
-  biology: { description: "Biological systems (extensibility placeholder).", plannedFields: [] },
-  energy: { description: "Energy systems (extensibility placeholder).", plannedFields: [] },
-  agriculture: { description: "Agriculture (extensibility placeholder).", plannedFields: [] },
-  geology: { description: "Geology (extensibility placeholder).", plannedFields: [] },
-  software: { description: "Software (extensibility placeholder).", plannedFields: [] },
-};
-
 registerExtension("materials", materialsExtension);
-for (const [name, s] of Object.entries(STUBS)) registerExtension(name, { status: "stub", ...s });
+for (const [name, ext] of Object.entries(disciplineExtensions)) registerExtension(name, ext);

@@ -130,7 +130,7 @@ export function FsShotsPanel({ projectId }: { projectId: string }) {
 
       {/* New shot */}
       <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <select value={form.size} onChange={(e) => setForm({ ...form, size: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {SIZES.map((x) => <option key={x} value={x}>{x}</option>)}

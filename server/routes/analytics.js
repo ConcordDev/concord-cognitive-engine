@@ -39,7 +39,7 @@ function _safe(fn, fallback) {
 
 function _columns(db, table) {
   try {
-    const rows = db.prepare(`PRAGMA table_info(${table})`).all();
+    const rows = db.prepare("SELECT name FROM pragma_table_info(?)").all(table);
     if (!rows.length) return null;
     return new Set(rows.map((c) => c.name));
   } catch {

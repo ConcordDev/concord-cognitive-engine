@@ -101,7 +101,7 @@ export function WalletShell({
       {/* Action triple — only the actions the caller actually wired. A tile
           with no handler would be a dead button, so it is not rendered. */}
       {(onSend || onReceive || onSwap) && (
-        <div className="grid grid-cols-3 gap-2" data-testid="wallet-shell-actions">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2" data-testid="wallet-shell-actions">
           {onSend && <ActionTile icon={ArrowUpRight} label="Send" onClick={onSend} />}
           {onReceive && <ActionTile icon={ArrowDownLeft} label="Receive" onClick={onReceive} />}
           {onSwap && <ActionTile icon={Repeat} label="Swap" onClick={onSwap} />}

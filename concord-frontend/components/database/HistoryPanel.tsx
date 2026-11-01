@@ -132,7 +132,7 @@ export function HistoryPanel({ onLoadQuery }: { onLoadQuery?: (sql: string) => v
 
         {actionResult && actionResult.healthScore !== undefined && (
           <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-sm font-bold text-neon-cyan">{String(actionResult.totalTables ?? 0)}</p>
                 <p className="text-[10px] text-gray-400">Tables</p>
@@ -204,7 +204,7 @@ export function HistoryPanel({ onLoadQuery }: { onLoadQuery?: (sql: string) => v
 
         {actionResult && actionResult.estimatedDowntime !== undefined && (
           <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-sm font-bold text-neon-cyan">{String(actionResult.totalChanges ?? 0)}</p>
                 <p className="text-[10px] text-gray-400">Changes</p>
@@ -236,7 +236,7 @@ export function HistoryPanel({ onLoadQuery }: { onLoadQuery?: (sql: string) => v
 
         {actionResult && actionResult.suggestedIndexes !== undefined && actionResult.estimatedDowntime === undefined && (
           <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-sm font-bold text-neon-cyan">{String(actionResult.queriesAnalyzed ?? 0)}</p>
                 <p className="text-[10px] text-gray-400">Queries Analyzed</p>

@@ -1,8 +1,8 @@
 # Collab Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
 > Derived, not asserted. Reproduce the macro list:
-> `grep -c 'registerLensAction("collab"' server/domains/collab.js` → 25
-> Unsurfaced check: `node scripts/lens-unsurfaced.mjs --lens collab` → `1/25 macros never referenced in the frontend` (`presenceState`; see below — a reasoned omission, not a gap).
+> `grep -c 'registerLensAction("collab"' server/domains/collab.js` → 34
+> Unsurfaced check: `node scripts/lens-unsurfaced.mjs --lens collab` → `1/34 macros never referenced in the frontend` (`sessionRoster`, re-run 2026-10-28; `presenceState` is referenced now — it is discussed in `CollabDocWorkspace.tsx`).
 
 ## Reference apps + parity target
 
@@ -133,3 +133,8 @@ The session-directory half of the page had real defects:
 - `node scripts/verify-lens-backends.mjs` — `{"WIRED":258,"NO-BACKEND-CALL":2}`; collab stays WIRED (not in the 2 by-design exceptions).
 - `node scripts/grade-ux-polish.mjs --honest` — collab: `tier: "polished"`, `isGenericScaffold: false`.
 - Transient regenerated audit files (`audit/ux-polish-honest.json`, `audit/ux-polish-honest-gaps.md`) reverted via `git checkout` after verification, per program instructions.
+
+
+---
+
+*Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*

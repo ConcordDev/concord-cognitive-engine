@@ -37,7 +37,7 @@ function fakeClient(): WorkbenchClient & { calls: unknown[][] } {
   const calls: unknown[][] = [];
   return {
     calls,
-    knob: vi.fn(async (...a) => { calls.push(['knob', ...a]); return { reply: { kind: 'parameter', ok: true, diff: { changed: [{ field: 'BODY_SHELL tail', before: 0.22, after: 0.32, source: 'Workbench knob' }], flipped: [], rerun: ['cad.body@BODY_SHELL'] } }, view: { ...VIEW, revision: 1 } }; }),
+    knob: vi.fn(async (...a) => { calls.push(['knob', ...a]); return { reply: { kind: 'parameter', ok: true, diff: { changed: [{ field: 'BODY_SHELL tail', before: 0.22, after: 0.32, source: 'Workbench knob' }], flipped: [], rerun: ['cad.body@BODY_SHELL'] } }, view: { ...VIEW, revision: 1 }, fitCheckDiff: [], rerun: ['cad.body@BODY_SHELL'], assembly: null }; }),
     lock: vi.fn(async (...a) => { calls.push(['lock', ...a]); return { view: { ...VIEW, locked: ['motorId'], knobs: VIEW.knobs.map((k) => (k.variable === 'motorId' ? { ...k, locked: true } : k)) } }; }),
     ask: vi.fn(async (...a) => { calls.push(['ask', ...a]); return { reply: { kind: 'requirement', ok: true, diff: { changed: [{ field: 'topSpeed', before: 80.47, after: 67.06, source: 'the user\'s words "150 mph"' }], flipped: [{ runId: 'requirement.check@REQ_topSpeed', from: 'FAIL', to: 'PASS' }], rerun: 'rebuilt' } }, view: { ...VIEW, revision: 2 } }; }),
     undo: vi.fn(async () => ({ reply: { kind: 'undo', ok: true, matches: true }, view: { ...VIEW, revision: 0 } })),

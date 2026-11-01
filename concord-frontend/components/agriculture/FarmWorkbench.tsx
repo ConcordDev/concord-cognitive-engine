@@ -208,7 +208,7 @@ function FieldsTab({
             placeholder="Field name (e.g. North 40)" maxLength={60}
             className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100"
           />
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <label className="flex flex-col gap-1">
               <span className="text-[10px] uppercase text-gray-400">Acreage</span>
               <input type="number" min="0" step="0.1"
@@ -273,7 +273,7 @@ function FieldsTab({
                 placeholder="Field name" maxLength={60}
                 className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100"
               />
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <label className="flex flex-col gap-1">
                   <span className="text-[10px] uppercase text-gray-400">Acreage</span>
                   <input type="number" min="0" step="0.1"

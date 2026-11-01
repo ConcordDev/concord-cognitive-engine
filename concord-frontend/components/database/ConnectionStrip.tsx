@@ -3,19 +3,27 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Database, Server, HardDrive, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api/client';
-import { StatusCard } from './db-utils';
+import { useAuth } from '@/hooks/useAuth';
+import { StatusCard, canUseDbAdmin } from './db-utils';
 
 export function ConnectionStrip({ onRefreshExtra }: { onRefreshExtra?: () => void }) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  // /api/db/status and /api/redis/stats are owner/admin-only. A member opening the lens must not fire them
+  // (403 + an error toast on mere page load), so the queries are gated on the same role check the rest of
+  // the Database lens uses.
+  const isDbAdmin = canUseDbAdmin(user);
   const { data: dbStatus, refetch: refetchDb } = useQuery({
     queryKey: ['db-status'],
     queryFn: () => api.get('/api/db/status').then(r => r.data),
     refetchInterval: 10000,
+    enabled: isDbAdmin,
   });
   const { data: redisStats, refetch: refetchRedis } = useQuery({
     queryKey: ['redis-stats'],
     queryFn: () => api.get('/api/redis/stats').then(r => r.data),
     refetchInterval: 10000,
+    enabled: isDbAdmin,
   });
 
   const refreshAll = () => {
@@ -26,6 +34,15 @@ export function ConnectionStrip({ onRefreshExtra }: { onRefreshExtra?: () => voi
     queryClient.invalidateQueries({ queryKey: ['db-indexes'] });
     onRefreshExtra?.();
   };
+
+  if (!isDbAdmin) {
+    // Honest, quiet state: nothing was read, so no status cards (they would claim "Disconnected"/"in-memory").
+    return (
+      <p className="text-xs text-zinc-500" data-testid="db-status-admin-only">
+        Storage, PostgreSQL and cache status are visible to workspace admins.
+      </p>
+    );
+  }
 
   return (
     <div className="space-y-4">

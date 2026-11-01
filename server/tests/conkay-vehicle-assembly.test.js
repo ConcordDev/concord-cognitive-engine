@@ -275,6 +275,66 @@ describe("assembly of the library car", () => {
   });
 });
 
+describe("check parts attribution (HANDOFF-3 A3)", () => {
+  const doc = car();
+  const ids = new Set(doc.components.map((c) => c.id));
+  const byId = (list, id) => list.find((c) => c.id === id);
+
+  it("every part a check names is a component in the same document", () => {
+    for (const c of doc.checks) for (const p of c.parts || []) {
+      assert.ok(ids.has(p), `${c.id} names ${p}, which is not a component`);
+    }
+    const ev = assemblyFromIr(buildCarFromLibrary(BRIEF, { config: { fuelType: "electric" } }).ir);
+    const evIds = new Set(ev.components.map((c) => c.id));
+    for (const c of ev.checks) for (const p of c.parts || []) {
+      assert.ok(evIds.has(p), `electric ${c.id} names ${p}, which is not a component`);
+    }
+  });
+
+  it("head clearance names the manikin it measured and the body it measured against", () => {
+    assert.deepEqual(byId(doc.checks, "head-M95").parts, ["OCC_SEAT_1_M95", "BODY_SHELL"]);
+    assert.deepEqual(byId(doc.checks, "head-F5").parts, ["OCC_SEAT_1_F5", "BODY_SHELL"]);
+    assert.deepEqual(byId(doc.checks, "head-M95-rear").parts, ["OCC_SEAT_3_M95", "BODY_SHELL"]);
+    // the stored clearance is the gap the check computed, in metres — the viewer displays it verbatim
+    assert.equal(byId(doc.checks, "head-M95").clearanceM, byId(doc.checks, "head-M95").valueM);
+  });
+
+  it("four-seats names exactly the seat components it counted", () => {
+    const four = byId(doc.checks, "four-seats");
+    assert.deepEqual(four.parts, four.seats);
+    assert.deepEqual(four.parts, ["SEAT_1", "SEAT_2", "SEAT_3", "SEAT_4"]);
+  });
+
+  it("wheel-footwell names both front tyres and the manikin whose foot it swept against", () => {
+    const wf = byId(doc.checks, "wheel-footwell");
+    assert.deepEqual(wf.parts, ["TIRE_FL", "TIRE_FR", "OCC_SEAT_1_F5"]);
+    assert.equal(typeof wf.clearanceM, "number");
+  });
+
+  it("containment names exactly the parts it found outside — the parts its own loop collected", () => {
+    const ev = assemblyFromIr(buildCarFromLibrary(BRIEF, { config: { fuelType: "electric" } }).ir);
+    const cont = byId(ev.checks, "containment");
+    assert.equal(cont.status, "fail");
+    assert.ok(cont.outside.length > 0);
+    assert.deepEqual(cont.parts, cont.outside);
+  });
+
+  it("cooling-power names the radiator component when the document carries one", () => {
+    assert.ok(ids.has("RADIATOR"));
+    assert.deepEqual(byId(doc.checks, "cooling-power").parts, ["RADIATOR"]);
+  });
+
+  it("geometricOnlyParts names real components, and the styled-loft body is among them", () => {
+    const geo = doc.verification.geometricOnlyParts;
+    assert.ok(Array.isArray(geo) && geo.length > 0);
+    for (const p of geo) assert.ok(ids.has(p), `geometricOnlyParts names ${p}, which is not a component`);
+    assert.equal(doc.surface.source, "styling"); // no cad.body solid in this build
+    assert.ok(geo.includes("BODY_SHELL"), "the viewer body loft is geometric only");
+    assert.ok(geo.includes("TRUNK") && geo.includes("FRUNK"), "the volume boxes the statement names");
+    assert.ok(!geo.includes("ENGINE"), "a library envelope the checks evaluate is not geometric only");
+  });
+});
+
 describe("chat summary", () => {
   it("states the rigid-joint upper bound and the bond-line range", () => {
     const text = frameTorsionSummary({

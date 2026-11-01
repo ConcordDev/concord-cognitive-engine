@@ -12,7 +12,7 @@ export const MIN_INTERVAL_MS = 55 * 60 * 1000;
 
 function hasColumn(db, table, col) {
   try {
-    return db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col);
+    return db.prepare("SELECT name FROM pragma_table_info(?)").all(table).some((c) => c.name === col);
   } catch {
     return false;
   }

@@ -6,11 +6,15 @@
 // The rule uses only data the answer path already has: where the answer came
 // from (a local Ollama call, or the BYO router's concord_default provider)
 // and which model actually answered. A pod-served answer names a different,
-// larger model, so it is never labelled. Platform, BYO and free-cloud answers
+// larger model, so it is never labelled. The model name alone is not enough:
+// in pod mode BRAIN_LOCAL_UNIFIED_MODEL names the pod's model, so the label also
+// requires that answers are actually coming from the Mac fallback
+// (isMacFallbackMode: BRAINS_MODE=mac or the loopback :11480 proxy).
+// Platform, BYO and free-cloud answers
 // never use the local Ollama source or concord_default, so they are never
 // labelled either. An unknown or missing model is never guessed at.
 
-import { getLocalUnifiedModel } from "./brain-config.js";
+import { getLocalUnifiedModel, isMacFallbackMode } from "./brain-config.js";
 
 export const LOW_CONFIDENCE_REASON = "GPU brain offline — answered by small local model";
 
@@ -33,6 +37,7 @@ function _normalizeModelTag(name) {
 export function answerConfidence({ source, provider, model } = {}) {
   const local = LOCAL_SOURCES.has(source) || LOCAL_PROVIDERS.has(provider);
   if (!local) return null;
+  if (!isMacFallbackMode()) return null;
   const answered = String(model ?? "").trim();
   if (UNKNOWN_MODELS.has(answered.toLowerCase())) return null;
   const small = getLocalUnifiedModel();
@@ -56,6 +61,7 @@ export const SMALL_MODEL_FACT_GUARD =
  * @returns {string} "" or "\n\n" + SMALL_MODEL_FACT_GUARD
  */
 export function smallModelPromptSuffix(model) {
+  if (!isMacFallbackMode()) return "";
   const small = getLocalUnifiedModel();
   if (!small) return "";
   const called = String(model ?? "").trim();

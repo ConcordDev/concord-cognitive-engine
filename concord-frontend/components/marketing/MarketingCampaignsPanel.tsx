@@ -141,7 +141,7 @@ export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) 
 
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
           <p className="text-xs font-semibold text-zinc-300 mb-2">Log daily metrics</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input type="date" value={metricForm.date} onChange={(e) => setMetricForm({ ...metricForm, date: e.target.value })}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <input placeholder="Impressions" inputMode="numeric" value={metricForm.impressions} onChange={(e) => setMetricForm({ ...metricForm, impressions: e.target.value })}

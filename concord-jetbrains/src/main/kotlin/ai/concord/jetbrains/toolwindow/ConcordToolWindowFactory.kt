@@ -2,7 +2,9 @@
 //
 // "View → Tool Windows → Concord" — the in-IDE control surface for the
 // plugin. Three tabs:
-//   1. Findings — live detector findings streamed from the LSP server.
+//   1. Findings — setup status for the LSP server; the findings
+//                themselves render as inline editor highlights via
+//                LSP4IJ (its 0.5.0 client owns publishDiagnostics).
 //   2. Repair  — preview pane for repair-cortex suggestions.
 //   3. Wallet  — current Concord Coin balance + recent charges,
 //                fetched from /api/keys/usage when signed in.
@@ -14,6 +16,7 @@
 package ai.concord.jetbrains.toolwindow
 
 import ai.concord.jetbrains.actions.ConcordSignInAction
+import ai.concord.jetbrains.lsp.ConcordLanguageServer
 import ai.concord.jetbrains.settings.ConcordSettingsState
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindow
@@ -59,43 +62,50 @@ class ConcordToolWindowFactory : ToolWindowFactory {
             border = BorderFactory.createEmptyBorder(8, 8, 8, 8)
         }
 
-        val statusLabel = JBLabel("Detector findings will stream here once the LSP is connected.")
+        val statusLabel = JBLabel(
+            "Findings render as inline highlights in the editor (via LSP4IJ). " +
+                "This tab shows the language server's setup status."
+        )
         panel.add(statusLabel)
 
         val model = DefaultListModel<String>()
-        // Placeholder rows demonstrating shape. Real rows are pushed by
-        // an LSP listener attached in a follow-up commit (lsp4ij wiring).
-        model.addElement("(no findings yet — open a file to begin)")
-
         val list = JList(model)
         val scroll = JBScrollPane(list)
         panel.add(scroll)
 
-        val refreshBtn = JButton("Refresh").apply {
-            addActionListener {
-                model.clear()
-                model.addElement("Refreshing…")
-                ApplicationManager.getApplication().executeOnPooledThread {
-                    // Real implementation will hit the LSP server's
-                    // workspace/diagnostic endpoint via lsp4ij. For the
-                    // scaffold landing in this commit we just confirm
-                    // the status labels.
-                    ApplicationManager.getApplication().invokeLater {
-                        model.clear()
-                        model.addElement("LSP connection: " +
-                            (if (isLspReachable(project)) "active" else "not connected"))
-                    }
+        // Honest status rows: each line reports exactly what it checks —
+        // the bundled server file's presence, the configured API URL,
+        // and the sign-in state. (The pre-Q60 placeholder reported
+        // isSignedIn() AS "LSP connection: active", which claimed an LSP
+        // state it never measured.)
+        fun fillStatus() {
+            model.clear()
+            val entrypoint = ConcordLanguageServer.resolveServerEntrypoint()
+            model.addElement(
+                if (ConcordLanguageServer.isServerEntrypointPresent()) {
+                    "Language server: bundled at $entrypoint"
+                } else {
+                    "Language server: NOT FOUND at $entrypoint — build concord-lsp " +
+                        "or set an override in Settings → Tools → Concord."
                 }
-            }
+            )
+            model.addElement("API URL: ${ConcordSettingsState.getInstance().apiUrl}")
+            model.addElement(
+                if (ConcordSignInAction.isSignedIn()) {
+                    "Sign-in: signed in (token in PasswordSafe)"
+                } else {
+                    "Sign-in: not signed in — the server starts but cannot register the codebase"
+                }
+            )
+        }
+        fillStatus()
+
+        val refreshBtn = JButton("Refresh status").apply {
+            addActionListener { fillStatus() }
         }
         panel.add(refreshBtn)
 
         return panel
-    }
-
-    private fun isLspReachable(project: Project): Boolean {
-        // Placeholder: real check goes through lsp4ij's status API.
-        return ConcordSignInAction.isSignedIn()
     }
 
     // ─── Repair preview ─────────────────────────────────────────────────

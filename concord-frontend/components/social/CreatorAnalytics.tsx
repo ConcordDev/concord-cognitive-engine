@@ -80,6 +80,14 @@ interface CreatorAnalyticsData {
 interface CreatorAnalyticsProps {
   userId: string;
   className?: string;
+  /**
+   * Hide this panel's own Followers card. For embeddings whose host surface
+   * already renders a Followers card of its own — the Analytics Overview's
+   * DeskPanel strip does, and rendering both put the same "Followers" card
+   * on the Overview twice (Review 4, S7). Surfaces without their own strip
+   * (Social, Profile) leave this unset and keep the card.
+   */
+  hideFollowersCard?: boolean;
 }
 
 // ── Media type icons ─────────────────────────────────────────────────────────
@@ -161,7 +169,7 @@ function StatCard({
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
+function CreatorAnalytics({ userId, className, hideFollowersCard }: CreatorAnalyticsProps) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['creator-analytics', userId],
     queryFn: async () => {
@@ -212,7 +220,7 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
   return (
     <div className={cn('space-y-4', className)}>
       {/* ── Overview ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className={`grid grid-cols-1 ${hideFollowersCard ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-3`}>
         <StatCard
           label="Engagement Rate"
           value={`${data.overview.engagementRate.toFixed(1)}`}
@@ -227,13 +235,15 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
           icon={Eye}
           color="text-neon-cyan"
         />
-        <StatCard
-          label="Followers"
-          value={formatNumber(data.overview.followerCount)}
-          icon={Users}
-          trend={data.overview.followerTrend}
-          color="text-neon-purple"
-        />
+        {!hideFollowersCard && (
+          <StatCard
+            label="Followers"
+            value={formatNumber(data.overview.followerCount)}
+            icon={Users}
+            trend={data.overview.followerTrend}
+            color="text-neon-purple"
+          />
+        )}
       </div>
 
       {showDays && <Section title="Engagement (Last 7 Days)" icon={BarChart3}>
@@ -415,7 +425,7 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
 
         {(showGrowth || showEarnings) && <div className="space-y-4">
           {showGrowth && data.followerGrowth && <Section title="Follower Growth (30d)" icon={Users}>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="text-center">
                 <div className="text-lg font-bold text-green-400">
                   +{formatNumber(data.followerGrowth.gained)}

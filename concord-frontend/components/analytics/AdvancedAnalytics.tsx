@@ -20,6 +20,7 @@ import {
   CalendarRange, Plus, Trash2, RefreshCw, Loader2, Play, Pause, Save,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { ChartKit } from '@/components/viz';
 import { cn } from '@/lib/utils';
 
@@ -151,7 +152,23 @@ interface LoadedWidget extends Widget { data?: WidgetData }
 
 function ReportBuilder({ eventNames }: { eventNames: string[] }) {
   const [dashboards, setDashboards] = useState<DashboardSummary[]>([]);
-  const [name, setName] = useState('');
+  // Draft persistence (A23 successor, Review 4 Addenda 5 + 8): the
+  // dashboard-name draft rides the lens state store under a
+  // dashboardDraft key — restored once on mount, re-persisted on
+  // change. ReportBuilder unmounts on every internal tab switch and
+  // the whole Advanced view unmounts on every lens tab switch, so a
+  // plain useState draft died on both. This is the A23 protocol's
+  // third graded field; the builder's widgets/editing state are
+  // deliberately NOT persisted (not named by the protocol).
+  const { restore, persist } = useLensStatePersistence('analytics');
+  const [savedDashboardDraft] = useState(() => {
+    const d = restore()?.dashboardDraft;
+    return d && typeof d === 'object' ? (d as Record<string, unknown>) : {};
+  });
+  const [name, setName] = useState(() => String(savedDashboardDraft.name ?? ''));
+  useEffect(() => {
+    persist({ ...(restore() ?? {}), dashboardDraft: { name } });
+  }, [name, persist, restore]);
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState<LoadedWidget[] | null>(null);
@@ -571,6 +588,7 @@ function LiveStream({ eventNames }: { eventNames: string[] }) {
   const [nameFilter, setNameFilter] = useState('');
   const [live, setLive] = useState(false);
   const [matched, setMatched] = useState(0);
+  const [deleteError, setDeleteError] = useState('');
   const cursorRef = useRef<string | null>(null);
   const filterRef = useRef('');
   useEffect(() => { filterRef.current = nameFilter; }, [nameFilter]);
@@ -592,6 +610,29 @@ function LiveStream({ eventNames }: { eventNames: string[] }) {
     }
     cursorRef.current = res.cursor;
   }, []);
+
+  // Per-row delete (F14): events were the only family in this lens with
+  // no delete — funnel/dashboard/alert rows all have one. Optimistic
+  // removal in the FunnelsPanel idiom; a macro refusal restores the
+  // stream from the server and surfaces the error verbatim.
+  const remove = useCallback(async (id: string) => {
+    setDeleteError('');
+    setEvents((prev) => prev.filter((ev) => ev.id !== id));
+    try {
+      const r = await lensRun('analytics', 'event-delete', { id });
+      if (!r.data?.ok) {
+        setDeleteError(r.data?.error || 'Failed to delete event');
+        cursorRef.current = null;
+        void poll(true);
+      } else {
+        setMatched((m) => Math.max(0, m - 1));
+      }
+    } catch {
+      setDeleteError('Failed to delete event');
+      cursorRef.current = null;
+      void poll(true);
+    }
+  }, [poll]);
 
   useEffect(() => { cursorRef.current = null; void poll(true); }, [poll, nameFilter]);
 
@@ -621,15 +662,18 @@ function LiveStream({ eventNames }: { eventNames: string[] }) {
         </div>
       </div>
 
+      {deleteError && <p className="text-[11px] text-rose-300">{deleteError}</p>}
       {events.length === 0 && <Empty text="No events yet — track events to populate the stream." />}
       {events.length > 0 && (
         <div className="bg-zinc-950 border border-zinc-800 rounded-lg max-h-72 overflow-y-auto divide-y divide-zinc-900">
           {events.map((e) => (
-            <div key={e.id} className="px-2.5 py-1.5 text-[11px] font-mono">
+            <div key={e.id} className="group px-2.5 py-1.5 text-[11px] font-mono">
               <div className="flex items-center gap-2">
                 <span className="text-amber-300 font-semibold">{e.name}</span>
                 <span className="text-zinc-400">{e.distinctId}</span>
                 <span className="text-zinc-600 ml-auto">{new Date(e.at).toLocaleTimeString()}</span>
+                <button type="button" onClick={() => void remove(e.id)} aria-label="Delete event"
+                  className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
               </div>
               {Object.keys(e.properties || {}).length > 0 && (
                 <div className="text-zinc-400 mt-0.5 truncate">
@@ -954,7 +998,7 @@ function RangeCompare({ eventNames }: { eventNames: string[] }) {
 
       {result && (
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
-          <div className="grid grid-cols-3 gap-2 mb-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
             <div className="bg-zinc-950 border border-zinc-800 rounded p-2 text-center">
               <p className="text-lg font-bold text-zinc-100">{result.previous.value.toLocaleString()}</p>
               <p className="text-[9px] text-zinc-400 uppercase tracking-wide">Previous</p>

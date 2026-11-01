@@ -36,7 +36,7 @@ Art Open Access API as DTUs.
 
 | Macro | Real result shape (key fields) | Classification (before this rebuild) |
 |---|---|---|
-| `vision` | freeform LLaVA/Qwen2.5-VL description of a garment photo | **UNSURFACED** — no frontend caller anywhere pre-rebuild |
+| `vision` | freeform LLaVA/Qwen2.5-VL description of a garment photo | **UNSURFACED** — no frontend caller anywhere pre-rebuild **[CORRECTED 2026-10-28: now wired — `FashionClosetPanel.tsx:100` calls `lensRun('fashion', 'vision', …)` |.]**
 | `styleProfile` | wardrobe color/category breakdown from caller-supplied `wardrobe[]` | **DESIGNED (raw-JSON-button)** — old page's 4-button action panel; superseded by `style-quiz-submit`/`style-profile-get` |
 | `outfitSuggest` | top/bottom/outerwear combos from caller-supplied `wardrobe[]` | **DESIGNED (raw-JSON-button)** — superseded by `ai-outfit-generate` |
 | `trendAnalysis` | category/hotness breakdown from caller-supplied `trends[]` (no live trend source exists) | **DESIGNED (raw-JSON-button)** — no live backing data; honestly re-scoped this rebuild |
@@ -450,3 +450,8 @@ rather than a separate laundry dashboard page.
   — 0 errors, 0 warnings.
 - `cd concord-frontend && npx tsc --noEmit -p .` (full project) — 0
   errors.
+
+
+---
+
+*Dispositions corrected 2026-10-28 (remaining-work audit, fix queue Q67): the rows marked CORRECTED above were listed as unsurfaced when this map was written; each is now wired in the frontend, at the file:line cited in the correction. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows U1–U7.*

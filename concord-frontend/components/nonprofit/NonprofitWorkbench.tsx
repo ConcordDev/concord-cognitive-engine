@@ -202,7 +202,7 @@ function CRMTab({ donors, loaded, loading, reload }: { donors: Donor[]; loaded: 
   return (
     <div className="space-y-3">
       {/* KPI row */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <Stat label="Donors" value={String(donors.length)} />
         <Stat label="Lifetime Given" value={money(totalRaised)} />
         <Stat label="Pledge Balance" value={money(donors.reduce((s, d) => s + d.pledgeBalance, 0))} />
@@ -374,7 +374,7 @@ function RecurringTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors:
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <Stat label="Pledges" value={String(meta?.count ?? 0)} />
         <Stat label="Active" value={String(meta?.active ?? 0)} />
         <Stat label="Monthly Value" value={money(Math.round(meta?.monthlyValue ?? 0))} />
@@ -750,7 +750,7 @@ function VolunteersTab() {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <Stat label="Volunteers" value={String(vols.length)} />
         <Stat label="Total Hours" value={String(Math.round(meta?.totalHours ?? 0))} />
         <Stat label="Est. Value" value={money(meta?.estValue ?? 0)} />

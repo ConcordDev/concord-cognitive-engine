@@ -56,6 +56,8 @@ import {
   uid,
   clamp,
   fmtDur,
+  selectAllIds,
+  duplicateSelection,
 } from './whiteboard-model';
 
 const LAST_BOARD_KEY = 'concord:whiteboard:last';
@@ -229,7 +231,7 @@ export function WhiteboardStudio({
   const boardListItems: Record<string, unknown>[] = ((whiteboards?.whiteboards && whiteboards.whiteboards.length > 0)
     ? whiteboards.whiteboards
     : boardArtifacts.map(a => ({ id: a.id, title: a.title, elementCount: Array.isArray((a as { data?: { elements?: unknown[] } }).data?.elements) ? ((a as { data?: { elements?: unknown[] } }).data!.elements as unknown[]).length : 0 })))
-    .filter((b) => !trashedBoardIds.has(String(b.id)));
+    .filter((b: Record<string, unknown>) => !trashedBoardIds.has(String(b.id)));
 
   // North star: the canvas is the page, so open the most recent board instead
   // of an empty "select a board" screen (render-time adjust, once).
@@ -1357,17 +1359,17 @@ export function WhiteboardStudio({
 
   /* ---------- duplicate selected ---------- */
   const duplicateSelected = useCallback(() => {
-    if (!selectedElement) return;
+    // Multi-selection duplicates the whole group (Q57, #1883's pure helper); a lone selection is the
+    // one-member case. Copies are offset +16,+16 and become the new selection.
+    const ids = selectedIds.length > 0 ? selectedIds : (selectedElement ? [selectedElement.id] : []);
+    if (ids.length === 0) return;
+    const copies = duplicateSelection(elements as never, new Set(ids), uid) as unknown as Element[];
+    if (copies.length === 0) return;
     pushUndo();
-    const copy: Element = {
-      ...selectedElement,
-      id: `el_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      x: (selectedElement.x ?? 0) + 16,
-      y: (selectedElement.y ?? 0) + 16,
-    };
-    setElements((prev) => [...prev, copy]);
-    setSelectedElement(copy);
-  }, [selectedElement, pushUndo]);
+    setElements((prev) => [...prev, ...copies]);
+    setSelectedIds(copies.map((c) => c.id));
+    setSelectedElement(copies[copies.length - 1]);
+  }, [selectedElement, selectedIds, elements, pushUndo]);
 
   /* ---------- keyboard shortcuts (canvas idiom) ---------- */
   useEffect(() => {
@@ -1383,12 +1385,17 @@ export function WhiteboardStudio({
         if (e.key === '=' || e.key === '+') { e.preventDefault(); setZoom((z) => clamp(z * 1.2, 0.25, 4)); return; }
         if (e.key === '-' || e.key === '_') { e.preventDefault(); setZoom((z) => clamp(z / 1.2, 0.25, 4)); return; }
         if (e.key === '0') { e.preventDefault(); setZoom(1); setOffset({ x: 0, y: 0 }); return; }
-        // ⌘A intentionally not implemented yet — single-element selection
-        // model would need to extend to multi-select first. Skipping until
-        // that lands rather than silently mis-binding.
+        if (e.key.toLowerCase() === 'a') {
+          e.preventDefault();
+          const all = [...selectAllIds(elements as never)];
+          setSelectedIds(all);
+          setSelectedElement(elements.find((el) => el.id === all[all.length - 1]) || null);
+          return;
+        }
         return;
       }
 
+      if (e.key === 'Escape') { setSelectedIds([]); setSelectedElement(null); }
       if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
       if (e.key === 'v') setTool('select');
       if (e.key === 'p') setTool('draw');
@@ -1400,7 +1407,7 @@ export function WhiteboardStudio({
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [deleteSelected, undo, redo, duplicateSelected]);
+  }, [deleteSelected, undo, redo, duplicateSelected, elements]);
 
   /* ---------- tools array ---------- */
   const PRIMARY_TOOLS: Tool[] = ['select', 'draw', 'rectangle', 'ellipse', 'line', 'arrow', 'text', 'notecard'];
@@ -1641,7 +1648,7 @@ export function WhiteboardStudio({
                         ))}
                       </div>
                       <p className="text-xs text-gray-400 mb-2">Stroke</p>
-                      <div className="grid grid-cols-4 gap-2 mb-4">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4">
                         {COLORS.map(c => (
                           <button key={c} type="button" onClick={() => setStrokeColor(c)}
                             className={`w-8 h-8 rounded-lg border-2 ${strokeColor === c ? 'border-white' : 'border-transparent'}`}
@@ -1649,7 +1656,7 @@ export function WhiteboardStudio({
                         ))}
                       </div>
                       <p className="text-xs text-gray-400 mb-2">Fill</p>
-                      <div className="grid grid-cols-4 gap-2">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                         <button type="button" onClick={() => setFillColor('transparent')}
                           className={`w-8 h-8 rounded-lg border-2 ${fillColor === 'transparent' ? 'border-white' : 'border-transparent'} bg-transparent`} aria-label="Close">
                           <X className="w-4 h-4 mx-auto text-gray-400" />

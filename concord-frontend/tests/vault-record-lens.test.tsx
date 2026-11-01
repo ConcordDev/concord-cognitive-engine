@@ -57,14 +57,25 @@ describe('vault formatting refuses to fabricate', () => {
 describe('CuratorStatement', () => {
   it('sets the statement in the Vault serif at reading measure, attributed to the human who signed it', () => {
     render(
-      <CuratorStatement statement={STATEMENT} curatorId="curator_hallam" curatorRole="guest_curator" />,
+      <CuratorStatement statement={STATEMENT} curatorId="curator_hallam" curatorName="Ada Hallam" curatorRole="guest_curator" />,
     );
     const quote = screen.getByText(STATEMENT);
     expect(quote.className).toContain('font-vault');
     expect(quote.className).toContain('max-w-[62ch]');
     expect(screen.getByTestId('vault-statement-attribution').textContent).toBe(
-      'Written and signed by curator_hallam, Guest curator',
+      'Written and signed by Ada Hallam, Guest curator',
     );
+    expect(document.body.textContent).not.toContain('curator_hallam');
+  });
+
+  it('never prints the raw curator id: with no roster name it says "a curator" (with the role)', () => {
+    const { unmount } = render(<CuratorStatement statement={STATEMENT} curatorId="curator_hallam" curatorRole="guest_curator" />);
+    expect(screen.getByTestId('vault-statement-attribution').textContent).toBe('Written and signed by a guest curator');
+    expect(document.body.textContent).not.toContain('curator_hallam');
+    unmount();
+    render(<CuratorStatement statement={STATEMENT} curatorId="curator_hallam" curatorName="   " />);
+    expect(screen.getByTestId('vault-statement-attribution').textContent).toBe('Written and signed by a curator');
+    expect(document.body.textContent).not.toContain('curator_hallam');
   });
 
   it('renders nothing at all when there is no statement', () => {

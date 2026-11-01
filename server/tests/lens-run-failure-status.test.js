@@ -230,3 +230,35 @@ describe("/api/lens/run and artifact create failure status", { timeout: 180000 }
     assert.equal(found.meta?.status, "draft");
   });
 });
+
+describe("timeouts and unreachable upstreams are not HTTP 400 (GB-0489 b)", () => {
+  it("a handler that fails because its work timed out or the upstream is unreachable stays HTTP 200 with ok:false", () => {
+    for (const error of [
+      "catchall_timeout",
+      "The operation was aborted due to timeout",
+      "This operation was aborted",
+      "fetch failed",
+      "request timed out after 20000ms",
+      "connect ETIMEDOUT 1.2.3.4:443",
+      "getaddrinfo ENOTFOUND api.example.com",
+      "read ECONNRESET",
+      "socket hang up",
+    ]) {
+      const shaped = shapeLensRunHttp({ ok: false, error });
+      assert.equal(shaped.status, 200, error);
+      assert.equal(shaped.body.ok, false, error);
+      assert.equal(shaped.body.error, error);
+    }
+    // the reason channel counts too
+    assert.equal(httpStatusForLensFailure("lookup failed", { reason: "upstream_timeout" }), 200);
+  });
+
+  it("keeps every other classification: validation, not-found, authz and a plain refusal are unchanged", () => {
+    assert.equal(httpStatusForLensFailure("invalid_timeout"), 422, "an input named *_timeout is still validation");
+    assert.equal(httpStatusForLensFailure("invalid_input"), 400);
+    assert.equal(httpStatusForLensFailure("something refused"), 400);
+    assert.equal(httpStatusForLensFailure("forbidden: not yours"), 403);
+    assert.equal(httpStatusForLensFailure("missing_inputs"), 422);
+    assert.equal(httpStatusForLensFailure("timeouts_are_configured_wrong_value_rejected_x"), 400, "a longer word is not a timeout token");
+  });
+});

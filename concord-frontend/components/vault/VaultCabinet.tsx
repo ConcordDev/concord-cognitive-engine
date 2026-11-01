@@ -39,6 +39,8 @@ export interface VaultCabinetProps {
   onToggle: (id: string) => void;
   onRetryEntry?: (id: string) => void;
   onSelectCurator?: (curatorId: string) => void;
+  /** Roster display names by curator id (statement signatures). */
+  curatorNames?: Record<string, string>;
   curatorFilter?: string | null;
   /** Keyboard hints, rendered so the shortcuts are discoverable rather than hidden. */
   shortcuts?: ReadonlyArray<{ keys: string; label: string }>;
@@ -51,6 +53,7 @@ export function VaultCabinet({
   onToggle,
   onRetryEntry,
   onSelectCurator,
+  curatorNames,
   curatorFilter,
   shortcuts,
 }: VaultCabinetProps) {
@@ -68,6 +71,7 @@ export function VaultCabinet({
               onToggle={() => onToggle(entry.id)}
               onRetry={onRetryEntry ? () => onRetryEntry(entry.id) : undefined}
               onSelectCurator={onSelectCurator}
+              curatorNames={curatorNames}
               curatorFilter={curatorFilter}
             />
           ))}
@@ -75,10 +79,9 @@ export function VaultCabinet({
       </div>
 
       <div className="mt-5 flex flex-wrap items-baseline justify-between gap-x-8 gap-y-3">
+        {/* A place in the cabinet, never a total: the spec has no counts anywhere on this surface. */}
         <p className={vault.accession} data-testid="vault-cabinet-position">
-          {selectedIndex >= 0
-            ? `Drawer ${selectedIndex + 1} of ${entries.length}`
-            : `${entries.length} ${entries.length === 1 ? 'drawer' : 'drawers'} in view`}
+          {selectedIndex >= 0 ? `Drawer ${selectedIndex + 1}` : 'The cabinet'}
         </p>
 
         {shortcuts && shortcuts.length > 0 ? (

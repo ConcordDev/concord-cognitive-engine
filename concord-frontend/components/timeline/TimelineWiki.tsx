@@ -40,7 +40,7 @@ export function TimelineWiki() {
       </header>
       <LookupNotice provider="wikipedia" data={data.data} />
       {data.isError &&<div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Wikipedia REST unreachable.</div>}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Events</div><div className="mt-0.5 font-mono text-lg text-amber-300">{list.length}</div></div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Oldest</div><div className="mt-0.5 font-mono text-lg text-amber-300">{oldest || '—'}</div></div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Newest</div><div className="mt-0.5 font-mono text-lg text-amber-300">{newest || '—'}</div></div>

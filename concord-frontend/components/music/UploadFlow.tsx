@@ -18,19 +18,21 @@ const GENRES = [
 
 const DEFAULT_TIERS: TierConfig[] = [
   { tier: 'listen', enabled: true, price: 0, currency: 'USD', maxLicenses: null, licensesIssued: 0 },
-  { tier: 'create', enabled: true, price: 9.99, currency: 'USD', maxLicenses: null, licensesIssued: 0 },
-  { tier: 'commercial', enabled: true, price: 99.99, currency: 'USD', maxLicenses: null, licensesIssued: 0 },
+  { tier: 'create', enabled: false, price: 0, currency: 'USD', maxLicenses: null, licensesIssued: 0 },
+  { tier: 'commercial', enabled: false, price: 0, currency: 'USD', maxLicenses: null, licensesIssued: 0 },
 ];
 
 interface UploadFlowProps {
   onUpload: (data: UploadTrackData, file: File) => void;
   onCancel: () => void;
   progress: UploadProgress | null;
+  /** Clears a failed-upload screen so the user can retry. */
+  onDismissError?: () => void;
 }
 
 type UploadStep = 'file' | 'metadata' | 'tiers' | 'review';
 
-export function UploadFlow({ onUpload, onCancel, progress }: UploadFlowProps) {
+export function UploadFlow({ onUpload, onCancel, progress, onDismissError }: UploadFlowProps) {
   const [step, setStep] = useState<UploadStep>('file');
   const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState('');
@@ -143,7 +145,12 @@ export function UploadFlow({ onUpload, onCancel, progress }: UploadFlowProps) {
             </div>
           )}
 
-          {progress.error && <p className="text-sm text-red-400">{progress.error}</p>}
+          {progress.error && <p role="alert" className="text-sm text-red-400">{progress.error}</p>}
+          {progress.stage === 'error' && onDismissError && (
+            <button type="button" onClick={onDismissError} className="px-4 py-2 rounded-lg text-sm bg-white/10 text-white hover:bg-white/20">
+              Dismiss
+            </button>
+          )}
         </div>
       </div>
     );
@@ -373,6 +380,7 @@ export function UploadFlow({ onUpload, onCancel, progress }: UploadFlowProps) {
           <div className="p-3 rounded-lg bg-neon-cyan/5 border border-neon-cyan/10 text-xs text-gray-300 flex items-start gap-2">
             <Info className="w-4 h-4 text-neon-cyan flex-shrink-0 mt-0.5" />
             <div>
+              <p className="text-amber-300 mb-1">Paid licensing is off for now: tracks publish free and listen-only, whatever is set below.</p>
               <p><strong>Artifact Sovereignty Tiers</strong> — You control pricing. The platform controls royalty rates (same for everyone).</p>
               <p className="text-gray-400 mt-1">Platform fee: {(ROYALTY_CONSTANTS.PLATFORM_FEE_RATE * 100)}%. Derivative royalty: {(ROYALTY_CONSTANTS.BASE_RATE * 100)}% halving.</p>
             </div>

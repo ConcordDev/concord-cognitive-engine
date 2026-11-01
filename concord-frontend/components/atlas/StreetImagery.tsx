@@ -122,7 +122,7 @@ export function StreetImagery() {
         {result && result.hasToken && result.images.length > 0 && (
           <div className="space-y-3">
             <div className="text-[10px] uppercase tracking-wider text-gray-400">{result.images.length} photo{result.images.length === 1 ? '' : 's'} nearby</div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               {result.images.map((im) => (
                 <button
                   key={im.id}

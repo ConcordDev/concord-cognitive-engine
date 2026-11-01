@@ -136,7 +136,7 @@ function TimeCrystals({ className }: { className?: string }) {
                 <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
                   Knowledge Growth (30 days)
                 </h4>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="text-center">
                     <p className="text-lg font-bold text-neon-cyan">+{diffData.diff.newDTUs}</p>
                     <p className="text-[10px] text-gray-400">New DTUs</p>

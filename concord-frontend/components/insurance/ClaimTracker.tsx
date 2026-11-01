@@ -31,11 +31,23 @@ const STATUS_COLORS: Record<Claim['status'], string> = {
   denied: 'bg-red-500/20 text-red-300',
 };
 
+interface ClaimDoc { id: string; title: string; kind: string; url?: string | null }
+
 export function ClaimTracker() {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<Partial<Claim>>({ kind: 'collision', claimAmount: 0 });
+  // Photos staged in the new-claim form; attached via claim-document-add
+  // right after the claim is filed (a document needs the claim's id).
+  const [draftPhotos, setDraftPhotos] = useState<{ title: string; url: string }[]>([]);
+  const [photoTitle, setPhotoTitle] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [showPhotoForm, setShowPhotoForm] = useState(false);
+  // Per-claim attach editor (existing claims).
+  const [attachFor, setAttachFor] = useState<string | null>(null);
+  const [claimDocs, setClaimDocs] = useState<ClaimDoc[]>([]);
+  const [attachTitle, setAttachTitle] = useState('');
 
   useEffect(() => { refresh(); }, []);
 
@@ -51,11 +63,46 @@ export function ClaimTracker() {
   async function fileNew() {
     if (!draft.carrier?.trim() || !draft.description?.trim()) return;
     try {
-      await lensRun({ domain: 'insurance', action: 'claim-file', input: draft });
+      const res = await lensRun({ domain: 'insurance', action: 'claim-file', input: draft });
+      const claimId = (res.data?.result as { claim?: Claim } | undefined)?.claim?.id;
+      if (claimId) {
+        for (const p of draftPhotos) {
+          await lensRun({ domain: 'insurance', action: 'claim-document-add', input: { claimId, title: p.title, kind: 'photo', url: p.url || undefined } });
+        }
+      }
       setDraft({ kind: 'collision', claimAmount: 0 });
+      setDraftPhotos([]);
+      setPhotoTitle(''); setPhotoUrl(''); setShowPhotoForm(false);
       setAdding(false);
       await refresh();
     } catch (e) { console.error('[Claim] file failed', e); }
+  }
+
+  function stagePhoto() {
+    if (!photoTitle.trim()) return;
+    setDraftPhotos(prev => [...prev, { title: photoTitle.trim(), url: photoUrl.trim() }]);
+    setPhotoTitle(''); setPhotoUrl('');
+  }
+
+  async function openAttach(claimId: string) {
+    if (attachFor === claimId) { setAttachFor(null); return; }
+    setAttachFor(claimId);
+    setAttachTitle('');
+    try {
+      const res = await lensRun({ domain: 'insurance', action: 'claim-document-list', input: { claimId } });
+      setClaimDocs((res.data?.result?.documents || []) as ClaimDoc[]);
+    } catch (e) { console.error('[Claim] documents failed', e); setClaimDocs([]); }
+  }
+
+  async function addClaimPhoto(claimId: string) {
+    if (!attachTitle.trim()) return;
+    try {
+      await lensRun({ domain: 'insurance', action: 'claim-document-add', input: { claimId, title: attachTitle.trim(), kind: 'photo' } });
+      setAttachTitle('');
+      const res = await lensRun({ domain: 'insurance', action: 'claim-document-list', input: { claimId } });
+      setClaimDocs((res.data?.result?.documents || []) as ClaimDoc[]);
+      await refresh();
+    } catch (e) { console.error('[Claim] attach failed', e); }
   }
 
   return (
@@ -71,7 +118,7 @@ export function ClaimTracker() {
 
       {adding && (
         <div className="p-3 border-b border-white/10 space-y-2 text-xs">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <select value={draft.kind} onChange={e => setDraft({ ...draft, kind: e.target.value as Claim['kind'] })} className="px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white">
               <option value="collision">Collision</option>
               <option value="comprehensive">Comprehensive</option>
@@ -88,10 +135,28 @@ export function ClaimTracker() {
           <div className="flex items-center gap-2">
             <button onClick={fileNew} className="px-3 py-1 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">File claim</button>
             <button onClick={() => setAdding(false)} className="px-3 py-1 text-xs rounded border border-white/10 text-gray-400 hover:text-white">Cancel</button>
-            <button type="button" disabled aria-label="Attach photos (coming soon)" title="Photo attachments coming soon" className="ml-auto inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded border border-white/10 text-gray-500 cursor-not-allowed">
-              <Camera className="w-3 h-3" /> Attach photos (soon)
+            <button type="button" onClick={() => setShowPhotoForm(v => !v)} aria-label="Add photo references" title="Adds photo references (a label and an optional link) to the claim when you file it. No image file is uploaded or stored." className="ml-auto inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10">
+              <Camera className="w-3 h-3" /> Photo references{draftPhotos.length > 0 ? ` (${draftPhotos.length})` : ''}
             </button>
           </div>
+          {showPhotoForm && (
+            <div className="space-y-1.5 pt-1">
+              {draftPhotos.map((p, i) => (
+                <div key={i} className="flex items-center gap-2 text-[11px] text-gray-300">
+                  <Camera className="w-3 h-3 text-cyan-400 shrink-0" />
+                  <span className="truncate">{p.title}</span>
+                  {p.url && <span className="text-gray-500 truncate">{p.url}</span>}
+                  <button type="button" onClick={() => setDraftPhotos(prev => prev.filter((_, j) => j !== i))} className="ml-auto text-gray-500 hover:text-white" aria-label={`Remove photo ${p.title}`}><X className="w-3 h-3" /></button>
+                </div>
+              ))}
+              <div className="flex items-center gap-2">
+                <input value={photoTitle} onChange={e => setPhotoTitle(e.target.value)} placeholder="Photo label (e.g. Front bumper damage)" className="flex-1 px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white" />
+                <input value={photoUrl} onChange={e => setPhotoUrl(e.target.value)} placeholder="Link to the photo (optional)" className="w-36 px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white" />
+                <button type="button" onClick={stagePhoto} className="px-2 py-1.5 rounded border border-white/10 text-gray-300 hover:text-white">Add reference</button>
+              </div>
+              <p className="text-[10px] text-gray-500">Concord records the label and link only; the image itself is not uploaded.</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -128,7 +193,26 @@ export function ClaimTracker() {
                     {c.daysSinceSubmit != null && <span>{c.daysSinceSubmit}d in pipeline</span>}
                     {c.adjusterName && <span>Adjuster: {c.adjusterName}</span>}
                     <span>{c.documents} docs</span>
+                    <button type="button" onClick={() => openAttach(c.id)} className="inline-flex items-center gap-1 text-cyan-300 hover:text-cyan-200" aria-label={`Add photo references to claim ${c.id.slice(-6)}`}>
+                      <Camera className="w-3 h-3" /> Photo refs
+                    </button>
                   </div>
+                  {attachFor === c.id && (
+                    <div className="mt-2 space-y-1.5">
+                      {claimDocs.map(d => (
+                        <div key={d.id} className="flex items-center gap-2 text-[11px] text-gray-300">
+                          <Camera className="w-3 h-3 text-cyan-400 shrink-0" />
+                          <span className="truncate">{d.title}</span>
+                          <span className="text-gray-500">{d.kind}</span>
+                        </div>
+                      ))}
+                      {claimDocs.length === 0 && <p className="text-[11px] text-gray-500">No photo references or documents recorded yet.</p>}
+                      <div className="flex items-center gap-2">
+                        <input value={attachTitle} onChange={e => setAttachTitle(e.target.value)} placeholder="Photo label (e.g. Front bumper damage) — label only, no file is stored" className="flex-1 px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white text-xs" />
+                        <button type="button" onClick={() => addClaimPhoto(c.id)} className="px-2 py-1.5 text-xs rounded border border-white/10 text-gray-300 hover:text-white">Add reference</button>
+                      </div>
+                    </div>
+                  )}
                 </li>
               );
             })}

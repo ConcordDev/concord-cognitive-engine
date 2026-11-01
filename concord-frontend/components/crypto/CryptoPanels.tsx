@@ -372,6 +372,10 @@ export function ActivityPanel() {
   const [list, setList] = useState<Tx[]>([]);
   const [loading, setLoading] = useState(true);
   const [kind, setKind] = useState<string>('all');
+  const [showRecord, setShowRecord] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recordError, setRecordError] = useState<string | null>(null);
+  const [recForm, setRecForm] = useState({ kind: 'receive', symbol: '', qty: '', totalUsd: '', chain: 'ethereum', notes: '' });
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable closure; only kind should retrigger
   useEffect(() => { refresh(); }, [kind]);
@@ -385,6 +389,23 @@ export function ActivityPanel() {
     finally { setLoading(false); }
   }
 
+  async function record() {
+    if (!recForm.symbol.trim() || !recForm.qty) return;
+    setRecording(true);
+    setRecordError(null);
+    try {
+      const r = await lensRun({ domain: 'crypto', action: 'transactions-record', input: {
+        kind: recForm.kind, symbol: recForm.symbol.trim().toLowerCase(), qty: Number(recForm.qty),
+        totalUsd: Number(recForm.totalUsd) || 0, chain: recForm.chain, notes: recForm.notes.trim(),
+      } });
+      if (r.data?.ok === false) { setRecordError(r.data?.error || 'Record failed.'); return; }
+      setRecForm({ kind: 'receive', symbol: '', qty: '', totalUsd: '', chain: 'ethereum', notes: '' });
+      setShowRecord(false);
+      await refresh();
+    } catch (e) { console.error('[Activity] record failed', e); setRecordError('Record failed.'); }
+    finally { setRecording(false); }
+  }
+
   return (
     <div className="bg-lattice-void border border-blue-500/15 rounded-lg overflow-hidden">
       <header className="px-4 py-2.5 border-b border-lattice-border flex items-center gap-2">
@@ -395,7 +416,44 @@ export function ActivityPanel() {
           <option value="all">All</option>
           {['buy','sell','receive','send','swap','stake','unstake','reward','fee'].map(k => <option key={k} value={k}>{k}</option>)}
         </select>
+        <button type="button" onClick={() => setShowRecord(v => !v)} title="Record a transaction manually"
+          className="ml-auto p-1 rounded text-gray-400 hover:text-white hover:bg-white/10">
+          <Plus className="w-4 h-4" />
+        </button>
       </header>
+      {showRecord && (
+        <div className="p-3 border-b border-lattice-border space-y-2">
+          <div className="flex items-center gap-2">
+            <select aria-label="Kind" value={recForm.kind} onChange={e => setRecForm({ ...recForm, kind: e.target.value })}
+              className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+              {['buy','sell','receive','send','swap','stake','unstake','reward','fee'].map(k => <option key={k} value={k}>{k}</option>)}
+            </select>
+            <input aria-label="Symbol" value={recForm.symbol} onChange={e => setRecForm({ ...recForm, symbol: e.target.value })}
+              placeholder="symbol (e.g. btc)" className="flex-1 min-w-0 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+            <select aria-label="Chain" value={recForm.chain} onChange={e => setRecForm({ ...recForm, chain: e.target.value })}
+              className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+              {CHAINS.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <input aria-label="Quantity" type="number" value={recForm.qty} onChange={e => setRecForm({ ...recForm, qty: e.target.value })}
+              placeholder="qty" min={0} step="any" className="flex-1 min-w-0 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input aria-label="Total USD" type="number" value={recForm.totalUsd} onChange={e => setRecForm({ ...recForm, totalUsd: e.target.value })}
+              placeholder="total USD (optional)" min={0} step="any" className="flex-1 min-w-0 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input aria-label="Notes" value={recForm.notes} onChange={e => setRecForm({ ...recForm, notes: e.target.value })}
+              placeholder="notes (optional)" className="flex-1 min-w-0 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          </div>
+          {recordError && <p className="text-[11px] text-rose-300">{recordError}</p>}
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={record} disabled={!recForm.symbol.trim() || !recForm.qty || recording}
+              className="px-3 py-1 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40">
+              {recording ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Record transaction'}
+            </button>
+            <button type="button" onClick={() => setShowRecord(false)}
+              className="px-3 py-1 text-xs rounded border border-lattice-border text-gray-400 hover:text-white">Cancel</button>
+          </div>
+        </div>
+      )}
       {loading ? <Loading /> : list.length === 0 ? <Empty label="No activity yet." /> : (
         <ul className="divide-y divide-white/5 max-h-[36rem] overflow-y-auto">
           {list.map(t => (
@@ -478,7 +536,7 @@ export function TaxPanel() {
       </header>
       {loading ? <Loading /> : !report ? <Empty label="No data." /> : (
         <div className="p-4 space-y-3">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             <Tile label="Short-term" value={`$${report.shortTermGainUsd.toLocaleString()}`} sub={`${report.realizedShortTerm.length} sale(s)`} tone={report.shortTermGainUsd >= 0 ? 'positive' : 'negative'} />
             <Tile label="Long-term" value={`$${report.longTermGainUsd.toLocaleString()}`} sub={`${report.realizedLongTerm.length} sale(s)`} tone={report.longTermGainUsd >= 0 ? 'positive' : 'negative'} />
             <Tile label="Total realized" value={`$${report.totalRealizedUsd.toLocaleString()}`} bold tone={report.totalRealizedUsd >= 0 ? 'positive' : 'negative'} />

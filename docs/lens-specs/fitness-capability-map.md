@@ -140,20 +140,20 @@ were found by reading every render path against the actual macro contracts
   already return the full `comments`/`photos`/`kudos` arrays on every call;
   `StravaActivitiesPanel`'s expandable comment/photo thread never needs a
   separate read-only fetch.
-- **`gps-track`** — **BACKEND-CAPABLE-BUT-UNSURFACED, genuinely missing UI.**
+- **`gps-track`** — **BACKEND-CAPABLE-BUT-UNSURFACED, genuinely missing UI.** **[CORRECTED 2026-10-28: now wired — `StravaActivitiesPanel.tsx:153` calls `gps-track`.]**
   `StravaGpsPanel` only shows the aggregate heatmap (`activity-heatmap`); it
   never lets you open one past GPS-recorded activity and see its own route.
   Scoped follow-up: a "View route" affordance on GPS-sourced activities
   (`activity.hasGps`/`source==='gps_recording'|'gpx_import'`) rendering
   `gps-track`'s point list through the existing `MapView` component —
   ~40-60 LOC, no new dependency.
-- **`beacon-list`** — **BACKEND-CAPABLE-BUT-UNSURFACED.** `StravaBeaconPanel`
+- **`beacon-list`** — **BACKEND-CAPABLE-BUT-UNSURFACED.** **[CORRECTED 2026-10-28: now wired — `StravaBeaconPanel.tsx:91` calls `beacon-list`.]** `StravaBeaconPanel`
   keeps the active beacon in local component state only (a page refresh
   loses the share token of an in-progress beacon) and "Follow a Beacon"
   requires manually pasting a token with no way to browse beacons you're
   already following. `beacon-list` (`mine`/`following`) would fix both.
   Scoped follow-up: ~30-40 LOC.
-- **`plan-session-move`** — **BACKEND-CAPABLE-BUT-UNSURFACED.**
+- **`plan-session-move`** — **BACKEND-CAPABLE-BUT-UNSURFACED.** **[CORRECTED 2026-10-28: now wired — `StravaPlanPanel.tsx:127` calls `plan-session-move`.]**
   `StravaPlanPanel` supports bulk-rescheduling every missed session
   (`plan-reschedule`) but not moving one specific still-upcoming session to
   a different date. Scoped follow-up: an inline date-edit affordance per
@@ -208,3 +208,8 @@ but secondary polish gaps on an otherwise-complete surface.
 - `cd concord-frontend && npx vitest run tests/fitness-lens-states.test.tsx` → **10/10 pass** (ActivityRings + SleepRecovery four-UX-state contract, untouched by this pass, re-verified green).
 - `node scripts/lens-unsurfaced.mjs --lens fitness` → **5/69 unsurfaced** (was 6/69 — `fitness-dashboard` closed).
 - Read but did not modify (confirmed already real, correctly wired, no defects): `StravaActivitiesPanel.tsx`, `StravaSegmentsPanel.tsx`, `StravaGoalsPanel.tsx`, `StravaGpsPanel.tsx`, `StravaWearablePanel.tsx`, `StravaBeaconPanel.tsx`, `StravaPlanPanel.tsx`, `StravaClubsPanel.tsx`, `StravaTrainingPanel.tsx`, `ActivityRings.tsx`, `SleepRecovery.tsx`, `HeartRateZones.tsx`, `WorkoutLogger.tsx`, `WorkoutPlanner.tsx`, `RoutesPanel.tsx`, `FitnessFeed.tsx`.
+
+
+---
+
+*Dispositions corrected 2026-10-28 (remaining-work audit, fix queue Q67): the rows marked CORRECTED above were listed as unsurfaced when this map was written; each is now wired in the frontend, at the file:line cited in the correction. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows U1–U7.*

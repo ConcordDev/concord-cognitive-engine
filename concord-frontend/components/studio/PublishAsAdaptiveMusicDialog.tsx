@@ -196,7 +196,7 @@ export function PublishAsAdaptiveMusicDialog({
 
           <label className="block">
             <span className="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Intensity</span>
-            <div className="grid grid-cols-3 gap-1">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
               {INTENSITIES.map((i) => (
                 <button
                   key={i}

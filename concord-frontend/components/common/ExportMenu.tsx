@@ -10,6 +10,9 @@ import { buildConkayExport, conkayExportCsv, getConkayCurrentModel, type ConkayE
 export const EMPTY_EXPORT_NOTICE =
   'Nothing to export yet. This menu exports saved lens items, and there are none here. Records kept in this lens\u2019s own panels aren\u2019t included in this export yet, so nothing was downloaded.';
 
+export const EMPTY_EXPORT_NOTICE_STATE_BACKED =
+  'Nothing to export yet. This lens has no saved items or records, so nothing was downloaded.';
+
 export const CONKAY_EMPTY_EXPORT_NOTICE =
   'Nothing to export yet. Save a model or open a study first — nothing was downloaded.';
 
@@ -103,11 +106,15 @@ export function ExportMenu({ domain }: ExportMenuProps) {
         if (!downloaded) keepOpen = true;
         return;
       }
-      const response = await apiHelpers.lens.list(domain, { limit: 1000 });
+      const response = await apiHelpers.lens.exportList(domain, { limit: 1000 });
       const items = lensListExportRows(response.data);
       if (items.length === 0) {
         keepOpen = true;
-        setNotice(EMPTY_EXPORT_NOTICE);
+        setNotice(
+          (response.data as { stateBacked?: boolean } | null)?.stateBacked
+            ? EMPTY_EXPORT_NOTICE_STATE_BACKED
+            : EMPTY_EXPORT_NOTICE,
+        );
         return;
       }
 
@@ -155,7 +162,7 @@ export function ExportMenu({ domain }: ExportMenuProps) {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => { setNotice(null); setIsOpen(!isOpen); }}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-lattice-surface transition-colors text-sm"
+        className="flex min-h-[40px] items-center gap-1.5 px-2.5 py-1.5 md:min-h-0 rounded-lg text-gray-400 hover:text-white hover:bg-lattice-surface transition-colors text-sm"
         title="Export (Ctrl+E)"
       >
         <Download className="w-4 h-4" />

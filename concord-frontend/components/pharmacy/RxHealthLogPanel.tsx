@@ -125,7 +125,7 @@ export function RxHealthLogPanel() {
           {trend !== 'no_data' && (
             <p className="text-[10px] text-zinc-400 mt-1">Recent trend: <span className="text-zinc-300 capitalize">{trend}</span></p>
           )}
-          <div className="grid grid-cols-3 gap-2 mt-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
             <input placeholder={isBP ? 'Systolic' : 'Value'} inputMode="decimal" value={mForm.value}
               onChange={(e) => setMForm({ ...mForm, value: e.target.value })}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
@@ -150,7 +150,7 @@ export function RxHealthLogPanel() {
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <NotebookPen className="w-3.5 h-3.5 text-amber-400" /> Health journal
         </h3>
-        <div className="grid grid-cols-3 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
           <input placeholder="How are you feeling?" value={jForm.note} onChange={(e) => setJForm({ ...jForm, note: e.target.value })}
             className="col-span-3 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input placeholder="Mood" value={jForm.mood} onChange={(e) => setJForm({ ...jForm, mood: e.target.value })}

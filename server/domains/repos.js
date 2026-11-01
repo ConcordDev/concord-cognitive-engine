@@ -153,9 +153,13 @@ export default function registerReposActions(registerLensAction) {
    *      complexity + risk — shape 1 just makes the default caller feed it
    *      honest, AST-derived counts instead of regex-derived ones.
    */
-  registerLensAction("repos", "codeComplexity", (ctx, artifact, params) => {
+  registerLensAction("repos", "codeComplexity", (ctx, artifact, params = {}) => {
   try {
-    const sourceFiles = artifact.data?.sourceFiles;
+    // Dual-shape input (Database contract): the Analysis tab sends
+    // its payload as lens params; the desk path sends a DTU artifact.
+    // Reading only the artifact is what made this engine report "No
+    // files to analyze" on a repo full of files (Review F6).
+    const sourceFiles = artifact.data?.sourceFiles || params.sourceFiles || params.input?.sourceFiles;
     let modules;
     if (Array.isArray(sourceFiles) && sourceFiles.length > 0) {
       const analyzed = [];
@@ -167,14 +171,14 @@ export default function registerReposActions(registerLensAction) {
           return {
             ok: false,
             error: "ast_engine_unavailable",
-            message: "The TypeScript parser package is not loadable on this server, so complexity can't be honestly computed from source text.",
+            message: "The TypeScript parser package's compiler API is not available on this server, so complexity can't be honestly computed from source text.",
           };
         }
         analyzed.push(m);
       }
       modules = analyzed;
     } else {
-      modules = artifact.data?.modules || [];
+      modules = artifact.data?.modules || params.modules || params.input?.modules || [];
     }
     if (modules.length === 0) {
       return { ok: true, result: { message: "No modules to analyze." } };
@@ -332,9 +336,9 @@ export default function registerReposActions(registerLensAction) {
    * and hotspot detection.
    * artifact.data.commits = [{ hash, author, date, files: [string], additions?, deletions?, message? }]
    */
-  registerLensAction("repos", "commitAnalysis", (ctx, artifact, params) => {
+  registerLensAction("repos", "commitAnalysis", (ctx, artifact, params = {}) => {
   try {
-    const commits = artifact.data?.commits || [];
+    const commits = artifact.data?.commits || params.commits || params.input?.commits || [];
     if (commits.length === 0) {
       return { ok: true, result: { message: "No commits to analyze." } };
     }
@@ -477,14 +481,23 @@ export default function registerReposActions(registerLensAction) {
    * Audit dependency tree — depth analysis, duplicate detection, vulnerability
    * surface area, and update freshness scoring.
    * artifact.data.dependencies = [{ name, version, latestVersion?, lastUpdated?, depth?, children?: [string], vulnerabilities?: number, license?, size?: number }]
+   *
+   * Live vulnerability check (Review 2 re-pass, checkpoint 3): the
+   * arithmetic below counts vulnerabilities from the caller-supplied
+   * per-dep `vulnerabilities` field — which the Analysis tab never
+   * supplies, so the tab printed "0 VULNERABLE" while the Security
+   * tab's OSV scan found real alerts on the same manifest (F6 in new
+   * form: two surfaces disagreeing on one repo). When the caller
+   * passes `liveVulnCheck: true` AND supplied no vulnerability data
+   * of its own, the dispatcher below first enriches the deps from
+   * the SAME osvScanDependencies helper the security scan uses —
+   * agreement by construction — and the result says which source its
+   * counts came from. If OSV is unreachable the counts come back
+   * null (unknown), never a fabricated 0. Callers that supply their
+   * own counts (the pinned contract tests) take the synchronous path
+   * unchanged and never trigger a network call.
    */
-  registerLensAction("repos", "dependencyAudit", (ctx, artifact, params) => {
-  try {
-    const dependencies = artifact.data?.dependencies || [];
-    if (dependencies.length === 0) {
-      return { ok: true, result: { message: "No dependencies to audit." } };
-    }
-
+  function rpAuditCompute(dependencies, params, vulnMeta) {
     const r = (v) => Math.round(v * 10000) / 10000;
     const now = params.referenceTime ? new Date(params.referenceTime).getTime() : Date.now();
 
@@ -527,6 +540,7 @@ export default function registerReposActions(registerLensAction) {
       name: d.name,
       version: d.version,
       vulnerabilities: parseInt(d.vulnerabilities),
+      advisories: Array.isArray(d.advisories) ? d.advisories : [],
       depth: parseInt(d.depth) || 0,
       riskScore: (parseInt(d.vulnerabilities) || 0) * (1 / (1 + (parseInt(d.depth) || 0))),
     })).sort((a, b) => b.riskScore - a.riskScore);
@@ -620,11 +634,23 @@ export default function registerReposActions(registerLensAction) {
           details: duplicates.slice(0, 10),
         },
         vulnerabilities: {
-          total: totalVulnerabilities,
-          affectedDeps: vulnDeps.length,
+          // When the live OSV check was requested but unreachable,
+          // the counts are UNKNOWN (null) — never a printed 0 the
+          // Security tab would contradict.
+          total: vulnMeta.unreachable ? null : totalVulnerabilities,
+          affectedDeps: vulnMeta.unreachable ? null : vulnDeps.length,
           surfaceArea: r(vulnSurfaceArea),
+          source: vulnMeta.source,
+          checked: vulnMeta.checked,
+          ...(vulnMeta.unreachable ? { unreachable: true } : {}),
           details: vulnDetails.slice(0, 10),
         },
+        dependencyList: dependencies.map((d) => ({
+          name: d.name,
+          version: d.version,
+          vulnerabilities: vulnMeta.unreachable ? null : (parseInt(d.vulnerabilities) || 0),
+          advisories: Array.isArray(d.advisories) ? d.advisories : [],
+        })),
         freshness: {
           avgScore: r(avgFreshness),
           criticalUpdates: freshnessScores.filter(f => f.updateUrgency === "critical").length,
@@ -640,8 +666,43 @@ export default function registerReposActions(registerLensAction) {
         healthGrade: healthScore >= 90 ? "A" : healthScore >= 75 ? "B" : healthScore >= 60 ? "C" : healthScore >= 40 ? "D" : "F",
       },
     };
+  }
+
+  registerLensAction("repos", "dependencyAudit", (ctx, artifact, params = {}) => {
+    const dependencies = artifact.data?.dependencies || params.dependencies || params.input?.dependencies || [];
+    if (dependencies.length === 0) {
+      return { ok: true, result: { message: "No dependencies to audit." } };
+    }
+    const callerSuppliedVulns = dependencies.some((d) => d && d.vulnerabilities != null);
+    if (params.liveVulnCheck === true && !callerSuppliedVulns) {
+      // Async path ONLY for the explicit live check; every other
+      // caller keeps the historical synchronous return.
+      return (async () => {
+        try {
+          const depVersions = {};
+          for (const d of dependencies) if (d?.name) depVersions[d.name] = String(d.version || "");
+          const osv = await osvScanDependencies(depVersions);
+          if (osv.unreachable) {
+            return rpAuditCompute(dependencies, params, { source: "osv.dev", checked: false, unreachable: true });
+          }
+          const byPkg = new Map();
+          for (const a of osv.dependabot) {
+            const e = byPkg.get(a.package) || { count: 0, ids: [] };
+            e.count++; e.ids.push(a.osvId);
+            byPkg.set(a.package, e);
+          }
+          const enriched = dependencies.map((d) => {
+            const e = byPkg.get(d?.name);
+            return { ...d, vulnerabilities: e ? e.count : 0, advisories: e ? e.ids : [] };
+          });
+          return rpAuditCompute(enriched, params, { source: "osv.dev", checked: true });
+        } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+      })();
+    }
+    try {
+      return rpAuditCompute(dependencies, params, { source: "caller-supplied", checked: false });
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-});
+  });
 
   function ghHeaders() {
     const token = process.env.GITHUB_TOKEN;
@@ -836,6 +897,7 @@ export default function registerReposActions(registerLensAction) {
       sha: rpSha(), message: "Initial commit", author: "you", branch: "main", parents: [], date: ts,
       additions: files.reduce((n, f) => n + rpTextLines(f.content), 0), deletions: 0,
       files: files.map((f) => f.path),
+      changes: Object.fromEntries(files.map((f) => [f.path, f.content])),
     };
     return {
       id: rpId("repo"),
@@ -885,23 +947,282 @@ export default function registerReposActions(registerLensAction) {
     }
     return toNodes(root, "");
   }
-  // Naive line diff between two text blobs.
+  // Line diff between two text blobs — a real LCS alignment, so an
+  // inserted line reads as one addition, not as every following line
+  // changed (the old positional compare did that). Hunks carry 1-based
+  // line numbers on both sides so the UI can anchor line comments.
+  // Very large files fall back to the positional compare rather than
+  // allocating an unbounded LCS table; counts stay truthful either way.
+  function rpSplitLines(text) {
+    const parts = String(text ?? "").split("\n");
+    if (parts.length > 0 && parts[parts.length - 1] === "") parts.pop();
+    return parts;
+  }
   function rpDiff(oldText, newText) {
-    const a = (oldText || "").split("\n");
-    const b = (newText || "").split("\n");
+    const a = rpSplitLines(oldText);
+    const b = rpSplitLines(newText);
     const out = [];
-    const max = Math.max(a.length, b.length);
     let additions = 0, deletions = 0;
-    for (let i = 0; i < max; i++) {
-      if (i >= a.length) { out.push({ type: "add", line: b[i] }); additions++; }
-      else if (i >= b.length) { out.push({ type: "del", line: a[i] }); deletions++; }
-      else if (a[i] === b[i]) { out.push({ type: "ctx", line: a[i] }); }
-      else { out.push({ type: "del", line: a[i] }); out.push({ type: "add", line: b[i] }); deletions++; additions++; }
+    const pushCtx = (i, j) => out.push({ type: "ctx", line: a[i], oldLine: i + 1, newLine: j + 1 });
+    const pushDel = (i) => { out.push({ type: "del", line: a[i], oldLine: i + 1, newLine: null }); deletions++; };
+    const pushAdd = (j) => { out.push({ type: "add", line: b[j], oldLine: null, newLine: j + 1 }); additions++; };
+    if (a.length * b.length > 4_000_000) {
+      const max = Math.max(a.length, b.length);
+      for (let i = 0; i < max; i++) {
+        if (i >= a.length) pushAdd(i);
+        else if (i >= b.length) pushDel(i);
+        else if (a[i] === b[i]) pushCtx(i, i);
+        else { pushDel(i); pushAdd(i); }
+      }
+      return { hunks: out, additions, deletions };
     }
+    // LCS lengths table.
+    const dp = Array.from({ length: a.length + 1 }, () => new Uint32Array(b.length + 1));
+    for (let i = a.length - 1; i >= 0; i--) {
+      for (let j = b.length - 1; j >= 0; j--) {
+        dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+      }
+    }
+    let i = 0, j = 0;
+    while (i < a.length && j < b.length) {
+      if (a[i] === b[j]) { pushCtx(i, j); i++; j++; }
+      else if (dp[i + 1][j] >= dp[i][j + 1]) { pushDel(i); i++; }
+      else { pushAdd(j); j++; }
+    }
+    while (i < a.length) { pushDel(i); i++; }
+    while (j < b.length) { pushAdd(j); j++; }
     return { hunks: out, additions, deletions };
+  }
+  // ── Commit snapshots ───────────────────────────────────────────────
+  // A commit's `changes` map ({ path: content | null }) is the delta it
+  // applies to its first parent; folding the first-parent chain from
+  // the root yields the full file tree at any commit. This is the
+  // state-object substrate S1–S3 stand on: branches hold real trees
+  // because their head commits fold to different snapshots. Commits
+  // written before this field existed carry no `changes`; a fold that
+  // reaches one returns null — "history predates recorded snapshots" —
+  // and callers say so instead of inventing a tree.
+  function rpCommitMap(repo) {
+    const m = new Map();
+    for (const c of repo.commits) m.set(c.sha, c);
+    return m;
+  }
+  function rpAncestry(repo, sha) {
+    const bySha = rpCommitMap(repo);
+    const seen = new Set();
+    const queue = sha ? [sha] : [];
+    while (queue.length) {
+      const cur = queue.shift();
+      if (!cur || seen.has(cur)) continue;
+      seen.add(cur);
+      const c = bySha.get(cur);
+      if (c) for (const p of c.parents || []) queue.push(p);
+    }
+    return seen;
+  }
+  function rpSnapshotAt(repo, sha) {
+    if (!sha) return null;
+    const bySha = rpCommitMap(repo);
+    const chain = [];
+    let cur = bySha.get(sha);
+    if (!cur) return null;
+    const guard = new Set();
+    // A commit may carry a `baseline`: the full file tree AT that
+    // commit, stamped by rpAnchorLegacyHead for a legacy default head
+    // (see below). The fold starts from the baseline and applies only
+    // the change-commits that came after it — the baseline is where
+    // pre-snapshot history becomes knowable again.
+    let baseline = null;
+    while (cur) {
+      if (guard.has(cur.sha)) return null; // corrupt cycle — refuse, don't loop
+      guard.add(cur.sha);
+      if (cur.baseline && typeof cur.baseline === "object") { baseline = cur.baseline; break; }
+      if (!cur.changes || typeof cur.changes !== "object") return null;
+      chain.push(cur);
+      const parentSha = (cur.parents || [])[0];
+      cur = parentSha ? bySha.get(parentSha) : null;
+      if (parentSha && !cur) return null; // dangling parent — history incomplete
+    }
+    const snap = new Map(baseline ? Object.entries(baseline) : []);
+    for (let k = chain.length - 1; k >= 0; k--) {
+      for (const [path, content] of Object.entries(chain[k].changes)) {
+        if (content === null) snap.delete(path); else snap.set(path, content);
+      }
+    }
+    return snap;
+  }
+  // Legacy healing (Review 2 re-pass, checkpoint 1): a repo created
+  // before commits recorded `changes` deltas can never fold — every
+  // branch forked from its head inherits the un-foldable chain, so
+  // file view and commits on ANY branch of such a repo refused with
+  // history_unrecorded while main survived on the repo.files
+  // fallback. But at the default branch's CURRENT head the tree is
+  // knowable exactly: repo.files IS that head's tree, by the mirror
+  // invariant. Stamp it onto the head commit as its `baseline`, once,
+  // and every chain through that commit — branches forked before or
+  // after the stamp, PRs based on it — folds from there. Returns true
+  // when it stamped (callers persist). Commits deeper than the head
+  // stay unrecorded: that history is genuinely unrecoverable, and the
+  // surfaces keep saying so.
+  function rpAnchorLegacyHead(repo) {
+    const def = repo.branches.find((b) => b.name === repo.defaultBranch);
+    if (!def || !def.head) return false;
+    const head = rpCommitMap(repo).get(def.head);
+    if (!head || head.changes || head.baseline) return false;
+    head.baseline = Object.fromEntries((repo.files || []).map((f) => [f.path, f.content || ""]));
+    return true;
+  }
+  function rpMergeBase(repo, shaA, shaB) {
+    if (!shaA || !shaB) return null;
+    const ancA = rpAncestry(repo, shaA);
+    const bySha = rpCommitMap(repo);
+    const seen = new Set();
+    const queue = [shaB];
+    while (queue.length) {
+      const cur = queue.shift();
+      if (!cur || seen.has(cur)) continue;
+      seen.add(cur);
+      if (ancA.has(cur)) return cur;
+      const c = bySha.get(cur);
+      if (c) for (const p of c.parents || []) queue.push(p);
+    }
+    return null;
+  }
+  // Three-way line merge of ONE file. Each side's edit is expressed
+  // against the base text: for every base line, a side either keeps it
+  // (SAME) or replaces it with zero or more lines; pure insertions
+  // attach to the gap before a base line (gap n = after the last
+  // line). A line or gap both sides changed differently is a
+  // conflict; identical changes merge once; disjoint changes both
+  // apply. A multi-line replacement block is charged to its first
+  // base line (the rest are charged as deletions), which keeps the
+  // accounting exact and the conflict test conservative.
+  const RP_SAME = Symbol("rp-same");
+  function rpSideEdits(baseLines, sideLines) {
+    const diff = rpDiff(baseLines.join("\n"), sideLines.join("\n"));
+    const lineEdits = new Map(); // baseIdx -> [replacement lines]
+    const gapInserts = new Map(); // gapIdx -> [inserted lines]
+    let baseIdx = 0;
+    let k = 0;
+    const hunks = diff.hunks;
+    while (k < hunks.length) {
+      if (hunks[k].type === "ctx") { baseIdx++; k++; continue; }
+      // One edit block: a maximal run of del/add hunks.
+      const start = baseIdx;
+      const adds = [];
+      let dels = 0;
+      while (k < hunks.length && hunks[k].type !== "ctx") {
+        if (hunks[k].type === "del") { dels++; baseIdx++; }
+        else adds.push(hunks[k].line);
+        k++;
+      }
+      if (dels === 0) {
+        gapInserts.set(start, adds);
+      } else {
+        lineEdits.set(start, adds);
+        for (let m = start + 1; m < start + dels; m++) lineEdits.set(m, []);
+      }
+    }
+    return { lineEdits, gapInserts };
+  }
+  const rpLinesEqual = (x, y) => x.length === y.length && x.every((v, idx) => v === y[idx]);
+  // Returns { merged } or { conflictLines: [1-based base line numbers] }.
+  function rpMergeFile(baseText, baseSideText, headSideText) {
+    const baseLines = rpSplitLines(baseText);
+    const a = rpSideEdits(baseLines, rpSplitLines(baseSideText));
+    const b = rpSideEdits(baseLines, rpSplitLines(headSideText));
+    const conflictLines = [];
+    const out = [];
+    const n = baseLines.length;
+    for (let g = 0; g <= n; g++) {
+      const insA = a.gapInserts.get(g);
+      const insB = b.gapInserts.get(g);
+      if (insA && insB) {
+        if (rpLinesEqual(insA, insB)) out.push(...insA);
+        else conflictLines.push(Math.min(g + 1, Math.max(n, 1)));
+      } else if (insA) out.push(...insA);
+      else if (insB) out.push(...insB);
+      if (g === n) break;
+      const eA = a.lineEdits.has(g) ? a.lineEdits.get(g) : RP_SAME;
+      const eB = b.lineEdits.has(g) ? b.lineEdits.get(g) : RP_SAME;
+      if (eA === RP_SAME && eB === RP_SAME) out.push(baseLines[g]);
+      else if (eA === RP_SAME) out.push(...eB);
+      else if (eB === RP_SAME) out.push(...eA);
+      else if (rpLinesEqual(eA, eB)) out.push(...eA);
+      else conflictLines.push(g + 1);
+    }
+    if (conflictLines.length) return { conflictLines: [...new Set(conflictLines)].sort((x, y) => x - y) };
+    return { merged: out.join("\n") + (out.length ? "\n" : "") };
+  }
+  // Three-way merge of whole trees (snapshots are Map path -> content).
+  // Returns { merged: Map } or { conflicts: [{path, lines?|reason}] }.
+  function rpMergeSnapshots(baseSnap, baseTipSnap, headTipSnap) {
+    const paths = new Set([...baseSnap.keys(), ...baseTipSnap.keys(), ...headTipSnap.keys()]);
+    const merged = new Map();
+    const conflicts = [];
+    for (const path of paths) {
+      const inBase = baseSnap.has(path), inA = baseTipSnap.has(path), inH = headTipSnap.has(path);
+      const vBase = baseSnap.get(path), vA = baseTipSnap.get(path), vH = headTipSnap.get(path);
+      const changedA = inA !== inBase || (inA && inBase && vA !== vBase);
+      const changedH = inH !== inBase || (inH && inBase && vH !== vBase);
+      if (!changedA && !changedH) { if (inBase) merged.set(path, vBase); continue; }
+      if (changedA && !changedH) { if (inA) merged.set(path, vA); continue; }
+      if (!changedA && changedH) { if (inH) merged.set(path, vH); continue; }
+      // Both sides changed this path.
+      if (!inA && !inH) continue; // deleted on both sides
+      if (inA && inH && vA === vH) { merged.set(path, vA); continue; }
+      if (!inBase) { conflicts.push({ path, reason: "added on both branches with different content" }); continue; }
+      if (!inA || !inH) { conflicts.push({ path, reason: `deleted on one branch, edited on the other` }); continue; }
+      const r = rpMergeFile(vBase, vA, vH);
+      if (r.conflictLines) conflicts.push({ path, lines: r.conflictLines });
+      else merged.set(path, r.merged);
+    }
+    if (conflicts.length) return { conflicts };
+    return { merged };
+  }
+  // The changes map that turns `fromSnap` into `toSnap` (commit delta).
+  function rpChangesBetween(fromSnap, toSnap) {
+    const changes = {};
+    const paths = new Set([...fromSnap.keys(), ...toSnap.keys()]);
+    for (const path of paths) {
+      const inF = fromSnap.has(path), inT = toSnap.has(path);
+      if (inT && (!inF || fromSnap.get(path) !== toSnap.get(path))) changes[path] = toSnap.get(path);
+      else if (!inT && inF) changes[path] = null;
+    }
+    return changes;
+  }
+  // Materialise a snapshot Map into the repo.files array shape
+  // (default-branch mirror + security/workflow/insights consumers).
+  function rpFilesFromSnapshot(snap) {
+    return [...snap.entries()].map(([path, content]) => ({
+      path, type: "file", content, size: rpByteSize(content),
+    }));
   }
   const LANG_EXT = { ts: "TypeScript", tsx: "TypeScript", js: "JavaScript", jsx: "JavaScript", py: "Python", rs: "Rust", go: "Go", json: "JSON", md: "Markdown", css: "CSS", html: "HTML" };
   const rpLangOf = (path) => LANG_EXT[(path.split(".").pop() || "").toLowerCase()] || "Text";
+
+  // The file tree a branch currently points at: the snapshot folded
+  // from its head commit. Falls back to repo.files ONLY for the
+  // default branch of a legacy repo whose commits predate snapshots
+  // (repo.files IS that tree there); other legacy branches return
+  // null and callers say their history predates recorded snapshots.
+  function rpBranchTree(repo, branchName) {
+    const branch = repo.branches.find((b) => b.name === branchName);
+    if (!branch) return null;
+    let snap = rpSnapshotAt(repo, branch.head);
+    if (!snap && rpAnchorLegacyHead(repo)) {
+      // The chain may have become foldable by anchoring the default
+      // head (the branch's chain passes through it) — retry once
+      // before declaring this branch's history unrecorded.
+      rpSave();
+      snap = rpSnapshotAt(repo, branch.head);
+    }
+    if (snap) return snap;
+    if (branchName === repo.defaultBranch) {
+      return new Map((repo.files || []).map((f) => [f.path, f.content || ""]));
+    }
+    return null;
+  }
 
   // ── Repo lifecycle ─────────────────────────────────────────────────
   registerLensAction("repos", "repo-create", (ctx, _a, params = {}) => {
@@ -909,6 +1230,13 @@ export default function registerReposActions(registerLensAction) {
       const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const name = rpClean(params.name, 100);
       if (!name) return { ok: false, error: "name required" };
+      // S6 guard: one account, one repo per name — a silent duplicate
+      // pair is indistinguishable in the list (Review F5/C48).
+      const mine = rpList(s.repos, rpUid(ctx));
+      const dupe = mine.find((r) => r.name.toLowerCase() === name.toLowerCase());
+      if (dupe) {
+        return { ok: false, error: "duplicate_name", message: `You already have a repo named "${dupe.name}". Rename it or delete it first — two repos with one name can't be told apart.` };
+      }
       const repo = rpSeedRepo(name, rpClean(params.description, 280), rpClean(params.language, 40));
       if (params.isPrivate) repo.isPrivate = true;
       rpList(s.repos, rpUid(ctx)).push(repo);
@@ -938,11 +1266,18 @@ export default function registerReposActions(registerLensAction) {
       const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
       if (!repo) return { ok: false, error: "repo not found" };
+      const branchName = rpClean(params.branch, 80) || repo.defaultBranch;
+      if (!repo.branches.some((b) => b.name === branchName)) return { ok: false, error: "branch not found" };
+      const tree = rpBranchTree(repo, branchName);
+      if (!tree) {
+        return { ok: false, error: "history_unrecorded", message: `The branch "${branchName}" predates recorded file snapshots, so its tree can't be reconstructed.` };
+      }
+      const files = rpFilesFromSnapshot(tree);
       return {
         ok: true,
         result: {
-          repoId: repo.id, branch: rpClean(params.branch, 80) || repo.defaultBranch,
-          tree: rpBuildTree(repo.files), fileCount: repo.files.length,
+          repoId: repo.id, branch: branchName,
+          tree: rpBuildTree(files), fileCount: files.length,
         },
       };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
@@ -953,14 +1288,32 @@ export default function registerReposActions(registerLensAction) {
       const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
       if (!repo) return { ok: false, error: "repo not found" };
-      const file = repo.files.find((f) => f.path === rpClean(params.path, 300));
-      if (!file) return { ok: false, error: "file not found" };
-      const content = file.content || "";
+      const path = rpClean(params.path, 300);
+      if (!path) return { ok: false, error: "path required" };
+      // Read at a commit (params.sha), on a branch (params.branch), or
+      // on the default branch — always from recorded snapshots.
+      if (rpAnchorLegacyHead(repo)) rpSave();
+      let content;
+      let atCommit = null;
+      if (params.sha) {
+        const snap = rpSnapshotAt(repo, rpClean(params.sha, 60));
+        if (!snap) return { ok: false, error: "history_unrecorded", message: "That commit predates recorded file snapshots, so its file contents can't be shown. Commits made now record their full tree." };
+        if (!snap.has(path)) return { ok: false, error: "file not found at that commit" };
+        content = snap.get(path);
+        atCommit = rpClean(params.sha, 60);
+      } else {
+        const branchName = rpClean(params.branch, 80) || repo.defaultBranch;
+        const tree = rpBranchTree(repo, branchName);
+        if (!tree) return { ok: false, error: "history_unrecorded", message: `The branch "${branchName}" predates recorded file snapshots.` };
+        if (!tree.has(path)) return { ok: false, error: "file not found" };
+        content = tree.get(path);
+      }
       return {
         ok: true,
         result: {
-          path: file.path, content, language: rpLangOf(file.path),
+          path, content, language: rpLangOf(path),
           lineCount: rpTextLines(content), size: rpByteSize(content),
+          ...(atCommit ? { atCommit } : {}),
         },
       };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
@@ -973,25 +1326,83 @@ export default function registerReposActions(registerLensAction) {
       if (!repo) return { ok: false, error: "repo not found" };
       const path = rpClean(params.path, 300);
       if (!path) return { ok: false, error: "path required" };
+      // S1: the commit lands on the NAMED branch, whose own tree is
+      // what changes. There is no shared working copy to leak into
+      // main any more (Review F1).
+      const branchName = rpClean(params.branch, 80) || repo.defaultBranch;
+      const branch = repo.branches.find((b) => b.name === branchName);
+      if (!branch) return { ok: false, error: "branch not found" };
+      // S6 guards — named, never silent (Review F5/C49/C50).
+      if (params.message != null && !rpClean(params.message, 200)) {
+        return { ok: false, error: "commit_message_required", message: "The commit message is empty. Write a message — a commit nobody can identify helps no one." };
+      }
       const content = String(params.content == null ? "" : params.content).slice(0, 200000);
-      let file = repo.files.find((f) => f.path === path);
-      const oldContent = file ? file.content || "" : "";
-      const size = rpByteSize(content);
-      if (file) { file.content = content; file.size = size; }
-      else { file = { path, type: "file", content, size }; repo.files.push(file); }
+      if (content === "" && params.confirmEmpty !== true) {
+        return { ok: false, error: "empty_content", message: `"${path}" would be committed empty. If that's really intended, confirm it and the commit records your choice.` };
+      }
+      const tree = rpBranchTree(repo, branchName);
+      if (!tree) {
+        return { ok: false, error: "history_unrecorded", message: `The branch "${branchName}" predates recorded file snapshots, so a new commit can't be based on it safely.` };
+      }
+      const existed = tree.has(path);
+      const oldContent = existed ? tree.get(path) : "";
+      if (existed && oldContent === content) {
+        return { ok: false, error: "no_changes", message: `"${path}" is unchanged on ${branchName} — there is nothing to commit.` };
+      }
       const diff = rpDiff(oldContent, content);
-      const branch = repo.branches.find((b) => b.name === (rpClean(params.branch, 80) || repo.defaultBranch));
       const commit = {
         sha: rpSha(), message: rpClean(params.message, 200) || `Update ${path}`,
-        author: "you", branch: branch ? branch.name : repo.defaultBranch,
-        parents: branch ? [branch.head] : [], date: rpNow(),
+        author: "you", branch: branchName,
+        parents: branch.head ? [branch.head] : [], date: rpNow(),
         additions: diff.additions, deletions: diff.deletions, files: [path],
+        changes: { [path]: content },
       };
       repo.commits.push(commit);
-      if (branch) branch.head = commit.sha;
+      branch.head = commit.sha;
+      // repo.files mirrors the DEFAULT branch's tree (security scan,
+      // workflow checks and insights read the default branch).
+      if (branchName === repo.defaultBranch) {
+        tree.set(path, content);
+        repo.files = rpFilesFromSnapshot(tree);
+      }
       repo.updatedAt = rpNow();
       rpSave();
-      return { ok: true, result: { saved: true, commit: { sha: commit.sha, additions: diff.additions, deletions: diff.deletions } } };
+      return { ok: true, result: { saved: true, branch: branchName, created: !existed, commit: { sha: commit.sha, additions: diff.additions, deletions: diff.deletions } } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // S4: delete a file — a real commit on the named branch.
+  registerLensAction("repos", "file-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const path = rpClean(params.path, 300);
+      if (!path) return { ok: false, error: "path required" };
+      const branchName = rpClean(params.branch, 80) || repo.defaultBranch;
+      const branch = repo.branches.find((b) => b.name === branchName);
+      if (!branch) return { ok: false, error: "branch not found" };
+      const tree = rpBranchTree(repo, branchName);
+      if (!tree) return { ok: false, error: "history_unrecorded", message: `The branch "${branchName}" predates recorded file snapshots.` };
+      if (!tree.has(path)) return { ok: false, error: "file not found" };
+      const oldContent = tree.get(path);
+      const diff = rpDiff(oldContent, "");
+      const commit = {
+        sha: rpSha(), message: rpClean(params.message, 200) || `Delete ${path}`,
+        author: "you", branch: branchName,
+        parents: branch.head ? [branch.head] : [], date: rpNow(),
+        additions: 0, deletions: diff.deletions, files: [path],
+        changes: { [path]: null },
+      };
+      repo.commits.push(commit);
+      branch.head = commit.sha;
+      if (branchName === repo.defaultBranch) {
+        tree.delete(path);
+        repo.files = rpFilesFromSnapshot(tree);
+      }
+      repo.updatedAt = rpNow();
+      rpSave();
+      return { ok: true, result: { deleted: true, branch: branchName, commit: { sha: commit.sha, deletions: diff.deletions } } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
@@ -1001,12 +1412,40 @@ export default function registerReposActions(registerLensAction) {
       const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
       if (!repo) return { ok: false, error: "repo not found" };
-      const branches = repo.branches.map((b) => ({
-        name: b.name, head: b.head, protected: !!b.protected,
-        isDefault: b.name === repo.defaultBranch,
-        commits: repo.commits.filter((c) => c.branch === b.name).length,
-        createdAt: b.createdAt,
-      }));
+      const defBranch = repo.branches.find((b) => b.name === repo.defaultBranch);
+      const defAncestry = defBranch ? rpAncestry(repo, defBranch.head) : new Set();
+      const branches = repo.branches.map((b) => {
+        const anc = rpAncestry(repo, b.head);
+        // Ahead/behind vs the default branch, from the same ancestry
+        // sets (Review 2's ahead-counts residual: the numbers existed
+        // only implicitly — `commits` below IS the ahead count for a
+        // non-default branch — and were displayed nowhere as such).
+        const ahead = b.name === repo.defaultBranch
+          ? 0
+          : [...anc].filter((sha) => !defAncestry.has(sha)).length;
+        const behind = b.name === repo.defaultBranch
+          ? 0
+          : [...defAncestry].filter((sha) => !anc.has(sha)).length;
+        return {
+          name: b.name, head: b.head, protected: !!b.protected,
+          isDefault: b.name === repo.defaultBranch,
+          ahead, behind,
+          // Truthful count (Review 2 re-pass, adjacent wrongness):
+          // the default branch reports its total history; every other
+          // branch reports its AHEAD count — commits reachable from
+          // its head that the default branch does not have, i.e. the
+          // branch's OWN commits. The first build reported raw
+          // ancestry size, so a branch forked mid-history "had"
+          // main's earlier commits (pass-1 branches read 3 and 5
+          // against their own empty histories) — a number matching
+          // nothing. (Pass 1's label count was the opposite error:
+          // main's commits wearing a feature branch's name.)
+          commits: b.name === repo.defaultBranch
+            ? anc.size
+            : [...anc].filter((sha) => !defAncestry.has(sha)).length,
+          createdAt: b.createdAt,
+        };
+      });
       return { ok: true, result: { branches, tags: repo.tags, defaultBranch: repo.defaultBranch } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
@@ -1028,6 +1467,27 @@ export default function registerReposActions(registerLensAction) {
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
+  // S5: delete a branch — never the default, never one an open PR
+  // still points at (its diff is computed from the branch's head).
+  registerLensAction("repos", "branch-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const name = rpClean(params.name, 80);
+      if (!name) return { ok: false, error: "branch name required" };
+      if (name === repo.defaultBranch) return { ok: false, error: "default_branch", message: `"${name}" is the default branch — it can't be deleted.` };
+      const idx = repo.branches.findIndex((b) => b.name === name);
+      if (idx < 0) return { ok: false, error: "branch not found" };
+      const openPr = repo.pulls.find((p) => p.state === "open" && (p.head === name || p.base === name));
+      if (openPr) return { ok: false, error: "branch_in_open_pr", message: `Pull request #${openPr.number} is still open against "${name}" — merge or close it first.` };
+      repo.branches.splice(idx, 1);
+      repo.updatedAt = rpNow();
+      rpSave();
+      return { ok: true, result: { deleted: true, branch: name } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
   registerLensAction("repos", "tag-create", (ctx, _a, params = {}) => {
     try {
       const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1042,6 +1502,67 @@ export default function registerReposActions(registerLensAction) {
       repo.updatedAt = rpNow();
       rpSave();
       return { ok: true, result: { tag } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // S5: delete a tag.
+  registerLensAction("repos", "tag-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const name = rpClean(params.name, 60);
+      if (!name) return { ok: false, error: "tag name required" };
+      const idx = repo.tags.findIndex((t) => t.name === name);
+      if (idx < 0) return { ok: false, error: "tag not found" };
+      repo.tags.splice(idx, 1);
+      repo.updatedAt = rpNow();
+      rpSave();
+      return { ok: true, result: { deleted: true, tag: name } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // S5: rename / describe / change visibility — within the owner's
+  // account. Cross-account visibility rides the platform ACL (#1789),
+  // not a Repos-local invention (review §8 pointer).
+  registerLensAction("repos", "repo-update", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = rpUid(ctx);
+      const repo = rpFindRepo(s, uid, params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      if (params.name != null) {
+        const name = rpClean(params.name, 100);
+        if (!name) return { ok: false, error: "name required" };
+        const dupe = (s.repos.get(uid) || []).find((r) => r.id !== repo.id && r.name.toLowerCase() === name.toLowerCase());
+        if (dupe) return { ok: false, error: "duplicate_name", message: `You already have a repo named "${dupe.name}".` };
+        repo.name = name;
+      }
+      if (params.description != null) repo.description = rpClean(params.description, 280);
+      if (params.isPrivate != null) repo.isPrivate = !!params.isPrivate;
+      repo.updatedAt = rpNow();
+      rpSave();
+      return { ok: true, result: { repo: { id: repo.id, name: repo.name, description: repo.description, isPrivate: repo.isPrivate } } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // S5: delete a repo. The server requires the caller to type the
+  // repo's exact name back (params.confirmName) — the typed-confirm
+  // is a real guard here, not just a UI ritual.
+  registerLensAction("repos", "repo-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = rpUid(ctx);
+      const repo = rpFindRepo(s, uid, params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      if (rpClean(params.confirmName, 100) !== repo.name) {
+        return { ok: false, error: "confirm_mismatch", message: `Type the repo's name exactly ("${repo.name}") to delete it.` };
+      }
+      const list = s.repos.get(uid) || [];
+      const idx = list.findIndex((r) => r.id === repo.id);
+      if (idx >= 0) list.splice(idx, 1);
+      rpSave();
+      return { ok: true, result: { deleted: true, repoId: repo.id, name: repo.name } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
@@ -1063,6 +1584,47 @@ export default function registerReposActions(registerLensAction) {
         result: {
           nodes, branchLanes, totalCommits: nodes.length,
           tags: repo.tags.map((t) => ({ name: t.name, commit: t.commit })),
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // S2: one commit in full — its diff against its first parent, so a
+  // commit's version of every file it touched is reviewable (C10).
+  registerLensAction("repos", "commit-detail", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      if (rpAnchorLegacyHead(repo)) rpSave();
+      const sha = rpClean(params.sha, 60);
+      const commit = repo.commits.find((c) => c.sha === sha);
+      if (!commit) return { ok: false, error: "commit not found" };
+      const snap = rpSnapshotAt(repo, sha);
+      if (!snap) {
+        return { ok: true, result: { commit: { sha: commit.sha, message: commit.message, author: commit.author, branch: commit.branch, date: commit.date, parents: commit.parents || [] }, diff: null, diffUnavailable: "This commit predates recorded file snapshots, so its per-file diff can't be reconstructed. Commits made now record their full tree." } };
+      }
+      const parentSha = (commit.parents || [])[0];
+      const parentSnap = parentSha ? rpSnapshotAt(repo, parentSha) : new Map();
+      const changes = rpChangesBetween(parentSnap || new Map(), snap);
+      const files = Object.keys(changes).map((path) => {
+        const before = parentSnap && parentSnap.has(path) ? parentSnap.get(path) : "";
+        const after = snap.has(path) ? snap.get(path) : "";
+        const d = rpDiff(before, after);
+        return {
+          path, language: rpLangOf(path),
+          status: changes[path] === null ? "deleted" : (parentSnap && parentSnap.has(path) ? "modified" : "added"),
+          additions: d.additions, deletions: d.deletions,
+          hunks: d.hunks.slice(0, 200), hunksTruncated: d.hunks.length > 200,
+        };
+      });
+      const additions = files.reduce((n, f) => n + f.additions, 0);
+      const deletions = files.reduce((n, f) => n + f.deletions, 0);
+      return {
+        ok: true,
+        result: {
+          commit: { sha: commit.sha, message: commit.message, author: commit.author, branch: commit.branch, date: commit.date, parents: commit.parents || [], merge: !!commit.merge },
+          diff: { files, additions, deletions, fileCount: files.length },
         },
       };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
@@ -1121,7 +1683,10 @@ export default function registerReposActions(registerLensAction) {
       if (!repo) return { ok: false, error: "repo not found" };
       const issue = repo.issues.find((i) => i.number === rpNum(params.number, -1));
       if (!issue) return { ok: false, error: "issue not found" };
-      return { ok: true, result: { issue } };
+      const linkedPulls = repo.pulls
+        .filter((p) => (p.linkedIssues || []).includes(issue.number))
+        .map((p) => ({ number: p.number, title: p.title, state: p.state }));
+      return { ok: true, result: { issue: { ...issue, linkedPulls } } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
@@ -1191,18 +1756,40 @@ export default function registerReposActions(registerLensAction) {
       if (!repo) return { ok: false, error: "repo not found" };
       const title = rpClean(params.title, 200);
       if (!title) return { ok: false, error: "title required" };
+      if (rpAnchorLegacyHead(repo)) rpSave();
       const head = rpClean(params.head, 80);
       const base = rpClean(params.base, 80) || repo.defaultBranch;
       if (!head) return { ok: false, error: "head branch required" };
       if (!repo.branches.some((b) => b.name === head)) return { ok: false, error: "head branch not found" };
       if (head === base) return { ok: false, error: "head and base must differ" };
+      // S6: a PR with no changes says so at creation instead of
+      // opening an empty ritual (Review F5). Only enforced when both
+      // trees are snapshot-recorded; legacy history can't prove
+      // emptiness and is not blocked on a guess.
+      {
+        const headBranch = repo.branches.find((b) => b.name === head);
+        const baseBranch = repo.branches.find((b) => b.name === base);
+        const mb = headBranch && baseBranch ? rpMergeBase(repo, baseBranch.head, headBranch.head) : null;
+        const mbSnap = mb ? rpSnapshotAt(repo, mb) : null;
+        const headSnap = headBranch ? rpSnapshotAt(repo, headBranch.head) : null;
+        if (mbSnap && headSnap) {
+          const probe = rpChangesBetween(mbSnap, headSnap);
+          if (Object.keys(probe).length === 0) {
+            return { ok: false, error: "no_changes", message: `"${head}" introduces no changes relative to "${base}" — there is nothing to review yet. Commit something on ${head} first.` };
+          }
+        }
+      }
       const number = (repo.issues.reduce((m, i) => Math.max(m, i.number), 0)) +
         (repo.pulls.reduce((m, p) => Math.max(m, p.number), 0)) + 1;
       const headCommits = repo.commits.filter((c) => c.branch === head);
+      const linkedIssues = Array.isArray(params.linkedIssues)
+        ? [...new Set(params.linkedIssues.map((n) => rpNum(n, -1)).filter((n) => repo.issues.some((i) => i.number === n)))]
+        : [];
       const pull = {
         id: rpId("pr"), number, title, body: rpClean(params.body, 4000),
         state: "open", base, head, author: "you",
         commits: headCommits.map((c) => c.sha),
+        linkedIssues,
         reviews: [], comments: [], createdAt: rpNow(), updatedAt: rpNow(),
       };
       repo.pulls.push(pull);
@@ -1219,30 +1806,75 @@ export default function registerReposActions(registerLensAction) {
       if (!repo) return { ok: false, error: "repo not found" };
       const pull = repo.pulls.find((p) => p.number === rpNum(params.number, -1));
       if (!pull) return { ok: false, error: "pull not found" };
-      // Diff = files touched by head-branch commits.
-      const touched = new Set();
-      for (const c of repo.commits) {
-        if (pull.commits.includes(c.sha)) for (const f of (c.files || [])) touched.add(f);
+      if (rpAnchorLegacyHead(repo)) rpSave();
+      // S2: the diff is what the head branch introduces relative to
+      // the merge-base — computed from recorded snapshots, per file,
+      // with real line counts. S3: the same three-way check the merge
+      // will run is previewed here as `conflicts`.
+      const baseBranch = repo.branches.find((b) => b.name === pull.base);
+      const headBranch = repo.branches.find((b) => b.name === pull.head);
+      let diff = null;
+      let diffUnavailable = null;
+      let conflicts = null;
+      if (!baseBranch || !headBranch) {
+        diffUnavailable = "A branch this pull request points at no longer exists, so its diff can't be computed.";
+      } else {
+        const mb = rpMergeBase(repo, baseBranch.head, headBranch.head);
+        const mbSnap = mb ? rpSnapshotAt(repo, mb) : null;
+        const headSnap = rpSnapshotAt(repo, headBranch.head);
+        const baseSnap = rpSnapshotAt(repo, baseBranch.head);
+        if (!mbSnap || !headSnap || !baseSnap) {
+          diffUnavailable = "This pull request's history predates recorded file snapshots, so a truthful diff can't be computed. New branches and commits record snapshots.";
+        } else {
+          const changes = rpChangesBetween(mbSnap, headSnap);
+          const fileDiffs = Object.keys(changes).sort().map((path) => {
+            const before = mbSnap.has(path) ? mbSnap.get(path) : "";
+            const after = headSnap.has(path) ? headSnap.get(path) : "";
+            const d = rpDiff(before, after);
+            return {
+              path, language: rpLangOf(path),
+              status: changes[path] === null ? "deleted" : (mbSnap.has(path) ? "modified" : "added"),
+              additions: d.additions, deletions: d.deletions,
+              hunks: d.hunks.slice(0, 200), hunksTruncated: d.hunks.length > 200,
+            };
+          });
+          diff = {
+            files: fileDiffs,
+            additions: fileDiffs.reduce((n, f) => n + f.additions, 0),
+            deletions: fileDiffs.reduce((n, f) => n + f.deletions, 0),
+            fileCount: fileDiffs.length,
+            mergeBase: mb,
+          };
+          const dry = rpMergeSnapshots(mbSnap, baseSnap, headSnap);
+          conflicts = dry.conflicts || [];
+        }
       }
-      const fileDiffs = [...touched].map((path) => {
-        const file = repo.files.find((f) => f.path === path);
-        const diff = rpDiff("", file ? file.content || "" : "");
-        return { path, language: rpLangOf(path), additions: diff.additions, deletions: 0, hunks: diff.hunks.slice(0, 200) };
-      });
-      const additions = fileDiffs.reduce((s2, d) => s2 + d.additions, 0);
       const approvals = pull.reviews.filter((rv) => rv.verdict === "approve").length;
       const changesRequested = pull.reviews.filter((rv) => rv.verdict === "request-changes").length;
+      // Ahead/behind for the PR page (the third canonical location in
+      // Review 2's ahead-counts residual): commits reachable from the
+      // head tip that the base lacks, and vice versa, over the same
+      // parent-walk branch-list uses.
+      const prHeadBranch = repo.branches.find((b) => b.name === pull.head);
+      const prBaseBranch = repo.branches.find((b) => b.name === pull.base);
+      const headAnc = prHeadBranch ? rpAncestry(repo, prHeadBranch.head) : new Set();
+      const baseAnc = prBaseBranch ? rpAncestry(repo, prBaseBranch.head) : new Set();
+      const ahead = [...headAnc].filter((sha) => !baseAnc.has(sha)).length;
+      const behind = [...baseAnc].filter((sha) => !headAnc.has(sha)).length;
       return {
         ok: true,
         result: {
           pull: {
             number: pull.number, title: pull.title, body: pull.body, state: pull.state,
             base: pull.base, head: pull.head, author: pull.author, createdAt: pull.createdAt,
+            linkedIssues: pull.linkedIssues || [],
           },
-          diff: { files: fileDiffs, additions, deletions: 0, fileCount: fileDiffs.length },
+          diff, ...(diffUnavailable ? { diffUnavailable } : {}),
+          conflicts,
           reviews: pull.reviews, comments: pull.comments,
-          mergeable: pull.state === "open" && changesRequested === 0,
+          mergeable: pull.state === "open" && changesRequested === 0 && Array.isArray(conflicts) && conflicts.length === 0,
           approvals, changesRequested,
+          ahead, behind,
         },
       };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
@@ -1264,6 +1896,51 @@ export default function registerReposActions(registerLensAction) {
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
+  // S10: a comment on the pull request — general, or anchored to a
+  // diff line (path + new-file line number from pull-detail's hunks).
+  registerLensAction("repos", "pull-comment", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const pull = repo.pulls.find((p) => p.number === rpNum(params.number, -1));
+      if (!pull) return { ok: false, error: "pull not found" };
+      const body = rpClean(params.body, 4000);
+      if (!body) return { ok: false, error: "comment body required" };
+      const comment = { id: rpId("cmt"), author: "you", body, createdAt: rpNow() };
+      if (params.path && Number(params.line) > 0) {
+        comment.path = rpClean(params.path, 300);
+        comment.line = Math.floor(Number(params.line));
+      }
+      pull.comments.push(comment);
+      pull.updatedAt = rpNow();
+      rpSave();
+      return { ok: true, result: { comment, commentCount: pull.comments.length } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // S10: link/unlink an issue to a pull request (Review F13). The
+  // link lives on the pull; issue-detail reports it back the other
+  // way, so the cross-reference reads from both surfaces.
+  registerLensAction("repos", "pull-link-issue", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const pull = repo.pulls.find((p) => p.number === rpNum(params.number, -1));
+      if (!pull) return { ok: false, error: "pull not found" };
+      const issueNumber = rpNum(params.issueNumber, -1);
+      if (!repo.issues.some((i) => i.number === issueNumber)) return { ok: false, error: "issue not found" };
+      if (!Array.isArray(pull.linkedIssues)) pull.linkedIssues = [];
+      const linked = params.unlink === true
+        ? (pull.linkedIssues = pull.linkedIssues.filter((n) => n !== issueNumber), false)
+        : (pull.linkedIssues.includes(issueNumber) ? true : (pull.linkedIssues.push(issueNumber), true));
+      pull.updatedAt = rpNow();
+      rpSave();
+      return { ok: true, result: { number: pull.number, issueNumber, linked, linkedIssues: pull.linkedIssues } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
   registerLensAction("repos", "pull-merge", (ctx, _a, params = {}) => {
     try {
       const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1271,27 +1948,70 @@ export default function registerReposActions(registerLensAction) {
       if (!repo) return { ok: false, error: "repo not found" };
       const pull = repo.pulls.find((p) => p.number === rpNum(params.number, -1));
       if (!pull) return { ok: false, error: "pull not found" };
+      if (rpAnchorLegacyHead(repo)) rpSave();
       if (pull.state !== "open") return { ok: false, error: `pull is ${pull.state}` };
       if (pull.reviews.some((rv) => rv.verdict === "request-changes")) {
         return { ok: false, error: "changes requested — cannot merge" };
       }
       const baseBranch = repo.branches.find((b) => b.name === pull.base);
       const headBranch = repo.branches.find((b) => b.name === pull.head);
+      if (!baseBranch || !headBranch) return { ok: false, error: "base or head branch no longer exists" };
+      // S3: a real three-way check before anything moves. Same lines
+      // diverged on both sides → the merge is BLOCKED, the conflicting
+      // files/lines are named, and the pull stays open (Review F3).
+      const mb = rpMergeBase(repo, baseBranch.head, headBranch.head);
+      const mbSnap = mb ? rpSnapshotAt(repo, mb) : null;
+      const baseSnap = rpSnapshotAt(repo, baseBranch.head);
+      const headSnap = rpSnapshotAt(repo, headBranch.head);
+      if (!mbSnap || !baseSnap || !headSnap) {
+        return { ok: false, error: "history_unrecorded", message: "This pull request's history predates recorded file snapshots, so a safe merge can't be checked. Nothing was merged." };
+      }
+      const attempt = rpMergeSnapshots(mbSnap, baseSnap, headSnap);
+      if (attempt.conflicts) {
+        const named = attempt.conflicts.map((c) => c.lines
+          ? `${c.path} (line${c.lines.length > 1 ? "s" : ""} ${c.lines.join(", ")})`
+          : `${c.path} (${c.reason})`).join("; ");
+        return {
+          ok: false, error: "merge_conflict", conflicts: attempt.conflicts,
+          message: `Merge blocked — both branches changed the same content: ${named}. Concord checked the lines each side changed since the branch point; where they overlap, a person has to decide. The pull request stays open and nothing was merged.`,
+        };
+      }
+      const mergedSnap = attempt.merged;
+      const mergeChanges = rpChangesBetween(baseSnap, mergedSnap);
+      const stats = Object.keys(mergeChanges).reduce((acc, path) => {
+        const d = rpDiff(baseSnap.get(path) || "", mergedSnap.get(path) || "");
+        acc.additions += d.additions; acc.deletions += d.deletions;
+        return acc;
+      }, { additions: 0, deletions: 0 });
       const mergeSha = rpSha();
       repo.commits.push({
         sha: mergeSha, message: `Merge pull request #${pull.number}: ${pull.title}`,
         author: "you", branch: pull.base,
-        parents: [baseBranch?.head, headBranch?.head].filter(Boolean),
-        date: rpNow(), additions: 0, deletions: 0, files: [], merge: true,
+        parents: [baseBranch.head, headBranch.head],
+        date: rpNow(), additions: stats.additions, deletions: stats.deletions,
+        files: Object.keys(mergeChanges), merge: true,
+        changes: mergeChanges,
       });
-      if (baseBranch) baseBranch.head = mergeSha;
+      baseBranch.head = mergeSha;
+      if (pull.base === repo.defaultBranch) repo.files = rpFilesFromSnapshot(mergedSnap);
       pull.state = "merged";
       pull.mergedAt = rpNow();
       pull.mergeCommit = mergeSha;
       pull.updatedAt = rpNow();
+      // S10: linked issues close when their pull request merges —
+      // the cross-reference does the work it advertises (Review F13).
+      const closedIssues = [];
+      for (const n of pull.linkedIssues || []) {
+        const issue = repo.issues.find((i) => i.number === n);
+        if (issue && issue.state === "open") {
+          issue.state = "closed";
+          issue.updatedAt = rpNow();
+          closedIssues.push(n);
+        }
+      }
       repo.updatedAt = rpNow();
       rpSave();
-      return { ok: true, result: { merged: true, mergeCommit: mergeSha, number: pull.number } };
+      return { ok: true, result: { merged: true, mergeCommit: mergeSha, number: pull.number, filesChanged: Object.keys(mergeChanges).length, additions: stats.additions, deletions: stats.deletions, closedIssues } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
@@ -1310,7 +2030,10 @@ export default function registerReposActions(registerLensAction) {
       if (!repo) return { ok: false, error: "repo not found" };
       const branch = rpClean(params.branch, 80) || repo.defaultBranch;
       const branchObj = repo.branches.find((b) => b.name === branch);
-      const files = Array.isArray(repo.files) ? repo.files : [];
+      // The checks run against the NAMED branch's tree, not silently
+      // against the default branch's (same class as F1).
+      const branchTree = rpBranchTree(repo, branch);
+      const files = branchTree ? rpFilesFromSnapshot(branchTree) : (Array.isArray(repo.files) ? repo.files : []);
       const steps = [];
 
       steps.push({ name: "Checkout", ...rpTimed(() => ({
@@ -1330,14 +2053,18 @@ export default function registerReposActions(registerLensAction) {
       }) });
 
       steps.push({ name: "Syntax check (JS)", ...rpTimed(() => {
-        const logs = []; let bad = 0; let checked = 0; let esm = 0;
+        const logs = []; let bad = 0; let checked = 0; let esm = 0; let ts = 0;
         for (const f of files) {
-          if (!/\.(c?js)$/i.test(f.path)) continue;
+          // TypeScript sources are counted and named as not parsed —
+          // folding them into "0 script(s)" made this step contradict
+          // the repo standing next to it (Review F8).
+          if (/\.(ts|tsx|mts|cts)$/i.test(f.path)) { ts++; continue; }
+          if (!/\.(c?js|mjs)$/i.test(f.path)) continue;
           if (RP_ESM_RX.test(f.content || "")) { esm++; continue; }
           checked++;
           try { new vm.Script(f.content || "", { filename: f.path }); } catch (e) { bad++; logs.push(`ERROR ${f.path}: ${e.message}`); }
         }
-        logs.unshift(`${checked} script(s) parsed, ${bad} with syntax errors${esm ? `; ${esm} ES-module file(s) not parsed` : ""}`);
+        logs.unshift(`${checked} script(s) parsed, ${bad} with syntax errors${esm ? `; ${esm} ES-module file(s) not parsed` : ""}${ts ? `; ${ts} TypeScript file(s) not parsed — no TypeScript checker is attached to this server` : ""}`);
         return { conclusion: bad ? "failure" : "success", logs };
       }) });
 
@@ -1350,7 +2077,10 @@ export default function registerReposActions(registerLensAction) {
             }
           });
         }
-        logs.unshift(`${hits} blocking finding(s)`);
+        // Scope stated, so this count never reads as contradicting
+        // the Security tab: this step counts blocking CODE rules
+        // only; dependency alerts and advisory rules live there.
+        logs.unshift(`${hits} blocking finding(s) — blocking code rules only; dependency alerts are counted in the Security tab`);
         return { conclusion: hits ? "failure" : "success", logs };
       }) });
 

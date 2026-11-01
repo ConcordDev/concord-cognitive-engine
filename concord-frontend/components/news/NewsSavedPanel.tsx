@@ -52,7 +52,7 @@ export function NewsSavedPanel({ onChange }: { onChange: () => void }) {
   return (
     <div className="space-y-4">
       {stats && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
             <p className="text-lg font-bold text-zinc-100">{stats.totalRead}</p>
             <p className="text-[10px] text-zinc-400 uppercase tracking-wide">Total read</p>

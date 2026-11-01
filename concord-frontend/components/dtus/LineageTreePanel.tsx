@@ -70,7 +70,7 @@ export function LineageTreePanel({
       </div>
 
       {result?.stats && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <Stat label="Nodes" value={result.stats.nodeCount} />
           <Stat label="Max depth" value={result.stats.maxDepth} />
           <Stat

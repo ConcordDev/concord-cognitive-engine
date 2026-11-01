@@ -553,6 +553,21 @@ export default function registerBoardActions(registerLensAction) {
     return { ok: true, result: { deleted: params.id } };
   });
 
+  // Rename / redescribe a board (Trello: boards are renameable in place).
+  registerLensAction("board", "board-update", (ctx, _a, params = {}) => {
+    const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = bdList(s, bdActor(ctx)).find((b) => b.id === params.id);
+    if (!board) return { ok: false, error: "board not found" };
+    if (params.name != null) {
+      const name = bdClean(params.name, 120);
+      if (!name) return { ok: false, error: "board name required" };
+      board.name = name;
+    }
+    if (params.description !== undefined) board.description = bdClean(params.description, 2000) || null;
+    saveBoard();
+    return { ok: true, result: { board } };
+  });
+
   function findBoard(s, ctx, boardId) {
     return bdList(s, bdActor(ctx)).find((b) => b.id === boardId);
   }
@@ -581,6 +596,55 @@ export default function registerBoardActions(registerLensAction) {
     return { ok: true, result: { deleted: params.columnId } };
   });
 
+  // Rename a list and/or move it to a new position (column order = array order).
+  registerLensAction("board", "column-update", (ctx, _a, params = {}) => {
+    const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = findBoard(s, ctx, params.boardId);
+    if (!board) return { ok: false, error: "board not found" };
+    const i = board.columns.findIndex((c) => c.id === params.columnId);
+    if (i < 0) return { ok: false, error: "column not found" };
+    const column = board.columns[i];
+    if (params.name != null) {
+      const name = bdClean(params.name, 80);
+      if (!name) return { ok: false, error: "column name required" };
+      column.name = name;
+    }
+    if (params.toIndex != null) {
+      const to = Math.max(0, Math.min(board.columns.length - 1, Math.round(Number(params.toIndex))));
+      if (Number.isFinite(to) && to !== i) {
+        board.columns.splice(i, 1);
+        board.columns.splice(to, 0, column);
+      }
+    }
+    saveBoard();
+    return { ok: true, result: { column, index: board.columns.indexOf(column) } };
+  });
+
+  // Archive a list: hidden from the working board, cards kept, restorable.
+  registerLensAction("board", "column-archive", (ctx, _a, params = {}) => {
+    const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = findBoard(s, ctx, params.boardId);
+    if (!board) return { ok: false, error: "board not found" };
+    const column = board.columns.find((c) => c.id === params.columnId);
+    if (!column) return { ok: false, error: "column not found" };
+    column.archived = true;
+    column.archivedAt = bdNow();
+    saveBoard();
+    return { ok: true, result: { columnId: column.id, archived: true } };
+  });
+
+  registerLensAction("board", "column-restore", (ctx, _a, params = {}) => {
+    const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = findBoard(s, ctx, params.boardId);
+    if (!board) return { ok: false, error: "board not found" };
+    const column = board.columns.find((c) => c.id === params.columnId);
+    if (!column) return { ok: false, error: "column not found" };
+    column.archived = false;
+    delete column.archivedAt;
+    saveBoard();
+    return { ok: true, result: { columnId: column.id, archived: false } };
+  });
+
   registerLensAction("board", "card-create", (ctx, _a, params = {}) => {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const board = findBoard(s, ctx, params.boardId);
@@ -605,6 +669,7 @@ export default function registerBoardActions(registerLensAction) {
       createdAt: bdNow(),
     };
     board.cards.push(card);
+    pushActivity(card, "created the card");
     saveBoard();
     return { ok: true, result: { card } };
   });
@@ -623,6 +688,7 @@ export default function registerBoardActions(registerLensAction) {
     // renumber the target column's cards
     board.cards.filter((c) => c.columnId === target.id).sort((a, b) => a.position - b.position)
       .forEach((c, i) => { c.position = i; });
+    pushActivity(card, `moved to ${target.name}`);
     saveBoard();
     return { ok: true, result: { cardId: card.id, columnId: card.columnId } };
   });
@@ -641,6 +707,7 @@ export default function registerBoardActions(registerLensAction) {
     if (params.addChecklistItem) {
       card.checklist.push({ id: bdId("ci"), text: bdClean(params.addChecklistItem, 200), done: false });
     }
+    pushActivity(card, "updated the card");
     saveBoard();
     return { ok: true, result: { card } };
   });
@@ -669,6 +736,34 @@ export default function registerBoardActions(registerLensAction) {
     return { ok: true, result: { deleted: params.cardId } };
   });
 
+  // Archive a card: out of the working board, kept and restorable (Trello's
+  // safety net — delete is forever, archive is not).
+  registerLensAction("board", "card-archive", (ctx, _a, params = {}) => {
+    const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = findBoard(s, ctx, params.boardId);
+    if (!board) return { ok: false, error: "board not found" };
+    const card = findCard(board, params.cardId);
+    if (!card) return { ok: false, error: "card not found" };
+    card.archived = true;
+    card.archivedAt = bdNow();
+    pushActivity(card, "archived the card");
+    saveBoard();
+    return { ok: true, result: { cardId: card.id, archived: true } };
+  });
+
+  registerLensAction("board", "card-restore", (ctx, _a, params = {}) => {
+    const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = findBoard(s, ctx, params.boardId);
+    if (!board) return { ok: false, error: "board not found" };
+    const card = findCard(board, params.cardId);
+    if (!card) return { ok: false, error: "card not found" };
+    card.archived = false;
+    delete card.archivedAt;
+    pushActivity(card, "restored the card");
+    saveBoard();
+    return { ok: true, result: { cardId: card.id, archived: false } };
+  });
+
   registerLensAction("board", "board-dashboard", (ctx, _a, _params = {}) => {
   try {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -680,7 +775,7 @@ export default function registerBoardActions(registerLensAction) {
       result: {
         boards: boards.length,
         totalCards: allCards.length,
-        overdue: allCards.filter((c) => c.dueDate && new Date(c.dueDate).getTime() < now).length,
+        overdue: allCards.filter((c) => !c.archived && c.dueDate && new Date(c.dueDate).getTime() < now).length,
         withChecklists: allCards.filter((c) => c.checklist.length > 0).length,
       },
     };
@@ -729,6 +824,27 @@ export default function registerBoardActions(registerLensAction) {
     card.comments.splice(i, 1);
     saveBoard();
     return { ok: true, result: { deleted: params.commentId, commentCount: card.comments.length } };
+  });
+
+  // Edit a comment — author only (the comment's recorded author, from ctx at
+  // add time; never a caller-supplied identity).
+  registerLensAction("board", "card-comment-update", (ctx, _a, params = {}) => {
+    const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = findBoard(s, ctx, params.boardId);
+    if (!board) return { ok: false, error: "board not found" };
+    const card = findCard(board, params.cardId);
+    if (!card) return { ok: false, error: "card not found" };
+    if (!Array.isArray(card.comments)) card.comments = [];
+    const comment = card.comments.find((c) => c.id === params.commentId);
+    if (!comment) return { ok: false, error: "comment not found" };
+    if (comment.author !== bdActor(ctx)) return { ok: false, error: "only the comment author can edit this comment" };
+    const text = bdClean(params.text, 2000);
+    if (!text) return { ok: false, error: "comment text required" };
+    comment.text = text;
+    comment.editedAt = bdNow();
+    pushActivity(card, "edited a comment");
+    saveBoard();
+    return { ok: true, result: { comment } };
   });
 
   // ── Card detail: attachments (URL / link references, no binary) ─────
@@ -800,7 +916,7 @@ export default function registerBoardActions(registerLensAction) {
     let scheduled = 0;
     let overdue = 0;
     for (const card of board.cards) {
-      if (!card.dueDate) continue;
+      if (card.archived || !card.dueDate) continue;
       const key = String(card.dueDate).slice(0, 10);
       if (!byDate[key]) byDate[key] = [];
       const col = board.columns.find((c) => c.id === card.columnId);
@@ -976,6 +1092,37 @@ export default function registerBoardActions(registerLensAction) {
     return { ok: true, result: { deleted: params.labelId } };
   });
 
+  // Rename / recolor a label. Cards store label NAMES, so a rename cascades
+  // to every card carrying the old name (same treatment as label-delete).
+  registerLensAction("board", "label-update", (ctx, _a, params = {}) => {
+    const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = findBoard(s, ctx, params.boardId);
+    if (!board) return { ok: false, error: "board not found" };
+    if (!Array.isArray(board.labelDefs)) board.labelDefs = [];
+    const label = board.labelDefs.find((l) => l.id === params.labelId);
+    if (!label) return { ok: false, error: "label not found" };
+    if (params.name != null) {
+      const name = bdClean(params.name, 40);
+      if (!name) return { ok: false, error: "label name required" };
+      if (board.labelDefs.some((l) => l.id !== label.id && l.name.toLowerCase() === name.toLowerCase())) {
+        return { ok: false, error: "label already exists" };
+      }
+      if (name !== label.name) {
+        const old = label.name;
+        for (const card of board.cards) {
+          if (Array.isArray(card.labels)) card.labels = card.labels.map((l) => (l === old ? name : l));
+        }
+        label.name = name;
+      }
+    }
+    if (params.color != null) {
+      if (!LABEL_COLORS.has(params.color)) return { ok: false, error: "unknown label color" };
+      label.color = params.color;
+    }
+    saveBoard();
+    return { ok: true, result: { label } };
+  });
+
   // ── Board collaborators / sharing with permissions ─────────────────
   const COLLAB_ROLES = new Set(["viewer", "editor", "admin"]);
   registerLensAction("board", "collaborator-add", (ctx, _a, params = {}) => {
@@ -1073,6 +1220,31 @@ export default function registerBoardActions(registerLensAction) {
     return { ok: true, result: { deleted: params.fieldId } };
   });
 
+  // Rename a custom field and/or replace a select field's options.
+  registerLensAction("board", "custom-field-update", (ctx, _a, params = {}) => {
+    const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = findBoard(s, ctx, params.boardId);
+    if (!board) return { ok: false, error: "board not found" };
+    if (!Array.isArray(board.customFields)) board.customFields = [];
+    const field = board.customFields.find((f) => f.id === params.fieldId);
+    if (!field) return { ok: false, error: "field not found" };
+    if (params.name != null) {
+      const name = bdClean(params.name, 48);
+      if (!name) return { ok: false, error: "field name required" };
+      if (board.customFields.some((f) => f.id !== field.id && f.name.toLowerCase() === name.toLowerCase())) {
+        return { ok: false, error: "field already exists" };
+      }
+      field.name = name;
+    }
+    if (params.options !== undefined) {
+      if (field.type !== "select") return { ok: false, error: "only select fields have options" };
+      if (!Array.isArray(params.options)) return { ok: false, error: "options must be a list" };
+      field.options = params.options.map((o) => bdClean(o, 48)).filter(Boolean).slice(0, 20);
+    }
+    saveBoard();
+    return { ok: true, result: { field } };
+  });
+
   registerLensAction("board", "card-set-field", (ctx, _a, params = {}) => {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const board = findBoard(s, ctx, params.boardId);
@@ -1102,5 +1274,113 @@ export default function registerBoardActions(registerLensAction) {
     pushActivity(card, `set field ${field.name}`);
     saveBoard();
     return { ok: true, result: { cardId: card.id, fieldId: field.id, customFields: card.customFields } };
+  });
+
+  // ── Card templates (Trello: save a card as a template, spawn from it) ──
+  registerLensAction("board", "card-template-create", (ctx, _a, params = {}) => {
+    const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = findBoard(s, ctx, params.boardId);
+    if (!board) return { ok: false, error: "board not found" };
+    const card = findCard(board, params.cardId);
+    if (!card) return { ok: false, error: "card not found" };
+    if (!Array.isArray(board.templates)) board.templates = [];
+    const template = {
+      id: bdId("tpl"),
+      name: bdClean(params.name, 120) || card.title,
+      title: card.title,
+      description: card.description || "",
+      labels: Array.isArray(card.labels) ? [...card.labels] : [],
+      checklist: (card.checklist || []).map((i) => ({ text: i.text })),
+      customFields: card.customFields && typeof card.customFields === "object" ? { ...card.customFields } : {},
+      createdAt: bdNow(),
+    };
+    board.templates.push(template);
+    saveBoard();
+    return { ok: true, result: { template } };
+  });
+
+  registerLensAction("board", "card-template-list", (ctx, _a, params = {}) => {
+    const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = findBoard(s, ctx, params.boardId);
+    if (!board) return { ok: false, error: "board not found" };
+    return { ok: true, result: { templates: Array.isArray(board.templates) ? board.templates : [] } };
+  });
+
+  registerLensAction("board", "card-template-delete", (ctx, _a, params = {}) => {
+    const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = findBoard(s, ctx, params.boardId);
+    if (!board) return { ok: false, error: "board not found" };
+    if (!Array.isArray(board.templates)) board.templates = [];
+    const i = board.templates.findIndex((t) => t.id === params.templateId);
+    if (i < 0) return { ok: false, error: "template not found" };
+    board.templates.splice(i, 1);
+    saveBoard();
+    return { ok: true, result: { deleted: params.templateId } };
+  });
+
+  registerLensAction("board", "card-create-from-template", (ctx, _a, params = {}) => {
+    const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = findBoard(s, ctx, params.boardId);
+    if (!board) return { ok: false, error: "board not found" };
+    const template = (board.templates || []).find((t) => t.id === params.templateId);
+    if (!template) return { ok: false, error: "template not found" };
+    const askedForColumn = params.columnId != null && String(params.columnId) !== "";
+    const found = board.columns.find((c) => c.id === params.columnId && !c.archived);
+    if (askedForColumn && !found) return { ok: false, error: "column not found" };
+    const column = found || board.columns.find((c) => !c.archived) || board.columns[0];
+    if (!column) return { ok: false, error: "board has no columns" };
+    const card = {
+      id: bdId("crd"),
+      columnId: column.id,
+      title: bdClean(params.title, 240) || template.title,
+      description: template.description || "",
+      labels: [...(template.labels || [])],
+      dueDate: null,
+      assignee: null,
+      checklist: (template.checklist || []).map((i) => ({ id: bdId("ci"), text: i.text, done: false })),
+      customFields: { ...(template.customFields || {}) },
+      position: board.cards.filter((c) => c.columnId === column.id).length,
+      createdAt: bdNow(),
+    };
+    board.cards.push(card);
+    pushActivity(card, `created from template ${template.name}`);
+    saveBoard();
+    return { ok: true, result: { card } };
+  });
+
+  // ── Due-date reminders: honest computed read across the user's boards ──
+  // Overdue + due-within-the-window cards (archived excluded). This is the
+  // data a notification would carry; dispatch lives in the server heartbeat,
+  // not in a lens macro.
+  registerLensAction("board", "due-reminders", (ctx, _a, params = {}) => {
+    const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const withinHours = Math.max(1, Math.min(24 * 30, Number(params.withinHours) || 48));
+    const now = Date.now();
+    const horizon = now + withinHours * 3600 * 1000;
+    const reminders = [];
+    for (const board of bdList(s, bdActor(ctx))) {
+      for (const card of board.cards) {
+        if (card.archived || !card.dueDate) continue;
+        const t = new Date(card.dueDate).getTime();
+        if (!Number.isFinite(t) || t > horizon) continue;
+        const col = board.columns.find((c) => c.id === card.columnId);
+        reminders.push({
+          boardId: board.id, boardName: board.name,
+          cardId: card.id, title: card.title,
+          columnName: col ? col.name : null,
+          dueDate: card.dueDate, overdue: t < now,
+        });
+      }
+    }
+    reminders.sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)));
+    return {
+      ok: true,
+      result: {
+        reminders,
+        overdueCount: reminders.filter((r) => r.overdue).length,
+        dueSoonCount: reminders.filter((r) => !r.overdue).length,
+        withinHours,
+      },
+    };
   });
 }

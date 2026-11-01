@@ -1939,7 +1939,7 @@ export function FeedTimelinePanel({
                     <p className="text-sm text-gray-400">{feedActionResult.message as string}</p>
                   ) : (
                     <>
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         {[
                           {
                             label: 'Unique Tags',

@@ -40,7 +40,7 @@ export function WhiteboardRepos() {
         <div className="flex items-center gap-2"><Layout className="h-5 w-5 text-sky-400" /><h2 className="text-sm font-semibold text-white">Real-world whiteboard tooling</h2><span className="rounded bg-lattice-elevated px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-gray-400">github · topic:{topic}</span></div>
         <div className="flex items-center gap-2">
           <select value={topic} onChange={(e) => setTopic(e.target.value)} className="rounded border border-lattice-border bg-lattice-void px-2 py-1 text-xs text-white">{TOPICS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select>
-          {list.length > 0 && <SaveAsDtuButton compact apiSource="github-whiteboard" apiUrl={`https://github.com/topics/${topic}`} title={`GitHub whiteboard — topic:${topic} (${list.length})`} content={list.slice(0, 20).map((r, i) => `${i + 1}. ★${r.stargazers_count.toLocaleString()} · ${r.full_name}\n   ${r.description || ''}\n   ${r.html_url}`).join('\n\n')} extraTags={['whiteboard', 'github', topic]} rawData={{ topic, repos: list }} />}
+          {list.length > 0 && <SaveAsDtuButton compact apiSource="github-whiteboard" apiUrl={`https://github.com/topics/${topic}`} title={`GitHub whiteboard — topic:${topic} (${list.length})`} content={list.slice(0, 20).map((r, i) => `${i + 1}. ★${(r.stargazers_count ?? 0).toLocaleString()} · ${r.full_name}\n   ${r.description || ''}\n   ${r.html_url}`).join('\n\n')} extraTags={['whiteboard', 'github', topic]} rawData={{ topic, repos: list }} />}
         </div>
       </header>
       {repos.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub unreachable — repo search failed. <button type="button" onClick={() => repos.refetch()} className="underline hover:text-red-200">Retry</button></div>}
@@ -61,8 +61,8 @@ export function WhiteboardRepos() {
             <p className="text-[12px] font-mono text-gray-100">{r.full_name}</p>
             {r.description && <p className="mt-0.5 line-clamp-2 text-[11px] text-gray-300">{r.description}</p>}
             <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[10px] text-gray-400 tabular-nums">
-              <span className="flex items-center gap-0.5"><Star className="h-3 w-3" />{r.stargazers_count.toLocaleString()}</span>
-              <span className="flex items-center gap-0.5"><GitBranch className="h-3 w-3" />{r.forks_count.toLocaleString()}</span>
+              <span className="flex items-center gap-0.5"><Star className="h-3 w-3" />{(r.stargazers_count ?? 0).toLocaleString()}</span>
+              <span className="flex items-center gap-0.5"><GitBranch className="h-3 w-3" />{(r.forks_count ?? 0).toLocaleString()}</span>
               {r.language && <span className="rounded bg-lattice-elevated px-1 font-mono text-[9px] text-gray-300">{r.language}</span>}
               <ExternalLink className="h-3 w-3 text-gray-400" />
             </div>
