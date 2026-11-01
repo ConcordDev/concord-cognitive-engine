@@ -71,8 +71,9 @@ describe('vault page: launch state and signed-out', () => {
   it('launches empty: honest empty copy, no records, no counts', async () => {
     backend();
     const view = render(<VaultPage />);
-    expect(await view.findByTestId('vault-empty')).toHaveTextContent('Nothing has been admitted yet.');
-    expect(view.queryByTestId('vault-admitted')).toBeNull();
+    expect(await view.findByTestId('vault-empty-archive')).toHaveTextContent('Nothing has been admitted yet.');
+    expect(view.queryByTestId('vault-cabinet')).toBeNull();
+    expect(view.queryByTestId('vault-curator-roster')).toBeNull();
     expect(view.queryByTestId('vault-my-submissions')).toBeNull();
   });
 
@@ -91,7 +92,7 @@ describe('vault page: launch state and signed-out', () => {
     expect(await view.findByRole('alert')).toHaveTextContent(/no_db/);
     backend();
     fireEvent.click(view.getByRole('button', { name: 'Retry' }));
-    expect(await view.findByTestId('vault-empty')).toBeInTheDocument();
+    expect(await view.findByTestId('vault-empty-archive')).toBeInTheDocument();
   });
 });
 
@@ -189,9 +190,10 @@ describe('vault page: my submissions, withdraw, privacy', () => {
     fireEvent.click(await view.findByRole('button', { name: /Declined tape/ }));
     expect(view.getByTestId('vault-decline-reason')).toHaveTextContent('private to you');
     expect(view.getByTestId('vault-decline-reason')).toHaveTextContent('Not documented enough.');
-    // the admitted list is the browse result only
-    expect(view.getByTestId('vault-admitted')).toHaveTextContent('Public tape');
-    expect(view.getByTestId('vault-admitted')).not.toHaveTextContent(/Declined tape|Not documented/);
+    // the hall is the browse result only
+    expect(view.getByTestId('vault-cabinet')).toHaveTextContent('Public tape');
+    expect(view.getByTestId('vault-cabinet')).not.toHaveTextContent(/Declined tape|Not documented/);
+    expect(view.getByTestId('vault-hall')).not.toHaveTextContent(/Not documented/);
   });
 });
 
@@ -201,7 +203,7 @@ describe('vault page: curator room is for curators only', () => {
   it('hidden for a signed-in non-curator, even when others are curators', async () => {
     backend({ curators: [row('someone_else')] });
     const view = render(<VaultPage />);
-    expect(await view.findByTestId('vault-empty')).toBeInTheDocument();
+    expect(await view.findByTestId('vault-empty-archive')).toBeInTheDocument();
     expect(view.queryByTestId('vault-curator-room')).toBeNull();
     expect(view.queryByTestId('curator-queue-stub')).toBeNull();
   });
@@ -209,17 +211,16 @@ describe('vault page: curator room is for curators only', () => {
   it('hidden for a retired curator', async () => {
     backend({ curators: [row('u1', 0)] });
     const view = render(<VaultPage />);
-    expect(await view.findByTestId('vault-empty')).toBeInTheDocument();
+    expect(await view.findByTestId('vault-empty-archive')).toBeInTheDocument();
     expect(view.queryByTestId('vault-curator-room')).toBeNull();
   });
 
-  it('hidden when signed out, and the roster is not even read', async () => {
+  it('hidden when signed out, even if that id is on the (public) roster', async () => {
     authUser.current = null;
     backend({ curators: [row('u1')] });
     const view = render(<VaultPage />);
     expect(await view.findByTestId('vault-signin')).toBeInTheDocument();
     expect(view.queryByTestId('vault-curator-room')).toBeNull();
-    expect(calls('curators')).toHaveLength(0);
   });
 
   it('shown for an active curator, and an admission or decline refreshes the page reads', async () => {
@@ -241,7 +242,78 @@ describe('vault page: curator room is for curators only', () => {
       throw new Error(action);
     });
     const view = render(<VaultPage />);
-    expect(await view.findByTestId('vault-empty')).toBeInTheDocument();
+    expect(await view.findByTestId('vault-empty-archive')).toBeInTheDocument();
     expect(view.queryByTestId('vault-curator-room')).toBeNull();
+  });
+});
+
+describe('vault page: the public hall', () => {
+  const rec = (id: string, title: string, curatorId: string | null = 'c1') => ({
+    id, title, status: 'admitted', workKind: 'music', description: '', submitterId: 's', admittedAt: 1773532800,
+    curatorId, curatorRole: 'founding_curator', curatorStatement: `Why ${title} belongs, in a curator's own words.`, recordDtuId: `dtu_${id}`, lineage: [],
+  });
+  const roster = [
+    { curator_id: 'c1', display_name: 'Ada Founder', role: 'founding_curator', invited_by: null, invited_at: 1, active: 1, retired_at: null },
+    { curator_id: 'c2', display_name: 'Bo Guest', role: 'guest_curator', invited_by: 'c1', invited_at: 2, active: 1, retired_at: null },
+  ];
+
+  it('renders an admitted record as a drawer with its curator statement when opened, and the roster', async () => {
+    backend({ records: [rec('vsub_1', 'Night tape')] as unknown as Sub[], curators: roster });
+    const view = render(<VaultPage />);
+    expect(await view.findByTestId('vault-cabinet')).toBeInTheDocument();
+    expect(view.getByTestId('vault-curator-roster')).toHaveTextContent('Ada Founder');
+    expect(view.queryByTestId('vault-empty-archive')).toBeNull();
+    fireEvent.click(view.getByRole('button', { name: /Night tape/ }));
+    expect(await view.findByText(/Why Night tape belongs/)).toBeInTheDocument();
+    expect(view.getByText(/Accepted 15 March 2026/)).toBeInTheDocument();
+  });
+
+  it('shows NO likes, counts, trending, ranking, views or follower UI', async () => {
+    backend({ records: [rec('vsub_1', 'Night tape'), rec('vsub_2', 'Day tape')] as unknown as Sub[], curators: roster });
+    const view = render(<VaultPage />);
+    await view.findByTestId('vault-cabinet');
+    fireEvent.click(view.getByRole('button', { name: /Night tape/ }));
+    const hall = view.getByTestId('vault-hall');
+    expect(hall.textContent || '').not.toMatch(/\b(like|likes|liked|trending|popular|most viewed|views?|followers?|follow|share|rank(ed|ing)?|score|rating|top \d+|for you)\b/i);
+    expect(hall.textContent || '').not.toMatch(/\b\d+\s+(records?|drawers?|works?|items?|results?)\b/i);
+    expect(view.queryByRole('button', { name: /like|follow|share|sort|trending/i })).toBeNull();
+    // the only reads the hall makes are the public ones
+    const reads = new Set(lensRun.mock.calls.map((c) => c[1]));
+    for (const a of ['browse', 'my_submissions', 'curators']) expect(reads.has(a)).toBe(true);
+    expect(Array.from(reads).filter((a) => !['browse', 'my_submissions', 'curators'].includes(String(a)))).toEqual([]);
+  });
+
+  it('keeps the order the vault returned (no client-side sorting)', async () => {
+    backend({ records: [rec('a', 'Zulu'), rec('b', 'Alpha'), rec('c', 'Mike')] as unknown as Sub[], curators: roster });
+    const view = render(<VaultPage />);
+    await view.findByTestId('vault-cabinet');
+    const order = view.getAllByTestId('vault-record').map((el) => el.getAttribute('data-record-id'));
+    expect(order).toEqual(['a', 'b', 'c']);
+  });
+
+  it('keyboard: arrows move between drawers, Enter opens one, Escape closes', async () => {
+    backend({ records: [rec('a', 'Zulu'), rec('b', 'Alpha')] as unknown as Sub[], curators: roster });
+    const view = render(<VaultPage />);
+    await view.findByTestId('vault-cabinet');
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'Enter' });
+    const second = view.getAllByTestId('vault-record')[1];
+    expect(second.getAttribute('data-open')).toBe('true');
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(second.getAttribute('data-open')).toBe('false');
+  });
+
+  it('a curator filter narrows to that curator and can be cleared', async () => {
+    backend({ records: [rec('a', 'Zulu', 'c1'), rec('b', 'Alpha', 'c2')] as unknown as Sub[], curators: roster });
+    const view = render(<VaultPage />);
+    await view.findByTestId('vault-cabinet');
+    expect(view.getAllByTestId('vault-record')).toHaveLength(2);
+    fireEvent.click(view.getByRole('button', { name: /Zulu/ }));
+    fireEvent.click(await view.findByRole('button', { name: /Show this curator/ }));
+    expect(view.getAllByTestId('vault-record').map((el) => el.getAttribute('data-record-id'))).toEqual(['a']);
+    fireEvent.click(view.getByRole('button', { name: /Zulu/ }));
+    fireEvent.click(await view.findByRole('button', { name: /Showing only this curator/ }));
+    expect(view.getAllByTestId('vault-record')).toHaveLength(2);
   });
 });

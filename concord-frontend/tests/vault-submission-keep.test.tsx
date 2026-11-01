@@ -110,8 +110,8 @@ describe('vault submission keep', () => {
   it('does not offer Keep on an admitted work that is not the user\'s submission', async () => {
     cabinet();
     const view = render(<VaultPage />);
-    expect(await view.findByTestId('vault-admitted')).toHaveTextContent('Public tape');
-    expect(view.queryByRole('button', { name: /Public tape/ })).toBeNull();
+    expect(await view.findByTestId('vault-hall')).toHaveTextContent('Public tape');
+    fireEvent.click(view.getByRole('button', { name: /Public tape/ }));
     expect(view.queryByRole('button', { name: 'Keep as DTU' })).toBeNull();
     // Keep only appears once the user's own submission is opened.
     fireEvent.click(await view.findByRole('button', { name: /Night tape/ }));
