@@ -3462,6 +3462,7 @@ import { runShutdownDurability, writeShutdownLine } from "./lib/shutdown-durabil
 import {
   beginShutdownHttp,
   getInflightResponses,
+  guardSocketAuth,
   rollbackOpenWrite,
   sealDatabaseWrites,
   shutdownHttpMiddleware,
@@ -11194,6 +11195,9 @@ async function tryInitWebSockets(server) {
     // verifies cookie / Bearer / API-key the same way the root middleware
     // does — never trusting client-supplied auth.userId.
     const dxValidateAuth = (socket) => {
+      try { return _dxValidateAuthUnguarded(socket); } catch { return null; } // a sealed DB at shutdown must deny, not throw (lib/shutdown-http.js guardSocketAuth)
+    };
+    const _dxValidateAuthUnguarded = (socket) => {
       const cookies = parseCookies(socket.handshake.headers?.cookie || "");
       const cookieToken = cookies.concord_auth;
       if (cookieToken) {
@@ -11255,7 +11259,12 @@ async function tryInitWebSockets(server) {
   }
 
   // SECURITY: Socket.IO authentication middleware
-  io.use((socket, next) => {
+  //
+  // socket.io v4 runs namespace middleware from an async `_add`, and does not catch a synchronous throw from it:
+  // during graceful shutdown the sealed DB throws shutting_down out of AuthDB.getUser, which became a fatal
+  // unhandled_rejection in the OLD process on every deploy (01:29:13 ET Nov 1; also 18:00 Oct 31). A throw here
+  // is now turned into a normal handshake refusal via next(err).
+  const _socketAuth = (socket, next) => {
     // Parse cookies from handshake
     const cookies = parseCookies(socket.handshake.headers?.cookie || "");
     const cookieToken = cookies.concord_auth;
@@ -11322,7 +11331,8 @@ async function tryInitWebSockets(server) {
       return next();
     }
     return next(new Error("Authentication required"));
-  });
+  };
+  io.use(guardSocketAuth(_socketAuth));
 
   io.on("connection", (socket) => {
     const clientId = socket.id;
