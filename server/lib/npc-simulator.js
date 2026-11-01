@@ -662,6 +662,17 @@ function _hasNpcXpColumn(db) {
   return _npcXpColumn.get(db);
 }
 
+// current_activity arrived with a later migration; a DB without it skips the write.
+const _npcActivityColumn = new WeakMap();
+function _hasNpcActivityColumn(db) {
+  if (!_npcActivityColumn.has(db)) {
+    let has = false;
+    try { has = db.prepare("SELECT 1 FROM pragma_table_info('world_npcs') WHERE name = 'current_activity'").get() != null; } catch { /* no table */ }
+    _npcActivityColumn.set(db, has);
+  }
+  return _npcActivityColumn.get(db);
+}
+
 /** Room broadcast + Unity/Godot gateway mirror for NPC life events. */
 function _emitNpcEvent(worldId, event, payload) {
   try {
@@ -995,6 +1006,7 @@ export class NPCAgent {
     this.jobType = row.job_type || null;
     this._lastAction = null;
     this._pendingXp = 0;
+    this._pendingActivity = null; // queued current_activity, written by _flushPendingPersists
     this._pendingSkillXp = 0;
     this._questDone = null;
     // Last state/location JSON successfully written (null until the first
@@ -1170,9 +1182,12 @@ export class NPCAgent {
       create: 'crafting', default: 'idle',
     };
     const dbActivity = activityMap[action] || 'idle';
-    try {
-      _prep(this._db, 'UPDATE world_npcs SET current_activity = ? WHERE id = ?').run(dbActivity, this.id);
-    } catch { /* column may not exist yet pre-migration */ }
+    // Queued, not written here: a per-action single-row UPDATE was measured
+    // blocking the loop 7.5 s at boot (#1938 syncIo, 155 ms later in the same
+    // log) when it queued behind the WAL writer. _flushPendingPersists applies
+    // it inside the world-tick's one transaction (_persistState runs at the end
+    // of the same tick()), so the column is at most one world-tick stale.
+    this._pendingActivity = dbActivity;
 
     switch (action) {
       case "eat":
@@ -1664,11 +1679,15 @@ export class NPCSimulator {
       const wealthOnly = hasXp
         ? _prep(this._db, "UPDATE world_npcs SET wealth_sparks = wealth_sparks + ?, xp = xp + ?, level = ?, last_tick_at = unixepoch() WHERE id = ?")
         : _prep(this._db, "UPDATE world_npcs SET wealth_sparks = wealth_sparks + ?, last_tick_at = unixepoch() WHERE id = ?");
+      const hasActivity = _hasNpcActivityColumn(this._db);
+      const activityStmt = hasActivity ? _prep(this._db, "UPDATE world_npcs SET current_activity = ? WHERE id = ?") : null;
       const written = [];
       const grown = [];
       const flush = this._db.transaction((agents) => {
         for (const a of agents) {
           const p = a._pendingPersist;
+          if (activityStmt && a._pendingActivity != null) activityStmt.run(a._pendingActivity, a.id);
+          a._pendingActivity = null;
           const xpGain = a._pendingXp || 0;
           const level = levelAfterXp(a.level, a.xp + xpGain);
           if (p.stateJson === null) {
@@ -1704,7 +1723,7 @@ export class NPCSimulator {
     } catch (_e) {
       // non-fatal — matches this file's existing try/catch convention. Drop
       // the failed slice so a persistent error can't spin the caller's loop.
-      for (const a of pending) { a._pendingPersist = null; a._pendingWealthIncome = 0; a._pendingXp = 0; }
+      for (const a of pending) { a._pendingPersist = null; a._pendingActivity = null; a._pendingWealthIncome = 0; a._pendingXp = 0; }
     }
     return queued.length - pending.length;
   }
