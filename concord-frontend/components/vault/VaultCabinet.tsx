@@ -75,10 +75,9 @@ export function VaultCabinet({
       </div>
 
       <div className="mt-5 flex flex-wrap items-baseline justify-between gap-x-8 gap-y-3">
+        {/* A place in the cabinet, never a total: the spec has no counts anywhere on this surface. */}
         <p className={vault.accession} data-testid="vault-cabinet-position">
-          {selectedIndex >= 0
-            ? `Drawer ${selectedIndex + 1} of ${entries.length}`
-            : `${entries.length} ${entries.length === 1 ? 'drawer' : 'drawers'} in view`}
+          {selectedIndex >= 0 ? `Drawer ${selectedIndex + 1}` : 'The cabinet'}
         </p>
 
         {shortcuts && shortcuts.length > 0 ? (
