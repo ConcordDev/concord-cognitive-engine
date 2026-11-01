@@ -17,6 +17,7 @@
  * CONCORD_WAL_CHECKPOINT_WORKER=0. Off under NODE_ENV=test and for :memory: DBs.
  */
 import { Worker } from "node:worker_threads";
+import { statSync } from "node:fs";
 
 const STARVE_RUNS = 3;
 // The caller may switch the inline auto-checkpoint off BEFORE the worker is ready (see walCheckpointerEnabled).
@@ -103,4 +104,38 @@ export function startWalCheckpointer(dbPath, opts) {
   worker.on("error", (e) => fallback(`worker_error: ${e?.message || e}`));
   worker.on("exit", (code) => { if (!done) fallback(`worker_exit_${code}`); });
   return { stop() { done = true; clearTimeout(readyTimer); try { worker.terminate(); } catch { /* already gone */ } } };
+}
+
+/**
+ * Empty the WAL during graceful shutdown, so the next boot starts with nothing to checkpoint.
+ *
+ * Why: since #1941 a second (worker) connection is open when the main connection closes, so SQLite's
+ * close-time checkpoint (which only runs for the LAST connection) does not happen: `shutdown_database_closed`
+ * took 22 ms with a 64-88 MB WAL left behind. The next boot then had to checkpoint it while serving: the
+ * worker's first pass took 14.1 s and the first main-thread write after listen blocked 11.4 s behind it
+ * (#1958 boot, macro_call_log INSERT; sys CPU 4.8 s, 22,890 voluntary context switches, i.e. reads queued
+ * behind the checkpoint's writes). Doing that copy here, on a quiet disk with nothing serving, moves the I/O
+ * out of the boot window. A truncated WAL also makes the first write after boot free (measured locally 0 ms
+ * vs ~400 ms for a 124 MB WAL).
+ *
+ * Safe to call on a sealed connection (better-sqlite3's pragma() uses the native handle, not the patched
+ * prepare/exec). Bounded wait: busy_timeout is lowered so a still-running worker checkpoint cannot hold
+ * shutdown; a busy or failed TRUNCATE just leaves the WAL as it is today. Never throws.
+ *
+ * @param {import("better-sqlite3").Database} db
+ * @param {{ busyTimeoutMs?: number, walPath?: string }} [opts]
+ * @returns {{ ok: boolean, ms: number, busy?: number, log?: number, checkpointed?: number, walBytes?: number, error?: string }}
+ */
+export function truncateWalForShutdown(db, opts = {}) {
+  const t0 = performance.now();
+  try {
+    if (!db || db.open === false || db.memory === true) return { ok: false, ms: 0, error: "not_applicable" };
+    try { db.pragma(`busy_timeout = ${Math.max(0, Math.floor(opts.busyTimeoutMs ?? 3000))}`); } catch { /* keep the existing timeout */ }
+    const [r] = db.pragma("wal_checkpoint(TRUNCATE)");
+    let walBytes;
+    try { walBytes = statSync(opts.walPath || `${db.name}-wal`).size; } catch { walBytes = 0; }
+    return { ok: (r?.busy ?? 1) === 0, ms: Math.round(performance.now() - t0), busy: r?.busy, log: r?.log, checkpointed: r?.checkpointed, walBytes };
+  } catch (e) {
+    return { ok: false, ms: Math.round(performance.now() - t0), error: String(e?.message || e) };
+  }
 }

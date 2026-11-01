@@ -147,7 +147,7 @@ import { stringifyChunked } from "./lib/chunked-json.js";
 import { writeFileChunkedYielding } from "./lib/chunked-write.js";
 import { createLensArtifactStore } from "./lib/lens-artifact-store.js";
 import fs from "fs";
-import { startWalCheckpointer, walCheckpointerEnabled } from "./lib/wal-checkpointer.js";
+import { startWalCheckpointer, walCheckpointerEnabled, truncateWalForShutdown } from "./lib/wal-checkpointer.js";
 import path from "path";
 import zlib from "zlib";
 import { pruneJsonStateBackups, summarizeDatedDbBackups } from "./lib/backup-retention.js";
@@ -7027,7 +7027,14 @@ if (db) {
     catch (e) {
       structuredLog("error", "shutdown_database_seal_failed", { error: e?.message, stack: e?.stack });
     }
-    try { _walCheckpointer?.stop(); } catch { /* informational */ } // db.close() below does the final checkpoint
+    try { _walCheckpointer?.stop(); } catch { /* informational */ }
+    // db.close() only checkpoints when it is the LAST connection, and the checkpoint worker's connection is
+    // still open here (shutdown_database_closed took 22 ms with a 64-88 MB WAL left behind), so empty the WAL
+    // explicitly: the next boot then has nothing to checkpoint while serving (lib/wal-checkpointer.js).
+    if (!READ_REPLICA) {
+      const wal = truncateWalForShutdown(db);
+      structuredLog(wal.ok ? "info" : "warn", "shutdown_wal_truncate", wal);
+    }
     structuredLog("info", "shutdown_closing_database", {});
     const __t0 = process.hrtime.bigint();
     try {
