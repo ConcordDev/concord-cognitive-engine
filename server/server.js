@@ -8673,6 +8673,10 @@ function authMiddleware(req, res, next) {
   // user-scoped behavior (search history, saved searches) see the JWT.
   const _hasAuthHeader = !!(req.headers.authorization || req.headers["x-api-key"] ||
                             req.cookies?.concord_auth || req.cookies?.concord_refresh);
+  // Signed-out 30-second preview of public media (founder ruling GB-0604): the
+  // stream route itself clamps anonymous callers to the preview and refuses
+  // anything not public. Exact path shape only - no other /api/media route opens up.
+  if (req.method === "GET" && !_hasAuthHeader && /^\/api\/media\/[^/]+\/stream$/.test(req.path)) return next();
   if (req.method === "GET" && !_isSovereignRoute && !_hasAuthHeader && publicReadPaths.some(p => {
     if (!req.path.startsWith(p)) return false;
     // "/api/sovereign" is a public-read prefix for the sovereign console,

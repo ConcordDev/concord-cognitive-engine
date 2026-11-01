@@ -165,6 +165,43 @@ export function slicePreviewWindow(buffer, mediaDTU) {
   return buffer.subarray(start, end);
 }
 
+/** Signed-out visitors hear this many seconds of a public track/video. */
+export const ANON_PREVIEW_SECONDS = Number(process.env.CONCORD_ANON_PREVIEW_SECONDS) || 30;
+
+// Fallback when neither the container nor the DTU gives a duration: a byte
+// estimate from a bitrate deliberately set LOW so the estimate errs toward a
+// SHORTER preview than 30 s, never a longer one (128 kbps audio, 1 Mbps video).
+const FALLBACK_BITRATE_BPS = { audio: 128_000, video: 1_000_000 };
+
+/**
+ * The first ANON_PREVIEW_SECONDS of `buffer`, cut server-side. Order of
+ * evidence: PCM WAV (exact, rebuilt header) > known DTU duration (byte
+ * fraction) > DTU bitrate > the low fixed fallback above. A file at or under
+ * the preview length is returned whole. Returns { buffer, method }.
+ */
+export function sliceAnonymousPreview(buffer, mediaDTU, seconds = ANON_PREVIEW_SECONDS) {
+  if (!Buffer.isBuffer(buffer) || buffer.length === 0) return { buffer, method: "empty" };
+  const wav = readWavLayout(buffer);
+  if (wav) {
+    const clipped = slicePreviewWindow(buffer, { previewStart: 0, previewDuration: seconds });
+    return { buffer: clipped && clipped.length < buffer.length ? clipped : buffer, method: "wav-exact" };
+  }
+  const totalSec = Number(mediaDTU?.duration) || 0;
+  let bytes;
+  let method;
+  if (totalSec > 0) {
+    if (totalSec <= seconds) return { buffer, method: "duration-short" };
+    bytes = Math.ceil(buffer.length * (seconds / totalSec));
+    method = "duration";
+  } else {
+    const declared = Number(mediaDTU?.bitrate) || 0;
+    const bps = declared > 0 ? declared : (FALLBACK_BITRATE_BPS[mediaDTU?.mediaType] || FALLBACK_BITRATE_BPS.audio);
+    bytes = Math.ceil((seconds * bps) / 8);
+    method = declared > 0 ? "bitrate" : "fallback-bitrate";
+  }
+  return { buffer: buffer.subarray(0, Math.min(buffer.length, bytes)), method };
+}
+
 export function resolvePlaybackBuffer(buffer, mediaDTU, viewerId, STATE) {
   if (!pricedCreateOrCommercial(mediaDTU) || viewerMayStreamFull(STATE, mediaDTU, viewerId)) {
     return { ok: true, buffer, preview: false };
@@ -200,9 +237,9 @@ function parseByteRange(header, total) {
  * viewer is allowed to see (full file or preview). Ranges past that window
  * are 416 — they are never satisfied from a larger original.
  */
-export function sendRangedBuffer(res, buffer, contentType, rangeHeader, { privateCache = false } = {}) {
+export function sendRangedBuffer(res, buffer, contentType, rangeHeader, { privateCache = false, cacheControl = null } = {}) {
   const total = buffer.length;
-  const cache = privateCache ? "private, no-store" : "public, max-age=86400";
+  const cache = cacheControl || (privateCache ? "private, no-store" : "public, max-age=86400");
   const type = contentType || "application/octet-stream";
   if (rangeHeader) {
     const parsed = parseByteRange(rangeHeader, total);

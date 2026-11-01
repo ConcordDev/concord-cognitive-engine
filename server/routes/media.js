@@ -54,6 +54,8 @@ import {
   pricedCreateOrCommercial,
   resolvePlaybackBuffer,
   sendRangedBuffer,
+  sliceAnonymousPreview,
+  ANON_PREVIEW_SECONDS,
   viewerMayStreamFull,
 } from "../lib/media-preview-window.js";
 
@@ -560,14 +562,37 @@ export default function createMediaRouter({ STATE }) {
       // already the right behaviour for a missing artifact.
       const buffer = retrieveArtifact(mediaDTU.id, artifactRef);
       if (buffer && Buffer.isBuffer(buffer)) {
+        const contentType = artifactRef.type || mediaDTU.mimeType || "application/octet-stream";
+        // Signed-out visitors get only the first ANON_PREVIEW_SECONDS of a PUBLIC
+        // track/video (getMediaDTUForViewer above already refused anything not
+        // public to an anonymous caller). The cut happens here, on the server,
+        // and the ranged send below is applied to the cut buffer, so no Range
+        // or repeated request can reach the rest. Signed-in viewers fall through
+        // to the normal (owner / license / priced-tier) logic unchanged.
+        res.set("Vary", "Authorization, Cookie");
+        if (!viewerId) {
+          const anon = sliceAnonymousPreview(buffer, mediaDTU);
+          res.set({
+            "X-Concord-Preview": "true",
+            "X-Concord-Preview-Seconds": String(ANON_PREVIEW_SECONDS),
+            "X-Concord-Preview-Method": anon.method,
+            "X-Concord-Full-Requires": "sign-in",
+          });
+          return sendRangedBuffer(res, anon.buffer, contentType, req.headers.range, { privateCache: true });
+        }
         const resolved = resolvePlaybackBuffer(buffer, mediaDTU, viewerId, STATE);
         if (!resolved.ok) {
           return res.status(resolved.status).json({ ok: false, error: resolved.error });
         }
-        const contentType = artifactRef.type || mediaDTU.mimeType || "application/octet-stream";
         const priced = pricedCreateOrCommercial(mediaDTU);
+        if (resolved.preview) {
+          res.set({ "X-Concord-Preview": "true", "X-Concord-Full-Requires": "license" });
+        }
         return sendRangedBuffer(res, resolved.buffer, contentType, req.headers.range, {
           privateCache: resolved.preview || priced,
+          // Never a shared/CDN cache: the same URL serves a 30 s preview to a
+          // signed-out visitor and the full file to a signed-in one.
+          cacheControl: resolved.preview || priced ? null : "private, max-age=3600",
         });
       }
     }
