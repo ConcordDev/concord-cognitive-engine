@@ -19,7 +19,18 @@ export type BenchRecipe = { id: string; title: string };
  */
 export type BenchPiece = BenchRecipe & { artifactId?: string; published?: boolean };
 
-export type CanonicalArtifactRow = { id: string; recipeId: string; title: string; published: boolean };
+export type CanonicalArtifactRow = {
+  id: string;
+  recipeId: string;
+  title: string;
+  published: boolean;
+  /** F7: the artifact's embedded name copies (data.name, data.spec.name,
+   *  data.spec itself) — a rename must converge all of them, not just
+   *  the title, or the exported artifact disagrees with the bench. */
+  name?: string;
+  specName?: string;
+  spec?: unknown;
+};
 
 export function artifactsFromList(data: unknown): CanonicalArtifactRow[] {
   const rows = (data as { artifacts?: unknown } | null)?.artifacts;
@@ -29,13 +40,53 @@ export function artifactsFromList(data: unknown): CanonicalArtifactRow[] {
     if (!row || typeof row !== 'object') continue;
     const id = (row as { id?: unknown }).id;
     const title = (row as { title?: unknown }).title;
-    const recipeId = (row as { data?: { recipeId?: unknown } }).data?.recipeId;
+    const data = (row as { data?: { recipeId?: unknown; name?: unknown; spec?: unknown } }).data;
+    const recipeId = data?.recipeId;
     const visibility = (row as { meta?: { visibility?: unknown } }).meta?.visibility;
     if (typeof id !== 'string' || !id) continue;
     if (typeof recipeId !== 'string' || !recipeId) continue;
-    out.push({ id, recipeId, title: typeof title === 'string' ? title : '', published: visibility === 'published' });
+    const spec = data?.spec && typeof data.spec === 'object' ? data.spec : undefined;
+    const specName = (spec as { name?: unknown } | undefined)?.name;
+    out.push({
+      id,
+      recipeId,
+      title: typeof title === 'string' ? title : '',
+      published: visibility === 'published',
+      name: typeof data?.name === 'string' ? data.name : undefined,
+      specName: typeof specName === 'string' ? specName : undefined,
+      spec,
+    });
   }
   return out;
+}
+
+/**
+ * F7 — the body a rename sends to the canonical artifact. The lens
+ * update shallow-merges `data`, so naming the copies converges them:
+ * title, data.name, and (when the piece carries a spec) data.spec.name.
+ * The spec sent is the piece's current spec with only its name moved —
+ * the recipe row of record right after its PATCH, or the artifact's
+ * own embedded copy when the row's spec is not at hand.
+ */
+export function pieceRenameBody(title: string, spec?: unknown): {
+  title: string;
+  data: Record<string, unknown>;
+} {
+  return {
+    title,
+    data: {
+      name: title,
+      ...(spec && typeof spec === 'object' ? { spec: { ...(spec as Record<string, unknown>), name: title } } : {}),
+    },
+  };
+}
+
+/** F7 — does this artifact's name (in any of its copies) lag the bench title? */
+export function artifactNameLag(row: CanonicalArtifactRow, title: string): boolean {
+  if (row.title !== title) return true;
+  if (row.name !== undefined && row.name !== title) return true;
+  if (row.specName !== undefined && row.specName !== title) return true;
+  return false;
 }
 
 /**
