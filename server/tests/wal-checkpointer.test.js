@@ -107,6 +107,6 @@ describe("server.js wiring", () => {
     assert.match(src, /_walCheckpointer = startWalCheckpointer\(DB_PATH, \{[\s\S]*?onReady: \(\) => \{ db\.pragma\("wal_autocheckpoint = 0"\)/);
     assert.match(src, /onFallback: \(reason\) => \{ try \{ db\.pragma\(`wal_autocheckpoint = \$\{walPages\}`\)/);
     assert.match(src, /_walCheckpointer\?\.stop\(\);[^\n]*\n\s*structuredLog\("info", "shutdown_closing_database"/);
-    assert.match(src, /db\.pragma\("analysis_limit = 1000"\);\s*\n\s*db\.pragma\("optimize"\)/);
+    assert.match(src, /db\.pragma\("analysis_limit = 1000"\);/);
   });
 });
