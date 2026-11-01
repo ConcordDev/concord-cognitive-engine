@@ -47400,7 +47400,13 @@ register("marketplace", "browse", (ctx, input) => {
   else if (sort === "downloads") listings.sort((a, b) => b.downloads - a.downloads);
   else listings.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
   const result = paginateResults(listings, { page: Number(page || 1), pageSize: clamp(Number(pageSize || 20), 1, 100) });
-  return { ok: true, ...result, categories: PLUGIN_MARKETPLACE.categories };
+  // Listed media DTUs (free, listen-only) ride along on page 1 so the Market
+  // lens Listings tab shows uploaded music/film, not only plugins.
+  const mediaListings = listedMediaMarketItems({ search, category });
+  if (Number(page || 1) === 1 && mediaListings.length) {
+    result.listings = [...mediaListings, ...(result.listings || [])];
+  }
+  return { ok: true, ...result, mediaListings, categories: PLUGIN_MARKETPLACE.categories };
 });
 
 // MULTIPASS ACL: marketplace.listings/get — advertised in publicReadDomains
@@ -47539,6 +47545,54 @@ function resolveMarketplaceDtu(dtuId) {
   return hydrated || null;
 }
 
+// An uploaded media DTU (music / film / audio — type "media") is listed
+// FREE and LISTEN-ONLY. Real-money trading is off: price is pinned to 0, no
+// sale license gate is consulted, and purchase refuses a listenOnly listing.
+// The DTU keeps its upload scope (global when public, user when private) so
+// /api/media/:id/stream access is unchanged; listing only sets dtu.marketplace.
+function listMediaDtuFree(dtu, userId, input) {
+  if (Number(input?.price || 0) > 0) {
+    return { ok: false, error: "paid_media_listing_disabled", message: "Paid listings are off. Media is listed free and listen-only." };
+  }
+  if (dtu.privacy !== "public") {
+    return { ok: false, error: "media_must_be_public", message: "Only public uploads can be listed." };
+  }
+  dtu.marketplace = {
+    listed: true, listedAt: new Date().toISOString(),
+    price: 0, currency: "USD", listenOnly: true,
+    contentType: dtu.mediaType === "video" ? "film" : dtu.mediaType === "audio" ? "music" : "media",
+    title: input?.title || dtu.title,
+    description: input?.description ?? dtu.description ?? "",
+    tags: input?.tags || dtu.tags || [],
+    preview: null,
+    seller: userId || dtu.author,
+    purchases: 0, rating: null, reviews: [],
+    purchaseScopes: [],
+  };
+  return { ok: true, listing: dtu.marketplace };
+}
+
+// Listed media DTUs in the row shape the Market lens Listings tab renders.
+function listedMediaMarketItems({ search, category } = {}) {
+  const q = search ? String(search).toLowerCase() : "";
+  const out = [];
+  for (const [id, dtu] of STATE.dtus) {
+    if (dtu?.type !== "media" || !dtu.marketplace?.listed || dtu.privacy !== "public") continue;
+    if (category && category !== dtu.marketplace.contentType) continue;
+    const title = dtu.marketplace.title || dtu.title || "";
+    if (q && !(title.toLowerCase().includes(q) || String(dtu.marketplace.description || "").toLowerCase().includes(q))) continue;
+    out.push({
+      id, title, description: dtu.marketplace.description || "", price: 0,
+      seller: dtu.marketplace.seller || dtu.author, sellerId: dtu.marketplace.seller || dtu.author,
+      createdAt: dtu.marketplace.listedAt, tags: dtu.marketplace.tags || [],
+      type: dtu.marketplace.contentType, purchases: 0,
+      mediaType: dtu.mediaType, listenOnly: true, streamUrl: `/api/media/${id}/stream`,
+    });
+  }
+  out.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  return out;
+}
+
 register("marketplace", "list", async (ctx, input) => {
   const { dtuId, price, currency, contentType, title, description, tags, preview } = input || {};
   const dtu = resolveMarketplaceDtu(dtuId);
@@ -47559,6 +47613,8 @@ register("marketplace", "list", async (ctx, input) => {
   }
   // Owner private work may be local (dtu.create default) or personal (locker).
   // Block already-global / already-marketplace scopes from a second list path.
+  // (Uploaded media DTUs are global/user by design — free listen-only path.)
+  if (dtu.type === "media") return listMediaDtuFree(dtu, userId, input);
   if (dtu.scope && dtu.scope !== "personal" && dtu.scope !== "local") {
     return { ok: false, error: "can_only_list_personal_dtus" };
   }
@@ -47699,6 +47755,7 @@ register("marketplace", "purchase", async (ctx, input) => {
   const { dtuId } = input || {};
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu?.marketplace?.listed) return { ok: false, error: "not_listed" };
+  if (dtu.marketplace.listenOnly) return { ok: false, error: "listen_only_listing" };
 
   const buyerId = ctx?.actor?.userId || ctx?.actor?.id;
   const grant = buyerId
@@ -47762,6 +47819,11 @@ app.post("/api/marketplace/submit", requireAuth(), perEndpointRateLimit("marketp
     const dtu = STATE.dtus.get(dtuId);
     if (!dtu) return res.status(404).json({ ok: false, error: "DTU not found" });
     if (dtu.ownerId !== userId) return res.status(403).json({ ok: false, error: "Not your DTU" });
+    // Uploaded media DTUs (global/user scope) list free + listen-only via the macro.
+    if (dtu.type === "media") {
+      const out = await runMacro("marketplace", "list", { dtuId, price: Number(price || 0) }, makeCtx(req));
+      return res.status(out?.ok ? 200 : 400).json(out);
+    }
     if (dtu.scope !== "personal") return res.status(400).json({ ok: false, error: "Can only list personal DTUs" });
 
     // Repair-brain pre-flight: catch obvious prompt-injection / harmful /
@@ -48448,6 +48510,7 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
   // STATE.dtus) would otherwise miss it too.
   const dtu = resolveMarketplaceDtu(dtuId);
   if (!dtu?.marketplace?.listed) return { ok: false, error: "not_listed" };
+  if (dtu.marketplace.listenOnly) return { ok: false, error: "listen_only_listing" };
 
   // Federated origin: if the DTU's metadata records origin_peer_id (set
   // when it was imported from a peer), delegate the purchase to the
