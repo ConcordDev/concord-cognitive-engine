@@ -162,11 +162,60 @@ describe('fromAxiosError', () => {
     expect(err).toBeInstanceOf(ValidationError);
   });
 
-  it('converts 404 to NotFoundError', () => {
+  it('converts 404 to a NOT_FOUND ConcordError carrying the server message verbatim', () => {
     const err = fromAxiosError({
       response: { status: 404, data: { error: 'Not found' } },
     });
-    expect(err).toBeInstanceOf(NotFoundError);
+    expect(err).toBeInstanceOf(ConcordError);
+    expect(err).not.toBeInstanceOf(NotFoundError);
+    expect(err.code).toBe('NOT_FOUND');
+    expect(err.statusCode).toBe(404);
+    expect(err.message).toBe('Not found');
+  });
+
+  // F10 regression: the server's 404 message is COMPLETE ("DTU not
+  // found"), not a bare resource name. The 404 branch must pass it
+  // through as the message — feeding it to NotFoundError composed a
+  // second "not found" onto it at every sighting below.
+  describe('404 message passthrough (F10)', () => {
+    it('keeps "DTU not found" verbatim (Debug Inspector sighting)', () => {
+      const err = fromAxiosError({
+        response: { status: 404, data: { error: 'DTU not found' } },
+      });
+      expect(err.message).toBe('DTU not found');
+      expect(err.code).toBe('NOT_FOUND');
+      expect(err.statusCode).toBe(404);
+    });
+
+    it('keeps "recipient not found" verbatim (Linguistics DM sighting)', () => {
+      const err = fromAxiosError({
+        response: { status: 404, data: { error: 'recipient not found' } },
+      });
+      expect(err.message).toBe('recipient not found');
+    });
+
+    it('keeps a data.message 404 verbatim (Philosophy "user not found" sighting)', () => {
+      const err = fromAxiosError({
+        response: { status: 404, data: { message: 'user not found' } },
+      });
+      expect(err.message).toBe('user not found');
+    });
+
+    it('keeps a bare "not_found" code-message verbatim (Understanding Evolution sighting)', () => {
+      const err = fromAxiosError({
+        response: { status: 404, data: { error: 'not_found' } },
+      });
+      expect(err.message).toBe('not_found');
+    });
+
+    it('falls back to the axios message without composing onto it', () => {
+      const err = fromAxiosError({
+        response: { status: 404, data: {} },
+        message: 'Request failed with status code 404',
+      });
+      expect(err.message).toBe('Request failed with status code 404');
+      expect(err.code).toBe('NOT_FOUND');
+    });
   });
 
   it('converts 409 to ConflictError', () => {
