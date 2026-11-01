@@ -48,6 +48,9 @@ function cabinet() {
     if (domain === 'vault' && action === 'browse') {
       return { data: { ok: true, result: { records: [{ id: 'vsub_pub', title: 'Public tape', status: 'admitted' }] }, error: null } };
     }
+    if (domain === 'vault' && action === 'curators') {
+      return { data: { ok: true, result: { curators: [] }, error: null } };
+    }
     if (domain === 'vault' && action === 'my_submissions') {
       return { data: { ok: true, result: { submissions: [own] }, error: null } };
     }
