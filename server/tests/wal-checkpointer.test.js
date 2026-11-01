@@ -256,6 +256,7 @@ describe("shutdown drain: checkpointNow() empties the backlog off the main threa
     let grew = false;
     while (Date.now() - t0 < 3000) { if (statSync(p).size > base + 1024 * 1024) { grew = true; break; } await new Promise((r) => setTimeout(r, 25)); }
     const drainedMs = Date.now() - t0;
+    if (askNow) { try { await until(() => results.some((r) => r.forced), 3000); } catch { /* asserted by the caller */ } } // the result message trails the file growth
     h.stop(); db.close(); rmSync(dir, { recursive: true, force: true });
     return { grew, drainedMs, results };
   }
