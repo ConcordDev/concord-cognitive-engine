@@ -1,134 +1,114 @@
 'use client';
 
 /**
- * TheVault — one cabinet.
+ * TheVault — a curated hall of fame. Open submission, closed admission.
  *
- * Left: vault.browse (admitted only) plus the signed-in user's
- * vault.my_submissions. Empty copy is "Nothing unlocked."
- * Right: "Nothing selected." until a row from that read is chosen.
- * Open the vault calls vault.submit, then shows the title only after
- * my_submissions contains that id and the same title. Status is the
- * word the row came back with. This screen does not admit.
+ * Spec: docs/THEVAULT_SPEC.md (locked). No likes, feeds, trending or metrics; a decline is private to
+ * the submitter; the vault opens empty. This page lays out, on one paper wall:
+ *   · the admitted records (vault.browse), the only public read;
+ *   · the signed-in person's own submissions (vault.my_submissions) with withdraw, and the submit form.
+ * Admission is a curator's act and is not on this surface (see components/vault/curator).
+ * After a submit the page reads my_submissions back and only trusts what the vault returns.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useAuth } from '@/hooks/useAuth';
 import { lensRun } from '@/lib/api/client';
-import { KeepRecordActions } from '@/components/lens/KeepRecordActions';
-import { vaultSubmissionKeepRecord } from '@/components/lens/recordKeep';
+import { cn } from '@/lib/utils';
+import { vault } from '@/lib/vault/tokens';
+import { SubmitWorkPanel } from '@/components/vault/SubmitWorkPanel';
+import { MySubmissions, type MySubmission } from '@/components/vault/MySubmissions';
 
-interface Work {
-  id: string;
-  title: string;
-  status: string;
-  /** True when the row came from the signed-in user's own submissions. */
-  own?: boolean;
-  workKind?: string;
-  description?: string;
-  body?: string;
-  submittedAt?: number;
-  declineReason?: string;
-  curatorStatement?: string;
-}
+interface AdmittedRow { id: string; title: string; workKind?: string }
 
 type Phase = 'loading' | 'ready' | 'error';
 
-interface WorkRow {
-  id?: string;
-  title?: string;
-  status?: string;
-  workKind?: string;
-  description?: string;
-  body?: string;
-  submittedAt?: number;
-  declineReason?: string;
-  curatorStatement?: string;
+function str(v: unknown): string | undefined {
+  return typeof v === 'string' ? v : undefined;
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  submitted: 'Submitted',
-  under_review: 'Under review',
-  admitted: 'Admitted',
-  declined: 'Declined',
-  withdrawn: 'Withdrawn',
-};
-
-function statusLabel(status: string): string {
-  return STATUS_LABEL[status] || status;
-}
-
-function optString(row: WorkRow, key: keyof WorkRow): string | undefined {
-  const value = row[key];
-  return typeof value === 'string' ? value : undefined;
-}
-
-function worksFrom(rows: unknown, own = false): Work[] {
+function submissionsFrom(rows: unknown): MySubmission[] {
   if (!Array.isArray(rows)) return [];
-  const out: Work[] = [];
+  const out: MySubmission[] = [];
   for (const row of rows) {
     if (!row || typeof row !== 'object') continue;
-    const rec = row as WorkRow;
-    const id = rec.id;
-    const title = rec.title;
-    const status = rec.status;
-    if (typeof id !== 'string' || !id) continue;
-    if (typeof title !== 'string' || !title.trim()) continue;
-    if (typeof status !== 'string' || !status) continue;
-    const submittedAt = typeof rec.submittedAt === 'number' ? rec.submittedAt : undefined;
+    const r = row as Record<string, unknown>;
+    const id = str(r.id);
+    const title = str(r.title)?.trim();
+    const status = str(r.status);
+    if (!id || !title || !status) continue;
     out.push({
-      id,
-      title: title.trim(),
-      status,
-      ...(own ? { own: true } : {}),
-      workKind: optString(rec, 'workKind'),
-      description: optString(rec, 'description'),
-      body: optString(rec, 'body'),
-      ...(submittedAt != null ? { submittedAt } : {}),
-      declineReason: optString(rec, 'declineReason'),
-      curatorStatement: optString(rec, 'curatorStatement'),
+      id, title, status,
+      workKind: str(r.workKind),
+      description: str(r.description),
+      body: str(r.body),
+      submittedAt: typeof r.submittedAt === 'number' ? r.submittedAt : undefined,
+      curatorStatement: str(r.curatorStatement) || undefined,
+      declineReason: str(r.declineReason) || undefined,
     });
   }
   return out;
 }
 
-function mergeWorks(admitted: Work[], own: Work[]): Work[] {
-  const ownIds = new Set(own.map((row) => row.id));
-  return [...own, ...admitted.filter((row) => !ownIds.has(row.id))];
-}
-
-async function readCabinet(): Promise<Work[]> {
-  const [browse, mine] = await Promise.all([
-    lensRun<{ records?: unknown }>('vault', 'browse', {}),
-    lensRun<{ submissions?: unknown }>('vault', 'my_submissions', {}),
-  ]);
-  if (!browse.data?.ok) throw new Error(browse.data?.error || 'Could not read the vault.');
-  if (!mine.data?.ok) throw new Error(mine.data?.error || 'Could not read the vault.');
-  return mergeWorks(
-    worksFrom(browse.data.result?.records),
-    worksFrom(mine.data.result?.submissions, true),
-  );
+function admittedFrom(rows: unknown): AdmittedRow[] {
+  if (!Array.isArray(rows)) return [];
+  const out: AdmittedRow[] = [];
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    const r = row as Record<string, unknown>;
+    const id = str(r.id);
+    const title = str(r.title)?.trim();
+    if (id && title) out.push({ id, title, workKind: str(r.workKind) });
+  }
+  return out;
 }
 
 export default function VaultPage() {
   useLensNav('vault');
+  const { user, isLoading: authLoading } = useAuth();
+  const signedIn = Boolean(user);
   const [phase, setPhase] = useState<Phase>('loading');
-  const [works, setWorks] = useState<Work[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState('');
-  const [actionError, setActionError] = useState('');
-  const [composing, setComposing] = useState(false);
-  const [title, setTitle] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [admitted, setAdmitted] = useState<AdmittedRow[]>([]);
+  const [mine, setMine] = useState<MySubmission[]>([]);
+  const [formOpen, setFormOpen] = useState(false);
+  const [notice, setNotice] = useState('');
 
-  const pull = useCallback(async () => readCabinet(), []);
+  const read = useCallback(async () => {
+    const browse = await lensRun<{ records?: unknown }>('vault', 'browse', {});
+    if (!browse.data?.ok) throw new Error(browse.data?.error || 'Could not read the vault.');
+    let own: MySubmission[] = [];
+    if (signedIn) {
+      const m = await lensRun<{ submissions?: unknown }>('vault', 'my_submissions', {});
+      if (!m.data?.ok) throw new Error(m.data?.error || 'Could not read your submissions.');
+      own = submissionsFrom(m.data.result?.submissions);
+    }
+    return { admitted: admittedFrom(browse.data.result?.records), own };
+  }, [signedIn]);
+
+  const load = useCallback(() => {
+    setPhase('loading');
+    setLoadError('');
+    read().then((r) => {
+      setAdmitted(r.admitted);
+      setMine(r.own);
+      setPhase('ready');
+    }).catch((err) => {
+      setPhase('error');
+      setLoadError(err instanceof Error ? err.message : 'Could not load the vault.');
+    });
+  }, [read]);
 
   useEffect(() => {
+    if (authLoading) return undefined;
     let cancelled = false;
-    pull().then((rows) => {
+    read().then((r) => {
       if (cancelled) return;
-      setWorks(rows);
+      setAdmitted(r.admitted);
+      setMine(r.own);
       setPhase('ready');
     }).catch((err) => {
       if (cancelled) return;
@@ -136,157 +116,78 @@ export default function VaultPage() {
       setLoadError(err instanceof Error ? err.message : 'Could not load the vault.');
     });
     return () => { cancelled = true; };
-  }, [pull]);
+  }, [authLoading, read]);
 
-  const load = useCallback(() => {
-    setPhase('loading');
-    setLoadError('');
-    setActionError('');
-    pull().then((rows) => {
-      setWorks(rows);
-      setSelectedId((current) => (current && rows.some((row) => row.id === current) ? current : null));
-      setPhase('ready');
-    }).catch((err) => {
-      setPhase('error');
-      setLoadError(err instanceof Error ? err.message : 'Could not load the vault.');
-    });
-  }, [pull]);
-
-  const openVault = useCallback(async () => {
-    if (busy || phase !== 'ready') return;
-    if (!composing) {
-      setComposing(true);
-      setActionError('');
-      return;
-    }
-    const trimmed = title.trim();
-    if (!trimmed) {
-      setActionError('A title is required.');
-      return;
-    }
-    setBusy(true);
-    setActionError('');
+  const onSubmitted = useCallback(async (id: string) => {
+    setNotice('');
     try {
-      const created = await lensRun<{ id?: string }>('vault', 'submit', { title: trimmed });
-      const id = created.data?.result?.id;
-      if (!created.data?.ok || !id) {
-        throw new Error(created.data?.error || 'Could not open that work.');
-      }
-      const rows = await readCabinet();
-      const row = rows.find((item) => item.id === id);
-      if (!row || row.title !== trimmed) {
-        throw new Error('Opened, but the vault did not read it back.');
-      }
-      setWorks(rows);
-      setSelectedId((current) => (current && rows.some((item) => item.id === current) ? current : null));
-      setTitle('');
-      setComposing(false);
+      const r = await read();
+      setAdmitted(r.admitted);
+      setMine(r.own);
+      if (!r.own.some((s) => s.id === id)) setNotice('Submitted, but the vault did not read it back. Reload to check.');
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not open that work.');
-    } finally {
-      setBusy(false);
+      setNotice(err instanceof Error ? err.message : 'Submitted, but the vault could not be read.');
     }
-  }, [busy, composing, phase, title]);
+  }, [read]);
+
+  const onWithdraw = useCallback(async (id: string, reason: string): Promise<string | null> => {
+    const res = await lensRun<{ ok?: boolean }>('vault', 'withdraw', { submissionId: id, ...(reason ? { reason } : {}) });
+    if (!res.data?.ok) return res.data?.error || 'withdraw_failed';
+    try {
+      const r = await read();
+      setAdmitted(r.admitted);
+      setMine(r.own);
+    } catch { /* the withdrawal itself was confirmed; the list refreshes on the next load */ }
+    return null;
+  }, [read]);
 
   useLensCommand(
-    [{ id: 'vault-open', keys: 'o', description: 'Open the vault', category: 'actions', action: () => { void openVault(); } }],
+    [{ id: 'vault-submit', keys: 'o', description: 'Submit a work', category: 'actions', action: () => { if (signedIn) setFormOpen(true); } }],
     { lensId: 'vault' },
   );
 
-  const selected = works.find((row) => row.id === selectedId) || null;
-  const kept = selected?.own ? vaultSubmissionKeepRecord(selected) : null;
-
   return (
     <LensShell lensId="vault" asMain={false}>
-      <div data-lens-theme="vault" className="relative min-h-full bg-black px-8 pb-28 pt-6">
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">TheVault</h1>
+      <div data-lens-theme="vault" className={cn(vault.wall, 'min-h-full px-6 pb-24 pt-8 sm:px-10')}>
+        <h1 className={vault.title}>TheVault</h1>
 
-        <div className="grid min-h-[22rem] overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 sm:grid-cols-[minmax(0,16rem)_1fr]">
-          <section aria-label="Cabinet" className="border-white/10 px-5 py-6 sm:border-r">
-            {phase === 'loading' && (
-              <p data-testid="vault-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-500">
-                Opening the vault.
-              </p>
-            )}
-            {phase === 'error' && (
-              <div data-testid="vault-error" role="alert">
-                <p className="text-[14px] text-zinc-300">{loadError || 'Could not load the vault.'}</p>
-                <button type="button" onClick={load} className="mt-4 text-[14px] text-zinc-100 underline">
-                  Retry
-                </button>
-              </div>
-            )}
-            {phase === 'ready' && works.length === 0 && (
-              <p data-testid="vault-empty" className="text-[14px] text-zinc-500">Nothing unlocked.</p>
-            )}
-            {phase === 'ready' && works.length > 0 && (
-              <ul data-testid="vault-works" className="space-y-2">
-                {works.map((item) => (
-                  <li key={item.id}>
-                    <button
-                      type="button"
-                      aria-pressed={item.id === selectedId}
-                      onClick={() => {
-                        setSelectedId(item.id);
-                        setComposing(false);
-                        setActionError('');
-                      }}
-                      className="w-full rounded-lg px-2 py-2 text-left hover:bg-white/5"
-                    >
-                      <span className="block font-vault text-[1.05rem] text-zinc-100">{item.title}</span>
-                      <span className="mt-1 block text-[12px] text-zinc-500">{statusLabel(item.status)}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+        {phase === 'loading' && (
+          <p data-testid="vault-loading" role="status" aria-busy="true" className={cn(vault.caption, 'mt-6')}>Opening the vault.</p>
+        )}
+        {phase === 'error' && (
+          <div data-testid="vault-error" role="alert" className="mt-6">
+            <p className={vault.body}>{loadError || 'Could not load the vault.'}</p>
+            <button type="button" onClick={load} className={cn(vault.button, 'mt-3')}>Retry</button>
+          </div>
+        )}
 
-          <section aria-label="Record" className="px-6 py-6">
-            {phase === 'ready' && selected && (
-              <div data-testid="vault-selected">
-                <h2 className="font-vault text-[1.75rem] text-zinc-100">{selected.title}</h2>
-                <p className="mt-3 text-[14px] text-zinc-400">{statusLabel(selected.status)}</p>
-                {selected.own ? (
-                  <div className="mt-5">
-                    <KeepRecordActions key={kept?.body} record={kept} />
-                  </div>
-                ) : null}
-              </div>
-            )}
-            {phase === 'ready' && !selected && !composing && (
-              <p data-testid="vault-unselected" className="text-[14px] text-zinc-500">Nothing selected.</p>
-            )}
-            {phase === 'ready' && composing && (
-              <label className="block text-[14px] text-zinc-400">
-                Title
-                <input
-                  data-testid="vault-title"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') { event.preventDefault(); void openVault(); }
-                  }}
-                  className="mt-2 w-full border-b border-white/15 bg-transparent pb-2 text-[16px] text-zinc-100 outline-none"
-                  autoFocus
-                />
-              </label>
-            )}
-            {actionError ? (
-              <p role="alert" className="mt-4 text-[14px] text-zinc-300">{actionError}</p>
-            ) : null}
-          </section>
-        </div>
+        {phase === 'ready' && (
+          <>
+            <section aria-label="Admitted records" className="mt-8">
+              {admitted.length === 0 ? (
+                <p data-testid="vault-empty" className={vault.bodySm}>Nothing has been admitted yet.</p>
+              ) : (
+                <ul data-testid="vault-admitted" className="m-0 list-none space-y-2 p-0">
+                  {admitted.map((r) => (
+                    <li key={r.id} className="font-vault text-[1.1rem] text-vault-ink">{r.title}</li>
+                  ))}
+                </ul>
+              )}
+            </section>
 
-        <button
-          type="button"
-          onClick={() => { void openVault(); }}
-          disabled={phase !== 'ready' || busy}
-          className="fixed bottom-8 right-8 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
-        >
-          Open the vault
-        </button>
+            {signedIn ? (
+              <>
+                <SubmitWorkPanel open={formOpen} onOpenChange={setFormOpen} onSubmitted={onSubmitted} />
+                {notice ? <p role="alert" className="mt-3 text-sm text-red-700">{notice}</p> : null}
+                <MySubmissions submissions={mine} onWithdraw={onWithdraw} />
+              </>
+            ) : (
+              <p data-testid="vault-signin" className={cn(vault.caption, 'mt-8')}>Sign in to submit a work.</p>
+            )}
+          </>
+        )}
       </div>
     </LensShell>
   );
 }
+

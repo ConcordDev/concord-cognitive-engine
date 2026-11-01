@@ -9,7 +9,7 @@ import React from 'react';
 
 const { lensRun, authUser } = vi.hoisted(() => ({
   lensRun: vi.fn(),
-  authUser: { current: null as { username: string } | null },
+  authUser: { current: null as { id: string; username: string } | null },
 }));
 
 vi.mock('@/components/lens/LensShell', () => ({
@@ -17,6 +17,7 @@ vi.mock('@/components/lens/LensShell', () => ({
     React.createElement('div', null, children),
 }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: authUser.current, isLoading: false, isAuthenticated: !!authUser.current }),
 }));
@@ -39,7 +40,7 @@ const own = {
 
 beforeEach(() => {
   lensRun.mockReset();
-  authUser.current = null;
+  authUser.current = { id: 'u1', username: 'ramaj' };
 });
 
 function cabinet() {
@@ -106,8 +107,11 @@ describe('vault submission keep', () => {
   it('does not offer Keep on an admitted work that is not the user\'s submission', async () => {
     cabinet();
     const view = render(<VaultPage />);
-    fireEvent.click(await view.findByRole('button', { name: /Public tape/ }));
-    expect(await view.findByRole('heading', { name: 'Public tape' })).toBeTruthy();
-    await waitFor(() => expect(view.queryByRole('button', { name: 'Keep as DTU' })).toBeNull());
+    expect(await view.findByTestId('vault-admitted')).toHaveTextContent('Public tape');
+    expect(view.queryByRole('button', { name: /Public tape/ })).toBeNull();
+    expect(view.queryByRole('button', { name: 'Keep as DTU' })).toBeNull();
+    // Keep only appears once the user's own submission is opened.
+    fireEvent.click(await view.findByRole('button', { name: /Night tape/ }));
+    await waitFor(() => expect(view.queryByRole('button', { name: 'Keep as DTU' })).not.toBeNull());
   });
 });
