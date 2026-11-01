@@ -74,6 +74,16 @@ function _mediaProviderConfigured() {
   return !!(process.env.CONCORD_MODERATION_API_KEY || process.env.OPENAI_API_KEY || process.env.CONCORD_CSAM_PROVIDER);
 }
 
+// Single-segment GET paths that are routes of their own. `GET /:id` is registered before them, so without this
+// guard Express matched "feed" / "metrics" / "constants" as a media id and answered 404 "Media not found"
+// (the Discovery feed's GET /api/media/feed?tab=trending was a 404 for every caller). `next("route")` hands the
+// request to the next matching route, which is the real handler.
+const RESERVED_MEDIA_SEGMENTS = new Set(["feed", "metrics", "constants"]);
+function _skipReservedMediaSegment(req, _res, next) {
+  if (RESERVED_MEDIA_SEGMENTS.has(req.params.id)) return next("route");
+  return next();
+}
+
 /**
  * Create the media routes router.
  * Follows the same pattern as film-studio and connective-tissue routes.
@@ -398,7 +408,7 @@ export default function createMediaRouter({ STATE }) {
    * Enforces privacy: private uploads are only readable by their author,
    * followers-only uploads by the author or an active follower.
    */
-  router.get("/:id", asyncHandler(async (req, res) => {
+  router.get("/:id", _skipReservedMediaSegment, asyncHandler(async (req, res) => {
     const viewerId = req.user?.id || null;
     const gated = getMediaDTUForViewer(STATE, req.params.id, viewerId);
     if (!gated.ok) {
