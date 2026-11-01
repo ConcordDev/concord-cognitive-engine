@@ -774,7 +774,7 @@ export async function lensRun<T = any>(
   action?: string,
   input: Record<string, unknown> = {},
   runId?: string,
-): Promise<{ data: { ok: boolean; result: T | null; error: string | null; reason?: string; envVar?: string; signupUrl?: string; code?: string; retryAfterS?: number } }> {
+): Promise<{ data: { ok: boolean; result: T | null; error: string | null; message?: string | null; reason?: string; envVar?: string; signupUrl?: string; code?: string; retryAfterS?: number } }> {
   try {
     let domain: string;
     let act: string;
@@ -824,12 +824,16 @@ export async function lensRun<T = any>(
     // missing_api_key also keeps envVar/signupUrl so the panel can render
     // the honest "needs a key" state instead of a stripped error string.
     if (node && typeof node === 'object' && (node as { ok?: boolean }).ok === false) {
-      const n = node as { error?: string; reason?: string };
+      const n = node as { error?: string; reason?: string; message?: string };
       return {
         data: {
           ok: false,
           result: null,
           error: String(n.error || n.reason || err || 'lens error'),
+          // The handler's human `message`, carried alongside the machine
+          // `error` code (additive — `error` keeps the code for callers
+          // that branch on it; `message` is the display text).
+          message: typeof n.message === 'string' ? n.message : null,
           ...honestKeyFields(node),
         },
       };
@@ -841,7 +845,15 @@ export async function lensRun<T = any>(
     const message = typeof bodyErr === 'string' && bodyErr
       ? bodyErr
       : e instanceof Error ? e.message : String(e);
-    return { data: { ok: false, result: null, error: message, ...honestKeyFields(body) } };
+    // A shaped lens failure (server/lib/lens-run-http.js) puts the
+    // handler's refusal at the body's top level as
+    // { ok:false, error:<code>, message:<human> } under a 4xx, so it
+    // lands here, not in the unwrap above. `error` above keeps the
+    // code; carry the human message too, or every consumer downstream
+    // has only the code to show the user (the F15 "network error"
+    // banner pattern in the repos workspace).
+    const bodyMsg = body && typeof body === 'object' ? (body as { message?: unknown }).message : undefined;
+    return { data: { ok: false, result: null, error: message, message: typeof bodyMsg === 'string' ? bodyMsg : null, ...honestKeyFields(body) } };
   }
 }
 
