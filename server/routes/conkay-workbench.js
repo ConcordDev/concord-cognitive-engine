@@ -12,6 +12,8 @@
 //   POST /api/conkay/workbench            { pendingId, text }    -> continues the questions conversation
 //   GET  /api/conkay/workbench/:id        -> { view }
 //   POST /api/conkay/workbench/:id/knob   { variable, value }   -> { reply, view }
+//   GET  /api/conkay/workbench/:id/assembly                     -> { assembly, view } (per-part analyses joined)
+//   POST /api/conkay/workbench/:id/rerun  { solver }            -> { reply, rerun, assembly, view }
 //   POST /api/conkay/workbench/:id/lock   { variable, locked }  -> { view }
 //   POST /api/conkay/workbench/:id/ask    { text }              -> { reply, view }
 //   POST /api/conkay/workbench/:id/undo                         -> { reply, view }
@@ -28,7 +30,7 @@ import { designFromChat } from "../lib/conkay/chat/run.js";
 import { parseChatBrief } from "../lib/conkay/chat/brief-parser.js";
 import { ChatSession } from "../lib/conkay/chat/session.js";
 import { DesignConversation } from "../lib/conkay/chat/what-if.js";
-import { workbenchView, assemblySnapshot, fitCheckDiff } from "../lib/conkay/chat/workbench.js";
+import { workbenchView, assemblySnapshot, fitCheckDiff, attachSessionAnalyses } from "../lib/conkay/chat/workbench.js";
 import { hydrateAssembly } from "../lib/conkay/assembly/build.js";
 import { readStlFile } from "../lib/conkay/assembly/cad-skin.js";
 import { carEvaluator } from "../lib/conkay/chat/orchestrator.js";
@@ -59,6 +61,15 @@ function hydratedAssembly(conv, compact) {
   } catch {
     return hydrateAssembly(compact);
   }
+}
+
+/**
+ * The session's current assembly, viewer-ready, with each component's analysis links joined from
+ * the session's own envelopes (HANDOFF-3 A4). Null when the design has no assembly run.
+ */
+function assemblyFor(conv) {
+  const snap = assemblySnapshot(conv);
+  return snap ? attachSessionAnalyses(conv, hydratedAssembly(conv, snap.compact)) : null;
 }
 
 export default function createConkayWorkbenchRouter({ requireAuth, store = new Map(), evaluatorFor = null }) {
@@ -158,9 +169,29 @@ export default function createConkayWorkbenchRouter({ requireAuth, store = new M
       reply: plain(reply),
       fitCheckDiff: fitCheckDiff(before?.checks, after?.checks),
       rerun: Array.isArray(reply?.diff?.rerun) ? reply.diff.rerun : [],
-      assembly: after ? hydratedAssembly(c.conv, after.compact) : null,
+      assembly: after ? assemblyFor(c.conv) : null,
       view: workbenchView(c.conv),
     });
+  }));
+
+  router.get("/workbench/:id/assembly", auth, handle(async (req, res) => {
+    const c = own(req, res); if (!c) return;
+    const assembly = assemblyFor(c.conv);
+    if (!assembly) return res.status(404).json({ ok: false, error: "no assembly for this design" });
+    res.json({ ok: true, assembly, view: workbenchView(c.conv) });
+  }));
+
+  router.post("/workbench/:id/rerun", auth, handle(async (req, res) => {
+    const c = own(req, res); if (!c) return;
+    const solver = String(req.body?.solver || "");
+    if (!solver) return res.status(400).json({ ok: false, error: "invalid_input", field: "solver", reason: "required", message: "solver is required" });
+    if (c.conv.settling) return res.status(409).json({ ok: false, error: "busy", message: "a previous edit is still settling its kernels" });
+    const reply = await c.conv.rerunSolver(solver);
+    if (reply?.busy) return res.status(409).json({ ok: false, error: "busy" });
+    if (reply?.kind === "error") {
+      return res.status(reply.error === "not_run" ? 404 : 400).json({ ok: false, error: reply.error, message: reply.message });
+    }
+    res.json({ ok: true, reply: plain(reply), rerun: reply.rerun, assembly: assemblyFor(c.conv), view: workbenchView(c.conv) });
   }));
 
   router.post("/workbench/:id/lock", auth, handle(async (req, res) => {
