@@ -27,8 +27,12 @@ describe("code-ast-complexity — engine availability", () => {
     // on first use (Review F6). Availability now agrees with the
     // installed package's real API surface — true on a classic-API
     // install, honestly false on a version-only one.
+    // Resolution order matches the walker: `typescript5` alias, then `typescript`.
     let installed = null;
-    try { installed = createRequire(import.meta.url)("typescript"); } catch { installed = null; }
+    const req = createRequire(import.meta.url);
+    for (const name of ["typescript5", "typescript"]) {
+      try { const m = req(name); if (hasCompilerApi(m)) { installed = m; break; } } catch { /* next */ }
+    }
     assert.equal(astEngineAvailable(), hasCompilerApi(installed));
   });
 });

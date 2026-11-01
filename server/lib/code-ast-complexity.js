@@ -35,6 +35,7 @@ import { createRequire } from "node:module";
 const _require = createRequire(import.meta.url);
 let _ts = null;
 let _loadFailed = false;
+const COMPILER_PACKAGES = ["typescript5", "typescript"];
 
 /**
  * hasCompilerApi — true only when a loaded `typescript` module actually
@@ -69,17 +70,18 @@ function ts() {
   if (_ts) return _ts;
   if (_loadFailed) return null;
   try {
-    const mod = _require("typescript");
-    if (!hasCompilerApi(mod)) {
-      // The package resolved but exposes no compiler API (e.g. the
-      // typescript v7 version-only entry). That is a load failure for
-      // this walker's purposes: report unavailable honestly rather
-      // than hand callers a module that throws on first use.
-      _loadFailed = true;
-      return null;
+    // `typescript5` is an npm alias for the TS5 compiler (the main
+    // `typescript` pin is v7, which has no JS compiler API). Prefer it,
+    // then fall back to `typescript` only if that exposes the API.
+    for (const name of COMPILER_PACKAGES) {
+      let mod = null;
+      try { mod = _require(name); } catch { continue; }
+      if (hasCompilerApi(mod)) { _ts = mod; return _ts; }
     }
-    _ts = mod;
-    return _ts;
+    // Nothing resolved to a working compiler: report unavailable
+    // honestly rather than hand callers a module that throws on use.
+    _loadFailed = true;
+    return null;
   } catch {
     _loadFailed = true;
     return null;
