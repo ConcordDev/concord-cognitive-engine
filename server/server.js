@@ -6703,12 +6703,17 @@ function initDatabase() {
       // require setting it BEFORE journal_mode=WAL on a genuinely fresh
       // (pre-existing-file) database, or a VACUUM on an existing one —
       // out of scope for what was a minor I/O-amortization tweak.
-      // analysis_limit bounds the ANALYZE work optimize may do (SQLite's own
-      // recommendation): without it, a boot that follows a migration adding an
-      // index made optimize scan the new index in full (3.2 s, #1940 syncIo).
+      // NO boot-time `PRAGMA optimize` (2026-11-01, #1943 deploy): it ran synchronously on the main thread
+      // before listen and took 23,990 ms (slow_sync_io target "PRAGMA optimize", server.js initDatabase) with
+      // analysis_limit already at 1000 and a 69 MB WAL; the statements right after it ran in milliseconds, so
+      // the cost was optimize itself, not first-touch of the file. Every deploy paid ~24 s of extra downtime.
+      // It also bought nothing: see INC-100 below, a plain optimize only looks at tables this connection has
+      // already queried and at boot there are none. Query-planner statistics are kept fresh by the
+      // sqlite-stats-refresh job below (one table at a time, off the boot path, then twice a day), which
+      // re-ANALYZEs the tables whose stats are stale. analysis_limit stays set so that job's ANALYZE is bounded
+      // too. Cause of the 24 s itself is not proven.
       db.pragma("analysis_limit = 1000");
-      db.pragma("optimize");                  // Refresh query-planner stats at boot (idempotent, fast)
-      // INC-100: that boot-time optimize is a no-op (plain optimize only looks
+      // INC-100: a boot-time optimize was a no-op (plain optimize only looks
       // at tables this connection has already queried — none yet), so
       // sqlite_stat1 stayed frozen at tiny row counts and the planner chose
       // full SCANs over existing indexes (3.5 s event-loop freezes from
