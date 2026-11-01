@@ -46,8 +46,14 @@ async function keepAndRead(ctx, params, bits) {
 
   const accountB = await http.get(`/api/dtus/${dtuId}`, { userId: "account-b" });
   assert.equal(accountB.status, 404, "account B must not read a private DTU");
+  // Anonymous callers get 401 AUTH_REQUIRED, not 404, by design (INC-SWEEP research F8, 2026-10-14, pinned by
+  // dtu-anon-private-get.test.js): the route says "login required" for an anon read of a private DTU. This line
+  // predated that change and still expected 404. The privacy property is unchanged and asserted here: no body.
   const anon = await http.get(`/api/dtus/${dtuId}`);
-  assert.equal(anon.status, 404);
+  assert.equal(anon.status, 401, "anon is told to log in");
+  assert.equal(anon.body.code, "AUTH_REQUIRED");
+  assert.equal(anon.body.dtu, undefined, "no DTU body for anon");
+  assert.equal(JSON.stringify(anon.body).includes(params.title), false, "the private title never reaches anon");
 
   const content = `${params.human.summary}\n\nDTU ${dtuId}`;
   const drafted = await lensRun("thread", "thread-draft", {

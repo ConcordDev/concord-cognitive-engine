@@ -263,7 +263,7 @@ export function SellPanel() {
                   />
                 </div>
                 <p className="text-xs text-gray-400 font-medium">Pricing per License Tier</p>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                   {(
                     [
                       { id: 'basic', field: 'basicPrice' as const },

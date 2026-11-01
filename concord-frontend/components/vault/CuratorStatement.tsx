@@ -36,6 +36,11 @@ export interface CuratorStatementProps {
   statement: string | null | undefined;
   /** `record.curatorId` — the human who made and signed this call. */
   curatorId?: string | null;
+  /**
+   * The curator's roster display name (`vault.curators` -> `display_name`). The signature shows THIS, never the
+   * raw id: when the roster has no name for the curator it says "a curator" (plus role) rather than print an id.
+   */
+  curatorName?: string | null;
   /** `record.curatorRole` — `founding_curator` | `guest_curator`. */
   curatorRole?: string | null;
   /**
@@ -51,6 +56,7 @@ export interface CuratorStatementProps {
 export function CuratorStatement({
   statement,
   curatorId,
+  curatorName,
   curatorRole,
   onSelectCurator,
   curatorFilterActive = false,
@@ -59,7 +65,12 @@ export function CuratorStatement({
   if (!text) return null;
 
   const role = formatCuratorRole(curatorRole);
+  // `curatorId` still keys the filter control; the printed signature is the display name only.
   const attributedTo = typeof curatorId === 'string' ? curatorId.trim() : '';
+  const signedName = typeof curatorName === 'string' ? curatorName.trim() : '';
+  const signature = signedName
+    ? `${signedName}${role ? `, ${role}` : ''}`
+    : role ? `a ${role.toLowerCase()}` : 'a curator';
 
   return (
     <figure
@@ -73,8 +84,7 @@ export function CuratorStatement({
       {attributedTo ? (
         <figcaption className="mt-6 flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <span className={vault.attribution} data-testid="vault-statement-attribution">
-            Written and signed by {attributedTo}
-            {role ? `, ${role}` : ''}
+            Written and signed by {signature}
           </span>
           {onSelectCurator ? (
             <button

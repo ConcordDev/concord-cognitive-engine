@@ -230,7 +230,7 @@ function RegisterDatasetModal({ onClose, onDone }: { onClose: () => void; onDone
               className="w-full mt-1 px-3 py-2 bg-lattice-surface border border-lattice-border rounded text-sm font-mono outline-none focus:border-neon-purple" />
           </label>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {(['train', 'val', 'test'] as const).map((s) => (
             <label key={s} className="text-xs text-gray-400 capitalize">{s} split
               <input type="number" step="0.05" value={cfg[s]}

@@ -3,7 +3,7 @@
 // One tick at a time per agent (mutex inside EmergentMinorAgent).
 // Scheduler failures are isolated — one agent failing doesn't stop others.
 
-import { EmergentMinorAgent } from "./minor-agent.js";
+import { EmergentMinorAgent, flushLastActive } from "./minor-agent.js";
 import { trackFeedJob } from "./feed.js";
 
 export class MinorAgentScheduler {
@@ -69,6 +69,12 @@ export class MinorAgentScheduler {
         )
       );
     }
+    this.flushLastActive();
+  }
+
+  /** One transaction for every agent's queued last_active_at (see minor-agent.js). */
+  flushLastActive() {
+    return flushLastActive(this.db, this.agents.values());
   }
 
   /** Start the periodic tick loop. Timer is unreferenced to allow process exit in tests. */
@@ -89,6 +95,7 @@ export class MinorAgentScheduler {
   stop() {
     this._stopped = true;
     if (this._timer) { clearInterval(this._timer); this._timer = null; }
+    this.flushLastActive(); // best-effort: don't lose the last tick's timestamps
   }
 
   /** Number of active agents. */

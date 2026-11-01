@@ -90,7 +90,7 @@ export function StreakDashboard() {
         <div className="p-10 text-center text-xs text-gray-400">No data yet</div>
       ) : (
         <div className="p-4 space-y-4">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <BigTile icon={Flame} value={status.streak} label="Day streak" tone="orange" />
             <BigTile icon={Zap} value={status.totalPoints.toLocaleString()} label="Energy points" tone="amber" />
             <BigTile icon={Trophy} value={status.level} label="Level" tone="violet" />

@@ -99,7 +99,10 @@ describe('bench D2 lifecycle', () => {
     await waitFor(() => expect(getByText('Bench hook II')).toBeInTheDocument());
     expect(queryByText('Bench hook', { exact: true })).toBeNull();
     expect(apiPatch).toHaveBeenCalledWith('/api/crafting/recipes/r1', { title: 'Bench hook II' });
-    expect(apiPut).toHaveBeenCalledWith('/api/lens/crafting/a1', { title: 'Bench hook II' });
+    expect(apiPut).toHaveBeenCalledWith('/api/lens/crafting/a1', {
+      title: 'Bench hook II',
+      data: { name: 'Bench hook II', spec: { name: 'Bench hook II', output_type: 'piece', output_subtype: 'piece' } },
+    });
   });
 
   it('deletes a piece from both stores after the confirming click', async () => {
@@ -131,7 +134,10 @@ describe('bench D2 lifecycle', () => {
     const { getByText } = render(<CraftingPage />);
     await waitFor(() => expect(getByText('Bench hook')).toBeInTheDocument());
     await waitFor(() =>
-      expect(apiPut).toHaveBeenCalledWith('/api/lens/crafting/a1', { title: 'Bench hook' }),
+      expect(apiPut).toHaveBeenCalledWith('/api/lens/crafting/a1', {
+        title: 'Bench hook',
+        data: { name: 'Bench hook' },
+      }),
     );
   });
 

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Code2 as Github, Loader2, Star, GitFork, Eye, ExternalLink } from 'lucide-react';
+import { Code2 as Github, Loader2, Star, GitFork, ExternalLink } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { lensRun } from '@/lib/api/client';
 
@@ -13,7 +13,6 @@ interface Repo {
   html_url: string;
   stargazers_count: number;
   forks_count: number;
-  watchers_count: number;
   language?: string;
   topics?: string[];
   pushed_at: string;
@@ -58,7 +57,7 @@ export function GithubTrending() {
             apiSource="github-trending"
             apiUrl="https://api.github.com/search/repositories"
             title={`GitHub trending — ${language} · ${window} (${rows?.length})`}
-            content={(rows || []).map((r, i) => `${i + 1}. ${r.full_name} · ⭐${r.stargazers_count.toLocaleString()} · ${r.language || '?'}\n   ${r.description || ''}\n   ${r.html_url}`).join('\n\n')}
+            content={(rows || []).map((r, i) => `${i + 1}. ${r.full_name} · ⭐${(r.stargazers_count ?? 0).toLocaleString()} · ${r.language || '?'}\n   ${r.description || ''}\n   ${r.html_url}`).join('\n\n')}
             extraTags={['code', 'github', 'trending', language.toLowerCase(), window]}
             rawData={{ language, window, repos: rows }}
           />
@@ -94,9 +93,8 @@ export function GithubTrending() {
                 )}
               </div>
               <div className="flex flex-col items-end gap-0.5 text-[10px] font-mono text-zinc-400">
-                <span className="flex items-center gap-0.5"><Star className="h-3 w-3" />{r.stargazers_count.toLocaleString()}</span>
-                <span className="flex items-center gap-0.5"><GitFork className="h-3 w-3" />{r.forks_count.toLocaleString()}</span>
-                <span className="flex items-center gap-0.5"><Eye className="h-3 w-3" />{r.watchers_count.toLocaleString()}</span>
+                <span className="flex items-center gap-0.5"><Star className="h-3 w-3" />{(r.stargazers_count ?? 0).toLocaleString()}</span>
+                <span className="flex items-center gap-0.5"><GitFork className="h-3 w-3" />{(r.forks_count ?? 0).toLocaleString()}</span>
                 <ExternalLink className="h-3 w-3 text-zinc-400" />
               </div>
             </div>

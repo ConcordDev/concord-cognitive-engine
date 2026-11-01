@@ -190,7 +190,7 @@ function PredictiveTab({ vehicleId }: { vehicleId: string }) {
         and log fill-ups in the garage to enable date forecasts.
       </p>
       {summary && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <MetricCard label="Overdue" value={String(summary.overdueCount)} tone={summary.overdueCount > 0 ? 'bad' : 'good'} />
           <MetricCard label="High risk" value={String(summary.highRiskCount)} tone={summary.highRiskCount > 0 ? 'warn' : 'good'} />
           <MetricCard label="Forecastable" value={String(summary.forecastable)} />
@@ -335,7 +335,7 @@ function CompareTab({ vehicles }: { vehicles: Vehicle[] }) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <MetricCard label="Fleet spend" value={`$${result.fleetTotalSpend.toLocaleString()}`} />
         <MetricCard label="Fleet miles" value={result.fleetMilesTracked.toLocaleString()} />
         <MetricCard label="Vehicles" value={String(result.vehicleCount)} />
@@ -949,7 +949,7 @@ function RenewalsTab({ vehicleId, vehicle }: { vehicleId: string; vehicle: Vehic
         Track warranty, insurance and registration renewal dates — and mileage-bounded coverage like
         a powertrain warranty. Items turn amber as the reminder window opens.
       </p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <MetricCard label="Tracked" value={String(renewals.length)} />
         <MetricCard label="Due soon" value={String(dueSoonCount)} tone={dueSoonCount > 0 ? 'warn' : 'good'} />
         <MetricCard label="Expired" value={String(expiredCount)} tone={expiredCount > 0 ? 'bad' : 'good'} />

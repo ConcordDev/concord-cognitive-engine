@@ -203,7 +203,7 @@ export function AtlasActionPanel() {
     try {
       const task = `Atlas/geo brief. ${geoResult?.places[0] ? `Location: ${geoResult.places[0].displayName}.` : ''} ${poiResult ? `Found ${poiResult.elements?.length} ${amenity} in bbox.` : ''} ${distResult ? `${distResult.pairs.length} distance pairs.` : ''} Suggest one geospatial insight + one related query worth running. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) {
         const text = typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2);
         setAgentReply(text); pipe.publish('atlas.agentReply', text, { label: 'Geo insight' });

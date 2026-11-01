@@ -139,7 +139,7 @@ export function HealthcareActionPanel() {
     try {
       const task = `Patient visit prep. ${triageResult ? `Triage: ${triageResult.severity}. Candidates: ${triageResult.candidates.map(c => `${c.condition} (${Math.round(c.confidence * 100)}%)`).join(', ')}.` : ''} Patient: age ${age}, sex ${sex}. ${description ? `Sx: ${description}` : ''} ${medsResult ? `Currently on ${medsResult.medications.length} meds.` : ''} List the 3 most important questions to ask the provider in this visit. Plain text. End with: "This is not medical advice."`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Questions ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

@@ -10,6 +10,7 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import { registerLensExportProvider } from "../lib/lens-export.js";
 import { writeGoogleCalendarEvent, readGoogleCalendarEvents } from "../lib/connector-client.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { fetchIcsText, icsUrlProblem } from "../lib/ics-fetch.js";
 
 export default function registerCalendarActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -1185,6 +1186,10 @@ export default function registerCalendarActions(registerLensAction) {
     const icsUrl = String(params.icsUrl || "").trim();
     if (!label) return { ok: false, error: "label required" };
     if (!/^https?:\/\//i.test(icsUrl)) return { ok: false, error: "valid icsUrl (https) required" };
+    // Refuse loopback/private/link-local/metadata/credentialed feed URLs at save time (the fetch path re-checks
+    // with DNS at sync time).
+    const icsProblem = icsUrlProblem(icsUrl);
+    if (icsProblem) return { ok: false, error: `icsUrl refused: ${icsProblem}` };
     const account = {
       id: uidCal('acct'),
       provider,
@@ -1310,14 +1315,11 @@ export default function registerCalendarActions(registerLensAction) {
     const userId = aidCal(ctx);
     const account = listCal(s.connectedAccounts, userId).find(a => a.id === String(params.id || ""));
     if (!account) return { ok: false, error: "account not found" };
-    let ics;
-    try {
-      const r = await fetch(account.icsUrl);
-      if (!r.ok) return { ok: false, error: `feed responded ${r.status}` };
-      ics = await r.text();
-    } catch (e) {
-      return { ok: false, error: `feed unreachable: ${e instanceof Error ? e.message : String(e)}` };
-    }
+    // SSRF-guarded: the URL is user-supplied. lib/ics-fetch.js goes through lib/public-fetch (scheme + private-IP +
+    // DNS-rebinding pin), re-validates every redirect hop, and caps time and size.
+    const fetched = await fetchIcsText(account.icsUrl);
+    if (!fetched.ok) return { ok: false, error: fetched.error };
+    const ics = fetched.text;
     if (!ics.includes("BEGIN:VCALENDAR")) return { ok: false, error: "feed did not return a valid VCALENDAR" };
     // Reuse the ical-parse logic.
     const unfolded = ics.replace(/\r\n[ \t]/g, "");

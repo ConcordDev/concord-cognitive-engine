@@ -141,7 +141,7 @@ export function AutomotiveActionPanel() {
     try {
       const task = `Vehicle advisory for ${year} ${make} ${model} @ ${currentMiles} mi. ${vinResult ? `${vinResult.engineDisplacementL}L ${vinResult.engineCylinders}-cyl ${vinResult.fuelType}.` : ''} ${(recallResult?.count ?? recallResult?.recalls?.length ?? 0) > 0 ? `Open recalls: ${recallResult?.recalls?.[0]?.component}.` : 'No active recalls.'} ${maintResult ? `${maintResult.overdueCount ?? 0} maintenance items overdue.` : ''} ${diagResult ? `OBD code ${diagResult.code}: ${diagResult.description}.` : ''} Identify the single most important action for the owner this month + estimated cost. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Advisory ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

@@ -74,14 +74,14 @@ export function RateQuoter() {
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Rate quoter · multi-carrier compare</span>
       </header>
 
-      <form onSubmit={(e) => { e.preventDefault(); quote(); }} className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
+      <form onSubmit={(e) => { e.preventDefault(); quote(); }} className="p-3 border-b border-white/10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
         <input value={form.origin} onChange={e => setForm({ ...form, origin: e.target.value })} placeholder="Origin (Austin, TX 78701)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <input value={form.destination} onChange={e => setForm({ ...form, destination: e.target.value })} placeholder="Destination (Boston, MA 02101)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <input type="number" value={form.weightLbs} onChange={e => setForm({ ...form, weightLbs: e.target.value })} placeholder="Weight lbs" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <select value={form.mode} onChange={e => setForm({ ...form, mode: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="parcel">Parcel</option><option value="ltl">LTL</option><option value="ftl">FTL</option>
         </select>
-        <button type="submit" disabled={loading} className="col-span-4 px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 disabled:opacity-40 inline-flex items-center justify-center gap-1">
+        <button type="submit" disabled={loading} className="col-span-2 lg:col-span-4 px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 disabled:opacity-40 inline-flex items-center justify-center gap-1">
           {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <DollarSign className="w-3 h-3" />} Compare rates
         </button>
       </form>

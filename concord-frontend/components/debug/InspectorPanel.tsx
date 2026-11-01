@@ -48,22 +48,37 @@ export function InspectorPanel() {
     </button>
   </div>
   {inspectResult != null && (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-gray-300">Result</h3>
-        <button
-          onClick={() =>
-            navigator.clipboard?.writeText(JSON.stringify(inspectResult, null, 2))
-          }
-          className="text-xs text-gray-400 hover:text-white flex items-center gap-1"
-        >
-          <Copy className="w-3 h-3" /> Copy
-        </button>
+    typeof (inspectResult as { error?: unknown }).error === 'string' ? (
+      <div className="p-3 rounded-lg border border-yellow-500/30 bg-yellow-500/[0.06] text-xs text-yellow-200 space-y-1">
+        <p className="font-medium">
+          {(inspectResult as { error: string }).error.replace(/(\bnot found)\s+\1/i, '$1')}
+        </p>
+        {(inspectResult as { error: string }).error.toLowerCase().includes('not found') && (
+          <p className="text-yellow-200/70">
+            The Inspector resolves DTUs, artifacts, jobs and listings by their own IDs.
+            IDs copied from the Events feed identify events — events aren&rsquo;t inspectable
+            objects, so an event ID will always miss here.
+          </p>
+        )}
       </div>
-      <pre className="bg-lattice-void p-4 rounded-lg overflow-auto max-h-[400px] text-xs font-mono text-gray-300">
-        {JSON.stringify(inspectResult, null, 2)}
-      </pre>
-    </div>
+    ) : (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-gray-300">Result</h3>
+          <button
+            onClick={() =>
+              navigator.clipboard?.writeText(JSON.stringify(inspectResult, null, 2))
+            }
+            className="text-xs text-gray-400 hover:text-white flex items-center gap-1"
+          >
+            <Copy className="w-3 h-3" /> Copy
+          </button>
+        </div>
+        <pre className="bg-lattice-void p-4 rounded-lg overflow-auto max-h-[400px] text-xs font-mono text-gray-300">
+          {JSON.stringify(inspectResult, null, 2)}
+        </pre>
+      </div>
+    )
   )}
 </div>
 

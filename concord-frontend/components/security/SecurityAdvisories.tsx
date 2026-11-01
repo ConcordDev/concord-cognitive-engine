@@ -50,7 +50,7 @@ export function SecurityAdvisories() {
       </header>
       {advs.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub advisories unavailable right now — nothing is being shown in their place.</div>}
       {advs.data?.stale && !advs.isError && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached GitHub advisories{advs.data.fetchedAt ? ` from ${new Date(advs.data.fetchedAt).toLocaleString()}` : ''} — live refresh is rate-limited.</div>}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         {(['critical', 'high', 'medium', 'low'] as const).map((s) => (
           <div key={s} className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">{s}</div><div className={`mt-0.5 font-mono text-lg ${s === 'critical' ? 'text-rose-300' : s === 'high' ? 'text-orange-300' : s === 'medium' ? 'text-amber-300' : 'text-zinc-300'}`}>{sevCounts[s] || 0}</div></div>
         ))}

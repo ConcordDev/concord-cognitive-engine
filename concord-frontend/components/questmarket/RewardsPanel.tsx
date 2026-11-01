@@ -199,7 +199,7 @@ export function RewardsPanel({ refreshKey }: { refreshKey?: number }) {
           Model a quest before posting — checks reward against the target range
           and suggests adjustments.
         </p>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <div>
             <label className="text-[10px] text-zinc-400">Difficulty</label>
             <select value={bDiff} onChange={(e) => setBDiff(e.target.value)}

@@ -178,7 +178,7 @@ export function EngineeringActionPanel() {
     try {
       const task = `Mechanical engineering review. ${tolResult ? `Stack-up nominal ${tolResult.stackUp.nominal} ±${tolResult.stackUp.worstCaseTolerance} (RSS ±${tolResult.stackUp.rssTolerance}).` : ''} ${stressResult ? `Stress ${stressResult.appliedStress} vs yield ${stressResult.yieldStrength}, SF ${stressResult.safetyFactor} (${stressResult.status}).` : ''} Identify the single biggest design risk + one optimization opportunity. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Review ready.'); } else err('The review agent returned no text.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

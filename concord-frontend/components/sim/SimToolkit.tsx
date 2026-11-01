@@ -819,7 +819,7 @@ function MonteCarloBackendTool() {
               Reproducible — seed {res.seed}. Re-running with this seed yields identical results.
             </p>
           )}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <CmpStat label="Mean" value={res.mean} />
             <CmpStat label="Std Dev" value={res.stddev} />
             <CmpStat label="Trials" value={res.trials} />

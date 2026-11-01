@@ -41,6 +41,7 @@ export default function registerDomainRoutes(app, {
   validate,
   requireOwner,
   requireRole,
+  recordLensActivity,
 }) {
 
   // ---- Cognitive Status ----
@@ -865,7 +866,18 @@ export default function registerDomainRoutes(app, {
     return res.json(out);
   }));
   app.post("/api/inference/facts", asyncHandler(async (req, res) => {
-    const out = await runMacro("inference", "add_fact", req.body, makeCtx(req));
+    const ctx = makeCtx(req);
+    const out = await runMacro("inference", "add_fact", req.body, ctx);
+    // This dedicated route bypasses /api/lens/run, so the dispatch
+    // chokepoint's activity recorder never sees the desk's fact adds
+    // (the #1906 re-sitting's one total miss: the add recorded nothing
+    // while the same KB's remove, sent through /api/lens/run, did).
+    // Record through the SAME recorder under the KB's own action
+    // vocabulary ("kb-add", matching the kb-remove row) — one
+    // recording system, no parallel log.
+    if (out && out.ok !== false && typeof recordLensActivity === "function") {
+      recordLensActivity("inference", "kb-add", ctx, req.body || {}, out.result ?? out);
+    }
     return res.json(out);
   }));
   app.post("/api/inference/rules", asyncHandler(async (req, res) => {

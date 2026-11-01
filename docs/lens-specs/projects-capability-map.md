@@ -272,7 +272,7 @@ S2 (identity, F5) notes:
   `concord-frontend/tests/projects-identity.test.tsx`.
 
 Reproduce the macro list:
-`grep -c 'registerLensAction("projects"' server/domains/projects.js` → 98 macros
+`grep -c 'registerLensAction("projects"' server/domains/projects.js` → 99 macros
 (plus 4 legacy generic-artifact macros — `ganttGenerate`, `riskMatrix`,
 `burndownCalc`, `stakeholderMap` — pre-dating the real per-entity model, see
 below). This is the largest single-domain macro surface touched this batch:
@@ -432,3 +432,7 @@ an in-memory db, the pattern of the repo's own artifact-acl suite);
 concord-frontend/tests/projects-assignment.test.tsx (5, new).
 Automation rules with a set_assignee value that is not a member
 no-op silently (system actor); explicit user choices refuse by name.
+
+---
+
+*Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*

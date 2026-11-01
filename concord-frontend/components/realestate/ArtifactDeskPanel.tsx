@@ -1069,7 +1069,7 @@ export function ArtifactDeskPanel() {
                 {/* capRate */}
                 {actionResult.capRate !== undefined && actionResult.noi !== undefined && (
                   <div className="space-y-2">
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                       <div className="p-2 bg-lattice-surface rounded text-center">
                         <p
                           className={`text-sm font-bold ${Number(actionResult.capRate) >= 8 ? 'text-green-400' : Number(actionResult.capRate) >= 6 ? 'text-amber-400' : 'text-red-400'}`}
@@ -1122,7 +1122,7 @@ export function ArtifactDeskPanel() {
                         <p className="text-[10px] text-gray-400">Annual Cash Flow</p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                       <div className="p-2 bg-lattice-surface rounded text-center">
                         <p className="text-sm font-bold text-neon-cyan">
                           $
@@ -1178,7 +1178,7 @@ export function ArtifactDeskPanel() {
                 {/* vacancyRate */}
                 {actionResult.vacancyRate !== undefined && actionResult.total !== undefined && (
                   <div className="space-y-2">
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                       <div className="p-2 bg-lattice-surface rounded text-center">
                         <p
                           className={`text-sm font-bold ${Number(actionResult.vacancyRate) > 10 ? 'text-red-400' : Number(actionResult.vacancyRate) > 5 ? 'text-amber-400' : 'text-green-400'}`}

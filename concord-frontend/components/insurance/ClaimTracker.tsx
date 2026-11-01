@@ -118,7 +118,7 @@ export function ClaimTracker() {
 
       {adding && (
         <div className="p-3 border-b border-white/10 space-y-2 text-xs">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <select value={draft.kind} onChange={e => setDraft({ ...draft, kind: e.target.value as Claim['kind'] })} className="px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white">
               <option value="collision">Collision</option>
               <option value="comprehensive">Comprehensive</option>

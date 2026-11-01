@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, type ReactNode } from 'react';
+import { Component, useCallback, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import {
   Activity, AlertTriangle, Crosshair, FileSearch, Map, Radio, Satellite,
@@ -48,6 +48,29 @@ const TOOL_IDS = new Set(TOOLS.map((tool) => tool.id));
 
 function isBriefTool(value: unknown): value is BriefTool {
   return typeof value === 'string' && TOOL_IDS.has(value as BriefTool);
+}
+
+/**
+ * A render crash in one tool must not brick the lens: the remembered tool is restored on every entry, so an
+ * error screen with no way out re-crashes forever. This keeps the tool nav alive and offers a way back.
+ */
+class ToolBoundary extends Component<{ children: ReactNode; onBack: (tool: BriefTool) => void }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  render() {
+    if (!this.state.error) return this.props.children;
+    const back = (tool: BriefTool) => { this.setState({ error: null }); this.props.onBack(tool); };
+    return (
+      <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/5 p-4">
+        <p className="text-sm font-medium text-zinc-100">This view failed to render.</p>
+        <p className="mt-1 text-xs text-zinc-400">{this.state.error.message}</p>
+        <div className="mt-3 flex gap-2">
+          <button onClick={() => back('overview')} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-200 hover:border-white/30">Back to Overview</button>
+          <button onClick={() => back('assets')} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-200 hover:border-white/30">Open Assets</button>
+        </div>
+      </div>
+    );
+  }
 }
 
 export function DefenseWorkspace() {
@@ -152,7 +175,7 @@ export function DefenseWorkspace() {
             })}
           </nav>
           <motion.main key={tool} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.16 }}>
-            {body}
+            <ToolBoundary onBack={selectTool}>{body}</ToolBoundary>
           </motion.main>
         </div>
       )}

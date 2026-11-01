@@ -46,15 +46,15 @@ export function NorthStarFrame({
 }: NorthStarFrameProps) {
   const CtaIcon = cta?.icon;
   return (
-    <div data-lens-theme={theme ?? lensId} className="relative min-h-full px-8 pb-28 pt-6">
-      <div className="flex items-start justify-between gap-4">
+    <div data-lens-theme={theme ?? lensId} className="relative min-h-full px-4 pb-28 pt-6 sm:px-6 lg:px-8">
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between sm:gap-4">
         <div className="min-w-0">
-          <h1 className={cn('font-vault mt-1 text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl', subtitle ? 'mb-1' : 'mb-5')}>
+          <h1 className={cn('font-vault mt-1 text-[1.75rem] leading-tight text-zinc-100 sm:text-5xl', subtitle ? 'mb-1' : 'mb-5')}>
             {crumb}
           </h1>
           {subtitle && <p className="mb-5 max-w-2xl text-[14px] text-zinc-500">{subtitle}</p>}
         </div>
-        {actions && <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 pt-2">{actions}</div>}
+        {actions && <div className="flex flex-wrap items-center justify-start gap-3 pt-0 sm:shrink-0 sm:justify-end sm:pt-2">{actions}</div>}
       </div>
 
       {tabs && tabs.length > 0 && (
@@ -101,10 +101,12 @@ export function NorthStarFrame({
           disabled={cta.disabled}
           title={cta.title}
           data-testid="north-star-cta"
-          /* MobileNav is fixed bottom-0 z-50 h-14 + safe-area. Sit above it on
-             small viewports (bottom-20 + safe-area, same family as HelpButton /
-             ReelsFeed); restore bottom-8 from md up where the tab bar is hidden. */
-          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-6 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60 md:bottom-8 md:right-8"
+          /* MobileNav is fixed bottom-0 z-50 h-14 + safe-area. Sit on the same
+             line as HelpButton (bottom-[4rem+safe], right-4, 44px wide, shown
+             below lg) and to its left, so the two never overlap: right-[4.75rem]
+             below lg, back to right-8 once HelpButton is hidden. From md up the
+             tab bar is hidden, so drop to bottom-8 (HelpButton sits at bottom-5). */
+          className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] right-[4.75rem] z-30 inline-flex min-h-[44px] max-w-[calc(100vw-6.5rem)] items-center gap-2 rounded-full bg-teal-400 px-4 py-2.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60 sm:px-6 sm:py-3.5 md:bottom-8 lg:right-8"
         >
           {CtaIcon && <CtaIcon className="h-4 w-4" />}
           {cta.label}

@@ -1,8 +1,11 @@
-// Platform-internal lens domains (debug, ops, system) use the same
-// requireRole middleware as other admin routes. A member is refused, an
+// Platform-internal lens domains (ops, system) use the same requireRole
+// middleware as other admin routes. A member is refused, an
 // admin-or-higher role is allowed, an anonymous caller is refused, and a
 // member can still run a normal lens domain. organ and root are not in
-// the set. This file does not boot server.js.
+// the set. debug is NOT in the set either: it was removed 2026-10-28 on
+// the founder's ruling that its per-user error-tracking workspace is not
+// a platform-internal surface (debug.md §8). This file does not boot
+// server.js.
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
@@ -24,7 +27,6 @@ const { requireRole: requireRolePublic } = createRoleGate(() => "public");
 
 const ROLES = ["owner", "admin", "sovereign", "founder"];
 const SAMPLES = [
-  ["debug", "alert-list"],
   ["ops", "alertList"],
   ["system", "health"],
 ];
@@ -52,12 +54,33 @@ function dispatch(domain, req, gate = requireRole) {
 }
 
 describe("platform-internal lens role gate", () => {
-  it("covers debug, ops, and system, and leaves organ and root alone", () => {
-    assert.deepEqual([...PLATFORM_INTERNAL_LENS_DOMAINS], ["debug", "ops", "system"]);
+  it("covers ops and system, and leaves debug, organ and root alone", () => {
+    assert.deepEqual([...PLATFORM_INTERNAL_LENS_DOMAINS], ["ops", "system"]);
     assert.deepEqual([...PLATFORM_INTERNAL_LENS_ROLES], ROLES);
+    assert.equal(isPlatformInternalLensDomain("debug"), false);
     assert.equal(isPlatformInternalLensDomain("organ"), false);
     assert.equal(isPlatformInternalLensDomain("root"), false);
     assert.equal(isPlatformInternalLensDomain("sentinel"), false);
+  });
+
+  it("lets any caller class run debug at this gate (founder ruling, debug.md §8)", () => {
+    // The debug domain's own guards still apply downstream
+    // (guardAnonWrites refuses anonymous writes); this role gate simply
+    // no longer walls the whole domain off from normal accounts.
+    const member = dispatch("debug", userReq("member"));
+    assert.equal(member.denied, false);
+    assert.equal(member.ran, true);
+    const anon = dispatch("debug", { ctx: {} });
+    assert.equal(anon.denied, false);
+    assert.equal(anon.ran, true);
+    assert.equal(
+      platformInternalLensDenial(
+        { actor: { userId: "m1", role: "member", scopes: ["read", "write"] } },
+        "debug",
+        requireRole,
+      ),
+      null,
+    );
   });
 
   it("refuses a member with the admin-route 403 body and does not run the handler", () => {
@@ -112,7 +135,7 @@ describe("platform-internal lens role gate", () => {
     );
     assert.equal(internal, null);
 
-    const star = dispatch("debug", userReq("member", ["*"]));
+    const star = dispatch("ops", userReq("member", ["*"]));
     assert.equal(star.denied, false);
     assert.equal(star.ran, true);
   });
@@ -129,7 +152,7 @@ describe("platform-internal lens role gate", () => {
 
     const anon = platformInternalLensDenial(
       { actor: { userId: "anon", role: "viewer", scopes: ["read"] } },
-      "debug",
+      "system",
       requireRole,
     );
     assert.equal(anon.status, 401);

@@ -77,7 +77,7 @@ export function EntrantsManager({
 
       {canEdit && t.entrants.length < t.maxEntrants && (
         <div className="space-y-2 rounded border border-slate-800 bg-slate-950/60 p-3">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}

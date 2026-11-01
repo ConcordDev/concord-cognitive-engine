@@ -4543,7 +4543,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'social',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Creator profile.",
       caption: "Profile, royalty streams, tier pricing, followers, creator score \u2014 the substrate's economy layer.",

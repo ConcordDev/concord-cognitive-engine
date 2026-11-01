@@ -49,7 +49,7 @@ export function SalesAnalytics() {
 
       {loading ? (
         <div className="p-3 space-y-3" aria-label="Loading sales analytics">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} variant="block" height="4.5rem" />)}
           </div>
           <Skeleton variant="block" height="10rem" />
@@ -59,7 +59,7 @@ export function SalesAnalytics() {
         <div className="p-10 text-center text-xs text-gray-400">No data yet</div>
       ) : (
         <div className="p-3 space-y-3">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             <Tile icon={DollarSign} label="Today" value={`$${summary.revenueToday.toFixed(0)}`} sub={`${summary.ordersToday} orders`} />
             <Tile icon={TrendingUp} label="7-day" value={`$${summary.revenue7d.toFixed(0)}`} sub="revenue" />
             <Tile icon={DollarSign} label="AOV" value={`$${summary.avgOrderValue.toFixed(0)}`} sub="avg order" />

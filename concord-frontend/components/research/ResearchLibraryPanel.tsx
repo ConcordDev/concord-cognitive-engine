@@ -938,7 +938,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
 
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
           <h4 className="text-xs font-semibold text-zinc-300 mb-2">Annotations</h4>
-          <div className="grid grid-cols-4 gap-2 mb-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
             <input placeholder="Page" inputMode="numeric" value={annForm.page} onChange={(e) => setAnnForm({ ...annForm, page: e.target.value })}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <input placeholder="Quote" value={annForm.quote} onChange={(e) => setAnnForm({ ...annForm, quote: e.target.value })}

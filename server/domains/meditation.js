@@ -40,7 +40,7 @@ export default function registerMeditationActions(registerLensAction) {
    * sessionLog — append a completed meditation session to the user's
    * practice ledger.
    *   params.trackId, params.title?, params.category?, params.minutes,
-   *   params.completedAt, params.rating?
+   *   params.completedAt, params.rating?, params.goal?
    *
    * NOTE (fixed 2026-07): this used to read/write `artifact.data.sessions`
    * on the artifact passed in by the caller. `/api/lens/run` builds a
@@ -62,6 +62,11 @@ export default function registerMeditationActions(registerLensAction) {
       sessionId: params.trackId || "unknown",
       title: params.title || String(params.trackId || "Freeform session"),
       category: params.category || "guided",
+      // The session's goal, when the caller sends it (the session
+      // player does): the practice ledger — and the activity feed's
+      // object for this log — names a session by goal and length,
+      // not by its track.
+      goal: params.goal ? String(params.goal).trim().slice(0, 40) : null,
       durationMin: minutes,
       moodAfter: rating,
       completedAt: params.completedAt || medNow(),

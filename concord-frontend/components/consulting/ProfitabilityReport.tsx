@@ -51,7 +51,7 @@ export function ProfitabilityReport() {
       </div>
 
       {report && (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           {([
             ['Billed', `$${report.totalBilled.toLocaleString()}`, 'text-zinc-100'],
             ['Cost', `$${report.totalCost.toLocaleString()}`, 'text-amber-400'],

@@ -23,7 +23,11 @@ import {
   Loader2,
   Tag,
   Sliders,
+  Pencil,
+  Archive,
+  LayoutTemplate,
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 import {
   boardMacro,
   WsBoard,
@@ -55,13 +59,18 @@ export function CardDetailModal({
   onClose: () => void;
   onChanged: () => void;
 }) {
+  const { user } = useAuth();
   const [card, setCard] = useState<WsCard | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [tab, setTab] = useState<'details' | 'activity'>('details');
 
+  const [titleDraft, setTitleDraft] = useState('');
   const [descDraft, setDescDraft] = useState('');
   const [newComment, setNewComment] = useState('');
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [commentDraft, setCommentDraft] = useState('');
+  const [templateSaved, setTemplateSaved] = useState(false);
   const [attUrl, setAttUrl] = useState('');
   const [attName, setAttName] = useState('');
   const [coverUrl, setCoverUrl] = useState('');
@@ -73,6 +82,7 @@ export function CardDetailModal({
     const r = await boardMacro<{ card: WsCard }>('card-detail', { boardId: board.id, cardId });
     if (r.ok && r.result) {
       setCard(r.result.card);
+      setTitleDraft(r.result.card.title || '');
       setDescDraft(r.result.card.description || '');
     } else {
       setErr(r.error || 'card not found');
@@ -88,6 +98,101 @@ export function CardDetailModal({
     await load();
     onChanged();
   }, [load, onChanged]);
+
+  const saveTitle = useCallback(async () => {
+    if (!card) return;
+    const title = titleDraft.trim();
+    if (!title) {
+      setErr('Card title required');
+      setTitleDraft(card.title);
+      return;
+    }
+    if (title === card.title) return;
+    setBusy('title');
+    const r = await boardMacro('card-update', { boardId: board.id, cardId, title });
+    setBusy(null);
+    if (!r.ok) setErr(r.error || 'failed to rename card');
+    else refresh();
+  }, [board.id, cardId, card, titleDraft, refresh]);
+
+  const saveDueDate = useCallback(
+    async (value: string) => {
+      setBusy('due');
+      const r = await boardMacro('card-update', {
+        boardId: board.id,
+        cardId,
+        dueDate: value || null,
+      });
+      setBusy(null);
+      if (!r.ok) setErr(r.error || 'failed to set due date');
+      else refresh();
+    },
+    [board.id, cardId, refresh]
+  );
+
+  const saveAssignee = useCallback(
+    async (value: string) => {
+      if (!card || (value.trim() || null) === (card.assignee || null)) return;
+      setBusy('assignee');
+      const r = await boardMacro('card-update', {
+        boardId: board.id,
+        cardId,
+        assignee: value.trim() || null,
+      });
+      setBusy(null);
+      if (!r.ok) setErr(r.error || 'failed to set assignee');
+      else refresh();
+    },
+    [board.id, cardId, card, refresh]
+  );
+
+  const saveCommentEdit = useCallback(
+    async (commentId: string) => {
+      const text = commentDraft.trim();
+      if (!text) {
+        setErr('Comment text required');
+        return;
+      }
+      setBusy(`cmt-edit-${commentId}`);
+      const r = await boardMacro('card-comment-update', {
+        boardId: board.id,
+        cardId,
+        commentId,
+        text,
+      });
+      setBusy(null);
+      if (!r.ok) {
+        setErr(r.error || 'failed to edit comment');
+      } else {
+        setEditingCommentId(null);
+        refresh();
+      }
+    },
+    [board.id, cardId, commentDraft, refresh]
+  );
+
+  const toggleArchive = useCallback(async () => {
+    if (!card) return;
+    setBusy('archive');
+    const r = await boardMacro(card.archived ? 'card-restore' : 'card-archive', {
+      boardId: board.id,
+      cardId,
+    });
+    setBusy(null);
+    if (!r.ok) setErr(r.error || 'archive failed');
+    else refresh();
+  }, [board.id, cardId, card, refresh]);
+
+  const saveAsTemplate = useCallback(async () => {
+    setBusy('template');
+    const r = await boardMacro('card-template-create', { boardId: board.id, cardId });
+    setBusy(null);
+    if (!r.ok) setErr(r.error || 'failed to save template');
+    else {
+      setTemplateSaved(true);
+      onChanged();
+    }
+  }, [board.id, cardId, onChanged]);
 
   const saveDescription = useCallback(async () => {
     if (!card || descDraft === card.description) return;
@@ -223,11 +328,22 @@ export function CardDetailModal({
             />
           ))}
 
-        {/* Header */}
+        {/* Header — title edits in place (card-update) */}
         <div className="flex items-start justify-between px-5 pt-4 pb-2 gap-3">
-          <h2 className="text-lg font-bold text-white break-words flex-1">
-            {card?.title || 'Card'}
-          </h2>
+          {card ? (
+            <input
+              data-testid="card-title-input"
+              type="text"
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onBlur={saveTitle}
+              onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+              className="text-lg font-bold text-white bg-transparent border border-transparent hover:border-white/10 focus:border-purple-500/40 rounded-md px-1.5 py-0.5 focus:outline-none flex-1 min-w-0"
+              aria-label="Card title"
+            />
+          ) : (
+            <h2 className="text-lg font-bold text-white break-words flex-1">Card</h2>
+          )}
           <button
             onClick={onClose}
             className="p-1 rounded-md hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
@@ -268,18 +384,54 @@ export function CardDetailModal({
 
             {tab === 'details' && (
               <>
-                {/* Meta line */}
-                <div className="flex flex-wrap gap-3 text-xs text-gray-400">
-                  {card.assignee && (
-                    <span className="flex items-center gap-1">
-                      <User className="w-3.5 h-3.5" /> {card.assignee}
+                {/* Meta line — assignee + due date edit in place (card-update) */}
+                <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
+                  <span className="flex items-center gap-1">
+                    <User className="w-3.5 h-3.5" />
+                    <input
+                      type="text"
+                      defaultValue={card.assignee || ''}
+                      onBlur={(e) => saveAssignee(e.target.value)}
+                      placeholder="Unassigned"
+                      className="bg-transparent border border-transparent hover:border-white/10 focus:border-purple-500/40 rounded px-1 py-0.5 text-gray-300 placeholder-gray-600 focus:outline-none w-32"
+                      aria-label="Assignee"
+                    />
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5" />
+                    <input
+                      type="date"
+                      value={card.dueDate ? String(card.dueDate).slice(0, 10) : ''}
+                      onChange={(e) => saveDueDate(e.target.value)}
+                      className="bg-transparent border border-transparent hover:border-white/10 focus:border-purple-500/40 rounded px-1 py-0.5 text-gray-300 focus:outline-none [color-scheme:dark]"
+                      aria-label="Due date"
+                    />
+                  </span>
+                  {card.archived && (
+                    <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300">
+                      archived
                     </span>
                   )}
-                  {card.dueDate && (
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5" /> {card.dueDate}
-                    </span>
-                  )}
+                </div>
+
+                {/* Card actions: archive/restore + save as template */}
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    onClick={toggleArchive}
+                    disabled={busy === 'archive'}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-md bg-white/5 border border-white/10 text-gray-300 hover:text-white disabled:opacity-40"
+                  >
+                    <Archive className="w-3.5 h-3.5" />
+                    {card.archived ? 'Restore card' : 'Archive card'}
+                  </button>
+                  <button
+                    onClick={saveAsTemplate}
+                    disabled={busy === 'template'}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-md bg-white/5 border border-white/10 text-gray-300 hover:text-white disabled:opacity-40"
+                  >
+                    <LayoutTemplate className="w-3.5 h-3.5" />
+                    {templateSaved ? 'Saved as template' : 'Save as template'}
+                  </button>
                 </div>
 
                 {/* Labels */}
@@ -545,7 +697,22 @@ export function CardDetailModal({
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs font-medium text-gray-300">{c.author}</span>
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-gray-400">{fmt(c.at)}</span>
+                            <span className="text-[10px] text-gray-400">
+                              {fmt(c.at)}
+                              {c.editedAt && ' · edited'}
+                            </span>
+                            {user?.id && c.author === user.id && editingCommentId !== c.id && (
+                              <button
+                                onClick={() => {
+                                  setEditingCommentId(c.id);
+                                  setCommentDraft(c.text);
+                                }}
+                                className="text-gray-600 hover:text-gray-300"
+                                aria-label="Edit comment"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                            )}
                             <button
                               onClick={() => deleteComment(c.id)}
                               disabled={busy === `cmt-${c.id}`}
@@ -556,7 +723,34 @@ export function CardDetailModal({
                             </button>
                           </div>
                         </div>
-                        <p className="text-xs text-gray-400 whitespace-pre-wrap">{c.text}</p>
+                        {editingCommentId === c.id ? (
+                          <div className="space-y-1.5">
+                            <textarea
+                              data-testid="comment-edit-input"
+                              value={commentDraft}
+                              onChange={(e) => setCommentDraft(e.target.value)}
+                              rows={2}
+                              className="w-full px-2 py-1.5 text-xs rounded-md bg-white/5 border border-purple-500/40 text-gray-200 focus:outline-none resize-y"
+                            />
+                            <div className="flex gap-1.5">
+                              <button
+                                onClick={() => saveCommentEdit(c.id)}
+                                disabled={busy === `cmt-edit-${c.id}`}
+                                className="px-2.5 py-1 text-xs rounded-md bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 disabled:opacity-40"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => setEditingCommentId(null)}
+                                className="px-2.5 py-1 text-xs rounded-md bg-white/5 text-gray-400 hover:text-gray-200"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-400 whitespace-pre-wrap">{c.text}</p>
+                        )}
                       </div>
                     ))}
                   </div>

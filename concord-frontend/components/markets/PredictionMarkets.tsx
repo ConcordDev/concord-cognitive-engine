@@ -345,7 +345,7 @@ function CreateMarketForm({
           placeholder="Description / context (optional)" rows={2}
           className="w-full rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
         />
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <select
             value={category} onChange={(e) => setCategory(e.target.value)}
             className="rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"

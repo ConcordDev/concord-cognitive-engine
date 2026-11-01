@@ -808,6 +808,48 @@ describe('ChatWorkspacePanel — sending', () => {
     expect(await within(thread()).findByText('Hello there!')).toBeInTheDocument();
   });
 
+  it('a session_forbidden turn starts a new chat and resends once, never showing "misconfigured"', async () => {
+    window.localStorage.setItem(SESSION_KEY, 'foreign-session');
+    const prev = fetchHandler;
+    let streamCalls = 0;
+    fetchHandler = (url, init) => {
+      if (url === '/api/chat/stream') {
+        streamCalls += 1;
+        if (streamCalls === 1) {
+          return Promise.resolve(sseResponse([
+            { ok: true, done: true, out: { ok: false, error: 'session_forbidden', reason: 'not_owner_or_participant' } },
+          ]));
+        }
+      }
+      return prev(url, init);
+    };
+    renderPanel();
+    send('hi');
+    expect(await within(thread()).findByText('Hello there!')).toBeInTheDocument();
+    expect(screen.getByText(/belongs to a different account/)).toBeInTheDocument();
+    expect(screen.queryByText(/misconfigured/)).not.toBeInTheDocument();
+    const bodies = (fetch as ReturnType<typeof vi.fn>).mock.calls
+      .filter((c) => c[0] === '/api/chat/stream')
+      .map((c) => JSON.parse((c[1] as RequestInit).body as string));
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0].sessionId).toBe('foreign-session');
+    expect(bodies[1].sessionId).toBeTruthy();
+    expect(bodies[1].sessionId).not.toBe('foreign-session');
+    expect(bodies[1].message).toBe('hi');
+  });
+
+  it('a thrown turn shows its error, not the generic "misconfigured" text', async () => {
+    const prev = fetchHandler;
+    fetchHandler = (url, init) =>
+      url === '/api/chat/stream'
+        ? Promise.resolve(sseResponse([{ ok: false, error: 'boom', errorId: 'err_7', done: true }]))
+        : prev(url, init);
+    renderPanel();
+    send('hi');
+    expect(await screen.findByText('Error: boom (ref err_7)')).toBeInTheDocument();
+    expect(screen.queryByText(/misconfigured/)).not.toBeInTheDocument();
+  });
+
   it('shows Stop while a reply is pending; Stop aborts the in-flight request', async () => {
     let resolveStream: (v: unknown) => void = () => {};
     let seenSignal: AbortSignal | undefined;
@@ -823,6 +865,8 @@ describe('ChatWorkspacePanel — sending', () => {
     renderPanel();
     send('slow question');
     const stop = await screen.findByLabelText('Stop generating');
+    // The request starts after the lens-facts lookup; wait for it, don't race it.
+    await waitFor(() => expect(seenSignal).toBeDefined());
     fireEvent.click(stop);
     expect(seenSignal?.aborted).toBe(true);
     resolveStream(jsonResponse({ reply: 'late' }));
@@ -842,7 +886,7 @@ describe('ChatWorkspacePanel — sending', () => {
               read: () => {
                 if (sent) return new Promise(() => {});
                 sent = true;
-                return Promise.resolve({ done: false, value: enc.encode(`data: ${JSON.stringify({ ok: true, chunk: 'Streaming section one', done: false })}\n`) });
+                return Promise.resolve({ done: false, value: enc.encode(`data: ${JSON.stringify({ ok: true, chunk: 'Streaming section one', done: false })}\n\n`) });
               },
               cancel: vi.fn(),
             }),
@@ -873,6 +917,7 @@ describe('ChatWorkspacePanel — sending', () => {
     renderPanel();
     send('long one');
     await screen.findByLabelText('Stop generating');
+    await waitFor(() => expect(seenSignal).toBeDefined());
     fireEvent.keyDown(composer(), { key: 'Escape' });
     expect(seenSignal?.aborted).toBe(true);
   });

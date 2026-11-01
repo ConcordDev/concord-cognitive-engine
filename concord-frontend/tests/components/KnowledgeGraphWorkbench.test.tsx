@@ -170,10 +170,18 @@ function installDefaultHandlers() {
   };
 }
 
+let wikidataHits: Array<{ id: string; label: string; description?: string }> = [];
+function wikidataLookup(action: string, _params: Record<string, unknown>) {
+  if (action !== 'wikidata-search') return { data: { ok: false, error: `${action} unavailable` } };
+  return { data: { ok: true, result: { data: { search: wikidataHits }, fetchedAt: Date.now(), stale: false } } };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   installDefaultHandlers();
-  lensRunMock.mockImplementation((_domain: string, action: string, params: any) => {
+  lensRunMock.mockImplementation((domain: string, action: string, params: any) => {
+    // Wikidata search is read through the server's public-lookup domain (#1677), not from the browser.
+    if (domain === 'public-lookup') return Promise.resolve(wikidataLookup(action, params));
     const h = routeHandlers[action];
     if (!h) return Promise.resolve(okResult({}));
     const r = h(params);
@@ -181,16 +189,10 @@ beforeEach(() => {
     return Promise.resolve(r);
   });
   Element.prototype.scrollIntoView = vi.fn();
-  global.fetch = vi.fn().mockResolvedValue({
-    ok: true,
-    json: () =>
-      Promise.resolve({
-        search: [
-          { id: 'Q42', label: 'Douglas Adams', description: 'English author' },
-          { id: 'Q5', label: 'human', description: undefined },
-        ],
-      }),
-  }) as any;
+  wikidataHits = [
+    { id: 'Q42', label: 'Douglas Adams', description: 'English author' },
+    { id: 'Q5', label: 'human', description: undefined },
+  ];
 });
 
 afterEach(() => {
@@ -525,7 +527,7 @@ describe('KnowledgeGraphWorkbench', () => {
     typeInto(screen.getByPlaceholderText(/Search Wikidata entities/), 'Adams');
     fireEvent.click(screen.getByRole('button', { name: 'Search' }));
     await waitFor(() => expect(screen.getByText('Douglas Adams')).toBeDefined());
-    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('wikidata.org'));
+    expect(lensRunMock).toHaveBeenCalledWith('public-lookup', 'wikidata-search', { q: 'Adams' });
     // Import first result.
     fireEvent.click(screen.getAllByRole('button', { name: /Add/ })[0]);
     await waitFor(() =>
@@ -540,11 +542,11 @@ describe('KnowledgeGraphWorkbench', () => {
     const input = screen.getByPlaceholderText(/Search Wikidata entities/);
     fireEvent.change(input, { target: { value: 'human' } });
     fireEvent.keyDown(input, { key: 'Enter' });
-    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    await waitFor(() => expect(lensRunMock).toHaveBeenCalledWith('public-lookup', 'wikidata-search', { q: 'human' }));
   });
 
   it('Wikidata shows no-results message', async () => {
-    (global.fetch as any) = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ search: [] }) });
+    wikidataHits = [];
     await renderLoaded();
     clickTab('Import');
     fireEvent.click(screen.getByRole('button', { name: 'Wikidata' }));
