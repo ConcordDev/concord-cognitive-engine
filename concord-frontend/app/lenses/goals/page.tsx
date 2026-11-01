@@ -140,7 +140,11 @@ export default function GoalsLensPage() {
           />
         )}
 
-        <CrossLensRecentsPanel lensId="goals" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        {/* §9 fix: hideWhenEmpty makes the panel (and its refresh
+            button) vanish once loading settles empty — the control
+            existed only mid-load, disabled. Keeping the settled
+            section mounted leaves an enabled refresh in place. */}
+        <CrossLensRecentsPanel lensId="goals" sinceDays={7} limit={6} hideWhenEmpty={false} className="mt-3" />
       </div>
     </LensShell>
   );
