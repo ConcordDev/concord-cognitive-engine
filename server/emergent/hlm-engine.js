@@ -1306,6 +1306,31 @@ export function computeHLMPass(dtus) {
   }
 }
 
+// The redundancy list is quadratic in near-duplicate DTUs and is carried three times in a pass (redundancies,
+// topology.redundancies, one merge_redundant recommendation each). Measured on a tag-overlapping 5k store the
+// pass was 207 MB and its structured-clone deserialisation froze the receiving (main) thread 2.3 s, growing
+// quadratically; live passes froze the loop 6-33 s right as the worker's message arrived. The pass that crosses
+// the thread boundary (and is then retained) keeps only the strongest pairs; counts stay exact.
+export const HLM_MAX_REDUNDANCIES = Math.max(1, Number(process.env.CONCORD_HLM_MAX_REDUNDANCIES) || 2000);
+
+/**
+ * Bound a computed pass before it is posted off the worker and retained. A pass at or under `max` redundancies is
+ * returned untouched (same object). Otherwise the top-`max` pairs by similarity are kept, merge_redundant
+ * recommendations are re-derived from them, and the true total is recorded (`redundancies.total`, `summary`).
+ */
+export function boundHLMPass(pass, max = HLM_MAX_REDUNDANCIES) {
+  const all = pass?.redundancies?.redundancies;
+  if (!pass?.ok || !Array.isArray(all) || all.length <= max) return pass;
+  const keep = all.slice().sort((a, b) => (b.similarity - a.similarity) || (a.redundancyId < b.redundancyId ? -1 : 1)).slice(0, max);
+  const topology = { ...pass.topology, redundancies: keep };
+  return {
+    ...pass,
+    topology,
+    redundancies: { redundancies: keep, total: all.length, truncated: true },
+    recommendations: getRecommendations(topology),
+  };
+}
+
 /**
  * Record a computed pass in this module's stores and metrics. runHLMPass() does this for a pass it computed
  * in-process; the off-thread path (hlm-offthread.js) computes in a worker thread whose module state is
@@ -1331,7 +1356,7 @@ export function recordHLMPass(pass, { replayRecommendations = false } = {}) {
   hlmMetricsStore.totalPasses++;
   hlmMetricsStore.totalClusters += pass.clusters.clusters.length;
   hlmMetricsStore.totalOrphans += pass.orphans.orphans.length;
-  hlmMetricsStore.totalRedundancies += pass.redundancies.redundancies.length;
+  hlmMetricsStore.totalRedundancies += pass.redundancies.total ?? pass.redundancies.redundancies.length;
   hlmMetricsStore.totalGaps += pass.gaps.gaps.length;
   hlmMetricsStore.lastPassAt = pass.completedAt;
   hlmMetricsStore.lastPassId = pass.passId;
