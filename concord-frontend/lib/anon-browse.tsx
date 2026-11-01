@@ -8,10 +8,8 @@ import { createContext, useContext } from 'react';
  * context so the shell and the lens entry can show the visitor surface from the very first render:
  * no flash, no extra /api/auth/me round trip, no guessing from an httpOnly cookie.
  */
-export const ANON_BROWSE_HEADER = 'x-concord-anon-browse';
-
-/** Lenses open to signed-out visitors (browse-only, public items, 30 s previews). Exact paths. */
-export const PUBLIC_BROWSE_LENSES: ReadonlySet<string> = new Set(['/lenses/music', '/lenses/market']);
+// The values live in a server-safe module (the root layout is a server component and must get the real string).
+export { ANON_BROWSE_HEADER, PUBLIC_BROWSE_LENSES } from './anon-browse-constants';
 
 const AnonBrowseContext = createContext(false);
 
