@@ -19,7 +19,7 @@ vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 vi.mock('@/hooks/useLensIdentity', () => ({ useLensIdentity: () => {} }));
 vi.mock('@/hooks/useRealtimeLens', () => ({
-  useRealtimeLens: () => ({ latestData: null, insights: [], isLive: false, lastUpdated: null }),
+  useRealtimeLens: () => ({ latestData: null, insights: [], alerts: [], isLive: false, lastUpdated: null }),
 }));
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
