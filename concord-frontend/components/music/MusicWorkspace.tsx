@@ -80,6 +80,7 @@ import { TrackCard } from '@/components/music/TrackCard';
 import { ArtistProfile } from '@/components/music/ArtistProfile';
 // AlbumView unused — album support pending
 import { UploadFlow } from '@/components/music/UploadFlow';
+import { describeUploadError, freeListenOnlyTiers, normalizeTrackRow, rawUploadQuery } from '@/lib/music/upload';
 import { PlaylistView } from '@/components/music/PlaylistView';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
@@ -173,11 +174,7 @@ export function MusicWorkspace() {
   // ---- Transform lens items to domain types ----
   const tracks = useMemo<MusicTrack[]>(
     () =>
-      trackItems.map((item) => ({
-        ...(item.data as unknown as MusicTrack),
-        id: item.id,
-        title: item.title,
-      })),
+      trackItems.map((item) => normalizeTrackRow(item.data, item.id, item.title)),
     [trackItems]
   );
   const artists = useMemo<Artist[]>(
@@ -465,6 +462,8 @@ export function MusicWorkspace() {
   const [marketplaceSamples, setMarketplaceSamples] = useState<SamplePackListing[]>([]);
   const [marketplaceStems, setMarketplaceStems] = useState<StemPackListing[]>([]);
   const [marketplaceLoading, setMarketplaceLoading] = useState(false);
+  // Uploads listed free + listen-only by any member (marketplace.browse mediaListings).
+  const [listedUploads, setListedUploads] = useState<Array<{ id: string; title: string; streamUrl: string; seller?: string }>>([]);
   const [marketplaceBpmMin, setMarketplaceBpmMin] = useState('');
   const [marketplaceBpmMax, setMarketplaceBpmMax] = useState('');
   const [marketplaceGenre, setMarketplaceGenre] = useState('');
@@ -505,6 +504,18 @@ export function MusicWorkspace() {
       if (marketplaceGenre) params.set('genre', marketplaceGenre);
       if (marketplaceKey) params.set('key', marketplaceKey);
       if (marketplaceSearch) params.set('search', marketplaceSearch);
+
+      try {
+        const listed = await apiClient.get('/api/marketplace/listings');
+        const rows = (listed.data?.mediaListings || []) as Array<{ id: string; title?: string; streamUrl?: string; seller?: string; mediaType?: string }>;
+        setListedUploads(
+          rows
+            .filter((r) => r.mediaType === 'audio' && r.streamUrl)
+            .map((r) => ({ id: r.id, title: r.title || 'Untitled', streamUrl: r.streamUrl as string, seller: r.seller })),
+        );
+      } catch {
+        // Listed uploads are additive; the beat/sample/stem tabs below still load.
+      }
 
       if (marketplaceTab === 'beats') {
         const res = await apiClient.get(`/api/artistry/marketplace/beats?${params}`);
@@ -650,13 +661,8 @@ export function MusicWorkspace() {
       setUploadProgress({ stage: 'uploading', progress: 0, audioAnalysis: null, error: null });
 
       try {
-        // Convert file to base64 for upload
         setUploadProgress({ stage: 'uploading', progress: 10, audioAnalysis: null, error: null });
         const { api: apiClient } = await import('@/lib/api/client');
-        const arrayBuffer = await file.arrayBuffer();
-        const base64Data = btoa(
-          new Uint8Array(arrayBuffer).reduce((d, byte) => d + String.fromCharCode(byte), '')
-        );
 
         // Decode before the upload POST so the media DTU stores the real
         // duration. The paywall slices non-WAV previews by this duration;
@@ -679,29 +685,42 @@ export function MusicWorkspace() {
           // than block the upload.
         }
 
-        const uploadTiers = (uploadData?.tiers as MusicTrack['tiers']) || [
-          { tier: 'listen' as const, enabled: true, price: 0, currency: 'USD', maxLicenses: null, licensesIssued: 0 },
-          { tier: 'create' as const, enabled: true, price: 9.99, currency: 'USD', maxLicenses: null, licensesIssued: 0 },
-          { tier: 'commercial' as const, enabled: true, price: 99.99, currency: 'USD', maxLicenses: null, licensesIssued: 0 },
-        ];
+        // Money is off: every upload is free + listen-only whatever the tier
+        // step showed (see freeListenOnlyTiers).
+        const uploadTiers = freeListenOnlyTiers();
 
         const storedDuration = realDuration || (uploadData?.duration as number) || 240;
         setUploadProgress({ stage: 'uploading', progress: 30, audioAnalysis: null, error: null });
-        const mediaResp = await apiClient.post('/api/media/upload', {
-          title: trackTitle,
-          mediaType: 'audio',
-          mimeType: file.type || 'audio/mpeg',
-          fileSize: file.size,
-          originalFilename: file.name,
-          duration: storedDuration,
-          previewStart: Number(uploadData?.previewStart) || 0,
-          previewDuration: uploadData?.previewDuration == null
-            ? 30
-            : Math.max(0, Number(uploadData.previewDuration) || 0),
-          tiers: uploadTiers,
-          tags: (uploadData?.tags as string[]) || [],
-          data: base64Data,
-        });
+        // The file itself is the request body — no base64, no JSON size cap.
+        const mediaResp = await apiClient.post(
+          `/api/media/upload-raw?${rawUploadQuery({
+            title: trackTitle,
+            filename: file.name,
+            duration: storedDuration,
+            previewStart: Number(uploadData?.previewStart) || 0,
+            previewDuration: uploadData?.previewDuration == null
+              ? 30
+              : Math.max(0, Number(uploadData.previewDuration) || 0),
+            tags: (uploadData?.tags as string[]) || [],
+          })}`,
+          file,
+          {
+            headers: { 'Content-Type': file.type || 'application/octet-stream' },
+            // Large files: don't let the default JSON timeout/size handling interfere.
+            timeout: 0,
+            maxBodyLength: Infinity,
+            onUploadProgress: (ev) => {
+              if (ev.total) {
+                setUploadProgress({
+                  stage: 'uploading',
+                  progress: 30 + Math.round((ev.loaded / ev.total) * 30),
+                  audioAnalysis: null,
+                  error: null,
+                });
+              }
+            },
+          },
+        );
 
         setUploadProgress({ stage: 'analyzing', progress: 60, audioAnalysis: null, error: null });
         const mediaId =
@@ -775,6 +794,23 @@ export function MusicWorkspace() {
           data: newTrack as unknown as Record<string, unknown>,
         });
 
+        // Publish: list the uploaded media DTU (free, listen-only) so it shows
+        // in Browse/Market for other listeners. The upload itself already
+        // succeeded and plays; a listing failure is reported, not hidden.
+        if (mediaId) {
+          const { lensRun } = await import('@/lib/api/client');
+          const listed = await lensRun('marketplace', 'list', { dtuId: mediaId });
+          if (!listed.data?.ok) {
+            setUploadProgress({
+              stage: 'error',
+              progress: 100,
+              audioAnalysis: null,
+              error: `Uploaded and playable, but not listed in Market: ${listed.data?.error || 'listing failed'}.`,
+            });
+            return;
+          }
+        }
+
         setUploadProgress({ stage: 'complete', progress: 100, audioAnalysis: null, error: null });
         setTimeout(() => {
           setUploadProgress(null);
@@ -782,13 +818,13 @@ export function MusicWorkspace() {
         }, 2000);
       } catch (err) {
         console.error('Upload failed:', err instanceof Error ? err.message : err);
+        // Persistent and specific: stays on screen until the user dismisses it.
         setUploadProgress({
-          stage: 'uploading',
+          stage: 'error',
           progress: 0,
           audioAnalysis: null,
-          error: err instanceof Error ? err.message : 'Upload failed',
+          error: describeUploadError(err, file),
         });
-        setTimeout(() => setUploadProgress(null), 3000);
       }
     },
     [createTrackItem]
@@ -1524,6 +1560,18 @@ export function MusicWorkspace() {
                   </button>
                 </div>
 
+                {listedUploads.length > 0 && (
+                  <section aria-label="Listed uploads" className="space-y-2" data-testid="listed-uploads">
+                    <h2 className="text-sm font-semibold text-gray-300">New uploads · free to listen</h2>
+                    {listedUploads.map((u) => (
+                      <div key={u.id} className="flex items-center gap-3 rounded-lg border border-white/10 p-2">
+                        <span className="text-sm truncate w-40">{u.title}</span>
+                        <audio controls preload="none" src={u.streamUrl} className="flex-1 h-8" />
+                      </div>
+                    ))}
+                  </section>
+                )}
+
                 {/* Tab bar */}
                 <div className="flex gap-1 border-b border-white/5">
                   {[
@@ -2004,6 +2052,7 @@ export function MusicWorkspace() {
                 onUpload={handleUpload}
                 onCancel={navigateHome}
                 progress={uploadProgress}
+                onDismissError={() => setUploadProgress(null)}
               />
             )}
 
