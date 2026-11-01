@@ -200,11 +200,20 @@ describe("game-design — mechanics and entities", () => {
     const m = await lensRun("game-design", "mechanic-add", { params: { gameId, name: "Wall Run", category: "bogus" } }, ctx);
     mechId = m.result.mechanic.id;
     assert.equal(m.result.mechanic.category, "core"); // invalid category falls back
-    const e = await seedEntity(ctx, gameId, { kind: "bogus", health: 10.6, damage: -4 });
+    const e = await seedEntity(ctx, gameId, { kind: "bogus", health: 10.6, damage: 3.4 });
     entId = e.id;
     assert.equal(e.kind, "enemy"); // invalid kind falls back
     assert.equal(e.health, 11); // rounded
-    assert.equal(e.damage, 0); // clamped at 0
+    assert.equal(e.damage, 3); // rounded
+  });
+
+  it("entity-add refuses negative stats at the input schema, before the handler's clamp", async () => {
+    // lens-input-schemas-wave2.js: entity-add damage/health/speed are "num>=0".
+    const r = await lensRun("game-design", "entity-add", { params: { gameId, name: "Ghoul", damage: -4 } }, ctx);
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "invalid_input");
+    assert.equal(r.field, "damage");
+    assert.equal(r.reason, "min_0");
   });
 
   it("mechanic-update renames and re-buckets, keeping the category on an invalid value", async () => {
@@ -225,7 +234,7 @@ describe("game-design — mechanics and entities", () => {
     assert.equal(again.error, "mechanic not found");
   });
 
-  it("entity-update patches stats with the same rounding and clamping", async () => {
+  it("entity-update patches stats with the same rounding", async () => {
     const r = await lensRun("game-design", "entity-update", { params: { id: entId, speed: 7.5, kind: "boss" } }, ctx);
     assert.equal(r.ok, true);
     assert.equal(r.result.entity.speed, 8);
