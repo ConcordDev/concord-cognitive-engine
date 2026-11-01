@@ -48,8 +48,22 @@ function ProvenanceDashboard() {
     refetchInterval: 60000,
   });
 
+  // The verify endpoint answers 422 when verification RUNS and some
+  // claims fail — the body still carries the full report. A 422 here is
+  // a completed verification with failures, not a transport failure;
+  // only a response without a report is a real error.
   const verifyMutation = useMutation({
-    mutationFn: () => api.post('/api/audit/provenance/verify'),
+    mutationFn: async (): Promise<{ ok: boolean; report: ProvenanceReport }> => {
+      try {
+        const r = await api.post('/api/audit/provenance/verify');
+        return { ok: r.data?.ok === true, report: r.data?.report };
+      } catch (e) {
+        const data = (e as { response?: { data?: { ok?: boolean; report?: ProvenanceReport } } })
+          ?.response?.data;
+        if (data?.report) return { ok: data.ok === true, report: data.report };
+        throw e;
+      }
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['provenance-report'] }),
   });
 
@@ -102,7 +116,27 @@ function ProvenanceDashboard() {
       {verifyMutation.isError && (
         <div className="flex items-center gap-2 p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
           <AlertCircle className="w-3 h-3" />
-          Verification failed: {(verifyMutation.error as Error)?.message || 'Unknown error'}
+          Verification could not run: {(verifyMutation.error as Error)?.message || 'Unknown error'}
+        </div>
+      )}
+
+      {verifyMutation.isSuccess && verifyMutation.data?.report && (
+        <div
+          className={`flex items-center gap-2 p-2 border rounded text-xs ${
+            verifyMutation.data.ok
+              ? 'bg-green-500/10 border-green-500/30 text-green-400'
+              : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+          }`}
+        >
+          {verifyMutation.data.ok ? (
+            <CheckCircle className="w-3 h-3 shrink-0" />
+          ) : (
+            <AlertCircle className="w-3 h-3 shrink-0" />
+          )}
+          Verification ran — {verifyMutation.data.report.verified} of{' '}
+          {verifyMutation.data.report.total} claims verified
+          {!verifyMutation.data.ok &&
+            `, ${verifyMutation.data.report.failed} failed. The failing claims are listed below with their reasons.`}
         </div>
       )}
 

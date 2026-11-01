@@ -43192,6 +43192,40 @@ app.post("/api/client-error", perEndpointRateLimit("write.client-error"), expres
       alert: async (payload) => { try { const { sendAlert } = await import("./lib/error-alerting.js"); await sendAlert(payload); } catch { /* alerting optional */ } },
     });
     if (r?.disabled) return res.status(204).end();
+    // Debug S2 — the first feed: when the report carries an authenticated
+    // user, the same error also lands in THAT user's Debug workspace as
+    // an issue (issue-ingest groups repeats by fingerprint and reopens
+    // resolved issues as regressions). The platform intake above stays
+    // the operator pipeline; this is the per-user product surface.
+    // Best-effort: a failure here never changes the intake response.
+    if (req.user?.id) {
+      try {
+        const b = req.body || {};
+        const ctxb = b.context && typeof b.context === "object" ? b.context : {};
+        const message = String(b.message || "").slice(0, 1000).trim();
+        const stack = String(b.stack || "").slice(0, 4000);
+        if (message) {
+          const firstLine = stack.split("\n")[0] || "";
+          const typeMatch = firstLine.match(/^([A-Za-z_$][\w$]*Error)\b/);
+          const frameLine = (stack.split("\n")[1] || "").trim();
+          await runMacro("debug", "issue-ingest", {
+            type: typeMatch ? typeMatch[1] : (b.kind === "unhandled_rejection" ? "UnhandledRejection" : "Error"),
+            message,
+            stack: stack || undefined,
+            culprit: frameLine ? frameLine.replace(/^at\s+/, "").slice(0, 200) : undefined,
+            level: r?.severity === "critical" ? "fatal" : "error",
+            release: ctxb.buildId ? String(ctxb.buildId).slice(0, 60) : undefined,
+            breadcrumbs: Array.isArray(ctxb.breadcrumbs)
+              ? ctxb.breadcrumbs.slice(-10).map((crumb) => ({
+                  category: "client",
+                  message: String(crumb).replace(/^\d+:/, "").slice(0, 300),
+                  level: "info",
+                }))
+              : [],
+          }, makeCtx(req));
+        }
+      } catch { /* Debug delivery is best-effort */ }
+    }
     res.json(r);
   } catch {
     res.status(400).json({ ok: false, error: "invalid_payload" });
