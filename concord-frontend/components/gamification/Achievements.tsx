@@ -68,7 +68,7 @@ export function Achievements({
   return (
     <div className={cn('space-y-6', className)}>
       {/* Stats Header */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Level */}
         <div className="p-4 bg-gradient-to-br from-neon-purple/20 to-neon-cyan/20 border border-neon-purple/30 rounded-xl">
           <div className="flex items-center gap-3">

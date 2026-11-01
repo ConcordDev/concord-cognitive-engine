@@ -1485,7 +1485,7 @@ export function EducationSection() {
               )}
               {/* attendanceReport */}
               {typeof actionResult === 'object' && 'overallAttendanceRate' in actionResult && (
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.overallAttendanceRate)}%</p>
                     <p className="text-[10px] text-gray-400">Attendance Rate</p>
@@ -1524,7 +1524,7 @@ export function EducationSection() {
               )}
               {/* scheduleConflict */}
               {typeof actionResult === 'object' && 'conflictsFound' in actionResult && (
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${Number(actionResult.conflictsFound) > 0 ? 'text-red-400' : 'text-green-400'}`}>{String(actionResult.conflictsFound)}</p>
                     <p className="text-[10px] text-gray-400">Conflicts</p>

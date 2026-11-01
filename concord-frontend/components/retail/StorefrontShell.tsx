@@ -92,7 +92,7 @@ export function StorefrontShell({
       {/* Main area */}
       <main className="flex-1 p-5 space-y-4 bg-white">
         {/* Hero metric cards */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <MetricCard icon={DollarSign} label="Total sales" value={fmtMoney(revenueToday)} caption="Today" tone="positive" />
           <MetricCard icon={ShoppingBag} label="Orders" value={String(ordersToday)} caption="Today" />
           <MetricCard icon={TrendingUp} label="Conversion" value={conversionRate != null ? `${conversionRate.toFixed(2)}%` : '—'} caption="Last 7 days" />

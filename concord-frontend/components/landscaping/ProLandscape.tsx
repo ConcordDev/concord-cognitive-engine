@@ -296,7 +296,7 @@ function MaterialEstimator() {
           {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Enter area + material.</div>}
           {result && (
             <>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div className="rounded-lg border-2 border-stone-500/40 bg-stone-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-stone-300">Cubic yards</div><div className="font-mono text-2xl text-stone-100">{result.cubicYards}</div></div>
                 <div className="rounded border border-amber-500/30 bg-amber-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-amber-300">Bags</div><div className="font-mono text-2xl text-amber-100">{result.bags}</div></div>
                 <div className="rounded border border-emerald-500/30 bg-emerald-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-emerald-300">Cost</div><div className="font-mono text-2xl text-emerald-100">${result.estimatedCost?.toLocaleString()}</div></div>

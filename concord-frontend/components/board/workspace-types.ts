@@ -7,6 +7,8 @@ import { lensRun } from '@/lib/api/client';
 export interface WsColumn {
   id: string;
   name: string;
+  archived?: boolean;
+  archivedAt?: string;
 }
 
 export interface WsChecklistItem {
@@ -20,6 +22,7 @@ export interface WsComment {
   author: string;
   text: string;
   at: string;
+  editedAt?: string;
 }
 
 export interface WsAttachment {
@@ -57,6 +60,29 @@ export interface WsCard {
   activity?: WsActivity[];
   cover?: WsCover | null;
   customFields?: Record<string, string | number | boolean>;
+  archived?: boolean;
+  archivedAt?: string;
+}
+
+export interface WsTemplate {
+  id: string;
+  name: string;
+  title: string;
+  description: string;
+  labels: string[];
+  checklist: { text: string }[];
+  customFields: Record<string, string | number | boolean>;
+  createdAt: string;
+}
+
+export interface WsDueReminder {
+  boardId: string;
+  boardName: string;
+  cardId: string;
+  title: string;
+  columnName: string | null;
+  dueDate: string;
+  overdue: boolean;
 }
 
 export interface WsLabelDef {
@@ -92,6 +118,7 @@ export interface WsCustomField {
 export interface WsBoard {
   id: string;
   name: string;
+  description?: string | null;
   columns: WsColumn[];
   cards: WsCard[];
   createdAt: string;
@@ -99,6 +126,7 @@ export interface WsBoard {
   automations?: WsAutomation[];
   collaborators?: WsCollaborator[];
   customFields?: WsCustomField[];
+  templates?: WsTemplate[];
 }
 
 export interface WsBoardSummary {

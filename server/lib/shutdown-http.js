@@ -70,6 +70,24 @@ export function isShutdownDbError(err) {
 }
 
 /**
+ * Wrap a socket.io namespace middleware so a synchronous throw becomes a normal handshake refusal.
+ * socket.io v4 invokes middleware from an async `_add` and does not catch a sync throw, so during graceful
+ * shutdown the sealed DB's shutting_down (thrown from AuthDB.getUser) escaped as a FATAL unhandled_rejection
+ * in the old process on every deploy. A shutdown error is refused as "shutting_down" (the client retries);
+ * anything else as "Authentication error".
+ * @param {(socket: any, next: (err?: Error) => void) => void} middleware
+ */
+export function guardSocketAuth(middleware) {
+  return (socket, next) => {
+    try {
+      return middleware(socket, next);
+    } catch (e) {
+      return next(new Error(isShutdownDbError(e) ? "shutting_down" : "Authentication error"));
+    }
+  };
+}
+
+/**
  * @param {import("express").Response | import("node:http").ServerResponse} res
  */
 export function sendShuttingDown(res) {

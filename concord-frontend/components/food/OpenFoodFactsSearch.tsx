@@ -92,7 +92,7 @@ export function OpenFoodFactsSearch() {
         <button type="submit" className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-mono text-amber-200 hover:bg-amber-500/20">search</button>
       </form>
       {products.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{products.error instanceof Error ? products.error.message : 'Open Food Facts unavailable.'}</div>}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="rounded border border-lattice-border bg-lattice-void px-2.5 py-1.5 tabular-nums"><div className="text-[10px] uppercase tracking-wider text-gray-400">Products</div><div className="mt-0.5 font-mono text-lg text-amber-300">{list.length}</div></div>
         <div className="rounded border border-lattice-border bg-lattice-void px-2.5 py-1.5 tabular-nums"><div className="text-[10px] uppercase tracking-wider text-gray-400">NutriScore A/B</div><div className="mt-0.5 font-mono text-lg text-emerald-300">{(nutriDist.a || 0) + (nutriDist.b || 0)}</div></div>
         <div className="rounded border border-lattice-border bg-lattice-void px-2.5 py-1.5 tabular-nums"><div className="text-[10px] uppercase tracking-wider text-gray-400">Avg NOVA</div><div className="mt-0.5 font-mono text-lg text-amber-300">{novaAvg > 0 ? novaAvg.toFixed(1) : '—'}</div></div>

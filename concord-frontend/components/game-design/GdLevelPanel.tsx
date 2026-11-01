@@ -576,7 +576,7 @@ function LevelEditor({ levelId, gameId, onExit }: { levelId: string; gameId: str
           <div className="flex items-center justify-between">
             <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300"><Layers className="w-3.5 h-3.5" /> Layers</h3>
           </div>
-          <div className="grid grid-cols-3 gap-1">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
             <button type="button" onClick={() => addLayer('tile')}
               className="px-1.5 py-1 text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">+ Tile</button>
             <button type="button" onClick={() => addLayer('object')}

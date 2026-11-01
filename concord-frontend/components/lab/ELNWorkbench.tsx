@@ -422,7 +422,7 @@ function InventoryTab() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="panel p-2 text-center"><p className="text-lg font-bold text-red-400">{stats.expiredCount}</p><p className="text-xs text-gray-400">Expired</p></div>
         <div className="panel p-2 text-center"><p className="text-lg font-bold text-yellow-400">{stats.expiringSoonCount}</p><p className="text-xs text-gray-400">Expiring &lt;30d</p></div>
         <div className="panel p-2 text-center"><p className="text-lg font-bold text-orange-400">{stats.lowStockCount}</p><p className="text-xs text-gray-400">Low Stock</p></div>

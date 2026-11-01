@@ -143,7 +143,7 @@ export function AstronomyActionPanel() {
     try {
       const task = `Tonight's sky-watching brief for observer at ${obsLat}, ${obsLng}. ${apodResult ? `Today's APOD: "${apodResult.title}".` : ''} ${issResult ? `ISS at ${issResult.latitude.toFixed(2)}, ${issResult.longitude.toFixed(2)}.` : ''} ${neoResult?.hazardousCount ? `${neoResult.hazardousCount} potentially hazardous NEOs in window.` : ''} ${posResult ? `${posResult.body} at alt ${posResult.alt}°.` : ''} Recommend one specific thing to look at tonight + best viewing time. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Brief ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

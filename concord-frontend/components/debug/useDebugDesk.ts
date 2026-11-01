@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
+import { useAuth } from '@/hooks/useAuth';
+import { canUseDbAdmin } from '@/components/database/db-utils';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 
@@ -126,9 +128,14 @@ export function useDebugDesk() {
     queryFn: () => api.get('/api/jobs/status').then((r) => r.data),
   });
 
+  // GET /api/db/status is owner/admin-only on the server. Debug is member-reachable, so a member opening the
+  // lens must not fire it (403 on every open); the Database health card is simply not shown to them.
+  const { user } = useAuth();
+  const isDbAdmin = canUseDbAdmin(user);
   const { data: dbStatus } = useQuery({
     queryKey: ['db-status'],
     queryFn: () => apiHelpers.db.status().then((r) => r.data),
+    enabled: isDbAdmin,
   });
 
   const { data: perfMetrics } = useQuery({
@@ -209,6 +216,7 @@ export function useDebugDesk() {
     events,
     jobs,
     dbStatus,
+    isDbAdmin,
     perfMetrics,
     isLoading,
     isError: isError || isError2 || isError3,

@@ -630,7 +630,7 @@ function AnalyticsTab({ drafts, onChange }: { drafts: DraftMeta[]; onChange: () 
       </div>
 
       {totals && threads.length > 0 && (
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-1.5">
           {([['Impressions', totals.impressions], ['Likes', totals.likes], ['Reposts', totals.reposts], ['Replies', totals.replies]] as const).map(([k, v]) => (
             <div key={k} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5">
               <p className="text-[9px] uppercase tracking-wide text-zinc-400">{k}</p>

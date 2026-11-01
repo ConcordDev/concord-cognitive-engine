@@ -94,11 +94,12 @@ function ScorecardTool() {
           </div>
           <div className="space-y-1.5 pl-3">
             {obj.krs.map((kr, ki) => (
-              <div key={ki} className="grid grid-cols-6 gap-1.5">
+              <div key={ki} className="grid grid-cols-7 gap-1.5">
                 <input value={kr.title} onChange={(e) => setObjectives((os) => os.map((o, i) => i === oi ? { ...o, krs: o.krs.map((k, j) => j === ki ? { ...k, title: e.target.value } : k) } : o))} placeholder="Key result" className={`${inputCls} col-span-2`} />
                 <input value={kr.current} onChange={(e) => setObjectives((os) => os.map((o, i) => i === oi ? { ...o, krs: o.krs.map((k, j) => j === ki ? { ...k, current: e.target.value } : k) } : o))} type="number" placeholder="Current" className={inputCls} />
                 <input value={kr.target} onChange={(e) => setObjectives((os) => os.map((o, i) => i === oi ? { ...o, krs: o.krs.map((k, j) => j === ki ? { ...k, target: e.target.value } : k) } : o))} type="number" placeholder="Target" className={inputCls} />
                 <input value={kr.unit} onChange={(e) => setObjectives((os) => os.map((o, i) => i === oi ? { ...o, krs: o.krs.map((k, j) => j === ki ? { ...k, unit: e.target.value } : k) } : o))} placeholder="Unit" className={inputCls} />
+                <input value={Math.round(kr.confidence * 100)} onChange={(e) => setObjectives((os) => os.map((o, i) => i === oi ? { ...o, krs: o.krs.map((k, j) => j === ki ? { ...k, confidence: Math.max(0, Math.min(100, Number(e.target.value) || 0)) / 100 } : k) } : o))} type="number" min={0} max={100} placeholder="Conf %" title="Confidence 0-100% — this KR's score is multiplied by it" className={inputCls} />
                 <button onClick={() => setObjectives((os) => os.map((o, i) => i === oi ? { ...o, krs: o.krs.filter((_, j) => j !== ki) } : o))} className="flex items-center justify-center text-zinc-600 hover:text-red-400"><Trash2 className="h-3 w-3" /></button>
               </div>
             ))}
@@ -121,6 +122,7 @@ function ScorecardTool() {
             </span>
             <span className="text-xs uppercase text-zinc-400">{result.overallStatus as string}</span>
           </div>
+          <p className="text-[10px] text-zinc-500">Scores are progress × confidence. On track = 70%+ of target · At risk = 40–70% · Off track = under 40%.</p>
           {((result.objectives as { id: string; title: string; score: number; status: string; krOnTrack: number; krCount: number }[]) || []).map((o) => (
             <div key={o.id} className="flex items-center justify-between text-xs">
               <span className="text-zinc-300">{o.title}</span>
@@ -215,20 +217,18 @@ function ForecastTool() {
   const run = async () => {
     if (!goalId.trim()) return;
     setBusy(true); setError(null); setResult(null);
-    const cr = await lensRun<{ checkins: { period: string; progress: number | null }[] }>('goals', 'checkin', { op: 'list', goalId: goalId.trim() });
-    const checkins = cr.data?.result?.checkins || [];
-    const history = checkins.filter((c) => c.progress != null).map((c) => ({ date: c.period, progress: c.progress as number }));
-    setPointsUsed(history.length);
-    if (history.length < 2) {
-      setBusy(false);
-      setError(`Only ${history.length} check-in${history.length === 1 ? '' : 's'} with a progress % logged for "${goalId}". Log at least 2 (with a progress value) in the Check-ins tab below to forecast.`);
-      return;
-    }
-    const r = await lensRun('goals', 'progressForecast', { history, target: Number(target) || 100 });
+    // S5: the domain reads the objective's real series itself — the
+    // same points the chart draws — so the forecast can never be fed
+    // a newest-first history whose "latest" is secretly the first.
+    const r = await lensRun('goals', 'progressForecast', { goalId: goalId.trim(), target: Number(target) || 100 });
     setBusy(false);
-    if (r.data?.ok && r.data.result) setResult(r.data.result as Record<string, unknown>);
-    else setError(r.data?.error || 'Forecast failed.');
-  };
+    if (r.data?.ok && r.data.result) {
+      const res = r.data.result as Record<string, unknown>;
+      setPointsUsed(typeof res.dataPoints === 'number' ? res.dataPoints : null);
+      if (typeof res.message === 'string') { setError(res.message); return; }
+      setResult(res);
+    } else setError(r.data?.error || 'Forecast failed.');
+    };
 
   return (
     <div className="space-y-3">
@@ -251,12 +251,21 @@ function ForecastTool() {
           <div className="grid grid-cols-3 gap-2 text-center">
             <div><p className="font-mono text-lg text-cyan-300">{(result.currentState as Record<string, number>)?.progress}%</p><p className="text-[9px] text-zinc-500">Current</p></div>
             <div><p className="font-mono text-lg text-white">{(result.currentState as Record<string, number>)?.daysElapsed}d</p><p className="text-[9px] text-zinc-500">Elapsed</p></div>
-            <div><p className={`font-mono text-lg ${(result.forecast as Record<string, boolean>)?.onTrack ? 'text-emerald-300' : 'text-red-300'}`}>{(result.forecast as Record<string, boolean>)?.onTrack ? 'On track' : 'Behind'}</p><p className="text-[9px] text-zinc-500">Status</p></div>
+            <div><p className={`font-mono text-lg ${(result.pace as string) === 'behind' ? 'text-red-300' : (result.pace as string) === 'on_track' ? 'text-amber-300' : 'text-emerald-300'}`}>{(result.pace as string) === 'ahead' ? 'Ahead' : (result.pace as string) === 'on_track' ? 'On track' : (result.pace as string) === 'behind' ? 'Behind' : '—'}</p><p className="text-[9px] text-zinc-500">Pace (same rule as Charts)</p></div>
           </div>
           {!!(result.forecast as Record<string, string>)?.estimatedCompletionDate && (
-            <p className="text-xs text-zinc-300">Est. completion: <span className="font-mono text-cyan-300">{(result.forecast as Record<string, string>).estimatedCompletionDate}</span></p>
+            <p className="text-xs text-zinc-300">
+              At the pace of your {result.dataPoints as number} check-ins: {(result.currentState as Record<string, number>)?.target ?? 100}% by{' '}
+              <span className="font-mono text-cyan-300">{(result.forecast as Record<string, string>).estimatedCompletionDate}</span>
+              {(result.forecast as Record<string, number>)?.daysRemainingBest != null && (result.forecast as Record<string, number>)?.daysRemainingWorst != null && (
+                <> (band: {(result.forecast as Record<string, number>).daysRemainingBest}–{(result.forecast as Record<string, number>).daysRemainingWorst} days remaining)</>
+              )}
+            </p>
           )}
-          <p className="text-[11px] text-zinc-400">Trend: <span className="text-zinc-200">{(result.velocity as Record<string, string>)?.trend}</span> · Fit: <span className="text-zinc-200">{(result.regression as Record<string, string>)?.fit}</span> (R²={(result.regression as Record<string, number>)?.rSquared})</p>
+          {typeof (result.forecast as Record<string, string>)?.reason === 'string' && (
+            <p className="text-xs text-amber-300">{(result.forecast as Record<string, string>).reason}</p>
+          )}
+          <p className="text-[11px] text-zinc-400">Trend: <span className="text-zinc-200">{(result.velocity as Record<string, string>)?.trend}</span>{result.regression ? <> · Fit: <span className="text-zinc-200">{(result.regression as Record<string, string>)?.fit}</span> (R²={(result.regression as Record<string, number>)?.rSquared})</> : null}</p>
         </div>
       )}
     </div>

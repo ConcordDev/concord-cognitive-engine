@@ -116,7 +116,7 @@ export function HrTimeOffPanel({ onChange }: { onChange: () => void }) {
           {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
         </select>
         {balances.length > 0 && (
-          <div className="grid grid-cols-3 gap-2 mt-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
             {balances.map((b) => (
               <div key={b.kind} className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
                 <p className="text-sm font-bold text-zinc-100">{b.remaining}</p>

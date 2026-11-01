@@ -212,7 +212,7 @@ export function OrganizationESGPanel() {
               {result.scopeLabel}
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div className="p-2 bg-white/[0.03] rounded text-center">
                 <p className={`text-lg font-bold ${RATING_TONE[result.overallRating] || 'text-gray-300'}`}>
                   {result.overallScore ?? '—'}

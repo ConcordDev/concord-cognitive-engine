@@ -70,7 +70,7 @@ export function StudyModePanel() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="p-4 rounded-lg bg-lattice-surface border border-lattice-border text-center">
           <p className="text-2xl font-bold text-neon-cyan">{total}</p>
           <p className="text-xs text-gray-400">Cards Due</p>
@@ -133,7 +133,7 @@ export function StudyModePanel() {
                   {currentCard.dtu.content}
                 </div>
               )}
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 {[
                   { q: 1, label: 'Again', color: 'text-red-400' },
                   { q: 3, label: 'Good', color: 'text-green-400' },

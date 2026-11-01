@@ -85,7 +85,7 @@ export function AlertsPanel({ live }: { live: boolean }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <SummaryCard label="Rules" value={data.ruleCount} tone="neutral" />
         <SummaryCard label="Firing" value={data.firingCount} tone={data.firingCount > 0 ? 'bad' : 'ok'} />
         <SummaryCard label="Unacked firing" value={data.unacknowledgedFiring} tone={data.unacknowledgedFiring > 0 ? 'bad' : 'ok'} />

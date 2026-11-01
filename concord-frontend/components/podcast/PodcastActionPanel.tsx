@@ -141,7 +141,7 @@ export function PodcastActionPanel() {
     try {
       const task = `Podcast: "${showTitle || 'show'}". ${analyticsResult ? `${analyticsResult.totalListens} listens, ${analyticsResult.growth}.` : ''} ${monetizeResult ? `$${monetizeResult.totalMonthlyRevenue}/mo, ${monetizeResult.tier}.` : ''} Suggest the next single growth move (audience, sponsorship, or production) that gets us to the next tier. Plain text.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Growth move ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

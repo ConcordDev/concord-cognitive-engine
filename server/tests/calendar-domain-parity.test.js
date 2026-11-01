@@ -1,8 +1,9 @@
 // Contract tests for server/domains/calendar.js — pure-compute helpers
 // plus RFC 5545 iCal interop + IANA timezone conversion.
 
-import { describe, it, before, beforeEach } from "node:test";
+import { describe, it, before, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
+import { __setPublicFetchTestTransport } from "../lib/public-fetch.js";
 import registerCalendarActions from "../domains/calendar.js";
 
 const ACTIONS = new Map();
@@ -399,6 +400,7 @@ describe("calendar — external account sync (item 1)", () => {
     globalThis._concordSTATE = { dtus: new Map() };
     globalThis._concordSaveStateDebounced = () => {};
   });
+  afterEach(() => __setPublicFetchTestTransport(null));
 
   it("accounts-connect validates the ICS URL and stores the account", () => {
     assert.equal(call("accounts-connect", ctxBL, { label: "Work", icsUrl: "ftp://bad" }).ok, false);
@@ -422,7 +424,8 @@ describe("calendar — external account sync (item 1)", () => {
       "BEGIN:VEVENT", "UID:ext-1@g", "DTSTART:20260601T090000Z", "DTEND:20260601T100000Z", "SUMMARY:External meeting", "END:VEVENT",
       "END:VCALENDAR",
     ].join("\r\n");
-    globalThis.fetch = async () => ({ ok: true, status: 200, text: async () => feed });
+    // accounts-sync fetches through the SSRF-guarded lib/public-fetch; its test transport replaces real egress.
+    __setPublicFetchTestTransport(async () => ({ ok: true, status: 200, text: async () => feed }));
     const a = call("accounts-connect", ctxBL, { label: "Synced", icsUrl: "https://x.com/sync.ics" }).result.account;
     const r = await call("accounts-sync", ctxBL, { id: a.id });
     assert.equal(r.ok, true);

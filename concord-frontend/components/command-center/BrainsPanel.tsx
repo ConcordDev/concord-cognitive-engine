@@ -36,7 +36,7 @@ export function BrainsPanel() {
           </div>
           <p className="text-xs text-gray-400 mb-2">{brain.role}</p>
           {brain.enabled && (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Stat label="Requests" value={brain.stats.requests} />
               <Stat label="Avg ms" value={brain.avgResponseMs || (brain.stats.requests > 0 ? Math.round(brain.stats.totalMs / brain.stats.requests) : 0)} />
               <Stat label="Errors" value={brain.stats.errors} />

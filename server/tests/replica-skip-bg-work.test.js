@@ -18,7 +18,7 @@ test("brain model pulls are skipped on a read replica", () => {
 });
 
 test("minor-agent scheduler does not start on a read replica", () => {
-  assert.match(src, /if \(!_isReadReplicaEnv\(\)\) _unrefInTest\(setTimeout\(async \(\) => \{\s*try \{\s*const emergentsMap = STATE\?\.__emergent\?\.emergents;\s*await minorAgentScheduler\.initialize/);
+  assert.match(src, /if \(!_isReadReplicaEnv\(\)\) \{\s*_unrefInTest\(setTimeout\(async \(\) => \{\s*try \{\s*const emergentsMap = STATE\?\.__emergent\?\.emergents;\s*await minorAgentScheduler\.initialize/);
 });
 
 test("_isReadReplicaEnv accepts 1/true only", () => {

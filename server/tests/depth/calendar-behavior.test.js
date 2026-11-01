@@ -330,18 +330,27 @@ describe("calendar — events update/delete + tasks lifecycle (wave 16 top-up)",
     const id = created.result.event.id;
 
     const upd = await lensRun("calendar", "events-update", {
-      params: { id, title: "Final", location: "Room 9", start: "2026-07-01T13:00:00.000Z" },
+      // INC-84: an edit may not invert the event, so the end moves with the start.
+      params: { id, title: "Final", location: "Room 9", start: "2026-07-01T13:00:00.000Z", end: "2026-07-01T14:00:00.000Z" },
     }, ctx);
     assert.equal(upd.ok, true);
     assert.equal(upd.result.event.title, "Final");
     assert.equal(upd.result.event.location, "Room 9");
     assert.equal(upd.result.event.start, "2026-07-01T13:00:00.000Z");
+    assert.equal(upd.result.event.end, "2026-07-01T14:00:00.000Z");
+
+    // The guard the old test tripped over: start past the stored end is refused and nothing is mutated.
+    const inverted = await lensRun("calendar", "events-update", {
+      params: { id, title: "Inverted", start: "2026-07-01T15:00:00.000Z" },
+    }, ctx);
+    assert.equal(inverted.result.ok, false);
+    assert.match(inverted.result.error, /end must be after start/);
 
     const list = await lensRun("calendar", "events-list", {
       params: { rangeStart: "2026-07-01T00:00:00.000Z", rangeEnd: "2026-07-02T00:00:00.000Z" },
     }, ctx);
     const mine = list.result.events.find((o) => o.id === id);
-    assert.equal(mine.title, "Final");
+    assert.equal(mine.title, "Final", "the refused edit changed nothing");
     assert.equal(mine.occurrenceStart, "2026-07-01T13:00:00.000Z");
   });
 

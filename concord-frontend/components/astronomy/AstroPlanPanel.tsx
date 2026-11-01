@@ -78,7 +78,7 @@ export function AstroPlanPanel({ onChange }: { onChange: () => void }) {
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <ListChecks className="w-3.5 h-3.5 text-indigo-400" /> Observing wishlist
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input placeholder="Object name" value={wishForm.name} onChange={(e) => setWishForm({ ...wishForm, name: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <select value={wishForm.priority} onChange={(e) => setWishForm({ ...wishForm, priority: e.target.value })}
@@ -117,7 +117,7 @@ export function AstroPlanPanel({ onChange }: { onChange: () => void }) {
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <CalendarClock className="w-3.5 h-3.5 text-indigo-400" /> Astronomical events
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input placeholder="Event name" value={eventForm.name} onChange={(e) => setEventForm({ ...eventForm, name: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <select value={eventForm.kind} onChange={(e) => setEventForm({ ...eventForm, kind: e.target.value })}

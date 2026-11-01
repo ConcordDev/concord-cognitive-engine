@@ -284,7 +284,7 @@ function CurrencyTab() {
       <section className="bg-black/30 border border-white/10 rounded-lg p-3 space-y-2">
         <h3 className="text-xs font-semibold text-gray-300">FX revaluation</h3>
         {positions.map((p, i) => (
-          <div key={i} className="grid grid-cols-4 gap-1.5">
+          <div key={i} className="grid grid-cols-1 md:grid-cols-4 gap-1.5">
             <input className={inp} placeholder="Label" value={p.label}
               onChange={(e) => setPositions(positions.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
             <input className={`${inp} uppercase font-mono`} placeholder="CUR" maxLength={3} value={p.currency}
@@ -884,7 +884,7 @@ function EfilingTab() {
             ? 'Builds an IRS FIRE-format file (Pub. 1220) from paid 1099 vendors.'
             : 'Builds an SSA EFW2-format file (Pub. 42-007) from this year\'s payroll.'}
         </p>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <input className="bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100 font-mono"
             value={year} inputMode="numeric" onChange={(e) => setYear(Number(e.target.value) || year)} />
           <input className="col-span-2 bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100"

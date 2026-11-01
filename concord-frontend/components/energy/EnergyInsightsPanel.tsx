@@ -90,7 +90,7 @@ export function EnergyInsightsPanel({ onChange }: { onChange: () => void }) {
           <p className="text-[11px] text-zinc-400 italic">Log readings across two months to compare.</p>
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <DeltaCard label="Consumption" unit="kWh" cur={cmp.current.consumedKwh} d={cmp.change.consumed} />
               <DeltaCard label="Cost" unit="$" cur={cmp.current.cost} d={cmp.change.cost} prefix />
               <DeltaCard label="Solar" unit="kWh" cur={cmp.current.solarKwh} d={cmp.change.solar} invert />

@@ -106,8 +106,9 @@ function UniversalLensFeatures({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col h-full min-h-0">
       {/* One quiet header row (lens north stars): lens label + data tier +
           workspace tabs on the left; share / export / ⋯ tools on the right. */}
-      <div className="flex h-12 flex-shrink-0 items-center gap-3 px-4">
-        <span className="flex-shrink-0 text-[13px] text-zinc-500">{label}</span>
+      <div className="flex h-11 flex-shrink-0 items-center gap-2 px-3 sm:h-12 sm:gap-3 sm:px-4">
+        {/* Below sm the Topbar already shows the lens name: one compact row. */}
+        <span className="hidden flex-shrink-0 text-[13px] text-zinc-500 sm:inline">{label}</span>
         <DepthBadge lensId={slug} size="sm" inToolbar />
         <div className="min-w-0 flex-1">
           <CoreLensNavWrapper />
@@ -180,6 +181,48 @@ function DiegeticLensLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Full-bleed layout — a lens that owns the whole viewport (its own transport,
+ * panels, and chrome) but is still a web landing surface, so the platform
+ * chrome rule applies: the data-tier banner paints in the standard header
+ * position (S12), fed by the same manifest source as every other lens.
+ * Only the header row is added — no toolbar, tool panels, cross-lens panels,
+ * or activity timeline. The host context suppresses per-page badges, so the
+ * chip appears exactly once, in the header, on the landing and every
+ * working surface alike.
+ */
+function FullBleedLensLayout({ children }: { children: React.ReactNode }) {
+  const { slug, label } = useLensMeta();
+  useLensIdentity(slug);
+  return (
+    <LensErrorBoundary name="Lens">
+      <RepairBoundary lens={slug || 'unknown'}>
+        <DepthBadgeHostContext.Provider value={true}>
+          <div className="flex flex-col h-full min-h-0">
+            <div className="flex h-12 flex-shrink-0 items-center gap-3 px-4">
+              <span className="flex-shrink-0 text-[13px] text-zinc-500">{label}</span>
+              <DepthBadge lensId={slug} size="sm" inToolbar />
+            </div>
+            <LensStateProvider domain={slug} className="flex-1 min-h-0">
+              <Suspense
+                fallback={
+                  <div className="space-y-4 p-6">
+                    <SkeletonCard />
+                    <SkeletonCard />
+                    <SkeletonCard />
+                  </div>
+                }
+              >
+                {children}
+              </Suspense>
+            </LensStateProvider>
+          </div>
+        </DepthBadgeHostContext.Provider>
+      </RepairBoundary>
+    </LensErrorBoundary>
+  );
+}
+
 /** Lenses that own the whole viewport and skip the universal lens chrome. */
 const FULL_BLEED_LENSES: ReadonlySet<string> = new Set(['studio']);
 
@@ -196,11 +239,16 @@ export default function LensLayout({ children }: { children: React.ReactNode }) 
   const diegetic = useDiegetic();
 
   // In-world station frame: render the lens bare (chrome lives in the world).
-  // Studio is a full-screen music app with its own transport and panels, so
-  // it also renders without the generic lens chrome (header, tool panels,
-  // cross-lens panels, activity timeline).
-  if (diegetic || FULL_BLEED_LENSES.has(lensName)) {
+  if (diegetic) {
     return <DiegeticLensLayout>{children}</DiegeticLensLayout>;
+  }
+
+  // Studio is a full-screen music app with its own transport and panels, so
+  // it renders without the generic lens chrome (tool panels, cross-lens
+  // panels, activity timeline) — but its landing is a web surface, so the
+  // tier banner still paints in the standard header position (S12).
+  if (FULL_BLEED_LENSES.has(lensName)) {
+    return <FullBleedLensLayout>{children}</FullBleedLensLayout>;
   }
 
   return (

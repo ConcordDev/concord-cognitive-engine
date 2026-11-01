@@ -20,6 +20,9 @@
  */
 
 import { createEdge } from "./edges.js";
+import {
+  createLensProposal, getLensProposal, recordProposalApplication,
+} from "../lib/emergent-proposals.js";
 
 // ── DTU Enricher Registry ──────────────────────────────────────────────────
 
@@ -265,8 +268,44 @@ export function checkEmergentLensAccess(emergent, domain, action) {
  * @param {Function} opts.makeCtx - Context builder
  * @returns {{ ok, result?, proposal? }}
  */
+/**
+ * Execute a lens action through the macro path with the emergent's
+ * elevated internal context. Shared by the safe-action branch of
+ * executeEmergentLensAction and by applyEmergentLensProposal — an
+ * approved governance proposal runs through exactly the same path a
+ * safe action does, never a privileged side channel.
+ */
+function _executeViaMacro(STATE, { artifact, artifactId, action, params, emergentId, runMacro, makeCtx }) {
+  try {
+    const ctx = makeCtx ? makeCtx() : { actor: { userId: `emergent:${emergentId}`, role: "emergent" }, state: STATE };
+    // Elevate to internal system call — emergent actions are trusted server-side processes
+    ctx.actor = { ...ctx.actor, userId: `emergent:${emergentId}`, orgId: "internal", role: "owner", scopes: ["*"], internal: true };
+    ctx.internal = true;
+    // Synchronous macro call via provided runner
+    if (runMacro) {
+      const result = runMacro("lens", "run", {
+        id: artifactId,
+        action,
+        params,
+      }, ctx);
+
+      return {
+        ok: true,
+        executed: true,
+        result,
+        emergentId,
+        domain: artifact.domain,
+        action,
+      };
+    }
+    return { ok: false, error: "no_macro_runner" };
+  } catch (err) {
+    return { ok: false, error: `execution_failed: ${err.message}` };
+  }
+}
+
 export function executeEmergentLensAction(STATE, opts = {}) {
-  const { emergentId, artifactId, action, params = {}, justification, runMacro, makeCtx } = opts;
+  const { emergentId, artifactId, action, params = {}, justification, submittedBy = null, runMacro, makeCtx } = opts;
 
   if (!artifactId || !action) {
     return { ok: false, error: "artifactId_and_action_required" };
@@ -282,50 +321,74 @@ export function executeEmergentLensAction(STATE, opts = {}) {
 
   if (access.allowed) {
     // Execute through the normal macro path
-    try {
-      const ctx = makeCtx ? makeCtx() : { actor: { userId: `emergent:${emergentId}`, role: "emergent" }, state: STATE };
-      // Elevate to internal system call — emergent actions are trusted server-side processes
-      ctx.actor = { ...ctx.actor, userId: `emergent:${emergentId}`, orgId: "internal", role: "owner", scopes: ["*"], internal: true };
-      ctx.internal = true;
-      // Synchronous macro call via provided runner
-      if (runMacro) {
-        const result = runMacro("lens", "run", {
-          id: artifactId,
-          action,
-          params,
-        }, ctx);
-
-        return {
-          ok: true,
-          executed: true,
-          result,
-          emergentId,
-          domain: artifact.domain,
-          action,
-        };
-      }
-      return { ok: false, error: "no_macro_runner" };
-    } catch (err) {
-      return { ok: false, error: `execution_failed: ${err.message}` };
-    }
+    return _executeViaMacro(STATE, { artifact, artifactId, action, params, emergentId, runMacro, makeCtx });
   }
 
-  // Mutation requires governance — return proposal stub
+  // Mutation requires governance — persist the proposal in the
+  // governance queue (lib/emergent-proposals.js) instead of returning a
+  // stub that evaporates. A human governance role decides it; only an
+  // approved proposal can ever be applied (applyEmergentLensProposal).
+  const created = createLensProposal(STATE, {
+    type: "lens_action",
+    emergentId,
+    submittedBy,
+    domain: artifact.domain,
+    artifactId,
+    action,
+    params,
+    justification: justification || `Emergent ${emergentId} requests ${action} on ${artifact.domain} artifact ${artifactId}`,
+    createdAt: new Date().toISOString(),
+  });
+  if (!created.ok) return { ok: false, executed: false, requiresGovernance: true, error: created.error, limit: created.limit };
+  if (!created.deduped) recordEnrichmentMetric("emergentProposals");
   return {
     ok: true,
     executed: false,
     requiresGovernance: true,
-    proposal: {
-      type: "lens_action",
-      emergentId,
-      domain: artifact.domain,
-      artifactId,
-      action,
-      params,
-      justification: justification || `Emergent ${emergentId} requests ${action} on ${artifact.domain} artifact ${artifactId}`,
-      createdAt: new Date().toISOString(),
-    },
+    proposalId: created.proposal.id,
+    proposal: created.proposal,
+    ...(created.deduped ? { deduped: true } : {}),
   };
+}
+
+/**
+ * Apply a governance-APPROVED emergent lens proposal: execute its stored
+ * action through the same macro path safe actions use, and record the
+ * outcome on the proposal. Refuses from any other state — nothing
+ * applies from "pending", ever, and a rejected proposal is terminal.
+ *
+ * @param {Object} STATE - Global server state
+ * @param {string} proposalId
+ * @param {Object} opts - { runMacro, makeCtx } as in executeEmergentLensAction
+ * @returns {{ ok, proposal?, result?, error? }}
+ */
+export function applyEmergentLensProposal(STATE, proposalId, opts = {}) {
+  const { runMacro, makeCtx } = opts;
+  const proposal = getLensProposal(STATE, proposalId);
+  if (!proposal) return { ok: false, error: "proposal_not_found" };
+  if (proposal.status !== "approved" && proposal.status !== "apply_failed") {
+    return { ok: false, error: "proposal_not_applicable", status: proposal.status };
+  }
+  const artifact = STATE.lensArtifacts?.get(proposal.artifactId);
+  if (!artifact) {
+    recordProposalApplication(STATE, proposalId, { ok: false, error: "artifact_not_found" });
+    return { ok: false, error: "artifact_not_found", proposal };
+  }
+  const exec = _executeViaMacro(STATE, {
+    artifact,
+    artifactId: proposal.artifactId,
+    action: proposal.action,
+    params: proposal.params || {},
+    emergentId: proposal.emergentId,
+    runMacro,
+    makeCtx,
+  });
+  if (!exec.ok || !exec.executed) {
+    recordProposalApplication(STATE, proposalId, { ok: false, error: exec.error || "not_executed" });
+    return { ok: false, error: exec.error || "not_executed", proposal };
+  }
+  recordProposalApplication(STATE, proposalId, { ok: true, result: exec.result });
+  return { ok: true, executed: true, result: exec.result, proposal };
 }
 
 // ── DTU Conversation Context Builder ────────────────────────────────────────

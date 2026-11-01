@@ -16,9 +16,15 @@ import { History, RefreshCw } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { Skeleton, ErrorState } from '@/components/ui';
 
+interface ReceiptMeta {
+  sprintName?: string; issuesDone?: number; issuesTotal?: number;
+  pointsDone?: number; pointsTotal?: number; carriedOver?: number; settledInFull?: boolean;
+}
+
 interface ActivityRow {
-  id: string; taskId: string; action: string; detail: string | null; at: string;
+  id: string; taskId: string | null; action: string; detail: string | null; at: string;
   taskRef: string | null; taskTitle: string | null; projectId: string | null;
+  meta?: ReceiptMeta | null;
 }
 
 export function PjActivityPanel({ projectId }: { projectId: string }) {
@@ -41,14 +47,23 @@ export function PjActivityPanel({ projectId }: { projectId: string }) {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  // D1: a sprint settlement is a receipt, not a log line — the
+  // project-level sprint_receipt entry (written once per completion,
+  // carrying the settlement in meta) renders as its own stamped card
+  // and survives reload because it IS the stored record. The rest of
+  // the stream groups by issue as before.
+  const isReceipt = (r: ActivityRow) => r.action === 'sprint_receipt' && !r.taskId && !!r.meta;
+  const streamRows = rows.filter((r) => !isReceipt(r));
+
   // Group consecutive events by issue, newest first — the stream is
   // receipts grouped by the work they describe, not a firehose.
   const groups: { key: string; ref: string; title: string; events: ActivityRow[] }[] = [];
-  for (const row of rows) {
+  for (const row of streamRows) {
     const last = groups[groups.length - 1];
     if (last && last.key === row.taskId) last.events.push(row);
-    else groups.push({ key: row.taskId, ref: row.taskRef || 'issue', title: row.taskTitle || '', events: [row] });
+    else groups.push({ key: String(row.taskId), ref: row.taskRef || 'issue', title: row.taskTitle || '', events: [row] });
   }
+  const receiptRows = rows.filter(isReceipt);
 
   if (loadError) return <ErrorState message={loadError} onRetry={refresh} />;
 
@@ -74,6 +89,24 @@ export function PjActivityPanel({ projectId }: { projectId: string }) {
         </p>
       ) : (
         <div className="space-y-2">
+          {receiptRows.map((r) => (
+            <section key={r.id} aria-label={`Receipt for ${r.meta?.sprintName || 'sprint'}`}
+              className="relative overflow-hidden bg-lattice-surface/70 border-2 border-dashed border-emerald-800/70 rounded-xl p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-white">{r.meta?.sprintName} — settled</p>
+                  <p className="text-[11px] text-gray-400">
+                    {r.meta?.issuesDone}/{r.meta?.issuesTotal} issues · {r.meta?.pointsDone}/{r.meta?.pointsTotal} points
+                    {(r.meta?.carriedOver || 0) > 0 && <> · {r.meta?.carriedOver} carried over</>}
+                  </p>
+                  <p className="text-[10px] text-gray-500 tabular-nums">{new Date(r.at).toLocaleString()}</p>
+                </div>
+                <span aria-hidden="true" className="shrink-0 border-2 border-emerald-500/70 text-emerald-300 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider -rotate-6">
+                  {r.meta?.settledInFull ? 'Settled in full' : 'Settled'}
+                </span>
+              </div>
+            </section>
+          ))}
           {groups.map((g) => (
             <section key={`${g.key}-${g.events[0].id}`} className="bg-lattice-surface/70 border border-lattice-border rounded-xl p-3">
               <div className="flex items-baseline gap-2 mb-1.5">

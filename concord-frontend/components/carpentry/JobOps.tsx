@@ -85,7 +85,7 @@ function CutListOptimizer() {
         </div>
       </header>
       <div className="space-y-2 p-4">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <label className="text-[10px] text-zinc-400">Stock length (in)
             <input className={`${inp} mt-0.5 w-full font-mono`} type="number" value={stockLength} onChange={(e) => setStockLength(e.target.value)} />
           </label>
@@ -116,7 +116,7 @@ function CutListOptimizer() {
         {err && <div className="rounded border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[11px] text-rose-200">{err}</div>}
         {result && (
           <div className="space-y-2 pt-1">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div className="rounded-lg border-2 border-amber-500/40 bg-amber-500/10 p-2"><div className="text-[10px] uppercase text-amber-300">Boards</div><div className="font-mono text-2xl text-amber-100">{result.boardsNeeded}</div></div>
               <div className="rounded border border-rose-500/30 bg-rose-500/10 p-2"><div className="text-[10px] uppercase text-rose-300">Waste</div><div className="font-mono text-2xl text-rose-100">{result.wastePct}%</div></div>
               <div className="rounded border border-emerald-500/30 bg-emerald-500/10 p-2"><div className="text-[10px] uppercase text-emerald-300">Material $</div><div className="font-mono text-2xl text-emerald-100">{result.materialCost == null ? '—' : `$${result.materialCost}`}</div></div>
@@ -207,7 +207,7 @@ function MaterialTakeoff({ onEstimate }: { onEstimate: (e: TakeoffResult) => voi
           </div>
         ))}
         <button type="button" className={ghostBtn} onClick={() => setItems((xs) => [...xs, { name: '', quantity: '', unit: 'ea', unitCost: '' }])}><Plus className="h-3 w-3" />Add line item</button>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <label className="text-[10px] text-zinc-400">Labor hrs<input className={`${inp} mt-0.5 w-full font-mono`} type="number" value={laborHours} onChange={(e) => setLaborHours(e.target.value)} /></label>
           <label className="text-[10px] text-zinc-400">$ / hr<input className={`${inp} mt-0.5 w-full font-mono`} type="number" value={laborRate} onChange={(e) => setLaborRate(e.target.value)} /></label>
           <label className="text-[10px] text-zinc-400">Waste %<input className={`${inp} mt-0.5 w-full font-mono`} type="number" value={wastePct} onChange={(e) => setWastePct(e.target.value)} /></label>
@@ -660,7 +660,7 @@ function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
               <input className={inp} placeholder="Estimate ID" value={estimateId} onChange={(e) => setEstimateId(e.target.value)} />
               <input className={inp} placeholder="Client" value={client} onChange={(e) => setClient(e.target.value)} />
             </div>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
               <input className={`${inp} font-mono`} type="number" placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
               <input className={`${inp} font-mono`} type="number" placeholder="Tax %" value={taxPct} onChange={(e) => setTaxPct(e.target.value)} />
               <input className={`${inp} font-mono`} type="number" placeholder="Dep %" value={depositPct} onChange={(e) => setDepositPct(e.target.value)} />

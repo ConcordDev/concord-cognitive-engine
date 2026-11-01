@@ -124,7 +124,7 @@ export const MCP_TOOLS = [
   // ── DTU OPERATIONS ─────────────────────────────────────────────────────
   {
     name: "dtu_search",
-    description: "Search DTUs by free-text query. Uses FTS5 index when available, falls back to LIKE search. Returns matching DTU ids + titles + snippet.",
+    description: "Search DTUs by free-text query. Uses FTS5 index when available, falls back to LIKE search. Returns matching DTU ids + titles + snippet. Results are search hits across the published DTU corpus; this tool does not report any user's owned DTUs, and count is the total number of matching hits (returned is the page size; truncated is true when the total exceeds the page), not an ownership count.",
     inputSchema: jsonSchema({
       query: textProp("Free-text search query"),
       limit: intProp("Max results (default 10, max 50)", 10),
@@ -202,7 +202,7 @@ export const MCP_TOOLS = [
   // ── ATLAS ─────────────────────────────────────────────────────────────
   {
     name: "atlas_search",
-    description: "Search across the DTU atlas (nodes + edges + causal graph). Returns related DTUs ranked by relevance.",
+    description: "Search across the DTU atlas (nodes + edges + causal graph). Returns related DTUs ranked by relevance. Results are search hits across the DTU atlas, a distinct and smaller index than the published DTU corpus dtu_search reads — counts from the two tools are not comparable, and neither reports any user's owned DTUs; count is the total number of matching hits (returned is the page size; truncated is true when the total exceeds the page), not an ownership count.",
     inputSchema: jsonSchema({
       query: textProp("Search query"),
       limit: intProp("Max results (default 10, max 50)", 10)
@@ -973,10 +973,11 @@ export async function dtuSearch(db, args) {
   if (!query) return { ok: false, error: "query is required" };
 
   let rows = [];
+  let total = null;
   let fts5 = false;
   try {
     const ftsQuery = query.replace(/["\\]/g, " ").trim();
-    let sql, params;
+    let sql, params, countSql, countParams;
     // dtus_fts is an external-content FTS5 table declared `content='dtus',
     // content_rowid='rowid'` (migration 024) — its `rowid` mirrors dtus's
     // own IMPLICIT integer rowid, NOT the TEXT `id` primary key. Joining on
@@ -990,15 +991,24 @@ export async function dtuSearch(db, args) {
              WHERE dtus_fts MATCH ? AND d.tier = ?
              ORDER BY rank LIMIT ?`;
       params = [ftsQuery, tier, limit];
+      countSql = `SELECT COUNT(*) AS n
+             FROM dtus d JOIN dtus_fts f ON d.rowid = f.rowid
+             WHERE dtus_fts MATCH ? AND d.tier = ?`;
+      countParams = [ftsQuery, tier];
     } else {
       sql = `SELECT d.id, d.title, d.tier, d.type, substr(coalesce(d.content, ''), 1, 200) AS snippet, d.created_at
              FROM dtus d JOIN dtus_fts f ON d.rowid = f.rowid
              WHERE dtus_fts MATCH ?
              ORDER BY rank LIMIT ?`;
       params = [ftsQuery, limit];
+      countSql = `SELECT COUNT(*) AS n
+             FROM dtus d JOIN dtus_fts f ON d.rowid = f.rowid
+             WHERE dtus_fts MATCH ?`;
+      countParams = [ftsQuery];
     }
     rows = db.prepare(sql).all(...params);
     fts5 = rows.length > 0;
+    if (fts5) total = Number(db.prepare(countSql).get(...countParams)?.n ?? rows.length);
   } catch (_e) { /* FTS5 unavailable, fall through */ }
 
   if (!fts5) {
@@ -1008,16 +1018,27 @@ export async function dtuSearch(db, args) {
         rows = db.prepare(
           "SELECT id, title, tier, type, substr(coalesce(content, ''), 1, 200) AS snippet, created_at FROM dtus WHERE (title LIKE ? OR content LIKE ?) AND tier = ? ORDER BY created_at DESC LIMIT ?"
         ).all(like, like, tier, limit);
+        total = Number(db.prepare(
+          "SELECT COUNT(*) AS n FROM dtus WHERE (title LIKE ? OR content LIKE ?) AND tier = ?"
+        ).get(like, like, tier)?.n ?? rows.length);
       } else {
         rows = db.prepare(
           "SELECT id, title, tier, type, substr(coalesce(content, ''), 1, 200) AS snippet, created_at FROM dtus WHERE title LIKE ? OR content LIKE ? ORDER BY created_at DESC LIMIT ?"
         ).all(like, like, limit);
+        total = Number(db.prepare(
+          "SELECT COUNT(*) AS n FROM dtus WHERE title LIKE ? OR content LIKE ?"
+        ).get(like, like)?.n ?? rows.length);
       }
     } catch (e) {
       return { ok: false, error: "DB query failed: " + String(e?.message || e) };
     }
   }
-  return { ok: true, results: rows, count: rows.length, fts5 };
+  // Total labelling (MCP lane judgement 2026-10-30; reflect ruling's field
+  // names, B9's #1899 term): count is the TRUE match total before the
+  // slice — readers already read it as the total — with returned,
+  // truncated, and totalKind saying exactly what the number is.
+  const count = total ?? rows.length;
+  return { ok: true, results: rows, count, returned: rows.length, truncated: count > rows.length, totalKind: "search_hits", fts5 };
 }
 
 export async function dtuGet(db, args) {
@@ -1310,7 +1331,18 @@ export async function atlasSearch(db, args) {
          SELECT id, title AS name, 'dtu' AS type FROM dtus WHERE title LIKE ? LIMIT ?
        ) ORDER BY name LIMIT ?`
     ).all(like, limit, limit);
-    return { ok: true, results: rows, count: rows.length };
+    // Total labelling (MCP Platform lane follow-on spec, 2026-10-30;
+    // same discipline as dtu_search / reflect_search): count is the
+    // TRUE match total within the atlas corpus (matches before the
+    // slice), returned is the page size, truncated flags a cut page,
+    // and totalKind names what the total counts — search hits in this
+    // corpus, never an ownership count. The two tools' corpora differ,
+    // so their counts are not comparable (see the description).
+    const totalRow = db.prepare(
+      "SELECT COUNT(*) AS n FROM dtus WHERE title LIKE ?"
+    ).get(like);
+    const count = Number(totalRow?.n ?? rows.length);
+    return { ok: true, results: rows, count, returned: rows.length, truncated: count > rows.length, totalKind: "search_hits" };
   } catch (e) {
     return { ok: false, error: "DB query failed: " + String(e?.message || e) };
   }
@@ -1373,25 +1405,109 @@ export async function lensManifest(db, args) {
 // EMBEDDINGS
 // ═══════════════════════════════════════════════════════════════════════
 
-export async function embeddingSearch(db, args) {
+// Admission for embedding_search: at most EMBEDDING_SEARCH_MAX_INFLIGHT scans at once and
+// EMBEDDING_SEARCH_PER_MIN per minute process-wide (the tool takes no caller identity, so
+// the limit is global; the route already requires real auth). Excess is shed with a
+// retryable error rather than queued.
+const EMBEDDING_SEARCH_MAX_SCAN = 5000;
+const EMBEDDING_SEARCH_MAX_INFLIGHT = 2;
+const EMBEDDING_SEARCH_PER_MIN = 30;
+const _embSearch = { inflight: 0, stamps: [] };
+export function _resetEmbeddingSearchLimiter() { _embSearch.inflight = 0; _embSearch.stamps.length = 0; }
+
+export async function embeddingSearch(db, args, deps = {}) {
   const query = String(args?.query || "").trim();
   const limit = Math.min(50, Math.max(1, Number(args?.limit) || 10));
   if (!query) return { ok: false, error: "query is required" };
 
+  const nowMs = (deps.now || Date.now)();
+  _embSearch.stamps = _embSearch.stamps.filter((t) => nowMs - t < 60000);
+  const perMin = Number(deps.perMin) || EMBEDDING_SEARCH_PER_MIN;
+  if (_embSearch.inflight >= EMBEDDING_SEARCH_MAX_INFLIGHT || _embSearch.stamps.length >= perMin) {
+    return { ok: false, error: "embedding search is busy — retry shortly", reason: "busy_retry" };
+  }
+  _embSearch.stamps.push(nowMs);
+  _embSearch.inflight++;
   try {
-    // We can't do real semantic search without the embedding model.
-    // Return the metadata of recent embeddings as a placeholder.
-    const rows = db.prepare(
-      `SELECT dtu_id, model, source, created_at FROM embeddings_e5 ORDER BY updated_at DESC LIMIT ?`
-    ).all(limit);
+    // Real semantic search (Q34): embed the query with the SAME
+    // semantic layer that populated embeddings_e5 (server/embeddings.js
+    // — mxbai-embed-large, 1024-dim; its embed() is the exact function
+    // embed-backfill stored vectors with, so query and stored vectors
+    // share a space), then rank stored vectors by cosine. This replaced
+    // a placeholder that returned the most RECENT embedding rows
+    // regardless of the query. deps.embed / deps.cosineSimilarity are
+    // injectable for tests (the codebase's proof-gate seam convention).
+    let embedFn = deps.embed;
+    let cosineFn = deps.cosineSimilarity;
+    if (!embedFn || !cosineFn) {
+      const emb = await import("../embeddings.js");
+      embedFn = embedFn || emb.embed;
+      cosineFn = cosineFn || emb.cosineSimilarity;
+    }
+    const queryVec = await embedFn(query, "query");
+    if (!queryVec) {
+      // Honest unavailability — never fall back to unranked recent rows.
+      return { ok: false, error: "embedding model unavailable — semantic search cannot run right now" };
+    }
+
+    // Bounded cost: the scan is over the MOST RECENT `maxScan` vectors (deterministic ORDER BY) and
+    // the event loop is yielded between chunks of SCAN_CHUNK rows so a 1024-dim cosine pass cannot
+    // block other requests. The cap is configurable (deps.maxScan / CONCORD_EMBEDDING_SEARCH_MAX_SCAN);
+    // k is capped at 50.
+    //
+    // better-sqlite3 marks the connection busy while a statement cursor (.iterate()) is open, and any
+    // other statement on the same handle during that window throws "This database connection is busy
+    // executing a query" — so NO cursor may stay open across an await. Step 1 reads just the newest
+    // row ids (small, no vectors) with .all(); step 2 loads the vectors for one chunk of ids at a
+    // time with .all() (ids passed as one JSON array parameter, so the SQL text is constant), scores
+    // the chunk synchronously, and only then yields.
+    const envMax = Number(process.env.CONCORD_EMBEDDING_SEARCH_MAX_SCAN);
+    const MAX_SCAN = Math.max(1, Math.floor(Number(deps.maxScan) || (Number.isFinite(envMax) && envMax > 0 ? envMax : EMBEDDING_SEARCH_MAX_SCAN)));
+    const SCAN_CHUNK = Math.max(1, Math.floor(Number(deps.scanChunk) || 250));
+    const idRows = db.prepare(
+      `SELECT id FROM embeddings_e5 ORDER BY created_at DESC, id DESC LIMIT ?`
+    ).all(MAX_SCAN + 1);
+    const truncated = idRows.length > MAX_SCAN;
+    const ids = idRows.slice(0, MAX_SCAN).map((r) => r.id);
+    const chunkStmt = db.prepare(
+      `SELECT id, dtu_id, vector, dim, model, source, created_at FROM embeddings_e5 WHERE id IN (SELECT value FROM json_each(?))`
+    );
+
+    let skippedDimMismatch = 0;
+    let skippedMissingVector = 0;
+    const scored = [];
+    for (let off = 0; off < ids.length; off += SCAN_CHUNK) {
+      const rows = chunkStmt.all(JSON.stringify(ids.slice(off, off + SCAN_CHUNK)));
+      for (const row of rows) {
+        if (!row.vector) { skippedMissingVector++; continue; }
+        const vec = new Float32Array(row.vector.buffer, row.vector.byteOffset, row.vector.byteLength / Float32Array.BYTES_PER_ELEMENT);
+        // Rule from embeddings.js: never mix models/dimensions in one space.
+        if (vec.length !== queryVec.length) { skippedDimMismatch++; continue; }
+        scored.push({
+          dtu_id: row.dtu_id,
+          model: row.model,
+          source: row.source,
+          created_at: row.created_at,
+          score: cosineFn(queryVec, vec),
+        });
+      }
+      if (off + SCAN_CHUNK < ids.length) await new Promise((r) => setImmediate(r)); // no open cursor here
+    }
+    scored.sort((a, b) => b.score - a.score);
+    const results = scored.slice(0, limit);
     return {
       ok: true,
-      results: rows,
-      count: rows.length,
-      note: "Semantic search requires the embedding model loaded in-process. This endpoint returns recent embedding metadata."
+      results,
+      count: results.length,
+      scanned: scored.length + skippedDimMismatch + skippedMissingVector,
+      ...(truncated ? { truncated: true, scan_cap: MAX_SCAN, scan_scope: "most_recent" } : {}),
+      ...(skippedDimMismatch ? { skipped_dim_mismatch: skippedDimMismatch } : {}),
+      ...(skippedMissingVector ? { skipped_missing_vector: skippedMissingVector } : {}),
     };
   } catch (e) {
-    return { ok: false, error: "DB query failed: " + String(e?.message || e) };
+    return { ok: false, error: "embedding search failed: " + String(e?.message || e) };
+  } finally {
+    _embSearch.inflight--;
   }
 }
 

@@ -136,7 +136,7 @@ export function PaperLibrary() {
       </div>
 
       {dash && (
-        <div className="grid grid-cols-4 gap-2 mb-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
           {([['Papers', filter ? dash.totalPapers : papers.length], ['To read', dash.toRead], ['Reading', dash.reading], ['Read', dash.read]] as const).map(([l, v]) => (
             <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-center">
               <p className="text-sm font-bold text-zinc-100">{v}</p>

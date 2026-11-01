@@ -16,6 +16,14 @@ export const PUBLIC_PROOF_COMMENT_RE = /^\/api\/public-share\/proof\/[^/]+\/comm
 // INC-72: inbound ingest webhook — POST only, token in the path is the credential
 // (crypto.randomBytes(16) hex, resolved server-side to one user's endpoint).
 export const INGEST_WEBHOOK_RE = /^\/api\/ingest\/webhook\/[a-f0-9]{32}$/;
+// Debug lens Sentry-compatible ingest — POST only, exact route. The
+// credential is the project's cdi_ ingest key in the X-Sentry-Auth
+// header (never a URL, never logged), resolved server-side to exactly
+// one project of one user; it can only append grouped error issues
+// there. Sentry clients cannot send a CSRF token or a session cookie,
+// and there is no browser session to forge — same shape as the
+// Stripe webhook exemption in csrfExempt below.
+export const DEBUG_INGEST_RE = /^\/api\/debug\/ingest\/[^/]+\/envelope\/?$/;
 
 // Public receipt check. Exact path only — a prefix would also open
 // /api/receipts/verify/x and /api/receipts/verify-extra.
@@ -70,6 +78,7 @@ export function createCsrfMiddleware({ nodeEnv, authMode, auditLog, jwtSecret } 
     // not the /api/public-share/ prefix. No session cookie exists to forge.
     if (req.method === "POST" && PUBLIC_PROOF_COMMENT_RE.test(req.path)) return next();
     if (req.method === "POST" && INGEST_WEBHOOK_RE.test(req.path)) return next();
+    if (req.method === "POST" && DEBUG_INGEST_RE.test(req.path)) return next();
     // POST /api/receipts/verify checks an Ed25519 signature and writes nothing.
     // Exact path, not a prefix, so no other route under /api/receipts/ is opened.
     // The /verify page and third-party verifiers POST JSON with no CSRF header
