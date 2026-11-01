@@ -425,7 +425,7 @@ function CreatorAnalytics({ userId, className, hideFollowersCard }: CreatorAnaly
 
         {(showGrowth || showEarnings) && <div className="space-y-4">
           {showGrowth && data.followerGrowth && <Section title="Follower Growth (30d)" icon={Users}>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="text-center">
                 <div className="text-lg font-bold text-green-400">
                   +{formatNumber(data.followerGrowth.gained)}

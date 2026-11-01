@@ -175,7 +175,7 @@ export function ServiceWorkerPanel() {
         </button>
       </header>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         {[
           { label: 'Registered', on: sw.registered },
           { label: 'Controlling page', on: sw.controlling },

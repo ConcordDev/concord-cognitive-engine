@@ -147,7 +147,7 @@ export function RetailActionPanel() {
     try {
       const task = `Retail ops review. ${reorderResult ? `${reorderResult.criticalCount} critical stockouts, ${reorderResult.reorderCount} below reorder.` : ''} ${pipeResult ? `Weighted pipeline $${pipeResult.totalWeighted?.toLocaleString()}.` : ''} ${ltvResult ? `LTV $${ltvResult.ltv} on CAC $${ltvResult.cac} (${ltvResult.ltvToCacRatio?.toFixed(1)}× ratio).` : ''} ${slaResult ? `SLA ${slaResult.complianceRate}% compliance.` : ''} Identify the single most urgent operational lever. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Lever ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

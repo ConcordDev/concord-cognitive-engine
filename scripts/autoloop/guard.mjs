@@ -12,7 +12,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { REPO, run, changedFiles, ok, bad, warn } from "./lib.mjs";
+import { REPO, changedFiles, ok, bad, warn } from "./lib.mjs";
 
 // 1) Files the loop must NEVER modify — graders, honesty guards, ratchet baselines,
 //    the value-assertion harnesses, and the loop's own scripts. Editing any of these

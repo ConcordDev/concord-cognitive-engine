@@ -83,7 +83,7 @@ export function Topbar({ trailing }: { trailing?: ReactNode } = {}) {
       }`}
     >
       {/* Left - Mobile menu + Title */}
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-initial">
         <button
           onClick={() => setSidebarOpen(true)}
           className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white transition-colors"
@@ -119,7 +119,11 @@ export function Topbar({ trailing }: { trailing?: ReactNode } = {}) {
         </button>
 
         {/* Sovereign health ribbon — metabolic status for everyone */}
-        {!musicOnly && <SovereignHealthRibbon />}
+        {!musicOnly && (
+          <div className="hidden sm:block">
+            <SovereignHealthRibbon />
+          </div>
+        )}
 
         {/* Affect mood indicator (Power Mode only) */}
         {powerMode && affectLabel && (
@@ -153,7 +157,8 @@ export function Topbar({ trailing }: { trailing?: ReactNode } = {}) {
         {/* Social indicators: DM + Notifications */}
         <DMIndicator userId={userData?.id || userData?._id} />
         <NotificationBell userId={userData?.id || userData?._id} />
-        {trailing}
+        {/* The panel toggle moves out of the bar on phones so the avatar stays on screen. */}
+        {trailing && <div className="hidden items-center gap-1.5 sm:flex">{trailing}</div>}
 
         {/* User name + avatar with online status dot */}
         <div className="flex items-center gap-1.5">

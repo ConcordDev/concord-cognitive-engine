@@ -241,12 +241,13 @@ export function CodeActionPanel() {
       ].filter(Boolean).join(' ');
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
       if (r.data?.ok === false) { err(r.data?.error || 'Agent failed.'); return; }
-      // S12: the agent's text lands under several envelope shapes;
-      // read them all before concluding it "returned empty".
+      // S12: the agent's text lands under several envelope shapes; read them all before
+      // concluding it "returned empty". chat_agent returns it as `answer` (#1920), so that
+      // field comes first.
       const inner = (r.data?.result ?? {}) as Record<string, unknown>;
       const nested = (inner.result ?? {}) as Record<string, unknown>;
-      const reply = inner.reply ?? inner.summary ?? inner.output ?? inner.text ?? inner.response ?? inner.message
-        ?? nested.reply ?? nested.summary ?? nested.output ?? nested.text
+      const reply = inner.answer ?? inner.reply ?? inner.summary ?? inner.output ?? inner.text ?? inner.response ?? inner.message
+        ?? nested.answer ?? nested.reply ?? nested.summary ?? nested.output ?? nested.text
         ?? (typeof inner === 'string' ? inner : null);
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('3 refactors ready.'); }
       else err('Agent returned empty.');

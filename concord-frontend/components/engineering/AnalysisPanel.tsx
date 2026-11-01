@@ -22,7 +22,7 @@ export function AnalysisPanel() {
         <h3 className="font-semibold text-sm flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-neon-cyan" /> Model Summary
         </h3>
-        <div className="grid grid-cols-4 gap-2 text-center text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
           {[
             { label: 'Nodes', value: model.nodes.length, color: 'text-neon-cyan' },
             { label: 'Members', value: model.members.length, color: 'text-purple-400' },
@@ -62,7 +62,7 @@ export function AnalysisPanel() {
           </button>
         </div>
         {meshStats && (
-          <div className="grid grid-cols-4 gap-2 text-center text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
             {[
               { label: 'Divisions', value: meshStats.divisions },
               { label: 'Mesh Nodes', value: meshStats.meshNodes },

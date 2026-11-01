@@ -997,7 +997,7 @@ export function WhiteboardStudio({
                         ))}
                       </div>
                       <p className="text-xs text-gray-400 mb-2">Stroke</p>
-                      <div className="grid grid-cols-4 gap-2 mb-4">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4">
                         {COLORS.map(c => (
                           <button key={c} type="button" onClick={() => setStrokeColor(c)}
                             className={`w-8 h-8 rounded-lg border-2 ${strokeColor === c ? 'border-white' : 'border-transparent'}`}
@@ -1005,7 +1005,7 @@ export function WhiteboardStudio({
                         ))}
                       </div>
                       <p className="text-xs text-gray-400 mb-2">Fill</p>
-                      <div className="grid grid-cols-4 gap-2">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                         <button type="button" onClick={() => setFillColor('transparent')}
                           className={`w-8 h-8 rounded-lg border-2 ${fillColor === 'transparent' ? 'border-white' : 'border-transparent'} bg-transparent`} aria-label="Close">
                           <X className="w-4 h-4 mx-auto text-gray-400" />

@@ -702,13 +702,17 @@ export default function registerInferenceActions(registerLensAction) {
       if (!kb) return { ok: false, error: "STATE unavailable" };
       const id = String(params.id || "");
       if (!id) return { ok: false, error: "id required" };
+      const removedEntry = kb.facts.find((f) => f.id === id) || kb.rules.find((r) => r.id === id) || null;
       const fBefore = kb.facts.length, rBefore = kb.rules.length;
       kb.facts = kb.facts.filter((f) => f.id !== id);
       kb.rules = kb.rules.filter((r) => r.id !== id);
       const removed = (fBefore - kb.facts.length) + (rBefore - kb.rules.length);
       if (removed === 0) return { ok: false, error: "id not found" };
       saveInfState();
-      return { ok: true, result: { removed, factCount: kb.facts.length, ruleCount: kb.rules.length } };
+      // The removed entry rides the result so the activity recorder
+      // can name what was removed (delete rows carry the same object
+      // standard as creates — #1906 re-sitting, Inference leg).
+      return { ok: true, result: { removed, removedEntry, factCount: kb.facts.length, ruleCount: kb.rules.length } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

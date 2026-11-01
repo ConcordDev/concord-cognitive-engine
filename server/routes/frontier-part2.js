@@ -207,7 +207,7 @@ seedFederation();
  *   also deletes persisted seed rows (owner/seller "system" + seed titles).
  * @returns {Router}
  */
-export default function createFrontierRoutesPart2({ requireAuth, db } = {}) {
+export default function createFrontierRoutesPart2({ requireAuth, db, mediaListings } = {}) {
   const router = Router();
   purgeSeededSystemListings({ apply: true });
   if (db) {
@@ -322,7 +322,15 @@ export default function createFrontierRoutesPart2({ requireAuth, db } = {}) {
     if (category) {
       listings = listings.filter(l => l.category === category);
     }
-    res.json({ ok: true, listings });
+    // Uploaded media DTUs listed free + listen-only (marketplace.list). This
+    // route shadows the plugin-browse alias in server.js, so it is the one the
+    // Market lens Listings tab actually reaches; without this merge a listed
+    // track never showed up there.
+    let media = [];
+    if (typeof mediaListings === "function") {
+      try { media = mediaListings({ category }) || []; } catch { media = []; }
+    }
+    res.json({ ok: true, listings: [...media, ...listings], mediaListings: media });
   }));
 
   router.post("/marketplace/listings", auth, wrap((req, res) => {

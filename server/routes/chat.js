@@ -240,6 +240,20 @@ export default function registerChatRoutes(app, {
 
   app.post("/api/chat/stream", asyncHandler(async (req, res) => {
     const errorId = uid("err");
+    const streamStartedAt = Date.now();
+    // SSE answers never reach the http_request log (it hooks res.send, SSE uses
+    // res.write), so a failed turn left no trace in backend.log. One line per
+    // stream completion: outcome, error code and duration.
+    const logStreamDone = (ok, error) => {
+      try {
+        logger.info("chat", "chat_stream_done", {
+          ok: !!ok,
+          error: error ? String(error).slice(0, 120) : undefined,
+          ms: Date.now() - streamStartedAt,
+          userId: req.user?.id || req.user?.userId || null,
+        });
+      } catch (_e) { /* logging never breaks a reply */ }
+    };
     try {
       const visionGate = visionImageGate(req.body);
       if (!visionGate.ok) {
@@ -291,11 +305,16 @@ export default function registerChatRoutes(app, {
           res.write(`data: ${JSON.stringify({ ok: true, chunk, done: false })}\n\n`);
         }
       }
-      // Final envelope (also contains full out for UI parity)
-      res.write(`data: ${JSON.stringify({ ok: out?.code === "ai_unavailable" ? false : true, done: true, out })}\n\n`);
+      // Final envelope (also contains full out for UI parity). `ok` mirrors
+      // out.ok: a refused turn (session_forbidden, any {ok:false} macro result)
+      // must not be announced as a success.
+      const finalOk = out?.code === "ai_unavailable" ? false : out?.ok !== false;
+      res.write(`data: ${JSON.stringify({ ok: finalOk, done: true, out })}\n\n`);
+      logStreamDone(finalOk, finalOk ? null : (out?.error || out?.code));
       return res.end();
     } catch (e) {
       const msg = String(e?.message || e || "Unknown error");
+      logStreamDone(false, msg);
       try {
         res.write(`data: ${JSON.stringify({ ok:false, error: msg, errorId, done:true })}\n\n`);
         return res.end();

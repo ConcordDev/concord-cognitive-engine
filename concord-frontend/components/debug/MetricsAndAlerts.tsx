@@ -43,9 +43,11 @@ interface MetricStats {
 interface AlertRule {
   id: string;
   name: string;
-  metric: string;
-  op: string;
-  threshold: number;
+  kind?: 'metric' | 'issue' | 'regression';
+  channel?: string;
+  metric?: string;
+  op?: string;
+  threshold?: number;
   severity: 'critical' | 'warning' | 'info';
   enabled: boolean;
   state: 'ok' | 'alerting';
@@ -92,11 +94,13 @@ export function MetricsAndAlerts() {
 
   const [ruleForm, setRuleForm] = useState({
     name: '',
+    kind: 'metric' as 'metric' | 'issue' | 'regression',
     metric: '',
     op: '>',
     threshold: '',
     severity: 'warning',
   });
+  const [testNote, setTestNote] = useState<string | null>(null);
 
   const loadSeries = useCallback(async (metric: string) => {
     const r = await lensRun('debug', 'metric-series', {
@@ -152,24 +156,36 @@ export function MetricsAndAlerts() {
   }, [activeMetric, refresh, projectId]);
 
   const createRule = useCallback(async () => {
-    if (!ruleForm.name.trim() || !ruleForm.metric.trim() || ruleForm.threshold === '') return;
+    if (!ruleForm.name.trim()) return;
+    if (ruleForm.kind === 'metric' && (!ruleForm.metric.trim() || ruleForm.threshold === '')) return;
     setBusy(true);
     const r = await lensRun('debug', 'alert-create', {
       projectId,
       name: ruleForm.name,
-      metric: ruleForm.metric,
-      op: ruleForm.op,
-      threshold: Number(ruleForm.threshold),
+      kind: ruleForm.kind,
+      ...(ruleForm.kind === 'metric'
+        ? { metric: ruleForm.metric, op: ruleForm.op, threshold: Number(ruleForm.threshold) }
+        : {}),
       severity: ruleForm.severity,
     });
     setBusy(false);
     if (r.data?.ok) {
-      setRuleForm({ name: '', metric: '', op: '>', threshold: '', severity: 'warning' });
+      setRuleForm({ name: '', kind: 'metric', metric: '', op: '>', threshold: '', severity: 'warning' });
       loadRules();
     } else {
       setError(r.data?.error || 'Rule create failed');
     }
   }, [ruleForm, loadRules, projectId]);
+
+  const testRule = useCallback(async (rule: AlertRule) => {
+    setTestNote(null);
+    const r = await lensRun('debug', 'alert-test', { id: rule.id });
+    if (r.data?.ok) {
+      setTestNote(`Test notification for "${rule.name}" sent — check your bell.`);
+    } else {
+      setError(r.data?.error || 'Test notification failed');
+    }
+  }, []);
 
   const toggleRule = useCallback(
     async (rule: AlertRule) => {
@@ -301,36 +317,50 @@ export function MetricsAndAlerts() {
             placeholder="Rule name"
             className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs md:col-span-2"
           />
-          <input
-            value={ruleForm.metric}
-            onChange={(e) => setRuleForm((f) => ({ ...f, metric: e.target.value }))}
-            placeholder="metric"
-            list="debug-metric-names"
-            className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
-          />
-          <datalist id="debug-metric-names">
-            {metricNames.map((m) => (
-              <option key={m} value={m} />
-            ))}
-          </datalist>
           <select
-            value={ruleForm.op}
-            onChange={(e) => setRuleForm((f) => ({ ...f, op: e.target.value }))}
-            className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
+            value={ruleForm.kind}
+            onChange={(e) => setRuleForm((f) => ({ ...f, kind: e.target.value as typeof ruleForm.kind }))}
+            className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs"
+            title="What fires this rule"
           >
-            {['>', '>=', '<', '<=', '=='].map((o) => (
-              <option key={o} value={o}>
-                {o}
-              </option>
-            ))}
+            <option value="metric">Metric threshold</option>
+            <option value="issue">New issue arrives</option>
+            <option value="regression">Issue regresses</option>
           </select>
-          <input
-            value={ruleForm.threshold}
-            onChange={(e) => setRuleForm((f) => ({ ...f, threshold: e.target.value }))}
-            placeholder="threshold"
-            type="number"
-            className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
-          />
+          {ruleForm.kind === 'metric' && (
+            <>
+              <input
+                value={ruleForm.metric}
+                onChange={(e) => setRuleForm((f) => ({ ...f, metric: e.target.value }))}
+                placeholder="metric"
+                list="debug-metric-names"
+                className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
+              />
+              <datalist id="debug-metric-names">
+                {metricNames.map((m) => (
+                  <option key={m} value={m} />
+                ))}
+              </datalist>
+              <select
+                value={ruleForm.op}
+                onChange={(e) => setRuleForm((f) => ({ ...f, op: e.target.value }))}
+                className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
+              >
+                {['>', '>=', '<', '<=', '=='].map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={ruleForm.threshold}
+                onChange={(e) => setRuleForm((f) => ({ ...f, threshold: e.target.value }))}
+                placeholder="threshold"
+                type="number"
+                className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
+              />
+            </>
+          )}
           <select
             value={ruleForm.severity}
             onChange={(e) => setRuleForm((f) => ({ ...f, severity: e.target.value }))}
@@ -340,14 +370,19 @@ export function MetricsAndAlerts() {
             <option value="warning">warning</option>
             <option value="info">info</option>
           </select>
+          <p className="text-[10px] text-gray-500 md:col-span-6">
+            Fires to <span className="text-gray-300">Concord notifications</span> (your bell) —
+            metric rules notify when the threshold is crossed, not on every breaching sample.
+          </p>
           <button
             onClick={createRule}
-            disabled={busy || !ruleForm.name.trim() || !ruleForm.metric.trim()}
+            disabled={busy || !ruleForm.name.trim() || (ruleForm.kind === 'metric' && !ruleForm.metric.trim())}
             className="px-3 py-1.5 text-xs rounded bg-neon-purple/15 border border-neon-purple/30 text-neon-purple hover:bg-neon-purple/25 disabled:opacity-50 flex items-center justify-center gap-1 md:col-span-6"
           >
             <Plus className="w-3 h-3" /> Create Alert Rule
           </button>
         </div>
+        {testNote && <p className="text-xs text-neon-green">{testNote}</p>}
 
         {error && <p className="text-xs text-red-400">{error}</p>}
 
@@ -381,9 +416,19 @@ export function MetricsAndAlerts() {
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-gray-200 truncate">{rule.name}</p>
                   <p className="text-[10px] text-gray-400 font-mono">
-                    {rule.metric} {rule.op} {rule.threshold}
+                    {(rule.kind || 'metric') === 'metric'
+                      ? `${rule.metric} ${rule.op} ${rule.threshold}`
+                      : (rule.kind === 'regression' ? 'on regression' : 'on new issue')}
+                    {' · '}bell
                   </p>
                 </div>
+                <button
+                  onClick={() => testRule(rule)}
+                  className="px-2 py-1 rounded text-[10px] border border-lattice-border text-gray-300 hover:text-white shrink-0"
+                  title="Send a test notification through this rule's channel"
+                >
+                  Test
+                </button>
                 <span
                   className={`text-[10px] px-1.5 py-0.5 rounded ${
                     rule.severity === 'critical'

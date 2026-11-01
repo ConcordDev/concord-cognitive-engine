@@ -98,6 +98,9 @@ let _log = null;
 //   - reprobeEmbeddings() re-checks Ollama while on the fallback and switches
 //     back to the primary model (and its stored vectors) when it returns.
 const PRIMARY_TABLE = "embedding_cache";
+let _loadGen = 0;
+// Rows per synchronous read while loading vectors at boot; the loop yields between chunks.
+const EMBEDDING_LOAD_CHUNK = Math.max(50, Number(process.env.CONCORD_EMBEDDING_LOAD_CHUNK) || 500);
 let _ollamaUrls = [];
 /** @type {{ model: string, dimension: number, embed: (text: string) => Promise<ArrayLike<number>> }|null} */
 let _local = null;
@@ -146,7 +149,9 @@ function _activate({ backend, model, url = null, dimension }) {
     if (_log) _log("warn", "embedding_table_create_failed", { table: embeddingState.table, error: String(e?.message || e) });
   }
   embeddingCache.clear();
-  if (_db) _loadEmbeddingsFromDb();
+  _loadGen++;
+  // Resolves once this model's vectors are in memory; never rejects.
+  return _db ? _loadEmbeddingsFromDb(_loadGen) : Promise.resolve();
 }
 
 async function _probeOllama() {
@@ -187,7 +192,7 @@ export async function reprobeEmbeddings() {
   try {
     const found = await _probeOllama();
     if (!found) return { changed: false };
-    _activate({ backend: "ollama", model: found.model, url: found.url, dimension: found.dimension });
+    await _activate({ backend: "ollama", model: found.model, url: found.url, dimension: found.dimension });
     if (_log) _log("info", found.fallback ? "embeddings_ready_fallback" : "embeddings_ready", { model: found.model, url: found.url, dimension: embeddingState.dimension, switchedFrom: "local_or_unavailable", cached: embeddingCache.size });
     return { changed: true, model: found.model };
   } finally {
@@ -272,10 +277,10 @@ export async function initEmbeddings({ db = null, ollamaUrls = [], structuredLog
   // registered local embedder (if server.js has already registered it).
   const found = await _probeOllama();
   if (found) {
-    _activate({ backend: "ollama", model: found.model, url: found.url, dimension: found.dimension });
+    await _activate({ backend: "ollama", model: found.model, url: found.url, dimension: found.dimension });
     _log("info", found.fallback ? "embeddings_ready_fallback" : "embeddings_ready", { model: found.model, url: found.url, dimension: embeddingState.dimension, table: embeddingState.table });
   } else if (_local) {
-    _activate({ backend: "local", model: _local.model, dimension: _local.dimension });
+    await _activate({ backend: "local", model: _local.model, dimension: _local.dimension });
     _log("info", "embeddings_ready_local", { model: _local.model, dimension: _local.dimension, table: embeddingState.table, cached: embeddingCache.size });
   } else {
     embeddingState.reason = "no_ollama_embedding_model";
@@ -859,33 +864,56 @@ async function _probeEmbeddingModel(url, model) {
 
 /**
  * Load existing embeddings from SQLite into memory cache.
+ *
+ * Read in rowid-ordered chunks with an event-loop yield between them. The
+ * old single `.all()` over the whole table was one synchronous read: 13 s at
+ * boot on the live Mac (majorFaults ~8k, overlapping the first WAL checkpoint),
+ * during which nothing else on the loop ran. A newer _activate() supersedes an
+ * in-flight load (generation check), and a vector stored while the load runs
+ * is never overwritten by the older on-disk row.
+ * @param {number} gen generation token from _activate
  */
-function _loadEmbeddingsFromDb() {
+async function _loadEmbeddingsFromDb(gen = _loadGen) {
   if (!_db) return;
 
   try {
-    // Load from dedicated embedding_cache table
-    const rows = _db.prepare(`SELECT dtu_id, embedding FROM ${embeddingState.table}`).all();
+    const table = embeddingState.table;
+    const stmt = _db.prepare(`SELECT rowid AS rid, dtu_id, embedding FROM ${table} WHERE rowid > ? ORDER BY rowid LIMIT ?`);
+    const t0 = Date.now();
     let loaded = 0;
+    let chunks = 0;
+    let lastRid = 0;
 
-    for (const row of rows) {
-      if (row.embedding && loaded < MAX_IN_MEMORY) {
-        try {
-          const vec = new Float32Array(
-            row.embedding.buffer,
-            row.embedding.byteOffset,
-            row.embedding.byteLength / Float32Array.BYTES_PER_ELEMENT
-          );
-          embeddingCache.set(row.dtu_id, vec);
-          loaded++;
-        } catch (e) {
-          _log("warn", "embedding_load_corrupt", { dtuId: row.dtu_id, error: String(e) });
+    for (;;) {
+      const rows = stmt.all(lastRid, EMBEDDING_LOAD_CHUNK);
+      if (rows.length === 0) break;
+      chunks++;
+      lastRid = rows[rows.length - 1].rid;
+
+      for (const row of rows) {
+        if (row.embedding && loaded < MAX_IN_MEMORY) {
+          try {
+            const vec = new Float32Array(
+              row.embedding.buffer,
+              row.embedding.byteOffset,
+              row.embedding.byteLength / Float32Array.BYTES_PER_ELEMENT
+            );
+            if (!embeddingCache.has(row.dtu_id)) embeddingCache.set(row.dtu_id, vec);
+            loaded++;
+          } catch (e) {
+            _log("warn", "embedding_load_corrupt", { dtuId: row.dtu_id, error: String(e) });
+          }
         }
       }
+
+      if (loaded >= MAX_IN_MEMORY || rows.length < EMBEDDING_LOAD_CHUNK) break;
+      await new Promise((resolve) => { setImmediate(resolve); });
+      if (gen !== _loadGen) return; // a newer activation owns the cache now
     }
+    if (gen !== _loadGen) return;
 
     if (_log && loaded > 0) {
-      _log("info", "embeddings_loaded_from_db", { count: loaded });
+      _log("info", "embeddings_loaded_from_db", { count: loaded, chunks, ms: Date.now() - t0 });
     }
 
     // Migration: also check legacy dtus table if embedding_cache is empty

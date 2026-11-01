@@ -35,18 +35,53 @@ import { createRequire } from "node:module";
 const _require = createRequire(import.meta.url);
 let _ts = null;
 let _loadFailed = false;
+const COMPILER_PACKAGES = ["typescript5", "typescript"];
+
+/**
+ * hasCompilerApi — true only when a loaded `typescript` module actually
+ * exposes the classic compiler API surface this walker calls. The check
+ * names exactly the members the walk uses — no more, no less — so a
+ * module that loads but is not a working compiler (typescript v7's
+ * package root resolves to a version-only module: `version` and
+ * `versionMajorMinor`, no compiler API at all) reads as unavailable
+ * instead of passing a truthiness check and throwing on first use
+ * ("Cannot read properties of undefined (reading 'Latest')" — the
+ * live F6 handler_error). Exported for tests.
+ */
+export function hasCompilerApi(mod) {
+  if (!mod || typeof mod !== "object") return false;
+  return (
+    typeof mod.createSourceFile === "function" &&
+    typeof mod.forEachChild === "function" &&
+    typeof mod.getLineAndCharacterOfPosition === "function" &&
+    typeof mod.isIdentifier === "function" &&
+    typeof mod.isBinaryExpression === "function" &&
+    typeof mod.isVariableDeclaration === "function" &&
+    typeof mod.isPropertyAssignment === "function" &&
+    typeof mod.isPropertyDeclaration === "function" &&
+    !!mod.ScriptTarget &&
+    !!mod.ScriptKind &&
+    !!mod.SyntaxKind
+  );
+}
 
 /** Lazy-load the TypeScript compiler module (cached, mirrors ts-language-service.js). */
 function ts() {
   if (_ts) return _ts;
   if (_loadFailed) return null;
   try {
-    const m = _require("typescript");
-    // TypeScript 7 ships without the JS compiler API (no createSourceFile / ScriptTarget); treating that
-    // as "loaded" crashed every analysis. Only a module that can actually parse counts as the engine.
-    if (typeof m?.createSourceFile !== "function" || !m?.ScriptTarget) { _loadFailed = true; return null; }
-    _ts = m;
-    return _ts;
+    // `typescript5` is an npm alias for the TS5 compiler (the main
+    // `typescript` pin is v7, which has no JS compiler API). Prefer it,
+    // then fall back to `typescript` only if that exposes the API.
+    for (const name of COMPILER_PACKAGES) {
+      let mod = null;
+      try { mod = _require(name); } catch { continue; }
+      if (hasCompilerApi(mod)) { _ts = mod; return _ts; }
+    }
+    // Nothing resolved to a working compiler: report unavailable
+    // honestly rather than hand callers a module that throws on use.
+    _loadFailed = true;
+    return null;
   } catch {
     _loadFailed = true;
     return null;

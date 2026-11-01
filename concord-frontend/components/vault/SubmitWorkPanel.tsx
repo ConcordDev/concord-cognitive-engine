@@ -27,8 +27,36 @@ function formatWorkKind(kind: string): string {
   return kind.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
 }
 
-export function SubmitWorkPanel() {
-  const [open, setOpen] = useState(false);
+/** Plain-language copy for the refusals `vault.submit` can return. Unknown reasons are shown verbatim. */
+const SUBMIT_REFUSAL_COPY: Record<string, string> = {
+  missing_title: 'A title is required.',
+  invalid_work_kind: 'That kind of work is not one the vault accepts.',
+  use_lineage_not_parents: 'Lineage is declared in the lineage field.',
+  no_actor: 'Sign in to submit a work.',
+};
+
+/** Declared parent DTU ids from free text: split on commas and whitespace, drop blanks and repeats. */
+export function parseLineage(text: string): string[] {
+  return Array.from(new Set(text.split(/[\s,]+/).map((t) => t.trim()).filter(Boolean)));
+}
+
+export interface SubmitWorkPanelProps {
+  /** Fires with the new submission id after the server confirms `vault.submit`. */
+  onSubmitted?: (id: string) => void;
+  /** Controlled open state (the page's keyboard command opens the form). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+export function SubmitWorkPanel({ onSubmitted, open: openProp, onOpenChange }: SubmitWorkPanelProps = {}) {
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = (next: boolean | ((o: boolean) => boolean)) => {
+    const value = typeof next === 'function' ? next(open) : next;
+    setOpenState(value);
+    onOpenChange?.(value);
+  };
+  const [lineage, setLineage] = useState('');
   const [title, setTitle] = useState('');
   const [workKind, setWorkKind] = useState<string>('writing');
   const [description, setDescription] = useState('');
@@ -37,7 +65,7 @@ export function SubmitWorkPanel() {
   const [result, setResult] = useState<{ ok: true } | { ok: false; reason: string } | null>(null);
 
   const reset = () => {
-    setTitle(''); setDescription(''); setBody(''); setWorkKind('writing'); setResult(null);
+    setTitle(''); setDescription(''); setBody(''); setLineage(''); setWorkKind('writing'); setResult(null);
   };
 
   const submit = async () => {
@@ -45,18 +73,22 @@ export function SubmitWorkPanel() {
     setSubmitting(true);
     setResult(null);
     try {
+      const lineageIds = parseLineage(lineage);
       const r = await lensRun<{ ok: boolean; id?: string; reason?: string }>('vault', 'submit', {
         title: title.trim(),
         workKind,
         description: description.trim(),
         body: body.trim(),
+        ...(lineageIds.length ? { lineage: lineageIds } : {}),
       });
-      const res: { ok?: boolean; reason?: string } | null = r.data?.result || null;
+      const res: { ok?: boolean; id?: string; reason?: string } | null = r.data?.result || null;
       if (r.data?.ok && res?.ok !== false) {
         setResult({ ok: true });
-        setTitle(''); setDescription(''); setBody('');
+        setTitle(''); setDescription(''); setBody(''); setLineage('');
+        if (res?.id) onSubmitted?.(res.id);
       } else {
-        setResult({ ok: false, reason: res?.reason || r.data?.error || 'submit_failed' });
+        const reason = res?.reason || r.data?.error || 'submit_failed';
+        setResult({ ok: false, reason: SUBMIT_REFUSAL_COPY[reason] || reason });
       }
     } catch (e) {
       setResult({ ok: false, reason: e instanceof Error ? e.message : 'network_error' });
@@ -83,10 +115,15 @@ export function SubmitWorkPanel() {
           </p>
 
           {result?.ok ? (
-            <p className={cn(vault.body, 'py-2')}>
-              Submitted. It now waits for a curator — there is no queue position to check, and admission is
-              never guaranteed.
-            </p>
+            <div className="py-2">
+              <p className={vault.body}>
+                Submitted. It now waits for a curator — there is no queue position to check, and admission is
+                never guaranteed.
+              </p>
+              <button type="button" onClick={() => setResult(null)} className={cn(vault.button, 'mt-3')}>
+                Submit another work
+              </button>
+            </div>
           ) : (
             <div className="space-y-3">
               <label className="block">
@@ -131,6 +168,16 @@ export function SubmitWorkPanel() {
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
                   placeholder="Paste the text, a link, or leave blank if this is better described than pasted"
+                />
+              </label>
+
+              <label className="block">
+                <span className={cn(vault.label, 'mb-1 block')}>Lineage (optional)</span>
+                <input
+                  className={vault.input}
+                  value={lineage}
+                  onChange={(e) => setLineage(e.target.value)}
+                  placeholder="DTU ids this work builds on, separated by commas"
                 />
               </label>
 

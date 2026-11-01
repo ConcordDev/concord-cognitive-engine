@@ -411,7 +411,7 @@ export function CADConsole() {
             placeholder="Incident summary"
             className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white"
           />
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
             <select value={iKind} onChange={(e) => setIKind(e.target.value)} className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white">
               {INCIDENT_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
             </select>

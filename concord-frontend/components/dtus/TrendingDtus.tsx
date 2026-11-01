@@ -86,7 +86,7 @@ export function TrendingDtus() {
           onRetry={() => { trending.refetch(); facets.refetch(); }}
         />
       )}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="rounded border border-lattice-border bg-lattice-deep px-2.5 py-1.5">
           <div className="text-[10px] uppercase tracking-wider text-gray-400">Trending</div>
           <div className="mt-0.5 font-mono text-lg text-emerald-300 tabular-nums">{list.length}</div>

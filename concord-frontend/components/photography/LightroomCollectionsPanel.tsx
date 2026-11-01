@@ -168,7 +168,7 @@ export function LightroomCollectionsPanel({ onChange }: { onChange: () => void }
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <Camera className="w-3.5 h-3.5 text-indigo-400" /> Shoots
         </h3>
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input placeholder="Shoot name" value={shootForm.name} onChange={(e) => setShootForm({ ...shootForm, name: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input type="date" value={shootForm.date} onChange={(e) => setShootForm({ ...shootForm, date: e.target.value })}

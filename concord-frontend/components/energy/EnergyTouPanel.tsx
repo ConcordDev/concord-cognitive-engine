@@ -136,7 +136,7 @@ export function EnergyTouPanel({ onChange }: { onChange: () => void }) {
                 {breakdown.shoulder && <Bucket label="Shoulder" color="bg-amber-500" b={breakdown.shoulder} />}
                 <Bucket label="Off-peak" color="bg-lime-500" b={breakdown.offPeak} />
               </ul>
-              <div className="grid grid-cols-3 gap-2 mt-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
                 <Stat label="TOU cost" value={`$${breakdown.touCost}`} />
                 <Stat label="Flat-rate cost" value={`$${breakdown.flatRateCost}`} />
                 <Stat label="Savings vs flat"

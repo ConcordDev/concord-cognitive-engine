@@ -61,7 +61,7 @@ export function ProgressAnalyticsPanel() {
 
       {data && (
         <>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <div className="bg-lattice-deep rounded-lg p-3 border border-white/5">
               <p className="text-xl font-bold text-neon-green">
                 {(data.overallRetention * 100).toFixed(0)}%

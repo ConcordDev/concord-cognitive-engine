@@ -34,7 +34,7 @@ export function _resetSimInfraMemory() {
 function columns(db, table) {
   if (!TABLES.has(table)) return null;
   try {
-    const rows = db.prepare(`PRAGMA table_info(${table})`).all();
+    const rows = db.prepare("SELECT name FROM pragma_table_info(?)").all(table);
     if (!rows.length) return null;
     return new Set(rows.map((c) => c.name));
   } catch {

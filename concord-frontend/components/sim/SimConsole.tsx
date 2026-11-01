@@ -1362,7 +1362,7 @@ export function SimConsole() {
                       <div key={v.id} className={cn(ds.panel, 'p-3')}>
                         <div className="flex items-start gap-3">
                           <div className="flex-1 space-y-3">
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                               <div>
                                 <label className={cn(ds.label, 'text-xs')}>Name</label>
                                 <input
@@ -1397,7 +1397,7 @@ export function SimConsole() {
                                 </select>
                               </div>
                             </div>
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                               <div>
                                 <label className={cn(ds.label, 'text-xs')}>Min</label>
                                 <input
@@ -2043,7 +2043,7 @@ function ResultsTab({
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-4 gap-3 mt-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3">
           {[
             { label: 'P5', value: results.p5 },
             { label: 'P25', value: results.p25 },

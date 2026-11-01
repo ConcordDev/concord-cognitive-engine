@@ -1440,7 +1440,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
                       <p className="text-xs text-gray-400 mt-1">Avg Maintainability Index</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     <div className="p-2 bg-lattice-deep rounded text-center">
                       <p className="text-xs text-gray-400">Modules</p>
                       <p className="text-sm font-bold text-white">{codeActionResult.totalModules as number}</p>
@@ -1460,7 +1460,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
               {/* Dependency Audit Result */}
               {codeActionResult.totalDependencies !== undefined && (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     <div className="p-2 bg-lattice-deep rounded text-center">
                       <p className="text-xs text-gray-400">Total Deps</p>
                       <p className="text-sm font-bold text-white">{codeActionResult.totalDependencies as number}</p>

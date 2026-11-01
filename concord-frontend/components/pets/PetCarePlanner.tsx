@@ -176,7 +176,7 @@ export function PetCarePlanner({ petId, petName, species, weightKg, ageYears }: 
           {!feeding && <div className="text-[11px] text-zinc-400">Click "Plan" to compute from {petName}'s species/weight.</div>}
           {feeding && (
             <div className="space-y-1.5 text-[11px]">
-              <div className="grid grid-cols-3 gap-1">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
                 <div className="rounded border border-rose-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Daily</div><div className="font-mono text-rose-200">{feeding.dailyCalories ?? '—'} kcal</div></div>
                 <div className="rounded border border-rose-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Meals</div><div className="font-mono text-rose-200">{feeding.portions?.mealsPerDay ?? '—'}/d</div></div>
                 <div className="rounded border border-rose-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Cups/meal</div><div className="font-mono text-rose-200">{feeding.portions?.cupsPerMeal ?? '—'}</div></div>
@@ -265,7 +265,7 @@ export function PetCarePlanner({ petId, petName, species, weightKg, ageYears }: 
             <p className="mt-2 text-[11px] text-zinc-400">{costResult.message}</p>
           ) : (
             <div className="mt-2 space-y-1.5 text-[11px]">
-              <div className="grid grid-cols-3 gap-1">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
                 <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Annual (12mo window)</div><div className="font-mono text-emerald-200">${costResult.annualTotal ?? 0}</div></div>
                 <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Monthly avg</div><div className="font-mono text-emerald-200">${costResult.monthlyAverage ?? 0}</div></div>
                 <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Projected/yr</div><div className="font-mono text-emerald-200">${costResult.projectedAnnual ?? 0}</div></div>

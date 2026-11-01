@@ -112,7 +112,7 @@ export function MarketingSEOPanel() {
           className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-zinc-100" />
         <textarea value={bodyText} onChange={(e) => setBodyText(e.target.value)} rows={4}
           placeholder="Page body text (paste the visible content)" className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100" />
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <input value={headingCount} onChange={(e) => setHeadingCount(e.target.value)} inputMode="numeric" placeholder="Headings"
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-zinc-100" />
           <input value={imageCount} onChange={(e) => setImageCount(e.target.value)} inputMode="numeric" placeholder="Images"

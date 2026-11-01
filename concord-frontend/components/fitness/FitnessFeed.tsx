@@ -59,7 +59,7 @@ function FitnessFeedLive() {
         </div>
       </header>
       {posts.isError && <div role="status" className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Community feed unavailable.</div>}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Posts</div><div className="mt-0.5 font-mono text-lg text-lime-300">{list.length}</div></div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Upvotes</div><div className="mt-0.5 font-mono text-lg text-lime-300">{totalScore.toLocaleString()}</div></div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Comments</div><div className="mt-0.5 font-mono text-lg text-lime-300">{totalComments.toLocaleString()}</div></div>

@@ -124,7 +124,7 @@ export function StorageQuotaPanel() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2">
               <div className="text-[10px] uppercase tracking-wider text-zinc-400">Used</div>
               <div className="mt-0.5 font-mono text-sm text-zinc-200">{fmtBytes(state.usage)}</div>
