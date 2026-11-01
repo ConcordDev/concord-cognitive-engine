@@ -31,6 +31,9 @@ describe('Timeline lens honesty', () => {
 describe('PostCard author label', () => {
   it("labels the viewer's own posts 'You' instead of a raw user id", () => {
     const card = readFileSync(join(__dirname, '../components/timeline/PostCard.tsx'), 'utf8');
-    expect(card).toContain("{isOwner ? 'You' : post.authorId}");
+    // The label is "You" for the viewer's own posts and the author's display name otherwise,
+    // falling back to "Member" - it must never render the raw user id.
+    expect(card).toContain("{isOwner ? 'You' : (post.authorDisplayName || 'Member')}");
+    expect(card).not.toMatch(/\{isOwner \? 'You' : post\.authorId\}/);
   });
 });

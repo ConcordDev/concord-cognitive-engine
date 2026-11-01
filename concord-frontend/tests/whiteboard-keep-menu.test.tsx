@@ -47,7 +47,7 @@ describe('whiteboard board handoff', () => {
 
     render(<WhiteboardKeepMenu board={board} />);
     fireEvent.click(save());
-    await waitFor(() => expect(screen.getByText(/Saved as private DTU dtu_w1\./)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Kept as private DTU dtu_w1 · v1\. Nothing was published\./)).toBeTruthy());
 
     fireEvent.click(draft());
     await waitFor(() => expect(screen.getByText(/Drafted in Thread as th_1, citing dtu_w1\. Not posted\./)).toBeTruthy());
@@ -111,7 +111,7 @@ describe('whiteboard board handoff', () => {
 
     render(<WhiteboardKeepMenu board={board} />);
     fireEvent.click(save());
-    await waitFor(() => expect(screen.getByText(/Saved as private DTU dtu_w1\./)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Kept as private DTU dtu_w1 · v1\. Nothing was published\./)).toBeTruthy());
     await waitFor(() => expect(screen.getByRole('button', { name: /Drafted/i })).toBeDisabled());
     expect(screen.getByText(/Drafted in Thread as th_9/)).toBeTruthy();
   });
