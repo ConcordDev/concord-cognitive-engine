@@ -24,6 +24,11 @@ vi.mock('@/components/lens/LensShell', () => ({
     React.createElement('div', { 'data-testid': 'lens-shell' }, children),
 }));
 
+// The page mounts CrossLensRecentsPanel, which makes its own dtu_surface read. This is an isolated
+// page test of the lore.* wiring, so that sibling panel is stubbed (as the other lens page tests do);
+// without it the routeLensRun domain guard sees a non-lore call and the page's reads never settle.
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
+
 // The real hook calls useKeyboard(), which requires a KeyboardProvider
 // parent. Production mounts that via the lens shell; this isolated page
 // test doesn't, so stub the keyboard binding to a no-op.

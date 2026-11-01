@@ -12,6 +12,7 @@ import {
 import { motion } from 'framer-motion';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { PreviewAwareMedia } from '@/components/media/PreviewAwareMedia';
 
 interface MarketListingItem {
   id: string;
@@ -74,11 +75,7 @@ function MediaListenCard({ listing }: { listing: MarketListingItem }) {
         <span className="text-[10px] px-2 py-0.5 rounded bg-neon-green/20 text-neon-green shrink-0">Free · listen only</span>
       </div>
       {listing.description && <p className="text-xs text-gray-400">{listing.description}</p>}
-      {isVideo ? (
-        <video controls preload="none" src={listing.streamUrl} className="w-full rounded" />
-      ) : (
-        <audio controls preload="none" src={listing.streamUrl} className="w-full" />
-      )}
+      <PreviewAwareMedia src={listing.streamUrl as string} kind={isVideo ? 'video' : 'audio'} className={isVideo ? 'w-full rounded' : 'w-full'} />
       {listing.tags && listing.tags.length > 0 && (
         <p className="text-[10px] text-gray-500">{listing.tags.map((t) => `#${t}`).join(' ')}</p>
       )}

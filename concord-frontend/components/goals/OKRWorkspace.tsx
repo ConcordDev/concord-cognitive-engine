@@ -58,6 +58,35 @@ interface Occurrence {
   occurrence: number; dueAt: string;
 }
 interface ChartPoint { date: string; progress: number; }
+
+// --------------- Objective binding (§9 fix) ---------------
+// Check-ins, dependencies and the forecast all key on the objective's
+// real id (obj_N) — the domain derives progress from exact id matches.
+// Those ids are displayed nowhere in the lens, so the forms that used
+// to ask the user to TYPE an id could never be filled in correctly:
+// entries stored fine and matched nothing. The forms now bind to the
+// caller's own objective list — title-labelled selects carrying the
+// real ids, the same binding the progress chart already used.
+interface ObjectiveOption { id: string; title: string; }
+
+function useObjectives(): ObjectiveOption[] {
+  const [objectives, setObjectives] = useState<ObjectiveOption[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const r = await lensRun<{ flat?: Array<{ id: string; title: string }> }>('goals', 'alignmentTree', { op: 'list' });
+      if (!cancelled && r.data?.ok && r.data.result) {
+        setObjectives((r.data.result.flat || []).map((o) => ({ id: o.id, title: o.title })));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  return objectives;
+}
+
+function objectiveTitle(objectives: ObjectiveOption[], id: string): string {
+  return objectives.find((o) => o.id === id)?.title || id;
+}
 interface SeriesPoint { id: string; source: 'checkin' | 'manual'; date: string; progress: number; }
 interface TrendPoint extends Record<string, unknown> { date: string; progress: number; ideal: number; }
 interface BurndownPoint extends Record<string, unknown> { date: string; remaining: number; idealRemaining: number; }
@@ -238,7 +267,7 @@ function AlignmentTab() {
             <span className="text-xs font-medium text-white">{node.title}</span>
             <span className="rounded bg-cyan-500/15 px-1 text-[9px] uppercase text-cyan-300">{node.level}</span>
             {node.blockedBy && node.blockedBy.length > 0 && (
-              <span className="rounded bg-orange-500/15 px-1 text-[9px] uppercase text-orange-300" title={`Blocked by ${node.blockedBy.join(', ')}`}>Blocked</span>
+              <span className="rounded bg-orange-500/15 px-1 text-[9px] uppercase text-orange-300" title={`Blocked by ${node.blockedBy.map((id) => flat.find((o) => o.id === id)?.title || id).join(', ')}`}>Blocked</span>
             )}
             {node.team && <span className="rounded bg-purple-500/15 px-1 text-[9px] text-purple-300">{node.team}</span>}
           </div>
@@ -331,6 +360,7 @@ function CheckinsTab() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [objProgress, setObjProgress] = useState<{ progress: number | null; progressSource: string | null } | null>(null);
+  const objectives = useObjectives();
   const [addError, setAddError] = useState('');
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [undo, setUndo] = useState<{ trashId: string; label: string } | null>(null);
@@ -387,7 +417,10 @@ function CheckinsTab() {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 md:grid-cols-4">
-        <input value={goalId} onChange={(e) => setGoalId(e.target.value)} placeholder="Goal / objective id" className={inputCls} />
+        <select value={goalId} onChange={(e) => setGoalId(e.target.value)} className={inputCls} aria-label="Objective">
+          <option value="">Select an objective…</option>
+          {objectives.map((o) => <option key={o.id} value={o.id}>{o.title}</option>)}
+        </select>
         <label className="flex items-center gap-2 text-[10px] text-zinc-400">
           <span>Conf</span>
           <input
@@ -405,6 +438,9 @@ function CheckinsTab() {
         </button>
       </div>
 
+      {objectives.length === 0 && (
+        <p className="text-[11px] text-zinc-500">No objectives yet — add one in the Alignment Tree tab, then check in against it here.</p>
+      )}
       {addError && <p className="text-[11px] text-rose-300" role="alert">{addError}</p>}
       {undo && <UndoStrip label={undo.label} onUndo={undoRemove} onDismiss={() => setUndo(null)} />}
       {objProgress?.progress != null && (
@@ -439,7 +475,7 @@ function CheckinsTab() {
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-zinc-300">
-                <span className="font-mono text-zinc-400">{c.goalId}</span>
+                <span className="text-zinc-300">{objectiveTitle(objectives, c.goalId)}</span>
                 <span>· {Math.round(c.confidence * 100)}% conf</span>
                 {c.progress != null && <span>· {c.progress}% done</span>}
                 <span className="text-zinc-600">{c.period}</span>
@@ -1090,6 +1126,7 @@ function RemindersTab() {
 // --------------- Dependencies ---------------
 
 function DependenciesTab() {
+  const objectives = useObjectives();
   const [result, setResult] = useState<DepResult | null>(null);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -1124,7 +1161,7 @@ function DependenciesTab() {
     setConfirmId(null);
     if (r.data?.ok && r.data.result) {
       setResult(r.data.result);
-      if (r.data.result.trashId) setUndo({ trashId: r.data.result.trashId, label: `Dependency ${e.from} → ${e.to}` });
+      if (r.data.result.trashId) setUndo({ trashId: r.data.result.trashId, label: `Dependency ${objectiveTitle(objectives, e.from)} → ${objectiveTitle(objectives, e.to)}` });
     }
   };
 
@@ -1138,13 +1175,19 @@ function DependenciesTab() {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-        <input value={from} onChange={(e) => setFrom(e.target.value)} placeholder="Blocker goal id" className={inputCls} />
-        <input value={to} onChange={(e) => setTo(e.target.value)} placeholder="Blocked goal id" className={inputCls} />
+        <select value={from} onChange={(e) => setFrom(e.target.value)} className={inputCls} aria-label="Blocker objective">
+          <option value="">Blocker objective…</option>
+          {objectives.map((o) => <option key={o.id} value={o.id}>{o.title}</option>)}
+        </select>
+        <select value={to} onChange={(e) => setTo(e.target.value)} className={inputCls} aria-label="Blocked objective">
+          <option value="">Blocked objective…</option>
+          {objectives.map((o) => <option key={o.id} value={o.id}>{o.title}</option>)}
+        </select>
         <select value={kind} onChange={(e) => setKind(e.target.value)} className={inputCls}>
           <option value="blocks">blocks</option>
           <option value="relates">relates to</option>
         </select>
-        <button onClick={link} disabled={!from.trim() || !to.trim()} className={`${btnCls} col-span-3 justify-center`}>
+        <button onClick={link} disabled={!from || !to} className={`${btnCls} col-span-3 justify-center`}>
           <Link2 className="h-3.5 w-3.5" /> Link dependency
         </button>
       </div>
@@ -1175,7 +1218,7 @@ function DependenciesTab() {
             <p className="mb-1 text-[10px] uppercase tracking-wider text-amber-400">Blocked</p>
             <div className="flex flex-wrap gap-1">
               {result.blockedGoals.map((g) => (
-                <span key={g} className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-mono text-amber-300">{g}</span>
+                <span key={g} className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-300">{objectiveTitle(objectives, g)}</span>
               ))}
               {result.blockedGoals.length === 0 && <span className="text-[10px] text-zinc-400">none</span>}
             </div>
@@ -1184,7 +1227,7 @@ function DependenciesTab() {
             <p className="mb-1 text-[10px] uppercase tracking-wider text-emerald-400">Ready</p>
             <div className="flex flex-wrap gap-1">
               {result.readyGoals.map((g) => (
-                <span key={g} className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-mono text-emerald-300">{g}</span>
+                <span key={g} className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-300">{objectiveTitle(objectives, g)}</span>
               ))}
               {result.readyGoals.length === 0 && <span className="text-[10px] text-zinc-400">none</span>}
             </div>
@@ -1197,9 +1240,9 @@ function DependenciesTab() {
         {(result?.edges || []).map((e) => (
           <div key={e.id} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
             <Link2 className={`h-3.5 w-3.5 ${e.kind === 'blocks' ? 'text-red-400' : 'text-zinc-400'}`} />
-            <span className="font-mono text-[11px] text-zinc-300">{e.from}</span>
+            <span className="text-[11px] text-zinc-300">{objectiveTitle(objectives, e.from)}</span>
             <span className={`text-[10px] uppercase ${e.kind === 'blocks' ? 'text-red-400' : 'text-zinc-400'}`}>{e.kind}</span>
-            <span className="font-mono text-[11px] text-zinc-300">{e.to}</span>
+            <span className="text-[11px] text-zinc-300">{objectiveTitle(objectives, e.to)}</span>
             {confirmId === e.id ? (
               <span className="ml-auto"><ConfirmDelete onConfirm={() => unlink(e)} onCancel={() => setConfirmId(null)} /></span>
             ) : (

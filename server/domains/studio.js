@@ -1461,10 +1461,30 @@ export default function registerStudioActions(registerLensAction) {
       id: uidStu("mk"), projectId, name, timeBeats,
       colour: String(params.colour || "#fbbf24"),
       kind: ["section", "cue", "loop_start", "loop_end"].includes(params.kind) ? params.kind : "section",
+      // A section's own length (the Arrangement Sketch reads it); absent = "until the next marker".
+      ...(params.lengthBeats != null ? { lengthBeats: Math.max(0, Number(params.lengthBeats) || 0) } : {}),
     };
     ensureStuBucket(s, "markers", resolveStudioProjectOwnerOrSelf(s, ctx, projectId)).push(marker);
     saveStudioState();
     return { ok: true, result: { marker } };
+  });
+
+  registerLensAction("studio", "markers-update", (ctx, _a, params = {}) => {
+    const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const id = String(params.id || "");
+    const resolved = resolveOwnerBucketItem(s, ctx, "markers", id);
+    if (!resolved.ok) return { ok: false, error: "marker not found" };
+    const m = resolved.item;
+    if (params.name != null) {
+      const name = String(params.name).trim();
+      if (!name) return { ok: false, error: "name cannot be empty" };
+      m.name = name;
+    }
+    if (params.timeBeats != null) m.timeBeats = Math.max(0, Number(params.timeBeats) || 0);
+    if (params.lengthBeats != null) m.lengthBeats = Math.max(0, Number(params.lengthBeats) || 0);
+    if (params.colour != null) m.colour = String(params.colour);
+    saveStudioState();
+    return { ok: true, result: { marker: m } };
   });
 
   registerLensAction("studio", "markers-delete", (ctx, _a, params = {}) => {

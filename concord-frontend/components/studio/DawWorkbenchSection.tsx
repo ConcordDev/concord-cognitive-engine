@@ -20,6 +20,7 @@ import QuantizePanel from '@/components/studio/QuantizePanel';
 import RecordingPanel from '@/components/studio/RecordingPanel';
 import ProjectIOPanel from '@/components/studio/ProjectIOPanel';
 import CollabPanel from '@/components/studio/CollabPanel';
+import ArrangementSketch from '@/components/studio/ArrangementSketch';
 
 /* ------------------------------------------------------------------ */
 /*  Session workbench section                                          */
@@ -27,14 +28,14 @@ import CollabPanel from '@/components/studio/CollabPanel';
 
 type WorkbenchTab =
   | 'clips' | 'midi' | 'automation' | 'bounce' | 'markers' | 'tempo' | 'presets' | 'sends' | 'scenes'
-  | 'clipEdit' | 'drumRack' | 'fxRack' | 'midiMap' | 'quantize' | 'recording' | 'projectIO' | 'collab';
+  | 'clipEdit' | 'drumRack' | 'fxRack' | 'midiMap' | 'quantize' | 'recording' | 'projectIO' | 'collab' | 'arrangement';
 
 interface WorkbenchProjectRow { id: string; name: string; trackCount?: number }
 interface WorkbenchTrackRow { id: string; name: string; kind: string }
 interface WorkbenchClipRow { id: string; name: string }
 
-export function DawWorkbenchSection() {
-  const [active, setActive] = useState<WorkbenchTab>('clips');
+export function DawWorkbenchSection({ initialTab = 'clips' }: { initialTab?: WorkbenchTab } = {}) {
+  const [active, setActive] = useState<WorkbenchTab>(initialTab);
   const [projectId, setProjId] = useState<string>('');
   const [trackId, setTrackId] = useState<string>('');
   const [clipId, setClipId] = useState<string>('');
@@ -108,6 +109,7 @@ export function DawWorkbenchSection() {
   }, [projectId, trackId]);
 
   const TABS: { id: WorkbenchTab; label: string }[] = [
+    { id: 'arrangement', label: 'Arrangement' },
     { id: 'clips', label: 'Clips' },
     { id: 'clipEdit', label: 'Clip editor' },
     { id: 'midi', label: 'Piano roll' },
@@ -192,6 +194,7 @@ export function DawWorkbenchSection() {
         ))}
       </nav>
       <div>
+        {active === 'arrangement' && <ArrangementSketch projectId={projectId} hostPicksProject lens="studio" />}
         {active === 'clips' && <ClipsTimelinePanel projectId={projectId || undefined} trackId={trackId || undefined} />}
         {active === 'clipEdit' && <ClipEditorPanel projectId={projectId || undefined} trackId={trackId || undefined} />}
         {active === 'midi' && <MidiPianoRoll projectId={projectId || undefined} clipId={clipId || undefined} />}

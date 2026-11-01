@@ -52,17 +52,36 @@ describe("citation relevance filter", () => {
     assert.equal(c[1].kind, "page");
   });
 
-  it("a page read later upgrades an earlier search-hit citation", async () => {
+  it("a page read later upgrades an earlier search-hit citation (full-tier host keeps the page text)", async () => {
+    // Page text is stored only for a full-tier outlet (news-outlet-policy, #1692); a .gov host is full-tier.
+    const url = "https://data.nist.gov/ds3218";
     const db = setup();
     const job = startLongTask(db, { userId: "u1", goal: GOAL });
     const session = db.prepare(`SELECT * FROM agent_marathon_sessions WHERE id=?`).get(job.jobId);
     const m = fakeMacros();
-    await saveCitationDtus(db, session, [{ tool: "web_search", ok: true, result: JSON.stringify({ results: [{ title: "DS3218", url: "https://e.com/ds3218", snippet: "DS3218 servo for a robot arm, 20 kg class." }] }) }], m);
-    await saveCitationDtus(db, session, [{ tool: "browse_url", ok: true, url: "https://e.com/ds3218", title: "DS3218 datasheet", text: DS + "\n" + DS }], m);
+    await saveCitationDtus(db, session, [{ tool: "web_search", ok: true, result: JSON.stringify({ results: [{ title: "DS3218", url, snippet: "DS3218 servo for a robot arm, 20 kg class." }] }) }], m);
+    await saveCitationDtus(db, session, [{ tool: "browse_url", ok: true, url, title: "DS3218 datasheet", text: DS + "\n" + DS }], m);
     const meta = JSON.parse(db.prepare(`SELECT meta_json FROM agent_marathon_sessions WHERE id=?`).get(job.jobId).meta_json);
     assert.equal(meta.citations.length, 1);
     assert.equal(meta.citations[0].kind, "page");
     assert.match(meta.citations[0].text, /21\.5 kg-cm/);
+  });
+
+  it("the same upgrade on a restricted (unlisted) host keeps the link but never the page text", async () => {
+    const url = "https://e.com/ds3218";
+    const db = setup();
+    const job = startLongTask(db, { userId: "u1", goal: GOAL });
+    const session = db.prepare(`SELECT * FROM agent_marathon_sessions WHERE id=?`).get(job.jobId);
+    const m = fakeMacros();
+    await saveCitationDtus(db, session, [{ tool: "web_search", ok: true, result: JSON.stringify({ results: [{ title: "DS3218", url, snippet: "DS3218 servo for a robot arm, 20 kg class." }] }) }], m);
+    await saveCitationDtus(db, session, [{ tool: "browse_url", ok: true, url, title: "DS3218 datasheet", text: DS + "\n" + DS }], m);
+    const meta = JSON.parse(db.prepare(`SELECT meta_json FROM agent_marathon_sessions WHERE id=?`).get(job.jobId).meta_json);
+    assert.equal(meta.citations.length, 1, "the page read still replaces the search hit");
+    assert.equal(meta.citations[0].kind, "page");
+    assert.equal(meta.citations[0].url, url);
+    assert.equal(meta.citations[0].text, undefined, "summary-only outlet: no page text in the session entry");
+    const stored = m.dtus.at(-1).input;
+    assert.ok(!String(stored.content).includes("21.5 kg-cm"), "nor in the DTU body written for it");
   });
 });
 

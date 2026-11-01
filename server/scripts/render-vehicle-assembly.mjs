@@ -54,6 +54,21 @@ document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(view === "engineering" ? 0xececec : 0xd8d9db);
+if (view !== "engineering") {
+  // Seamless studio backdrop (HANDOFF-3 A6): a soft vertical gradient instead of the
+  // flat field with its hard horizon line, toward the visual target's studio look.
+  const cv = document.createElement("canvas");
+  cv.width = 4; cv.height = 512;
+  const gx = cv.getContext("2d");
+  const gr = gx.createLinearGradient(0, 0, 0, 512);
+  gr.addColorStop(0, "#ededee");
+  gr.addColorStop(0.55, "#d6d7d9");
+  gr.addColorStop(1, "#c3c4c6");
+  gx.fillStyle = gr; gx.fillRect(0, 0, 4, 512);
+  const bgTex = new THREE.CanvasTexture(cv);
+  bgTex.colorSpace = THREE.SRGBColorSpace;
+  scene.background = bgTex;
+}
 const pmrem = new THREE.PMREMGenerator(renderer);
 if (view !== "engineering") scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
@@ -120,7 +135,7 @@ if (assembly.surface.mesh.arch && assembly.surface.mesh.arch.positions) {
 const wheels = assembly.components.filter((c) => c.role === "wheel");
 const parts = [
   ["tire", new THREE.MeshStandardMaterial({ color: 0x161616, roughness: 0.94, side: THREE.DoubleSide, clippingPlanes: clip })],
-  ["rim", new THREE.MeshPhysicalMaterial({ color: 0x8a8e94, metalness: 1, roughness: 0.22, clearcoat: 0.45, clearcoatRoughness: 0.12, side: THREE.DoubleSide, clippingPlanes: clip })],
+  ["rim", new THREE.MeshPhysicalMaterial({ color: 0x33363b, metalness: 1, roughness: 0.34, clearcoat: 0.45, clearcoatRoughness: 0.12, side: THREE.DoubleSide, clippingPlanes: clip })],
   ["disc", new THREE.MeshStandardMaterial({ color: 0x3e4248, metalness: 0.9, roughness: 0.32, side: THREE.DoubleSide, clippingPlanes: clip })],
   ["caliper", new THREE.MeshStandardMaterial({ color: 0xc45c26, metalness: 0.55, roughness: 0.38, side: THREE.DoubleSide, clippingPlanes: clip })],
 ];
@@ -198,7 +213,7 @@ const kicker = new THREE.DirectionalLight(0xfff1e0, engineering ? 0 : 0.55);
 kicker.position.set(4.8, 1.6, -1.2);
 scene.add(kicker);
 
-const ground = new THREE.Mesh(new THREE.CircleGeometry(8, 64), new THREE.MeshStandardMaterial({ color: engineering ? 0xececec : 0xd8d9db, roughness: 0.95 }));
+const ground = new THREE.Mesh(new THREE.CircleGeometry(8, 64), new THREE.MeshStandardMaterial({ color: engineering ? 0xececec : 0xc6c7c9, roughness: 0.95 }));
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);

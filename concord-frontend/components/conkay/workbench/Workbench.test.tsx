@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { Workbench } from './Workbench';
-import { neighbourhood, type WorkbenchClient, type WorkbenchView } from '@/lib/conkay/workbench-api';
+import { neighbourhood, type WorkbenchClient, type WorkbenchReply, type WorkbenchView } from '@/lib/conkay/workbench-api';
 
 vi.mock('@/lib/api/client', () => ({ api: { get: vi.fn(), post: vi.fn() } }));
 
@@ -42,6 +42,8 @@ function fakeClient(): WorkbenchClient & { calls: unknown[][] } {
     ask: vi.fn(async (...a) => { calls.push(['ask', ...a]); return { reply: { kind: 'requirement', ok: true, diff: { changed: [{ field: 'topSpeed', before: 80.47, after: 67.06, source: 'the user\'s words "150 mph"' }], flipped: [{ runId: 'requirement.check@REQ_topSpeed', from: 'FAIL', to: 'PASS' }], rerun: 'rebuilt' } }, view: { ...VIEW, revision: 2 } }; }),
     undo: vi.fn(async () => ({ reply: { kind: 'undo', ok: true, matches: true }, view: { ...VIEW, revision: 0 } })),
     get: vi.fn(async () => ({ view: VIEW })),
+    assembly: vi.fn(async () => ({ assembly: null, view: VIEW })),
+    rerun: vi.fn(async () => ({ reply: { kind: 'rerun' } as unknown as WorkbenchReply, view: VIEW, rerun: [], assembly: null })),
   };
 }
 

@@ -11,15 +11,16 @@
  * in both. A narrow screen is view-only: the canvas stays, the controls do not.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
-import { explodedShift, sectionPlane, toThree, type ExplodePart } from '@/lib/conkay/assembly-view';
+import { explodedShift, sectionPlane, toThree, explodeAmountFor, EXPLODE_SUBSYSTEMS, type ExplodePart } from '@/lib/conkay/assembly-view';
 import { STUDIO_HDRI_URL, STUDIO_PAINTS, type StudioPaintId } from '@/lib/conkay/present-paint';
-import { workbenchClient, type FitCheckFlip, type WorkbenchClient, type WorkbenchKnob, type WorkbenchView } from '@/lib/conkay/workbench-api';
+import { workbenchClient, type FitCheckFlip, type PartAnalysis, type WorkbenchClient, type WorkbenchKnob, type WorkbenchView } from '@/lib/conkay/workbench-api';
+import { feaUtilToColor } from '@/lib/conkay/fea-util-color';
 
 export interface AssemblyMesh {
   positions: number[];
@@ -51,6 +52,8 @@ export interface VehicleAssembly {
     mesh?: { outline?: number[][]; side?: string; positions?: number[]; normals?: number[]; indices?: number[] };
     parameters?: { id: string; name: string; value: number | string; unit: string; provenance: { state: string; source?: string; note?: string } }[];
     relationships?: { kind: string; target: string; note?: string }[];
+    /** Per-part solver analyses joined from a live session (HANDOFF-3 A4); absent on a saved snapshot. */
+    analyses?: PartAnalysis[];
     /** 'styling-loft': placed on the styled loft, which is not the analysed solid drawn here. */
     placedOn?: string;
   })[];
@@ -197,10 +200,50 @@ function checkParts(c: VehicleAssembly['checks'][number]): string[] {
 
 /** Check status colours, shared by the marks, the Checks overlay and the inspector. */
 const CHECK_HEX: Record<'pass' | 'warn' | 'fail', string> = { pass: '#6ee7b7', warn: '#fcd34d', fail: '#fb7185' };
+
+/** An analysis key-output value, verbatim from the solver's envelope (6dp at most, never rescaled). */
+function fmtAnalysisValue(v: number | string): string {
+  if (typeof v !== 'number') return v;
+  return Number.isInteger(v) ? String(v) : String(Math.round(v * 1e6) / 1e6);
+}
 const CHECK_SEVERITY: Record<'pass' | 'warn' | 'fail', number> = { pass: 0, warn: 1, fail: 2 };
 
-function WheelMeshes({ assembly, explode, clip, opacity, visibleIds, checkColors }: {
-  assembly: VehicleAssembly; explode: number; clip: THREE.Plane[]; opacity: number; visibleIds: Set<string>;
+/** "Walk around" camera presets (HANDOFF-3 A5): fixed framings relative to the car's own
+ *  focus point and length, applied when the preset changes. Free orbiting afterwards is the
+ *  user's — the preset is the starting framing a shared link restores. */
+export const CAMERA_PRESETS: Record<string, { label: string; position: (f: [number, number, number], len: number) => [number, number, number]; target?: (f: [number, number, number], len: number) => [number, number, number] }> = {
+  front: { label: 'Front ¾', position: (f, len) => [f[0] - len * 0.4, 1.05, 2.7] },
+  side: { label: 'Side', position: (f, len) => [f[0], 0.75, Math.max(3.2, len * 0.62)] },
+  top: { label: 'Top', position: (f, len) => [f[0], Math.max(3.4, len * 0.66), 0.02] },
+  rear: { label: 'Rear ¾', position: (f, len) => [f[0] + len * 0.4, 1.1, 2.7] },
+  cabin: { label: 'Cabin', position: (f, len) => [f[0] + len * 0.1, 1.12, 1.3], target: (f, len) => [f[0] + len * 0.04, 0.72, 0] },
+};
+
+function CameraRig({ preset, focus, length }: { preset: string | null; focus: [number, number, number]; length: number }) {
+  const camera = useThree((st) => st.camera);
+  const controls = useThree((st) => st.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
+  useEffect(() => {
+    if (!preset || !camera) return;
+    const p = CAMERA_PRESETS[preset];
+    if (!p) return;
+    const [px, py, pz] = p.position(focus, length);
+    camera.position.set(px, py, pz);
+    if (controls) {
+      const t = p.target ? p.target(focus, length) : focus;
+      controls.target.set(t[0], t[1], t[2]);
+      controls.update();
+    }
+    // focus/length identity changes on every render; the preset VALUE is the trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preset, camera, controls]);
+  return null;
+}
+
+/** A part the explode sequence can place: position/axis for the shift, group/role for its subsystem. */
+type ExplodeSubject = ExplodePart & { group?: string; role?: string };
+
+function WheelMeshes({ assembly, explodeFor, clip, opacity, visibleIds, checkColors }: {
+  assembly: VehicleAssembly; explodeFor: (part: ExplodeSubject) => number; clip: THREE.Plane[]; opacity: number; visibleIds: Set<string>;
   /** Checks overlay: a wheel's tyre takes its worst check's colour when present. */
   checkColors?: Map<string, string> | null;
 }) {
@@ -215,7 +258,7 @@ function WheelMeshes({ assembly, explode, clip, opacity, visibleIds, checkColors
   return (
     <group>
       {tires.map((w) => {
-        const [x, y, z] = explodedShift(w, explode);
+        const [x, y, z] = explodedShift(w, explodeFor(w));
         const [tx, ty, tz] = toThree(x, y, z);
         const mirror = w.placement.y < 0 ? -1 : 1;
         return (
@@ -224,7 +267,7 @@ function WheelMeshes({ assembly, explode, clip, opacity, visibleIds, checkColors
               <meshStandardMaterial color={checkColors?.get(w.id) || '#161616'} roughness={0.94} side={THREE.DoubleSide} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
             </mesh>
             <mesh name="rim" geometry={rim}>
-              <meshPhysicalMaterial color="#8a8e94" metalness={1} roughness={0.22} clearcoat={0.45} clearcoatRoughness={0.12} side={THREE.DoubleSide} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
+              <meshPhysicalMaterial color="#33363b" metalness={1} roughness={0.34} clearcoat={0.45} clearcoatRoughness={0.12} side={THREE.DoubleSide} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
             </mesh>
             <mesh name="disc" geometry={disc}>
               <meshStandardMaterial color="#3e4248" metalness={0.9} roughness={0.32} side={THREE.DoubleSide} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
@@ -239,13 +282,14 @@ function WheelMeshes({ assembly, explode, clip, opacity, visibleIds, checkColors
   );
 }
 
-function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explode, section, opacity, hidden, isolated, onSelect, marks, checkColors }: {
+function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explodeFor, section, opacity, hidden, isolated, onSelect, marks, checkColors, cameraPreset }: {
   assembly: VehicleAssembly;
   showOverlays: boolean;
   mode: 'studio' | 'engineering';
   paintId: StudioPaintId;
   hdriUrl: string | null;
-  explode: number;
+  explodeFor: (part: ExplodeSubject) => number;
+  cameraPreset: string | null;
   section: { axis: 'x' | 'y' | 'z'; position: number } | null;
   opacity: number;
   hidden: Set<string>;
@@ -290,13 +334,18 @@ function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explode, sec
     return [new THREE.Plane(new THREE.Vector3(...p.normal), p.constant)];
   }, [section, cx]);
   const show = (id: string) => !hidden.has(id) && (!isolated || isolated === id);
-  const showInterior = mode === 'engineering' || explode > 0.02;
+  const showInterior = mode === 'engineering' || assembly.components.some((c) => explodeFor(c) > 0.02);
   return (
     <>
       {mode === 'studio' && <StudioEnv hdriUrl={hdriUrl} />}
       <ambientLight intensity={mode === 'studio' ? 0.35 : 0.7} />
-      <directionalLight position={[4, 8, 3]} intensity={mode === 'studio' ? 2.2 : 1} castShadow />
+      <directionalLight position={[4, 8, 3]} intensity={mode === 'studio' ? 2.2 : 1} color={mode === 'studio' ? '#fff4ea' : undefined} castShadow />
       <directionalLight position={[-4, 3, -2]} intensity={0.6} color="#d7e2f0" />
+      {/* Studio rig completion (HANDOFF-3 A6): the rim and kicker lights from the headless
+          studio render's proven setup — the rim is what sweeps the bright edge highlight
+          along the shoulder toward the visual target; the kicker warms the nose. */}
+      {mode === 'studio' && <directionalLight position={[-3.6, 2.8, -4.2]} intensity={2} color="#e7eeff" />}
+      {mode === 'studio' && <directionalLight position={[4.8, 1.6, -1.2]} intensity={0.9} color="#fff1e0" />}
       <group position={[-cx, 0, 0]}>
         {show('BODY_SHELL') && (
           <mesh geometry={paint} castShadow receiveShadow onClick={(e) => { e.stopPropagation(); onSelect('BODY_SHELL'); }}>
@@ -318,10 +367,10 @@ function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explode, sec
         {showOverlays && assembly.surface.source === 'cad.body' && assembly.surface.overlays && show('BODY_SHELL') && (
           <OverlayLayer overlays={assembly.surface.overlays} mode={mode} clip={clip} />
         )}
-        <WheelMeshes assembly={assembly} explode={explode} clip={clip} opacity={opacity} checkColors={checkColors} visibleIds={new Set(assembly.components.filter((c) => c.role === 'wheel' && show(c.id)).map((c) => c.id))} />
+        <WheelMeshes assembly={assembly} explodeFor={explodeFor} clip={clip} opacity={opacity} checkColors={checkColors} visibleIds={new Set(assembly.components.filter((c) => c.role === 'wheel' && show(c.id)).map((c) => c.id))} />
         {mode === 'engineering' && doors.filter((d) => show(d.id)).map((d) => {
           const part = assembly.components.find((c) => c.id === d.id);
-          const dy = part ? explodedShift(part, explode)[1] - d.placementY : 0;
+          const dy = part ? explodedShift(part, explodeFor(part))[1] - d.placementY : 0;
           return (
             <lineLoop key={d.id} geometry={d.geometry} position={[0, 0, -dy]}>
               <lineBasicMaterial color="#333" clippingPlanes={clip} />
@@ -339,7 +388,7 @@ function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explode, sec
           return showInterior && !!c.half;
         }).map((c) => {
           if (!show(c.id)) return null;
-          const [x, y, z] = explodedShift(c, explode);
+          const [x, y, z] = explodedShift(c, explodeFor(c));
           const [tx, ty, tz] = toThree(x, y, z);
           const shaped = detailGeos.get(c.id) || (c.role === 'lamp' && lampGeo) || (c.role === 'intake' && grilleGeo) || null;
           const tail = c.id.startsWith('TAIL');
@@ -361,7 +410,7 @@ function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explode, sec
         {[...marks.entries()].map(([pid, sev]) => {
           const c = assembly.components.find((x) => x.id === pid);
           if (!c || !c.half || !show(c.id)) return null;
-          const [x, y, z] = explodedShift(c, explode);
+          const [x, y, z] = explodedShift(c, explodeFor(c));
           const [tx, ty, tz] = toThree(x, y, z);
           return <MarkBox key={pid} part={c} position={[tx, ty, tz]} color={CHECK_HEX[sev]} clip={clip} />;
         })}
@@ -371,6 +420,7 @@ function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explode, sec
         <circleGeometry args={[8, 48]} />
         <meshStandardMaterial color={mode === 'studio' ? '#d8d9db' : '#ececec'} roughness={0.95} />
       </mesh>
+      <CameraRig preset={cameraPreset} focus={[(bounds.min[0] - cx) * 0.2, 0.5, 0]} length={bounds.max[0] - bounds.min[0]} />
       <OrbitControls makeDefault target={[(bounds.min[0] - cx) * 0.2, 0.5, 0]} />
     </>
   );
@@ -452,6 +502,33 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
   const [showOverlays, setShowOverlays] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
   const [explode, setExplode] = useState(0);
+  // A5: the explode SEQUENCE position (0..subsystem count) — subsystem i is fully out at
+  // position i+1, part-way while the position crosses it. Play steps it; the URL carries it.
+  const [playing, setPlaying] = useState(false);
+  const [cameraPreset, setCameraPreset] = useState<string | null>(null);
+  const explodeFor = useCallback((c: ExplodeSubject) => explodeAmountFor(c, explode), [explode]);
+  const stepExplode = (dir: 1 | -1) => {
+    setPlaying(false);
+    setExplode((v) => (dir > 0
+      ? Math.min(EXPLODE_SUBSYSTEMS.length, Math.floor(v) + 1)
+      : Math.max(0, Math.ceil(v) - 1)));
+  };
+  const togglePlay = () => {
+    if (playing) { setPlaying(false); return; }
+    if (explode >= EXPLODE_SUBSYSTEMS.length) setExplode(0);
+    setPlaying(true);
+  };
+  useEffect(() => {
+    if (!playing) return;
+    const t = setInterval(() => {
+      setExplode((v) => {
+        const n = Math.min(EXPLODE_SUBSYSTEMS.length, Math.floor(v) + 1);
+        if (n >= EXPLODE_SUBSYSTEMS.length) setPlaying(false);
+        return n;
+      });
+    }, 1100);
+    return () => clearInterval(t);
+  }, [playing]);
   const [sectionAxis, setSectionAxis] = useState<'x' | 'y' | 'z' | null>(null);
   const [sectionPos, setSectionPos] = useState(2);
   const [opacity, setOpacity] = useState(1);
@@ -525,6 +602,23 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
       setBusy(false);
     }
   };
+  const [inspTab, setInspTab] = useState<'details' | 'analyses'>('details');
+  const runAnalysis = async (solver: string) => {
+    if (!workbench) return;
+    const client = workbench.client ?? workbenchClient;
+    setBusy(true);
+    setWbError('');
+    try {
+      const r = await client.rerun(workbench.id, solver);
+      if (r.assembly) setLive(r.assembly as unknown as VehicleAssembly);
+      if (r.view) { setWbView(r.view); workbench.onView?.(r.view); }
+    } catch (e) {
+      const data = (e as { response?: { data?: { message?: string } } })?.response?.data;
+      setWbError(data?.message || (e instanceof Error ? e.message : 'The re-run failed.'));
+    } finally {
+      setBusy(false);
+    }
+  };
   const part = shown.components.find((c) => c.id === selected) || null;
   // The selected part's stored clearances: the gap each fit check computed and stored (clearanceM),
   // displayed verbatim — the browser never recomputes a clearance.
@@ -534,6 +628,55 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
   const viewNose = bounds.min[0] - (bounds.min[0] + bounds.max[0]) / 2;
   const section = sectionAxis ? { axis: sectionAxis, position: sectionPos } : null;
   const span = sectionAxis === 'y' ? [bounds.min[1], bounds.max[1]] : sectionAxis === 'z' ? [bounds.min[2], bounds.max[2]] : [bounds.min[0], bounds.max[0]];
+  // A5: shareable view state in the URL query, alongside DesignBuilder's ?wb=. Restored once
+  // on mount (validated against this design's parts), written on every change with
+  // history.replaceState so other params (wb, the page's own state) survive untouched.
+  const [viewRestored, setViewRestored] = useState(false);
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      const m = q.get('view');
+      if (m === 'engineering' || m === 'studio') setMode(m);
+      const x = q.get('xpos');
+      if (x !== null && Number.isFinite(Number(x))) setExplode(Math.max(0, Math.min(EXPLODE_SUBSYSTEMS.length, Number(x))));
+      const sec = q.get('sec');
+      if (sec) {
+        const [a, raw] = sec.split(':');
+        const pos = Number(raw);
+        if ((a === 'x' || a === 'y' || a === 'z') && Number.isFinite(pos)) {
+          const sp = a === 'y' ? [bounds.min[1], bounds.max[1]] : a === 'z' ? [bounds.min[2], bounds.max[2]] : [bounds.min[0], bounds.max[0]];
+          setSectionAxis(a);
+          setSectionPos(Math.max(sp[0], Math.min(sp[1], pos)));
+        }
+      }
+      const known = (id: string | null) => !!id && assembly.components.some((c) => c.id === id);
+      if (known(q.get('sel'))) setSelected(q.get('sel'));
+      if (known(q.get('iso'))) setIsolated(q.get('iso'));
+      const hide = q.get('hide');
+      if (hide) setHidden(new Set(hide.split(',').filter((id) => known(id))));
+      const cam = q.get('cam');
+      if (cam && cam in CAMERA_PRESETS) setCameraPreset(cam);
+    } catch { /* a malformed URL never breaks the viewer */ }
+    setViewRestored(true);
+    // Mount-only restore: the initial assembly defines which part ids are valid.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (!viewRestored) return;
+    try {
+      const q = new URLSearchParams(window.location.search);
+      const put = (k: string, v: string | null) => { if (v === null) q.delete(k); else q.set(k, v); };
+      put('view', mode === 'studio' ? null : mode);
+      put('xpos', explode > 0 ? String(Math.round(explode * 100) / 100) : null);
+      put('sec', sectionAxis ? `${sectionAxis}:${Math.round(sectionPos * 1000) / 1000}` : null);
+      put('sel', selected);
+      put('iso', isolated);
+      put('hide', hidden.size ? [...hidden].join(',') : null);
+      put('cam', cameraPreset);
+      const qs = q.toString();
+      window.history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
+    } catch { /* history can be unavailable in embeds/tests */ }
+  }, [viewRestored, mode, explode, sectionAxis, sectionPos, selected, isolated, hidden, cameraPreset]);
 
   return (
     <div className="flex flex-col gap-2" data-testid="assembly-viewer">
@@ -568,9 +711,39 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
                 )}
               </div>
             )}
-            <label className="text-[11px] text-slate-400">Explode
-              <input data-testid="explode" type="range" min={0} max={1} step={0.01} value={explode} onChange={(e) => setExplode(Number(e.target.value))} className="w-full" />
-            </label>
+            <div>
+              <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <span>Explode sequence</span>
+                <span className="flex gap-1">
+                  <button type="button" data-testid="explode-play" className="rounded px-1.5 py-0.5 hover:bg-white/10" onClick={togglePlay}>{playing ? 'Pause' : 'Play'}</button>
+                  <button type="button" data-testid="explode-prev" disabled={explode <= 0} className="rounded px-1.5 py-0.5 hover:bg-white/10 disabled:opacity-40" onClick={() => stepExplode(-1)}>← Prev</button>
+                  <button type="button" data-testid="explode-next" disabled={explode >= EXPLODE_SUBSYSTEMS.length} className="rounded px-1.5 py-0.5 hover:bg-white/10 disabled:opacity-40" onClick={() => stepExplode(1)}>Next →</button>
+                </span>
+              </div>
+              <p data-testid="explode-step" className="text-[11px] text-slate-300">
+                {explode >= EXPLODE_SUBSYSTEMS.length
+                  ? 'Fully exploded — all six subsystems'
+                  : explode <= 0
+                    ? 'Assembled — step 1 is Body'
+                    : `Step ${Math.min(EXPLODE_SUBSYSTEMS.length, Math.floor(explode) + 1)} of 6 — ${EXPLODE_SUBSYSTEMS[Math.min(EXPLODE_SUBSYSTEMS.length - 1, Math.floor(explode))].label}`}
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {EXPLODE_SUBSYSTEMS.map((sub, i) => {
+                  const amt = Math.max(0, Math.min(1, explode - i));
+                  const state = amt >= 1 ? 'exploded' : amt > 0 ? 'exploding' : 'assembled';
+                  return (
+                    <span key={sub.id} data-testid={`xsub-${sub.id}`} data-state={state} className={`rounded px-1.5 py-0.5 text-[10px] ${state === 'exploded' ? 'bg-teal-400/20 text-teal-200' : state === 'exploding' ? 'bg-amber-300/20 text-amber-200' : 'bg-white/5 text-slate-400'}`}>{sub.label}</span>
+                  );
+                })}
+              </div>
+              <input data-testid="explode" type="range" min={0} max={EXPLODE_SUBSYSTEMS.length} step={0.01} value={explode} onChange={(e) => { setPlaying(false); setExplode(Number(e.target.value)); }} className="w-full" aria-label="Explode sequence position" />
+              <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px]">
+                <span className="text-slate-500">Camera</span>
+                {Object.entries(CAMERA_PRESETS).map(([id, preset]) => (
+                  <button key={id} type="button" data-testid={`cam-${id}`} aria-pressed={cameraPreset === id} className={`rounded px-1.5 py-0.5 ${cameraPreset === id ? 'bg-white/15 text-slate-100' : 'text-slate-400 hover:bg-white/5'}`} onClick={() => setCameraPreset(cameraPreset === id ? null : id)}>{preset.label}</button>
+                ))}
+              </div>
+            </div>
             <div className="flex gap-1 text-[11px]">
               {(['x', 'y', 'z'] as const).map((a) => (
                 <button key={a} type="button" data-testid={`section-${a}`} className={`rounded px-2 py-0.5 ${sectionAxis === a ? 'bg-white/15' : 'text-slate-400'}`} onClick={() => setSectionAxis(sectionAxis === a ? null : a)}>{a.toUpperCase()}</button>
@@ -610,7 +783,7 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
             </ul>
           </div>
         )}
-        <div className="relative h-[420px] overflow-hidden rounded-lg bg-[#c5c6c8] lg:h-[520px]" data-testid="assembly-canvas">
+        <div className="relative h-[420px] overflow-hidden rounded-lg bg-[#c5c6c8] lg:h-[520px]" data-testid="assembly-canvas" tabIndex={0} role="application" aria-label="Assembly view — left and right arrow keys step the explode sequence" onKeyDown={(e) => { if (e.key === 'ArrowRight') { e.preventDefault(); stepExplode(1); } if (e.key === 'ArrowLeft') { e.preventDefault(); stepExplode(-1); } }}>
           {mode === 'studio' && (
             <div
               data-testid="studio-preview-badge"
@@ -627,7 +800,7 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
             dpr={narrow ? [1, 1] : [1, 1.5]}
           >
             <color attach="background" args={[mode === 'studio' ? '#d8d9db' : '#ececec']} />
-            <CarScene assembly={shown} mode={mode} paintId={paintId} hdriUrl={hdriUrl} showOverlays={showOverlays} explode={explode} section={section} opacity={opacity} hidden={hidden} isolated={isolated} onSelect={setSelected} marks={displayMarks} checkColors={checkColors} />
+            <CarScene assembly={shown} mode={mode} paintId={paintId} hdriUrl={hdriUrl} showOverlays={showOverlays} explodeFor={explodeFor} cameraPreset={cameraPreset} section={section} opacity={opacity} hidden={hidden} isolated={isolated} onSelect={setSelected} marks={displayMarks} checkColors={checkColors} />
           </Canvas>
         </div>
         {!locked && (
@@ -691,6 +864,44 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
                   <button type="button" className="rounded bg-white/10 px-2 py-0.5" onClick={() => setHidden((h) => { const n = new Set(h); if (n.has(part.id)) n.delete(part.id); else n.add(part.id); return n; })}>{hidden.has(part.id) ? 'Show' : 'Hide'}</button>
                   <button type="button" className="rounded bg-white/10 px-2 py-0.5" onClick={() => setIsolated(isolated === part.id ? null : part.id)}>{isolated === part.id ? 'Show all' : 'Isolate'}</button>
                 </div>
+                <div className="mt-2 flex gap-1">
+                  <button type="button" data-testid="insp-tab-details" aria-pressed={inspTab === 'details'} className={`rounded px-2 py-0.5 ${inspTab === 'details' ? 'bg-white/15 text-slate-100' : 'text-slate-400'}`} onClick={() => setInspTab('details')}>Details</button>
+                  <button type="button" data-testid="insp-tab-analyses" aria-pressed={inspTab === 'analyses'} className={`rounded px-2 py-0.5 ${inspTab === 'analyses' ? 'bg-white/15 text-slate-100' : 'text-slate-400'}`} onClick={() => setInspTab('analyses')}>Analyses</button>
+                </div>
+                {inspTab === 'analyses' && (
+                  <div data-testid="part-analyses">
+                    {part.analyses === undefined && (
+                      <p className="mt-2 text-slate-400">{workbench ? 'No analyses are linked for this part in this session yet.' : 'Analyses link from a live workbench session — start editing to run the solvers on this design.'}</p>
+                    )}
+                    {part.analyses !== undefined && part.analyses.length === 0 && (
+                      <p className="mt-2 text-slate-400">No solver analysis is mapped to this part.</p>
+                    )}
+                    {(part.analyses || []).map((a) => (
+                      <div key={a.solver} data-testid={`analysis-${a.solver}`} className="mt-2 border-t border-white/10 pt-2">
+                        <p className="text-slate-200">
+                          {a.solver}{a.version ? ` v${a.version}` : ''} —{' '}
+                          <span className={a.status === 'fail' || a.status === 'error' ? 'text-rose-300' : a.status === 'warn' ? 'text-amber-200' : a.status === 'pass' ? 'text-emerald-200' : 'text-slate-400'}>{a.status}</span>
+                          {a.utilization != null && (
+                            <span data-testid={`analysis-${a.solver}-util`} className="ml-1" style={{ color: feaUtilToColor(a.utilization).hex }}>· utilisation {(a.utilization * 100).toFixed(0)}%</span>
+                          )}
+                        </p>
+                        {a.keyOutputs.map((o) => (
+                          <p key={o.id} className="text-slate-300">{o.id}: {fmtAnalysisValue(o.value)}{o.unit ? ` ${o.unit}` : ''}</p>
+                        ))}
+                        {a.receipt && <p className="text-slate-500">receipt {a.receipt.runId} · inputs {a.receipt.inputHash ? `${a.receipt.inputHash.slice(0, 12)}…` : '—'}</p>}
+                        {a.ranAt && <p className="text-slate-500">ran {a.ranAt}</p>}
+                        {a.recordedAt && <p className="text-slate-500">recorded run imported {a.recordedAt}</p>}
+                        {a.reason && <p className="text-slate-400">{a.reason}</p>}
+                        {a.solver === 'aero.cfd' && a.status !== 'not_run' && <p className="text-slate-500">Recorded OpenFOAM result — imported from the pod, not re-run here.</p>}
+                        {workbench && a.status !== 'not_run' && a.solver !== 'aero.cfd' && (
+                          <button type="button" data-testid={`rerun-${a.solver}`} disabled={busy} className="mt-1 rounded border border-sky-400/40 bg-sky-400/10 px-2 py-0.5 text-sky-100 hover:bg-sky-400/20 disabled:opacity-40" onClick={() => void runAnalysis(a.solver)}>Re-run</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {inspTab === 'details' && (
+                <>
                 <ul className="mt-2 space-y-1">
                   {(part.parameters || []).map((p) => (
                     <li key={p.id}><span className="text-slate-200">{p.name}</span> {String(p.value)} {p.unit} <span className="text-slate-500">({p.provenance.state}{p.provenance.note ? `: ${p.provenance.note}` : ''})</span></li>
@@ -723,6 +934,8 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
                       );
                     })}
                   </ul>
+                )}
+                </>
                 )}
               </>
             )}

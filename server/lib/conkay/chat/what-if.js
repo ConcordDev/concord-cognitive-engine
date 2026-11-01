@@ -276,6 +276,33 @@ export class DesignConversation {
   }
 
   /** Step back one revision. Graph edits are reversed on the live graph; a rebuild returns to the kept design. */
+  /**
+   * Re-run one solver's runs in the current session (HANDOFF-3 A4, the Analyses tab's Re-run): the
+   * engine recomputes the run and everything that read its results, and the current revision's
+   * envelopes refresh in place — the same move undo() makes when it refreshes a previous revision.
+   * Recorded results are refused: aero.cfd is an OpenFOAM run made on the GPU pod and imported, so
+   * there is nothing in-process to re-run. A solver with no run in this session is refused too —
+   * re-running cannot invent a run the design never had. Runs under the conversation's exclusive lock
+   * like every other mutation (#1807): a second caller gets `busy` instead of interleaving.
+   */
+  rerunSolver(solverId) { return this._exclusive(() => this._rerunSolverLocked(solverId)); }
+
+  async _rerunSolverLocked(solverId) {
+    if (solverId === "aero.cfd") {
+      return { kind: "error", error: "recorded_result", message: "aero.cfd is a recorded OpenFOAM run, imported from the GPU pod — it is never re-run in-process" };
+    }
+    const cur = this.current;
+    const session = cur.final.session;
+    const engine = session.engine;
+    const ids = [...engine.runs.entries()].filter(([, r]) => r.solverId === solverId).map(([id]) => id);
+    if (!ids.length) return { kind: "error", error: "not_run", message: `${solverId} has not run for this design, so there is nothing to re-run` };
+    const before = new Map(cur.final.envelopes);
+    const recomputed = await engine.rerunAsync(ids);
+    const after = envMap(session);
+    cur.final = { ...cur.final, envelopes: after };
+    return { kind: "rerun", ok: true, solver: solverId, runs: ids, rerun: recomputed, flipped: flips(before, after), receipt: designReceipt(after) };
+  }
+
   undo() { return this._exclusive((hold) => this._undoLocked(hold), { ok: false, error: "busy", busy: true }); }
 
   async _undoLocked(hold) {

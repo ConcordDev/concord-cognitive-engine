@@ -669,6 +669,17 @@ export function registerDurableEndpoints(app, db) {
   // RENDER / MASTER / ANALYZE — Job-based pipelines
   // ═══════════════════════════════════════════════════════════════
 
+  // No audio worker is connected to this server, so renders, vocal
+  // analysis/processing and mastering cannot actually be performed here.
+  // These endpoints record the job and fail it with this reason instead
+  // of fabricating output — previously they "completed" jobs with
+  // zero-filled stub buffers as the render/master audio, invented vocal
+  // analysis numbers, and an unmeasured LUFS value copied from the
+  // request. When a real audio worker exists, it should claim these
+  // jobs and this refusal can be removed.
+  const AUDIO_WORKER_UNAVAILABLE =
+    "audio_worker_unavailable: no audio worker is connected to this server, so this job cannot be processed";
+
   // POST /api/studio/:projectId/render
   app.post("/api/studio/:projectId/render", (req, res) => {
     try {
@@ -684,48 +695,14 @@ export function registerDurableEndpoints(app, db) {
         "INSERT INTO studio_renders (id, project_id, job_id, status, format, created_at) VALUES (?, ?, ?, 'pending', ?, ?)"
       ).run(renderId, req.params.projectId, jobId, format, nowISO());
 
-      logEvent(db, "studio.render_started", project.owner_user_id, { projectId: req.params.projectId, jobId, renderId }, req.headers["x-request-id"]);
+      // No audio worker is connected (see AUDIO_WORKER_UNAVAILABLE):
+      // fail the job honestly instead of completing it with a stub
+      // buffer presented as the rendered audio.
+      logEvent(db, "studio.render_unavailable", project.owner_user_id, { projectId: req.params.projectId, jobId, renderId }, req.headers["x-request-id"]);
+      failJob(jobId, AUDIO_WORKER_UNAVAILABLE);
+      db.prepare("UPDATE studio_renders SET status = 'failed' WHERE id = ?").run(renderId);
 
-      // Simulate render (in production, a worker would process this)
-      setTimeout(() => {
-        try {
-          startJob(jobId);
-          // Create output artifact
-          const artifactId = uid("art");
-          const versionId = uid("artv");
-          const now = nowISO();
-          const pendingBuf = Buffer.alloc(1024); // Stub artifact — replaced when real audio worker processes the job
-          // The promise rejection path MUST be handled — the surrounding
-          // try/catch only catches sync throws. Without .catch(), a storage
-          // failure leaves the job in 'running' forever and never writes
-          // the artifact rows (or worse: writes them with bogus data).
-          storage.put(`renders/${artifactId}/v1/render.${format}`, pendingBuf, format === "mp3" ? "audio/mpeg" : "audio/wav").then((putResult) => {
-            const tx = db.transaction(() => {
-              db.prepare(
-                "INSERT INTO artifacts (id, owner_user_id, type, title, metadata_json, visibility, created_at, updated_at) VALUES (?, ?, 'render', ?, ?, 'private', ?, ?)"
-              ).run(artifactId, project.owner_user_id, `${project.name} - Render`, JSON.stringify({ format, projectId: req.params.projectId }), now, now);
-
-              db.prepare(
-                "INSERT INTO artifact_versions (id, artifact_id, version, storage_uri, sha256, size_bytes, mime_type, created_at) VALUES (?, ?, 1, ?, ?, ?, ?, ?)"
-              ).run(versionId, artifactId, putResult.uri, putResult.sha256, putResult.size, format === "mp3" ? "audio/mpeg" : "audio/wav", now);
-
-              db.prepare("INSERT INTO job_artifacts (job_id, artifact_id, role) VALUES (?, ?, 'render_output')").run(jobId, artifactId);
-
-              completeJob(jobId, { artifactId, versionId });
-              db.prepare("UPDATE studio_renders SET status = 'completed' WHERE id = ?").run(renderId);
-            });
-            tx();
-          }).catch((err) => {
-            failJob(jobId, `storage.put failed: ${err?.message || err}`);
-            try { db.prepare("UPDATE studio_renders SET status = 'failed' WHERE id = ?").run(renderId); } catch { /* job is already failed; render row is best-effort */ }
-          });
-        } catch (e) {
-          failJob(jobId, e.message);
-          db.prepare("UPDATE studio_renders SET status = 'failed' WHERE id = ?").run(renderId);
-        }
-      }, 100);
-
-      res.json({ ok: true, job_id: jobId, render_id: renderId });
+      res.json({ ok: false, job_id: jobId, render_id: renderId, error: AUDIO_WORKER_UNAVAILABLE });
     } catch (e) {
       sendDbError(res, e, "durable");
     }
@@ -736,44 +713,13 @@ export function registerDurableEndpoints(app, db) {
     try {
       const { project_id, track_id, owner_user_id } = req.body;
       const jobId = createJob("vocal_analyze", owner_user_id, { project_id, track_id });
-      startJob(jobId);
 
-      // Simulate analysis result
-      const analysisResult = {
-        pitch: { min: 180, max: 520, average: 340 },
-        vibrato: { rate: 5.2, depth: 0.3 },
-        timbre: { brightness: 0.7, warmth: 0.6, clarity: 0.8 },
-        dynamics: { range: 15, average_db: -18 },
-      };
+      // No audio worker is connected (see AUDIO_WORKER_UNAVAILABLE):
+      // fail honestly instead of returning invented pitch/timbre/
+      // dynamics numbers as a measured "Vocal Analysis".
+      failJob(jobId, AUDIO_WORKER_UNAVAILABLE);
 
-      // Create analysis artifact
-      const artifactId = uid("art");
-      const versionId = uid("artv");
-      const now = nowISO();
-      const analysisBuffer = Buffer.from(JSON.stringify(analysisResult, null, 2));
-
-      storage.put(`analysis/${artifactId}/v1/analysis.json`, analysisBuffer, "application/json").then((putResult) => {
-        const tx = db.transaction(() => {
-          db.prepare(
-            "INSERT INTO artifacts (id, owner_user_id, type, title, metadata_json, visibility, created_at, updated_at) VALUES (?, ?, 'analysis', 'Vocal Analysis', ?, 'private', ?, ?)"
-          ).run(artifactId, owner_user_id || null, JSON.stringify({ project_id, track_id }), now, now);
-
-          db.prepare(
-            "INSERT INTO artifact_versions (id, artifact_id, version, storage_uri, sha256, size_bytes, mime_type, created_at) VALUES (?, ?, 1, ?, ?, ?, 'application/json', ?)"
-          ).run(versionId, artifactId, putResult.uri, putResult.sha256, putResult.size, now);
-
-          db.prepare("INSERT INTO job_artifacts (job_id, artifact_id, role) VALUES (?, ?, 'analysis_output')").run(jobId, artifactId);
-          completeJob(jobId, { artifactId, analysis: analysisResult });
-        });
-        tx();
-      }).catch((err) => {
-        // Storage rejection is silently lost without this — the
-        // surrounding try/catch only catches sync throws. Job stays
-        // in 'running' forever and analysis never persists.
-        failJob(jobId, `storage.put failed: ${err?.message || err}`);
-      });
-
-      res.json({ ok: true, job_id: jobId, analysis: analysisResult });
+      res.json({ ok: false, job_id: jobId, error: AUDIO_WORKER_UNAVAILABLE });
     } catch (e) {
       sendDbError(res, e, "durable");
     }
@@ -784,33 +730,13 @@ export function registerDurableEndpoints(app, db) {
     try {
       const { project_id, track_id, corrections, owner_user_id } = req.body;
       const jobId = createJob("vocal_process", owner_user_id, { project_id, track_id, corrections });
-      startJob(jobId);
 
-      // Create processed audio artifact
-      const artifactId = uid("art");
-      const versionId = uid("artv");
-      const now = nowISO();
-      const pendingBuf = Buffer.alloc(512); // Stub artifact — replaced when real audio worker processes the job
+      // No audio worker is connected (see AUDIO_WORKER_UNAVAILABLE):
+      // fail honestly instead of completing the job with a zero-filled
+      // stub buffer presented as the processed vocal.
+      failJob(jobId, AUDIO_WORKER_UNAVAILABLE);
 
-      storage.put(`processed/${artifactId}/v1/processed.wav`, pendingBuf, "audio/wav").then((putResult) => {
-        const tx = db.transaction(() => {
-          db.prepare(
-            "INSERT INTO artifacts (id, owner_user_id, type, title, metadata_json, visibility, created_at, updated_at) VALUES (?, ?, 'audio', 'Processed Vocal', ?, 'private', ?, ?)"
-          ).run(artifactId, owner_user_id || null, JSON.stringify({ project_id, track_id, corrections }), now, now);
-
-          db.prepare(
-            "INSERT INTO artifact_versions (id, artifact_id, version, storage_uri, sha256, size_bytes, mime_type, created_at) VALUES (?, ?, 1, ?, ?, ?, 'audio/wav', ?)"
-          ).run(versionId, artifactId, putResult.uri, putResult.sha256, putResult.size, now);
-
-          db.prepare("INSERT INTO job_artifacts (job_id, artifact_id, role) VALUES (?, ?, 'processed_audio')").run(jobId, artifactId);
-          completeJob(jobId, { artifactId });
-        });
-        tx();
-      }).catch((err) => {
-        failJob(jobId, `storage.put failed: ${err?.message || err}`);
-      });
-
-      res.json({ ok: true, job_id: jobId });
+      res.json({ ok: false, job_id: jobId, error: AUDIO_WORKER_UNAVAILABLE });
     } catch (e) {
       sendDbError(res, e, "durable");
     }
@@ -821,32 +747,14 @@ export function registerDurableEndpoints(app, db) {
     try {
       const { project_id, preset = "balanced", target_lufs = -14, format = "wav", owner_user_id } = req.body;
       const jobId = createJob("master_audio", owner_user_id, { project_id, preset, target_lufs, format });
-      startJob(jobId);
 
-      const artifactId = uid("art");
-      const versionId = uid("artv");
-      const now = nowISO();
-      const pendingBuf = Buffer.alloc(1024);
+      // No audio worker is connected (see AUDIO_WORKER_UNAVAILABLE):
+      // fail honestly instead of completing the job with a zero-filled
+      // stub buffer presented as mastered audio, with the requested
+      // target_lufs echoed back as if it had been measured.
+      failJob(jobId, AUDIO_WORKER_UNAVAILABLE);
 
-      storage.put(`mastered/${artifactId}/v1/master.${format}`, pendingBuf, format === "mp3" ? "audio/mpeg" : "audio/wav").then((putResult) => {
-        const tx = db.transaction(() => {
-          db.prepare(
-            "INSERT INTO artifacts (id, owner_user_id, type, title, metadata_json, visibility, created_at, updated_at) VALUES (?, ?, 'master', 'Mastered Audio', ?, 'private', ?, ?)"
-          ).run(artifactId, owner_user_id || null, JSON.stringify({ project_id, preset, target_lufs }), now, now);
-
-          db.prepare(
-            "INSERT INTO artifact_versions (id, artifact_id, version, storage_uri, sha256, size_bytes, mime_type, created_at) VALUES (?, ?, 1, ?, ?, ?, ?, ?)"
-          ).run(versionId, artifactId, putResult.uri, putResult.sha256, putResult.size, format === "mp3" ? "audio/mpeg" : "audio/wav", now);
-
-          db.prepare("INSERT INTO job_artifacts (job_id, artifact_id, role) VALUES (?, ?, 'mastered_audio')").run(jobId, artifactId);
-          completeJob(jobId, { artifactId, lufs: target_lufs });
-        });
-        tx();
-      }).catch((err) => {
-        failJob(jobId, `storage.put failed: ${err?.message || err}`);
-      });
-
-      res.json({ ok: true, job_id: jobId });
+      res.json({ ok: false, job_id: jobId, error: AUDIO_WORKER_UNAVAILABLE });
     } catch (e) {
       sendDbError(res, e, "durable");
     }

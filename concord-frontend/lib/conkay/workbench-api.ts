@@ -79,12 +79,43 @@ export interface KnobResponse {
   assembly: DesignSnapshot['assembly'];
 }
 
+/**
+ * One solver analysis linked to a component (HANDOFF-3 A4, server/lib/conkay/assembly/build.js
+ * partAnalyses): the run that evaluated the part, its key outputs and its receipt — or an honest
+ * not_run with the reason. Numbers are the envelope's own, verbatim.
+ */
+export interface PartAnalysis {
+  solver: string;
+  version?: string;
+  status: 'pass' | 'warn' | 'fail' | 'not_computed' | 'not_run' | 'error';
+  keyOutputs: { id: string; value: number | string; unit?: string }[];
+  /** Worst margin utilization across the run's checks (structure.frame colours by this). */
+  utilization?: number;
+  receipt: { runId: string; solver: string; version: string | null; inputHash: string | null } | null;
+  ranAt: string | null;
+  /** aero.cfd only: when the recorded OpenFOAM run was imported (the result itself is older). */
+  recordedAt?: string;
+  reason?: string;
+}
+
+/** POST /workbench/:id/rerun: the refreshed assembly (analyses re-joined) and view. */
+export interface RerunResponse {
+  reply: WorkbenchReply;
+  view: WorkbenchView;
+  rerun: string[];
+  assembly: DesignSnapshot['assembly'];
+}
+
 export interface WorkbenchClient {
   knob(id: string, variable: string, value: string | number): Promise<KnobResponse>;
   lock(id: string, variable: string, locked: boolean): Promise<{ view: WorkbenchView }>;
   ask(id: string, text: string): Promise<{ reply: WorkbenchReply; view: WorkbenchView }>;
   undo(id: string): Promise<{ reply: WorkbenchReply; view: WorkbenchView }>;
   get(id: string): Promise<{ view: WorkbenchView }>;
+  /** The session's current assembly with per-part analyses joined (HANDOFF-3 A4). */
+  assembly(id: string): Promise<{ assembly: DesignSnapshot['assembly']; view: WorkbenchView }>;
+  /** Re-run one in-process solver and refresh the assembly (HANDOFF-3 A4). */
+  rerun(id: string, solver: string): Promise<RerunResponse>;
 }
 
 const base = (id: string) => `/api/conkay/workbench/${encodeURIComponent(id)}`;
@@ -95,6 +126,8 @@ export const workbenchClient: WorkbenchClient = {
   ask: async (id, text) => (await api.post(`${base(id)}/ask`, { text })).data,
   undo: async (id) => (await api.post(`${base(id)}/undo`, {})).data,
   get: async (id) => (await api.get(base(id))).data,
+  assembly: async (id) => (await api.get(`${base(id)}/assembly`)).data,
+  rerun: async (id, solver) => (await api.post(`${base(id)}/rerun`, { solver })).data,
 };
 
 /** Runs upstream and downstream of a node (for highlighting what a knob or a check touches). */
