@@ -1,5 +1,60 @@
 # Database Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **Rework (B5, PR #1716, 2026-10-28, to Product Review 2's frozen
+> review `lens-reviews/database.md`):** the audit below is kept as
+> history. What changed:
+>
+> - **44 macros now** (34 at the L9b re-verification). Added:
+>   `dataset-relation-add`/`dataset-relation-delete` (connection-level
+>   foreign keys), `dataset-transfer` (move a dataset between
+>   connections; the pre-existing `dataset-move` is ER-canvas
+>   positioning), `index-create`/`index-delete` (real index objects
+>   with measured sizes), `dataset-import-csv`, and the rename verbs
+>   `dataset-rename`/`schema-rename`/`table-rename`/`column-rename`
+>   (renames cascade into name-keyed relations and indexes).
+> - **One store:** Table Browser, Schema Map and Indexes read the
+>   workspace store (connections → datasets) — the disconnected
+>   lens-data buckets they previously read are gone from those panels.
+>   History reads the server `query-history` written by both editors.
+> - **Engine integrity:** unknown columns and wrong-typed values are
+>   errors (never silent NULLs or silent empty results), unparseable
+>   WHERE clauses error instead of matching everything, unscoped
+>   DELETE/UPDATE requires an explicit confirm, multi-row INSERT is
+>   all-or-nothing, joins take a hash path with a 2M row-visit budget
+>   on the fallback, and SELECT results cap at 1000 rows with a
+>   truncation flag. The Query Editor runs on `query-run` (it
+>   previously posted SQL to the graph query API and crashed on the
+>   result shape).
+> - **New Analysis tab:** workspace dashboard (schema-dashboard +
+>   measured store counts) and the analysis quartet
+>   (schemaAnalysis/queryOptimize/migrationPlan/indexRecommendation)
+>   wired to real inputs, with index recommendations applicable in
+>   place. The Projects tab now shows the user's own connections and
+>   datasets (it previously rendered a GitHub topic search). The
+>   header DepthBadge for this lens reads "Workspace" — connections
+>   are workspace copies; no remote server is contacted.
+> - Server behaviour suites: `server/tests/database-*.test.js`,
+>   85 tests green at ship (incl. the two pre-existing parity suites).
+>
+> **Re-verification (HANDOFF-3 batch L9b, 2026-10-28, against main e9791d4d):**
+> The audit below is kept as history. Current truth:
+>
+> - **34 macros now** (33 at audit time). Fresh surfacing scan: 33/34
+>   named in the frontend. The one unnamed is `schema-dashboard`, a
+>   counts aggregate (schemas / totalTables / totalRelations) whose
+>   numbers the Schema Designer already shows from its `schema-list`
+>   data — an unsurfaced convenience aggregate, not missing
+>   information; disposition recorded here rather than wiring a
+>   duplicate stat call.
+> - The 9/9 DBeaver/TablePlus checklist below stands; the page's
+>   no-fake-fallback discipline is unchanged.
+> - **Shipped in this batch:** the concept's serif headline — "Ask
+>   the data, {username}" — as the page header
+>   (`data-testid="database-greeting"`, `tests/database-greeting.test.tsx`).
+> - Server suites run locally this pass: database-domain-parity
+>   passes (in the combined 89-pass L9b run).
+
+
 > Derived, not asserted. Backend surface enumerated by reading
 > `server/domains/database.js` (806 LOC) in full —
 > `grep -n 'registerLensAction("database"' server/domains/database.js`

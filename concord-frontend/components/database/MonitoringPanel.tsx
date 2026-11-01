@@ -62,6 +62,12 @@ export function MonitoringPanel() {
 
   return (
     <div className="space-y-4">
+      {/* Honest label (S8/S11): everything below is the Concord SERVER
+          process — heap, perf, backpressure — not your Database
+          workspace. Workspace numbers live in the Analysis tab. */}
+      <p className="text-xs text-gray-400 border border-lattice-border rounded-lg px-3 py-2">
+        Server metrics — the Concord server process itself. For your workspace&rsquo;s tables, rows and query activity, see the Analysis tab.
+      </p>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <MiniBarChart data={perfHistory.map(p => p.heapUsed)} label="Heap Used (MB)" color="bg-neon-cyan" />
         <MiniBarChart data={perfHistory.map(p => p.queryRate)} label="Query Rate (q/s)" color="bg-neon-green" />

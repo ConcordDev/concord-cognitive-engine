@@ -30,6 +30,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useAuth } from '@/hooks/useAuth';
 import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { useUIStore } from '@/store/ui';
 import { cn } from '@/lib/utils';
@@ -123,6 +124,7 @@ function isDebugTool(value: unknown): value is DebugTool {
 }
 
 export function DebugWorkspace() {
+  const { user } = useAuth();
   useLensIdentity('debug');
   const { restore, persist } = useLensStatePersistence('debug');
   const [initialState] = useState(() => restore());
@@ -186,7 +188,7 @@ export function DebugWorkspace() {
     <div data-lens-theme="debug" className="min-h-full bg-[#080a0c] px-4 pb-24 pt-5 sm:px-7">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-5">
         <div>
-          <h1 className="font-vault mt-1 text-4xl leading-tight text-zinc-100 sm:text-5xl">Debug</h1>
+          <h1 className="font-vault mt-1 text-4xl leading-tight text-zinc-100 sm:text-5xl" data-testid="debug-greeting">What broke{user?.username ? `, ${user.username}` : ''}</h1>
           <p className="mt-2 text-sm text-zinc-500">{active.description}</p>
         </div>
         <div className="flex flex-wrap items-start gap-3">

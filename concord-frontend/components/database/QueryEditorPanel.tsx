@@ -3,12 +3,12 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { apiHelpers } from '@/lib/api/client';
-import { Play, Table2, FileJson, FileSpreadsheet, Terminal, ChevronLeft, ChevronRight } from 'lucide-react';
+import { lensRun } from '@/lib/api/client';
+import { Play, Table2, FileJson, FileSpreadsheet, Terminal, ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { exportCSV, exportJSON, type QueryResult } from './db-utils';
 
 export function QueryEditorPanel({ seedSql, onSeedConsumed }: { seedSql?: string | null; onSeedConsumed?: () => void }) {
-  const { items: queryItems, create: saveQuery } = useLensData('database', 'query', { seed: [] });
+  const { items: queryItems, create: saveQuery, update: updateQuery, remove: removeQuery } = useLensData('database', 'query', { seed: [] });
   const [sql, setSql] = useState('SELECT id, title, tier, tags, created_at\nFROM dtus\nORDER BY created_at DESC\nLIMIT 50;');
   const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
   const [resultPage, setResultPage] = useState(0);
@@ -24,31 +24,98 @@ export function QueryEditorPanel({ seedSql, onSeedConsumed }: { seedSql?: string
     }
   }, [seedSql, onSeedConsumed]);
 
+  // Auto-save into Saved Queries (S10): re-running the same SQL updates
+  // the existing entry instead of piling up duplicates. (Execution
+  // history proper is the server's query-history — see History tab.)
   const addToHistory = useCallback((query: string, duration: number, rowCount: number, success: boolean) => {
+    const existing = queryItems.find((it) => String((it.data as Record<string, unknown>)?.sql || '') === query);
+    if (existing) {
+      const prev = existing.data as Record<string, unknown>;
+      updateQuery(existing.id, {
+        data: { ...prev, timestamp: Date.now(), duration, rowCount, success },
+      }).catch((err) => console.error('Failed to update saved query:', err instanceof Error ? err.message : err));
+      return;
+    }
     historyIdRef.current += 1;
     const entry = { id: historyIdRef.current, sql: query, timestamp: Date.now(), duration, rowCount, success };
-    saveQuery({ title: query.slice(0, 80), data: entry as unknown as Record<string, unknown> }).catch((err) => console.error('Failed to save query to history:', err instanceof Error ? err.message : err));
-  }, [saveQuery]);
+    saveQuery({ title: query.slice(0, 80), data: entry as unknown as Record<string, unknown> }).catch((err) => console.error('Failed to save query:', err instanceof Error ? err.message : err));
+  }, [saveQuery, updateQuery, queryItems]);
 
+  // Saved Queries management (S10): rename + delete.
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
+  const [armedDeleteId, setArmedDeleteId] = useState<string | null>(null);
+  const commitRename = useCallback(() => {
+    if (!renamingId) return;
+    const title = renameDraft.trim();
+    const id = renamingId;
+    setRenamingId(null);
+    if (title) updateQuery(id, { title }).catch(() => undefined);
+  }, [renamingId, renameDraft, updateQuery]);
+  const deleteSaved = useCallback((id: string) => {
+    if (armedDeleteId !== id) { setArmedDeleteId(id); return; }
+    setArmedDeleteId(null);
+    removeQuery(id).catch(() => undefined);
+  }, [armedDeleteId, removeQuery]);
+
+  const [pendingConfirm, setPendingConfirm] = useState<{ sql: string; message: string } | null>(null);
   const executeQuery = useMutation({
-    mutationFn: (query: string) => apiHelpers.graph.query(query).then(r => r.data),
-    onSuccess: (data: QueryResult, query: string) => {
+    // The Query Editor runs against the workspace SQL engine (database
+    // query-run) — the same engine as the SQL Console. It previously sent
+    // SQL to the graph query API, whose result shape the renderer assumed
+    // and crashed on (F1). The result is normalised defensively: a missing
+    // rows/columns field renders as an empty result, never a crash.
+    mutationFn: async (vars: { sql: string; confirmDestructive?: boolean }): Promise<QueryResult & { needsConfirm?: boolean }> => {
+      // lensRun returns an axios-shaped { data: { ok, result, error } } envelope: the engine's payload
+      // is data.result, and a handler refusal arrives as data.ok === false with data.error.
+      const resp = await lensRun<{
+        columns?: string[]; rows?: Record<string, unknown>[]; rowCount?: number;
+        durationMs?: number; success?: boolean; error?: string; needsConfirm?: boolean;
+      }>('database', 'query-run', { sql: vars.sql, ...(vars.confirmDestructive ? { confirmDestructive: true } : {}) });
+      const r = resp?.data?.result ?? null;
+      const refusal = resp?.data?.ok === false ? (resp.data.error || r?.error || 'The query was refused.') : r?.error;
+      return {
+        columns: Array.isArray(r?.columns) ? r.columns : [],
+        rows: Array.isArray(r?.rows) ? r.rows : [],
+        rowCount: typeof r?.rowCount === 'number' ? r.rowCount : (Array.isArray(r?.rows) ? r.rows.length : 0),
+        duration: typeof r?.durationMs === 'number' ? r.durationMs : 0,
+        ...(refusal ? { error: refusal } : {}),
+        ...(r?.needsConfirm ? { needsConfirm: true } : {}),
+      };
+    },
+    onSuccess: (data: QueryResult & { needsConfirm?: boolean }, vars: { sql: string; confirmDestructive?: boolean }) => {
+      if (data.needsConfirm) {
+        // S5 guard: nothing ran; ask before running an unscoped write.
+        setPendingConfirm({ sql: vars.sql, message: data.error || 'This statement affects every row.' });
+        return;
+      }
+      setPendingConfirm(null);
       setQueryResult(data);
       setResultPage(0);
-      addToHistory(query, data.duration, data.rowCount, true);
+      addToHistory(vars.sql, data.duration, data.rowCount, !data.error);
     },
-    onError: (err: unknown, query: string) => {
+    onError: (err: unknown, vars: { sql: string; confirmDestructive?: boolean }) => {
       setQueryResult({ columns: [], rows: [], rowCount: 0, duration: 0, error: err instanceof Error ? err.message : 'Query execution failed' });
       setResultPage(0);
-      addToHistory(query, 0, 0, false);
+      addToHistory(vars.sql, 0, 0, false);
     },
   });
 
   const runQuery = useCallback(() => {
     const trimmed = sql.trim();
     if (!trimmed) return;
-    executeQuery.mutate(trimmed);
+    executeQuery.mutate({ sql: trimmed });
   }, [sql, executeQuery]);
+
+  // Pending + elapsed state for runs (S12): a ticking clock while the
+  // statement is in flight, so a slow run never looks like a hang.
+  const [elapsedMs, setElapsedMs] = useState(0);
+  useEffect(() => {
+    if (!executeQuery.isPending) { setElapsedMs(0); return; }
+    const t0 = Date.now();
+    const iv = window.setInterval(() => setElapsedMs(Date.now() - t0), 100);
+    return () => window.clearInterval(iv);
+  }, [executeQuery.isPending]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -59,11 +126,12 @@ export function QueryEditorPanel({ seedSql, onSeedConsumed }: { seedSql?: string
 
   const paginatedRows = useMemo(() => {
     if (!queryResult) return [];
+    const rows = Array.isArray(queryResult.rows) ? queryResult.rows : [];
     const start = resultPage * ROWS_PER_PAGE;
-    return queryResult.rows.slice(start, start + ROWS_PER_PAGE);
+    return rows.slice(start, start + ROWS_PER_PAGE);
   }, [queryResult, resultPage]);
 
-  const totalPages = queryResult ? Math.max(1, Math.ceil(queryResult.rows.length / ROWS_PER_PAGE)) : 0;
+  const totalPages = queryResult ? Math.max(1, Math.ceil((Array.isArray(queryResult.rows) ? queryResult.rows.length : 0) / ROWS_PER_PAGE)) : 0;
 
   return (
     <div className="space-y-4">
@@ -92,7 +160,7 @@ export function QueryEditorPanel({ seedSql, onSeedConsumed }: { seedSql?: string
             className="btn-neon flex items-center gap-2 text-sm"
           >
             <Play className="w-4 h-4" />
-            {executeQuery.isPending ? 'Executing...' : 'Execute'}
+            {executeQuery.isPending ? `Executing… ${(elapsedMs / 1000).toFixed(1)}s` : 'Execute'}
           </button>
           <button
             onClick={() => { setSql(''); setQueryResult(null); }}
@@ -107,6 +175,26 @@ export function QueryEditorPanel({ seedSql, onSeedConsumed }: { seedSql?: string
             </span>
           )}
         </div>
+        {pendingConfirm && (
+          <div className="border border-amber-500/40 bg-amber-500/5 rounded p-3 space-y-2" role="alert">
+            <p className="text-xs text-amber-200">{pendingConfirm.message}</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => executeQuery.mutate({ sql: pendingConfirm.sql, confirmDestructive: true })}
+                disabled={executeQuery.isPending}
+                className="px-3 py-1.5 text-xs rounded bg-amber-500 text-black font-semibold disabled:opacity-40"
+              >
+                Run anyway
+              </button>
+              <button
+                onClick={() => setPendingConfirm(null)}
+                className="px-3 py-1.5 text-xs border border-lattice-border rounded hover:bg-lattice-surface text-gray-300"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {queryResult && queryResult.rows.length > 0 ? (
@@ -195,14 +283,45 @@ export function QueryEditorPanel({ seedSql, onSeedConsumed }: { seedSql?: string
           </h2>
           <div className="space-y-2 max-h-[300px] overflow-y-auto">
             {queryItems.map(item => (
-              <button
+              <div
                 key={item.id}
-                onClick={() => { setSql(String((item.data as Record<string, unknown>)?.sql || item.title)); }}
-                className="w-full text-left bg-lattice-surface border border-lattice-border/50 rounded p-2 hover:bg-lattice-elevated transition-colors"
+                className="flex items-start gap-1.5 w-full text-left bg-lattice-surface border border-lattice-border/50 rounded p-2 hover:bg-lattice-elevated transition-colors"
               >
-                <p className="text-xs font-medium text-white truncate">{item.title}</p>
-                <p className="text-[11px] text-gray-400 font-mono truncate">{String((item.data as Record<string, unknown>)?.sql || '').slice(0, 60)}</p>
-              </button>
+                <button
+                  onClick={() => { setSql(String((item.data as Record<string, unknown>)?.sql || item.title)); }}
+                  className="flex-1 min-w-0 text-left"
+                >
+                  <p className="text-xs font-medium text-white truncate">{item.title}</p>
+                  <p className="text-[11px] text-gray-400 font-mono truncate">{String((item.data as Record<string, unknown>)?.sql || '').slice(0, 60)}</p>
+                </button>
+                {renamingId === item.id ? (
+                  <input
+                    autoFocus
+                    value={renameDraft}
+                    onChange={e => setRenameDraft(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenamingId(null); }}
+                    onBlur={commitRename}
+                    aria-label="Rename saved query"
+                    className="w-28 bg-lattice-bg border border-neon-cyan/50 rounded px-1 py-0.5 text-[11px] text-gray-100"
+                  />
+                ) : (
+                  <button
+                    onClick={() => { setRenamingId(item.id); setRenameDraft(item.title); }}
+                    className="p-1 text-gray-500 hover:text-gray-300"
+                    aria-label={`Rename saved query ${item.title}`}
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                )}
+                <button
+                  onClick={() => deleteSaved(item.id)}
+                  onBlur={() => setArmedDeleteId(a => (a === item.id ? null : a))}
+                  className={armedDeleteId === item.id ? 'px-1.5 py-0.5 rounded bg-rose-500 text-white text-[10px] font-semibold' : 'p-1 text-gray-500 hover:text-red-400'}
+                  aria-label={armedDeleteId === item.id ? 'Confirm delete saved query' : `Delete saved query ${item.title}`}
+                >
+                  {armedDeleteId === item.id ? 'Delete?' : <Trash2 className="w-3 h-3" />}
+                </button>
+              </div>
             ))}
           </div>
         </div>
