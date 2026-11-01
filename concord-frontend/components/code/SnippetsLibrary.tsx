@@ -31,6 +31,10 @@ export function SnippetsLibrary({ onInsert, currentLanguage, currentSelection }:
   const [newLanguage, setNewLanguage] = useState(currentLanguage || 'javascript');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  // S3: in-UI delete confirmation (no window.confirm — native-dialog
+  // dead-control class) and failures that speak instead of vanishing.
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
     refresh();
@@ -82,17 +86,32 @@ export function SnippetsLibrary({ onInsert, currentLanguage, currentSelection }:
   }
 
   async function deleteSnippet(id: string) {
-    if (!confirm('Delete snippet?')) return;
+    setDeleteError('');
     try {
-      await lensRun({
+      const r = await lensRun({
         domain: 'code',
         action: 'snippets-delete',
         input: { id },
       });
+      if (r.data?.ok === false) {
+        setDeleteError(`Could not delete the snippet: ${r.data?.error || 'the server refused'}`);
+        return;
+      }
+      setConfirmingId(null);
       setSnippets(prev => prev.filter(s => s.id !== id));
+      // Prove persistence rather than trusting the local filter: the
+      // list the user sees after this is the server's list.
+      await refresh();
     } catch (e) {
       console.error('[Snippets] delete failed', e);
+      setDeleteError('Could not delete the snippet: the request failed.');
     }
+  }
+
+  function handleDeleteClick(id: string) {
+    if (confirmingId === id) { void deleteSnippet(id); return; }
+    setConfirmingId(id);
+    setTimeout(() => setConfirmingId(cur => (cur === id ? null : cur)), 4000);
   }
 
   const filtered = useMemo(() => {
@@ -202,6 +221,10 @@ export function SnippetsLibrary({ onInsert, currentLanguage, currentSelection }:
             )}
           </div>
         ) : (
+          <>
+          {deleteError && (
+            <div role="alert" className="mx-2 mt-1 px-2 py-1.5 rounded bg-rose-500/10 border border-rose-500/30 text-[11px] text-rose-200">{deleteError}</div>
+          )}
           <ul className="py-1">
             {filtered.map(s => {
               const isOpen = expanded.has(s.id);
@@ -231,13 +254,25 @@ export function SnippetsLibrary({ onInsert, currentLanguage, currentSelection }:
                       >
                         <Copy className="w-3 h-3" />
                       </button>
-                      <button
-                        onClick={() => deleteSnippet(s.id)}
-                        title="Delete"
-                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-400"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                      {confirmingId === s.id ? (
+                        <button
+                          onClick={() => handleDeleteClick(s.id)}
+                          title="Confirm delete"
+                          aria-label={`Confirm delete ${s.title}`}
+                          className="p-1 px-1.5 rounded bg-rose-500/20 text-rose-200 text-[10px] font-bold hover:bg-rose-500/30"
+                        >
+                          Delete?
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleDeleteClick(s.id)}
+                          title="Delete"
+                          aria-label={`Delete ${s.title}`}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-400"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                     {isOpen && (
                       <pre className="mt-2 ml-5 text-[11px] text-gray-300 font-mono bg-lattice-deep border border-lattice-border rounded p-2 max-h-40 overflow-auto whitespace-pre">
@@ -249,6 +284,7 @@ export function SnippetsLibrary({ onInsert, currentLanguage, currentSelection }:
               );
             })}
           </ul>
+          </>
         )}
       </div>
     </div>

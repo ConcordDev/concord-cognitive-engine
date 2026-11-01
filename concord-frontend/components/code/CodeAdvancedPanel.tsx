@@ -4,25 +4,26 @@
 // previously had backend macros but no UI:
 //   1. Live language-server IntelliSense (hover types + signature help)
 //   2. Remote GitHub repo push / pull
-//   3. Step debugger with breakpoints + watch + call stack
+//   3. Breakpoint markers (the step debugger is retired — see DebuggerTab)
 //   4. Codebase-wide AI chat with @-file context
 //   5. Extensions / plugin system
 //   6. Split-pane multi-file editing layout
 //   7. Real-time multiplayer / Live Share
 //
 // Every value shown here is real: project files from the virtual workspace,
-// live GitHub REST data, sandbox-executed debug frames, LLM replies, and
+// live GitHub REST data, LLM replies, and
 // per-user persisted extensions / layouts / sessions. No mock data.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { useYjsDoc } from '@/lib/hooks/useYjsDoc';
+import { notifyExtensionsChanged } from '@/lib/code-extensions';
 import { useYjsAwareness } from '@/hooks/useYjsAwareness';
 import { useAuth } from '@/hooks/useAuth';
 import * as Y from 'yjs';
 import {
   Sparkles, Bug, Code2 as Github, MessageSquare, Puzzle, Columns, Users,
-  Loader2, Play, Plus, Trash2, RefreshCw, Send, Power, GitBranch,
+  Loader2, Plus, Trash2, RefreshCw, Send, Power, GitBranch,
   Terminal as TerminalIcon, MapPin,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
@@ -42,11 +43,11 @@ function offsetToLineCol(text: string, offset: number): { line: number; col: num
   return { line: lines.length, col: lines[lines.length - 1].length + 1 };
 }
 
-type AdvTab = 'intellisense' | 'debugger' | 'remote' | 'chat' | 'extensions' | 'layout' | 'liveshare';
+export type AdvTab = 'intellisense' | 'debugger' | 'remote' | 'chat' | 'extensions' | 'layout' | 'liveshare';
 
 const TABS: { id: AdvTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'intellisense', label: 'IntelliSense', icon: Sparkles },
-  { id: 'debugger', label: 'Debugger', icon: Bug },
+  { id: 'debugger', label: 'Breakpoints', icon: Bug },
   { id: 'remote', label: 'Remote Git', icon: Github },
   { id: 'chat', label: 'Codebase Chat', icon: MessageSquare },
   { id: 'extensions', label: 'Extensions', icon: Puzzle },
@@ -56,8 +57,13 @@ const TABS: { id: AdvTab; label: string; icon: React.ComponentType<{ className?:
 
 interface FileRow { path: string; language: string; size: number }
 
-export function CodeAdvancedPanel() {
+export function CodeAdvancedPanel({ initialTab }: { initialTab?: string } = {}) {
   const [tab, setTab] = useState<AdvTab>('intellisense');
+  // S13: deep-links from the workspace ("Open Extras — Debugger" etc.)
+  // select the named tab, on mount and whenever the request changes.
+  useEffect(() => {
+    if (initialTab && TABS.some(t => t.id === initialTab)) setTab(initialTab as AdvTab);
+  }, [initialTab]);
   // Shared across the quick-script tabs + CodeWorkbenchSection via
   // CodeProjectContext — previously this was its own, disconnected
   // ProjectSwitcher instance. See that file's header comment.
@@ -228,20 +234,21 @@ function IntelliSenseTab({ projectId, files }: { projectId: string; files: FileR
   );
 }
 
-// ── 2. Step debugger — breakpoints + watch + call stack ────────────────────
+// ── 2. Breakpoint markers — the step debugger is retired ─────────────────
+// code.debug-run was retired unconditionally when host code execution was
+// retired (INC-145): there is no server debugger to run against, and this
+// panel must not promise one. What remains true and useful: users can mark
+// lines while they read a file. The markers are local reading aids only —
+// nothing executes, nothing is hit-tested, and the copy says exactly that.
 function DebuggerTab({ projectId, files }: { projectId: string; files: FileRow[] }) {
   const [path, setPath] = useState('');
   const [code, setCode] = useState('');
   const [breakpoints, setBreakpoints] = useState<Set<number>>(new Set());
-  const [watch, setWatch] = useState('');
-  const [result, setResult] = useState<Record<string, unknown> | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => { if (!path && files[0]) setPath(files[0].path); }, [files, path]);
 
   const loadFile = useCallback(async (p: string) => {
-    setPath(p); setBreakpoints(new Set()); setResult(null);
+    setPath(p); setBreakpoints(new Set());
     try {
       const r = await lensRun('code', 'files-read', { projectId, path: p });
       if (r.data?.ok) setCode(String(r.data.result?.content || ''));
@@ -258,31 +265,18 @@ function DebuggerTab({ projectId, files }: { projectId: string; files: FileRow[]
     });
   }, []);
 
-  const run = useCallback(async () => {
-    if (!code.trim()) return;
-    setBusy(true); setErr(null); setResult(null);
-    try {
-      const r = await lensRun('code', 'debug-run', {
-        code,
-        language: path.endsWith('.ts') || path.endsWith('.tsx') ? 'typescript' : 'javascript',
-        breakpoints: Array.from(breakpoints),
-        watch: watch.split(',').map((w) => w.trim()).filter(Boolean),
-      });
-      if (r.data?.ok) setResult(r.data.result as Record<string, unknown>);
-      else setErr(r.data?.error || 'debug run failed');
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'debug failed');
-    } finally { setBusy(false); }
-  }, [code, path, breakpoints, watch]);
-
   const lines = code.split('\n');
-  const frames = (result?.frames as { line: number; sourceText: string; callStack: string[]; watch: Record<string, string> }[]) || [];
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-gray-400">
-        Click a line number to set a breakpoint. Run captures a real call stack + watch values each time a breakpoint is hit.
-      </p>
+      <div className="rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2.5">
+        <p className="text-xs text-amber-200 font-medium">Step debugging is unavailable.</p>
+        <p className="text-xs text-gray-400 mt-1">
+          Server-side code execution was retired, so there is no debugger to run against — no call stack,
+          watch values, or stepping. You can still mark lines below while you read; the markers are
+          reading aids only and nothing is executed. To run this file, use Run in the editor.
+        </p>
+      </div>
       <div className="flex flex-wrap gap-2">
         <select
           value={path}
@@ -294,22 +288,12 @@ function DebuggerTab({ projectId, files }: { projectId: string; files: FileRow[]
             <option key={f.path} value={f.path}>{f.path}</option>
           ))}
         </select>
-        <input
-          value={watch}
-          onChange={(e) => setWatch(e.target.value)}
-          placeholder="Watch expressions, comma-separated"
-          className="flex-1 min-w-[180px] bg-[#161b22] border border-white/10 rounded px-2 py-1.5 text-xs text-gray-200"
-        />
-        <button
-          onClick={run}
-          disabled={busy || !code.trim()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-green-600 hover:bg-green-500 text-white text-xs font-bold disabled:opacity-40"
-        >
-          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-          Debug
-        </button>
+        {breakpoints.size > 0 && (
+          <span className="text-[11px] text-gray-400 self-center">
+            {breakpoints.size} marker{breakpoints.size === 1 ? '' : 's'} set
+          </span>
+        )}
       </div>
-      {err && <div className="text-xs text-red-400 px-2 py-1.5 bg-red-500/10 rounded">{err}</div>}
       <div className="rounded-lg border border-white/10 bg-[#161b22] overflow-auto max-h-72">
         {lines.length === 1 && !lines[0] ? (
           <p className="p-3 text-xs text-gray-400">No file loaded yet.</p>
@@ -335,46 +319,6 @@ function DebuggerTab({ projectId, files }: { projectId: string; files: FileRow[]
           </table>
         )}
       </div>
-      {result && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-3 text-xs">
-            <span className="text-gray-400">{frames.length} breakpoint hit{frames.length === 1 ? '' : 's'}</span>
-            <span className={`${(result.exitCode as number) === 0 ? 'text-green-400' : 'text-red-400'}`}>
-              exit {String(result.exitCode)}
-            </span>
-            <span className="text-gray-400">{String(result.durationMs || 0)}ms</span>
-          </div>
-          {frames.length === 0 && <p className="text-xs text-gray-400">No breakpoints were hit. Set one and run again.</p>}
-          {frames.map((f, i) => (
-            <div key={i} className="rounded border border-white/10 bg-[#0d1117] p-2.5 space-y-1.5">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-400">line {f.line}</span>
-                <code className="text-xs text-gray-300 font-mono truncate">{f.sourceText}</code>
-              </div>
-              {Object.keys(f.watch || {}).length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(f.watch).map(([k, v]) => (
-                    <span key={k} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300">
-                      {k} = {v}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {f.callStack.length > 0 && (
-                <ol className="text-[10px] text-gray-400 font-mono space-y-0.5">
-                  {f.callStack.map((c, ci) => <li key={ci}>↳ {c}</li>)}
-                </ol>
-              )}
-            </div>
-          ))}
-          {(result.stdout as string) ? (
-            <pre className="text-[11px] text-green-400 font-mono bg-[#0d1117] rounded p-2 whitespace-pre-wrap">{String(result.stdout)}</pre>
-          ) : null}
-          {(result.stderr as string) ? (
-            <pre className="text-[11px] text-red-400 font-mono bg-[#0d1117] rounded p-2 whitespace-pre-wrap">{String(result.stderr)}</pre>
-          ) : null}
-        </div>
-      )}
     </div>
   );
 }
@@ -590,7 +534,7 @@ function CodebaseChatTab({ projectId, files }: { projectId: string; files: FileR
 
 // ── 5. Extensions / plugin system ──────────────────────────────────────────
 function ExtensionsTab() {
-  type Ext = { id: string; name: string; kind: string; description: string; enabled?: boolean; installedAt?: string };
+  type Ext = { id: string; name: string; kind: string; description: string; effect?: string; enabled?: boolean; installedAt?: string };
   const [catalog, setCatalog] = useState<Ext[]>([]);
   const [installed, setInstalled] = useState<Ext[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
@@ -602,7 +546,12 @@ function ExtensionsTab() {
         lensRun('code', 'extensions-list', {}),
       ]);
       if (c.data?.ok) setCatalog((c.data.result?.catalog || []) as Ext[]);
-      if (l.data?.ok) setInstalled((l.data.result?.extensions || []) as Ext[]);
+      if (l.data?.ok) {
+        const list = (l.data.result?.extensions || []) as Ext[];
+        setInstalled(list);
+        // S15: open editors re-apply their extension effects.
+        notifyExtensionsChanged(list);
+      }
     } catch { /* best effort */ }
   }, []);
 
@@ -642,6 +591,7 @@ function ExtensionsTab() {
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-gray-200 truncate">{e.name}</p>
                   <p className="text-[10px] text-gray-400">{e.kind}</p>
+                  {e.effect && <p className="text-[10px] text-gray-500">{e.effect}</p>}
                 </div>
                 <button onClick={() => toggle(e.id, !e.enabled)} disabled={busy === e.id}
                   className={`p-1.5 rounded ${e.enabled ? 'text-green-400 hover:bg-green-500/10' : 'text-gray-600 hover:bg-white/5'}`}
@@ -666,6 +616,7 @@ function ExtensionsTab() {
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-gray-200 truncate">{e.name}</p>
                 <p className="text-[10px] text-gray-400 truncate">{e.description}</p>
+                {e.effect && <p className="text-[10px] text-gray-500">{e.effect}</p>}
               </div>
               <button onClick={() => install(e.id)} disabled={busy === e.id}
                 className="flex items-center gap-1 px-2.5 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-bold disabled:opacity-40">
@@ -1086,7 +1037,9 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
         )}
       </div>
       {/* Shared awareness — breakpoints from peers + shared terminal. */}
-      <SharedDebugTerminalTile code={session.code} />
+      <SharedDebugTerminalTile code={session.code} onTerminalLine={(data) => {
+        setOps(prev => [...prev, { seq: -Date.now(), kind: 'terminal', actor: 'you', path: data.slice(0, 80), at: new Date().toISOString() }].slice(-100));
+      }} />
       <div className="rounded-lg border border-white/10 bg-[#161b22] p-3">
         <p className="text-[10px] uppercase text-gray-400 mb-2">Session activity ({ops.length})</p>
         {ops.length === 0 ? (
@@ -1117,7 +1070,12 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
 // server/lib/code-liveshare-bus.js). Pure pub-sub: the server doesn't
 // run debuggers or PTYs, it just relays state between participants so
 // each client sees what the others have set / executed.
-function SharedDebugTerminalTile({ code }: { code: string }) {
+export function SharedDebugTerminalTile({ code, onTerminalLine }: {
+  code: string;
+  /** S14 (F14): a sent line is also recorded in the session activity
+   *  feed (the parent's op log), so it survives in the session record. */
+  onTerminalLine?: (data: string) => void;
+}) {
   type Bp = { path: string; line: number; fromPeerId?: string };
   type TermLine = { kind: 'in' | 'out'; data: string; from: string; at: number };
   const [breakpoints, setBreakpoints] = useState<Bp[]>([]);
@@ -1185,10 +1143,17 @@ function SharedDebugTerminalTile({ code }: { code: string }) {
 
   const sendInput = useCallback(() => {
     const s = socketRef.current as { emit: (e: string, p: unknown) => void } | null;
-    if (!s || !terminalInput.trim()) return;
-    s.emit('liveshare:terminal:input', { code, terminalId, data: terminalInput + '\n' });
+    if (!terminalInput.trim()) return;
+    const data = terminalInput + '\n';
+    // S14 (F14): the bus relays with socket.to(room) — the sender is
+    // excluded by design, so a sent line never came back and the
+    // sender's panel sat at "0 lines" forever. Echo locally first
+    // (the sender's own view is the verifiable record), then relay.
+    setTerminalLog(prev => [...prev, { kind: 'in' as const, data, from: 'you', at: Date.now() }].slice(-200));
+    onTerminalLine?.(terminalInput);
+    if (s) s.emit('liveshare:terminal:input', { code, terminalId, data });
     setTerminalInput('');
-  }, [code, terminalInput]);
+  }, [code, terminalInput, onTerminalLine]);
 
   return (
     <div className="rounded-lg border border-white/10 bg-[#161b22] p-3 space-y-3">

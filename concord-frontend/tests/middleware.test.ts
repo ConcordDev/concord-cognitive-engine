@@ -138,6 +138,14 @@ describe('Auth Middleware', () => {
       expect(mockNext).toHaveBeenCalled();
     });
 
+    it('allows /pyodide/* through (vendored Python runtime .js/.wasm/.zip are not covered by STATIC_ASSET_RE)', () => {
+      for (const f of ['pyodide.js', 'pyodide.asm.wasm', 'python_stdlib.zip', 'pyodide-lock.json']) {
+        middleware(makeRequest(`/pyodide/v0.26.4/${f}`));
+        expect(mockNext).toHaveBeenCalled();
+        mockNext.mockClear();
+      }
+    });
+
     it('allows /unity-client/* through (Unity WebGL index.html/.js/.wasm are not covered by STATIC_ASSET_RE)', () => {
       middleware(makeRequest('/unity-client/index.html'));
       expect(mockNext).toHaveBeenCalled();

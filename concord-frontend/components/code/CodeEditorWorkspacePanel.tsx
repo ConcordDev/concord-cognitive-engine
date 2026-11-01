@@ -5,6 +5,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { SafeCard } from '@/components/common/SafeCard';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { QuickScriptProjectBadge } from '@/components/code/QuickScriptProjectBadge';
+import { RunStamp, UnfurlPre, QuietSuccessEdge } from '@/components/code/delight';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -32,7 +33,7 @@ import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import {
   Play, FileCode, Terminal, FolderTree, Plus, X,
   ChevronRight, ChevronDown, File, Folder, FolderOpen,
-  Sparkles, RefreshCw, Copy,
+  Sparkles, RefreshCw, Copy, Check,
   Download, Zap, Waves, SlidersHorizontal,
   Loader2, BookOpen,
   Save, Maximize2, Minimize2, Layers,
@@ -45,6 +46,7 @@ import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import { CodeRunMenu } from '@/components/code/CodeRunMenu';
 import type { CodeExecResult } from '@/components/code/codeRunReport';
 import { readExecStatus, subscribeExecStatus, type CodeExecStatus } from '@/components/code/codeExecGate';
+import { isLocallyRunnable, runLocalScript } from '@/components/code/localExec';
 import { codeAiSessionId, fetchCodeAiHistory } from '@/components/code/codeAiHistory';
 import { LIVE_PROJECT_ID, LIVE_SNIPPET_PATH, snippetFromFilesRead, tabAfterSnippetRead } from '@/components/code/liveSnippet';
 
@@ -179,7 +181,36 @@ function isUserCodeDtu(d: CodeDtuLike, userId?: string | null): boolean {
   return true;
 }
 
-export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () => void }) {
+/**
+ * S15 (F15): copy that actually copies — the Clipboard API silently
+ * no-ops (undefined or permission-denied) in non-secure contexts; fall
+ * back to a textarea + execCommand, and report honestly either way.
+ */
+export async function copyTextRobust(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(text); return true; }
+    throw new Error('clipboard API unavailable');
+  } catch {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch { return false; }
+  }
+}
+
+export function CodeEditorWorkspacePanel({ onOpenExtras }: {
+  /** S13 (F12): deep-links to the named Advanced panel tab —
+   *  'debugger' | 'liveshare' | 'extensions'. Undefined opens the
+   *  extras surface as-is. */
+  onOpenExtras?: (tab?: string) => void;
+}) {
   const { user, isAuthenticated } = useAuth();
   const { alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('code');
 
@@ -215,6 +246,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
     { id: 'main', name: 'untitled.js', language: 'javascript', content: '', isDirty: false, scriptType: 'snippet' },
   ]);
   const [activeTabId, setActiveTabId] = useState('main');
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [scriptOutput, setScriptOutput] = useState<{ log: string; visualization: string } | null>(null);
   const [consoleLog, setConsoleLog] = useState<string[]>([]);
   const [activeScriptType, setActiveScriptType] = useState<ScriptType>('snippet');
@@ -275,6 +307,10 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
   const execOff = exec?.enabled === false;
   const execUnknown = exec == null;
   const execReason = execOff ? (exec?.reason || 'Live code execution is disabled in this environment.') : '';
+  // S1 (PR #1707): JavaScript/TypeScript run locally in the browser, so
+  // the Run button lives for those languages regardless of the server
+  // exec flag; the server sandbox stays founder/sovereign for the rest.
+  const localRun = isLocallyRunnable(activeTab.language);
   const semanticCtx = useMemo(
     () => ({ projectId: LIVE_PROJECT_ID, path: activeTab.name, run: runCodeMacro }),
     [activeTab.name, runCodeMacro],
@@ -492,16 +528,34 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
   // to null whenever the active tab changes so a stale report can never
   // be saved against a different file.
   const [runResult, setRunResult] = useState<CodeExecResult | null>(null);
+  // Honest loading state (M6): set while the Python runtime cold-loads,
+  // so a multi-second first Python run never looks like a hang.
+  const [runNotice, setRunNotice] = useState('');
   const [runElapsedMs, setRunElapsedMs] = useState<number | undefined>(undefined);
+  const [lastRun, setLastRun] = useState<{ elapsedMs: number; exitCode: number | null; timedOut: boolean; supported: boolean } | null>(null);
+  const [runNonce, setRunNonce] = useState(0);
+  const [saveFlash, setSaveFlash] = useState(0);
   useEffect(() => { setRunResult(null); setRunElapsedMs(undefined); }, [activeTabId]);
 
   const runScriptMutation = useMutation({
     mutationFn: async () => {
-      // Dead-macro-call fix (verification-audit campaign): 'code.generate'
-      // was never registered — every run hit onError and silently fell
-      // back to the local simulation. 'code.exec' is the real macro for
-      // this shape (executes JS/TS in a sandboxed node:vm; other
-      // languages return an honest "unsupported" result).
+      // S1 (PR #1707): JavaScript/TypeScript run locally in the user's
+      // browser (localExec.ts) — the server host sandbox was retired
+      // (INC-145) and its WASM path stays founder/sovereign, so the
+      // server call below serves only the languages the local runner
+      // does not claim, and refuses honestly for normal accounts.
+      if (isLocallyRunnable(activeTab.language)) {
+        const outcome = await runLocalScript({
+          code: activeTab.content,
+          language: activeTab.language,
+          onStatus: (phase) => {
+            if (phase === 'loading-runtime') {
+              setRunNotice('Loading the Python runtime — first Python run only; on a slow device this can take several seconds…');
+            }
+          },
+        });
+        return { data: { result: outcome.result }, elapsedMs: outcome.elapsedMs, timedOut: outcome.timedOut, local: true as const, loadedRuntime: outcome.loadedRuntime === true, runtimeLoadMs: outcome.runtimeLoadMs };
+      }
       const started = performance.now();
       const res = await api.post('/api/lens/run', {
         domain: 'code',
@@ -512,9 +566,10 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
           scriptType: activeTab.scriptType || activeScriptType,
         },
       });
-      return { data: res.data, elapsedMs: Math.round(performance.now() - started) };
+      return { data: res.data, elapsedMs: Math.round(performance.now() - started), timedOut: false, local: false as const, loadedRuntime: false, runtimeLoadMs: undefined as number | undefined };
     },
-    onSuccess: ({ data, elapsedMs }) => {
+    onSuccess: ({ data, elapsedMs, timedOut, local, loadedRuntime, runtimeLoadMs }) => {
+      setRunNotice('');
       // code.exec returns { result: { stdout, stderr, exitCode, supported } },
       // not a bare string/.content — read the real shape. No fake fallback:
       // when the sandbox refuses (supported:false) the output panel says so,
@@ -522,37 +577,49 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
       const result = (data?.result as CodeExecResult | undefined) || null;
       setRunResult(result);
       setRunElapsedMs(elapsedMs);
+      // S18 (D1): the run stamp + unfurl key on THIS run's real figures.
+      setLastRun({ elapsedMs, exitCode: Number.isFinite(result?.exitCode) ? Number(result?.exitCode) : null, timedOut, supported: result?.supported !== false });
+      setRunNonce((n) => n + 1);
       const supported = result?.supported !== false;
       const stdout = String(result?.stdout || '').trim();
       const stderr = String(result?.stderr || '').trim();
       const exitCode = Number.isFinite(result?.exitCode) ? Number(result?.exitCode) : null;
       if (!supported) {
         const lang = activeTab.language || 'this language';
-        const reason = stderr || `The sandbox does not run ${lang}.`;
+        const reason = stderr || `Concord does not run ${lang} here.`;
         setScriptOutput({ log: reason, visualization: '' });
       } else {
         const lines: string[] = [];
+        if (loadedRuntime) {
+          lines.push(`[Python runtime loaded in ${runtimeLoadMs ? `${(runtimeLoadMs / 1000).toFixed(1)}s` : 'a few seconds'} — later Python runs skip this]`);
+        }
         if (stdout) lines.push(stdout);
         if (stderr) lines.push(stderr);
-        if (lines.length === 0) lines.push('(no output)');
-        lines.push(`\n[exit ${exitCode ?? '?'} · ${elapsedMs}ms]`);
+        if (timedOut) {
+          lines.push(`[stopped after ${Math.round(elapsedMs / 1000)}s — the code did not finish; the output above is what it printed before it was stopped]`);
+        } else {
+          if (lines.length === 0) lines.push('(no output)');
+          lines.push(`\n[exit ${exitCode ?? '?'} · ${elapsedMs}ms]`);
+        }
         setScriptOutput({ log: lines.join('\n'), visualization: '' });
       }
       setConsoleLog((prev) => [
         ...prev,
-        `[${new Date().toLocaleTimeString()}] ${supported ? `Script executed (exit ${exitCode ?? '?'})` : 'Sandbox refused this language'}`,
+        `[${new Date().toLocaleTimeString()}] ${!supported ? 'Concord does not run this language here' : timedOut ? 'Run stopped (timeout) — partial output kept' : local ? `Script executed locally in your browser (exit ${exitCode ?? '?'})` : `Script executed (exit ${exitCode ?? '?'})`}`,
         `[${new Date().toLocaleTimeString()}] Type: ${SCRIPT_TYPES.find((s) => s.id === (activeTab.scriptType || activeScriptType))?.name}`,
       ]);
       setShowOutput(true);
       setOutputTab('output');
     },
     onError: (error: Record<string, unknown>) => {
+      setRunNotice('');
       // No fake fallback. A failed run is a failed run — the screen says
       // so and offers no DTU. The prior behaviour invented a "[Code Engine]
       // Running… [OK] Execution complete" string on every error, which
       // claimed success the sandbox never produced.
       setRunResult(null);
       setRunElapsedMs(undefined);
+      setLastRun(null);
       const msg = String(error?.message || 'Run failed');
       setScriptOutput({ log: `Run failed: ${msg}`, visualization: '' });
       setConsoleLog((prev) => [
@@ -572,9 +639,16 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
     );
   }, [activeTabId]);
 
+  // S8 (F8): a failed Scratch save must name the failing field in the
+  // UI — the server's validation errors do name them; the old handler
+  // swallowed the error to the console and the user got a bare
+  // "validation failed" toast with nothing actionable.
+  const [saveError, setSaveError] = useState('');
+
   const handleSave = useCallback(async () => {
     const tab = tabs.find(t => t.id === activeTabId);
     if (!tab) return;
+    setSaveError('');
     try {
       await saveScript({
         title: tab.name,
@@ -582,10 +656,21 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
         meta: { tags: ['script', tab.scriptType], status: 'active' },
       });
       setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, isDirty: false } : t));
+      setSaveFlash((n) => n + 1);
+      void refetch();
     } catch (err) {
       console.error('[Code] Save failed:', err);
+      const e = err as { response?: { data?: { errors?: unknown; details?: unknown; error?: unknown } }; message?: string };
+      const data = e?.response?.data;
+      const named = [data?.errors, data?.details]
+        .flatMap(v => (Array.isArray(v) ? v : []))
+        .map(v => String(v))
+        .filter(Boolean);
+      setSaveError(named.length > 0
+        ? `Save failed — ${named.join(' ')}`
+        : `Save failed${data?.error ? ` — ${String(data.error)}` : ''}${e?.message && !data?.error ? `: ${e.message}` : ''}. Nothing was saved.`);
     }
-  }, [tabs, activeTabId, saveScript]);
+  }, [tabs, activeTabId, saveScript, refetch]);
 
   const handleCodeAction = async (action: string) => {
     const targetId = savedScripts[0]?.id;
@@ -734,7 +819,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
       { id: 'output-tab',  label: 'Show script output',          hint: '',          action: () => { setOutputTab('output'); setPaletteOpen(false); } },
       { id: 'project',     label: 'Open project workbench',      hint: '⌘⇧E',       action: () => { setWorkspaceKind('project'); setPaletteOpen(false); } },
       { id: 'scratch',     label: 'Open scratch editor',         hint: '⌘⇧N',       action: () => { setWorkspaceKind('scratch'); setPaletteOpen(false); } },
-      { id: 'extras',      label: 'Open extras (Live Share, debugger)', hint: '⌘2', action: () => { onOpenExtras?.(); setPaletteOpen(false); } },
+      { id: 'extras',      label: 'Open extras (Live Share, debugger)', hint: '⌘2', action: () => { onOpenExtras?.('liveshare'); setPaletteOpen(false); } },
     ];
     return [...actionCmds, ...tabCmds, ...fileCmds];
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1145,20 +1230,23 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
       {/* Real-time Enhancement Toolbar */}
       <div className="flex items-center gap-2 whitespace-nowrap">
         <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <VisionAnalyzeButton
-          domain="code"
-          prompt="Analyze this code screenshot or error image. Identify the programming language, describe what the code does, spot any bugs or issues, and suggest fixes."
-          onResult={(res) => {
-            const comment = `// Vision Analysis Suggestion:\n// ${res.analysis.replace(/\n/g, '\n// ')}\n\n`;
-            updateTabContent(comment + (activeTab?.content || ''));
-          }}
-        />
         {realtimeAlerts.length > 0 && (
           <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
             {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
           </span>
         )}
       </div>
+      {/* S15 (F15): the Vision button gets its own block — inside the
+          nowrap toolbar row its result panel was squeezed into the flex
+          row and never visibly rendered. */}
+      <VisionAnalyzeButton
+        domain="code"
+        prompt="Analyze this code screenshot or error image. Identify the programming language, describe what the code does, spot any bugs or issues, and suggest fixes."
+        onResult={(res) => {
+          const comment = `// Vision Analysis Suggestion:\n// ${res.analysis.replace(/\n/g, '\n// ')}\n\n`;
+          updateTabContent(comment + (activeTab?.content || ''));
+        }}
+      />
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
@@ -1207,18 +1295,21 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
 
           <button
             type="button"
-            onClick={() => { if (!execOff && !execUnknown) runScriptMutation.mutate(); }}
-            disabled={runScriptMutation.isPending || execOff || execUnknown}
+            onClick={() => { if (localRun || (!execOff && !execUnknown)) runScriptMutation.mutate(); }}
+            disabled={runScriptMutation.isPending || (!localRun && (execOff || execUnknown))}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-green-600 hover:bg-green-500 text-white text-[13px] font-semibold transition-colors disabled:opacity-40"
-            title={execOff ? execReason : execUnknown ? 'Checking whether live execution is enabled.' : 'Run (⌘↵)'}
+            title={localRun ? 'Run (⌘↵) — runs locally in your browser' : execOff ? execReason : execUnknown ? 'Checking whether live execution is enabled.' : 'Run (⌘↵)'}
           >
             {runScriptMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <Play className="w-4 h-4 fill-current" />
             )}
-            {runScriptMutation.isPending ? 'Running…' : execOff ? 'Execution disabled' : 'Run'}
+            {runScriptMutation.isPending ? 'Running…' : !localRun && execOff ? 'Execution disabled' : 'Run'}
           </button>
+          {runScriptMutation.isPending && runNotice && (
+            <span role="status" className="text-[11px] text-gray-400 animate-pulse">{runNotice}</span>
+          )}
 
           <button
             onClick={() => setShowForge(!showForge)}
@@ -1594,10 +1685,10 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
                     </p>
                     <button
                       type="button"
-                      onClick={() => onOpenExtras?.()}
+                      onClick={() => onOpenExtras?.(activity === 'debug' ? 'debugger' : 'extensions')}
                       className="w-full px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400"
                     >
-                      Open Extras — debugger, Live Share, extensions
+                      {activity === 'debug' ? 'Open Extras — Debugger' : 'Open Extras — Extensions'}
                     </button>
                   </div>
                 )}
@@ -1668,13 +1759,20 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
                   <span>{activeTab.content.split('\n').length} lines</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={handleSave} className={cn('p-1 rounded hover:bg-lattice-elevated transition-colors', activeTab.isDirty ? 'text-neon-blue' : 'text-gray-400')} title="Save script (persists to backend)">
+                  <button onClick={handleSave} className={cn('p-1 rounded hover:bg-lattice-elevated transition-colors', activeTab.isDirty ? 'text-neon-blue' : 'text-gray-400')} title="Save script (persists to your library as a DTU)">
+
                     <Save className="w-4 h-4" />
                   </button>
                   <button className="p-1 rounded hover:bg-lattice-elevated text-gray-400" title="Copy to clipboard"
-                    onClick={() => navigator.clipboard?.writeText(activeTab.content)}>
-                    <Copy className="w-4 h-4" />
+                    onClick={async () => {
+                      const okCopy = await copyTextRobust(activeTab.content);
+                      setCopyState(okCopy ? 'copied' : 'failed');
+                      window.setTimeout(() => setCopyState('idle'), 2000);
+                    }}>
+                    {copyState === 'copied' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                   </button>
+                  {copyState === 'copied' && <span className="text-[10px] text-emerald-400">Copied</span>}
+                  {copyState === 'failed' && <span className="text-[10px] text-rose-400">Copy failed — select the code and copy manually</span>}
                   <button className="p-1 rounded hover:bg-lattice-elevated text-gray-400" title="Download file"
                     onClick={() => {
                       const blob = new Blob([activeTab.content], { type: 'text/plain' });
@@ -1688,10 +1786,14 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
                 </div>
               </div>
               <div className="flex-1 relative">
+                <QuietSuccessEdge flashKey={saveFlash} />
                 {/* SafeCard isolates Monaco load failures (sandbox network
                     egress can block its CDN). Page stays up even if the
                     editor can't initialise. */}
                 <SafeCard label="Code editor">
+                  {saveError && (
+                    <div role="alert" className="px-3 py-1.5 text-[11px] text-rose-200 bg-rose-500/10 border-b border-rose-500/30">{saveError}</div>
+                  )}
                   <MonacoWrapper
                     value={activeTab.content}
                     onChange={(val) => updateTabContent(val)}
@@ -1804,6 +1906,9 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
                             Console
                           </button>
                         </div>
+                        {lastRun && scriptOutput && (
+                          <RunStamp facts={lastRun} />
+                        )}
                         <button
                           onClick={() => setShowOutput(false)}
                           className="p-1 rounded hover:bg-lattice-elevated text-gray-400"
@@ -1823,7 +1928,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
                             <div className="space-y-4">
                               <div>
                                 <h4 className="text-xs font-semibold text-gray-400 uppercase mb-2">Script Log</h4>
-                                <pre className="font-mono text-xs text-green-400 whitespace-pre-wrap bg-lattice-deep rounded-lg p-3 border border-lattice-border">{scriptOutput.log}</pre>
+                                <UnfurlPre text={scriptOutput.log} runKey={runNonce} className="font-mono text-xs text-green-400 whitespace-pre-wrap bg-lattice-deep rounded-lg p-3 border border-lattice-border" />
                               </div>
                               {scriptOutput.visualization && (
                               <div>
@@ -1869,8 +1974,8 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
                           ) : (
                             <div className="flex flex-col items-center justify-center h-full text-gray-400">
                               <Terminal className="w-12 h-12 mb-4 opacity-30" />
-                              <p className="text-sm">Click &quot;Run&quot; to execute</p>
-                              <p className="text-xs mt-1 text-gray-400">Output will appear here</p>
+                              <p className="text-sm">Press Run (⌘↵) to run this file</p>
+                              <p className="text-xs mt-1 text-gray-400">{localRun ? 'It runs locally in your browser — output appears here' : 'Output will appear here'}</p>
                             </div>
                           )
                         ) : (

@@ -163,6 +163,21 @@ const nextConfig = {
         ],
       },
       {
+        // Vendored Pyodide runtime. The path carries the pinned version and the files are
+        // SHA-256-verified at vendor time, so they are immutable. .wasm must be served as
+        // application/wasm for WebAssembly streaming instantiation.
+        source: '/pyodide/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        source: '/pyodide/:path*.wasm',
+        headers: [
+          { key: 'Content-Type', value: 'application/wasm' },
+        ],
+      },
+      {
         // Unity gzip-compresses *.unityweb at export time. The browser must
         // see Content-Encoding: gzip (or Unity's decompressionFallback, which
         // the index route also injects). Without this, createUnityInstance

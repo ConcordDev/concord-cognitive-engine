@@ -1,10 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Sparkles, Loader2, Save, Wand2, MessageSquareText, FlaskConical, History, X } from 'lucide-react';
+import { Sparkles, Loader2, Save, Wand2, MessageSquareText, FlaskConical, History, X, Fingerprint } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { lensRun } from '@/lib/api/client';
+import { validateGeneratedTests } from './testGenContract';
+import { runGeneratedTests } from './localExec';
+import type { TestSummary } from './testHarness';
 import { EditorTabs } from './CodeWorkbenchShell';
+import { QuietSuccessEdge, ReturnFadeEdge, summarizeProvenance, DELIGHT_CSS } from './delight';
 
 const MonacoWrapper = dynamic(() => import('./MonacoWrapper'), { ssr: false });
 
@@ -24,7 +28,9 @@ export function EditorPane({
   openLine,
   onOpenChange,
   onContentSaved,
+  returnHighlight,
   renameSignal,
+  replaceSignal,
 }: {
   projectId: string | null;
   openPath: string | null;
@@ -34,7 +40,17 @@ export function EditorPane({
   /** Set by the caller after a successful files-rename so an already-open tab is
    *  relabeled in place instead of being treated as a new file (which would leave
    *  a stale tab pointed at the now-deleted old path). */
+  /** S20 (D3/M8): this pane's file was restored by a return — render
+   *  the one soft teal edge fade. Absent on a first-ever open. */
+  returnHighlight?: boolean;
   renameSignal?: { from: string; to: string; nonce: number } | null;
+  /** Set after a successful project-wide replace: open tabs for these
+   *  paths are re-read from the server store (the replace already
+   *  saved there) so the editor shows the change instead of a stale
+   *  buffer that would overwrite it on the next sync. Tabs with
+   *  unsaved user edits are left alone — the user's buffer wins until
+   *  they save or discard. */
+  replaceSignal?: { paths: string[]; nonce: number } | null;
 }) {
   const [files, setFiles] = useState<OpenFile[]>([]);
   const [loadingFile, setLoadingFile] = useState(false);
@@ -42,7 +58,7 @@ export function EditorPane({
   const [inlineInstruction, setInlineInstruction] = useState('');
   const [inlineLoading, setInlineLoading] = useState(false);
   const [selection, setSelection] = useState<string>('');
-  const editorRef = useRef<{ revealLineInCenter?: (n: number) => void; setPosition?: (p: { lineNumber: number; column: number }) => void; focus?: () => void } | null>(null);
+  const editorRef = useRef<{ revealLineInCenter?: (n: number) => void; setPosition?: (p: { lineNumber: number; column: number }) => void; focus?: () => void; getAction?: (id: string) => { run: () => Promise<void> } | null } | null>(null);
 
   // code.explain — a deterministic/brain-backed one-click explanation of the
   // current selection (or whole file when nothing is selected), distinct from
@@ -57,6 +73,11 @@ export function EditorPane({
   const [testGenOpen, setTestGenOpen] = useState(false);
   const [testGenLoading, setTestGenLoading] = useState(false);
   const [testGenResult, setTestGenResult] = useState<{ tests: string; framework: string; suggestedPath: string } | null>(null);
+  // S4: contract rejections render in the panel (never an alert, never
+  // a fake result), and run results live in their own block — produced
+  // only by actually executing the tests in the browser harness.
+  const [testGenError, setTestGenError] = useState<string | null>(null);
+  const [testRun, setTestRun] = useState<{ running: boolean; summary: TestSummary | null; note: string | null } | null>(null);
 
   // code.git-blame — per-line commit attribution for the active file.
   const [blameOpen, setBlameOpen] = useState(false);
@@ -86,7 +107,10 @@ export function EditorPane({
       .then(r => {
         if (r.data?.ok === false) { alert(r.data?.error); return; }
         const { content, language } = r.data?.result || { content: '', language: 'plaintext' };
-        setFiles(prev => [...prev, { path: openPath, content, original: content, language, modified: false }]);
+        // S17 (F17): never two tabs for one path — a rename retargets
+        // openPath AND relabels the tab; whichever lands second must
+        // find the path already present instead of appending a twin.
+        setFiles(prev => (prev.some(f => f.path === openPath) ? prev : [...prev, { path: openPath, content, original: content, language, modified: false }]));
       })
       .catch(e => console.error('[Editor] open', e))
       .finally(() => setLoadingFile(false));
@@ -98,9 +122,35 @@ export function EditorPane({
   // old path (which would otherwise silently recreate it on next Save).
   useEffect(() => {
     if (!renameSignal) return;
-    setFiles(prev => prev.map(f => f.path === renameSignal.from ? { ...f, path: renameSignal.to } : f));
+    setFiles(prev => {
+      // S17 (F17): if the new path already has a tab (the open effect
+      // won the race), drop the old tab instead of mapping it into a
+      // duplicate; otherwise relabel in place.
+      if (prev.some(f => f.path === renameSignal.to)) return prev.filter(f => f.path !== renameSignal.from);
+      return prev.map(f => f.path === renameSignal.from ? { ...f, path: renameSignal.to } : f);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fires once per nonce, not per renameSignal identity
   }, [renameSignal?.nonce]);
+
+  // Reconcile open tabs after a project-wide replace (S6).
+  useEffect(() => {
+    if (!replaceSignal || !projectId) return;
+    const targets = files.filter(f => replaceSignal.paths.includes(f.path) && !f.modified);
+    if (targets.length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      for (const t of targets) {
+        try {
+          const r = await lensRun({ domain: 'code', action: 'files-read', input: { projectId, path: t.path } });
+          if (cancelled || r.data?.ok === false) continue;
+          const content = String(r.data?.result?.content ?? '');
+          setFiles(prev => prev.map(f => f.path === t.path && !f.modified ? { ...f, content, original: content, modified: false } : f));
+        } catch { /* a tab that fails to reconcile keeps its buffer; the store still holds the replace */ }
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires once per replace nonce
+  }, [replaceSignal?.nonce]);
 
   const active = files.find(f => f.path === openPath);
 
@@ -136,35 +186,118 @@ export function EditorPane({
   async function save() {
     if (!active || !projectId) return;
     try {
-      await lensRun({ domain: 'code', action: 'files-write', input: { projectId, path: active.path, content: active.content } });
+      const saveRes = await lensRun({ domain: 'code', action: 'files-write', input: { projectId, path: active.path, content: active.content } });
+      if (saveRes.data?.ok === false) { setInlineError(saveRes.data?.error || 'Save failed.'); return; }
       setFiles(prev => prev.map(f => f.path === active.path ? { ...f, original: f.content, modified: false } : f));
+      setSaveFlash((n) => n + 1);
       onContentSaved?.();
     } catch (e) { console.error('[Editor] save', e); }
   }
 
+  // S11 (F11): an inline edit is a PROPOSAL until the user accepts it.
+  // The old flow applied the model's output to the buffer the moment
+  // it arrived — no diff, no checkpoint, on the one AI edit path that
+  // worked. Now: the proposal renders as a diff with Accept/Reject;
+  // Reject leaves the buffer byte-identical; Accept applies it as one
+  // edit (one undo step) with the instruction kept as its receipt.
+  const [inlineProposal, setInlineProposal] = useState<{ original: string; edited: string; instruction: string } | null>(null);
+  // S19 (D2/M7): a confirmed save flashes the editor edge teal once.
+  const [saveFlash, setSaveFlash] = useState(0);
+  // S21 (D4/M2): the provenance face — real records only (git log +
+  // DTU snapshot list + the content's own SHA-256).
+  const [showProvenance, setShowProvenance] = useState(false);
+  const [provState, setProvState] = useState<{ hash: string | null; lastCommit: { number?: string; message: string; committedAt: string } | null; snapshotCount: number; hasHistory: boolean } | null>(null);
+
+  async function loadProvenance() {
+    if (!active || !projectId) return;
+    let hash: string | null = null;
+    try {
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(active.content));
+      hash = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    } catch { hash = null; }
+    try {
+      const [logR, snapR] = await Promise.all([
+        lensRun({ domain: 'code', action: 'git-log', input: { projectId } }),
+        lensRun({ domain: 'code', action: 'snapshots-list', input: {} }),
+      ]);
+      const log = (logR.data?.result?.log || []) as Array<{ id: string; number?: string; message: string; committedAt: string; paths: string[] }>;
+      const snapshots = (snapR.data?.result?.snapshots || []) as Array<{ files?: Array<{ name: string }> }>;
+      const sum = summarizeProvenance(log, snapshots, active.path);
+      setProvState({ hash, lastCommit: sum.lastCommit, snapshotCount: sum.snapshotCount, hasHistory: sum.hasHistory });
+    } catch {
+      setProvState({ hash, lastCommit: null, snapshotCount: 0, hasHistory: false });
+    }
+  }
+  const [inlineError, setInlineError] = useState('');
+
   async function runInlineEdit() {
     if (!active || !selection.trim() || !inlineInstruction.trim()) return;
     setInlineLoading(true);
+    setInlineError('');
     try {
       const r = await lensRun({ domain: 'code', action: 'inline-edit', input: { code: selection, instruction: inlineInstruction, language: active.language } });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      if (r.data?.ok === false) { setInlineError(r.data?.error || 'Inline edit failed.'); return; }
       const edited = String(r.data?.result?.edited || '');
-      const updated = active.content.replace(selection, edited);
-      updateContent(active.path, updated);
-      setShowInlineEdit(false);
-      setInlineInstruction('');
-    } catch (e) { console.error('[Editor] inline-edit', e); }
+      if (!edited || edited === selection) { setInlineError('The model proposed no change for that instruction.'); return; }
+      setInlineProposal({ original: selection, edited, instruction: inlineInstruction.trim() });
+    } catch (e) {
+      console.error('[Editor] inline-edit', e);
+      setInlineError('Inline edit failed: the request did not complete.');
+    }
     finally { setInlineLoading(false); }
+  }
+
+  function acceptInlineEdit() {
+    if (!active || !inlineProposal) return;
+    if (!active.content.includes(inlineProposal.original)) {
+      setInlineError('The text changed since this proposal was made — reject it and run ⌘K again.');
+      return;
+    }
+    updateContent(active.path, active.content.replace(inlineProposal.original, inlineProposal.edited));
+    setInlineProposal(null);
+    setInlineInstruction('');
+    setShowInlineEdit(false);
+  }
+
+  function rejectInlineEdit() {
+    // The buffer was never touched — rejecting is just closing.
+    setInlineProposal(null);
+    setInlineError('');
   }
 
   async function format() {
     if (!active) return;
+    // S15 (F15): the toolbar button runs the editor's OWN Format
+    // Document — the same formatter as the context menu, which actually
+    // reindents. The format-code macro only normalizes whitespace and
+    // left badly-indented files byte-identical; it stays as the
+    // fallback for when no editor instance is mounted.
+    const action = editorRef.current?.getAction?.('editor.action.formatDocument');
+    if (action) { await action.run(); return; }
     try {
       const r = await lensRun({ domain: 'code', action: 'format-code', input: { code: active.content, language: active.language } });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      if (r.data?.ok === false) { setInlineError(r.data?.error || 'Format failed.'); return; }
       const formatted = String(r.data?.result?.formatted || '');
-      updateContent(active.path, formatted);
+      if (formatted) updateContent(active.path, formatted);
     } catch (e) { console.error('[Editor] format', e); }
+  }
+
+  /** S15 (F15): glyph-margin click toggles a bookmark on that line —
+   *  the gesture the Bookmarks panel has always named. The macros
+   *  (bookmark-add/list/delete) were real; only the gesture was missing. */
+  async function toggleBookmarkAtLine(lineNumber: number) {
+    if (!active || !projectId) return;
+    try {
+      const list = await lensRun({ domain: 'code', action: 'bookmark-list', input: { projectId } });
+      const existing = ((list.data?.result?.bookmarks as Array<{ id: string; path: string; line: number }> | undefined) || [])
+        .find((b) => b.path === active.path && b.line === lineNumber);
+      if (existing) {
+        await lensRun({ domain: 'code', action: 'bookmark-delete', input: { projectId, id: existing.id } });
+      } else {
+        const lineText = (active.content.split('\n')[lineNumber - 1] || '').trim().slice(0, 60);
+        await lensRun({ domain: 'code', action: 'bookmark-add', input: { projectId, path: active.path, line: lineNumber, label: lineText } });
+      }
+    } catch { /* the panel re-reads on open; a failed toggle stays silent rather than fake */ }
   }
 
   async function explain() {
@@ -197,17 +330,45 @@ export function EditorPane({
     setTestGenOpen(true);
     setTestGenLoading(true);
     setTestGenResult(null);
+    setTestGenError(null);
+    setTestRun(null);
     try {
       const framework = /\.py$/.test(active.path) ? 'pytest' : /\.(ts|tsx|js|jsx)$/.test(active.path) ? 'node:test' : 'the project convention';
       const r = await lensRun({ domain: 'code', action: 'test-generate', input: { code: active.content, framework } });
-      if (r.data?.ok === false) { alert(r.data?.error || 'Test generation failed.'); setTestGenOpen(false); return; }
-      const tests = String(r.data?.result?.tests || '');
-      if (!tests.trim()) { alert('No tests were generated.'); setTestGenOpen(false); return; }
-      setTestGenResult({ tests, framework: String(r.data?.result?.framework || framework), suggestedPath: suggestedTestPath(active.path) });
+      if (r.data?.ok === false) { setTestGenError(r.data?.error || 'Test generation failed.'); return; }
+      // The contract gate: run-shaped or non-test output is rejected
+      // here and NEVER rendered as tests or results (the A8 shape).
+      const verdict = validateGeneratedTests(r.data?.result, framework);
+      if (!verdict.ok) { setTestGenError(verdict.reason); return; }
+      setTestGenResult({ tests: verdict.tests, framework: verdict.framework, suggestedPath: suggestedTestPath(active.path) });
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Test generation failed.');
-      setTestGenOpen(false);
+      setTestGenError(e instanceof Error ? e.message : 'Test generation failed.');
     } finally { setTestGenLoading(false); }
+  }
+
+  async function runGenerated() {
+    if (!active || !testGenResult) return;
+    setTestRun({ running: true, summary: null, note: null });
+    try {
+      const { outcome, summary } = await runGeneratedTests({
+        sourceCode: active.content,
+        testCode: testGenResult.tests,
+        language: /\.py$/.test(active.path) ? 'python' : 'javascript',
+        onStatus: (phase) => {
+          if (phase === 'loading-runtime') {
+            setTestRun({ running: true, summary: null, note: 'Loading the Python runtime — first Python run only; this can take several seconds…' });
+          }
+        },
+      });
+      if (summary) {
+        setTestRun({ running: false, summary, note: outcome.timedOut ? 'The run was stopped for taking too long — counts above are partial.' : null });
+      } else {
+        const why = outcome.result.stderr?.trim() || (outcome.timedOut ? 'The tests did not finish in time.' : 'The tests could not run.');
+        setTestRun({ running: false, summary: null, note: why });
+      }
+    } catch (e) {
+      setTestRun({ running: false, summary: null, note: e instanceof Error ? e.message : 'The tests could not run.' });
+    }
   }
 
   async function saveGeneratedTests() {
@@ -288,26 +449,78 @@ export function EditorPane({
                 <History className="w-3 h-3" />Blame
               </button>
             )}
+            <button onClick={() => { const next = !showProvenance; setShowProvenance(next); if (next) void loadProvenance(); }} className="px-1.5 py-0.5 rounded border border-white/15 text-gray-300 hover:bg-white/[0.05] inline-flex items-center gap-1" title="Provenance — this file's hash, last commit, snapshots, rights" aria-expanded={showProvenance}>
+              <Fingerprint className="w-3 h-3" />Provenance
+            </button>
             <button onClick={format} className="px-1.5 py-0.5 rounded border border-white/15 text-gray-300 hover:bg-white/[0.05]" title="Format file">format</button>
             <button onClick={save} disabled={!active.modified} className="px-1.5 py-0.5 rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1" title="Save (⌘S)">
               <Save className="w-3 h-3" />Save
             </button>
           </div>
+          {showProvenance && (
+            <div className="concord-flip-in px-3 py-2.5 border-b border-teal-500/20 bg-teal-500/[0.04] text-[11px]" style={{ animation: 'concord-flip-in 280ms ease-out' }}>
+              <style>{DELIGHT_CSS}</style>
+              {!provState ? (
+                <span className="text-gray-400 italic">Reading this file's records…</span>
+              ) : (
+                <div className="space-y-1">
+                  <div className="font-serif italic text-[12px] text-teal-200/90">{active.path} — provenance</div>
+                  {!provState.hasHistory && (
+                    <div className="text-gray-300">No history yet — this file hasn't been committed or snapshotted. Its first commit starts the record.</div>
+                  )}
+                  <div className="flex gap-2">
+                    <span className="text-gray-500 w-24 shrink-0">Content hash</span>
+                    <span className="font-mono text-gray-200" title={provState.hash || undefined}>{provState.hash ? `${provState.hash.slice(0, 16)}…` : 'unavailable in this browser context'}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-gray-500 w-24 shrink-0">Last commit</span>
+                    <span className="text-gray-200">{provState.lastCommit ? `${provState.lastCommit.number || ''} ${provState.lastCommit.message} · ${provState.lastCommit.committedAt.slice(0, 16).replace('T', ' ')}` : 'never committed'}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-gray-500 w-24 shrink-0">Snapshots</span>
+                    <span className="text-gray-200">{provState.snapshotCount} DTU snapshot{provState.snapshotCount === 1 ? '' : 's'} bundle this file</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-gray-500 w-24 shrink-0">Rights</span>
+                    <span className="text-gray-200">Yours — a private project file. Per-DTU rights (see / post / derive) attach when you mint or snapshot this work as a DTU.</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {showInlineEdit && (
-            <div className="px-3 py-2 border-b border-white/10 bg-blue-500/[0.06] flex items-center gap-2">
-              <Sparkles className="w-3 h-3 text-blue-400" />
-              <input
-                value={inlineInstruction}
-                onChange={e => setInlineInstruction(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && runInlineEdit()}
-                placeholder={`Inline edit ${selection.length} chars: e.g. rename foo to bar`}
-                autoFocus
-                className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-blue-500/30 rounded text-white"
-              />
-              <button onClick={runInlineEdit} disabled={inlineLoading || !inlineInstruction.trim()} className="px-2 py-1 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1">
-                {inlineLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}Edit
-              </button>
-              <button onClick={() => setShowInlineEdit(false)} className="text-gray-400 hover:text-white text-[10px]">esc</button>
+            <div className="px-3 py-2 border-b border-white/10 bg-blue-500/[0.06]">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-3 h-3 text-blue-400" />
+                <input
+                  value={inlineInstruction}
+                  onChange={e => setInlineInstruction(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && runInlineEdit()}
+                  placeholder="Inline edit: e.g. rename foo to bar"
+                  autoFocus
+                  className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-blue-500/30 rounded text-white"
+                />
+                <span className="text-[10px] text-gray-400 shrink-0">{selection.length} chars selected</span>
+                <button onClick={runInlineEdit} disabled={inlineLoading || !inlineInstruction.trim()} className="px-2 py-1 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1">
+                  {inlineLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}Propose edit
+                </button>
+                <button onClick={() => { setShowInlineEdit(false); setInlineProposal(null); setInlineError(''); }} className="text-gray-400 hover:text-white text-[10px]">esc</button>
+              </div>
+              {inlineError && <div role="alert" className="mt-1.5 text-[11px] text-rose-300">{inlineError}</div>}
+              {inlineProposal && (
+                <div className="mt-2 rounded border border-white/10 overflow-hidden">
+                  <div className="px-2 py-1 text-[10px] text-gray-300 bg-white/[0.03] border-b border-white/10">
+                    Proposed change for “{inlineProposal.instruction}” — nothing is applied until you accept.
+                  </div>
+                  <pre className="px-2 py-1.5 text-[11px] font-mono whitespace-pre-wrap bg-rose-500/[0.07] text-rose-200 line-through decoration-rose-400/50">{inlineProposal.original}</pre>
+                  <pre className="px-2 py-1.5 text-[11px] font-mono whitespace-pre-wrap bg-emerald-500/[0.07] text-emerald-200">{inlineProposal.edited}</pre>
+                  <div className="px-2 py-1.5 flex items-center gap-1.5 bg-white/[0.02] border-t border-white/10">
+                    <button onClick={acceptInlineEdit} className="px-2 py-0.5 text-[11px] rounded bg-emerald-500/80 text-white font-semibold hover:bg-emerald-400">Accept</button>
+                    <button onClick={rejectInlineEdit} className="px-2 py-0.5 text-[11px] rounded bg-white/10 text-gray-200 hover:bg-white/15">Reject</button>
+                    <span className="text-[10px] text-gray-500">Reject leaves the file exactly as it is.</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {explainOpen && (
@@ -335,15 +548,42 @@ export function EditorPane({
               </div>
               {testGenLoading ? (
                 <div className="text-gray-400 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />Writing tests…</div>
+              ) : testGenError ? (
+                <p className="text-amber-300 leading-relaxed">{testGenError}</p>
               ) : testGenResult ? (
                 <>
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold tracking-wider">GENERATED</span>
+                    <span className="text-gray-400">Written by the model for {active.path}. It has not been run{testRun?.summary ? ' — results below' : ''}.</span>
+                  </div>
                   <pre className="max-h-48 overflow-auto p-2 rounded bg-black/40 font-mono text-[11px] text-emerald-200 whitespace-pre-wrap">{testGenResult.tests}</pre>
                   <div className="mt-2 flex items-center gap-2">
                     <button onClick={saveGeneratedTests} disabled={!projectId} className="px-2 py-1 rounded bg-emerald-600 text-white font-bold hover:bg-emerald-500 disabled:opacity-40">
                       Save as {testGenResult.suggestedPath}
                     </button>
+                    <button onClick={runGenerated} disabled={testRun?.running} className="px-2 py-1 rounded bg-blue-600 text-white font-bold hover:bg-blue-500 disabled:opacity-40 inline-flex items-center gap-1">
+                      {testRun?.running ? <Loader2 className="w-3 h-3 animate-spin" /> : null}Run tests
+                    </button>
                     <button onClick={() => navigator.clipboard?.writeText(testGenResult.tests)} className="px-2 py-1 rounded border border-white/15 text-gray-300 hover:bg-white/[0.05]">Copy</button>
                   </div>
+                  {testRun && (
+                    <div className="mt-2 p-2 rounded bg-blue-500/[0.07] border border-blue-500/20">
+                      <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold mb-1">Run results — executed in your browser just now</div>
+                      {testRun.running ? (
+                        <div className="text-gray-300">{testRun.note || 'Running…'}</div>
+                      ) : testRun.summary ? (
+                        <>
+                          <div className="text-gray-100">{testRun.summary.passed} passed · {testRun.summary.failed} failed · {testRun.summary.total} total</div>
+                          {testRun.summary.failures.map((f) => (
+                            <div key={f.name} className="mt-1 text-red-300 font-mono text-[11px]">✗ {f.name} — {f.error}</div>
+                          ))}
+                          {testRun.note && <div className="mt-1 text-amber-300">{testRun.note}</div>}
+                        </>
+                      ) : (
+                        <div className="text-amber-300 whitespace-pre-wrap">{testRun.note}</div>
+                      )}
+                    </div>
+                  )}
                 </>
               ) : null}
             </div>
@@ -374,13 +614,16 @@ export function EditorPane({
           {loadingFile ? (
             <div className="flex-1 flex items-center justify-center text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
           ) : (
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden relative">
+              <QuietSuccessEdge flashKey={saveFlash} />
+              {returnHighlight && <ReturnFadeEdge />}
               <MonacoWrapper
                 value={active.content}
                 onChange={(value) => updateContent(active.path, value || '')}
                 language={active.language}
                 semantic={projectId ? { projectId, path: active.path, run: runCodeMacro } : undefined}
                 onEditorReady={(ed) => { editorRef.current = ed as typeof editorRef.current; }}
+                onGutterLineClick={(line) => { void toggleBookmarkAtLine(line); }}
                 onSelectionChange={(sel: { text: string } | string | null) => {
                   const text = typeof sel === 'string' ? sel : (sel?.text || '');
                   setSelection(text);

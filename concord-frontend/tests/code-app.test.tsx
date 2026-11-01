@@ -9,7 +9,6 @@ vi.mock('@/lib/api/client', () => ({
 
 vi.mock('@/hooks/useLensNav', () => ({ useLensNav: vi.fn() }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
-vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'ada' } }) }));
 vi.mock('@/components/lens/LensShell', () => ({ LensShell: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/ShellPreview', () => ({ ShellPreview: () => null }));
@@ -33,6 +32,12 @@ beforeEach(() => {
 });
 
 describe('CodeApp', () => {
+  it('renders the plain Code header', () => {
+    render(<CodeApp />);
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Code');
+    expect(screen.queryByTestId('code-greeting')).toBeNull();
+  });
+
   it('loads without console errors and does not render a second Run button', async () => {
     const errors: unknown[][] = [];
     const spy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { File, FilePlus, Loader2, Trash2, Pencil } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { QuietSuccessEdge } from './delight';
 
 interface FileNode { path: string; language: string; size: number; modifiedAt: string }
 
@@ -22,7 +23,16 @@ export function FileExplorer({
   const [creating, setCreating] = useState(false);
   const [draftPath, setDraftPath] = useState('');
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
+  // S3: delete confirmation lives in the UI, not in window.confirm —
+  // native dialogs are a dead-control class in embedded surfaces (the
+  // click lands, the dialog never resolves, nothing happens, silently).
+  // First click arms the button ("Delete?"), second click deletes; a
+  // failed delete renders its reason here instead of vanishing.
+  const [confirmingPath, setConfirmingPath] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState('');
+  const armTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
+  const [renameFlash, setRenameFlash] = useState(0);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable closure; only projectId should retrigger
@@ -53,12 +63,27 @@ export function FileExplorer({
 
   async function remove(path: string) {
     if (!projectId) return;
-    if (!confirm(`Delete ${path}?`)) return;
+    setDeleteError('');
     try {
-      await lensRun({ domain: 'code', action: 'files-delete', input: { projectId, path } });
+      const r = await lensRun({ domain: 'code', action: 'files-delete', input: { projectId, path } });
+      if (r.data?.ok === false) {
+        setDeleteError(`Could not delete ${path}: ${r.data?.error || 'the server refused'}`);
+        return;
+      }
+      setConfirmingPath(null);
       await refresh();
       onChanged?.();
-    } catch (e) { console.error('[FileTree] delete', e); }
+    } catch (e) {
+      console.error('[FileTree] delete', e);
+      setDeleteError(`Could not delete ${path}: the request failed.`);
+    }
+  }
+
+  function handleDeleteClick(path: string) {
+    if (confirmingPath === path) { void remove(path); return; }
+    setConfirmingPath(path);
+    if (armTimerRef.current) clearTimeout(armTimerRef.current);
+    armTimerRef.current = setTimeout(() => setConfirmingPath(cur => (cur === path ? null : cur)), 4000);
   }
 
   function startRename(path: string) {
@@ -83,6 +108,7 @@ export function FileExplorer({
     try {
       const r = await lensRun({ domain: 'code', action: 'files-rename', input: { projectId, from, to } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
+      setRenameFlash((n) => n + 1);
       await refresh();
       onChanged?.();
       if (activePath === from) onRenamed?.(from, to);
@@ -94,7 +120,8 @@ export function FileExplorer({
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden relative">
+      <QuietSuccessEdge flashKey={renameFlash} />
       <div className="px-2 py-1.5 border-b border-white/10 flex items-center gap-2">
         <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Files</span>
         <span className="text-[10px] text-gray-400">{tree.length}</span>
@@ -102,6 +129,9 @@ export function FileExplorer({
           <FilePlus className="w-3.5 h-3.5" />
         </button>
       </div>
+      {deleteError && (
+        <div role="alert" className="px-2 py-1.5 border-b border-rose-500/30 bg-rose-500/10 text-[11px] text-rose-200">{deleteError}</div>
+      )}
       {creating && (
         <div className="p-2 border-b border-white/10 flex items-center gap-1">
           <input
@@ -150,9 +180,15 @@ export function FileExplorer({
                 <button aria-label="Rename" onClick={(e) => { e.stopPropagation(); startRename(f.path); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-blue-300">
                   <Pencil className="w-3 h-3" />
                 </button>
-                <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); remove(f.path); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-rose-300">
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                {confirmingPath === f.path ? (
+                  <button aria-label={`Confirm delete ${f.path}`} onClick={(e) => { e.stopPropagation(); handleDeleteClick(f.path); }} className="p-0.5 px-1 rounded bg-rose-500/20 text-rose-200 text-[10px] font-bold hover:bg-rose-500/30">
+                    Delete?
+                  </button>
+                ) : (
+                  <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); handleDeleteClick(f.path); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-rose-300">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
               </>
             )}
           </li>

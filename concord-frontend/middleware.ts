@@ -240,6 +240,11 @@ const PUBLIC_PREFIXES = [
   // /meshes/ above: these are asset bytes, not a page route, and the real
   // auth happens inside the client via the gateway token it's given at boot.
   '/godot-client/',
+  // Vendored Pyodide runtime (scripts/vendor-pyodide.mjs -> public/pyodide/v0.26.4/). The Code
+  // lens's python-exec worker importScripts()s pyodide.js and fetches the .wasm/.zip from here;
+  // .wasm/.zip/.js under it are not covered by STATIC_ASSET_RE, so without this prefix an
+  // unauthenticated request 307s to /login (the file is a static runtime asset, not a page).
+  '/pyodide/',
   // Unity living world — scripts/export-unity-web.mjs writes the export to
   // public/unity-client/ (index.html nonce-injected by
   // app/unity-client/index.html/route.ts). Static render-pipeline asset

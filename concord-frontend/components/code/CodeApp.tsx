@@ -16,6 +16,7 @@ import { ShellPreview } from '@/components/lens/ShellPreview';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { CodeProjectProvider } from '@/components/code/CodeProjectContext';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { CodeEditorWorkspacePanel } from '@/components/code/CodeEditorWorkspacePanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -41,6 +42,14 @@ const EXTRA_TABS: { id: Exclude<CodeExtras, 'none'>; label: string; keys: string
 export default function CodeApp() {
   useLensNav('code');
   const [extras, setExtras] = useState<CodeExtras>('none');
+  // S9 (F9): the trending tab renders behind its own error boundary;
+  // bumping this key remounts it so "Try again" recovers in place
+  // without a page reload, and a failure there can never take the
+  // editor or the other tabs down with it.
+  const [trendingKey, setTrendingKey] = useState(0);
+  // S13: "Open Extras" buttons name their panel — carry the request
+  // into the Advanced panel instead of always landing on IntelliSense.
+  const [advancedTab, setAdvancedTab] = useState<string>('intellisense');
 
   // The editor's Run button is the only one. This publishes the server
   // gate (code.exec-status) so that button can say execution is disabled.
@@ -129,12 +138,25 @@ export default function CodeApp() {
           </nav>
 
           <div className="min-h-[70vh] overflow-hidden rounded-2xl border border-white/10 bg-[#0c0c0e]">
-            <CodeEditorWorkspacePanel onOpenExtras={() => setExtras('advanced')} />
+            <CodeEditorWorkspacePanel onOpenExtras={(tab) => { setExtras('advanced'); if (tab) setAdvancedTab(tab); }} />
           </div>
 
           <div className="mt-5">
-            {extras === 'advanced' && <CodeAdvancedPanel />}
-            {extras === 'trending' && <GithubTrending />}
+            {extras === 'advanced' && <CodeAdvancedPanel initialTab={advancedTab} />}
+            {extras === 'trending' && (
+              <ErrorBoundary
+                key={trendingKey}
+                fallback={(
+                  <div role="alert" className="rounded-2xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-sm text-amber-200">
+                    <p className="font-semibold text-white">Trending repositories couldn't load.</p>
+                    <p className="mt-0.5 text-xs text-amber-200/80">Something went wrong in this tab only — your editor, project, and other tabs are untouched.</p>
+                    <button type="button" onClick={() => setTrendingKey(k => k + 1)} className="mt-2 rounded bg-amber-500/20 px-2.5 py-1 text-xs font-semibold text-amber-100 hover:bg-amber-500/30">Try again</button>
+                  </div>
+                )}
+              >
+                <GithubTrending />
+              </ErrorBoundary>
+            )}
             {extras === 'actions' && (
               <PipingProvider>
                 <CodeActionPanel />

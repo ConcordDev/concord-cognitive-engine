@@ -506,6 +506,50 @@ describe("code — virtual git", () => {
   });
 });
 
+describe("code — workbench macro contracts (S12)", () => {
+  const SCORE = "function pr3Score(a, b) { if (a > b) { return a; } else if (a < b) { return -b; } for (let i = 0; i < 3; i++) { if (i === 2) return i; } return 0; }";
+
+  it("complexityAnalysis returns numeric cyclomatic + cognitive for raw code", () => {
+    const r = call("complexityAnalysis", ctxC, { code: SCORE, language: "javascript" });
+    assert.equal(r.ok, true);
+    assert.equal(typeof r.result.cyclomatic, "number");
+    assert.ok(r.result.cyclomatic > 1, "branches counted");
+    assert.equal(typeof r.result.cognitive, "number");
+    assert.ok(["low", "medium", "high"].includes(r.result.risk));
+    assert.ok(r.result.functions >= 1);
+  });
+
+  it("snippets-save accepts the workbench's `name` field", () => {
+    const r = call("snippets-save", ctxC, { name: "wb-snippet", code: "const x = 1;", language: "javascript" });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.id);
+    assert.equal(call("snippets-save", ctxC, { code: "x" }).ok, false);
+  });
+
+  it("commit-snapshot wraps a single {code} payload as a one-file commit", () => {
+    const r = call("commit-snapshot", ctxC, { code: SCORE, message: "wb snap", language: "javascript" });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.id);
+    assert.equal(r.result.snapshot.fileCount, 1);
+    assert.equal(call("commit-snapshot", ctxC, { message: "x" }).ok, false);
+  });
+
+  it("dependencyAudit parses imports from raw code and refuses to invent verdicts", () => {
+    const r = call("dependencyAudit", ctxC, { code: "import React from 'react';\nimport { x } from './local';\nconst p = require('@scope/pkg/sub');" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.total, 2);
+    assert.equal(r.result.outdated, null);
+    assert.equal(r.result.security, null);
+    assert.match(r.result.note, /registry/);
+  });
+
+  it("coverageAnalysis fails honestly for source-only calls", () => {
+    const r = call("coverageAnalysis", ctxC, { code: SCORE });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /run data/);
+  });
+});
+
 describe("code — agent tasks (Composer parity)", () => {
   it("agent-task-start builds a deterministic plan without brain", async () => {
     const proj = call("projects-create", ctxC, { name: "X" }).result.project;
@@ -518,12 +562,53 @@ describe("code — agent tasks (Composer parity)", () => {
     assert.ok(actions.includes("tests"));
   });
 
-  it("agent-task-finish marks status + records files changed", async () => {
+  it("agent-task-finish REFUSES completion when nothing changed (S5 gate)", async () => {
     const proj = call("projects-create", ctxC, { name: "X" }).result.project;
     const t = await call("agent-task-start", ctxC, { projectId: proj.id, prompt: "fix bug" });
+    // A caller-supplied filesChanged list is never trusted — the gate
+    // derives the diff from content fingerprints taken at task start.
     const fin = call("agent-task-finish", ctxC, { id: t.result.task.id, status: "completed", filesChanged: ["src/a.ts", "src/b.ts"] });
+    assert.equal(fin.ok, false);
+    assert.match(fin.error, /no files changed/);
+    const list = call("agent-tasks-list", ctxC, {});
+    const still = list.result.tasks.find(x => x.id === t.result.task.id);
+    assert.equal(still.status, "running");
+  });
+
+  it("agent-task-finish completes when files really changed, deriving the list + receipts server-side", async () => {
+    const proj = call("projects-create", ctxC, { name: "X" }).result.project;
+    const t = await call("agent-task-start", ctxC, { projectId: proj.id, prompt: "fix bug" });
+    call("files-write", ctxC, { projectId: proj.id, path: "src/a.ts", content: "export const a = 1;" });
+    const fin = call("agent-task-finish", ctxC, { id: t.result.task.id, status: "completed" });
+    assert.equal(fin.ok, true);
     assert.equal(fin.result.task.status, "completed");
-    assert.equal(fin.result.task.filesChanged.length, 2);
+    assert.ok(fin.result.task.filesChanged.includes("src/a.ts"));
+    const receipt = fin.result.task.changeReceipts.find(c => c.path === "src/a.ts");
+    assert.ok(receipt, "receipt for the written file");
+    assert.equal(receipt.before, null);
+    assert.equal(typeof receipt.after, "string");
+    assert.equal(receipt.after.length, 12);
+  });
+
+  it("agent-task-finish rejects an unnamed status and re-finishing a terminal task", async () => {
+    const proj = call("projects-create", ctxC, { name: "X" }).result.project;
+    const t = await call("agent-task-start", ctxC, { projectId: proj.id, prompt: "fix bug" });
+    const bad = call("agent-task-finish", ctxC, { id: t.result.task.id, status: "done" });
+    assert.equal(bad.ok, false);
+    const cancelled = call("agent-task-finish", ctxC, { id: t.result.task.id, status: "cancelled" });
+    assert.equal(cancelled.ok, true);
+    const again = call("agent-task-finish", ctxC, { id: t.result.task.id, status: "cancelled" });
+    assert.equal(again.ok, false);
+    assert.match(again.error, /already cancelled/);
+  });
+
+  it("agent-task-finish failed stores the reason", async () => {
+    const proj = call("projects-create", ctxC, { name: "X" }).result.project;
+    const t = await call("agent-task-start", ctxC, { projectId: proj.id, prompt: "fix bug" });
+    const fin = call("agent-task-finish", ctxC, { id: t.result.task.id, status: "failed", reason: "planner unavailable" });
+    assert.equal(fin.ok, true);
+    assert.equal(fin.result.task.status, "failed");
+    assert.equal(fin.result.task.error, "planner unavailable");
   });
 });
 
@@ -607,6 +692,43 @@ describe("code — symbols-outline", () => {
     assert.ok(names.includes("build"));
     assert.ok(names.includes("helper"));
     assert.ok(names.includes("render"));
+  });
+});
+
+describe("code — diagnostics engine honesty (S7)", () => {
+  it("names its engine, and when the TS engine is live it sees the syntax error the editor sees", () => {
+    const p = call("projects-create", ctxC, { name: "D" }).result.project;
+    call("files-write", ctxC, { projectId: p.id, path: "bad.js", content: "const x =;\n" });
+    const r = call("diagnostics", ctxC, { projectId: p.id });
+    assert.equal(r.ok, true);
+    assert.ok(["typescript", "heuristics-only"].includes(r.result.engine));
+    if (r.result.engine === "typescript") {
+      const msgs = r.result.problems.filter(x => x.path === "bad.js").map(x => x.message).join(" ");
+      assert.match(msgs, /Expression expected/);
+    }
+  });
+
+  it("symbols-outline labels its source and refuses docs files honestly", () => {
+    const p = call("projects-create", ctxC, { name: "S" }).result.project;
+    call("files-write", ctxC, { projectId: p.id, path: "a.py", content: "def helper():\n    return 1\n" });
+    const py = call("symbols-outline", ctxC, { projectId: p.id, path: "a.py" });
+    assert.equal(py.ok, true);
+    assert.equal(py.result.source, "lexical");
+    assert.ok(py.result.symbols.some(x => x.name === "helper"));
+    call("files-write", ctxC, { projectId: p.id, path: "notes.md", content: "# Title\n\ntext\n" });
+    const md = call("symbols-outline", ctxC, { projectId: p.id, path: "notes.md" });
+    assert.equal(md.ok, true);
+    assert.equal(md.result.unsupported, true);
+    assert.equal(md.result.count, 0);
+  });
+
+  it("find-references labels the lexical source when no position is given", () => {
+    const p = call("projects-create", ctxC, { name: "S" }).result.project;
+    call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "const renamedVar = 1;\nconsole.log(renamedVar);\n" });
+    const r = call("find-references", ctxC, { projectId: p.id, symbol: "renamedVar" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.source, "lexical");
+    assert.equal(r.result.count, 2);
   });
 });
 
@@ -706,6 +828,20 @@ describe("code — git diff / blame / discard", () => {
     call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "trashed" });
     call("git-discard", ctxC, { projectId: p.id, path: "a.js" });
     assert.equal(call("files-read", ctxC, { projectId: p.id, path: "a.js" }).result.content, "line1\nline2\nline3\n");
+  });
+
+  it("discard keeps a recoverable snapshot in the stash list (S10)", () => {
+    const p = committedProject();
+    call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "line1\nDISCARD-ME\nline3\n" });
+    const r = call("git-discard", ctxC, { projectId: p.id, path: "a.js" });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.snapshotId, "snapshot id returned");
+    const list = call("git-stash-list", ctxC, { projectId: p.id });
+    assert.ok(list.result.stashes.some(st => st.id === r.result.snapshotId));
+    // Pop restores the discarded content.
+    call("git-stash-pop", ctxC, { projectId: p.id, id: r.result.snapshotId });
+    const back = call("files-read", ctxC, { projectId: p.id, path: "a.js" });
+    assert.match(back.result.content, /DISCARD-ME/);
   });
 });
 
@@ -1022,5 +1158,33 @@ describe("code — run configs + bookmarks", () => {
     assert.equal(call("bookmark-list", ctxC, { projectId: p.id }).result.bookmarks.length, 1);
     call("bookmark-delete", ctxC, { projectId: p.id, id: b.id });
     assert.equal(call("bookmark-list", ctxC, { projectId: p.id }).result.bookmarks.length, 0);
+  });
+
+  // ── S17 (F17): a rename is ONE change at its new path — Source
+  // Control's counter and the Explorer's file count share this set.
+  it('S17 rename: git-status counts the renamed file once, at its new path', () => {
+    const proj = call("projects-create", ctxC, { name: "RenameCount" }).result.project;
+    call("files-write", ctxC, { projectId: proj.id, path: "a.js", content: "1" });
+    call("files-write", ctxC, { projectId: proj.id, path: "b.js", content: "2" });
+    const before = call("git-status", ctxC, { projectId: proj.id }).result;
+    assert.equal(before.modified.length, 2);
+    call("files-rename", ctxC, { projectId: proj.id, from: "a.js", to: "c.js" });
+    const after = call("git-status", ctxC, { projectId: proj.id }).result;
+    assert.equal(after.modified.length, 2, 'rename must not inflate the change count');
+    assert.ok(after.modified.includes("c.js"));
+    assert.ok(!after.modified.includes("a.js"), 'the renamed-away path must not linger in the change set');
+  });
+
+  // ── S15 (F15): the extension catalog states each entry's real effect;
+  // an extension whose effect the editor cannot produce says so.
+  it('S15 extensions catalog: every entry carries an honest effect note', () => {
+    const catalog = call('extensions-catalog', ctxC, {});
+    assert.equal(catalog.ok, true);
+    assert.ok(catalog.result.catalog.length >= 8);
+    for (const e of catalog.result.catalog) {
+      assert.ok(typeof e.effect === 'string' && e.effect.length > 10, `${e.id} must state its actual effect`);
+    }
+    const todo = catalog.result.catalog.find((e) => e.id === 'todo-highlight');
+    assert.match(todo.effect, /Applies in the editor/);
   });
 });

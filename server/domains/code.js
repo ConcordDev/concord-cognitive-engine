@@ -25,6 +25,8 @@ import { retrieveRelevantFiles, candidatesFromLocalFiles, candidatesFromGitHubTr
 // lives in the lib (mirrors repair-remediation.js's shape); these are thin
 // macro wrappers only.
 import codePushGovernance from "../lib/code-push-governance.js";
+import { createHash } from "node:crypto";
+import { analyzeSourceComplexity } from "../lib/code-ast-complexity.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
 
@@ -48,6 +50,13 @@ async function runLensOrMacro(ctx, domain, name, input) {
   } catch (e) {
     return handlerFailure(e);
   }
+}
+
+// S5 (PR #1707): content fingerprint for the Composer completion gate —
+// a task may only be marked completed when the project's files provably
+// differ from their fingerprints at task start. SHA-256 over content.
+function fileFingerprint(content) {
+  return createHash("sha256").update(String(content ?? ""), "utf8").digest("hex");
 }
 
 const SNIPPET_KIND = "code_snippet";
@@ -161,8 +170,45 @@ export default function registerCodeActions(registerLensAction) {
    * module. Reads `artifact.data.modules: [{ name, lines, functions, branches,
    * loops, nestingDepth, dependencies? }]`.
    */
-  registerLensAction("code", "complexityAnalysis", (ctx, artifact, _params) => {
+  registerLensAction("code", "complexityAnalysis", (ctx, artifact, params = {}) => {
   try {
+    // S12 (F13): the review workbench sends { code, language } — the
+    // original artifact-only contract read artifact.data.modules and
+    // answered every panel call with an empty module list, which the
+    // panel rendered as "Cyclomatic: —". When raw code arrives (in
+    // params or in the artifact), analyze THAT with the AST engine
+    // and return the flat numbers the panel's card renders.
+    const rawCode = typeof params?.code === "string" ? params.code
+      : typeof artifact?.data?.code === "string" ? artifact.data.code
+      : typeof artifact?.code === "string" ? artifact.code : null;
+    if (rawCode && rawCode.trim()) {
+      const language = String(params?.language || artifact?.data?.language || "javascript");
+      const ext = language === "typescript" ? "ts" : language === "python" ? "py" : "js";
+      const ast = analyzeSourceComplexity(`snippet.${ext}`, rawCode);
+      let branches = 0, loops = 0, maxNesting = 0, fnCount = 0;
+      let source = "ast";
+      if (ast) {
+        for (const fn of ast.functions) {
+          branches += fn.branches || 0;
+          loops += fn.loops || 0;
+          maxNesting = Math.max(maxNesting, fn.nesting || 0);
+          if (fn.name && fn.name !== "<module>") fnCount++;
+        }
+      } else {
+        // Lexical fallback (AST engine unavailable): count decision
+        // points by keyword — labelled, never passed off as AST.
+        source = "lexical";
+        branches = (rawCode.match(/\b(if|catch|case)\b|&&|\|\||\?/g) || []).length;
+        loops = (rawCode.match(/\b(for|while|do)\b/g) || []).length;
+        fnCount = (rawCode.match(/\bfunction\b|=>/g) || []).length;
+      }
+      const cyclomatic = 1 + branches + loops;
+      const nestingPenalty = maxNesting > 0 ? (maxNesting * (maxNesting + 1)) / 2 : 0;
+      const cognitive = Math.round(branches + loops * 2 + nestingPenalty);
+      const lines = rawCode.split("\n").length;
+      const risk = cyclomatic >= 20 ? "high" : cyclomatic >= 10 ? "medium" : "low";
+      return { ok: true, result: { cyclomatic, cognitive, lines, functions: fnCount, risk, source, perFunction: ast ? ast.functions : [] } };
+    }
     const modules = artifact.data?.modules || [];
     if (modules.length === 0) {
       return { ok: true, result: { modules: [], message: "No modules to analyze." } };
@@ -225,8 +271,29 @@ export default function registerCodeActions(registerLensAction) {
   /**
    * dependencyAudit — License + version + circular dependency check.
    */
-  registerLensAction("code", "dependencyAudit", (ctx, artifact, _params) => {
+  registerLensAction("code", "dependencyAudit", (ctx, artifact, params = {}) => {
   try {
+    // S12: raw-code callers (the workbench) get the dependency list
+    // parsed from the source itself. Version/vulnerability verdicts
+    // need a registry — those counts come back null with the reason
+    // attached, never invented.
+    const rawDepCode = typeof params?.code === "string" ? params.code
+      : typeof artifact?.data?.code === "string" ? artifact.data.code : null;
+    if (rawDepCode && rawDepCode.trim() && !artifact.data?.dependencies) {
+      const specifiers = new Set();
+      for (const m of rawDepCode.matchAll(/(?:import[^"']*from\s*|import\s*|require\(\s*)["']([^"']+)["']/g)) {
+        const spec = m[1];
+        if (spec.startsWith(".") || spec.startsWith("/")) continue;
+        const pkg = spec.startsWith("@") ? spec.split("/").slice(0, 2).join("/") : spec.split("/")[0];
+        if (pkg) specifiers.add(pkg);
+      }
+      const dependencies = [...specifiers].map(name => ({ name }));
+      return { ok: true, result: {
+        total: dependencies.length, outdated: null, security: null, riskScore: null,
+        dependencies,
+        note: "Parsed from the source's imports. Outdated and security counts need a registry lookup — not derivable from source alone.",
+      } };
+    }
     const deps = requireList(artifact.data?.dependencies, "dependencies");
     if (!Array.isArray(deps)) return deps;
     if (deps.length === 0) {
@@ -308,10 +375,16 @@ export default function registerCodeActions(registerLensAction) {
   /**
    * coverageAnalysis — Statement/branch/function coverage from instrumented runs.
    */
-  registerLensAction("code", "coverageAnalysis", (ctx, artifact, _params) => {
+  registerLensAction("code", "coverageAnalysis", (ctx, artifact, params = {}) => {
   try {
     const coverage = artifact.data?.coverage || [];
     if (coverage.length === 0) {
+      // S12: a caller holding only source text (the workbench) must
+      // not receive an empty-but-ok result the panel renders as 0% —
+      // coverage is measured by running code, not by reading it.
+      if (typeof params?.code === "string" && params.code.trim()) {
+        return { ok: false, error: "Coverage needs run data: it is measured by executing the code with instrumentation, and cannot be derived from source text alone." };
+      }
       return { ok: true, result: { files: [], message: "No coverage data available." } };
     }
 
@@ -429,7 +502,11 @@ export default function registerCodeActions(registerLensAction) {
    * snippets-save — Persist a code snippet as a kind=code_snippet DTU.
    */
   registerLensAction("code", "snippets-save", (ctx, _artifact, params = {}) => {
-    const title = String(params.title || "").trim();
+    // S12 (F13): the workbench sends `name`; the macro only read
+    // `title`, so a filled form still failed "title and code are
+    // required". Accept both — the error now fires only when neither
+    // carries a value.
+    const title = String(params.title || params.name || "").trim();
     const code = String(params.code || "");
     const language = String(params.language || "plaintext");
     if (!title || !code) {
@@ -501,7 +578,15 @@ export default function registerCodeActions(registerLensAction) {
    */
   registerLensAction("code", "commit-snapshot", (ctx, _artifact, params = {}) => {
     const message = String(params.message || "").trim();
-    const files = Array.isArray(params.files) ? params.files : [];
+    let files = Array.isArray(params.files) ? params.files : [];
+    // S12 (F13): the workbench sends a single { code, language } —
+    // wrap it as the one-file commit it is instead of answering
+    // "no files in commit" to a form holding code.
+    if (files.length === 0 && typeof params.code === "string" && params.code.trim()) {
+      const language = String(params.language || "plaintext");
+      const ext = language === "typescript" ? "ts" : language === "javascript" ? "js" : language === "python" ? "py" : "txt";
+      files = [{ name: String(params.name || `snippet.${ext}`), language, content: params.code }];
+    }
     if (!message) return { ok: false, error: "message required" };
     if (files.length === 0) return { ok: false, error: "no files in commit" };
     const STATE = globalThis._concordSTATE;
@@ -1463,8 +1548,13 @@ Rules:
     files.delete(from);
     files.set(to, { ...file, modifiedAt: isoC() });
     const git = ensureGit(s, userId, projectId);
+    // S17 (F17): a rename is ONE change, counted once, at its new path.
+    // The old code added BOTH paths to modified, so Source Control
+    // counted the renamed-away file forever and disagreed with the
+    // Explorer's file count.
+    git.modified.delete(from);
     git.modified.add(to);
-    git.modified.add(from);
+    if (git.staged.has(from)) { git.staged.delete(from); git.staged.add(to); }
     saveWS();
     return { ok: true, result: { from, to } };
   });
@@ -1722,6 +1812,21 @@ Rules:
     const git = ensureGit(s, userId, projectId);
     const files = ensureFiles(s, userId, projectId);
     const committed = headTree(git)[path];
+    // S10 (F10): a discard is recoverable — before reverting, keep a
+    // snapshot of the discarded content as a stash entry (the shape
+    // git-stash writes), so the panel's stash Pop can bring it back.
+    const current = files.has(path) ? files.get(path).content : null;
+    let snapshotId = null;
+    if (current !== null && current !== committed) {
+      const entry = {
+        id: shortIdC("stash"),
+        message: `Discard snapshot — ${path}`,
+        branch: git.branch, createdAt: isoC(),
+        files: { [path]: current },
+      };
+      git.stashes.unshift(entry);
+      snapshotId = entry.id;
+    }
     if (committed === undefined) {
       files.delete(path); // never committed — discard means remove
     } else {
@@ -1730,7 +1835,7 @@ Rules:
     git.modified.delete(path);
     git.staged.delete(path);
     saveWS();
-    return { ok: true, result: { path, restored: committed !== undefined } };
+    return { ok: true, result: { path, restored: committed !== undefined, snapshotId } };
   });
 
   // ── Stash ─────────────────────────────────────────────────────
@@ -1900,6 +2005,13 @@ Rules:
       filesChanged: [],
     };
     seq.task++;
+    // S5: fingerprint every project file at start. Completion is gated
+    // on these (agent-task-finish re-fingerprints and diffs) — a task
+    // that changed nothing can never be certified COMPLETED.
+    task.fileHashesAtStart = {};
+    for (const [p, f] of ensureFiles(s, userId, projectId).entries()) {
+      task.fileHashesAtStart[p] = fileFingerprint(f?.content ?? "");
+    }
     bucketC(s.agentTasks, userId).push(task);
     saveWS();
 
@@ -1947,11 +2059,47 @@ Rules:
 
   registerLensAction("code", "agent-task-finish", (ctx, _a, params = {}) => {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const task = bucketC(s.agentTasks, aidC(ctx)).find(t => t.id === String(params.id || ""));
+    const userId = aidC(ctx);
+    const task = bucketC(s.agentTasks, userId).find(t => t.id === String(params.id || ""));
     if (!task) return { ok: false, error: "task not found" };
-    task.status = ['completed','cancelled','failed'].includes(params.status) ? params.status : 'completed';
+    // S5: no default-to-completed. The status must be named, and a
+    // terminal task cannot be re-finished.
+    const status = String(params.status || "");
+    if (!["completed", "cancelled", "failed"].includes(status)) {
+      return { ok: false, error: "status must be completed, cancelled, or failed" };
+    }
+    if (task.status !== "running") {
+      return { ok: false, error: `task already ${task.status}` };
+    }
+    if (status === "completed") {
+      // The completion gate: re-fingerprint the project's files and
+      // diff against the start record. The changed set is derived
+      // HERE, from content — a caller-supplied filesChanged list is
+      // never trusted. Zero changes refuses completion outright: the
+      // task stays running and the refusal says why.
+      const start = task.fileHashesAtStart || {};
+      const current = {};
+      for (const [p, f] of ensureFiles(s, userId, task.projectId).entries()) {
+        current[p] = fileFingerprint(f?.content ?? "");
+      }
+      const changed = [];
+      const paths = new Set([...Object.keys(start), ...Object.keys(current)]);
+      for (const p of paths) {
+        if (start[p] !== current[p]) {
+          changed.push({ path: p, before: start[p] ? start[p].slice(0, 12) : null, after: current[p] ? current[p].slice(0, 12) : null });
+        }
+      }
+      if (changed.length === 0) {
+        return { ok: false, error: "no files changed — a task that changed nothing cannot be marked completed", result: { task, changedFiles: [] } };
+      }
+      task.filesChanged = changed.map(c => c.path);
+      task.changeReceipts = changed;
+    }
+    if (status === "failed") {
+      task.error = String(params.reason || "marked failed");
+    }
+    task.status = status;
     task.finishedAt = isoC();
-    if (Array.isArray(params.filesChanged)) task.filesChanged = params.filesChanged.map(String);
     if (Array.isArray(params.steps)) task.steps = params.steps;
     saveWS();
     return { ok: true, result: { task } };
@@ -2116,7 +2264,7 @@ Rules:
         re.lastIndex = 0;
       });
     }
-    return { ok: true, result: { symbol, references: refs.slice(0, 200), count: refs.length } };
+    return { ok: true, result: { symbol, references: refs.slice(0, 200), count: refs.length, source: "lexical" } };
     } catch (e) { return handlerFailure(e); }
 });
 
@@ -2136,8 +2284,15 @@ Rules:
       const r = tsLang.outline(files, path);
       if (r) return { ok: true, result: { path, language: lang, symbols: r.symbols, count: r.symbols.length, source: "typescript" } };
     }
+    // S7 (F7): the lexical scan is a real source for code languages;
+    // for file kinds it cannot read (docs, data, prose) the honest
+    // answer is "unavailable", never a plausible-looking empty list.
+    const LEXICAL_LANGS = new Set(["python", "javascript", "typescript", "c", "cpp", "java", "go", "rust"]);
+    if (!LEXICAL_LANGS.has(lang)) {
+      return { ok: true, result: { path, language: lang, symbols: [], count: 0, source: "none", unsupported: true } };
+    }
     const symbols = extractSymbols(files.get(path).content, lang);
-    return { ok: true, result: { path, language: lang, symbols, count: symbols.length } };
+    return { ok: true, result: { path, language: lang, symbols, count: symbols.length, source: "lexical" } };
     } catch (e) { return handlerFailure(e); }
 });
 
@@ -2177,7 +2332,12 @@ Rules:
     }
     const bySeverity = { error: 0, warning: 0, info: 0 };
     for (const p of problems) bySeverity[p.severity] = (bySeverity[p.severity] || 0) + 1;
-    return { ok: true, result: { problems, total: problems.length, bySeverity, filesScanned: targets.length } };
+    // S7 (F6): say which engine produced this. When the TypeScript
+    // language service is unavailable server-side, only the style
+    // heuristics ran — the panel must not present that as full
+    // coverage while the editor's own markers show syntax errors.
+    const engine = tsLang.tsAvailable(null) ? "typescript" : "heuristics-only";
+    return { ok: true, result: { problems, total: problems.length, bySeverity, filesScanned: targets.length, engine } };
     } catch (e) { return handlerFailure(e); }
 });
 
@@ -2720,15 +2880,18 @@ Rules:
     if (!state.extensions.has(userId)) state.extensions.set(userId, []);
     return state.extensions.get(userId);
   }
+  // S15 (F15): every entry states its ACTUAL effect. An extension whose
+  // effect the editor cannot produce says so in its `effect` note rather
+  // than implying otherwise; todo-highlight is wired for real.
   const EXTENSION_CATALOG = [
-    { id: "prettier-fmt", name: "Prettier Formatter", kind: "formatter", description: "Opinionated multi-language code formatter." },
-    { id: "eslint-lint", name: "ESLint", kind: "linter", description: "Pluggable JavaScript / TypeScript linter." },
-    { id: "todo-highlight", name: "TODO Highlight", kind: "decorator", description: "Highlights TODO / FIXME / HACK comments inline." },
-    { id: "bracket-rainbow", name: "Rainbow Brackets", kind: "decorator", description: "Colorizes matching bracket pairs." },
-    { id: "py-language", name: "Python Language Pack", kind: "language", description: "Adds Python syntax + outline support." },
-    { id: "rust-language", name: "Rust Language Pack", kind: "language", description: "Adds Rust syntax + outline support." },
-    { id: "git-lens-ext", name: "GitLens", kind: "git", description: "Inline blame annotations and history." },
-    { id: "code-snippets-js", name: "JavaScript Snippet Pack", kind: "snippet-pack", description: "Common JS / Node snippets." },
+    { id: "prettier-fmt", name: "Prettier Formatter", kind: "formatter", description: "Opinionated multi-language code formatter." , effect: "Formats via the editor's Format Document action; this entry tracks the preference, the formatting itself is the editor's."},
+    { id: "eslint-lint", name: "ESLint", kind: "linter", description: "Pluggable JavaScript / TypeScript linter." , effect: "Diagnostics come from the built-in TypeScript engine and heuristics (Problems panel), not from ESLint itself."},
+    { id: "todo-highlight", name: "TODO Highlight", kind: "decorator", description: "Highlights TODO / FIXME / HACK comments inline." , effect: "Applies in the editor: TODO / FIXME / HACK keywords are highlighted inline while enabled."},
+    { id: "bracket-rainbow", name: "Rainbow Brackets", kind: "decorator", description: "Colorizes matching bracket pairs." , effect: "Bracket pair colourisation is built into the editor and always on; this entry tracks the preference only."},
+    { id: "py-language", name: "Python Language Pack", kind: "language", description: "Adds Python syntax + outline support." , effect: "Python highlighting and outline are built into the editor; this entry tracks the preference only."},
+    { id: "rust-language", name: "Rust Language Pack", kind: "language", description: "Adds Rust syntax + outline support." , effect: "Rust highlighting is built into the editor; this entry tracks the preference only."},
+    { id: "git-lens-ext", name: "GitLens", kind: "git", description: "Inline blame annotations and history." , effect: "No inline blame yet — history lives in the Git panel. Installing records the preference only."},
+    { id: "code-snippets-js", name: "JavaScript Snippet Pack", kind: "snippet-pack", description: "Common JS / Node snippets." , effect: "Snippets are available from the Snippets library; this entry tracks the preference only."},
   ];
 
   registerLensAction("code", "extensions-catalog", (_ctx, _a, _p = {}) => {
