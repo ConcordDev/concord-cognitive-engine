@@ -471,13 +471,27 @@ describe("timeline.share-post appears in the sharer's feed", () => {
 });
 
 describe("timeline.album-list by ownerId", () => {
-  it("returns another user's albums when ownerId is supplied", () => {
-    call("album-create", ctxA, { name: "A's album" });
+  // S-TL-5 (#1840): listing someone else's albums returns only the albums whose audience includes the
+  // viewer. Albums default to private, so a bare album-create is NOT visible to another user (the old
+  // assertion here expected any caller to enumerate any owner's albums, the defect S-TL-5 closed).
+  it("returns another user's PUBLIC albums when ownerId is supplied, and never their private ones", () => {
+    call("album-create", ctxA, { name: "A's public album", privacy: "public" });
+    call("album-create", ctxA, { name: "A's private album" });
     const asB = call("album-list", ctxB, { ownerId: "user_a" });
     assert.equal(asB.ok, true);
     assert.equal(asB.result.totalAlbums, 1);
+    assert.deepEqual(asB.result.albums.map((a) => a.name), ["A's public album"]);
     const ownB = call("album-list", ctxB, {});
     assert.equal(ownB.result.totalAlbums, 0);
+    // the owner still sees both
+    assert.equal(call("album-list", ctxA, {}).result.totalAlbums, 2);
+  });
+  it("a default (private) album is invisible to another user, not an error", () => {
+    call("album-create", ctxA, { name: "private by default" });
+    const asB = call("album-list", ctxB, { ownerId: "user_a" });
+    assert.equal(asB.ok, true);
+    assert.equal(asB.result.totalAlbums, 0);
+    assert.deepEqual(asB.result.albums, []);
   });
 });
 
