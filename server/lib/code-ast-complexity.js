@@ -36,12 +36,49 @@ const _require = createRequire(import.meta.url);
 let _ts = null;
 let _loadFailed = false;
 
+/**
+ * hasCompilerApi — true only when a loaded `typescript` module actually
+ * exposes the classic compiler API surface this walker calls. The check
+ * names exactly the members the walk uses — no more, no less — so a
+ * module that loads but is not a working compiler (typescript v7's
+ * package root resolves to a version-only module: `version` and
+ * `versionMajorMinor`, no compiler API at all) reads as unavailable
+ * instead of passing a truthiness check and throwing on first use
+ * ("Cannot read properties of undefined (reading 'Latest')" — the
+ * live F6 handler_error). Exported for tests.
+ */
+export function hasCompilerApi(mod) {
+  if (!mod || typeof mod !== "object") return false;
+  return (
+    typeof mod.createSourceFile === "function" &&
+    typeof mod.forEachChild === "function" &&
+    typeof mod.getLineAndCharacterOfPosition === "function" &&
+    typeof mod.isIdentifier === "function" &&
+    typeof mod.isBinaryExpression === "function" &&
+    typeof mod.isVariableDeclaration === "function" &&
+    typeof mod.isPropertyAssignment === "function" &&
+    typeof mod.isPropertyDeclaration === "function" &&
+    !!mod.ScriptTarget &&
+    !!mod.ScriptKind &&
+    !!mod.SyntaxKind
+  );
+}
+
 /** Lazy-load the TypeScript compiler module (cached, mirrors ts-language-service.js). */
 function ts() {
   if (_ts) return _ts;
   if (_loadFailed) return null;
   try {
-    _ts = _require("typescript");
+    const mod = _require("typescript");
+    if (!hasCompilerApi(mod)) {
+      // The package resolved but exposes no compiler API (e.g. the
+      // typescript v7 version-only entry). That is a load failure for
+      // this walker's purposes: report unavailable honestly rather
+      // than hand callers a module that throws on first use.
+      _loadFailed = true;
+      return null;
+    }
+    _ts = mod;
     return _ts;
   } catch {
     _loadFailed = true;

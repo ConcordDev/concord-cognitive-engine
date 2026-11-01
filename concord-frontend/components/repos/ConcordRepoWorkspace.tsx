@@ -1546,7 +1546,13 @@ function AnalysisTab({ repoId }: { repoId: string }) {
   const [cxMeta, setCxMeta] = useState<{ matched: number; unreadable: number }>({ matched: 0, unreadable: 0 });
   const [commits, setCommits] = useState<CommitAnalysisResult | null>(null);
   const [deps, setDeps] = useState<DependencyAuditResult | null>(null);
-  const [noPackageJson, setNoPackageJson] = useState(false);
+  // Why the dependency card has nothing to audit, when it doesn't:
+  // "missing" (no package.json in this repo), "empty" (package.json
+  // exists but declares no dependencies), "unreadable" (the file exists
+  // but couldn't be read or parsed). The three read differently to the
+  // user — folding them into one "No package.json (or no dependencies)"
+  // line implied a missing file that exists (Review F6 framing nit).
+  const [depsNote, setDepsNote] = useState<null | "missing" | "empty" | "unreadable">(null);
 
   const runAnalysis = async () => {
     setBusy(true); setErr(null);
@@ -1606,23 +1612,23 @@ function AnalysisTab({ repoId }: { repoId: string }) {
             const parsed = JSON.parse(pr.data.content || '{}');
             const depEntries: Record<string, string> = { ...(parsed.dependencies || {}), ...(parsed.devDependencies || {}) };
             const dependencies = Object.entries(depEntries).map(([name, version]) => ({ name, version: String(version) }));
-            if (dependencies.length === 0) { setNoPackageJson(true); setDeps(null); }
+            if (dependencies.length === 0) { setDepsNote("empty"); setDeps(null); }
             else {
               // liveVulnCheck: the audit asks the same OSV.dev source
               // the Security tab scans with, so the two tabs' counts
               // agree by construction (re-pass checkpoint 3).
               const da = await runX<DependencyAuditResult>('dependencyAudit', { dependencies, liveVulnCheck: true });
               setDeps(da.ok ? da.data : null);
-              setNoPackageJson(false);
+              setDepsNote(null);
             }
           } catch {
-            setNoPackageJson(true); setDeps(null);
+            setDepsNote("unreadable"); setDeps(null);
           }
         } else {
-          setNoPackageJson(true); setDeps(null);
+          setDepsNote("unreadable"); setDeps(null);
         }
       } else {
-        setNoPackageJson(true); setDeps(null);
+        setDepsNote("missing"); setDeps(null);
       }
       setRanOnce(true);
     } catch (e) {
@@ -1725,8 +1731,12 @@ function AnalysisTab({ repoId }: { repoId: string }) {
 
           <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
             <h4 className="mb-2 text-xs font-semibold text-white">Dependency audit</h4>
-            {noPackageJson ? (
-              <p className="text-[11px] text-zinc-400">No package.json (or no dependencies) in this repo — nothing to audit.</p>
+            {depsNote ? (
+              <p className="text-[11px] text-zinc-400">{depsNote === "missing"
+                ? "No package.json in this repo — nothing to audit."
+                : depsNote === "empty"
+                  ? "This repo's package.json declares no dependencies — nothing to audit."
+                  : "This repo's package.json couldn't be read — nothing to audit."}</p>
             ) : !deps ? (
               <p className="text-[11px] text-zinc-400">No dependency data.</p>
             ) : (
