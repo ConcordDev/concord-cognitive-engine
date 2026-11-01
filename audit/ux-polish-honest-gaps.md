@@ -1,10 +1,10 @@
 # UX Polish Audit — HONEST mode
 
-Generated: 2026-10-16T01:01:01.317Z
+Generated: 2026-10-31T23:36:22.642Z
 
 Mode: **honest**
 
-Lenses scanned: 267
+Lenses scanned: 268
 
 
 > Honest mode demotes lenses that are still the generated scaffold
@@ -13,41 +13,45 @@ Lenses scanned: 267
 > page with no substantial bespoke component) from `polished` →
 > `functional`. Lenses with a bespoke page, a flagship-scale component,
 > or a custom body that dropped the generic wrappers are NOT capped.
-> **0 lenses capped** (of 0 detected as generic scaffolds).
+> **1 lenses capped** (of 1 detected as generic scaffolds).
 
 ## Tier distribution
 
 | Tier | Count | % | Weight |
 |---|---:|---:|---:|
 | raw | 0 | 0.0% | 0.2 |
-| functional | 3 | 1.1% | 0.6 |
-| polished | 264 | 98.9% | 1 |
+| functional | 6 | 2.2% | 0.6 |
+| polished | 262 | 97.8% | 1 |
 
-**Weighted UX polish score: 0.996** (1.0 = all polished)
+**Weighted UX polish score: 0.991** (1.0 = all polished)
 
 ## Signal coverage (% of lenses)
 
 | Signal | Lenses with it | % |
 |---|---:|---:|
-| loading | 267 | 100.0% |
-| emptyState | 266 | 99.6% |
-| errorUI | 266 | 99.6% |
-| aria | 266 | 99.6% |
-| keyboardHandlers | 175 | 65.5% |
-| nativeButtons | 266 | 99.6% |
-| responsive | 261 | 97.8% |
-| animation | 267 | 100.0% |
+| loading | 268 | 100.0% |
+| emptyState | 267 | 99.6% |
+| errorUI | 267 | 99.6% |
+| aria | 267 | 99.6% |
+| keyboardHandlers | 175 | 65.3% |
+| nativeButtons | 267 | 99.6% |
+| responsive | 264 | 98.5% |
+| animation | 268 | 100.0% |
 | toasts | 65 | 24.3% |
-| altOnImages | 266 | 99.6% |
+| altOnImages | 267 | 99.6% |
 
 ## Anti-patterns
 
-- Lenses with at least one `<div onClick>` (missing keyboard handler / role / tabIndex): **3** (total instances: 4)
+- Lenses with at least one `<div onClick>` (missing keyboard handler / role / tabIndex): **5** (total instances: 15)
 - Lenses with inline hex colours (bypassing design tokens): **0** (total instances: 0)
 
 ## Generic-scaffold lenses capped this run (polished → functional)
 
-_None._
+These import the generic trio, lean on the `<UniversalActions>`/`<LensFeaturePanel>` template body, and have neither a bespoke page (≥700 LOC) nor a flagship-scale component (≥1000 LOC). Rebuild target: real designed product UI.
+
+| Lens | Page LOC | Max component LOC | Bespoke ratio |
+|---|---:|---:|---:|
+| `__ux_polish_scaffold_fixture__` | 25 | 0 | 0 |
 
 ## Raw-tier lenses (need work)
 
@@ -61,7 +65,10 @@ Sorted by smallest gap first. Items with anti-patterns surface first within each
 |---|---:|---|---:|
 | `conkay` | 5/5 | anti-patterns(1 div-button, 0 inline-hex) | 1 |
 | `government` | 5/5 | anti-patterns(2 div-button, 0 inline-hex) | 1 |
-| `projects` | 5/5 | anti-patterns(1 div-button, 0 inline-hex) | 1 |
+| `projects` | 5/5 | anti-patterns(3 div-button, 0 inline-hex) | 1 |
+| `studio` | 5/5 | anti-patterns(6 div-button, 0 inline-hex) | 1 |
+| `timeline` | 5/5 | anti-patterns(3 div-button, 0 inline-hex) | 1 |
+| `__ux_polish_scaffold_fixture__` | 5/5 |  | 0 |
 
 ## What this audit does NOT measure
 
