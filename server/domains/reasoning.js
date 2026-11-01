@@ -611,9 +611,13 @@ export default function registerReasoningActions(registerLensAction) {
       const own = s.maps.get(userId);
       const id = String(params.mapId || "");
       if (!own || !own.has(id)) return { ok: false, error: "map not found (owner only)" };
+      const removed = own.get(id);
       own.delete(id);
       saveState();
-      return { ok: true, result: { deleted: id } };
+      // The removed map rides the result so the activity recorder can
+      // name what was deleted (delete rows carry the same object
+      // standard as creates — #1906 re-sitting, Reasoning leg).
+      return { ok: true, result: { deleted: id, map: removed ? publicMap(removed, userId) : null } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

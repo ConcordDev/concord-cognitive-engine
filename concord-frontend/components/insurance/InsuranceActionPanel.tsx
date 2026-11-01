@@ -187,7 +187,7 @@ export function InsuranceActionPanel() {
     try {
       const task = `Insurance book review. ${gapResult ? `${gapResult.gapCount} coverage gaps (${(gapResult.gaps || []).join(', ')}).` : ''} ${lossResult ? `Loss ratio ${lossResult.lossRatio}% — ${lossResult.assessment}.` : ''} ${renewalResult ? `${renewalResult.urgentCount} renewals due in 30 days.` : ''} ${riskResult ? `Top risk: ${riskResult.risk} at ${riskResult.level}.` : ''} Identify the single highest-leverage cross-sell or risk-mitigation play this quarter. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Play ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

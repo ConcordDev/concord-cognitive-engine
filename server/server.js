@@ -11,7 +11,12 @@
  * @see ../README.md for architecture overview
  */
 
+// Must stay the first import: it wraps node:fs's sync calls before the later modules bind them,
+// so a blocking syscall that stalls the event loop is named (slow_sync_io / event_loop_block.syncIo).
+import { installSlowSyncIoOnce, installSlowNativeOnce, setSlowSyncIoReporter, slowSyncIoSince } from "./lib/slow-sync-io.js";
+installSlowSyncIoOnce();
 import expressRateLimit from "express-rate-limit";
+import { findActiveUserRowByEmail, emailsMatchIgnoreCase } from "./lib/user-email-lookup.js";
 import { podPick as _podPick } from "./lib/pod-profile.js";
 import { createDtuQualityService as _createDtuQualityService, dtuQualityMode as _dtuQualityMode } from "./lib/dtu-quality/service.js";
 import { router as p2pSignallingRouter } from "./lib/p2p-dtu-signalling.js";
@@ -44,6 +49,7 @@ import {
   isLogAdmin,
   actorFromReq,
 } from "./lib/log-access.js";
+import { isQuietLensAction, lensActivityLabel, lensActivityObject } from "./lib/lens-activity-labels.js";
 import { dtuSkipsAutoTag } from "./lib/dtu-auto-tag.js";
 import { relationEdges as dtuRelationEdges } from "./lib/dtu-relations.js";
 import { substrateCounts, derivedLayerCounts } from "./lib/substrate-counts.js";
@@ -131,6 +137,7 @@ import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
 import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
 import { httpErrorFromLensAction as _httpErrorFromLensAction } from "./lib/lens-action-http.js";
 import { shapeLensRunHttp as _shapeLensRunHttp, respondMacroResult as _respondMacroResult } from "./lib/lens-run-http.js";
+import { createLensRunLogger as _createLensRunLogger } from "./lib/lens-run-log.js";
 import { resolveDualRegistry as _resolveDualRegistry } from "./lib/dual-registry-resolve.js";
 import {
   enforcePlatformInternalLensRole,
@@ -141,6 +148,7 @@ import { stringifyChunked } from "./lib/chunked-json.js";
 import { writeFileChunkedYielding } from "./lib/chunked-write.js";
 import { createLensArtifactStore } from "./lib/lens-artifact-store.js";
 import fs from "fs";
+import { startWalCheckpointer, walCheckpointerEnabled } from "./lib/wal-checkpointer.js";
 import path from "path";
 import zlib from "zlib";
 import { pruneJsonStateBackups, summarizeDatedDbBackups } from "./lib/backup-retention.js";
@@ -168,9 +176,12 @@ import { init as initEmergent } from "./emergent/index.js";
 import { tickAllRegistered, registerHeartbeat, getRegistryScheduleSummary, getRegistrySkipStats } from "./emergent/heartbeat-registry.js";
 import * as presenceIdle from "./lib/presence-idle.js";
 import * as loopJobs from "./lib/loop-job-tracker.js";
+import { createLoopBlockSampler } from "./lib/loop-block-attribution.js";
 import { HUB_WORLD_ID, canonicalWorldId } from "./lib/world-ids.js";
 import { uniqueTmpPath, writeFileAtomicSync, createSnapshotOrdering, sweepStaleStateTmps } from "./lib/state-file-write.js";
 import { runConsolidationCycle } from "./lib/consolidation-cycle.js";
+import { createVerifyGateService } from "./lib/verify-gate/service.js";
+import { proveClaim as _vgProveClaim } from "./lib/proof-gate.js";
 import { consolidatedTitle, stripTierPrefix, screenClusterMembers, memberSetKey, createRejectionCache, bump as _consoBump } from "./lib/consolidation-dedupe.js";
 import { budgetDemotions, clusterTitleSeed, synthesizeConsolidatedBody, absorbTarget as _consoAbsorbTarget, growConsolidatedNode } from "./lib/consolidation-synthesis.js";
 // Clusters the quality gates rejected: not rebuilt for 24h (lib/consolidation-dedupe.js).
@@ -393,6 +404,8 @@ registerHeartbeat("economy-anomaly-cycle", {
 // bridges from literary chunk-DTUs into other lenses (lib/literary-resonance.js).
 // Bounded per pass, try/catch isolated. Kill-switch CONCORD_LITERARY_RESONANCE=0.
 import { runLiteraryResonanceCycle } from "./emergent/literary-resonance-cycle.js";
+import { mountAdminHeartbeatRoutes } from "./lib/admin-heartbeat.js";
+import { applyVerifyAdmins, mountUserRoleRoute } from "./lib/verify-admins.js";
 registerHeartbeat("literary-resonance-cycle", {
   frequency: 200,
   scope: "global",
@@ -1848,6 +1861,21 @@ registerHeartbeat("scheduled-posts", {
 // the window so the heartbeat can fire harmlessly at any tick. We
 // schedule every 60 ticks (~15 min) so the window is reliably hit
 // even if the heartbeat misses a tick under load.
+// Verification gate: drain the queue (a few candidates, time-boxed, yielding) and re-check a small batch of
+// existing megas/hypers that have no receipt yet. Parent-only: it reads the live DTU map.
+registerHeartbeat("verify-gate-cycle", {
+  frequency: 8,
+  scope: "global",
+  handler: async () => {
+    try {
+      return { ok: true, ...(await getVerifyGate().cycle()) };
+    } catch (err) {
+      structuredLog("warn", "verify_gate_cycle_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
+
 registerHeartbeat("brain-daily-refresh", {
   frequency: 60,
   // Track A — brain in-context training runs against the shared model
@@ -1923,8 +1951,9 @@ registerHeartbeat("qualia-persist", {
   handler: async ({ db: ctxDb }) => {
     if (!ctxDb) return { ok: false, reason: "no_db" };
     try {
-      const { persistQualiaState } = await import("./existential/hooks.js");
-      const res = persistQualiaState(ctxDb);
+      const { persistQualiaStateAsync } = await import("./existential/hooks.js");
+      // Chunked + yielding: the synchronous version was a ~2 s main-thread block at the size seen live.
+      const res = await persistQualiaStateAsync(ctxDb);
       // Loud on the exact regression that hid for so long: the persist wire going
       // dead (engine.snapshot() missing) used to return a `reason` nobody read.
       if (res?.reason === "no_snapshot_export") {
@@ -2127,11 +2156,11 @@ import "./lib/validators/finance-validator.js";
 import "./lib/validators/healthcare-validator.js";
 import "./lib/validators/legal-validator.js";
 import "./lib/validators/music-validator.js";
-import { runIntegrityCheck } from "./lib/integrity-check.js";
+import { runIntegrityCheck, runIntegrityCheckAsync } from "./lib/integrity-check.js";
 import { fullRecoverySequence } from "./lib/cascade-recovery.js";
 import { getScalingStatus } from "./lib/horizontal-scaling.js";
 import { startAllIntervals, stopAllIntervals, getIntervalStatus } from "./lib/interval-registry.js";
-import { getMemoryPressureLevel, initMemoryWatchdog } from "./lib/memory-pressure.js";
+import { getMemoryPressureLevel, initMemoryWatchdog, persistableSettings, clearMemoryPause } from "./lib/memory-pressure.js";
 import { initStateSync, getSyncStatus, stopSync } from "./lib/state-sync.js";
 import * as cityStreaming from "./lib/city-streaming.js";
 import { createRequire } from "module";
@@ -2642,6 +2671,7 @@ try { helmet = (await importWithRetry("helmet")).default; } catch (e) {
 }
 try { compression = (await import("compression")).default; } catch (_e) { logger.debug('server', 'optional in all envs', { error: _e?.message }); }
 try { Database = (await import("better-sqlite3")).default; } catch (_e) { logger.debug('server', 'optional - falls back to JSON', { error: _e?.message }); }
+installSlowNativeOnce(Database); // times better-sqlite3 + child_process sync calls into event_loop_block.syncIo
 
 // Sentry — only activates when SENTRY_DSN is set; completely no-op otherwise
 if (process.env.SENTRY_DSN) {
@@ -3450,6 +3480,7 @@ import { runShutdownDurability, writeShutdownLine } from "./lib/shutdown-durabil
 import {
   beginShutdownHttp,
   getInflightResponses,
+  guardSocketAuth,
   rollbackOpenWrite,
   sealDatabaseWrites,
   shutdownHttpMiddleware,
@@ -3559,6 +3590,11 @@ async function gracefulShutdown(signal) {
   } catch (e) {
     console.error("[Shutdown] State save failed:", e.message);
   }
+  // Drain the WAL off-thread NOW: the state snapshot just written is the last big write, and db.close() will skip
+  // its own checkpoint (the worker's connection is open, so it is not the last one). The worker copies it during
+  // the feed-flush wait below. Fire-and-forget: it must not add to the ~5 s launchd stop window (a synchronous
+  // TRUNCATE here did, #1962), and a TDZ/absent worker just means no drain.
+  try { _walCheckpointer?.checkpointNow?.(); } catch { /* informational */ }
 
   // Final DB backup on every graceful shutdown (2026-08-24 — local-disk DB
   // migration). DB_PATH now lives on the container's ephemeral local disk
@@ -3906,6 +3942,7 @@ function structuredLog(level, event, data = {}) {
 // Inject structuredLog into the http-errors helper so 5xx leak responses
 // log through the same pipeline as the rest of the server. Until this
 // runs, the helper falls back to console.error — safe but louder.
+setSlowSyncIoReporter((e) => structuredLog("warn", "slow_sync_io", { fn: e.fn, target: e.target, ms: e.ms, frames: e.frames }));
 configureHttpErrorLogger(structuredLog);
 
 // INC-67: reject a template FRONTEND_URL before any signing link or redirect
@@ -6562,6 +6599,7 @@ installSharedStateWriteThrough();
 // ---- SQLite Database for Auth & Audit ----
 const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, "concord.db");
 let db = null;
+let _walCheckpointer = null; // off-loop WAL checkpoint worker (lib/wal-checkpointer.js)
 
 function initDatabase() {
   if (!Database) {
@@ -6662,8 +6700,29 @@ function initDatabase() {
       db.pragma(`cache_size = -${cacheMb * 1024}`);
       db.pragma("temp_store = MEMORY");       // Temp tables in RAM
       db.pragma(`busy_timeout = ${busyTimeoutMs}`); // 10s default retry — burst-safe under concurrent writers
-      db.pragma(`wal_autocheckpoint = ${walPages}`); // Checkpoint cadence
+      // Checkpoint cadence. When the checkpoint worker will run, the inline auto-checkpoint is OFF from open
+      // (not only once the worker reports ready): boot is synchronous up to listen, so "ready" cannot arrive
+      // before it, and the first COMMIT after boot (the dtu-ownership INSERT OR REPLACE, 14,190 ms in #1955's
+      // syncIo) was running SQLite's inline checkpoint over the WAL the previous run left behind (64 MB, i.e.
+      // over the 8192-page threshold). Reproduced locally: first write after reopening a 124 MB WAL costs ~400 ms
+      // with wal_autocheckpoint 1000 or 8192 and 0 ms with 0. The inline checkpoint comes back if the worker
+      // fails to start, dies, starves, or does not report ready in time (onFallback below).
+      const _walWorkerOn = walCheckpointerEnabled(DB_PATH);
+      db.pragma(`wal_autocheckpoint = ${_walWorkerOn ? 0 : walPages}`);
       db.pragma(`journal_size_limit = ${walSizeLimitMb * 1024 * 1024}`); // hard cap — see comment above
+      // Checkpoints run on a worker thread's connection instead of inside whichever
+      // COMMIT crosses wal_autocheckpoint (a 10.5 s COMMIT in the NPC flush, #1940
+      // syncIo). CONCORD_WAL_CHECKPOINT_WORKER=0 disables the worker (and keeps inline checkpointing).
+      _walCheckpointer = startWalCheckpointer(DB_PATH, {
+        thresholdBytes: walPages * 4096,
+        onReady: () => { db.pragma("wal_autocheckpoint = 0"); structuredLog("info", "wal_checkpointer_started", { thresholdBytes: walPages * 4096 }); },
+        onBacklog: (b) => structuredLog("info", "wal_boot_backlog", { frames: b.log, checkpointed: b.checkpointed, pending: b.log != null && b.checkpointed != null ? b.log - b.checkpointed : null }),
+        onResult: (r) => { if (r.early && !r.forced && !r.failed && !r.busy && r.ms < 100) return; structuredLog(r.failed || r.busy ? "warn" : "info", "wal_checkpoint", { ms: r.ms, walBytes: r.walBytes, busy: r.busy, log: r.log, checkpointed: r.checkpointed, error: r.error }); },
+        onFallback: (reason) => { try { db.pragma(`wal_autocheckpoint = ${walPages}`); } catch { /* db closing */ } structuredLog("warn", "wal_checkpointer_fallback", { reason }); },
+      });
+      // WAL size at open (file metadata only): tells the next boot-stall read whether
+      // a large WAL left by the previous run / a migration index build is in play.
+      try { structuredLog("info", "db_wal_state", { walBytes: fs.statSync(`${DB_PATH}-wal`).size, autocheckpointPages: walPages }); } catch { /* no WAL file yet */ }
       // REMOVED (audit 2026-07-27): `db.pragma("page_size = 8192")` used to
       // sit here. SQLite's own docs are explicit that page_size "cannot be
       // changed while in WAL journal mode... not even on an empty
@@ -6676,8 +6735,17 @@ function initDatabase() {
       // require setting it BEFORE journal_mode=WAL on a genuinely fresh
       // (pre-existing-file) database, or a VACUUM on an existing one —
       // out of scope for what was a minor I/O-amortization tweak.
-      db.pragma("optimize");                  // Refresh query-planner stats at boot (idempotent, fast)
-      // INC-100: that boot-time optimize is a no-op (plain optimize only looks
+      // NO boot-time `PRAGMA optimize` (2026-11-01, #1943 deploy): it ran synchronously on the main thread
+      // before listen and took 23,990 ms (slow_sync_io target "PRAGMA optimize", server.js initDatabase) with
+      // analysis_limit already at 1000 and a 69 MB WAL; the statements right after it ran in milliseconds, so
+      // the cost was optimize itself, not first-touch of the file. Every deploy paid ~24 s of extra downtime.
+      // It also bought nothing: see INC-100 below, a plain optimize only looks at tables this connection has
+      // already queried and at boot there are none. Query-planner statistics are kept fresh by the
+      // sqlite-stats-refresh job below (one table at a time, off the boot path, then twice a day), which
+      // re-ANALYZEs the tables whose stats are stale. analysis_limit stays set so that job's ANALYZE is bounded
+      // too. Cause of the 24 s itself is not proven.
+      db.pragma("analysis_limit = 1000");
+      // INC-100: a boot-time optimize was a no-op (plain optimize only looks
       // at tables this connection has already queried — none yet), so
       // sqlite_stat1 stayed frozen at tiny row counts and the planner chose
       // full SCANs over existing indexes (3.5 s event-loop freezes from
@@ -6984,6 +7052,10 @@ if (db) {
     catch (e) {
       structuredLog("error", "shutdown_database_seal_failed", { error: e?.message, stack: e?.stack });
     }
+    try { _walCheckpointer?.stop(); } catch { /* informational */ }
+    // No synchronous checkpoint here. A TRUNCATE in this callback (#1962) ran past the ~5 s launchd stop window
+    // and the process was killed before db.close(), which used to be reached at +2.6-3.5 s. The WAL is kept small
+    // by the worker's cadence (small slices during boot), not by shutdown work.
     structuredLog("info", "shutdown_closing_database", {});
     const __t0 = process.hrtime.bigint();
     try {
@@ -7132,8 +7204,7 @@ const AuthDB = {
 
   getUserByEmail(email) {
     if (db) {
-      const stmt = db.prepare("SELECT id, username, email, password_hash, role, scopes, created_at, last_login_at FROM users WHERE email = ? AND is_active = 1");
-      const row = stmt.get(email);
+      const row = findActiveUserRowByEmail(db, email);
       if (row) {
         return {
           id: row.id,
@@ -7150,6 +7221,9 @@ const AuthDB = {
     }
     for (const [, user] of AUTH.users) {
       if (user.email === email) return user;
+    }
+    for (const [, user] of AUTH.users) {
+      if (emailsMatchIgnoreCase(user.email, email)) return user;
     }
     return null;
   },
@@ -7538,6 +7612,18 @@ if (AuthDB.getUserCount() === 0 && bcrypt) {
     });
     structuredLog("info", "auth_admin_created", { username: "admin" });
   }
+}
+
+// Verify-admin allowlist (server/config/verify-admins.json): grant role "admin" to a listed
+// dedicated verification account whose username AND id both match. Only ever grants admin,
+// never touches owner/founder/sovereign, never creates users or touches passwords. Idempotent.
+try {
+  if (db) {
+    applyVerifyAdmins({ db, log: structuredLog });
+    bustUserCache();
+  }
+} catch (e) {
+  structuredLog("warn", "verify_admin_apply_failed", { error: e?.message });
 }
 
 // Auth helper functions
@@ -11143,6 +11229,9 @@ async function tryInitWebSockets(server) {
     // verifies cookie / Bearer / API-key the same way the root middleware
     // does — never trusting client-supplied auth.userId.
     const dxValidateAuth = (socket) => {
+      try { return _dxValidateAuthUnguarded(socket); } catch { return null; } // a sealed DB at shutdown must deny, not throw (lib/shutdown-http.js guardSocketAuth)
+    };
+    const _dxValidateAuthUnguarded = (socket) => {
       const cookies = parseCookies(socket.handshake.headers?.cookie || "");
       const cookieToken = cookies.concord_auth;
       if (cookieToken) {
@@ -11204,7 +11293,12 @@ async function tryInitWebSockets(server) {
   }
 
   // SECURITY: Socket.IO authentication middleware
-  io.use((socket, next) => {
+  //
+  // socket.io v4 runs namespace middleware from an async `_add`, and does not catch a synchronous throw from it:
+  // during graceful shutdown the sealed DB throws shutting_down out of AuthDB.getUser, which became a fatal
+  // unhandled_rejection in the OLD process on every deploy (01:29:13 ET Nov 1; also 18:00 Oct 31). A throw here
+  // is now turned into a normal handshake refusal via next(err).
+  const _socketAuth = (socket, next) => {
     // Parse cookies from handshake
     const cookies = parseCookies(socket.handshake.headers?.cookie || "");
     const cookieToken = cookies.concord_auth;
@@ -11271,7 +11365,8 @@ async function tryInitWebSockets(server) {
       return next();
     }
     return next(new Error("Authentication required"));
-  });
+  };
+  io.use(guardSocketAuth(_socketAuth));
 
   io.on("connection", (socket) => {
     const clientId = socket.id;
@@ -12907,7 +13002,8 @@ function _serializeState() {
     organs: toArr(STATE.organs),
     growth: STATE.growth,
     abstraction: STATE.abstraction,
-    settings: STATE.settings,
+    // Never persist the memory watchdog's runtime pause (see persistableSettings).
+    settings: persistableSettings(STATE),
     logs: STATE.logs.slice(-500),
     crawlQueue: (STATE.crawlQueue || []).filter(c => c.status !== "done" && c.status !== "error").slice(-200),
     queues: {
@@ -14511,6 +14607,44 @@ function log(type, message, meta={}, actorUserId=null) {
   STATE.logs.push(entry);
   if (STATE.logs.length > 2000) STATE.logs.splice(0, STATE.logs.length - 2000);
   return entry;
+}
+
+// ---- Lens activity recording (§5 convergence item 4, fix for the #1906
+// arm FAIL) ----
+// The events feed (/api/events/paginated) assembles DTU timeline rows,
+// audit rows (auth/economy/admin only), STATE.logs and the economy
+// ledger — ordinary lens actions wrote to none of them, so every lens's
+// Activity panel read empty for members even after full working
+// sessions (R3 arm verdict 0/12 on #1906). This recorder is the write
+// side: the /api/lens/run handler calls it after a successful,
+// non-internal dispatch on BOTH dispatch branches, stamping one
+// STATE.logs row with the acting user's id. The route's Source 3 turns
+// such rows into feed rows visible to their actor (type = the lens
+// domain, which the shared ActivityTimeline matches to the lens and
+// classifies as "You"). Recording must never break a lens run: every
+// failure is swallowed.
+//
+// Labelling/coverage layer (fix for the #1906 RE-SITTING verdict on
+// #1910 — 4 PASS / 8 FAIL, the recorder itself verified working): the
+// verb and object come from lib/lens-activity-labels.js — camelCase
+// actions humanize instead of rendering as raw tool names, per-action
+// specs name the object under the key that leg's call actually
+// carries, and pure read/fetch dispatches (the lens's own load
+// traffic) are quiet: they write no row, so a member's own action
+// rows cannot rotate out of the panel under read traffic. The object
+// is never fabricated: a call carrying no object names the action
+// alone.
+function _recordLensActivity(domain, action, ctx, input, result) {
+  try {
+    const userId = ctx?.userId || ctx?.actor?.userId || null;
+    if (!userId || userId === "anon" || userId === "system") return;
+    if (ctx?.internal === true || ctx?.actor?.internal === true) return;
+    if (typeof domain !== "string" || !domain || typeof action !== "string" || !action) return;
+    if (isQuietLensAction(domain, action)) return;
+    const verb = lensActivityLabel(domain, action);
+    const label = lensActivityObject(domain, action, input, result);
+    log(domain, label ? `${verb}: ${label}` : verb, { domain, action }, userId);
+  } catch { /* activity recording must never break a lens run */ }
 }
 
 
@@ -21550,8 +21684,13 @@ async function initGhostFleet() {
       if (_hlmRunning) return;
       _hlmRunning = true;
       try {
-        const dtus = typeof STATE.dtus?.values === 'function' ? Array.from(STATE.dtus.values()) : [];
-        if (dtus.length > 0) await hlm.runHLMPass(dtus);
+        // Off the main thread: runHLMPass is O(n²) over the whole store (3.1 s at 5k DTUs, 41.6 s at 20k) and
+        // ran synchronously here, freezing the whole backend for 7-13 s+ every 20 minutes. The worker gets a
+        // slim projection (built in yielding chunks); the result is recorded back into hlm-engine's state.
+        // Registered with loopJobs so any remaining block is attributed to it.
+        const { runHLMPassOffThread } = await import("./emergent/hlm-offthread.js");
+        const out = await loopJobs.withJob("hlm_pass", () => runHLMPassOffThread(typeof STATE.dtus?.values === 'function' ? STATE.dtus.values() : []));
+        if (out && out.ok === false) observe(new Error(out.error || "hlm_pass_failed"), "hlm_slow_interval");
       } catch (e) { observe(e, "hlm_slow_interval"); }
       finally { _hlmRunning = false; }
     }, 1_200_000);
@@ -35903,6 +36042,7 @@ register("settings", "status", (ctx, _input) => {
 register("settings", "set", (ctx, input) => {
   const s = input.settings && typeof input.settings === "object" ? input.settings : {};
   ctx.state.settings = { ...ctx.state.settings, ...s };
+  clearMemoryPause(ctx.state, Object.keys(s)); // an explicit write supersedes a watchdog pause record
   ctx.log("settings.set", "Settings updated", { keys: Object.keys(s) });
   return { ok:true, settings: ctx.state.settings };
 });
@@ -40183,7 +40323,7 @@ registerDomainRoutes(app, {
   STATE, makeCtx, runMacro, _withAck, kernelTick, uiJson, listDomains, listMacros,
   dtusArray, normalizeText, clamp, nowISO, saveStateDebounced, retrieveDTUs,
   isShadowDTU, fs, ensureExperienceLearning, ensureAttentionManager, ensureReflectionEngine,
-  validate, requireOwner, requireRole
+  validate, requireOwner, requireRole, recordLensActivity: _recordLensActivity
 });
 
 // ---- Shield Routes (extracted to routes/shield.js) ----
@@ -41911,6 +42051,8 @@ app.get("/mcp/tools", (_req, res) => {
 // user (req.authMethod !== "mcp-bypass") for these two tools specifically,
 // regardless of the general MCP bypass.
 const MCP_TOOLS_REQUIRE_REAL_AUTH = new Set([
+  // embedding_search runs a vector scan over embeddings_e5 — real auth only (cost + anon-trigger surface).
+  "embedding_search",
   "reflect_invoke",
   "reflect_rescan",
   // MCP Execution Bridge — never callable via the mcp-anonymous bypass.
@@ -43057,6 +43199,40 @@ app.post("/api/client-error", perEndpointRateLimit("write.client-error"), expres
       alert: async (payload) => { try { const { sendAlert } = await import("./lib/error-alerting.js"); await sendAlert(payload); } catch { /* alerting optional */ } },
     });
     if (r?.disabled) return res.status(204).end();
+    // Debug S2 — the first feed: when the report carries an authenticated
+    // user, the same error also lands in THAT user's Debug workspace as
+    // an issue (issue-ingest groups repeats by fingerprint and reopens
+    // resolved issues as regressions). The platform intake above stays
+    // the operator pipeline; this is the per-user product surface.
+    // Best-effort: a failure here never changes the intake response.
+    if (req.user?.id) {
+      try {
+        const b = req.body || {};
+        const ctxb = b.context && typeof b.context === "object" ? b.context : {};
+        const message = String(b.message || "").slice(0, 1000).trim();
+        const stack = String(b.stack || "").slice(0, 4000);
+        if (message) {
+          const firstLine = stack.split("\n")[0] || "";
+          const typeMatch = firstLine.match(/^([A-Za-z_$][\w$]*Error)\b/);
+          const frameLine = (stack.split("\n")[1] || "").trim();
+          await runMacro("debug", "issue-ingest", {
+            type: typeMatch ? typeMatch[1] : (b.kind === "unhandled_rejection" ? "UnhandledRejection" : "Error"),
+            message,
+            stack: stack || undefined,
+            culprit: frameLine ? frameLine.replace(/^at\s+/, "").slice(0, 200) : undefined,
+            level: r?.severity === "critical" ? "fatal" : "error",
+            release: ctxb.buildId ? String(ctxb.buildId).slice(0, 60) : undefined,
+            breadcrumbs: Array.isArray(ctxb.breadcrumbs)
+              ? ctxb.breadcrumbs.slice(-10).map((crumb) => ({
+                  category: "client",
+                  message: String(crumb).replace(/^\d+:/, "").slice(0, 300),
+                  level: "info",
+                }))
+              : [],
+          }, makeCtx(req));
+        }
+      } catch { /* Debug delivery is best-effort */ }
+    }
     res.json(r);
   } catch {
     res.status(400).json({ ok: false, error: "invalid_payload" });
@@ -43465,7 +43641,7 @@ import createFrontierRoutesPart4 from "./routes/frontier-part4.js";
 // and the event_timeline domain.
 try {
   app.use("/api", createFrontierRoutesPart1({ requireAuth }));
-  app.use("/api", createFrontierRoutesPart2({ requireAuth, db }));
+  app.use("/api", createFrontierRoutesPart2({ requireAuth, db, mediaListings: (q) => listedMediaMarketItems(q) }));
   app.use("/api", createFrontierRoutesPart4({ requireAuth, db }));
 } catch (e) { structuredLog("warn", "frontier_routes_skip", { error: e.message }); }
 
@@ -44252,7 +44428,12 @@ async function governorTick(reason="heartbeat") {
     // and the tick counter they schedule on froze. Run the registry, minus
     // CPU-class modules, under the same guards as the low-memory path.
     let registry = "skipped_low_memory";
-    if (shouldPauseBackgroundOrchestration() === false) {
+    // The non-idle path returns early on settings.heartbeatEnabled === false; this idle path did not, so with the
+    // setting off (admin toggle, or the memory watchdog's runtime pause) a still-armed timer kept dispatching the
+    // whole registry whenever nobody was online. Liveness above still ticks; only the dispatch is gated.
+    if (STATE.settings?.heartbeatEnabled === false) {
+      registry = "heartbeat_disabled";
+    } else if (shouldPauseBackgroundOrchestration() === false) {
       const g = getBgGovernorStatus();
       if (g.mode === "killed" || g.breaker.state === "open") {
         registry = g.mode === "killed" ? "governor_killed" : "governor_open";
@@ -45449,6 +45630,58 @@ async function absorbConsolidatedPromotion(promotionResult, cluster) {
 // committed and absorbed at least one member. It used to count every cluster
 // it looked at (done++ before the try), so skipped and rejected clusters
 // showed up as megaPromoted/hyperPromoted.
+// ── Verification gate (lib/verify-gate/*) ───────────────────────────────────
+// Theories, megas and hypers only stay if their claims check out. Lazy singleton so nothing here runs at
+// module-eval time. Mode via CONCORD_VERIFY_GATE_MODE: off | observe (default) | enforce.
+let _verifyGateSvc = null;
+let _vgIter = null;
+function getVerifyGate() {
+  if (_verifyGateSvc) return _verifyGateSvc;
+  _verifyGateSvc = createVerifyGateService({
+    store: {
+      get: (id) => STATE.dtus.get(id) || null,
+      annotate: (id, v) => { const d = STATE.dtus.get(id); if (!d) return; d.meta = { ...(d.meta || {}), verification: v }; upsertDTU(d, { broadcast: false }); },
+      demote: (id, { tier, tag, from }) => {
+        const d = STATE.dtus.get(id); if (!d) return;
+        d.meta = { ...(d.meta || {}), demotedFrom: from, demotedBy: "verify-gate", demotedAt: new Date().toISOString() };
+        d.tier = tier;
+        d.tags = [...new Set([...(Array.isArray(d.tags) ? d.tags : []), tag])];
+        upsertDTU(d, { broadcast: false });
+      },
+      quarantine: (id, reason) => {
+        const d = STATE.dtus.get(id); if (!d) return;
+        d.tags = [...new Set([...(Array.isArray(d.tags) ? d.tags : []), `quarantine:${reason}`])];
+        upsertDTU(d, { broadcast: false });
+      },
+      // resumable pass over the DTU map, a few hundred entries per call, never the whole store at once
+      scan: (maxExamine) => {
+        if (!_vgIter) _vgIter = STATE.dtus.values();
+        const found = []; let examined = 0;
+        while (examined < maxExamine) {
+          const n = _vgIter.next();
+          if (n.done) { _vgIter = null; break; }
+          examined++;
+          const d = n.value;
+          if ((d?.tier === "mega" || d?.tier === "hyper") && (!d.meta?.verification || d.meta.verification.outcome === "PENDING")) found.push(d);
+        }
+        return { examined, found };
+      },
+    },
+    deps: {
+      dtuExists: async (id) => STATE.dtus.has(id) || Boolean(db?.prepare?.("SELECT 1 FROM dtus WHERE id = ? LIMIT 1").get(id)),
+      yieldNow: () => new Promise((resolve) => { setImmediate(resolve); }),
+      proveClaim: _vgProveClaim,
+      brainFn: async (messages) => {
+        const c = makeInternalCtx("verify-gate");
+        const sys = messages.find((m) => m.role === "system")?.content || null;
+        const r = await c.llm.chat({ system: sys, messages: messages.filter((m) => m.role !== "system"), slot: "subconscious", timeoutMs: 60000, maxTokens: 1500 });
+        return { text: r?.ok ? String(r.content || "") : "" };
+      },
+    },
+  });
+  return _verifyGateSvc;
+}
+
 async function _promoteClusterBatch(ctx, clusters, { tier, minCluster, budgetMs, startedAt }) {
   let attempted = 0;
   let promotedCount = 0;
@@ -45514,6 +45747,8 @@ async function _promoteClusterBatch(ctx, clusters, { tier, minCluster, budgetMs,
       logger.debug('server', 'silent catch', { error: _e?.message });
     }
   }
+  // New and grown nodes go to the verification gate (async, budgeted; observe mode only annotates).
+  try { for (const id of [...megaIds, ...grownIds]) getVerifyGate().submit(id); } catch (_e) { logger.debug("server", "verify-gate submit", { error: _e?.message }); }
   structuredLog("info", "consolidation_promote_batch", {
     tier, candidates: batch.length, attempted, promoted: promotedCount, absorbed: absorbedTotal,
     grown, absorbedIntoExisting: absorbedExisting, skips, megaIds: megaIds.slice(0, 8), grownIds: grownIds.slice(0, 8),
@@ -45579,6 +45814,7 @@ function _startGovernorHeartbeat() {
     if (s.heartbeatEnabled === false) return { ok:false, reason:"heartbeat_disabled" };
     logAbsentGovernorMacrosOnce(MACROS, structuredLog);
     __governorTimer = _unrefInTest(setInterval(() => { governorTick("interval").catch(()=>{}); }, ms));
+    __governorIntervalMs = ms;
     structuredLog("info", "governor_heartbeat_active", { intervalSec: (ms/1000).toFixed(2) });
     // fire once on boot (after a short delay so macros/STATE are warmed)
     _unrefInTest(setTimeout(() => { governorTick("boot").catch(()=>{}); }, 2000));
@@ -45587,6 +45823,26 @@ function _startGovernorHeartbeat() {
     console.warn("[Governor] failed to start:", String(e?.message||e));
     return { ok:false, error:String(e?.message||e) };
   }
+}
+
+// Live control used by the admin heartbeat toggle (lib/admin-heartbeat.js). _startGovernorHeartbeat() only ever ran
+// once, at boot (T+50s), and returned heartbeat_disabled when the setting was false — so flipping the setting
+// later could not create the dispatcher on a running process. These make the toggle real in both directions.
+let __governorIntervalMs = null;
+function startGovernorDispatcherLive() {
+  if (READ_REPLICA) return { ok: false, reason: "read_replica" };
+  return _startGovernorHeartbeat() || { ok: false };
+}
+function stopGovernorDispatcherLive() {
+  if (!__governorTimer) return { ok: true, stopped: false };
+  clearInterval(__governorTimer);
+  __governorTimer = null;
+  __governorIntervalMs = null;
+  structuredLog("info", "governor_heartbeat_stopped", { by: "admin_toggle" });
+  return { ok: true, stopped: true };
+}
+function governorDispatcherStatus() {
+  return { running: !!__governorTimer, intervalMs: __governorTimer ? __governorIntervalMs : null };
 }
 // ===== END GOVERNOR =====
 
@@ -47144,7 +47400,13 @@ register("marketplace", "browse", (ctx, input) => {
   else if (sort === "downloads") listings.sort((a, b) => b.downloads - a.downloads);
   else listings.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
   const result = paginateResults(listings, { page: Number(page || 1), pageSize: clamp(Number(pageSize || 20), 1, 100) });
-  return { ok: true, ...result, categories: PLUGIN_MARKETPLACE.categories };
+  // Listed media DTUs (free, listen-only) ride along on page 1 so the Market
+  // lens Listings tab shows uploaded music/film, not only plugins.
+  const mediaListings = listedMediaMarketItems({ search, category });
+  if (Number(page || 1) === 1 && mediaListings.length) {
+    result.listings = [...mediaListings, ...(result.listings || [])];
+  }
+  return { ok: true, ...result, mediaListings, categories: PLUGIN_MARKETPLACE.categories };
 });
 
 // MULTIPASS ACL: marketplace.listings/get — advertised in publicReadDomains
@@ -47283,6 +47545,54 @@ function resolveMarketplaceDtu(dtuId) {
   return hydrated || null;
 }
 
+// An uploaded media DTU (music / film / audio — type "media") is listed
+// FREE and LISTEN-ONLY. Real-money trading is off: price is pinned to 0, no
+// sale license gate is consulted, and purchase refuses a listenOnly listing.
+// The DTU keeps its upload scope (global when public, user when private) so
+// /api/media/:id/stream access is unchanged; listing only sets dtu.marketplace.
+function listMediaDtuFree(dtu, userId, input) {
+  if (Number(input?.price || 0) > 0) {
+    return { ok: false, error: "paid_media_listing_disabled", message: "Paid listings are off. Media is listed free and listen-only." };
+  }
+  if (dtu.privacy !== "public") {
+    return { ok: false, error: "media_must_be_public", message: "Only public uploads can be listed." };
+  }
+  dtu.marketplace = {
+    listed: true, listedAt: new Date().toISOString(),
+    price: 0, currency: "USD", listenOnly: true,
+    contentType: dtu.mediaType === "video" ? "film" : dtu.mediaType === "audio" ? "music" : "media",
+    title: input?.title || dtu.title,
+    description: input?.description ?? dtu.description ?? "",
+    tags: input?.tags || dtu.tags || [],
+    preview: null,
+    seller: userId || dtu.author,
+    purchases: 0, rating: null, reviews: [],
+    purchaseScopes: [],
+  };
+  return { ok: true, listing: dtu.marketplace };
+}
+
+// Listed media DTUs in the row shape the Market lens Listings tab renders.
+function listedMediaMarketItems({ search, category } = {}) {
+  const q = search ? String(search).toLowerCase() : "";
+  const out = [];
+  for (const [id, dtu] of STATE.dtus) {
+    if (dtu?.type !== "media" || !dtu.marketplace?.listed || dtu.privacy !== "public") continue;
+    if (category && category !== dtu.marketplace.contentType) continue;
+    const title = dtu.marketplace.title || dtu.title || "";
+    if (q && !(title.toLowerCase().includes(q) || String(dtu.marketplace.description || "").toLowerCase().includes(q))) continue;
+    out.push({
+      id, title, description: dtu.marketplace.description || "", price: 0,
+      seller: dtu.marketplace.seller || dtu.author, sellerId: dtu.marketplace.seller || dtu.author,
+      createdAt: dtu.marketplace.listedAt, tags: dtu.marketplace.tags || [],
+      type: dtu.marketplace.contentType, purchases: 0,
+      mediaType: dtu.mediaType, listenOnly: true, streamUrl: `/api/media/${id}/stream`,
+    });
+  }
+  out.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  return out;
+}
+
 register("marketplace", "list", async (ctx, input) => {
   const { dtuId, price, currency, contentType, title, description, tags, preview } = input || {};
   const dtu = resolveMarketplaceDtu(dtuId);
@@ -47303,6 +47613,8 @@ register("marketplace", "list", async (ctx, input) => {
   }
   // Owner private work may be local (dtu.create default) or personal (locker).
   // Block already-global / already-marketplace scopes from a second list path.
+  // (Uploaded media DTUs are global/user by design — free listen-only path.)
+  if (dtu.type === "media") return listMediaDtuFree(dtu, userId, input);
   if (dtu.scope && dtu.scope !== "personal" && dtu.scope !== "local") {
     return { ok: false, error: "can_only_list_personal_dtus" };
   }
@@ -47443,6 +47755,7 @@ register("marketplace", "purchase", async (ctx, input) => {
   const { dtuId } = input || {};
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu?.marketplace?.listed) return { ok: false, error: "not_listed" };
+  if (dtu.marketplace.listenOnly) return { ok: false, error: "listen_only_listing" };
 
   const buyerId = ctx?.actor?.userId || ctx?.actor?.id;
   const grant = buyerId
@@ -47506,6 +47819,11 @@ app.post("/api/marketplace/submit", requireAuth(), perEndpointRateLimit("marketp
     const dtu = STATE.dtus.get(dtuId);
     if (!dtu) return res.status(404).json({ ok: false, error: "DTU not found" });
     if (dtu.ownerId !== userId) return res.status(403).json({ ok: false, error: "Not your DTU" });
+    // Uploaded media DTUs (global/user scope) list free + listen-only via the macro.
+    if (dtu.type === "media") {
+      const out = await runMacro("marketplace", "list", { dtuId, price: Number(price || 0) }, makeCtx(req));
+      return res.status(out?.ok ? 200 : 400).json(out);
+    }
     if (dtu.scope !== "personal") return res.status(400).json({ ok: false, error: "Can only list personal DTUs" });
 
     // Repair-brain pre-flight: catch obvious prompt-injection / harmful /
@@ -48192,6 +48510,7 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
   // STATE.dtus) would otherwise miss it too.
   const dtu = resolveMarketplaceDtu(dtuId);
   if (!dtu?.marketplace?.listed) return { ok: false, error: "not_listed" };
+  if (dtu.marketplace.listenOnly) return { ok: false, error: "listen_only_listing" };
 
   // Federated origin: if the DTU's metadata records origin_peer_id (set
   // when it was imported from a peer), delegate the purchase to the
@@ -50655,7 +50974,8 @@ app.get("/api/admin/integrity", requireOwner, asyncHandler(async (req, res) => {
 
   if (runFresh) {
     try {
-      results = runIntegrityCheck(STATE, log, { fix: true, verbose: true });
+      // Time-sliced: an owner hitting ?run=true must not freeze every other request for the length of the scan.
+      results = await runIntegrityCheckAsync(STATE, log, { fix: true, verbose: true });
       STATE._lastIntegrityCheck = { ...results, timestamp: Date.now() };
     } catch (e) {
       return res.status(500).json({ ok: false, error: "integrity_check_failed", detail: String(e?.message || e) });
@@ -50916,7 +51236,25 @@ async function _dispatchLensRunForTest(domain, name, input, ctx) {
   return { ok: false, error: "unknown_macro", domain, name };
 }
 
+const _lensRunLog = _createLensRunLogger({ log: structuredLog });
 app.post("/api/lens/run", async (req, res) => {
+  // One lens_run_result line for every non-ok (or >2 s) outcome, naming domain + action (lib/lens-run-log.js).
+  // Branches annotate res.locals.lensRun; the line is written on "finish" with the final status. Tokens only.
+  const _lrStart = Date.now();
+  const _lrNote = (via, ok, error, extra = {}) => { res.locals.lensRun = { ...res.locals.lensRun, via, ok, error, ...extra }; };
+  res.once("finish", () => {
+    try {
+      const n = res.locals.lensRun || {};
+      const b = req.body && typeof req.body === "object" ? req.body : {};
+      _lensRunLog.record({
+        domain: b.domain, action: b.action || b.name, httpStatus: res.statusCode,
+        ok: n.ok === undefined ? res.statusCode < 400 : n.ok,
+        error: n.error, reason: n.reason, code: n.code, via: n.via,
+        durationMs: Date.now() - _lrStart,
+        requestId: req.id, userId: n.userId || req.user?.id || null,
+      });
+    } catch { /* observability only */ }
+  });
   // ── ConKay honest event spine (Track B / Phase 0) ──────────────────────
   // A macro run is a single request→response, so its work is otherwise
   // invisible mid-flight. When the client opts in by passing a correlation
@@ -50954,14 +51292,15 @@ app.post("/api/lens/run", async (req, res) => {
             return r;
           })()
     );
-    if (!domain || !action) return res.status(400).json({ ok: false, error: "domain and action required" });
-    if (enforcePlatformInternalLensRole(req, res, domain, requireRole)) return;
+    if (!domain || !action) { _lrNote("pre_dispatch", false, "domain_action_required"); return res.status(400).json({ ok: false, error: "domain and action required" }); }
+    if (enforcePlatformInternalLensRole(req, res, domain, requireRole)) { _lrNote("pre_dispatch", false, "platform_internal_role"); return; }
     // Non-finite guard for BOTH the lens-action and macro paths (1e999 → Infinity).
     {
       const _nf = _rejectNonFiniteInput(rest);
-      if (_nf) return res.status(400).json(_nf);
+      if (_nf) { _lrNote("pre_dispatch", false, "non_finite_input"); return res.status(400).json(_nf); }
     }
     const ctx = makeCtx(req);
+    _lrNote(undefined, undefined, undefined, { userId: ctx?.actor?.userId });
     // ConKay honest spine (Phase 2): let a genuinely multi-step macro report a
     // real intermediate `macro:stage` tied to this run id. It only emits when a
     // runId + resolved user exist (same gate as started/completed via
@@ -50973,6 +51312,7 @@ app.post("/api/lens/run", async (req, res) => {
     // in secured production — the runMacro ACL doesn't protect this surface (see
     // _lensActionForbiddenForAnon). Reads use the GET /api/lens/:domain[/:id] routes.
     if (_lensActionForbiddenForAnon(ctx)) {
+      _lrNote("pre_dispatch", false, "authentication_required", { code: "LENS_AUTH" });
       return res.status(401).json({ ok: false, error: "authentication required", code: "LENS_AUTH" });
     }
     // Honest spine: announce the start to the caller's room (real users only —
@@ -51001,11 +51341,13 @@ app.post("/api/lens/run", async (req, res) => {
       // HTTP 403, not a 200 envelope that looks like success.
       const _httpErr = _httpErrorFromLensAction(lensRaw);
       if (_httpErr) {
+        _lrNote("lens_action", false, undefined, { code: _httpErr.body.code, reason: "forbidden" });
         emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: _httpErr.body.error });
         return res.status(_httpErr.status).json(_httpErr.body);
       }
       const shaped = _shapeLensRunHttp(lensRaw);
       const result = shaped.body.ok ? shaped.body.result : shaped.body;
+      _lrNote("lens_action", shaped.body.ok !== false, shaped.body.error, { reason: shaped.body.reason, code: shaped.body.code });
       emitMacroLife("macro:completed", { ok: shaped.body.ok !== false, ms: Date.now() - _lifeStartedAt });
       // R5/E22 — ConKay spatial mode (Godot Hub): a real, non-fabricated
       // capability-tier fact for the two verdict-producing macros only. See
@@ -51014,6 +51356,7 @@ app.post("/api/lens/run", async (req, res) => {
       // use (already mirrored to a connected Godot client — no new room).
       const _verdictEmit = _deriveConkayVerdictEmit(domain, action, result);
       if (_verdictEmit) emitMacroLife("conkay:verdict", _verdictEmit);
+      if (shaped.body.ok !== false) _recordLensActivity(domain, action, ctx, rest, result);
       return res.status(shaped.status).json(shaped.body);
     }
     // Fall back to MACROS (canonical macro registry: register(domain, name, ...)).
@@ -51025,14 +51368,17 @@ app.post("/api/lens/run", async (req, res) => {
       const macroRaw = await runMacro(domain, action, rest, ctx);
       const _macroHttpErr = _httpErrorFromLensAction(macroRaw);
       if (_macroHttpErr) {
+        _lrNote("macro", false, undefined, { code: _macroHttpErr.body.code, reason: "forbidden" });
         emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: _macroHttpErr.body.error });
         return res.status(_macroHttpErr.status).json(_macroHttpErr.body);
       }
       const shaped = _shapeLensRunHttp(macroRaw);
       const result = shaped.body.ok ? shaped.body.result : shaped.body;
+      _lrNote("macro", shaped.body.ok !== false, shaped.body.error, { reason: shaped.body.reason, code: shaped.body.code });
       emitMacroLife("macro:completed", { ok: shaped.body.ok !== false, ms: Date.now() - _lifeStartedAt });
       const _verdictEmit = _deriveConkayVerdictEmit(domain, action, result);
       if (_verdictEmit) emitMacroLife("conkay:verdict", _verdictEmit);
+      if (shaped.body.ok !== false) _recordLensActivity(domain, action, ctx, rest, result);
       return res.status(shaped.status).json(shaped.body);
     }
     // No registered macro for this (domain, action).
@@ -51058,6 +51404,7 @@ app.post("/api/lens/run", async (req, res) => {
     // plain game-macro call can never again be silently answered by the LLM.
     const _wantsBrainFallback = rest?.__ai === true || body.ai === true;
     if (!_wantsBrainFallback) {
+      _lrNote("none", false, "unknown_macro");
       emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: "unknown_macro" });
       return res.status(200).json({ ok: false, error: "unknown_macro", domain, action, detail: "no registered macro for this domain/action" });
     }
@@ -51066,6 +51413,7 @@ app.post("/api/lens/run", async (req, res) => {
     // (#27, the slow_request / quality-pipeline hang #T3).
     const { __ai: _aiFlag, ...catchallInput } = rest || {};
     if (!hasUsableBrainInput(null, catchallInput)) {
+      _lrNote("catchall", false, "needs_artifact_input");
       emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: "needs_artifact_input" });
       return res.status(200).json(needsInputError(domain, action));
     }
@@ -51082,6 +51430,7 @@ app.post("/api/lens/run", async (req, res) => {
       // as "the backend is disconnecting / issues". Return 200 {ok:false,reason}
       // so the lens degrades to a clean unavailable state (esp. when the brain is
       // down — the known no-RunPod env condition) without a retry storm.
+      _lrNote("catchall", false, "unknown_macro", { reason: "brain_catchall_timeout" });
       emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: "brain_catchall_timeout" });
       return res.status(200).json({ ok: false, error: "unknown_macro", reason: "brain_catchall_timeout", domain, action, detail: "no registered macro; brain catch-all timed out" });
     } finally {
@@ -51090,6 +51439,7 @@ app.post("/api/lens/run", async (req, res) => {
     if (!aiResult?.ok) {
       // Same: brain unavailable (Ollama down) or unregistered macro → honest but
       // non-retryable so it doesn't storm or trip backend-health/"issues".
+      _lrNote("catchall", false, "unknown_macro", { reason: "macro_unavailable" });
       emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: "macro_unavailable" });
       return res.status(200).json({ ok: false, error: "unknown_macro", reason: "macro_unavailable", domain, action, detail: aiResult?.error || "no registered macro; brain unavailable" });
     }
@@ -51111,6 +51461,7 @@ app.post("/api/lens/run", async (req, res) => {
     // spinning on an error path. `_lifeStarted` guards against a pre-dispatch throw.
     if (_lifeStarted) emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: msg });
     const status = msg.startsWith("forbidden") ? 403 : 500;
+    _lrNote(res.locals.lensRun?.via || "handler", false, status === 403 ? "forbidden" : "handler_threw");
     res.status(status).json({ ok: false, error: msg });
   }
 });
@@ -59968,8 +60319,18 @@ app.get("/api/events/paginated", (req, res) => {
       } catch (_) { /* table may not exist */ }
     }
 
-    // Source 3: Recent structured logs
-    for (const logEntry of (STATE.logs || []).slice(-200)) {
+    // Source 3: structured logs. The recency slice alone churns
+    // user-attributed rows (lens activity, stamped with the actor's
+    // id) out of the feed under system noise on a busy log, so
+    // attributed rows are collected from the whole store first
+    // (filter-before-slice, bounded by the store's 2000-entry cap);
+    // unattributed rows keep the last-200 window exactly as before.
+    const _allLogs = STATE.logs || [];
+    const _logWindow = new Set(_allLogs.slice(-200));
+    for (const e of _allLogs) {
+      if (e && (e.userId || e.meta?.userId)) _logWindow.add(e);
+    }
+    for (const logEntry of _logWindow) {
       const parties = [logEntry.userId, logEntry.meta?.userId];
       const sessOwner = logEntry.meta?.sessionId ? sessionOwner(logEntry.meta.sessionId) : null;
       if (sessOwner) parties.push(sessOwner);
@@ -63578,9 +63939,25 @@ app.post("/api/admin/background-governor/mode", requireRole("owner", "admin", "s
   catch (e) { res.status(400).json({ ok: false, error: String(e?.message || e) }); }
 });
 
+// Owner/founder-only role grant/revoke (admin|member), audit-logged — see lib/verify-admins.js.
+mountUserRoleRoute(app, { requireRole, getDb: () => db, bustUserCache, log: structuredLog });
+
+// Admin-tier heartbeat switch (owner|admin|founder; only heartbeatEnabled) — see lib/admin-heartbeat.js.
+mountAdminHeartbeatRoutes(app, { requireRole, getState: () => STATE, save: () => saveStateSync(), clearMemoryPause, persistableSettings, log: structuredLog,
+  startDispatcher: () => startGovernorDispatcherLive(), stopDispatcher: () => stopGovernorDispatcherLive(), dispatcherStatus: () => governorDispatcherStatus() });
+
 app.get("/api/admin/dtu-quality", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
   try {
     return res.json({ ok: true, totalDtus: STATE.dtus.size, ...getDtuQuality().metrics() });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/admin/verify-gate", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try {
+    const svc = getVerifyGate();
+    return res.json({ ok: true, ...svc.metrics(), rejected: svc.rejected().slice(-20) });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -77873,17 +78250,24 @@ if (process.env.CONCORD_LOOP_BLOCK_ALERT !== "0") {
     const _DRIFT_RATE_LIMIT_MS = 5000;
     let _driftExpected = Date.now() + _DRIFT_INTERVAL_MS;
     let _lastDriftAlertAt = 0;
+    // CPU vs wall, page faults and GC for the window the loop was stuck, so a
+    // jobs:[] block says whether it was running (cpu/gc) or waiting (page-in/swap).
+    const _blockSampler = createLoopBlockSampler();
     const _driftTimer = setInterval(() => {
       try {
         const now = Date.now();
         const blockedMs = now - _driftExpected;
         _driftExpected = now + _DRIFT_INTERVAL_MS;
+        const _blockDetail = blockedMs >= _DRIFT_THRESHOLD_MS ? _blockSampler.describeBlock(blockedMs) : null;
+        _blockSampler.tick();
         if (!Number.isFinite(blockedMs) || blockedMs < _DRIFT_THRESHOLD_MS) return;
         const severe = blockedMs >= 5000;
         if (!severe && (now - _lastDriftAlertAt) < _DRIFT_RATE_LIMIT_MS) return;
         _lastDriftAlertAt = now;
         const mem = process.memoryUsage();
         const jobs = loopJobs.jobsInWindow(Math.max(blockedMs, _DRIFT_RATE_LIMIT_MS) + _DRIFT_INTERVAL_MS, now, 8);
+        // Sync fs calls >=150 ms inside the stuck window (a blocking syscall leaves no job or timer tag).
+        const _syncIo = slowSyncIoSince(now - blockedMs - _DRIFT_INTERVAL_MS).map((e) => ({ fn: e.fn, target: e.target, ms: e.ms, at: e.frames[0] || null }));
         structuredLog("warn", "event_loop_block", {
           blockedMs,
           jobs,
@@ -77891,6 +78275,9 @@ if (process.env.CONCORD_LOOP_BLOCK_ALERT !== "0") {
           lastTimer: globalThis.__lastLagProbeName || null,
           rssMb: Math.round(mem.rss / 1024 / 1024),
           heapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+          uptimeS: Math.round(process.uptime()),
+          ...(_blockDetail || {}),
+          ...(_syncIo.length ? { syncIo: _syncIo } : {}),
         });
       } catch { /* probe must never throw */ }
     }, _DRIFT_INTERVAL_MS);
@@ -79462,16 +79849,22 @@ try {
 
 // ── Periodic Integrity Check (every 6 hours) ────────────────────────────────
 const INTEGRITY_INTERVAL = 6 * 60 * 60 * 1000;
-throttledInterval(() => {
-  const results = runIntegrityCheck(STATE, log, { fix: true, verbose: false });
+// Time-sliced + attributed: this ran synchronously and held the main thread for 8-12 s on its first staggered fire
+// (~60-75 s after every boot; the block ended within ~5 ms of the periodic_integrity_check log line) and every 6 h
+// after. Registered with loopJobs so any remaining stall names itself.
+throttledInterval(() => loopJobs.withJob("integrity_check", async () => {
+  const results = await runIntegrityCheckAsync(STATE, log, { fix: true, verbose: false });
   STATE._lastIntegrityCheck = { ...results, timestamp: Date.now() };
   structuredLog("info", "periodic_integrity_check", {
-    economyOk: results.economy?.ok,
-    lineageOk: results.lineage?.ok,
-    socialOk: results.social?.ok,
-    fixes: results.fixes || 0,
+    // The summary has no top-level `fixes`; the old `results.fixes || 0` always logged 0.
+    economyOk: results.audits?.economy?.ok,
+    lineageOk: results.audits?.lineage?.ok,
+    socialOk: results.audits?.social?.ok,
+    fixes: Object.values(results.issuesFixed || {}).reduce((a, b) => a + b, 0),
+    elapsedMs: results.elapsedMs,
+    totalIssues: results.totalIssues,
   });
-}, INTEGRITY_INTERVAL, "integrity_check");
+}), INTEGRITY_INTERVAL, "integrity_check");
 
 // NOTE: Primary SIGINT/SIGTERM handlers are registered above via gracefulShutdown().
 // Register cleanup for timers as a shutdown callback instead of a duplicate handler.

@@ -105,7 +105,7 @@ export function InvoicesPanel() {
         </button>
         {creating && (
           <div className="mt-2 rounded border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Customer name" className="col-span-1 px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100" />
               <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100" />
               <input type="number" value={taxRate} onChange={e => setTaxRate(e.target.value)} placeholder="Tax %" step="0.01" className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />

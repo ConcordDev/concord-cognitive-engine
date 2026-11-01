@@ -1845,7 +1845,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                 {/* Event type selector */}
                 <div>
                   <label className="text-xs text-gray-400 mb-2 block">Event Type</label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     {(Object.keys(EVENT_TYPE_META) as EventType[]).map((type) => {
                       const meta = EVENT_TYPE_META[type];
                       const isActive = newEvent.eventType === type;

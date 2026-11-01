@@ -190,7 +190,7 @@ function LightTravelTimeTool() {
       <p className="text-[11px] text-zinc-400">
         How far away is it, and how long ago is the light you&apos;re seeing? Real light-speed math (299,792.458 km/s).
       </p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <Field label="Object name (optional)">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Andromeda" className={inputCls} />
         </Field>
@@ -256,7 +256,7 @@ function OrbitalMechanicsTool() {
         Kepler&apos;s third law: orbital period, perihelion/aphelion, and average velocity from
         semi-major axis, eccentricity, and central mass.
       </p>
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <Field label="Object name (optional)">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Mars" className={inputCls} />
         </Field>

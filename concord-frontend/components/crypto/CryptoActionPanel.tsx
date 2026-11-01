@@ -151,7 +151,7 @@ export function CryptoActionPanel() {
     try {
       const task = `Crypto state: ${portfolioResult ? `$${portfolioResult.totalUsd?.toLocaleString()} portfolio, top alloc ${portfolioResult.topAllocation}, concentration ${portfolioResult.concentrationRisk}.` : ''} ${gasResult ? `${gasNetwork} gas ${gasResult.gwei} gwei (${gasResult.congestion}).` : ''} Suggest the single best rebalance or hedge move for this week. Plain text. Be specific about asset + size.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Move ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

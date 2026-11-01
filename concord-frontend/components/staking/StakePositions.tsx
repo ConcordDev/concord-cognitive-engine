@@ -156,7 +156,7 @@ export function StakePositions({
           {status}
         </div>
       )}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <SummaryStat label="Positions" value={String(data.count)} />
         <SummaryStat label="Staked" value={`${data.totalPrincipalCc} CC`} />
         <SummaryStat label="Accruing" value={`${data.totalAccruedYieldCc} CC`} tone="text-emerald-300" />

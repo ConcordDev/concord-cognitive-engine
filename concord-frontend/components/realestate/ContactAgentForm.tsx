@@ -124,7 +124,7 @@ export function ContactAgentForm({ listingId }: { listingId?: string }) {
             <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Your name" className="px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white" />
             <input value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} placeholder="Phone or email" className="px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white" />
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <select value={form.intent} onChange={(e) => setForm({ ...form, intent: e.target.value })} className="px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white">
               {INTENTS.map((i) => <option key={i} value={i}>{i}</option>)}
             </select>

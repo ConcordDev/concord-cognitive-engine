@@ -100,7 +100,7 @@ export function ShoppingList() {
       {error && <p className="text-xs text-red-400">{error}</p>}
 
       {result && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <div className="lens-card text-center">
             <p className="text-lg font-bold text-neon-green">${result.totalCost.toLocaleString()}</p>
             <p className="text-xs text-gray-400">Total cost</p>

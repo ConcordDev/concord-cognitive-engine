@@ -259,7 +259,7 @@ function CDNStatus({ className }: CDNStatusProps) {
         </div>
 
         {/* Provider Info */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="bg-lattice-bg rounded-lg p-3">
             <div className="text-xs text-gray-400 mb-1">Provider</div>
             <div className="text-sm font-medium text-white capitalize">
@@ -287,7 +287,7 @@ function CDNStatus({ className }: CDNStatusProps) {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <StatCard
             label="Cache Hit Rate"
             value={stats?.hitRate || '0.00%'}

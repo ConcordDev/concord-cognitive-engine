@@ -225,7 +225,7 @@ export function OpsActionPanel() {
         'Be specific (e.g. add a circuit breaker, not "improve reliability"). Plain text, one paragraph.',
       ].filter(Boolean).join(' ');
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Action item ready.'); }
       else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); }

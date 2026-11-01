@@ -1581,7 +1581,7 @@ function StatsTab({
 
       {/* Streak stat row */}
       {heatmap && (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <Stat label="Current streak" value={`${heatmap.currentStreak}d`} icon={Flame} accent="text-amber-400" />
           <Stat label="Longest streak" value={`${heatmap.longestStreak}d`} icon={Flame} accent="text-emerald-400" />
           <Stat label="Total reviews" value={String(heatmap.totalReviews)} icon={BarChart3} accent="text-sky-400" />

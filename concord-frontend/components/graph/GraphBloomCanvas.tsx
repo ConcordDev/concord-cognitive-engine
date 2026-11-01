@@ -1509,7 +1509,7 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
               <div className="space-y-3">
                 <input type="text" value={addNodeLabel} onChange={e => setAddNodeLabel(e.target.value)}
                   placeholder="Node label..." className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan" />
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-1.5">
                   {(Object.keys(NODE_COLORS) as NodeType[]).filter(t => !['track', 'artist', 'sample', 'release'].includes(t)).map(t => (
                     <button key={t} onClick={() => setAddNodeType(t)}
                       className={cn('px-2 py-1.5 rounded text-xs font-medium border transition-colors',
@@ -1635,7 +1635,7 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
                 className="bg-lattice-surface/90 backdrop-blur border border-lattice-border rounded-lg p-3">
                 <p className="text-xs font-semibold text-gray-300 mb-2">Node Types</p>
-                <div className="grid grid-cols-4 gap-1 mb-3">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-1 mb-3">
                   {(Object.entries(NODE_COLORS) as [NodeType, typeof NODE_COLORS[NodeType]][])
                     .filter(([type]) => !['track', 'artist', 'sample', 'release'].includes(type))
                     .map(([type, colors]) => (
@@ -1652,7 +1652,7 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
                   ))}
                 </div>
                 <p className="text-xs font-semibold text-gray-300 mb-2">Edge Types</p>
-                <div className="grid grid-cols-4 gap-1">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-1">
                   {(Object.entries(EDGE_COLORS) as [EdgeType, string][])
                     .filter(([type]) => !['sampled_from', 'remixed_by', 'collaborated_with', 'released_on'].includes(type))
                     .map(([type, color]) => (
@@ -1760,7 +1760,7 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
               {selectedNode.tier === 'track' && (
                 <div className="p-3 bg-lattice-bg rounded-lg space-y-2">
                   <p className="text-xs font-semibold text-cyan-400 uppercase">Track Info</p>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     <div><p className="text-xs text-gray-400">BPM</p><p className="text-sm font-medium text-white">{selectedNode.bpm || '--'}</p></div>
                     <div><p className="text-xs text-gray-400">Key</p><p className="text-sm font-medium text-white">{selectedNode.key || '--'}</p></div>
                     <div><p className="text-xs text-gray-400">Plays</p><p className="text-sm font-medium text-white">{selectedNode.playCount?.toLocaleString() || '--'}</p></div>

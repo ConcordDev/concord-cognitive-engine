@@ -310,7 +310,7 @@ export function FilmDeskPanel({
                   <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Cast Analysis</p>
                   {(filmActionResult.message as string) ? <p className="text-sm text-gray-400">{filmActionResult.message as string}</p> : (
                     <>
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         {[
                           { label: 'Total Cast', value: String(filmActionResult.totalCast ?? 0), color: 'text-white' },
                           { label: 'Lead Roles', value: String(filmActionResult.leads ?? 0), color: 'text-neon-purple' },

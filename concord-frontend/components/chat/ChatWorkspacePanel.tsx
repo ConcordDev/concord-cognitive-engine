@@ -134,6 +134,7 @@ import {
   deleteMessagesForSession,
   fileToBase64,
   formatRelativeTime,
+  adoptChatOwner,
   generateUUID,
   loadConversations,
   loadMessagesForSession,
@@ -143,6 +144,7 @@ import {
   saveSessionId,
   type ChatMessageLike,
 } from '@/components/chat/chatLocalStore';
+import { chatFailure, streamResult } from '@/components/chat/chatStreamResult';
 import { AI_MODES, PERSONAS, SLASH_COMMANDS } from '@/components/chat/ChatModeConfig';
 import { ToolTraceBlock } from '@/components/chat/ToolTraceBlock';
 import type { ChatMode } from '@/components/chat/ChatModeTypes';
@@ -906,6 +908,17 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     catch { return false; }
   });
   const { isAuthenticated, user } = useAuth();
+
+  // Chat storage is per browser: when a different account signs in, drop the
+  // previous account's session so the first send is not refused.
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+    if (adoptChatOwner(user.id)) {
+      setSelectedConversation(loadSessionId());
+      setStoredConversations(loadConversations<Conversation>());
+      setLocalMessages([]);
+    }
+  }, [isAuthenticated, user?.id]);
   const dismissAnonNudge = useCallback(() => {
     setAnonNudgeDismissed(true);
     try { localStorage.setItem('concord_anon_nudge_dismissed', '1'); } catch { /* private mode */ }
@@ -1168,6 +1181,10 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     };
   }, []);
 
+  // session_forbidden recovery: start a fresh session and resend once.
+  const forceFreshSessionRef = useRef(false);
+  const forbiddenRetriedRef = useRef(false);
+
   const sendMutation = useMutation({
     mutationFn: async (content: string) => {
       // Build attachment metadata
@@ -1189,7 +1206,10 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       };
 
       // Ensure we have a session — if none, create one now
-      let activeSessionId = selectedConversation;
+      // After session_forbidden the retry must not reuse the stale id, and the
+      // state update from startNewChat has not rendered yet.
+      let activeSessionId = forceFreshSessionRef.current ? null : selectedConversation;
+      forceFreshSessionRef.current = false;
       if (!activeSessionId) {
         const newId = generateUUID();
         activeSessionId = newId;
@@ -1327,6 +1347,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           // Assigned inside the SSE parser callback; the cast keeps TS from narrowing it to null.
           let finalOut = null as Record<string, unknown> | null;
           let gotDone = false;
+          // The whole done envelope: a thrown turn arrives here with a top-level
+          // `error` and no `out`.
+          let topDone = null as Record<string, unknown> | null;
           // Live status and a preview of the answer while the turn runs. Only the
           // checked `chunk` text becomes the reply; it replaces any preview.
           let preview = '';
@@ -1345,6 +1368,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             }
             if (data.done) {
               gotDone = true;
+              topDone = data as Record<string, unknown>;
               if (data.out && typeof data.out === 'object') finalOut = data.out as Record<string, unknown>;
             }
           });
@@ -1396,19 +1420,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               streamed: true,
             };
           }
-          return {
-            reply: accumulated || ((finalOut as Record<string, unknown>)?.reply as string) || '',
-            refs: (finalOut as Record<string, unknown>)?.refs,
-            sources: (finalOut as Record<string, unknown>)?.sources,
-            webAugmented: (finalOut as Record<string, unknown>)?.webAugmented,
-            toolCalls: (finalOut as Record<string, unknown>)?.toolCalls,
-            computed: (finalOut as Record<string, unknown>)?.computed,
-            dtuRefs: (finalOut as Record<string, unknown>)?.dtuRefs,
-            artifacts: (finalOut as Record<string, unknown>)?.artifacts,
-            answerConfidence: (finalOut as Record<string, unknown>)?.answerConfidence,
-            answerConfidenceReason: (finalOut as Record<string, unknown>)?.answerConfidenceReason,
-            streamed: true,
-          };
+          return streamResult(finalOut, topDone, accumulated);
         }
 
         // Non-SSE response: fall back to regular JSON
@@ -1462,7 +1474,30 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         }
       }
     },
-    onSuccess: (data) => {
+    onSuccess: (data, sentContent) => {
+      const failure = chatFailure(data);
+      if (failure) {
+        const failMsg: Message = {
+          id: `fail-${Date.now()}`,
+          role: 'system',
+          content: failure.message,
+          timestamp: new Date().toISOString(),
+        };
+        if (failure.kind === 'session_forbidden' && !forbiddenRetriedRef.current) {
+          // The saved session id belongs to another account (shared device).
+          // Drop it and resend the same message once on a new session.
+          forbiddenRetriedRef.current = true;
+          forceFreshSessionRef.current = true;
+          startNewChat();
+          setLocalMessages([failMsg]);
+          sendMutation.mutate(sentContent);
+          return;
+        }
+        setLocalMessages((prev) => [...prev, failMsg]);
+        queryClient.invalidateQueries({ queryKey: ['cognitive-status'] });
+        setInput('');
+        return;
+      }
       const down = unavailableNotice(data);
       if (down) {
         const noticeMsg: Message = {
@@ -1932,6 +1967,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       return;
     }
 
+    forbiddenRetriedRef.current = false;
     sendMutation.mutate(input);
   }, [input, sendMutation, executeSlashCommand, localMessages]);
 

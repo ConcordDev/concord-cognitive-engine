@@ -99,7 +99,7 @@ export function CrtCommentsPanel() {
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
       {result && (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <Stat label="Open" value={result.byStatus.open} accent="text-amber-300" />
           <Stat label="Replied" value={result.byStatus.replied} accent="text-sky-300" />
           <Stat label="Resolved" value={result.byStatus.resolved} accent="text-emerald-300" />

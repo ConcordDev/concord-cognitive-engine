@@ -679,7 +679,7 @@ export function EventOps() {
               {/* --- TICKETING --- */}
               {tab === 'tickets' && (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <Stat label="Capacity" value={tierTotals.totalCapacity.toLocaleString()} />
                     <Stat label="Sold" value={tierTotals.totalSold.toLocaleString()} />
                     <Stat label="Revenue" value={fmt(tierTotals.totalRevenue)} accent="green-400" />
@@ -774,7 +774,7 @@ export function EventOps() {
               {/* --- ATTENDEES --- */}
               {tab === 'attendees' && (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <Stat label="Registered" value={regStats.totalTickets.toLocaleString()} />
                     <Stat label="Capacity" value={`${regStats.capacityPct}%`} />
                     <Stat label="Checked In" value={regStats.checkedInCount.toLocaleString()} />
@@ -840,7 +840,7 @@ export function EventOps() {
               {/* --- SEATING --- */}
               {tab === 'seating' && (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <Stat label="Total Seats" value={planStats.totalSeats} />
                     <Stat label="Assigned" value={planStats.assignedSeats} />
                     <Stat label="Open" value={planStats.openSeats} />
@@ -971,7 +971,7 @@ export function EventOps() {
               {/* --- AGENDA --- */}
               {tab === 'agenda' && (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <Stat label="Items" value={agenda.length} />
                     <Stat label="Days" value={agendaStats.dayCount} />
                     <Stat label="Total Duration" value={`${Math.round(agendaStats.totalDurationMin / 60 * 10) / 10}h`} />
@@ -1042,7 +1042,7 @@ export function EventOps() {
               {/* --- CHECK-IN --- */}
               {tab === 'checkin' && (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <Stat label="Registered" value={regStats.totalTickets} />
                     <Stat label="Checked In" value={regStats.checkedInCount} accent="green-400" />
                     <Stat label="Attendance" value={`${regStats.capacityPct}%`} />
@@ -1262,7 +1262,7 @@ export function EventOps() {
                       <input className={ds.input} type="time" placeholder="Curfew" value={advanceForm.curfew}
                         onChange={(e) => setAdvanceForm({ ...advanceForm, curfew: e.target.value })} />
                     </div>
-                    <div className="grid grid-cols-3 gap-2 mb-2">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
                       <input className={ds.input} placeholder="Catering" value={advanceForm.catering}
                         onChange={(e) => setAdvanceForm({ ...advanceForm, catering: e.target.value })} />
                       <input className={ds.input} placeholder="Green room" value={advanceForm.greenRoom}
@@ -1332,7 +1332,7 @@ export function EventOps() {
                     </button>
                     {riderMatchResult && (
                       <div className="mt-3 pt-3 border-t border-lattice-border">
-                        <div className="grid grid-cols-3 gap-3 mb-2">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
                           <Stat label="Fulfilled" value={`${riderMatchResult.fulfilled}/${riderMatchResult.total}`} accent="green-400" />
                           <Stat label="Fulfillment" value={`${riderMatchResult.fulfillmentRate}%`} />
                           <div />

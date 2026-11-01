@@ -64,7 +64,7 @@ export function DevToolingPulse() {
               apiSource="github-dx-tooling"
               apiUrl={`https://github.com/topics/${topic}`}
               title={`GitHub dev tooling — topic:${topic} (${list.length})`}
-              content={list.slice(0, 20).map((r, i) => `${i + 1}. ★${r.stargazers_count.toLocaleString()} · ${r.full_name}${r.language ? ` · ${r.language}` : ''}\n   ${r.description || ''}\n   ${r.html_url}`).join('\n\n')}
+              content={list.slice(0, 20).map((r, i) => `${i + 1}. ★${(r.stargazers_count ?? 0).toLocaleString()} · ${r.full_name}${r.language ? ` · ${r.language}` : ''}\n   ${r.description || ''}\n   ${r.html_url}`).join('\n\n')}
               extraTags={['dx-platform', 'github', 'tooling', topic]}
               rawData={{ topic, repos: list }}
             />
@@ -73,7 +73,7 @@ export function DevToolingPulse() {
       </header>
       {repos.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub results unavailable right now — nothing is being shown in their place.</div>}
       {repos.data?.stale && !repos.isError && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached GitHub results{repos.data.fetchedAt ? ` from ${new Date(repos.data.fetchedAt).toLocaleString()}` : ''} — live refresh is rate-limited.</div>}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
           <div className="text-[10px] uppercase tracking-wider text-zinc-400">Repos</div>
           <div className="mt-0.5 font-mono text-lg text-violet-300">{list.length}</div>
@@ -95,8 +95,8 @@ export function DevToolingPulse() {
                 <p className="text-[12px] font-mono text-zinc-100">{r.full_name}</p>
                 {r.description && <p className="mt-0.5 line-clamp-2 text-[11px] text-zinc-300">{r.description}</p>}
                 <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[10px] text-zinc-400">
-                  <span className="flex items-center gap-0.5"><Star className="h-3 w-3" />{r.stargazers_count.toLocaleString()}</span>
-                  <span className="flex items-center gap-0.5"><GitBranch className="h-3 w-3" />{r.forks_count.toLocaleString()}</span>
+                  <span className="flex items-center gap-0.5"><Star className="h-3 w-3" />{(r.stargazers_count ?? 0).toLocaleString()}</span>
+                  <span className="flex items-center gap-0.5"><GitBranch className="h-3 w-3" />{(r.forks_count ?? 0).toLocaleString()}</span>
                   <span className="flex items-center gap-0.5"><AlertCircle className="h-3 w-3" />{r.open_issues_count}</span>
                   {r.language && <span className="rounded bg-zinc-800 px-1 font-mono text-[9px] text-zinc-300">{r.language}</span>}
                   {r.license?.spdx_id && <span className="rounded bg-violet-500/20 px-1 font-mono text-[9px] text-violet-200">{r.license.spdx_id}</span>}

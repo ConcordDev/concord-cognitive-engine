@@ -142,7 +142,7 @@ export function ForestryActionPanel() {
     try {
       const task = `Forest stand: ${standName || species} (${acres}ac, age ${age}y). ${riskResult ? `Fire risk: ${riskResult.riskLevel}.` : ''} ${carbonResult ? `Sequestration: ${carbonResult.tonsPerYear} t/yr.` : ''} Suggest the single best stewardship move for this season (thinning, fuel reduction, replant, or hold). Plain text.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Stewardship move ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

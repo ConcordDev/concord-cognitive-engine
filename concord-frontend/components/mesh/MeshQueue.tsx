@@ -68,7 +68,7 @@ export function MeshQueue() {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <Stat label="Frames" value={queue.data?.total ?? 0} />
         <Stat label="Pending" value={queue.data?.pending ?? 0} />
         <Stat label="Queued bytes" value={`${queue.data?.totalBytes ?? 0} B`} />

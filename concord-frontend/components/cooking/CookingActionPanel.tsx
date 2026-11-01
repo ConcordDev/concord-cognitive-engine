@@ -212,7 +212,7 @@ export function CookingActionPanel() {
     try {
       const task = `Home cook advisor. ${scaleResult ? `Making ${scaleResult.recipe}, ${scaleResult.targetServings ?? '—'} servings.` : ''} ${nutrResult && nutrResult.perServing != null ? `Per serving: ${nutrResult.perServing} cal${nutrResult.macros ? `, ${nutrResult.macros.protein} protein` : ''}.` : ''} ${subResult?.substitutions[0] ? `Substituting ${subResult.ingredient} with ${subResult.substitutions[0].sub}.` : ''} Suggest one technique tip + one flavor enhancement. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) {
         const text = typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2);
         setAgentReply(text);

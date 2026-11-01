@@ -6,6 +6,8 @@ import {
   COMPRESSION_GZIP,
   COMPRESSION_BROTLI,
   COMPRESSION_DEFLATE,
+  COMPRESSION_ZSTD,
+  ZSTD_AVAILABLE,
 } from "../lib/dtu-compression.js";
 
 describe("dtu-compression", () => {
@@ -154,6 +156,41 @@ describe("dtu-compression", () => {
   });
 
   // ── decompress ─────────────────────────────────────────────────────
+
+  // ── zstd (Q64/B#23) ────────────────────────────────────────────────
+
+  describe("zstd", () => {
+    it("selectAlgorithm picks ZSTD for large generic binary when available", () => {
+      const result = pipeline.selectAlgorithm("application/octet-stream", 128 * 1024);
+      if (ZSTD_AVAILABLE) {
+        assert.equal(result.algorithm, COMPRESSION_ZSTD);
+        assert.equal(result.algorithmName, "zstd");
+      } else {
+        assert.equal(result.algorithm, COMPRESSION_GZIP);
+      }
+    });
+
+    it("selectAlgorithm keeps GZIP for small generic binary", () => {
+      const result = pipeline.selectAlgorithm("application/octet-stream", 500);
+      assert.equal(result.algorithm, COMPRESSION_GZIP);
+    });
+
+    it("compress -> decompress round-trips through real Zstd (id 3)", () => {
+      if (!ZSTD_AVAILABLE) return; // runtime without core Zstd: nothing to round-trip
+      const data = Buffer.from("concord-dtu-payload-".repeat(10000)); // ~200KB, highly compressible
+      const c = pipeline.compress(data, "application/octet-stream");
+      assert.equal(c.algorithm, COMPRESSION_ZSTD);
+      assert.ok(c.compressedSize < c.originalSize);
+      const d = pipeline.decompress(c.compressed, COMPRESSION_ZSTD);
+      assert.ok(d.decompressed.equals(data));
+    });
+
+    it("decompress of an id-3 payload never silently gunzips", () => {
+      if (!ZSTD_AVAILABLE) return;
+      const gzipData = pipeline.compress(Buffer.from("x".repeat(5000)), "application/octet-stream");
+      assert.throws(() => pipeline.decompress(gzipData.compressed, COMPRESSION_ZSTD), /Decompression failed \(algorithm=3\)/);
+    });
+  });
 
   describe("decompress", () => {
     it("roundtrips Brotli compression", () => {

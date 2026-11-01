@@ -62,7 +62,7 @@ export function LoadBoardPanel() {
         <span className="ml-auto text-[10px] text-gray-400">{loads.filter(l => l.status === 'available').length} available · {loads.filter(l => l.status === 'booked').length} booked</span>
       </header>
 
-      <div className="p-3 border-b border-white/10 grid grid-cols-6 gap-2">
+      <div className="p-3 border-b border-white/10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
         <input value={form.origin} onChange={e => setForm({ ...form, origin: e.target.value })} placeholder="Origin" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <input value={form.destination} onChange={e => setForm({ ...form, destination: e.target.value })} placeholder="Destination" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <input type="number" step="0.01" value={form.ratePerMile} onChange={e => setForm({ ...form, ratePerMile: e.target.value })} placeholder="$/mile" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
@@ -71,7 +71,7 @@ export function LoadBoardPanel() {
           <option value="dry_van">Dry van</option><option value="reefer">Reefer</option><option value="flatbed">Flatbed</option><option value="step_deck">Step deck</option><option value="tanker">Tanker</option>
         </select>
         <input type="date" value={form.pickupDate} onChange={e => setForm({ ...form, pickupDate: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <button onClick={post} className="col-span-4 px-3 py-1.5 text-xs rounded bg-violet-500 text-white font-bold hover:bg-violet-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Post load</button>
+        <button onClick={post} className="col-span-2 lg:col-span-4 px-3 py-1.5 text-xs rounded bg-violet-500 text-white font-bold hover:bg-violet-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Post load</button>
       </div>
 
       <div className="max-h-80 overflow-y-auto">

@@ -31,8 +31,8 @@ export const TRANSCODE_STATUSES = ["pending", "processing", "ready", "failed"];
 export const STORAGE_TIERS = ["hot", "warm", "cold"];
 
 export const MEDIA_MIME_MAP = {
-  audio: ["audio/mpeg", "audio/wav", "audio/ogg", "audio/flac", "audio/aac", "audio/webm"],
-  video: ["video/mp4", "video/webm", "video/ogg", "video/quicktime", "video/x-matroska"],
+  audio: ["audio/mpeg", "audio/wav", "audio/ogg", "audio/flac", "audio/aac", "audio/mp4", "audio/webm"],
+  video: ["video/mp4", "video/webm", "video/ogg", "video/quicktime", "video/x-m4v", "video/x-matroska"],
   image: ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml", "image/avif"],
   document: ["application/pdf", "text/plain", "text/markdown", "application/epub+zip"],
   model: ["model/gltf-binary", "model/gltf+json"],

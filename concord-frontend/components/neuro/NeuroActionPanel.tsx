@@ -156,7 +156,7 @@ export function NeuroActionPanel() {
       const ch0 = freqResult?.channels?.[0];
       const task = `EEG bench. ${ch0 ? `Channel ${ch0.channel}: dominant ${ch0.dominantBand.name} (${ch0.dominantBand.relativePower}%, ${ch0.dominantBand.association}), peak ${ch0.peakFrequency} Hz, arousal ${ch0.indices.arousalLevel}, attention ${ch0.indices.attentionIndex}.` : ''} ${connResult?.significantConnections?.length ? `${connResult.significantConnections.length} functional connections.` : ''} Interpret the most likely cognitive state + one neurofeedback intervention. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Interpretation ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

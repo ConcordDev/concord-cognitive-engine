@@ -211,7 +211,7 @@ export function SelfModelPanel({ onGridTimelineCommand }: { onGridTimelineComman
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
           className="panel p-4 border-l-4 border-l-green-500 bg-green-500/5">
           <div className="flex items-center gap-2 mb-2">

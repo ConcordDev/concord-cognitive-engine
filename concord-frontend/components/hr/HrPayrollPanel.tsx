@@ -76,7 +76,7 @@ export function HrPayrollPanel() {
           <p className="text-[11px] text-zinc-400">
             {openRun.frequency} · pay date {openRun.payDate} · {openRun.headcount} stub(s)
           </p>
-          <div className="grid grid-cols-3 gap-2 mt-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
             <Metric label="Gross" value={usd(openRun.totalGross)} />
             <Metric label="Deductions" value={usd(openRun.totalDeductions)} tone="rose" />
             <Metric label="Net" value={usd(openRun.totalNet)} tone="emerald" />

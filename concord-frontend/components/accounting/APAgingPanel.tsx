@@ -37,7 +37,7 @@ export function APAgingPanel() {
       </header>
       {loading ? (
         <div className="p-4 space-y-3" aria-busy="true">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} variant="block" height="4.5rem" />)}
           </div>
           <div className="bg-black/30 rounded border border-white/10">
@@ -48,7 +48,7 @@ export function APAgingPanel() {
         <div className="p-10 text-center text-xs text-gray-400">No open payables to age.</div>
       ) : (
         <div className="p-4 space-y-3">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             {data.buckets.map(b => (
               <div key={b.key} className={cn(
                 'rounded border p-3',

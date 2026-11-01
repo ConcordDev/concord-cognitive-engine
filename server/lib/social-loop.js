@@ -106,7 +106,8 @@ export function setSocialPreferences(STATE, userId, prefs = {}) {
 }
 
 export function findUserByUsername(STATE, username, db) {
-  const name = String(username || "").trim().toLowerCase();
+  const raw = String(username || "").trim();
+  const name = raw.toLowerCase();
   if (name.length < 2) return { ok: false, status: 400, error: "username required" };
   const database = db || STATE?.db;
   if (database && typeof database.prepare === "function") {
@@ -120,6 +121,16 @@ export function findUserByUsername(STATE, username, db) {
     const handle = String(profile.username || profile.displayName || "").toLowerCase();
     if (handle === name) return { ok: true, user: { id: profile.userId, username: profile.displayName || profile.userId } };
   }
+  // A profile link can carry the user id instead of the handle (the "people to follow" card opens
+  // /lenses/social/u/<userId>), which used to be a 404. Same shape and same visibility as the handle lookup.
+  if (database && typeof database.prepare === "function") {
+    try {
+      const row = database.prepare("SELECT id, username FROM users WHERE id = ? AND is_active = 1").get(raw);
+      if (row) return { ok: true, user: { id: row.id, username: row.username } };
+    } catch { /* users table missing */ }
+  }
+  const byId = social.profiles.get(raw);
+  if (byId) return { ok: true, user: { id: byId.userId, username: byId.displayName || byId.userId } };
   return { ok: false, status: 404, error: "user not found" };
 }
 

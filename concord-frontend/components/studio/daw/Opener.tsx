@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Music, Plus, Loader2, Clock, Play } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 import type { DAWProject } from '@/lib/daw/types';
 import { STUDIO_TEMPLATES, buildTemplate } from '@/lib/daw/templates';
 import { studioTransport } from '@/lib/daw/studio-api';
@@ -14,6 +15,7 @@ export interface OpenerProps {
 }
 
 export function Opener({ onOpenProject, onNew, opening }: OpenerProps) {
+  const { user } = useAuth();
   const [recent, setRecent] = useState<ProjectRecord[] | null>(null);
   const [error, setError] = useState(false);
   useEffect(() => {
@@ -29,7 +31,10 @@ export function Opener({ onOpenProject, onNew, opening }: OpenerProps) {
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600/30"><Music className="h-5 w-5 text-violet-200" /></div>
           <div>
-            <h1 className="text-lg font-semibold">Studio</h1>
+            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-500">Studio</p>
+            <h1 className="font-vault text-3xl leading-tight text-zinc-100" data-testid="studio-greeting">
+              What are we making{user?.username ? `, ${user.username}` : ''}
+            </h1>
             <p className="text-xs text-zinc-500">Record, produce, mix and master. Everything saves automatically.</p>
           </div>
         </div>

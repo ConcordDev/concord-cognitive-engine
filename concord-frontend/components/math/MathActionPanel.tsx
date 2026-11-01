@@ -199,7 +199,7 @@ export function MathActionPanel() {
     try {
       const task = `Math problem: "${problem}". ${statsResult ? `Stats: mean ${statsResult.mean}, σ ${statsResult.stdDev}.` : ''} ${regressResult ? `Regression: ${regressResult.equation} R²=${regressResult.rSquared}.` : ''} Provide a step-by-step solution path. Plain text, numbered steps.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Steps ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

@@ -133,7 +133,7 @@ export function ComplianceDiversionPanel() {
                   <span className={`font-mono text-2xl ${diversion.meetsTarget ? 'text-emerald-200' : 'text-amber-200'}`}>{diversion.diversionRate}%</span>
                   <span className="text-zinc-400">target {diversion.target}%</span>
                 </div>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
                   <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Total</div><div className="font-mono text-zinc-200">{diversion.totalWaste}</div></div>
                   <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Diverted</div><div className="font-mono text-emerald-200">{diversion.diverted}</div></div>
                   <div className="rounded border border-amber-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Landfill</div><div className="font-mono text-amber-200">{diversion.landfilled}</div></div>

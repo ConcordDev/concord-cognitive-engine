@@ -117,7 +117,7 @@ export function TrendPanel() {
       )}
 
       {data.trend && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <TrendCard label="Coverage Δ" value={data.trend.coverageDelta} unit="%" goodWhenPositive />
           <TrendCard label="Drift Δ" value={data.trend.driftDelta} unit="" goodWhenPositive={false} />
           <TrendCard label="Dormant Δ" value={data.trend.dormantDelta} unit="" goodWhenPositive={false} />
