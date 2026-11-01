@@ -90,9 +90,9 @@ describe('RepoBrowser', () => {
     expect(screen.getByText('PR')).toBeInTheDocument();
   });
 
-  it('falls back to reading languages result directly when it is not wrapped under a `languages` key', async () => {
+  it('renders the languages array the github-languages macro actually returns ({language, bytes, percent})', async () => {
     runDomain.mockImplementation((_domain: string, action: string) => {
-      if (action === 'github-languages') return Promise.resolve(ok({ Python: 100 }));
+      if (action === 'github-languages') return Promise.resolve(ok({ languages: [{ language: 'Python', bytes: 100, percent: 100 }] }));
       return Promise.resolve(ok(action === 'github-commits-recent' ? { commits: [] } : { issues: [] }));
     });
     renderBrowser();

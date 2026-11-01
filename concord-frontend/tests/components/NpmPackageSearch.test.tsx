@@ -3,8 +3,11 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
+// The registry is read through the server's public-lookup domain (#1677), not from the browser.
+const lensRun = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/api/client', () => ({
   apiHelpers: { dtus: { create: vi.fn() } },
+  lensRun,
 }));
 
 vi.mock('@/store/ui', () => ({
@@ -47,6 +50,10 @@ function renderSearch() {
   return render(<QueryClientProvider client={qc}>{<NpmPackageSearch />}</QueryClientProvider>);
 }
 
+function lookupOk(data: unknown, extra: { stale?: boolean; fetchedAt?: number | null } = {}) {
+  return { data: { ok: true, result: { data, fetchedAt: extra.fetchedAt ?? Date.now(), stale: !!extra.stale } } };
+}
+
 function mockHit(overrides: Partial<{ name: string; version: string }> = {}) {
   return {
     package: {
@@ -66,12 +73,11 @@ function mockHit(overrides: Partial<{ name: string; version: string }> = {}) {
 describe('NpmPackageSearch', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    vi.stubGlobal('fetch', vi.fn());
+    lensRun.mockReset();
   });
 
   afterEach(() => {
     cleanup();
-    vi.unstubAllGlobals();
   });
 
   it('renders the empty state and a seeded query before any search', () => {
@@ -80,47 +86,52 @@ describe('NpmPackageSearch', () => {
     expect(screen.getByDisplayValue('react')).toBeInTheDocument();
   });
 
-  it('hits registry.npmjs.org with the query on submit and renders results', async () => {
+  it('asks the server public-lookup npm-search with the query on submit and renders results', async () => {
     const hits = [mockHit()];
-    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      json: async () => ({ objects: hits }),
-    });
+    lensRun.mockResolvedValue(lookupOk({ objects: hits }));
     renderSearch();
     fireEvent.submit(screen.getByRole('button', { name: /search/i }).closest('form')!);
 
     await waitFor(() => expect(screen.getAllByText('react').length).toBeGreaterThan(0));
-    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('https://registry.npmjs.org/-/v1/search?text=react'));
+    expect(lensRun).toHaveBeenCalledWith('public-lookup', 'npm-search', { q: 'react' });
     expect(screen.getByText(/gaearon/)).toBeInTheDocument();
     expect(screen.getByText(/quality 90/)).toBeInTheDocument();
   });
 
   it('shows an error message and empty results when the fetch fails', async () => {
-    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false, status: 503, json: async () => ({}) });
+    lensRun.mockResolvedValue({ data: { ok: false, error: 'upstream 503' } });
     renderSearch();
     fireEvent.submit(screen.getByRole('button', { name: /search/i }).closest('form')!);
-    await waitFor(() => expect(screen.getByText(/npm 503/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/npm registry is unavailable/i)).toBeInTheDocument());
     expect(screen.queryByText('react')).not.toBeInTheDocument();
   });
 
   it('shows an error message when fetch itself rejects', async () => {
-    (fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network down'));
+    lensRun.mockRejectedValue(new Error('network down'));
     renderSearch();
     fireEvent.submit(screen.getByRole('button', { name: /search/i }).closest('form')!);
-    await waitFor(() => expect(screen.getByText(/network down/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/npm registry is unavailable/i)).toBeInTheDocument());
+    expect(screen.queryByText('react')).not.toBeInTheDocument();
   });
 
-  it('disables submit for a blank query and does not fetch', () => {
+  it('disables submit for a blank query and does not look anything up', () => {
     renderSearch();
     fireEvent.change(screen.getByDisplayValue('react'), { target: { value: '   ' } });
     expect(screen.getByRole('button', { name: /search/i })).toBeDisabled();
   });
 
   it('renders the save-as-DTU affordance once results exist', async () => {
-    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, json: async () => ({ objects: [mockHit()] }) });
+    lensRun.mockResolvedValue(lookupOk({ objects: [mockHit()] }));
     renderSearch();
     fireEvent.submit(screen.getByRole('button', { name: /search/i }).closest('form')!);
     await waitFor(() => expect(screen.getAllByText('react').length).toBeGreaterThan(0));
     expect(screen.getByTestId('icon-Bookmark')).toBeInTheDocument();
+  });
+
+  it('says so when the server answers from an expired cache entry', async () => {
+    lensRun.mockResolvedValue(lookupOk({ objects: [mockHit()] }, { stale: true, fetchedAt: 1700000000000 }));
+    renderSearch();
+    fireEvent.submit(screen.getByRole('button', { name: /search/i }).closest('form')!);
+    await waitFor(() => expect(screen.getByText(/Showing cached npm data/)).toBeInTheDocument());
   });
 });
