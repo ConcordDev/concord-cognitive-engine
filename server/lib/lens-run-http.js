@@ -120,10 +120,20 @@ export function httpStatusForLensFailure(error, raw = {}) {
     return 422;
   }
 
+  // A handler that did async work and then FAILED because the work timed out or an upstream was unreachable
+  // is not a client fault: it used to fall through to the 400 below, so 19-25 s calls (the 20 s catch-all /
+  // upstream abort windows) came back as "400 Bad Request" and read as bad input. Same 200 + { ok:false }
+  // treatment as the `_unreachable` family above: non-retryable (502/503/504 are the axios retry set), honest
+  // body, no browser resource error. Placed AFTER the validation rules so `invalid_timeout`-style input names
+  // keep their 422, and matched on whole tokens of the error or reason channel.
+  if (UPSTREAM_FAILURE_RE.test(e) || UPSTREAM_FAILURE_RE.test(reason)) return 200;
+
   // Any other handler refusal is still a client-visible failure, not a 200.
   // 400 stays out of the axios retry set.
   return 400;
 }
+
+const UPSTREAM_FAILURE_RE = /(^|[^a-z])(timeout|timed out|aborted|fetch failed|etimedout|econnrefused|econnreset|enotfound|eai_again|socket hang up)([^a-z]|$)/;
 
 function isFailure(value) {
   return !!value && typeof value === "object" && value.ok === false;

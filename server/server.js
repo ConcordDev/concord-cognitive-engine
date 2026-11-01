@@ -136,6 +136,7 @@ import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
 import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
 import { httpErrorFromLensAction as _httpErrorFromLensAction } from "./lib/lens-action-http.js";
 import { shapeLensRunHttp as _shapeLensRunHttp, respondMacroResult as _respondMacroResult } from "./lib/lens-run-http.js";
+import { createLensRunLogger as _createLensRunLogger } from "./lib/lens-run-log.js";
 import { resolveDualRegistry as _resolveDualRegistry } from "./lib/dual-registry-resolve.js";
 import {
   enforcePlatformInternalLensRole,
@@ -6702,12 +6703,17 @@ function initDatabase() {
       // require setting it BEFORE journal_mode=WAL on a genuinely fresh
       // (pre-existing-file) database, or a VACUUM on an existing one —
       // out of scope for what was a minor I/O-amortization tweak.
-      // analysis_limit bounds the ANALYZE work optimize may do (SQLite's own
-      // recommendation): without it, a boot that follows a migration adding an
-      // index made optimize scan the new index in full (3.2 s, #1940 syncIo).
+      // NO boot-time `PRAGMA optimize` (2026-11-01, #1943 deploy): it ran synchronously on the main thread
+      // before listen and took 23,990 ms (slow_sync_io target "PRAGMA optimize", server.js initDatabase) with
+      // analysis_limit already at 1000 and a 69 MB WAL; the statements right after it ran in milliseconds, so
+      // the cost was optimize itself, not first-touch of the file. Every deploy paid ~24 s of extra downtime.
+      // It also bought nothing: see INC-100 below, a plain optimize only looks at tables this connection has
+      // already queried and at boot there are none. Query-planner statistics are kept fresh by the
+      // sqlite-stats-refresh job below (one table at a time, off the boot path, then twice a day), which
+      // re-ANALYZEs the tables whose stats are stale. analysis_limit stays set so that job's ANALYZE is bounded
+      // too. Cause of the 24 s itself is not proven.
       db.pragma("analysis_limit = 1000");
-      db.pragma("optimize");                  // Refresh query-planner stats at boot (idempotent, fast)
-      // INC-100: that boot-time optimize is a no-op (plain optimize only looks
+      // INC-100: a boot-time optimize was a no-op (plain optimize only looks
       // at tables this connection has already queried — none yet), so
       // sqlite_stat1 stayed frozen at tiny row counts and the planner chose
       // full SCANs over existing indexes (3.5 s event-loop freezes from
@@ -51046,7 +51052,25 @@ async function _dispatchLensRunForTest(domain, name, input, ctx) {
   return { ok: false, error: "unknown_macro", domain, name };
 }
 
+const _lensRunLog = _createLensRunLogger({ log: structuredLog });
 app.post("/api/lens/run", async (req, res) => {
+  // One lens_run_result line for every non-ok (or >2 s) outcome, naming domain + action (lib/lens-run-log.js).
+  // Branches annotate res.locals.lensRun; the line is written on "finish" with the final status. Tokens only.
+  const _lrStart = Date.now();
+  const _lrNote = (via, ok, error, extra = {}) => { res.locals.lensRun = { ...res.locals.lensRun, via, ok, error, ...extra }; };
+  res.once("finish", () => {
+    try {
+      const n = res.locals.lensRun || {};
+      const b = req.body && typeof req.body === "object" ? req.body : {};
+      _lensRunLog.record({
+        domain: b.domain, action: b.action || b.name, httpStatus: res.statusCode,
+        ok: n.ok === undefined ? res.statusCode < 400 : n.ok,
+        error: n.error, reason: n.reason, code: n.code, via: n.via,
+        durationMs: Date.now() - _lrStart,
+        requestId: req.id, userId: n.userId || req.user?.id || null,
+      });
+    } catch { /* observability only */ }
+  });
   // ── ConKay honest event spine (Track B / Phase 0) ──────────────────────
   // A macro run is a single request→response, so its work is otherwise
   // invisible mid-flight. When the client opts in by passing a correlation
@@ -51084,14 +51108,15 @@ app.post("/api/lens/run", async (req, res) => {
             return r;
           })()
     );
-    if (!domain || !action) return res.status(400).json({ ok: false, error: "domain and action required" });
-    if (enforcePlatformInternalLensRole(req, res, domain, requireRole)) return;
+    if (!domain || !action) { _lrNote("pre_dispatch", false, "domain_action_required"); return res.status(400).json({ ok: false, error: "domain and action required" }); }
+    if (enforcePlatformInternalLensRole(req, res, domain, requireRole)) { _lrNote("pre_dispatch", false, "platform_internal_role"); return; }
     // Non-finite guard for BOTH the lens-action and macro paths (1e999 → Infinity).
     {
       const _nf = _rejectNonFiniteInput(rest);
-      if (_nf) return res.status(400).json(_nf);
+      if (_nf) { _lrNote("pre_dispatch", false, "non_finite_input"); return res.status(400).json(_nf); }
     }
     const ctx = makeCtx(req);
+    _lrNote(undefined, undefined, undefined, { userId: ctx?.actor?.userId });
     // ConKay honest spine (Phase 2): let a genuinely multi-step macro report a
     // real intermediate `macro:stage` tied to this run id. It only emits when a
     // runId + resolved user exist (same gate as started/completed via
@@ -51103,6 +51128,7 @@ app.post("/api/lens/run", async (req, res) => {
     // in secured production — the runMacro ACL doesn't protect this surface (see
     // _lensActionForbiddenForAnon). Reads use the GET /api/lens/:domain[/:id] routes.
     if (_lensActionForbiddenForAnon(ctx)) {
+      _lrNote("pre_dispatch", false, "authentication_required", { code: "LENS_AUTH" });
       return res.status(401).json({ ok: false, error: "authentication required", code: "LENS_AUTH" });
     }
     // Honest spine: announce the start to the caller's room (real users only —
@@ -51131,11 +51157,13 @@ app.post("/api/lens/run", async (req, res) => {
       // HTTP 403, not a 200 envelope that looks like success.
       const _httpErr = _httpErrorFromLensAction(lensRaw);
       if (_httpErr) {
+        _lrNote("lens_action", false, undefined, { code: _httpErr.body.code, reason: "forbidden" });
         emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: _httpErr.body.error });
         return res.status(_httpErr.status).json(_httpErr.body);
       }
       const shaped = _shapeLensRunHttp(lensRaw);
       const result = shaped.body.ok ? shaped.body.result : shaped.body;
+      _lrNote("lens_action", shaped.body.ok !== false, shaped.body.error, { reason: shaped.body.reason, code: shaped.body.code });
       emitMacroLife("macro:completed", { ok: shaped.body.ok !== false, ms: Date.now() - _lifeStartedAt });
       // R5/E22 — ConKay spatial mode (Godot Hub): a real, non-fabricated
       // capability-tier fact for the two verdict-producing macros only. See
@@ -51156,11 +51184,13 @@ app.post("/api/lens/run", async (req, res) => {
       const macroRaw = await runMacro(domain, action, rest, ctx);
       const _macroHttpErr = _httpErrorFromLensAction(macroRaw);
       if (_macroHttpErr) {
+        _lrNote("macro", false, undefined, { code: _macroHttpErr.body.code, reason: "forbidden" });
         emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: _macroHttpErr.body.error });
         return res.status(_macroHttpErr.status).json(_macroHttpErr.body);
       }
       const shaped = _shapeLensRunHttp(macroRaw);
       const result = shaped.body.ok ? shaped.body.result : shaped.body;
+      _lrNote("macro", shaped.body.ok !== false, shaped.body.error, { reason: shaped.body.reason, code: shaped.body.code });
       emitMacroLife("macro:completed", { ok: shaped.body.ok !== false, ms: Date.now() - _lifeStartedAt });
       const _verdictEmit = _deriveConkayVerdictEmit(domain, action, result);
       if (_verdictEmit) emitMacroLife("conkay:verdict", _verdictEmit);
@@ -51190,6 +51220,7 @@ app.post("/api/lens/run", async (req, res) => {
     // plain game-macro call can never again be silently answered by the LLM.
     const _wantsBrainFallback = rest?.__ai === true || body.ai === true;
     if (!_wantsBrainFallback) {
+      _lrNote("none", false, "unknown_macro");
       emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: "unknown_macro" });
       return res.status(200).json({ ok: false, error: "unknown_macro", domain, action, detail: "no registered macro for this domain/action" });
     }
@@ -51198,6 +51229,7 @@ app.post("/api/lens/run", async (req, res) => {
     // (#27, the slow_request / quality-pipeline hang #T3).
     const { __ai: _aiFlag, ...catchallInput } = rest || {};
     if (!hasUsableBrainInput(null, catchallInput)) {
+      _lrNote("catchall", false, "needs_artifact_input");
       emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: "needs_artifact_input" });
       return res.status(200).json(needsInputError(domain, action));
     }
@@ -51214,6 +51246,7 @@ app.post("/api/lens/run", async (req, res) => {
       // as "the backend is disconnecting / issues". Return 200 {ok:false,reason}
       // so the lens degrades to a clean unavailable state (esp. when the brain is
       // down — the known no-RunPod env condition) without a retry storm.
+      _lrNote("catchall", false, "unknown_macro", { reason: "brain_catchall_timeout" });
       emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: "brain_catchall_timeout" });
       return res.status(200).json({ ok: false, error: "unknown_macro", reason: "brain_catchall_timeout", domain, action, detail: "no registered macro; brain catch-all timed out" });
     } finally {
@@ -51222,6 +51255,7 @@ app.post("/api/lens/run", async (req, res) => {
     if (!aiResult?.ok) {
       // Same: brain unavailable (Ollama down) or unregistered macro → honest but
       // non-retryable so it doesn't storm or trip backend-health/"issues".
+      _lrNote("catchall", false, "unknown_macro", { reason: "macro_unavailable" });
       emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: "macro_unavailable" });
       return res.status(200).json({ ok: false, error: "unknown_macro", reason: "macro_unavailable", domain, action, detail: aiResult?.error || "no registered macro; brain unavailable" });
     }
@@ -51243,6 +51277,7 @@ app.post("/api/lens/run", async (req, res) => {
     // spinning on an error path. `_lifeStarted` guards against a pre-dispatch throw.
     if (_lifeStarted) emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: msg });
     const status = msg.startsWith("forbidden") ? 403 : 500;
+    _lrNote(res.locals.lensRun?.via || "handler", false, status === 403 ? "forbidden" : "handler_threw");
     res.status(status).json({ ok: false, error: msg });
   }
 });
