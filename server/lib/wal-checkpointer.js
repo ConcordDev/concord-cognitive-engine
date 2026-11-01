@@ -19,6 +19,24 @@
 import { Worker } from "node:worker_threads";
 
 const STARVE_RUNS = 3;
+// The caller may switch the inline auto-checkpoint off BEFORE the worker is ready (see walCheckpointerEnabled).
+// If the worker then never reports ready, nothing would checkpoint: give up after this long and fall back.
+const DEFAULT_READY_TIMEOUT_MS = 120_000;
+
+/**
+ * Would startWalCheckpointer start a worker for this DB? Callers use it to switch the main connection's
+ * inline wal_autocheckpoint off at open instead of waiting for onReady: the worker's "ready" message needs an
+ * event-loop turn, and boot is synchronous up to listen, so until then the first COMMIT after boot (the
+ * dtu-ownership INSERT OR REPLACE, 14.2 s in #1955's syncIo) ran SQLite's inline checkpoint of the whole
+ * 64 MB WAL the previous run left behind.
+ */
+export function walCheckpointerEnabled(dbPath, opts = {}) {
+  const env = opts.env || process.env;
+  if (env.CONCORD_WAL_CHECKPOINT_WORKER === "0") return false;
+  if (!opts.force && (env.NODE_ENV === "test" || env.CONCORD_NO_LISTEN === "true")) return false;
+  if (!dbPath || dbPath === ":memory:") return false;
+  return true;
+}
 
 /**
  * @param {string} dbPath
@@ -26,7 +44,8 @@ const STARVE_RUNS = 3;
  * @param {number} opts.thresholdBytes   checkpoint when the WAL is at least this big
  * @param {number} [opts.intervalMs=10000]
  * @param {number} [opts.hardCapBytes]   fall back to inline checkpointing above this (default 4x threshold)
- * @param {() => void} opts.onReady      worker is up: caller sets wal_autocheckpoint = 0
+ * @param {() => void} opts.onReady      worker is up: caller sets wal_autocheckpoint = 0 (idempotent if already 0)
+ * @param {number} [opts.readyTimeoutMs=120000] no ready by then: onFallback (inline checkpointing comes back)
  * @param {(info: object) => void} [opts.onResult]
  * @param {(reason: string) => void} opts.onFallback  caller re-enables inline auto-checkpoint
  * @param {object} [opts.env]
@@ -35,10 +54,7 @@ const STARVE_RUNS = 3;
  * @returns {{ stop(): void } | null}
  */
 export function startWalCheckpointer(dbPath, opts) {
-  const env = opts.env || process.env;
-  if (env.CONCORD_WAL_CHECKPOINT_WORKER === "0") return null;
-  if (!opts.force && (env.NODE_ENV === "test" || env.CONCORD_NO_LISTEN === "true")) return null;
-  if (!dbPath || dbPath === ":memory:") return null;
+  if (!walCheckpointerEnabled(dbPath, opts)) return null;
   const intervalMs = opts.intervalMs || 10_000;
   const hardCapBytes = opts.hardCapBytes || opts.thresholdBytes * 4;
   const WorkerCtor = opts.WorkerCtor || Worker;
@@ -48,9 +64,11 @@ export function startWalCheckpointer(dbPath, opts) {
   let active = false;
   let done = false;
   let starved = 0;
+  let readyTimer = null;
   const fallback = (reason) => {
     if (done) return;
     done = true;
+    clearTimeout(readyTimer);
     try { worker?.terminate?.(); } catch { /* already gone */ }
     try { opts.onFallback(reason); } catch { /* informational */ }
   };
@@ -61,10 +79,13 @@ export function startWalCheckpointer(dbPath, opts) {
     return null;
   }
   worker.unref?.();
+  readyTimer = setTimeout(() => { if (!active) fallback(`ready_timeout_${opts.readyTimeoutMs || DEFAULT_READY_TIMEOUT_MS}ms`); }, opts.readyTimeoutMs || DEFAULT_READY_TIMEOUT_MS);
+  readyTimer.unref?.();
   worker.on("message", (msg) => {
     if (!msg || done) return;
     if (msg.type === "ready" && !active) {
       active = true;
+      clearTimeout(readyTimer);
       try { opts.onReady(); } catch (e) { fallback(`ready_failed: ${e?.message || e}`); }
     } else if (msg.type === "result") {
       try { opts.onResult?.(msg); } catch { /* informational */ }
@@ -81,5 +102,5 @@ export function startWalCheckpointer(dbPath, opts) {
   });
   worker.on("error", (e) => fallback(`worker_error: ${e?.message || e}`));
   worker.on("exit", (code) => { if (!done) fallback(`worker_exit_${code}`); });
-  return { stop() { done = true; try { worker.terminate(); } catch { /* already gone */ } } };
+  return { stop() { done = true; clearTimeout(readyTimer); try { worker.terminate(); } catch { /* already gone */ } } };
 }
