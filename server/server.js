@@ -49,6 +49,7 @@ import {
   isLogAdmin,
   actorFromReq,
 } from "./lib/log-access.js";
+import { isQuietLensAction, lensActivityLabel, lensActivityObject } from "./lib/lens-activity-labels.js";
 import { dtuSkipsAutoTag } from "./lib/dtu-auto-tag.js";
 import { relationEdges as dtuRelationEdges } from "./lib/dtu-relations.js";
 import { substrateCounts, derivedLayerCounts } from "./lib/substrate-counts.js";
@@ -14571,39 +14572,28 @@ function log(type, message, meta={}, actorUserId=null) {
 // STATE.logs row with the acting user's id. The route's Source 3 turns
 // such rows into feed rows visible to their actor (type = the lens
 // domain, which the shared ActivityTimeline matches to the lens and
-// classifies as "You"). The object label is best-effort from the call
-// or its result (name/title/label, then a first line of text input) —
-// never fabricated: a call carrying no object names the action alone.
-// Recording must never break a lens run: every failure is swallowed.
-function _lensActivityObjectLabel(input, result) {
-  const clean = (v) => (typeof v === "string" ? v.trim().replace(/\s+/g, " ").slice(0, 80) : "");
-  const fromObj = (o) => {
-    if (!o || typeof o !== "object") return "";
-    for (const k of ["name", "title", "label"]) { const s = clean(o[k]); if (s) return s; }
-    return "";
-  };
-  let label = fromObj(input) || fromObj(result);
-  if (!label && result && typeof result === "object") {
-    for (const k of ["experiment", "artifact", "item", "created", "entry", "record"]) {
-      label = fromObj(result[k]);
-      if (label) break;
-    }
-  }
-  if (!label) {
-    const t = clean(input?.text);
-    if (t) label = t.split("\n")[0].slice(0, 80);
-  }
-  return label;
-}
-
+// classifies as "You"). Recording must never break a lens run: every
+// failure is swallowed.
+//
+// Labelling/coverage layer (fix for the #1906 RE-SITTING verdict on
+// #1910 — 4 PASS / 8 FAIL, the recorder itself verified working): the
+// verb and object come from lib/lens-activity-labels.js — camelCase
+// actions humanize instead of rendering as raw tool names, per-action
+// specs name the object under the key that leg's call actually
+// carries, and pure read/fetch dispatches (the lens's own load
+// traffic) are quiet: they write no row, so a member's own action
+// rows cannot rotate out of the panel under read traffic. The object
+// is never fabricated: a call carrying no object names the action
+// alone.
 function _recordLensActivity(domain, action, ctx, input, result) {
   try {
     const userId = ctx?.userId || ctx?.actor?.userId || null;
     if (!userId || userId === "anon" || userId === "system") return;
     if (ctx?.internal === true || ctx?.actor?.internal === true) return;
     if (typeof domain !== "string" || !domain || typeof action !== "string" || !action) return;
-    const verb = action.replace(/[-_]+/g, " ").trim();
-    const label = _lensActivityObjectLabel(input, result);
+    if (isQuietLensAction(domain, action)) return;
+    const verb = lensActivityLabel(domain, action);
+    const label = lensActivityObject(domain, action, input, result);
     log(domain, label ? `${verb}: ${label}` : verb, { domain, action }, userId);
   } catch { /* activity recording must never break a lens run */ }
 }
@@ -40284,7 +40274,7 @@ registerDomainRoutes(app, {
   STATE, makeCtx, runMacro, _withAck, kernelTick, uiJson, listDomains, listMacros,
   dtusArray, normalizeText, clamp, nowISO, saveStateDebounced, retrieveDTUs,
   isShadowDTU, fs, ensureExperienceLearning, ensureAttentionManager, ensureReflectionEngine,
-  validate, requireOwner, requireRole
+  validate, requireOwner, requireRole, recordLensActivity: _recordLensActivity
 });
 
 // ---- Shield Routes (extracted to routes/shield.js) ----

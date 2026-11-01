@@ -198,6 +198,10 @@ export function SessionPlayerPanel({ practiceTick = 0 }: { practiceTick?: number
         trackId: track.trackId,
         title: track.title,
         category: goal === 'breath' ? 'breathwork' : 'guided',
+        // The session's goal rides the log call so the practice
+        // ledger — and the Activity feed's row for this log — can
+        // name the session by its goal and length, not its track.
+        goal,
         minutes,
         completedAt: new Date().toISOString(),
         rating: rating || undefined,
