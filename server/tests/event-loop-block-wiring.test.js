@@ -22,7 +22,7 @@ describe("event_loop_block carries its attribution", () => {
   it("slow sync fs calls are wrapped before any other import and reach the block log", () => {
     const first = src.search(/^import /m);
     assert.ok(src.slice(first).startsWith('import { installSlowSyncIoOnce'), "slow-sync-io wraps node:fs before later modules bind it");
-    const imp = src.indexOf('import { installSlowSyncIoOnce, setSlowSyncIoReporter, slowSyncIoSince } from "./lib/slow-sync-io.js";');
+    const imp = src.indexOf('import { installSlowSyncIoOnce, installSlowNativeOnce, setSlowSyncIoReporter, slowSyncIoSince } from "./lib/slow-sync-io.js";');
     assert.ok(imp > 0 && imp < src.indexOf('import expressRateLimit'));
     assert.ok(src.includes('structuredLog("warn", "slow_sync_io"'));
     const blk = src.indexOf('structuredLog("warn", "event_loop_block"');
