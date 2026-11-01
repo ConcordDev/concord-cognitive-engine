@@ -282,7 +282,7 @@ function DynastyTab({ onOk, onErr }: TabProps) {
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
         <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Arrange marriage</h4>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <select value={marryA} onChange={(e) => setMarryA(e.target.value)}
             className="rounded bg-zinc-950 px-2 py-1 text-[11px] text-white">
             <option value="">— spouse A —</option>
@@ -498,7 +498,7 @@ function DiplomacyTab({ onOk, onErr }: TabProps) {
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
         <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Fabricate claim</h4>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <input value={cTarget} onChange={(e) => setCTarget(e.target.value)} placeholder="Target realm/title"
             className="rounded bg-zinc-950 px-2 py-1 text-[12px] text-white" />
           <input value={cStrength} onChange={(e) => setCStrength(e.target.value.replace(/[^\d]/g, ''))} placeholder="Strength"

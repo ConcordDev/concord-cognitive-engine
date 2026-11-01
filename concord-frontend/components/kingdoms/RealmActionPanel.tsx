@@ -371,7 +371,7 @@ export function RealmActionPanel() {
       ].filter(Boolean).join(' ');
       // Handler contract is input.message (task is accepted as a fleet-wide alias).
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { message, maxTurns: 4 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Council member spoke.'); }
       else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); }

@@ -488,3 +488,25 @@ describe('declining', () => {
     );
   });
 });
+
+describe('refusals reach the screen as refusals, not as "unreachable"', () => {
+  beforeEach(() => post.mockReset());
+
+  it('reads a handler refusal out of an HTTP 400 body (how /api/lens/run really answers it)', async () => {
+    const { runVaultMacro, refusalCopy } = await import('@/components/vault/curator/vault-curator-client');
+    post.mockRejectedValueOnce({ response: { status: 400, data: { ok: false, reason: 'not_a_curator', error: 'not_a_curator' } } });
+    const r = await runVaultMacro('queue', {});
+    expect(r).toMatchObject({ ok: false, reason: 'not_a_curator' });
+    expect(refusalCopy(r.reason)).toMatch(/not a curator/i);
+  });
+
+  it('still reports a signed-out 401, a 403 without a reason, and an unreachable server as such', async () => {
+    const { runVaultMacro } = await import('@/components/vault/curator/vault-curator-client');
+    post.mockRejectedValueOnce({ response: { status: 401, data: { ok: false, error: 'authentication required', code: 'LENS_AUTH' } } });
+    expect((await runVaultMacro('queue', {})).reason).toBe('transport_auth_required');
+    post.mockRejectedValueOnce({ response: { status: 403, data: { ok: false, error: 'Insufficient permissions' } } });
+    expect((await runVaultMacro('queue', {})).reason).toBe('transport_forbidden');
+    post.mockRejectedValueOnce(new Error('Network Error'));
+    expect((await runVaultMacro('queue', {})).reason).toBe('transport_unreachable');
+  });
+});

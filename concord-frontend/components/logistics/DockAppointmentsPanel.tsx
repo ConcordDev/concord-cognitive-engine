@@ -68,14 +68,14 @@ export function DockAppointmentsPanel() {
         <input type="date" value={date} onChange={e => setDate(e.target.value)} className="ml-auto text-xs bg-lattice-deep border border-lattice-border rounded px-2 py-0.5 text-white" />
       </header>
 
-      <div className="p-3 border-b border-white/10 grid grid-cols-4 gap-2 text-xs">
+      <div className="p-3 border-b border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
         <span className="text-gray-400 uppercase text-[10px] flex items-center">Add dock:</span>
         <input value={dockForm.name} onChange={e => setDockForm({ ...dockForm, name: e.target.value })} placeholder="Dock name" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         <input value={dockForm.facility} onChange={e => setDockForm({ ...dockForm, facility: e.target.value })} placeholder="Facility" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={addDock} className="px-3 py-1 rounded bg-amber-500/30 text-amber-300 hover:bg-amber-500/50 inline-flex items-center justify-center gap-1"><Anchor className="w-3 h-3" />Add dock</button>
       </div>
 
-      <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2 text-xs">
+      <div className="p-3 border-b border-white/10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-xs">
         <select value={aptForm.dockId} onChange={e => setAptForm({ ...aptForm, dockId: e.target.value })} className="col-span-2 px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="">Select dock…</option>
           {docks.map(d => <option key={d.id} value={d.id}>{d.name} · {d.facility}</option>)}
@@ -85,7 +85,7 @@ export function DockAppointmentsPanel() {
         <select value={aptForm.kind} onChange={e => setAptForm({ ...aptForm, kind: e.target.value as typeof aptForm.kind })} className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="delivery">Delivery</option><option value="pickup">Pickup</option>
         </select>
-        <input value={aptForm.truckNumber} onChange={e => setAptForm({ ...aptForm, truckNumber: e.target.value })} placeholder="Truck #" className="col-span-3 px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+        <input value={aptForm.truckNumber} onChange={e => setAptForm({ ...aptForm, truckNumber: e.target.value })} placeholder="Truck #" className="col-span-2 lg:col-span-3 px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
         <button onClick={book} disabled={!aptForm.dockId} className="col-span-2 px-3 py-1 rounded bg-amber-500 text-black font-bold hover:bg-amber-400 disabled:opacity-40 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Book</button>
       </div>
 

@@ -76,7 +76,7 @@ export function EnergySolarPanel({ onChange }: { onChange: () => void }) {
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
       {summary && (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-2 text-center">
             <p className="text-lg font-bold text-lime-400">{summary.producedKwh}</p>
             <p className="text-[10px] text-zinc-400 uppercase">Produced kWh</p>

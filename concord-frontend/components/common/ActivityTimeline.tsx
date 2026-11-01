@@ -40,7 +40,13 @@ function ActivityTimeline({ domain }: ActivityTimelineProps) {
     queryKey: ['activity-timeline', domain],
     queryFn: () =>
       api
-        .get('/api/events/paginated', { params: { limit: 50 } })
+        // The widest page the route serves: this panel filters a
+        // single global page down to one lens client-side, so a
+        // narrow page let a member's own action rows rotate out
+        // under other traffic (#1906 re-sitting). Read dispatches no
+        // longer record at all (server-side); the wide page is the
+        // second layer of the same fix.
+        .get('/api/events/paginated', { params: { limit: 200 } })
         .then((r) => r.data)
         .catch(() => ({ items: [] })),
     staleTime: 30000,

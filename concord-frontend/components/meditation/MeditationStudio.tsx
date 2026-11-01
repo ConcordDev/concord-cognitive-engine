@@ -79,7 +79,7 @@ export function MeditationStudio({ onPractice }: { onPractice?: () => void }) {
       </div>
 
       {dash && (
-        <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
           {([['Sessions', dash.totalSessions], ['Minutes', dash.totalMinutes], ['Streak', `${dash.currentStreak}🔥`]] as const).map(([l, v]) => (
             <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-center">
               <p className="text-sm font-bold text-zinc-100">{v}</p>

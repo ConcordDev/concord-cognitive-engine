@@ -422,7 +422,7 @@ export function RecipeKitchen() {
                     <p className="text-xs text-gray-400">No ratings or cook log yet — rate it or log a cook above.</p>
                   ) : (
                     <div className="space-y-2">
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                         <div className="rounded bg-lattice-deep p-2 text-center">
                           <div className="text-base font-bold text-amber-400">{history.avgRating || '—'}</div>
                           <div className="text-[10px] text-gray-400">avg ({history.ratingCount})</div>

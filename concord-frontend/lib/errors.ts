@@ -180,7 +180,14 @@ export function fromAxiosError(error: unknown): ConcordError {
       }
       return new ForbiddenError(msg);
     case 404:
-      return new NotFoundError(msg);
+      // The server's 404 body already carries a COMPLETE message
+      // (e.g. "DTU not found"). Pass it through verbatim as a
+      // NOT_FOUND-coded ConcordError. Feeding it to NotFoundError
+      // would treat the message as a bare resource name and compose
+      // a second "not found" onto it ("DTU not found not found").
+      // NotFoundError(resource, id) stays for callers that hold a
+      // bare resource name and want the composed form.
+      return new ConcordError(msg, 'NOT_FOUND', 404);
     case 409:
       return new ConflictError(msg);
     case 429:

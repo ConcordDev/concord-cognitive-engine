@@ -26,6 +26,7 @@ export class EmergentMinorAgent {
     this.realtimeEmit = realtimeEmit;
     this.identity = null;
     this._ticking = false; // mutex: one tick at a time
+    this._lastActiveDirty = 0; // queued last_active_at (epoch ms), see _updateLastActive
   }
 
   /** Load/derive identity and ensure the emergent is named. */
@@ -298,14 +299,43 @@ export class EmergentMinorAgent {
     } catch { /* non-fatal */ }
   }
 
+  // Queued, not written: this ran once per agent at boot and again after every
+  // tick, each a separate sync upsert. #1939's syncIo caught one of the boot
+  // ones holding the event loop 10.7 s (28 s after boot). The timestamp is only
+  // read by the genesis lens ("active within 24 h"), so MinorAgentScheduler
+  // writes every dirty agent in ONE transaction after each tick instead
+  // (flushLastActive below); nothing is written at boot.
   _updateLastActive() {
     if (!this.db) return;
-    try {
-      this.db.prepare(`
-        INSERT INTO emergent_identity (emergent_id, last_active_at)
-        VALUES (?, ?)
-        ON CONFLICT(emergent_id) DO UPDATE SET last_active_at = excluded.last_active_at
-      `).run(this.emergentId, Date.now());
-    } catch { /* non-fatal */ }
+    this._lastActiveDirty = Date.now();
+  }
+}
+
+/**
+ * Write the queued last_active_at of `agents` in one transaction. Returns the
+ * number of rows written. A failure drops nothing silently: SQLITE_BUSY (the
+ * 10 s busy_timeout elapsing is the other candidate for the 10.7 s stall) is
+ * logged so the next occurrence is distinguishable from a page-in stall.
+ */
+export function flushLastActive(db, agents) {
+  if (!db) return 0;
+  const dirty = [];
+  for (const a of agents) if (a._lastActiveDirty) dirty.push(a);
+  if (dirty.length === 0) return 0;
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO emergent_identity (emergent_id, last_active_at)
+      VALUES (?, ?)
+      ON CONFLICT(emergent_id) DO UPDATE SET last_active_at = excluded.last_active_at
+    `);
+    const writeAll = db.transaction((rows) => { for (const a of rows) stmt.run(a.emergentId, a._lastActiveDirty); });
+    writeAll(dirty);
+    for (const a of dirty) a._lastActiveDirty = 0;
+    return dirty.length;
+  } catch (err) {
+    if (err?.code === "SQLITE_BUSY" || err?.code === "SQLITE_LOCKED") {
+      console.warn(`[minor-agent] last_active flush hit ${err.code} (${dirty.length} agents); will retry next tick`);
+    }
+    return 0; // non-fatal: stays dirty, retried after the next tick
   }
 }

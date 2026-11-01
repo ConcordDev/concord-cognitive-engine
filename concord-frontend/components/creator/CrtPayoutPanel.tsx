@@ -90,7 +90,7 @@ export function CrtPayoutPanel() {
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
       {result && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <Stat label="Completed" value={`$${result.totals.completed.toLocaleString()}`} accent="text-emerald-300" />
           <Stat label="Pending" value={`$${result.totals.pending.toLocaleString()}`} accent="text-amber-300" />
           <Stat label="Failed" value={`$${result.totals.failed.toLocaleString()}`} accent="text-rose-300" />

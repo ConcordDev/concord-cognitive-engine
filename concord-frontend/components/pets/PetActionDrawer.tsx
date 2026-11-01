@@ -182,7 +182,7 @@ export function PetActionDrawer({ pet, onClose, onChange }: PetActionDrawerProps
         'Return the clinic name, address, phone number, and a one-line note on why it fits.',
       ].filter(Boolean).join(' ');
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 5 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) {
         setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
         ok('Agent returned emergency-vet candidates.');

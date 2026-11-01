@@ -580,7 +580,7 @@ export function InitiativeSettings({ className, apiBase = '' }: InitiativeSettin
                 Ignoring or dismissing initiatives causes Concord to back off automatically.
               </p>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="p-3 rounded-lg bg-lattice-surface border border-lattice-border">
                   <p className="text-[10px] text-zinc-400 mb-1">Ignored Count</p>
                   <p className={cn(

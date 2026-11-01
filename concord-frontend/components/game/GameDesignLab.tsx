@@ -177,7 +177,7 @@ function BalanceCalculators() {
       {tab === 'curve' && (
         <div className="lens-card space-y-3">
           <p className="text-xs text-gray-400">XP-per-level curve — `xpRequired = baseXP × growthFactor^(level-1)` — matches `game.levelCurve`.</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             {([['maxLevel', 'Max Level'], ['baseXP', 'Base XP'], ['growthFactor', 'Growth Factor']] as const).map(([key, label]) => (
               <label key={key} className="text-[10px] text-gray-400 block">
                 {label}
@@ -438,7 +438,7 @@ function PlaytestSessions() {
             </div>
             <div className="bg-lattice-bg rounded p-3 space-y-2">
               <p className="text-xs font-semibold text-gray-300">Balance Report</p>
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
                 {(['base', 'growthRate', 'maxLevel'] as const).map((key) => (
                   <input key={key} type="number" value={balanceForm[key]} onChange={(e) => setBalanceForm((p) => ({ ...p, [key]: Number(e.target.value) }))} title={key} placeholder={key} className="input-lattice text-xs" />
                 ))}

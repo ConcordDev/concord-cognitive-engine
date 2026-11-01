@@ -124,7 +124,7 @@ export function HrSelfServicePanel() {
           {/* Time-off balances */}
           <section>
             <h4 className="text-xs font-semibold text-zinc-300 mb-2">Time-off balances</h4>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               {summary.timeoffBalances.map((b) => (
                 <div key={b.kind} className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
                   <p className="text-sm font-bold text-zinc-100">{b.remaining}</p>

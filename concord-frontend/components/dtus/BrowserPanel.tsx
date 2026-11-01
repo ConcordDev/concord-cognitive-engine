@@ -626,7 +626,7 @@ export function BrowserPanel({ initialQuery = '' }: { initialQuery?: string }) {
                       <p className="text-xs text-gray-400">{actionResult.title as string}</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                     {Object.entries(actionResult.breakdown as Record<string, number>).map(([key, val]) => (
                       <div key={key} className="p-2 bg-lattice-deep rounded">
                         <div className="h-1.5 bg-lattice-border rounded-full overflow-hidden mb-1"><div className="h-full bg-neon-cyan rounded-full" style={{ width: `${(val / 25) * 100}%` }} /></div>
@@ -657,7 +657,7 @@ export function BrowserPanel({ initialQuery = '' }: { initialQuery?: string }) {
                       <p className="text-xs text-gray-400 mt-1 tabular-nums">h-index: {actionResult.hIndex as number}</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-cyan tabular-nums">{actionResult.inDegree as number}</p><p className="text-[10px] text-gray-400">Cited By</p></div>
                     <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-purple tabular-nums">{actionResult.outDegree as number}</p><p className="text-[10px] text-gray-400">References</p></div>
                     <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-green tabular-nums">{actionResult.reciprocalCount as number}</p><p className="text-[10px] text-gray-400">Reciprocal</p></div>
@@ -689,7 +689,7 @@ export function BrowserPanel({ initialQuery = '' }: { initialQuery?: string }) {
                   </div>
                   <p className="text-xs text-gray-400">{actionResult.reasoning as string}</p>
                   {!!actionResult.metrics && (
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                       {Object.entries(actionResult.metrics as Record<string, number>).map(([key, val]) => (
                         <div key={key} className="p-2 bg-lattice-deep rounded text-center">
                           <p className="text-sm font-bold text-white tabular-nums">{val}</p>

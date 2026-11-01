@@ -10,11 +10,21 @@
  *
  * Endpoints:
  *   GET    /                    — list artifacts (paginated)
+ *   GET    /paginated           — alias of the list (the frontend's call)
  *   POST   /upload              — upload an artifact
  *   GET    /:id                 — get artifact metadata
  *   GET    /:id/info            — extended info (with DTU link)
  *   GET    /:id/download        — download artifact content
  *   DELETE /:id                 — delete an artifact
+ *
+ * Reads also resolve the durable studio table (migration-001
+ * `artifacts` + `artifact_versions`, written by server/durable.js's
+ * render/vocal/master pipelines): list merges both tables, and
+ * get/info/download fall back to the durable row when no
+ * route_artifacts row matches — same visibility/owner/admin rules,
+ * with the durable row's content streamed from its latest version's
+ * storage URI. DELETE stays route-table only (durable job outputs
+ * are versioned records owned by the studio pipeline).
  */
 
 import { Router } from "express";
@@ -26,6 +36,7 @@ import {
   STORAGE_CONSTANTS,
   ARTIFACT_STORAGE,
 } from "../lib/storage-constants.js";
+import { createStorageAdapter } from "../storage/index.js";
 
 function uid() {
   return crypto.randomUUID();
@@ -45,10 +56,11 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
 
   // ── Schema bootstrap ────────────────────────────────────────────────────────
 
-  // The migration-001 `artifacts` table uses a different schema and is owned
-  // by the lens artifact pipeline. This router uses its own `route_artifacts`
-  // table to avoid colliding with that schema while keeping the API contract
-  // (artifactId-based CRUD) stable.
+  // The migration-001 `artifacts` table uses a different schema and is
+  // written by server/durable.js's studio pipelines. This router uses its
+  // own `route_artifacts` table for uploads while keeping the API contract
+  // (artifactId-based CRUD) stable, and reads the durable table back for
+  // list/get/info/download (see the durable section below).
   db.exec(`
     CREATE TABLE IF NOT EXISTS route_artifacts (
       artifact_id  TEXT PRIMARY KEY,
@@ -130,6 +142,47 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
     ),
   };
 
+  // ── Durable studio artifacts (migration-001 `artifacts`) ──────────────────
+  // server/durable.js's pipelines INSERT job outputs here; until Q29 nothing
+  // read them back. The table is migration-owned, so in a bare database
+  // (unit tests for this router) it may not exist — durable reads then stay
+  // disabled and this router behaves exactly as before. In production the
+  // table always exists. Content lives in the storage adapter, addressed by
+  // the latest artifact_versions.storage_uri — the same adapter durable.js
+  // writes through (same DATA_DIR resolution).
+  let durableStmts = null;
+  let durableStorage = null;
+  try {
+    const hasDurable = db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'artifacts'")
+      .get();
+    if (hasDurable) {
+      const latestVersionJoin = `LEFT JOIN artifact_versions v
+        ON v.id = (SELECT id FROM artifact_versions
+                   WHERE artifact_id = a.id ORDER BY version DESC LIMIT 1)`;
+      const cols = `a.id, a.owner_user_id, a.type, a.title, a.metadata_json,
+        a.visibility, a.created_at, a.updated_at,
+        v.storage_uri, v.mime_type, v.size_bytes, v.version`;
+      durableStmts = {
+        get: db.prepare(`SELECT ${cols} FROM artifacts a ${latestVersionJoin} WHERE a.id = ?`),
+        list: db.prepare(
+          `SELECT ${cols} FROM artifacts a ${latestVersionJoin}
+           WHERE a.visibility = 'public' OR (? IS NOT NULL AND a.owner_user_id = ?)
+           ORDER BY a.created_at DESC LIMIT ?`
+        ),
+        listAll: db.prepare(
+          `SELECT ${cols} FROM artifacts a ${latestVersionJoin}
+           ORDER BY a.created_at DESC LIMIT ?`
+        ),
+      };
+      durableStorage = createStorageAdapter();
+    }
+  } catch (err) {
+    console.error("[artifacts] durable read bootstrap failed:", err.message);
+    durableStmts = null;
+    durableStorage = null;
+  }
+
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
   function normalizeVisibility(value) {
@@ -177,27 +230,91 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
     };
   }
 
-  // ── GET / — list artifacts ──────────────────────────────────────────────────
+  // Durable rows present in the same shape as route artifacts (plus their
+  // own type/metadata), marked source:"durable" so clients can tell the two
+  // families apart. Read access mirrors canRead exactly: the durable row is
+  // normalized to { visibility, created_by: owner_user_id } for the checks.
+  function parseDurableArtifact(row) {
+    if (!row) return null;
+    let metadata = {};
+    try { metadata = JSON.parse(row.metadata_json || "{}"); } catch { /* ignore */ }
+    return {
+      artifactId: row.id,
+      dtuId: null,
+      name: row.title,
+      mimeType: row.mime_type || "application/octet-stream",
+      sizeBytes: row.size_bytes || 0,
+      storageMode: "durable",
+      createdBy: row.owner_user_id,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      description: "",
+      tags: [],
+      visibility: row.visibility || "private",
+      source: "durable",
+      type: row.type,
+      metadata,
+      version: row.version || null,
+    };
+  }
 
-  router.get("/", (req, res) => {
+  function durableRowForRead(row) {
+    return { visibility: row.visibility, created_by: row.owner_user_id };
+  }
+
+  function getDurableArtifact(id) {
+    if (!durableStmts) return null;
+    try {
+      return durableStmts.get.get(id) || null;
+    } catch {
+      return null;
+    }
+  }
+
+  // ── GET / — list artifacts ──────────────────────────────────────────────────
+  // Merges route_artifacts with the caller's durable studio artifacts
+  // (durable rows carry no DTU link, so a dtuId filter excludes them).
+  // Both sides are fetched with the full window the merge can need
+  // (limit + offset), merged newest-first, then sliced — pagination
+  // semantics are unchanged for route-only callers.
+
+  function listArtifacts(req, res) {
     try {
       const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
       const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
       const dtuId = req.query.dtuId;
       const callerId = req.user?.id || null;
       const admin = !!req.user && isAdmin(actorCtx(req));
+      const window = limit + offset;
       const rows = admin
-        ? (dtuId ? stmts.listByDtuAll.all(dtuId, limit) : stmts.listAll.all(limit, offset))
+        ? (dtuId ? stmts.listByDtuAll.all(dtuId, limit) : stmts.listAll.all(window, 0))
         : dtuId
           ? stmts.listByDtu.all(dtuId, callerId, callerId, limit)
-          : stmts.list.all(callerId, callerId, limit, offset);
-      const artifacts = rows.map(parseArtifact);
+          : stmts.list.all(callerId, callerId, window, 0);
+      let artifacts = rows.map(parseArtifact);
+      if (durableStmts && !dtuId) {
+        try {
+          const durableRows = admin
+            ? durableStmts.listAll.all(window)
+            : durableStmts.list.all(callerId, callerId, window);
+          artifacts = artifacts.concat(durableRows.map(parseDurableArtifact));
+          artifacts.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+        } catch (err) {
+          console.error("[artifacts] durable list merge failed:", err.message);
+        }
+      }
+      artifacts = artifacts.slice(offset, offset + limit);
       res.json({ ok: true, artifacts, count: artifacts.length, offset });
     } catch (err) {
       console.error("[artifacts] GET / error:", err);
       res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
-  });
+  }
+
+  router.get("/", listArtifacts);
+  // The frontend's artifactsPaginated calls /paginated; without this alias
+  // the request fell into /:id with id="paginated" and never listed.
+  router.get("/paginated", listArtifacts);
 
   // ── POST /upload — upload artifact ─────────────────────────────────────────
   // Accepts: { name, mimeType, content (base64), dtuId?, description?, tags? }
@@ -295,7 +412,16 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
   router.get("/:id", (req, res) => {
     try {
       const row = stmts.get.get(req.params.id);
-      if (!row) return res.status(404).json({ ok: false, error: "Artifact not found" });
+      if (!row) {
+        const durable = getDurableArtifact(req.params.id);
+        if (!durable) return res.status(404).json({ ok: false, error: "Artifact not found" });
+        const readRow = durableRowForRead(durable);
+        if (!canRead(readRow, req)) {
+          const denial = readDenialResponse(readRow, req);
+          return res.status(denial.status).json(denial.body);
+        }
+        return res.json({ ok: true, artifact: parseDurableArtifact(durable) });
+      }
       if (!canRead(row, req)) {
         const denial = readDenialResponse(row, req);
         return res.status(denial.status).json(denial.body);
@@ -312,7 +438,21 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
   router.get("/:id/info", (req, res) => {
     try {
       const row = stmts.get.get(req.params.id);
-      if (!row) return res.status(404).json({ ok: false, error: "Artifact not found" });
+      if (!row) {
+        const durable = getDurableArtifact(req.params.id);
+        if (!durable) return res.status(404).json({ ok: false, error: "Artifact not found" });
+        const readRow = durableRowForRead(durable);
+        if (!canRead(readRow, req)) {
+          const denial = readDenialResponse(readRow, req);
+          return res.status(denial.status).json(denial.body);
+        }
+        return res.json({
+          ok: true,
+          artifact: parseDurableArtifact(durable),
+          dtuTitle: null,
+          downloadUrl: `/api/artifacts/${req.params.id}/download`,
+        });
+      }
       if (!canRead(row, req)) {
         const denial = readDenialResponse(row, req);
         return res.status(denial.status).json(denial.body);
@@ -343,7 +483,31 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
   router.get("/:id/download", async (req, res) => {
     try {
       const row = stmts.getWithContent.get(req.params.id);
-      if (!row) return res.status(404).json({ ok: false, error: "Artifact not found" });
+      if (!row) {
+        // Durable studio artifact: stream the latest version's content
+        // from the storage adapter durable.js wrote it through.
+        const durable = getDurableArtifact(req.params.id);
+        if (!durable) return res.status(404).json({ ok: false, error: "Artifact not found" });
+        const readRow = durableRowForRead(durable);
+        if (!canRead(readRow, req)) {
+          const denial = readDenialResponse(readRow, req);
+          return res.status(denial.status).json(denial.body);
+        }
+        if (!durable.storage_uri || !durableStorage) {
+          return res.status(404).json({ ok: false, error: "Artifact content unavailable" });
+        }
+        let stored;
+        try {
+          stored = await durableStorage.get(durable.storage_uri);
+        } catch {
+          return res.status(404).json({ ok: false, error: "Artifact content missing from storage" });
+        }
+        res.setHeader("Content-Type", durable.mime_type || stored.contentType || "application/octet-stream");
+        res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(durable.title || "artifact")}"`);
+        if (durable.size_bytes) res.setHeader("Content-Length", durable.size_bytes);
+        // @resource-leak-ok: pipe(res) auto-closes both ends when the response drains
+        return stored.stream.pipe(res);
+      }
       if (!canRead(row, req)) {
         const denial = readDenialResponse(row, req);
         return res.status(denial.status).json(denial.body);

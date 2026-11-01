@@ -171,7 +171,7 @@ export function CouncilActionPanel() {
     try {
       const task = `Council motion: "${motionText}". ${voteResult ? `Vote: ${voteResult.passed ? 'passed' : 'failed'} (${voteResult.tally?.for ?? 0}/${voteResult.tally?.against ?? 0}/${voteResult.tally?.abstain ?? 0}).` : ''} Draft a 2-sentence call-for-amendment that addresses the dissent without weakening the core proposal. Plain text.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Amendment draft ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

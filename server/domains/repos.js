@@ -171,7 +171,7 @@ export default function registerReposActions(registerLensAction) {
           return {
             ok: false,
             error: "ast_engine_unavailable",
-            message: "The TypeScript parser package is not loadable on this server, so complexity can't be honestly computed from source text.",
+            message: "The TypeScript parser package's compiler API is not available on this server, so complexity can't be honestly computed from source text.",
           };
         }
         analyzed.push(m);
@@ -1416,9 +1416,20 @@ export default function registerReposActions(registerLensAction) {
       const defAncestry = defBranch ? rpAncestry(repo, defBranch.head) : new Set();
       const branches = repo.branches.map((b) => {
         const anc = rpAncestry(repo, b.head);
+        // Ahead/behind vs the default branch, from the same ancestry
+        // sets (Review 2's ahead-counts residual: the numbers existed
+        // only implicitly — `commits` below IS the ahead count for a
+        // non-default branch — and were displayed nowhere as such).
+        const ahead = b.name === repo.defaultBranch
+          ? 0
+          : [...anc].filter((sha) => !defAncestry.has(sha)).length;
+        const behind = b.name === repo.defaultBranch
+          ? 0
+          : [...defAncestry].filter((sha) => !anc.has(sha)).length;
         return {
           name: b.name, head: b.head, protected: !!b.protected,
           isDefault: b.name === repo.defaultBranch,
+          ahead, behind,
           // Truthful count (Review 2 re-pass, adjacent wrongness):
           // the default branch reports its total history; every other
           // branch reports its AHEAD count — commits reachable from
@@ -1840,6 +1851,16 @@ export default function registerReposActions(registerLensAction) {
       }
       const approvals = pull.reviews.filter((rv) => rv.verdict === "approve").length;
       const changesRequested = pull.reviews.filter((rv) => rv.verdict === "request-changes").length;
+      // Ahead/behind for the PR page (the third canonical location in
+      // Review 2's ahead-counts residual): commits reachable from the
+      // head tip that the base lacks, and vice versa, over the same
+      // parent-walk branch-list uses.
+      const prHeadBranch = repo.branches.find((b) => b.name === pull.head);
+      const prBaseBranch = repo.branches.find((b) => b.name === pull.base);
+      const headAnc = prHeadBranch ? rpAncestry(repo, prHeadBranch.head) : new Set();
+      const baseAnc = prBaseBranch ? rpAncestry(repo, prBaseBranch.head) : new Set();
+      const ahead = [...headAnc].filter((sha) => !baseAnc.has(sha)).length;
+      const behind = [...baseAnc].filter((sha) => !headAnc.has(sha)).length;
       return {
         ok: true,
         result: {
@@ -1853,6 +1874,7 @@ export default function registerReposActions(registerLensAction) {
           reviews: pull.reviews, comments: pull.comments,
           mergeable: pull.state === "open" && changesRequested === 0 && Array.isArray(conflicts) && conflicts.length === 0,
           approvals, changesRequested,
+          ahead, behind,
         },
       };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }

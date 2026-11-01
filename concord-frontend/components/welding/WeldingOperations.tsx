@@ -400,7 +400,7 @@ function InvoicesTab() {
       {portal && <PortalLinkBanner token={portal} label="Send to client:" />}
 
       {data && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Outstanding</div><div className="font-mono text-lg text-amber-300">{fmt(data.outstanding)}</div></div>
           <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Collected</div><div className="font-mono text-lg text-emerald-300">{fmt(data.collected)}</div></div>
           <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Overdue</div><div className="font-mono text-lg text-rose-300">{data.overdueCount}</div></div>

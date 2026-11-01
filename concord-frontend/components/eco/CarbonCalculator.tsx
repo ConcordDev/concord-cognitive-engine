@@ -279,7 +279,7 @@ export function CarbonCalculator({ onSaved }: { onSaved?: () => void }) {
 
         {result && (
           <div className="space-y-3 pt-3 border-t border-white/5">
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
               <div className="p-2 bg-white/[0.03] rounded text-center">
                 <p className="text-lg font-bold text-green-400">{result.totalEmissionsTonneCO2e}</p>
                 <p className="text-[10px] text-gray-400">Tonnes CO₂e</p>
@@ -302,7 +302,7 @@ export function CarbonCalculator({ onSaved }: { onSaved?: () => void }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               {Object.entries(result.scopeBreakdown).map(([scope, d]) => (
                 <div key={scope} className="p-2 bg-white/[0.02] border border-white/5 rounded text-center">
                   <p className="text-sm font-bold text-cyan-300">{d.percentage}%</p>

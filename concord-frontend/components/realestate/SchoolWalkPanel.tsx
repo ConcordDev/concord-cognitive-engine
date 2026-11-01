@@ -121,7 +121,7 @@ export function SchoolWalkPanel({ initialAddress }: { initialAddress?: string })
       </header>
       <div className="p-3 border-b border-white/10 space-y-2">
         <input value={address} onChange={e => setAddress(e.target.value)} placeholder="Address (e.g. 123 Main St, Austin, TX)" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <input value={commuteTo} onChange={e => setCommuteTo(e.target.value)} placeholder="Commute to (optional)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <select value={commuteMode} onChange={e => setCommuteMode(e.target.value as typeof commuteMode)} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="drive">Drive</option><option value="transit">Transit</option><option value="bike">Bike</option><option value="walk">Walk</option>
@@ -143,7 +143,7 @@ export function SchoolWalkPanel({ initialAddress }: { initialAddress?: string })
           <Unavailable label="Walk, transit, and bike scores" reason={walk.reason} />
         )}
         {walkTiles.length > 0 && (
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             {walkTiles.map((tile) => (
               <ScoreTile key={tile.label} icon={tile.icon} label={tile.label} score={tile.score} desc={tile.desc || ''} />
             ))}

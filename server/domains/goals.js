@@ -619,6 +619,25 @@ export default function registerGoalsActions(registerLensAction) {
         seq: new Map(),        // userId -> { obj, chk, team, rec, rem, dep }
       };
     }
+    // §9 fix (legacy states): a goalsLens persisted by an earlier
+    // build can lack sub-stores later slices added (trash S10,
+    // chartPoints S4, occurrences S6) — and persistence can revive a
+    // store as a plain object rather than a Map. Every remove routes
+    // through the trash store and the chart/forecast read
+    // chartPoints, so a missing or un-Map store must heal here, on
+    // access, instead of throwing inside an unrelated op (the live
+    // dispatch rewrites that TypeError as "invalid_input"). A plain
+    // object's entries are preserved by the conversion.
+    for (const key of ["objectives", "checkins", "team", "recurring", "reminders", "deps", "chartPoints", "occurrences", "trash", "seq"]) {
+      const cur = STATE.goalsLens[key];
+      if (cur instanceof Map) continue;
+      let healed = null;
+      try {
+        if (Array.isArray(cur)) healed = new Map(cur);
+        else if (cur && typeof cur === "object") healed = new Map(Object.entries(cur));
+      } catch { healed = null; }
+      STATE.goalsLens[key] = healed || new Map();
+    }
     return STATE.goalsLens;
   }
 

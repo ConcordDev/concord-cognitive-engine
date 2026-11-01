@@ -21,7 +21,15 @@
  * stores — PATCH/DELETE /api/crafting/recipes/:id for the bench row,
  * PUT/DELETE /api/lens/crafting/:artifactId for the platform record —
  * and a title that diverged (a rename whose platform half failed) is
- * converged by the next load. The name being typed is a lens draft
+ * converged by the next load.
+ *
+ * F7: a rename converges every name copy the artifact carries — title,
+ * data.name, and data.spec.name — not the title alone, or the exported
+ * artifact goes on calling the piece by its old name. The load-time
+ * convergence checks all three copies, so an artifact that diverged
+ * before this fix heals on the next load. An empty name on "Save the
+ * name" is refused out loud in the form; it used to return silently.
+ * The name being typed is a lens draft
  * (useLensDraft): leaving the lens no longer destroys it, and a
  * successful save clears it. Typing a name already on the bench says so
  * under the field — a notice, not a wall.
@@ -36,11 +44,13 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensDraft } from '@/hooks/useLensDraft';
 import { api } from '@/lib/api/client';
 import {
+  artifactNameLag,
   artifactsFromList,
   isDuplicateName,
   joinPieces,
   pieceArtifactBody,
   pieceDesignBody,
+  pieceRenameBody,
   recipesFromList,
   saveErrorFrom,
   specsFromRecipesList,
@@ -133,14 +143,19 @@ export default function CraftingPage() {
         }
       }
     }
-    // Title convergence (D2): the bench row is the title of record. A
-    // joined artifact still carrying an older title — a rename whose
-    // platform half failed — is brought back in line, best-effort.
+    // Name convergence (D2 + F7): the bench row is the name of record.
+    // A joined artifact lagging in ANY name copy — title, data.name, or
+    // data.spec.name — is brought back in line, best-effort. The spec
+    // sent is the artifact's own embedded copy when it has one, else
+    // the recipe row's; only its name moves.
     for (const piece of pieces) {
       if (!piece.artifactId) continue;
       const listedRow = finalRows.find((a) => a.id === piece.artifactId);
-      if (listedRow && listedRow.title && listedRow.title !== piece.title) {
-        void api.put(`/api/lens/crafting/${piece.artifactId}`, { title: piece.title }).catch(() => {});
+      if (listedRow && artifactNameLag(listedRow, piece.title)) {
+        // Converge the spec copy only when the artifact carries one —
+        // load never mints a spec the artifact never had.
+        const spec = listedRow.spec ?? (listedRow.specName !== undefined ? result.specs.get(piece.id) : undefined);
+        void api.put(`/api/lens/crafting/${piece.artifactId}`, pieceRenameBody(piece.title, spec)).catch(() => {});
       }
     }
     setRecipes(pieces);
@@ -246,11 +261,18 @@ export default function CraftingPage() {
 
   // D2 rename: the bench row first (PATCH is the title of record), then
   // the platform record. A failed platform half is converged by the next
-  // load's title sync; a failed bench half keeps the old name everywhere.
+  // load's name sync; a failed bench half keeps the old name everywhere.
+  // F7: the platform half converges every name copy (pieceRenameBody),
+  // with the spec re-read from the recipe row the PATCH just converged;
+  // an empty name is refused out loud instead of silently returning.
   const saveEdit = useCallback(async () => {
     const piece = recipes.find((p) => p.id === editingId);
+    if (!piece || saving) return;
     const title = editName.trim();
-    if (!piece || !title || saving) return;
+    if (!title) {
+      setSaveError('A piece needs a name.');
+      return;
+    }
     setSaving(true);
     setSaveError('');
     try {
@@ -259,7 +281,14 @@ export default function CraftingPage() {
       if (!body || body.ok === false) throw new Error('rename refused');
       if (piece.artifactId) {
         try {
-          await api.put(`/api/lens/crafting/${piece.artifactId}`, { title });
+          let spec: unknown;
+          try {
+            const listed = await api.get('/api/crafting/recipes');
+            spec = specsFromRecipesList(listed.data).get(piece.id);
+          } catch {
+            spec = undefined;
+          }
+          await api.put(`/api/lens/crafting/${piece.artifactId}`, pieceRenameBody(title, spec));
         } catch {
           // Converged on the next load; the bench name already moved.
         }

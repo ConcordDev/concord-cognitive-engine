@@ -536,7 +536,7 @@ export function FactGroundingWorkbench() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div className="rounded bg-zinc-950 p-2 text-center">
                   <p className="text-lg font-bold text-emerald-400">{aggregate.breakdown.supporting.count}</p>
                   <p className="text-[10px] text-zinc-400">Supporting · w {aggregate.breakdown.supporting.weight}</p>

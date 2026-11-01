@@ -250,7 +250,7 @@ export function TravelActionPanel() {
     try {
       const task = `Trip: ${destination.trim()} for ${days} days (${travelStyle} style). ${budgetResult ? `Budget $${budgetResult.totalEstimate}.` : ''} Suggest the single best off-the-beaten-path experience for this destination + style. Include why it's better than the obvious tourist option. Plain text.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Local tip ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

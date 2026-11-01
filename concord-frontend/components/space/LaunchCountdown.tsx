@@ -156,7 +156,7 @@ export function LaunchCountdown() {
             )}
           </div>
 
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             {[
               { v: days, l: 'days' },
               { v: hrs, l: 'hours' },
