@@ -8534,6 +8534,8 @@ function authMiddleware(req, res, next) {
     "/api/marketplace/browse", "/api/marketplace/dtu_browse",
     "/api/marketplace/installed", "/api/marketplace/listings",
     "/api/marketplace/dream-promoted",
+    // Signed-out Music/Market browse (GB-0664): the whitelisted public media catalog (public items only).
+    "/api/media/public-feed",
     "/api/distribution",
     // Agent systems
     // "/api/agents" removed (audit follow-up): the agents table has no
@@ -15740,6 +15742,8 @@ async function runMacro(domain, name, input, ctx) {
     "/api/marketplace/browse", "/api/marketplace/dtu_browse",
     "/api/marketplace/installed", "/api/marketplace/listings",
     "/api/marketplace/dream-promoted",
+    // Signed-out Music/Market browse (GB-0664): the whitelisted public media catalog (public items only).
+    "/api/media/public-feed",
     "/api/hive", "/api/heal", "/api/grounding", "/api/commonsense", "/api/explanation",
     "/api/ingest", "/api/jobs", "/api/queue", "/api/cache", "/api/cognitive",
     "/api/onboarding", "/api/tutorial", "/api/srs", "/api/skill", "/api/schema", "/api/daily",

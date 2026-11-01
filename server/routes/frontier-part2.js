@@ -74,6 +74,18 @@ export function isSeededSystemListing(listing) {
   return SEEDED_SYSTEM_LISTING_TITLE_SET.has(listing.title);
 }
 
+/** Owner / contact fields a signed-out reader must never see on a listing or review row. */
+const ANON_HIDDEN_LISTING_FIELDS = new Set([
+  "userId", "user_id", "sellerId", "seller_id", "seller", "owner", "ownerId", "owner_id", "owner_user_id",
+  "authorId", "author_id", "reviewerId", "reviewer_id", "email", "contact", "buyerId", "buyer_id",
+]);
+export function publicListingView(row) {
+  if (!row || typeof row !== "object") return row;
+  const out = {};
+  for (const [k, v] of Object.entries(row)) if (!ANON_HIDDEN_LISTING_FIELDS.has(k)) out[k] = v;
+  return out;
+}
+
 export function isSystemListingOwner(listing) {
   if (!listing) return false;
   const owner = listing.userId ?? listing.owner_user_id ?? listing.user_id ?? null;
@@ -330,7 +342,12 @@ export default function createFrontierRoutesPart2({ requireAuth, db, mediaListin
     if (typeof mediaListings === "function") {
       try { media = mediaListings({ category }) || []; } catch { media = []; }
     }
-    res.json({ ok: true, listings: [...media, ...listings], mediaListings: media });
+    // A signed-out visitor browses the Market (public ruling, GB-0664): they get the listing
+    // content but never who owns it. Owner / seller ids and any contact-shaped field are dropped.
+    const anon = !req.user?.id;
+    res.json(anon
+      ? { ok: true, listings: [...media, ...listings].map(publicListingView), mediaListings: media.map(publicListingView) }
+      : { ok: true, listings: [...media, ...listings], mediaListings: media });
   }));
 
   router.post("/marketplace/listings", auth, wrap((req, res) => {
@@ -359,6 +376,9 @@ export default function createFrontierRoutesPart2({ requireAuth, db, mediaListin
     const listing = marketplaceListings.get(req.params.id);
     if (!listing || isSystemListingOwner(listing)) throw new Error("Listing not found");
     const reviews = [...marketplaceReviews.values()].filter(r => r.listingId === listing.id);
+    if (!req.user?.id) {
+      return res.json({ ok: true, listing: publicListingView(listing), reviews: reviews.map(publicListingView) });
+    }
     res.json({ ok: true, listing, reviews });
   }));
 

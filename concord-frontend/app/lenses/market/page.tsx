@@ -16,6 +16,8 @@ import Watchlist from '@/components/market/Watchlist';
 import { LensShell } from '@/components/lens/LensShell';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAnonBrowse } from '@/lib/anon-browse';
+import { SignedOutMarketBrowse } from '@/components/public/SignedOutMarketBrowse';
 import { SectorHeatmapPanel } from '@/components/market/SectorHeatmap';
 import { CompetitorTracker } from '@/components/market/CompetitorTracker';
 import { CompetitiveIntelligence } from '@/components/market/CompetitiveIntelligence';
@@ -36,7 +38,13 @@ const TABS: { id: MarketView; label: string; keys: string; hint: string; icon: t
   { id: 'intel', label: 'Intel', keys: 'i', hint: 'Competitive intelligence', icon: Eye },
 ];
 
-export default function MarketLensPage() {
+/** /lenses/market: the full lens for members, the read-only public listings for a signed-out visitor. */
+export default function MarketLensEntry() {
+  const anon = useAnonBrowse();
+  return anon ? <SignedOutMarketBrowse /> : <MarketLensPage />;
+}
+
+function MarketLensPage() {
   useLensNav('market');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('market');
   const [active, setActive] = useState<MarketView>('listings');

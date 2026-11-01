@@ -3,6 +3,7 @@ import { Providers } from '@/components/Providers';
 import type { Metadata, Viewport } from 'next';
 import { DM_Sans, JetBrains_Mono, Source_Serif_4 } from 'next/font/google';
 import { headers } from 'next/headers';
+import { AnonBrowseProvider, ANON_BROWSE_HEADER } from '@/lib/anon-browse';
 
 /**
  * Self-hosted fonts via next/font — no render-blocking @import in globals.css.
@@ -142,7 +143,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // rendering, which a per-request nonce requires (a statically-generated
   // page can't carry one). Next.js's own inline bootstrap scripts pick the
   // nonce up automatically from the incoming CSP header at render time.
-  await headers();
+  const requestHeaders = await headers();
+  const anonBrowse = requestHeaders.get(ANON_BROWSE_HEADER) === '1';
 
   return (
     <html
@@ -159,7 +161,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link rel="alternate" href="android-app://org.concord.app" />
       </head>
       <body className="min-h-screen bg-lattice-void">
-        <Providers>{children}</Providers>
+        <AnonBrowseProvider value={anonBrowse}>
+          <Providers>{children}</Providers>
+        </AnonBrowseProvider>
       </body>
     </html>
   );

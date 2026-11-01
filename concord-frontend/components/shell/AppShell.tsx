@@ -1,5 +1,6 @@
 'use client';
 
+import { useAnonBrowse } from '@/lib/anon-browse';
 import { isFullHeightLens } from '@/lib/full-height-lenses';
 import { TOGGLE_SESSIONS_EVENT } from './RailAccount';
 import { PanelRight } from 'lucide-react';
@@ -156,6 +157,7 @@ interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
+  const anonBrowse = useAnonBrowse();
   // Central event-router — subscribes to every namespaced CustomEvent
   // dispatched across the app and routes it to the right macro /
   // navigation / toast. See lib/event-router.ts for the table.
@@ -316,7 +318,9 @@ export function AppShell({ children }: AppShellProps) {
 
   // Full page mode OR standalone route OR diegetic (in-world station) frame:
   // render children without shell chrome.
-  const isStandalone = STANDALONE_PREFIXES.some((p) => pathname.startsWith(p));
+  // A signed-out visitor on Music/Market (set by the middleware) gets the same chrome-free shell as /explore:
+  // the member sidebar/topbar and their auth-only fetches have nothing to show a visitor.
+  const isStandalone = anonBrowse || STANDALONE_PREFIXES.some((p) => pathname.startsWith(p));
   if (fullPageMode || isStandalone || diegetic) {
     return <>{children}</>;
   }
