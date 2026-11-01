@@ -237,7 +237,7 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
                 <span className="text-[10px] uppercase tracking-wider text-slate-400">Title (optional)</span>
                 <input value={createForm.title} onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100" />
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <label className="block">
                   <span className="text-[10px] uppercase tracking-wider text-slate-400">Start CC</span>
                   <input type="number" value={createForm.startCc} onChange={(e) => setCreateForm({ ...createForm, startCc: Number(e.target.value) || 0 })} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100" />

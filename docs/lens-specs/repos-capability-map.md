@@ -253,3 +253,43 @@ appropriate caliber for what this lens is** — not a gap to close.
   behavior preserved, all 53 backend tests green unmodified.
 - `components/repos-explorer/RepoBrowser.tsx`, `components/repos/TrendingRepos.tsx`
   — no changes. Both were already correct, real, and DESIGNED.
+
+---
+
+## B5 build update — 2026-10-29 (Product Review 2, lens-reviews/repos.md)
+
+The Wave-3 text above is the historical record; several of its claims were overtaken by what the 2026-10-28 live review found (the "real per-file diff" rendered +0 across 0 files; the scan's source was undeterminable from the product). This addendum records the rebuild against Review 2's slices S1–S10.
+
+**The substrate change everything stands on:** each commit now records a `changes` delta ({path: content | null}); folding the first-parent chain yields the full file tree at any commit. Branches therefore hold real, independent trees; diffs are computed merge-base → head; merges are real three-way line merges. Commits written before this change carry no `changes` — folds through them return "history predates recorded snapshots" and every surface says so rather than inventing a tree (the default branch of a legacy repo still reads from its stored tree, which is that tree). `repo.files` is now explicitly the default-branch mirror (security scan, workflow checks, insights read it); `workflow-run` checks the named branch's tree.
+
+| Slice | Disposition |
+|---|---|
+| S1 branches hold work | file-save/file-tree/file-read are branch-scoped; branch commit counts are ancestry counts from the head, not label counts; Code view has a branch selector with a standing "You are editing X" banner |
+| S2 real diffs | pull-detail diffs merge-base → head snapshot (LCS-aligned hunks with both line numbers, per-file status, true ± counts); new `commit-detail` macro; file-read accepts a commit sha |
+| S3 conflicts | pull-merge runs a per-file three-way line merge; same-line divergence blocks with the files and lines named, PR stays open; disjoint edits merge for real (two-parent merge commit carrying the merged delta) |
+| S4 file lifecycle | Add-file control in the Code view (backend file-save already created; now branch-scoped); new `file-delete` macro (a commit on the named branch) + UI confirm |
+| S5 repo lifecycle | New Settings tab: `repo-update` (rename/description/visibility in-account; sharing rides the platform ACL, #1789), `repo-delete` (server requires the exact typed name), `branch-delete` (never the default, never an open PR's branch), `tag-delete` |
+| S6 guards | Duplicate repo names rejected (create + rename); explicitly empty commit message rejected; empty file content rejected unless the user confirms (the commit then records the choice); no-change saves and no-change PRs refused, naming the reason |
+| S7 Analysis wiring | codeComplexity / commitAnalysis / dependencyAudit accept the params + params.input shapes as well as the artifact (the tab's calls were landing in a shape the macros never read — F6's mechanism); the tab's package.json lookup now searches the unfiltered file list |
+| S8 scan provenance | Dependency alerts render their OSV advisory ID (CVE/GHSA) and a source line naming OSV.dev, queried live at scan time; "Dependabot" branding retired from the surface; code scanning is labelled as Concord's own rules |
+| S9 honest copy | The header states what a Concord repo is (lives in Concord, no git remote, nothing to clone); the seeded starter tree is disclosed at creation and in the empty state; the "SUBSTRATE" badge is gone; merge copy states what the merge checks |
+| S10 ritual + receipts | `pull-comment` (general + line-anchored to diff lines), `pull-link-issue` both directions (issue-detail reports linkedPulls; linked issues close when their PR merges), success receipts for create/commit/merge/delete, a real Merged pill; author approvals are labelled "approved by the author". The approval-INDEPENDENCE policy itself is Ramaj's §8 taste call — labelled, not decided, in this build |
+
+Also fixed: F9 (RepoBrowser language strip fed the macro's array-shaped languages into a map-shaped renderer → "0 NaN%"; now normalised + zero-guarded); F8 (workflow syntax step counts TypeScript files and names them not-parsed instead of reporting "0 script(s)"; the static-scan step states its scope; durations render in ms under a second); runX now surfaces the macro's human `message`, keeping the machine code separate.
+
+Macro count: 31 review-verified → **39** (+file-delete, branch-delete, tag-delete, repo-update, repo-delete, commit-detail, pull-comment, pull-link-issue), plus the 4 feed-cache GitHub actions. §8's GitHub OAuth remains NEEDS-RAMAJ; no slice depends on it.
+
+Tests: `server/tests/repos-domain.test.js` (new, 12 handler-level groups incl. the review's R3 and R5(b) constructions run exactly) — 12/12 green. Pre-existing suites: repos-domain-parity + atlas-repos-domain-parity run with my changes at the same pass counts as pristine HEAD in this sandbox (the 2 codeComplexity AST cases fail identically on HEAD — the `typescript` package is not loadable in the VM worktree; Mac-lane verification).
+
+---
+
+## B5 follow-up — 2026-10-29 (Review 2 §9 re-pass fix round on PR #1808)
+
+The re-pass (2026-10-29, live, normal account) verified S5/S8/S9 live and failed S1 at the layer handler tests could not see. Four fixes, each diagnosed to mechanism in the follow-up PR:
+
+1. **Legacy anchoring (S1).** #1808's fold refused any chain containing a pre-snapshot commit, so every branch of a pre-#1808 repo (the re-pass's carried 8 legacy commits) was unviewable and uncommittable while main survived on the `repo.files` fallback. Commits may now carry a `baseline` (the full tree at that commit); `rpAnchorLegacyHead` stamps it onto the default branch's head from `repo.files` — exact truth under the mirror invariant — at every fold-needing entry point. One stamp heals the repo: branches forked from that head before or after, PR diffs based on it, merges into it. History deeper than the head stays unrecorded and the surfaces still say so; the file-tree error no longer promises commits it would refuse.
+2. **Counts (adjacent).** Branch counts are now ahead-counts: the default branch reports its total history; other branches report commits reachable from their head that the default does not have (their own work). Raw ancestry size (pass-1 branches reading 3 and 5 against empty histories) and pass 1's label count were the same error in opposite directions.
+3. **Analysis honesty (S7).** The complexity card renders the macro's actual outcome — its error verbatim (e.g. the parser package not loading on the server), files-matched-but-unreadable, or no-JS/TS-files — never an empty-state claim over a failed call. `dependencyAudit` gained an opt-in `liveVulnCheck`: with it, and only when the caller supplied no vulnerability data of its own, the audit enriches from the same `osvScanDependencies` helper the Security scan uses (per-dep counts + advisory IDs, all dependencies named in a new `dependencyList`), so the two tabs agree by construction; on OSV-unreachable the counts return null (unknown), never 0. Unflagged callers keep the exact synchronous contract behaviour.
+4. **The message guard, live form (S6).** The Code view prefilled its suggested commit message by substituting it at send time for an emptied box, silently defeating the server guard. The suggestion is now a prefill in the input (visible, deletable); the FE sends the box verbatim, so an emptied message reaches the server and its refusal surfaces.
+
+Tests: `repos-domain.test.js` grows a legacy-fixture group running checkpoint 1's construction exactly (hand-built 2-commit legacy repo → branch → view → commit → PR diff, mid-history branch still honestly unrecorded, ahead counts) and an audit-source group (source labelling, caller-supplied counts honoured under the flag, flagged path with an unqueryable version touching no network). The live OSV leg of the flagged path reuses the security scan's helper verbatim and is verified by the follow-up re-pass, not in-sandbox.

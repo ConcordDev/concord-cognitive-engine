@@ -177,8 +177,14 @@ export default function registerDefenseActions(registerLensAction) {
     if (!Number.isFinite(n)) return fallback;
     return Math.max(lo, Math.min(hi, n));
   }
-  function validLat(v) { const n = Number(v); return Number.isFinite(n) && n >= -90 && n <= 90; }
-  function validLon(v) { const n = Number(v); return Number.isFinite(n) && n >= -180 && n <= 180; }
+  // null / undefined / "" / whitespace / booleans mean "no coordinates", not 0 (Number(null) === 0, Number("") === 0).
+  function coordNum(v) {
+    if (typeof v === "number") return v;
+    if (typeof v === "string" && v.trim() !== "") return Number(v);
+    return NaN;
+  }
+  function validLat(v) { const n = coordNum(v); return Number.isFinite(n) && n >= -90 && n <= 90; }
+  function validLon(v) { const n = coordNum(v); return Number.isFinite(n) && n >= -180 && n <= 180; }
 
   /* ── Common Operating Picture — geospatial entities ───────────── */
 

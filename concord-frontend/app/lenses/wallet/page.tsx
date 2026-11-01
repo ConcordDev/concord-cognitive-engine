@@ -110,7 +110,7 @@ export default function WalletPage() {
       <DepthBadge lensId="wallet" size="sm" className="ml-2" />
       <Suspense
         fallback={
-          <div className="px-8 pt-6">
+          <div className="px-4 pt-6 sm:px-6 lg:px-8">
             <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Wallet</h1>
             <div className="h-48 animate-pulse rounded-2xl border border-white/10 bg-[#111]" />
           </div>

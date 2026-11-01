@@ -469,7 +469,7 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
         <div className="space-y-3">
           {streaks ? (
             <>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="lens-card text-center py-3">
                   <p className="text-2xl font-bold text-neon-pink">{streaks.accountStreak}d</p>
                   <p className="text-[10px] text-gray-400">Account Streak</p>

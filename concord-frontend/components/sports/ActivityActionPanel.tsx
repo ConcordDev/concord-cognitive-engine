@@ -222,7 +222,7 @@ export function ActivityActionPanel() {
         `Return: 1) pace + fueling strategy for race day; 2) the 3 things to avoid in the final week; 3) the warm-up sequence.`,
       ].filter(Boolean).join(' ');
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Race plan ready.'); }
       else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); }

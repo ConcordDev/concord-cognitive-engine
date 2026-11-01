@@ -79,7 +79,7 @@ export function EntryHeatmap({ refreshKey = 0 }: { refreshKey?: number }) {
         <p className="text-xs text-zinc-400 italic text-center py-6">No journaling activity yet.</p>
       ) : (
         <>
-          <div className="grid grid-cols-3 gap-2 mb-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
             <Stat label="Days written" value={data.writtenDays} />
             <Stat label="Longest streak" value={data.longestStreak} flame={data.longestStreak > 0} />
             <Stat label="Coverage" value={`${data.coverage}%`} />

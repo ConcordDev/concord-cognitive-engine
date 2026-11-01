@@ -27,7 +27,7 @@ export function LensTitle() {
     (first ? ROUTE_TITLES[first] ?? first.charAt(0).toUpperCase() + first.slice(1).replace(/-/g, ' ') : 'Dashboard');
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex min-w-0 items-center gap-2">
       {lensEntry &&
         (() => {
           const LensIcon = lensEntry.icon;

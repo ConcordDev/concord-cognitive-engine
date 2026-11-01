@@ -1,25 +1,24 @@
 /**
- * /lenses/vault — one cabinet.
- *
- * Open the vault calls vault.submit and shows the title only after
- * vault.my_submissions contains that id and the same title.
- * A submitted row stays Submitted. Browse stays the admitted set.
+ * /lenses/vault — submission side of the hall of fame (docs/THEVAULT_SPEC.md).
+ * Pins: the full submit form reaches vault.submit with every field, the page reads my_submissions back,
+ * withdraw works and refuses honestly, the signed-in submitter sees a decline reason and nobody else does,
+ * the vault launches empty, and signed-out visitors cannot submit.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { render, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 
 const { lensRun, authUser } = vi.hoisted(() => ({
   lensRun: vi.fn(),
-  authUser: { current: null as { username: string } | null },
+  authUser: { current: null as { id: string; username: string } | null },
 }));
 
 vi.mock('@/components/lens/LensShell', () => ({
-  LensShell: ({ children }: { children: React.ReactNode }) =>
-    React.createElement('div', null, children),
+  LensShell: ({ children }: { children: React.ReactNode }) => React.createElement('div', null, children),
 }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: authUser.current, isLoading: false, isAuthenticated: !!authUser.current }),
 }));
@@ -27,175 +26,316 @@ vi.mock('@/lib/api/client', () => ({
   lensRun: (...args: unknown[]) => lensRun(...args),
 }));
 
+// The room itself (admit, decline, evidence, statement) is pinned by tests/vault-curator.test.tsx; here only
+// whether the page shows it.
+vi.mock('@/components/vault/curator', () => ({
+  CuratorQueue: ({ onChange }: { onChange?: () => void }) =>
+    React.createElement('button', { 'data-testid': 'curator-queue-stub', onClick: () => onChange?.() }, 'queue'),
+}));
+
 import VaultPage from '@/app/lenses/vault/page';
 
-interface Submission {
-  id: string;
-  title: string;
-  status: string;
-}
+interface Sub { id: string; title: string; status: string; workKind?: string; description?: string; body?: string; declineReason?: string; curatorStatement?: string }
 
-function browse(records: Submission[] = []) {
-  return { data: { ok: true, result: { records, count: records.length }, error: null } };
-}
+const ok = (result: unknown) => ({ data: { ok: true, result, error: null } });
 
-function mine(submissions: Submission[]) {
-  return { data: { ok: true, result: { submissions, count: submissions.length }, error: null } };
-}
-
-function cabinet(submissions: Submission[] = [], records: Submission[] = []) {
-  lensRun.mockImplementation(async (_domain: string, action: string) => {
-    if (action === 'browse') return browse(records);
-    if (action === 'my_submissions') return mine(submissions);
+function backend(opts: { curators?: Array<Record<string, unknown>>; records?: Sub[]; submissions?: Sub[]; onSubmit?: (input: Record<string, unknown>) => unknown; onWithdraw?: (input: Record<string, unknown>) => unknown } = {}) {
+  const submissions = opts.submissions ?? [];
+  lensRun.mockImplementation(async (_d: string, action: string, input: Record<string, unknown> = {}) => {
+    if (action === 'browse') return ok({ ok: true, records: opts.records ?? [] });
+    if (action === 'my_submissions') return ok({ ok: true, submissions });
+    if (action === 'curators') return ok({ ok: true, curators: opts.curators ?? [] });
+    if (action === 'submit') {
+      if (opts.onSubmit) return opts.onSubmit(input);
+      submissions.unshift({ id: 'vsub_1', title: String(input.title), status: 'submitted', workKind: String(input.workKind), description: String(input.description), body: String(input.body) });
+      return ok({ ok: true, id: 'vsub_1', status: 'submitted' });
+    }
+    if (action === 'withdraw') {
+      if (opts.onWithdraw) return opts.onWithdraw(input);
+      const row = submissions.find((s) => s.id === input.submissionId);
+      if (row) row.status = 'withdrawn';
+      return ok({ ok: true, id: input.submissionId, status: 'withdrawn' });
+    }
     throw new Error(action);
   });
 }
 
+const calls = (action: string) => lensRun.mock.calls.filter((c) => c[1] === action);
+
 beforeEach(() => {
   lensRun.mockReset();
-  authUser.current = null;
+  authUser.current = { id: 'u1', username: 'ramaj' };
 });
 
-describe('vault cabinet', () => {
-  it('EMPTY: nothing unlocked and nothing selected', async () => {
-    cabinet();
+describe('vault page: launch state and signed-out', () => {
+  it('launches empty: honest empty copy, no records, no counts', async () => {
+    backend();
     const view = render(<VaultPage />);
-    expect(await view.findByText('Nothing unlocked.')).toBeInTheDocument();
-    expect(view.getByText('Nothing selected.')).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'TheVault' })).toBeInTheDocument();
-    expect(view.getByRole('button', { name: 'Open the vault' })).toBeEnabled();
-    expect(view.queryByText('Admitted')).toBeNull();
-    expect(view.queryByText(/curator/i)).toBeNull();
+    expect(await view.findByTestId('vault-empty-archive')).toHaveTextContent('Nothing has been admitted yet.');
+    expect(view.queryByTestId('vault-cabinet')).toBeNull();
+    expect(view.queryByTestId('vault-curator-roster')).toBeNull();
+    expect(view.queryByTestId('vault-my-submissions')).toBeNull();
   });
 
-  it('ERROR: a failed read shows role=alert and Retry reloads', async () => {
+  it('a signed-out visitor sees no form, and my_submissions is never called', async () => {
+    authUser.current = null;
+    backend();
+    const view = render(<VaultPage />);
+    expect(await view.findByTestId('vault-signin')).toBeInTheDocument();
+    expect(view.queryByTestId('vault-submit-panel')).toBeNull();
+    expect(calls('my_submissions')).toHaveLength(0);
+  });
+
+  it('a failed read shows an alert and Retry reloads', async () => {
     lensRun.mockResolvedValueOnce({ data: { ok: false, result: null, error: 'no_db' } });
     const view = render(<VaultPage />);
     expect(await view.findByRole('alert')).toHaveTextContent(/no_db/);
-    cabinet();
+    backend();
     fireEvent.click(view.getByRole('button', { name: 'Retry' }));
-    expect(await view.findByText('Nothing unlocked.')).toBeInTheDocument();
+    expect(await view.findByTestId('vault-empty-archive')).toBeInTheDocument();
   });
+});
 
-  it('OPEN: a blank title does not call submit', async () => {
-    cabinet();
+describe('vault page: submit', () => {
+  async function fillAndSubmit(view: ReturnType<typeof render>) {
+    fireEvent.click(await view.findByRole('button', { name: 'Submit a work' }));
+    fireEvent.change(view.getByPlaceholderText("The work's title"), { target: { value: '  Night tape  ' } });
+    fireEvent.change(view.getByLabelText('Kind'), { target: { value: 'music' } });
+    fireEvent.change(view.getByPlaceholderText('What is it, and why does it belong here?'), { target: { value: 'A four-track demo.' } });
+    fireEvent.change(view.getByPlaceholderText(/Paste the text, a link/), { target: { value: 'liner notes' } });
+    fireEvent.change(view.getByPlaceholderText(/DTU ids this work builds on/), { target: { value: 'dtu_a, dtu_b dtu_a' } });
+    fireEvent.click(view.getByRole('button', { name: 'Submit for consideration' }));
+  }
+
+  it('sends every field to vault.submit, then reads my_submissions back and lists the work as Submitted', async () => {
+    backend();
     const view = render(<VaultPage />);
-    fireEvent.click(await view.findByRole('button', { name: 'Open the vault' }));
-    fireEvent.click(view.getByRole('button', { name: 'Open the vault' }));
-    expect(await view.findByRole('alert')).toHaveTextContent(/A title is required/);
-    expect(lensRun.mock.calls.map((call) => call[1])).not.toContain('submit');
+    await fillAndSubmit(view);
+    expect(await view.findByTestId('vault-my-submissions')).toBeInTheDocument();
+    expect(calls('submit')[0][0]).toBe('vault');
+    expect(calls('submit')[0][2]).toEqual({
+      title: 'Night tape', workKind: 'music', description: 'A four-track demo.', body: 'liner notes', lineage: ['dtu_a', 'dtu_b'],
+    });
+    fireEvent.click(await view.findByRole('button', { name: /Night tape/ }));
+    expect(view.getByTestId('vault-my-status')).toHaveTextContent('Submitted');
+    expect(calls('admit')).toHaveLength(0);
   });
 
-  it('OPEN: shows the title only after my_submissions contains the id and title', async () => {
-    const submissions: Submission[] = [];
-    lensRun.mockImplementation(async (_domain: string, action: string, input?: { title?: string }) => {
-      if (action === 'browse') return browse([]);
-      if (action === 'my_submissions') return mine(submissions);
-      if (action === 'submit') {
-        submissions.unshift({ id: 'vsub_1', title: input?.title || '', status: 'submitted' });
-        return { data: { ok: true, result: { ok: true, id: 'vsub_1', status: 'submitted' }, error: null } };
-      }
+  it('omits lineage when blank', async () => {
+    backend();
+    const view = render(<VaultPage />);
+    fireEvent.click(await view.findByRole('button', { name: 'Submit a work' }));
+    fireEvent.change(view.getByPlaceholderText("The work's title"), { target: { value: 'Plain' } });
+    fireEvent.click(view.getByRole('button', { name: 'Submit for consideration' }));
+    await waitFor(() => expect(calls('submit')).toHaveLength(1));
+    expect('lineage' in (calls('submit')[0][2] as object)).toBe(false);
+  });
+
+  it('a refused submit shows the refusal and lists nothing', async () => {
+    backend({ onSubmit: () => ({ data: { ok: false, result: null, error: 'invalid_work_kind' } }) });
+    const view = render(<VaultPage />);
+    await fillAndSubmit(view);
+    expect(await view.findByRole('alert')).toHaveTextContent(/not one the vault accepts/);
+    expect(view.queryByTestId('vault-my-submissions')).toBeNull();
+  });
+
+  it('a submit the vault does not read back is reported, not shown', async () => {
+    backend({ onSubmit: () => ok({ ok: true, id: 'vsub_ghost', status: 'submitted' }) });
+    const view = render(<VaultPage />);
+    await fillAndSubmit(view);
+    expect(await view.findByText(/did not read it back/)).toBeInTheDocument();
+    expect(view.queryByRole('button', { name: /Night tape/ })).toBeNull();
+  });
+});
+
+describe('vault page: my submissions, withdraw, privacy', () => {
+  it('withdraw calls vault.withdraw with the id and reason, and the row reads back Withdrawn', async () => {
+    backend({ submissions: [{ id: 'vsub_w', title: 'Held tape', status: 'submitted' }] });
+    const view = render(<VaultPage />);
+    fireEvent.click(await view.findByRole('button', { name: /Held tape/ }));
+    fireEvent.click(view.getByRole('button', { name: 'Withdraw' }));
+    fireEvent.change(view.getByLabelText('Reason (optional)'), { target: { value: ' changed my mind ' } });
+    fireEvent.click(view.getByRole('button', { name: 'Withdraw this work' }));
+    await waitFor(() => expect(view.getByTestId('vault-my-status')).toHaveTextContent('Withdrawn'));
+    expect(calls('withdraw')[0][2]).toEqual({ submissionId: 'vsub_w', reason: 'changed my mind' });
+    expect(view.queryByRole('button', { name: 'Withdraw' })).toBeNull();
+  });
+
+  it('a refused withdraw (admitted records are permanent) shows the server answer', async () => {
+    backend({
+      submissions: [{ id: 'vsub_r', title: 'Review tape', status: 'under_review' }],
+      onWithdraw: () => ({ data: { ok: false, result: null, error: 'wrong_state' } }),
+    });
+    const view = render(<VaultPage />);
+    fireEvent.click(await view.findByRole('button', { name: /Review tape/ }));
+    fireEvent.click(view.getByRole('button', { name: 'Withdraw' }));
+    fireEvent.click(view.getByRole('button', { name: 'Withdraw this work' }));
+    expect(await view.findByRole('alert')).toHaveTextContent(/no longer waiting/);
+  });
+
+  it('an admitted work offers no withdraw', async () => {
+    backend({ submissions: [{ id: 'vsub_a', title: 'Kept tape', status: 'admitted', curatorStatement: 'Because.' }] });
+    const view = render(<VaultPage />);
+    fireEvent.click(await view.findByRole('button', { name: /Kept tape/ }));
+    expect(view.queryByRole('button', { name: 'Withdraw' })).toBeNull();
+    expect(view.getByText('Because.')).toBeInTheDocument();
+  });
+
+  it('the submitter reads their own decline reason, labelled private; the public list never shows one', async () => {
+    backend({
+      records: [{ id: 'vsub_pub', title: 'Public tape', status: 'admitted' }],
+      submissions: [{ id: 'vsub_d', title: 'Declined tape', status: 'declined', declineReason: 'Not documented enough.' }],
+    });
+    const view = render(<VaultPage />);
+    fireEvent.click(await view.findByRole('button', { name: /Declined tape/ }));
+    expect(view.getByTestId('vault-decline-reason')).toHaveTextContent('private to you');
+    expect(view.getByTestId('vault-decline-reason')).toHaveTextContent('Not documented enough.');
+    // the hall is the browse result only
+    expect(view.getByTestId('vault-cabinet')).toHaveTextContent('Public tape');
+    expect(view.getByTestId('vault-cabinet')).not.toHaveTextContent(/Declined tape|Not documented/);
+    expect(view.getByTestId('vault-hall')).not.toHaveTextContent(/Not documented/);
+  });
+});
+
+describe('vault page: curator room is for curators only', () => {
+  const row = (id: string, active = 1) => ({ curator_id: id, display_name: 'C', role: 'guest_curator', invited_by: null, invited_at: 1, active, retired_at: null });
+
+  it('hidden for a signed-in non-curator, even when others are curators', async () => {
+    backend({ curators: [row('someone_else')] });
+    const view = render(<VaultPage />);
+    expect(await view.findByTestId('vault-empty-archive')).toBeInTheDocument();
+    expect(view.queryByTestId('vault-curator-room')).toBeNull();
+    expect(view.queryByTestId('curator-queue-stub')).toBeNull();
+  });
+
+  it('hidden for a retired curator', async () => {
+    backend({ curators: [row('u1', 0)] });
+    const view = render(<VaultPage />);
+    expect(await view.findByTestId('vault-empty-archive')).toBeInTheDocument();
+    expect(view.queryByTestId('vault-curator-room')).toBeNull();
+  });
+
+  it('hidden when signed out, even if that id is on the (public) roster', async () => {
+    authUser.current = null;
+    backend({ curators: [row('u1')] });
+    const view = render(<VaultPage />);
+    expect(await view.findByTestId('vault-signin')).toBeInTheDocument();
+    expect(view.queryByTestId('vault-curator-room')).toBeNull();
+  });
+
+  it('shown for an active curator, and an admission or decline refreshes the page reads', async () => {
+    backend({ curators: [row('u1')] });
+    const view = render(<VaultPage />);
+    expect(await view.findByTestId('curator-queue-stub')).toBeInTheDocument();
+    const before = calls('browse').length;
+    fireEvent.click(view.getByTestId('curator-queue-stub'));
+    await waitFor(() => expect(calls('browse').length).toBeGreaterThan(before));
+    // the page itself never calls the curator actions; the room owns them
+    for (const a of ['admit', 'decline', 'open_review', 'queue']) expect(calls(a)).toHaveLength(0);
+  });
+
+  it('a failed roster read hides the room but does not break the page', async () => {
+    lensRun.mockImplementation(async (_d: string, action: string) => {
+      if (action === 'browse') return ok({ ok: true, records: [] });
+      if (action === 'my_submissions') return ok({ ok: true, submissions: [] });
+      if (action === 'curators') return { data: { ok: false, result: null, error: 'no_db' } };
       throw new Error(action);
     });
     const view = render(<VaultPage />);
-    fireEvent.click(await view.findByRole('button', { name: 'Open the vault' }));
-    fireEvent.change(view.getByTestId('vault-title'), { target: { value: '  Night tape  ' } });
-    fireEvent.click(view.getByRole('button', { name: 'Open the vault' }));
-    expect(await view.findByRole('button', { name: /Night tape/ })).toBeInTheDocument();
-    expect(view.getByText('Submitted')).toBeInTheDocument();
-    expect(view.getByText('Nothing selected.')).toBeInTheDocument();
-    expect(view.queryByText('Nothing unlocked.')).toBeNull();
-    expect(view.queryByText('Admitted')).toBeNull();
-    const save = lensRun.mock.calls.find((call) => call[1] === 'submit');
-    expect(save?.[0]).toBe('vault');
-    expect(save?.[2]).toEqual({ title: 'Night tape' });
-    expect(lensRun.mock.calls.map((call) => call[1])).not.toContain('admit');
+    expect(await view.findByTestId('vault-empty-archive')).toBeInTheDocument();
+    expect(view.queryByTestId('vault-curator-room')).toBeNull();
+  });
+});
+
+describe('vault page: the public hall', () => {
+  const rec = (id: string, title: string, curatorId: string | null = 'c1') => ({
+    id, title, status: 'admitted', workKind: 'music', description: '', submitterId: 's', admittedAt: 1773532800,
+    curatorId, curatorRole: 'founding_curator', curatorStatement: `Why ${title} belongs, in a curator's own words.`, recordDtuId: `dtu_${id}`, lineage: [],
+  });
+  const roster = [
+    { curator_id: 'c1', display_name: 'Ada Founder', role: 'founding_curator', invited_by: null, invited_at: 1, active: 1, retired_at: null },
+    { curator_id: 'c2', display_name: 'Bo Guest', role: 'guest_curator', invited_by: 'c1', invited_at: 2, active: 1, retired_at: null },
+  ];
+
+  it('renders an admitted record as a drawer with its curator statement when opened, and the roster', async () => {
+    backend({ records: [rec('vsub_1', 'Night tape')] as unknown as Sub[], curators: roster });
+    const view = render(<VaultPage />);
+    expect(await view.findByTestId('vault-cabinet')).toBeInTheDocument();
+    expect(view.getByTestId('vault-curator-roster')).toHaveTextContent('Ada Founder');
+    expect(view.queryByTestId('vault-empty-archive')).toBeNull();
+    fireEvent.click(view.getByRole('button', { name: /Night tape/ }));
+    expect(await view.findByText(/Why Night tape belongs/)).toBeInTheDocument();
+    expect(view.getByText(/Accepted 15 March 2026/)).toBeInTheDocument();
   });
 
-  it('OPEN: a list miss does not show the title', async () => {
-    lensRun.mockImplementation(async (_domain: string, action: string) => {
-      if (action === 'browse') return browse([]);
-      if (action === 'my_submissions') return mine([]);
-      if (action === 'submit') {
-        return { data: { ok: true, result: { ok: true, id: 'vsub_missing', status: 'submitted' }, error: null } };
-      }
-      throw new Error(action);
+  it('shows NO likes, counts, trending, ranking, views or follower UI', async () => {
+    backend({ records: [rec('vsub_1', 'Night tape'), rec('vsub_2', 'Day tape')] as unknown as Sub[], curators: roster });
+    const view = render(<VaultPage />);
+    await view.findByTestId('vault-cabinet');
+    fireEvent.click(view.getByRole('button', { name: /Night tape/ }));
+    const hall = view.getByTestId('vault-hall');
+    expect(hall.textContent || '').not.toMatch(/\b(like|likes|liked|trending|popular|most viewed|views?|followers?|follow|share|rank(ed|ing)?|score|rating|top \d+|for you)\b/i);
+    expect(hall.textContent || '').not.toMatch(/\b\d+\s+(records?|drawers?|works?|items?|results?)\b/i);
+    expect(view.queryByRole('button', { name: /like|follow|share|sort|trending/i })).toBeNull();
+    // the only reads the hall makes are the public ones
+    const reads = new Set(lensRun.mock.calls.map((c) => c[1]));
+    for (const a of ['browse', 'my_submissions', 'curators']) expect(reads.has(a)).toBe(true);
+    expect(Array.from(reads).filter((a) => !['browse', 'my_submissions', 'curators'].includes(String(a)))).toEqual([]);
+  });
+
+  it('keeps the order the vault returned (no client-side sorting)', async () => {
+    backend({ records: [rec('a', 'Zulu'), rec('b', 'Alpha'), rec('c', 'Mike')] as unknown as Sub[], curators: roster });
+    const view = render(<VaultPage />);
+    await view.findByTestId('vault-cabinet');
+    const order = view.getAllByTestId('vault-record').map((el) => el.getAttribute('data-record-id'));
+    expect(order).toEqual(['a', 'b', 'c']);
+  });
+
+  it('keyboard: arrows move between drawers, Enter opens one, Escape closes', async () => {
+    backend({ records: [rec('a', 'Zulu'), rec('b', 'Alpha')] as unknown as Sub[], curators: roster });
+    const view = render(<VaultPage />);
+    await view.findByTestId('vault-cabinet');
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'Enter' });
+    const second = view.getAllByTestId('vault-record')[1];
+    expect(second.getAttribute('data-open')).toBe('true');
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(second.getAttribute('data-open')).toBe('false');
+  });
+
+  it('a curator filter narrows to that curator and can be cleared', async () => {
+    backend({ records: [rec('a', 'Zulu', 'c1'), rec('b', 'Alpha', 'c2')] as unknown as Sub[], curators: roster });
+    const view = render(<VaultPage />);
+    await view.findByTestId('vault-cabinet');
+    expect(view.getAllByTestId('vault-record')).toHaveLength(2);
+    fireEvent.click(view.getByRole('button', { name: /Zulu/ }));
+    fireEvent.click(await view.findByRole('button', { name: /Show this curator/ }));
+    expect(view.getAllByTestId('vault-record').map((el) => el.getAttribute('data-record-id'))).toEqual(['a']);
+    fireEvent.click(view.getByRole('button', { name: /Zulu/ }));
+    fireEvent.click(await view.findByRole('button', { name: /Showing only this curator/ }));
+    expect(view.getAllByTestId('vault-record')).toHaveLength(2);
+  });
+
+  it('signs a drawer with the curator display name from the roster, never the raw id', async () => {
+    const id = 'curator_f9a8e7c1';
+    backend({
+      records: [rec('vsub_1', 'Night tape', id)] as unknown as Sub[],
+      curators: [{ curator_id: id, display_name: 'Ada Founder', role: 'founding_curator', invited_by: null, invited_at: 1, active: 1, retired_at: null }],
     });
     const view = render(<VaultPage />);
-    fireEvent.click(await view.findByRole('button', { name: 'Open the vault' }));
-    fireEvent.change(view.getByTestId('vault-title'), { target: { value: 'Lost tape' } });
-    fireEvent.click(view.getByRole('button', { name: 'Open the vault' }));
-    expect(await view.findByRole('alert')).toHaveTextContent(/did not read it back/);
-    expect(view.queryByRole('button', { name: /Lost tape/ })).toBeNull();
+    fireEvent.click(await view.findByRole('button', { name: /Night tape/ }));
+    const sig = await view.findByTestId('vault-statement-attribution');
+    expect(sig.textContent).toBe('Written and signed by Ada Founder, Founding curator');
+    expect(view.getByTestId('vault-hall').textContent).not.toContain(id);
   });
 
-  it('HEADER: shows the lens name signed-in', async () => {
-    authUser.current = { username: 'ramaj' };
-    cabinet();
+  it('a curator missing from the roster is signed "a founding curator", still no raw id', async () => {
+    const id = 'curator_0d11aa22';
+    backend({ records: [rec('vsub_1', 'Night tape', id)] as unknown as Sub[], curators: [] });
     const view = render(<VaultPage />);
-    expect(await view.findByRole('heading', { name: 'TheVault' })).toBeInTheDocument();
-    expect(await view.findByText('Nothing unlocked.')).toBeInTheDocument();
-  });
-
-  it('LOAD: shows an existing submission as submitted and an admitted record as admitted', async () => {
-    cabinet(
-      [{ id: 'vsub_own', title: 'Own tape', status: 'submitted' }],
-      [{ id: 'vsub_pub', title: 'Public tape', status: 'admitted' }],
-    );
-    const view = render(<VaultPage />);
-    expect(await view.findByRole('button', { name: /Own tape/ })).toBeInTheDocument();
-    expect(view.getByRole('button', { name: /Public tape/ })).toBeInTheDocument();
-    expect(view.getByText('Submitted')).toBeInTheDocument();
-    expect(view.getByText('Admitted')).toBeInTheDocument();
-    expect(view.getByText('Nothing selected.')).toBeInTheDocument();
-    expect(view.queryByText('Nothing unlocked.')).toBeNull();
-  });
-
-  it('SELECT: choosing a row fills the right pane and does not admit', async () => {
-    cabinet([{ id: 'vsub_own', title: 'Own tape', status: 'submitted' }]);
-    const view = render(<VaultPage />);
-    fireEvent.click(await view.findByRole('button', { name: /Own tape/ }));
-    expect(await view.findByRole('heading', { name: 'Own tape' })).toBeInTheDocument();
-    expect(view.queryByText('Nothing selected.')).toBeNull();
-    expect(view.getAllByText('Submitted')).toHaveLength(2);
-    expect(lensRun.mock.calls.map((call) => call[1])).not.toContain('admit');
-    expect(lensRun.mock.calls.map((call) => call[1])).not.toContain('record');
-  });
-
-  it('OPEN: a refused submit does not show the title', async () => {
-    cabinet();
-    const view = render(<VaultPage />);
-    fireEvent.click(await view.findByRole('button', { name: 'Open the vault' }));
-    lensRun.mockImplementation(async (_domain: string, action: string) => {
-      if (action === 'browse') return browse([]);
-      if (action === 'my_submissions') return mine([]);
-      if (action === 'submit') return { data: { ok: false, result: null, error: 'submit_failed' } };
-      throw new Error(action);
-    });
-    fireEvent.change(view.getByTestId('vault-title'), { target: { value: 'Bad tape' } });
-    fireEvent.click(view.getByRole('button', { name: 'Open the vault' }));
-    expect(await view.findByRole('alert')).toHaveTextContent(/submit_failed/);
-    expect(view.queryByRole('button', { name: /Bad tape/ })).toBeNull();
-    expect(view.getByText('Nothing unlocked.')).toBeInTheDocument();
-  });
-
-  it('OPEN: a second work stays beside the first', async () => {
-    const submissions: Submission[] = [{ id: 'vsub_1', title: 'First tape', status: 'submitted' }];
-    lensRun.mockImplementation(async (_domain: string, action: string, input?: { title?: string }) => {
-      if (action === 'browse') return browse([]);
-      if (action === 'my_submissions') return mine(submissions);
-      if (action === 'submit') {
-        submissions.unshift({ id: 'vsub_2', title: input?.title || '', status: 'submitted' });
-        return { data: { ok: true, result: { ok: true, id: 'vsub_2', status: 'submitted' }, error: null } };
-      }
-      throw new Error(action);
-    });
-    const view = render(<VaultPage />);
-    expect(await view.findByRole('button', { name: /First tape/ })).toBeInTheDocument();
-    fireEvent.click(view.getByRole('button', { name: 'Open the vault' }));
-    fireEvent.change(view.getByTestId('vault-title'), { target: { value: 'Second tape' } });
-    fireEvent.click(view.getByRole('button', { name: 'Open the vault' }));
-    expect(await view.findByRole('button', { name: /Second tape/ })).toBeInTheDocument();
-    expect(view.getByRole('button', { name: /First tape/ })).toBeInTheDocument();
+    fireEvent.click(await view.findByRole('button', { name: /Night tape/ }));
+    expect((await view.findByTestId('vault-statement-attribution')).textContent).toBe('Written and signed by a founding curator');
+    expect(view.getByTestId('vault-hall').textContent).not.toContain(id);
   });
 });

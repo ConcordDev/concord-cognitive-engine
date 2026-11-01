@@ -45,7 +45,7 @@ export function AvShell({
   return (
     <div className={cn('flex flex-col gap-3 p-4 bg-[#0d1117] text-gray-100', className)}>
       {/* Metric strip */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <Metric icon={Clock} label="Total hours" value={totalHours.toFixed(1)} caption={`${totalFlights} flights`} tone="cyan" />
         <Metric icon={Activity} label="Last 30d" value={hours30d.toFixed(1)} caption="hours flown" tone="emerald" />
         <Metric icon={Plane} label="Aircraft" value={String(aircraftCount)} caption="in fleet" tone="amber" />

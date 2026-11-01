@@ -16,6 +16,7 @@ export function MonitoringPanel() {
     queryKey: ['db-status'],
     queryFn: () => api.get('/api/db/status').then(r => r.data),
     refetchInterval: 10000,
+    enabled: isDbAdmin, // /api/db/status is owner/admin-only
   });
   const { data: perfMetrics } = useQuery({
     queryKey: ['perf-metrics'],

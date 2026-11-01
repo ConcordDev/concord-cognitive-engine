@@ -40,7 +40,7 @@ export default function registerMeditationActions(registerLensAction) {
    * sessionLog — append a completed meditation session to the user's
    * practice ledger.
    *   params.trackId, params.title?, params.category?, params.minutes,
-   *   params.completedAt, params.rating?
+   *   params.completedAt, params.rating?, params.goal?
    *
    * NOTE (fixed 2026-07): this used to read/write `artifact.data.sessions`
    * on the artifact passed in by the caller. `/api/lens/run` builds a
@@ -62,6 +62,11 @@ export default function registerMeditationActions(registerLensAction) {
       sessionId: params.trackId || "unknown",
       title: params.title || String(params.trackId || "Freeform session"),
       category: params.category || "guided",
+      // The session's goal, when the caller sends it (the session
+      // player does): the practice ledger — and the activity feed's
+      // object for this log — names a session by goal and length,
+      // not by its track.
+      goal: params.goal ? String(params.goal).trim().slice(0, 40) : null,
       durationMin: minutes,
       moodAfter: rating,
       completedAt: params.completedAt || medNow(),
@@ -481,21 +486,29 @@ export default function registerMeditationActions(registerLensAction) {
     const userEnroll = map.get(userId);
     if (!userEnroll.has(course.id)) userEnroll.set(course.id, { completedDays: [], startedAt: medNow() });
     const e = userEnroll.get(course.id);
-    if (!e.completedDays.includes(day)) e.completedDays.push(day);
-    // Also log the underlying session into the practice ledger.
-    const track = LIBRARY.find((x) => x.id === dayDef.sessionId);
-    if (track) {
-      medList(s.sessions, userId).push({
-        id: medId("ms"),
-        sessionId: track.id,
-        title: track.title,
-        category: track.category,
-        durationMin: track.durationMin,
-        moodAfter: null,
-        completedAt: medNow(),
-        courseId: course.id,
-        courseDay: day,
-      });
+    // Q22: completion is idempotent END TO END. completedDays was
+    // already deduped, but the practice-ledger push below ran on every
+    // call — re-completing a day inflated totalSessions / totalMinutes
+    // / streak inputs while course progress stayed correct. The
+    // session is logged only when the day is newly completed.
+    const newlyCompleted = !e.completedDays.includes(day);
+    if (newlyCompleted) {
+      e.completedDays.push(day);
+      // Also log the underlying session into the practice ledger.
+      const track = LIBRARY.find((x) => x.id === dayDef.sessionId);
+      if (track) {
+        medList(s.sessions, userId).push({
+          id: medId("ms"),
+          sessionId: track.id,
+          title: track.title,
+          category: track.category,
+          durationMin: track.durationMin,
+          moodAfter: null,
+          completedAt: medNow(),
+          courseId: course.id,
+          courseDay: day,
+        });
+      }
     }
     saveMed();
     return {
@@ -505,6 +518,7 @@ export default function registerMeditationActions(registerLensAction) {
         day,
         completedCount: e.completedDays.length,
         finished: e.completedDays.length >= course.days.length,
+        alreadyCompleted: !newlyCompleted,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }

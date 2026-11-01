@@ -973,7 +973,7 @@ export function ImportDeskPanel() {
             return (
               <div className="space-y-3 pt-2 border-t border-lattice-border">
                 <h3 className="text-sm font-semibold text-neon-cyan">Field Mappings — {d.mappingCount} mapped</h3>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="lens-card text-center">
                     <p className="text-lg font-bold text-neon-cyan">{(d.coverage?.sourcesCovered ?? 0).toFixed(1)}%</p>
                     <p className="text-xs text-gray-400">Coverage</p>
@@ -1045,7 +1045,7 @@ export function ImportDeskPanel() {
             return (
               <div className="space-y-3 pt-2 border-t border-lattice-border">
                 <h3 className="text-sm font-semibold text-neon-purple">Transform Preview</h3>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="lens-card text-center">
                     <p className="text-lg font-bold text-neon-purple">{d.transformsApplied || 0}</p>
                     <p className="text-xs text-gray-400">Transforms Applied</p>

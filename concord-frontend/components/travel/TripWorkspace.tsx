@@ -828,7 +828,7 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
       {/* ── Weather tab ── */}
       {tab === 'weather' && (
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input placeholder="Latitude" inputMode="decimal" value={weatherCoords.lat}
               onChange={(e) => setWeatherCoords((p) => ({ ...p, lat: e.target.value }))}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
@@ -903,7 +903,7 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
             <h4 className="text-xs font-semibold text-zinc-300 mb-2 flex items-center gap-1">
               <Hotel className="w-3.5 h-3.5 text-purple-400" /> Lodging near a point (OpenStreetMap)
             </h4>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <input placeholder="Latitude" inputMode="decimal" value={hotelCoords.lat}
                 onChange={(e) => setHotelCoords((p) => ({ ...p, lat: e.target.value }))}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
@@ -1076,7 +1076,7 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
               </div>
             )}
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input placeholder="Item to pack" value={ckItem} onChange={(e) => setCkItem(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') void addChecklistItem(); }}
               className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
@@ -1118,7 +1118,7 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
           <p className="text-xs text-zinc-400">
             Share this trip with travel companions. Editors can co-edit; viewers see it read-only.
           </p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input placeholder="Companion user id" value={shareForm.collaborator}
               onChange={(e) => setShareForm((p) => ({ ...p, collaborator: e.target.value }))}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
@@ -1187,7 +1187,7 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
               </p>
             ) : (
               <>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2.5">
                     <p className="text-[10px] text-zinc-400">Planned</p>
                     <p className="text-sm font-bold text-zinc-100">

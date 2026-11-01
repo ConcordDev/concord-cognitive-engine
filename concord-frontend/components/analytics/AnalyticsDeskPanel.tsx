@@ -5,11 +5,12 @@
  * and stats strip. Extracted from analytics/page.tsx consolidation.
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   TrendingUp, Users, Coins, FileText, Quote, Heart, Loader2,
-  Star, Zap, PieChart as PieChartIcon, Clock,
+  Star, Zap, PieChart as PieChartIcon, Clock, ChevronDown,
 } from 'lucide-react';
 import { cn, formatNumber } from '@/lib/utils';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -20,6 +21,18 @@ import {
   type DeskMode, type DTUSummary, type Transaction, type TransactionSummary,
   LENS_COLORS, StatCard, RevenueBar, TierBreakdown,
 } from '@/components/analytics/analytics-shared';
+
+// First-paint honesty (F7): a block whose query has never resolved shows a
+// loading row — never a numeric value and never its empty-state text, both
+// of which would state something the surface does not yet know.
+function PendingRow({ label }: { label: string }) {
+  return (
+    <div className="flex items-center justify-center gap-2 py-8 text-sm text-gray-400">
+      <Loader2 className="w-4 h-4 animate-spin text-neon-cyan" />
+      {label}
+    </div>
+  );
+}
 
 export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
   const {
@@ -41,13 +54,22 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
 
   const userId = profileData?.userId;
 
+  // DTUs mode lists every DTU the account owns (F5): the page size grows via
+  // "Show more" so the list stays complete past the first 100.
+  const [dtuLimit, setDtuLimit] = useState(100);
+  const [selectedDtuId, setSelectedDtuId] = useState<string | null>(null);
+
   const { data: dtusData } = useQuery({
-    queryKey: ['my-dtus-analytics'],
+    queryKey: ['my-dtus-analytics', dtuLimit],
     queryFn: async () => {
-      const res = await apiHelpers.dtus.myDtus({ limit: 100, offset: 0 });
+      const res = await apiHelpers.dtus.myDtus({ limit: dtuLimit, offset: 0 });
       return res.data as { dtus?: DTUSummary[]; items?: DTUSummary[]; total?: number };
     },
     enabled: !!userId,
+    // "Show more" grows the page under a new query key; keep the resolved
+    // page on screen while the larger one loads instead of blanking back
+    // to a pending state (F7 applies to re-paints too).
+    placeholderData: keepPreviousData,
   });
 
   const { data: txData } = useQuery({
@@ -77,13 +99,35 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
     enabled: !!userId,
   });
 
+  // First-paint honesty (F7): each aggregate below derives from one query.
+  // Until that query has resolved once, the surface does not hold the value
+  // and must not paint the fallback zero — cards render Platform's dash
+  // ('—', the in-lens precedent) and blocks render a loading row. A RESOLVED
+  // zero is a true value and paints as 0; the dash means "not known yet",
+  // never "zero".
+  const dtusPending = dtusData === undefined;
+  const txPending = txData === undefined;
+  const followersPending = followersData === undefined;
+  const socialPending = socialAnalytics === undefined;
+
   const dtus = dtusData?.dtus || dtusData?.items || [];
   const totalDTUs = dtusData?.total || dtus.length;
   const totalCitations = profileData?.stats?.citationCount || 0;
   const followerCount = followersData?.count || profileData?.stats?.followerCount || 0;
   const revenue = txData?.summary || { royaltyTotal: 0, salesTotal: 0, total: 0 };
   const totalPosts = (socialAnalytics?.totalPosts as number) || 0;
-  const engagementRate = (socialAnalytics?.engagementRate as number) || 0;
+  // The creator view carries the engagement rate nested under `overview`
+  // (emergent/social-layer.js getCreatorAnalyticsView) — CreatorAnalytics
+  // renders it from there. Reading it flat always missed and pinned this
+  // card at 0.0% (office flag, folded into the R2 slice); the flat read
+  // stays as a fallback for any older cached shape.
+  const socialOverview = socialAnalytics?.overview as
+    | { engagementRate?: number }
+    | undefined;
+  const engagementRate =
+    socialOverview?.engagementRate ??
+    (socialAnalytics?.engagementRate as number) ??
+    0;
 
   const lensDist = new Map<string, number>();
   for (const dtu of dtus) {
@@ -95,9 +139,27 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8);
 
-  const topDTUs = [...dtus]
-    .sort((a, b) => (b.citationCount || 0) - (a.citationCount || 0))
-    .slice(0, 5);
+  // Ranking basis (stated on the DTUs tab, F5): citations, highest first;
+  // ties break to the newest DTU, then by title. No truncation — the tab
+  // lists every DTU the query returned.
+  const rankedDTUs = [...dtus].sort((a, b) => {
+    const byCitations = (b.citationCount || 0) - (a.citationCount || 0);
+    if (byCitations !== 0) return byCitations;
+    const aTime = Date.parse(a.timestamp || a.createdAt || '') || 0;
+    const bTime = Date.parse(b.timestamp || b.createdAt || '') || 0;
+    if (bTime !== aTime) return bTime - aTime;
+    return (a.title || a.id).localeCompare(b.title || b.id);
+  });
+  const selectedDtu = selectedDtuId
+    ? rankedDTUs.find((d) => d.id === selectedDtuId) || null
+    : null;
+  const selectedRank = selectedDtu ? rankedDTUs.indexOf(selectedDtu) : -1;
+  const selectedLens = selectedDtu
+    ? selectedDtu.domain || selectedDtu.meta?.lens || null
+    : null;
+  const selectedCreated = selectedDtu
+    ? selectedDtu.timestamp || selectedDtu.createdAt || null
+    : null;
 
   if (profileError) {
     return (
@@ -112,7 +174,7 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
     );
   }
 
-  if (profileLoading || !userId) {
+  if (profileLoading) {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="w-8 h-8 text-neon-cyan animate-spin" />
@@ -120,24 +182,68 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
     );
   }
 
+  // Resolved, but this account has no social profile: profiles are created
+  // by an explicit upsert (POST /api/social/profile), never at signup, and
+  // the own-profile read answers 200 with an ok:false body for a
+  // profile-less account — so the query succeeds with no userId. That is a
+  // permanent, legitimate state, not a load still in flight: render its
+  // terminal empty state instead of spinning forever (Review 4 Addendum 5:
+  // a fresh account's Overview / Revenue / Actions never rendered, while
+  // the tabs that don't ride this panel worked).
+  if (!userId) {
+    // F15 (Review 4 Addendum 7): the Actions bench is the exception to
+    // this gate. AnalyticsActionPanel is profile-independent — it takes
+    // no profile props, reads no profile state, and every call it makes
+    // (bench computations, dtu.create, DM, the Lever) takes its actor
+    // from the session server-side — so a profile-less account still
+    // gets its bench. The terminal state below scopes to the
+    // profile-based modes its own text names (overview / revenue /
+    // dtus ride the profile-derived userId; un-gating those needs a
+    // session-sourced account id, a separate step).
+    if (mode === 'actions') {
+      return (
+        <div className="space-y-4">
+          <PipingProvider>
+            <AnalyticsActionPanel />
+          </PipingProvider>
+        </div>
+      );
+    }
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="text-center max-w-sm px-4">
+          <p className="text-sm text-zinc-200 mb-2">No social profile yet</p>
+          <p className="text-xs text-zinc-500 leading-relaxed">
+            This account hasn&rsquo;t created a social profile, so follower and
+            creator analytics have nothing to read yet. Events, funnels and
+            the other tabs still work — profile-based stats appear here once
+            a profile exists (profiles are created from the Social lens).
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <StatCard label="Total DTUs" value={totalDTUs} icon={FileText} color="text-neon-blue" />
+        <StatCard label="Total DTUs" value={dtusPending ? '—' : totalDTUs} icon={FileText} color="text-neon-blue" />
         <StatCard label="Citations" value={totalCitations} icon={Quote} color="text-neon-green" />
-        <StatCard label="Followers" value={followerCount} icon={Users} color="text-neon-purple" />
-        <StatCard label="Total CC" value={revenue.total} icon={Coins} color="text-yellow-400" />
-        <StatCard label="Posts" value={totalPosts} icon={Heart} color="text-neon-pink" />
+        <StatCard label="Followers" value={followersPending ? '—' : followerCount} icon={Users} color="text-neon-purple" />
+        <StatCard label="Total CC" value={txPending ? '—' : revenue.total} icon={Coins} color="text-yellow-400" />
+        <StatCard label="Posts" value={socialPending ? '—' : totalPosts} icon={Heart} color="text-neon-pink" />
         <StatCard
           label="Engagement"
-          value={`${engagementRate.toFixed(1)}%`}
+          value={socialPending ? '—' : `${engagementRate.toFixed(1)}%`}
           icon={TrendingUp}
           color="text-neon-cyan"
           raw
         />
       </div>
 
-      {mode === 'overview' && <CreatorAnalytics userId={userId} />}
+      {/* hideFollowersCard: this strip already renders the Followers card;
+          CreatorAnalytics' own would duplicate it on the Overview (S7). */}
+      {mode === 'overview' && <CreatorAnalytics userId={userId} hideFollowersCard />}
 
       {mode === 'revenue' && (
         <div className="space-y-4">
@@ -150,17 +256,27 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
               <Coins className="w-4 h-4 text-yellow-400" />
               <h3 className="text-sm font-semibold text-white">Revenue Breakdown</h3>
             </div>
-            <div className="space-y-4">
-              <RevenueBar label="Royalties" amount={revenue.royaltyTotal} total={revenue.total} color="bg-neon-purple" />
-              <RevenueBar label="Direct Sales" amount={revenue.salesTotal} total={revenue.total} color="bg-neon-cyan" />
-            </div>
-            <div className="mt-4 pt-4 border-t border-lattice-border flex items-center justify-between">
-              <span className="text-sm text-gray-400">Total Revenue</span>
-              <span className="text-lg font-bold text-yellow-400">{formatNumber(revenue.total)} CC</span>
-            </div>
+            {txPending ? (
+              <PendingRow label="Loading revenue…" />
+            ) : (
+              <>
+                <div className="space-y-4">
+                  <RevenueBar label="Royalties" amount={revenue.royaltyTotal} total={revenue.total} color="bg-neon-purple" />
+                  <RevenueBar label="Direct Sales" amount={revenue.salesTotal} total={revenue.total} color="bg-neon-cyan" />
+                </div>
+                <div className="mt-4 pt-4 border-t border-lattice-border flex items-center justify-between">
+                  <span className="text-sm text-gray-400">Total Revenue</span>
+                  <span className="text-lg font-bold text-yellow-400">{formatNumber(revenue.total)} CC</span>
+                </div>
+              </>
+            )}
           </motion.div>
 
-          {lensBreakdown.length > 0 ? (
+          {dtusPending ? (
+            <div className="border border-dashed border-white/10 rounded-lg">
+              <PendingRow label="Loading distribution…" />
+            </div>
+          ) : lensBreakdown.length > 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -199,7 +315,11 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
             </div>
           )}
 
-          {txData?.transactions && txData.transactions.length > 0 ? (
+          {txPending ? (
+            <div className="border border-dashed border-white/10 rounded-lg">
+              <PendingRow label="Loading transactions…" />
+            </div>
+          ) : txData?.transactions && txData.transactions.length > 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -253,43 +373,125 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
             animate={{ opacity: 1, y: 0 }}
             className="p-5 rounded-xl bg-lattice-deep border border-lattice-border"
           >
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-2 mb-1">
               <Star className="w-4 h-4 text-yellow-400" />
-              <h3 className="text-sm font-semibold text-white">Top Performing DTUs</h3>
+              <h3 className="text-sm font-semibold text-white">Your DTUs</h3>
             </div>
-            {topDTUs.length > 0 ? (
+            <p className="text-xs text-gray-400 mb-4">
+              Ranked by citations, highest first — ties go to the newest DTU, then by title.
+              {dtusPending
+                ? ' Loading your DTUs…'
+                : ` Showing ${rankedDTUs.length} of ${totalDTUs}. Select a DTU for its detail.`}
+            </p>
+            {dtusPending ? (
+              <PendingRow label="Loading your DTUs…" />
+            ) : rankedDTUs.length > 0 ? (
               <div className="space-y-2">
-                {topDTUs.map((dtu, idx) => (
-                  <div
-                    key={dtu.id}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-lattice-surface border border-lattice-border"
-                  >
-                    <span className={cn('text-sm font-bold w-6 text-center', idx < 3 ? 'text-neon-cyan' : 'text-gray-400')}>
-                      {idx + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white truncate">
-                        {dtu.title || dtu.summary || dtu.id.slice(0, 24)}
-                      </p>
-                      <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
-                        {dtu.tier && <span className="capitalize">{dtu.tier}</span>}
-                        {(dtu.tags || []).slice(0, 2).map((t) => (
-                          <span key={t} className="text-neon-cyan/60">#{t}</span>
-                        ))}
+                {rankedDTUs.map((dtu, idx) => {
+                  const isSelected = dtu.id === selectedDtuId;
+                  return (
+                    <button
+                      key={dtu.id}
+                      type="button"
+                      onClick={() => setSelectedDtuId(isSelected ? null : dtu.id)}
+                      aria-expanded={isSelected}
+                      className={cn(
+                        'flex w-full items-center gap-3 p-3 rounded-lg bg-lattice-surface border text-left transition-colors',
+                        isSelected
+                          ? 'border-neon-cyan/60'
+                          : 'border-lattice-border hover:border-white/25',
+                      )}
+                    >
+                      <span className={cn('text-sm font-bold w-6 text-center', idx < 3 ? 'text-neon-cyan' : 'text-gray-400')}>
+                        {idx + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-white truncate">
+                          {dtu.title || dtu.summary || dtu.id.slice(0, 24)}
+                        </p>
+                        <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
+                          {dtu.tier && <span className="capitalize">{dtu.tier}</span>}
+                          {(dtu.tags || []).slice(0, 2).map((t) => (
+                            <span key={t} className="text-neon-cyan/60">#{t}</span>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="flex items-center gap-1 text-sm font-bold text-neon-green">
-                        <Quote className="w-3.5 h-3.5" />
-                        {dtu.citationCount || 0}
+                      <div className="text-right flex-shrink-0">
+                        <div className="flex items-center gap-1 text-sm font-bold text-neon-green">
+                          <Quote className="w-3.5 h-3.5" />
+                          {dtu.citationCount || 0}
+                        </div>
+                        <div className="text-[10px] text-gray-400">citations</div>
                       </div>
-                      <div className="text-[10px] text-gray-400">citations</div>
-                    </div>
-                  </div>
-                ))}
+                      <ChevronDown
+                        className={cn('w-4 h-4 flex-shrink-0 text-gray-500 transition-transform', isSelected && 'rotate-180')}
+                      />
+                    </button>
+                  );
+                })}
               </div>
             ) : (
               <p className="text-sm text-gray-400 text-center py-8">No DTUs yet</p>
+            )}
+            {selectedDtu && (
+              <div
+                data-testid="dtu-detail"
+                className="mt-4 rounded-lg border border-neon-cyan/30 bg-lattice-surface p-4"
+              >
+                <p className="text-sm font-semibold text-white">
+                  {selectedDtu.title || selectedDtu.summary || selectedDtu.id}
+                </p>
+                <p className="mt-0.5 break-all font-mono text-[11px] text-gray-500">{selectedDtu.id}</p>
+                {selectedDtu.summary && selectedDtu.title && (
+                  <p className="mt-2 text-sm text-gray-300">{selectedDtu.summary}</p>
+                )}
+                <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-wide text-gray-500">Rank</dt>
+                    <dd className="text-gray-200">
+                      #{selectedRank + 1} of {rankedDTUs.length} by citations
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-wide text-gray-500">Citations</dt>
+                    <dd className="text-gray-200">{selectedDtu.citationCount || 0}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-wide text-gray-500">Tier</dt>
+                    <dd className="text-gray-200 capitalize">{selectedDtu.tier || 'regular'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-wide text-gray-500">Lens</dt>
+                    <dd className="text-gray-200">{selectedLens || 'Not recorded on this DTU'}</dd>
+                  </div>
+                  {selectedCreated && (
+                    <div>
+                      <dt className="text-[10px] uppercase tracking-wide text-gray-500">Created</dt>
+                      <dd className="text-gray-200">{new Date(selectedCreated).toLocaleDateString()}</dd>
+                    </div>
+                  )}
+                </dl>
+                {(selectedDtu.tags || []).length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {(selectedDtu.tags || []).map((t) => (
+                      <span key={t} className="rounded bg-white/5 px-2 py-0.5 text-xs text-neon-cyan/80">
+                        #{t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {rankedDTUs.length < totalDTUs && (
+              <div className="mt-4 text-center">
+                <button
+                  type="button"
+                  onClick={() => setDtuLimit((limit) => limit + 100)}
+                  className="rounded-full border border-white/15 px-4 py-1.5 text-sm text-gray-200 transition-colors hover:border-neon-cyan/50 hover:text-white"
+                >
+                  Show more DTUs ({rankedDTUs.length} of {totalDTUs})
+                </button>
+              </div>
             )}
           </motion.div>
 
@@ -303,7 +505,11 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
               <Zap className="w-4 h-4 text-neon-blue" />
               <h3 className="text-sm font-semibold text-white">DTU Tier Breakdown</h3>
             </div>
-            <TierBreakdown dtus={dtus} />
+            {dtusPending ? (
+              <PendingRow label="Loading tier breakdown…" />
+            ) : (
+              <TierBreakdown dtus={dtus} />
+            )}
           </motion.div>
         </div>
       )}

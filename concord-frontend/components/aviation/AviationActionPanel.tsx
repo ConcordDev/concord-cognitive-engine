@@ -146,7 +146,7 @@ export function AviationActionPanel() {
       const m = wxResult?.reports?.[0];
       const task = `Pre-flight brief. ${aptResult ? `Departing ${aptResult.airport.ident} (${aptResult.airport.name}), elev ${aptResult.airport.elev_ft} ft, ${aptResult.airport.runways[0]?.length ?? '?'} ft longest runway.` : ''} ${m ? `Wx: ${m.flightCategory}, ${m.tempC}°C, wind ${m.windDir}@${m.windSpd}${m.windGust ? `G${m.windGust}` : ''} kt, vis ${m.visibilityMi} sm.` : ''} ${toResult ? `Takeoff ground roll ${toResult.groundRoll_ft} ft / over50 ${toResult.over50ft_ft} ft.` : ''} Identify the go/no-go call + one specific risk to brief. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Briefed.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

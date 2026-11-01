@@ -25,13 +25,13 @@
 // provider changes, the user is never blocked.
 //
 // Default RPM figures below are seeded from each provider's own published
-// free-tier limits where this session's research actually confirmed a
-// number (Groq: verified 30 RPM for llama-3.3-70b-versatile). Gemini and
-// Mistral's exact current free-tier RPM were NOT independently verified
-// this session — those two defaults are deliberately conservative
-// placeholders, not scraped facts, and should be confirmed against each
-// provider's current published limits before a real deployment relies on
-// them. Override any of them via CONCORD_PLATFORM_RPM_<PROVIDER>_<SLOT>.
+// free-tier limits where research confirmed a number (Groq: verified
+// 30 RPM for llama-3.3-70b-versatile; Google: verified 2026-10-28 — see
+// the google entries). Mistral publishes NO public free-tier RPM (the
+// Experiment plan's limits are shown per-workspace in Mistral's admin
+// console only), so its defaults stay deliberately conservative — a
+// documented fail-closed choice, not a placeholder awaiting a scrape.
+// Override any of them via CONCORD_PLATFORM_RPM_<PROVIDER>_<SLOT>.
 
 const VALID_SLOTS = new Set(["conscious", "subconscious", "utility", "repair", "vision"]);
 const VALID_PROVIDERS = new Set(["groq", "google", "mistral"]);
@@ -53,10 +53,24 @@ const DEFAULT_RPM = Object.freeze({
   "groq:subconscious": 30,
   "groq:utility": 30,
   "groq:repair": 30,
-  // NOT independently verified this session — conservative placeholder.
-  "google:conscious": 15,
-  "google:vision": 15,
-  // NOT independently verified this session — conservative placeholder.
+  // Verified 2026-10-28 (remaining-work audit B#24/Q76): Google's own
+  // rate-limits doc (ai.google.dev/gemini-api/docs/rate-limits, updated
+  // 2026-10-26) no longer prints a free-tier RPM table — it defers to the
+  // per-project AI Studio rate-limit page. AI Studio's published free
+  // table for the exact model the conscious/vision slots call
+  // (gemini-3.6-flash, see byo-providers.js DEFAULT_MODELS.google) is
+  // 5 RPM / 250K TPM / 20 RPD. The previous 15 would have overshot the
+  // free tier 3x and burned the 20-request day in minutes, so the
+  // fail-closed default is 5; an operator on a paid tier raises it via
+  // CONCORD_PLATFORM_RPM_GOOGLE_<SLOT> after reading their AI Studio page.
+  "google:conscious": 5,
+  "google:vision": 5,
+  // Mistral publishes no public free-tier RPM (verified 2026-10-28):
+  // the Experiment plan's limits live only in the workspace's admin
+  // console (Admin -> Limits); third-party measurements cluster around
+  // ~1 req/s but Mistral does not confirm a number. Fail-closed default
+  // stays 10 — the operator sets their console value via
+  // CONCORD_PLATFORM_RPM_MISTRAL_<SLOT> when they deploy.
   "mistral:conscious": 10,
   "mistral:subconscious": 10,
   "mistral:utility": 10,

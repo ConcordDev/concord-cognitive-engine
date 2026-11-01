@@ -136,7 +136,7 @@ export function CreativeActionPanel() {
     try {
       const task = `Production status review. ${shotsResult ? `Shot list: ${shotsResult.totalShots} shots / ~${shotsResult.estimatedRuntime}min.` : ''} ${budgetResult ? `Budget: $${budgetResult.totalActual.toLocaleString()} of $${budgetResult.totalBudgeted.toLocaleString()}${budgetResult.overBudget ? ' (over)' : ''}.` : ''} ${distResult ? `${distResult.platform} delivery: ${distResult.percent}% ready by ${distResult.deliveryDate}.` : ''} Identify the single biggest schedule or budget risk + one mitigation. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Review ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

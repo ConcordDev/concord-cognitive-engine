@@ -66,20 +66,24 @@ export function QueryEditorPanel({ seedSql, onSeedConsumed }: { seedSql?: string
     // and crashed on (F1). The result is normalised defensively: a missing
     // rows/columns field renders as an empty result, never a crash.
     mutationFn: async (vars: { sql: string; confirmDestructive?: boolean }): Promise<QueryResult & { needsConfirm?: boolean }> => {
-      const r = await lensRun<{
+      // lensRun returns an axios-shaped { data: { ok, result, error } } envelope: the engine's payload
+      // is data.result, and a handler refusal arrives as data.ok === false with data.error.
+      const resp = await lensRun<{
         columns?: string[]; rows?: Record<string, unknown>[]; rowCount?: number;
         durationMs?: number; success?: boolean; error?: string; needsConfirm?: boolean;
       }>('database', 'query-run', { sql: vars.sql, ...(vars.confirmDestructive ? { confirmDestructive: true } : {}) });
+      const r = resp?.data?.result ?? null;
+      const refusal = resp?.data?.ok === false ? (resp.data.error || r?.error || 'The query was refused.') : r?.error;
       return {
         columns: Array.isArray(r?.columns) ? r.columns : [],
         rows: Array.isArray(r?.rows) ? r.rows : [],
         rowCount: typeof r?.rowCount === 'number' ? r.rowCount : (Array.isArray(r?.rows) ? r.rows.length : 0),
         duration: typeof r?.durationMs === 'number' ? r.durationMs : 0,
-        ...(r?.error ? { error: r.error } : {}),
+        ...(refusal ? { error: refusal } : {}),
         ...(r?.needsConfirm ? { needsConfirm: true } : {}),
       };
     },
-    onSuccess: (data: QueryResult & { needsConfirm?: boolean }, vars: { sql: string }) => {
+    onSuccess: (data: QueryResult & { needsConfirm?: boolean }, vars: { sql: string; confirmDestructive?: boolean }) => {
       if (data.needsConfirm) {
         // S5 guard: nothing ran; ask before running an unscoped write.
         setPendingConfirm({ sql: vars.sql, message: data.error || 'This statement affects every row.' });
@@ -90,7 +94,7 @@ export function QueryEditorPanel({ seedSql, onSeedConsumed }: { seedSql?: string
       setResultPage(0);
       addToHistory(vars.sql, data.duration, data.rowCount, !data.error);
     },
-    onError: (err: unknown, vars: { sql: string }) => {
+    onError: (err: unknown, vars: { sql: string; confirmDestructive?: boolean }) => {
       setQueryResult({ columns: [], rows: [], rowCount: 0, duration: 0, error: err instanceof Error ? err.message : 'Query execution failed' });
       setResultPage(0);
       addToHistory(vars.sql, 0, 0, false);

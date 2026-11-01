@@ -111,3 +111,77 @@ describe('ConcordRepoWorkspace — Analysis tab real-AST wiring', () => {
     expect(await screen.findByText('src/thing.js')).toBeInTheDocument();
   });
 });
+
+// Review F14 — receipts at the interaction layer. Two live passes read
+// Settings save / repo create / repo delete as silent even though the
+// receipt strings existed in code: the create receipt rendered only in
+// the list view (suppressed while a repo was open — the state the pass
+// is usually in), and the Settings receipt lived only inside a panel
+// that unmounts on a tab switch. These tests pin the receipts through
+// the full post-action cycle (including the repo-list refetch each
+// action triggers), not just the setState.
+describe('ConcordRepoWorkspace — F14 receipts survive their own flows', () => {
+  const SECOND = {
+    id: 'repo_2', name: 'second', description: '', language: 'TypeScript',
+    isPrivate: false, fileCount: 4, branchCount: 1, openIssues: 0, openPulls: 0,
+    updatedAt: '2026-07-14T00:00:00.000Z',
+  };
+  let created = false;
+  let deleted = false;
+  let savedName = 'demo';
+
+  beforeEach(() => {
+    created = false; deleted = false; savedName = 'demo';
+    lensRun.mockReset();
+    lensRun.mockImplementation(async (_domain: string, action: string, params: Record<string, unknown>) => {
+      switch (action) {
+        case 'repo-list': {
+          const repos = deleted ? [] : created ? [{ ...REPO, name: savedName }, SECOND] : [{ ...REPO, name: savedName }];
+          return envelope({ repos, count: repos.length });
+        }
+        case 'repo-create':
+          created = true;
+          return envelope({ repo: { id: 'repo_2', name: String(params.name), defaultBranch: 'main' } });
+        case 'repo-update':
+          savedName = String(params.name);
+          return envelope({ repo: { id: REPO.id, name: savedName, description: String(params.description || ''), isPrivate: !!params.isPrivate } });
+        case 'repo-delete':
+          deleted = true;
+          return envelope({ deleted: true, repoId: REPO.id, name: 'demo' });
+        default:
+          return envelope({ message: 'unhandled' });
+      }
+    });
+  });
+
+  it('create: the receipt renders even while another repo is open', async () => {
+    render(<ConcordRepoWorkspace />);
+    fireEvent.click(await screen.findByText('demo')); // a repo is OPEN — the old render condition suppressed the notice here
+    fireEvent.change(screen.getByPlaceholderText('new-repo-name'), { target: { value: 'second' } });
+    fireEvent.click(screen.getByText('New repo'));
+    expect(await screen.findByText(/Created "second" — seeded with the starter tree/)).toBeInTheDocument();
+  });
+
+  it('settings save: the receipt shows in Settings and survives a tab round-trip (workspace mirror)', async () => {
+    render(<ConcordRepoWorkspace />);
+    fireEvent.click(await screen.findByText('demo'));
+    fireEvent.click(await screen.findByText('Settings'));
+    fireEvent.change(screen.getByDisplayValue('demo'), { target: { value: 'demo2' } });
+    fireEvent.click(screen.getByText('Save changes'));
+    expect(await screen.findByText(/Saved — this repo is now "demo2", public in your account\./)).toBeInTheDocument();
+    // The Settings panel unmounts on a tab switch; the mirrored
+    // workspace-level receipt must still be there when the user returns.
+    fireEvent.click(screen.getByText('Code'));
+    fireEvent.click(screen.getByText('Settings'));
+    expect(await screen.findByText(/Saved — this repo is now "demo2", public in your account\./)).toBeInTheDocument();
+  });
+
+  it('repo delete: the receipt shows in the list view after the delete', async () => {
+    render(<ConcordRepoWorkspace />);
+    fireEvent.click(await screen.findByText('demo'));
+    fireEvent.click(await screen.findByText('Settings'));
+    fireEvent.change(screen.getByPlaceholderText('demo'), { target: { value: 'demo' } });
+    fireEvent.click(screen.getByText('Delete repo'));
+    expect(await screen.findByText(/Deleted "demo" — the repo and its history are gone\./)).toBeInTheDocument();
+  });
+});

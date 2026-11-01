@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
+import { buildLensFactsBlock } from '@/components/chat/lensAccountFacts';
 import { ChatDraftInThreadButton } from '@/components/chat/ChatDraftInThreadButton';
 import { getApiBase } from '@/lib/api/base';
 import { useUIStore } from '@/store/ui';
@@ -133,6 +134,7 @@ import {
   deleteMessagesForSession,
   fileToBase64,
   formatRelativeTime,
+  adoptChatOwner,
   generateUUID,
   loadConversations,
   loadMessagesForSession,
@@ -142,6 +144,7 @@ import {
   saveSessionId,
   type ChatMessageLike,
 } from '@/components/chat/chatLocalStore';
+import { chatFailure, streamResult } from '@/components/chat/chatStreamResult';
 import { AI_MODES, PERSONAS, SLASH_COMMANDS } from '@/components/chat/ChatModeConfig';
 import { ToolTraceBlock } from '@/components/chat/ToolTraceBlock';
 import type { ChatMode } from '@/components/chat/ChatModeTypes';
@@ -905,6 +908,17 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     catch { return false; }
   });
   const { isAuthenticated, user } = useAuth();
+
+  // Chat storage is per browser: when a different account signs in, drop the
+  // previous account's session so the first send is not refused.
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+    if (adoptChatOwner(user.id)) {
+      setSelectedConversation(loadSessionId());
+      setStoredConversations(loadConversations<Conversation>());
+      setLocalMessages([]);
+    }
+  }, [isAuthenticated, user?.id]);
   const dismissAnonNudge = useCallback(() => {
     setAnonNudgeDismissed(true);
     try { localStorage.setItem('concord_anon_nudge_dismissed', '1'); } catch { /* private mode */ }
@@ -1167,6 +1181,10 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     };
   }, []);
 
+  // session_forbidden recovery: start a fresh session and resend once.
+  const forceFreshSessionRef = useRef(false);
+  const forbiddenRetriedRef = useRef(false);
+
   const sendMutation = useMutation({
     mutationFn: async (content: string) => {
       // Build attachment metadata
@@ -1188,7 +1206,10 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       };
 
       // Ensure we have a session — if none, create one now
-      let activeSessionId = selectedConversation;
+      // After session_forbidden the retry must not reuse the stale id, and the
+      // state update from startNewChat has not rendered yet.
+      let activeSessionId = forceFreshSessionRef.current ? null : selectedConversation;
+      forceFreshSessionRef.current = false;
       if (!activeSessionId) {
         const newId = generateUUID();
         activeSessionId = newId;
@@ -1221,6 +1242,17 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         systemPrompt +=
           (systemPrompt ? '\n\n' : '') +
           `Current domain context: ${domainContext}. Use domain-specific knowledge and terminology.`;
+      }
+
+      // Ground the analyst in the lens's live values (Review 4, Analytics
+      // F1): for a domain with a facts provider, the model receives the
+      // surface's actual numbers with their sources — or an explicit decline
+      // instruction when they can't be read — instead of a bare context
+      // label it would otherwise have to invent numbers for. Fetched here,
+      // at send time, so the values are current at ask time.
+      const factsBlock = await buildLensFactsBlock(domainContext);
+      if (factsBlock) {
+        systemPrompt += (systemPrompt ? '\n\n' : '') + factsBlock;
       }
 
       // Build the message to send, optionally including quoted context
@@ -1300,6 +1332,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             mode: aiMode.id,
             sessionId: activeSessionId,
             clientTurnId: userMsg.id,
+            // The server assembly gates its lens grounding on input.lens —
+            // send the domain context as the lens it names (R1, A19/A20).
+            ...(domainContext ? { lens: domainContext } : {}),
             ...(systemPrompt ? { systemPrompt } : {}),
             ...(attachmentMeta.length > 0 ? { attachments: attachmentMeta } : {}),
           }),
@@ -1312,13 +1347,28 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           // Assigned inside the SSE parser callback; the cast keeps TS from narrowing it to null.
           let finalOut = null as Record<string, unknown> | null;
           let gotDone = false;
+          // The whole done envelope: a thrown turn arrives here with a top-level
+          // `error` and no `out`.
+          let topDone = null as Record<string, unknown> | null;
+          // Live status and a preview of the answer while the turn runs. Only the
+          // checked `chunk` text becomes the reply; it replaces any preview.
+          let preview = '';
           const sse = createSseParser((data) => {
+            const progress = data.progress as { label?: unknown } | undefined;
+            if (progress && typeof progress.label === 'string' && !accumulated && !preview) {
+              setStreamingContent(`*${progress.label}…*`);
+            }
+            if (typeof data.token === 'string' && data.token && !accumulated) {
+              preview += data.token;
+              setStreamingContent(preview);
+            }
             if (typeof data.chunk === 'string' && data.chunk) {
               accumulated += data.chunk;
               setStreamingContent(accumulated);
             }
             if (data.done) {
               gotDone = true;
+              topDone = data as Record<string, unknown>;
               if (data.out && typeof data.out === 'object') finalOut = data.out as Record<string, unknown>;
             }
           });
@@ -1370,19 +1420,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               streamed: true,
             };
           }
-          return {
-            reply: accumulated || ((finalOut as Record<string, unknown>)?.reply as string) || '',
-            refs: (finalOut as Record<string, unknown>)?.refs,
-            sources: (finalOut as Record<string, unknown>)?.sources,
-            webAugmented: (finalOut as Record<string, unknown>)?.webAugmented,
-            toolCalls: (finalOut as Record<string, unknown>)?.toolCalls,
-            computed: (finalOut as Record<string, unknown>)?.computed,
-            dtuRefs: (finalOut as Record<string, unknown>)?.dtuRefs,
-            artifacts: (finalOut as Record<string, unknown>)?.artifacts,
-            answerConfidence: (finalOut as Record<string, unknown>)?.answerConfidence,
-            answerConfidenceReason: (finalOut as Record<string, unknown>)?.answerConfidenceReason,
-            streamed: true,
-          };
+          return streamResult(finalOut, topDone, accumulated);
         }
 
         // Non-SSE response: fall back to regular JSON
@@ -1418,6 +1456,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               mode: aiMode.id,
               sessionId: activeSessionId,
               clientTurnId: userMsg.id,
+              ...(domainContext ? { lens: domainContext } : {}),
               ...(systemPrompt ? { systemPrompt } : {}),
               ...(attachmentMeta.length > 0 ? { attachments: attachmentMeta } : {}),
             },
@@ -1435,7 +1474,30 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         }
       }
     },
-    onSuccess: (data) => {
+    onSuccess: (data, sentContent) => {
+      const failure = chatFailure(data);
+      if (failure) {
+        const failMsg: Message = {
+          id: `fail-${Date.now()}`,
+          role: 'system',
+          content: failure.message,
+          timestamp: new Date().toISOString(),
+        };
+        if (failure.kind === 'session_forbidden' && !forbiddenRetriedRef.current) {
+          // The saved session id belongs to another account (shared device).
+          // Drop it and resend the same message once on a new session.
+          forbiddenRetriedRef.current = true;
+          forceFreshSessionRef.current = true;
+          startNewChat();
+          setLocalMessages([failMsg]);
+          sendMutation.mutate(sentContent);
+          return;
+        }
+        setLocalMessages((prev) => [...prev, failMsg]);
+        queryClient.invalidateQueries({ queryKey: ['cognitive-status'] });
+        setInput('');
+        return;
+      }
       const down = unavailableNotice(data);
       if (down) {
         const noticeMsg: Message = {
@@ -1905,6 +1967,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       return;
     }
 
+    forbiddenRetriedRef.current = false;
     sendMutation.mutate(input);
   }, [input, sendMutation, executeSlashCommand, localMessages]);
 

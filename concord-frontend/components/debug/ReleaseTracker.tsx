@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { useDebugProject } from './ProjectContext';
 import { TimelineView } from '@/components/viz';
 import type { TimelineEvent } from '@/components/viz';
 import { CheckCircle, GitBranch, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react';
@@ -33,6 +34,7 @@ interface Release {
 }
 
 export function ReleaseTracker() {
+  const { projectId } = useDebugProject();
   const [releases, setReleases] = useState<Release[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -46,14 +48,14 @@ export function ReleaseTracker() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const r = await lensRun('debug', 'release-list', {});
+    const r = await lensRun('debug', 'release-list', { projectId });
     if (r.data?.ok && r.data.result) {
       setReleases(r.data.result.releases || []);
     } else {
       setError(r.data?.error || 'Failed to load releases');
     }
     setLoading(false);
-  }, []);
+  }, [projectId]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => void load());
@@ -64,6 +66,7 @@ export function ReleaseTracker() {
     if (!form.version.trim()) return;
     setBusy(true);
     const r = await lensRun('debug', 'release-create', {
+      projectId,
       version: form.version,
       environment: form.environment,
       notes: form.notes || undefined,
@@ -75,7 +78,7 @@ export function ReleaseTracker() {
     } else {
       setError(r.data?.error || 'Release create failed');
     }
-  }, [form, load]);
+  }, [form, load, projectId]);
 
   const remove = useCallback(
     async (id: string) => {
@@ -197,7 +200,7 @@ export function ReleaseTracker() {
                 </button>
               </div>
               {rel.notes && <p className="text-xs text-gray-400 mt-1">{rel.notes}</p>}
-              <div className="grid grid-cols-4 gap-2 mt-2">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mt-2">
                 <div className="text-center">
                   <p className="text-sm font-bold text-gray-200">{rel.issueCount}</p>
                   <p className="text-[10px] text-gray-400">Issues</p>

@@ -8,12 +8,14 @@
  * select column.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Table2, Loader2, Plus, Trash2, LayoutGrid, Rows3,
+  Table2, Loader2, Plus, LayoutGrid, Rows3,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { requestDelete } from './delete-safety-store';
+import { ConfirmDeleteButton, useDeleteSafety } from './DeleteSafety';
 import type { DbColumn, DocDatabase } from './types';
 
 interface DbMeta { id: string; name: string; columnCount: number; rowCount: number; updatedAt: string }
@@ -43,6 +45,19 @@ export function DatabaseViews() {
     if (active) await open(active.id);
   }, [active, open]);
 
+  // Which database is open right now, readable from a delete commit
+  // that fires seconds after it was registered (the undo window).
+  const activeRef = useRef<DocDatabase | null>(null);
+  activeRef.current = active;
+
+  // Items inside their delete undo window are hidden (they still
+  // exist server-side until the window lapses).
+  const { pendingKeys } = useDeleteSafety();
+  const visibleList = list.filter((d) => !pendingKeys.includes(`db:${d.id}`));
+  const visibleActive = active
+    ? { ...active, rows: active.rows.filter((r) => !pendingKeys.includes(`dbrow:${active.id}:${r.id}`)) }
+    : null;
+
   async function createDb() {
     if (!newName.trim()) return;
     const r = await lensRun('docs', 'db-create', { name: newName.trim() });
@@ -51,10 +66,23 @@ export function DatabaseViews() {
     const id = r.data?.result?.database?.id as string | undefined;
     if (id) await open(id);
   }
-  async function deleteDb(id: string) {
-    await lensRun('docs', 'db-delete', { id });
+  // Delete safety (S1 / F1): same undo-window registry as page
+  // deletes — the database leaves the list at once, db-delete runs
+  // only when the window lapses, Undo cancels it outright.
+  function deleteDb(id: string) {
+    const label = list.find((d) => d.id === id)?.name || active?.name || 'Untitled database';
     if (active?.id === id) setActive(null);
-    await refresh();
+    requestDelete({
+      key: `db:${id}`,
+      label,
+      commit: async () => {
+        const r = await lensRun('docs', 'db-delete', { id });
+        await refresh();
+        if (r.data && r.data.ok === false) {
+          throw new Error(String(r.data.error || 'db-delete failed'));
+        }
+      },
+    });
   }
   async function addColumn() {
     if (!active || !newColName.trim()) return;
@@ -73,11 +101,26 @@ export function DatabaseViews() {
     await lensRun('docs', 'db-row-update', { id: active.id, rowId, cells: { [colId]: value } });
     await reloadActive();
   }
-  async function deleteRow(rowId: string) {
+  function deleteRow(rowId: string) {
     if (!active) return;
-    await lensRun('docs', 'db-row-delete', { id: active.id, rowId });
-    await reloadActive();
-    await refresh();
+    const dbId = active.id;
+    const titleCol = active.columns.find((c) => c.type === 'text') || active.columns[0];
+    const row = active.rows.find((r) => r.id === rowId);
+    const label = (titleCol && row ? String(row.cells[titleCol.id] ?? '') : '') || 'this row';
+    requestDelete({
+      key: `dbrow:${dbId}:${rowId}`,
+      label,
+      commit: async () => {
+        const r = await lensRun('docs', 'db-row-delete', { id: dbId, rowId });
+        await refresh();
+        // Re-read the database only if it is still the open one — the
+        // window may have lapsed while another database was in view.
+        if (activeRef.current?.id === dbId) await open(dbId);
+        if (r.data && r.data.ok === false) {
+          throw new Error(String(r.data.error || 'db-row-delete failed'));
+        }
+      },
+    });
   }
 
   if (loading) {
@@ -98,17 +141,17 @@ export function DatabaseViews() {
           </button>
         </div>
         <ul className="space-y-0.5">
-          {list.length === 0 && <li className="text-[11px] text-zinc-400 italic">No databases — create one.</li>}
-          {list.map(d => (
+          {visibleList.length === 0 && <li className="text-[11px] text-zinc-400 italic">No databases — create one.</li>}
+          {visibleList.map(d => (
             <li key={d.id}
               className={cn('group flex items-center gap-1 rounded px-1.5 py-1 hover:bg-zinc-800', active?.id === d.id && 'bg-zinc-800')}>
               <button onClick={() => open(d.id)} className="flex-1 text-left text-xs text-zinc-300 truncate">
                 <Table2 className="w-3 h-3 inline mr-1 text-zinc-400" />{d.name}
                 <span className="text-[10px] text-zinc-400 ml-1">{d.rowCount} rows</span>
               </button>
-              <button aria-label="Delete" onClick={() => deleteDb(d.id)} className="opacity-0 group-hover:opacity-100 text-rose-400">
-                <Trash2 className="w-3 h-3" />
-              </button>
+              <ConfirmDeleteButton itemLabel={d.name} deleteTitle="Delete database"
+                onConfirm={() => deleteDb(d.id)} iconClassName="w-3 h-3"
+                className="opacity-0 group-hover:opacity-100 text-rose-400" />
             </li>
           ))}
         </ul>
@@ -150,9 +193,9 @@ export function DatabaseViews() {
           </div>
 
           {view === 'table' ? (
-            <DbTable db={active} onUpdate={updateCell} onDelete={deleteRow} />
+            <DbTable db={visibleActive ?? active} onUpdate={updateCell} onDelete={deleteRow} />
           ) : (
-            <DbBoard db={active} onUpdate={updateCell} />
+            <DbBoard db={visibleActive ?? active} onUpdate={updateCell} />
           )}
         </div>
       ) : (
@@ -220,9 +263,11 @@ function DbTable({ db, onUpdate, onDelete }: {
                 </td>
               ))}
               <td className="text-center">
-                <button aria-label="Delete" onClick={() => onDelete(r.id)} className="text-zinc-700 hover:text-rose-400">
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                <ConfirmDeleteButton
+                  itemLabel={String(r.cells[(db.columns.find((c) => c.type === 'text') || db.columns[0])?.id ?? ''] ?? '') || 'this row'}
+                  deleteTitle="Delete row"
+                  onConfirm={() => onDelete(r.id)} iconClassName="w-3 h-3"
+                  className="text-zinc-700 hover:text-rose-400" />
               </td>
             </tr>
           ))}

@@ -104,6 +104,12 @@ export function LogsPanel() {
       <div className="text-center py-12 text-gray-400">
         <Terminal className="w-8 h-8 mx-auto mb-3 opacity-40" />
         <p>No matching log entries</p>
+        {/* E-DBG-1: only on a genuinely empty FILTERED result. */}
+        {(logFilter !== 'all' || logSearch.trim() !== '') && (
+          <p className="mt-2 font-serif italic text-gray-500">
+            Nothing broke. Suspicious, but we&rsquo;ll take it.
+          </p>
+        )}
       </div>
     ) : (
       filteredLogs.map((log, i) => (

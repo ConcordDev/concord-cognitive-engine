@@ -4,6 +4,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { saveAfterWrites } from "../lib/lens-save-on-write.js";
+import { createNotification } from "../emergent/social-layer.js";
 export default function registerGoalsActions(registerLensAction) {
   registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -385,8 +386,15 @@ export default function registerGoalsActions(registerLensAction) {
    */
   registerLensAction("goals", "progressForecast", (ctx, artifact, params) => {
   try {
-    const history = artifact.data?.history || [];
-    const target = artifact.data?.target ?? 100;
+    // S5: with a goalId, the forecast reads the objective's real
+    // series — the same points the chart draws (S4) — in true
+    // chronological order, so "current" is the LATEST point.
+    let history = params.history || artifact.data?.history || [];
+    if (params.goalId) {
+      const s = getGoalsState();
+      if (s) history = objectiveSeriesPoints(s, actId(ctx), params.goalId);
+    }
+    const target = params.target ?? artifact.data?.target ?? 100;
     const confidenceLevel = params.confidenceLevel || 0.95;
 
     if (history.length < 2) {
@@ -434,6 +442,45 @@ export default function registerGoalsActions(registerLensAction) {
     // For simplicity, use z-values for common confidence levels
     const zValues = { 0.90: 1.645, 0.95: 1.96, 0.99: 2.576 };
     const z = zValues[confidenceLevel] || 1.96;
+
+    // Degenerate spread: every point on one day. A slope cannot be
+    // fit, and calling a rising series "stalled" (the old denom-0
+    // path) is exactly the F4 lie — refuse honestly instead.
+    if (denom === 0) {
+      const firstP = ys[0];
+      const lastP = ys[ys.length - 1];
+      return {
+        ok: true,
+        result: {
+          regression: null,
+          currentState: {
+            progress: lastP,
+            target,
+            remaining: Math.round((target - lastP) * 100) / 100,
+            daysElapsed: 0,
+            percentComplete: Math.round((lastP / target) * 10000) / 100,
+          },
+          forecast: {
+            estimatedCompletionDays: null,
+            estimatedCompletionDate: null,
+            daysRemainingBest: null,
+            daysRemainingWorst: null,
+            confidenceLevel,
+            onTrack: null,
+            reason: `All ${n} data points fall on a single day \u2014 a forecast needs check-ins on different days.`,
+          },
+          velocity: {
+            current: 0,
+            average: 0,
+            trend: lastP > firstP ? "improving" : lastP < firstP ? "declining" : "flat",
+            history: [],
+          },
+          forecastCurve: [],
+          pace: null,
+          dataPoints: n,
+        },
+      };
+    }
 
     // Forecast: when does progress reach target?
     let forecastDays = null;
@@ -532,8 +579,10 @@ export default function registerGoalsActions(registerLensAction) {
           daysRemainingBest: daysRemainingLower,
           daysRemainingWorst: daysRemainingUpper,
           confidenceLevel,
+          reason: null,
           onTrack: forecastDays !== null && forecastDays <= daysElapsed * 3,
         },
+        pace: chartFromHistory(sorted, target, undefined).stats.pace ?? null,
         velocity: {
           current: r(slope),
           average: r(avgVelocity),
@@ -563,9 +612,31 @@ export default function registerGoalsActions(registerLensAction) {
         team: new Map(),       // userId -> Array<teamGoal>
         recurring: new Map(),  // userId -> Array<recurringGoal>
         reminders: new Map(),  // userId -> Array<reminder>
-        deps: new Map(),       // userId -> Array<{ from, to, kind }>
+        deps: new Map(),
+        chartPoints: new Map(), // userId -> Array<manual chart point> (S4)
+        occurrences: new Map(), // userId -> Array<occurrence> (S6)
+        trash: new Map(),       // userId -> Array<soft-deleted item> (S10)       // userId -> Array<{ from, to, kind }>
         seq: new Map(),        // userId -> { obj, chk, team, rec, rem, dep }
       };
+    }
+    // §9 fix (legacy states): a goalsLens persisted by an earlier
+    // build can lack sub-stores later slices added (trash S10,
+    // chartPoints S4, occurrences S6) — and persistence can revive a
+    // store as a plain object rather than a Map. Every remove routes
+    // through the trash store and the chart/forecast read
+    // chartPoints, so a missing or un-Map store must heal here, on
+    // access, instead of throwing inside an unrelated op (the live
+    // dispatch rewrites that TypeError as "invalid_input"). A plain
+    // object's entries are preserved by the conversion.
+    for (const key of ["objectives", "checkins", "team", "recurring", "reminders", "deps", "chartPoints", "occurrences", "trash", "seq"]) {
+      const cur = STATE.goalsLens[key];
+      if (cur instanceof Map) continue;
+      let healed = null;
+      try {
+        if (Array.isArray(cur)) healed = new Map(cur);
+        else if (cur && typeof cur === "object") healed = new Map(Object.entries(cur));
+      } catch { healed = null; }
+      STATE.goalsLens[key] = healed || new Map();
     }
     return STATE.goalsLens;
   }
@@ -580,8 +651,9 @@ export default function registerGoalsActions(registerLensAction) {
   }
 
   function nextSeq(s, userId, key) {
-    if (!s.seq.has(userId)) s.seq.set(userId, { obj: 1, chk: 1, team: 1, rec: 1, rem: 1, dep: 1 });
+    if (!s.seq.has(userId)) s.seq.set(userId, { obj: 1, chk: 1, team: 1, rec: 1, rem: 1, dep: 1, cp: 1, occ: 1, tr: 1 });
     const seq = s.seq.get(userId);
+    if (seq[key] == null) seq[key] = 1; // states persisted before a kind existed
     const n = seq[key]++;
     return n;
   }
@@ -591,6 +663,74 @@ export default function registerGoalsActions(registerLensAction) {
       try { globalThis._concordSaveStateDebounced(); } catch { /* non-fatal */ }
     }
   }
+  // --- S3: one progress core (F3/F7) --------------------------------
+  // An objective's progress is its latest check-in's progress. With no
+  // check-ins of its own, a parent's progress is the mean of its
+  // children's progress (the stated roll-up rule). With neither, the
+  // objective has no progress (null) — surfaces show nothing rather
+  // than a fabricated 0. Charts (S4) and the forecast (S5) read this
+  // same core, so the lens cannot disagree with itself.
+  function latestCheckinProgress(s, userId, goalId) {
+    const entries = (s.checkins.get(userId) || []).filter(
+      (c) => c.goalId === goalId && c.progress != null,
+    );
+    if (!entries.length) return null;
+    const seqNum = (c) => Number(String(c.id).replace(/^chk_/, "")) || 0;
+    entries.sort((a, b) =>
+      (a.createdAt || "").localeCompare(b.createdAt || "") || seqNum(a) - seqNum(b));
+    return entries[entries.length - 1].progress;
+  }
+
+  function deriveProgress(s, userId, objectives, obj, seen) {
+    if (seen.has(obj.id)) return { progress: null, progressSource: null }; // parent-cycle guard
+    seen.add(obj.id);
+    const own = latestCheckinProgress(s, userId, obj.id);
+    if (own != null) return { progress: own, progressSource: "checkin" };
+    const childValues = objectives
+      .filter((o) => o.parentId === obj.id)
+      .map((o) => deriveProgress(s, userId, objectives, o, seen))
+      .filter((r) => r.progress != null)
+      .map((r) => r.progress);
+    if (!childValues.length) return { progress: null, progressSource: null };
+    const mean = childValues.reduce((a, b) => a + b, 0) / childValues.length;
+    return { progress: Math.round(mean * 100) / 100, progressSource: "rollup" };
+  }
+
+  function withProgress(s, userId, objectives) {
+    return objectives.map((o) => ({ ...o, ...deriveProgress(s, userId, objectives, o, new Set()) }));
+  }
+  // --- S10: one delete standard (F11) -------------------------------
+  // Every OKR-substrate remove is a SOFT delete: the item moves to
+  // the caller's trash with its list position, and the owning macro's
+  // 'restore' op splices it back in place. Kind-checked, so a
+  // trashId from one surface cannot restore into another.
+  function trashItem(s, userId, kind, item, index, extra) {
+    const trash = ensureList(s.trash, userId);
+    const entry = {
+      trashId: `tr_${nextSeq(s, userId, "tr")}`,
+      kind, item, index, extra: extra || null,
+      deletedAt: new Date().toISOString(),
+    };
+    trash.push(entry);
+    if (trash.length > 50) trash.splice(0, trash.length - 50);
+    return entry.trashId;
+  }
+
+  function takeTrash(s, userId, kind, trashId) {
+    const trash = s.trash.get(userId) || [];
+    const i = trash.findIndex((e) => e.trashId === trashId && e.kind === kind);
+    if (i === -1) return null;
+    return trash.splice(i, 1)[0];
+  }
+
+  function restoreItem(s, userId, kind, trashId, list) {
+    const entry = takeTrash(s, userId, kind, trashId);
+    if (!entry) return null;
+    list.splice(Math.min(entry.index, list.length), 0, entry.item);
+    return entry.item;
+  }
+
+
 
   // --- Built-in goal templates by category (structure only, no sample user data) ---
   const GOAL_TEMPLATES = [
@@ -659,6 +799,7 @@ export default function registerGoalsActions(registerLensAction) {
     const userId = actId(ctx);
     const list = ensureList(s.objectives, userId);
     const op = params.op || "list";
+    let lastTrashId = null;
 
     if (op === "upsert") {
       if (!params.title || typeof params.title !== "string") {
@@ -692,14 +833,33 @@ export default function registerGoalsActions(registerLensAction) {
     } else if (op === "remove") {
       const idx = list.findIndex((o) => o.id === params.id);
       if (idx === -1) return { ok: false, error: "objective not found" };
-      list.splice(idx, 1);
-      // Orphan children -> promote to root
-      for (const o of list) if (o.parentId === params.id) o.parentId = null;
+      const [removedObj] = list.splice(idx, 1);
+      // Orphan children -> promote to root (restore re-links them)
+      const promotedChildren = [];
+      for (const o of list) if (o.parentId === params.id) { o.parentId = null; promotedChildren.push(o.id); }
+      lastTrashId = trashItem(s, userId, "objective", removedObj, idx, { promotedChildren });
+      save();
+    } else if (op === "restore") {
+      const entry = takeTrash(s, userId, "objective", params.trashId);
+      if (!entry) return { ok: false, error: "nothing to restore" };
+      list.splice(Math.min(entry.index, list.length), 0, entry.item);
+      for (const childId of entry.extra?.promotedChildren || []) {
+        const child = list.find((o) => o.id === childId);
+        if (child && child.parentId === null) child.parentId = entry.item.id;
+      }
       save();
     }
 
-    // Build tree
-    const byId = new Map(list.map((o) => [o.id, { ...o, children: [] }]));
+    // Build tree (nodes carry S3 derived progress)
+    const enriched = withProgress(s, userId, list);
+    // S9 (F10): blocked state rides the objective — derived from the
+    // edge store at read, so it appears wherever the objective
+    // renders and clears the moment the edge is removed.
+    const depsList = s.deps.get(userId) || [];
+    for (const o of enriched) {
+      o.blockedBy = depsList.filter((e) => e.kind === "blocks" && e.to === o.id).map((e) => e.from);
+    }
+    const byId = new Map(enriched.map((o) => [o.id, { ...o, children: [] }]));
     const roots = [];
     for (const node of byId.values()) {
       if (node.parentId && byId.has(node.parentId)) {
@@ -715,12 +875,14 @@ export default function registerGoalsActions(registerLensAction) {
       ok: true,
       result: {
         tree: roots,
-        flat: list,
+        flat: enriched,
+        trashId: lastTrashId,
         stats: {
           objectiveCount: list.length,
           rootCount: roots.length,
           maxDepth: roots.length ? Math.max(...roots.map(depth)) : 0,
           keyResultsLinked: krTotal,
+          progressCount: enriched.filter((o) => o.progress != null).length,
           teams: [...new Set(list.map((o) => o.team).filter(Boolean))],
         },
       },
@@ -740,9 +902,25 @@ export default function registerGoalsActions(registerLensAction) {
     const userId = actId(ctx);
     const list = ensureList(s.checkins, userId);
     const op = params.op || "list";
+    let lastTrashId = null;
 
     if (op === "add") {
       if (!params.goalId) return { ok: false, error: "goalId required" };
+      // S11 (F12): entered values are stored faithfully or refused
+      // with a stated error — never silently clamped to a different
+      // number than the user typed (150 no longer becomes 100).
+      if (params.progress != null) {
+        const p = Number(params.progress);
+        if (!Number.isFinite(p) || p < 0 || p > 100) {
+          return { ok: false, error: "progress must be between 0 and 100" };
+        }
+      }
+      if (params.confidence != null) {
+        const c = Number(params.confidence);
+        if (!Number.isFinite(c) || c < 0 || c > 1) {
+          return { ok: false, error: "confidence must be between 0 and 1" };
+        }
+      }
       const confidence = Math.max(0, Math.min(1, Number(params.confidence) || 0));
       const allowed = ["on_track", "at_risk", "off_track"];
       const status = allowed.includes(params.status) ? params.status
@@ -752,7 +930,7 @@ export default function registerGoalsActions(registerLensAction) {
         goalId: params.goalId,
         status,
         confidence,
-        progress: params.progress != null ? Math.max(0, Math.min(100, Number(params.progress))) : null,
+        progress: params.progress != null ? Number(params.progress) : null, // validated above (S11)
         note: typeof params.note === "string" ? params.note.slice(0, 1000) : "",
         period: params.period || new Date().toISOString().slice(0, 10),
         createdAt: new Date().toISOString(),
@@ -762,7 +940,13 @@ export default function registerGoalsActions(registerLensAction) {
     } else if (op === "remove") {
       const idx = list.findIndex((c) => c.id === params.id);
       if (idx === -1) return { ok: false, error: "check-in not found" };
-      list.splice(idx, 1);
+      const [removedChk] = list.splice(idx, 1);
+      lastTrashId = trashItem(s, userId, "checkin", removedChk, idx);
+      save();
+    } else if (op === "restore") {
+      if (!restoreItem(s, userId, "checkin", params.trashId, list)) {
+        return { ok: false, error: "nothing to restore" };
+      }
       save();
     }
 
@@ -776,10 +960,18 @@ export default function registerGoalsActions(registerLensAction) {
     const counts = { on_track: 0, at_risk: 0, off_track: 0 };
     for (const c of sorted) counts[c.status] = (counts[c.status] || 0) + 1;
 
+    const _objectives = s.objectives.get(userId) || [];
+    const _target = params.goalId ? _objectives.find((o) => o.id === params.goalId) : null;
+    const objectiveProgress = _target
+      ? deriveProgress(s, userId, _objectives, _target, new Set())
+      : null;
+
     return {
       ok: true,
       result: {
         checkins: sorted,
+        objectiveProgress,
+        trashId: lastTrashId,
         stats: {
           count: sorted.length,
           avgConfidence: confValues.length
@@ -843,6 +1035,7 @@ export default function registerGoalsActions(registerLensAction) {
       return { ok: false, error: "team goal not found" };
     }
 
+    let lastTrashId = null;
     if (op === "update") {
       if (params.title) g.title = params.title;
       if (params.description != null) g.description = params.description;
@@ -864,11 +1057,18 @@ export default function registerGoalsActions(registerLensAction) {
       recompute(g);
       save();
     } else if (op === "remove") {
-      list.splice(list.indexOf(g), 1);
+      const idx = list.indexOf(g);
+      list.splice(idx, 1);
+      lastTrashId = trashItem(s, userId, "team", g, idx);
+      save();
+    } else if (op === "restore") {
+      if (!restoreItem(s, userId, "team", params.trashId, list)) {
+        return { ok: false, error: "nothing to restore" };
+      }
       save();
     }
 
-    return { ok: true, result: { teamGoal: g || null, teamGoals: list } };
+    return { ok: true, result: { teamGoal: g || null, teamGoals: list, trashId: lastTrashId } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -890,6 +1090,51 @@ export default function registerGoalsActions(registerLensAction) {
     if (op === "list") {
       return { ok: true, result: { templates: GOAL_TEMPLATES } };
     }
+
+    if (op === "apply") {
+      // S6 (F6): a template creates what its card promises — one
+      // objective carrying the template's key results, plus a
+      // recurring goal when the template has a real cadence.
+      const tpl = GOAL_TEMPLATES.find((t) => t.id === params.templateId);
+      if (!tpl) return { ok: false, error: "template not found" };
+      const objectives = ensureList(s.objectives, userId);
+      const objective = {
+        id: `obj_${nextSeq(s, userId, "obj")}`,
+        title: typeof params.title === "string" && params.title.trim() ? params.title.trim() : tpl.name,
+        parentId: null,
+        owner: null,
+        team: null,
+        level: "individual",
+        keyResults: [...(tpl.keyResults || [])],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      objectives.push(objective);
+      let recurring = null;
+      const cadenceDaysApply = { daily: 1, weekly: 7, monthly: 30, quarterly: 91 };
+      if (cadenceDaysApply[tpl.cadence]) {
+        const recList = ensureList(s.recurring, userId);
+        recurring = {
+          id: `rec_${nextSeq(s, userId, "rec")}`,
+          title: objective.title,
+          cadence: tpl.cadence,
+          category: tpl.category || null,
+          templateId: tpl.id,
+          startAt: new Date().toISOString(),
+          nextDue: new Date().toISOString(),
+          occurrences: 0,
+          createdAt: new Date().toISOString(),
+        };
+        recList.push(recurring);
+      }
+      save();
+      return { ok: true, result: { applied: tpl.id, objective, recurring } };
+    }
+
+    if (op === "occurrences-list") {
+      return { ok: true, result: { occurrences: ensureList(s.occurrences, userId) } };
+    }
+
 
     const list = ensureList(s.recurring, userId);
     const cadenceDays = { daily: 1, weekly: 7, monthly: 30, quarterly: 91 };
@@ -918,7 +1163,16 @@ export default function registerGoalsActions(registerLensAction) {
     if (op === "recurring-remove") {
       const idx = list.findIndex((r) => r.id === params.id);
       if (idx === -1) return { ok: false, error: "recurring goal not found" };
-      list.splice(idx, 1);
+      const [removedRec] = list.splice(idx, 1);
+      const trashId = trashItem(s, userId, "recurring", removedRec, idx);
+      save();
+      return { ok: true, result: { recurringGoals: list, trashId } };
+    }
+
+    if (op === "restore") {
+      if (!restoreItem(s, userId, "recurring", params.trashId, list)) {
+        return { ok: false, error: "nothing to restore" };
+      }
       save();
       return { ok: true, result: { recurringGoals: list } };
     }
@@ -929,13 +1183,19 @@ export default function registerGoalsActions(registerLensAction) {
       for (const rec of list) {
         let guard = 0;
         while (new Date(rec.nextDue).getTime() <= now && guard < 500) {
-          created.push({
+          // S6: an occurrence is a real, persisted object — findable
+          // via occurrences-list, not a counter with a press release.
+          const occ = {
+            id: `occ_${nextSeq(s, userId, "occ")}`,
             recurringId: rec.id,
             title: rec.title,
             category: rec.category,
             occurrence: rec.occurrences + 1,
             dueAt: rec.nextDue,
-          });
+            createdAt: new Date().toISOString(),
+          };
+          ensureList(s.occurrences, userId).push(occ);
+          created.push(occ);
           rec.occurrences += 1;
           rec.nextDue = new Date(
             new Date(rec.nextDue).getTime() + cadenceDays[rec.cadence] * 86400000,
@@ -944,41 +1204,48 @@ export default function registerGoalsActions(registerLensAction) {
         }
       }
       save();
-      return { ok: true, result: { created, recurringGoals: list } };
+      return { ok: true, result: { created, recurringGoals: list, occurrences: ensureList(s.occurrences, userId) } };
     }
 
     // recurring-list (default for non-list ops fall here too)
     return { ok: true, result: { recurringGoals: list } };
   });
 
-  /**
-   * progressChart
-   * Progress charts — burndown and trend series from a goal's history.
-   * artifact/params.history = [{ date, progress (0-100) }]
-   * params.target (default 100), params.targetDate (optional ISO)
-   * Returns burndown (remaining work), trend (cumulative progress) and an
-   * ideal line for comparison — ready to feed ChartKit.
-   */
-  registerLensAction("goals", "progressChart", (ctx, artifact, params = {}) => {
-  try {
-    const history = (Array.isArray(params.history) && params.history.length
-      ? params.history
-      : artifact?.data?.history) || [];
-    const target = Number(params.target) > 0 ? Number(params.target) : 100;
+  // The objective's progress series — check-ins + manual points, one
+  // source for charts (S4) and the forecast (S5), in true chronological
+  // order (date, then creation time), so "latest" is well-defined.
+  function objectiveSeriesPoints(s, userId, goalId) {
+    const checkinPoints = (s.checkins.get(userId) || [])
+      .filter((c) => c.goalId === goalId && c.progress != null)
+      .map((c) => ({
+        id: c.id, source: "checkin",
+        date: c.period || (c.createdAt || "").slice(0, 10),
+        progress: c.progress, createdAt: c.createdAt || "",
+      }));
+    const manualPoints = (s.chartPoints.get(userId) || [])
+      .filter((pt) => pt.goalId === goalId)
+      .map((pt) => ({ id: pt.id, source: "manual", date: pt.date, progress: pt.progress, createdAt: pt.createdAt || "" }));
+    return [...checkinPoints, ...manualPoints]
+      .sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.createdAt || "").localeCompare(b.createdAt || ""));
+  }
 
-    const sorted = history
+  /**
+   * chartFromHistory — the one chart computation (S4 refactor of the
+   * former progressChart body; arithmetic unchanged).
+   * Pure: history [{date, progress}] -> { trend, burndown, stats }.
+   */
+  function chartFromHistory(history, targetIn, targetDateIn) {
+    const target = Number(targetIn) > 0 ? Number(targetIn) : 100;
+    const sorted = (Array.isArray(history) ? history : [])
       .map((h) => ({ date: h.date, progress: Number(h.progress) || 0, t: new Date(h.date).getTime() }))
       .filter((h) => !isNaN(h.t))
       .sort((a, b) => a.t - b.t);
-
     if (sorted.length === 0) {
-      return { ok: true, result: { trend: [], burndown: [], stats: { points: 0 }, empty: true } };
+      return { trend: [], burndown: [], stats: { points: 0 }, empty: true };
     }
-
     const first = sorted[0].t;
-    const targetDate = params.targetDate ? new Date(params.targetDate).getTime() : sorted[sorted.length - 1].t;
+    const targetDate = targetDateIn ? new Date(targetDateIn).getTime() : sorted[sorted.length - 1].t;
     const span = Math.max(1, targetDate - first);
-
     const trend = sorted.map((h) => {
       const frac = Math.min(1, Math.max(0, (h.t - first) / span));
       return {
@@ -987,7 +1254,6 @@ export default function registerGoalsActions(registerLensAction) {
         ideal: Math.round(frac * target * 100) / 100,
       };
     });
-
     const burndown = sorted.map((h) => {
       const frac = Math.min(1, Math.max(0, (h.t - first) / span));
       return {
@@ -996,32 +1262,132 @@ export default function registerGoalsActions(registerLensAction) {
         idealRemaining: Math.round((target - frac * target) * 100) / 100,
       };
     });
-
     const last = sorted[sorted.length - 1];
     const days = Math.max(1, (last.t - first) / 86400000);
     const velocity = Math.round(((last.progress - sorted[0].progress) / days) * 1000) / 1000;
     const idealFrac = Math.min(1, Math.max(0, (last.t - first) / span));
     const expected = idealFrac * target;
     const variance = Math.round((last.progress - expected) * 100) / 100;
-
     return {
-      ok: true,
-      result: {
-        trend,
-        burndown,
-        stats: {
-          points: sorted.length,
-          currentProgress: last.progress,
-          target,
-          remaining: Math.round((target - last.progress) * 100) / 100,
-          velocityPerDay: velocity,
-          varianceFromIdeal: variance,
-          pace: variance >= 0 ? "ahead" : variance > -10 ? "on_track" : "behind",
-        },
+      trend, burndown,
+      stats: {
+        points: sorted.length,
+        currentProgress: last.progress,
+        target,
+        remaining: Math.round((target - last.progress) * 100) / 100,
+        velocityPerDay: velocity,
+        varianceFromIdeal: variance,
+        // Pace is unjudgeable on a single point or a single day —
+        // null there, so no surface can dress a guess as a verdict.
+        pace: (sorted.length < 2 || last.t === first) ? null
+          : variance >= 0 ? "ahead" : variance > -10 ? "on_track" : "behind",
       },
     };
+  }
+
+  /**
+   * progressChart
+   * Progress charts — burndown and trend series from a goal's history.
+   * Legacy compute (no op): params.history = [{ date, progress }],
+   *   params.target (default 100), params.targetDate (optional ISO).
+   * S4 ops (params.op):
+   *   'series'       -> { goalId, target? } — the objective's series,
+   *                     built from its check-in history plus its
+   *                     persisted manual points; every point is tagged
+   *                     with its source ('checkin' | 'manual').
+   *   'add-point'    -> { goalId, date, progress } — persist a manual
+   *                     point. Progress is validated, never clamped.
+   *   'remove-point' -> { id, goalId } — remove a manual point
+   *                     (check-in points are removed with the check-in).
+   *   All ops return the objective's refreshed series.
+   */
+  registerLensAction("goals", "progressChart", (ctx, artifact, params = {}) => {
+  try {
+    if (params.op) {
+      const s = getGoalsState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = actId(ctx);
+      const manual = ensureList(s.chartPoints, userId);
+      let opTrashId = null;
+
+      if (params.op === "add-point") {
+        if (!params.goalId) return { ok: false, error: "goalId required" };
+        const progress = Number(params.progress);
+        if (!Number.isFinite(progress) || progress < 0 || progress > 100) {
+          return { ok: false, error: "progress must be between 0 and 100" };
+        }
+        const date = typeof params.date === "string" && params.date
+          ? params.date : new Date().toISOString().slice(0, 10);
+        manual.push({
+          id: `cp_${nextSeq(s, userId, "cp")}`,
+          goalId: params.goalId, date, progress,
+          createdAt: new Date().toISOString(),
+        });
+        save();
+      } else if (params.op === "remove-point") {
+        const idx = manual.findIndex((pt) => pt.id === params.id);
+        if (idx === -1) return { ok: false, error: "manual point not found" };
+        const [removedPt] = manual.splice(idx, 1);
+        opTrashId = trashItem(s, userId, "chartPoint", removedPt, idx);
+        save();
+      } else if (params.op === "restore-point") {
+        if (!restoreItem(s, userId, "chartPoint", params.trashId, manual)) {
+          return { ok: false, error: "nothing to restore" };
+        }
+        save();
+      } else if (params.op !== "series") {
+        return { ok: false, error: "unknown op" };
+      }
+
+      const goalId = params.goalId || null;
+      const points = objectiveSeriesPoints(s, userId, goalId);
+      const result = chartFromHistory(points, params.target, params.targetDate);
+      return { ok: true, result: { ...result, goalId, points, trashId: opTrashId } };
+    }
+
+    const history = (Array.isArray(params.history) && params.history.length
+      ? params.history
+      : artifact?.data?.history) || [];
+    return { ok: true, result: chartFromHistory(history, params.target, params.targetDate) };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // S8 (F9): a reminder FIRES when it is observed due — the list/due
+  // reads run this pass. Firing is a real event: a bell entry through
+  // the shared notification path, firedCount/firedAt recorded on the
+  // reminder, recurring reminders advanced to their next due time.
+  // A given due instance never fires twice (firedForDueAt guard), and
+  // manual completion no longer masquerades as firing.
+  function fireDueReminders(s, userId) {
+    const list = s.reminders.get(userId) || [];
+    const now = Date.now();
+    const cadenceDays = { daily: 1, weekly: 7, monthly: 30 };
+    let changed = false;
+    for (const rem of list) {
+      if (rem.done) continue;
+      if (new Date(rem.dueAt).getTime() > now) continue;
+      if (rem.firedForDueAt === rem.dueAt) continue;
+      rem.firedForDueAt = rem.dueAt;
+      rem.firedCount = (rem.firedCount || 0) + 1;
+      rem.firedAt = new Date(now).toISOString();
+      try {
+        createNotification(globalThis._concordSTATE, {
+          userId,
+          type: "goal_reminder",
+          fromUserId: null,
+          postId: null,
+          content: `Reminder: ${rem.label}${rem.goalId ? ` (${rem.goalId})` : ""}`,
+        });
+      } catch { /* the bell is best-effort; the firing itself is recorded above */ }
+      if (rem.cadence !== "once" && cadenceDays[rem.cadence]) {
+        let next = new Date(rem.dueAt).getTime();
+        while (next <= now) next += cadenceDays[rem.cadence] * 86400000;
+        rem.dueAt = new Date(next).toISOString();
+      }
+      changed = true;
+    }
+    if (changed) save();
+  }
 
   /**
    * reminder
@@ -1055,6 +1421,8 @@ export default function registerGoalsActions(registerLensAction) {
         dueAt: due.toISOString(),
         done: false,
         firedCount: 0,
+        firedAt: null,
+        firedForDueAt: null,
         createdAt: new Date().toISOString(),
       };
       list.push(rem);
@@ -1062,13 +1430,15 @@ export default function registerGoalsActions(registerLensAction) {
       return { ok: true, result: { reminder: rem, reminders: list } };
     }
 
+    let lastTrash = null;
     if (["remove", "complete"].includes(op)) {
       const rem = list.find((r) => r.id === params.id);
       if (!rem) return { ok: false, error: "reminder not found" };
       if (op === "remove") {
-        list.splice(list.indexOf(rem), 1);
+        const idx = list.indexOf(rem);
+        list.splice(idx, 1);
+        lastTrash = trashItem(s, userId, "reminder", rem, idx);
       } else {
-        rem.firedCount += 1;
         if (rem.cadence !== "once" && cadenceDays[rem.cadence]) {
           rem.dueAt = new Date(new Date(rem.dueAt).getTime() + cadenceDays[rem.cadence] * 86400000).toISOString();
           rem.done = false;
@@ -1077,17 +1447,27 @@ export default function registerGoalsActions(registerLensAction) {
         }
       }
       save();
-      return { ok: true, result: { reminders: list } };
+      return { ok: true, result: { reminders: list, trashId: lastTrash } };
+    }
+
+    if (op === "restore") {
+      if (!restoreItem(s, userId, "reminder", params.trashId, list)) {
+        return { ok: false, error: "nothing to restore" };
+      }
+      save();
+      // fall through to the list response below
     }
 
     if (op === "due") {
+      fireDueReminders(s, userId);
       const now = Date.now();
       const due = list.filter((r) => !r.done && new Date(r.dueAt).getTime() <= now)
         .sort((a, b) => (a.dueAt || "").localeCompare(b.dueAt || ""));
       return { ok: true, result: { due, count: due.length } };
     }
 
-    // list
+    // list (observing the list is what fires due reminders — S8)
+    fireDueReminders(s, userId);
     const sorted = [...list].sort((a, b) => (a.dueAt || "").localeCompare(b.dueAt || ""));
     return {
       ok: true,
@@ -1095,8 +1475,11 @@ export default function registerGoalsActions(registerLensAction) {
         reminders: sorted,
         stats: {
           total: sorted.length,
-          pending: sorted.filter((r) => !r.done).length,
+          // Pending and overdue are mutually exclusive (F9): a
+          // reminder is one or the other, never both.
+          pending: sorted.filter((r) => !r.done && new Date(r.dueAt).getTime() > Date.now()).length,
           overdue: sorted.filter((r) => !r.done && new Date(r.dueAt).getTime() <= Date.now()).length,
+          fired: sorted.reduce((a, r) => a + (r.firedCount || 0), 0),
         },
       },
     };
@@ -1117,6 +1500,7 @@ export default function registerGoalsActions(registerLensAction) {
     const userId = actId(ctx);
     const list = ensureList(s.deps, userId);
     const op = params.op || "list";
+    let lastTrashId = null;
 
     if (op === "link") {
       const { from, to } = params;
@@ -1153,7 +1537,13 @@ export default function registerGoalsActions(registerLensAction) {
     } else if (op === "unlink") {
       const idx = list.findIndex((e) => e.from === params.from && e.to === params.to);
       if (idx === -1) return { ok: false, error: "dependency not found" };
-      list.splice(idx, 1);
+      const [removedEdge] = list.splice(idx, 1);
+      lastTrashId = trashItem(s, userId, "dep", removedEdge, idx);
+      save();
+    } else if (op === "restore") {
+      if (!restoreItem(s, userId, "dep", params.trashId, list)) {
+        return { ok: false, error: "nothing to restore" };
+      }
       save();
     }
 
@@ -1172,6 +1562,7 @@ export default function registerGoalsActions(registerLensAction) {
       ok: true,
       result: {
         edges: list,
+        trashId: lastTrashId,
         blockedGoals: [...blockedSet],
         readyGoals: [...allNodes].filter((n) => !blockedSet.has(n)),
         blockersByGoal: blockers,

@@ -224,7 +224,7 @@ export function NonprofitActionPanel() {
     try {
       const task = `NPO: ${orgName || 'unnamed'}. ${retentionResult ? `Retention ${retentionResult.retentionRate}%.` : ''} ${campaignResult ? `Campaign ${campaignResult.percentComplete}% raised.` : ''} Suggest the single highest-ROI donor-engagement move for next month. Plain text.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Move ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -257,7 +257,7 @@ export function NonprofitActionPanel() {
         {/* Campaign pace calculator */}
         <div className="space-y-1.5 rounded-md border border-zinc-800 p-2.5">
           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-orange-300"><Target className="w-3.5 h-3.5" /> Campaign pace calculator (ad-hoc, unpersisted)</div>
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
             <input value={cGoal} onChange={(e) => setCGoal(e.target.value)} className={inp} placeholder="Goal $" />
             <input value={cRaised} onChange={(e) => setCRaised(e.target.value)} className={inp} placeholder="Raised $" />
             <input value={cDonors} onChange={(e) => setCDonors(e.target.value)} className={inp} placeholder="Donors" />

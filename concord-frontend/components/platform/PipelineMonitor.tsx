@@ -278,7 +278,7 @@ function PipelineMonitor() {
       </div>
 
       {/* Escalation & Novelty Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <MetricCard
           label="Cloud Escalations"
           value={metrics?.cloudEscalations ?? 0}

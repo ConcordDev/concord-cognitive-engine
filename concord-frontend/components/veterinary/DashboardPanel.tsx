@@ -65,7 +65,7 @@ export function DashboardPanel({ refreshKey }: { refreshKey: number }) {
         </div>
       ) : data ? (
         <>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Stat
               icon={<Heart className="h-5 w-5 text-pink-400" />}
               label="Patients"

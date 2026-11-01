@@ -199,7 +199,7 @@ export function MentorshipGoalsPanel() {
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {[
           { label: 'Total', value: summary.count, color: 'text-neon-blue' },
           { label: 'Active', value: summary.active, color: 'text-neon-cyan' },

@@ -287,8 +287,10 @@ export function registerDurableEndpoints(app, db) {
   // (mounted earlier, so /upload, /:id, /:id/download, /:id/info routes
   // here were unreachable). The router writes to route_artifacts; studio
   // pipelines below still write to the artifacts table directly via
-  // INSERTs (render/vocal/master). Reads of those rows are a TODO —
-  // tracked separately, would need a new endpoint or a unified table.
+  // INSERTs (render/vocal/master). Reads of those rows live in
+  // routes/artifacts.js (Q29): its list merges both tables and its
+  // get/info/download fall back to the durable rows, streaming the
+  // latest artifact_versions content from the storage adapter.
   // ═══════════════════════════════════════════════════════════════
 
   // ═══════════════════════════════════════════════════════════════

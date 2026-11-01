@@ -182,7 +182,7 @@ export function SupplyChainActionPanel() {
     try {
       const task = `Supply-chain ops review. ${leadResult ? `Lead times avg ${leadResult.avgLeadTimeDays}d (${leadResult.reliability}).` : ''} ${invResult ? `${invResult.needsReorder} of ${invResult.totalItems} items need reorder.` : ''} ${supResult ? `Top supplier ${supResult.topSupplier}, ${supResult.atRisk} at-risk suppliers.` : ''} ${foreResult ? `Demand ${foreResult.trend}.` : ''} Identify the single biggest resilience risk + one concrete mitigation. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Risk ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

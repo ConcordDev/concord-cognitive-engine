@@ -6,11 +6,16 @@
  * Wires the `debug` domain macros:
  *   issue-ingest · issue-list · issue-detail · issue-update · issue-delete
  *
+ * Scoped to the project selected in the workspace header (S10):
+ * list/ingest/detail carry the context's projectId.
+ *
  * Every value rendered comes from a real macro response.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { useDebugProject } from './ProjectContext';
+import { IngestPanel } from './IngestPanel';
 import { ChartKit } from '@/components/viz';
 import {
   AlertTriangle,
@@ -64,7 +69,30 @@ const LEVEL_TONE: Record<string, string> = {
   info: 'text-neon-blue bg-neon-blue/10 border-neon-blue/30',
 };
 
+interface StackFrame {
+  fn: string;
+  where: string;
+  raw: string;
+}
+
+/** Parse a JS stack into readable frames (fn + file:line:col). */
+function parseStack(stack: string): { headline: string; frames: StackFrame[] } {
+  const lines = stack.split('\n').map((l) => l.trim()).filter(Boolean);
+  const headline = lines[0] || '';
+  const frames: StackFrame[] = [];
+  for (const line of lines.slice(1)) {
+    const m = line.match(/^at\s+(?:(.+?)\s+\()?(.+?):(\d+):(\d+)\)?$/);
+    if (m) {
+      frames.push({ fn: m[1] || '<anonymous>', where: `${m[2]}:${m[3]}:${m[4]}`, raw: line });
+    } else if (line.startsWith('at ')) {
+      frames.push({ fn: line.slice(3), where: '', raw: line });
+    }
+  }
+  return { headline, frames };
+}
+
 export function IssueInbox() {
+  const { projectId } = useDebugProject();
   const [issues, setIssues] = useState<Issue[]>([]);
   const [summary, setSummary] = useState<IssueSummary | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | 'open' | 'resolved' | 'ignored'>('open');
@@ -74,6 +102,7 @@ export function IssueInbox() {
   const [selected, setSelected] = useState<Issue | null>(null);
   const [sparkline, setSparkline] = useState<SparkPoint[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [releaseNames, setReleaseNames] = useState<string[]>([]);
 
   // Quick-ingest form
   const [form, setForm] = useState({
@@ -82,12 +111,14 @@ export function IssueInbox() {
     culprit: '',
     level: 'error',
     release: '',
+    stack: '',
   });
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     const r = await lensRun('debug', 'issue-list', {
+      projectId,
       status: statusFilter || undefined,
       query: query || undefined,
       sort: 'last',
@@ -98,8 +129,15 @@ export function IssueInbox() {
     } else {
       setError(r.data?.error || 'Failed to load issues');
     }
+    // The Release field links to tracked releases (S7): offer the
+    // workspace's real release versions, while still allowing a new
+    // one to be typed.
+    const rel = await lensRun('debug', 'release-list', {});
+    if (rel.data?.ok && rel.data.result) {
+      setReleaseNames((rel.data.result.releases || []).map((x: { version: string }) => x.version));
+    }
     setLoading(false);
-  }, [statusFilter, query]);
+  }, [statusFilter, query, projectId]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => void load());
@@ -110,11 +148,13 @@ export function IssueInbox() {
     if (!form.message.trim()) return;
     setBusyId('ingest');
     const r = await lensRun('debug', 'issue-ingest', {
+      projectId,
       type: form.type,
       message: form.message,
       culprit: form.culprit || undefined,
       level: form.level,
       release: form.release || undefined,
+      stack: form.stack.trim() || undefined,
       breadcrumbs: [
         { category: 'navigation', message: 'lens.debug opened', level: 'info' },
         { category: 'console', message: form.message, level: form.level },
@@ -122,22 +162,22 @@ export function IssueInbox() {
     });
     setBusyId(null);
     if (r.data?.ok) {
-      setForm((f) => ({ ...f, message: '', culprit: '' }));
+      setForm((f) => ({ ...f, message: '', culprit: '', stack: '' }));
       load();
     } else {
       setError(r.data?.error || 'Ingest failed');
     }
-  }, [form, load]);
+  }, [form, load, projectId]);
 
   const openDetail = useCallback(async (issue: Issue) => {
     setSelected(issue);
     setSparkline([]);
-    const r = await lensRun('debug', 'issue-detail', { id: issue.id });
+    const r = await lensRun('debug', 'issue-detail', { id: issue.id, projectId });
     if (r.data?.ok && r.data.result) {
       setSelected(r.data.result.issue);
       setSparkline(r.data.result.sparkline || []);
     }
-  }, []);
+  }, [projectId]);
 
   const updateIssue = useCallback(
     async (id: string, patch: { status?: string; assignee?: string }) => {
@@ -184,7 +224,7 @@ export function IssueInbox() {
 
       {/* Summary */}
       {summary && (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <div className="p-2 bg-lattice-deep rounded text-center">
             <p className="text-lg font-bold text-red-400">{summary.open}</p>
             <p className="text-[10px] text-gray-400">Open</p>
@@ -208,7 +248,7 @@ export function IssueInbox() {
       <div className="bg-lattice-deep rounded-lg p-3 border border-lattice-border space-y-2">
         <div>
           <p className="text-[10px] text-gray-400 uppercase tracking-wider">Record Observed Exception</p>
-          <p className="mt-1 text-[11px] text-gray-500">This creates an authored issue record; Debug does not claim an automatic external APM collector.</p>
+          <p className="mt-1 text-[11px] text-gray-500">Records an exception by hand, into the selected project. For automatic reporting from your own app, connect it in the panel below.</p>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <input
@@ -245,9 +285,22 @@ export function IssueInbox() {
             value={form.release}
             onChange={(e) => setForm((f) => ({ ...f, release: e.target.value }))}
             placeholder="Release (e.g. v1.2.0)"
+            list="debug-release-names"
             className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
           />
+          <datalist id="debug-release-names">
+            {releaseNames.map((v) => (
+              <option key={v} value={v} />
+            ))}
+          </datalist>
         </div>
+        <textarea
+          value={form.stack}
+          onChange={(e) => setForm((f) => ({ ...f, stack: e.target.value }))}
+          placeholder={'Stack trace (optional) — paste it as copied, e.g.\nTypeError: boom\n    at renderRows (QueryGrid.tsx:42:17)'}
+          rows={3}
+          className="w-full px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
+        />
         <button
           onClick={ingest}
           disabled={!form.message.trim() || busyId === 'ingest'}
@@ -261,6 +314,9 @@ export function IssueInbox() {
           Record Exception
         </button>
       </div>
+
+      {/* External ingest (Q1): per-project keys + the Sentry-compatible endpoint */}
+      <IngestPanel onIngested={load} />
 
       {/* Filters */}
       <div className="flex items-center gap-2">
@@ -293,7 +349,17 @@ export function IssueInbox() {
       ) : issues.length === 0 ? (
         <div className="text-center py-8 text-gray-400 text-sm">
           <Bug className="w-7 h-7 mx-auto mb-2 opacity-40" />
-          No issues match this filter
+          {summary && summary.open + summary.resolved + summary.ignored === 0 && !query ? (
+            <>
+              <p>No issues yet.</p>
+              <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+                When Concord&rsquo;s own interface hits an error, it lands here on its own —
+                or record one you observed with the form above.
+              </p>
+            </>
+          ) : (
+            'No issues match this filter'
+          )}
         </div>
       ) : (
         <div className="space-y-2 max-h-[420px] overflow-y-auto">
@@ -475,15 +541,47 @@ export function IssueInbox() {
               </div>
             )}
 
-            {/* Stack */}
+            {/* Stack — frames readable first; the raw trace stays one tap away */}
             {selected.stack && (
               <div>
                 <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">
                   Stack Trace
                 </p>
-                <pre className="bg-lattice-deep p-2 rounded text-[10px] text-gray-400 overflow-auto max-h-40 font-mono">
-                  {selected.stack}
-                </pre>
+                {(() => {
+                  const { headline, frames } = parseStack(selected.stack);
+                  return (
+                    <div className="space-y-1">
+                      {headline && (
+                        <p className="text-[11px] font-mono text-red-300 bg-lattice-deep rounded px-2 py-1">
+                          {headline}
+                        </p>
+                      )}
+                      {frames.length > 0 ? (
+                        <div className="space-y-0.5">
+                          {frames.map((f, i) => (
+                            <div
+                              key={i}
+                              className="flex items-baseline gap-2 text-[11px] bg-lattice-deep rounded px-2 py-1 font-mono"
+                            >
+                              <span className="text-gray-200 truncate">{f.fn}</span>
+                              {f.where && (
+                                <span className="text-gray-500 truncate ml-auto shrink-0">{f.where}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                      <details>
+                        <summary className="text-[10px] text-gray-500 cursor-pointer hover:text-gray-300">
+                          Raw trace
+                        </summary>
+                        <pre className="bg-lattice-deep p-2 rounded text-[10px] text-gray-400 overflow-auto max-h-40 font-mono mt-1">
+                          {selected.stack}
+                        </pre>
+                      </details>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>

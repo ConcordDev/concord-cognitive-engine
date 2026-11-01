@@ -76,6 +76,23 @@ function makeLog(externalLog) {
 }
 
 // ---------------------------------------------------------------------------
+// Cooperative execution. The audits/fixes below are generators that call `tick()` once per item and `yield`
+// when it says so. runIntegrityCheck (sync) drives them with a tick that never yields, so its behaviour is
+// unchanged; runIntegrityCheckAsync drives the SAME bodies with a time-sliced tick and hands the event loop
+// back between slices. The periodic integrity check used to run synchronously on the main thread for 8-12 s
+// (its first staggered fire lands ~60-75 s after every boot), freezing the whole backend.
+// ---------------------------------------------------------------------------
+const NEVER = () => false;
+
+/** Run a generator to completion synchronously and return its return value. */
+function runSync(gen) {
+  let r = gen.next();
+  while (!r.done) r = gen.next();
+  return r.value;
+}
+
+
+// ---------------------------------------------------------------------------
 // AUDIT FUNCTIONS  (read-only — never mutate STATE)
 // ---------------------------------------------------------------------------
 
@@ -145,7 +162,7 @@ function auditEconomy(STATE) {
  *   brokenCitations: [{ citedDtuId, citingDtuId, missing: "cited"|"citing" }]
  * }
  */
-function auditLineage(STATE) {
+function* auditLineageGen(STATE, tick) {
   const findings = {
     orphanedLineage: [],
     brokenCitations: [],
@@ -163,12 +180,14 @@ function auditLineage(STATE) {
         findings.orphanedLineage.push({ dtuId: id, missingParentId: parentId });
       }
     }
+    if (tick()) yield;
   }
 
   // -- Broken citations (social layer) --
   const social = STATE._social;
   if (social && social.citedBy) {
     for (const [citedDtuId, citers] of social.citedBy) {
+      if (tick()) yield;
       if (!dtus.has(citedDtuId)) {
         for (const citingId of citers) {
           findings.brokenCitations.push({ citedDtuId, citingDtuId: citingId, missing: "cited" });
@@ -190,12 +209,14 @@ function auditLineage(STATE) {
   return findings;
 }
 
+function auditLineage(STATE) { return runSync(auditLineageGen(STATE, NEVER)); }
+
 /**
  * 3. auditLensSync — DTUs tagged with domains but missing from lens artifacts.
  *
  * Returns { unsynced: [{ dtuId, domain, expectedArtifactId }] }
  */
-function auditLensSync(STATE) {
+function* auditLensSyncGen(STATE, tick) {
   const findings = {
     unsynced: [],
     ok: true,
@@ -213,12 +234,15 @@ function auditLensSync(STATE) {
         findings.unsynced.push({ dtuId: id, domain, expectedArtifactId: expectedKey });
       }
     }
+    if (tick()) yield;
   }
 
   if (findings.unsynced.length > 0) findings.ok = false;
 
   return findings;
 }
+
+function auditLensSync(STATE) { return runSync(auditLensSyncGen(STATE, NEVER)); }
 
 /**
  * 4. auditSocial — asymmetric follows + ghost follows.
@@ -336,13 +360,14 @@ function fixNegativeBalances(STATE, log) {
 /**
  * 6. fixOrphanedLineage — remove references to non-existent parent DTUs.
  */
-function fixOrphanedLineage(STATE, orphans, log) {
+function* fixOrphanedLineageGen(STATE, orphans, log, tick) {
   const emit = makeLog(log);
   let fixed = 0;
   const dtus = STATE.dtus;
   if (!dtus) return { fixed };
 
   for (const { dtuId, missingParentId } of orphans) {
+    if (tick()) yield;
     const dtu = dtus.get(dtuId);
     if (!dtu) continue;
 
@@ -379,12 +404,13 @@ function fixOrphanedLineage(STATE, orphans, log) {
 
   return { fixed };
 }
+function fixOrphanedLineage(STATE, orphans, log) { return runSync(fixOrphanedLineageGen(STATE, orphans, log, NEVER)); }
 
 /**
  * 7. fixBrokenCitations — remove dead citation entries from _social.citedBy.
  *    If all citations for a given DTU are removed, it is effectively "original" now.
  */
-function fixBrokenCitations(STATE, broken, log) {
+function* fixBrokenCitationsGen(STATE, broken, log, tick) {
   const emit = makeLog(log);
   let fixed = 0;
   let entriesCleared = 0;
@@ -393,6 +419,7 @@ function fixBrokenCitations(STATE, broken, log) {
   if (!social || !social.citedBy) return { fixed, entriesCleared };
 
   for (const { citedDtuId, citingDtuId, missing } of broken) {
+    if (tick()) yield;
     if (missing === "cited") {
       // The cited DTU itself is gone — remove the entire entry
       if (social.citedBy.has(citedDtuId)) {
@@ -428,11 +455,12 @@ function fixBrokenCitations(STATE, broken, log) {
 
   return { fixed, entriesCleared };
 }
+function fixBrokenCitations(STATE, broken, log) { return runSync(fixBrokenCitationsGen(STATE, broken, log, NEVER)); }
 
 /**
  * 8. fixUnsyncedLens — create missing lens artifacts for DTUs that have domain tags.
  */
-function fixUnsyncedLens(STATE, unsynced, log) {
+function* fixUnsyncedLensGen(STATE, unsynced, log, tick) {
   const emit = makeLog(log);
   let fixed = 0;
 
@@ -442,6 +470,7 @@ function fixUnsyncedLens(STATE, unsynced, log) {
   if (!dtus || !lensArtifacts) return { fixed };
 
   for (const { dtuId, domain, expectedArtifactId } of unsynced) {
+    if (tick()) yield;
     // Skip if it appeared between audit and fix
     if (lensArtifacts.has(expectedArtifactId)) continue;
 
@@ -491,6 +520,7 @@ function fixUnsyncedLens(STATE, unsynced, log) {
 
   return { fixed };
 }
+function fixUnsyncedLens(STATE, unsynced, log) { return runSync(fixUnsyncedLensGen(STATE, unsynced, log, NEVER)); }
 
 /**
  * 9. fixAsymmetricFollows — repair bidirectional follow index + remove ghosts.
@@ -580,7 +610,7 @@ function fixAsymmetricFollows(STATE, issues, log) {
  * @param {object} options   — { fix: boolean, verbose: boolean }
  * @returns {object}         — summary with counts of issues found and fixed
  */
-export function runIntegrityCheck(STATE, log, options = {}) {
+function* integrityCheckGen(STATE, log, options, tick) {
   const { fix = false, verbose = false } = options;
   const emit = makeLog(log);
   const startMs = Date.now();
@@ -589,8 +619,8 @@ export function runIntegrityCheck(STATE, log, options = {}) {
 
   // ── Run all audits ────────────────────────────────────────────────────
   const economy = auditEconomy(STATE);
-  const lineage = auditLineage(STATE);
-  const lensSync = auditLensSync(STATE);
+  const lineage = yield* auditLineageGen(STATE, tick);
+  const lensSync = yield* auditLensSyncGen(STATE, tick);
   const social = auditSocial(STATE);
 
   const issuesFound = {
@@ -636,18 +666,18 @@ export function runIntegrityCheck(STATE, log, options = {}) {
     }
 
     if (lineage.orphanedLineage.length > 0) {
-      const r = fixOrphanedLineage(STATE, lineage.orphanedLineage, log);
+      const r = yield* fixOrphanedLineageGen(STATE, lineage.orphanedLineage, log, tick);
       issuesFixed.orphanedLineage = r.fixed;
     }
 
     if (lineage.brokenCitations.length > 0) {
-      const r = fixBrokenCitations(STATE, lineage.brokenCitations, log);
+      const r = yield* fixBrokenCitationsGen(STATE, lineage.brokenCitations, log, tick);
       issuesFixed.brokenCitations = r.fixed;
       issuesFixed.brokenCitationEntriesCleared = r.entriesCleared;
     }
 
     if (lensSync.unsynced.length > 0) {
-      const r = fixUnsyncedLens(STATE, lensSync.unsynced, log);
+      const r = yield* fixUnsyncedLensGen(STATE, lensSync.unsynced, log, tick);
       issuesFixed.unsyncedLens = r.fixed;
     }
 
@@ -706,4 +736,32 @@ export function runIntegrityCheck(STATE, log, options = {}) {
   });
 
   return summary;
+}
+
+
+/** Synchronous run (startup + any caller that needs the result inline). Behaviour unchanged. */
+export function runIntegrityCheck(STATE, log, options = {}) {
+  return runSync(integrityCheckGen(STATE, log, options, NEVER));
+}
+
+/**
+ * Time-sliced run: the identical audits and fixes, but the event loop is handed back whenever a slice has used
+ * `sliceMs` of wall time (checked every `checkEvery` items), so no single synchronous span grows with the size of
+ * the store. Same result as runIntegrityCheck. Used by the 6-hourly periodic check.
+ */
+export async function runIntegrityCheckAsync(STATE, log, options = {}, { sliceMs = 25, checkEvery = 256, now = () => performance.now(), yieldLoop = () => new Promise((r) => setImmediate(r)) } = {}) {
+  let n = 0;
+  let sliceStart = now();
+  const tick = () => {
+    if ((++n % checkEvery) !== 0) return false;
+    return now() - sliceStart >= sliceMs;
+  };
+  const gen = integrityCheckGen(STATE, log, options, tick);
+  let r = gen.next();
+  while (!r.done) {
+    await yieldLoop();
+    sliceStart = now();
+    r = gen.next();
+  }
+  return r.value;
 }

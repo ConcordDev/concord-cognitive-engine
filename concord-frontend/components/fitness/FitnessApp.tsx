@@ -1191,7 +1191,7 @@ export default function FitnessApp() {
                 <div className="h-2 bg-white/5 rounded-full overflow-hidden">
                   <div className="h-full bg-neon-cyan rounded-full" style={{ width: `${Math.min(100, Number(actionResult.utilization))}%` }} />
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.enrolled)}</p>
                     <p className="text-[10px] text-gray-400">Enrolled</p>
@@ -1246,7 +1246,7 @@ export default function FitnessApp() {
               return (
                 <div className="space-y-2">
                   {r.name && <p className="text-xs text-gray-400">{r.name}</p>}
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     <div className="p-2 bg-lattice-surface rounded text-center">
                       <p className="text-sm font-bold text-neon-cyan">{r.bmi}</p>
                       <p className="text-[10px] text-gray-400 capitalize">BMI &middot; {r.bmiCategory}</p>
@@ -1284,7 +1284,7 @@ export default function FitnessApp() {
                   <div className="h-2 bg-white/5 rounded-full overflow-hidden">
                     <div className="h-full bg-neon-cyan rounded-full" style={{ width: `${Math.min(100, r.attendanceRate)}%` }} />
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     <div className="p-2 bg-lattice-surface rounded text-center">
                       <p className="text-sm font-bold text-neon-cyan">{r.missed}</p>
                       <p className="text-[10px] text-gray-400">Missed</p>
@@ -1424,7 +1424,7 @@ export default function FitnessApp() {
                 {/* Body Fat % estimation */}
                 <div className={ds.panel}>
                   <h3 className={cn(ds.heading3, 'mb-2')}>Body Fat % (Navy Method)</h3>
-                  <div className="grid grid-cols-3 gap-3 mb-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                     <div>
                       <label className={ds.label}>Waist (cm)</label>
                       <input type="number" value={bcWaist} onChange={e => setBcWaist(e.target.value)} className={ds.input} placeholder="85" />
@@ -1639,7 +1639,7 @@ export default function FitnessApp() {
 
                     {/* Summary stats */}
                     {workoutExercises.length > 0 && (
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div className="bg-lattice-elevated rounded-lg p-2 text-center">
                           <p className={ds.textMuted}>Total Volume</p>
                           <p className="text-lg font-bold text-red-400">{calcTotalVolume(workoutExercises).toLocaleString()}</p>
@@ -1874,7 +1874,7 @@ export default function FitnessApp() {
                                       <input type="number" value={slot.waitlist} onChange={e => updateClassSlot(slot.id, 'waitlist', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} />
                                     </div>
                                   </div>
-                                  <div className="grid grid-cols-3 gap-2 mt-2">
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
                                     <div>
                                       <label className={ds.label}>$/Head</label>
                                       <input type="number" value={slot.pricePerHead} onChange={e => updateClassSlot(slot.id, 'pricePerHead', parseFloat(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} />

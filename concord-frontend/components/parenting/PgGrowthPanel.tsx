@@ -92,7 +92,7 @@ export function PgGrowthPanel({ childId }: { childId: string }) {
       {/* Percentiles */}
       {pct ? (
         <div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <PctCard label="Weight" m={pct.weight} unit="kg" />
             <PctCard label="Height" m={pct.height} unit="cm" />
             <PctCard label="Head" m={pct.head} unit="cm" />

@@ -413,7 +413,7 @@ export function ComposerPanel() {
               </span>
               <span>Quality <span className="text-white capitalize">{errAnalysis.quality}</span></span>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               {[
                 ['Gate errors', errAnalysis.errorBudget.gateErrors.contribution],
                 ['Decoherence', errAnalysis.errorBudget.decoherence.contribution],

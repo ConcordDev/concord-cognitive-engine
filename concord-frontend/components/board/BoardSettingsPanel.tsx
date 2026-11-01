@@ -131,10 +131,34 @@ export function BoardSettingsPanel({
                     key={l.id}
                     className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-white/[0.03] border border-white/[0.06]"
                   >
-                    <span
-                      className={`w-3 h-3 rounded-full ${LABEL_COLOR_DOT[l.color] || 'bg-gray-500'}`}
+                    <div className="flex gap-0.5">
+                      {LABEL_COLORS.map((c) => (
+                        <button
+                          key={c}
+                          onClick={() =>
+                            c !== l.color &&
+                            run('label-update', { boardId: board.id, labelId: l.id, color: c })
+                          }
+                          className={`w-3.5 h-3.5 rounded-full ${LABEL_COLOR_DOT[c]} ${
+                            l.color === c ? 'ring-2 ring-white' : 'opacity-50 hover:opacity-100'
+                          }`}
+                          aria-label={`Set label color ${c}`}
+                        />
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      defaultValue={l.name}
+                      onBlur={(e) => {
+                        const name = e.target.value.trim();
+                        if (name && name !== l.name) {
+                          run('label-update', { boardId: board.id, labelId: l.id, name });
+                        }
+                      }}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                      className="text-sm text-gray-300 flex-1 bg-transparent border border-transparent hover:border-white/10 focus:border-purple-500/40 rounded px-1 py-0.5 focus:outline-none min-w-0"
+                      aria-label="Label name"
                     />
-                    <span className="text-sm text-gray-300 flex-1">{l.name}</span>
                     <button
                       onClick={() => run('label-delete', { boardId: board.id, labelId: l.id })}
                       className="text-gray-600 hover:text-red-400"
@@ -281,6 +305,12 @@ export function BoardSettingsPanel({
           {/* COLLABORATORS */}
           {tab === 'collab' && (
             <div className="space-y-3">
+              <p className="text-[11px] text-amber-300/80">
+                Sharing records who should have access to this board. Cross-account
+                board access is not wired yet — a collaborator cannot open this
+                board from their own account today. (NEEDS-RAMAJ: shared-board
+                access model.)
+              </p>
               <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-white/[0.03] border border-white/[0.06]">
                 <Users className="w-3.5 h-3.5 text-purple-400" />
                 <span className="text-sm text-gray-300 flex-1">{owner}</span>
@@ -363,8 +393,44 @@ export function BoardSettingsPanel({
                     key={f.id}
                     className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-white/[0.03] border border-white/[0.06]"
                   >
-                    <Sliders className="w-3.5 h-3.5 text-cyan-400" />
-                    <span className="text-sm text-gray-300 flex-1">{f.name}</span>
+                    <Sliders className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <input
+                        type="text"
+                        defaultValue={f.name}
+                        onBlur={(e) => {
+                          const name = e.target.value.trim();
+                          if (name && name !== f.name) {
+                            run('custom-field-update', { boardId: board.id, fieldId: f.id, name });
+                          }
+                        }}
+                        onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                        className="w-full text-sm text-gray-300 bg-transparent border border-transparent hover:border-white/10 focus:border-purple-500/40 rounded px-1 py-0.5 focus:outline-none"
+                        aria-label="Field name"
+                      />
+                      {f.type === 'select' && (
+                        <input
+                          type="text"
+                          defaultValue={(f.options || []).join(', ')}
+                          onBlur={(e) => {
+                            const options = e.target.value
+                              .split(',')
+                              .map((o) => o.trim())
+                              .filter(Boolean);
+                            if (options.join('|') !== (f.options || []).join('|')) {
+                              run('custom-field-update', {
+                                boardId: board.id,
+                                fieldId: f.id,
+                                options,
+                              });
+                            }
+                          }}
+                          placeholder="Options, comma-separated"
+                          className="w-full mt-1 text-[11px] text-gray-400 bg-transparent border border-transparent hover:border-white/10 focus:border-purple-500/40 rounded px-1 py-0.5 focus:outline-none"
+                          aria-label="Field options"
+                        />
+                      )}
+                    </div>
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-400">
                       {f.type}
                     </span>
