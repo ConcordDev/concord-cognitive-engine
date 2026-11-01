@@ -153,7 +153,7 @@ export function PhysicsActionPanel() {
     try {
       const task = `Physics bench. ${kinResult ? `Kinematics: v=${kinResult.solved.v ?? '-'}, x=${kinResult.solved.x ?? '-'}, t=${kinResult.solved.t ?? '-'}, a=${kinResult.solved.a ?? '-'}.` : ''} ${projResult ? `Projectile: range ${projResult.range_m} m, apex ${projResult.maxHeight_m} m, ToF ${projResult.timeOfFlight_s} s.` : ''} Identify the real-world scenario this best matches + one extension that would make the problem more interesting. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Scenario ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

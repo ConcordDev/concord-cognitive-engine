@@ -225,7 +225,7 @@ export function ObserveActionPanel() {
         'Return plain text, one per line, with the recommended owner role next to each.',
       ].filter(Boolean).join(' ');
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Triage suggestions ready.'); }
       else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); }

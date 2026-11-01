@@ -145,7 +145,7 @@ export function AuditActionPanel() {
     try {
       const task = `Internal audit memo. ${compResult ? `${compResult.framework}: ${compResult.complianceRate}% compliance.${(compResult.gaps?.length ?? 0) > 0 ? ` Gaps: ${compResult.gaps?.map(g => g.requirement).slice(0, 3).join(', ')}.` : ''}` : ''} ${riskResult ? `Audit risk ${riskResult.auditRisk}, ${riskResult.riskLevel}.` : ''} ${trailResult?.anomalies?.length ? `${trailResult.anomalies.length} trail anomalies.` : ''} Identify single highest-priority finding for management response + suggested remediation timeline. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Memo ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
