@@ -38,7 +38,7 @@ export async function projectDtus(source, { chunk = HLM_PROJECT_CHUNK } = {}) {
   let n = 0;
   for (const d of source) {
     if (d && typeof d === "object") out.push(slimDtu(d));
-    if (++n % chunk === 0) await new Promise((r) => setImmediate(r));
+    if (++n % chunk === 0) await new Promise((r) => { setImmediate(r); });
   }
   return out;
 }
@@ -65,7 +65,8 @@ export async function runHLMPassOffThread(source, { timeoutMs = DEFAULT_TIMEOUT_
     try {
       worker = new Worker(workerPath, { resourceLimits: { maxOldGenerationSizeMb: heapMb } });
     } catch (e) {
-      return finish({ ok: false, error: `hlm_worker_spawn_failed: ${e?.message || e}` });
+      finish({ ok: false, error: `hlm_worker_spawn_failed: ${e?.message || e}` });
+      return;
     }
     worker.once("message", (msg) => {
       if (!msg?.ok) return finish({ ok: false, error: msg?.error || "hlm_pass_failed" });
@@ -79,7 +80,7 @@ export async function runHLMPassOffThread(source, { timeoutMs = DEFAULT_TIMEOUT_
       try {
         for (let i = 0; i < dtus.length && !settled; i += postChunk) {
           worker.postMessage({ chunk: dtus.slice(i, i + postChunk) });
-          await new Promise((r) => setImmediate(r));
+          await new Promise((r) => { setImmediate(r); });
         }
         if (!settled) worker.postMessage({ run: true });
       } catch (e) {

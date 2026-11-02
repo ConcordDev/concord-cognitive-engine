@@ -81,6 +81,7 @@ test("sqlite: pump ticks keep the head cache bounded and stats exact", async (t)
 test("kill-switch: the pump heartbeat is only registered when not disabled", () => {
   const src = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../server.js"), "utf8");
   assert.match(src, /const _dtuBridgePumpEnabled = process\.env\.DTU_BRIDGE_PUMP_DISABLED !== "1" && process\.env\.DTU_BRIDGE_PUMP !== "0";/);
-  assert.match(src, /if \(_dtuBridgePumpEnabled\) registerHeartbeat\("dtu-bridge-pump"/);
+  // the registration sits directly under the kill-switch `if` (braced form; lint `curly` requires braces)
+  assert.match(src, /if \(_dtuBridgePumpEnabled\) \{\s*registerHeartbeat\("dtu-bridge-pump"/);
   assert.equal((src.match(/registerHeartbeat\("dtu-bridge-pump"/g) || []).length, 1);
 });

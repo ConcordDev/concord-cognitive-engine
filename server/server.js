@@ -44272,22 +44272,24 @@ function getDtuBridge() {
 // Kill-switch: DTU_BRIDGE_PUMP_DISABLED=1 (or DTU_BRIDGE_PUMP=0) skips
 // registering the pump at boot. Default unchanged (pump on).
 const _dtuBridgePumpEnabled = process.env.DTU_BRIDGE_PUMP_DISABLED !== "1" && process.env.DTU_BRIDGE_PUMP !== "0";
-if (_dtuBridgePumpEnabled) registerHeartbeat("dtu-bridge-pump", {
-  frequency: 4,
-  scope: "global",
-  handler: async () => {
-    try {
-      const svc = getDtuBridge();
-      if (!svc) return { ok: true, skipped: "no_db" };
-      const swept = svc.sweep(dtusArray(), { limit: 200 });
-      const drained = svc.drain(50);
-      return { ok: true, swept, drained };
-    } catch (err) {
-      structuredLog("warn", "dtu_bridge_pump_failed", { error: err?.message });
-      return { ok: false, reason: "exception" };
-    }
-  },
-});
+if (_dtuBridgePumpEnabled) {
+  registerHeartbeat("dtu-bridge-pump", {
+    frequency: 4,
+    scope: "global",
+    handler: async () => {
+      try {
+        const svc = getDtuBridge();
+        if (!svc) return { ok: true, skipped: "no_db" };
+        const swept = svc.sweep(dtusArray(), { limit: 200 });
+        const drained = svc.drain(50);
+        return { ok: true, swept, drained };
+      } catch (err) {
+        structuredLog("warn", "dtu_bridge_pump_failed", { error: err?.message });
+        return { ok: false, reason: "exception" };
+      }
+    },
+  });
+}
 
 // Backfill DTU classification in small budgeted batches (existing DTUs without a current classification).
 registerHeartbeat("dtu-quality-backfill", {

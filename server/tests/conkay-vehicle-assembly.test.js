@@ -281,13 +281,17 @@ describe("check parts attribution (HANDOFF-3 A3)", () => {
   const byId = (list, id) => list.find((c) => c.id === id);
 
   it("every part a check names is a component in the same document", () => {
-    for (const c of doc.checks) for (const p of c.parts || []) {
-      assert.ok(ids.has(p), `${c.id} names ${p}, which is not a component`);
+    for (const c of doc.checks) {
+      for (const p of c.parts || []) {
+        assert.ok(ids.has(p), `${c.id} names ${p}, which is not a component`);
+      }
     }
     const ev = assemblyFromIr(buildCarFromLibrary(BRIEF, { config: { fuelType: "electric" } }).ir);
     const evIds = new Set(ev.components.map((c) => c.id));
-    for (const c of ev.checks) for (const p of c.parts || []) {
-      assert.ok(evIds.has(p), `electric ${c.id} names ${p}, which is not a component`);
+    for (const c of ev.checks) {
+      for (const p of c.parts || []) {
+        assert.ok(evIds.has(p), `electric ${c.id} names ${p}, which is not a component`);
+      }
     }
   });
 

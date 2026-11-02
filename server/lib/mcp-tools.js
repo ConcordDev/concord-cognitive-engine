@@ -1491,7 +1491,7 @@ export async function embeddingSearch(db, args, deps = {}) {
           score: cosineFn(queryVec, vec),
         });
       }
-      if (off + SCAN_CHUNK < ids.length) await new Promise((r) => setImmediate(r)); // no open cursor here
+      if (off + SCAN_CHUNK < ids.length) await new Promise((r) => { setImmediate(r); }); // no open cursor here
     }
     scored.sort((a, b) => b.score - a.score);
     const results = scored.slice(0, limit);
