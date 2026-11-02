@@ -7,6 +7,16 @@
 
 import { memoryFlags, isEnabled, recall, recordUse } from "./user-memory.js";
 
+/**
+ * The ONLY identity memory may act for. Both fields are set by server code from a verified session
+ * (ctx.actor from auth middleware; ctx.memoryUserId from an authenticated socket). Never read a userId out of
+ * the macro input: chat.respond receives the raw client body, so input.userId is attacker-controlled.
+ */
+export function verifiedMemoryUserId(ctx) {
+  const id = ctx?.memoryUserId || ctx?.actor?.userId || null;
+  return typeof id === "string" && id ? id : null;
+}
+
 export const MAX_FACTS = 12;
 export const MAX_TOKENS = 800;
 export const DEADLINE_MS = 150;
