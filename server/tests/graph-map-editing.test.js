@@ -9,6 +9,12 @@ import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerGraphActions from "../domains/graph.js";
 
+// H2 (#1756): the platform signing key is no longer hardcoded in
+// dtu-integrity.js — it comes from CONCORD_DTU_SIGNING_KEY. Configure a
+// test-only key so verify-dtu exercises the signed path. (Env is read at
+// call time, so setting it here is effective.)
+process.env.CONCORD_DTU_SIGNING_KEY = "graph-map-editing-test-only-key";
+
 const ACTIONS = new Map();
 function registerLensAction(domain, name, fn) {
   assert.equal(domain, "graph", `unexpected domain: ${domain}`);
