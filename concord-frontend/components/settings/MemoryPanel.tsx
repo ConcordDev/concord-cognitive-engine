@@ -44,20 +44,28 @@ export default function MemoryPanel() {
   const [confirmAll, setConfirmAll] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const [s, f] = await Promise.all([api.get('/api/user-memory/settings'), api.get('/api/user-memory/facts')]);
-      setEnabled(!!s.data?.enabled);
-      setAvailable(s.data?.available !== false);
-      setFacts(f.data?.facts ?? []);
-      setError(null);
-    } catch {
-      setError('Could not load your memory. Nothing was changed.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  useEffect(() => { void load(); }, [load]);
+  // Bumping this re-runs the fetch below; the fetch itself lives inside the effect so no setState runs
+  // synchronously in the effect body.
+  const [reloadTick, setReloadTick] = useState(0);
+  const load = useCallback(async () => { setReloadTick((t) => t + 1); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [s, f] = await Promise.all([api.get('/api/user-memory/settings'), api.get('/api/user-memory/facts')]);
+        if (cancelled) return;
+        setEnabled(!!s.data?.enabled);
+        setAvailable(s.data?.available !== false);
+        setFacts(f.data?.facts ?? []);
+        setError(null);
+      } catch {
+        if (!cancelled) setError('Could not load your memory. Nothing was changed.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [reloadTick]);
 
   const fail = (msg: string) => { setNotice(null); setError(msg); };
 
