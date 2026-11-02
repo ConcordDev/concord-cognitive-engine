@@ -58,7 +58,9 @@ test("agriculture.waterSchedule fetchForecast: Open-Meteo fills the 7-day horizo
   assert.equal(f.notComputedDays, 0); assert.equal(f.activeDays, 7);
   assert.equal(r.result.forecastProvenance.source, "Open-Meteo forecast API");
   mock(() => json({}, 500));
-  const art2 = { data: { lat: 41.6, lng: -93.6, fields: [{ fieldId: "f", crop: "corn", soilType: "loam", acreage: 1 }] } };
+  // Forecasts now go through the shared weather feed cache (phase 6a), so the first location's good answer would
+  // be served again; the failure case uses a different location so it actually hits the failing upstream.
+  const art2 = { data: { lat: -33.9, lng: 151.2, fields: [{ fieldId: "f", crop: "corn", soilType: "loam", acreage: 1 }] } };
   const f2 = await H.get("agriculture.waterSchedule")(ctx, art2, { daysAhead: 7, fetchForecast: true });
   assert.equal(f2.result.forecastSource.status, "NOT_COMPUTED"); assert.equal(f2.result.fields[0].notComputedDays, 7);
 });

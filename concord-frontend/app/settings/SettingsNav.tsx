@@ -12,6 +12,7 @@ import Link from 'next/link';
 const TABS = [
   { href: '/lenses/settings', key: 'general', label: 'General' },
   { href: '/settings/accessibility', key: 'accessibility', label: 'Accessibility' },
+  { href: '/settings/memory', key: 'memory', label: 'Memory' },
 ] as const;
 
 type SettingsTabKey = (typeof TABS)[number]['key'];

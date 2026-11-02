@@ -79,7 +79,17 @@ describe("ConKay envelope refusal — in-envelope regressions", () => {
   it("showcase brief async acceptance still passes the three requirements", async () => {
     const r = await carAcceptanceAsync(SHOWCASE);
     assert.equal(r.ok, true, r.error);
-    assert.equal(r.report.verdict, "credible_with_caveats");
+    // The verdict also folds in the CAD-body checks (occupant fit, interference). With the OCP kernel installed
+    // they are computed and the brief is credible; without it (CI) they are honestly "not computed", which makes
+    // the verdict not_physically_credible. Either way the ONLY thing allowed to fail is an uncomputed CAD check.
+    const uncomputed = r.report.failures.filter((f) => /not computed/.test(f));
+    if (uncomputed.length === 0) {
+      assert.equal(r.report.verdict, "credible_with_caveats");
+    } else {
+      assert.equal(r.report.verdict, "not_physically_credible");
+      assert.deepEqual(r.report.failures, uncomputed, "only uncomputed CAD checks may fail");
+      assert.ok(uncomputed.every((f) => /CAD body/.test(f)), "and they are all CAD-body checks");
+    }
     const byId = Object.fromEntries(r.report.requirements.map((x) => [x.id, x.status]));
     assert.equal(byId.REQ_mass, "PASS");
     assert.equal(byId.REQ_topSpeed, "PASS");

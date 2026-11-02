@@ -173,8 +173,14 @@ describe("graph — bidirectional DTU sync", () => {
 
   it("rejects sync for a node with no linked DTU", () => {
     const { map, b } = seedMap(ctxA);
+    // Entity convergence (#1893) mints a DTU for every node on write, so a freshly seeded
+    // node is always linked. Clear the link on the stored node to reach the unlinked case.
+    const stored = globalThis._concordSTATE.graphLens.maps.get("graph_a").find((m) => m.id === map.id).nodes.find((n) => n.id === b.id);
+    assert.ok(stored.dtuId, "precondition: convergence linked the node");
+    delete stored.dtuId;
     const r = call("sync-to-dtu", ctxA, { mapId: map.id, nodeId: b.id });
     assert.equal(r.ok, false);
+    assert.match(r.error, /no linked DTU/);
   });
 });
 

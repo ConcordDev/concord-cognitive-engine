@@ -84,6 +84,7 @@ export function AgentAutonomyPanel() {
   const [detail, setDetail] = useState<AgentGoalDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [showPropose, setShowPropose] = useState(false);
   const [proposeTitle, setProposeTitle] = useState('');
   const [proposeDesc, setProposeDesc] = useState('');
@@ -95,7 +96,12 @@ export function AgentAutonomyPanel() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    setActionError(null);
+    // §9 fix: load() must NOT clear actionError. runAction/runDelete
+    // set the server's refusal and then await load() — clearing the
+    // error here erased every named refusal (capacity, blocked-by,
+    // role) before it could render, which is why Activate and Delete
+    // read as silent no-ops in the re-pass. The action handlers clear
+    // the error at their own start instead.
     try {
       const [statusRes, listRes] = await Promise.all([
         apiHelpers.goals.status(),
@@ -117,15 +123,20 @@ export function AgentAutonomyPanel() {
   const runDelete = useCallback(async (id: string) => {
     setBusy(true);
     setActionError(null);
+    setNotice(null);
     try {
       const res = await apiHelpers.goals.remove(id);
-      const body = (res as { data?: { ok?: boolean; error?: string } })?.data;
+      const body = (res as { data?: { ok?: boolean; error?: string; goal?: { title?: string } } })?.data;
       if (body && body.ok === false) {
         setActionError(body.error || 'Delete rejected.');
       } else {
         setConfirmDeleteId(null);
         setExpandedId(null);
         setDetail(null);
+        // §9 fix: a successful delete names what it removed (the
+        // route's response carries the goal), so the deletion is
+        // visible rather than another silent state change.
+        setNotice(`"${body?.goal?.title || 'Agent goal'}" deleted.`);
       }
       await load();
     } catch (e) {
@@ -170,6 +181,7 @@ export function AgentAutonomyPanel() {
   const runAction = useCallback(async (fn: () => Promise<unknown>, refreshDetail?: string) => {
     setBusy(true);
     setActionError(null);
+    setNotice(null);
     try {
       const res = await fn();
       const body = (res as { data?: { ok?: boolean; error?: string } })?.data;
@@ -264,6 +276,13 @@ export function AgentAutonomyPanel() {
       {actionError && (
         <div className="flex items-center gap-2 rounded border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
           <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" /> {actionError}
+        </div>
+      )}
+
+      {notice && (
+        <div className="flex items-center gap-2 rounded border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300" role="status">
+          <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" /> <span className="flex-1">{notice}</span>
+          <button onClick={() => setNotice(null)} className="text-emerald-400 hover:text-emerald-200">Dismiss</button>
         </div>
       )}
 

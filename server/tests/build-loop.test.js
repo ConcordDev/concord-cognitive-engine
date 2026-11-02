@@ -101,15 +101,24 @@ describe("build loop — integration with real run + lint", () => {
     registerCodeActions((domain, name, fn) => ACTIONS.set(`${domain}.${name}`, fn));
   });
 
-  // runMacro shim: code.* → the real handlers; reason.verify → a stub.
-  async function realRunMacro(domain, name, input, ctx) {
-    if (domain === "reason" && name === "verify") return { ok: true, verdict: "grounded" };
-    const fn = ACTIONS.get(`${domain}.${name}`);
-    if (!fn) return { ok: false, error: "macro_not_found" };
-    return fn(ctx, { id: null, data: {}, meta: {} }, input);
+  // runMacro shim: code.* → the real handlers; reason.verify → a stub. Host JS execution was retired (INC-145:
+  // code runs only in the WASM sandbox), so `sandboxExec` stands in for that sandbox: it returns what a sandbox
+  // would (exit 1 + stderr for code that throws, exit 0 otherwise). Without it the REAL code.exec is used.
+  const sandboxExec = (code) => (/throw new Error/.test(code)
+    ? { ok: true, result: { exitCode: 1, stdout: "", stderr: "Error: boom from generation 1", supported: true } }
+    : { ok: true, result: { exitCode: 0, stdout: "4\n", stderr: "", supported: true } });
+  function makeRunMacro({ sandbox }) {
+    return async (domain, name, input, ctx) => {
+      if (domain === "reason" && name === "verify") return { ok: true, verdict: "grounded" };
+      if (sandbox && domain === "code" && name === "exec") return sandboxExec(String(input.code));
+      const fn = ACTIONS.get(`${domain}.${name}`);
+      if (!fn) return { ok: false, error: "macro_not_found" };
+      return fn(ctx, { id: null, data: {}, meta: {} }, input);
+    };
   }
+  const realRunMacro = makeRunMacro({ sandbox: false });
 
-  it("a bad-then-good JS generator converges to done with a genuine run + lint", async () => {
+  it("a bad-then-good JS generator converges to done with a run (sandbox stand-in) + the REAL lint gate", async () => {
     let attempt = 0;
     const generate = (req, feedback) => {
       attempt++;
@@ -117,11 +126,20 @@ describe("build loop — integration with real run + lint", () => {
       return "const x = 2 + 2; console.log(x);";
     };
     const ctx = { userId: "u_build", actor: { userId: "u_build" } };
-    const r = await runBuildLoop({ request: "add two numbers", generate, runMacro: realRunMacro, ctx, projectId: "p_build", path: "main.js", language: "javascript", maxIterations: 3 });
+    const r = await runBuildLoop({ request: "add two numbers", generate, runMacro: makeRunMacro({ sandbox: true }), ctx, projectId: "p_build", path: "main.js", language: "javascript", maxIterations: 3 });
     assert.equal(r.status, "done", JSON.stringify(r.evidence));
     assert.equal(r.evidence.ran, true);
     assert.equal(r.evidence.lintClean, true);
     assert.ok(r.iterations >= 2, "took a repair iteration");
+  });
+
+  it("with host JS execution retired the loop never claims done: it ends unverified with ran=false", async () => {
+    const generate = () => "const x = 2 + 2; console.log(x);";
+    const ctx = { userId: "u_build3", actor: { userId: "u_build3" } };
+    const r = await runBuildLoop({ request: "add two numbers", generate, runMacro: realRunMacro, ctx, projectId: "p_build3", path: "main.js", language: "javascript", maxIterations: 2 });
+    assert.equal(r.status, "unverified");
+    assert.equal(r.evidence.ran, false);
+    assert.equal(r.evidence.verified, false);
   });
 
   it("a TS type error is caught by the REAL tsc lint gate and never reported done", async () => {

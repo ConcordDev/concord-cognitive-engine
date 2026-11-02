@@ -8,6 +8,7 @@
 // faction match. Marketplace canon picks winners.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { createArtifactAcl, registerArtifactOwnerResolver } from "../lib/artifact-acl.js";
 import fs from "node:fs";
 import * as fsp from "node:fs/promises";
 import path from "node:path";
@@ -64,6 +65,24 @@ function serialiseBoardToBlueprintJson(scene, themeOverrides) {
 
 export default function registerWhiteboardActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
+  // S1 (one board store): the Analyze macros historically read only the
+  // artifact envelope, so they reported zeros for every board whose
+  // canvas lives in the board store (main-canvas boards are DTUs whose
+  // scenes mirror into this store under their DTU id). Resolve elements
+  // board-first: any id the caller carries (params.boardId, the
+  // artifact's own board link, the artifact id) that names a stored
+  // board wins — including an honestly empty board — and the artifact
+  // payload is only the fallback for calls with no board behind them.
+  function resolveAnalyzeElements(s, userId, artifact, params) {
+    const candidates = [params?.boardId, artifact?.data?.boardId, artifact?.data?.whiteboardId, artifact?.id];
+    for (const cand of candidates) {
+      if (typeof cand !== "string" || !cand) continue;
+      const hit = findBoardForUser(s, userId, cand);
+      if (hit) return Array.isArray(hit.board.scene?.elements) ? hit.board.scene.elements : [];
+    }
+    return artifact?.data?.elements || [];
+  }
+
   registerLensAction("whiteboard", "vision", async (ctx, artifact, _params) => {
     const { imageB64, imageUrl } = artifact.data || {};
     if (!imageB64 && !imageUrl) return { ok: false, error: "imageB64 or imageUrl required" };
@@ -71,7 +90,8 @@ export default function registerWhiteboardActions(registerLensAction) {
     return imageUrl ? callVisionUrl(imageUrl, prompt) : callVision(imageB64, prompt);
   });
   registerLensAction("whiteboard", "shapeDetect", (ctx, artifact, _params) => {
-    const elements = artifact.data?.elements || [];
+    const s = getWhiteboardState();
+    const elements = s ? resolveAnalyzeElements(s, wbActor(ctx), artifact, _params) : (artifact.data?.elements || []);
     if (elements.length === 0) return { ok: true, result: { message: "Add whiteboard elements to analyze shapes." } };
     const classified = elements.map((el, i) => {
       const x = parseFloat(el.x) || 0, y = parseFloat(el.y) || 0;
@@ -88,7 +108,8 @@ export default function registerWhiteboardActions(registerLensAction) {
   });
 
   registerLensAction("whiteboard", "layoutOptimize", (ctx, artifact, _params) => {
-    const elements = artifact.data?.elements || [];
+    const s = getWhiteboardState();
+    const elements = s ? resolveAnalyzeElements(s, wbActor(ctx), artifact, _params) : (artifact.data?.elements || []);
     const gridSize = parseInt(artifact.data?.gridSize) || 20;
     if (elements.length === 0) return { ok: true, result: { message: "Add elements to optimize layout." } };
     const overlaps = [];
@@ -112,7 +133,8 @@ export default function registerWhiteboardActions(registerLensAction) {
   });
 
   registerLensAction("whiteboard", "clusterGroup", (ctx, artifact, _params) => {
-    const elements = artifact.data?.elements || [];
+    const s = getWhiteboardState();
+    const elements = s ? resolveAnalyzeElements(s, wbActor(ctx), artifact, _params) : (artifact.data?.elements || []);
     const threshold = parseFloat(artifact.data?.threshold) || 100;
     if (elements.length === 0) return { ok: true, result: { message: "Add elements to detect clusters." } };
     const positions = elements.map((el, i) => ({
@@ -151,7 +173,8 @@ export default function registerWhiteboardActions(registerLensAction) {
   });
 
   registerLensAction("whiteboard", "exportPrep", (ctx, artifact, _params) => {
-    const elements = artifact.data?.elements || [];
+    const s = getWhiteboardState();
+    const elements = s ? resolveAnalyzeElements(s, wbActor(ctx), artifact, _params) : (artifact.data?.elements || []);
     const layers = artifact.data?.layers || [{ name: "default", elements: elements.map((_, i) => `el-${i}`) }];
     if (elements.length === 0) return { ok: true, result: { message: "Add elements to prepare for export." } };
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -203,6 +226,53 @@ export default function registerWhiteboardActions(registerLensAction) {
     return b.participants;
   }
   function wbActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  // ── S14 follow-up: platform ACL adoption (kind "whiteboard-board") ──
+  // Membership and permission levels for boards live in the ONE
+  // platform model (server/lib/artifact-acl.js, PR #1789) — never a
+  // lens-local shape. The domain registers the kind's owner resolver
+  // and reaches a manager over the app's SQLite handle, resolved the
+  // way lib/public-actor.js resolves it (ctx.db, then STATE.db, then
+  // the process global), so grants land in the same artifact_grants
+  // table the platform manager reads.
+  const WB_BOARD_KIND = "whiteboard-board";
+  function wbBoardOwner(boardId) {
+    const s = getWhiteboardState();
+    if (!s || !boardId) return null;
+    for (const [uid, map] of s.boards) {
+      if (map.get(boardId)) return uid;
+    }
+    const shared = s.sharedBoards.get(boardId);
+    if (shared) return shared.ownerId || null;
+    return null;
+  }
+  registerArtifactOwnerResolver(WB_BOARD_KIND, (id) => wbBoardOwner(String(id || "")));
+  let _wbAcl = null;
+  let _wbAclDb = null;
+  function wbAcl(ctx) {
+    const db = ctx?.db || globalThis._concordSTATE?.db || globalThis._concordDB || null;
+    if (!db) return null;
+    if (_wbAcl && _wbAclDb === db) return _wbAcl;
+    try { _wbAcl = createArtifactAcl(db, {}); _wbAclDb = db; } catch (_e) { return null; }
+    return _wbAcl;
+  }
+  function wbUsername(ctx, userId) {
+    const db = ctx?.db || globalThis._concordSTATE?.db || globalThis._concordDB || null;
+    if (!db || !userId) return null;
+    try {
+      const row = db.prepare("SELECT username FROM users WHERE id = ?").get(userId);
+      return row?.username ? String(row.username) : null;
+    } catch (_e) { return null; }
+  }
+  // Mutating call sites that resolve a board through findBoardForUser
+  // refuse a view-only grantee with the reason stated; owners, shared
+  // participants and edit grantees pass (null = no refusal).
+  function wbWriteRefusal(lookup) {
+    if (lookup && lookup.scope === "granted" && lookup.level !== "edit") {
+      return { ok: false, error: "This board is shared with you view-only — editing needs an edit grant from the owner." };
+    }
+    return null;
+  }
+
   function nextWbId(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
   function nowIsoWb() { return new Date().toISOString(); }
 
@@ -283,6 +353,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     const map = s.boards.get(userId);
     if (!map) return { ok: true, result: { boards: [] } };
     const boards = Array.from(map.values())
+      .filter((b) => !b.deletedAt)
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       .map(({ scene, ...meta }) => ({ ...meta, elementCount: Array.isArray(scene?.elements) ? scene.elements.length : 0 }));
     return { ok: true, result: { boards } };
@@ -303,18 +374,54 @@ export default function registerWhiteboardActions(registerLensAction) {
     if (!isSafePathSegment(id)) {
       return { ok: false, error: "board id must contain only letters, digits, '.', '_' or '-'" };
     }
-    const title = String(params.title || "Untitled board").slice(0, 80);
-    const scene = params.scene && typeof params.scene === "object" ? params.scene : { elements: [], appState: {} };
-    if (!s.boards.has(userId)) s.boards.set(userId, new Map());
-    const existing = s.boards.get(userId).get(id);
+    // S14 follow-up: saving an id that belongs to someone else's
+    // board goes through the platform ACL — an edit grantee writes
+    // the owner's board, a view grantee is refused as read-only, and
+    // no grant means the board does not exist to the caller (never a
+    // silent same-id copy in the caller's own map).
+    let targetUserId = userId;
+    if (params.id && !s.boards.get(userId)?.has(id)) {
+      const ownerId = wbBoardOwner(id);
+      if (ownerId && ownerId !== userId) {
+        const acl = wbAcl(ctx);
+        const level = acl ? acl.levelFor(WB_BOARD_KIND, id, userId) : null;
+        if (level === "edit") targetUserId = ownerId;
+        else if (level === "view") return { ok: false, error: "This board is shared with you view-only — the owner can raise your access to edit." };
+        else return { ok: false, error: "not found" };
+      }
+    }
+    if (!s.boards.has(targetUserId)) s.boards.set(targetUserId, new Map());
+    const existing = s.boards.get(targetUserId).get(id);
+    // S3: a save that carries no scene/title is a metadata write (the
+    // kept-DTU linkage below) — it must not erase the stored canvas or
+    // rename the board to the default. New boards still get defaults.
+    const title = params.title != null ? String(params.title || "Untitled board").slice(0, 80) : (existing?.title || "Untitled board");
+    const scene = params.scene && typeof params.scene === "object" ? params.scene : (existing?.scene || { elements: [], appState: {} });
     const board = {
       id, title, scene,
+      // S1 (one board store): main-canvas boards mirror into this store
+      // under their DTU id with origin 'canvas'; the tag is what lets the
+      // Collab list keep them out of the Shape editor (different element
+      // model) while every list, Analyze macro and summary reads them.
+      origin: typeof params.origin === "string" ? params.origin : (existing?.origin || "collab"),
+      dtuId: typeof params.dtuId === "string" ? params.dtuId : (existing?.dtuId || null),
+      // S3 (honest save): the kept report DTU is a version chain on the
+      // board record — the linkage persists here, not in a component,
+      // so Thread/publish gates survive view switches and reloads.
+      keptDtuId: typeof params.keptDtuId === "string" ? params.keptDtuId : (existing?.keptDtuId || null),
+      keptVersion: Number.isFinite(params.keptVersion) ? params.keptVersion : (existing?.keptVersion || 0),
+      keptAt: typeof params.keptAt === "string" ? params.keptAt : (existing?.keptAt || null),
+      keptSceneHash: typeof params.keptSceneHash === "string" ? params.keptSceneHash : (existing?.keptSceneHash || null),
+      // S2: trash state is carried, never dropped — only board-restore
+      // clears it. A save (the Studio mirror above all) must not be
+      // able to resurrect a board the user deleted.
+      deletedAt: existing?.deletedAt || null,
       createdAt: existing?.createdAt || nowIsoWb(),
       updatedAt: nowIsoWb(),
     };
-    s.boards.get(userId).set(id, board);
+    s.boards.get(targetUserId).set(id, board);
     saveWhiteboardState();
-    return { ok: true, result: { board } };
+    return { ok: true, result: targetUserId === userId ? { board } : { board, access: { level: "edit", ownerId: targetUserId } } };
   });
 
   registerLensAction("whiteboard", "board-load", (ctx, _artifact, params = {}) => {
@@ -323,8 +430,15 @@ export default function registerWhiteboardActions(registerLensAction) {
     const userId = wbActor(ctx);
     const id = String(params.id || "");
     const map = s.boards.get(userId);
-    if (!map || !map.has(id)) return { ok: false, error: "not found" };
-    return { ok: true, result: { board: map.get(id) } };
+    if (map && map.has(id) && !map.get(id).deletedAt) return { ok: true, result: { board: map.get(id) } };
+    // S14 follow-up: a platform-ACL grantee loads the owner's board
+    // with their level attached; everyone else keeps the plain
+    // "not found" — a board they cannot see does not exist to them.
+    const lookup = findBoardForUser(s, userId, id);
+    if (lookup && lookup.scope === 'granted') {
+      return { ok: true, result: { board: lookup.board, access: { level: lookup.level, ownerId: lookup.ownerId } } };
+    }
+    return { ok: false, error: "not found" };
   });
 
   registerLensAction("whiteboard", "board-delete", (ctx, _artifact, params = {}) => {
@@ -333,10 +447,58 @@ export default function registerWhiteboardActions(registerLensAction) {
     const userId = wbActor(ctx);
     const id = String(params.id || "");
     const map = s.boards.get(userId);
-    if (!map || !map.has(id)) return { ok: false, error: "not found" };
-    map.delete(id);
+    if (!map || !map.has(id) || map.get(id).deletedAt) return { ok: false, error: "not found" };
+    // S2: delete is SOFT and funnels through deletedAt — board-list,
+    // board-load, duplicate and findBoardForUser all stop seeing the
+    // board at once, and board-restore can bring it back whole.
+    map.get(id).deletedAt = nowIsoWb();
     saveWhiteboardState();
-    return { ok: true, result: { deleted: id } };
+    return { ok: true, result: { deleted: id, soft: true } };
+  });
+
+  registerLensAction("whiteboard", "board-restore", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const id = String(params.id || "");
+    const map = s.boards.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    if (!map.get(id).deletedAt) return { ok: false, error: "board is not in trash" };
+    map.get(id).deletedAt = null;
+    saveWhiteboardState();
+    return { ok: true, result: { restored: id } };
+  });
+
+  registerLensAction("whiteboard", "boards-trash-list", (ctx, _artifact, _params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const map = s.boards.get(userId);
+    if (!map) return { ok: true, result: { boards: [] } };
+    const boards = Array.from(map.values())
+      .filter((b) => b.deletedAt)
+      .sort((a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime())
+      .map(({ scene, ...meta }) => ({ ...meta, elementCount: Array.isArray(scene?.elements) ? scene.elements.length : 0 }));
+    return { ok: true, result: { boards } };
+  });
+
+  registerLensAction("whiteboard", "board-delete-permanent", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const id = String(params.id || "");
+    const map = s.boards.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    if (!map.get(id).deletedAt) return { ok: false, error: "board is not in trash" };
+    map.delete(id);
+    // The per-board buckets go with it — frames, this user's comments,
+    // votes and any running timer keyed by the board id.
+    if (s.frames) s.frames.delete(id);
+    if (s.timers) s.timers.delete(id);
+    if (s.votes) s.votes.delete(id);
+    if (s.comments) s.comments.delete(id);
+    saveWhiteboardState();
+    return { ok: true, result: { deleted: id, permanent: true } };
   });
 
   registerLensAction("whiteboard", "board-duplicate", (ctx, _artifact, params = {}) => {
@@ -345,7 +507,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     const userId = wbActor(ctx);
     const srcId = String(params.id || "");
     const map = s.boards.get(userId);
-    if (!map || !map.has(srcId)) return { ok: false, error: "not found" };
+    if (!map || !map.has(srcId) || map.get(srcId).deletedAt) return { ok: false, error: "not found" };
     const src = map.get(srcId);
     const id = nextWbId("board");
     const board = {
@@ -358,6 +520,81 @@ export default function registerWhiteboardActions(registerLensAction) {
     map.set(id, board);
     saveWhiteboardState();
     return { ok: true, result: { board } };
+  });
+
+
+  // ── S14 follow-up: platform-ACL membership (invite / access / revoke) ──
+  // The share dialog's real sharing: the owner grants a named account
+  // view or edit on THIS board through the platform model; the access
+  // list is the model's grant list; revoke is the model's revoke.
+  // ACL denial codes become sentences here, at the surface.
+  function wbAclErrorText(code) {
+    switch (code) {
+      case "not_owner": return "Only the board's owner can change who has access.";
+      case "artifact_not_found": return "Board not found.";
+      case "self_grant": return "You already own this board.";
+      case "invalid_level": return "Access level must be 'view' or 'edit'.";
+      case "no_active_grant": return "That person has no access to revoke.";
+      case "invalid_input": return "A person and a board are required.";
+      default: return "Sharing is unavailable right now.";
+    }
+  }
+
+  registerLensAction("whiteboard", "board-grant", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const acl = wbAcl(ctx); if (!acl) return { ok: false, error: "Sharing is unavailable right now." };
+    const boardId = String(params.boardId || params.id || "");
+    const r = acl.grant({ kind: WB_BOARD_KIND, id: boardId, granteeId: String(params.granteeId || ""), level: String(params.level || ""), byUserId: userId });
+    if (!r.ok) return { ok: false, error: wbAclErrorText(r.error) };
+    return { ok: true, result: { grant: { granteeId: r.grant.granteeId, username: wbUsername(ctx, r.grant.granteeId), level: r.grant.level, grantedAt: r.grant.createdAt }, updated: !!r.updated } };
+  });
+
+  registerLensAction("whiteboard", "board-revoke", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const acl = wbAcl(ctx); if (!acl) return { ok: false, error: "Sharing is unavailable right now." };
+    const boardId = String(params.boardId || params.id || "");
+    const granteeId = String(params.granteeId || "");
+    const r = acl.revoke({ kind: WB_BOARD_KIND, id: boardId, granteeId, byUserId: userId });
+    if (!r.ok) return { ok: false, error: wbAclErrorText(r.error) };
+    return { ok: true, result: { revoked: true, granteeId } };
+  });
+
+  registerLensAction("whiteboard", "board-access", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const acl = wbAcl(ctx); if (!acl) return { ok: false, error: "Sharing is unavailable right now." };
+    const boardId = String(params.boardId || params.id || "");
+    const level = acl.levelFor(WB_BOARD_KIND, boardId, userId);
+    if (!level) return { ok: false, error: "Board not found." };
+    const out = { level, ownerId: wbBoardOwner(boardId) };
+    if (level === "owner") {
+      const listed = acl.listGrants(WB_BOARD_KIND, boardId, userId);
+      out.grants = (listed.ok ? listed.grants : []).map((g) => ({
+        granteeId: g.granteeId, username: wbUsername(ctx, g.granteeId), level: g.level, grantedAt: g.createdAt,
+      }));
+    }
+    return { ok: true, result: out };
+  });
+
+  registerLensAction("whiteboard", "board-shared-with-me", (ctx, _artifact, _params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const acl = wbAcl(ctx); if (!acl) return { ok: true, result: { boards: [] } };
+    const listed = acl.listSharedWith(userId);
+    const boards = [];
+    for (const g of listed.ok ? listed.grants : []) {
+      if (g.artifactKind !== WB_BOARD_KIND) continue;
+      const board = s.boards.get(g.ownerId)?.get(g.artifactId) || s.sharedBoards.get(g.artifactId) || null;
+      if (!board || board.deletedAt) continue;
+      boards.push({
+        id: g.artifactId, title: board.title || "Untitled board",
+        ownerId: g.ownerId, ownerName: wbUsername(ctx, g.ownerId),
+        level: g.level, updatedAt: board.updatedAt || null,
+      });
+    }
+    return { ok: true, result: { boards } };
   });
 
   // ── Meeting timer (Miro-shape, board-scoped) ──
@@ -421,6 +658,13 @@ export default function registerWhiteboardActions(registerLensAction) {
     const boardId = String(params.boardId || "");
     const elementId = String(params.elementId || "");
     if (!boardId || !elementId) return { ok: false, error: "boardId and elementId required" };
+    // S8: a vote must land on a real element of a real board the
+    // caller can see — any id pair tallied before (a vote on a fake
+    // board/element counted in the review).
+    const voteLookup = findBoardForUser(s, userId, boardId);
+    if (!voteLookup) return { ok: false, error: "board not found" };
+    const voteElements = Array.isArray(voteLookup.board.scene?.elements) ? voteLookup.board.scene.elements : [];
+    if (!voteElements.some((el) => el && el.id === elementId)) return { ok: false, error: "element not found on this board" };
     if (!s.votes.has(userId)) s.votes.set(userId, new Map());
     const boardVotes = s.votes.get(userId);
     if (!boardVotes.has(boardId)) boardVotes.set(boardId, new Map());
@@ -438,7 +682,12 @@ export default function registerWhiteboardActions(registerLensAction) {
     const boardId = String(params.boardId || "");
     const boardVotes = s.votes.get(userId)?.get(boardId);
     if (!boardVotes) return { ok: true, result: { tally: [], total: 0 } };
+    // S8: prune phantom entries (elements voted on before cast-side
+    // validation existed, or since removed from the scene).
+    const tallyLookup = findBoardForUser(s, userId, boardId);
+    const liveIds = tallyLookup ? new Set((Array.isArray(tallyLookup.board.scene?.elements) ? tallyLookup.board.scene.elements : []).map((el) => el?.id)) : new Set();
     const tally = Array.from(boardVotes.entries())
+      .filter(([elementId]) => liveIds.has(elementId))
       .map(([elementId, voters]) => ({ elementId, count: voters.size }))
       .sort((a, b) => b.count - a.count);
     const total = tally.reduce((s2, t) => s2 + t.count, 0);
@@ -521,7 +770,16 @@ export default function registerWhiteboardActions(registerLensAction) {
     const userId = wbActor(ctx);
     const id = String(params.id || "");
     const b = s.sharedBoards.get(id);
-    if (!b) return { ok: false, error: "shared board not found" };
+    if (!b) {
+      // S10: the collab hook joins on mount for EVERY open board,
+      // shared or not, and broadcasts cursor/scene on activity.
+      // For the caller's own unshared board that is a quiet no-op,
+      // not an error — erroring flooded the shell's issue counter
+      // while the user simply worked on a private board. Ids that
+      // exist nowhere keep the hard error.
+      if (findBoardForUser(s, userId, id)) return { ok: true, result: { shared: false } };
+      return { ok: false, error: "shared board not found" };
+    }
     wbParticipants(b).add(userId);
     saveWhiteboardState();
     return { ok: true, result: { board: { ...sharedBoardSummary(b), scene: b.scene } } };
@@ -533,7 +791,16 @@ export default function registerWhiteboardActions(registerLensAction) {
     const userId = wbActor(ctx);
     const id = String(params.id || "");
     const b = s.sharedBoards.get(id);
-    if (!b) return { ok: false, error: "shared board not found" };
+    if (!b) {
+      // S10: the collab hook joins on mount for EVERY open board,
+      // shared or not, and broadcasts cursor/scene on activity.
+      // For the caller's own unshared board that is a quiet no-op,
+      // not an error — erroring flooded the shell's issue counter
+      // while the user simply worked on a private board. Ids that
+      // exist nowhere keep the hard error.
+      if (findBoardForUser(s, userId, id)) return { ok: true, result: { shared: false } };
+      return { ok: false, error: "shared board not found" };
+    }
     wbParticipants(b).delete(userId);
     saveWhiteboardState();
     return { ok: true, result: { id, remainingParticipants: wbParticipants(b).size } };
@@ -548,7 +815,16 @@ export default function registerWhiteboardActions(registerLensAction) {
     const userId = wbActor(ctx);
     const id = String(params.id || "");
     const b = s.sharedBoards.get(id);
-    if (!b) return { ok: false, error: "shared board not found" };
+    if (!b) {
+      // S10: the collab hook joins on mount for EVERY open board,
+      // shared or not, and broadcasts cursor/scene on activity.
+      // For the caller's own unshared board that is a quiet no-op,
+      // not an error — erroring flooded the shell's issue counter
+      // while the user simply worked on a private board. Ids that
+      // exist nowhere keep the hard error.
+      if (findBoardForUser(s, userId, id)) return { ok: true, result: { shared: false } };
+      return { ok: false, error: "shared board not found" };
+    }
     if (!wbParticipants(b).has(userId)) return { ok: false, error: "not a participant" };
     if (!params.scene || typeof params.scene !== "object") return { ok: false, error: "scene required" };
     b.scene = params.scene;
@@ -573,7 +849,16 @@ export default function registerWhiteboardActions(registerLensAction) {
     const userId = wbActor(ctx);
     const id = String(params.id || "");
     const b = s.sharedBoards.get(id);
-    if (!b) return { ok: false, error: "shared board not found" };
+    if (!b) {
+      // S10: the collab hook joins on mount for EVERY open board,
+      // shared or not, and broadcasts cursor/scene on activity.
+      // For the caller's own unshared board that is a quiet no-op,
+      // not an error — erroring flooded the shell's issue counter
+      // while the user simply worked on a private board. Ids that
+      // exist nowhere keep the hard error.
+      if (findBoardForUser(s, userId, id)) return { ok: true, result: { shared: false } };
+      return { ok: false, error: "shared board not found" };
+    }
     if (!wbParticipants(b).has(userId)) return { ok: false, error: "not a participant" };
     const x = Number(params.x);
     const y = Number(params.y);
@@ -638,24 +923,37 @@ export default function registerWhiteboardActions(registerLensAction) {
   // ═══════════════════════════════════════════════════════════════
 
   function ensureCommentsBucket(s) {
-    if (!s.comments) s.comments = new Map(); // userId -> Map<boardId, Map<elementId, Array<Comment>>>
+    if (!s.comments) s.comments = new Map(); // boardId -> Map<elementId, Array<Comment>>
     return s.comments;
   }
 
   // Look up a board the caller owns OR is a participant in (so shared boards work too).
   function findBoardForUser(s, userId, boardId) {
     const own = s.boards.get(userId)?.get(boardId);
-    if (own) return { board: own, scope: 'own' };
+    if (own && !own.deletedAt) return { board: own, scope: 'own' };
     const shared = s.sharedBoards.get(boardId);
     if (shared && (shared.ownerId === userId || wbParticipants(shared).has(userId))) {
       return { board: shared, scope: 'shared' };
+    }
+    // S14 follow-up: a platform-ACL grant on someone else's personal
+    // board is visibility too — reads see the board through this one
+    // gate like every other surface, and mutating call sites check
+    // the level (wbWriteRefusal) before writing.
+    const acl = wbAcl(null);
+    if (acl) {
+      const level = acl.levelFor(WB_BOARD_KIND, boardId, userId);
+      if (level === 'view' || level === 'edit') {
+        const ownerId = wbBoardOwner(boardId);
+        const board = ownerId ? s.boards.get(ownerId)?.get(boardId) : null;
+        if (board && !board.deletedAt) return { board, scope: 'granted', level, ownerId };
+      }
     }
     return null;
   }
 
   // Tiny BFS clusterer over text similarity (token overlap). Deterministic without brain.
   function clusterShapesByText(shapes, maxThemes = 6) {
-    const stickies = shapes.filter(sh => sh.kind === 'sticky' && (sh.text || '').trim());
+    const stickies = shapes.filter(sh => (sh.kind === 'sticky' || sh.type === 'notecard') && (sh.text || '').trim());
     if (stickies.length < 2) return [];
     function tokens(t) { return new Set(String(t || '').toLowerCase().split(/[\s,.;:!?]+/).filter(w => w.length >= 3)); }
     const tokSets = new Map(stickies.map(sh => [sh.id, tokens(sh.text)]));
@@ -695,7 +993,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     const lookup = findBoardForUser(s, userId, boardId);
     if (!lookup) return { ok: false, error: "board not found" };
     const shapes = Array.isArray(lookup.board.scene?.elements) ? lookup.board.scene.elements : [];
-    const stickies = shapes.filter(sh => sh.kind === 'sticky');
+    const stickies = shapes.filter(sh => sh.kind === 'sticky' || sh.type === 'notecard');
     if (stickies.length < 2) return { ok: true, result: { clusters: [], source: 'deterministic', message: "Need at least 2 sticky notes to cluster." } };
 
     const deterministic = clusterShapesByText(shapes);
@@ -733,8 +1031,8 @@ export default function registerWhiteboardActions(registerLensAction) {
     if (!lookup) return { ok: false, error: "board not found" };
     const shapes = Array.isArray(lookup.board.scene?.elements) ? lookup.board.scene.elements : [];
     if (shapes.length === 0) return { ok: true, result: { summary: "(board is empty)", actionItems: [], source: 'deterministic' } };
-    const stickies = shapes.filter(sh => sh.kind === 'sticky' && sh.text);
-    const frames = shapes.filter(sh => sh.kind === 'rect' || sh.kind === 'frame');
+    const stickies = shapes.filter(sh => (sh.kind === 'sticky' || sh.type === 'notecard') && sh.text);
+    const frames = shapes.filter(sh => sh.kind === 'rect' || sh.kind === 'frame' || sh.type === 'rectangle' || sh.type === 'section');
     const transcript = stickies.map(sh => `· ${sh.text}`).join('\n');
 
     function deterministic() {
@@ -750,6 +1048,9 @@ export default function registerWhiteboardActions(registerLensAction) {
     const brain = ctx?.llm?.chat;
     const base = deterministic();
     if (typeof brain !== 'function') return { ok: true, result: { ...base, source: 'deterministic' } };
+    // An empty transcript gives the brain nothing to summarize — it
+    // answers with fragments. The deterministic summary is the truth.
+    if (!transcript.trim()) return { ok: true, result: { ...base, source: 'deterministic' } };
     try {
       const r = await brain({
         messages: [
@@ -888,6 +1189,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     if (!boardId || !elementId || !body) return { ok: false, error: "boardId + elementId + body required" };
     const lookup = findBoardForUser(s, userId, boardId);
     if (!lookup) return { ok: false, error: "board not found" };
+    const wbRefusal = wbWriteRefusal(lookup); if (wbRefusal) return wbRefusal;
     const cBucket = ensureCommentsBucket(s);
     if (!cBucket.has(boardId)) cBucket.set(boardId, new Map());
     const elementMap = cBucket.get(boardId);
@@ -913,6 +1215,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     const id = String(params.id || "");
     const lookup = findBoardForUser(s, userId, boardId);
     if (!lookup) return { ok: false, error: "board not found" };
+    const wbRefusal = wbWriteRefusal(lookup); if (wbRefusal) return wbRefusal;
     const cBucket = ensureCommentsBucket(s);
     const elementMap = cBucket.get(boardId);
     if (!elementMap) return { ok: false, error: "comment not found" };
@@ -1043,6 +1346,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     const boardId = String(params.boardId || "");
     const lookup = findBoardForUser(s, userId, boardId);
     if (!lookup) return { ok: false, error: "board not found" };
+    const wbRefusal = wbWriteRefusal(lookup); if (wbRefusal) return wbRefusal;
     const ops = Array.isArray(params.ops) ? params.ops : [];
     if (ops.length === 0) return { ok: false, error: "ops array required" };
     const remoteClock = Number(params.knownClock) || 0;
@@ -1635,15 +1939,17 @@ export default function registerWhiteboardActions(registerLensAction) {
     const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = wbActor(ctx);
     const boards = s.boards.get(userId);
-    const boardCount = boards ? boards.size : 0;
+    // S9: counts describe the live workspace — trashed boards (S2) are
+    // excluded, and stickies are counted in BOTH element models
+    // (Collab kind 'sticky', sketch type 'notecard').
+    const liveBoards = boards ? [...boards.values()].filter((b) => !b.deletedAt) : [];
+    const boardCount = liveBoards.length;
     let elementCount = 0;
     let stickyCount = 0;
-    if (boards) {
-      for (const b of boards.values()) {
-        const els = Array.isArray(b.scene?.elements) ? b.scene.elements : [];
-        elementCount += els.length;
-        stickyCount += els.filter(el => el.kind === 'sticky').length;
-      }
+    for (const b of liveBoards) {
+      const els = Array.isArray(b.scene?.elements) ? b.scene.elements : [];
+      elementCount += els.length;
+      stickyCount += els.filter((el) => el.kind === 'sticky' || el.type === 'notecard').length;
     }
     let sharedCount = 0;
     for (const board of s.sharedBoards.values()) {
@@ -1651,11 +1957,11 @@ export default function registerWhiteboardActions(registerLensAction) {
     }
     const cBucket = ensureCommentsBucket(s);
     let openCommentCount = 0;
-    if (boards) {
-      for (const id of boards.keys()) {
-        const elementMap = cBucket.get(id);
-        if (elementMap) for (const list of elementMap.values()) openCommentCount += list.filter(c => !c.resolved).length;
-      }
+    // (The bucket is keyed by boardId — every comments-* macro reads
+    // and writes it that way; only live boards' comments count here.)
+    for (const b of liveBoards) {
+      const elementMap = cBucket.get(b.id);
+      if (elementMap) for (const list of elementMap.values()) openCommentCount += list.filter(c => !c.resolved).length;
     }
     return {
       ok: true,

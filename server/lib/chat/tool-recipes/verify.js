@@ -57,9 +57,11 @@ const INDEPENDENT = {
     const sigma = (h) => (6 * M) / (v.widthM * h * h);
     const delta = (h) => (v.loadN * v.spanM ** 3) / (48 * E * ((v.widthM * h ** 3) / 12));
     let pick = null;
-    for (let e = -3; e <= 1 && pick == null; e++) for (const x of R10) {
-      const h = +(x * 10 ** e).toPrecision(6);
-      if (h >= 0.005 && sigma(h) <= allow && delta(h) <= v.spanM / lim) { pick = h; break; }
+    for (let e = -3; e <= 1 && pick == null; e++) {
+      for (const x of R10) {
+        const h = +(x * 10 ** e).toPrecision(6);
+        if (h >= 0.005 && sigma(h) <= allow && delta(h) <= v.spanM / lim) { pick = h; break; }
+      }
     }
     const h = r.depthM;
     return [

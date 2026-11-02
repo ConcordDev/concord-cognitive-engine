@@ -255,20 +255,35 @@ await loop("sparks_payday", async () => {
   };
 });
 
-// ── 8. Reserves ──────────────────────────────────────────────────────────
+// ── 8. Reserves (canonical treasury pool; reserves.js retired in #1969) ──
 await loop("reserves", async () => {
-  const { initReservesSchema, allocateFromFee, getReserveBalance, getReserveHealth, payChargeback } =
-    await import("../economy/reserves.js");
+  const { distributeFee } = await import("../economy/fee-split.js");
+  const { getTreasuryBalance, getReserveHealth, payChargeback } = await import("../economy/treasury.js");
   const db = new Database(":memory:");
-  initReservesSchema(db);
-  const alloc = allocateFromFee(db, { feeAmount: 200, sourceTxId: "tx_wave4" });
-  const bal = getReserveBalance(db);
+  db.exec(`
+    CREATE TABLE economy_ledger (
+      id TEXT PRIMARY KEY, type TEXT NOT NULL, from_user_id TEXT, to_user_id TEXT,
+      amount REAL NOT NULL CHECK(amount > 0), fee REAL NOT NULL DEFAULT 0 CHECK(fee >= 0),
+      net REAL NOT NULL CHECK(net > 0), status TEXT NOT NULL DEFAULT 'complete',
+      metadata_json TEXT DEFAULT '{}', request_id TEXT, ip TEXT, ref_id TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      CHECK(from_user_id IS NOT NULL OR to_user_id IS NOT NULL)
+    );
+    CREATE TABLE fee_distributions (
+      id TEXT PRIMARY KEY, source_tx_id TEXT NOT NULL, total_fee REAL NOT NULL,
+      reserves_amount REAL NOT NULL, operating_amount REAL NOT NULL,
+      payroll_amount REAL NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+  // A 200-coin fee splits 80/10/10, so the pool receives 160.
+  const alloc = distributeFee(db, { feeAmount: 200, sourceTxId: "tx_wave4" });
+  const bal = getTreasuryBalance(db);
   const health = getReserveHealth(db);
   const cb = payChargeback(db, { chargebackAmount: 10, sourceTxId: "tx_cb_wave4" });
-  const bal2 = getReserveBalance(db);
+  const bal2 = getTreasuryBalance(db);
   db.close();
   return {
-    ok: alloc.ok && alloc.chargebackAllocation === 50 && bal.chargebackReserve === 50 && health.status === "healthy" && cb.ok && bal2.chargebackReserve === 40,
+    ok: alloc.ok && bal === 160 && health.status === "healthy" && health.chargebackReserve === 160 && cb.ok && bal2 === 150,
     alloc, balance_after_alloc: bal, health, chargeback: cb, balance_after_cb: bal2,
   };
 });

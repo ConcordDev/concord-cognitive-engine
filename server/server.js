@@ -2056,6 +2056,8 @@ import { preloadBrains, getBrainPriority, resolveBrain } from "./lib/brain-route
 import { brainChat as byoBrainChat, getOverride as byoGetOverride, getBrainMode as byoGetBrainMode, resolveDispatchTarget as byoResolveDispatchTarget } from "./lib/byo-router.js";
 import { assertByoCryptoReady } from "./lib/byo-crypto.js";
 import { prepareContext } from "./lib/context-orchestrator.js";
+import { captureFromMessage as _captureUserMemory } from "./lib/user-memory.js";
+import { buildMemoryBlock as _buildUserMemoryBlock, verifiedMemoryUserId as _verifiedMemoryUserId } from "./lib/user-memory-context.js";
 import { platformProviderChat, platformProviderConfigured } from "./lib/platform-providers.js";
 import { cloudChatAvailable, cloudFallbackChat, llmReadyFor } from "./lib/llm-cloud-fallback.js";
 import { hostTier as _newsHostTier, isExcludedHost as _newsIsExcludedHost } from "./lib/news-outlet-policy.js";
@@ -8534,6 +8536,8 @@ function authMiddleware(req, res, next) {
     "/api/marketplace/browse", "/api/marketplace/dtu_browse",
     "/api/marketplace/installed", "/api/marketplace/listings",
     "/api/marketplace/dream-promoted",
+    // Signed-out Music/Market browse (GB-0664): the whitelisted public media catalog (public items only).
+    "/api/media/public-feed",
     "/api/distribution",
     // Agent systems
     // "/api/agents" removed (audit follow-up): the agents table has no
@@ -15740,6 +15744,8 @@ async function runMacro(domain, name, input, ctx) {
     "/api/marketplace/browse", "/api/marketplace/dtu_browse",
     "/api/marketplace/installed", "/api/marketplace/listings",
     "/api/marketplace/dream-promoted",
+    // Signed-out Music/Market browse (GB-0664): the whitelisted public media catalog (public items only).
+    "/api/media/public-feed",
     "/api/hive", "/api/heal", "/api/grounding", "/api/commonsense", "/api/explanation",
     "/api/ingest", "/api/jobs", "/api/queue", "/api/cache", "/api/cognitive",
     "/api/onboarding", "/api/tutorial", "/api/srs", "/api/skill", "/api/schema", "/api/daily",
@@ -28716,6 +28722,22 @@ try {
   _chatMemory = _chatMemoryLib.buildSessionMemory(_memRows);
 } catch (_e) { logger.debug('server', 'chat memory build failed', { error: _e?.message }); }
 
+// Per-user memory (opt-in, default off). Runs for EVERY turn that reaches here, so an explicit "remember that..."
+// is captured even when the agent route answers it, and the labelled block reaches both the agent route and the
+// conversational path. Kept in its own variable, NEVER merged into _chatMemory.text: that text is persisted into a
+// chat-memory DTU below, and a user's private memory must not be written into a DTU. Identity is the verified ctx
+// only (input is the raw client body). Never throws, no-op unless CONCORD_USER_MEMORY and the user's opt-in are on.
+let _userMemoryMsg = null;
+try {
+  const _umDb = ctx?.db || globalThis._concordSTATE?.db;
+  const _umUid = _verifiedMemoryUserId(ctx);
+  if (_umDb && _umUid) {
+    _captureUserMemory(_umDb, _umUid, prompt, { projectId: input?.projectId || null, lens: input?.lens || null, sessionId, msgId: input?.clientTurnId || null });
+    const _um = await _buildUserMemoryBlock(_umDb, _umUid, { projectId: input?.projectId || null, lens: input?.lens || null, queryText: prompt, sessionId, msgId: input?.clientTurnId || null });
+    _userMemoryMsg = _um.message;
+  }
+} catch (_e) { /* memory must never block chat */ }
+
 // Persist user msg + a deterministic assistant reply when the chat takes
 // any of the early-return paths (math, time, weather, identity, etc.).
 // The full LLM path persists at its own return site with richer meta.
@@ -29015,7 +29037,7 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
           : (_agentRouteKind === "design"
               ? { deadlineMs: _agentBudget.deadlineMs, chatTransport: _agentBudget.transport }
               : {});
-        const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind, lensActions: LENS_ACTIONS, memoryBlock: _chatMemory.text, formulaDtus: _formulaDtus, recallDtus: _recallDtus, knowledgeDtus: _knowledgeDtus, knowledgeStrong: _knowledgeStrong, sessionId, ...(typeof input?.selfContinue === "boolean" ? { selfContinue: input.selfContinue } : {}), ..._agentDeadline });
+        const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind, lensActions: LENS_ACTIONS, memoryBlock: _userMemoryMsg ? [_chatMemory.text, _userMemoryMsg.content].filter(Boolean).join("\n\n") : _chatMemory.text, formulaDtus: _formulaDtus, recallDtus: _recallDtus, knowledgeDtus: _knowledgeDtus, knowledgeStrong: _knowledgeStrong, sessionId, ...(typeof input?.selfContinue === "boolean" ? { selfContinue: input.selfContinue } : {}), ..._agentDeadline });
         if (_agentOut) {
           let _agentReply = visibleChatReply(_agentOut.reply, prompt);
           if (process.env.CONCORD_CHAT_HUMANIZE !== "0") {
@@ -30635,6 +30657,7 @@ ${_operatorV6Block}` : "";
     // _userContent last so the request never ends on an assistant prefill.
     messages = buildChatHistoryMessages(sess.messages, _userContent);
     if (_chatMemory.text) messages = [{ role: "system", content: _chatMemory.text }, ...messages];
+    if (_userMemoryMsg) messages = [_userMemoryMsg, ...messages];
     if (_chatTodayLine) messages = [{ role: "system", content: _chatTodayLine }, ...messages];
     if (_conversationalChat) messages = withChatToneReminder(messages);
     const _llmSpan = startSpan("llm.chat", { mode, sessionId, promptLength: prompt.length });
@@ -30729,6 +30752,7 @@ ${_operatorV6Block}` : "";
       const _directMessages = [
         { role: "system", content: _selfContSystem },
         ...(_chatMemory.text ? [{ role: "system", content: _chatMemory.text }] : []),
+        ...(_userMemoryMsg ? [_userMemoryMsg] : []),
         ...(_chatTodayLine ? [{ role: "system", content: _chatTodayLine }] : []),
         ...(isConversationalChatMode(mode) ? withChatToneReminder(buildChatHistoryMessages(sess.messages, prompt)) : buildChatHistoryMessages(sess.messages, prompt)),
       ];
@@ -43499,6 +43523,7 @@ app.use(createUniversalExportRouter(STATE, runMacro, makeCtx));
 
 // ===== DB-DEPENDENT ROUTES (guarded — these crash on null db) =====
 import createAccountLifecycleRouter from "./routes/account-lifecycle.js";
+import createUserMemoryRouter from "./routes/user-memory.js";
 import { adminOnly as economyAdminOnly } from "./economy/guards.js";
 import createConsentRouter from "./routes/consent.js";
 import createDisputeRouter from "./routes/disputes.js";
@@ -43512,6 +43537,7 @@ import registerCodeEngineRoutes from "./routes/code-engine.js";
 
 if (db) {
   app.use("/api/account", createAccountLifecycleRouter({ db, requireAuth, adminOnly: economyAdminOnly }));
+  app.use("/api/user-memory", createUserMemoryRouter({ db, requireAuth }));
   app.use("/api/consent", createConsentRouter({ db, requireAuth }));
   app.use("/api/disputes", createDisputeRouter({ db, requireAuth, adminOnly: economyAdminOnly }));
   registerLegalRoutes(app, { db, requireAuth, requireRole, structuredLog, auditLog });
@@ -43735,7 +43761,17 @@ import createBrowserRoutes from "./routes/browser.js";
 try { app.use("/api/browser", createBrowserRoutes({ requireAuth })); } catch (e) { structuredLog("warn", "browser_routes_skip", { error: e.message }); }
 
 import registerCanonicalRoutes from "./routes/canonical.js";
-try { registerCanonicalRoutes(app, { db, requireAuth, STATE, structuredLog }); } catch (e) { structuredLog("warn", "canonical_routes_skip", { error: e.message }); }
+// The integrity system is created later (initExtensions → app.locals.dtuIntegrity),
+// so hand the routes a lazy delegate instead of a value that is still undefined here.
+const _canonicalIntegrity = new Proxy({}, {
+  get(_t, prop) {
+    const sys = app.locals.dtuIntegrity;
+    if (!sys) throw new Error("dtu_integrity_unavailable");
+    const v = sys[prop];
+    return typeof v === "function" ? v.bind(sys) : v;
+  },
+});
+try { registerCanonicalRoutes(app, { db, requireAuth, STATE, structuredLog, integritySystem: _canonicalIntegrity }); } catch (e) { structuredLog("warn", "canonical_routes_skip", { error: e.message }); }
 
 import registerChicken2Routes from "./routes/chicken2.js";
 try {
@@ -44268,22 +44304,24 @@ function getDtuBridge() {
 // Kill-switch: DTU_BRIDGE_PUMP_DISABLED=1 (or DTU_BRIDGE_PUMP=0) skips
 // registering the pump at boot. Default unchanged (pump on).
 const _dtuBridgePumpEnabled = process.env.DTU_BRIDGE_PUMP_DISABLED !== "1" && process.env.DTU_BRIDGE_PUMP !== "0";
-if (_dtuBridgePumpEnabled) registerHeartbeat("dtu-bridge-pump", {
-  frequency: 4,
-  scope: "global",
-  handler: async () => {
-    try {
-      const svc = getDtuBridge();
-      if (!svc) return { ok: true, skipped: "no_db" };
-      const swept = svc.sweep(dtusArray(), { limit: 200 });
-      const drained = svc.drain(50);
-      return { ok: true, swept, drained };
-    } catch (err) {
-      structuredLog("warn", "dtu_bridge_pump_failed", { error: err?.message });
-      return { ok: false, reason: "exception" };
-    }
-  },
-});
+if (_dtuBridgePumpEnabled) {
+  registerHeartbeat("dtu-bridge-pump", {
+    frequency: 4,
+    scope: "global",
+    handler: async () => {
+      try {
+        const svc = getDtuBridge();
+        if (!svc) return { ok: true, skipped: "no_db" };
+        const swept = svc.sweep(dtusArray(), { limit: 200 });
+        const drained = svc.drain(50);
+        return { ok: true, swept, drained };
+      } catch (err) {
+        structuredLog("warn", "dtu_bridge_pump_failed", { error: err?.message });
+        return { ok: false, reason: "exception" };
+      }
+    },
+  });
+}
 
 // Backfill DTU classification in small budgeted batches (existing DTUs without a current classification).
 registerHeartbeat("dtu-quality-backfill", {
@@ -58962,6 +59000,8 @@ function initChatSocketHandlers(io) {
           log: (...args) => structuredLog("info", "chat:socket", ...args),
           reqMeta: { sessionId },
           chatTransport: "socket",
+          // Per-user memory identity: ONLY the authenticated socket user, never handshake.auth.userId (client-supplied).
+          memoryUserId: socket.data?.userId || null,
           affect: {},
           llm: {
             enabled: LLM_READY,

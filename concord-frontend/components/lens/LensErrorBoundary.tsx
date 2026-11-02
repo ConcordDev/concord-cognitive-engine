@@ -87,8 +87,10 @@ export class LensErrorBoundary extends React.Component<Props, State> {
               technical details
             </summary>
             <pre className="mt-2 text-[10px] text-red-400 whitespace-pre-wrap break-words">
-              {this.state.error.message}
-              {this.state.error.stack && '\n\n' + this.state.error.stack.slice(0, 800)}
+              {/* Sanitised: the error name + message only. Raw stacks carry
+                  minified chunk filenames and internal paths; they stay in
+                  the console log (componentDidCatch), never in the DOM. */}
+              {this.state.error.name}: {(this.state.error.message || 'Unknown error').replace(/\s+at\s+\S+.*/g, '').slice(0, 300)}
             </pre>
           </details>
           <div className="flex items-center justify-center gap-3 pt-2">

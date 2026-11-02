@@ -22,6 +22,9 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 
+// The .dtu signing key comes from the environment; configure a test-only key.
+process.env.CONCORD_DTU_SIGNING_KEY = "dtu-format-test-only-key";
+
 import {
   DTU_FILE_FORMAT, DTU_BINARY_LAYOUT, DTU_OS_ACTIONS,
   DTU_VIEWER, DTU_CODEC, DTU_SMART_OPEN, DTU_SHARING,

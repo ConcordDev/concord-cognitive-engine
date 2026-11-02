@@ -26,13 +26,59 @@ const MAX_DTU_TITLE_LEN = 1000;   // Max title length per DTU
 const MAX_DTU_TAGS = 50;          // Max tags per DTU
 const HMAC_ALGO = "sha256";
 
+/** Sync packages older/newer than this (clock skew + transit) are refused. */
+const SYNC_MAX_SKEW_MS = 10 * 60 * 1000;
+/** Replay window: a seen signature is remembered at least as long as it could still be fresh. */
+const SEEN_SIG_TTL_MS = 2 * SYNC_MAX_SKEW_MS;
+const SEEN_SIG_MAX = 10000;
+const _seenSignatures = new Map(); // `${peerId}:${signature}` -> expiresAt (ms)
+
+/** Stable stringify (sorted object keys) for signing payloads. */
+function stableStringify(v) {
+  if (v === undefined) return "null";
+  if (v === null || typeof v !== "object") return JSON.stringify(v);
+  if (Array.isArray(v)) return `[${v.map(stableStringify).join(",")}]`;
+  return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${stableStringify(v[k])}`).join(",")}}`;
+}
+
+/** SHA-256 over the content a receiver will actually import from one DTU. */
+function dtuContentHash(d) {
+  const content = {
+    id: d?.id ?? null,
+    title: d?.title ?? null,
+    tier: d?.tier ?? null,
+    tags: d?.tags ?? null,
+    core: d?.core ?? null,
+    human: d?.human ?? null,
+  };
+  return crypto.createHash("sha256").update(stableStringify(content)).digest("hex");
+}
+
 /**
- * Compute HMAC signature for a sync package.
+ * Compute HMAC signature for a sync package. Binds the sender, the
+ * timestamp, and a content hash of every DTU (in id order), so neither
+ * the DTU bodies nor the freshness window can be altered in transit.
  * @param {string} secret - Per-peer shared secret
  * @param {Object} pkg - The package to sign
  * @returns {string} Hex-encoded HMAC
  */
 export function signPackage(secret, pkg) {
+  const dtus = [...(pkg.dtus || [])].sort((a, b) => String(a?.id).localeCompare(String(b?.id)));
+  const payload = stableStringify({
+    v: 2,
+    peerId: pkg.peerId,
+    timestamp: pkg.timestamp,
+    count: pkg.count,
+    dtus: dtus.map(dtuContentHash),
+  });
+  return crypto.createHmac(HMAC_ALGO, secret).update(payload).digest("hex");
+}
+
+/**
+ * LEGACY signature (ids only; DTU content NOT covered). Accepted by the
+ * receiver only when FEDERATION_LEGACY_SIG_ACCEPT=1. Never produced.
+ */
+function signPackageLegacy(secret, pkg) {
   const payload = JSON.stringify({
     peerId: pkg.peerId,
     count: pkg.count,
@@ -40,6 +86,16 @@ export function signPackage(secret, pkg) {
     dtuIds: (pkg.dtus || []).map(d => d.id).sort(),
   });
   return crypto.createHmac(HMAC_ALGO, secret).update(payload).digest("hex");
+}
+
+function hmacEquals(expected, signature) {
+  try {
+    const a = Buffer.from(expected, "hex");
+    const b = Buffer.from(signature, "hex");
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -50,21 +106,21 @@ export function signPackage(secret, pkg) {
  * @returns {boolean}
  */
 export function verifyPackageSignature(secret, pkg, signature) {
-  if (!secret || !signature) return false;
-  const expected = signPackage(secret, pkg);
-  // Constant-time comparison
-  try {
-    return crypto.timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(signature, "hex"));
-  } catch {
-    return false;
-  }
+  if (!secret || typeof signature !== "string" || !signature) return false;
+  return hmacEquals(signPackage(secret, pkg), signature);
 }
 
-/** Stable stringify (sorted object keys) for proposal signing payloads. */
-function stableStringify(v) {
-  if (v === null || typeof v !== "object") return JSON.stringify(v);
-  if (Array.isArray(v)) return `[${v.map(stableStringify).join(",")}]`;
-  return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${stableStringify(v[k])}`).join(",")}}`;
+/** Record a signature as seen; false when it was already seen (replay). */
+function markSignatureSeen(peerId, signature, now) {
+  for (const [k, exp] of _seenSignatures) {
+    if (exp > now) break; // insertion order ~ expiry order
+    _seenSignatures.delete(k);
+  }
+  const key = `${peerId}:${signature}`;
+  if (_seenSignatures.has(key)) return false;
+  if (_seenSignatures.size >= SEEN_SIG_MAX) _seenSignatures.delete(_seenSignatures.keys().next().value);
+  _seenSignatures.set(key, now + SEEN_SIG_TTL_MS);
+  return true;
 }
 
 /**
@@ -376,7 +432,9 @@ export function buildSyncPackage(STATE, peerId, opts = {}) {
 
   const pkg = {
     protocolVersion: store.protocolVersion,
-    peerId,
+    // The package names its SENDER (the receiver requires peerId === the
+    // authenticated `from`); `peerId` here is the target we look up the secret by.
+    peerId: opts.selfPeerId || peerId,
     dtus: exported,
     count: exported.length,
     timestamp: new Date().toISOString(),
@@ -417,8 +475,27 @@ export function receiveSyncPackage(STATE, peerId, pkg = {}) {
   if (!peer.sharedSecret || !pkg.signature) {
     return { ok: false, error: "signature_required" };
   }
+  // The package must claim the same peer the route authenticated against.
+  if (pkg.peerId !== peerId) {
+    return { ok: false, error: "peer_mismatch" };
+  }
   if (!verifyPackageSignature(peer.sharedSecret, pkg, pkg.signature)) {
-    return { ok: false, error: "signature_invalid" };
+    // Dual-accept window: the old ids-only format, behind a default-OFF flag.
+    const legacyOk = process.env.FEDERATION_LEGACY_SIG_ACCEPT === "1"
+      && typeof pkg.signature === "string"
+      && hmacEquals(signPackageLegacy(peer.sharedSecret, pkg), pkg.signature);
+    if (!legacyOk) return { ok: false, error: "signature_invalid" };
+    console.warn(`[federation] accepted LEGACY ids-only sync signature from ${peerId} (FEDERATION_LEGACY_SIG_ACCEPT=1)`);
+  }
+
+  // ── Freshness + replay (timestamp is covered by the signature) ──
+  const now = Date.now();
+  const sentAt = Date.parse(pkg.timestamp);
+  if (!Number.isFinite(sentAt) || Math.abs(now - sentAt) > SYNC_MAX_SKEW_MS) {
+    return { ok: false, error: "timestamp_out_of_window" };
+  }
+  if (!markSignatureSeen(peerId, pkg.signature, now)) {
+    return { ok: false, error: "replayed_package" };
   }
 
   // ── Schema validation per DTU ──

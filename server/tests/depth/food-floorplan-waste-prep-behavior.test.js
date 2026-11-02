@@ -59,7 +59,9 @@ describe("food.waste-log-add/list/delete — round-trip + aggregate + rejections
   });
 
   it("refuses a negative estimatedCostImpact (invalid_input, no silent clamp)", async () => {
-    assert.equal((await lensRun("food", "waste-log-add", { params: { itemName: "Neg Cost", estimatedCostImpact: -5 } }, ctx)).error, "invalid_input"); // no silent clamp (validation wave 2)
+    const bad = await lensRun("food", "waste-log-add", { params: { itemName: "Neg Cost", estimatedCostImpact: -5 } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.equal(bad.result.error, "invalid_input"); // no silent clamp (validation wave 2)
   });
 
   it("waste-log-list totalEstimatedCost sums across all entries exactly", async () => {

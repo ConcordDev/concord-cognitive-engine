@@ -261,7 +261,7 @@ describe("Concord Economic System", () => {
     });
 
     it("fee split should be 80/10/10", () => {
-      assert.equal(FEE_SPLIT.RESERVES, 0.80);
+      assert.equal(FEE_SPLIT.TREASURY, 0.80);
       assert.equal(FEE_SPLIT.OPERATING_COSTS, 0.10);
       assert.equal(FEE_SPLIT.PAYROLL, 0.10);
     });
@@ -681,7 +681,7 @@ describe("Concord Economic System", () => {
         sourceTxId: "test_fee_source",
       });
       assert.equal(result.ok, true);
-      assert.equal(result.distribution.reserves, 80);
+      assert.equal(result.distribution.treasury, 80);
       assert.equal(result.distribution.operating, 10);
       assert.equal(result.distribution.payroll, 10);
     });
@@ -692,9 +692,9 @@ describe("Concord Economic System", () => {
         sourceTxId: "test_small_fee",
       });
       assert.equal(result.ok, true);
-      const { reserves, operating, payroll } = result.distribution;
+      const { treasury, operating, payroll } = result.distribution;
       // Sum should equal original fee (within rounding)
-      const sum = reserves + operating + payroll;
+      const sum = treasury + operating + payroll;
       assert.ok(Math.abs(sum - 1.46) < 0.02);
     });
 

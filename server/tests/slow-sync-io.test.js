@@ -4,7 +4,7 @@ import { installSlowSyncIo, slowSyncIoSince, setSlowSyncIoReporter, _resetSlowSy
 
 function fakeFs() {
   return {
-    readFileSync(p) { fakeFs.cost = fakeFs.cost; return `data:${p}`; },
+    readFileSync(p) { return `data:${p}`; },
     statSync(p) { if (p === "boom") throw new Error("ENOENT"); return { size: 1 }; },
     notAFunction: 1,
   };

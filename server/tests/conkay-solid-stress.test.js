@@ -64,10 +64,14 @@ describe("registration and pure logic", () => {
     process.env.CONKAY_CCX = "/nonexistent/ccx";
     try {
       assert.equal(ccxPath(), "/nonexistent/ccx");
-      const r = await runSolidStatic(cantileverRequest(5));
+      // The runner checks the FEA Python first and ccx second. A machine without the gmsh toolchain (CI) would stop
+      // at the Python check, so this test supplies any existing executable as the Python stand-in to reach the ccx
+      // check it is about; the missing ccx is then the only thing that can be reported, on every machine.
+      const py = process.execPath;
+      const r = await runSolidStatic(cantileverRequest(5), { python: py });
       assert.equal(r.ok, false);
       assert.equal(r.unavailable, CCX_UNAVAILABLE);
-      const v = await validateSolid3d();
+      const v = await validateSolid3d({ run: (req) => runSolidStatic(req, { python: py }) });
       assert.ok(v.cases.every((c) => c.pass === false && /CONKAY_CCX/.test(c.reason)));
       assert.ok(v.convergence.every((c) => c.pass === false));
     } finally {

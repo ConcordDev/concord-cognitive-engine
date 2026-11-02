@@ -15,7 +15,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 // ── Economy modules ──────────────────────────────────────────────────────────
-import { calculateFee, FEES, PLATFORM_ACCOUNT_ID, FEE_SPLIT, UNIVERSAL_FEE_RATE, RESERVES_ACCOUNT_ID, OPERATING_ACCOUNT_ID, PAYROLL_ACCOUNT_ID } from "../economy/fees.js";
+import { calculateFee, FEES, PLATFORM_ACCOUNT_ID, FEE_SPLIT, UNIVERSAL_FEE_RATE, TREASURY_ACCOUNT_ID, OPERATING_ACCOUNT_ID, PAYROLL_ACCOUNT_ID } from "../economy/fees.js";
 import { recordTransaction, recordTransactionBatch, generateTxId, checkRefIdProcessed } from "../economy/ledger.js";
 import { getBalance } from "../economy/balances.js";
 import { executePurchase, executeTransfer, executeMarketplacePurchase } from "../economy/transfer.js";
@@ -288,13 +288,13 @@ describe("Test 1: Economy Invariant", () => {
     // Now distribute the fee through 80/10/10 split
     const distResult = distributeFee(db, { feeAmount: fee, sourceTxId: "mp_purchase_001" });
     assert.equal(distResult.ok, true, "fee distribution should succeed");
-    assert.ok(Math.abs(distResult.distribution.reserves - fee * 0.80) < 0.01, "Reserves should get 80%");
+    assert.ok(Math.abs(distResult.distribution.treasury - fee * 0.80) < 0.01, "Treasury should get 80%");
     assert.ok(Math.abs(distResult.distribution.operating - fee * 0.10) < 0.01, "Operating should get 10%");
     // Payroll gets remainder to avoid rounding drift
-    const payrollExpected = fee - distResult.distribution.reserves - distResult.distribution.operating;
+    const payrollExpected = fee - distResult.distribution.treasury - distResult.distribution.operating;
     assert.ok(Math.abs(distResult.distribution.payroll - payrollExpected) < 0.01, "Payroll should get remainder ~10%");
 
-    record(1, "Economy Invariant", "PASS", `5 CC purchase: fee=${fee} (${(expectedRate * 100).toFixed(2)}%), seller net=${net}, split: reserves=${distResult.distribution.reserves}/operating=${distResult.distribution.operating}/payroll=${distResult.distribution.payroll}`);
+    record(1, "Economy Invariant", "PASS", `5 CC purchase: fee=${fee} (${(expectedRate * 100).toFixed(2)}%), seller net=${net}, split: treasury=${distResult.distribution.treasury}/operating=${distResult.distribution.operating}/payroll=${distResult.distribution.payroll}`);
   });
 
   it("1c — Attempt overdraft withdrawal, verify rejection", () => {

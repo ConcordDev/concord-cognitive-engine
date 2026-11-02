@@ -38,6 +38,7 @@ import {
   generateThumbnail,
   generateHLSManifest,
   getMediaFeed,
+  getPublicMediaCatalog,
   getMediaByAuthor,
   getMediaMetrics,
   detectMediaType,
@@ -81,7 +82,7 @@ function _mediaProviderConfigured() {
 // guard Express matched "feed" / "metrics" / "constants" as a media id and answered 404 "Media not found"
 // (the Discovery feed's GET /api/media/feed?tab=trending was a 404 for every caller). `next("route")` hands the
 // request to the next matching route, which is the real handler.
-const RESERVED_MEDIA_SEGMENTS = new Set(["feed", "metrics", "constants"]);
+const RESERVED_MEDIA_SEGMENTS = new Set(["feed", "public-feed", "metrics", "constants"]);
 function _skipReservedMediaSegment(req, _res, next) {
   if (RESERVED_MEDIA_SEGMENTS.has(req.params.id)) return next("route");
   return next();
@@ -751,6 +752,18 @@ export default function createMediaRouter({ STATE }) {
    *   - limit: number (default: 20)
    *   - offset: number (default: 0)
    */
+  /**
+   * GET /public-feed — signed-out-safe catalog for the Music / Market visitor browse.
+   * Public items only, whitelisted fields (see getPublicMediaCatalog). Same answer whether or
+   * not the caller is signed in, so it can never leak more to a member than to a visitor.
+   * Registered before "/:id" routes; "public-feed" is also a reserved media segment.
+   */
+  router.get("/public-feed", asyncHandler(async (req, res) => {
+    const { tab, mediaType, q, limit, offset } = req.query;
+    res.set("Cache-Control", "public, max-age=30");
+    res.json(getPublicMediaCatalog(STATE, { tab, mediaType, q, limit, offset }));
+  }));
+
   router.get("/feed", asyncHandler(async (req, res) => {
      
     // eslint-disable-next-line no-restricted-syntax

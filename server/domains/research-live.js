@@ -92,15 +92,37 @@ function buildArxivRequest(defaultCategory, input = {}) {
   }
   const anyCategory = input.anyCategory === true;
   const rawQuery = input.query ? String(input.query).slice(0, 200).trim() : "";
-  const usesQuery = field !== "cat-only" && rawQuery !== "";
+  // S8 (F9) — the query is built as one field clause PER TERM, AND-joined.
+  // The previous construction encoded the whole string as a single field
+  // value (`all:large%20language%20models`); arXiv's parser reads an
+  // unquoted multi-word value as an OR of its words — verified live:
+  // that URL's own feed title reads "all:large OR all:language OR
+  // all:models" with totalResults 1,562,512, so sorted by submission
+  // date the surface showed the newest papers in the corpus whatever
+  // was typed — a feed wearing a search box. Term-wise AND returns the
+  // conjunctive set (106,663 for the same words), and a nonsense query
+  // honestly returns nothing instead of every paper containing "the".
+  // Quotes/parens are stripped per term: they are arXiv syntax, not
+  // search text, and a pasted phrase must not break the query grammar.
+  const queryTerms = rawQuery.split(/\s+/)
+    .map((t) => t.replace(/["()]/g, ""))
+    .filter(Boolean)
+    .slice(0, 10);
+  const usesQuery = field !== "cat-only" && queryTerms.length > 0;
   if (anyCategory) {
     if (field === "cat-only") return bad("anyCategory cannot be combined with field cat-only");
     if (!usesQuery) return bad("query is required when anyCategory is true");
   }
   const clauses = [];
   if (!anyCategory) clauses.push(`cat:${category}`);
-  if (usesQuery) clauses.push(`${field}:${encodeURIComponent(rawQuery)}`);
-  const url = `${ARXIV_BASE}?search_query=${clauses.join("+AND+")}&start=0&max_results=${limit}&sortBy=submittedDate&sortOrder=descending`;
+  if (usesQuery) {
+    for (const t of queryTerms) clauses.push(`${field}:${encodeURIComponent(t)}`);
+  }
+  // A query is a search: rank by relevance (Discover/OpenAlex sets the
+  // in-lens standard). The bare category listing stays a newest-first
+  // feed, which is what a feed is for.
+  const sortBy = usesQuery ? "relevance" : "submittedDate";
+  const url = `${ARXIV_BASE}?search_query=${clauses.join("+AND+")}&start=0&max_results=${limit}&sortBy=${sortBy}&sortOrder=descending`;
   return { ok: true, url, category: anyCategory ? null : category, query: usesQuery ? rawQuery : null };
 }
 

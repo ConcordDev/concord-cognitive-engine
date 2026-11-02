@@ -31,7 +31,7 @@ test("a signed-in user gets a compound with source, timestamp and licence", asyn
 test("anonymous callers are refused", async () => {
   const r = await getLiveData({}, { kind: "compound", name: "ethanol" }, { get });
   assert.deepEqual([r.ok, r.error], [false, "sign in to use live data"]);
-  assert.equal((await getLiveData({ actor: { userId: "anon" } }, { kind: "fx" }, { fetchImpl: async () => { throw new Error("must not call"); } })).ok, false);
+  assert.equal((await getLiveData({ actor: { userId: "anon" } }, { kind: "fx" }, { fxLatest: async () => { throw new Error("must not call"); } })).ok, false);
 });
 
 test("a repeat is served from cache without touching the network", async () => {
@@ -45,8 +45,8 @@ test("a repeat is served from cache without touching the network", async () => {
 });
 
 test("fx returns ECB rates with attribution", async () => {
-  const fetchImpl = async (url) => { assert.match(url, /frankfurter\.dev\/v1\/latest\?base=EUR&symbols=USD,GBP/); return { ok: true, json: async () => ({ base: "EUR", date: "2026-10-29", rates: { USD: 1.08, GBP: 0.85 } }) }; };
-  const r = await getLiveData(ctx, { kind: "fx", base: "eur", symbols: ["usd", "gbp"] }, { fetchImpl, now: () => 1000 });
+  const fxLatest = async (q) => { assert.deepEqual(q, { base: "EUR", symbols: ["USD", "GBP"] }); return { ok: true, data: { base: "EUR", date: "2026-10-29", rates: { USD: 1.08, GBP: 0.85 } } }; };
+  const r = await getLiveData(ctx, { kind: "fx", base: "eur", symbols: ["usd", "gbp"] }, { fxLatest, now: () => 1000 });
   assert.equal(r.ok, true);
   assert.equal(r.value.rates.USD, 1.08);
   assert.match(r.source.name, /European Central Bank/);
@@ -54,23 +54,26 @@ test("fx returns ECB rates with attribution", async () => {
 });
 
 test("upstream failure and bad input are honest errors, never fabricated values", async () => {
-  const down = await getLiveData(ctx, { kind: "fx", base: "EUR", symbols: ["USD"] }, { fetchImpl: async () => { throw new Error("offline"); } });
+  const down = await getLiveData(ctx, { kind: "fx", base: "EUR", symbols: ["USD"] }, { fxLatest: async () => { throw new Error("offline"); } });
   assert.equal(down.ok, false);
   assert.match(down.error, /unreachable/);
-  assert.equal((await getLiveData(ctx, { kind: "fx", base: "EUR", symbols: ["dollars"] }, { fetchImpl: async () => ({}) })).ok, false);
+  const unavailable = await getLiveData(ctx, { kind: "fx", base: "EUR", symbols: ["GBP"] }, { fxLatest: async () => ({ ok: false, status: "unavailable", reason: "http_503" }) });
+  assert.equal(unavailable.ok, false);
+  assert.match(unavailable.error, /unreachable: http_503/);
+  assert.equal((await getLiveData(ctx, { kind: "fx", base: "EUR", symbols: ["dollars"] }, { fxLatest: async () => ({}) })).ok, false);
   assert.equal((await getLiveData(ctx, { kind: "stocks" })).ok, false);
   assert.equal((await getLiveData(ctx, { kind: "compound", name: "nonesuchium" }, { get })).ok, false);
 });
 
 test("each user is rate-limited per minute", async () => {
-  const fetchImpl = async () => ({ ok: true, json: async () => ({ base: "EUR", rates: { USD: 1 } }) });
+  const fxLatest = async () => ({ ok: true, data: { base: "EUR", rates: { USD: 1 } } });
   let limited = null;
   for (let i = 0; i < 25 && !limited; i++) {
-    const r = await getLiveData(ctx, { kind: "fx", base: "EUR", symbols: ["USD"], n: i }, { fetchImpl, now: () => 5000 });
+    const r = await getLiveData(ctx, { kind: "fx", base: "EUR", symbols: ["USD"], n: i }, { fxLatest, now: () => 5000 });
     if (!r.ok && /rate limit/.test(r.error)) limited = i;
   }
   assert.equal(limited, 20);
-  const other = await getLiveData({ actor: { id: "u2" } }, { kind: "fx", base: "EUR", symbols: ["USD"], n: 99 }, { fetchImpl, now: () => 5000 });
+  const other = await getLiveData({ actor: { id: "u2" } }, { kind: "fx", base: "EUR", symbols: ["USD"], n: 99 }, { fxLatest, now: () => 5000 });
   assert.equal(other.ok, true);
 });
 
@@ -84,15 +87,11 @@ test("the chat tool reaches get_live_data and refuses anonymous callers", async 
 test("a hung exchange-rate server times out instead of holding the chat turn", async () => {
   process.env.CONCORD_LIVE_DATA_FX_TIMEOUT_MS = "500";
   try {
-    const hang = (url, init) => new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(Object.assign(new Error("aborted"), { name: "AbortError" }))));
+    const hang = () => new Promise(() => {});
     const t0 = Date.now();
-    const r = await getLiveData(ctx, { kind: "fx", base: "EUR", symbols: ["USD"] }, { fetchImpl: hang });
+    const r = await getLiveData(ctx, { kind: "fx", base: "EUR", symbols: ["USD"] }, { fxLatest: hang });
     assert.equal(r.ok, false);
     assert.match(r.error, /timed out after 500 ms/);
     assert.ok(Date.now() - t0 < 3000);
-    // a stalled body read is cut too
-    const stall = async (url, init) => ({ ok: true, json: () => new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new Error("aborted")))) });
-    const r2 = await getLiveData(ctx, { kind: "fx", base: "EUR", symbols: ["GBP"] }, { fetchImpl: stall });
-    assert.match(r2.error, /timed out/);
   } finally { delete process.env.CONCORD_LIVE_DATA_FX_TIMEOUT_MS; }
 });

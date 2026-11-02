@@ -952,11 +952,8 @@ describe("art — network + auth macros: deterministic pre-fetch validation (wav
       params: { materialKind: "wood", channel: "color", imageDataUrl: "data:image/png;base64,iVBOR" },
     }, { actor: { userId: "anon" } });
     assert.equal(r.result.ok, false);
-    // either the db-unavailable gate or the auth gate fires first; both are
-    // deterministic pre-egress refusals.
-    assert.ok(
-      r.result.error.includes("authentication required") || r.result.error.includes("db unavailable"),
-      `unexpected error: ${r.result.error}`,
-    );
+    // The lens dispatcher refuses an anonymous write before the handler runs (#1538), which is the deterministic
+    // pre-egress refusal now; the handler's own auth/db gates stay behind it as defence in depth.
+    assert.equal(r.result.error, "auth_required", `unexpected error: ${r.result.error}`);
   });
 });

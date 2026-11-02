@@ -1,5 +1,172 @@
 # Whiteboard Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **Rework (PR #1714, B7 build pair with Product Review 4, 2026-10-28):**
+> this PR is now Whiteboard's alone — the L8 batch's SRS and Timeline
+> greeting changes, greeting tests and capability-map updates were
+> reverted to main as split mechanics (they travel with their own PRs).
+> All three lenses' greeting headlines and greeting tests are removed;
+> prior headers restored.
+>
+> **Frozen review of record:** Product Review 4's whiteboard.md
+> (2026-10-28) — tier REDESIGN until the P0 slices land; 152 features
+> inventoried, 43 failed. Three-column map vs Miro (40 features):
+> **works-live 11 · backend-broken/unsurfaced 15 · missing 14**
+> (frozen §5d counts — re-scoring belongs to Review 4's re-pass).
+> Build order: S0 split → S1 one board store → S3 honest save →
+> S2 delete → S4 inline edit → S5–S16 → D1–D6. Builder updates are
+> appended below as slices land; the Wave-3 audit text further down
+> is history, not current truth.
+
+> **Builder update — S1+S3+S2 landed (B7, 2026-10-28):**
+> - **S1 (one board store):** canvas boards mirror into the domain
+>   board store under their DTU id (`origin: 'canvas'`); board-list
+>   counts both element models; the four Analyze macros resolve
+>   elements board-first (the Inspector previously fed them an empty
+>   artifact shadow — the zeros' frontend half); the Collab list
+>   tags canvas boards and never loads one into the Shape editor.
+> - **S3 (honest save):** the kept report DTU is a version chain on
+>   the board record (`keptDtuId/keptVersion/keptAt/keptSceneHash`) —
+>   DTUs are provenance-locked, so versions replace in-place edits;
+>   the Keep menu hydrates the linkage on mount, never re-mints an
+>   unchanged board, and shows a persistent kept line. Metadata-only
+>   board-saves no longer erase scene/title; the Studio autosave
+>   persists an emptied board.
+> - **S2 (delete):** board-delete is soft via `deletedAt` (one funnel:
+>   list/load/duplicate/Analyze); new macros `board-restore`,
+>   `boards-trash-list`, `board-delete-permanent` (57 total). The
+>   native `confirm()` gates are gone from both lists and the owner
+>   menu: inline two-step + 12s Undo window, then the hard commit
+>   (REST DTU delete for canvas boards). The Workbench has the Trash
+>   view. (Audit correction: the REST PATCH/DELETE whiteboard routes
+>   DO exist in server.js — the stale route inventory that suggested
+>   otherwise is not current; the owner macros were always real.)
+> **Builder update — S4–S16 + D-batch landed (B7, 2026-10-28/29):**
+> - **S4 (inline edit):** double-click a text/notecard element edits it
+>   in place (overlay textarea, blur/Cmd+Enter commits, Esc cancels,
+>   empty draft = cancel). Placement dialogs open blank; one-shot
+>   placement tools disarm after placing.
+> - **S5 (selection geometry):** rotation-aware hit tests, marquee
+>   multi-select, group drag with grid snap, corner resize handles,
+>   z-order controls, 15-degree-step rotation; grid preference
+>   persists.
+> - **S9 (true counts):** workspace-summary counts stickies in both
+>   element models and excludes trashed boards; the comments bucket
+>   is keyed by boardId (its misleading comment was corrected); zoom
+>   wheel steps are reciprocal; sidebar fallback counts real elements.
+> - **S7 (brain truth):** summarize/cluster read stickies in both
+>   models; an empty transcript never reaches the brain (deterministic
+>   answer instead); Session Retro carries the board's actual notes;
+>   per-action pending states, no whole-panel lock.
+> - **S10 (error noise):** the four automatic shared-room macros no-op
+>   quietly ({shared:false}) on the caller's own unshared board;
+>   deliberate shared actions keep their errors; CollabSection is
+>   alert-free (inline notes).
+> - **S8 (voting integrity):** vote-cast requires the board to resolve
+>   for the caller and the element to exist in its scene; tally
+>   prunes phantom entries; Workbench voting uses board/element
+>   pickers, not raw ID inputs.
+> - **S11 (Collab editor trust):** dirty clears only on a verified ok;
+>   save failures render inline; the editor header sits above canvas
+>   chrome.
+> - **S6 (uploads):** the Reference Pin (renamed per the review)
+>   embeds an uploaded image (downscaled data URL), accepts a pasted
+>   link, or takes a file dropped on the canvas; the renderer draws
+>   the real image. No byte-serving route exists for uploaded DTUs,
+>   so embedding is the persistence-honest route.
+> - **S12 (comment names):** the client passes the account username as
+>   authorName; the new comment merges into local state immediately.
+> - **S13 (validation):** one pattern — validate at submit, explain
+>   inline (audio/note/image dialogs); fmtDur clamps invalid input.
+> - **S15 (activity):** the shared ActivityTimeline read the lens
+>   ARTIFACT list as activity; it now reads the platform event log
+>   (same endpoint as the Guide) filtered to the lens's objects —
+>   board DTUs titled "Whiteboard: ..." surface. Shared chrome, data
+>   source correction only.
+> - **S16 (dead ends):** Moodboard items gained visible edit (in
+>   place) + delete controls (they were hover-hidden/absent;
+>   moodboard state is still local — no persistence backend exists);
+>   Copy JSON reports success/failure beside the menu; the Collab
+>   Export tab downloads a real file per plan — SVG with the plan as
+>   <metadata>, PNG with the plan in a tEXt chunk, single-page PDF
+>   with the plan in /Info (tiling stays plan information).
+> - **S14 (surface half only):** the share result shows the shared
+>   board ID with copy, the real participant list, and an honest
+>   capability note; the Collab Shared tab joins by ID. Membership
+>   writes and permission levels are NOT built — they wait on B2's
+>   platform ACL slice (Ramaj's 2026-10-29 decision) as a named
+>   follow-up in this PR's line; Review 4 judges S14 in two parts.
+> - **D1/D6 (identity strip):** name / live element count / kept-DTU
+>   version + time / last-saved time above the canvas; a plain health
+>   note appears at 200+ elements. Reopening the lens returns to the
+>   last board (LAST_BOARD_KEY, pre-existing wiring now fed truth).
+> - **D2 (M7 Quiet Success):** autosave success flashes a teal edge
+>   once (260ms, no toast); the strip's saved readout is persistent.
+> - **D3 (M3 Settle + chip):** committed elements land with a 140ms
+>   settle; a selection count chip shows for multi-select. (Drag-end
+>   settle not wired — the drag release path predates the settle
+>   hook; placement/commit is the shipped half.)
+> - **D4 (ceremonies):** the Boards menu starts Retro / Planning /
+>   Brainstorm — a new board with dated section frames on the main
+>   canvas; Present steps through the frames. Collab frames already
+>   worked and are unchanged.
+> - **D5 (receipts + import):** Studio PNG exports carry a provenance
+>   receipt in a tEXt chunk; SVG exports carry it as <metadata>
+>   (mirrors S16's Collab plan receipts). The Workbench Boards tab
+>   imports a board-export-json envelope (or raw snapshot) as a new
+>   board — the A30 import half.
+> - **E-WB-1 The Long Line:** a freehand stroke spanning 90%+ of the
+>   visible canvas typesets its path-summed measured length in serif
+>   at its endpoint ("N px of line. Committed."), then fades.
+> - **E-WB-2 Full House:** when all six Moodboard zones hold an item,
+>   the header latches the review's serif line for the session.
+> - **M8 The Return / M1 Receipt Stamp / M2 The Mint / M6 Queue
+>   Breathing:** not built as separate moments — M8's substance
+>   (returning to the last board and its kept state) is D1; M1's
+>   receipt substance is D5/S16; S7's per-action pending is M6's
+>   honest core. Stated plainly so the re-pass Delight audit scores
+>   what exists, not what was hoped.
+> - **Verification from this seat:** a loader harness runs the
+>   SHIPPED domain file in node — 17/17 suites green (s0 smoke pins
+>   57 macros; per-slice suites pin each domain change incl. failure
+>   cases); repo tests added per slice under server/tests/
+>   (whiteboard-unified-store, -honest-save, -soft-delete,
+>   -true-counts, -brain-truth, -error-noise, -voting-integrity);
+>   the three D-batch frontend files pass an esbuild syntax parse.
+>   Frontend vitest/typecheck and all live click-through are NOT RUN
+>   from this seat (no node_modules / no live runtime here) — they
+>   are Review 4's re-pass.
+
+> **Re-verification (HANDOFF-3 batch L8, 2026-10-28, against main e9791d4d):**
+> The Wave-3 audit below is kept as history — including its headline
+> room:join fix, which is intact. Since that audit, every remaining
+> "unsurfaced" item in its table has been closed in code except the
+> superseded sync path:
+>
+> - `comments-delete` — WIRED since (CollabBoardSection.tsx, author-only
+>   delete on comments). The October harness note "whiteboard has no
+>   board delete" is likewise dead: `board-delete` is called from both
+>   `CollabBoardSection.tsx` and `WhiteboardWorkbench.tsx`.
+> - `shared-vote-cast` — WIRED since: `CollabBoardSection` passes
+>   `onVoteElement={isSharedBoard ? collab.castVote : undefined}` into
+>   `WhiteboardCanvas`, closing the "display exists, write path exists,
+>   click handler missing" gap this map named as the most concrete one.
+> - `vision` — closed 2026-07-12 (see the struck-through row below).
+> - Fresh scan: 53/54 macros are named in the frontend. The only
+>   unnamed one is `ops-since`, half of the `ops-apply`/`ops-since`
+>   op-log sync path this map already classified as superseded by the
+>   live `broadcast-scene` full-scene sync — dead-but-harmless backend
+>   code, disposition unchanged. `frame-update`/`embed-update`/
+>   `workspace-summary` remain unsurfaced low-priority conveniences
+>   (frames/embeds are delete-and-recreate; no stat strip was added).
+> - **Shipped in this batch:** the concept's serif headline — "Sketch
+>   it, {username}" — in `WhiteboardStudio`'s header (whose own comment
+>   already called the slot "Greeting + board switcher, over the canvas
+>   (north star 14)"), `data-testid="whiteboard-greeting"`,
+>   `tests/whiteboard-greeting.test.tsx`.
+> - Server suites run locally this pass: whiteboard-domain-parity
+>   passes (in the combined 98-pass L8 run).
+
+
 > Derived, not asserted. Reproduce the macro count:
 > `grep -c 'registerLensAction("whiteboard"' server/domains/whiteboard.js` → 54
 

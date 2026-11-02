@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { TAB_LABEL_REDIRECTS } from './lib/lens-tab-redirects';
 
+// Signed-out browsing of Music + Market (GB-0664). Kept literal here (not imported from lib/anon-browse.tsx,
+// a client module) because middleware runs on the edge runtime; tests pin the two copies equal.
+const ANON_BROWSE_HEADER = 'x-concord-anon-browse';
+const PUBLIC_BROWSE_LENSES = new Set(['/lenses/music', '/lenses/market']);
+
 // A label slug that is not the lens path (Threads → /lenses/threads,
 // Visuals → /lenses/visuals) 308s to the canonical route. Checked before
 // auth so the URL itself moves. The list is the registry tabLabels.
@@ -374,6 +379,8 @@ export function middleware(request: NextRequest) {
   // pre-flight audit that justified the flip from report-only.
   const forwardedHeaders = new Headers(request.headers);
   forwardedHeaders.set('x-nonce', nonce);
+  // Only this middleware may say "signed-out visitor browse": drop any copy the client sent.
+  forwardedHeaders.delete(ANON_BROWSE_HEADER);
 
   function withCspHeaders(response: NextResponse): NextResponse {
     let effectiveCsp = csp;
@@ -432,6 +439,13 @@ export function middleware(request: NextRequest) {
   const hasSession =
     request.cookies.has('concord_auth') ||
     request.cookies.has('concord_refresh');
+
+  // Visitors may browse Music and Market read-only (public items, 30 s previews; every write still
+  // needs sign-in). The lens renders its visitor surface; every other lens keeps the redirect below.
+  if (!hasSession && PUBLIC_BROWSE_LENSES.has(pathname)) {
+    forwardedHeaders.set(ANON_BROWSE_HEADER, '1');
+    return withCspHeaders(NextResponse.next(passThroughOptions));
+  }
 
   if (!hasSession && pathname === '/lenses/conkay') {
     return withCspHeaders(NextResponse.redirect(new URL('/conkay/demo', request.url)));

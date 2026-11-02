@@ -94,7 +94,9 @@ describe("WAVE4 artistry alias — structural (source) parity", () => {
     // Gate 1: GET-bypass allowlist.
     assert.match(src, /"\/api\/studio",\s*"\/api\/artistry",\s*"\/api\/creative-commerce"/);
     // Gate 3: Chicken2 safeReadBypass allowlist.
-    assert.match(src, /"\/api\/redis",\s*"\/api\/lenses",\s*"\/api\/studio",\s*"\/api\/artistry",\s*"\/api\/creative-commerce",\s*"\/api\/rbac"/);
+    // "/api/redis" was removed from this public-read list (admin-only), so the run now starts at /api/lenses.
+    assert.match(src, /"\/api\/lenses",\s*"\/api\/studio",\s*"\/api\/artistry",\s*"\/api\/creative-commerce",\s*"\/api\/rbac"/);
+    assert.doesNotMatch(src, /"\/api\/redis",\s*"\/api\/lenses"/, "/api/redis must not be a public safe-read path");
   });
 });
 

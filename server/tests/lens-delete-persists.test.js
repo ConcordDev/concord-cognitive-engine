@@ -151,7 +151,15 @@ describe("lens deletes remove from the persisted map and save", () => {
     const before = box.saves;
     const del = await box.run("whiteboard.board-delete", { id });
     assert.equal(del.ok, true);
+    assert.equal(del.result.soft, true, "board-delete is a soft delete (S2): the board goes to trash");
     assert.ok(box.saves > before, "board-delete must save");
+    // Soft: the board stays in the persisted map, flagged in trash, so a restart can still restore it.
+    assert.ok(deep(reload(box.STATE).whiteboardLens).includes(id), "a trashed board must survive a reload");
+    // Permanent delete is the step that removes it from the persisted map, and it must save too.
+    const beforePermanent = box.saves;
+    const gone = await box.run("whiteboard.board-delete-permanent", { id });
+    assert.equal(gone.ok, true);
+    assert.ok(box.saves > beforePermanent, "board-delete-permanent must save");
     assert.ok(!deep(reload(box.STATE).whiteboardLens ?? null).includes(id), "board reappeared after reload");
   });
 });

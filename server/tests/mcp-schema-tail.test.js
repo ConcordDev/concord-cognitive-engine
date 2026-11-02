@@ -31,8 +31,8 @@
  * caller passes {}, and no record (lane verdict error contracts,
  * capability registries, published descriptions) names a field.
  *
- * Boundaries pinned here: the tier census is untouched (99 real /
- * 3 local / 25 anonymous of 127), no tool gained a required argument
+ * Boundaries pinned here: the tier census is untouched (100 real /
+ * 3 local / 24 anonymous of 127), no tool gained a required argument
  * in this pass, and validation still fires exactly where it did.
  *
  * Run: node --test server/tests/mcp-schema-tail.test.js
@@ -125,7 +125,8 @@ describe("56-schema tail", () => {
     }
   });
 
-  it("boundaries: tier census untouched (99 real / 3 local / 25 anonymous of 127)", () => {
+  // embedding_search joined the real-auth set in #1785 (FIX-ALL Q34), moving one tool anonymous -> real (99/25 -> 100/24).
+  it("boundaries: tier census (100 real / 3 local / 24 anonymous of 127)", () => {
     const start = SERVER_SRC.indexOf("const MCP_TOOLS_REQUIRE_REAL_AUTH = new Set([");
     assert.ok(start >= 0);
     const block = SERVER_SRC.slice(start, SERVER_SRC.indexOf("]);", start));
@@ -135,7 +136,7 @@ describe("56-schema tail", () => {
       counts[realSet.has(t.name) ? "real" : MCP_TOOLS_LOCAL_OR_REAL_AUTH.has(t.name) ? "local" : "anonymous"]++;
     }
     assert.equal(MCP_TOOLS.length, 127);
-    assert.deepEqual(counts, { real: 99, local: 3, anonymous: 25 });
+    assert.deepEqual(counts, { real: 100, local: 3, anonymous: 24 });
   });
 
   it("boundaries: validation still fires where it did before the tail pass", async () => {

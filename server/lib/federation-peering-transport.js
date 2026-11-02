@@ -144,7 +144,7 @@ export async function sendSync(STATE, selfPeerId, peerId, opts = {}) {
   const found = requirePeer(STATE, peerId);
   if (!found.ok) return found;
 
-  const built = buildSyncPackage(STATE, peerId, { dtuIds: opts.dtuIds, limit: opts.limit });
+  const built = buildSyncPackage(STATE, peerId, { dtuIds: opts.dtuIds, limit: opts.limit, selfPeerId });
   if (!built.ok) return built;
 
   const res = await postJsonToPeer(found.peer, "/sync", {

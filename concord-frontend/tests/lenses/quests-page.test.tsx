@@ -4,6 +4,9 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import React from 'react';
 
 // Stub the lens chrome so we exercise the quests page's own data + state logic.
+// The north-star frame mounts the shared cross-lens recents card, which makes its own lensRun call at mount and
+// would consume the single queued error envelope meant for quests.mine. It is inert here.
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null, default: () => null }));
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: React.PropsWithChildren) =>
     React.createElement(React.Fragment, null, children),

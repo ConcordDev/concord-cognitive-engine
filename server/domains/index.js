@@ -290,6 +290,7 @@ import concordia from './concordia.js';
 import constellation from './constellation.js';
 // Universal Silver registry, read-only (phase 1): every compute surface scored against the solver contract.
 import silver from './silver.js';
+import video from './video.js';
 // Civic Bonds lives primarily in MACROS (`registerCivicBondsMacros(register)`
 // in server.js). Bridge the same handlers into LENS_ACTIONS so COMMON_ACTIONS
 // cannot shadow civic_bonds.vote (INC-SWEEP F1 — see domains/civic-bonds.js).
@@ -618,4 +619,5 @@ export default [
   constellation,
   registerCivicBondsLensActions,
   silver,
+  video,
 ];

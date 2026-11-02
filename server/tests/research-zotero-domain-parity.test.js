@@ -23,10 +23,18 @@ beforeEach(() => {
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
 const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
 
+// S3 fixture note: each newRef() call models a DISTINCT paper, so the
+// default DOI is unique per call. The old constant placeholder DOI made
+// every fixture paper the same work under the import/manual-add
+// duplicate gate (research.md §7 S3: adds check DOI before filing) —
+// no assertion in this suite ever depended on same-DOI adds filing
+// twins; only the placeholder was wrong.
+let refSeq = 0;
 function newRef(ctx = ctxA, over = {}) {
+  refSeq += 1;
   return call("reference-add", ctx, {
     title: "Attention Is All You Need", authors: "Vaswani, A.", year: 2017,
-    type: "article", journal: "NeurIPS", doi: "10.5555/3295222", tags: ["ml", "transformers"], ...over,
+    type: "article", journal: "NeurIPS", doi: `10.5555/3295222.${refSeq}`, tags: ["ml", "transformers"], ...over,
   }).result.reference;
 }
 

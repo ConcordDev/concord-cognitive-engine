@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const deleteMock = vi.fn();
+const lensRunMock = vi.fn(async (..._a: unknown[]) => ({ data: { ok: true, result: {} } }));
 const patchMock = vi.fn();
 const updateMock = vi.fn();
 const createArtifactMock = vi.fn(async () => ({ id: 'art_1' }));
@@ -52,7 +53,7 @@ vi.mock('@/lib/api/client', () => ({
     },
     dtus: { paginated: () => Promise.resolve({ data: { dtus: [{ id: 'dtu_1', title: 'Linked', tier: 'regular', tags: ['note'] }] } }) },
   },
-  lensRun: vi.fn(async () => ({ data: { ok: true, result: {} } })),
+  lensRun: (...args: unknown[]) => lensRunMock(...args),
 }));
 
 vi.mock('@/components/whiteboard/WhiteboardWorkbench', () => ({
@@ -106,6 +107,7 @@ function fake2d() {
 
 beforeEach(() => {
   deleteMock.mockReset();
+  lensRunMock.mockClear();
   patchMock.mockReset();
   updateMock.mockReset();
   createArtifactMock.mockClear();
@@ -173,9 +175,66 @@ describe('WhiteboardStudio owner actions', () => {
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Renamed to Plan v2.'));
     expect(patchMock).toHaveBeenCalledWith('/api/whiteboard/wb_1', { title: 'Plan v2' });
 
+    // Delete is a window, not an instant (S2): the board leaves every list at once and an Undo
+    // toast appears; the DTU delete only commits when the window lapses. Nothing is destroyed yet.
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete board' }));
-    await waitFor(() => expect(deleteMock).toHaveBeenCalledWith('/api/whiteboard/wb_1'));
+    // inline confirm (S2): the menu item only arms it
+    fireEvent.click(screen.getByRole('button', { name: 'Delete board' }));
+    await waitFor(() => expect(screen.getByText(/Board .*Plan.* deleted\./)).toBeTruthy());
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
     await waitFor(() => expect(screen.getByText(/Start a board and sketch/)).toBeTruthy());
+    expect(deleteMock).not.toHaveBeenCalled();
+  });
+
+  describe('board delete Undo window (S2: soft delete now, DTU delete after 12 s)', () => {
+    const lensActions = () => lensRunMock.mock.calls.map((c) => (c[0] as { action?: string })?.action);
+
+    async function deleteOpenBoard() {
+      // Fake only the timer pair the 12 s window uses; shouldAdvanceTime keeps the clock moving with real
+      // time so testing-library's waitFor still works while the delete is armed.
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
+      renderStudio();
+      await waitFor(() => expect(screen.getByRole('button', { name: /Plan/ })).toBeTruthy());
+      fireEvent.click(screen.getByRole('button', { name: /Plan/ }));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Delete board' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Delete board' }));
+      await waitFor(() => expect(screen.getByText(/Board .*Plan.* deleted\./)).toBeTruthy());
+    }
+    const advance = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms); });
+
+    afterEach(() => { vi.useRealTimers(); });
+
+    it('soft-deletes at once but only commits the DTU delete when the 12 s window lapses', async () => {
+      await deleteOpenBoard();
+      // soft delete (board-store record) happened immediately; nothing destroyed yet
+      expect(lensActions()).toContain('board-delete');
+      expect(deleteMock).not.toHaveBeenCalled();
+      expect(lensActions()).not.toContain('board-delete-permanent');
+
+      await advance(11_000);
+      expect(deleteMock).not.toHaveBeenCalled();
+      expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
+
+      await advance(1_500); // past 12 s
+      await waitFor(() => expect(deleteMock).toHaveBeenCalledWith('/api/whiteboard/wb_1'));
+      await waitFor(() => expect(lensActions()).toContain('board-delete-permanent'));
+      expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull(); // the toast closes with the commit
+      expect(deleteMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('Undo inside the window restores the board and cancels the commit for good', async () => {
+      await deleteOpenBoard();
+      await advance(5_000);
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+      await waitFor(() => expect(lensActions()).toContain('board-restore'));
+      // the deleted-toast is gone (the canvas toolbar has its own, unrelated Undo button) and the board is back
+      expect(screen.queryByText(/Board .*Plan.* deleted\./)).toBeNull();
+      await waitFor(() => expect(screen.getByRole('button', { name: /Plan/ })).toBeTruthy());
+
+      await advance(30_000); // far past the window: the cancelled commit must never fire
+      expect(deleteMock).not.toHaveBeenCalled();
+      expect(lensActions()).not.toContain('board-delete-permanent');
+    });
   });
 
   it('draws, switches tools, and exports the board that was read back', async () => {

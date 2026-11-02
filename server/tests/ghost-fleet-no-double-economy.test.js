@@ -19,7 +19,7 @@ test("runEconomicCycle: a caller with skipIfRecentMs skips after a recent cycle;
 test("server.js: the fleet economy timer passes the guard and the HLM pass has an in-flight flag", () => {
   const src = fs.readFileSync(new URL("../server.js", import.meta.url), "utf8");
   assert.match(src, /econ\.runEconomicCycle\(\{ skipIfRecentMs: 50 \* 60_000 \}\)/);
-  assert.match(src, /let _hlmRunning = false;[\s\S]{0,400}if \(_hlmRunning\) return;[\s\S]{0,400}finally \{ _hlmRunning = false; \}/);
+  assert.match(src, /let _hlmRunning = false;[\s\S]{0,400}if \(_hlmRunning\) return;[\s\S]{0,1500}finally \{ _hlmRunning = false; \}/);
   // the governor heartbeat call stays unguarded
   assert.match(src, /try \{ entityEconMod\.runEconomicCycle\(\); \}/);
 });

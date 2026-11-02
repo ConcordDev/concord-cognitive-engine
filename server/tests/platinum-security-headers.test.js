@@ -141,11 +141,17 @@ test("frontend generates a per-request CSP nonce and ships a CSP header", () => 
 });
 
 test("frontend CSP's script-src actually uses the nonce (not just 'unsafe-inline')", () => {
+  // script-src is built by scriptSrcForDocument() (per-document: the Studio route drops only 'strict-dynamic'),
+  // and buildCsp() must take its script-src from it.
+  const fn = MIDDLEWARE_SOURCE.match(/export function scriptSrcForDocument\([^)]*\)[^{]*\{([\s\S]*?)\n\}/);
+  assert.ok(fn, "scriptSrcForDocument() is the single builder of script-src");
   assert.match(
-    MIDDLEWARE_SOURCE, /script-src[^`]*'nonce-\$\{nonce\}'/,
+    fn[1], /`'nonce-\$\{nonce\}'`/,
     "script-src does not reference the generated nonce — a CSP without a real nonce " +
     "(or hash) on script-src provides no XSS protection at all"
   );
+  assert.doesNotMatch(fn[1], /'unsafe-inline'/, "script-src must not allow 'unsafe-inline'");
+  assert.match(MIDDLEWARE_SOURCE, /scriptSrcForDocument\(/, "buildCsp() takes script-src from the nonce builder");
 });
 
 test("frontend CSP restricts the high-severity directives (object-src, frame-ancestors, base-uri)", () => {
