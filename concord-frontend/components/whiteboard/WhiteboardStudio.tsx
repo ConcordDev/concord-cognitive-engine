@@ -7,7 +7,6 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useState, useRef, useEffect, useCallback, type ComponentType } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  PenTool,
   Plus,
   Link2,
   Square,
@@ -25,7 +24,6 @@ import {
   Move,
   Image as ImageIcon,
   StickyNote,
-  Bookmark,
   MoreHorizontal,
   ChevronUp,
   ChevronDown,
@@ -176,12 +174,8 @@ export function WhiteboardStudio({
   const [textPosition, setTextPosition] = useState<{ x: number; y: number } | null>(null);
 
   /* new-tool input dialogs */
-  const [showAudioDialog, setShowAudioDialog] = useState(false);
   const [showImageDialog, setShowImageDialog] = useState(false);
   const [showNoteDialog, setShowNoteDialog] = useState(false);
-  const [showSectionDialog, setShowSectionDialog] = useState(false);
-  const [audioClipName, setAudioClipName] = useState('');
-  const [audioClipDur, setAudioClipDur] = useState(30);
   const [imageLabel, setImageLabel] = useState('');
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [imageData, setImageData] = useState('');
@@ -191,7 +185,6 @@ export function WhiteboardStudio({
   const imageCacheRef = useRef(new Map<string, HTMLImageElement>());
   const [noteText, setNoteText] = useState('');
   const [noteColor, setNoteColor] = useState(CARD_COLORS[0]);
-  const [sectionChoice, setSectionChoice] = useState(SECTION_PRESETS[0]);
 
   /* ---------- queries / mutations ---------- */
   const { data: whiteboards, isLoading, isError: isError2, error: error2, refetch: refetch2,} = useQuery({
@@ -643,10 +636,8 @@ export function WhiteboardStudio({
 
     if (tool === 'text') { setTextInput(''); setTextPosition({ x, y }); return; }
     if (tool === 'dtu') { setShowDtuPicker(true); setTextPosition({ x, y }); return; }
-    if (tool === 'audio') { setAudioClipName(''); setAudioClipDur(30); setDialogError(null); setShowAudioDialog(true); setTextPosition({ x, y }); return; }
     if (tool === 'image') { setImageLabel(''); setImageUrlInput(''); setImageData(''); setImageName(''); setDialogError(null); setShowImageDialog(true); setTextPosition({ x, y }); return; }
     if (tool === 'notecard') { setNoteText(''); setDialogError(null); setShowNoteDialog(true); setTextPosition({ x, y }); return; }
-    if (tool === 'section') { setShowSectionDialog(true); setTextPosition({ x, y }); return; }
 
     pushUndo();
     setIsDrawing(true);
@@ -856,19 +847,6 @@ export function WhiteboardStudio({
     setShowDtuPicker(false); setTextPosition(null); setTool('select');
   };
 
-  const addAudioPin = () => {
-    if (!textPosition) return;
-    if (!audioClipName.trim()) { setDialogError('Give the clip a name first.'); return; }
-    if (!Number.isFinite(audioClipDur) || audioClipDur < 1 || audioClipDur > 3600) { setDialogError('Duration needs to be between 1 and 3600 seconds.'); return; }
-    pushUndo();
-    setElements(prev => [...prev, {
-      id: uid(), type: 'audio', x: textPosition.x, y: textPosition.y,
-      clipName: audioClipName, duration: Math.round(audioClipDur), playing: false,
-      stroke: '#00d4ff', fill: 'rgba(0, 212, 255, 0.08)', strokeWidth: 2, width: 220, height: 72,
-    }]);
-    setAudioClipName(''); setAudioClipDur(30); setDialogError(null); setShowAudioDialog(false); setTextPosition(null); setTool('select');
-  };
-
   const addImagePin = () => {
     const url = imageData || imageUrlInput.trim();
     if (!textPosition) return;
@@ -892,22 +870,6 @@ export function WhiteboardStudio({
       strokeWidth: 2, width: 180, height: 100,
     }]);
     setNoteText(''); setDialogError(null); setShowNoteDialog(false); setTextPosition(null); setTool('select');
-  };
-
-  const addSectionMarker = () => {
-    if (!textPosition) return;
-    pushUndo();
-    setElements(prev => [...prev, {
-      id: uid(), type: 'section', x: textPosition.x, y: textPosition.y,
-      sectionType: sectionChoice.type, text: sectionChoice.label, bars: sectionChoice.bars,
-      stroke: sectionChoice.color, fill: sectionChoice.color + '18',
-      strokeWidth: 2, width: sectionChoice.bars * 24, height: 56,
-    }]);
-    setShowSectionDialog(false); setTextPosition(null); setTool('select');
-  };
-
-  const toggleAudioPlay = (id: string) => {
-    setElements(prev => prev.map(el => el.id === id ? { ...el, playing: !el.playing } : el));
   };
 
   const deleteSelected = useCallback(() => {
@@ -1422,10 +1384,8 @@ export function WhiteboardStudio({
     { id: 'arrow', icon: ArrowRight, label: 'Arrow', key: 'A' },
     { id: 'text', icon: Type, label: 'Text', key: 'T' },
     { id: 'dtu', icon: Link2, label: 'Link DTU', key: 'D' },
-    { id: 'audio', icon: PenTool, label: 'Audio Pin', key: '' },
     { id: 'image', icon: ImageIcon, label: 'Reference Pin', key: '' },
     { id: 'notecard', icon: StickyNote, label: 'Note Card', key: '' },
-    { id: 'section', icon: Bookmark, label: 'Section Marker', key: '' },
   ];
 
 
@@ -1626,15 +1586,6 @@ export function WhiteboardStudio({
                   <button type="button" onClick={() => setZoom(z => clamp(z * 1.2, 0.25, 4))} className="rounded-full p-1 hover:bg-white/[0.06] hover:text-zinc-100" aria-label="Zoom in"><ZoomIn className="h-3.5 w-3.5" /></button>
                 </div>
 
-                {elements.filter(el => el.type === 'audio').map(el => (
-                  <button key={`play_${el.id}`} type="button"
-                    onClick={() => toggleAudioPlay(el.id)}
-                    className="absolute w-7 h-7 rounded-full opacity-0 hover:opacity-30"
-                    style={{
-                      left: el.x * zoom + offset.x + 12,
-                      top: el.y * zoom + offset.y + (el.height || 72) / 2 * zoom - 14,
-                    }} />
-                ))}
 
                 <AnimatePresence>
                   {showColorPicker && (
@@ -1713,31 +1664,6 @@ export function WhiteboardStudio({
                   );
                 })()}
 
-                <AnimatePresence>
-                  {showAudioDialog && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
-                      <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
-                        className="bg-lattice-surface border border-lattice-border rounded-lg p-5 w-80">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="font-semibold flex items-center gap-2"><PenTool className="w-4 h-4 text-neon-cyan" />Pin Audio Clip</h3>
-                          <button type="button" onClick={() => { setShowAudioDialog(false); setTextPosition(null); }} aria-label="Close"><X className="w-5 h-5" /></button>
-                        </div>
-                        <input type="text" placeholder="Clip name (e.g. Verse Vocal Take 3)" value={audioClipName}
-                          onChange={e => setAudioClipName(e.target.value)} autoFocus
-                          className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded text-sm mb-3" />
-                        <label className="text-xs text-gray-400">Duration (seconds)</label>
-                        <input type="number" value={audioClipDur} onChange={e => setAudioClipDur(+e.target.value)} min={1} max={3600}
-                          className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded text-sm mb-4" />
-                        {dialogError && <p className="text-[11px] text-rose-300 mb-3" role="status">{dialogError}</p>}
-                        <div className="flex gap-2">
-                          <button type="button" onClick={addAudioPin} className="flex-1 py-2 bg-neon-cyan text-black rounded-lg text-sm font-medium disabled:opacity-40">Place Pin</button>
-                          <button type="button" onClick={() => { setShowAudioDialog(false); setTextPosition(null); }} className="flex-1 py-2 bg-lattice-bg rounded-lg text-sm">Cancel</button>
-                        </div>
-                      </motion.div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
 
                 <AnimatePresence>
                   {showImageDialog && (
@@ -1805,34 +1731,6 @@ export function WhiteboardStudio({
                   )}
                 </AnimatePresence>
 
-                <AnimatePresence>
-                  {showSectionDialog && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
-                      <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
-                        className="bg-lattice-surface border border-lattice-border rounded-lg p-5 w-80">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="font-semibold flex items-center gap-2"><Bookmark className="w-4 h-4 text-purple-400" />Section Marker</h3>
-                          <button type="button" onClick={() => { setShowSectionDialog(false); setTextPosition(null); }} aria-label="Close"><X className="w-5 h-5" /></button>
-                        </div>
-                        <div className="space-y-2 mb-4">
-                          {SECTION_PRESETS.map(s => (
-                            <button key={s.type} type="button" onClick={() => setSectionChoice(s)}
-                              className={`w-full flex items-center gap-3 p-2 rounded-lg border transition-colors ${sectionChoice.type === s.type ? 'border-white bg-lattice-elevated' : 'border-lattice-border hover:border-white/20'}`}>
-                              <div className="w-4 h-4 rounded" style={{ backgroundColor: s.color }} />
-                              <span className="text-sm">{s.label}</span>
-                              <span className="text-xs text-gray-400 ml-auto">{s.bars} bars</span>
-                            </button>
-                          ))}
-                        </div>
-                        <div className="flex gap-2">
-                          <button type="button" onClick={addSectionMarker} className="flex-1 py-2 bg-purple-500 text-black rounded-lg text-sm font-medium">Place Marker</button>
-                          <button type="button" onClick={() => { setShowSectionDialog(false); setTextPosition(null); }} className="flex-1 py-2 bg-lattice-bg rounded-lg text-sm">Cancel</button>
-                        </div>
-                      </motion.div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
 
                 <AnimatePresence>
                   {showDtuPicker && (

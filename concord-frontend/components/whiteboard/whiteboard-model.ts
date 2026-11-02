@@ -4,7 +4,7 @@ export type BoardMode = 'canvas' | 'moodboard' | 'arrangement';
 
 export type SketchTool =
   | 'select' | 'draw' | 'rectangle' | 'ellipse' | 'line' | 'arrow'
-  | 'text' | 'dtu' | 'audio' | 'image' | 'notecard' | 'section';
+  | 'text' | 'dtu' | 'image' | 'notecard';
 
 export type SketchElement = {
   id: string;
