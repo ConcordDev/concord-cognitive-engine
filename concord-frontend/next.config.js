@@ -296,7 +296,16 @@ const nextConfig = {
   // @react-three/fiber v8 (react-reconciler reaches into 18.x's
   // __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentOwner
   // — gone in React 19, throws TypeError on every R3F mount).
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
+    // Pyodide vendoring gate (GB-0736; see ensurePyodideVendoredForBuild
+    // below): production builds only — `next dev` is covered by the
+    // predev --soft hook — and once per process (this hook runs for the
+    // client and server compilers). Runs before compilation, ahead of
+    // the standalone output's public/ copy.
+    if (!dev && !pyodideGateRan) {
+      pyodideGateRan = true;
+      ensurePyodideVendoredForBuild();
+    }
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -345,16 +354,21 @@ const sentryDsnConfigured = !!(process.env.NEXT_PUBLIC_SENTRY_DSN && process.env
 // build that runs `npx next build` directly, as the deploy lane's does,
 // never fires npm lifecycle hooks, so the runtime shipped silently
 // absent (public/pyodide/ is gitignored; nothing downstream noticed).
-// This config module is the one repo-controlled code path every
-// `next build` evaluates, whatever invoked it, so the production-build
-// phase runs scripts/ensure-pyodide.mjs here: check → vendor → re-check.
-// If the runtime cannot be vendored and verified, the build FAILS with
-// the remedy named — a warn-and-proceed build would repeat the
-// silent-ship failure. A network-less sandbox can opt out explicitly
+// The gate therefore runs scripts/ensure-pyodide.mjs from this config's
+// webpack hook on production builds (see below): check → vendor →
+// re-check. If the runtime cannot be vendored and verified, the build
+// FAILS with the remedy named — a warn-and-proceed build would repeat
+// the silent-ship failure. A network-less sandbox can opt out explicitly
 // with CONCORD_PYODIDE_VENDOR_SKIP=1; the skip is logged loudly, never
 // silent, and the runner then honestly reports "runtime unavailable".
-function ensurePyodideVendoredForBuild(phase) {
-  if (phase !== "phase-production-build") return;
+//
+// The export stays the plain config OBJECT (the Sentry-wrapped ternary
+// below): tests/lib/lens-tab-redirects.test.ts require()s this module
+// and calls .redirects() on it, so a function-form export would break
+// that suite. The webpack hook is the build-time trigger that keeps the
+// object shape intact.
+let pyodideGateRan = false;
+function ensurePyodideVendoredForBuild() {
   if (process.env.CONCORD_PYODIDE_VENDOR_SKIP === "1") {
     console.warn(
       "[next.config] WARNING: CONCORD_PYODIDE_VENDOR_SKIP=1 — skipping the Pyodide vendoring step and check. " +
@@ -377,17 +391,14 @@ function ensurePyodideVendoredForBuild(phase) {
   }
 }
 
-module.exports = (phase) => {
-  ensurePyodideVendoredForBuild(phase);
-  return sentryDsnConfigured
-    ? withSentryConfig(nextConfig, {
-        silent: true,
-        org: process.env.SENTRY_ORG || "",
-        project: process.env.SENTRY_PROJECT || "concord-frontend",
-        disableLogger: true,
-        tunnelRoute: "/monitoring",
-        hideSourceMaps: true,
-        widenClientFileUpload: false,
-      })
-    : nextConfig;
-};
+module.exports = sentryDsnConfigured
+  ? withSentryConfig(nextConfig, {
+      silent: true,
+      org: process.env.SENTRY_ORG || "",
+      project: process.env.SENTRY_PROJECT || "concord-frontend",
+      disableLogger: true,
+      tunnelRoute: "/monitoring",
+      hideSourceMaps: true,
+      widenClientFileUpload: false,
+    })
+  : nextConfig;

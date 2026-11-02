@@ -58,8 +58,15 @@ describe('vendor-pyodide', () => {
     expect(pkg.scripts.build).toContain('check:pyodide');
     const config = fs.readFileSync(path.join(__dirname, '..', 'next.config.js'), 'utf8');
     expect(config).toContain('ensure-pyodide.mjs');
-    expect(config).toContain('phase-production-build');
+    expect(config).toContain('ensurePyodideVendoredForBuild');
     expect(config).toContain('CONCORD_PYODIDE_VENDOR_SKIP');
+    // The config export must stay the plain OBJECT (the Sentry-wrapped
+    // ternary): tests/lib/lens-tab-redirects.test.ts require()s this
+    // module and calls .redirects() on it — a function-form export
+    // breaks that suite. The vendoring gate hangs off the webpack hook
+    // instead (production builds, once per process).
+    expect(config).toContain('module.exports = sentryDsnConfigured');
+    expect(config).not.toContain('module.exports = (phase)');
     const ignore = fs.readFileSync(path.join(__dirname, '..', '..', '.gitignore'), 'utf8');
     expect(ignore).toContain('concord-frontend/public/pyodide/');
     const exec = fs.readFileSync(path.join(__dirname, '..', 'components', 'code', 'localExec.ts'), 'utf8');
