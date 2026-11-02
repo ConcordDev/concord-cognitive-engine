@@ -17,8 +17,8 @@
 import { identify, experimental } from "../conkay/knowledge/connectors/pubchem.js";
 import { liveGetter } from "../conkay/knowledge/connectors/fetcher.js";
 import { viewerIdFromCtx } from "../dtu-read-access.js";
+import { getFrankfurterLatest } from "../market-feed-sources.js";
 
-const FRANKFURTER = "https://api.frankfurter.dev/v1";
 const PUBCHEM_LICENSE = "PubChem (NCBI/NLM) data is free to use; individual contributor records carry their own terms. Cite PubChem and the CID.";
 const FX_LICENSE = "ECB euro foreign exchange reference rates, published by the European Central Bank; free to use with attribution (via Frankfurter).";
 const HEADINGS = { density: "Density", boiling_point: "Boiling Point", melting_point: "Melting Point" };
@@ -81,24 +81,27 @@ async function compound(params, get, nowIso) {
   return out;
 }
 
-async function fx(params, fetchImpl, nowIso) {
+// ECB rates come through lib/market-feed-sources.js (the one module that names the market upstream hosts): its
+// feed cache, budget, SSRF guard and attribution rules apply, and a test pins that no other file names the host.
+async function fx(params, fxLatest, nowIso) {
   const base = String(params.base || "EUR").toUpperCase();
   const symbols = (Array.isArray(params.symbols) ? params.symbols : String(params.symbols || params.to || "USD").split(","))
     .map((s) => String(s).trim().toUpperCase()).filter((s) => /^[A-Z]{3}$/.test(s)).slice(0, 10);
   if (!/^[A-Z]{3}$/.test(base) || !symbols.length) return { ok: false, error: 'fx needs 3-letter currency codes, e.g. {"kind":"fx","base":"EUR","symbols":["USD"]}' };
-  const url = `${FRANKFURTER}/latest?base=${base}&symbols=${symbols.join(",")}`;
-  let res; let json;
-  // A hung rate server must not hold a chat turn: abort the request and the body read after the timeout.
+  // A hung rate server must not hold a chat turn: stop waiting after the timeout.
   const timeoutMs = Math.max(500, Number(process.env.CONCORD_LIVE_DATA_FX_TIMEOUT_MS) || 8000);
-  const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), timeoutMs);
+  let timer; let r;
   try {
-    res = await fetchImpl(url, { headers: { accept: "application/json" }, signal: ac.signal });
-    if (!res.ok) return { ok: false, error: `Frankfurter HTTP ${res.status}` };
-    json = await res.json();
+    r = await Promise.race([
+      Promise.resolve().then(() => fxLatest({ base, symbols })),
+      new Promise((resolve) => { timer = setTimeout(() => resolve({ __timedOut: true }), timeoutMs); }),
+    ]);
   } catch (e) {
-    return { ok: false, error: ac.signal.aborted ? `Frankfurter timed out after ${timeoutMs} ms` : `Frankfurter unreachable: ${String(e?.message || e)}` };
+    return { ok: false, error: `Frankfurter unreachable: ${String(e?.message || e)}` };
   } finally { clearTimeout(timer); }
+  if (r?.__timedOut) return { ok: false, error: `Frankfurter timed out after ${timeoutMs} ms` };
+  if (!r?.ok) return { ok: false, error: `Frankfurter unreachable: ${String(r?.reason || r?.error || "unavailable")}` };
+  const json = r.data;
   if (!json?.rates || typeof json.rates !== "object") return { ok: false, error: "Frankfurter returned no rates" };
   return {
     ok: true, kind: "fx", query: `${base}->${symbols.join(",")}`,
@@ -111,7 +114,7 @@ async function fx(params, fetchImpl, nowIso) {
 /**
  * @param {object} ctx macro ctx (viewer must be a signed-in user)
  * @param {object} params { kind, ... }
- * @param {{get?:Function, fetchImpl?:Function, now?:()=>number}} [deps]
+ * @param {{get?:Function, fxLatest?:Function, now?:()=>number}} [deps]
  */
 export async function getLiveData(ctx, params = {}, deps = {}) {
   const viewer = viewerIdFromCtx(ctx);
@@ -131,7 +134,7 @@ export async function getLiveData(ctx, params = {}, deps = {}) {
   try {
     out = kind === "compound"
       ? await compound(params, deps.get || defaultGetter(), nowIso)
-      : await fx(params, deps.fetchImpl || globalThis.fetch, nowIso);
+      : await fx(params, deps.fxLatest || getFrankfurterLatest, nowIso);
   } catch (e) { out = { ok: false, error: `live data failed: ${String(e?.message || e)}` }; }
   if (out.ok) remember(key, out, now);
   return { tool: "get_live_data", ...out, ...(out.ok ? { cached: false, note: "Cite the source and retrievedAt with any number taken from this." } : {}) };
