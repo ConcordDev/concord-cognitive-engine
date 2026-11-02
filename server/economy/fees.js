@@ -38,18 +38,20 @@ export const PAYROLL_ACCOUNT_ID = "__PAYROLL__";
  *
  * The set is explicit, never a "__…__" prefix test: __ESCROW__ is debited
  * through executeTransfer by design (bounty claims, commission payouts)
- * and is deliberately NOT a member. "__TREASURY__" is RESERVES_ACCOUNT_ID's
- * name after the Gate 5 Act 1 rename (PR #1969); both spellings are listed
- * so the guard is correct before and after that rename lands. "__CONCORD__"
- * is royalty-cascade.js's CONCORD_SYSTEM_ID, pinned by test against the
- * real constant.
+ * and is deliberately NOT a member. The pool account is TREASURY_ACCOUNT_ID
+ * ("__TREASURY__", renamed from RESERVES_ACCOUNT_ID in Gate 5 Act 1, PR
+ * #1969); the legacy literal "__RESERVES__" stays listed so rows or callers
+ * still using the old name remain protected. "__CONCORD__" is
+ * royalty-cascade.js's CONCORD_SYSTEM_ID, pinned by test against the real
+ * constant. The guard is debit-side (FROM) only: credits TO these accounts
+ * (fee credits) stay allowed.
  */
 export const RESERVED_DEBIT_ACCOUNTS = new Set([
   PLATFORM_ACCOUNT_ID,
-  RESERVES_ACCOUNT_ID,
+  TREASURY_ACCOUNT_ID,
   OPERATING_ACCOUNT_ID,
   PAYROLL_ACCOUNT_ID,
-  "__TREASURY__",
+  "__RESERVES__", // legacy name of the pool account (pre Gate 5 Act 1)
   "__CONCORD__",
 ]);
 

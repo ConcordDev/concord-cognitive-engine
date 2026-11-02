@@ -32,7 +32,7 @@ import { distributeFee, getFeeSplitBalances } from "../../economy/fee-split.js";
 import { getBalance } from "../../economy/balances.js";
 import {
   PLATFORM_ACCOUNT_ID,
-  RESERVES_ACCOUNT_ID,
+  TREASURY_ACCOUNT_ID,
   OPERATING_ACCOUNT_ID,
   PAYROLL_ACCOUNT_ID,
   RESERVED_DEBIT_ACCOUNTS,
@@ -116,18 +116,17 @@ describe("reserved-account guard (Gate 5 Act 2)", () => {
   beforeEach(() => { db = createDb(); });
 
   it("the reserved set is exactly the platform accounts it protects — no drift, no escrow", () => {
-    // Both spellings of the pool account are listed so this pin holds on
-    // either side of the Gate 5 Act 1 rename (the Set dedupes the one that
-    // coincides with RESERVES_ACCOUNT_ID's current value).
+    // The pool is TREASURY_ACCOUNT_ID since the Gate 5 Act 1 rename; the legacy
+    // "__RESERVES__" literal stays reserved too (6 entries).
     const expected = new Set([
       PLATFORM_ACCOUNT_ID,
-      RESERVES_ACCOUNT_ID,
+      TREASURY_ACCOUNT_ID,
       OPERATING_ACCOUNT_ID,
       PAYROLL_ACCOUNT_ID,
       "__RESERVES__",
-      "__TREASURY__",
       CONCORD_SYSTEM_ID,
     ]);
+    assert.equal(expected.size, 6);
     assert.equal(RESERVED_DEBIT_ACCOUNTS.size, expected.size);
     for (const id of expected) {
       assert.ok(isReservedDebitAccount(id), `${id} must be a reserved debit account`);
@@ -153,8 +152,8 @@ describe("reserved-account guard (Gate 5 Act 2)", () => {
   it("refuses even when the reserved account holds funds (the drain the guard exists to stop)", () => {
     const funded = distributeFee(db, { feeAmount: 100, sourceTxId: "seed_fee" });
     assert.equal(funded.ok, true);
-    assert.ok(getBalance(db, RESERVES_ACCOUNT_ID).balance > 0);
-    const r = executeTransfer(db, { from: RESERVES_ACCOUNT_ID, to: "attacker", amount: 10 });
+    assert.ok(getBalance(db, TREASURY_ACCOUNT_ID).balance > 0);
+    const r = executeTransfer(db, { from: TREASURY_ACCOUNT_ID, to: "attacker", amount: 10 });
     assert.equal(r.ok, false);
     assert.equal(r.error, "reserved_account_debit");
     assert.equal(getBalance(db, "attacker").balance, 0);
@@ -187,7 +186,7 @@ describe("reserved-account guard (Gate 5 Act 2)", () => {
     const r = distributeFee(db, { feeAmount: 100, sourceTxId: "fee_src_1" });
     assert.equal(r.ok, true);
     const balances = getFeeSplitBalances(db);
-    assert.equal(balances.reserves, 80);
+    assert.equal(balances.treasury, 80);
     assert.equal(balances.operating, 10);
     assert.equal(balances.payroll, 10);
   });
