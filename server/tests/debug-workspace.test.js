@@ -102,6 +102,9 @@ describe("debug workspace (S1 unwall + S3/S4 issue loop)", () => {
       stdio: ["ignore", "pipe", "pipe"],
     });
     armOrphanGuard(proc, dataDir);
+    // Drain BOTH pipes: an unread stdout fills its ~64 KB buffer during boot and the child then blocks on its next
+    // write, so the server never answers (the 300 s file timeout seen on the CI runner).
+    proc.stdout.on("data", () => {});
     proc.stderr.on("data", () => {});
     assert.equal(await waitReady(), true, "server did not become ready");
   }, { timeout: 200000 });
