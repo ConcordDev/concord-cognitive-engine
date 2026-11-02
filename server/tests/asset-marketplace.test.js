@@ -278,7 +278,8 @@ describe("engineering.mint-and-list — the registered macro wrapper", () => {
 
   it("honestly errors when assetGenResult is missing", async () => {
     const r = await lensRun("engineering", "mint-and-list", { params: { price: 9 } });
-    assert.equal(r.ok, true); // lens.run itself succeeds; the handler reports the error inside
+    // A handler refusal comes back at the top level since a032eccab (r.ok false); the harness mirrors it at r.result.
+    assert.equal(r.ok, false);
     assert.equal(r.result.ok, false);
     assert.match(r.result.error, /assetGenResult/);
   });
@@ -293,7 +294,7 @@ describe("engineering.mint-and-list — the registered macro wrapper", () => {
         price: 5,
       },
     });
-    assert.equal(r.ok, true);
+    assert.equal(r.ok, false);   // handler refusal is top-level (a032eccab), mirrored at r.result by the harness
     assert.equal(r.result.ok, false);
     assert.equal(r.result.error, "fea_not_passed");
   });
