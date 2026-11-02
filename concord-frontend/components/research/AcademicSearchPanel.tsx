@@ -32,6 +32,7 @@ export function AcademicSearchPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imported, setImported] = useState<Set<string>>(new Set());
+  const [duplicates, setDuplicates] = useState<Set<string>>(new Set());
   const [searched, setSearched] = useState(false);
 
   const search = useCallback(async () => {
@@ -63,7 +64,13 @@ export function AcademicSearchPanel() {
     try {
       const r = await lensRun('research', 'academic-import', { work: w });
       if (r.data?.ok) {
-        setImported((prev) => new Set(prev).add(key));
+        // S3 (F8): a duplicate files nothing — the button must say
+        // "Already in library", not claim a fresh "Imported".
+        if ((r.data.result as { duplicate?: boolean } | null)?.duplicate) {
+          setDuplicates((prev) => new Set(prev).add(key));
+        } else {
+          setImported((prev) => new Set(prev).add(key));
+        }
       }
     } catch (e) {
       console.error(e);
@@ -118,6 +125,7 @@ export function AcademicSearchPanel() {
         {results.map((w, i) => {
           const key = w.id || `${w.title}-${i}`;
           const isImported = imported.has(key);
+          const isDuplicate = duplicates.has(key);
           return (
             <div key={key} className="rounded border border-white/10 bg-black/20 p-3 space-y-1.5">
               <div className="flex items-start justify-between gap-2">
@@ -125,11 +133,11 @@ export function AcademicSearchPanel() {
                 <button
                   type="button"
                   onClick={() => importWork(w, key)}
-                  disabled={isImported}
+                  disabled={isImported || isDuplicate}
                   className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded border border-fuchsia-500/30 bg-fuchsia-500/10 text-[10px] text-fuchsia-200 disabled:opacity-50"
                 >
                   <BookmarkPlus className="w-3 h-3" />
-                  {isImported ? 'Imported' : 'Add to library'}
+                  {isImported ? 'Imported' : isDuplicate ? 'Already in library' : 'Add to library'}
                 </button>
               </div>
               <p className="text-[11px] text-gray-400">

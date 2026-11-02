@@ -322,8 +322,9 @@ describe("research — reference manager: citations, collections, stats (shared 
 
     const det = await lensRun("research", "reference-detail", { params: { id } }, ctx);
     assert.equal(det.result.reference.id, id);
-    // APA: "Authors (year). title. journal. https://doi.org/doi"
-    assert.equal(det.result.citations.apa, "Jane Smith (2020). On the Theory of X. Nature. https://doi.org/10.1/abc");
+    // APA 7 (Research S7 / F10): surname + initials, not the stored natural-order name.
+    // The old expectation ("Jane Smith (2020)...") encoded the F10 defect.
+    assert.equal(det.result.citations.apa, "Smith, J. (2020). On the Theory of X. Nature. https://doi.org/10.1/abc");
     // BibTeX key = lastname + year, lowercased & stripped → "smith2020"
     assert.ok(det.result.citations.bibtex.includes("{smith2020,"));
   });
@@ -845,8 +846,8 @@ describe("research — citation styles + bibtex (wave 14 top-up)", () => {
     }, ctx);
     const c = await lensRun("research", "cite-format", { params: { id: added.result.reference.id, style: "chicago" } }, ctx);
     assert.equal(c.result.style, "chicago");
-    // chicago: `${authors}. "${title}." ${journal} (${year}).`
-    assert.equal(c.result.citation, 'Ada Lovelace. "Chicago Work." Notes (1843).');
+    // Chicago bibliography form (Research S7 / F10): first author inverted.
+    assert.equal(c.result.citation, 'Lovelace, Ada. "Chicago Work." Notes (1843).');
     assert.equal(c.result.key, "lovelace1843");
   });
 
