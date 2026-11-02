@@ -7,6 +7,9 @@ import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { createHash, createHmac } from "crypto";
 
+// The .dtu signing key comes from the environment; configure a test-only key.
+process.env.CONCORD_DTU_SIGNING_KEY = "dtu-format-full-test-only-key";
+
 // ── Inline stubs for constants so we can import the module ──────────────
 
 // We need to stub the constants module before importing dtu-format.
