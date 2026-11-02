@@ -11,9 +11,9 @@
  */
 import { describe, it, expect } from 'vitest';
 // Import the real backend diff engine directly — same function
-// `law.contract-diff` calls (server/domains/law.js). Pure, no DB/STATE
-// dependency, safe to run under vitest's node-backed jsdom environment.
-import { lineDiff } from '../../server/domains/law.js';
+// `law.contract-diff` calls (server/domains/law.js re-exports it from lib/law-line-diff.js). Pure and import-free,
+// so it resolves in the frontend job, which has no server node_modules (domains/law.js pulls yjs).
+import { lineDiff } from '../../server/lib/law-line-diff.js';
 import {
   buildTrackedChanges, decideChange, decideAll, summarizeReview,
   type TrackedChange,

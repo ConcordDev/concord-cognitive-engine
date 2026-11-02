@@ -35,19 +35,32 @@ describe('BoardOwnerMenu', () => {
     expect(screen.getByRole('menuitem', { name: 'Rename' })).toBeTruthy();
   });
 
-  it('deletes for the owner and tells a stranger no', async () => {
-    deleteMock.mockResolvedValueOnce({ data: { ok: true, deleted: true, id: 'wb_1' } });
+  it('delete asks first, Keep it cancels, and the confirmed delete is handed to the Studio (no API call here)', () => {
     const onDeleted = vi.fn();
-    const { rerender } = render(
-      <BoardOwnerMenu boardId="wb_1" title="Plan" onRenamed={vi.fn()} onDeleted={onDeleted} />,
-    );
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete board' }));
-    await waitFor(() => expect(onDeleted).toHaveBeenCalled());
-    expect(deleteMock).toHaveBeenCalledWith('/api/whiteboard/wb_1');
+    render(<BoardOwnerMenu boardId="wb_1" title="Plan" onRenamed={vi.fn()} onDeleted={onDeleted} />);
 
-    deleteMock.mockRejectedValueOnce(Object.assign(new Error('forbidden'), { response: { status: 403 } }));
-    rerender(<BoardOwnerMenu boardId="wb_2" title="Theirs" onRenamed={vi.fn()} onDeleted={vi.fn()} />);
+    // First click only opens the confirmation (S2: a misclick is not a delete).
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete board' }));
+    expect(onDeleted).not.toHaveBeenCalled();
+    expect(screen.getByText(/Delete “Plan” for good\?/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+    expect(onDeleted).not.toHaveBeenCalled();
+    expect(screen.getByRole('menuitem', { name: 'Delete board' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete board' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete board' }));
+    expect(onDeleted).toHaveBeenCalledTimes(1);
+    // The Studio orchestrates the soft delete + Undo window; the menu itself never calls the delete route.
+    expect(deleteMock).not.toHaveBeenCalled();
+  });
+
+  it('owner-mutation notes map the refusals a stranger gets (rename path)', async () => {
+    patchMock.mockRejectedValueOnce(Object.assign(new Error('forbidden'), { response: { status: 403 } }));
+    render(<BoardOwnerMenu boardId="wb_2" title="Theirs" onRenamed={vi.fn()} onDeleted={vi.fn()} />);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Rename' }));
+    fireEvent.change(screen.getByLabelText('Board name'), { target: { value: 'Mine now' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save name' }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Only the owner can change this board.'));
     expect(ownerMutationNote(404, 'x')).toBe('That board is not on the server.');
     expect(ownerMutationNote(400, 'x')).toBe('A board name is required.');

@@ -10,18 +10,17 @@ describe('downloadFile', () => {
   let createSpy: ReturnType<typeof vi.fn>;
   let revokeSpy: ReturnType<typeof vi.fn>;
   let attachedAtClick: boolean[] = [];
-  let clickedAnchor: HTMLAnchorElement | null = null;
+  let clickSpy: ReturnType<typeof vi.spyOn>;
+  const clickedAnchor = () => (clickSpy.mock.contexts[0] as HTMLAnchorElement | undefined) ?? null;
 
   beforeEach(() => {
     attachedAtClick = [];
-    clickedAnchor = null;
     createSpy = vi.fn(() => 'blob:mock-url');
     revokeSpy = vi.fn();
     (URL as unknown as { createObjectURL: unknown }).createObjectURL = createSpy;
     (URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = revokeSpy;
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+    clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
       attachedAtClick.push(document.body.contains(this));
-      clickedAnchor = this;
     });
     vi.useFakeTimers();
   });
@@ -36,9 +35,9 @@ describe('downloadFile', () => {
     expect(createSpy).toHaveBeenCalledTimes(1);
     expect(createSpy.mock.calls[0][0]).toBeInstanceOf(Blob);
     expect(attachedAtClick).toEqual([true]);
-    expect(clickedAnchor?.download).toBe('note.txt');
+    expect(clickedAnchor()?.download).toBe('note.txt');
     // The anchor is removed again once the click has been dispatched.
-    expect(clickedAnchor && document.body.contains(clickedAnchor)).toBe(false);
+    expect((() => { const a = clickedAnchor(); return a && document.body.contains(a); })()).toBe(false);
   });
 
   it('does not revoke the blob URL in the click task, and revokes it later', () => {

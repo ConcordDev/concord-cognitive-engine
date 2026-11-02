@@ -127,7 +127,8 @@ describe('DxWorkbench ReviewTab — Export SARIF button', () => {
     const blobArg = createSpy.mock.calls[0][0] as Blob;
     expect(blobArg).toBeInstanceOf(Blob);
     expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(revokeSpy).toHaveBeenCalledTimes(1);
+    // downloadFile defers the blob-URL revoke by ~1s so the browser can start fetching it.
+    await waitFor(() => expect(revokeSpy).toHaveBeenCalled(), { timeout: 3000 });
   });
 
   it('surfaces an honest error and does NOT claim success when the macro call fails', async () => {

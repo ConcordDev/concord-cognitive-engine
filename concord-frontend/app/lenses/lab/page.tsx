@@ -486,7 +486,7 @@ function RealityExplorerSection({ handleAction, isRunning, experimentItems, acti
                   <span className="text-gray-400 text-xs">Violations: {String(actionResult.violationCount)} ({String(actionResult.rejectCount)} rejects)</span>
                 </div>
                 {actionResult.statistics && (
-                  <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
                     {Object.entries(actionResult.statistics as Record<string,unknown>).map(([k,v]) => (
                       <div key={k} className="bg-lattice-surface rounded p-2"><div className="text-gray-400">{k}</div><div className="font-bold">{String(v)}</div></div>
                     ))}

@@ -236,7 +236,7 @@ function LabOrgDetail({ lab, onRosterChange }: { lab: LabOrgSummary; onRosterCha
           <p className="font-medium text-sm">{lab.name}</p>
           <p className="text-xs text-gray-400">{lab.description || 'No description'} · {lab.memberCount} member(s) · you are {TIER_LABEL[lab.tier]}</p>
         </div>
-        <div className="flex gap-1 items-center">
+        <div className="flex max-w-full gap-1 items-center overflow-x-auto [&>button]:shrink-0 [&>button]:whitespace-nowrap">
           {(['roster', 'notebook', 'inventory'] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`btn-neon text-xs capitalize ${tab === t ? 'purple' : ''}`}>

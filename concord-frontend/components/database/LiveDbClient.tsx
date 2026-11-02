@@ -19,7 +19,7 @@ import { lensRun } from '@/lib/api/client';
 import { TreeDiagram, type TreeNode } from '@/components/viz';
 import {
   Database, Plus, Trash2, Play, RefreshCw, Wifi, X, Edit3, Check,
-  Table2, Columns, FileSpreadsheet, FileJson, GitBranch, Move, Loader2,
+  Table2, Columns, FileSpreadsheet, FileJson, GitBranch, Move, Loader2, Pencil,
 } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -49,6 +49,14 @@ interface Dataset {
   y: number;
 }
 
+interface DatasetRelation {
+  id: string;
+  fromDataset: string;
+  fromColumn: string;
+  toDataset: string;
+  toColumn: string;
+}
+
 interface QueryRunResult {
   columns: string[];
   rows: Record<string, any>[];
@@ -58,6 +66,11 @@ interface QueryRunResult {
   durationMs: number;
   success: boolean;
   error?: string;
+  explain?: ExplainResult;
+  needsConfirm?: boolean;
+  destructive?: string;
+  truncated?: boolean;
+  cap?: number;
 }
 
 interface ExplainNode {
@@ -131,14 +144,54 @@ export function LiveDbClient() {
     }
   }, []);
 
+  const [relations, setRelations] = useState<DatasetRelation[]>([]);
+  // E-DB-1: a `<table>_id` column with NO real relation behind it is
+  // drawn dashed on the ER canvas — a relation by naming, not by law.
+  const impliedRelations = useMemo(() => {
+    const out: { from: Dataset; to: Dataset; column: string }[] = [];
+    for (const d of datasets) {
+      for (const c of d.columns) {
+        const m = c.name.match(/^(.+)_id$/);
+        if (!m) continue;
+        const base = m[1];
+        const target = datasets.find((x) => x.id !== d.id && (x.name === base || x.name === `${base}s` || x.name.replace(/s$/, '') === base));
+        if (!target) continue;
+        const real = relations.some((r) => r.fromDataset === d.name && r.fromColumn === c.name && r.toDataset === target.name);
+        if (!real) out.push({ from: d, to: target, column: c.name });
+      }
+    }
+    return out;
+  }, [datasets, relations]);
   const loadDatasets = useCallback(async (connId: string) => {
-    const r = await lensRun<{ datasets: Dataset[] }>('database', 'dataset-list', { connectionId: connId });
-    if (r.data.ok && r.data.result) setDatasets(r.data.result.datasets);
-    else setDatasets([]);
+    const r = await lensRun<{ datasets: Dataset[]; relations?: DatasetRelation[] }>('database', 'dataset-list', { connectionId: connId });
+    if (r.data.ok && r.data.result) {
+      setDatasets(r.data.result.datasets);
+      setRelations(r.data.result.relations || []);
+    } else { setDatasets([]); setRelations([]); }
   }, []);
 
   useEffect(() => { loadConns(); }, [loadConns]);
-  useEffect(() => { if (activeConnId) loadDatasets(activeConnId); else setDatasets([]); }, [activeConnId, loadDatasets]);
+  useEffect(() => { if (activeConnId) loadDatasets(activeConnId); else { setDatasets([]); setRelations([]); } }, [activeConnId, loadDatasets]);
+
+  // ── dataset relations (S4) ─────────────────────────────────────────────
+  const [relForm, setRelForm] = useState({ fromDataset: '', fromColumn: '', toDataset: '', toColumn: '' });
+  const addRelation = useCallback(async () => {
+    if (!activeConnId || !relForm.fromDataset || !relForm.fromColumn || !relForm.toDataset || !relForm.toColumn) return;
+    setBusy(true);
+    const r = await lensRun('database', 'dataset-relation-add', { connectionId: activeConnId, ...relForm });
+    setBusy(false);
+    if (r.data.ok) {
+      flash('ok', 'Relation added');
+      setRelForm({ fromDataset: '', fromColumn: '', toDataset: '', toColumn: '' });
+      loadDatasets(activeConnId);
+    } else flash('err', r.data.error || 'Could not add relation');
+  }, [activeConnId, relForm, flash, loadDatasets]);
+  const deleteRelation = useCallback(async (relationId: string) => {
+    if (!activeConnId) return;
+    const r = await lensRun('database', 'dataset-relation-delete', { connectionId: activeConnId, relationId });
+    if (r.data.ok) { flash('ok', 'Relation removed'); loadDatasets(activeConnId); }
+    else flash('err', r.data.error || 'Could not remove relation');
+  }, [activeConnId, flash, loadDatasets]);
 
   // ── connection manager ────────────────────────────────────────────────
   const [showConnForm, setShowConnForm] = useState(false);
@@ -157,13 +210,17 @@ export function LiveDbClient() {
     } else flash('err', r.data.error || 'Failed to create connection');
   }, [connForm, flash, loadConns]);
 
+  const [armedConnDelete, setArmedConnDelete] = useState<string | null>(null);
   const deleteConn = useCallback(async (id: string) => {
+    // S5: two-step confirm, naming the object class in the armed state.
+    if (armedConnDelete !== id) { setArmedConnDelete(id); return; }
+    setArmedConnDelete(null);
     setBusy(true);
     const r = await lensRun('database', 'connection-delete', { id });
     setBusy(false);
     if (r.data.ok) { flash('ok', 'Connection deleted'); loadConns(); }
     else flash('err', r.data.error || 'Delete failed');
-  }, [flash, loadConns]);
+  }, [flash, loadConns, armedConnDelete]);
 
   const testConn = useCallback(async (id: string) => {
     setBusy(true);
@@ -175,8 +232,11 @@ export function LiveDbClient() {
 
   const toggleReadOnly = useCallback(async (c: Connection) => {
     const r = await lensRun('database', 'connection-update', { id: c.id, readOnly: !c.readOnly });
-    if (r.data.ok) loadConns();
-  }, [loadConns]);
+    // M7: every mutation acknowledges quietly — the toggle used to be
+    // silent, leaving the user to spot the pill change themselves.
+    if (r.data.ok) { flash('ok', c.readOnly ? 'Connection is now writable' : 'Connection is now read-only'); loadConns(); }
+    else flash('err', r.data.error || 'Toggle failed');
+  }, [loadConns, flash]);
 
   // ── dataset (table) management ─────────────────────────────────────────
   const [showDsForm, setShowDsForm] = useState(false);
@@ -201,14 +261,74 @@ export function LiveDbClient() {
     } else flash('err', r.data.error || 'Create failed');
   }, [activeConnId, dsName, dsCols, flash, loadConns, loadDatasets]);
 
+  // ── CSV import (S7) ────────────────────────────────────────────────────
+  const [importText, setImportText] = useState('');
+  const [importTarget, setImportTarget] = useState('');
+  const [importName, setImportName] = useState('');
+  const [importMsg, setImportMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const runImport = useCallback(async () => {
+    if (!activeConnId || !importText.trim()) return;
+    setBusy(true);
+    const r = await lensRun<{
+      dataset: string; imported: number; rejected: number; totalRows: number;
+      errors: { row: number; error: string }[];
+    }>('database', 'dataset-import-csv', {
+      connectionId: activeConnId,
+      csv: importText,
+      ...(importTarget ? { datasetId: importTarget } : { name: importName || 'imported' }),
+    });
+    setBusy(false);
+    if (r.data.ok && r.data.result) {
+      const res = r.data.result;
+      const firstErr = res.errors[0] ? ` First rejection — row ${res.errors[0].row}: ${res.errors[0].error}` : '';
+      setImportMsg({
+        ok: res.rejected === 0,
+        text: `Imported ${res.imported} of ${res.totalRows} row(s) into ${res.dataset}${res.rejected ? ` · ${res.rejected} rejected` : ''}.${firstErr}`,
+      });
+      loadConns();
+      loadDatasets(activeConnId);
+    } else {
+      setImportMsg({ ok: false, text: r.data.error || 'Import failed' });
+    }
+  }, [activeConnId, importText, importTarget, importName, loadConns, loadDatasets]);
+
+  // Dataset rename (S10): inline in the dataset list; the macro
+  // cascades the new name into relations and indexes.
+  const [renamingDataset, setRenamingDataset] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
+  const commitDatasetRename = useCallback(async () => {
+    if (!activeConnId || !renamingDataset) return;
+    const name = renameDraft.trim();
+    const id = renamingDataset;
+    setRenamingDataset(null);
+    if (!name) return;
+    const r = await lensRun('database', 'dataset-rename', { connectionId: activeConnId, datasetId: id, name });
+    if (r.data.ok) { flash('ok', 'Dataset renamed'); loadDatasets(activeConnId); loadConns(); }
+    else flash('err', r.data.error || 'Rename failed');
+  }, [activeConnId, renamingDataset, renameDraft, flash, loadDatasets, loadConns]);
+
+  const transferDataset = useCallback(async (datasetId: string, toConnectionId: string) => {
+    if (!activeConnId || !toConnectionId) return;
+    setBusy(true);
+    const r = await lensRun('database', 'dataset-transfer', {
+      fromConnectionId: activeConnId, toConnectionId, datasetId,
+    });
+    setBusy(false);
+    if (r.data.ok) { flash('ok', 'Dataset moved'); loadConns(); loadDatasets(activeConnId); }
+    else flash('err', r.data.error || 'Move failed');
+  }, [activeConnId, flash, loadConns, loadDatasets]);
+
+  const [armedDatasetDelete, setArmedDatasetDelete] = useState<string | null>(null);
   const deleteDataset = useCallback(async (datasetId: string) => {
     if (!activeConnId) return;
+    if (armedDatasetDelete !== datasetId) { setArmedDatasetDelete(datasetId); return; }
+    setArmedDatasetDelete(null);
     setBusy(true);
     const r = await lensRun('database', 'dataset-delete', { connectionId: activeConnId, datasetId });
     setBusy(false);
     if (r.data.ok) { flash('ok', 'Dataset deleted'); loadConns(); loadDatasets(activeConnId); }
     else flash('err', r.data.error || 'Delete failed');
-  }, [activeConnId, flash, loadConns, loadDatasets]);
+  }, [activeConnId, flash, loadConns, loadDatasets, armedDatasetDelete]);
 
   // ── SQL editor + autocomplete ──────────────────────────────────────────
   const [sql, setSql] = useState('SELECT * FROM users;');
@@ -217,6 +337,29 @@ export function LiveDbClient() {
   const [suggests, setSuggests] = useState<AutoSuggest[]>([]);
   const [showSuggests, setShowSuggests] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const editorPanelRef = useRef<HTMLDivElement>(null);
+  // The token the user deliberately dismissed the dropdown on (Escape /
+  // click-away / Tab-accept). The keyup refetch must not instantly
+  // resurrect the dropdown for that same token (F3).
+  const dismissedTokenRef = useRef<string | null>(null);
+
+  const dismissSuggests = useCallback(() => {
+    const ta = taRef.current;
+    const upto = ta ? ta.value.slice(0, ta.selectionStart) : '';
+    const m = upto.match(/([A-Za-z_][A-Za-z0-9_]*)$/);
+    dismissedTokenRef.current = m ? m[1] : '';
+    setShowSuggests(false);
+  }, []);
+
+  // Click-away dismisses the autocomplete dropdown (F3).
+  useEffect(() => {
+    if (!showSuggests) return;
+    const onDown = (e: MouseEvent) => {
+      if (editorPanelRef.current && !editorPanelRef.current.contains(e.target as Node)) dismissSuggests();
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [showSuggests, dismissSuggests]);
 
   const currentToken = useCallback(() => {
     const ta = taRef.current;
@@ -234,7 +377,11 @@ export function LiveDbClient() {
     });
     if (r.data.ok && r.data.result) {
       setSuggests(r.data.result.suggestions);
-      setShowSuggests(r.data.result.suggestions.length > 0);
+      // A deliberate dismiss (Escape / click-away) sticks for that token;
+      // typing a different token re-arms the dropdown.
+      if (dismissedTokenRef.current !== prefix) {
+        setShowSuggests(r.data.result.suggestions.length > 0);
+      }
     }
   }, [activeConnId, currentToken]);
 
@@ -254,16 +401,33 @@ export function LiveDbClient() {
     });
   }, []);
 
-  const runQuery = useCallback(async () => {
+  const [pendingDestructive, setPendingDestructive] = useState<{ sql: string; message: string } | null>(null);
+  const runQuery = useCallback(async (confirmDestructive = false) => {
     if (!activeConnId || !sql.trim()) return;
     setBusy(true);
     setExplain(null);
-    const r = await lensRun<QueryRunResult>('database', 'query-run', { connectionId: activeConnId, sql });
+    const r = await lensRun<QueryRunResult>('database', 'query-run', {
+      connectionId: activeConnId, sql,
+      ...(confirmDestructive ? { confirmDestructive: true } : {}),
+    });
     setBusy(false);
     setShowSuggests(false);
     if (r.data.ok && r.data.result) {
+      if (r.data.result.needsConfirm) {
+        // S5 guard: nothing ran. Show exactly what would happen and let
+        // the user confirm or walk away.
+        setPendingDestructive({ sql, message: r.data.result.error || 'This statement affects every row.' });
+        setResult(null);
+        return;
+      }
+      setPendingDestructive(null);
       setResult(r.data.result);
       if (!r.data.result.success) flash('err', r.data.result.error || 'Query failed');
+      else if (r.data.result.op === 'EXPLAIN' && r.data.result.explain) {
+        // Typed EXPLAIN runs through query-run; render its plan in the
+        // same plan view the EXPLAIN button uses.
+        setExplain(r.data.result.explain);
+      }
       else if (r.data.result.op !== 'SELECT') {
         flash('ok', `${r.data.result.op} — ${r.data.result.affected ?? 0} row(s) affected`);
         loadConns();
@@ -285,9 +449,15 @@ export function LiveDbClient() {
 
   const handleEditorKey = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runQuery(); }
-    else if (e.ctrlKey && e.key === ' ') { e.preventDefault(); fetchSuggests(); }
-    else if (e.key === 'Escape') setShowSuggests(false);
-  }, [runQuery, fetchSuggests]);
+    else if (e.ctrlKey && e.key === ' ') { e.preventDefault(); dismissedTokenRef.current = null; fetchSuggests(); }
+    else if (e.key === 'Escape') { e.preventDefault(); dismissSuggests(); }
+    else if (e.key === 'Tab' && showSuggests && suggests.length > 0) {
+      // Tab accepts the top suggestion instead of throwing focus out of
+      // the editor into the view nav (F3).
+      e.preventDefault();
+      applySuggest(suggests[0]);
+    }
+  }, [runQuery, fetchSuggests, dismissSuggests, showSuggests, suggests, applySuggest]);
 
   // ── result-grid inline editing ─────────────────────────────────────────
   const [editCell, setEditCell] = useState<{ rid: number; col: string } | null>(null);
@@ -303,23 +473,55 @@ export function LiveDbClient() {
 
   const canEditGrid = !!resultDataset && !!activeConn && !activeConn.readOnly;
 
-  const commitCellEdit = useCallback(async () => {
-    if (!editCell || !activeConnId || !resultDataset) { setEditCell(null); return; }
-    setBusy(true);
-    const r = await lensRun('database', 'row-update', {
-      connectionId: activeConnId, datasetId: resultDataset.id,
-      rid: editCell.rid, column: editCell.col, value: editVal,
-    });
-    setBusy(false);
-    if (r.data.ok) {
-      flash('ok', 'Cell updated');
-      runQuery();
-    } else flash('err', r.data.error || 'Update failed');
+  // ── S5 staged edits: grid edits stage locally, preview as the exact
+  // SQL they will run, and commit only on an explicit Commit. The
+  // preview names _rid because that is the row identity row-update
+  // addresses — the preview must match execution character-for-character
+  // in substance, so it shows the real key, not an invented one.
+  interface StagedEdit { rid: number; col: string; value: string; sql: string }
+  const [stagedEdits, setStagedEdits] = useState<StagedEdit[]>([]);
+  const [showSqlPreview, setShowSqlPreview] = useState(false);
+  const sqlLiteral = (v: string) => {
+    if (v === '') return 'NULL';
+    if (/^-?\d+(\.\d+)?$/.test(v.trim())) return v.trim();
+    if (/^(true|false)$/i.test(v.trim())) return v.trim().toLowerCase();
+    return `'${v.replace(/'/g, "''")}'`;
+  };
+  const stageCellEdit = useCallback(() => {
+    if (!editCell || !resultDataset) { setEditCell(null); return; }
+    const sqlText = `UPDATE ${resultDataset.name} SET ${editCell.col} = ${sqlLiteral(editVal)} WHERE _rid = ${editCell.rid}`;
+    setStagedEdits((prev) => [
+      ...prev.filter((e) => !(e.rid === editCell.rid && e.col === editCell.col)),
+      { rid: editCell.rid, col: editCell.col, value: editVal, sql: sqlText },
+    ]);
     setEditCell(null);
-  }, [editCell, editVal, activeConnId, resultDataset, flash, runQuery]);
+  }, [editCell, editVal, resultDataset]);
+  const commitStagedEdits = useCallback(async () => {
+    if (!activeConnId || !resultDataset || stagedEdits.length === 0) return;
+    setBusy(true);
+    const remaining: StagedEdit[] = [];
+    let committed = 0;
+    for (const e of stagedEdits) {
+      const r = await lensRun('database', 'row-update', {
+        connectionId: activeConnId, datasetId: resultDataset.id,
+        rid: e.rid, column: e.col, value: e.value,
+      });
+      if (r.data.ok) committed++;
+      else { remaining.push(e); flash('err', r.data.error || `Update failed for ${e.col}`); }
+    }
+    setBusy(false);
+    setStagedEdits(remaining);
+    if (committed > 0) flash('ok', `${committed} change${committed === 1 ? '' : 's'} committed`);
+    if (remaining.length === 0) { setShowSqlPreview(false); runQuery(); }
+  }, [activeConnId, resultDataset, stagedEdits, flash, runQuery]);
+  const discardStagedEdits = useCallback(() => { setStagedEdits([]); setShowSqlPreview(false); }, []);
 
+  const [armedRowDelete, setArmedRowDelete] = useState<number | null>(null);
   const deleteResultRow = useCallback(async (rid: number) => {
     if (!activeConnId || !resultDataset) return;
+    // S5: first click arms (button asks), second click executes.
+    if (armedRowDelete !== rid) { setArmedRowDelete(rid); return; }
+    setArmedRowDelete(null);
     setBusy(true);
     const r = await lensRun('database', 'row-delete', {
       connectionId: activeConnId, datasetId: resultDataset.id, rid,
@@ -327,7 +529,7 @@ export function LiveDbClient() {
     setBusy(false);
     if (r.data.ok) { flash('ok', 'Row deleted'); runQuery(); loadConns(); }
     else flash('err', r.data.error || 'Delete failed');
-  }, [activeConnId, resultDataset, flash, runQuery, loadConns]);
+  }, [activeConnId, resultDataset, flash, runQuery, loadConns, armedRowDelete]);
 
   const [newRow, setNewRow] = useState<Record<string, string>>({});
   const insertResultRow = useCallback(async () => {
@@ -502,7 +704,7 @@ export function LiveDbClient() {
 
           <div className="space-y-1 max-h-[280px] overflow-y-auto">
             {conns.length === 0 && (
-              <p className="text-xs text-gray-400 py-4 text-center">No connections yet — add one to begin.</p>
+              <p className="text-xs text-gray-400 py-4 text-center">No connections yet — add one to begin. Connections are workspace copies held by Concord; no remote server is contacted.</p>
             )}
             {conns.map((c) => (
               <div
@@ -526,10 +728,11 @@ export function LiveDbClient() {
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteConn(c.id); }}
-                      className="p-0.5 text-gray-400 hover:text-red-400"
-                      aria-label="Delete connection"
+                      onBlur={() => setArmedConnDelete((a) => (a === c.id ? null : a))}
+                      className={armedConnDelete === c.id ? 'px-1.5 py-0.5 rounded bg-rose-500 text-white text-[10px] font-semibold' : 'p-0.5 text-gray-400 hover:text-red-400'}
+                      aria-label={armedConnDelete === c.id ? `Confirm delete connection ${c.name}` : 'Delete connection'}
                     >
-                      <Trash2 className="w-3 h-3" />
+                      {armedConnDelete === c.id ? `Delete ${c.name}?` : <Trash2 className="w-3 h-3" />}
                     </button>
                   </div>
                 </div>
@@ -546,6 +749,9 @@ export function LiveDbClient() {
                     {c.readOnly ? 'read-only' : 'writable'}
                   </button>
                 </div>
+                {/* F14: the honesty sentence is the card's permanent state
+                    line, not a transient toast from the test button. */}
+                <p className="mt-1 text-[10px] text-gray-500">Workspace copy — no remote server is contacted.</p>
               </div>
             ))}
           </div>
@@ -626,17 +832,108 @@ export function LiveDbClient() {
                       {d.name}
                       <span className="text-gray-600">({d.rowCount})</span>
                     </button>
+                    {renamingDataset === d.id ? (
+                      <input
+                        autoFocus
+                        value={renameDraft}
+                        onChange={(e) => setRenameDraft(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') void commitDatasetRename(); if (e.key === 'Escape') setRenamingDataset(null); }}
+                        onBlur={() => void commitDatasetRename()}
+                        aria-label={`Rename dataset ${d.name}`}
+                        className="w-24 bg-lattice-bg border border-neon-cyan/50 rounded px-1 py-0.5 text-[11px] text-gray-100"
+                      />
+                    ) : (
+                      <button
+                        onClick={() => { setRenamingDataset(d.id); setRenameDraft(d.name); }}
+                        className="p-0.5 text-gray-500 hover:text-gray-300"
+                        aria-label={`Rename dataset ${d.name}`}
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                    )}
+                    {conns.length > 1 && (
+                      <select
+                        value=""
+                        onChange={(e) => { if (e.target.value) transferDataset(d.id, e.target.value); }}
+                        className="bg-lattice-surface border border-lattice-border rounded px-1 py-0.5 text-[10px] text-gray-400"
+                        aria-label={`Move dataset ${d.name} to another connection`}
+                      >
+                        <option value="">Move to…</option>
+                        {conns.filter((c) => c.id !== activeConnId).map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    )}
                     <button
                       onClick={() => deleteDataset(d.id)}
-                      className="p-0.5 text-gray-400 hover:text-red-400"
-                      aria-label="Delete dataset"
+                      onBlur={() => setArmedDatasetDelete((a) => (a === d.id ? null : a))}
+                      className={armedDatasetDelete === d.id ? 'px-1.5 py-0.5 rounded bg-rose-500 text-white text-[10px] font-semibold' : 'p-0.5 text-gray-400 hover:text-red-400'}
+                      aria-label={armedDatasetDelete === d.id ? `Confirm delete dataset ${d.name}` : 'Delete dataset'}
                     >
-                      <Trash2 className="w-3 h-3" />
+                      {armedDatasetDelete === d.id ? `Delete ${d.name}?` : <Trash2 className="w-3 h-3" />}
                     </button>
                   </div>
                 ))}
                 {datasets.length === 0 && (
                   <p className="text-[10px] text-gray-400 text-center py-2">No datasets in this connection.</p>
+                )}
+              </div>
+
+              {/* CSV import (S7): file or paste, into an existing dataset
+                  or a new one typed from the data. Bad rows are reported
+                  by row number — never silently skipped. */}
+              <div className="space-y-1.5 border-t border-lattice-border pt-2">
+                <p className="text-[10px] font-semibold text-gray-400">Import CSV</p>
+                <div className="flex items-center gap-1.5">
+                  <label className="px-2 py-1 text-[10px] border border-lattice-border rounded hover:bg-lattice-surface text-gray-300 cursor-pointer">
+                    Choose file
+                    <input
+                      type="file"
+                      accept=".csv,text/csv"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        setImportName(f.name.replace(/\.csv$/i, ''));
+                        void f.text().then(setImportText);
+                      }}
+                    />
+                  </label>
+                  <select
+                    value={importTarget}
+                    onChange={(e) => setImportTarget(e.target.value)}
+                    className="bg-lattice-surface border border-lattice-border rounded px-1 py-1 text-[10px] text-gray-300 flex-1"
+                    aria-label="Import target dataset"
+                  >
+                    <option value="">New dataset…</option>
+                    {datasets.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                  {!importTarget && (
+                    <input
+                      value={importName}
+                      onChange={(e) => setImportName(e.target.value)}
+                      placeholder="new table name"
+                      className="input-lattice text-[10px] w-24"
+                    />
+                  )}
+                </div>
+                <textarea
+                  value={importText}
+                  onChange={(e) => setImportText(e.target.value)}
+                  placeholder={'Paste CSV here, or choose a file\ne.g. id,name\n1,Ada'}
+                  rows={3}
+                  spellCheck={false}
+                  className="input-lattice w-full font-mono text-[10px]"
+                />
+                <button
+                  onClick={runImport}
+                  disabled={busy || !importText.trim()}
+                  className="btn-neon w-full text-[11px] disabled:opacity-40"
+                >
+                  Import
+                </button>
+                {importMsg && (
+                  <p className={`text-[10px] ${importMsg.ok ? 'text-emerald-300' : 'text-amber-300'}`}>{importMsg.text}</p>
                 )}
               </div>
             </div>
@@ -669,7 +966,7 @@ export function LiveDbClient() {
               )}
               {activeConn && (
                 <>
-                  <div className="panel p-3 space-y-2 relative">
+                  <div ref={editorPanelRef} className="panel p-3 space-y-2 relative">
                     <textarea
                       ref={taRef}
                       value={sql}
@@ -681,27 +978,9 @@ export function LiveDbClient() {
                       placeholder="SELECT * FROM table; — Ctrl+Enter run · Ctrl+Space autocomplete"
                       className="input-lattice w-full font-mono text-sm resize-y min-h-[100px]"
                     />
-                    {showSuggests && suggests.length > 0 && (
-                      <div className="absolute z-20 left-3 top-[120px] w-64 max-h-52 overflow-y-auto bg-lattice-elevated border border-lattice-border rounded shadow-lg">
-                        {suggests.map((s, i) => (
-                          <button
-                            key={`${s.kind}-${s.value}-${i}`}
-                            onClick={() => applySuggest(s)}
-                            className="w-full flex items-center justify-between px-2 py-1 text-xs hover:bg-lattice-surface text-left"
-                          >
-                            <span className="font-mono text-gray-200">{s.value}</span>
-                            <span className={`text-[9px] px-1 rounded ${s.kind === 'keyword' ? 'bg-neon-purple/20 text-neon-purple'
-                              : s.kind === 'table' ? 'bg-neon-cyan/20 text-neon-cyan'
-                              : 'bg-neon-green/20 text-neon-green'}`}>
-                              {s.kind}{s.type ? `:${s.type}` : ''}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
                     <div className="flex items-center gap-2 flex-wrap">
                       <button
-                        onClick={runQuery}
+                        onClick={() => runQuery()}
                         disabled={busy || !sql.trim()}
                         className="btn-neon flex items-center gap-1.5 text-xs disabled:opacity-40"
                       >
@@ -723,11 +1002,44 @@ export function LiveDbClient() {
                       </button>
                       {result && (
                         <span className="text-[11px] text-gray-400 ml-auto">
-                          {result.op} · {result.affected ?? result.rowCount} row(s) · {result.durationMs}ms
+                          {result.op} · {result.affected ?? result.rowCount} row(s) · {result.durationMs}ms{result.truncated ? ` · showing first ${result.rows.length} (result capped at ${result.cap ?? 1000})` : ''}
                         </span>
                       )}
                     </div>
+                    {/* Autocomplete renders below the whole editor panel —
+                        it can never cover Execute / EXPLAIN (F3). */}
+                    {showSuggests && suggests.length > 0 && (
+                      <div className="absolute z-20 left-3 top-full mt-1 w-64 max-h-52 overflow-y-auto bg-lattice-elevated border border-lattice-border rounded shadow-lg">
+                        {suggests.map((s, i) => (
+                          <button
+                            key={`${s.kind}-${s.value}-${i}`}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => applySuggest(s)}
+                            className="w-full flex items-center justify-between px-2 py-1 text-xs hover:bg-lattice-surface text-left"
+                          >
+                            <span className="font-mono text-gray-200">{s.value}</span>
+                            <span className={`text-[9px] px-1 rounded ${s.kind === 'keyword' ? 'bg-neon-purple/20 text-neon-purple'
+                              : s.kind === 'table' ? 'bg-neon-cyan/20 text-neon-cyan'
+                              : 'bg-neon-green/20 text-neon-green'}`}>
+                              {s.kind}{s.type ? `:${s.type}` : ''}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
+
+                  {/* S5 destructive-SQL confirm: nothing ran yet. */}
+                  {pendingDestructive && (
+                    <div className="panel p-3 border border-amber-500/40 bg-amber-500/5 space-y-2" role="alert">
+                      <p className="text-xs text-amber-200">{pendingDestructive.message}</p>
+                      <pre className="text-[11px] font-mono text-amber-100/80 whitespace-pre-wrap break-words">{pendingDestructive.sql}</pre>
+                      <div className="flex gap-2">
+                        <button onClick={() => runQuery(true)} disabled={busy} className="px-3 py-1.5 text-xs rounded bg-amber-500 text-black font-semibold disabled:opacity-40">Run anyway</button>
+                        <button onClick={() => setPendingDestructive(null)} className="px-3 py-1.5 text-xs border border-lattice-border rounded hover:bg-lattice-surface text-gray-300">Cancel</button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* EXPLAIN plan */}
                   {explain && (
@@ -791,14 +1103,15 @@ export function LiveDbClient() {
                                 <tr key={rid || ri} className="border-b border-lattice-border/40 hover:bg-lattice-surface/60">
                                   {result.columns.map((col) => {
                                     const editing = editCell?.rid === rid && editCell?.col === col;
+                                    const staged = stagedEdits.find((e) => e.rid === rid && e.col === col);
                                     return (
                                       <td
                                         key={col}
-                                        className="px-2 py-1 font-mono text-gray-300 max-w-[260px]"
+                                        className={`px-2 py-1 font-mono text-gray-300 max-w-[260px] ${staged ? 'bg-amber-500/10' : ''}`}
                                         onDoubleClick={() => {
                                           if (!canEditGrid) return;
                                           setEditCell({ rid, col });
-                                          setEditVal(row[col] == null ? '' : String(row[col]));
+                                          setEditVal(staged ? staged.value : row[col] == null ? '' : String(row[col]));
                                         }}
                                       >
                                         {editing ? (
@@ -808,14 +1121,19 @@ export function LiveDbClient() {
                                               value={editVal}
                                               onChange={(e) => setEditVal(e.target.value)}
                                               onKeyDown={(e) => {
-                                                if (e.key === 'Enter') commitCellEdit();
+                                                if (e.key === 'Enter') stageCellEdit();
                                                 if (e.key === 'Escape') setEditCell(null);
                                               }}
                                               className="input-lattice text-xs w-full"
                                             />
-                                            <button onClick={commitCellEdit} className="text-neon-green" aria-label="Save cell">
+                                            <button onClick={stageCellEdit} className="text-neon-green" aria-label="Stage cell edit">
                                               <Check className="w-3 h-3" />
                                             </button>
+                                          </span>
+                                        ) : staged ? (
+                                          <span className="block truncate text-amber-200" title={`Staged: ${staged.sql}`}>
+                                            {staged.value === '' ? <span className="italic">NULL</span> : staged.value}
+                                            <span className="ml-1 text-[9px] text-amber-400">staged</span>
                                           </span>
                                         ) : (
                                           <span className="block truncate">
@@ -831,10 +1149,11 @@ export function LiveDbClient() {
                                     <td className="px-2 py-1">
                                       <button
                                         onClick={() => deleteResultRow(rid)}
-                                        className="text-gray-400 hover:text-red-400"
-                                        aria-label="Delete row"
+                                        onBlur={() => setArmedRowDelete((a) => (a === rid ? null : a))}
+                                        className={armedRowDelete === rid ? 'text-[10px] px-1.5 py-0.5 rounded bg-rose-500 text-white font-semibold' : 'text-gray-400 hover:text-red-400'}
+                                        aria-label={armedRowDelete === rid ? 'Confirm delete row' : 'Delete row'}
                                       >
-                                        <Trash2 className="w-3 h-3" />
+                                        {armedRowDelete === rid ? 'Confirm?' : <Trash2 className="w-3 h-3" />}
                                       </button>
                                     </td>
                                   )}
@@ -851,6 +1170,25 @@ export function LiveDbClient() {
                           </tbody>
                         </table>
                       </div>
+
+                      {/* S5 staged-changes bar: preview the SQL, then commit or discard. */}
+                      {stagedEdits.length > 0 && (
+                        <div className="border border-amber-500/40 bg-amber-500/5 rounded p-2 space-y-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[11px] text-amber-200">{stagedEdits.length} staged change{stagedEdits.length === 1 ? '' : 's'} — nothing has been written yet</span>
+                            <span className="ml-auto flex gap-1.5">
+                              <button onClick={() => setShowSqlPreview((v) => !v)} className="px-2 py-1 text-[11px] border border-lattice-border rounded hover:bg-lattice-surface text-gray-200">
+                                {showSqlPreview ? 'Hide SQL' : 'Preview SQL'}
+                              </button>
+                              <button onClick={discardStagedEdits} className="px-2 py-1 text-[11px] border border-lattice-border rounded hover:bg-lattice-surface text-gray-300">Discard</button>
+                              <button onClick={commitStagedEdits} disabled={busy} className="px-2 py-1 text-[11px] rounded bg-amber-500 text-black font-semibold disabled:opacity-40">Commit</button>
+                            </span>
+                          </div>
+                          {showSqlPreview && (
+                            <pre className="text-[11px] font-mono text-amber-100/90 whitespace-pre-wrap break-words">{stagedEdits.map((e) => `${e.sql};`).join('\n')}</pre>
+                          )}
+                        </div>
+                      )}
 
                       {/* Inline new-row insert */}
                       {canEditGrid && resultDataset && (
@@ -907,6 +1245,43 @@ export function LiveDbClient() {
                   className="relative bg-lattice-bg border border-lattice-border rounded overflow-auto"
                   style={{ height: 460 }}
                 >
+                  {/* Relation lines (S4): solid for real foreign keys. */}
+                  <svg className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true">
+                    {relations.map((rel) => {
+                      const f = datasets.find((d) => d.name === rel.fromDataset);
+                      const t = datasets.find((d) => d.name === rel.toDataset);
+                      if (!f || !t) return null;
+                      const fy = f.y + 24 + f.columns.length * 8;
+                      const ty = t.y + 24 + t.columns.length * 8;
+                      const x1 = f.x + 176, y1 = fy, x2 = t.x, y2 = ty;
+                      const mid = Math.max(24, Math.abs(x2 - x1) / 2);
+                      return (
+                        <g key={rel.id}>
+                          <path d={`M ${x1} ${y1} C ${x1 + mid} ${y1}, ${x2 - mid} ${y2}, ${x2} ${y2}`} fill="none" stroke="rgba(34,211,238,0.65)" strokeWidth="1.5" />
+                          <circle cx={x1} cy={y1} r="3" fill="rgba(34,211,238,0.9)" />
+                          <circle cx={x2} cy={y2} r="3" fill="rgba(52,211,153,0.9)" />
+                        </g>
+                      );
+                    })}
+                    {/* E-DB-1: implied relations (a <table>_id column with
+                        no real relation) render dashed, in grey. */}
+                    {impliedRelations.map((imp) => {
+                      const fy = imp.from.y + 24 + imp.from.columns.length * 8;
+                      const ty = imp.to.y + 24 + imp.to.columns.length * 8;
+                      const x1 = imp.from.x + 176, y1 = fy, x2 = imp.to.x, y2 = ty;
+                      const mid = Math.max(24, Math.abs(x2 - x1) / 2);
+                      return (
+                        <path
+                          key={`imp-${imp.from.id}-${imp.column}`}
+                          d={`M ${x1} ${y1} C ${x1 + mid} ${y1}, ${x2 - mid} ${y2}, ${x2} ${y2}`}
+                          fill="none"
+                          stroke="rgba(156,163,175,0.55)"
+                          strokeWidth="1.25"
+                          strokeDasharray="5 4"
+                        />
+                      );
+                    })}
+                  </svg>
                   {datasets.map((d) => (
                     <div
                       key={d.id}
@@ -928,6 +1303,54 @@ export function LiveDbClient() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+              {activeConn && datasets.length === 1 && (
+                <p className="text-[11px] text-gray-500">Add a second dataset to draw relations between tables.</p>
+              )}
+              {activeConn && impliedRelations.length > 0 && (
+                <p className="font-serif italic text-[12px] text-gray-400">
+                  A relation by naming, not by law — yet. The dashed lines follow a &lt;table&gt;_id column that no declared relation backs; declare it below and the line turns solid.
+                </p>
+              )}
+              {activeConn && datasets.length >= 2 && (
+                <div className="space-y-2">
+                  {relations.length > 0 && (
+                    <div className="space-y-1">
+                      {relations.map((rel) => (
+                        <div key={rel.id} className="flex items-center gap-2 text-[11px] font-mono text-gray-300">
+                          <span>{rel.fromDataset}.{rel.fromColumn} → {rel.toDataset}.{rel.toColumn}</span>
+                          <button onClick={() => deleteRelation(rel.id)} className="text-rose-400 hover:text-rose-300" aria-label={`Remove relation ${rel.fromDataset}.${rel.fromColumn}`}>
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <select value={relForm.fromDataset} onChange={(e) => setRelForm({ ...relForm, fromDataset: e.target.value, fromColumn: '' })}
+                      className="bg-lattice-surface border border-lattice-border rounded px-1.5 py-1 text-[11px] text-gray-200" aria-label="Relation source dataset">
+                      <option value="">from dataset</option>
+                      {datasets.map((d) => <option key={d.id} value={d.name}>{d.name}</option>)}
+                    </select>
+                    <select value={relForm.fromColumn} onChange={(e) => setRelForm({ ...relForm, fromColumn: e.target.value })}
+                      className="bg-lattice-surface border border-lattice-border rounded px-1.5 py-1 text-[11px] text-gray-200" aria-label="Relation source column">
+                      <option value="">fk column</option>
+                      {(datasets.find((d) => d.name === relForm.fromDataset)?.columns || []).map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+                    </select>
+                    <span className="text-gray-500 text-[11px]">→</span>
+                    <select value={relForm.toDataset} onChange={(e) => setRelForm({ ...relForm, toDataset: e.target.value, toColumn: '' })}
+                      className="bg-lattice-surface border border-lattice-border rounded px-1.5 py-1 text-[11px] text-gray-200" aria-label="Relation target dataset">
+                      <option value="">to dataset</option>
+                      {datasets.map((d) => <option key={d.id} value={d.name}>{d.name}</option>)}
+                    </select>
+                    <select value={relForm.toColumn} onChange={(e) => setRelForm({ ...relForm, toColumn: e.target.value })}
+                      className="bg-lattice-surface border border-lattice-border rounded px-1.5 py-1 text-[11px] text-gray-200" aria-label="Relation target column">
+                      <option value="">column</option>
+                      {(datasets.find((d) => d.name === relForm.toDataset)?.columns || []).map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+                    </select>
+                    <button onClick={addRelation} disabled={busy} className="px-2 py-1 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 disabled:opacity-40">+ relation</button>
+                  </div>
                 </div>
               )}
             </div>

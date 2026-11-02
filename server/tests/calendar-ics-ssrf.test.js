@@ -37,16 +37,22 @@ describe("icsUrlProblem (save-time check)", () => {
 });
 
 describe("accounts-connect", () => {
-  it("refuses hostile feed URLs with no account stored", () => {
+  // accounts-connect is async since F14: it fetches + parse-checks the feed (through the same SSRF-guarded
+  // transport) before the account exists, so a bogus URL can never become a "connected" account.
+  it("refuses hostile feed URLs with no account stored and makes no request", async () => {
+    let requests = 0;
+    __setPublicFetchTestTransport(async () => { requests++; return { ok: true, status: 200, text: async () => FEED }; });
     for (const u of HOSTILE.filter((x) => /^https?:/i.test(x))) {
-      const r = call("accounts-connect", ctx, { label: "x", icsUrl: u });
+      const r = await call("accounts-connect", ctx, { label: "x", icsUrl: u });
       assert.equal(r.ok, false, u);
       assert.match(r.error, /icsUrl/, u);
     }
+    assert.equal(requests, 0, "hostile URLs are refused before any outbound request");
     assert.equal(call("accounts-list", ctx).result.accounts.length, 0);
   });
-  it("still connects a public feed URL", () => {
-    assert.equal(call("accounts-connect", ctx, { label: "ok", icsUrl: "https://calendar.google.com/x.ics" }).ok, true);
+  it("still connects a public feed URL (its feed validates)", async () => {
+    __setPublicFetchTestTransport(async () => ({ ok: true, status: 200, text: async () => FEED }));
+    assert.equal((await call("accounts-connect", ctx, { label: "ok", icsUrl: "https://calendar.google.com/x.ics" })).ok, true);
   });
 });
 
@@ -54,7 +60,8 @@ describe("accounts-sync", () => {
   it("refuses a hostile URL already stored on an account (legacy rows) and makes NO outbound request", async () => {
     let requests = 0;
     __setPublicFetchTestTransport(async () => { requests++; return { ok: true, status: 200, text: async () => FEED }; });
-    const a = call("accounts-connect", ctx, { label: "legacy", icsUrl: "https://calendar.google.com/x.ics" }).result.account;
+    const a = (await call("accounts-connect", ctx, { label: "legacy", icsUrl: "https://calendar.google.com/x.ics" })).result.account;
+    requests = 0; // connect validated the feed once; the sync below must make none
     a.icsUrl = "http://169.254.169.254/latest/meta-data/";
     const r = await call("accounts-sync", ctx, { id: a.id });
     assert.equal(r.ok, false);
@@ -64,7 +71,7 @@ describe("accounts-sync", () => {
   it("a public URL passes through the guarded transport and imports", async () => {
     let seen = null;
     __setPublicFetchTestTransport(async (url, init) => { seen = { url, redirect: init.redirect }; return { ok: true, status: 200, text: async () => FEED }; });
-    const a = call("accounts-connect", ctx, { label: "pub", icsUrl: "https://93.184.216.34/c.ics" }).result.account;
+    const a = (await call("accounts-connect", ctx, { label: "pub", icsUrl: "https://93.184.216.34/c.ics" })).result.account;
     const r = await call("accounts-sync", ctx, { id: a.id });
     assert.equal(r.ok, true);
     assert.equal(r.result.imported, 1);

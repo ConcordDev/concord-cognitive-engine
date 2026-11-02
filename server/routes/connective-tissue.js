@@ -163,7 +163,18 @@ export default function connectiveTissueRoutes({ db, requireAuth }) {
 
   router.post("/dtu/create", requireAuth(), async (req, res) => {
     try {
-      const result = await createDTU(db, req.body);
+      // creatorId is identity, never client input: force it (and drop any
+      // owner override) to the authenticated user. Without req.user
+      // (AUTH_MODE=public single-user mode) the body is left as-is, same as
+      // requireSelf above.
+      const body = { ...(req.body || {}) };
+      if (req.user?.id) {
+        body.creatorId = req.user.id;
+        delete body.ownerId;
+        delete body.owner_id;
+        delete body.creator_id;
+      }
+      const result = await createDTU(db, body);
       res.json(result);
     } catch (err) {
       res.status(500).json({ error: "Internal server error" });

@@ -12,6 +12,7 @@
 
 import { randomUUID, createHash, createHmac } from "crypto";
 import { gzipSync, gunzipSync } from "zlib";
+import { resolvePlatformSigningKey } from "../lib/dtu-integrity.js";
 import {
   DTU_FORMAT_CONSTANTS,
   DTU_FILE_FORMAT,
@@ -26,8 +27,16 @@ function nowISO() {
   return new Date().toISOString().replace("T", " ").replace("Z", "");
 }
 
-// Platform signing key (in production, loaded from secure storage)
-const SIGNING_KEY = "concord-platform-signing-key-v1";
+// Signing key: CONCORD_DTU_SIGNING_KEY (same resolver as lib/dtu-integrity.js).
+// New .dtu files are signed ONLY with the env key; with none configured the
+// signature is null (never a baked-in fallback). LEGACY_SIGNING_KEY is the
+// constant earlier exports were signed with — it is public in the repo, so it
+// is accepted for VERIFY of already-exported files and never used to sign.
+const LEGACY_SIGNING_KEY = "concord-platform-signing-key-v1";
+
+function hmacHex(key, buf) {
+  return createHmac("sha256", key).update(buf).digest("hex");
+}
 
 // ─────────────────────────────────────────────────────────────────────
 // DTU Header Operations
@@ -373,7 +382,8 @@ export function encodeDTU({
 
   // Generate content hash and signature
   const contentHash = createHash("sha256").update(dtuBuffer).digest("hex");
-  const signature = createHmac("sha256", SIGNING_KEY).update(dtuBuffer).digest("hex");
+  const signingKey = resolvePlatformSigningKey();
+  const signature = signingKey ? hmacHex(signingKey, dtuBuffer) : null;
 
   return {
     ok: true,
@@ -477,10 +487,15 @@ export function verifyDTU(buffer, { expectedHash, expectedSignature } = {}) {
 
   // Compute content hash
   const contentHash = createHash("sha256").update(buffer).digest("hex");
-  const signature = createHmac("sha256", SIGNING_KEY).update(buffer).digest("hex");
+  const signingKey = resolvePlatformSigningKey();
+  const signature = signingKey ? hmacHex(signingKey, buffer) : null;
 
   const hashMatch = expectedHash ? contentHash === expectedHash : true;
-  const signatureMatch = expectedSignature ? signature === expectedSignature : true;
+  // Env key first, then the legacy constant so already-exported files verify.
+  const signatureMatch = expectedSignature
+    ? (signature !== null && signature === expectedSignature) ||
+      hmacHex(LEGACY_SIGNING_KEY, buffer) === expectedSignature
+    : true;
 
   return {
     ok: true,

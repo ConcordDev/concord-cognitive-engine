@@ -76,7 +76,8 @@ function compilePitch() {
   const core = fs.readFileSync(findFile(dir, 'core.js'), 'utf8').replace(/\r\n/g, '\n');
   fs.rmSync(dir, { recursive: true, force: true });
   const body = `${stripModuleSyntax(core).trim()}\n${stripModuleSyntax(js).trim()}\n`;
-  if (/\bimport\s+/.test(body) || /\bexport\s+/.test(body)) {
+  // Module syntax only counts at the start of a line: a comment that merely says "an export of a vocal" is not an export.
+  if (/^\s*import\s/m.test(body) || /^\s*export\s/m.test(body)) {
     throw new Error('pitch worklet bundle still has import or export');
   }
   return banner + body;

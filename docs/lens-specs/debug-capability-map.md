@@ -1,5 +1,24 @@
 # Debug Lens — Capability Map (Frontend Rebuild Program, Wave 3 — confirming, no changes)
 
+> **Re-verification (HANDOFF-3 batch L9b, 2026-10-28, against main e9791d4d):**
+> The confirming audit below is kept as history. Current truth:
+>
+> - **21/21 macros still named in the frontend** (fresh scan, zero
+>   unsurfaced) — issues/traces/metrics/alerts/releases plus the four
+>   AI-analysis macros all remain wired to real surfaces.
+> - The page has since been refactored from the 1,524-line page this
+>   audit read into a 15-line shell over `components/debug/DebugWorkspace`
+>   (same 13-tool structure: overview/status/issues/traces/metrics/
+>   releases/events/logs/inspector/context/monitoring/compute/
+>   templates/cve/test), so the surface this audit verified now lives
+>   in the workspace component.
+> - **Shipped in this batch:** the concept's serif headline — "What
+>   broke, {username}" — as the workspace header
+>   (`data-testid="debug-greeting"`, `tests/debug-greeting.test.tsx`).
+> - Server suites run locally this pass: debug-domain-parity passes
+>   (in the combined 89-pass L9b run).
+
+
 Reproduce the macro list: `grep -c 'registerLensAction("debug"' server/domains/debug.js` → 21
 Reproduce unsurfaced check: `node scripts/lens-unsurfaced.mjs --lens debug` → `debug: 0/21 macros never referenced in the frontend`
 
