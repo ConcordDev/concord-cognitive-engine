@@ -13,6 +13,42 @@
 import { asyncHandler } from "../lib/async-handler.js";
 
 /**
+ * Lazy per-request delegate for a subsystem that is created after these
+ * routes register (initExtensions → app.locals.*). Reads resolve() on every
+ * access; when the subsystem is absent the access throws an error whose
+ * code is "<name>_unavailable", which `route()` below turns into a clean
+ * 503 instead of a TypeError. `available` reports presence without throwing.
+ *
+ * @param {string} name - e.g. "canonical_store"
+ * @param {() => object|null|undefined} resolve
+ */
+export function lazyDelegate(name, resolve) {
+  return new Proxy({}, {
+    get(_t, prop) {
+      const sys = resolve();
+      if (prop === "available") return !!sys;
+      if (!sys) throw Object.assign(new Error(`${name}_unavailable`), { code: `${name}_unavailable` });
+      const v = sys[prop];
+      return typeof v === "function" ? v.bind(sys) : v;
+    },
+  });
+}
+
+// asyncHandler + structured 503 for a missing subsystem.
+function route(fn) {
+  return asyncHandler(async (req, res, next) => {
+    try {
+      await fn(req, res, next);
+    } catch (err) {
+      if (typeof err?.code === "string" && err.code.endsWith("_unavailable")) {
+        return res.status(503).json({ ok: false, error: err.code });
+      }
+      throw err;
+    }
+  });
+}
+
+/**
  * Register canonical DTU routes on the Express app.
  *
  * @param {import("express").Application} app - Express app
@@ -38,7 +74,7 @@ export default function registerCanonicalRoutes(app, deps) {
    * GET /api/canonical/stats
    * Deduplication and compression statistics.
    */
-  app.get("/api/canonical/stats", asyncHandler(async (req, res) => {
+  app.get("/api/canonical/stats", route(async (req, res) => {
     const dedupStats = canonicalStore.getStats();
     const integrityStats = integritySystem.getStats();
     const compressionStats = compressionPipeline.getPipelineStats();
@@ -58,7 +94,7 @@ export default function registerCanonicalRoutes(app, deps) {
    *
    * Body: { content: string|object, dtuId?: string, contentType?: string }
    */
-  app.post("/api/canonical/register", asyncHandler(async (req, res) => {
+  app.post("/api/canonical/register", route(async (req, res) => {
     const { content, dtuId, contentType } = req.body || {};
 
     if (content === undefined || content === null) {
@@ -75,7 +111,7 @@ export default function registerCanonicalRoutes(app, deps) {
     });
 
     // If new, compress and record compression stats
-    if (result.isNew && compressionPipeline) {
+    if (result.isNew && compressionPipeline && compressionPipeline.available !== false) {
       const contentStr = typeof content === "object" ? JSON.stringify(content) : String(content);
       const compressed = compressionPipeline.compress(contentStr, contentType || "application/json");
       canonicalStore.updateCompression(result.contentHash, compressed.compressedSize);
@@ -102,7 +138,7 @@ export default function registerCanonicalRoutes(app, deps) {
    * GET /api/canonical/:hash
    * Look up a canonical entry by content hash.
    */
-  app.get("/api/canonical/lookup/:hash", asyncHandler(async (req, res) => {
+  app.get("/api/canonical/lookup/:hash", route(async (req, res) => {
     const { hash } = req.params;
 
     const entry = canonicalStore.lookupByHash(hash);
@@ -117,7 +153,7 @@ export default function registerCanonicalRoutes(app, deps) {
    * GET /api/canonical/duplicates
    * Get top duplicated content entries.
    */
-  app.get("/api/canonical/duplicates", asyncHandler(async (req, res) => {
+  app.get("/api/canonical/duplicates", route(async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const duplicates = canonicalStore.getTopDuplicates(limit);
     res.json({ ok: true, duplicates });
@@ -131,7 +167,7 @@ export default function registerCanonicalRoutes(app, deps) {
    *
    * Body: { dtuId: string }
    */
-  app.post("/api/canonical/verify", asyncHandler(async (req, res) => {
+  app.post("/api/canonical/verify", route(async (req, res) => {
     const { dtuId } = req.body || {};
 
     if (!dtuId) {
@@ -154,7 +190,7 @@ export default function registerCanonicalRoutes(app, deps) {
    *
    * Body: { dtuId: string }
    */
-  app.post("/api/canonical/verify-chain", asyncHandler(async (req, res) => {
+  app.post("/api/canonical/verify-chain", route(async (req, res) => {
     const { dtuId } = req.body || {};
 
     if (!dtuId) {
@@ -169,7 +205,7 @@ export default function registerCanonicalRoutes(app, deps) {
    * GET /api/canonical/integrity/:id
    * Get integrity report for a DTU.
    */
-  app.get("/api/canonical/integrity/:id", asyncHandler(async (req, res) => {
+  app.get("/api/canonical/integrity/:id", route(async (req, res) => {
     const { id } = req.params;
     const report = integritySystem.getReport(id);
     res.json(report);
@@ -181,7 +217,7 @@ export default function registerCanonicalRoutes(app, deps) {
    *
    * Body: { dtuId: string }
    */
-  app.post("/api/canonical/integrity/generate", asyncHandler(async (req, res) => {
+  app.post("/api/canonical/integrity/generate", route(async (req, res) => {
     const { dtuId } = req.body || {};
 
     if (!dtuId) {
@@ -203,7 +239,7 @@ export default function registerCanonicalRoutes(app, deps) {
    *
    * Body: { dtuIds: string[] }
    */
-  app.post("/api/canonical/integrity/batch-verify", asyncHandler(async (req, res) => {
+  app.post("/api/canonical/integrity/batch-verify", route(async (req, res) => {
     const { dtuIds } = req.body || {};
 
     if (!Array.isArray(dtuIds) || dtuIds.length === 0) {
@@ -222,7 +258,7 @@ export default function registerCanonicalRoutes(app, deps) {
    * GET /api/canonical/:id/rights
    * Get rights for a DTU.
    */
-  app.get("/api/canonical/:id/rights", asyncHandler(async (req, res) => {
+  app.get("/api/canonical/:id/rights", route(async (req, res) => {
     const { id } = req.params;
     const report = rightsManager.getRightsReport(id);
     res.json(report);
@@ -235,7 +271,7 @@ export default function registerCanonicalRoutes(app, deps) {
    * Body: { creatorId, ownerId?, derivativeAllowed?, commercialAllowed?,
    *         attributionRequired?, scope?, license?, expiration?, transferable?, maxDerivatives? }
    */
-  app.put("/api/canonical/:id/rights", asyncHandler(async (req, res) => {
+  app.put("/api/canonical/:id/rights", route(async (req, res) => {
     const { id } = req.params;
     const rights = req.body || {};
 
@@ -257,7 +293,7 @@ export default function registerCanonicalRoutes(app, deps) {
    *
    * Body: { userId: string, action: string }
    */
-  app.post("/api/canonical/:id/rights/check", asyncHandler(async (req, res) => {
+  app.post("/api/canonical/:id/rights/check", route(async (req, res) => {
     const { id } = req.params;
     const { userId, action } = req.body || {};
 
@@ -275,7 +311,7 @@ export default function registerCanonicalRoutes(app, deps) {
    *
    * Body: { fromUserId: string, toUserId: string }
    */
-  app.post("/api/canonical/:id/rights/transfer", asyncHandler(async (req, res) => {
+  app.post("/api/canonical/:id/rights/transfer", route(async (req, res) => {
     const { id } = req.params;
     const { fromUserId, toUserId } = req.body || {};
 
@@ -297,7 +333,7 @@ export default function registerCanonicalRoutes(app, deps) {
    *
    * Body: { userId: string }
    */
-  app.post("/api/canonical/:id/rights/revoke", asyncHandler(async (req, res) => {
+  app.post("/api/canonical/:id/rights/revoke", route(async (req, res) => {
     const { id } = req.params;
     const { userId } = req.body || {};
 
@@ -319,7 +355,7 @@ export default function registerCanonicalRoutes(app, deps) {
    *
    * Body: { grantedTo?: string, maxDerivatives?: number, commercialDerivatives?: boolean }
    */
-  app.post("/api/canonical/:id/rights/derivative", asyncHandler(async (req, res) => {
+  app.post("/api/canonical/:id/rights/derivative", route(async (req, res) => {
     const { id } = req.params;
     const terms = req.body || {};
 
@@ -335,7 +371,7 @@ export default function registerCanonicalRoutes(app, deps) {
    * GET /api/canonical/:id/rights/commercial
    * Check commercial rights for a DTU.
    */
-  app.get("/api/canonical/:id/rights/commercial", asyncHandler(async (req, res) => {
+  app.get("/api/canonical/:id/rights/commercial", route(async (req, res) => {
     const { id } = req.params;
     const result = rightsManager.checkCommercialRights(id);
     res.json({ ok: true, dtuId: id, ...result });
@@ -349,7 +385,7 @@ export default function registerCanonicalRoutes(app, deps) {
    *
    * Body: { content: string, contentType?: string }
    */
-  app.post("/api/canonical/compress", asyncHandler(async (req, res) => {
+  app.post("/api/canonical/compress", route(async (req, res) => {
     const { content, contentType } = req.body || {};
 
     if (content === undefined || content === null) {
@@ -379,7 +415,7 @@ export default function registerCanonicalRoutes(app, deps) {
    * GET /api/canonical/compression-stats
    * Storage savings report from the compression pipeline.
    */
-  app.get("/api/canonical/compression-stats", asyncHandler(async (req, res) => {
+  app.get("/api/canonical/compression-stats", route(async (req, res) => {
     const pipelineStats = compressionPipeline.getPipelineStats();
     const dedupStats = canonicalStore.getStats();
 
@@ -407,7 +443,7 @@ export default function registerCanonicalRoutes(app, deps) {
    * GET /api/canonical/licenses
    * List available license types.
    */
-  app.get("/api/canonical/licenses", asyncHandler(async (req, res) => {
+  app.get("/api/canonical/licenses", route(async (req, res) => {
     res.json({
       ok: true,
       licenses: rightsManager.LICENSE_TYPES,
