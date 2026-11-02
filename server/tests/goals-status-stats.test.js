@@ -6,6 +6,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -13,7 +14,7 @@ const serverSrc = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..
 const i = serverSrc.indexOf("function deriveGoalStats");
 assert.ok(i >= 0, "deriveGoalStats must exist in server.js");
 const j = serverSrc.indexOf("\n}\n", i) + 3;
-const deriveGoalStats = new Function(serverSrc.slice(i, j) + "; return deriveGoalStats;")();
+const deriveGoalStats = vm.runInThisContext(`(function () { ${serverSrc.slice(i, j)}; return deriveGoalStats; })`)();
 
 test("status macro wires the derivation, not the stored counters", () => {
   assert.ok(serverSrc.includes("stats: deriveGoalStats(ctx.state.goals),"));
