@@ -219,7 +219,10 @@ export function createDTU(db, {
         },
         { parentDtuId: citations[0]?.parentId || null },
       );
-    } catch { /* provenance is best-effort; never fail a publish for it */ }
+    } catch (err) {
+      // best-effort: never fail a publish for it, but don't swallow it silently either
+      console.warn("[economy] dtu_provenance_failed:", dtuId, err?.message);
+    }
 
     return { dtuId, tier: effectiveTier, cretiScore, previewContent };
   });

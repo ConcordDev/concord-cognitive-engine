@@ -43761,7 +43761,17 @@ import createBrowserRoutes from "./routes/browser.js";
 try { app.use("/api/browser", createBrowserRoutes({ requireAuth })); } catch (e) { structuredLog("warn", "browser_routes_skip", { error: e.message }); }
 
 import registerCanonicalRoutes from "./routes/canonical.js";
-try { registerCanonicalRoutes(app, { db, requireAuth, STATE, structuredLog }); } catch (e) { structuredLog("warn", "canonical_routes_skip", { error: e.message }); }
+// The integrity system is created later (initExtensions → app.locals.dtuIntegrity),
+// so hand the routes a lazy delegate instead of a value that is still undefined here.
+const _canonicalIntegrity = new Proxy({}, {
+  get(_t, prop) {
+    const sys = app.locals.dtuIntegrity;
+    if (!sys) throw new Error("dtu_integrity_unavailable");
+    const v = sys[prop];
+    return typeof v === "function" ? v.bind(sys) : v;
+  },
+});
+try { registerCanonicalRoutes(app, { db, requireAuth, STATE, structuredLog, integritySystem: _canonicalIntegrity }); } catch (e) { structuredLog("warn", "canonical_routes_skip", { error: e.message }); }
 
 import registerChicken2Routes from "./routes/chicken2.js";
 try {
