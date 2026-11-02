@@ -1,4 +1,4 @@
-import { describe, it, beforeEach, afterEach } from "node:test";
+import { describe, it, before, after, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
 import express from "express";
@@ -48,6 +48,15 @@ async function get(base, path, headers = {}) {
   const res = await fetch(`${base}${path}`, { headers });
   return { status: res.status, body: await res.json().catch(() => null) };
 }
+
+// lib/pod-jobs.js deliberately unref()s each job-timeout timer (a pending job must not keep the server process
+// alive). A test that awaits such a timeout therefore has nothing holding the event loop open: on Node 22 the
+// runner reports "Promise resolution is still pending but the event loop has already resolved" and cancels every
+// remaining test in the file (it passes on Node 24 only because the runner keeps the loop alive there). Hold the
+// loop open for the duration of the file instead of changing the production timer.
+let keepAlive;
+before(() => { keepAlive = setInterval(() => {}, 1_000_000); });
+after(() => { clearInterval(keepAlive); });
 
 describe("pod job queue", () => {
   it("reports unavailable when no worker has been seen", async () => {
