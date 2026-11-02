@@ -39,7 +39,7 @@ function legacySecretlessPeer(s, peerId) {
 }
 
 function pkgFor(peerId, dtus = [DTU]) {
-  return { peerId, count: dtus.length, timestamp: "2026-10-29T00:00:00.000Z", dtus };
+  return { peerId, count: dtus.length, timestamp: new Date().toISOString(), dtus };
 }
 
 describe("federation inbound — mandatory HMAC (sync packages)", () => {
