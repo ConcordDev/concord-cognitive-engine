@@ -23,6 +23,7 @@ export default function createDebugIngestRouter() {
   const router = Router();
   const handler = createIngestHandler({ ingest: debugIngest });
 
+  // AUTH: ingest-key - the project's cdi_ ingest key in X-Sentry-Auth, verified (hashed, revocable, scoped to :projectId, per-key rate limit) in createIngestHandler before the body is read; one 401 body for missing/unknown/revoked
   router.post(
     "/ingest/:projectId/envelope",
     express.raw({ type: () => true, limit: "1mb" }),
