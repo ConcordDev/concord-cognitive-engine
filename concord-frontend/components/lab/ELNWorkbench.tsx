@@ -51,14 +51,14 @@ export function ELNWorkbench() {
 
   return (
     <div className="panel p-0 overflow-hidden">
-      <div className="flex flex-wrap border-b border-white/10 bg-white/[0.02]">
+      <div className="flex flex-nowrap overflow-x-auto border-b border-white/10 bg-white/[0.02]">
         {TABS.map((t) => {
           const Icon = t.icon;
           return (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm transition-colors ${
+              className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap px-4 py-2.5 text-sm transition-colors ${
                 tab === t.id
                   ? 'text-neon-cyan border-b-2 border-neon-cyan bg-white/[0.03]'
                   : 'text-gray-400 hover:text-white'

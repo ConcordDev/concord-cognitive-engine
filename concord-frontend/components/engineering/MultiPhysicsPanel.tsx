@@ -407,7 +407,7 @@ export function MultiPhysicsPanel() {
           <div className="mt-3"><RunButton onClick={() => void run<FlowResult>('nonNewtonianFlow', { fluidModel, ...flowIn }, setFlowRun, stamp('flow', false))} loading={flow.loading}>Compute flow</RunButton></div>
           <Err msg={flow.error} />
           {flow.result && (
-            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2 text-center">
               <div className="rounded-lg bg-black/20 p-2"><p className="font-mono text-sm text-cyan-200">{fmt(flow.result.flowRate * 1000, 3)}</p><p className="text-[10px] text-zinc-500">L/s</p></div>
               <div className="rounded-lg bg-black/20 p-2"><p className="font-mono text-sm text-cyan-200">{fmt(flow.result.meanVelocity, 3)}</p><p className="text-[10px] text-zinc-500">m/s mean</p></div>
               <div className="rounded-lg bg-black/20 p-2"><p className="font-mono text-sm text-cyan-200">{flow.result.reynolds ? fmt(flow.result.reynolds.value, 1) : '—'}</p><p className="text-[10px] text-zinc-500">{flow.result.reynolds?.regime ?? 'Re'}</p></div>

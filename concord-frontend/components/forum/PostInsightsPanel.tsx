@@ -115,7 +115,7 @@ export function PostInsightsPanel({ postId }: { postId: string }) {
           {error && <p className="text-[11px] text-red-400">{error}</p>}
 
           {rank && (
-            <div className="grid grid-cols-3 gap-1.5 text-center">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-1.5 text-center">
               <div className="bg-lattice-bg border border-lattice-border rounded px-2 py-1.5">
                 <p className="text-sm font-bold text-white">{rank.wilsonScore.toFixed(3)}</p>
                 <p className="text-[9px] text-gray-500 uppercase">Wilson</p>

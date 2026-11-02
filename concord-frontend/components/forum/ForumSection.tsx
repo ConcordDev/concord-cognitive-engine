@@ -88,7 +88,7 @@ export function ForumSection() {
       {loading ? (
         <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
       ) : dash && (
-        <div className={cn('grid grid-cols-3 gap-2 px-4 py-3 border-b border-zinc-800', canModerate ? 'sm:grid-cols-7' : 'sm:grid-cols-6')}>
+        <div className={cn('grid grid-cols-2 gap-2 px-4 py-3 border-b border-zinc-800', canModerate ? 'sm:grid-cols-7' : 'sm:grid-cols-6')}>
           <Stat label="Topics" value={dash.topics} />
           <Stat label="Replies" value={dash.replies} />
           <Stat label="Communities" value={dash.subforums} />
