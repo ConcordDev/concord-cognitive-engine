@@ -21,8 +21,20 @@ import {
   runConstantTimeDetector,
   analyzeSourceText,
   SECRET_NAME_RE,
+  COMPILER_PACKAGES,
 } from "../lib/detectors/constant-time-detector.js";
-import ts from "typescript";
+// The main `typescript` pin is v7 (no JS compiler API); the detector prefers the `typescript5` alias, so the test
+// parses with exactly the compiler the detector will use.
+const ts = await (async () => {
+  for (const name of COMPILER_PACKAGES) {
+    try {
+      const m = await import(name);
+      const c = m?.default?.isIdentifier ? m.default : m;
+      if (typeof c?.createSourceFile === "function") return c;
+    } catch { /* next */ }
+  }
+  throw new Error("no TypeScript compiler API available: install typescript5 (npm alias) in server/");
+})();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = path.join(__dirname, "fixtures", "constant-time");
@@ -231,9 +243,9 @@ describe("constant-time detector — end to end (real fs, real repo shape)", () 
     dir = null;
   });
 
-  it("real dynamic import of `typescript` actually resolves (sanity: the lazy-import path works in this env)", async () => {
+  it("real dynamic import of the compiler (typescript5 alias first) actually resolves (sanity: the lazy-import path works in this env)", async () => {
     dir = await tmpRepo({ "lib/crypto/vulnerable-branch.js": await fixture("vulnerable-branch.js") });
-    const r = await runConstantTimeDetector({ root: dir }); // no __loadTs override — real import("typescript")
+    const r = await runConstantTimeDetector({ root: dir }); // no __loadTs override — real import of the compiler
     assert.ok(r.findings.some((f) => f.id === "secret_dependent_branch"), "with the real parser loaded, the detector must actually find the seeded vulnerability");
     dir = null;
   });
