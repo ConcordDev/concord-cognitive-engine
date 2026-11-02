@@ -160,7 +160,10 @@ describe("game-design.building-publish — real DB round-trip", () => {
 
     const nonFinite = await lensRun("game-design", "building-publish", { params: validParams({ dimensions: { width: Infinity, height: 9, depth: 10 } }) }, authorCtx);
     assert.equal(nonFinite.result.ok, false);
-    assert.equal(nonFinite.result.error, "invalid_dimensions");
+    // The shared lens input schema (lib/lens-input-schemas*.js) rejects a non-finite number before the handler runs.
+    assert.equal(nonFinite.result.error, "invalid_input");
+    assert.equal(nonFinite.result.field, "dimensions.width");
+    assert.equal(nonFinite.result.reason, "non_finite_number");
 
     const zero = await lensRun("game-design", "building-publish", { params: validParams({ dimensions: { width: 0, height: 9, depth: 10 } }) }, authorCtx);
     assert.equal(zero.result.ok, false);
