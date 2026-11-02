@@ -1787,7 +1787,7 @@ export default function registerReposActions(registerLensAction) {
         : [];
       const pull = {
         id: rpId("pr"), number, title, body: rpClean(params.body, 4000),
-        state: "open", base, head, author: "you",
+        state: "open", base, head, author: "you", authorId: rpUid(ctx),
         commits: headCommits.map((c) => c.sha),
         linkedIssues,
         reviews: [], comments: [], createdAt: rpNow(), updatedAt: rpNow(),
@@ -1849,7 +1849,13 @@ export default function registerReposActions(registerLensAction) {
           conflicts = dry.conflicts || [];
         }
       }
-      const approvals = pull.reviews.filter((rv) => rv.verdict === "approve").length;
+      // F11: a self-approval recorded before the refusal shipped (or
+      // anywhere the stored ids prove reviewer == author) is history,
+      // not an approval — it stays in the review list but never counts.
+      // Legacy records carry no ids; there the bucket owner is both
+      // fallbacks, which is the silo fact rpFindRepo enforces.
+      const rpAuthorKey = pull.authorId || rpUid(ctx);
+      const approvals = pull.reviews.filter((rv) => rv.verdict === "approve" && (rv.reviewerId || rpUid(ctx)) !== rpAuthorKey).length;
       const changesRequested = pull.reviews.filter((rv) => rv.verdict === "request-changes").length;
       // Ahead/behind for the PR page (the third canonical location in
       // Review 2's ahead-counts residual): commits reachable from the
@@ -1888,7 +1894,22 @@ export default function registerReposActions(registerLensAction) {
       const pull = repo.pulls.find((p) => p.number === rpNum(params.number, -1));
       if (!pull) return { ok: false, error: "pull not found" };
       const verdict = ["approve", "request-changes", "comment"].includes(params.verdict) ? params.verdict : "comment";
-      const review = { id: rpId("rev"), reviewer: "you", verdict, body: rpClean(params.body, 4000), createdAt: rpNow() };
+      // F11 (founder ruling, 2026-10-29: forbid self-approval always, in
+      // every repo): an approval is a second pair of eyes, so the author
+      // can never be that pair. Repos live in the author's own state
+      // bucket (rpFindRepo reads only the caller's bucket), so any
+      // approve reachable here IS the author's until a sharing model
+      // lets a second account reach the pull — for pulls created before
+      // authorId was recorded, reachability itself proves authorship.
+      // Comment and request-changes stay open to the author; only the
+      // approve verdict is refused, and the refusal records nothing.
+      if (verdict === "approve") {
+        const authorKey = pull.authorId || rpUid(ctx);
+        if (rpUid(ctx) === authorKey) {
+          return { ok: false, error: "self_approval_forbidden", message: "You can't approve your own pull request — approval is a second pair of eyes, so it has to come from a different account. You can still comment on or request changes to your own pull request." };
+        }
+      }
+      const review = { id: rpId("rev"), reviewer: "you", reviewerId: rpUid(ctx), verdict, body: rpClean(params.body, 4000), createdAt: rpNow() };
       pull.reviews.push(review);
       pull.updatedAt = rpNow();
       rpSave();
