@@ -85,6 +85,10 @@ const REVIEWED = {
   // [a-z0-9_] by tableForModel(), or a name read from sqlite_master filtered to
   // that prefix. dtu_id / embedding / created_at are bound '?'.
   "embeddings.js": 4,
+  // lib/user-memory.js (4) — listFacts interpolates `where.join(" AND ")` whose fragments are fixed literals pushed
+  // by the function itself (user_id = ?, project_id = ?, status = ?, a LIKE pair), every value bound '?'; the three
+  // purge statements interpolate `ph`, a string of "?,?,…" built from ids.length (no value ever reaches the SQL text).
+  "lib/user-memory.js": 4,
   "domains/_dtu-recent-mine.js": 4,
   "domains/ar.js": 5,
   "domains/companion.js": 1,
