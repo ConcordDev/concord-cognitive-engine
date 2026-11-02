@@ -6,10 +6,11 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 const listMock = vi.fn();
 const downloadMock = vi.fn();
-vi.mock('@/lib/api/client', () => ({ apiHelpers: { lens: { list: (...a: unknown[]) => listMock(...a) } } }));
+// The menu exports through lens.exportList (a larger, state-backed-aware read); lens.list is kept for the row count.
+vi.mock('@/lib/api/client', () => ({ apiHelpers: { lens: { list: (...a: unknown[]) => listMock(...a), exportList: (...a: unknown[]) => listMock(...a) } } }));
 vi.mock('@/lib/utils', async (orig) => ({ ...(await orig<object>()), downloadFile: (...a: unknown[]) => downloadMock(...a) }));
 
-import { ExportMenu, EMPTY_EXPORT_NOTICE, lensListExportRows } from '@/components/common/ExportMenu';
+import { ExportMenu, EMPTY_EXPORT_NOTICE, EMPTY_EXPORT_NOTICE_STATE_BACKED, lensListExportRows } from '@/components/common/ExportMenu';
 
 beforeEach(() => { listMock.mockReset(); downloadMock.mockReset(); });
 
@@ -64,6 +65,15 @@ describe('ExportMenu', () => {
     expect(content).toBe('id,title,type,createdAt,updatedAt\n"a1","One","note","t","u"');
     expect(filename).toMatch(/^notes-export-.*\.csv$/);
     expect(mime).toBe('text/csv');
+  });
+
+  it('an empty state-backed lens says it is state-backed (a different notice than an empty list)', async () => {
+    listMock.mockResolvedValue({ data: { artifacts: [], total: 0, stateBacked: true } });
+    render(<ExportMenu domain="chem" />);
+    fireEvent.click(screen.getByTitle('Export (Ctrl+E)'));
+    fireEvent.click(screen.getByText('Export as JSON'));
+    expect(await screen.findByTestId('export-menu-notice')).toHaveTextContent(EMPTY_EXPORT_NOTICE_STATE_BACKED);
+    expect(downloadMock).not.toHaveBeenCalled();
   });
 
   it('a failed export says so and downloads nothing', async () => {

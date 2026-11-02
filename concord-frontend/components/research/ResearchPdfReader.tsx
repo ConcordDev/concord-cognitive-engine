@@ -201,13 +201,13 @@ export function ResearchPdfReader({ referenceId, title, initialPage, initialPdfU
             <h4 className="text-xs font-semibold text-zinc-300 mb-2 flex items-center gap-1.5">
               <Highlighter className="w-3.5 h-3.5 text-amber-400" /> Annotate page {page}
             </h4>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <input placeholder="Quote — the passage, pasted" value={quote} onChange={(e) => setQuote(e.target.value)}
-                className="col-span-4 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+                className="col-span-2 sm:col-span-4 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
               <input placeholder="Your note" value={note} onChange={(e) => setNote(e.target.value)}
-                className="col-span-3 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+                className="col-span-2 sm:col-span-3 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
               <button type="button" onClick={addAnnotation} disabled={saving}
-                className="bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-medium rounded-lg">
+                className="col-span-2 sm:col-span-1 py-1.5 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-medium rounded-lg">
                 {saving ? 'Saving…' : 'Add'}
               </button>
             </div>
