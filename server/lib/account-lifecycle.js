@@ -344,6 +344,19 @@ export function executeAccountDeletion(db, userId) {
       stats.deleted += r.changes;
     } catch (err) { console.warn('[account-lifecycle] failed to delete personal_dtus', { userId, err: err.message }); errors.push({ step: 'delete_personal_dtus', err }); }
 
+    // 8b. HARD-DELETE the chat-derived vault (`memory_vault` — raw ~500-char exchange rows written by
+    // context-orchestrator per turn). Chat text, so it must not outlive the account. Scoped by user_id only.
+    try {
+      const r = db.prepare("DELETE FROM memory_vault WHERE user_id = ?").run(userId);
+      stats.deleted += r.changes;
+    } catch (err) {
+      // A DB that never created the table (minimal builds) has nothing to purge.
+      if (!/no such table/i.test(err.message)) {
+        console.warn('[account-lifecycle] failed to delete memory_vault', { userId, err: err.message });
+        errors.push({ step: 'delete_memory_vault', err });
+      }
+    }
+
     // 9. HARD-DELETE chat history (`chat_sessions` + `chat_messages`). Verified single-owner
     // scoped before treating this as safe to hard-delete — `chat_sessions` keys by `owner_id`
     // alone with no participant/shared-session list (server/migrations/193_chat_sessions.js), so
@@ -570,6 +583,17 @@ export function exportUserData(db, userId) {
       "SELECT m.id, m.session_id, m.role, m.content, m.ts FROM chat_messages m INNER JOIN chat_sessions s ON s.session_id = m.session_id WHERE s.owner_id = ? ORDER BY m.ts DESC LIMIT 5000"
     ).all(userId);
   } catch (err) { console.warn('[account-lifecycle] data export: failed to export chat messages', { userId, err: err.message }); }
+
+  // Chat-derived memory vault rows (embedding blob omitted — not human-readable).
+  try {
+    data.memoryVault = db.prepare(
+      "SELECT id, kind, key, content, created_at, last_accessed, access_count FROM memory_vault WHERE user_id = ? ORDER BY created_at DESC LIMIT 5000"
+    ).all(userId);
+  } catch (err) {
+    if (!/no such table/i.test(err.message)) {
+      console.warn('[account-lifecycle] data export: failed to export memory vault', { userId, err: err.message });
+    }
+  }
 
   // Sign-in sessions (no token hash) and lens sessions.
   try {
