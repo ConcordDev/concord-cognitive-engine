@@ -1,41 +1,25 @@
 /**
- * S16 (PR #1707): toast hygiene + System Status explainability (F16).
+ * S16 (PR #1707): System Status explainability (F16) — the half of S16
+ * that stays in this PR.
  *
- * The false "invalid input" toast: the dispatch rewrites server
- * handler TypeErrors to error:"invalid_input" (reason type_error /
- * not_a_function); the api interceptor toasted every refusal's raw
- * code, so companion calls made a red "invalid input" appear over
- * successful saves/creates. Handler defects are now classified apart
- * from genuine refusals (recorded, not toasted), genuine refusals
- * name the field/reason, and System Status explains what its badge
- * counts.
+ * System Status's badge used to be a bare red count with no stated
+ * meaning. It now carries its definition (the badge's title text) and
+ * the expanded panel states what is counted — server errors, timeouts,
+ * network failures — and what is not (expected responses handled
+ * elsewhere).
+ *
+ * The other half of S16 — the api client's handler-defect refusal
+ * classification (lib/api/lens-refusal.ts + the interceptor branch in
+ * lib/api/client.ts) — was split into its own PR per GB-0736, for
+ * separate blast-radius review of the global error handler; its unit
+ * tests live there as tests/lens-refusal.test.ts. The handler_defect
+ * request-error entry in the fixture below is store data of the shape
+ * that change records; System Status renders the request-error list
+ * the same either way, so this suite stands alone in this PR.
  */
 import React from 'react';
 import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-
-import { isHandlerDefectRefusal, refusalToastMessage } from '@/lib/api/lens-refusal';
-
-describe('isHandlerDefectRefusal', () => {
-  it('classifies dispatch-rewritten TypeErrors as handler defects', () => {
-    expect(isHandlerDefectRefusal('invalid_input', 'type_error')).toBe(true);
-    expect(isHandlerDefectRefusal('invalid_input', 'not_a_function')).toBe(true);
-    expect(isHandlerDefectRefusal('invalid_input', 'invalid_time')).toBe(true);
-  });
-  it('does NOT classify genuine input refusals as defects', () => {
-    expect(isHandlerDefectRefusal('invalid_input', 'expected_number')).toBe(false);
-    expect(isHandlerDefectRefusal('invalid_input', undefined)).toBe(false);
-    expect(isHandlerDefectRefusal('insufficient_balance', 'type_error')).toBe(false);
-    expect(isHandlerDefectRefusal('not_found', null)).toBe(false);
-  });
-});
-
-describe('refusalToastMessage', () => {
-  it('humanizes the code and appends the named field/reason', () => {
-    expect(refusalToastMessage('invalid_input', 'count', 'expected_number')).toBe('invalid input (count — expected_number)');
-    expect(refusalToastMessage('insufficient_balance')).toBe('insufficient balance');
-  });
-});
 
 // ── System Status: the count explains itself ─────────────────────────
 vi.mock('lucide-react', () => ({
