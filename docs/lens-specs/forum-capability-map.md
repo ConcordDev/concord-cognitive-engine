@@ -57,6 +57,12 @@ The `forum` domain string covers two independent substrates, both real:
    "generated," per the zero-demo-content honesty invariant). Added
    `components/forum/PostInsightsPanel.tsx`, mounted in the post-detail
    view's action row.
+   **Retired 2026-11-02:** the Reddit-shaped `BoardPanel` (the only mount of
+   `PostInsightsPanel`) was orphaned when the forum page was de-stacked onto
+   `ForumSection` (Discourse-shaped topics), so both components were deleted as
+   dead code. The `rank_posts` / `extract_thesis` / `generate_summary_dtu`
+   macros are still registered server-side but currently have no UI caller;
+   re-surfacing them belongs in `ForumSection`'s topic view if wanted.
 
 ## Reference apps
 
