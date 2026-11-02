@@ -76,7 +76,7 @@ jobs:
           node --test --import=./tests/preload/no-egress.mjs \
             --test-concurrency=2 --test-timeout=300000 \
             --test-reporter=spec --test-reporter-destination=stdout \
-            --test-reporter=junit --test-reporter-destination="../ci-out/junit-shard-${{ matrix.shard }}.xml" \
+            --test-reporter=../scripts/ci/junit-file-reporter.mjs --test-reporter-destination="../ci-out/junit-shard-${{ matrix.shard }}.xml" \
             "${FILES[@]}"
 
       # Node 22 occasionally V8-aborts a runner mid-run (see server/scripts/ci-test-tolerant.mjs): that leaves no
@@ -92,7 +92,7 @@ jobs:
           node --test --import=./tests/preload/no-egress.mjs \
             --test-concurrency=2 --test-timeout=300000 \
             --test-reporter=spec --test-reporter-destination=stdout \
-            --test-reporter=junit --test-reporter-destination="../ci-out/junit-shard-${{ matrix.shard }}.xml" \
+            --test-reporter=../scripts/ci/junit-file-reporter.mjs --test-reporter-destination="../ci-out/junit-shard-${{ matrix.shard }}.xml" \
             "${FILES[@]}" || true
 
       # Failures under load are often contention, not bugs. Re-run only the failing files, one at a time; ids that
@@ -104,14 +104,14 @@ jobs:
           NODE_ENV: test
           NODE_OPTIONS: --max-old-space-size=4096
         run: |
-          node ../scripts/ci/full-suite-diff.mjs failing-files --junit "../ci-out/junit-shard-${{ matrix.shard }}.xml" > ../ci-out/failing-files.txt
+          node ../scripts/ci/full-suite-diff.mjs failing-files --junit "../ci-out/junit-shard-${{ matrix.shard }}.xml" | sed 's|^server/||' > ../ci-out/failing-files.txt
           n=$(wc -l < ../ci-out/failing-files.txt)
           echo "failing files in shard: $n"
           if [ "$n" -gt 0 ] && [ "$n" -le 25 ]; then
             mapfile -t RERUN < ../ci-out/failing-files.txt
             node --test --import=./tests/preload/no-egress.mjs \
               --test-concurrency=1 --test-timeout=300000 \
-              --test-reporter=junit --test-reporter-destination="../ci-out/junit-shard-${{ matrix.shard }}-rerun.xml" \
+              --test-reporter=../scripts/ci/junit-file-reporter.mjs --test-reporter-destination="../ci-out/junit-shard-${{ matrix.shard }}-rerun.xml" \
               "${RERUN[@]}" > /dev/null 2>&1 || true
           fi
 
@@ -190,7 +190,7 @@ jobs:
           mkdir -p ../ci-out
           node --test --import=./tests/preload/no-egress.mjs --test-timeout=900000 \
             --test-reporter=spec --test-reporter-destination=stdout \
-            --test-reporter=junit --test-reporter-destination=../ci-out/junit-behavior.xml \
+            --test-reporter=../scripts/ci/junit-file-reporter.mjs --test-reporter-destination=../ci-out/junit-behavior.xml \
             tests/behavior/lens-behavior-smoke.behavior.js
       - uses: actions/upload-artifact@v6
         if: always()

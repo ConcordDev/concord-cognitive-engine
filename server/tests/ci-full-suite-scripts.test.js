@@ -168,3 +168,36 @@ describe("baseline hygiene", () => {
     assert.equal(fs.existsSync(out), true);
   });
 });
+
+describe("junit-file-reporter", () => {
+  it("writes the test FILE and describe path on every testcase, so failures are attributable", () => {
+    const dir = tmp();
+    const fixture = path.join(dir, "fixture.test.js");
+    fs.writeFileSync(fixture, [
+      'import { describe, it } from "node:test";',
+      'import assert from "node:assert/strict";',
+      'describe("outer", () => { describe("inner", () => {',
+      '  it("passes", () => {});',
+      '  it("fails <x> & y", () => { assert.equal(1, 2); });',
+      ' }); it("skipped", { skip: true }, () => {}); });',
+      'it("top-level pass", () => {});',
+    ].join("\n"));
+    const xml = path.join(dir, "out.xml");
+    // inside `node --test` the child would inherit NODE_TEST_CONTEXT and ignore --test-reporter
+    const childEnv = { ...process.env };
+    delete childEnv.NODE_TEST_CONTEXT;
+    const reporter = path.resolve(here, "../../scripts/ci/junit-file-reporter.mjs");
+    spawnSync(process.execPath, ["--test", `--test-reporter=${reporter}`, `--test-reporter-destination=${xml}`, fixture], { encoding: "utf8", env: childEnv });
+    const r = parseJunit(fs.readFileSync(xml, "utf8"));
+    assert.equal(r.total, 4);
+    assert.equal(r.passed, 2);
+    assert.equal(r.skipped, 1);
+    assert.equal(r.failures.length, 1);
+    assert.equal(r.failures[0].suite, "outer > inner");
+    assert.equal(r.failures[0].name, "fails <x> & y");
+    assert.ok(r.failures[0].file.endsWith("fixture.test.js"), r.failures[0].file);
+    assert.match(r.failures[0].message, /1 !== 2/);
+    const cli = spawnSync(process.execPath, [diffCli, "failing-files", "--junit", xml], { encoding: "utf8" });
+    assert.ok(cli.stdout.trim().endsWith("fixture.test.js"));
+  });
+});
