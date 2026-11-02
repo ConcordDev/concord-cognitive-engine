@@ -86,7 +86,11 @@ describe("whiteboard — board CRUD round-trips", () => {
   });
 
   it("vote-cast accumulates, vote-tally ranks by count", async () => {
-    const b = await lensRun("whiteboard", "board-save", { params: { title: `Vote ${randomUUID()}` } }, ctx);
+    // S8 (#1714): a vote must land on a real element of a real board, so the board is saved with the
+    // element it votes on.
+    const b = await lensRun("whiteboard", "board-save", { params: { title: `Vote ${randomUUID()}`, scene: { elements: [
+      { id: "opt-1", kind: "sticky", x: 0, y: 0, text: "option one" },
+    ] } } }, ctx);
     const boardId = b.result.board.id;
     await lensRun("whiteboard", "vote-cast", { params: { boardId, elementId: "opt-1" } }, ctx);
     const second = await lensRun("whiteboard", "vote-cast", { params: { boardId, elementId: "opt-1" } }, ctx);
@@ -94,6 +98,22 @@ describe("whiteboard — board CRUD round-trips", () => {
     const tally = await lensRun("whiteboard", "vote-tally", { params: { boardId } }, ctx);
     assert.equal(tally.result.total, 1);
     assert.ok(tally.result.tally.some((t) => t.elementId === "opt-1" && t.count === 1));
+  });
+
+  it("vote-cast refuses an element that is not on the board and a board that does not exist; the tally is unchanged (S8)", async () => {
+    const b = await lensRun("whiteboard", "board-save", { params: { title: `Phantom ${randomUUID()}`, scene: { elements: [
+      { id: "real", kind: "sticky", x: 0, y: 0, text: "real" },
+    ] } } }, ctx);
+    const boardId = b.result.board.id;
+    const ghost = await lensRun("whiteboard", "vote-cast", { params: { boardId, elementId: "ghost" } }, ctx);
+    assert.equal(ghost.result.ok, false);
+    assert.match(ghost.result.error, /element not found/);
+    const fakeBoard = await lensRun("whiteboard", "vote-cast", { params: { boardId: "board_does_not_exist", elementId: "real" } }, ctx);
+    assert.equal(fakeBoard.result.ok, false);
+    assert.match(fakeBoard.result.error, /board not found/);
+    const tally = await lensRun("whiteboard", "vote-tally", { params: { boardId } }, ctx);
+    assert.equal(tally.result.total, 0);            // neither refused vote was counted
+    assert.deepEqual(tally.result.tally, []);
   });
 });
 
@@ -642,7 +662,11 @@ describe("whiteboard — raster export + cursor (wave 7 top-up)", () => {
 
   it("vote-tally ranks elements by descending vote count across the board", async () => {
     const vctx = await depthCtx("whiteboard-wave7-vote");
-    const b = await lensRun("whiteboard", "board-save", { params: { title: `Tally ${randomUUID()}` } }, vctx);
+    // S8 (#1714): both voted ids exist on the board (a vote on a missing element is refused).
+    const b = await lensRun("whiteboard", "board-save", { params: { title: `Tally ${randomUUID()}`, scene: { elements: [
+      { id: "low", kind: "sticky", x: 0, y: 0, text: "low" },
+      { id: "high", kind: "sticky", x: 200, y: 0, text: "high" },
+    ] } } }, vctx);
     const bId = b.result.board.id;
     await lensRun("whiteboard", "vote-cast", { params: { boardId: bId, elementId: "low" } }, vctx);
     await lensRun("whiteboard", "vote-cast", { params: { boardId: bId, elementId: "high" } }, vctx);
