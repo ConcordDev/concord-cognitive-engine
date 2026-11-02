@@ -10,11 +10,11 @@ import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
 
 describe("world-creator — static reference data (exact contracts)", () => {
-  it("templates: returns the 3 authored templates with derived counts", async () => {
+  it("templates: returns the 8 authored templates with derived counts", async () => {
     const r = await lensRun("world-creator", "templates", {});
     assert.equal(r.ok, true);
     const ids = r.result.templates.map((t) => t.id).sort();
-    assert.deepEqual(ids, ["desert_outpost", "forest_realm", "urban_sprawl"]);
+    assert.deepEqual(ids, ["alpine_pass", "coastal_harbor", "desert_outpost", "forest_realm", "jungle_depths", "tundra_expanse", "urban_sprawl", "volcanic_wastes"]);
     const forest = r.result.templates.find((t) => t.id === "forest_realm");
     assert.equal(forest.biome, "temperate_forest");
     assert.equal(forest.biomeLabel, "Temperate Forest");

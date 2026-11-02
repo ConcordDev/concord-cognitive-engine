@@ -469,18 +469,31 @@ describe("news — alerts + offline + digest schedule (shared ctx)", () => {
 // fetch-failed refusal branch. We assert that deterministic branch, never a
 // real network response.
 // ─────────────────────────────────────────────────────────────────────────────
-describe("news — GDELT network macros (deterministic fetch-failed branch only)", () => {
-  it("headlines: a blocked fetch returns the fetch-failed refusal", async () => {
+describe("news — network macros with every upstream blocked (deterministic unavailable branch only)", () => {
+  // The macros read several feeds through the shared feed cache. With egress blocked every source is
+  // `unavailable`; the answer is ok:true with EMPTY lists and each source's status, never fabricated items and
+  // never a pretend-fresh result (the old single-GDELT "fetch failed" refusal is gone with the single source).
+  it("headlines: with every source blocked it returns no headlines and marks each source unavailable", async () => {
     const r = await lensRun("news", "headlines", { params: { category: "tech", limit: 5 } });
-    assert.equal(r.ok, false); // refusal surfaces at the top level (a032eccab)
-    assert.equal(r.result.ok, false);
-    assert.match(r.result.error, /headlines fetch failed/);
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.result.headlines, []);
+    assert.equal(r.result.count, 0);
+    assert.equal(r.result.total, 0);
+    assert.ok(r.result.sources.length > 1, "several sources were attempted");
+    assert.ok(r.result.sources.every((x) => x.status === "unavailable"), "every source reports unavailable");
   });
 
-  it("daily-briefing: a blocked fetch returns the briefing fetch-failed refusal", async () => {
+  it("daily-briefing: every section is empty and says why it is unavailable", async () => {
     const r = await lensRun("news", "daily-briefing", {});
-    assert.equal(r.ok, false); // refusal surfaces at the top level (a032eccab)
-    assert.equal(r.result.ok, false);
-    assert.match(r.result.error, /briefing fetch failed/);
+    assert.equal(r.ok, true);
+    const sections = Object.values(r.result).filter((v) => v && typeof v === "object" && "bullets" in v);
+    assert.ok(sections.length >= 2, "the briefing has sections");
+    for (const sec of sections) {
+      assert.deepEqual(sec.bullets, []);
+      assert.equal(sec.status, "unavailable");
+      assert.equal(sec.stale, false);
+      assert.equal(sec.fetchedAt, null);
+      assert.match(String(sec.unavailableReason), /blocked under test \(no-egress\)/);
+    }
   });
 });

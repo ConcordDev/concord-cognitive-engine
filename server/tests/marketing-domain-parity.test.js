@@ -181,8 +181,9 @@ describe("marketing.email builder + send engine", () => {
     assert.equal(send.result.status, "queued_no_provider");
     assert.equal(send.result.recipients, 3);
     assert.equal(send.result.delivered, 0);
-    assert.equal(send.result.opened, null);   // never synthesized
-    assert.equal(send.result.clicked, null);  // never synthesized
+    // #1877 removed email tracking entirely: the engagement fields do not exist at all (not even as null).
+    assert.equal("opened" in send.result, false);
+    assert.equal("clicked" in send.result, false);
     // list stats honestly show 0 sent for a queued-no-provider campaign.
     assert.equal(call("email-list", ctxA, {}).result.emails[0].stats.sent, 0);
     assert.equal(call("email-delete", ctxA, { id: e.id }).ok, true);

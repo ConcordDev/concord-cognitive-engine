@@ -70,7 +70,11 @@ describe("voice — optional per-segment/per-append vector: accepted + persisted
       params: { title: "Bad Vec 3", segments: [{ text: "x", startSec: 0, vector: [1, NaN, 3] }] },
     }, ctx);
     assert.equal(nonFinite.result.ok, false);
-    assert.match(nonFinite.result.error, /finite numbers/);
+    // A non-finite number is refused by the shared lens input schema before the handler runs: it names the exact
+    // field and the reason (finer than the handler's old "finite numbers" message).
+    assert.equal(nonFinite.result.error, "invalid_input");
+    assert.equal(nonFinite.result.field, "segments[0].vector[1]");
+    assert.equal(nonFinite.result.reason, "non_finite_number");
 
     // A malformed vector on one segment rejects the WHOLE create call —
     // it must not silently create a recording missing that segment's data.

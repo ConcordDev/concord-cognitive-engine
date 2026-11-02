@@ -83,6 +83,11 @@ async function startServer() {
     env,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
+  // Drain BOTH pipes. Nothing read them, so once the server's boot + request logging passed the ~64 KB pipe buffer
+  // the child blocked on its next write and every later request hung until the 60 s abort (the CI-only failure on
+  // "retrieve DTU list", "persist DTU creation", ... and the 300 s file timeout). Quiet on a Mac, deadly on a runner.
+  serverProcess.stdout.on('data', () => {});
+  serverProcess.stderr.on('data', () => {});
 
   const deadline = Date.now() + 30_000;
   while (Date.now() < deadline) {

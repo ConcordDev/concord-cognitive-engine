@@ -32,7 +32,9 @@ function call(domain, name, ctx, input = {}) {
 
 function restartFromSnapshot() {
   const persisted = JSON.parse(JSON.stringify(serializeLensState(globalThis._concordSTATE)));
-  const next = {};
+  // DTUs persist through the canonical store, not the lens snapshot: carry the live Map across a restart the same
+  // way production reloads it, while every lens-owned bag still has to come back from the snapshot.
+  const next = globalThis._concordSTATE?.dtus instanceof Map ? { dtus: globalThis._concordSTATE.dtus } : {};
   hydrateLensState(next, persisted);
   globalThis._concordSTATE = next;
   return persisted;
@@ -218,7 +220,10 @@ describe("game survives a snapshot restart", () => {
 });
 
 describe("entity graph survives a snapshot restart", () => {
+  // The entity workbench stores nodes as owner-scoped entity DTUs and edges as typed relations on them
+  // (lib/entity-substrate.js, #1715), so it needs the DTU store and survives a restart through it.
   it("restores nodes and edges for the owning account only", () => {
+    globalThis._concordSTATE.dtus = new Map();
     const a = call("entity", "node-create", ctxA, { name: "Paris", entityType: "city" });
     const b = call("entity", "node-create", ctxA, { name: "France", entityType: "country" });
     assert.equal(a.ok, true, JSON.stringify(a));
