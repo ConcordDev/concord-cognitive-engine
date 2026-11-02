@@ -85,8 +85,10 @@ function matVec(R, v) {
 }
 function matMul(A, B) {
   const out = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
-  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
-    out[r][c] = A[r][0] * B[0][c] + A[r][1] * B[1][c] + A[r][2] * B[2][c];
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      out[r][c] = A[r][0] * B[0][c] + A[r][1] * B[1][c] + A[r][2] * B[2][c];
+    }
   }
   return out;
 }

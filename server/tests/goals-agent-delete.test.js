@@ -7,6 +7,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -33,8 +34,7 @@ function makeWorld() {
     queues: { goalProposals: [{ id: "goal_b", createdAt: "t" }, { id: "goal_z", createdAt: "t" }] },
   };
   let saves = 0;
-  const deleteGoal = new Function("STATE", "ensureGoalSystem", "saveStateDebounced",
-    deleteGoalSrc + "; return deleteGoal;")(STATE, () => {}, () => { saves++; });
+  const deleteGoal = vm.runInThisContext(`(function (STATE, ensureGoalSystem, saveStateDebounced) { ${deleteGoalSrc}; return deleteGoal; })`)(STATE, () => {}, () => { saves++; });
   return { STATE, deleteGoal, saves: () => saves };
 }
 

@@ -192,7 +192,7 @@ export function mapEventToIssue(event, now = Date.now()) {
  */
 export function parseSentryAuthHeader(value) {
   if (!value || typeof value !== "string") return null;
-  const m = value.match(/sentry_key=([A-Za-z0-9_\-]+)/);
+  const m = value.match(/sentry_key=([A-Za-z0-9_-]+)/);
   return m ? m[1] : null;
 }
 

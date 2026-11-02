@@ -13,7 +13,7 @@ const bump = (o, k) => { o[k] = (o[k] || 0) + 1; };
 
 export function createDtuQualityService({ store, deps = {}, now = Date.now, dupMax = 50000 } = {}) {
   const exists = deps.exists || (() => true);
-  const yieldNow = deps.yieldNow || (() => new Promise((r) => setImmediate(r)));
+  const yieldNow = deps.yieldNow || (() => new Promise((r) => { setImmediate(r); }));
   const dupIndex = createDuplicateIndex({ maxEntries: dupMax });
   let running = false;
   let lastCycle = null;

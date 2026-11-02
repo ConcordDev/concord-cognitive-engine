@@ -682,7 +682,7 @@ export async function persistQualiaStateAsync(db, { chunk = QUALIA_PERSIST_CHUNK
     const ids = Object.keys(snapshot);
     for (let i = 0; i < ids.length; i += chunk) {
       _persistEntities(db, engine, snapshot, ids.slice(i, i + chunk), acc);
-      if (i + chunk < ids.length) await new Promise((r) => setImmediate(r));
+      if (i + chunk < ids.length) await new Promise((r) => { setImmediate(r); });
     }
     _recordPersist(acc.persisted > 0 ? "ok" : "empty", acc.persisted, acc.logged);
     return { ok: true, persisted: acc.persisted, logged: acc.logged };
