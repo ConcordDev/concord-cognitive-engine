@@ -107,7 +107,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     for (const key of [
       "_settings", "_personas", "_lawEnforcement",
       "playerProfiles", "profileVisitors", "_profileVisitorSeq",
-      "game", "entityGraph", "chemStructures", "chemLabNotebook",
+      "game", "chemStructures", "chemLabNotebook",
       "mathCAS", "genesisSavedSearches", "digitalTwins",
       "companionNotifications", "companionPushPrefs", "_companionNotifSeq",
     ]) {
@@ -1191,12 +1191,16 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     }
     for (const key of [
       "_settings", "_personas", "_lawEnforcement", "playerProfiles", "profileVisitors",
-      "game", "entityGraph", "chemStructures", "chemLabNotebook", "mathCAS",
+      "game", "chemStructures", "chemLabNotebook", "mathCAS",
       "genesisSavedSearches", "digitalTwins", "companionNotifications", "companionPushPrefs",
       "presenceHeartbeats", "affectMood", "federation", "predictionMarkets",
     ]) {
       assert.ok(scanned.has(key), `scanner missed ${key}`);
     }
+    // domains/entity.js no longer assigns STATE.entityGraph (the store moved to lib/entity-substrate.js, which
+    // reads the legacy key only to migrate it), so the scanner rightly stops seeing it. The key must stay
+    // persisted so a user's legacy graph still survives a restart until migrateUser has moved it.
+    assert.ok(LENS_STATE_KEYS.includes("entityGraph"), "legacy entityGraph must stay in LENS_STATE_KEYS for migration");
   });
 });
 
