@@ -229,6 +229,12 @@ export const MACRO_INPUT_HINTS = {
       "optional": false
     }
   ],
+  "courtship.accept": [
+    {
+      "name": "proposalId",
+      "optional": false
+    }
+  ],
   "courtship.birth": [
     {
       "name": "pregnancyId",
@@ -254,6 +260,12 @@ export const MACRO_INPUT_HINTS = {
     },
     {
       "name": "partnerId",
+      "optional": false
+    }
+  ],
+  "courtship.decline": [
+    {
+      "name": "proposalId",
       "optional": false
     }
   ],
@@ -961,6 +973,12 @@ export const MACRO_INPUT_HINTS = {
       "optional": true
     }
   ],
+  "garage.despawn": [
+    {
+      "name": "vehicleId",
+      "optional": false
+    }
+  ],
   "garage.dismount": [
     {
       "name": "vehicleId",
@@ -1450,15 +1468,7 @@ export const MACRO_INPUT_HINTS = {
     },
     {
       "name": "questId",
-      "optional": true
-    },
-    {
-      "name": "count",
-      "optional": true
-    },
-    {
-      "name": "userId",
-      "optional": true
+      "optional": false
     },
     {
       "name": "worldId",
