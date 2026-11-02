@@ -227,13 +227,26 @@ jobs:
         id: base
         env:
           GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           mkdir -p baseline
-          for id in $(gh run list --repo "${{ github.repository }}" --workflow full-suite.yml --branch main --status completed --limit 15 --json databaseId --jq '.[].databaseId'); do
+          repo="${{ github.repository }}"
+          # A PR is tested on main-as-of-its-base. If a newer main run (which may already contain fixes this PR's
+          # tree lacks) is used as the baseline, those fixes read as NEW failures on the PR (seen on #2021: the 7
+          # failures #2020 fixed were "NEW" against a main run that had #2020). So prefer the main run FOR THE PR'S
+          # BASE COMMIT, and only then fall back to the latest completed main run.
+          exact=""
+          if [ -n "$BASE_SHA" ]; then
+            exact=$(gh run list --repo "$repo" --workflow full-suite.yml --branch main --status completed --limit 60 --json databaseId,headSha --jq ".[]|select(.headSha==\"$BASE_SHA\")|.databaseId")
+          fi
+          latest=$(gh run list --repo "$repo" --workflow full-suite.yml --branch main --status completed --limit 15 --json databaseId --jq '.[].databaseId')
+          for id in $exact $latest; do
             [ "$id" = "${{ github.run_id }}" ] && continue
-            if gh run download "$id" --repo "${{ github.repository }}" -n full-suite-failing -D baseline 2>/dev/null && [ -s baseline/failing.json ]; then
-              echo "label=run $id on main (https://github.com/${{ github.repository }}/actions/runs/$id)" >> "$GITHUB_OUTPUT"
-              echo "found baseline from run $id"
+            if gh run download "$id" --repo "$repo" -n full-suite-failing -D baseline 2>/dev/null && [ -s baseline/failing.json ]; then
+              kind="latest main run"
+              for e in $exact; do [ "$e" = "$id" ] && kind="main run at this PR's base commit"; done
+              echo "label=run $id on main, the $kind (https://github.com/$repo/actions/runs/$id)" >> "$GITHUB_OUTPUT"
+              echo "found baseline from run $id ($kind)"
               exit 0
             fi
             rm -rf baseline/*
