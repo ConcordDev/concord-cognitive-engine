@@ -43,7 +43,7 @@ describe("rt_* MCP tools", () => {
     db.exec(`
       CREATE TABLE entity_drives (entity_id TEXT PRIMARY KEY, drives_json TEXT NOT NULL DEFAULT '{}', dominant_drive TEXT, resting_drive TEXT, last_updated INTEGER NOT NULL DEFAULT (unixepoch()));
       CREATE TABLE entity_tick_history (id INTEGER PRIMARY KEY AUTOINCREMENT, entity_id TEXT NOT NULL, tick_at INTEGER NOT NULL DEFAULT (unixepoch()), hooks_fired INTEGER NOT NULL DEFAULT 0, drives_json TEXT, fingerprint_total_queries INTEGER, affect_state_json TEXT);
-      CREATE TABLE agent_reasoning_traces (id TEXT PRIMARY KEY, agent_id TEXT, world_id TEXT, attended TEXT, quale TEXT, surprise REAL, awareness_index REAL, reason TEXT, note TEXT, created_at INTEGER, entity_id TEXT);
+      CREATE TABLE agent_reasoning_traces (id TEXT PRIMARY KEY, agent_id TEXT, world_id TEXT, attended TEXT, quale TEXT, surprise REAL, awareness_index REAL, reason TEXT, note TEXT, created_at INTEGER);
     `);
     prevDb = globalThis._concordDB;
     globalThis._concordDB = db;
@@ -60,7 +60,8 @@ describe("rt_* MCP tools", () => {
     assert.equal(typeof row.dominant_drive, "string");
     assert.ok(row.resting_drive, "resting_drive persisted (dominant was bound as an object before)");
     assert.equal(db.prepare("SELECT COUNT(*) n FROM entity_tick_history WHERE entity_id = 'dila'").get().n, 1);
-    assert.equal(db.prepare("SELECT COUNT(*) n FROM agent_reasoning_traces WHERE entity_id = 'dila'").get().n, 1);
+    // Migration 327's table keys a heartbeat trace by agent_id only (no entity_id column; #1769).
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM agent_reasoning_traces WHERE agent_id = 'dila'").get().n, 1);
   });
 
   it("rt_drives and rt_tick_history read it back", async () => {
