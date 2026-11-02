@@ -140,28 +140,34 @@ describe('CodeAdvancedPanel', () => {
     });
   });
 
-  describe('Debugger tab', () => {
-    it('loads file content, sets a breakpoint, runs, and shows a frame', async () => {
-      mockDispatch({
-        'debug-run': ok({ exitCode: 0, durationMs: 12, frames: [{ line: 1, sourceText: 'const x = 1;', callStack: ['main'], watch: { x: '1' } }] }),
-      });
+  // The step debugger was retired (S2, #1707): server-side execution is gone, so the tab is now
+  // "Breakpoints" - reading-aid markers only. These tests pin that it says so and never calls a
+  // debug-run macro (the old tests drove a fabricated frame/call-stack run).
+  describe('Breakpoints tab (step debugger retired)', () => {
+    const actionsCalled = () => lensRun.mock.calls.map((c: unknown[]) => (typeof c[0] === 'string' ? c[1] : (c[0] as { action?: string })?.action));
+
+    it('loads the file, says stepping is unavailable, and marks lines as reading aids only', async () => {
+      mockDispatch();
       await renderWithProject();
-      clickTab('Debugger');
+      clickTab('Breakpoints');
       await waitFor(() => expect(screen.getByText('const x = 1;')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('1')); // toggle breakpoint on line 1
-      fireEvent.click(screen.getByRole('button', { name: /^debug$/i }));
-      await waitFor(() => expect(screen.getByText('exit 0')).toBeInTheDocument());
-      expect(screen.getByText('x = 1')).toBeInTheDocument();
-      expect(screen.getByText('↳ main')).toBeInTheDocument();
+      expect(screen.getByText(/Step debugging is unavailable/i)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^debug$/i })).toBeNull();
+      fireEvent.click(screen.getByText('1')); // mark line 1
+      expect(screen.getByText('1 marker set')).toBeInTheDocument();
+      fireEvent.click(screen.getByText('●')); // clicking the marker clears it
+      expect(screen.queryByText(/markers? set/)).toBeNull();
     });
 
-    it('shows a debug error message on failure', async () => {
-      mockDispatch({ 'debug-run': bad('sandbox unavailable') });
+    it('never calls a debug-run macro, however many lines are marked', async () => {
+      mockDispatch();
       await renderWithProject();
-      clickTab('Debugger');
+      clickTab('Breakpoints');
       await waitFor(() => expect(screen.getByText('const x = 1;')).toBeInTheDocument());
-      fireEvent.click(screen.getByRole('button', { name: /^debug$/i }));
-      await waitFor(() => expect(screen.getByText('sandbox unavailable')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('1'));
+      fireEvent.click(screen.getByText('2'));
+      expect(screen.getByText('2 markers set')).toBeInTheDocument();
+      expect(actionsCalled()).not.toContain('debug-run');
     });
   });
 

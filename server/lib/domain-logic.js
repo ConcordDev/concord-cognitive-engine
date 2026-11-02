@@ -493,14 +493,22 @@ DOMAIN_RULES.set("artistry", {
 
 // === Code ===
 DOMAIN_RULES.set("code", {
-  types: ["snippet", "project", "pipeline", "notebook", "algorithm", "library"],
-  validStatuses: ["draft", "development", "testing", "review", "deployed", "archived"],
+  // "script" + the "active" status are what the Code lens itself sends
+  // (useLensData('code', 'script') with meta.status 'active' — the
+  // Scratch save). Both were missing, so every Scratch save failed
+  // validation on two fields at once (PR #1707 F8). "script" is also
+  // declared in lib/lens-artifact-types.js FRONTEND_ARTIFACT_TYPES —
+  // listed here as well because this native rule is the one the boot
+  // merge actually applies for this domain.
+  types: ["snippet", "project", "pipeline", "notebook", "algorithm", "library", "script"],
+  validStatuses: ["draft", "development", "testing", "review", "deployed", "archived", "active"],
   transitions: {
     draft: ["development", "archived"],
     development: ["testing", "review", "archived"],
     testing: ["review", "development"],
     review: ["deployed", "development"],
     deployed: ["archived", "development"],
+    active: ["archived"],
     archived: [],
   },
   requiredFields: { snippet: ["title", "language"], project: ["title"] },

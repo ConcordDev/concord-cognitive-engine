@@ -152,6 +152,12 @@ concord-frontend/.unity-web-staging/
 # artifact, never committed, same convention as the Godot web export above.
 server/data/pyodide-packages/
 
+# Vendored Pyodide 0.26.4 core runtime for the Code lens's local Python runner
+# (concord-frontend/scripts/vendor-pyodide.mjs; ~13 MB, SHA-256-pinned, fetched at
+# build/dev start). Regenerated artifact, never committed — the LFS budget is not
+# spent on it; same convention as the packages above.
+concord-frontend/public/pyodide/
+
 # Visual-QA harness output (scripts/visual-qa.mjs). Full-resolution 1152x648
 # captures + the engine log for one run; regenerated on every run and never
 # committed. The DOWNSAMPLED golden baselines it compares against

@@ -6,6 +6,62 @@ import type { OnMount, OnChange } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
 import { registerConcordDsl } from '@/lib/dsl/concord-dsl-lang';
 import { createInlineCompletionsProvider } from '@/components/code/inlineCompletionsProvider';
+import {
+  extensionEnabled,
+  fetchInstalledExtensions,
+  subscribeExtensionsChanged,
+} from '@/lib/code-extensions';
+
+// ── S15 (F15): lexical declaration search backing Peek Definition ────
+// No server definition service exists; Go to Definition rides Monaco's
+// built-in TS worker while Peek found nothing for the lens's lexical
+// languages. This provider answers from the current buffer — the
+// review's repro was a same-screen definition — and Monaco merges its
+// result with any built-in provider's.
+const DECL_PATTERNS = [
+  /^\s*(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s+NAME\b/,
+  /^\s*(?:export\s+)?class\s+NAME\b/,
+  /^\s*(?:export\s+)?(?:const|let|var)\s+NAME\b/,
+  /^\s*(?:export\s+)?interface\s+NAME\b/,
+  /^\s*(?:export\s+)?type\s+NAME\b/,
+  /^\s*def\s+NAME\b/,
+  /^\s*(?:async\s+)?NAME\s*\(/,
+  /^\s*NAME\s*[:=]\s*(?:async\s*)?\(/,
+];
+export function findDeclaration(
+  lines: string[],
+  word: string,
+  excludeLine?: number,
+): { lineNumber: number; startColumn: number; endColumn: number } | null {
+  if (!word || word.length < 2) return null;
+  const pats = DECL_PATTERNS.map((re) => new RegExp(re.source.replace('NAME', word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))));
+  for (let i = 0; i < lines.length; i++) {
+    if (excludeLine != null && i + 1 === excludeLine) continue;
+    for (const re of pats) {
+      const m = lines[i].match(re);
+      if (m) {
+        const at = lines[i].indexOf(word, Math.max(0, (m.index ?? 0)));
+        const col = (at >= 0 ? at : 0) + 1;
+        return { lineNumber: i + 1, startColumn: col, endColumn: col + word.length };
+      }
+    }
+  }
+  return null;
+}
+
+// S15: TODO Highlight's actual effect — comment keyword decorations.
+const TODO_RE = /\b(TODO|FIXME|HACK|XXX)\b/g;
+export function findTodoRanges(lines: string[]): Array<{ lineNumber: number; startColumn: number; endColumn: number }> {
+  const out: Array<{ lineNumber: number; startColumn: number; endColumn: number }> = [];
+  lines.forEach((line, i) => {
+    TODO_RE.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = TODO_RE.exec(line))) {
+      out.push({ lineNumber: i + 1, startColumn: m.index + 1, endColumn: m.index + 1 + m[1].length });
+    }
+  });
+  return out;
+}
 
 const Editor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 
@@ -81,6 +137,8 @@ interface MonacoWrapperProps {
   className?: string;
   onEditorReady?: (editor: editor.IStandaloneCodeEditor) => void;
   onSelectionChange?: (selection: { text: string; startLine: number; endLine: number }) => void;
+  /** S15: glyph-margin click (the bookmark gesture the panel names). */
+  onGutterLineClick?: (lineNumber: number) => void;
   /**
    * Optional editor overrides. When provided, merged on top of the
    * Concord defaults — so the lens settings (fontSize, wordWrap, etc.)
@@ -108,6 +166,8 @@ interface MonacoWrapperProps {
   };
 }
 
+type SemPosAlias = { lineNumber: number; column: number };
+
 export default function MonacoWrapper({
   value,
   onChange,
@@ -116,6 +176,7 @@ export default function MonacoWrapper({
   className,
   onEditorReady,
   onSelectionChange,
+  onGutterLineClick,
   options,
   inlineCompletion,
   semantic,
@@ -141,6 +202,63 @@ export default function MonacoWrapper({
         const text = model.getValueInRange(sel);
         onSelectionChange({ text, startLine: sel.startLineNumber, endLine: sel.endLineNumber });
       });
+    }
+    // S15: Peek Definition provider (lexical, current buffer) — once
+    // per language per page, like the semantic providers below.
+    {
+      const lang = resolveLanguage(language);
+      const dflags = monaco.languages as unknown as Record<string, boolean>;
+      const dflag = `__concordDef_${lang}`;
+      if (!dflags[dflag]) {
+        dflags[dflag] = true;
+        monaco.languages.registerDefinitionProvider(lang, {
+          provideDefinition(model: { getWordAtPosition: (p: SemPosAlias) => { word: string } | null; getLinesContent: () => string[]; uri: unknown }, position: SemPosAlias) {
+            const w = model.getWordAtPosition(position);
+            if (!w) return null;
+            const hit = findDeclaration(model.getLinesContent(), w.word, position.lineNumber);
+            if (!hit) return null;
+            return {
+              uri: model.uri as never,
+              range: {
+                startLineNumber: hit.lineNumber, startColumn: hit.startColumn,
+                endLineNumber: hit.lineNumber, endColumn: hit.endColumn,
+              },
+            };
+          },
+        });
+      }
+    }
+    // S15: glyph-margin clicks → the parent's bookmark toggle.
+    if (onGutterLineClick) {
+      editor.onMouseDown((e) => {
+        const t = e.target as unknown as { type: number; position?: { lineNumber: number } };
+        // monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN === 2
+        if (t && t.type === 2 && t.position) onGutterLineClick(t.position.lineNumber);
+      });
+    }
+    // S15: TODO Highlight decorations, applied while the extension is
+    // enabled; re-applied on content change and on install toggles.
+    {
+      const collection = editor.createDecorationsCollection([]);
+      const applyTodos = () => {
+        const model = editor.getModel();
+        if (!model || !extensionEnabled('todo-highlight')) { collection.set([]); return; }
+        const ranges = findTodoRanges(model.getLinesContent()).map((r) => ({
+          range: {
+            startLineNumber: r.lineNumber, startColumn: r.startColumn,
+            endLineNumber: r.lineNumber, endColumn: r.endColumn,
+          },
+          options: {
+            inlineClassName: 'concord-todo-highlight',
+            hoverMessage: { value: 'TODO Highlight (extension)' },
+          },
+        }));
+        collection.set(ranges as never);
+      };
+      void fetchInstalledExtensions().then(applyTodos);
+      const unsub = subscribeExtensionsChanged(() => { void fetchInstalledExtensions().then(applyTodos); });
+      editor.onDidChangeModelContent(() => applyTodos());
+      editor.onDidDispose(() => unsub());
     }
     if (inlineCompletion) {
       const lang = resolveLanguage(language);
@@ -237,7 +355,7 @@ export default function MonacoWrapper({
         });
       }
     }
-  }, [onEditorReady, onSelectionChange, inlineCompletion, language]);
+  }, [onEditorReady, onSelectionChange, onGutterLineClick, inlineCompletion, language]);
 
   const handleChange: OnChange = useCallback(
     (val) => {
@@ -248,6 +366,7 @@ export default function MonacoWrapper({
 
   return (
     <div className={className || 'h-full w-full'}>
+      <style>{`.concord-todo-highlight { background: rgba(245, 158, 11, 0.25); border-bottom: 1px wavy #f59e0b; border-radius: 2px; }`}</style>
       <Editor
         height="100%"
         language={resolveLanguage(language)}
@@ -263,6 +382,7 @@ export default function MonacoWrapper({
           scrollBeyondLastLine: false,
           padding: { top: 16, bottom: 16 },
           lineNumbers: 'on',
+          glyphMargin: true,
           renderLineHighlight: 'line',
           bracketPairColorization: { enabled: true },
           autoClosingBrackets: 'always',

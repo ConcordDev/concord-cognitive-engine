@@ -23,7 +23,7 @@
  * risk the deferral called out).
  */
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 interface CodeProjectContextValue {
   projectId: string | null;
@@ -32,8 +32,27 @@ interface CodeProjectContextValue {
 
 const CodeProjectContext = createContext<CodeProjectContextValue | null>(null);
 
+const PROJECT_STORAGE_KEY = 'concord.code.projectId';
+
 export function CodeProjectProvider({ children }: { children: ReactNode }) {
-  const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectId, setProjectIdState] = useState<string | null>(null);
+  // S17 (F17): the selected project survives reload/navigation. The
+  // project and its files always persisted server-side; only the
+  // SELECTION was memory-only, so every return started at
+  // "— Select project —". Restore once on mount, persist on change.
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(PROJECT_STORAGE_KEY);
+      if (saved) setProjectIdState(saved);
+    } catch { /* storage unavailable */ }
+  }, []);
+  const setProjectId = (id: string | null) => {
+    setProjectIdState(id);
+    try {
+      if (id) window.localStorage.setItem(PROJECT_STORAGE_KEY, id);
+      else window.localStorage.removeItem(PROJECT_STORAGE_KEY);
+    } catch { /* storage unavailable */ }
+  };
   const value = useMemo<CodeProjectContextValue>(() => ({ projectId, setProjectId }), [projectId]);
   return <CodeProjectContext.Provider value={value}>{children}</CodeProjectContext.Provider>;
 }
