@@ -3,7 +3,7 @@
 // If any step fails, nothing commits — no partial state.
 
 import { recordTransactionBatch, generateTxId, checkRefIdProcessed } from "./ledger.js";
-import { calculateFee, PLATFORM_ACCOUNT_ID } from "./fees.js";
+import { calculateFee, PLATFORM_ACCOUNT_ID, isReservedDebitAccount } from "./fees.js";
 import { validateAmount, validateBalance, validateUsers } from "./validators.js";
 
 /**
@@ -32,6 +32,13 @@ export function executeTransfer(db, { from, to, amount, type = "TRANSFER", metad
   if (!amountCheck.ok) return amountCheck;
   const userCheck = validateUsers(from, to);
   if (!userCheck.ok) return userCheck;
+
+  // Reserved-account guard (Gate 5 Act 2): platform system accounts are
+  // never debited through this path. Legitimate system debits of those
+  // accounts write via recordTransactionBatch directly (fee-split
+  // distribution, chargeback payout, emergent reserve debits); __ESCROW__
+  // releases ride this path by design and are not in the reserved set.
+  if (isReservedDebitAccount(from)) return { ok: false, error: "reserved_account_debit" };
 
   // 2-3. Compute fee and net
   const { fee, net } = calculateFee(type, amount);
