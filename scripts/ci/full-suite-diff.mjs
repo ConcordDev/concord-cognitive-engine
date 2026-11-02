@@ -119,6 +119,15 @@ export function buildReport({ dir, baseline, expectShards = 0 }) {
   const rerunExecuted = new Set();
   for (const r of rerun) for (const id of collectAllIds(path.join(dir, r.file), r.file)) rerunExecuted.add(id);
   const flaky = new Set([...failures.keys()].filter((id) => rerunExecuted.has(id) && !rerunFailed.has(id)));
+  // A file-level failure (the whole file timed out or crashed) is recorded as one pseudo-test named after the file,
+  // and a clean run never emits that id, so the check above can never clear it. Clear it when the isolated re-run
+  // executed that file and nothing in the file failed.
+  const rerunFilesRun = new Set([...rerunExecuted].map((id) => id.split(" :: ")[0]));
+  const rerunFilesFailed = new Set([...rerunFailed].map((id) => id.split(" :: ")[0]));
+  for (const f of failures.values()) {
+    const fileLevel = !f.suite && /\.test\.[cm]?[jt]sx?$/.test(f.name) && f.name.endsWith(f.file.split("/").pop());
+    if (fileLevel && rerunFilesRun.has(f.id.split(" :: ")[0]) && !rerunFilesFailed.has(f.id.split(" :: ")[0])) flaky.add(f.id);
+  }
   const missing = [];
   for (let i = 1; i <= expectShards; i++) if (!shards.has(i)) missing.push(i);
   const cls = classify([...failures.keys()], baseline, flaky);
@@ -197,7 +206,15 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     if (out && rest.includes("--complete-only") && rep.missingShards.length) {
       process.stderr.write(`not writing ${out}: shard(s) ${rep.missingShards.join(", ")} produced no report\n`);
     } else if (out) {
-      fs.writeFileSync(out, JSON.stringify({ generatedAt: new Date().toISOString(), failing: [...rep.failures.keys()].sort(), incomplete: rep.missingShards }, null, 2));
+      // `failing` is what stayed red on the isolated re-run; `flaky` failed in the shard run but passed alone. Keeping
+      // flaky ids OUT of `failing` means a baseline does not bless contention failures as pre-existing debt.
+      const flakyIds = new Set(rep.cls.flaky);
+      fs.writeFileSync(out, JSON.stringify({
+        generatedAt: new Date().toISOString(),
+        failing: [...rep.failures.keys()].filter((id) => !flakyIds.has(id)).sort(),
+        flaky: [...flakyIds].sort(),
+        incomplete: rep.missingShards,
+      }, null, 2));
     }
     process.exit(rep.cls.newFailures.length > 0 ? 1 : 0);
   } else {
