@@ -34,18 +34,24 @@ test("explicit DTU save, tool failure, and PDF capability", { timeout: 180000 },
   assert.equal(read.dtu?.id, id);
   assert.equal(read.dtu?.title, title);
 
-  const prevChat = ctx.llm?.chat;
-  const prevEnabled = ctx.llm?.enabled;
-  ctx.llm.enabled = true;
-  ctx.llm.chat = async () => ({
+  // ctx.llm.enabled is a getter (INC-137: local brain OR a cloud route), so it cannot be assigned. Swap the whole
+  // llm object for one that reports enabled and answers with the canned reply, then restore it.
+  const prevLlm = ctx.llm;
+  ctx.llm = {
+    ...prevLlm,
+    enabled: true,
+    chat: async () => ({
     ok: true,
     content: 'Open MPI 5.0 CUDA flags need --with-cuda.\n[TOOL_CALL: {"tool":"create_dtu","params":{"title":"Aside","summary":"nope"}}]',
     doneReason: "stop",
-  });
+    }),
+  };
   try {
     const failed = await runMacro("chat", "respond", {
       sessionId: `${sessionId}-fail`,
-      prompt: "please remember this aside",
+      // "please remember <x>" alone is answered by the deterministic remember route (no model call, see
+      // lib/chat/session-memory.js parseRememberAsk); "as a note" keeps this a DTU-save ask that reaches the model.
+      prompt: "please remember this aside as a note",
       llm: true,
     }, ctx);
     assert.equal(failed.ok, true);
@@ -56,8 +62,7 @@ test("explicit DTU save, tool failure, and PDF capability", { timeout: 180000 },
     const aside = [...STATE.dtus.values()].filter((d) => d?.title === "Aside");
     assert.equal(aside.length, 0);
   } finally {
-    ctx.llm.chat = prevChat;
-    ctx.llm.enabled = prevEnabled;
+    ctx.llm = prevLlm;
   }
 
   const pdf = await runMacro("chat", "respond", {

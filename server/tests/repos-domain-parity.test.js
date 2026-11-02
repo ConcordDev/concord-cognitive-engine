@@ -262,13 +262,19 @@ describe("repos — pull request diff / review / merge", () => {
     assert.ok(detail.result.diff.fileCount >= 0);
   });
 
-  it("pull-review records an approval and pull-merge merges", () => {
+  it("pull-review refuses the author's approval (F11) and pull-merge still merges", () => {
     const id = freshRepo();
     call("branch-create", ctxA, { repoId: id, name: "feat" });
     call("file-save", ctxA, { repoId: id, path: "src/feat.ts", content: "x\n", branch: "feat" });
     const num = call("pull-create", ctxA, { repoId: id, title: "Add feat", head: "feat" }).result.pull.number;
+    // F11 (founder ruling 2026-10-29, forbid self-approval always): the
+    // author's approve is refused and records nothing — this assertion
+    // replaces the pre-ruling one, which expected the self-approval to
+    // record. Merge never required approvals, so the merge half of the
+    // original flow stands unchanged.
     const review = call("pull-review", ctxA, { repoId: id, number: num, verdict: "approve" });
-    assert.equal(review.ok, true);
+    assert.equal(review.ok, false);
+    assert.equal(review.error, "self_approval_forbidden");
     const merged = call("pull-merge", ctxA, { repoId: id, number: num });
     assert.equal(merged.ok, true);
     assert.equal(merged.result.merged, true);

@@ -17,7 +17,7 @@ import {
   UNIVERSAL_FEE_RATE,
   FEE_SPLIT,
   PLATFORM_ACCOUNT_ID,
-  RESERVES_ACCOUNT_ID,
+  TREASURY_ACCOUNT_ID,
   OPERATING_ACCOUNT_ID,
   PAYROLL_ACCOUNT_ID,
   calculateFee,
@@ -106,8 +106,8 @@ describe("UNIVERSAL_FEE_RATE", () => {
 // =============================================================================
 
 describe("FEE_SPLIT", () => {
-  it("allocates 80% to RESERVES", () => {
-    assert.equal(FEE_SPLIT.RESERVES, 0.80);
+  it("allocates 80% to TREASURY", () => {
+    assert.equal(FEE_SPLIT.TREASURY, 0.80);
   });
 
   it("allocates 10% to OPERATING_COSTS", () => {
@@ -119,7 +119,7 @@ describe("FEE_SPLIT", () => {
   });
 
   it("split allocations sum to exactly 1.0 (100%)", () => {
-    const total = FEE_SPLIT.RESERVES + FEE_SPLIT.OPERATING_COSTS + FEE_SPLIT.PAYROLL;
+    const total = FEE_SPLIT.TREASURY + FEE_SPLIT.OPERATING_COSTS + FEE_SPLIT.PAYROLL;
     assert.ok(
       Math.abs(total - 1.0) < Number.EPSILON,
       `FEE_SPLIT should sum to 1.0 but got ${total}`,
@@ -147,8 +147,8 @@ describe("Platform account IDs", () => {
     assert.equal(PLATFORM_ACCOUNT_ID, "__PLATFORM__");
   });
 
-  it("RESERVES_ACCOUNT_ID is __RESERVES__", () => {
-    assert.equal(RESERVES_ACCOUNT_ID, "__RESERVES__");
+  it("TREASURY_ACCOUNT_ID is __TREASURY__", () => {
+    assert.equal(TREASURY_ACCOUNT_ID, "__TREASURY__");
   });
 
   it("OPERATING_ACCOUNT_ID is __OPERATING__", () => {
@@ -162,7 +162,7 @@ describe("Platform account IDs", () => {
   it("all account IDs are non-empty strings", () => {
     for (const id of [
       PLATFORM_ACCOUNT_ID,
-      RESERVES_ACCOUNT_ID,
+      TREASURY_ACCOUNT_ID,
       OPERATING_ACCOUNT_ID,
       PAYROLL_ACCOUNT_ID,
     ]) {
@@ -174,7 +174,7 @@ describe("Platform account IDs", () => {
   it("all account IDs are unique", () => {
     const ids = [
       PLATFORM_ACCOUNT_ID,
-      RESERVES_ACCOUNT_ID,
+      TREASURY_ACCOUNT_ID,
       OPERATING_ACCOUNT_ID,
       PAYROLL_ACCOUNT_ID,
     ];
@@ -559,7 +559,7 @@ describe("calculateFee — marketplace universal fee behavior", () => {
 describe("Fee distribution arithmetic via FEE_SPLIT", () => {
   it("distributes a $10 fee correctly among buckets", () => {
     const totalFee = 10;
-    const reserves = Math.round(totalFee * FEE_SPLIT.RESERVES * 100) / 100;
+    const reserves = Math.round(totalFee * FEE_SPLIT.TREASURY * 100) / 100;
     const operating = Math.round(totalFee * FEE_SPLIT.OPERATING_COSTS * 100) / 100;
     const payroll = Math.round(totalFee * FEE_SPLIT.PAYROLL * 100) / 100;
 
@@ -573,7 +573,7 @@ describe("Fee distribution arithmetic via FEE_SPLIT", () => {
     const { fee } = calculateFee("MARKETPLACE_PURCHASE", 100);
     assert.equal(fee, 5.46);
 
-    const reserves = Math.round(fee * FEE_SPLIT.RESERVES * 100) / 100;
+    const reserves = Math.round(fee * FEE_SPLIT.TREASURY * 100) / 100;
     const operating = Math.round(fee * FEE_SPLIT.OPERATING_COSTS * 100) / 100;
     const payroll = Math.round(fee * FEE_SPLIT.PAYROLL * 100) / 100;
 
@@ -584,7 +584,7 @@ describe("Fee distribution arithmetic via FEE_SPLIT", () => {
 
   it("reserves always gets the largest share", () => {
     const fee = 100;
-    const reserves = fee * FEE_SPLIT.RESERVES;
+    const reserves = fee * FEE_SPLIT.TREASURY;
     const operating = fee * FEE_SPLIT.OPERATING_COSTS;
     const payroll = fee * FEE_SPLIT.PAYROLL;
 

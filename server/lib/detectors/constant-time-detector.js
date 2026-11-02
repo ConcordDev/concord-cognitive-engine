@@ -134,17 +134,24 @@ const SKIP_FILES = [
 
 const MAX_FINDINGS = 500;
 
+/**
+ * `typescript5` is an npm alias for the TS5 compiler: the main `typescript` pin is v7, whose package root has no JS
+ * compiler API (no createSourceFile), so importing it alone made this detector a permanent honest no-op. Prefer the
+ * alias, then `typescript` only if it actually exposes the parser. Exported for tests.
+ */
+export const COMPILER_PACKAGES = ["typescript5", "typescript"];
+
 /** Injectable so tests can simulate "parser unavailable" without uninstalling it. */
 async function loadTs(opts) {
   if (opts && typeof opts.__loadTs === "function") return opts.__loadTs();
-  try {
-    const mod = await import("typescript");
-    const ts = mod?.default && mod.default.isIdentifier ? mod.default : mod;
-    if (!ts || typeof ts.createSourceFile !== "function") return null;
-    return ts;
-  } catch {
-    return null;
+  for (const name of COMPILER_PACKAGES) {
+    try {
+      const mod = await import(name);
+      const ts = mod?.default && mod.default.isIdentifier ? mod.default : mod;
+      if (ts && typeof ts.createSourceFile === "function" && typeof ts.isIdentifier === "function") return ts;
+    } catch { /* try the next package */ }
   }
+  return null;
 }
 
 function scriptKindFor(ts, ext) {

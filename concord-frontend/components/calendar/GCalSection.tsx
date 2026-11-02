@@ -13,6 +13,7 @@ import {
   CheckSquare, Square, Trash2, Clock, X, Zap, ListTodo,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { browserTimeZone } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
 interface CalendarMeta { id: string; number: string; name: string; color: string; visible: boolean; isDefault: boolean }
@@ -52,6 +53,15 @@ export function GCalSection() {
   const [editEvent, setEditEvent] = useState<Partial<CalEvent> & { _new?: boolean } | null>(null);
   const [showTasks, setShowTasks] = useState(true);
   const [proposals, setProposals] = useState<Proposal[] | null>(null);
+  const [showCalForm, setShowCalForm] = useState(false);
+  const [calName, setCalName] = useState('');
+  const [calColor, setCalColor] = useState('#34a853');
+  const [showTaskForm, setShowTaskForm] = useState(false);
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskEstimate, setTaskEstimate] = useState(30);
+  const [taskPriority, setTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [confirmCalId, setConfirmCalId] = useState<string | null>(null);
+  const [railError, setRailError] = useState<string | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
   // Real Google Calendar overlay (pulled via the connector — read-only).
   const [googleEvents, setGoogleEvents] = useState<CalEvent[]>([]);
@@ -80,21 +90,41 @@ export function GCalSection() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  const [parsedPreview, setParsedPreview] = useState<{
+    title: string; start: string; end: string;
+    recurrence?: { freq: string; interval: number } | null; conferenceLink?: string; durationMin: number;
+  } | null>(null);
+
+  // F11: quick-add used to save sight-unseen (and alert() on failure,
+  // which never surfaces embedded). Now: parse → show the parse →
+  // confirm → save, with errors inline.
   async function quickAddSubmit() {
     if (!quickAdd.trim()) return;
     setQuickBusy(true);
     try {
-      const p = await lensRun({ domain: 'calendar', action: 'nl-parse-event', input: { text: quickAdd.trim() } });
+      const p = await lensRun({ domain: 'calendar', action: 'nl-parse-event', input: { text: quickAdd.trim(), tz: browserTimeZone() } });
       const parsed = p.data?.result?.parsed;
-      if (!parsed) { alert('Could not parse that.'); return; }
+      if (!parsed) { setRailError('Could not parse that — try adding a day or time.'); return; }
+      setRailError(null);
+      setParsedPreview(parsed);
+    } catch (err) { console.error('[GCal] quickAdd', err); setRailError('Quick add failed — try again.'); }
+    finally { setQuickBusy(false); }
+  }
+
+  async function confirmQuickAdd() {
+    if (!parsedPreview) return;
+    setQuickBusy(true);
+    try {
       const r = await lensRun({ domain: 'calendar', action: 'events-create', input: {
-        title: parsed.title, start: parsed.start, end: parsed.end,
-        recurrence: parsed.recurrence || undefined, conferenceLink: parsed.conferenceLink || undefined,
+        title: parsedPreview.title, start: parsedPreview.start, end: parsedPreview.end,
+        recurrence: parsedPreview.recurrence || undefined, conferenceLink: parsedPreview.conferenceLink || undefined,
+        tz: browserTimeZone(),
       } });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      if (r.data?.ok === false) { setRailError(r.data?.error || 'Could not save that event.'); return; }
+      setParsedPreview(null);
       setQuickAdd('');
       await refresh();
-    } catch (err) { console.error('[GCal] quickAdd', err); }
+    } catch (err) { console.error('[GCal] quickAdd confirm', err); setRailError('Could not save that event.'); }
     finally { setQuickBusy(false); }
   }
 
@@ -106,7 +136,7 @@ export function GCalSection() {
           title: editEvent.title, start: editEvent.start, end: editEvent.end,
           calendarId: editEvent.calendarId, description: editEvent.description, location: editEvent.location,
         } });
-        if (r.data?.ok === false) { alert(r.data?.error); return; }
+        if (r.data?.ok === false) { setRailError(r.data?.error || 'Could not save that event.'); return; }
       } else {
         await lensRun({ domain: 'calendar', action: 'events-update', input: {
           id: editEvent.id, title: editEvent.title, start: editEvent.start, end: editEvent.end,
@@ -118,13 +148,19 @@ export function GCalSection() {
     } catch (err) { console.error('[GCal] saveEvent', err); }
   }
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
   async function deleteEvent(id: string) {
-    if (!confirm('Delete this event?')) return;
+    // Two-step inline confirm (native confirm() never surfaces in
+    // embedded browsers — the S3/F3 dialog class). The delete itself is
+    // soft (F12): the event lands in the trash, restorable from
+    // Sync & share → Trash.
+    if (!confirmDelete) { setConfirmDelete(true); return; }
+    setConfirmDelete(false);
     try {
       await lensRun({ domain: 'calendar', action: 'events-delete', input: { id } });
       setEditEvent(null);
       await refresh();
-    } catch (err) { console.error('[GCal] deleteEvent', err); }
+    } catch (err) { console.error('[GCal] deleteEvent', err); setRailError('Could not delete that event.'); }
   }
 
   async function toggleCalendar(cal: CalendarMeta) {
@@ -133,16 +169,21 @@ export function GCalSection() {
     catch (err) { console.error('[GCal] toggleCal', err); }
   }
 
+  // F3: in-lens form instead of prompt() (which never surfaces in
+  // embedded/automated browsers and read as a dead button).
   async function addCalendar() {
-    const name = prompt('New calendar name?');
-    if (!name?.trim()) return;
-    try { await lensRun({ domain: 'calendar', action: 'calendars-create', input: { name: name.trim() } }); await refresh(); }
-    catch (err) { console.error('[GCal] addCal', err); }
+    const name = calName.trim();
+    if (!name) { setRailError('Give the calendar a name.'); return; }
+    try {
+      const r = await lensRun({ domain: 'calendar', action: 'calendars-create', input: { name, color: calColor } });
+      if (!r.data?.ok) { setRailError(r.data?.error || 'Failed to create calendar'); return; }
+      setCalName(''); setShowCalForm(false); setRailError(null);
+      await refresh();
+    } catch (err) { console.error('[GCal] addCal', err); setRailError('Failed to create calendar'); }
   }
 
   async function deleteCalendar(cal: CalendarMeta) {
     if (cal.isDefault) return; // server refuses anyway; the UI never offers it (see hasDelete below)
-    if (!confirm(`Delete "${cal.name}"? Its events are removed too.`)) return;
     try {
       const r = await lensRun({ domain: 'calendar', action: 'calendars-delete', input: { id: cal.id } });
       if (!r.data?.ok) { console.error('[GCal] deleteCal', r.data?.error); return; }
@@ -151,10 +192,29 @@ export function GCalSection() {
   }
 
   async function addTask() {
-    const title = prompt('New task?');
-    if (!title?.trim()) return;
-    try { await lensRun({ domain: 'calendar', action: 'tasks-create', input: { title: title.trim() } }); await refresh(); }
-    catch (err) { console.error('[GCal] addTask', err); }
+    const title = taskTitle.trim();
+    if (!title) { setRailError('Give the task a title.'); return; }
+    try {
+      const r = await lensRun({ domain: 'calendar', action: 'tasks-create', input: { title, estimateMin: taskEstimate, priority: taskPriority } });
+      if (!r.data?.ok) { setRailError(r.data?.error || 'Failed to create task'); return; }
+      setTaskTitle(''); setShowTaskForm(false); setRailError(null);
+      await refresh();
+    } catch (err) { console.error('[GCal] addTask', err); setRailError('Failed to create task'); }
+  }
+
+  // Direct time-block: place the task at the next full hour today. (The
+  // AI-proposal commit path also calls tasks-time-block; this is the
+  // per-task control F3's done-state asks for.)
+  async function timeBlockTask(t: Task) {
+    const start = new Date();
+    start.setMinutes(0, 0, 0);
+    start.setHours(start.getHours() + 1);
+    try {
+      const r = await lensRun({ domain: 'calendar', action: 'tasks-time-block', input: { taskId: t.id, start: start.toISOString() } });
+      if (!r.data?.ok) { setRailError(r.data?.error || 'Could not time-block that task.'); return; }
+      setRailError(null);
+      await refresh();
+    } catch (err) { console.error('[GCal] timeBlock', err); setRailError('Could not time-block that task.'); }
   }
 
   async function toggleTask(t: Task) {
@@ -296,8 +356,22 @@ export function GCalSection() {
         <div className="px-3 pb-2">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold flex-1">My calendars</span>
-            <button aria-label="Add" onClick={addCalendar} className="text-gray-400 hover:text-white"><Plus className="w-3 h-3" /></button>
+            <button aria-label="Add" onClick={() => { setRailError(null); setShowCalForm(v => !v); }} className="text-gray-400 hover:text-white"><Plus className="w-3 h-3" /></button>
           </div>
+          {showCalForm && (
+            <div className="mb-2 space-y-1.5 rounded border border-white/10 bg-white/[0.03] p-2">
+              <input aria-label="New calendar name" value={calName} onChange={e => setCalName(e.target.value)} placeholder="Calendar name" className="w-full bg-lattice-deep rounded px-2 py-1 text-xs text-white placeholder:text-gray-500 outline-none" />
+              <div className="flex items-center gap-1">
+                {['#4285f4', '#ea4335', '#34a853', '#fbbc04', '#a142f4', '#24c1e0', '#f538a0', '#f6911e'].map(c => (
+                  <button key={c} type="button" aria-label={`Colour ${c}`} onClick={() => setCalColor(c)} className={cn('w-4 h-4 rounded-full border-2', calColor === c ? 'border-white' : 'border-transparent')} style={{ backgroundColor: c }} />
+                ))}
+              </div>
+              <div className="flex gap-1.5">
+                <button onClick={addCalendar} disabled={!calName.trim()} className="flex-1 px-2 py-1 text-[11px] rounded bg-blue-500 text-white font-semibold disabled:opacity-40">Create</button>
+                <button onClick={() => setShowCalForm(false)} className="flex-1 px-2 py-1 text-[11px] rounded border border-white/15 text-gray-300">Cancel</button>
+              </div>
+            </div>
+          )}
           <ul className="space-y-0.5">
             {calendars.map(c => (
               <li key={c.id} className="group flex items-center">
@@ -306,26 +380,51 @@ export function GCalSection() {
                   <span className={cn('truncate flex-1 text-left', c.visible ? 'text-gray-200' : 'text-gray-400')}>{c.name}</span>
                 </button>
                 {!c.isDefault && (
-                  <button
-                    onClick={() => deleteCalendar(c)}
-                    aria-label={`Delete calendar ${c.name}`}
-                    className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-rose-400 px-1"
-                  ><Trash2 className="w-3 h-3" /></button>
+                  confirmCalId === c.id ? (
+                    <button onClick={() => { setConfirmCalId(null); void deleteCalendar(c); }} aria-label={`Confirm delete calendar ${c.name}`} className="px-1 text-[10px] text-rose-300">Delete?</button>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmCalId(c.id)}
+                      aria-label={`Delete calendar ${c.name}`}
+                      title="Delete calendar (its events are removed too)"
+                      className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-rose-400 px-1"
+                    ><Trash2 className="w-3 h-3" /></button>
+                  )
                 )}
               </li>
             ))}
           </ul>
         </div>
+        {railError && <p className="px-3 pb-1 text-[11px] text-rose-300">{railError}</p>}
         {/* Tasks */}
         <div className="px-3 pb-2 flex-1 overflow-hidden flex flex-col border-t border-white/5 pt-2">
           <div className="flex items-center gap-2 mb-1">
             <ListTodo className="w-3 h-3 text-gray-400" />
             <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold flex-1">Tasks</span>
             <button onClick={() => setShowTasks(v => !v)} className="text-gray-400 text-[10px]">{showTasks ? 'hide' : 'show'}</button>
-            <button aria-label="Add" onClick={addTask} className="text-gray-400 hover:text-white"><Plus className="w-3 h-3" /></button>
+            <button aria-label="Add" onClick={() => { setRailError(null); setShowTaskForm(v => !v); }} className="text-gray-400 hover:text-white"><Plus className="w-3 h-3" /></button>
           </div>
           {showTasks && (
             <>
+              {showTaskForm && (
+                <div className="mb-1.5 space-y-1.5 rounded border border-white/10 bg-white/[0.03] p-2">
+                  <input aria-label="New task title" value={taskTitle} onChange={e => setTaskTitle(e.target.value)} placeholder="Task title" className="w-full bg-lattice-deep rounded px-2 py-1 text-[11px] text-white placeholder:text-gray-500 outline-none" />
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-[10px] text-gray-400">Minutes
+                      <input aria-label="Estimate minutes" type="number" min={5} step={5} value={taskEstimate} onChange={e => setTaskEstimate(Math.max(0, Number(e.target.value) || 0))} className="ml-1 w-14 bg-lattice-deep rounded px-1 py-0.5 text-[11px] text-white outline-none" />
+                    </label>
+                    <select aria-label="Priority" value={taskPriority} onChange={e => setTaskPriority(e.target.value as 'low' | 'medium' | 'high')} className="bg-lattice-deep rounded px-1 py-0.5 text-[11px] text-white outline-none">
+                      <option value="low">low</option>
+                      <option value="medium">medium</option>
+                      <option value="high">high</option>
+                    </select>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button onClick={addTask} disabled={!taskTitle.trim()} className="flex-1 px-2 py-1 text-[11px] rounded bg-blue-500 text-white font-semibold disabled:opacity-40">Add task</button>
+                    <button onClick={() => setShowTaskForm(false)} className="flex-1 px-2 py-1 text-[11px] rounded border border-white/15 text-gray-300">Cancel</button>
+                  </div>
+                </div>
+              )}
               <button onClick={runAutoSchedule} disabled={aiBusy} className="mb-1.5 w-full px-2 py-1 text-[11px] rounded border border-blue-500/30 text-blue-300 hover:bg-blue-500/10 disabled:opacity-40 inline-flex items-center justify-center gap-1">
                 {aiBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}AI auto-schedule
               </button>
@@ -339,6 +438,7 @@ export function GCalSection() {
                     <span className="truncate flex-1 text-gray-300">{t.title}</span>
                     <span className={cn('text-[9px] tabular-nums', PRIORITY_COLOUR[t.priority])}>{t.estimateMin}m</span>
                     {t.blockedEventId && <Clock className="w-2.5 h-2.5 text-blue-400" />}
+                    {!t.blockedEventId && <button aria-label={`Time-block ${t.title}`} title="Time-block at the next hour" onClick={() => timeBlockTask(t)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-300"><Clock className="w-2.5 h-2.5" /></button>}
                     <button aria-label="Delete" onClick={() => deleteTask(t.id)} className="opacity-0 group-hover:opacity-100 text-rose-300"><Trash2 className="w-2.5 h-2.5" /></button>
                   </li>
                 ))}
@@ -397,6 +497,22 @@ export function GCalSection() {
             {quickBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Add'}
           </button>
         </div>
+        {parsedPreview && (
+          <div className="px-4 py-2 bg-blue-500/[0.06] border-b border-blue-500/20 flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] text-blue-200 tabular-nums">
+              {new Date(parsedPreview.start).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              {' · '}
+              {new Date(parsedPreview.start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+              {' – '}
+              {new Date(parsedPreview.end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+              {parsedPreview.recurrence ? ` · repeats ${parsedPreview.recurrence.freq}` : ''}
+              {' · '}
+            </span>
+            <span className="text-[11px] text-white font-medium flex-1 truncate">{parsedPreview.title}</span>
+            <button onClick={() => void confirmQuickAdd()} disabled={quickBusy} className="px-2 py-0.5 text-[11px] rounded bg-blue-500 text-white font-semibold hover:bg-blue-400 disabled:opacity-40">Add event</button>
+            <button onClick={() => setParsedPreview(null)} className="px-2 py-0.5 text-[11px] rounded border border-white/15 text-gray-300">Cancel</button>
+          </div>
+        )}
 
         {/* AI proposals banner */}
         {proposals && proposals.length > 0 && (
@@ -449,7 +565,7 @@ export function GCalSection() {
               <textarea value={editEvent.description || ''} onChange={e => setEditEvent({ ...editEvent, description: e.target.value })} placeholder="Description" rows={2} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
               <div className="flex items-center gap-2 pt-1">
                 <button onClick={saveEvent} className="flex-1 px-3 py-1.5 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400">{editEvent._new ? 'Create' : 'Save'}</button>
-                {!editEvent._new && editEvent.id && <button onClick={() => deleteEvent(editEvent.id!)} className="px-3 py-1.5 text-xs rounded border border-rose-500/30 text-rose-300 hover:bg-rose-500/10">Delete</button>}
+                {!editEvent._new && editEvent.id && <button onClick={() => deleteEvent(editEvent.id!)} className="px-3 py-1.5 text-xs rounded border border-rose-500/30 text-rose-300 hover:bg-rose-500/10">{confirmDelete ? 'Delete?' : 'Delete'}</button>}
               </div>
             </div>
           </div>

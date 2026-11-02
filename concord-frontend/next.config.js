@@ -1,6 +1,10 @@
 // @ts-check
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { withSentryConfig } = require("@sentry/nextjs");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { spawnSync } = require("node:child_process");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const path = require("node:path");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -163,6 +167,21 @@ const nextConfig = {
         ],
       },
       {
+        // Vendored Pyodide runtime. The path carries the pinned version and the files are
+        // SHA-256-verified at vendor time, so they are immutable. .wasm must be served as
+        // application/wasm for WebAssembly streaming instantiation.
+        source: '/pyodide/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        source: '/pyodide/:path*.wasm',
+        headers: [
+          { key: 'Content-Type', value: 'application/wasm' },
+        ],
+      },
+      {
         // Unity gzip-compresses *.unityweb at export time. The browser must
         // see Content-Encoding: gzip (or Unity's decompressionFallback, which
         // the index route also injects). Without this, createUnityInstance
@@ -277,7 +296,16 @@ const nextConfig = {
   // @react-three/fiber v8 (react-reconciler reaches into 18.x's
   // __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentOwner
   // — gone in React 19, throws TypeError on every R3F mount).
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
+    // Pyodide vendoring gate (GB-0736; see ensurePyodideVendoredForBuild
+    // below): production builds only — `next dev` is covered by the
+    // predev --soft hook — and once per process (this hook runs for the
+    // client and server compilers). Runs before compilation, ahead of
+    // the standalone output's public/ copy.
+    if (!dev && !pyodideGateRan) {
+      pyodideGateRan = true;
+      ensurePyodideVendoredForBuild();
+    }
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -319,6 +347,50 @@ const nextConfig = {
 // (and SENTRY_ORG/SENTRY_PROJECT for source maps) still get the full
 // integration.
 const sentryDsnConfigured = !!(process.env.NEXT_PUBLIC_SENTRY_DSN && process.env.SENTRY_ORG);
+
+// Pyodide vendoring gate (PR #1707, GB-0736). The Code lens's Python
+// runtime is vendored into public/pyodide/ by scripts/vendor-pyodide.mjs,
+// but that step was wired only as npm pre-hooks (prebuild/predev) — and a
+// build that runs `npx next build` directly, as the deploy lane's does,
+// never fires npm lifecycle hooks, so the runtime shipped silently
+// absent (public/pyodide/ is gitignored; nothing downstream noticed).
+// The gate therefore runs scripts/ensure-pyodide.mjs from this config's
+// webpack hook on production builds (see below): check → vendor →
+// re-check. If the runtime cannot be vendored and verified, the build
+// FAILS with the remedy named — a warn-and-proceed build would repeat
+// the silent-ship failure. A network-less sandbox can opt out explicitly
+// with CONCORD_PYODIDE_VENDOR_SKIP=1; the skip is logged loudly, never
+// silent, and the runner then honestly reports "runtime unavailable".
+//
+// The export stays the plain config OBJECT (the Sentry-wrapped ternary
+// below): tests/lib/lens-tab-redirects.test.ts require()s this module
+// and calls .redirects() on it, so a function-form export would break
+// that suite. The webpack hook is the build-time trigger that keeps the
+// object shape intact.
+let pyodideGateRan = false;
+function ensurePyodideVendoredForBuild() {
+  if (process.env.CONCORD_PYODIDE_VENDOR_SKIP === "1") {
+    console.warn(
+      "[next.config] WARNING: CONCORD_PYODIDE_VENDOR_SKIP=1 — skipping the Pyodide vendoring step and check. " +
+        "This build may ship without the Code lens's Python runtime (public/pyodide/); the runner will report \"runtime unavailable\".",
+    );
+    return;
+  }
+  const result = spawnSync(process.execPath, [path.join(__dirname, "scripts", "ensure-pyodide.mjs")], {
+    stdio: "inherit",
+  });
+  if (result.error) {
+    throw new Error(`[next.config] could not run scripts/ensure-pyodide.mjs: ${result.error.message}`);
+  }
+  if (result.status !== 0) {
+    throw new Error(
+      "[next.config] Pyodide vendoring failed or the runtime is not verified under public/pyodide/ — " +
+        "the Code lens's Python runner would ship broken. Run `npm run vendor:pyodide` (needs network access " +
+        "to github.com) and rebuild. To build anyway in a network-less sandbox, set CONCORD_PYODIDE_VENDOR_SKIP=1.",
+    );
+  }
+}
+
 module.exports = sentryDsnConfigured
   ? withSentryConfig(nextConfig, {
       silent: true,

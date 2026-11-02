@@ -33,7 +33,9 @@ beforeEach(() => {
 describe('ProjectsSection create path', () => {
   it('opens from the primary New project event, creates, and the project is still there after a reload', async () => {
     const { unmount } = render(<ProjectsSection />);
-    await waitFor(() => expect(screen.getByText(/Nothing in the substrate/)).toBeTruthy());
+    // The empty state teaches the product: what a project is, plus New project / Open the sample project.
+    await waitFor(() => expect(screen.getByText(/A project is one piece of work, tracked as issues\./)).toBeTruthy());
+    expect(screen.getByRole('button', { name: /Open the sample project/ })).toBeTruthy();
     expect(screen.queryByLabelText('New project name')).toBeNull();
 
     fireEvent(window, new Event('projects:new'));

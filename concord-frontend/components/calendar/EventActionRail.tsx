@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, lensRun } from '@/lib/api/client';
+import { browserTimeZone, calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { CalendarKeepMenu } from '@/components/calendar/CalendarKeepMenu';
 
@@ -126,22 +127,30 @@ export function EventActionRail({ event }: { event: EventLite }) {
       dtuLine,
     ].filter(Boolean).join('\n');
 
-    let sentCount = 0;
-    for (const recipient of event.collaborators!) {
-      try {
-        const r = await api.post('/api/social/dm', {
-          toUserId: recipient,
-          content: body,
-        });
-        const sentOk = r.data?.ok !== false;
-        setInviteStatus(prev => ({ ...prev, [recipient]: sentOk ? 'sent' : 'failed' }));
-        if (sentOk) sentCount++;
-      } catch {
-        setInviteStatus(prev => ({ ...prev, [recipient]: 'failed' }));
-      }
+    // F6: invites are calendar invites now — invites-send records them
+    // against the event (guests mirrored onto its attendees for the .ics)
+    // and invite-rsvp tracks the responses, visible on the event detail
+    // and in Sync & share → Guest RSVP. (This used to DM the raw
+    // "@handle" strings as user ids, which could never land.)
+    void body;
+    try {
+      const r = await lensRun({
+        domain: 'calendar',
+        action: 'invites-send',
+        input: { eventId: event.id, guests: event.collaborators! },
+      });
+      if (r.data?.ok === false) throw new Error(r.data.error || 'Could not send invites');
+      const sentMap: Record<string, InviteState> = {};
+      for (const c of event.collaborators!) sentMap[c] = 'sent';
+      setInviteStatus(sentMap);
+      ok(`Invites sent to ${collabCount} collaborator${collabCount === 1 ? '' : 's'} — RSVPs will show here and on the event.`);
+    } catch (e) {
+      const failMap: Record<string, InviteState> = {};
+      for (const c of event.collaborators!) failMap[c] = 'failed';
+      setInviteStatus(failMap);
+      err(pickMessage(e));
     }
     setBusy(null);
-    ok(`Sent ${sentCount} of ${collabCount} invite${collabCount === 1 ? '' : 's'}.`);
   }
 
   async function scheduleReminder() {
@@ -201,11 +210,26 @@ export function EventActionRail({ event }: { event: EventLite }) {
         input: { start: event.startDate.toISOString(), end: event.endDate.toISOString(), excludeEventId: event.id },
       });
       if (r.data?.ok === false) { err(r.data?.error || 'Conflict check failed.'); return; }
-      const conflicts = (r.data?.result as { conflicts?: unknown[] } | undefined)?.conflicts ?? [];
+      const conflicts = (r.data?.result as { conflicts?: Array<{ eventId: string; title: string; start: string; end: string }> } | undefined)?.conflicts ?? [];
       if (conflicts.length === 0) {
         ok('No conflicts detected.');
       } else {
-        ok(`${conflicts.length} conflict${conflicts.length === 1 ? '' : 's'} flagged.`);
+        // F2: name the conflicting events (never a bare count), and offer
+        // the nearest free slot for this event's length (conflict-with-grace).
+        const fmt = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        const names = conflicts.map((c) => `${c.title} (${fmt(c.start)} – ${fmt(c.end)})`).join(', ');
+        let slotNote = '';
+        try {
+          const durationMin = Math.max(15, Math.round((event.endDate.getTime() - event.startDate.getTime()) / 60000));
+          const av = await lensRun({
+            domain: 'calendar',
+            action: 'availability-find',
+            input: { day: calendarDateKey(event.startDate), durationMin, tz: browserTimeZone() },
+          });
+          const free = (av.data?.result as { freeSlots?: Array<{ start: string; end: string }> } | undefined)?.freeSlots || [];
+          if (free.length > 0) slotNote = ` Nearest free slot: ${fmt(free[0].start)} – ${fmt(free[0].end)}.`;
+        } catch { /* the named conflicts are the answer; the slot is a bonus */ }
+        ok(`Conflicts with ${names}.${slotNote}`);
       }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -226,6 +250,9 @@ export function EventActionRail({ event }: { event: EventLite }) {
             end: event.endDate.toISOString(),
             location: event.location,
             url: event.url,
+            // ATTENDEE lines for the guests who are email addresses
+            // (ical-export writes them; @handles have no mailbox).
+            attendeeEmails: (event.collaborators ?? []).filter((c) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c)),
           }],
         },
       });

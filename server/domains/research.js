@@ -23,9 +23,29 @@ export default function registerResearchActions(registerLensAction) {
    * artifact.data.papers = [{ id, title, authors?, year?, citations?: string[],
    *   references?: string[], abstract?, keywords? }]
    */
-  registerLensAction("research", "citationNetwork", (ctx, artifact, _params) => {
+  registerLensAction("research", "citationNetwork", (ctx, artifact, params = {}) => {
   try {
-    const papers = artifact.data?.papers || [];
+    let papers = artifact.data?.papers || [];
+    let libraryMode = false;
+    if (papers.length === 0 && params?.fromLibrary) {
+      // S5 (F3): the Research Analysis rail used to run this macro through
+      // /api/lens/research/{id}/run with the id of the first DTU in the
+      // platform feed — an artifact that endpoint could not resolve
+      // ("not found"), and whose data was never the user's library in the
+      // first place. Library mode builds the paper set from the caller's
+      // own references instead: related-reference links are the citation
+      // edges, tags are the keywords. Artifact mode is unchanged.
+      const s = getResearchState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const refs = s.references.get(rfAid(ctx)) || [];
+      const inLibrary = new Set(refs.map((r) => r.id));
+      papers = refs.map((r) => ({
+        id: r.id, title: r.title, year: r.year,
+        references: (r.relatedIds || []).filter((id) => inLibrary.has(id)),
+        keywords: r.tags || [],
+      }));
+      libraryMode = true;
+    }
     if (papers.length === 0) return { ok: true, result: { message: "No papers." } };
 
     const paperMap = {};
@@ -112,18 +132,30 @@ export default function registerResearchActions(registerLensAction) {
       .sort((a, b) => (b.year || 0) - (a.year || 0))
       .slice(0, 5);
 
-    return {
-      ok: true, result: {
-        totalPapers: papers.length,
-        hIndex,
-        rankedPapers: ranked.slice(0, 15),
-        foundationalWorks: foundational.map(p => ({ id: p.id, title: p.title, year: p.year, citations: p.inDegree })),
-        frontierWorks: frontier.map(p => ({ id: p.id, title: p.title, year: p.year, references: p.outDegree })),
-        topicClusters,
-        yearDistribution: yearDist,
-        networkDensity: n > 1 ? Math.round(ranked.reduce((s, p) => s + p.outDegree, 0) / (n * (n - 1)) * 10000) / 10000 : 0,
-      },
+    const result = {
+      totalPapers: papers.length,
+      hIndex,
+      rankedPapers: ranked.slice(0, 15),
+      foundationalWorks: foundational.map(p => ({ id: p.id, title: p.title, year: p.year, citations: p.inDegree })),
+      frontierWorks: frontier.map(p => ({ id: p.id, title: p.title, year: p.year, references: p.outDegree })),
+      topicClusters,
+      yearDistribution: yearDist,
+      networkDensity: n > 1 ? Math.round(ranked.reduce((s, p) => s + p.outDegree, 0) / (n * (n - 1)) * 10000) / 10000 : 0,
     };
+    if (libraryMode) {
+      // Name what the network was computed from (S5's naming rule) and say
+      // plainly when the library carries no links to compute over.
+      const pairs = new Set();
+      for (const p of papers) {
+        for (const ref of p.references || []) pairs.add([p.id, ref].sort().join("|"));
+      }
+      result.source = "library";
+      result.linkCount = pairs.size;
+      if (pairs.size === 0) {
+        result.message = "No related-reference links in your library yet — link related references from a reference's detail view and the network is computed from those links.";
+      }
+    }
+    return { ok: true, result };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -651,30 +683,284 @@ export default function registerResearchActions(registerLensAction) {
     const firstAuthor = rfClean(ref.authors, 400).split(/[,;&]/)[0].trim().split(/\s+/).pop() || "ref";
     return `${firstAuthor.toLowerCase().replace(/[^a-z]/g, "")}${ref.year || ""}`;
   }
+
+  // ── S7 (F10): citation strictness — CSL-as-data ────────────────────
+  // The four styles genuinely reformatted before S7, but the output was
+  // not strict: APA printed full first names ("David Silver, Aja
+  // Huang, …") where APA requires surnames + initials. Style rules now
+  // live in CITATION_STYLES as data (author form, list truncation /
+  // et-al rule, separators, year placement, title casing, DOI form),
+  // and formatCitation — the ONE engine behind reference-detail,
+  // cite-format, bibliography-build and generate-bibliography —
+  // consumes the table. No external CSL processor and no new
+  // dependency: the style set is small and the rules are data, per
+  // research.md §7 S7 ("CSL-as-data rather than hand-rolled formats").
+  //
+  // Stored refs carry authors as ONE display string in natural order
+  // ("David Silver, Aja Huang, …"): every importer joins display names
+  // with ", " (Crossref maps given+family, OpenAlex uses display_name,
+  // the arXiv parser takes feed names). parseAuthors therefore treats
+  // comma/semicolon segments as natural-order names, with two guarded
+  // recognitions for hand-entered inverted text: alternating
+  // "Family, Initials" pairs ("Vaswani, A.", "Silver, D., Hassabis,
+  // D."), and a lone single-token "Family, Given…" pair ("Silver,
+  // David" — the manual-add fixture form). Anything that cannot be
+  // split safely — a single token, an organisation, an all-caps name —
+  // is kept literal and renders exactly as stored: the parser never
+  // invents a split it cannot justify.
+  const NAME_PARTICLES = new Set(["van", "von", "der", "den", "ten", "ter", "de", "del", "della", "di", "da", "du", "la", "le", "bin", "ibn", "al"]);
+  const NAME_SUFFIXES = { jr: "Jr.", sr: "Sr.", ii: "II", iii: "III", iv: "IV" };
+  const ORG_TOKENS = new Set(["university", "institute", "institution", "organization", "organisation", "association", "society", "committee", "commission", "council", "foundation", "consortium", "group", "team", "corporation", "company", "inc", "ltd", "llc", "gmbh", "laboratory", "laboratories", "centre", "center", "department", "ministry", "agency", "academy", "college", "school", "hospital", "press", "publishers", "publishing", "editors", "editorial", "board", "network", "initiative", "project", "consortium"]);
+  const isInitialsOnly = (seg) => seg.length > 0 && seg.split(/\s+/).every((t) => /^(\p{Lu}\.)+$/u.test(t) || /^\p{Lu}$/u.test(t));
+
+  function splitSuffix(tokens) {
+    const out = [...tokens];
+    let suffix = null;
+    while (out.length > 1) {
+      const key = out[out.length - 1].toLowerCase().replace(/\.$/, "");
+      if (NAME_SUFFIXES[key]) { suffix = NAME_SUFFIXES[key]; out.pop(); } else break;
+    }
+    return { tokens: out, suffix };
+  }
+  function makeInvertedAuthor(familyRaw, givenTokens) {
+    const fam = splitSuffix(familyRaw.split(/\s+/).filter(Boolean));
+    return { family: fam.tokens.join(" "), given: givenTokens, suffix: fam.suffix, literal: false, raw: null };
+  }
+  function parseNaturalAuthor(seg) {
+    const tokens = seg.split(/\s+/).filter(Boolean);
+    if (tokens.length <= 1) return { family: tokens[0] || seg, given: [], suffix: null, literal: true, raw: seg };
+    // Organisations and all-caps names render as stored, never split.
+    const plain = tokens.map((t) => t.toLowerCase().replace(/[^\p{L}]/gu, ""));
+    if (plain.some((t) => ORG_TOKENS.has(t))) return { family: seg, given: [], suffix: null, literal: true, raw: seg };
+    if (seg === seg.toUpperCase() && /\p{L}{2,}/u.test(seg)) return { family: seg, given: [], suffix: null, literal: true, raw: seg };
+    const { tokens: rest, suffix } = splitSuffix(tokens);
+    if (rest.length <= 1) return { family: rest[0] || seg, given: [], suffix, literal: true, raw: seg };
+    // Family name = last token plus any preceding name particles
+    // ("George van den Driessche" → family "van den Driessche"),
+    // always leaving at least one given-name token.
+    let famStart = rest.length - 1;
+    while (famStart > 1 && NAME_PARTICLES.has(rest[famStart - 1].toLowerCase())) famStart -= 1;
+    return { family: rest.slice(famStart).join(" "), given: rest.slice(0, famStart), suffix, literal: false, raw: null };
+  }
+  function parseAuthors(rawAuthors) {
+    const raw = rfClean(rawAuthors, 400);
+    if (!raw) return [];
+    const segments = raw
+      .replace(/\bet\s+al\.?\s*$/i, "")
+      .split(/\s*[;,]\s*|\s+&\s+/)
+      .map((s) => s.replace(/^and\s+/i, "").trim())
+      .filter((s) => s && !/^et\s+al\.?$/i.test(s));
+    if (!segments.length) return [];
+    // Inverted text, recognised only when the pattern is unambiguous:
+    // an even run of segments alternating family / initials-only, or a
+    // lone pair whose first segment is a single token ("Silver, David"
+    // / "Silver, David J") — importers never produce either shape for
+    // a multi-author natural-order list (their first segment always
+    // carries a given name), so the recognition cannot misfire on
+    // imported records.
+    if (segments.length >= 2 && segments.length % 2 === 0) {
+      let inverted = true;
+      for (let i = 0; i < segments.length; i += 2) {
+        if (isInitialsOnly(segments[i]) || !isInitialsOnly(segments[i + 1])) { inverted = false; break; }
+      }
+      if (inverted) {
+        const out = [];
+        for (let i = 0; i < segments.length; i += 2) out.push(makeInvertedAuthor(segments[i], segments[i + 1].split(/\s+/)));
+        return out;
+      }
+    }
+    if (segments.length === 2 && !segments[0].includes(" ")) {
+      return [makeInvertedAuthor(segments[0], segments[1].split(/\s+/))];
+    }
+    return segments.map(parseNaturalAuthor);
+  }
+  function initialGroups(author) {
+    return author.given
+      .map((tok) => tok.split("-").map((part) => {
+        const m = part.match(/\p{L}/u);
+        return m ? m[0].toUpperCase() : "";
+      }).filter(Boolean))
+      .filter((g) => g.length);
+  }
+  // "C. J." — hyphenated given names keep the hyphen: "Jean-Luc" → "J.-L."
+  const initialsSpaced = (a) => initialGroups(a).map((g) => g.map((l) => `${l}.`).join("-")).join(" ");
+  const initialsCompact = (a) => initialGroups(a).flat().join("");
+  function authorApaForm(a) {
+    if (a.literal) return a.raw;
+    const ini = initialsSpaced(a);
+    let out = ini ? `${a.family}, ${ini}` : a.family;
+    if (a.suffix) out += `, ${a.suffix}`;
+    return out;
+  }
+  function authorInvertedFull(a) {
+    if (a.literal) return a.raw;
+    const given = a.given.join(" ");
+    let out = given ? `${a.family}, ${given}` : a.family;
+    if (a.suffix) out += `, ${a.suffix}`;
+    return out;
+  }
+  function authorNaturalForm(a) {
+    if (a.literal) return a.raw;
+    const given = a.given.join(" ");
+    let out = given ? `${given} ${a.family}` : a.family;
+    if (a.suffix) out += ` ${a.suffix}`;
+    return out;
+  }
+  function authorVancouverForm(a) {
+    if (a.literal) return a.raw;
+    const ini = initialsCompact(a);
+    let out = ini ? `${a.family} ${ini}` : a.family;
+    if (a.suffix) out += ` ${a.suffix}`;
+    return out;
+  }
+  function formatAuthorList(authors, def) {
+    let forms;
+    if (def.authorForm === "first-inverted-rest-natural") {
+      forms = authors.map((a, i) => (i === 0 ? authorInvertedFull(a) : authorNaturalForm(a)));
+    } else if (def.authorForm === "family-initials-compact") {
+      forms = authors.map(authorVancouverForm);
+    } else {
+      forms = authors.map(authorApaForm);
+    }
+    if (def.etAl && authors.length >= def.etAl.minAuthors) {
+      return `${forms.slice(0, def.etAl.listCount).join(def.separator)}, et al.`;
+    }
+    if (def.ellipsisAfter && authors.length > def.ellipsisAfter) {
+      // APA 7 §9.8: 21+ authors → first 19, an ellipsis, the last one.
+      return `${forms.slice(0, def.ellipsisAfter - 1).join(def.separator)}, … ${forms[forms.length - 1]}`;
+    }
+    if (forms.length === 1) return forms[0];
+    if (def.lastSeparator) return forms.slice(0, -1).join(def.separator) + def.lastSeparator + forms[forms.length - 1];
+    return forms.join(def.separator);
+  }
+  const HEADLINE_MINOR = new Set(["a", "an", "the", "and", "but", "or", "nor", "for", "so", "yet", "at", "by", "from", "in", "into", "of", "off", "on", "onto", "out", "over", "past", "to", "up", "upon", "with", "as", "via", "per"]);
+  function capFirstLetter(s, from = 0) {
+    const rest = s.slice(from);
+    const idx = rest.search(/\p{L}/u);
+    if (idx < 0) return s;
+    const i = from + idx;
+    return s.slice(0, i) + rest[idx].toUpperCase() + s.slice(i + 1);
+  }
+  // APA sentence case: capitalise the first word and the first word of
+  // a subtitle. The rest of the title is left EXACTLY as stored —
+  // downcasing would corrupt proper nouns the record carries ("Go",
+  // "COVID-19"), so the transform only ever raises, never lowers.
+  function sentenceCaseTitle(t) {
+    if (!t) return t;
+    let out = capFirstLetter(t);
+    const colon = out.indexOf(": ");
+    if (colon >= 0) out = capFirstLetter(out, colon + 2);
+    return out;
+  }
+  function headlineCaseTitle(t) {
+    if (!t) return t;
+    const parts = t.split(/(\s+)/);
+    const wordIdx = [];
+    parts.forEach((p, i) => { if (p.trim()) wordIdx.push(i); });
+    let prevEndsColon = true; // first word always capitalised
+    for (const i of wordIdx) {
+      const w = parts[i];
+      const isLast = i === wordIdx[wordIdx.length - 1];
+      const minor = !prevEndsColon && !isLast && HEADLINE_MINOR.has(w.toLowerCase().replace(/[^\p{L}]/gu, ""));
+      if (!minor) {
+        parts[i] = w.split("-").map((part, j) =>
+          (j > 0 && HEADLINE_MINOR.has(part.toLowerCase())) || /\p{Lu}/u.test(part.slice(1))
+            ? part : capFirstLetter(part)).join("-");
+      }
+      prevEndsColon = /:$/.test(w);
+    }
+    return parts.join("");
+  }
+  const withDot = (s) => (/[.!?…]$/.test(s) ? s : `${s}.`);
+  // Author lists can already end a sentence ("…, et al."); never double it.
+  const endSentence = (s) => (/[.!?…]$/.test(s) ? s : `${s}.`);
+  const quotedTitle = (t) => (/[.!?]$/.test(t) ? t : `${t}.`);
+
+  // The style table (CSL-as-data). journalForm is "as-stored" for every
+  // style: the records carry no abbreviation source (Vancouver's NLM
+  // abbreviations are not in the data), so no style invents one.
+  const CITATION_STYLES = {
+    apa: {
+      authorForm: "family-initials", // Silver, D.
+      separator: ", ", lastSeparator: ", & ",
+      ellipsisAfter: 20,
+      year: "paren-after-authors", titleCase: "sentence", journalForm: "as-stored",
+      doi: "url", // https://doi.org/…
+    },
+    mla: {
+      authorForm: "first-inverted-rest-natural", // Silver, David / David Silver
+      separator: ", ", lastSeparator: ", and ",
+      etAl: { minAuthors: 3, listCount: 1 },
+      year: "end-after-journal", titleCase: "headline", journalForm: "as-stored",
+      doi: "url-end",
+    },
+    chicago: {
+      authorForm: "first-inverted-rest-natural",
+      separator: ", ", lastSeparator: ", and ",
+      etAl: { minAuthors: 11, listCount: 7 }, // bibliography: ≤10 listed in full
+      year: "paren-after-journal", titleCase: "headline", journalForm: "as-stored",
+      doi: "url-end",
+    },
+    vancouver: {
+      authorForm: "family-initials-compact", // Silver D
+      separator: ", ", lastSeparator: null,
+      etAl: { minAuthors: 7, listCount: 6 },
+      year: "after-journal", titleCase: "as-stored", journalForm: "as-stored",
+      doi: "doi-tag", // doi:10.…
+    },
+  };
+  const CITATION_STYLE_NAMES = [...Object.keys(CITATION_STYLES), "bibtex"];
+
   function formatCitation(ref, style) {
-    const authors = rfClean(ref.authors, 400) || "Unknown";
     const year = ref.year || "n.d.";
     const title = rfClean(ref.title, 400);
     const journal = rfClean(ref.journal, 200);
     const doi = rfClean(ref.doi, 120);
+    if (style === "bibtex") {
+      const authors = rfClean(ref.authors, 400) || "Unknown";
+      const fields = [
+        `  title={${title}}`,
+        `  author={${authors}}`,
+        ref.year ? `  year={${ref.year}}` : null,
+        journal ? `  journal={${journal}}` : null,
+        doi ? `  doi={${doi}}` : null,
+      ].filter(Boolean).join(",\n");
+      return `@${ref.type === "book" ? "book" : "article"}{${citationKey(ref)},\n${fields}\n}`;
+    }
+    const def = CITATION_STYLES[style] || CITATION_STYLES.apa;
+    const parsed = parseAuthors(ref.authors);
+    const authorStr = parsed.length ? formatAuthorList(parsed, def) : "Unknown";
+    const titleOut = def.titleCase === "sentence" ? sentenceCaseTitle(title)
+      : def.titleCase === "headline" ? headlineCaseTitle(title) : title;
     switch (style) {
-      case "mla":
-        return `${authors}. "${title}." ${journal ? `${journal}, ` : ""}${year}.`;
-      case "chicago":
-        return `${authors}. "${title}." ${journal ? `${journal} ` : ""}(${year}).`;
-      case "bibtex": {
-        const fields = [
-          `  title={${title}}`,
-          `  author={${authors}}`,
-          ref.year ? `  year={${ref.year}}` : null,
-          journal ? `  journal={${journal}}` : null,
-          doi ? `  doi={${doi}}` : null,
-        ].filter(Boolean).join(",\n");
-        return `@${ref.type === "book" ? "book" : "article"}{${citationKey(ref)},\n${fields}\n}`;
+      case "mla": {
+        let out = `${endSentence(authorStr)} "${quotedTitle(titleOut)}"`;
+        if (journal) out += ` ${journal},`;
+        out += ` ${year}`;
+        if (doi) out += `, https://doi.org/${doi}`;
+        return `${out}.`;
+      }
+      case "chicago": {
+        let out = `${endSentence(authorStr)} "${quotedTitle(titleOut)}"`;
+        if (journal) out += ` ${journal}`;
+        out += ` (${year}).`;
+        if (doi) out += ` https://doi.org/${doi}.`;
+        return out;
+      }
+      case "vancouver": {
+        let out = `${endSentence(authorStr)} ${withDot(titleOut)}`;
+        if (journal) out += ` ${withDot(journal)}`;
+        out += ` ${year}.`;
+        if (doi) out += ` doi:${doi}.`;
+        return out;
       }
       case "apa":
-      default:
-        return `${authors} (${year}). ${title}.${journal ? ` ${journal}.` : ""}${doi ? ` https://doi.org/${doi}` : ""}`;
+      default: {
+        let out = `${authorStr} (${year}). ${withDot(titleOut)}`;
+        if (journal) out += ` ${withDot(journal)}`;
+        if (doi) out += ` https://doi.org/${doi}`;
+        return out;
+      }
     }
   }
 
@@ -684,6 +970,13 @@ export default function registerResearchActions(registerLensAction) {
     const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const title = rfClean(params.title, 400);
     if (!title) return { ok: false, error: "title required" };
+    // S3 (F8): manual adds pass the same duplicate gate as imports —
+    // answering with the existing record beats filing a twin by hand.
+    const dup = findDuplicateRef(rfListB(s.references, rfAid(ctx)), {
+      doi: params.doi, title,
+      year: Number.isFinite(Number(params.year)) ? Math.round(Number(params.year)) : null,
+    });
+    if (dup) return { ok: true, result: { reference: dup, duplicate: true } };
     const ref = {
       id: rfId("ref"), title,
       authors: rfClean(params.authors, 400) || null,
@@ -715,7 +1008,9 @@ export default function registerResearchActions(registerLensAction) {
       refs = refs.filter((r) =>
         r.title.toLowerCase().includes(q) ||
         (r.authors || "").toLowerCase().includes(q) ||
-        (r.journal || "").toLowerCase().includes(q));
+        (r.journal || "").toLowerCase().includes(q) ||
+        (r.doi || "").toLowerCase().includes(q) ||
+        (r.tags || []).some((t) => t.includes(q)));
     }
     refs.sort((a, b) => (b.year || 0) - (a.year || 0) || b.createdAt.localeCompare(a.createdAt));
     return { ok: true, result: { references: refs, count: refs.length } };
@@ -736,6 +1031,8 @@ export default function registerResearchActions(registerLensAction) {
         citations: {
           apa: formatCitation(ref, "apa"),
           mla: formatCitation(ref, "mla"),
+          chicago: formatCitation(ref, "chicago"),
+          vancouver: formatCitation(ref, "vancouver"),
           bibtex: formatCitation(ref, "bibtex"),
         },
       },
@@ -888,6 +1185,25 @@ export default function registerResearchActions(registerLensAction) {
   });
 
   // ── Annotations ─────────────────────────────────────────────────────
+  // S4 (F2): a structured anchor for reader-created annotations — the
+  // page a passage sits on, plus the passage's character offsets within
+  // that page's text. Offsets are null in this build: the platform has
+  // no PDF text layer yet (no pdf.js in the frontend bundle, no text
+  // extraction server-side — see server/domains/document.js's own
+  // header), so nothing can measure them honestly. The shape is fixed
+  // now so a text layer fills the same fields with no data migration.
+  function cleanAnchor(raw) {
+    if (!raw || typeof raw !== "object") return null;
+    const pg = (v) => { if (v == null) return null; const n = Math.round(Number(v)); return Number.isFinite(n) && n >= 1 ? n : null; };
+    const off = (v) => { if (v == null) return null; const n = Math.round(Number(v)); return Number.isFinite(n) && n >= 0 ? n : null; };
+    const page = pg(raw.page);
+    let startOffset = off(raw.startOffset);
+    let endOffset = off(raw.endOffset);
+    if (startOffset != null && endOffset != null && endOffset < startOffset) { startOffset = null; endOffset = null; }
+    if (page == null && startOffset == null && endOffset == null) return null;
+    return { page, startOffset, endOffset };
+  }
+
   registerLensAction("research", "annotation-add", (ctx, _a, params = {}) => {
     const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = rfAid(ctx);
@@ -895,10 +1211,15 @@ export default function registerResearchActions(registerLensAction) {
     const text = rfClean(params.text, 2000);
     const quote = rfClean(params.quote, 2000);
     if (!text && !quote) return { ok: false, error: "text or quote required" };
+    const anchor = cleanAnchor(params.anchor);
     const annotation = {
       id: rfId("ann"), referenceId: String(params.referenceId),
-      page: Math.max(0, Math.round(rfNum(params.page))) || null,
+      // An explicit page param wins; an anchor's page fills in when the
+      // caller (the reader) only supplied the anchor, so the existing
+      // page-sorted lists and "(p.N)" surfaces keep working unchanged.
+      page: (Math.max(0, Math.round(rfNum(params.page))) || null) ?? anchor?.page ?? null,
       quote: quote || null, text: text || null,
+      ...(anchor ? { anchor } : {}),
       color: ["yellow", "green", "blue", "pink", "purple"].includes(String(params.color).toLowerCase())
         ? String(params.color).toLowerCase() : "yellow",
       createdAt: rfNow(),
@@ -922,7 +1243,7 @@ export default function registerResearchActions(registerLensAction) {
     const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const ref = findRef(s, rfAid(ctx), params.id);
     if (!ref) return { ok: false, error: "reference not found" };
-    const style = ["apa", "mla", "chicago", "bibtex"].includes(String(params.style).toLowerCase())
+    const style = CITATION_STYLE_NAMES.includes(String(params.style).toLowerCase())
       ? String(params.style).toLowerCase() : "apa";
     return { ok: true, result: { style, citation: formatCitation(ref, style), key: citationKey(ref) } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -932,7 +1253,7 @@ export default function registerResearchActions(registerLensAction) {
   try {
     const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = rfAid(ctx);
-    const style = ["apa", "mla", "chicago", "bibtex"].includes(String(params.style).toLowerCase())
+    const style = CITATION_STYLE_NAMES.includes(String(params.style).toLowerCase())
       ? String(params.style).toLowerCase() : "apa";
     let refs;
     if (params.collectionId) {
@@ -987,7 +1308,7 @@ export default function registerResearchActions(registerLensAction) {
   function getResearchStateExt() {
     const s = getResearchState();
     if (!s) return null;
-    for (const k of ["snapshots", "canvases", "pdfs", "reviews"]) {
+    for (const k of ["snapshots", "canvases", "pdfs", "reviews", "analyses"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     return s;
@@ -1160,8 +1481,9 @@ export default function registerResearchActions(registerLensAction) {
     if (rawCards.length > 200) return { ok: false, error: "too many cards (max 200)" };
     const cards = rawCards.map((c) => ({
       id: String(c.id || nextResId("card")),
-      kind: ["note", "text", "link"].includes(String(c.kind)) ? String(c.kind) : "text",
+      kind: ["note", "text", "link", "reference"].includes(String(c.kind)) ? String(c.kind) : "text",
       noteId: c.noteId ? String(c.noteId) : null,
+      referenceId: c.referenceId ? String(c.referenceId) : null,
       text: String(c.text || "").slice(0, 2000),
       x: Number.isFinite(Number(c.x)) ? Math.round(Number(c.x)) : 0,
       y: Number.isFinite(Number(c.y)) ? Math.round(Number(c.y)) : 0,
@@ -1241,7 +1563,13 @@ export default function registerResearchActions(registerLensAction) {
     const url = rfClean(params.url, 1000);
     const filename = rfClean(params.filename, 240);
     if (!url) return { ok: false, error: "url required" };
-    if (!/^https?:\/\//i.test(url)) return { ok: false, error: "url must be http(s)" };
+    // S4 (F2): a platform-artifact path is the uploaded-file form — the
+    // upload endpoint (POST /api/artifact/upload) stores the file and it
+    // is served, ACL-gated, from /api/artifact/:dtuId/stream. Only that
+    // exact prefix is allowed through; other relative URLs stay refused.
+    if (!/^https?:\/\//i.test(url) && !url.startsWith("/api/artifact/")) {
+      return { ok: false, error: "url must be http(s) or a platform artifact path" };
+    }
     const attachment = {
       id: rfId("pdf"),
       referenceId: ref.id,
@@ -1277,6 +1605,87 @@ export default function registerResearchActions(registerLensAction) {
     if (ref && !stillHas) ref.hasPdf = false;
     saveResearchState();
     return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Resolve a readable PDF for a reference (S4, F2) ──────────────────
+  // The reader's front door: given a library reference, answer with the
+  // PDF the in-app reader should render, or an honest no-PDF answer.
+  // Ladder, most-authoritative first:
+  //  (1) a PDF the user attached to this reference — a platform-artifact
+  //      URL (/api/artifact/…) is an upload and is named as one;
+  //  (2) arXiv — the ID is derivable locally from an arXiv DOI or an
+  //      arxiv.org URL on the record, no network needed;
+  //  (3) the record's own URL when it already points at a .pdf;
+  //  (4) Unpaywall's best_oa_location.url_for_pdf for the record's DOI.
+  // There is no `live_unpaywall` macro to compose with — scholarly-
+  // apis.js (read-verified for this slice) registers only live_crossref
+  // / live_openalex / live_datamuse / live_dictionary — so the call is
+  // made here via cachedFetchJson, the same pattern academic-search and
+  // academic-resolve-import already use in this domain, and scholarly-
+  // apis.js stays untouched. Honesty discipline follows S1: an
+  // Unpaywall 404 (it has no record of the DOI) or a no-OA answer is a
+  // definitive `no_open_access_pdf`; a transport failure is reported as
+  // `lookup_failed`, never dressed up as "no open copy exists".
+  function deriveArxivId(ref) {
+    const m = normDoiKey(ref?.doi).match(/^10\.48550\/arxiv\.(.+)$/);
+    if (m) return m[1];
+    const parsed = parseScholarlyIdentifier(ref?.url || "");
+    return parsed?.kind === "arxiv" ? parsed.id : null;
+  }
+
+  registerLensAction("research", "reference-pdf", async (ctx, _a, params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const ref = findRef(s, userId, params.referenceId || params.id);
+    if (!ref) return { ok: false, error: "reference not found" };
+    const base = { referenceId: ref.id, title: ref.title };
+    const atts = (s.pdfs.get(userId) || [])
+      .filter((p) => p.referenceId === ref.id)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    if (atts.length) {
+      const att = atts[0];
+      return { ok: true, result: { ...base,
+        pdfUrl: att.url, source: att.url.startsWith("/api/artifact/") ? "upload" : "attached",
+        filename: att.filename, attachmentId: att.id, pages: att.pages ?? null } };
+    }
+    const arxivId = deriveArxivId(ref);
+    if (arxivId) {
+      return { ok: true, result: { ...base,
+        pdfUrl: `https://arxiv.org/pdf/${arxivId}.pdf`, source: "arxiv",
+        filename: `${arxivId}.pdf`, attachmentId: null, pages: null } };
+    }
+    if (ref.url && /\.pdf($|[?#])/i.test(ref.url)) {
+      return { ok: true, result: { ...base,
+        pdfUrl: ref.url, source: "direct",
+        filename: ref.url.split("/").pop() || "document.pdf", attachmentId: null, pages: null } };
+    }
+    if (ref.doi) {
+      const email = process.env.UNPAYWALL_EMAIL || process.env.OPENALEX_MAILTO || "hello@concord-os.org";
+      try {
+        const data = await cachedFetchJson(
+          `https://api.unpaywall.org/v2/${encodeURIComponent(normDoiKey(ref.doi))}?email=${encodeURIComponent(email)}`,
+          { ttlMs: 60 * 60 * 1000, timeoutMs: 9000, opts: { headers: { "User-Agent": SCHOLARLY_UA } } },
+        );
+        const pdfUrl = data?.best_oa_location?.url_for_pdf
+          || (data?.oa_locations || []).find((l) => l?.url_for_pdf)?.url_for_pdf || null;
+        if (pdfUrl) {
+          return { ok: true, result: { ...base,
+            pdfUrl, source: "unpaywall",
+            filename: pdfUrl.split("/").pop() || "document.pdf", attachmentId: null, pages: null } };
+        }
+        return { ok: true, result: { ...base, pdfUrl: null, source: null, reason: "no_open_access_pdf",
+          message: "No open-access PDF was found for this reference. Attach or upload a PDF to read it here." } };
+      } catch (e) {
+        if (/HTTP 404/.test(String(e?.message || e))) {
+          return { ok: true, result: { ...base, pdfUrl: null, source: null, reason: "no_open_access_pdf",
+            message: "No open-access PDF was found for this reference. Attach or upload a PDF to read it here." } };
+        }
+        return { ok: true, result: { ...base, pdfUrl: null, source: null, reason: "lookup_failed",
+          message: "The open-access lookup didn't answer, so this paper may still have an open PDF. Attach or upload a PDF to read it here." } };
+      }
+    }
+    return { ok: true, result: { ...base, pdfUrl: null, source: null, reason: "no_open_access_pdf",
+      message: "No PDF is attached and this reference has no DOI or arXiv ID to look up an open copy. Attach or upload a PDF to read it here." } };
   });
 
   // ── Live academic search — OpenAlex / arXiv (free, keyless) ─────────
@@ -1336,6 +1745,18 @@ export default function registerResearchActions(registerLensAction) {
     return entries;
   }
 
+  // arXiv search_query for free text (S8, F9): one `all:` clause per
+  // term, AND-joined. Encoding the whole query as a single field value
+  // makes arXiv's parser OR its words (live-verified — see
+  // research-live.js buildArxivRequest, which builds the same way).
+  function arxivTextSearchQuery(query) {
+    const terms = String(query || "").split(/\s+/)
+      .map((t) => t.replace(/["()]/g, ""))
+      .filter(Boolean)
+      .slice(0, 10);
+    return terms.map((t) => `all:${encodeURIComponent(t)}`).join("+AND+");
+  }
+
   registerLensAction("research", "academic-search", async (_ctx, _a, params = {}) => {
     const query = String(params.query || "").trim();
     if (!query) return { ok: false, error: "query required" };
@@ -1345,7 +1766,7 @@ export default function registerResearchActions(registerLensAction) {
       ? String(params.provider) : "openalex";
     try {
       if (provider === "arxiv") {
-        const url = `http://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(query)}&start=0&max_results=${limit}&sortBy=relevance`;
+        const url = `http://export.arxiv.org/api/query?search_query=${arxivTextSearchQuery(query)}&start=0&max_results=${limit}&sortBy=relevance`;
         const xml = await (await fetch(url, { signal: AbortSignal.timeout(9000) })).text();
         const results = mapArxivWork(xml);
         return { ok: true, result: { provider, query, count: results.length, results } };
@@ -1366,12 +1787,66 @@ export default function registerResearchActions(registerLensAction) {
     }
   });
 
+  // ── Duplicate detection (S3, F8) ────────────────────────────────────
+  // One gate for every filing path (academic-import,
+  // academic-resolve-import, manual reference-add): a paper already in
+  // the user's library is answered with the EXISTING record, never a
+  // twin. Ladder:
+  //  (1) normalised DOI equality — lowercase, doi.org prefix and
+  //      whitespace stripped, so case/prefix variants of the same DOI
+  //      still collide;
+  //  (2) normalised title + year, when both years are known;
+  //  (3) normalised title where the STORED record carries no DOI but
+  //      the incoming work does — a hand-filed record cannot disprove
+  //      identity against a DOI'd import of the same title, and an
+  //      upstream year quirk (F8: OpenAlex showed 2025 for a 2017
+  //      paper) must not smuggle a duplicate past the year check in
+  //      exactly that hand-filed-then-imported case.
+  // A stored record carrying a DIFFERENT DOI disproves identity and is
+  // never matched on title alone.
+  function normDoiKey(v) {
+    return String(v == null ? "" : v).trim().toLowerCase()
+      .replace(/^https?:\/\/(?:dx\.)?doi\.org\//, "")
+      .replace(/^doi:\s*/, "");
+  }
+  function normTitleKey(v) {
+    return String(v == null ? "" : v).trim().toLowerCase().replace(/\s+/g, " ");
+  }
+  function findDuplicateRef(refs, cand) {
+    const list = Array.isArray(refs) ? refs : [];
+    const doi = normDoiKey(cand?.doi);
+    if (doi) {
+      const byDoi = list.find((r) => normDoiKey(r.doi) === doi);
+      if (byDoi) return byDoi;
+    }
+    const title = normTitleKey(cand?.title);
+    if (!title) return null;
+    const yearRaw = cand?.year == null ? NaN : Number(cand.year);
+    const year = Number.isFinite(yearRaw) ? Math.round(yearRaw) : null;
+    for (const r of list) {
+      if (normTitleKey(r.title) !== title) continue;
+      const rDoi = normDoiKey(r.doi);
+      if (doi && rDoi && rDoi !== doi) continue; // a different DOI disproves identity
+      const rYearRaw = r.year == null ? NaN : Number(r.year);
+      const rYear = Number.isFinite(rYearRaw) ? Math.round(rYearRaw) : null;
+      if (year != null && rYear != null && year === rYear) return r;
+      if (doi && !rDoi) return r;
+    }
+    return null;
+  }
+
   // ── Import a search result straight into the reference library ──────
-  registerLensAction("research", "academic-import", (ctx, _a, params = {}) => {
-    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const w = params.work || params;
-    const title = rfClean(w.title, 400);
-    if (!title) return { ok: false, error: "title required" };
+  // The single ref construction every import path persists through
+  // (academic-import, academic-resolve-import). `source` records where
+  // the metadata came from (S1: the record names its source). Returns
+  // { reference, duplicate } — on a duplicate the reference is the
+  // record already in the library and nothing new is filed (S3, F8).
+  function importWorkToLibrary(s, ctx, w, tags) {
+    const title = rfClean(w?.title, 400);
+    if (!title) return null;
+    const list = rfListB(s.references, rfAid(ctx));
+    const dup = findDuplicateRef(list, { doi: w.doi, title, year: w.year });
+    if (dup) return { reference: dup, duplicate: true };
     const authors = Array.isArray(w.authors) ? w.authors.join(", ") : rfClean(w.authors, 400);
     const ref = {
       id: rfId("ref"), title,
@@ -1382,15 +1857,313 @@ export default function registerResearchActions(registerLensAction) {
       doi: rfClean(w.doi, 120) || null,
       url: rfClean(w.url || w.openAccessUrl, 500) || null,
       abstract: rfClean(w.abstract, 4000) || null,
-      tags: normTags(params.tags),
+      source: rfClean(w.source, 40).toLowerCase() || null,
+      tags: normTags(tags),
       status: "to_read",
       relatedIds: [],
       citationCount: Number.isFinite(Number(w.citationCount)) ? Number(w.citationCount) : null,
       createdAt: rfNow(),
     };
-    rfListB(s.references, rfAid(ctx)).push(ref);
+    list.push(ref);
     saveResearchState();
-    return { ok: true, result: { reference: ref } };
+    return { reference: ref, duplicate: false };
+  }
+
+  registerLensAction("research", "academic-import", (ctx, _a, params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const w = params.work || params;
+    if (!rfClean(w?.title, 400)) return { ok: false, error: "title required" };
+    const out = importWorkToLibrary(s, ctx, w, params.tags);
+    if (!out) return { ok: false, error: "title required" };
+    return { ok: true, result: { reference: out.reference, ...(out.duplicate ? { duplicate: true } : {}) } };
+  });
+
+  // ── Resolve an identifier (DOI / arXiv ID / paper URL) and import ───
+  // S1 (F1): until this macro the lens had no identifier resolution
+  // anywhere — every scholarly macro was keyword-search-only, and a DOI
+  // typed into CrossRef search was treated as keywords. Crossref's
+  // single-work endpoint is tried first; OpenAlex answers when Crossref
+  // has no record. Unknown identifier → honest 'not_found', no record.
+  const SCHOLARLY_UA = "ConcordOS/5.0 (+https://concord-os.org; mailto:hello@concord-os.org)";
+
+  // Parse the identifier forms S1 covers. Arbitrary publisher URLs are
+  // NOT resolvable without fetch-and-scrape and return null here, so
+  // the caller can say so honestly instead of guessing.
+  function parseScholarlyIdentifier(raw) {
+    let v = String(raw || "").trim();
+    if (!v) return null;
+    v = v.replace(/^doi:\s*/i, "");
+    const arxivUrl = v.match(/^https?:\/\/(?:www\.)?arxiv\.org\/(?:abs|pdf)\/([0-9]{4}\.[0-9]{4,5}(?:v\d+)?|[a-z-]+\/\d{7}(?:v\d+)?)(?:\.pdf)?\/?$/i);
+    if (arxivUrl) return { kind: "arxiv", id: arxivUrl[1] };
+    const doiUrl = v.match(/^https?:\/\/(?:dx\.)?doi\.org\/(10\.\d{4,9}\/\S+)$/i);
+    if (doiUrl) return { kind: "doi", doi: doiUrl[1].replace(/[).,;]+$/, "") };
+    if (/^10\.\d{4,9}\/\S+$/.test(v)) return { kind: "doi", doi: v.replace(/[).,;]+$/, "") };
+    if (/^(?:arxiv:)?([0-9]{4}\.[0-9]{4,5}(?:v\d+)?)$/i.test(v)) return { kind: "arxiv", id: v.replace(/^arxiv:/i, "") };
+    if (/^[a-z-]+\/\d{7}(?:v\d+)?$/i.test(v)) return { kind: "arxiv", id: v };
+    return null;
+  }
+
+  // Crossref GET /works/{doi} returns one `message` object (not items[])
+  // with the same fields live_crossref maps for its list. Local mapper —
+  // scholarly-apis.js serves the Paper lens too and stays untouched.
+  function mapCrossrefWorkMessage(msg) {
+    if (!msg || typeof msg !== "object") return null;
+    const abstract = typeof msg.abstract === "string"
+      ? msg.abstract.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 4000) || null
+      : null;
+    return {
+      id: msg.URL || (msg.DOI ? `https://doi.org/${msg.DOI}` : null),
+      title: (msg.title || [])[0] || null,
+      authors: (msg.author || []).slice(0, 50).map((a) =>
+        [a.given, a.family].filter(Boolean).join(" ") || a.name || "Unknown"),
+      year: msg["published-print"]?.["date-parts"]?.[0]?.[0]
+        || msg["published-online"]?.["date-parts"]?.[0]?.[0]
+        || msg.issued?.["date-parts"]?.[0]?.[0] || null,
+      venue: (msg["container-title"] || [])[0] || null,
+      doi: msg.DOI || null,
+      citationCount: typeof msg["is-referenced-by-count"] === "number" ? msg["is-referenced-by-count"] : null,
+      openAccessUrl: (msg.link || []).find((l) => /pdf/i.test(l?.["content-type"] || ""))?.URL || null,
+      url: msg.URL || (msg.DOI ? `https://doi.org/${msg.DOI}` : null),
+      abstract,
+      source: "crossref",
+    };
+  }
+
+  // Both resolvers return null on a definitive miss (HTTP 404, or a
+  // payload with no work in it) and throw on transport/upstream
+  // failure — the caller only reports 'not_found' when at least one
+  // source actually answered.
+  async function fetchCrossrefWork(doi) {
+    try {
+      const data = await cachedFetchJson(
+        `https://api.crossref.org/works/${encodeURIComponent(doi)}`,
+        { ttlMs: 60 * 60 * 1000, timeoutMs: 9000, opts: { headers: { "User-Agent": SCHOLARLY_UA } } },
+      );
+      return mapCrossrefWorkMessage(data?.message);
+    } catch (e) {
+      if (/HTTP 404/.test(String(e?.message || e))) return null;
+      throw e;
+    }
+  }
+
+  async function fetchOpenAlexWorkByDoi(doi) {
+    const mailto = process.env.OPENALEX_MAILTO || "hello@concord-os.org";
+    let data;
+    try {
+      data = await cachedFetchJson(
+        `https://api.openalex.org/works/doi:${encodeURIComponent(doi)}?mailto=${encodeURIComponent(mailto)}`,
+        { ttlMs: 60 * 60 * 1000, timeoutMs: 9000 },
+      );
+    } catch (e) {
+      if (/HTTP 404/.test(String(e?.message || e))) return null;
+      throw e;
+    }
+    if (!data || typeof data !== "object" || (!data.id && !data.display_name)) return null;
+    return mapOpenAlexWork(data);
+  }
+
+  async function fetchArxivWork(id) {
+    const xml = await (await fetch(
+      `http://export.arxiv.org/api/query?id_list=${encodeURIComponent(id)}`,
+      { signal: AbortSignal.timeout(9000) },
+    )).text();
+    return mapArxivWork(xml)[0] || null;
+  }
+
+  registerLensAction("research", "academic-resolve-import", async (ctx, _a, params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const raw = String(params.identifier || params.query || "").trim();
+    if (!raw) return { ok: false, error: "identifier required" };
+    const parsed = parseScholarlyIdentifier(raw);
+    if (!parsed) {
+      return { ok: false, error: "unsupported_identifier",
+        message: "That doesn't look like a DOI, an arXiv ID, or a doi.org / arxiv.org link — those are the identifiers this library can resolve." };
+    }
+    let work = null;
+    let hardFailures = 0;
+    let sourcesTried = 0;
+    if (parsed.kind === "arxiv") {
+      sourcesTried = 1;
+      try { work = await fetchArxivWork(parsed.id); }
+      catch { hardFailures = 1; }
+    } else {
+      sourcesTried = 2;
+      try { work = await fetchCrossrefWork(parsed.doi); }
+      catch { hardFailures += 1; }
+      if (!work) {
+        try { work = await fetchOpenAlexWorkByDoi(parsed.doi); }
+        catch { hardFailures += 1; }
+      }
+    }
+    if (!work) {
+      if (hardFailures >= sourcesTried) {
+        return { ok: false, error: "resolve failed: scholarly APIs unreachable" };
+      }
+      return { ok: false, error: "not_found",
+        message: parsed.kind === "arxiv"
+          ? "No paper found for that arXiv ID."
+          : "No reference found for that identifier in Crossref or OpenAlex." };
+    }
+    if (!rfClean(work.title, 400)) {
+      return { ok: false, error: "not_found",
+        message: "The identifier resolved but carries no title metadata to file." };
+    }
+    // preview: resolve-only (the CrossRef panel's DOI lookup shows the
+    // exact work first; filing happens on the user's explicit import).
+    if (params.preview) {
+      return { ok: true, result: { reference: null, work, source: work.source || null } };
+    }
+    const out = importWorkToLibrary(s, ctx, work, params.tags);
+    if (!out) return { ok: false, error: "title required" };
+    return { ok: true, result: { reference: out.reference, work, source: work.source || null, ...(out.duplicate ? { duplicate: true } : {}) } };
+  });
+
+  // ── CrossRef browse search with canonical preference (S8, F9) ──────
+  // The shared live_crossref handler (scholarly-apis.js — untouched; it
+  // also serves the Paper lens) runs Crossref's generic `query=` over a
+  // shallow page and presents Crossref's order uncritically. For a
+  // title search that buries the paper being looked for: live-verified
+  // 2026-10-29, "attention is all you need" via `query=` returns
+  // derivative works and a swarm of near-identical clone deposits
+  // (Crossref member 54718, "Shenzhen Medical Academy of Research and
+  // Translation", DOIs under 10.65215 copying the real author list,
+  // deposited 2025) ahead of any record of the actual paper. This
+  // research-domain macro therefore:
+  //   • searches a DEEP pool via query.title (Crossref's title-weighted
+  //     parameter) so the ranking below has something to work with;
+  //   • collapses duplicate deposits of the same work (same normalised
+  //     title + first-author family) into their most complete record,
+  //     counting what was collapsed onto the record itself;
+  //   • ranks canonical-first: exact-title matches, then records whose
+  //     title covers every query term, then the rest — each group by
+  //     metadata completeness, citations, Crossref's own score.
+  // Honest limit, also live-verified: for some papers Crossref holds
+  // NO canonical record at all — "Attention Is All You Need"'s
+  // registration is a DataCite DOI (10.48550/arXiv.1706.03762 → 404 at
+  // Crossref), so there the surface collapses the clone swarm to one
+  // representative and says so on the record; it cannot mint the
+  // canonical record Crossref doesn't hold. Discover/OpenAlex remains
+  // the surface that ranks the true record first.
+  function mapCrossrefBrowseWork(w) {
+    if (!w || typeof w !== "object") return null;
+    return {
+      doi: w.DOI || null,
+      title: (w.title || [])[0] || null,
+      authors: (w.author || []).slice(0, 8).map((a) => ({
+        name: [a.given, a.family].filter(Boolean).join(" ") || a.name || "Unknown",
+        orcid: a.ORCID || null,
+      })),
+      publishedYear: w["published-print"]?.["date-parts"]?.[0]?.[0]
+        || w["published-online"]?.["date-parts"]?.[0]?.[0] || null,
+      containerTitle: (w["container-title"] || [])[0] || null,
+      publisher: w.publisher || null,
+      type: w.type || null,
+      subjects: (w.subject || []).slice(0, 6),
+      citationCount: typeof w["is-referenced-by-count"] === "number" ? w["is-referenced-by-count"] : null,
+      url: w.URL || (w.DOI ? `https://doi.org/${w.DOI}` : null),
+      crossrefScore: typeof w.score === "number" ? w.score : null,
+    };
+  }
+
+  function crossrefCompleteness(w) {
+    let n = 0;
+    if (w.authors.length) n += 1;
+    if (w.publishedYear) n += 1;
+    if (w.containerTitle) n += 1;
+    if (w.publisher) n += 1;
+    if (w.citationCount != null) n += 1;
+    if (w.subjects.length) n += 1;
+    if (w.type) n += 1;
+    return n;
+  }
+
+  // The more trustworthy representative of a duplicate group / the
+  // higher rank within a title group: completeness, then citations,
+  // then Crossref's own relevance score.
+  function crossrefWorkBeats(a, b) {
+    const ca = crossrefCompleteness(a);
+    const cb = crossrefCompleteness(b);
+    if (ca !== cb) return ca > cb;
+    const na = a.citationCount ?? -1;
+    const nb = b.citationCount ?? -1;
+    if (na !== nb) return na > nb;
+    return (a.crossrefScore ?? -1) > (b.crossrefScore ?? -1);
+  }
+
+  function rankCrossrefWorks(items, query, limit) {
+    const squash = (v) => String(v || "").toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+    const qSquash = squash(query);
+    const qTerms = qSquash.split(" ").filter(Boolean);
+    // Collapse duplicate deposits of the same work into one record.
+    const groups = new Map();
+    for (const w of items) {
+      if (!w || !w.doi) continue;
+      const family = squash(w.authors[0]?.name).split(" ").pop() || "";
+      // Untitled records never group with anything but themselves.
+      const key = w.title ? `${squash(w.title)}|${family}` : `doi:${normDoiKey(w.doi)}`;
+      const cur = groups.get(key);
+      if (!cur) groups.set(key, { rep: w, count: 1 });
+      else {
+        cur.count += 1;
+        if (crossrefWorkBeats(w, cur.rep)) cur.rep = w;
+      }
+    }
+    const works = [...groups.values()].map(({ rep, count }) => {
+      const t = squash(rep.title);
+      const tTerms = t.split(" ").filter(Boolean);
+      return {
+        ...rep,
+        exactTitleMatch: qSquash.length > 0 && t === qSquash,
+        titleCoversQuery: qTerms.length > 1 && qTerms.every((term) => tTerms.includes(term)),
+        duplicatesCollapsed: count - 1,
+        metadataComplete: !!(rep.authors.length && rep.publishedYear && rep.containerTitle),
+      };
+    });
+    const groupOf = (w) => (w.exactTitleMatch ? 0 : w.titleCoversQuery ? 1 : 2);
+    works.sort((a, b) => {
+      const g = groupOf(a) - groupOf(b);
+      if (g) return g;
+      // Within a title group, a record that absorbed duplicate deposits
+      // outranks a same-titled record nobody re-deposited: the swarm
+      // copies the work the title actually refers to, so the deposit
+      // count is evidence this record IS that work (live case: the
+      // Attention clone representative vs a complete but different
+      // handbook chapter sharing the exact title).
+      const d = b.duplicatesCollapsed - a.duplicatesCollapsed;
+      if (d) return d;
+      if (crossrefWorkBeats(a, b)) return -1;
+      if (crossrefWorkBeats(b, a)) return 1;
+      return 0;
+    });
+    const collapsedCount = works.reduce((n, w) => n + w.duplicatesCollapsed, 0);
+    return { works: works.slice(0, limit), collapsedCount };
+  }
+
+  registerLensAction("research", "crossref-search", async (_ctx, _a, params = {}) => {
+    const query = String(params.query || "").trim();
+    if (!query) return { ok: false, error: "query required" };
+    if (query.length > 300) return { ok: false, error: "query too long" };
+    const limit = Math.min(Math.max(Number(params.limit) || 15, 1), 25);
+    const pool = 50;
+    const select = "DOI,title,author,published-print,published-online,container-title,publisher,type,subject,is-referenced-by-count,URL,score";
+    const url = `https://api.crossref.org/works?query.title=${encodeURIComponent(query)}&rows=${pool}&sort=relevance&select=${select}`;
+    let data;
+    try {
+      data = await cachedFetchJson(url, {
+        ttlMs: 10 * 60 * 1000, timeoutMs: 9000,
+        opts: { headers: { "User-Agent": SCHOLARLY_UA } },
+      });
+    } catch (e) {
+      return { ok: false, error: `crossref search failed: ${String(e?.message || e)}` };
+    }
+    const items = (data?.message?.items || []).map(mapCrossrefBrowseWork).filter(Boolean);
+    const { works, collapsedCount } = rankCrossrefWorks(items, query, limit);
+    return { ok: true, result: {
+      source: "CrossRef", query,
+      total: data?.message?.["total-results"] || items.length,
+      collapsedCount, works,
+    } };
   });
 
   // ── LLM literature review — comparison table across many papers ─────
@@ -1588,7 +2361,7 @@ ${corpus}`;
     try {
       const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = rfAid(ctx);
-      const style = ["apa", "mla", "chicago", "bibtex"].includes(String(params.style).toLowerCase())
+      const style = CITATION_STYLE_NAMES.includes(String(params.style).toLowerCase())
         ? String(params.style).toLowerCase() : "apa";
       let refs;
       if (params.collectionId) {
@@ -1618,43 +2391,46 @@ ${corpus}`;
     }
   });
 
+  // S5 (F3): the three library-analysis cores live outside their macro
+  // handlers so the analyze-library job runs the SAME code the macros
+  // expose — one implementation, two callers, no drift.
+  function evaluateSourceResult(s, userId, id) {
+    const ref = findRef(s, userId, id);
+    if (!ref) return { ok: false, error: "reference not found" };
+    const signals = [];
+    if (ref.doi) signals.push("has_doi");
+    if (ref.journal) signals.push("has_venue");
+    if (ref.year) signals.push("has_year");
+    if (ref.abstract) signals.push("has_abstract");
+    if (ref.authors) signals.push("has_authors");
+    const credibility =
+      signals.length >= 4 ? "high" : signals.length >= 2 ? "moderate" : "low";
+    return {
+      ok: true,
+      result: {
+        referenceId: ref.id,
+        title: ref.title,
+        credibility,
+        signals,
+        status: ref.status,
+        source: "library",
+      },
+    };
+  }
+
   registerLensAction("research", "evaluate-source", (ctx, _a, params = {}) => {
     try {
       const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const id = params.id || params.referenceId || params.sourceId;
       if (!id) return { ok: false, error: "reference id required" };
-      const ref = findRef(s, rfAid(ctx), id);
-      if (!ref) return { ok: false, error: "reference not found" };
-      const signals = [];
-      if (ref.doi) signals.push("has_doi");
-      if (ref.journal) signals.push("has_venue");
-      if (ref.year) signals.push("has_year");
-      if (ref.abstract) signals.push("has_abstract");
-      if (ref.authors) signals.push("has_authors");
-      const credibility =
-        signals.length >= 4 ? "high" : signals.length >= 2 ? "moderate" : "low";
-      return {
-        ok: true,
-        result: {
-          referenceId: ref.id,
-          title: ref.title,
-          credibility,
-          signals,
-          status: ref.status,
-          source: "library",
-        },
-      };
+      return evaluateSourceResult(s, rfAid(ctx), id);
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
   });
 
-  registerLensAction("research", "find-gaps", (ctx, _a, params = {}) => {
-    try {
-      const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
-      const userId = rfAid(ctx);
+  function findGapsResult(s, userId, topic) {
       const refs = [...(s.references.get(userId) || [])];
-      const topic = rfClean(params.topic || params.query || "", 200);
       if (refs.length === 0 && !topic) {
         return { ok: false, error: "references or topic required" };
       }
@@ -1692,17 +2468,20 @@ ${corpus}`;
           source: "library",
         },
       };
+  }
+
+  registerLensAction("research", "find-gaps", (ctx, _a, params = {}) => {
+    try {
+      const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const topic = rfClean(params.topic || params.query || "", 200);
+      return findGapsResult(s, rfAid(ctx), topic);
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
   });
 
-  registerLensAction("research", "match-questions", (ctx, _a, params = {}) => {
-    try {
-      const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
-      const question = rfClean(params.question || params.query || params.text || "", 500);
+  function matchQuestionsResult(s, userId, question) {
       if (!question) return { ok: false, error: "question required" };
-      const userId = rfAid(ctx);
       const refs = [...(s.references.get(userId) || [])];
       if (refs.length === 0) {
         return { ok: false, error: "references required", reason: "no_references" };
@@ -1732,6 +2511,129 @@ ${corpus}`;
           source: "library",
         },
       };
+  }
+
+  registerLensAction("research", "match-questions", (ctx, _a, params = {}) => {
+    try {
+      const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const question = rfClean(params.question || params.query || params.text || "", 500);
+      return matchQuestionsResult(s, rfAid(ctx), question);
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
+
+  // ── S5 (F3) — "Analyze library": a user-triggered background job over
+  // the three library-analysis cores above. Before this slice the lens
+  // had NO library analysis at all: "Analyze" ran `generate` (a question
+  // template that never reads the library) and Deep Research scans DTUs.
+  // The job follows the house pattern (Deep Research's pending state):
+  // analyze-library files a job record and returns immediately; the work
+  // completes off the request path; the surface polls analysis-get.
+  // Every output names the items it read — itemsRead lists each
+  // reference, evaluations carry titles, gap entries resolve their
+  // reference ids to titles, matches carry titles. An analysis that
+  // names none of its inputs fails §7 S5 by definition.
+  function runLibraryAnalysis(s, userId, job) {
+    try {
+      const refs = [...(s.references.get(userId) || [])];
+      const titleOf = (id) => (findRef(s, userId, id) || {}).title || id;
+      const evaluations = refs.map((r) => {
+        const out = evaluateSourceResult(s, userId, r.id);
+        return out.ok ? out.result : { referenceId: r.id, title: r.title, error: out.error };
+      });
+      const gapsOut = findGapsResult(s, userId, job.question || "");
+      const gaps = gapsOut.ok ? gapsOut.result : null;
+      if (gaps) {
+        for (const g of gaps.gaps || []) {
+          if (g.kind === "missing_abstract" && Array.isArray(g.referenceIds)) {
+            g.references = g.referenceIds.map((id) => ({ id, title: titleOf(id) }));
+          }
+        }
+      }
+      let matches = null;
+      if (job.question) {
+        const m = matchQuestionsResult(s, userId, job.question);
+        matches = m.ok ? m.result : null;
+      }
+      job.status = "complete";
+      job.completedAt = rfNow();
+      job.result = {
+        question: job.question,
+        itemsRead: refs.map((r) => ({ id: r.id, title: r.title, year: r.year ?? null })),
+        evaluations,
+        gaps,
+        matches,
+        source: "library",
+      };
+    } catch (e) {
+      job.status = "failed";
+      job.error = String(e?.message || e);
+      job.completedAt = rfNow();
+    }
+    saveResearchState();
+  }
+
+  registerLensAction("research", "analyze-library", (ctx, _a, params = {}) => {
+    try {
+      const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = rfAid(ctx);
+      const refs = s.references.get(userId) || [];
+      if (refs.length === 0) {
+        return { ok: false, error: "references required", reason: "no_references" };
+      }
+      const job = {
+        id: rfId("analysis"),
+        status: "running",
+        question: rfClean(params.question || params.topic || "", 500) || null,
+        itemCount: refs.length,
+        createdAt: rfNow(),
+        completedAt: null,
+        result: null,
+        error: null,
+      };
+      const list = rfListB(s.analyses, userId);
+      list.unshift(job);
+      while (list.length > 10) list.pop();
+      saveResearchState();
+      // Background completion: the caller gets the pending job now and
+      // polls analysis-get — the same pending-state contract Deep
+      // Research's surface uses.
+      setTimeout(() => { try { runLibraryAnalysis(s, userId, job); } catch (_e) { /* recorded on the job */ } }, 0);
+      return {
+        ok: true,
+        result: {
+          job: {
+            id: job.id, status: job.status, question: job.question,
+            itemCount: job.itemCount, createdAt: job.createdAt,
+          },
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("research", "analysis-get", (ctx, _a, params = {}) => {
+    try {
+      const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const list = (s.analyses instanceof Map && s.analyses.get(rfAid(ctx))) || [];
+      const job = list.find((j) => j.id === String(params.id || ""));
+      if (!job) return { ok: false, error: "analysis not found" };
+      return { ok: true, result: { job } };
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("research", "analysis-list", (ctx, _a, _params = {}) => {
+    try {
+      const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const list = ((s.analyses instanceof Map && s.analyses.get(rfAid(ctx))) || []).map((j) => ({
+        id: j.id, status: j.status, question: j.question,
+        itemCount: j.itemCount, createdAt: j.createdAt, completedAt: j.completedAt,
+      }));
+      return { ok: true, result: { analyses: list, count: list.length } };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }

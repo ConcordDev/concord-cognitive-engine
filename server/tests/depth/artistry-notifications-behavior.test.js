@@ -113,15 +113,13 @@ describe("artistry.commentAdd -> notification", () => {
     assert.equal(rawNotifs("artist_a").length, 0);
   });
 
-  it("commenting on an unknown/nonexistent projectId is a silent no-op for notifications (never throws)", () => {
+  it("commenting on an unknown/nonexistent projectId is refused, stores nothing and notifies nobody", () => {
+    // commentAdd validates the project exists (findProjectOwner) and answers "project not found"; an earlier
+    // version persisted the orphan comment. Nothing is stored and nothing throws.
     const r = call("commentAdd", ctxB, { projectId: "does-not-exist", body: "hi" });
-    assert.equal(r.ok, true); // pre-existing behavior: comments aren't validated against project existence
-    // The comment is genuinely persisted (commentAdd doesn't validate project
-    // existence) — assert the real result fields, not just ok===true.
-    assert.equal(r.result.commentCount, 1);
-    assert.equal(r.result.comment.projectId, "does-not-exist");
-    // No owner could be resolved (findProjectOwner scans real projects and
-    // finds none), so nobody gets notified — and nothing throws.
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "project not found");
+    assert.equal(r.result, undefined);
     assert.equal(rawNotifs("artist_a").length, 0);
   });
 });

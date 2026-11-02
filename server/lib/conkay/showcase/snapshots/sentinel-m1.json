@@ -361,13 +361,233 @@
    "margins": [],
    "failures": [],
    "warnings": []
+  },
+  {
+   "runId": "part.uniform-corrosion@foot-l",
+   "solver": "part.uniform-corrosion",
+   "target": "foot-l",
+   "status": "NOT_COMPUTED",
+   "method": null,
+   "reason": "foot-l declares no props.environment (one of indoor-dry, outdoor-urban, outdoor-rural, marine-atmospheric, marine-submerged, chemical): long-term exposure cannot be assessed without it",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "part.uniform-corrosion@foot-r",
+   "solver": "part.uniform-corrosion",
+   "target": "foot-r",
+   "status": "NOT_COMPUTED",
+   "method": null,
+   "reason": "foot-r declares no props.environment (one of indoor-dry, outdoor-urban, outdoor-rural, marine-atmospheric, marine-submerged, chemical): long-term exposure cannot be assessed without it",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "part.uniform-corrosion@mount-ankle-la",
+   "solver": "part.uniform-corrosion",
+   "target": "mount-ankle-la",
+   "status": "NOT_COMPUTED",
+   "method": null,
+   "reason": "mount-ankle-la declares no props.environment (one of indoor-dry, outdoor-urban, outdoor-rural, marine-atmospheric, marine-submerged, chemical): long-term exposure cannot be assessed without it",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "part.uniform-corrosion@mount-ankle-lb",
+   "solver": "part.uniform-corrosion",
+   "target": "mount-ankle-lb",
+   "status": "NOT_COMPUTED",
+   "method": null,
+   "reason": "mount-ankle-lb declares no props.environment (one of indoor-dry, outdoor-urban, outdoor-rural, marine-atmospheric, marine-submerged, chemical): long-term exposure cannot be assessed without it",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "part.uniform-corrosion@mount-knee-la",
+   "solver": "part.uniform-corrosion",
+   "target": "mount-knee-la",
+   "status": "NOT_COMPUTED",
+   "method": null,
+   "reason": "mount-knee-la declares no props.environment (one of indoor-dry, outdoor-urban, outdoor-rural, marine-atmospheric, marine-submerged, chemical): long-term exposure cannot be assessed without it",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "part.uniform-corrosion@mount-knee-lb",
+   "solver": "part.uniform-corrosion",
+   "target": "mount-knee-lb",
+   "status": "NOT_COMPUTED",
+   "method": null,
+   "reason": "mount-knee-lb declares no props.environment (one of indoor-dry, outdoor-urban, outdoor-rural, marine-atmospheric, marine-submerged, chemical): long-term exposure cannot be assessed without it",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "part.uniform-corrosion@mount-hip-la",
+   "solver": "part.uniform-corrosion",
+   "target": "mount-hip-la",
+   "status": "NOT_COMPUTED",
+   "method": null,
+   "reason": "mount-hip-la declares no props.environment (one of indoor-dry, outdoor-urban, outdoor-rural, marine-atmospheric, marine-submerged, chemical): long-term exposure cannot be assessed without it",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "part.uniform-corrosion@mount-hip-lb",
+   "solver": "part.uniform-corrosion",
+   "target": "mount-hip-lb",
+   "status": "NOT_COMPUTED",
+   "method": null,
+   "reason": "mount-hip-lb declares no props.environment (one of indoor-dry, outdoor-urban, outdoor-rural, marine-atmospheric, marine-submerged, chemical): long-term exposure cannot be assessed without it",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "part.uniform-corrosion@mount-ankle-ra",
+   "solver": "part.uniform-corrosion",
+   "target": "mount-ankle-ra",
+   "status": "NOT_COMPUTED",
+   "method": null,
+   "reason": "mount-ankle-ra declares no props.environment (one of indoor-dry, outdoor-urban, outdoor-rural, marine-atmospheric, marine-submerged, chemical): long-term exposure cannot be assessed without it",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "part.uniform-corrosion@mount-ankle-rb",
+   "solver": "part.uniform-corrosion",
+   "target": "mount-ankle-rb",
+   "status": "NOT_COMPUTED",
+   "method": null,
+   "reason": "mount-ankle-rb declares no props.environment (one of indoor-dry, outdoor-urban, outdoor-rural, marine-atmospheric, marine-submerged, chemical): long-term exposure cannot be assessed without it",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "part.uniform-corrosion@mount-knee-ra",
+   "solver": "part.uniform-corrosion",
+   "target": "mount-knee-ra",
+   "status": "NOT_COMPUTED",
+   "method": null,
+   "reason": "mount-knee-ra declares no props.environment (one of indoor-dry, outdoor-urban, outdoor-rural, marine-atmospheric, marine-submerged, chemical): long-term exposure cannot be assessed without it",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "part.uniform-corrosion@mount-knee-rb",
+   "solver": "part.uniform-corrosion",
+   "target": "mount-knee-rb",
+   "status": "NOT_COMPUTED",
+   "method": null,
+   "reason": "mount-knee-rb declares no props.environment (one of indoor-dry, outdoor-urban, outdoor-rural, marine-atmospheric, marine-submerged, chemical): long-term exposure cannot be assessed without it",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "part.uniform-corrosion@mount-hip-ra",
+   "solver": "part.uniform-corrosion",
+   "target": "mount-hip-ra",
+   "status": "NOT_COMPUTED",
+   "method": null,
+   "reason": "mount-hip-ra declares no props.environment (one of indoor-dry, outdoor-urban, outdoor-rural, marine-atmospheric, marine-submerged, chemical): long-term exposure cannot be assessed without it",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "part.uniform-corrosion@mount-hip-rb",
+   "solver": "part.uniform-corrosion",
+   "target": "mount-hip-rb",
+   "status": "NOT_COMPUTED",
+   "method": null,
+   "reason": "mount-hip-rb declares no props.environment (one of indoor-dry, outdoor-urban, outdoor-rural, marine-atmospheric, marine-submerged, chemical): long-term exposure cannot be assessed without it",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "actuator.fatigue-screening@ankle-l",
+   "solver": "actuator.fatigue-screening",
+   "target": "ankle-l",
+   "status": "NOT_COMPUTED",
+   "method": null,
+   "reason": "ankle-l declares no props.fatigue.stressRangePa: fatigue screening needs the cyclic stress range at the part",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "actuator.fatigue-screening@knee-l",
+   "solver": "actuator.fatigue-screening",
+   "target": "knee-l",
+   "status": "NOT_COMPUTED",
+   "method": null,
+   "reason": "knee-l declares no props.fatigue.stressRangePa: fatigue screening needs the cyclic stress range at the part",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "actuator.fatigue-screening@hip-l",
+   "solver": "actuator.fatigue-screening",
+   "target": "hip-l",
+   "status": "NOT_COMPUTED",
+   "method": null,
+   "reason": "hip-l declares no props.fatigue.stressRangePa: fatigue screening needs the cyclic stress range at the part",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "actuator.fatigue-screening@ankle-r",
+   "solver": "actuator.fatigue-screening",
+   "target": "ankle-r",
+   "status": "NOT_COMPUTED",
+   "method": null,
+   "reason": "ankle-r declares no props.fatigue.stressRangePa: fatigue screening needs the cyclic stress range at the part",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "actuator.fatigue-screening@knee-r",
+   "solver": "actuator.fatigue-screening",
+   "target": "knee-r",
+   "status": "NOT_COMPUTED",
+   "method": null,
+   "reason": "knee-r declares no props.fatigue.stressRangePa: fatigue screening needs the cyclic stress range at the part",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "actuator.fatigue-screening@hip-r",
+   "solver": "actuator.fatigue-screening",
+   "target": "hip-r",
+   "status": "NOT_COMPUTED",
+   "method": null,
+   "reason": "hip-r declares no props.fatigue.stressRangePa: fatigue screening needs the cyclic stress range at the part",
+   "margins": [],
+   "failures": [],
+   "warnings": []
   }
  ],
  "checkCounts": {
   "PASS": 9,
   "WARN": 6,
   "FAIL": 0,
-  "NOT_COMPUTED": 0,
+  "NOT_COMPUTED": 20,
   "ERROR": 0
  },
  "perPartRuns": {
@@ -1415,5 +1635,5 @@
    "sha256": "ee5a68981e923cccd2ea17ce1f06df6e891cb526df66d5a80336b31d6311c55d"
   }
  ],
- "snapshotSha256": "eb2deab8d3d4bb0bdb0d7c25fb56cc03903d18d00fba7785e2964c2b9f5f079e"
+ "snapshotSha256": "0f7b232ef0101ccb60460bb2722d87f3cb816b76b9cfcc6c20e8e178c429666c"
 }

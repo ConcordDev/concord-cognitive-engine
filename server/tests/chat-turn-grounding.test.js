@@ -169,7 +169,8 @@ describe("chat.respond wiring (server.js)", () => {
   });
   it("filters carried-over DTUs, anchors the current turn and guards DTU citations", () => {
     assert.match(impl, /filterCarryOverDtus\(_extraUnifiedDtus, prompt\)/);
-    assert.match(impl, /_lensHintSuffix \+ \(_identityContextNote \? \("\\n\\n" \+ _identityContextNote\) : ""\) \+ _currentTurnAnchor/);
+    // The current-turn anchor stays LAST in the system prompt; the analytics grounding block now sits before it.
+    assert.match(impl, /_lensHintSuffix \+ \(_identityContextNote \? \("\\n\\n" \+ _identityContextNote\) : ""\) \+ \(_analyticsGrounding \? \("\\n\\n" \+ _analyticsGrounding\) : ""\) \+ _currentTurnAnchor/);
     assert.match(impl, /guardDtuCitations\(finalReply, _retrievedDtus, \{ prompt \}\)/);
   });
   it("chat_agent.do forwards the route hint as a system addendum", () => {

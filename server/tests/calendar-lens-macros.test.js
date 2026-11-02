@@ -37,6 +37,7 @@
 import { describe, it, before, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import registerCalendarActions from "../domains/calendar.js";
+import { __setPublicFetchTestTransport } from "../lib/public-fetch.js";
 
 const ACTIONS = new Map();
 function registerLensAction(domain, name, fn) {
@@ -336,7 +337,14 @@ describe("calendar — appointment booking round-trip", () => {
   it("books a slot, blocks the same slot, then cancels it", () => {
     const sched = call("appointment-schedule-create", ctxA, { title: "Intro calls", durationMin: 30, startHour: 9, endHour: 11, weekdays: [1, 2, 3, 4, 5] });
     const id = sched.result.schedule.id;
-    const slot = "2026-06-01T09:00:00"; // 2026-06-01 is a Monday (weekday 1)
+    // A Monday (weekday 1) comfortably in the future: appointment-book refuses past slots, so a
+    // hard-coded date goes stale (2026-06-01 did).
+    const slot = (() => {
+      const d = new Date(); d.setHours(9, 0, 0, 0);
+      d.setDate(d.getDate() + 14); while (d.getDay() !== 1) d.setDate(d.getDate() + 1);
+      const p2 = (n) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T09:00:00`;
+    })();
     const b1 = call("appointment-book", ctxA, { scheduleId: id, slotStart: slot, bookerName: "Dana" });
     assert.equal(b1.ok, true);
     assert.equal(b1.result.booking.bookerName, "Dana");
@@ -364,6 +372,10 @@ describe("calendar — appointment booking round-trip", () => {
 // assertion below exercises a branch that returns BEFORE the connector client's
 // connectorFetch is ever reached.
 describe("calendar — connector macros: network-free validation-rejection", () => {
+  // accounts-connect validates the feed (fetch + VCALENDAR check) before it connects, so the cases that
+  // need a connected account stub the feed; nothing here touches the network.
+  beforeEach(() => { __setPublicFetchTestTransport(async () => ({ ok: true, status: 200, text: async () => "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR" })); });
+  afterEach(() => { __setPublicFetchTestTransport(null); });
   it("accounts-connect-google returns the OAuth authorize URL (deterministic, no network)", () => {
     const r = call("accounts-connect-google", ctxA, { redirect: "/lenses/calendar" });
     assert.equal(r.ok, true);
@@ -379,7 +391,7 @@ describe("calendar — connector macros: network-free validation-rejection", () 
   });
 
   it("accounts-push-event refuses to push on a pull-only account (no network)", async () => {
-    const acct = call("accounts-connect", ctxA, { label: "ReadOnly", icsUrl: "https://example.com/feed.ics", direction: "pull" });
+    const acct = await call("accounts-connect", ctxA, { label: "ReadOnly", icsUrl: "https://example.com/feed.ics", direction: "pull" });
     const r = await call("accounts-push-event", { ...ctxA, db: {} }, { accountId: acct.result.account.id, event: { title: "x" } });
     assert.equal(r.ok, false);
     assert.equal(r.reason, "direction_pull_no_push");
@@ -387,7 +399,7 @@ describe("calendar — connector macros: network-free validation-rejection", () 
   });
 
   it("accounts-push-event rejects a non-google provider before any connector call", async () => {
-    const acct = call("accounts-connect", ctxA, { label: "Outlook", icsUrl: "https://example.com/o.ics", provider: "outlook", direction: "two-way" });
+    const acct = await call("accounts-connect", ctxA, { label: "Outlook", icsUrl: "https://example.com/o.ics", provider: "outlook", direction: "two-way" });
     const r = await call("accounts-push-event", { ...ctxA, db: {} }, { accountId: acct.result.account.id, event: { title: "x" } });
     assert.equal(r.ok, false);
     assert.equal(r.reason, "push_unsupported_provider");
@@ -395,7 +407,7 @@ describe("calendar — connector macros: network-free validation-rejection", () 
   });
 
   it("accounts-push-event rejects a google push with no event title before any network call", async () => {
-    const acct = call("accounts-connect", ctxA, { label: "GCal", icsUrl: "https://example.com/g.ics", provider: "google", direction: "two-way" });
+    const acct = await call("accounts-connect", ctxA, { label: "GCal", icsUrl: "https://example.com/g.ics", provider: "google", direction: "two-way" });
     const r = await call("accounts-push-event", { ...ctxA, db: {} }, { accountId: acct.result.account.id, event: {} });
     assert.equal(r.ok, false);
     assert.equal(r.error, "event.title required");
@@ -411,17 +423,17 @@ describe("calendar — connector macros: network-free validation-rejection", () 
   });
 
   it("accounts-pull-events rejects a non-google account before any connector call", async () => {
-    const acct = call("accounts-connect", ctxA, { label: "Apple", icsUrl: "https://example.com/a.ics", provider: "apple" });
+    const acct = await call("accounts-connect", ctxA, { label: "Apple", icsUrl: "https://example.com/a.ics", provider: "apple" });
     const r = await call("accounts-pull-events", { ...ctxA, db: {} }, { accountId: acct.result.account.id });
     assert.equal(r.ok, false);
     assert.equal(r.reason || r.error, "pull_unsupported_provider");
   });
 
-  it("accounts-connect itself rejects a non-https icsUrl (SSRF-shaped guard)", () => {
-    const bad = call("accounts-connect", ctxA, { label: "x", icsUrl: "file:///etc/passwd" });
+  it("accounts-connect itself rejects a non-https icsUrl (SSRF-shaped guard)", async () => {
+    const bad = await call("accounts-connect", ctxA, { label: "x", icsUrl: "file:///etc/passwd" });
     assert.equal(bad.ok, false);
     assert.match(bad.error, /icsUrl/);
-    const noLabel = call("accounts-connect", ctxA, { label: "", icsUrl: "https://ok.com/f.ics" });
+    const noLabel = await call("accounts-connect", ctxA, { label: "", icsUrl: "https://ok.com/f.ics" });
     assert.equal(noLabel.ok, false);
   });
 });

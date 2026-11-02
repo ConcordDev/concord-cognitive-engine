@@ -174,6 +174,20 @@ vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
     },
   }),
 }));
+// JS/TS runs in a browser Worker since #1707 (localExec.ts); jsdom has no Worker, so stand in for the worker
+// runner and keep driving each outcome from the same execPlan the server-exec mock used to read.
+vi.mock('@/components/code/localExec', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@/components/code/localExec')>();
+  return {
+    ...real,
+    runLocalScript: vi.fn(async () => {
+      const next = execPlan.shift() || 'ok';
+      if (next === 'throw') throw new Error('sandbox down');
+      if (next === 'unsupported') return { result: { supported: false, stderr: 'no python', exitCode: 1 }, elapsedMs: 3, timedOut: false, ranLocally: false };
+      return { result: { stdout: 'ran-ok', stderr: 'warn', exitCode: 0, supported: true }, elapsedMs: 3, timedOut: false, ranLocally: true };
+    }),
+  };
+});
 vi.mock('@/components/common/SafeCard', () => ({ SafeCard: ({ children }: { children?: React.ReactNode }) => <div>{children}</div> }));
 vi.mock('@/components/lens/LensAgentFab', () => ({ default: () => null }));
 vi.mock('@/components/code/CodeWorkbenchSection', () => ({ CodeWorkbenchSection: () => <div>workbench</div> }));
@@ -412,10 +426,10 @@ describe('CodeEditorWorkspacePanel snippet restore', () => {
     fireEvent.click(screen.getByRole('button', { name: 'vision' }));
     fireEvent.click(screen.getByTitle('New script'));
     fireEvent.click(screen.getByRole('button', { name: /Close script_/ }));
-    fireEvent.click(screen.getByTitle('Save script (persists to backend)'));
+    fireEvent.click(screen.getByTitle('Save script (persists to your library as a DTU)'));
     await waitFor(() => expect(lens.create).toHaveBeenCalled());
     lens.create.mockRejectedValueOnce(new Error('save no'));
-    fireEvent.click(screen.getByTitle('Save script (persists to backend)'));
+    fireEvent.click(screen.getByTitle('Save script (persists to your library as a DTU)'));
     fireEvent.click(screen.getByTitle('Copy to clipboard'));
     fireEvent.click(screen.getByTitle('Download file'));
     fireEvent.click(screen.getByRole('button', { name: 'publish dtu' }));
@@ -436,14 +450,16 @@ describe('CodeEditorWorkspacePanel snippet restore', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close output panel' }));
 
     publishExecStatus({ enabled: false, reason: 'Live code execution is disabled in this environment.' });
-    const disabledRun = await screen.findByRole('button', { name: 'Execution disabled' });
-    expect(disabledRun).toHaveProperty('disabled', true);
-    expect(disabledRun).toHaveAttribute('title', expect.stringMatching(/disabled/i));
-    expect(screen.queryByRole('button', { name: /^Run$/ })).toBeNull();
+    // #1707: JS/TS runs in the browser, so a server-side "execution disabled" status must NOT block it —
+    // the button stays a live Run and no server exec call is made. (The disabled label now applies only to
+    // languages the local runner does not claim.)
+    const localRunBtn = await screen.findByRole('button', { name: /^Run$/ });
+    expect(localRunBtn).toHaveProperty('disabled', false);
+    expect(screen.queryByRole('button', { name: 'Execution disabled' })).toBeNull();
     const execs = calls.filter((c) => c.action === 'exec').length;
-    fireEvent.click(disabledRun);
-    act(() => { window.dispatchEvent(new Event('concord:code-run')); });
-    cmd('run');
+    execPlan.push('ok');
+    fireEvent.click(localRunBtn);
+    await waitFor(() => expect(screen.getAllByText(/ran-ok/).length).toBeGreaterThan(0));
     expect(calls.filter((c) => c.action === 'exec').length).toBe(execs);
     publishExecStatus({ enabled: true, reason: '' });
 

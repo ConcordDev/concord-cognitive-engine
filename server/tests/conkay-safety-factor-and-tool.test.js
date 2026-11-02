@@ -126,13 +126,16 @@ describe("run_lens_action rejects unknown names with the real ones", () => {
     ["dtu.search", () => ({})],
   ]);
   const noMacro = async () => { throw new Error("macro not found"); };
+  // run_lens_action goes through the MCP execution bridge, which refuses an unauthenticated caller
+  // (lib/mcp-hermes-identity.js rejectImpersonation: "Authentication required"). An agent turn always has an actor.
+  const CTX = { actor: { id: "u-test", userId: "u-test", scopes: ["*"] } };
   // Production always has the live register() map; strict resolution needs it.
   let saved;
   before(() => { saved = globalThis._concordMACROS; globalThis._concordMACROS = new Map([["engineering", new Map([["columnBuckling", {}]])]]); });
   after(() => { globalThis._concordMACROS = saved; });
 
   it("lists valid engineering actions and points design guesses at conkay_design", async () => {
-    const r = await executeToolCall({}, noMacro, lensActions, {
+    const r = await executeToolCall(CTX, noMacro, lensActions, {
       tool: "run_lens_action", params: { domain: "engineering", action: "cantilever_bending_design", params: {} },
     });
     assert.equal(r.ok, false);
@@ -146,7 +149,7 @@ describe("run_lens_action rejects unknown names with the real ones", () => {
   });
 
   it("an unknown domain lists known domains", async () => {
-    const r = await executeToolCall({}, noMacro, lensActions, {
+    const r = await executeToolCall(CTX, noMacro, lensActions, {
       tool: "run_lens_action", params: { domain: "enginering", action: "x", params: {} },
     });
     assert.equal(r.ok, false);
@@ -154,14 +157,22 @@ describe("run_lens_action rejects unknown names with the real ones", () => {
     assert.ok(r.validDomains.includes("engineering"));
   });
 
+  it("an unauthenticated caller is refused before any lookup (the bridge needs an actor)", async () => {
+    const r = await executeToolCall({}, noMacro, lensActions, {
+      tool: "run_lens_action", params: { domain: "engineering", action: "beamCheck", params: {} },
+    });
+    assert.equal(r.ok, false);
+    assert.match(String(r.error), /Authentication required/);
+  });
+
   it("a registered action still dispatches", async () => {
     const la = new Map([["dtu.search", async () => ({ ok: true, hits: [] })]]);
-    const r = await executeToolCall({}, noMacro, la, { tool: "run_lens_action", params: { domain: "dtu", action: "search", params: {} } });
+    const r = await executeToolCall(CTX, noMacro, la, { tool: "run_lens_action", params: { domain: "dtu", action: "search", params: {} } });
     assert.equal(r.ok, true);
   });
 
   it("list_lens_actions still lists both registries' names", async () => {
-    const r = await executeToolCall({}, noMacro, lensActions, { tool: "list_lens_actions", params: { domain: "engineering" } });
+    const r = await executeToolCall(CTX, noMacro, lensActions, { tool: "list_lens_actions", params: { domain: "engineering" } });
     assert.equal(r.ok, true);
     assert.deepEqual(r.actions.map((a) => a.action).sort(), ["beamCheck", "columnBuckling", "partMesh"]);
   });

@@ -139,10 +139,10 @@ describe("repos — virtual code-host CRUD round-trips", () => {
 
     const saved = await lensRun("repos", "file-save", { params: { repoId, path: "new.ts", content: "line1\nline2\nline3", message: "add new.ts" } }, ctx);
     assert.equal(saved.result.saved, true);
-    // rpDiff("" , "line1\nline2\nline3"): empty=[""], new=3 lines.
-    // i0 differ → del+add (a=1,d=1); i1,i2 → add (a=3). So additions=3, deletions=1.
+    // Creating a file from nothing adds its 3 lines and deletes none (the diff no longer counts the phantom empty
+    // first line of a missing file as a deletion).
     assert.equal(saved.result.commit.additions, 3);
-    assert.equal(saved.result.commit.deletions, 1);
+    assert.equal(saved.result.commit.deletions, 0);
 
     const read = await lensRun("repos", "file-read", { params: { repoId, path: "new.ts" } }, ctx);
     assert.equal(read.result.content, "line1\nline2\nline3");
@@ -188,7 +188,7 @@ describe("repos — virtual code-host CRUD round-trips", () => {
     assert.ok(closed.result.issues.some((i) => i.number === number));
   });
 
-  it("pull request: approve review unblocks merge; merge advances the base branch", async () => {
+  it("pull request: the author's approve is refused (F11) and records nothing; merge still advances the base branch", async () => {
     const created = await lensRun("repos", "repo-create", { params: { name: "PRs" } }, ctx);
     const repoId = created.result.repo.id;
     await lensRun("repos", "branch-create", { params: { repoId, name: "topic" } }, ctx);
@@ -198,11 +198,17 @@ describe("repos — virtual code-host CRUD round-trips", () => {
     const pr = await lensRun("repos", "pull-create", { params: { repoId, title: "add feat", head: "topic", base: "main" } }, ctx);
     const number = pr.result.pull.number;
 
-    await lensRun("repos", "pull-review", { params: { repoId, number, verdict: "approve", body: "lgtm" } }, ctx);
+    // F11 (founder ruling 2026-10-29, forbid self-approval always): approval is a
+    // second pair of eyes, so the author's own approve is refused and no review is recorded.
+    const self = await lensRun("repos", "pull-review", { params: { repoId, number, verdict: "approve", body: "lgtm" } }, ctx);
+    assert.equal(self.result.ok, false);
+    assert.equal(self.result.error, "self_approval_forbidden");
     const detail = await lensRun("repos", "pull-detail", { params: { repoId, number } }, ctx);
-    assert.equal(detail.result.mergeable, true);
-    assert.equal(detail.result.approvals, 1);
+    assert.equal(detail.result.approvals, 0);
+    assert.equal(detail.result.reviews.length, 0);
 
+    // Merge is not approval-gated (CB-0072), so it still merges and advances the base.
+    assert.equal(detail.result.mergeable, true);
     const merged = await lensRun("repos", "pull-merge", { params: { repoId, number } }, ctx);
     assert.equal(merged.result.merged, true);
     assert.ok(merged.result.mergeCommit);
@@ -234,6 +240,8 @@ describe("repos — validation rejections", () => {
     const created = await lensRun("repos", "repo-create", { params: { name: "BlockMerge" } }, ctx);
     const repoId = created.result.repo.id;
     await lensRun("repos", "branch-create", { params: { repoId, name: "wip" } }, ctx);
+    // pull-create refuses an empty PR ("no_changes"), so put a commit on the branch first.
+    await lensRun("repos", "file-save", { params: { repoId, path: "wip.ts", content: "export const w = 1;", branch: "wip", message: "wip" } }, ctx);
     const pr = await lensRun("repos", "pull-create", { params: { repoId, title: "wip pr", head: "wip", base: "main" } }, ctx);
     const number = pr.result.pull.number;
     await lensRun("repos", "pull-review", { params: { repoId, number, verdict: "request-changes", body: "needs work" } }, ctx);

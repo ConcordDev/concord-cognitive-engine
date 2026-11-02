@@ -18,28 +18,50 @@ const SEV_ICON = { error: AlertCircle, warning: AlertTriangle, info: Info };
 const SEV_COLOR = { error: 'text-rose-400', warning: 'text-amber-400', info: 'text-sky-400' };
 
 export function ProblemsPanel({
-  projectId, onOpen,
-}: { projectId: string | null; onOpen: (path: string, line: number) => void }) {
+  projectId, onOpen, refreshNonce,
+}: {
+  projectId: string | null;
+  onOpen: (path: string, line: number) => void;
+  /** S7 (F6): bumped by the parent whenever project content is saved,
+   *  so the panel re-reads diagnostics instead of showing the scan
+   *  from when it first mounted. */
+  refreshNonce?: number;
+}) {
   const [tab, setTab] = useState<'problems' | 'todos'>('problems');
   const [problems, setProblems] = useState<Problem[]>([]);
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(false);
+  // S7: the panel must never convert a failure or a partial engine
+  // into a plausible "No problems" — those states render as themselves.
+  const [engine, setEngine] = useState<string | null>(null);
+  const [diagError, setDiagError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!projectId) { setProblems([]); setTodos([]); return; }
+    if (!projectId) { setProblems([]); setTodos([]); setEngine(null); setDiagError(null); return; }
     setLoading(true);
     try {
       const [d, t] = await Promise.all([
         lensRun({ domain: 'code', action: 'diagnostics', input: { projectId } }),
         lensRun({ domain: 'code', action: 'todo-scan', input: { projectId } }),
       ]);
-      setProblems((d.data?.result?.problems || []) as Problem[]);
+      if (d.data?.ok === false) {
+        setDiagError(d.data?.error || 'Diagnostics unavailable.');
+        setProblems([]);
+      } else {
+        setDiagError(null);
+        setProblems((d.data?.result?.problems || []) as Problem[]);
+        setEngine(typeof d.data?.result?.engine === 'string' ? d.data.result.engine : null);
+      }
       setTodos((t.data?.result?.todos || []) as Todo[]);
-    } catch (e) { console.error('[Problems] failed', e); }
+    } catch (e) {
+      console.error('[Problems] failed', e);
+      setDiagError('Diagnostics could not be read.');
+    }
     finally { setLoading(false); }
   }, [projectId]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { if (refreshNonce) void refresh(); }, [refreshNonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -62,9 +84,20 @@ export function ProblemsPanel({
         {loading ? (
           <div className="p-3 text-xs text-gray-400"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Scanning…</div>
         ) : tab === 'problems' ? (
-          problems.length === 0 ? (
-            <div className="p-3 text-xs text-emerald-300">No problems detected in the workspace.</div>
+          !projectId ? (
+            <div className="p-3 text-xs text-gray-400 italic">Select a project to see its problems.</div>
+          ) : diagError ? (
+            <div className="p-3 text-xs text-rose-300">{diagError}</div>
           ) : (
+            <>
+              {engine === 'heuristics-only' && (
+                <div className="px-3 py-1.5 text-[11px] text-amber-300 bg-amber-500/10 border-b border-white/5">
+                  Server syntax/type checking is unavailable — showing style checks only. The editor's own markers may show more.
+                </div>
+              )}
+              {problems.length === 0 ? (
+                <div className="p-3 text-xs text-emerald-300">No problems detected in the workspace.</div>
+              ) : (
             <ul className="divide-y divide-white/5">
               {problems.map((p, i) => {
                 const Icon = SEV_ICON[p.severity];
@@ -79,6 +112,8 @@ export function ProblemsPanel({
                 );
               })}
             </ul>
+              )}
+            </>
           )
         ) : (
           todos.length === 0 ? (

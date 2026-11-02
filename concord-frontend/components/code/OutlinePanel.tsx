@@ -24,14 +24,29 @@ export function OutlinePanel({
 }: { projectId: string | null; path: string | null; onOpen: (path: string, line: number) => void }) {
   const [symbols, setSymbols] = useState<Symbol[]>([]);
   const [loading, setLoading] = useState(false);
+  // S7 (F7): an unreadable file or an unsupported language is a state
+  // of its own — never the plausible-looking "No symbols found."
+  const [outlineError, setOutlineError] = useState<string | null>(null);
+  const [unsupportedLang, setUnsupportedLang] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!projectId || !path) { setSymbols([]); return; }
+    if (!projectId || !path) { setSymbols([]); setOutlineError(null); setUnsupportedLang(null); return; }
     setLoading(true);
     try {
       const r = await lensRun({ domain: 'code', action: 'symbols-outline', input: { projectId, path } });
-      setSymbols((r.data?.result?.symbols || []) as Symbol[]);
-    } catch (e) { console.error('[Outline] failed', e); }
+      if (r.data?.ok === false) {
+        setOutlineError(r.data?.error || 'Outline unavailable.');
+        setSymbols([]);
+        setUnsupportedLang(null);
+      } else {
+        setOutlineError(null);
+        setSymbols((r.data?.result?.symbols || []) as Symbol[]);
+        setUnsupportedLang(r.data?.result?.unsupported ? String(r.data?.result?.language || 'this file') : null);
+      }
+    } catch (e) {
+      console.error('[Outline] failed', e);
+      setOutlineError('Outline could not be read.');
+    }
     finally { setLoading(false); }
   }, [projectId, path]);
 
@@ -47,6 +62,10 @@ export function OutlinePanel({
           <div className="p-2 text-[11px] text-gray-400"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Parsing…</div>
         ) : !path ? (
           <div className="p-2 text-[11px] text-gray-400 italic">Open a file to see its outline.</div>
+        ) : outlineError ? (
+          <div className="p-2 text-[11px] text-rose-300">{outlineError}</div>
+        ) : unsupportedLang ? (
+          <div className="p-2 text-[11px] text-gray-400 italic">Symbols unavailable for {unsupportedLang} files.</div>
         ) : symbols.length === 0 ? (
           <div className="p-2 text-[11px] text-gray-400 italic">No symbols found.</div>
         ) : (

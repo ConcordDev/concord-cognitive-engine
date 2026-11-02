@@ -1787,7 +1787,7 @@ export default function registerReposActions(registerLensAction) {
         : [];
       const pull = {
         id: rpId("pr"), number, title, body: rpClean(params.body, 4000),
-        state: "open", base, head, author: "you",
+        state: "open", base, head, author: "you", authorId: rpUid(ctx),
         commits: headCommits.map((c) => c.sha),
         linkedIssues,
         reviews: [], comments: [], createdAt: rpNow(), updatedAt: rpNow(),
@@ -1849,7 +1849,13 @@ export default function registerReposActions(registerLensAction) {
           conflicts = dry.conflicts || [];
         }
       }
-      const approvals = pull.reviews.filter((rv) => rv.verdict === "approve").length;
+      // F11: a self-approval recorded before the refusal shipped (or
+      // anywhere the stored ids prove reviewer == author) is history,
+      // not an approval — it stays in the review list but never counts.
+      // Legacy records carry no ids; there the bucket owner is both
+      // fallbacks, which is the silo fact rpFindRepo enforces.
+      const rpAuthorKey = pull.authorId || rpUid(ctx);
+      const approvals = pull.reviews.filter((rv) => rv.verdict === "approve" && (rv.reviewerId || rpUid(ctx)) !== rpAuthorKey).length;
       const changesRequested = pull.reviews.filter((rv) => rv.verdict === "request-changes").length;
       // Ahead/behind for the PR page (the third canonical location in
       // Review 2's ahead-counts residual): commits reachable from the
@@ -1888,7 +1894,22 @@ export default function registerReposActions(registerLensAction) {
       const pull = repo.pulls.find((p) => p.number === rpNum(params.number, -1));
       if (!pull) return { ok: false, error: "pull not found" };
       const verdict = ["approve", "request-changes", "comment"].includes(params.verdict) ? params.verdict : "comment";
-      const review = { id: rpId("rev"), reviewer: "you", verdict, body: rpClean(params.body, 4000), createdAt: rpNow() };
+      // F11 (founder ruling, 2026-10-29: forbid self-approval always, in
+      // every repo): an approval is a second pair of eyes, so the author
+      // can never be that pair. Repos live in the author's own state
+      // bucket (rpFindRepo reads only the caller's bucket), so any
+      // approve reachable here IS the author's until a sharing model
+      // lets a second account reach the pull — for pulls created before
+      // authorId was recorded, reachability itself proves authorship.
+      // Comment and request-changes stay open to the author; only the
+      // approve verdict is refused, and the refusal records nothing.
+      if (verdict === "approve") {
+        const authorKey = pull.authorId || rpUid(ctx);
+        if (rpUid(ctx) === authorKey) {
+          return { ok: false, error: "self_approval_forbidden", message: "You can't approve your own pull request — approval is a second pair of eyes, so it has to come from a different account. You can still comment on or request changes to your own pull request." };
+        }
+      }
+      const review = { id: rpId("rev"), reviewer: "you", reviewerId: rpUid(ctx), verdict, body: rpClean(params.body, 4000), createdAt: rpNow() };
       pull.reviews.push(review);
       pull.updatedAt = rpNow();
       rpSave();
@@ -1938,6 +1959,34 @@ export default function registerReposActions(registerLensAction) {
       pull.updatedAt = rpNow();
       rpSave();
       return { ok: true, result: { number: pull.number, issueNumber, linked, linkedIssues: pull.linkedIssues } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // F15: a pull request could only ever leave OPEN by merging — there
+  // was no close path at all, so a stale or unwanted PR (and any branch
+  // under it, whose delete guard reads "merge or close it first") was
+  // stuck forever. Mirrors issue-set-state's shape, with the one guard
+  // issues don't need: merged is terminal history, not a state the
+  // lifecycle can move out of or overwrite.
+  registerLensAction("repos", "pull-set-state", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const pull = repo.pulls.find((p) => p.number === rpNum(params.number, -1));
+      if (!pull) return { ok: false, error: "pull not found" };
+      const state = params.state === "open" ? "open" : params.state === "closed" ? "closed" : null;
+      if (!state) return { ok: false, error: "invalid_state", message: "State must be \"open\" or \"closed\"." };
+      if (pull.state === "merged") {
+        return { ok: false, error: "pull_merged", message: `Pull request #${pull.number} is merged — a merged pull can't be closed or reopened.` };
+      }
+      pull.state = state;
+      if (state === "closed") pull.closedAt = rpNow();
+      else delete pull.closedAt;
+      pull.updatedAt = rpNow();
+      repo.updatedAt = rpNow();
+      rpSave();
+      return { ok: true, result: { number: pull.number, state } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 

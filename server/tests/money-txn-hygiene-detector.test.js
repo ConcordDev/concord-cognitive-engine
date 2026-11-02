@@ -213,21 +213,18 @@ describe("money-txn-hygiene detector — end to end", () => {
     assert.equal(hi[0].escalate_only, false, "reserves.js is not on the guard.mjs INVARIANT list");
   });
 
-  it("does NOT flag applyBalanceDelta or allocateFromFee in the CURRENT (post-fix) server/economy/reserves.js", async () => {
-    // "No finding for that function" per the fixed shape — not "zero findings
-    // in the file": the file separately contains `initReservesSchema`, a
-    // boot-time seeder that fires 3 `INSERT OR IGNORE` calls off one prepared
-    // statement with no transaction wrap. That's a real (if low-stakes —
-    // idempotent, seed-only) structural match for this detector's rule and is
-    // legitimately reported; it's just not the historical bug this fixture
-    // targets, so it's excluded from this specific assertion.
-    const real_reserves = await readFile(path.join(__dirname, "..", "economy", "reserves.js"), "utf8");
-    dir = await tmpRepo({ "server/economy/reserves.js": real_reserves });
+  it("does NOT flag payChargeback in the CURRENT server/economy/treasury.js", async () => {
+    // The canonical pool's debit path (Gate 5 R1+R2 convergence): the payout
+    // write runs inside db.transaction(...) via the ledger batch writer, so
+    // the detector's untransacted-writes rule must not fire on it. (This case
+    // pointed at the retired reserves.js until that module was removed; the
+    // historical pre-fix fixture above keeps the reserves.js shape covered.)
+    const real_treasury = await readFile(path.join(__dirname, "..", "economy", "treasury.js"), "utf8");
+    dir = await tmpRepo({ "server/economy/treasury.js": real_treasury });
     const r = await runMoneyTxnHygieneDetector({ root: dir });
     assert.equal(r.ok, true);
     const flaggedFuncs = real(r).map((f) => f.evidence?.func);
-    assert.ok(!flaggedFuncs.includes("applyBalanceDelta"), `applyBalanceDelta must not be flagged post-fix, got: ${JSON.stringify(flaggedFuncs)}`);
-    assert.ok(!flaggedFuncs.includes("allocateFromFee"), `allocateFromFee must not be flagged post-fix, got: ${JSON.stringify(flaggedFuncs)}`);
+    assert.ok(!flaggedFuncs.includes("payChargeback"), `payChargeback must not be flagged, got: ${JSON.stringify(flaggedFuncs)}`);
   });
 
   it("does NOT flag server/lib/player-mail.js's already-transacted claimAttachments", async () => {

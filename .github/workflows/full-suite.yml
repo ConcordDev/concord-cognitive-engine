@@ -1,0 +1,278 @@
+name: Full Suite (sharded)
+
+# GB-0582 phase 2: replaces the retired A40/VM test gates. The whole server `node --test` suite runs split
+# across SHARDS parallel jobs on free GitHub-hosted runners (the repo is public, so standard-runner minutes are free),
+# plus the frontend vitest + tsc, plus the lens behavior harness. A final job compares the failing test names with
+# the latest main run and reports NEW vs PRE-EXISTING failures.
+#
+# This is a TRIAGE SIGNAL, not a merge gate (Ramaj, 10-10): shard jobs never fail the workflow on test failures;
+# only the final `triage` job goes red, and only for failures that are NEW relative to main.
+#
+# Changing the shard count: edit BOTH the matrix list in `server-shard` and SHARDS below (a `shard-count` step
+# checks they agree).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '30 6 * * *'
+  workflow_dispatch:
+
+# PRs: one run per PR, a newer push cancels the older. Push to main: one group PER COMMIT, so a burst of merges
+# never cancels or replaces an in-flight main run (a cancelled run can never save the baseline that the NEW vs
+# PRE-EXISTING triage compares against). Schedule/dispatch keep one group per ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || (github.event_name == 'push' && github.sha) || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  NODE_VERSION: '22'
+  SHARDS: '12'
+
+jobs:
+  server-shard:
+    name: Server shard ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: Check matrix matches SHARDS
+        run: |
+          test "${{ strategy.job-total }}" = "${{ env.SHARDS }}" || { echo "::error::matrix has ${{ strategy.job-total }} shards but SHARDS=${{ env.SHARDS }}"; exit 1; }
+
+      - name: Install server dependencies
+        working-directory: ./server
+        run: npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)
+
+      - name: Select this shard's test files
+        run: |
+          mkdir -p ci-out
+          node scripts/ci/full-suite-shard.mjs --root server --shards "$SHARDS" --index "${{ matrix.shard }}" > ci-out/shard-files.txt
+          echo "shard ${{ matrix.shard }}/$SHARDS: $(wc -l < ci-out/shard-files.txt) files"
+
+      - name: Run shard (concurrency 2)
+        id: run
+        continue-on-error: true
+        working-directory: ./server
+        env:
+          NODE_ENV: test
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: |
+          mapfile -t FILES < ../ci-out/shard-files.txt
+          node --test --import=./tests/preload/no-egress.mjs \
+            --test-concurrency=2 --test-timeout=300000 \
+            --test-reporter=spec --test-reporter-destination=stdout \
+            --test-reporter=../scripts/ci/junit-file-reporter.mjs --test-reporter-destination="../ci-out/junit-shard-${{ matrix.shard }}.xml" \
+            "${FILES[@]}"
+
+      # Node 22 occasionally V8-aborts a runner mid-run (see server/scripts/ci-test-tolerant.mjs): that leaves no
+      # report at all, which is not a verdict. One retry of the whole shard if no report was written.
+      - name: Retry shard once if it crashed before writing a report
+        if: steps.run.outcome == 'failure' && hashFiles(format('ci-out/junit-shard-{0}.xml', matrix.shard)) == ''
+        working-directory: ./server
+        env:
+          NODE_ENV: test
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: |
+          mapfile -t FILES < ../ci-out/shard-files.txt
+          node --test --import=./tests/preload/no-egress.mjs \
+            --test-concurrency=2 --test-timeout=300000 \
+            --test-reporter=spec --test-reporter-destination=stdout \
+            --test-reporter=../scripts/ci/junit-file-reporter.mjs --test-reporter-destination="../ci-out/junit-shard-${{ matrix.shard }}.xml" \
+            "${FILES[@]}" || true
+
+      # Failures under load are often contention, not bugs. Re-run only the failing files, one at a time; ids that
+      # then pass are reported as FLAKY rather than NEW. Capped so a broken shard does not double its runtime.
+      - name: Isolated re-run of failing files
+        if: always() && hashFiles(format('ci-out/junit-shard-{0}.xml', matrix.shard)) != ''
+        working-directory: ./server
+        env:
+          NODE_ENV: test
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: |
+          node ../scripts/ci/full-suite-diff.mjs failing-files --junit "../ci-out/junit-shard-${{ matrix.shard }}.xml" | sed 's|^server/||' > ../ci-out/failing-files.txt
+          n=$(wc -l < ../ci-out/failing-files.txt)
+          echo "failing files in shard: $n"
+          if [ "$n" -gt 0 ] && [ "$n" -le 25 ]; then
+            mapfile -t RERUN < ../ci-out/failing-files.txt
+            node --test --import=./tests/preload/no-egress.mjs \
+              --test-concurrency=1 --test-timeout=300000 \
+              --test-reporter=../scripts/ci/junit-file-reporter.mjs --test-reporter-destination="../ci-out/junit-shard-${{ matrix.shard }}-rerun.xml" \
+              "${RERUN[@]}" > /dev/null 2>&1 || true
+          fi
+
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: junit-shard-${{ matrix.shard }}
+          path: |
+            ci-out/junit-shard-*.xml
+            ci-out/shard-files.txt
+          if-no-files-found: warn
+          retention-days: 14
+
+  frontend:
+    name: Frontend vitest + tsc
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: concord-frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: ./concord-frontend
+        run: npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)
+      - name: Typecheck (tsc --noEmit)
+        id: tsc
+        continue-on-error: true
+        working-directory: ./concord-frontend
+        run: npm run type-check:ci
+      - name: Vitest
+        id: vitest
+        continue-on-error: true
+        working-directory: ./concord-frontend
+        run: |
+          mkdir -p ../ci-out
+          npx vitest run --maxWorkers=2 --reporter=default --reporter=junit --outputFile.junit=../ci-out/junit-fe.xml
+      - name: Record typecheck result
+        if: always()
+        run: |
+          mkdir -p ci-out
+          echo "${{ steps.tsc.outcome }}" > ci-out/fe-tsc-outcome.txt
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: junit-fe
+          path: |
+            ci-out/junit-fe.xml
+            ci-out/fe-tsc-outcome.txt
+          if-no-files-found: warn
+          retention-days: 14
+
+  behavior:
+    name: Lens behavior harness
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+      - name: Install server dependencies
+        working-directory: ./server
+        run: npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)
+      - name: Run behavior harness
+        continue-on-error: true
+        working-directory: ./server
+        env:
+          NODE_ENV: test
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: |
+          mkdir -p ../ci-out
+          node --test --import=./tests/preload/no-egress.mjs --test-timeout=900000 \
+            --test-reporter=spec --test-reporter-destination=stdout \
+            --test-reporter=../scripts/ci/junit-file-reporter.mjs --test-reporter-destination=../ci-out/junit-behavior.xml \
+            tests/behavior/lens-behavior-smoke.behavior.js
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: junit-behavior
+          path: ci-out/junit-behavior.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+  triage:
+    name: NEW vs PRE-EXISTING
+    runs-on: ubuntu-latest
+    needs: [server-shard, frontend, behavior]
+    if: always()
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: junit-*
+          path: ci-out
+          merge-multiple: true
+
+      # Baseline = the failing set of the most recent COMPLETED main run (not this one) that uploaded one.
+      - name: Fetch main's failing set
+        id: base
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          mkdir -p baseline
+          repo="${{ github.repository }}"
+          # A PR is tested on main-as-of-its-base. If a newer main run (which may already contain fixes this PR's
+          # tree lacks) is used as the baseline, those fixes read as NEW failures on the PR (seen on #2021: the 7
+          # failures #2020 fixed were "NEW" against a main run that had #2020). So prefer the main run FOR THE PR'S
+          # BASE COMMIT, and only then fall back to the latest completed main run.
+          exact=""
+          if [ -n "$BASE_SHA" ]; then
+            exact=$(gh run list --repo "$repo" --workflow full-suite.yml --branch main --status completed --limit 60 --json databaseId,headSha --jq ".[]|select(.headSha==\"$BASE_SHA\")|.databaseId")
+          fi
+          latest=$(gh run list --repo "$repo" --workflow full-suite.yml --branch main --status completed --limit 15 --json databaseId --jq '.[].databaseId')
+          for id in $exact $latest; do
+            [ "$id" = "${{ github.run_id }}" ] && continue
+            if gh run download "$id" --repo "$repo" -n full-suite-failing -D baseline 2>/dev/null && [ -s baseline/failing.json ]; then
+              kind="latest main run"
+              for e in $exact; do [ "$e" = "$id" ] && kind="main run at this PR's base commit"; done
+              echo "label=run $id on main, the $kind (https://github.com/$repo/actions/runs/$id)" >> "$GITHUB_OUTPUT"
+              echo "found baseline from run $id ($kind)"
+              exit 0
+            fi
+            rm -rf baseline/*
+          done
+          echo "no baseline found (first run, or no earlier main run uploaded one)"
+
+      - name: Triage report
+        id: report
+        run: |
+          set +e
+          node scripts/ci/full-suite-diff.mjs report --dir ci-out \
+            --baseline baseline/failing.json --baseline-label "${{ steps.base.outputs.label }}" \
+            --expect-shards "$SHARDS" --summary "$GITHUB_STEP_SUMMARY" --out ci-out/failing.json --complete-only
+          code=$?
+          if [ -f ci-out/fe-tsc-outcome.txt ] && [ "$(cat ci-out/fe-tsc-outcome.txt)" != "success" ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "> Frontend \`tsc --noEmit\` did not pass in this run (see the Frontend job)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit $code
+
+      # Only main runs become the next baseline, and only when every shard reported (an incomplete run would
+      # under-report failures and make the next PR look worse than it is).
+      - uses: actions/upload-artifact@v6
+        if: always() && github.ref == 'refs/heads/main'
+        with:
+          name: full-suite-failing
+          path: ci-out/failing.json
+          if-no-files-found: warn
+          retention-days: 30

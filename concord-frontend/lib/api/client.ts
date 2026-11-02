@@ -3,6 +3,7 @@ import { updateClockOffset } from '../offline/db';
 import { useUIStore } from '@/store/ui';
 import { fromAxiosError } from '@/lib/errors';
 import { getApiBase } from './base';
+import { isHandlerDefectRefusal, refusalToastMessage } from './lens-refusal';
 import { clearServerBusy, isServiceOverloadedPayload, noteServerBusy } from '@/lib/realtime/server-busy';
 import { createRestartWindow, isRestartFailure, type RestartWindow } from './restart-window';
 import type {
@@ -448,7 +449,7 @@ api.interceptors.response.use(
     // is a 4xx we deliberately resolved above. Surface it once. Quiet codes
     // are read-path noise (logged-out list, unknown macro still on HTTP 200).
     const lensUrl = response.config?.url || '';
-    const lensData = response.data as { ok?: boolean; error?: string } | undefined;
+    const lensData = response.data as { ok?: boolean; error?: string; field?: string | null; reason?: string } | undefined;
     if (
       typeof window !== 'undefined' &&
       response.status >= 400 &&
@@ -458,9 +459,36 @@ api.interceptors.response.use(
       !QUIET_LENS_ERRORS.has(lensData.error)
     ) {
       const store = useUIStore.getState();
-      const existingToastCount = store.toasts.filter((t) => t.type === 'error' || t.type === 'warning').length;
-      if (existingToastCount < 2) {
-        store.addToast({ type: 'error', message: lensData.error.replace(/_/g, ' ') });
+      // F16 (PR #1707): a server handler TypeError is rewritten by the
+      // dispatch to error:"invalid_input" (reason type_error /
+      // not_a_function / invalid_time). That is a server defect, NOT the
+      // user's input — but this toast printed it verbatim as
+      // "invalid input", and because companion calls (diagnostics,
+      // status refreshes) ride along with saves and creates, the red
+      // toast fired on SUCCESSFUL operations and trained users to
+      // ignore the error channel. Handler defects are recorded in the
+      // request-error list (System Status) where they can be inspected,
+      // never toasted as user mistakes. Genuine refusals still toast,
+      // now with the field/reason the server named.
+      const handlerDefect = isHandlerDefectRefusal(lensData.error, lensData.reason);
+      if (handlerDefect) {
+        let action = 'lens action';
+        try {
+          const body = typeof response.config?.data === 'string' ? JSON.parse(response.config.data) : response.config?.data;
+          if (body?.action) action = String(body.action);
+        } catch { /* keep the generic label */ }
+        store.addRequestError({
+          path: lensUrl,
+          method: (response.config?.method || 'post').toUpperCase(),
+          status: response.status,
+          message: `${action} failed inside the server (invalid_input/${lensData.reason})`,
+          reason: 'handler_defect',
+        });
+      } else {
+        const existingToastCount = store.toasts.filter((t) => t.type === 'error' || t.type === 'warning').length;
+        if (existingToastCount < 2) {
+          store.addToast({ type: 'error', message: refusalToastMessage(lensData.error, lensData.field, lensData.reason) });
+        }
       }
     }
 
@@ -774,7 +802,7 @@ export async function lensRun<T = any>(
   action?: string,
   input: Record<string, unknown> = {},
   runId?: string,
-): Promise<{ data: { ok: boolean; result: T | null; error: string | null; reason?: string; envVar?: string; signupUrl?: string; code?: string; retryAfterS?: number } }> {
+): Promise<{ data: { ok: boolean; result: T | null; error: string | null; message?: string | null; reason?: string; envVar?: string; signupUrl?: string; code?: string; retryAfterS?: number } }> {
   try {
     let domain: string;
     let act: string;
@@ -824,12 +852,16 @@ export async function lensRun<T = any>(
     // missing_api_key also keeps envVar/signupUrl so the panel can render
     // the honest "needs a key" state instead of a stripped error string.
     if (node && typeof node === 'object' && (node as { ok?: boolean }).ok === false) {
-      const n = node as { error?: string; reason?: string };
+      const n = node as { error?: string; reason?: string; message?: string };
       return {
         data: {
           ok: false,
           result: null,
           error: String(n.error || n.reason || err || 'lens error'),
+          // The handler's human `message`, carried alongside the machine
+          // `error` code (additive — `error` keeps the code for callers
+          // that branch on it; `message` is the display text).
+          message: typeof n.message === 'string' ? n.message : null,
           ...honestKeyFields(node),
         },
       };
@@ -841,7 +873,15 @@ export async function lensRun<T = any>(
     const message = typeof bodyErr === 'string' && bodyErr
       ? bodyErr
       : e instanceof Error ? e.message : String(e);
-    return { data: { ok: false, result: null, error: message, ...honestKeyFields(body) } };
+    // A shaped lens failure (server/lib/lens-run-http.js) puts the
+    // handler's refusal at the body's top level as
+    // { ok:false, error:<code>, message:<human> } under a 4xx, so it
+    // lands here, not in the unwrap above. `error` above keeps the
+    // code; carry the human message too, or every consumer downstream
+    // has only the code to show the user (the F15 "network error"
+    // banner pattern in the repos workspace).
+    const bodyMsg = body && typeof body === 'object' ? (body as { message?: unknown }).message : undefined;
+    return { data: { ok: false, result: null, error: message, message: typeof bodyMsg === 'string' ? bodyMsg : null, ...honestKeyFields(body) } };
   }
 }
 

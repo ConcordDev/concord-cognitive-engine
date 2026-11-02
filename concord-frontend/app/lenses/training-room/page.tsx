@@ -328,7 +328,7 @@ export default function TrainingRoomPage() {
                   <span className="text-[10px] text-cyan-300/60">{frameData.kind} · level {frameData.level}</span>
                 </header>
 
-                <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-center text-[11px]">
                   <div className="rounded border border-cyan-500/20 bg-cyan-500/5 p-2">
                     <div className="text-[10px] uppercase text-cyan-300/60">startup</div>
                     <div className="text-lg font-bold text-cyan-100">{frameData.startup_ms}<span className="text-[10px]">ms</span></div>
