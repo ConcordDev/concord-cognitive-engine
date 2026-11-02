@@ -1,6 +1,10 @@
 // @ts-check
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { withSentryConfig } = require("@sentry/nextjs");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { spawnSync } = require("node:child_process");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const path = require("node:path");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -334,14 +338,56 @@ const nextConfig = {
 // (and SENTRY_ORG/SENTRY_PROJECT for source maps) still get the full
 // integration.
 const sentryDsnConfigured = !!(process.env.NEXT_PUBLIC_SENTRY_DSN && process.env.SENTRY_ORG);
-module.exports = sentryDsnConfigured
-  ? withSentryConfig(nextConfig, {
-      silent: true,
-      org: process.env.SENTRY_ORG || "",
-      project: process.env.SENTRY_PROJECT || "concord-frontend",
-      disableLogger: true,
-      tunnelRoute: "/monitoring",
-      hideSourceMaps: true,
-      widenClientFileUpload: false,
-    })
-  : nextConfig;
+
+// Pyodide vendoring gate (PR #1707, GB-0736). The Code lens's Python
+// runtime is vendored into public/pyodide/ by scripts/vendor-pyodide.mjs,
+// but that step was wired only as npm pre-hooks (prebuild/predev) — and a
+// build that runs `npx next build` directly, as the deploy lane's does,
+// never fires npm lifecycle hooks, so the runtime shipped silently
+// absent (public/pyodide/ is gitignored; nothing downstream noticed).
+// This config module is the one repo-controlled code path every
+// `next build` evaluates, whatever invoked it, so the production-build
+// phase runs scripts/ensure-pyodide.mjs here: check → vendor → re-check.
+// If the runtime cannot be vendored and verified, the build FAILS with
+// the remedy named — a warn-and-proceed build would repeat the
+// silent-ship failure. A network-less sandbox can opt out explicitly
+// with CONCORD_PYODIDE_VENDOR_SKIP=1; the skip is logged loudly, never
+// silent, and the runner then honestly reports "runtime unavailable".
+function ensurePyodideVendoredForBuild(phase) {
+  if (phase !== "phase-production-build") return;
+  if (process.env.CONCORD_PYODIDE_VENDOR_SKIP === "1") {
+    console.warn(
+      "[next.config] WARNING: CONCORD_PYODIDE_VENDOR_SKIP=1 — skipping the Pyodide vendoring step and check. " +
+        "This build may ship without the Code lens's Python runtime (public/pyodide/); the runner will report \"runtime unavailable\".",
+    );
+    return;
+  }
+  const result = spawnSync(process.execPath, [path.join(__dirname, "scripts", "ensure-pyodide.mjs")], {
+    stdio: "inherit",
+  });
+  if (result.error) {
+    throw new Error(`[next.config] could not run scripts/ensure-pyodide.mjs: ${result.error.message}`);
+  }
+  if (result.status !== 0) {
+    throw new Error(
+      "[next.config] Pyodide vendoring failed or the runtime is not verified under public/pyodide/ — " +
+        "the Code lens's Python runner would ship broken. Run `npm run vendor:pyodide` (needs network access " +
+        "to github.com) and rebuild. To build anyway in a network-less sandbox, set CONCORD_PYODIDE_VENDOR_SKIP=1.",
+    );
+  }
+}
+
+module.exports = (phase) => {
+  ensurePyodideVendoredForBuild(phase);
+  return sentryDsnConfigured
+    ? withSentryConfig(nextConfig, {
+        silent: true,
+        org: process.env.SENTRY_ORG || "",
+        project: process.env.SENTRY_PROJECT || "concord-frontend",
+        disableLogger: true,
+        tunnelRoute: "/monitoring",
+        hideSourceMaps: true,
+        widenClientFileUpload: false,
+      })
+    : nextConfig;
+};

@@ -48,6 +48,18 @@ describe('vendor-pyodide', () => {
     expect(pkg.scripts.prebuild).toBe('node scripts/vendor-pyodide.mjs --soft');
     expect(pkg.scripts.predev).toBe('node scripts/vendor-pyodide.mjs --soft');
     expect(pkg.scripts['vendor:pyodide']).toBe('node scripts/vendor-pyodide.mjs');
+    // GB-0736: the vendoring is also explicit and verifiable in the build
+    // itself, not just an npm pre-hook — named scripts for the ensure
+    // gate + the post-build check, the repo build chain ending in the
+    // check, and next.config.js (the one path a direct `npx next build`
+    // evaluates) running the ensure step on the production-build phase.
+    expect(pkg.scripts['ensure:pyodide']).toBe('node scripts/ensure-pyodide.mjs');
+    expect(pkg.scripts['check:pyodide']).toBe('node scripts/check-pyodide.mjs');
+    expect(pkg.scripts.build).toContain('check:pyodide');
+    const config = fs.readFileSync(path.join(__dirname, '..', 'next.config.js'), 'utf8');
+    expect(config).toContain('ensure-pyodide.mjs');
+    expect(config).toContain('phase-production-build');
+    expect(config).toContain('CONCORD_PYODIDE_VENDOR_SKIP');
     const ignore = fs.readFileSync(path.join(__dirname, '..', '..', '.gitignore'), 'utf8');
     expect(ignore).toContain('concord-frontend/public/pyodide/');
     const exec = fs.readFileSync(path.join(__dirname, '..', 'components', 'code', 'localExec.ts'), 'utf8');
