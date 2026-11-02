@@ -149,7 +149,9 @@ describe('SyncDashboard — Download portable pack', () => {
     expect(createSpy).toHaveBeenCalledTimes(1);
     const blobArg = createSpy.mock.calls[0][0] as Blob;
     expect(blobArg).toBeInstanceOf(Blob);
-    expect(revokeSpy).toHaveBeenCalledTimes(1);
+    // downloadFile revokes the blob URL on a later task (a synchronous
+    // revoke can cancel the download), so the revoke lands after the click.
+    await waitFor(() => expect(revokeSpy).toHaveBeenCalledTimes(1), { timeout: 3000 });
 
     // Honest success toast — reflects the REAL counts from the macro result,
     // and is explicit that this is the full (not device-scoped) corpus.
