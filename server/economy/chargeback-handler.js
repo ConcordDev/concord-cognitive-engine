@@ -2,10 +2,11 @@
 // Handles Stripe charge.dispute.created events (chargebacks).
 //
 // Policy: platform reserves cover chargebacks; cascade recipients keep their
-// distributions. Reserve is funded by fee revenue allocations (see reserves.js).
+// distributions. The reserve is the canonical __TREASURY__ pool, funded by
+// the 80/10/10 fee split (see fee-split.js) and debited via treasury.js.
 
 import { economyAudit } from "./audit.js";
-import { payChargeback } from "./reserves.js";
+import { payChargeback } from "./treasury.js";
 
 function nowISO() {
   return new Date().toISOString().replace("T", " ").replace("Z", "");

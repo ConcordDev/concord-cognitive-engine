@@ -45,7 +45,7 @@ import { distributeFee, getFeeSplitBalances, getFeeDistributions } from "./fee-s
 import { runTreasuryReconciliation, getReconciliationHistory } from "./treasury-reconciliation.js";
 import { getSystemBalanceSummary } from "./balances.js";
 import { getDescendants } from "./royalty-cascade.js";
-import { initReservesSchema, allocateFromFee, getReserveHealth } from "./reserves.js";
+import { getReserveHealth } from "./treasury.js";
 import { getUserStorage } from "../lib/storage-quota.js";
 
 /**
@@ -58,8 +58,6 @@ import { getUserStorage } from "../lib/storage-quota.js";
 export function registerEconomyRoutes(app, db, opts = {}) {
   const log = opts.structuredLog || ((level, event, data) => console[level === "error" ? "error" : "log"](`[economy] ${event}`, data));
 
-  // Initialise chargeback reserve schema (idempotent)
-  initReservesSchema(db);
   attachWalletClarityRoutes(app, db, { log });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -282,17 +280,17 @@ export function registerEconomyRoutes(app, db, opts = {}) {
         ...ctx,
       });
 
-      // Allocate a portion of the platform fee to reserves
+      // Distribute the platform fee across the canonical 80/10/10 split
       if (result.fee > 0) {
         try {
-          allocateFromFee(db, {
+          distributeFee(db, {
             feeAmount:  result.fee,
             sourceTxId: result.batchId,
             requestId:  ctx.requestId,
             ip:         ctx.ip,
           });
         } catch (allocErr) {
-          log("error", "reserve_allocation_failed", { error: allocErr.message });
+          log("error", "fee_distribution_failed", { error: allocErr.message });
         }
       }
 
@@ -1488,7 +1486,7 @@ export function registerEconomyRoutes(app, db, opts = {}) {
       res.json({
         ok: true,
         totalBalance: Math.round(totalBalance * 100) / 100,
-        reserve80: Math.round(splitBalances.reserves * 100) / 100,
+        reserve80: Math.round(splitBalances.treasury * 100) / 100,
         operating10: Math.round(splitBalances.operating * 100) / 100,
         payroll10: Math.round(splitBalances.payroll * 100) / 100,
         platformBalance: Math.round(splitBalances.platform * 100) / 100,
@@ -1577,17 +1575,17 @@ export function registerEconomyRoutes(app, db, opts = {}) {
 
       if (!result.ok) return res.status(400).json(result);
 
-      // Allocate a portion of the platform fee to reserves
+      // Distribute the platform fee across the canonical 80/10/10 split
       if (result.fee > 0) {
         try {
-          allocateFromFee(db, {
+          distributeFee(db, {
             feeAmount:  result.fee,
             sourceTxId: result.batchId,
             requestId:  ctx.requestId,
             ip:         ctx.ip,
           });
         } catch (allocErr) {
-          log("error", "reserve_allocation_failed", { error: allocErr.message });
+          log("error", "fee_distribution_failed", { error: allocErr.message });
         }
       }
 
