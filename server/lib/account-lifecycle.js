@@ -14,6 +14,7 @@ import { economyAudit } from "../economy/audit.js";
 import { privacyExportForUser } from "../domains/privacy.js";
 import { settingsExportForUser } from "../domains/settings.js";
 import { purgeUserSocialRecords } from "../emergent/social-layer.js";
+import { purgeUser as purgeUserMemory, exportMemory as exportUserMemory } from "./user-memory.js";
 
 function uid(prefix = "al") {
   return `${prefix}_` + randomUUID().replace(/-/g, "").slice(0, 16);
@@ -357,6 +358,17 @@ export function executeAccountDeletion(db, userId) {
       }
     }
 
+    // 8c. HARD-DELETE per-user memory (`user_memory_*`): facts, graph links, usage log, switches, opt-in.
+    try {
+      const r = purgeUserMemory(db, userId);
+      stats.deleted += r.deleted || 0;
+    } catch (err) {
+      if (!/no such table/i.test(err.message)) {
+        console.warn('[account-lifecycle] failed to delete user memory', { userId, err: err.message });
+        errors.push({ step: 'delete_user_memory', err });
+      }
+    }
+
     // 9. HARD-DELETE chat history (`chat_sessions` + `chat_messages`). Verified single-owner
     // scoped before treating this as safe to hard-delete — `chat_sessions` keys by `owner_id`
     // alone with no participant/shared-session list (server/migrations/193_chat_sessions.js), so
@@ -592,6 +604,15 @@ export function exportUserData(db, userId) {
   } catch (err) {
     if (!/no such table/i.test(err.message)) {
       console.warn('[account-lifecycle] data export: failed to export memory vault', { userId, err: err.message });
+    }
+  }
+
+  // Per-user memory: facts with full supersede history, graph links, usage log (no embeddings).
+  try {
+    data.userMemory = exportUserMemory(db, userId);
+  } catch (err) {
+    if (!/no such table/i.test(err.message)) {
+      console.warn('[account-lifecycle] data export: failed to export user memory', { userId, err: err.message });
     }
   }
 
