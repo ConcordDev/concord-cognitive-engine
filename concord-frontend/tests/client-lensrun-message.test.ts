@@ -4,11 +4,16 @@
  * refusal as a 4xx body { ok:false, error:<code>, message:<human> };
  * lensRun's catch used to read only `error`, so every consumer
  * downstream had nothing but the code — or, in the repos workspace, a
- * flattened "network error" — to show the user. `error` keeps the
+ * flattened "network error" — to show the user.
+ *
+ * The api client's validateStatus is `status < 500`, so a live 4xx RESOLVES
+ * (it never throws): these tests resolve the shaped 4xx from the adapter, the
+ * way the real transport settles it, and it lands in lensRun's terminal
+ * { ok:false } branch, which carries `message`. `error` keeps the
  * code (callers branch on it); `message` is the display text.
  */
 import { describe, it, expect, afterEach } from 'vitest';
-import { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
+import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { api, lensRun } from '../lib/api/client';
 
 describe('lensRun — shaped failure message carry', () => {
@@ -21,7 +26,7 @@ describe('lensRun — shaped failure message carry', () => {
         status: 400, statusText: '', headers: {}, config,
         data: { ok: false, error: 'branch_in_open_pr', message: 'Pull request #1 is still open against "feat" — merge or close it first.' },
       } as AxiosResponse;
-      throw new AxiosError('Request failed with status code 400', 'ERR_BAD_RESPONSE', config, {}, response);
+      return response;
     };
     const r = await lensRun('repos', 'branch-delete', { repoId: 'r1', name: 'feat' });
     expect(r.data.ok).toBe(false);
@@ -35,7 +40,7 @@ describe('lensRun — shaped failure message carry', () => {
         status: 422, statusText: '', headers: {}, config,
         data: { ok: false, error: 'commit_message_required' },
       } as AxiosResponse;
-      throw new AxiosError('Request failed with status code 422', 'ERR_BAD_RESPONSE', config, {}, response);
+      return response;
     };
     const r = await lensRun('repos', 'file-save', {});
     expect(r.data.ok).toBe(false);
