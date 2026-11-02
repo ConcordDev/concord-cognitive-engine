@@ -24,7 +24,10 @@ const post = async (path, body) => {
   const r = await fetch(`${base}${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body ?? {}) });
   return { status: r.status, body: await r.json().catch(() => ({})) };
 };
-const pkg = (peerId) => ({ peerId, count: 1, timestamp: "2026-11-01T00:00:00.000Z", dtus: [DTU] });
+// The receiver refuses packages outside a ±10 min window, so the control carries a fresh timestamp (fixed once so
+// signing and sending agree).
+const SIGNED_AT = new Date().toISOString();
+const pkg = (peerId) => ({ peerId, count: 1, timestamp: SIGNED_AT, dtus: [DTU] });
 const proposal = { proposalId: "prop_1", title: "Hello" };
 const heartbeat = () => buildHeartbeat(STATE).heartbeat;
 const inboundProposals = () => getEmergentState(STATE)._federation?.inboundProposals?.size ?? 0;
