@@ -11,6 +11,16 @@ const nextConfig = {
   reactStrictMode: true,
   skipTrailingSlashRedirect: true,
   output: 'standalone',
+  // Pyodide vendoring gate trigger (GB-0736 / #1707 follow-up). `next build`
+  // awaits this hook on EVERY production build regardless of bundler — Next 16
+  // builds with Turbopack by default, where the `webpack` hook below never
+  // runs, so the gate used to be skipped and the build exited 0 with no
+  // public/pyodide. Dev and `next start` never call it. Returning null keeps
+  // Next's default random build id.
+  generateBuildId: async () => {
+    ensurePyodideVendoredForBuild();
+    return null;
+  },
   // Local next dev: Chrome hits 127.0.0.1:3000; Next 15 blocks that host for HMR
   // unless listed. Without it the client never hydrates and the splash never drops.
   allowedDevOrigins: ['127.0.0.1', 'localhost'],
@@ -302,8 +312,7 @@ const nextConfig = {
     // predev --soft hook — and once per process (this hook runs for the
     // client and server compilers). Runs before compilation, ahead of
     // the standalone output's public/ copy.
-    if (!dev && !pyodideGateRan) {
-      pyodideGateRan = true;
+    if (!dev) {
       ensurePyodideVendoredForBuild();
     }
     if (!isServer) {
@@ -355,7 +364,8 @@ const sentryDsnConfigured = !!(process.env.NEXT_PUBLIC_SENTRY_DSN && process.env
 // never fires npm lifecycle hooks, so the runtime shipped silently
 // absent (public/pyodide/ is gitignored; nothing downstream noticed).
 // The gate therefore runs scripts/ensure-pyodide.mjs from this config's
-// webpack hook on production builds (see below): check → vendor →
+// generateBuildId hook on production builds (bundler-independent — the
+// webpack hook alone is skipped under Turbopack): check → vendor →
 // re-check. If the runtime cannot be vendored and verified, the build
 // FAILS with the remedy named — a warn-and-proceed build would repeat
 // the silent-ship failure. A network-less sandbox can opt out explicitly
@@ -365,10 +375,14 @@ const sentryDsnConfigured = !!(process.env.NEXT_PUBLIC_SENTRY_DSN && process.env
 // The export stays the plain config OBJECT (the Sentry-wrapped ternary
 // below): tests/lib/lens-tab-redirects.test.ts require()s this module
 // and calls .redirects() on it, so a function-form export would break
-// that suite. The webpack hook is the build-time trigger that keeps the
-// object shape intact.
+// that suite. The generateBuildId hook (plus the webpack hook, kept as a
+// belt-and-braces second trigger under `next build --webpack`) is the
+// build-time trigger that keeps the object shape intact.
 let pyodideGateRan = false;
 function ensurePyodideVendoredForBuild() {
+  // Once per process: both the generateBuildId and webpack triggers call this.
+  if (pyodideGateRan) return;
+  pyodideGateRan = true;
   if (process.env.CONCORD_PYODIDE_VENDOR_SKIP === "1") {
     console.warn(
       "[next.config] WARNING: CONCORD_PYODIDE_VENDOR_SKIP=1 — skipping the Pyodide vendoring step and check. " +
