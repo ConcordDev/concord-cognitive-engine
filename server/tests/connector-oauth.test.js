@@ -22,7 +22,7 @@ import {
   deleteConnectorToken,
 } from "../lib/connector-tokens.js";
 import { connectorFetch } from "../lib/connector-client.js";
-import registerCalendarActions from "../domains/calendar.js";
+import { __setPublicFetchTestTransport } from "../lib/public-fetch.js";import registerCalendarActions from "../domains/calendar.js";
 
 function freshDb() {
   const db = new Database(":memory:");
@@ -179,12 +179,20 @@ describe("calendar push direction gate", () => {
     const call = (name, params) => macros.get(name)(ctx, { data: params }, params);
     return { macros, call };
   }
-  beforeEach(() => { db = freshDb(); });
-  afterEach(() => { db.close(); });
+  // accounts-connect validates the ICS feed at connect time (fetchIcsText), so
+  // stub the public-fetch transport: no network, a minimal valid VCALENDAR.
+  const ICS = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:a@x\r\nSUMMARY:t\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+  beforeEach(() => {
+    db = freshDb();
+    __setPublicFetchTestTransport(async () => ({
+      ok: true, status: 200, headers: { get: () => null }, text: async () => ICS,
+    }));
+  });
+  afterEach(() => { __setPublicFetchTestTransport(null); db.close(); });
 
   it("refuses to push to a pull-only account", async () => {
     const h = harness();
-    const conn = h.call("calendar.accounts-connect", { provider: "google", label: "Work", icsUrl: "https://example.com/c.ics", direction: "pull" });
+    const conn = await h.call("calendar.accounts-connect", { provider: "google", label: "Work", icsUrl: "https://example.com/c.ics", direction: "pull" });
     assert.equal(conn.ok, true);
     const r = await h.call("calendar.accounts-push-event", { accountId: conn.result.account.id, event: { title: "Sync me" } });
     assert.equal(r.ok, false);
@@ -193,7 +201,7 @@ describe("calendar push direction gate", () => {
 
   it("on a two-way account, attempts the push and surfaces the honest no_token reason", async () => {
     const h = harness();
-    const conn = h.call("calendar.accounts-connect", { provider: "google", label: "Work", icsUrl: "https://example.com/c.ics", direction: "two-way" });
+    const conn = await h.call("calendar.accounts-connect", { provider: "google", label: "Work", icsUrl: "https://example.com/c.ics", direction: "two-way" });
     const r = await h.call("calendar.accounts-push-event", { accountId: conn.result.account.id, event: { title: "Sync me" } });
     assert.equal(r.ok, false);
     assert.equal(r.reason, "no_token", "no fabricated success — needs a real stored credential");
