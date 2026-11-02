@@ -161,7 +161,7 @@ export function ExportMenu({ domain }: ExportMenuProps) {
   return (
     <div className="relative" ref={menuRef}>
       <button
-        onClick={() => { setNotice(null); setIsOpen(!isOpen); }}
+        onClick={() => { setIsOpen(!isOpen); }}
         className="flex min-h-[40px] items-center gap-1.5 px-2.5 py-1.5 md:min-h-0 rounded-lg text-gray-400 hover:text-white hover:bg-lattice-surface transition-colors text-sm"
         title="Export (Ctrl+E)"
       >

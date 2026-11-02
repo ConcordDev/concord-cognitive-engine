@@ -273,8 +273,13 @@ export function downloadFile(content: string, filename: string, type: string = '
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  // Revoke on a later task, never in the click's own task: if the URL is
+  // revoked before the browser has begun fetching the blob, the download
+  // is cancelled silently — no error, no file, no trace.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 // Format bytes
