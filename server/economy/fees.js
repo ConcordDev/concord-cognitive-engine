@@ -29,6 +29,35 @@ export const OPERATING_ACCOUNT_ID = "__OPERATING__";
 export const PAYROLL_ACCOUNT_ID = "__PAYROLL__";
 
 /**
+ * Reserved debit accounts (Gate 5 Act 2): platform system accounts that
+ * must never be debited through the user transfer path (executeTransfer).
+ * Every legitimate debit of one of these accounts is a system writer going
+ * through recordTransactionBatch directly — fee-split distribution,
+ * chargeback payout, emergent reserve debits — so a refusal at
+ * executeTransfer's door breaks no legitimate flow.
+ *
+ * The set is explicit, never a "__…__" prefix test: __ESCROW__ is debited
+ * through executeTransfer by design (bounty claims, commission payouts)
+ * and is deliberately NOT a member. "__TREASURY__" is RESERVES_ACCOUNT_ID's
+ * name after the Gate 5 Act 1 rename (PR #1969); both spellings are listed
+ * so the guard is correct before and after that rename lands. "__CONCORD__"
+ * is royalty-cascade.js's CONCORD_SYSTEM_ID, pinned by test against the
+ * real constant.
+ */
+export const RESERVED_DEBIT_ACCOUNTS = new Set([
+  PLATFORM_ACCOUNT_ID,
+  RESERVES_ACCOUNT_ID,
+  OPERATING_ACCOUNT_ID,
+  PAYROLL_ACCOUNT_ID,
+  "__TREASURY__",
+  "__CONCORD__",
+]);
+
+export function isReservedDebitAccount(accountId) {
+  return RESERVED_DEBIT_ACCOUNTS.has(accountId);
+}
+
+/**
  * Calculate fee for a transaction type and amount.
  * For marketplace transactions, this calculates the combined
  * universal (1.46%) + marketplace (4%) fee = 5.46% total.
