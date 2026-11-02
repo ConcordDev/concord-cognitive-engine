@@ -4,6 +4,7 @@
 // preview generation, and cross-lens citation registration.
 
 import { randomUUID } from "crypto";
+import { createIntegritySystem, initIntegrityTable } from "../lib/dtu-integrity.js";
 import { registerCitation } from "./royalty-cascade.js";
 import { awardMeritCredit } from "./lens-economy-wiring.js";
 import { canEmergentCiteUser } from "../lib/consent.js";
@@ -34,6 +35,25 @@ export function rollUpFeltPeaks(children) {
 
 function uid(prefix = "dtu") {
   return `${prefix}_` + randomUUID().replace(/-/g, "").slice(0, 16);
+}
+
+// ── DTU provenance on-write (B4 wiring) ──────────────────────────────────
+// lib/dtu-integrity.js has existed since migration 025, but nothing called
+// it on a write path — dtu_integrity sat at 0 rows in prod while the
+// machinery was only reachable through a manual /api/canonical endpoint.
+// createDTU is the universal publish path, so it now records an integrity
+// envelope in the SAME transaction as the DTU itself: a DTU and its
+// provenance row commit or roll back together. One integrity system is
+// cached per database handle.
+const _integrityByDb = new WeakMap();
+function integrityFor(db) {
+  let system = _integrityByDb.get(db);
+  if (!system) {
+    if (typeof db.exec === "function") initIntegrityTable(db);
+    system = createIntegritySystem(db);
+    _integrityByDb.set(db, system);
+  }
+  return system;
 }
 
 function nowISO() {
@@ -181,6 +201,25 @@ export function createDTU(db, {
       VALUES (?, ?, ?, ?, ?, ?)
     `).run(uid("prv"), dtuId, previewContent, contentType || "text",
       previewPolicy, now);
+
+    // Provenance on-write: hash + sign exactly the content string that was
+    // stored, and chain a citing/derivative DTU to its primary citation
+    // parent. Best-effort inside the transaction — an integrity failure
+    // (or no signing key configured, which stores an unsigned envelope)
+    // must never roll back a publish.
+    try {
+      integrityFor(db).generateIntegrity(
+        {
+          id: dtuId,
+          content: typeof content === "string" ? content : JSON.stringify(content),
+          tier: effectiveTier,
+          createdAt: now,
+          tags,
+          metadata: dtuMetadata,
+        },
+        { parentDtuId: citations[0]?.parentId || null },
+      );
+    } catch { /* provenance is best-effort; never fail a publish for it */ }
 
     return { dtuId, tier: effectiveTier, cretiScore, previewContent };
   });
