@@ -14,16 +14,33 @@ import { ErrorState } from '@/components/ui';
 interface Reference { id: string; title: string; authors: string | null; year: number | null; status: string }
 interface Collection { id: string; name: string }
 
-const STYLES = ['apa', 'mla', 'chicago', 'bibtex'];
+const STYLES = ['apa', 'mla', 'chicago', 'vancouver', 'bibtex'];
+const STYLE_KEY = 'research-bibliography-style';
 
 export function ResearchBibliographyPanel({ onChange }: { onChange: () => void }) {
   const [queue, setQueue] = useState<Reference[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [style, setStyle] = useState('apa');
+  // S9 (F12e): the panel unmounts whenever the Library section's
+  // sub-tab switches, which reset a bare useState('apa') every time.
+  // The chosen style now survives in sessionStorage.
+  const [style, setStyle] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(STYLE_KEY);
+      return saved && STYLES.includes(saved) ? saved : 'apa';
+    } catch { return 'apa'; }
+  });
   const [scope, setScope] = useState('');
   const [bibliography, setBibliography] = useState<string[]>([]);
+  // S9 (F12a): how many references the WHOLE library holds (recorded
+  // on unscoped builds only) — the queue's empty text may only claim
+  // "all references are read" when this is known to be non-zero.
+  const [libraryCount, setLibraryCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    try { sessionStorage.setItem(STYLE_KEY, style); } catch { /* ignore */ }
+  }, [style]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -49,7 +66,9 @@ export function ResearchBibliographyPanel({ onChange }: { onChange: () => void }
     const params: Record<string, unknown> = { style };
     if (scope) params.collectionId = scope;
     const r = await lensRun('research', 'bibliography-build', params);
-    setBibliography(r.data?.ok === false ? [] : (r.data?.result?.entries || []));
+    const entries = r.data?.ok === false ? [] : (r.data?.result?.entries || []);
+    setBibliography(entries);
+    if (!scope) setLibraryCount(entries.length);
   }, [style, scope]);
 
   useEffect(() => { void build(); }, [build]);
@@ -79,7 +98,13 @@ export function ResearchBibliographyPanel({ onChange }: { onChange: () => void }
           <BookOpen className="w-3.5 h-3.5 text-red-400" /> Reading queue
         </h3>
         {queue.length === 0 ? (
-          <p className="text-[11px] text-zinc-400 italic">Nothing queued — all references are read.</p>
+          <p className="text-[11px] text-zinc-400 italic">
+            {libraryCount === 0
+              ? 'Nothing queued — your library has no references yet.'
+              : libraryCount === null
+                ? 'Nothing queued.'
+                : 'Nothing queued — all references are read.'}
+          </p>
         ) : (
           <ul className="space-y-1">
             {queue.map((r) => (

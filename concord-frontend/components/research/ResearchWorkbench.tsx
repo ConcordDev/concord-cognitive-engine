@@ -87,7 +87,7 @@ export function ResearchWorkbench({ open = true, onClose, embedded = false }: Pr
         {tab === 'notes' && (activeNoteId ? <NoteEditor noteId={activeNoteId} onBack={() => setActiveNoteId(null)} onOpenNote={setActiveNoteId} /> : <NotesTab onOpen={setActiveNoteId} />)}
         {tab === 'daily' && <DailyTab />}
         {tab === 'search' && <SearchTab onOpen={(id) => { setActiveNoteId(id); setTab('notes'); }} />}
-        {tab === 'templates' && <TemplatesTab />}
+        {tab === 'templates' && <TemplatesTab onOpen={(id) => { setActiveNoteId(id); setTab('notes'); }} />}
         {tab === 'graph' && <NoteGraphView onOpenNote={(id) => { setActiveNoteId(id); setTab('notes'); }} />}
         {tab === 'literature' && <AcademicSearchPanel />}
         {tab === 'review' && <LiteratureReviewPanel />}
@@ -481,7 +481,14 @@ function DailyTab() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await lensRun({ domain: 'research', action: 'daily-note', input: {} });
+        // S9 (F12b): send the USER'S LOCAL date. The macro accepts an
+        // explicit date; without one it falls back to the server's UTC
+        // date, which titled the note with tomorrow's date for anyone
+        // west of Greenwich in their evening. Local getters give the
+        // calendar day on the user's own clock.
+        const now = new Date();
+        const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const r = await lensRun({ domain: 'research', action: 'daily-note', input: { date: localDate } });
         setNote(((r.data as { result?: { note?: Note } }).result?.note) || null);
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
@@ -538,8 +545,10 @@ function SearchTab({ onOpen }: { onOpen: (id: string) => void }) {
   );
 }
 
-function TemplatesTab() {
+function TemplatesTab({ onOpen }: { onOpen: (id: string) => void }) {
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [applying, setApplying] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -550,22 +559,45 @@ function TemplatesTab() {
     })();
   }, []);
 
+  // S9 (F12c): a template click used to create a note invisibly — the
+  // only feedback was a native alert() (the embedded shell swallows
+  // those; the same dead-dialog class S2 proved) and the created
+  // note's id was discarded, so repeat clicks filed identical notes
+  // invisibly. Now the click confirms in-app AND focuses the created
+  // note in the editor, and the in-flight guard stops double-clicks
+  // filing twins.
   const apply = async (id: string) => {
+    if (applying) return;
+    setApplying(id);
+    setError(null);
     try {
       const r = await lensRun({ domain: 'research', action: 'template-apply', input: { id } });
       const t = ((r.data as { result?: { template?: Template } }).result?.template);
-      if (!t) return;
-      await lensRun({ domain: 'research', action: 'note-create', input: { title: t.title, body: t.body } });
-      alert(`Created note from ${t.title} template`);
-    } catch (e) { console.error(e); }
+      if (!t) { setError('That template could not be loaded.'); return; }
+      const c = await lensRun({ domain: 'research', action: 'note-create', input: { title: t.title, body: t.body } });
+      const note = ((c.data as { result?: { note?: Note } }).result?.note);
+      if ((c.data as { ok?: boolean })?.ok === false || !note?.id) {
+        setError('The note could not be created.');
+        return;
+      }
+      // The confirmation IS the focus: the created note opens in the
+      // editor in front of the user (the Search tab's onOpen pattern).
+      onOpen(note.id);
+    } catch (e) {
+      console.error(e);
+      setError('The note could not be created.');
+    } finally {
+      setApplying(null);
+    }
   };
 
   return (
     <div className="p-3 space-y-2">
-      <p className="text-[11px] text-gray-400">Click a template to create a new note from it.</p>
+      <p className="text-[11px] text-gray-400">Click a template to create a new note from it — the new note opens in the editor.</p>
+      {error && <p className="text-[11px] text-rose-300">{error}</p>}
       {templates.map((t) => (
-        <button key={t.id} type="button" onClick={() => apply(t.id)}
-          className="w-full text-left rounded border border-white/10 bg-black/20 p-3 hover:bg-white/5">
+        <button key={t.id} type="button" onClick={() => apply(t.id)} disabled={applying !== null}
+          className="w-full text-left rounded border border-white/10 bg-black/20 p-3 hover:bg-white/5 disabled:opacity-50">
           <p className="text-sm font-medium text-gray-100">{t.title}</p>
           <pre className="text-[10px] text-gray-400 line-clamp-3 whitespace-pre-wrap font-mono mt-1">{t.body}</pre>
         </button>
