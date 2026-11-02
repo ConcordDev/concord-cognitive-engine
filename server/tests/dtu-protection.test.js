@@ -294,7 +294,7 @@ describe("dtu-protection — full-payload hash catches tampering the weak hash m
 
 // ── 4. The forgetting cycle honors the unified protection ───────────────────
 
-describe("forgetting-engine — protected DTUs survive the cycle, unprotected ones don't", () => {
+describe("forgetting-engine — protected DTUs are left alone, unprotected weak ones are labeled (never tombstoned)", () => {
   let STATE;
 
   beforeEach(() => {
@@ -306,7 +306,10 @@ describe("forgetting-engine — protected DTUs survive the cycle, unprotected on
     delete globalThis._concordSTATE;
   });
 
-  it("BOTH DIRECTIONS: the protected one is never tombstoned, the identical unprotected one is", async () => {
+  // Since #1876 (ghost-fleet no-delete) a forgetting pass LABELS weak DTUs (meta.quality weak + a quality:weak tag)
+  // and never tombstones by default (mode "tombstone" is opt-in behind ALLOW_TOMBSTONE). The protection contract
+  // is therefore: a protected DTU is never touched at all; the identical unprotected one is labeled, still present.
+  it("BOTH DIRECTIONS: the protected one is never labeled or tombstoned, the identical unprotected one is labeled weak and kept", async () => {
     const keep = weakDtu("d-forget-protected");
     const drop = weakDtu("d-forget-unprotected");
     STATE.dtus.set(keep.id, keep);
@@ -317,10 +320,17 @@ describe("forgetting-engine — protected DTUs survive the cycle, unprotected on
     // Enough real cycles to clear the GRACE_CYCLES (3) second-chance window.
     for (let i = 0; i < 6; i++) await runForgettingCycle(false);
 
-    assert.ok(STATE.dtus.has(keep.id), "the protected DTU survived");
+    const kept = STATE.dtus.get(keep.id);
+    assert.ok(kept, "the protected DTU survived");
+    assert.equal(kept.meta?.quality?.label, undefined, "and was never labeled weak");
+    assert.ok(!(kept.tags || []).includes("quality:weak"));
     assert.ok(!STATE.dtus.has(`tomb_${keep.id}`), "and was never tombstoned");
-    assert.ok(!STATE.dtus.has(drop.id), "the identical UNPROTECTED DTU was forgotten");
-    assert.ok(STATE.dtus.has(`tomb_${drop.id}`), "and left a tombstone");
+
+    const dropped = STATE.dtus.get(drop.id);
+    assert.ok(dropped, "the identical UNPROTECTED DTU is still present: a forgetting pass no longer deletes");
+    assert.equal(dropped.meta?.quality?.label, "weak", "but it was labeled weak");
+    assert.ok((dropped.tags || []).includes("quality:weak"));
+    assert.ok(!STATE.dtus.has(`tomb_${drop.id}`), "and no tombstone was written");
   });
 });
 
