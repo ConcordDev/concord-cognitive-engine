@@ -50,6 +50,7 @@ export default function createFederationPeeringRouter() {
   const state = () => globalThis._concordSTATE;
   const fromPeer = (req) => (typeof req.body?.from === "string" ? req.body.from : "");
 
+  // AUTH: peer-hmac - sender must be a registered peer and sign the heartbeat under its shared secret (receiveSignedHeartbeat, timing-safe, fail-closed); pinned by tests/federation-peering-routes-auth.test.js
   router.post("/heartbeat", (req, res) => {
     const STATE = state();
     if (!STATE) return res.status(503).json({ ok: false, error: "state_unavailable" });
@@ -60,12 +61,14 @@ export default function createFederationPeeringRouter() {
     return res.json({ ok: true, syncNeeded: !!received.syncNeeded, heartbeat: ours.heartbeat });
   });
 
+  // AUTH: peer-hmac - sender must be a registered peer; the package carries its HMAC under that peer's shared secret, verified in receiveSyncPackage before anything is imported (timing-safe, fail-closed)
   router.post("/sync", (req, res) => {
     const STATE = state();
     if (!STATE) return res.status(503).json({ ok: false, error: "state_unavailable" });
     return sendResult(res, receiveSyncPackage(STATE, fromPeer(req), req.body?.package || {}));
   });
 
+  // AUTH: peer-hmac - registered peer with trust >= 0.5 and a valid HMAC over the proposal under its shared secret (receiveProposal, timing-safe, fail-closed)
   router.post("/proposal", (req, res) => {
     const STATE = state();
     if (!STATE) return res.status(503).json({ ok: false, error: "state_unavailable" });
