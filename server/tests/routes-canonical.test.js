@@ -16,6 +16,12 @@ import {
 } from "../lib/dtu-rights.js";
 import registerCanonicalRoutes from "../routes/canonical.js";
 
+// H2: the platform signing key is no longer hardcoded in dtu-integrity.js —
+// it comes from CONCORD_DTU_SIGNING_KEY. Configure a test-only key so the
+// integrity routes exercise the signed path. (Env is read at call time, so
+// setting it here, after the imports, is effective.)
+process.env.CONCORD_DTU_SIGNING_KEY = "routes-canonical-test-only-key";
+
 /**
  * Lightweight mock Express app for route testing.
  */
