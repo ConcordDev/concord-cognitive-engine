@@ -2057,7 +2057,7 @@ import { brainChat as byoBrainChat, getOverride as byoGetOverride, getBrainMode 
 import { assertByoCryptoReady } from "./lib/byo-crypto.js";
 import { prepareContext } from "./lib/context-orchestrator.js";
 import { captureFromMessage as _captureUserMemory } from "./lib/user-memory.js";
-import { buildMemoryBlock as _buildUserMemoryBlock } from "./lib/user-memory-context.js";
+import { buildMemoryBlock as _buildUserMemoryBlock, verifiedMemoryUserId as _verifiedMemoryUserId } from "./lib/user-memory-context.js";
 import { platformProviderChat, platformProviderConfigured } from "./lib/platform-providers.js";
 import { cloudChatAvailable, cloudFallbackChat, llmReadyFor } from "./lib/llm-cloud-fallback.js";
 import { hostTier as _newsHostTier, isExcludedHost as _newsIsExcludedHost } from "./lib/news-outlet-policy.js";
@@ -28722,6 +28722,22 @@ try {
   _chatMemory = _chatMemoryLib.buildSessionMemory(_memRows);
 } catch (_e) { logger.debug('server', 'chat memory build failed', { error: _e?.message }); }
 
+// Per-user memory (opt-in, default off). Runs for EVERY turn that reaches here, so an explicit "remember that..."
+// is captured even when the agent route answers it, and the labelled block reaches both the agent route and the
+// conversational path. Kept in its own variable, NEVER merged into _chatMemory.text: that text is persisted into a
+// chat-memory DTU below, and a user's private memory must not be written into a DTU. Identity is the verified ctx
+// only (input is the raw client body). Never throws, no-op unless CONCORD_USER_MEMORY and the user's opt-in are on.
+let _userMemoryMsg = null;
+try {
+  const _umDb = ctx?.db || globalThis._concordSTATE?.db;
+  const _umUid = _verifiedMemoryUserId(ctx);
+  if (_umDb && _umUid) {
+    _captureUserMemory(_umDb, _umUid, prompt, { projectId: input?.projectId || null, lens: input?.lens || null, sessionId, msgId: input?.clientTurnId || null });
+    const _um = await _buildUserMemoryBlock(_umDb, _umUid, { projectId: input?.projectId || null, lens: input?.lens || null, queryText: prompt, sessionId, msgId: input?.clientTurnId || null });
+    _userMemoryMsg = _um.message;
+  }
+} catch (_e) { /* memory must never block chat */ }
+
 // Persist user msg + a deterministic assistant reply when the chat takes
 // any of the early-return paths (math, time, weather, identity, etc.).
 // The full LLM path persists at its own return site with richer meta.
@@ -29021,7 +29037,7 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
           : (_agentRouteKind === "design"
               ? { deadlineMs: _agentBudget.deadlineMs, chatTransport: _agentBudget.transport }
               : {});
-        const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind, lensActions: LENS_ACTIONS, memoryBlock: _chatMemory.text, formulaDtus: _formulaDtus, recallDtus: _recallDtus, knowledgeDtus: _knowledgeDtus, knowledgeStrong: _knowledgeStrong, sessionId, ...(typeof input?.selfContinue === "boolean" ? { selfContinue: input.selfContinue } : {}), ..._agentDeadline });
+        const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind, lensActions: LENS_ACTIONS, memoryBlock: _userMemoryMsg ? [_chatMemory.text, _userMemoryMsg.content].filter(Boolean).join("\n\n") : _chatMemory.text, formulaDtus: _formulaDtus, recallDtus: _recallDtus, knowledgeDtus: _knowledgeDtus, knowledgeStrong: _knowledgeStrong, sessionId, ...(typeof input?.selfContinue === "boolean" ? { selfContinue: input.selfContinue } : {}), ..._agentDeadline });
         if (_agentOut) {
           let _agentReply = visibleChatReply(_agentOut.reply, prompt);
           if (process.env.CONCORD_CHAT_HUMANIZE !== "0") {
@@ -30641,18 +30657,7 @@ ${_operatorV6Block}` : "";
     // _userContent last so the request never ends on an assistant prefill.
     messages = buildChatHistoryMessages(sess.messages, _userContent);
     if (_chatMemory.text) messages = [{ role: "system", content: _chatMemory.text }, ...messages];
-    // Per-user memory (opt-in, default off): capture what the user explicitly asked to remember this turn, then
-    // prepend the labelled block. Both are no-ops unless CONCORD_USER_MEMORY AND the user's own opt-in are on,
-    // never throw, and never delay the reply beyond the block's 150ms budget.
-    try {
-      const _umDb = ctx?.db || globalThis._concordSTATE?.db;
-      const _umUid = ctx?.actor?.userId || input?.userId || null;
-      if (_umDb && _umUid) {
-        _captureUserMemory(_umDb, _umUid, prompt, { projectId: input?.projectId || null, lens: currentLens || null, sessionId, msgId: input?.clientTurnId || null });
-        const _um = await _buildUserMemoryBlock(_umDb, _umUid, { projectId: input?.projectId || null, lens: currentLens || null, queryText: prompt, sessionId, msgId: input?.clientTurnId || null });
-        if (_um.message) messages = [_um.message, ...messages];
-      }
-    } catch (_e) { /* memory must never block chat */ }
+    if (_userMemoryMsg) messages = [_userMemoryMsg, ...messages];
     if (_chatTodayLine) messages = [{ role: "system", content: _chatTodayLine }, ...messages];
     if (_conversationalChat) messages = withChatToneReminder(messages);
     const _llmSpan = startSpan("llm.chat", { mode, sessionId, promptLength: prompt.length });
@@ -30747,6 +30752,7 @@ ${_operatorV6Block}` : "";
       const _directMessages = [
         { role: "system", content: _selfContSystem },
         ...(_chatMemory.text ? [{ role: "system", content: _chatMemory.text }] : []),
+        ...(_userMemoryMsg ? [_userMemoryMsg] : []),
         ...(_chatTodayLine ? [{ role: "system", content: _chatTodayLine }] : []),
         ...(isConversationalChatMode(mode) ? withChatToneReminder(buildChatHistoryMessages(sess.messages, prompt)) : buildChatHistoryMessages(sess.messages, prompt)),
       ];
@@ -58984,6 +58990,8 @@ function initChatSocketHandlers(io) {
           log: (...args) => structuredLog("info", "chat:socket", ...args),
           reqMeta: { sessionId },
           chatTransport: "socket",
+          // Per-user memory identity: ONLY the authenticated socket user, never handshake.auth.userId (client-supplied).
+          memoryUserId: socket.data?.userId || null,
           affect: {},
           llm: {
             enabled: LLM_READY,
