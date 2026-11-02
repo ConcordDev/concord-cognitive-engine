@@ -2056,6 +2056,8 @@ import { preloadBrains, getBrainPriority, resolveBrain } from "./lib/brain-route
 import { brainChat as byoBrainChat, getOverride as byoGetOverride, getBrainMode as byoGetBrainMode, resolveDispatchTarget as byoResolveDispatchTarget } from "./lib/byo-router.js";
 import { assertByoCryptoReady } from "./lib/byo-crypto.js";
 import { prepareContext } from "./lib/context-orchestrator.js";
+import { captureFromMessage as _captureUserMemory } from "./lib/user-memory.js";
+import { buildMemoryBlock as _buildUserMemoryBlock } from "./lib/user-memory-context.js";
 import { platformProviderChat, platformProviderConfigured } from "./lib/platform-providers.js";
 import { cloudChatAvailable, cloudFallbackChat, llmReadyFor } from "./lib/llm-cloud-fallback.js";
 import { hostTier as _newsHostTier, isExcludedHost as _newsIsExcludedHost } from "./lib/news-outlet-policy.js";
@@ -30639,6 +30641,18 @@ ${_operatorV6Block}` : "";
     // _userContent last so the request never ends on an assistant prefill.
     messages = buildChatHistoryMessages(sess.messages, _userContent);
     if (_chatMemory.text) messages = [{ role: "system", content: _chatMemory.text }, ...messages];
+    // Per-user memory (opt-in, default off): capture what the user explicitly asked to remember this turn, then
+    // prepend the labelled block. Both are no-ops unless CONCORD_USER_MEMORY AND the user's own opt-in are on,
+    // never throw, and never delay the reply beyond the block's 150ms budget.
+    try {
+      const _umDb = ctx?.db || globalThis._concordSTATE?.db;
+      const _umUid = ctx?.actor?.userId || input?.userId || null;
+      if (_umDb && _umUid) {
+        _captureUserMemory(_umDb, _umUid, prompt, { projectId: input?.projectId || null, lens: currentLens || null, sessionId, msgId: input?.clientTurnId || null });
+        const _um = await _buildUserMemoryBlock(_umDb, _umUid, { projectId: input?.projectId || null, lens: currentLens || null, queryText: prompt, sessionId, msgId: input?.clientTurnId || null });
+        if (_um.message) messages = [_um.message, ...messages];
+      }
+    } catch (_e) { /* memory must never block chat */ }
     if (_chatTodayLine) messages = [{ role: "system", content: _chatTodayLine }, ...messages];
     if (_conversationalChat) messages = withChatToneReminder(messages);
     const _llmSpan = startSpan("llm.chat", { mode, sessionId, promptLength: prompt.length });
@@ -43503,6 +43517,7 @@ app.use(createUniversalExportRouter(STATE, runMacro, makeCtx));
 
 // ===== DB-DEPENDENT ROUTES (guarded — these crash on null db) =====
 import createAccountLifecycleRouter from "./routes/account-lifecycle.js";
+import createUserMemoryRouter from "./routes/user-memory.js";
 import { adminOnly as economyAdminOnly } from "./economy/guards.js";
 import createConsentRouter from "./routes/consent.js";
 import createDisputeRouter from "./routes/disputes.js";
@@ -43516,6 +43531,7 @@ import registerCodeEngineRoutes from "./routes/code-engine.js";
 
 if (db) {
   app.use("/api/account", createAccountLifecycleRouter({ db, requireAuth, adminOnly: economyAdminOnly }));
+  app.use("/api/user-memory", createUserMemoryRouter({ db, requireAuth }));
   app.use("/api/consent", createConsentRouter({ db, requireAuth }));
   app.use("/api/disputes", createDisputeRouter({ db, requireAuth, adminOnly: economyAdminOnly }));
   registerLegalRoutes(app, { db, requireAuth, requireRole, structuredLog, auditLog });
