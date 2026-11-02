@@ -264,6 +264,18 @@
       ]
     },
     {
+      "file": "entity-economy.js",
+      "handlers": [
+        "runEconomicCycle"
+      ]
+    },
+    {
+      "file": "entity-growth.js",
+      "handlers": [
+        "runGrowthAutonomyTick"
+      ]
+    },
+    {
       "file": "entity-teaching.js",
       "handlers": [
         "advanceStep"
@@ -372,6 +384,12 @@
       "file": "hlm-engine.js",
       "handlers": [
         "runHLMPass"
+      ]
+    },
+    {
+      "file": "hlm-offthread.js",
+      "handlers": [
+        "runHLMPassOffThread"
       ]
     },
     {
@@ -966,15 +984,7 @@
       "handlers": []
     },
     {
-      "file": "entity-economy.js",
-      "handlers": []
-    },
-    {
       "file": "entity-emergence.js",
-      "handlers": []
-    },
-    {
-      "file": "entity-growth.js",
       "handlers": []
     },
     {
@@ -1231,5 +1241,5 @@
     }
   ],
   "orphan": [],
-  "scannedAt": "2026-09-30T05:57:09.454Z"
+  "scannedAt": "2026-11-02T01:34:37.404Z"
 }
