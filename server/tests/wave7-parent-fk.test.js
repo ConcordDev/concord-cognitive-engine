@@ -18,6 +18,8 @@ import registerMl from "../domains/ml.js";
 import registerProductivity from "../domains/productivity.js";
 import registerQuestmarket from "../domains/questmarket.js";
 import registerUrban from "../domains/urbanplanning.js";
+import Database from "better-sqlite3";
+import { initArtifactAclTable } from "../lib/artifact-acl.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -36,7 +38,17 @@ before(() => {
   ]) reg(register);
 });
 
-beforeEach(() => { globalThis._concordSTATE = {}; });
+// projects members are real accounts granted through the platform ACL (S4), so the store needs a users table.
+function testDb() {
+  const db = new Database(":memory:");
+  db.exec("CREATE TABLE users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL DEFAULT '', role TEXT NOT NULL DEFAULT 'member', scopes TEXT NOT NULL DEFAULT '[\"read\",\"write\"]', created_at TEXT NOT NULL DEFAULT '2026-01-01', last_login_at TEXT, is_active INTEGER NOT NULL DEFAULT 1)");
+  initArtifactAclTable(db);
+  const ins = db.prepare("INSERT INTO users (id, username, email) VALUES (?, ?, ?)");
+  ins.run("user_a", "usera", "a@example.test");
+  ins.run("user_ada", "ada", "ada@example.test");
+  return db;
+}
+beforeEach(() => { globalThis._concordSTATE = { db: testDb() }; });
 
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
 const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
@@ -68,13 +80,13 @@ describe("wave 7 parent ids", () => {
   it("projects task-create refuses a missing assignee, sprint, milestone, or parent", () => {
     const project = call("projects", "project-create", ctxA, { name: "Ship" }).result.project;
     const other = call("projects", "project-create", ctxA, { name: "Other" }).result.project;
-    const member = call("projects", "member-add", ctxA, { projectId: other.id, name: "Ada" }).result.member;
+    const member = call("projects", "member-add", ctxA, { projectId: other.id, account: "@ada" }).result.member;
     const sprint = call("projects", "sprint-create", ctxA, { projectId: other.id, name: "S" }).result.sprint;
     const milestone = call("projects", "milestone-create", ctxA, { projectId: other.id, name: "M" }).result.milestone;
     const parent = call("projects", "task-create", ctxA, { projectId: other.id, title: "Parent" }).result.task;
     const count = () => call("projects", "task-list", ctxA, { projectId: project.id }).result.count;
-    refuse("projects", "task-create", ctxA, { projectId: project.id, title: "T", assigneeId: "mbr_missing" }, "assignee not found", count);
-    refuse("projects", "task-create", ctxA, { projectId: project.id, title: "T", assigneeId: member.id }, "assignee not found", count);
+    refuse("projects", "task-create", ctxA, { projectId: project.id, title: "T", assigneeId: "mbr_missing" }, "assignee is not a member of this project — add them in Team first", count);
+    refuse("projects", "task-create", ctxA, { projectId: project.id, title: "T", assigneeId: member.id }, "assignee is not a member of this project — add them in Team first", count);
     refuse("projects", "task-create", ctxA, { projectId: project.id, title: "T", sprintId: sprint.id }, "sprint not found", count);
     refuse("projects", "task-create", ctxA, { projectId: project.id, title: "T", milestoneId: milestone.id }, "milestone not found", count);
     refuse("projects", "task-create", ctxA, { projectId: project.id, title: "T", parentId: parent.id }, "parent task not found", count);

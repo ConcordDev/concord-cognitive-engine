@@ -139,10 +139,10 @@ describe("repos — virtual code-host CRUD round-trips", () => {
 
     const saved = await lensRun("repos", "file-save", { params: { repoId, path: "new.ts", content: "line1\nline2\nline3", message: "add new.ts" } }, ctx);
     assert.equal(saved.result.saved, true);
-    // rpDiff("" , "line1\nline2\nline3"): empty=[""], new=3 lines.
-    // i0 differ → del+add (a=1,d=1); i1,i2 → add (a=3). So additions=3, deletions=1.
+    // Creating a file from nothing adds its 3 lines and deletes none (the diff no longer counts the phantom empty
+    // first line of a missing file as a deletion).
     assert.equal(saved.result.commit.additions, 3);
-    assert.equal(saved.result.commit.deletions, 1);
+    assert.equal(saved.result.commit.deletions, 0);
 
     const read = await lensRun("repos", "file-read", { params: { repoId, path: "new.ts" } }, ctx);
     assert.equal(read.result.content, "line1\nline2\nline3");
@@ -234,6 +234,8 @@ describe("repos — validation rejections", () => {
     const created = await lensRun("repos", "repo-create", { params: { name: "BlockMerge" } }, ctx);
     const repoId = created.result.repo.id;
     await lensRun("repos", "branch-create", { params: { repoId, name: "wip" } }, ctx);
+    // pull-create refuses an empty PR ("no_changes"), so put a commit on the branch first.
+    await lensRun("repos", "file-save", { params: { repoId, path: "wip.ts", content: "export const w = 1;", branch: "wip", message: "wip" } }, ctx);
     const pr = await lensRun("repos", "pull-create", { params: { repoId, title: "wip pr", head: "wip", base: "main" } }, ctx);
     const number = pr.result.pull.number;
     await lensRun("repos", "pull-review", { params: { repoId, number, verdict: "request-changes", body: "needs work" } }, ctx);

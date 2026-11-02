@@ -461,17 +461,40 @@ describe("graph — Obsidian/Kumu parity features (shared ctx)", () => {
     assert.equal(r.result.index, r.result.frameCount - 1);
   });
 
-  it("link-node-dtu → sync-to-dtu: requires a DTU link before syncing", async () => {
+  it("link-node-dtu → sync-to-dtu: a node is born DTU-linked; an unlinked one is refused; a bogus link is refused; a vanished DTU is reported", async () => {
     const { mapId, aId } = await buildChain("Sync");
-    // without a link, sync refuses
+    const nodeOf = () => {
+      for (const list of globalThis._concordSTATE.graphLens.maps.values()) {
+        const m = list.find((x) => x.id === mapId);
+        if (m) return m.nodes.find((n) => n.id === aId);
+      }
+      return null;
+    };
+
+    // Nodes are created already linked to a backing DTU, so a plain sync works and is stamped.
+    assert.ok(nodeOf().dtuId, "a new node carries its backing dtuId");
+    const born = await lensRun("graph", "sync-to-dtu", { params: { mapId, nodeId: aId } }, ctx);
+    assert.equal(born.ok, true);
+    assert.equal(born.result.dtuId, nodeOf().dtuId);
+
+    // A legacy node with no link is refused.
+    delete nodeOf().dtuId;
     const noLink = await lensRun("graph", "sync-to-dtu", { params: { mapId, nodeId: aId } }, ctx);
     assert.equal(noLink.result.ok, false);
     assert.ok(noLink.result.error.includes("no linked DTU"));
 
-    // link a (non-existent) DTU id → link succeeds, sync then fails on missing DTU
+    // F9: a bogus DTU id is refused at LINK time (it used to link and only fail at sync time).
+    const bogus = await lensRun("graph", "link-node-dtu", { params: { mapId, nodeId: aId, dtuId: "dtu_xyz" } }, ctx);
+    assert.equal(bogus.result.ok, false);
+    assert.match(bogus.result.error, /DTU doesn't exist/);
+
+    // A real DTU links; if it is later removed from the store, sync reports the missing DTU honestly.
+    const store = globalThis._concordSTATE.dtus;
+    store.set("dtu_xyz", { id: "dtu_xyz", title: "Linked", ownerId: "u" });
     const link = await lensRun("graph", "link-node-dtu", { params: { mapId, nodeId: aId, dtuId: "dtu_xyz" } }, ctx);
     assert.equal(link.ok, true);
     assert.equal(link.result.dtuId, "dtu_xyz");
+    store.delete("dtu_xyz");
     const sync = await lensRun("graph", "sync-to-dtu", { params: { mapId, nodeId: aId } }, ctx);
     assert.equal(sync.result.ok, false);
     assert.ok(sync.result.error.includes("DTU not found"));

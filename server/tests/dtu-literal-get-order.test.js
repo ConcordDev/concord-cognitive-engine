@@ -190,9 +190,11 @@ describe("DTU literal GETs in production registration order", () => {
     assert.equal(missing.status, 404);
     assert.equal(missing.body.error, "DTU not found");
 
+    // INC-SWEEP research F8 (d8d24b392): an anonymous caller asking for a private DTU gets 401 AUTH_REQUIRED
+    // (aligned with the lens macros); another signed-in user and a missing id stay 404. No body leaks either way.
     const anonPriv = await http.get("/api/dtus/order-private");
-    assert.equal(anonPriv.status, 404);
-    assert.equal(anonPriv.body.error, "DTU not found");
+    assert.equal(anonPriv.status, 401);
+    assert.equal(anonPriv.body.code, "AUTH_REQUIRED");
     assert.equal(JSON.stringify(anonPriv.body).includes(SECRET), false);
 
     const otherPriv = await http.get("/api/dtus/order-private", { userId: OTHER });

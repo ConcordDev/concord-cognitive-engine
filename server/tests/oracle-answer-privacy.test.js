@@ -290,7 +290,8 @@ describe("oracle answer reads through the DTU API", () => {
   it("HTTP list, by-id, lineage, related, history, search, and recent follow the same gate", async () => {
     for (const userId of [null, OTHER]) {
       const byId = await http.get(`/api/dtus/${oracleId}`, { userId });
-      assert.equal(byId.status, 404);
+      // anonymous -> 401 AUTH_REQUIRED (INC-SWEEP F8); another signed-in user -> 404. Neither leaks the body.
+      assert.equal(byId.status, userId ? 404 : 401);
       assert.equal(containsMarker(byId.body), false);
 
       const list = await http.get("/api/dtus?limit=5000", { userId });

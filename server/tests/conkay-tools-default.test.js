@@ -43,8 +43,14 @@ describe("conkayTurnPlan", () => {
 describe("runAgentLoop fallbackCall", () => {
   it("runs the planned call when the first turn answers from memory", async () => {
     const db = new Database(":memory:");
-    const texts = ["Carbon frames weigh about 700 g.", "From the results: frame X is 650 g (https://example.com/x)."];
-    const brain = async () => ({ ok: true, text: texts.shift() ?? "done", provider: "test", model: "test" });
+    // The loop can make more than two brain calls (an "evidence is thin" re-check follows a one-source search), so
+    // the stub answers by what it was shown, not by call order: before any tool result it answers from memory,
+    // after the web_search result it answers from the result.
+    const brain = async ({ messages }) => {
+      const sawResult = messages.some((m) => /\[TOOL_RESULT: web_search\]/.test(String(m.content)));
+      const text = sawResult ? "From the results: frame X is 650 g (https://example.com/x)." : "Carbon frames weigh about 700 g.";
+      return { ok: true, text, provider: "test", model: "test" };
+    };
     const runMacro = async (d, a, input) => (d === "expert_mode" && a === "web_search"
       ? { ok: true, results: [{ title: "Frame X 650 g", url: "https://example.com/x", snippet: `${input.query}` }] }
       : { ok: true });

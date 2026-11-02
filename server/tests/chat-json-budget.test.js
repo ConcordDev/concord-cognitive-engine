@@ -276,7 +276,12 @@ describe("JSON chat budget holds through the agent loop", () => {
     const h = call?.artifact?.bbox_mm?.height;
     assert.equal(h, 880);
     assert.match(r.answer, new RegExp(`${h} mm tall`));
-    assert.doesNotMatch(r.answer, /2\.7/);
+    // The invented height is replaced in the sentence; the only place "2.7" may still appear is the honest
+    // "Unverified figures" footnote that names what was NOT checked this turn.
+    const note = r.answer.match(/_Unverified figures: [^_]*_/);
+    assert.ok(note, "the unverified-figure footnote is present");
+    assert.match(note[0], /2\.7 m did not appear in this turn's tool results/);
+    assert.doesNotMatch(r.answer.replace(note[0], ""), /2\.7/);
   });
 
   it("a dragon ask still uses generate_3d and does not substitute a layout", { timeout: 20_000 }, async () => {

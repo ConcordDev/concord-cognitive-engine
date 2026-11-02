@@ -137,13 +137,18 @@ describe("forum — categories / topics / posts (shared ctx)", () => {
     assert.equal(got.result.subscribed, false);
   });
 
-  it("topic-create: missing title rejected; unknown categoryId nulled out", async () => {
+  it("topic-create: missing title rejected; an unknown categoryId is refused (never nulled), stores nothing", async () => {
     const bad = await lensRun("forum", "topic-create", { params: { title: "" } }, ctx);
     assert.equal(bad.result.ok, false);
     assert.ok(bad.result.error.includes("title required"));
 
+    // wave 7 parent ids: a topic can no longer point at a category that does not exist (it used to be silently
+    // nulled, which hid a typo and filed the topic under no category).
+    const before = (await lensRun("forum", "topic-list", {}, ctx)).result.count;
     const t = await lensRun("forum", "topic-create", { params: { title: "Orphan", categoryId: "does-not-exist" } }, ctx);
-    assert.equal(t.result.topic.categoryId, null);
+    assert.equal(t.result.ok, false);
+    assert.equal(t.result.error, "category not found");
+    assert.equal((await lensRun("forum", "topic-list", {}, ctx)).result.count, before);
   });
 
   it("post-reply builds a nested tree; replyCount reflects all posts", async () => {

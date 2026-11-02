@@ -104,6 +104,12 @@ describe("graph.map-merge-nodes — edge re-pointing + dedup + node removal", ()
     const b = await lensRun("graph", "node-add", { params: { mapId, label: "Beta", notes: "beta detail" } }, ctx);
     const aId = a.result.node.id;
     const bId = b.result.node.id;
+    // Nodes are born with their own backing dtuId, and a survivor that already has one keeps it. The inheritance
+    // path is for a LEGACY survivor with no link, so strip Beta's link to model that. link-node-dtu validates the
+    // DTU exists (F9), so the loser links a real one.
+    const survivorNode = [...globalThis._concordSTATE.graphLens.maps.values()].flat().find((m) => m.id === mapId).nodes.find((n) => n.id === bId);
+    delete survivorNode.dtuId;
+    globalThis._concordSTATE.dtus.set("dtu_alpha_only", { id: "dtu_alpha_only", title: "Alpha DTU", ownerId: "u" });
     await lensRun("graph", "link-node-dtu", { params: { mapId, nodeId: aId, dtuId: "dtu_alpha_only" } }, ctx);
 
     const r = await lensRun("graph", "map-merge-nodes", { params: { mapId, sourceNodeId: aId, targetNodeId: bId } }, ctx);
