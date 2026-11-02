@@ -44,6 +44,9 @@ vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 
 // ── headless chrome + heavy destination panels: render-only / inert stubs ──
+// The shared cross-lens recents card is its own data surface (its own lensRun call and its own error line); it is
+// inert here so these tests pin the lens page's states, not the shared card's.
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null, default: () => null }));
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) =>
     React.createElement('div', { 'data-testid': 'lens-shell' }, children),
