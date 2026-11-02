@@ -749,7 +749,7 @@ export function runIntegrityCheck(STATE, log, options = {}) {
  * `sliceMs` of wall time (checked every `checkEvery` items), so no single synchronous span grows with the size of
  * the store. Same result as runIntegrityCheck. Used by the 6-hourly periodic check.
  */
-export async function runIntegrityCheckAsync(STATE, log, options = {}, { sliceMs = 25, checkEvery = 256, now = () => performance.now(), yieldLoop = () => new Promise((r) => setImmediate(r)) } = {}) {
+export async function runIntegrityCheckAsync(STATE, log, options = {}, { sliceMs = 25, checkEvery = 256, now = () => performance.now(), yieldLoop = () => new Promise((r) => { setImmediate(r); }) } = {}) {
   let n = 0;
   let sliceStart = now();
   const tick = () => {

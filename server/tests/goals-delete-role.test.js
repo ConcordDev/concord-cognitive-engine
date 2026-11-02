@@ -5,6 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -32,8 +33,7 @@ function makeWorld() {
   };
   let handler;
   const register = (d, n, fn) => { handler = fn; };
-  new Function("STATE", "register", "ensureGoalSystem", "saveStateDebounced", "enforceEthosInvariant",
-    deleteGoalSrc + ";" + macroSrc)(STATE, register, () => {}, () => {}, () => {});
+  vm.runInThisContext(`(function (STATE, register, ensureGoalSystem, saveStateDebounced, enforceEthosInvariant) { ${deleteGoalSrc};${macroSrc} })`)(STATE, register, () => {}, () => {}, () => {});
   return { STATE, handler };
 }
 

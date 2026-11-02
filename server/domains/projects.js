@@ -477,8 +477,10 @@ export default function registerProjectsActions(registerLensAction) {
       if (list) s[k].set(userId, list.filter((x) => !doomedTasks.has(x.taskId)));
     }
     const rels = s.relations.get(userId);
-    if (rels) s.relations.set(userId, rels.filter(
-      (r) => !doomedTasks.has(r.fromTaskId) && !doomedTasks.has(r.toTaskId)));
+    if (rels) {
+      s.relations.set(userId, rels.filter(
+        (r) => !doomedTasks.has(r.fromTaskId) && !doomedTasks.has(r.toTaskId)));
+    }
     // Project-scoped stores from the parity-backlog block are created
     // lazily, so any of them may be absent: integrations and SLA policies
     // by projectId, notifications by projectId or by a doomed taskId.
@@ -488,8 +490,10 @@ export default function registerProjectsActions(registerLensAction) {
       if (list) map.set(userId, list.filter((x) => x.projectId !== params.id));
     }
     const inbox = s.notifications instanceof Map ? s.notifications.get(userId) : null;
-    if (inbox) s.notifications.set(userId, inbox.filter(
-      (n) => n.projectId !== params.id && !doomedTasks.has(n.taskId)));
+    if (inbox) {
+      s.notifications.set(userId, inbox.filter(
+        (n) => n.projectId !== params.id && !doomedTasks.has(n.taskId)));
+    }
     savePjState();
     return { ok: true, result: { deleted: params.id } };
   });
