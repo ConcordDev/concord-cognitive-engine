@@ -70,7 +70,8 @@ beforeEach(() => {
 describe('debug lens — one observability workspace', () => {
   it('opens on the real runtime overview with one grouped navigation rail', () => {
     render(<DebugLensPage />);
-    expect(screen.getByRole('heading', { name: 'Debug' })).toBeInTheDocument();
+    // The page opens on the northstar greeting (docs/lens-northstar), addressed to the signed-in user.
+    expect(screen.getByRole('heading', { name: 'What broke, ramaj' })).toBeInTheDocument();
     expect(screen.getByTestId('status-panel')).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Debug tools' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Issues/ })).toBeInTheDocument();
