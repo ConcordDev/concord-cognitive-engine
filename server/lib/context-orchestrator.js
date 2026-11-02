@@ -22,6 +22,7 @@ import { getContextSize } from './dynamic-context.js';
 import { compactMessages, estimateContextTokens } from './kv-compactor.js';
 import { vaultStore, vaultRecall, vaultCompact, initVaultSchema } from './dtu-memory-vault.js';
 import { applyDHTP, getBlockCache } from './dhtp.js';
+import { buildMemoryBlock } from './user-memory-context.js';
 import logger from '../logger.js';
 
 const DEFAULT_SUMMARIZE = async (messages) => {
@@ -45,6 +46,7 @@ const DEFAULT_SUMMARIZE = async (messages) => {
  * @param {string} [opts.baseSystemPrompt=''] - full system prompt (will be compressed via DHTP)
  * @param {Array} [opts.workingSetDtus=[]] - DTUs to include in DHTP block
  * @param {Function} [opts.summarize] - fallback summarizer for kv-compactor
+ * @param {Object} [opts.memory] - per-user memory context; no-op unless the flags AND the user's opt-in are on
  * @returns {Promise<{messages, usedTokens, vaultRefs, dhtpApplied, compacted, targetSize, ratio}>}
  */
 export async function prepareContext({
@@ -56,7 +58,8 @@ export async function prepareContext({
   systemLoad = {},
   baseSystemPrompt = '',
   workingSetDtus = [],
-  summarize = DEFAULT_SUMMARIZE
+  summarize = DEFAULT_SUMMARIZE,
+  memory = null // { projectId, lens, sessionId, msgId, embedFn } — opt-in per-user memory; absent => untouched
 } = {}) {
   const start = Date.now();
 
@@ -158,6 +161,22 @@ export async function prepareContext({
     }
   }
 
+  // ── Step 3b: per-user memory block (opt-in, budgeted, never blocks chat) ──
+  // Injected AFTER compaction/DHTP so it is neither summarized away nor compressed, and it never reaches the
+  // vault store in step 4 (which only keeps non-system messages).
+  let memoryFactIds = [];
+  if (memory && db && userId) {
+    const lastUser = [...workingMessages].reverse().find(m => m.role === 'user');
+    const mem = await buildMemoryBlock(db, userId, {
+      ...memory,
+      queryText: memory.queryText ?? (typeof lastUser?.content === 'string' ? lastUser.content : ''),
+    });
+    if (mem.message) {
+      workingMessages = [mem.message, ...workingMessages];
+      memoryFactIds = mem.factIds;
+    }
+  }
+
   const finalTokens = estimateContextTokens(workingMessages);
 
   // ── Step 4: store the exchange in vault for next time ─────────────────
@@ -185,6 +204,7 @@ export async function prepareContext({
     messages: workingMessages,
     usedTokens: finalTokens,
     vaultRefs,
+    ...(memoryFactIds.length ? { memoryFactIds } : {}),
     dhtpApplied,
     compacted: compacted || dhtpApplied,
     targetSize,
