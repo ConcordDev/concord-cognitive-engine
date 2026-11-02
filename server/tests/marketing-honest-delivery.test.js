@@ -66,8 +66,9 @@ describe("marketing.email-send — honest no-provider path", () => {
     assert.equal(r.status, "queued_no_provider");
     assert.equal(r.recipients, 3);
     assert.equal(r.delivered, 0);
-    assert.strictEqual(r.opened, null);
-    assert.strictEqual(r.clicked, null);
+    // #1877 removed email tracking entirely: no open pixel, no click redirects, so the fields do not exist.
+    assert.equal("opened" in r, false, "opened must not exist (no tracking)");
+    assert.equal("clicked" in r, false, "clicked must not exist (no tracking)");
     assert.match(String(r.note), /No email provider configured/);
     // The fabricated analytics must be gone — not zero, GONE.
     assert.equal("openRate" in r, false, "openRate must not be synthesized");
@@ -87,8 +88,8 @@ describe("marketing.email-send — honest no-provider path", () => {
     assert.equal(row.lastQueueAttempt.status, "queued_no_provider");
     // Nothing was delivered, so the stats must not claim sends.
     assert.equal(row.stats.sent, 0);
-    assert.equal(row.stats.opened, 0);
-    assert.equal(row.stats.clicked, 0);
+    assert.equal("opened" in row.stats, false, "no open tracking (#1877)");
+    assert.equal("clicked" in row.stats, false, "no click tracking (#1877)");
     // lastSentAt must NOT be stamped — nothing was sent.
     assert.equal(row.lastSentAt == null, true);
   });
