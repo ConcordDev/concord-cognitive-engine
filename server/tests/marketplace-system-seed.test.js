@@ -5,6 +5,12 @@
 // market lens rendered as "Anonymous". Fresh boot must not return those
 // rows, cleanup must ignore real owners, and purchase of a missing or
 // system listing must be refused.
+//
+// Anonymous readers get listings with every owner/seller identity field removed (#1990: a signed-out
+// visitor browses the Market but never sees who owns a row). So the checks below that are ABOUT
+// ownership ("a real user's listing is kept", "no system-owned row is listed") read the listings as a
+// signed-in member, where `userId` is present, and the anonymous read is asserted separately to be
+// redacted. An anonymous `userId === "system"` filter would pass vacuously (userId is always absent).
 
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -23,6 +29,16 @@ import createFrontierRoutesPart2, {
 import { registerDurableEndpoints } from "../durable.js";
 
 const SEED_TITLE = SEEDED_SYSTEM_LISTING_TITLES[0];
+
+// Stands in for the global auth middleware, which sets req.user only for an authenticated caller.
+const testAuth = (req, _res, next) => {
+  const id = req.headers["x-test-member"];
+  if (id) req.user = { id: String(id), role: "member" };
+  next();
+};
+const MEMBER = { "x-test-member": "reader" };
+const OWNER_KEYS = ["userId", "sellerId", "seller", "owner", "ownerId", "owner_user_id", "email"];
+const readListings = (app, member) => json(`${app.url}/api/marketplace/listings`, member ? { headers: MEMBER } : undefined);
 
 function listen(app) {
   return new Promise((resolve) => {
@@ -51,13 +67,14 @@ describe("GET /api/marketplace/listings — no seeded system listings", () => {
   before(async () => {
     const expressApp = express();
     expressApp.use(express.json());
+    expressApp.use(testAuth);
     expressApp.use("/api", createFrontierRoutesPart2({}));
     app = await listen(expressApp);
   });
   after(async () => { await app.close(); });
 
   it("fresh boot returns no listing with userId system", async () => {
-    const { status, body } = await json(`${app.url}/api/marketplace/listings`);
+    const { status, body } = await readListings(app, true);
     assert.equal(status, 200);
     assert.equal(body.ok, true);
     assert.ok(Array.isArray(body.listings));
@@ -65,6 +82,11 @@ describe("GET /api/marketplace/listings — no seeded system listings", () => {
     for (const title of SEEDED_SYSTEM_LISTING_TITLES) {
       assert.equal(body.listings.some((l) => l.title === title && l.userId === "system"), false);
     }
+    // anonymous: also no seeded rows by title, and no row carries any owner identity at all
+    const anon = await readListings(app, false);
+    assert.equal(anon.status, 200);
+    for (const title of SEEDED_SYSTEM_LISTING_TITLES) assert.equal(anon.body.listings.some((l) => l.title === title && JSON.stringify(l).includes("system")), false);
+    for (const l of anon.body.listings) for (const k of OWNER_KEYS) assert.equal(k in l, false, `anonymous listing leaked ${k}`);
   });
 
   it("keeps a real user's listing, including one that reuses a seed title", async () => {
@@ -74,10 +96,18 @@ describe("GET /api/marketplace/listings — no seeded system listings", () => {
       body: listingBody("alice", SEED_TITLE),
     });
     assert.equal(created.status, 201);
-    const { body } = await json(`${app.url}/api/marketplace/listings`);
+    // signed-in member: the owner is visible, and exactly one of alice's rows exists
+    const { body } = await readListings(app, true);
     const mine = body.listings.filter((l) => l.userId === "alice" && l.title === SEED_TITLE);
     assert.equal(mine.length, 1);
     assert.equal(body.listings.some((l) => l.userId === "system"), false);
+    // anonymous visitor: the SAME listing is still there (kept), with the owner id redacted (#1990)
+    const anon = await readListings(app, false);
+    const row = anon.body.listings.find((l) => l.id === created.body.listing.id);
+    assert.ok(row, "the real user's listing is still listed for a visitor");
+    assert.equal(row.title, SEED_TITLE);
+    for (const k of OWNER_KEYS) assert.equal(k in row, false, `anonymous view must not expose ${k}`);
+    assert.ok(!JSON.stringify(anon.body).includes('"alice"'), "alice's id appears nowhere in an anonymous response");
   });
 
   it("does not list a system-owned row even if one is inserted after boot", async () => {
@@ -87,9 +117,11 @@ describe("GET /api/marketplace/listings — no seeded system listings", () => {
       body: listingBody("system", "Physics Sandbox Pro", "simulation"),
     });
     assert.equal(created.status, 201);
-    const { body } = await json(`${app.url}/api/marketplace/listings`);
-    assert.equal(body.listings.some((l) => l.userId === "system"), false);
-    assert.equal(body.listings.some((l) => l.id === created.body.listing.id), false);
+    for (const member of [true, false]) {
+      const { body } = await readListings(app, member);
+      assert.equal(body.listings.some((l) => l.userId === "system"), false);
+      assert.equal(body.listings.some((l) => l.id === created.body.listing.id), false, member ? "hidden from a member" : "hidden from a visitor");
+    }
   });
 });
 
@@ -98,6 +130,7 @@ describe("purchase of a system or missing listing is refused", () => {
   before(async () => {
     const expressApp = express();
     expressApp.use(express.json());
+    expressApp.use(testAuth);
     expressApp.use("/api", createFrontierRoutesPart2({}));
     app = await listen(expressApp);
   });
@@ -233,6 +266,7 @@ describe("seed cleanup is non-destructive and dry-run by default", () => {
   it("in-memory purge removes only system rows that match the seed titles", async () => {
     const expressApp = express();
     expressApp.use(express.json());
+    expressApp.use(testAuth);
     expressApp.use("/api", createFrontierRoutesPart2({}));
     const app = await listen(expressApp);
     try {
@@ -268,9 +302,12 @@ describe("seed cleanup is non-destructive and dry-run by default", () => {
       const again = purgeSeededSystemListings({ apply: false });
       assert.equal(again.removed.some((r) => r.id === seeded.body.listing.id), false);
 
-      const listed = await json(`${app.url}/api/marketplace/listings`);
+      const listed = await readListings(app, true);
       assert.ok(listed.body.listings.some((l) => l.id === real.body.listing.id));
       assert.equal(listed.body.listings.some((l) => l.userId === "system"), false);
+      const listedAnon = await readListings(app, false);
+      assert.ok(listedAnon.body.listings.some((l) => l.id === real.body.listing.id), "the real listing survives the purge for a visitor too");
+      assert.equal(listedAnon.body.listings.some((l) => l.id === otherSystem.body.listing.id), false);
 
       const orderOther = await json(`${app.url}/api/marketplace/orders`, {
         method: "POST",
