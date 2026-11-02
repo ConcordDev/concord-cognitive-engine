@@ -20,8 +20,11 @@ on:
     - cron: '30 6 * * *'
   workflow_dispatch:
 
+# PRs: one run per PR, a newer push cancels the older. Push to main: one group PER COMMIT, so a burst of merges
+# never cancels or replaces an in-flight main run (a cancelled run can never save the baseline that the NEW vs
+# PRE-EXISTING triage compares against). Schedule/dispatch keep one group per ref.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || (github.event_name == 'push' && github.sha) || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
