@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { axiosStatus, deleteWhiteboard, ownerMutationNote, renameWhiteboard } from './boardOwner';
+import { axiosStatus, ownerMutationNote, renameWhiteboard } from './boardOwner';
 
 export function BoardOwnerMenu({
   boardId,
@@ -17,6 +17,7 @@ export function BoardOwnerMenu({
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(title);
   const [busy, setBusy] = useState<'rename' | 'delete' | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
   async function rename(event: React.FormEvent) {
@@ -45,22 +46,14 @@ export function BoardOwnerMenu({
     }
   }
 
-  async function remove() {
+  // S2: the confirmed delete is orchestrated by the Studio (onDeleted):
+  // the board soft-deletes immediately and the DTU delete commits only
+  // after the Undo window lapses — a one-click hard delete of a DTU is
+  // not a survivable misclick.
+  function remove() {
     if (busy) return;
-    setBusy('delete');
-    setNote(null);
-    try {
-      const res = await deleteWhiteboard(boardId);
-      if (res.data?.ok === false) {
-        setNote(ownerMutationNote(res.data?.status, String(res.data?.error || 'Delete was refused.')));
-        return;
-      }
-      onDeleted();
-    } catch (err) {
-      setNote(ownerMutationNote(axiosStatus(err), err instanceof Error ? err.message : 'Delete failed.'));
-    } finally {
-      setBusy(null);
-    }
+    setConfirmingDelete(false);
+    onDeleted();
   }
 
   return (
@@ -89,15 +82,25 @@ export function BoardOwnerMenu({
           Rename
         </button>
       )}
-      <button
-        type="button"
-        role="menuitem"
-        onClick={() => { void remove(); }}
-        disabled={busy !== null}
-        className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-rose-300 hover:bg-white/[0.06] disabled:opacity-40"
-      >
-        {busy === 'delete' ? 'Deleting…' : 'Delete board'}
-      </button>
+      {confirmingDelete ? (
+        <div className="flex flex-col gap-1.5 px-2.5 py-1.5">
+          <p className="text-[12px] leading-snug text-rose-200">Delete “{title}” for good? You get a short Undo window; after it, the board and its DTU are removed.</p>
+          <div className="flex gap-1.5">
+            <button type="button" onClick={remove} className="rounded-md bg-rose-500/20 px-2 py-1 text-[12px] font-medium text-rose-200 hover:bg-rose-500/30">Delete board</button>
+            <button type="button" onClick={() => setConfirmingDelete(false)} className="rounded-md px-2 py-1 text-[12px] text-zinc-300 hover:bg-white/[0.06]">Keep it</button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => setConfirmingDelete(true)}
+          disabled={busy !== null}
+          className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-rose-300 hover:bg-white/[0.06] disabled:opacity-40"
+        >
+          Delete board
+        </button>
+      )}
       {note && <p className="px-2.5 py-1 text-[11px] text-zinc-400" role="status">{note}</p>}
     </div>
   );

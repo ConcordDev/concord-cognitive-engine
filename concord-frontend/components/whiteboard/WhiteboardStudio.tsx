@@ -2,7 +2,7 @@
 
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useState, useRef, useEffect, useCallback, type ComponentType } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -27,6 +27,9 @@ import {
   StickyNote,
   Bookmark,
   MoreHorizontal,
+  ChevronUp,
+  ChevronDown,
+  RotateCw,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { Skeleton } from '@/components/ui';
@@ -39,6 +42,7 @@ import { WhiteboardArrangementPanel } from './WhiteboardArrangementPanel';
 import { WhiteboardCreateForm } from './WhiteboardCreateForm';
 import { WhiteboardKeepMenu } from './WhiteboardKeepMenu';
 import { BoardOwnerMenu } from './BoardOwnerMenu';
+import { commitDeletedBoard } from './boardOwner';
 import { axiosStatus } from './boardOwner';
 import {
   type BoardMode,
@@ -52,19 +56,54 @@ import {
   uid,
   clamp,
   fmtDur,
-  clickSelection,
   selectAllIds,
-  dragStarts,
-  moveSelection,
-  deleteSelection,
   duplicateSelection,
-  type DragStart,
 } from './whiteboard-model';
 
 const LAST_BOARD_KEY = 'concord:whiteboard:last';
 
 /** Boards are stored as "Whiteboard: <name>" DTUs; show just the name. */
 const boardName = (t: unknown) => String(t ?? 'Board').replace(/^Whiteboard:\s*/, '') || 'Board';
+
+/* D5: export receipts — provenance (board DTU, element count, export
+ * time) rides inside the exported file. CRC32 + a PNG tEXt chunk
+ * carry it in PNGs; SVG exports use a <metadata> element instead. */
+const WB_CRC_TABLE = (() => {
+  const table = new Int32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    table[n] = c;
+  }
+  return table;
+})();
+const wbCrc32 = (bytes: Uint8Array) => {
+  let c = 0xffffffff;
+  for (let i = 0; i < bytes.length; i++) c = WB_CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+};
+const wbPngWithReceipt = (png: Uint8Array, receiptJson: string): Uint8Array => {
+  // Not a PNG we can splice into (shorter than signature + IHDR): hand it back untouched rather than throw.
+  if (png.length < 33) return png;
+  const enc = new TextEncoder();
+  const keyword = enc.encode('concord-whiteboard');
+  const chunkData = new Uint8Array(keyword.length + 1 + enc.encode(receiptJson).length);
+  chunkData.set(keyword, 0);
+  chunkData[keyword.length] = 0;
+  chunkData.set(enc.encode(receiptJson), keyword.length + 1);
+  const chunk = new Uint8Array(12 + chunkData.length);
+  const dv = new DataView(chunk.buffer);
+  dv.setUint32(0, chunkData.length);
+  chunk.set(enc.encode('tEXt'), 4);
+  chunk.set(chunkData, 8);
+  dv.setUint32(8 + chunkData.length, wbCrc32(chunk.subarray(4, 8 + chunkData.length)));
+  // IHDR is the first chunk: 8-byte signature + 25 bytes.
+  const out = new Uint8Array(png.length + chunk.length);
+  out.set(png.subarray(0, 33), 0);
+  out.set(chunk, 33);
+  out.set(png.subarray(33), 33 + chunk.length);
+  return out;
+};
 
 /* ================================================================== */
 export function WhiteboardStudio({
@@ -86,20 +125,29 @@ export function WhiteboardStudio({
   const [selectedWbId, setSelectedWbId] = useState<string | null>(null);
   const [boardMode, setBoardMode] = useState<BoardMode>('canvas');
   const [showModeMenu, setShowModeMenu] = useState(false);
+  const [copyNote, setCopyNote] = useState<{ text: string; ok: boolean } | null>(null);
+  // D1/D2/D3/D4/E-WB-1: strip linkage, save flash, settle, ceremony, egg.
+  const [stripInfo, setStripInfo] = useState<{ keptVersion?: number; keptAt?: string } | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [saveFlash, setSaveFlash] = useState(false);
+  const [settle, setSettle] = useState<{ id: string; t0: number } | null>(null);
+  const [, setSettleTick] = useState(0);
+  const [presentIdx, setPresentIdx] = useState<number | null>(null);
+  const [ceremonyBusy, setCeremonyBusy] = useState(false);
+  const [eggLine, setEggLine] = useState<{ text: string; x: number; y: number } | null>(null);
+  const copyNoteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showInspector, setShowInspector] = useState(false);
   const [moreTools, setMoreTools] = useState(false);
 
   /* canvas state */
   const [tool, setTool] = useState<Tool>('select');
   const [elements, setElements] = useState<Element[]>([]);
-  /* Multi-selection (Q57): a set of element ids — see whiteboard-model
-   * for the click/⌘A semantics. Single-element selection is the
-   * one-member case of the same model. */
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  /* Where a selection drag started: pointer position + per-element
-   * drag-start snapshots, so a group drag moves from fixed origins
-   * instead of accumulating per-event deltas. */
-  const selectionDragRef = useRef<{ grabX: number; grabY: number; starts: Map<string, DragStart> } | null>(null);
+  const [selectedElement, setSelectedElement] = useState<Element | null>(null);
+  const [editingElement, setEditingElement] = useState<{ id: string; draft: string } | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  const groupDragRef = useRef<{ startX: number; startY: number; origins: Map<string, { x: number; y: number }> } | null>(null);
+  const resizeRef = useRef<{ id: string; corner: string; startX: number; startY: number; orig: { x: number; y: number; width: number; height: number } } | null>(null);
   const [viewingDtuId, setViewingDtuId] = useState<string | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentElement, setCurrentElement] = useState<Element | null>(null);
@@ -116,7 +164,12 @@ export function WhiteboardStudio({
   const [strokeColor, setStrokeColor] = useState('#00d4ff');
   const [fillColor, setFillColor] = useState('transparent');
   const [strokeWidth, setStrokeWidth] = useState(2);
-  const [showGrid, setShowGrid] = useState(false);
+  const [showGrid, setShowGrid] = useState(() => {
+    try { return window.localStorage.getItem('wb-show-grid') === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem('wb-show-grid', showGrid ? '1' : '0'); } catch { /* storage unavailable */ }
+  }, [showGrid]);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showDtuPicker, setShowDtuPicker] = useState(false);
   const [textInput, setTextInput] = useState('');
@@ -130,6 +183,12 @@ export function WhiteboardStudio({
   const [audioClipName, setAudioClipName] = useState('');
   const [audioClipDur, setAudioClipDur] = useState(30);
   const [imageLabel, setImageLabel] = useState('');
+  const [imageUrlInput, setImageUrlInput] = useState('');
+  const [imageData, setImageData] = useState('');
+  const [imageName, setImageName] = useState('');
+  const [dialogError, setDialogError] = useState<string | null>(null);
+  const [imageTick, setImageTick] = useState(0);
+  const imageCacheRef = useRef(new Map<string, HTMLImageElement>());
   const [noteText, setNoteText] = useState('');
   const [noteColor, setNoteColor] = useState(CARD_COLORS[0]);
   const [sectionChoice, setSectionChoice] = useState(SECTION_PRESETS[0]);
@@ -139,6 +198,19 @@ export function WhiteboardStudio({
     queryKey: ['whiteboards'],
     queryFn: () => apiHelpers.whiteboard.list().then(r => r.data),
   });
+
+  // S2: trashed board ids (domain store) — the Studio's REST list hides
+  // a board the moment it is deleted, before the DTU commit lands.
+  const { data: trashData } = useQuery({
+    queryKey: ['whiteboard-trash'],
+    queryFn: async () => {
+      const r = await lensRun({ domain: 'whiteboard', action: 'boards-trash-list', input: {} });
+      return r.data;
+    },
+  });
+  const trashedBoardIds = new Set<string>(
+    (((trashData?.result?.boards as Array<{ id: string }> | undefined) ?? []).map((b) => b.id)),
+  );
 
   const { data: selectedWb, isError: isError3, error: error3, refetch: refetch3,} = useQuery({
     queryKey: ['whiteboard', selectedWbId],
@@ -158,9 +230,10 @@ export function WhiteboardStudio({
 
   // Sidebar board list: prefer the real whiteboard.list() result; fall back to
   // the lens-artifact record only when the server list is genuinely empty.
-  const boardListItems: Record<string, unknown>[] = (whiteboards?.whiteboards && whiteboards.whiteboards.length > 0)
+  const boardListItems: Record<string, unknown>[] = ((whiteboards?.whiteboards && whiteboards.whiteboards.length > 0)
     ? whiteboards.whiteboards
-    : boardArtifacts.map(a => ({ id: a.id, title: a.title, elementCount: 0 }));
+    : boardArtifacts.map(a => ({ id: a.id, title: a.title, elementCount: Array.isArray((a as { data?: { elements?: unknown[] } }).data?.elements) ? ((a as { data?: { elements?: unknown[] } }).data!.elements as unknown[]).length : 0 })))
+    .filter((b: Record<string, unknown>) => !trashedBoardIds.has(String(b.id)));
 
   // North star: the canvas is the page, so open the most recent board instead
   // of an empty "select a board" screen (render-time adjust, once).
@@ -176,6 +249,68 @@ export function WhiteboardStudio({
     if (!selectedWbId) return;
     try { window.localStorage.setItem(LAST_BOARD_KEY, selectedWbId); } catch { /* storage unavailable */ }
   }, [selectedWbId]);
+
+  // D1: the strip reads the domain mirror record for the kept-DTU
+  // linkage (version + kept time) the S3 save model maintains.
+  useEffect(() => {
+    setStripInfo(null);
+    setLastSavedAt(null);
+    setPresentIdx(null);
+    if (!selectedWbId) return;
+    let cancelled = false;
+    void lensRun({ domain: 'whiteboard', action: 'board-load', input: { id: selectedWbId } })
+      .then((r) => {
+        if (cancelled) return;
+        const rec = (r.data as { result?: { board?: { keptVersion?: number; keptAt?: string } } }).result?.board;
+        setStripInfo(rec ? { keptVersion: rec.keptVersion, keptAt: rec.keptAt } : null);
+      })
+      .catch(() => { /* mirror is best-effort; the strip still shows canvas truth */ });
+    return () => { cancelled = true; };
+  }, [selectedWbId]);
+
+  // D2: the M7 flash is a single beat, then gone.
+  useEffect(() => {
+    if (!saveFlash) return;
+    const tm = setTimeout(() => setSaveFlash(false), 260);
+    return () => clearTimeout(tm);
+  }, [saveFlash]);
+
+  // D3: rAF-drive the 140ms settle, then release it.
+  useEffect(() => {
+    if (!settle) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setSettle(null); return; }
+    let raf = 0;
+    const step = () => {
+      if (performance.now() - settle.t0 >= 150) { setSettle(null); return; }
+      setSettleTick((v) => v + 1);
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [settle]);
+
+  // E-WB-1: the typeset line fades after a few seconds.
+  useEffect(() => {
+    if (!eggLine) return;
+    const tm = setTimeout(() => setEggLine(null), 3200);
+    return () => clearTimeout(tm);
+  }, [eggLine]);
+
+  // D4: Present walks the board's section frames as slides — each
+  // step centres the frame and the workspace beneath it.
+  const sectionFrames = elements.filter((el) => el.type === 'section');
+  useEffect(() => {
+    if (presentIdx === null) return;
+    const sec = sectionFrames[presentIdx];
+    if (!sec) return;
+    const targetZoom = Math.min(1.5, Math.max(0.4, (dimensions.width - 80) / (sec.width || 336)));
+    setZoom(targetZoom);
+    setOffset({
+      x: dimensions.width / 2 - (sec.x + (sec.width || 336) / 2) * targetZoom,
+      y: 60 - sec.y * targetZoom,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presentIdx]);
 
   const { data: dtus, isError: isError4, error: error4, refetch: refetch4,} = useQuery({
     queryKey: ['dtus-whiteboard'],
@@ -201,7 +336,11 @@ export function WhiteboardStudio({
 
   const saveMutation = useMutation({
     mutationFn: (data: { elements: Element[] }) => apiHelpers.whiteboard.update(selectedWbId!, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['whiteboard', selectedWbId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['whiteboard', selectedWbId] });
+      setLastSavedAt(new Date().toISOString());
+      setSaveFlash(true);
+    },
     onError: (err) => {
       console.error('Failed to save whiteboard:', err instanceof Error ? err.message : err);
     },
@@ -209,26 +348,25 @@ export function WhiteboardStudio({
 
   /* Hydrate canvas from the selected board payload (render-time adjust, not an effect). */
   const [hydratedId, setHydratedId] = useState<string | null>(null);
+  const [pendingBoardDelete, setPendingBoardDelete] = useState<{ id: string; title: string } | null>(null);
+  const boardDeleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   if (selectedWbId !== hydratedId) {
     if (!selectedWbId) {
       setHydratedId(null);
       setElements([]);
-      setSelectedIds(new Set());
     } else if (selectedWb) {
       setHydratedId(selectedWbId);
       setElements(selectedWb.whiteboard?.elements ?? []);
-      setSelectedIds(new Set());
     } else if (hydratedId !== null) {
       setHydratedId(null);
       setElements([]);
-      setSelectedIds(new Set());
     }
   }
 
   /* auto-save: debounce save elements to backend when they change */
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (!selectedWbId || elements.length === 0) return;
+    if (!selectedWbId || hydratedId !== selectedWbId) return;
     // Skip the initial load (when elements were just set from server data)
     if (selectedWb?.whiteboard?.elements && JSON.stringify(selectedWb.whiteboard.elements) === JSON.stringify(elements)) return;
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
@@ -238,6 +376,68 @@ export function WhiteboardStudio({
     return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [elements, selectedWbId]);
+  /* S1 (one board store): mirror the open canvas board into the domain
+     board store under its DTU id, so the Workbench list, the Collab
+     list, Analyze and the workspace summary all read the same board
+     the canvas is showing. Debounced like the autosave; fires for an
+     emptied board too (element counts must be able to reach zero). */
+  const mirrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastMirroredRef = useRef<string>('');
+  useEffect(() => {
+    if (!selectedWbId || hydratedId !== selectedWbId) return;
+    const title = boardName(boardListItems.find((b) => b.id === selectedWbId)?.title ?? selectedWb?.whiteboard?.title);
+    const payload = JSON.stringify({ id: selectedWbId, title, elements });
+    if (payload === lastMirroredRef.current) return;
+    if (mirrorTimerRef.current) clearTimeout(mirrorTimerRef.current);
+    mirrorTimerRef.current = setTimeout(() => {
+      lastMirroredRef.current = payload;
+      void lensRun({ domain: 'whiteboard', action: 'board-save', input: {
+        id: selectedWbId, title, origin: 'canvas', dtuId: selectedWbId,
+        scene: { elements, appState: { grid: showGrid }, model: 'sketch' },
+      } }).catch(() => { /* best-effort mirror; the DTU save is the record */ });
+    }, 1500);
+    return () => { if (mirrorTimerRef.current) clearTimeout(mirrorTimerRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [elements, selectedWbId, hydratedId, showGrid]);
+
+  /* S2: deleting the open board is a window, not an instant. The board
+     record soft-deletes immediately (every list hides the board); the
+     DTU delete commits only when the Undo window lapses. */
+  const handleBoardDeleted = async () => {
+    const id = selectedWbId;
+    if (!id) return;
+    const title = boardName(boardListItems.find((b) => b.id === id)?.title ?? selectedWb?.whiteboard?.title);
+    setShowModeMenu(false);
+    setSelectedWbId(null);
+    try {
+      await lensRun({ domain: 'whiteboard', action: 'board-delete', input: { id } });
+    } catch { /* a never-mirrored board has no record to trash; the DTU commit still runs */ }
+    queryClient.invalidateQueries({ queryKey: ['whiteboard-trash'] });
+    queryClient.invalidateQueries({ queryKey: ['whiteboards'] });
+    if (boardDeleteTimerRef.current) clearTimeout(boardDeleteTimerRef.current);
+    setPendingBoardDelete({ id, title });
+    boardDeleteTimerRef.current = setTimeout(() => {
+      setPendingBoardDelete(null);
+      void commitDeletedBoard(id, true).then(() => {
+        queryClient.invalidateQueries({ queryKey: ['whiteboards'] });
+        queryClient.invalidateQueries({ queryKey: ['whiteboard-trash'] });
+      });
+    }, 12000);
+  };
+
+  const undoBoardDelete = async () => {
+    if (boardDeleteTimerRef.current) clearTimeout(boardDeleteTimerRef.current);
+    const pending = pendingBoardDelete;
+    setPendingBoardDelete(null);
+    if (!pending) return;
+    try {
+      await lensRun({ domain: 'whiteboard', action: 'board-restore', input: { id: pending.id } });
+    } catch { /* nothing to restore */ }
+    queryClient.invalidateQueries({ queryKey: ['whiteboard-trash'] });
+    queryClient.invalidateQueries({ queryKey: ['whiteboards'] });
+    setSelectedWbId(pending.id);
+  };
+
 
   /* resize — the canvas container mounts only once a board is open, so observe
      it whenever it (re)mounts instead of measuring once at first render. */
@@ -282,6 +482,117 @@ export function WhiteboardStudio({
     };
   };
 
+  /* ---------- S6: real images for reference pins ---------- */
+  // Cache + async-load aware accessor: the draw effect re-runs when
+  // setImageTick bumps after an image finishes loading.
+  const loadImage = (url: string): HTMLImageElement => {
+    const cache = imageCacheRef.current;
+    let img = cache.get(url);
+    if (!img) {
+      img = new Image();
+      img.src = url;
+      img.onload = () => setImageTick((n) => n + 1);
+      cache.set(url, img);
+    }
+    return img;
+  };
+
+  // Embed a picked/dropped file into the board itself (downscaled
+  // to <=1024px JPEG) so the image persists with the scene — no
+  // external hosting, no dead link later.
+  const fileToEmbeddedImage = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const max = 1024;
+      const scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.max(1, Math.round(img.naturalWidth * scale));
+      const h = Math.max(1, Math.round(img.naturalHeight * scale));
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const cctx = c.getContext('2d');
+      URL.revokeObjectURL(url);
+      if (!cctx) { reject(new Error('Could not process that image.')); return; }
+      cctx.drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That file could not be read as an image.')); };
+    img.src = url;
+  });
+
+  const handleImageFile = async (file: File | null | undefined) => {
+    if (!file) return;
+    setDialogError(null);
+    try {
+      const data = await fileToEmbeddedImage(file);
+      setImageData(data);
+      setImageName(file.name);
+      if (!imageLabel.trim()) setImageLabel(file.name.replace(/\.[^.]+$/, ''));
+    } catch (err) {
+      setDialogError(err instanceof Error ? err.message : 'That file could not be read as an image.');
+    }
+  };
+
+  const handleCanvasDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    try {
+      const data = await fileToEmbeddedImage(file);
+      const pos = getCanvasCoords(e as unknown as React.MouseEvent);
+      pushUndo();
+      setElements((prev) => [...prev, {
+        id: uid(), type: 'image', x: pos.x - 80, y: pos.y - 60,
+        imageLabel: file.name.replace(/\.[^.]+$/, ''), imageUrl: data, stroke: '#f59e0b', fill: 'rgba(245, 158, 11, 0.08)',
+        strokeWidth: 2, width: 200, height: 150,
+      }]);
+    } catch { /* unreadable file — the dialog path reports errors properly */ }
+  };
+
+  /* ---------- S5 geometry helpers ---------- */
+  const elementBBox = (el: Element) => {
+    if (el.type === 'freehand' && el.points && el.points.length > 0) {
+      const xs = el.points.map((p) => p.x);
+      const ys = el.points.map((p) => p.y);
+      return { x: Math.min(...xs), y: Math.min(...ys), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) };
+    }
+    return { x: el.x, y: el.y, width: el.width || 100, height: el.height || 50 };
+  };
+
+  // Hit test honouring rotation: un-rotate the point around the centre.
+  const pointInElement = (el: Element, x: number, y: number) => {
+    const b = elementBBox(el);
+    let px = x;
+    let py = y;
+    if (el.rotation) {
+      const cx = b.x + b.width / 2;
+      const cy = b.y + b.height / 2;
+      const rad = -(el.rotation * Math.PI) / 180;
+      const dx = x - cx;
+      const dy = y - cy;
+      px = cx + dx * Math.cos(rad) - dy * Math.sin(rad);
+      py = cy + dx * Math.sin(rad) + dy * Math.cos(rad);
+    }
+    if (el.type === 'freehand' && el.points) {
+      return el.points.some((p) => Math.abs(p.x - px) < 10 && Math.abs(p.y - py) < 10);
+    }
+    return px >= b.x && px <= b.x + b.width && py >= b.y && py <= b.y + b.height;
+  };
+
+  const resizeCornerAt = (el: Element, x: number, y: number): string | null => {
+    if (el.type === 'freehand') return null;
+    const b = elementBBox(el);
+    const tol = 10 / zoom;
+    const corners: Record<string, { cx: number; cy: number }> = {
+      nw: { cx: b.x, cy: b.y }, ne: { cx: b.x + b.width, cy: b.y },
+      sw: { cx: b.x, cy: b.y + b.height }, se: { cx: b.x + b.width, cy: b.y + b.height },
+    };
+    for (const [name, c] of Object.entries(corners)) {
+      if (Math.abs(x - c.cx) <= tol && Math.abs(y - c.cy) <= tol) return name;
+    }
+    return null;
+  };
+
   /* ---------- mouse handlers (canvas mode) ---------- */
   const handleMouseDown = (e: React.MouseEvent) => {
     const { x, y } = getCanvasCoords(e);
@@ -293,32 +604,48 @@ export function WhiteboardStudio({
     }
 
     if (tool === 'select') {
-      const clicked = [...elements].reverse().find(el => {
-        if (el.type === 'freehand' && el.points) {
-          return el.points.some(p => Math.abs(p.x - x) < 10 && Math.abs(p.y - y) < 10);
+      // S5: a resize handle on the single selection takes the click first.
+      if (selectedElement && selectedIds.length <= 1) {
+        const corner = resizeCornerAt(selectedElement, x, y);
+        if (corner) {
+          resizeRef.current = { id: selectedElement.id, corner, startX: x, startY: y, orig: elementBBox(selectedElement) };
+          setIsDrawing(true);
+          return;
         }
-        const w = el.width || 100;
-        const h = el.height || 50;
-        return x >= el.x && x <= el.x + w && y >= el.y && y <= el.y + h;
-      });
-      const additive = e.shiftKey || e.metaKey || e.ctrlKey;
-      const next = clickSelection(selectedIds, clicked?.id ?? null, additive);
-      setSelectedIds(next);
-      // Begin a drag only when the press lands on an element that ends
-      // up selected (an additive click that REMOVES an element starts
-      // no drag). The drag moves every selected element as a group.
-      if (clicked && next.has(clicked.id)) {
-        setIsDrawing(true);
-        selectionDragRef.current = { grabX: x, grabY: y, starts: dragStarts(elements, next) };
       }
+      const clicked = [...elements].reverse().find((el) => pointInElement(el, x, y));
+      if (clicked && e.shiftKey) {
+        setSelectedIds((prev) => (prev.includes(clicked.id) ? prev.filter((id) => id !== clicked.id) : [...prev, clicked.id]));
+        setSelectedElement(clicked);
+        return;
+      }
+      if (clicked) {
+        const group = selectedIds.includes(clicked.id) && selectedIds.length > 1 ? selectedIds : [clicked.id];
+        setSelectedIds(group);
+        setSelectedElement(clicked);
+        setIsDrawing(true);
+        if (group.length > 1) {
+          const origins = new Map<string, { x: number; y: number }>();
+          elements.forEach((el) => { if (group.includes(el.id)) origins.set(el.id, { x: el.x, y: el.y }); });
+          groupDragRef.current = { startX: x, startY: y, origins };
+        } else {
+          setCurrentElement({ ...clicked, x: x - clicked.x, y: y - clicked.y } as unknown as Element);
+        }
+        return;
+      }
+      // Empty canvas: clear the selection and start a marquee.
+      setSelectedElement(null);
+      setSelectedIds([]);
+      setIsDrawing(true);
+      setMarquee({ x0: x, y0: y, x1: x, y1: y });
       return;
     }
 
-    if (tool === 'text') { setTextPosition({ x, y }); return; }
+    if (tool === 'text') { setTextInput(''); setTextPosition({ x, y }); return; }
     if (tool === 'dtu') { setShowDtuPicker(true); setTextPosition({ x, y }); return; }
-    if (tool === 'audio') { setShowAudioDialog(true); setTextPosition({ x, y }); return; }
-    if (tool === 'image') { setShowImageDialog(true); setTextPosition({ x, y }); return; }
-    if (tool === 'notecard') { setShowNoteDialog(true); setTextPosition({ x, y }); return; }
+    if (tool === 'audio') { setAudioClipName(''); setAudioClipDur(30); setDialogError(null); setShowAudioDialog(true); setTextPosition({ x, y }); return; }
+    if (tool === 'image') { setImageLabel(''); setImageUrlInput(''); setImageData(''); setImageName(''); setDialogError(null); setShowImageDialog(true); setTextPosition({ x, y }); return; }
+    if (tool === 'notecard') { setNoteText(''); setDialogError(null); setShowNoteDialog(true); setTextPosition({ x, y }); return; }
     if (tool === 'section') { setShowSectionDialog(true); setTextPosition({ x, y }); return; }
 
     pushUndo();
@@ -344,16 +671,54 @@ export function WhiteboardStudio({
     }
     const { x, y } = getCanvasCoords(e);
 
-    // Selection drags carry their state in selectionDragRef, not in
-    // drawingRef/currentElement — handle them before the draw gate.
-    if (tool === 'select' && selectionDragRef.current) {
-      const drag = selectionDragRef.current;
-      setElements(prev => moveSelection(prev, drag.starts, x - drag.grabX, y - drag.grabY));
+    if (tool === 'select' && marquee) {
+      setMarquee((m) => (m ? { ...m, x1: x, y1: y } : m));
+      return;
+    }
+
+    if (tool === 'select' && resizeRef.current) {
+      const rz = resizeRef.current;
+      const dx = x - rz.startX;
+      const dy = y - rz.startY;
+      const o = rz.orig;
+      let nx = o.x;
+      let ny = o.y;
+      let nw = o.width;
+      let nh = o.height;
+      if (rz.corner.includes('e')) nw = o.width + dx;
+      if (rz.corner.includes('s')) nh = o.height + dy;
+      if (rz.corner.includes('w')) { nw = o.width - dx; nx = o.x + dx; }
+      if (rz.corner.includes('n')) { nh = o.height - dy; ny = o.y + dy; }
+      if (nw < 20) { nw = 20; if (rz.corner.includes('w')) nx = o.x + o.width - 20; }
+      if (nh < 14) { nh = 14; if (rz.corner.includes('n')) ny = o.y + o.height - 14; }
+      setElements((prev) => prev.map((el) => (el.id === rz.id ? { ...el, x: nx, y: ny, width: nw, height: nh } : el)));
+      return;
+    }
+
+    if (tool === 'select' && groupDragRef.current) {
+      const gd = groupDragRef.current;
+      let dx = x - gd.startX;
+      let dy = y - gd.startY;
+      if (showGrid) { dx = Math.round(dx / 20) * 20; dy = Math.round(dy / 20) * 20; }
+      setElements((prev) => prev.map((el) => {
+        const origin = gd.origins.get(el.id);
+        return origin ? { ...el, x: origin.x + dx, y: origin.y + dy } : el;
+      }));
       return;
     }
 
     const cur = drawingRef.current ?? currentElement;
     if (!isDrawing || !cur) return;
+
+    if (tool === 'select' && selectedElement) {
+      const snap = (v: number) => (showGrid ? Math.round(v / 20) * 20 : v);
+      setElements(prev => prev.map(el =>
+        el.id === selectedElement.id
+          ? { ...el, x: snap(x - (currentElement as unknown as Record<string, number>).x), y: snap(y - (currentElement as unknown as Record<string, number>).y) }
+          : el
+      ));
+      return;
+    }
 
     const next = cur.type === 'freehand' && cur.points
       ? { ...cur, points: [...cur.points, { x, y }] }
@@ -364,7 +729,31 @@ export function WhiteboardStudio({
 
   const handleMouseUp = () => {
     setIsPanning(false);
-    selectionDragRef.current = null;
+    if (marquee) {
+      const m = marquee;
+      setMarquee(null);
+      setIsDrawing(false);
+      const x0 = Math.min(m.x0, m.x1);
+      const x1 = Math.max(m.x0, m.x1);
+      const y0 = Math.min(m.y0, m.y1);
+      const y1 = Math.max(m.y0, m.y1);
+      if (x1 - x0 > 4 || y1 - y0 > 4) {
+        const hits = elements.filter((el) => {
+          const b = elementBBox(el);
+          return b.x < x1 && b.x + b.width > x0 && b.y < y1 && b.y + b.height > y0;
+        }).map((el) => el.id);
+        setSelectedIds(hits);
+        setSelectedElement(elements.find((el) => el.id === hits[hits.length - 1]) || null);
+      }
+      return;
+    }
+    if (resizeRef.current) {
+      resizeRef.current = null;
+      setIsDrawing(false);
+      pushUndo();
+      return;
+    }
+    if (groupDragRef.current) groupDragRef.current = null;
     if (!isDrawing) return;
     setIsDrawing(false);
     const done = drawingRef.current ?? currentElement;
@@ -379,25 +768,67 @@ export function WhiteboardStudio({
       if (n.width && n.width < 0) { n.x += n.width; n.width = Math.abs(n.width); }
       if (n.height && n.height < 0) { n.y += n.height; n.height = Math.abs(n.height); }
       setElements(prev => [...prev, n]);
+      setSettle({ id: n.id, t0: performance.now() });
+      // E-WB-1 The Long Line: a freehand stroke spanning the visible
+      // canvas edge-to-edge typesets its really-measured length.
+      if (n.type === 'freehand' && n.points && n.points.length > 2) {
+        let len = 0;
+        let minX = Infinity;
+        let maxX = -Infinity;
+        for (let i = 0; i < n.points.length; i++) {
+          const pt = n.points[i];
+          if (pt.x < minX) minX = pt.x;
+          if (pt.x > maxX) maxX = pt.x;
+          if (i > 0) {
+            const prev = n.points[i - 1];
+            len += Math.hypot(pt.x - prev.x, pt.y - prev.y);
+          }
+        }
+        const visibleW = dimensions.width / zoom;
+        if (maxX - minX >= 0.9 * visibleW) {
+          const last = n.points[n.points.length - 1];
+          setEggLine({
+            text: Math.round(len).toLocaleString('en-US') + ' px of line. Committed.',
+            x: last.x * zoom + offset.x,
+            y: last.y * zoom + offset.y,
+          });
+        }
+      }
     }
     setCurrentElement(null);
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     const { x, y } = getCanvasCoords(e);
-    const clicked = [...elements].reverse().find(el => {
-      const w = el.width || 100;
-      const h = el.height || 50;
-      return x >= el.x && x <= el.x + w && y >= el.y && y <= el.y + h;
-    });
+    const clicked = [...elements].reverse().find((el) => pointInElement(el, x, y));
     if (clicked?.type === 'dtu' && clicked.dtuId) {
       setViewingDtuId(clicked.dtuId);
+      return;
     }
+    // S4: text-bearing elements edit in place — double-click opens an
+    // editor over the element instead of sending the user to a dialog.
+    if (clicked && (clicked.type === 'text' || clicked.type === 'notecard')) {
+      setSelectedElement(clicked);
+      setEditingElement({ id: clicked.id, draft: clicked.text || '' });
+    }
+  };
+
+  const commitInlineEdit = () => {
+    if (!editingElement) return;
+    const { id, draft } = editingElement;
+    setEditingElement(null);
+    const target = elements.find((el) => el.id === id);
+    // An emptied draft is a cancel, never a silent erase.
+    if (!target || !draft.trim() || draft === (target.text || '')) return;
+    pushUndo();
+    setElements((prev) => prev.map((el) => (el.id === id
+      ? { ...el, text: draft, width: el.type === 'text' ? Math.max(60, draft.length * 12) : el.width }
+      : el)));
   };
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    const d = e.deltaY > 0 ? 0.9 : 1.1;
+    const d = e.deltaY > 0 ? 1 / 1.1 : 1.1;
     setZoom(z => clamp(z * d, 0.25, 4));
   };
 
@@ -410,7 +841,7 @@ export function WhiteboardStudio({
       text: textInput, stroke: strokeColor, fill: strokeColor, strokeWidth: 1,
       width: textInput.length * 12, height: 24,
     }]);
-    setTextInput(''); setTextPosition(null);
+    setTextInput(''); setTextPosition(null); setTool('select');
   };
 
   const addDtu = (dtu: Record<string, unknown>) => {
@@ -422,40 +853,45 @@ export function WhiteboardStudio({
       dtuTitle: ((dtu.title as string) || (dtu.content as string)?.slice(0, 30)) as string,
       stroke: '#a855f7', fill: 'rgba(168, 85, 247, 0.1)', strokeWidth: 2, width: 200, height: 80,
     }]);
-    setShowDtuPicker(false); setTextPosition(null);
+    setShowDtuPicker(false); setTextPosition(null); setTool('select');
   };
 
   const addAudioPin = () => {
-    if (!textPosition || !audioClipName.trim()) return;
+    if (!textPosition) return;
+    if (!audioClipName.trim()) { setDialogError('Give the clip a name first.'); return; }
+    if (!Number.isFinite(audioClipDur) || audioClipDur < 1 || audioClipDur > 3600) { setDialogError('Duration needs to be between 1 and 3600 seconds.'); return; }
     pushUndo();
     setElements(prev => [...prev, {
       id: uid(), type: 'audio', x: textPosition.x, y: textPosition.y,
-      clipName: audioClipName, duration: audioClipDur, playing: false,
+      clipName: audioClipName, duration: Math.round(audioClipDur), playing: false,
       stroke: '#00d4ff', fill: 'rgba(0, 212, 255, 0.08)', strokeWidth: 2, width: 220, height: 72,
     }]);
-    setAudioClipName(''); setAudioClipDur(30); setShowAudioDialog(false); setTextPosition(null);
+    setAudioClipName(''); setAudioClipDur(30); setDialogError(null); setShowAudioDialog(false); setTextPosition(null); setTool('select');
   };
 
   const addImagePin = () => {
-    if (!textPosition || !imageLabel.trim()) return;
+    const url = imageData || imageUrlInput.trim();
+    if (!textPosition) return;
+    if (!url && !imageLabel.trim()) { setDialogError('Add an image (upload or link) or at least a label first.'); return; }
     pushUndo();
     setElements(prev => [...prev, {
       id: uid(), type: 'image', x: textPosition.x, y: textPosition.y,
-      imageLabel, imageUrl: '', stroke: '#f59e0b', fill: 'rgba(245, 158, 11, 0.08)',
-      strokeWidth: 2, width: 160, height: 160,
+      imageLabel: imageLabel.trim() || imageName.replace(/\.[^.]+$/, '') || 'Image', imageUrl: url, stroke: '#f59e0b', fill: 'rgba(245, 158, 11, 0.08)',
+      strokeWidth: 2, width: 200, height: 150,
     }]);
-    setImageLabel(''); setShowImageDialog(false); setTextPosition(null);
+    setImageLabel(''); setImageUrlInput(''); setImageData(''); setImageName(''); setDialogError(null); setShowImageDialog(false); setTextPosition(null); setTool('select');
   };
 
   const addNoteCard = () => {
-    if (!textPosition || !noteText.trim()) return;
+    if (!textPosition) return;
+    if (!noteText.trim()) { setDialogError('Write the note first.'); return; }
     pushUndo();
     setElements(prev => [...prev, {
       id: uid(), type: 'notecard', x: textPosition.x, y: textPosition.y,
       text: noteText, cardColor: noteColor, stroke: noteColor, fill: noteColor + '22',
       strokeWidth: 2, width: 180, height: 100,
     }]);
-    setNoteText(''); setShowNoteDialog(false); setTextPosition(null);
+    setNoteText(''); setDialogError(null); setShowNoteDialog(false); setTextPosition(null); setTool('select');
   };
 
   const addSectionMarker = () => {
@@ -467,7 +903,7 @@ export function WhiteboardStudio({
       stroke: sectionChoice.color, fill: sectionChoice.color + '18',
       strokeWidth: 2, width: sectionChoice.bars * 24, height: 56,
     }]);
-    setShowSectionDialog(false); setTextPosition(null);
+    setShowSectionDialog(false); setTextPosition(null); setTool('select');
   };
 
   const toggleAudioPlay = (id: string) => {
@@ -475,19 +911,96 @@ export function WhiteboardStudio({
   };
 
   const deleteSelected = useCallback(() => {
-    if (selectedIds.size === 0) return;
+    if (!selectedElement) return;
     pushUndo();
-    setElements(prev => deleteSelection(prev, selectedIds));
-    setSelectedIds(new Set());
-  }, [selectedIds, pushUndo]);
+    if (selectedIds.length > 1) {
+      setElements(prev => prev.filter(el => !selectedIds.includes(el.id)));
+      setSelectedIds([]);
+    } else {
+      setElements(prev => prev.filter(el => el.id !== selectedElement.id));
+    }
+    setSelectedElement(null);
+  }, [selectedElement, selectedIds, pushUndo]);
 
-  const exportCanvas = () => {
+  const reorderSelected = (dir: 1 | -1) => {
+    if (!selectedElement) return;
+    pushUndo();
+    setElements(prev => {
+      const i = prev.findIndex(el => el.id === selectedElement.id);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      const tmp = next[i];
+      next[i] = next[j];
+      next[j] = tmp;
+      return next;
+    });
+  };
+
+  const rotateSelected = () => {
+    if (!selectedElement) return;
+    pushUndo();
+    const turn = (el: Element) => ({ ...el, rotation: ((el.rotation || 0) + 15) % 360 });
+    setElements(prev => prev.map(el => (el.id === selectedElement.id ? turn(el) : el)));
+    setSelectedElement(prev => (prev ? turn(prev as Element) : prev));
+  };
+
+  // D4: a ceremony starts a new board whose main canvas carries named
+  // section frames with the session's date. Present walks them.
+  const CEREMONIES: Record<string, { label: string; frames: string[] }> = {
+    retro: { label: 'Retro', frames: ['Went well', 'To improve', 'Actions'] },
+    planning: { label: 'Planning', frames: ['Today', 'This week', 'Later', 'Risks'] },
+    brainstorm: { label: 'Brainstorm', frames: ['Ideas', 'Wild cards', 'Questions'] },
+  };
+  const startCeremony = async (kind: string) => {
+    const c = CEREMONIES[kind];
+    if (!c || ceremonyBusy) return;
+    setCeremonyBusy(true);
+    try {
+      const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+      const res = await apiHelpers.whiteboard.create({ title: c.label + ' - ' + dateLabel, linkedDtus: [] });
+      const id = (res.data as { dtuId?: string }).dtuId;
+      if (!id) return;
+      const frames: Element[] = c.frames.map((label, i) => {
+        const preset = SECTION_PRESETS[i % SECTION_PRESETS.length];
+        return {
+          id: uid(), type: 'section', x: 60 + i * 400, y: 80,
+          sectionType: preset.type, text: label, bars: 14,
+          stroke: preset.color, fill: preset.color + '18', strokeWidth: 2,
+          width: 336, height: 56,
+        } as Element;
+      });
+      await apiHelpers.whiteboard.update(id, { elements: frames });
+      queryClient.invalidateQueries({ queryKey: ['whiteboards'] });
+      queryClient.invalidateQueries({ queryKey: ['lens', 'whiteboard'] });
+      setSelectedWbId(id);
+      setBoardMode('canvas');
+    } catch (err) {
+      console.error('Failed to start ceremony:', err instanceof Error ? err.message : err);
+    } finally {
+      setCeremonyBusy(false);
+      setShowModeMenu(false);
+    }
+  };
+
+  // D5: every export carries its provenance receipt.
+  const exportReceipt = () => JSON.stringify({
+    format: 'concord-whiteboard/receipt', board: selectedWbId,
+    elements: elements.length, exportedAt: new Date().toISOString(),
+  });
+
+  const exportCanvas = async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const res = await fetch(canvas.toDataURL('image/png'));
+    const raw = new Uint8Array(await res.arrayBuffer());
+    const stamped = wbPngWithReceipt(raw, exportReceipt());
+    const url = URL.createObjectURL(new Blob([stamped.buffer as ArrayBuffer], { type: 'image/png' }));
     const link = document.createElement('a');
     link.download = `whiteboard-${new Date().toISOString().slice(0, 10)}.png`;
-    link.href = canvas.toDataURL('image/png');
+    link.href = url;
     link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
   };
 
   // Vector export — produces an SVG of the current board.  Vector form
@@ -506,6 +1019,7 @@ export function WhiteboardStudio({
     parts.push(`<?xml version="1.0" encoding="UTF-8"?>`);
     parts.push(`<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`);
     parts.push(`<rect width="${w}" height="${h}" fill="#0f0f1a"/>`);
+    parts.push(`<metadata>${esc(exportReceipt())}</metadata>`);
     // Arrowhead marker
     parts.push(`<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>`);
     for (const el of elements) {
@@ -567,11 +1081,16 @@ export function WhiteboardStudio({
   // template with another user / paste-to-import.
   const exportClipboardJSON = useCallback(async () => {
     const snapshot = { elements, dimensions, exportedAt: new Date().toISOString() };
+    // S16: a copy the user can't verify is a dead end — confirm it
+    // (and report failure instead of swallowing it).
+    if (copyNoteTimerRef.current) clearTimeout(copyNoteTimerRef.current);
     try {
       await navigator.clipboard.writeText(JSON.stringify(snapshot, null, 2));
+      setCopyNote({ text: 'Copied — board JSON is on your clipboard.', ok: true });
     } catch {
-      console.warn('[Whiteboard] clipboard write failed');
+      setCopyNote({ text: 'Copy failed — the browser blocked clipboard access.', ok: false });
     }
+    copyNoteTimerRef.current = setTimeout(() => setCopyNote(null), 2600);
   }, [elements, dimensions]);
 
   /* ---------- canvas render ---------- */
@@ -611,8 +1130,19 @@ export function WhiteboardStudio({
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      const isSel = selectedIds.has(el.id);
+      const isSel = selectedElement?.id === el.id;
+      const inGroup = selectedIds.length > 1 && selectedIds.includes(el.id);
       if (isSel && !preview) { ctx.shadowColor = el.stroke; ctx.shadowBlur = 10; }
+
+      ctx.save();
+      if (el.rotation) {
+        const bb = elementBBox(el);
+        const cx = bb.x + bb.width / 2;
+        const cy = bb.y + bb.height / 2;
+        ctx.translate(cx, cy);
+        ctx.rotate((el.rotation * Math.PI) / 180);
+        ctx.translate(-cx, -cy);
+      }
 
       switch (el.type) {
         case 'rectangle':
@@ -713,13 +1243,29 @@ export function WhiteboardStudio({
           ctx.fillStyle = el.fill || 'rgba(245,158,11,0.08)';
           ctx.beginPath(); ctx.roundRect(el.x, el.y, w, h, 10); ctx.fill();
           ctx.strokeStyle = el.stroke; ctx.lineWidth = 1.5; ctx.stroke();
-          /* placeholder icon area */
-          ctx.fillStyle = 'rgba(245,158,11,0.15)';
-          ctx.fillRect(el.x + 12, el.y + 12, w - 24, h - 44);
-          ctx.fillStyle = '#f59e0b'; ctx.font = '24px sans-serif';
-          ctx.fillText('\u{1F5BC}', el.x + w / 2 - 12, el.y + h / 2 - 10);
-          ctx.fillStyle = '#ffffff'; ctx.font = '11px Inter, sans-serif';
-          ctx.fillText(el.imageLabel || 'Image', el.x + 12, el.y + h - 12);
+          const img = el.imageUrl ? loadImage(el.imageUrl) : null;
+          if (img && img.complete && img.naturalWidth > 0) {
+            // S6: draw the real image, cover-fit inside the frame,
+            // with a label strip along the bottom.
+            ctx.save();
+            ctx.beginPath(); ctx.roundRect(el.x, el.y, w, h, 10); ctx.clip();
+            const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+            const dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
+            ctx.drawImage(img, el.x + (w - dw) / 2, el.y + (h - dh) / 2, dw, dh);
+            ctx.fillStyle = 'rgba(0,0,0,0.55)';
+            ctx.fillRect(el.x, el.y + h - 22, w, 22);
+            ctx.fillStyle = '#ffffff'; ctx.font = '11px Inter, sans-serif';
+            ctx.fillText(el.imageLabel || 'Image', el.x + 8, el.y + h - 7);
+            ctx.restore();
+          } else {
+            /* placeholder icon area (no image yet, or still loading) */
+            ctx.fillStyle = 'rgba(245,158,11,0.15)';
+            ctx.fillRect(el.x + 12, el.y + 12, w - 24, h - 44);
+            ctx.fillStyle = '#f59e0b'; ctx.font = '24px sans-serif';
+            ctx.fillText('\u{1F5BC}', el.x + w / 2 - 12, el.y + h / 2 - 10);
+            ctx.fillStyle = '#ffffff'; ctx.font = '11px Inter, sans-serif';
+            ctx.fillText(el.imageLabel || 'Image', el.x + 12, el.y + h - 12);
+          }
           break;
         }
 
@@ -759,30 +1305,73 @@ export function WhiteboardStudio({
 
       ctx.shadowBlur = 0;
 
-      if (isSel && !preview) {
+      if ((isSel || inGroup) && !preview) {
         ctx.strokeStyle = '#00d4ff'; ctx.lineWidth = 1; ctx.setLineDash([5, 5]);
         const p = 8;
         ctx.strokeRect(el.x - p, el.y - p, (el.width || 100) + p * 2, (el.height || 50) + p * 2);
         ctx.setLineDash([]);
       }
+
+      if (isSel && !preview && selectedIds.length <= 1 && el.type !== 'freehand') {
+        const b = elementBBox(el);
+        const hs = 5 / zoom + 3;
+        ctx.fillStyle = '#00d4ff';
+        [[b.x, b.y], [b.x + b.width, b.y], [b.x, b.y + b.height], [b.x + b.width, b.y + b.height]].forEach(([hx, hy]) => {
+          ctx.fillRect(hx - hs / 2, hy - hs / 2, hs, hs);
+        });
+      }
+      ctx.restore();
     };
 
-    elements.forEach(el => drawEl(el));
+    elements.forEach(el => {
+      // D3 (M3 The Settle): a just-committed element lands with a
+      // 140ms ease — a breath of overscale decaying to rest.
+      if (settle && el.id === settle.id) {
+        const p = Math.min(1, (performance.now() - settle.t0) / 140);
+        const s = 1 + 0.05 * (1 - p) * (1 - p);
+        const b = elementBBox(el);
+        const cx = b.x + b.width / 2;
+        const cy = b.y + b.height / 2;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(s, s);
+        ctx.translate(-cx, -cy);
+        drawEl(el);
+        ctx.restore();
+      } else {
+        drawEl(el);
+      }
+    });
     if (currentElement && tool !== 'select') {
       ctx.globalAlpha = 0.7; drawEl(currentElement, true); ctx.globalAlpha = 1;
     }
+    if (marquee) {
+      const mx = Math.min(marquee.x0, marquee.x1);
+      const my = Math.min(marquee.y0, marquee.y1);
+      const mw = Math.abs(marquee.x1 - marquee.x0);
+      const mh = Math.abs(marquee.y1 - marquee.y0);
+      ctx.fillStyle = 'rgba(0, 212, 255, 0.08)';
+      ctx.strokeStyle = 'rgba(0, 212, 255, 0.7)';
+      ctx.lineWidth = 1 / zoom;
+      ctx.fillRect(mx, my, mw, mh);
+      ctx.strokeRect(mx, my, mw, mh);
+    }
     ctx.restore();
-  }, [elements, currentElement, selectedIds, dimensions, zoom, offset, showGrid, tool, boardMode]);
+  }, [elements, currentElement, selectedElement, selectedIds, marquee, dimensions, zoom, offset, showGrid, tool, boardMode, imageTick, settle]);
 
   /* ---------- duplicate selected ---------- */
   const duplicateSelected = useCallback(() => {
-    if (selectedIds.size === 0) return;
-    pushUndo();
-    const copies = duplicateSelection(elements, selectedIds, uid);
+    // Multi-selection duplicates the whole group (Q57, #1883's pure helper); a lone selection is the
+    // one-member case. Copies are offset +16,+16 and become the new selection.
+    const ids = selectedIds.length > 0 ? selectedIds : (selectedElement ? [selectedElement.id] : []);
+    if (ids.length === 0) return;
+    const copies = duplicateSelection(elements as never, new Set(ids), uid) as unknown as Element[];
     if (copies.length === 0) return;
+    pushUndo();
     setElements((prev) => [...prev, ...copies]);
-    setSelectedIds(new Set(copies.map((c) => c.id)));
-  }, [selectedIds, elements, pushUndo]);
+    setSelectedIds(copies.map((c) => c.id));
+    setSelectedElement(copies[copies.length - 1]);
+  }, [selectedElement, selectedIds, elements, pushUndo]);
 
   /* ---------- keyboard shortcuts (canvas idiom) ---------- */
   useEffect(() => {
@@ -795,14 +1384,20 @@ export function WhiteboardStudio({
         if (e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
         if ((e.key.toLowerCase() === 'y') || (e.key.toLowerCase() === 'z' && e.shiftKey)) { e.preventDefault(); redo(); return; }
         if (e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelected(); return; }
-        if (e.key.toLowerCase() === 'a') { e.preventDefault(); setSelectedIds(selectAllIds(elements)); return; }
         if (e.key === '=' || e.key === '+') { e.preventDefault(); setZoom((z) => clamp(z * 1.2, 0.25, 4)); return; }
         if (e.key === '-' || e.key === '_') { e.preventDefault(); setZoom((z) => clamp(z / 1.2, 0.25, 4)); return; }
         if (e.key === '0') { e.preventDefault(); setZoom(1); setOffset({ x: 0, y: 0 }); return; }
+        if (e.key.toLowerCase() === 'a') {
+          e.preventDefault();
+          const all = [...selectAllIds(elements as never)];
+          setSelectedIds(all);
+          setSelectedElement(elements.find((el) => el.id === all[all.length - 1]) || null);
+          return;
+        }
         return;
       }
 
-      if (e.key === 'Escape') setSelectedIds(new Set());
+      if (e.key === 'Escape') { setSelectedIds([]); setSelectedElement(null); }
       if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
       if (e.key === 'v') setTool('select');
       if (e.key === 'p') setTool('draw');
@@ -828,7 +1423,7 @@ export function WhiteboardStudio({
     { id: 'text', icon: Type, label: 'Text', key: 'T' },
     { id: 'dtu', icon: Link2, label: 'Link DTU', key: 'D' },
     { id: 'audio', icon: PenTool, label: 'Audio Pin', key: '' },
-    { id: 'image', icon: ImageIcon, label: 'Image Pin', key: '' },
+    { id: 'image', icon: ImageIcon, label: 'Reference Pin', key: '' },
     { id: 'notecard', icon: StickyNote, label: 'Note Card', key: '' },
     { id: 'section', icon: Bookmark, label: 'Section Marker', key: '' },
   ];
@@ -871,6 +1466,7 @@ export function WhiteboardStudio({
         </div>
         <div className="pointer-events-auto relative flex items-center gap-4 pt-1 text-[13px]">
           {saveMutation.isPending && <span className="text-zinc-600">Saving…</span>}
+          {copyNote && <span className={copyNote.ok ? 'text-teal-300' : 'text-rose-300'} role="status">{copyNote.text}</span>}
           <button type="button" onClick={() => setShowModeMenu((v) => !v)} className="text-zinc-500 transition-colors hover:text-zinc-200" aria-haspopup="menu" aria-expanded={showModeMenu}>
             {selectedWbId ? boardName(boardListItems.find((b) => b.id === selectedWbId)?.title ?? selectedWb?.whiteboard?.title) : 'Boards'}
             {boardMode !== 'canvas' && ` · ${MODE_LABELS[boardMode]}`} ▾
@@ -900,6 +1496,11 @@ export function WhiteboardStudio({
                 <button type="button" role="menuitem" onClick={() => { setShowModeMenu(false); onWorkbenchOpen(); }} className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06]">Templates &amp; voting</button>
                 <button type="button" role="menuitem" onClick={() => { setShowModeMenu(false); setShowInspector((v) => !v); }} className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06]">{showInspector ? 'Hide' : 'Show'} analyze &amp; collab</button>
                 <button type="button" role="menuitem" onClick={() => setShowGrid((g) => !g)} className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06]">{showGrid ? 'Hide' : 'Show'} grid</button>
+                <div className="my-1 border-t border-white/[0.06]" />
+                <p className="px-2.5 pb-1 pt-1 text-[11px] uppercase tracking-wider text-zinc-600">Start a ceremony</p>
+                {Object.entries(CEREMONIES).map(([kind, c]) => (
+                  <button key={kind} type="button" role="menuitem" disabled={ceremonyBusy} onClick={() => { void startCeremony(kind); }} className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06] disabled:opacity-40">{c.label}</button>
+                ))}
                 {selectedWbId && (
                   <>
                     <div className="my-1 border-t border-white/[0.06]" />
@@ -910,7 +1511,7 @@ export function WhiteboardStudio({
                       boardId={selectedWbId}
                       title={boardName(boardListItems.find((b) => b.id === selectedWbId)?.title ?? selectedWb?.whiteboard?.title)}
                       onRenamed={() => { queryClient.invalidateQueries({ queryKey: ['whiteboards'] }); queryClient.invalidateQueries({ queryKey: ['whiteboard', selectedWbId] }); queryClient.invalidateQueries({ queryKey: ['lens', 'whiteboard'] }); }}
-                      onDeleted={() => { setSelectedWbId(null); setShowModeMenu(false); queryClient.invalidateQueries({ queryKey: ['whiteboards'] }); queryClient.invalidateQueries({ queryKey: ['lens', 'whiteboard'] }); }}
+                      onDeleted={() => { void handleBoardDeleted(); }}
                     />
                   </>
                 )}
@@ -921,14 +1522,51 @@ export function WhiteboardStudio({
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {selectedWbId && boardMode === 'canvas' && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-white/[0.06] px-4 py-1.5 text-[11px] text-zinc-400">
+            <span className="text-[12px] font-medium text-zinc-200">{boardName(boardListItems.find((b) => String(b.id) === selectedWbId)?.title)}</span>
+            <span className="tabular-nums">{elements.length} element{elements.length === 1 ? '' : 's'}</span>
+            {stripInfo?.keptVersion ? (
+              <span>Kept as DTU - v{stripInfo.keptVersion}{stripInfo.keptAt ? ' - ' + new Date(stripInfo.keptAt).toLocaleString() : ''}</span>
+            ) : (
+              <span>Not kept as a DTU yet</span>
+            )}
+            <span>{lastSavedAt ? 'Saved ' + new Date(lastSavedAt).toLocaleTimeString() : 'Not saved yet this session'}</span>
+            {elements.length >= 200 && (
+              <span className="text-amber-300/90">Large board: {elements.length} elements. Rendering stays live; the count is here so growth is visible, not a surprise.</span>
+            )}
+            {sectionFrames.length > 0 && (
+              <span className="ml-auto flex items-center gap-1">
+                {presentIdx === null ? (
+                  <button type="button" onClick={() => setPresentIdx(0)} className="rounded border border-white/15 px-2 py-0.5 text-[11px] text-zinc-200 hover:bg-white/[0.06]">Present</button>
+                ) : (
+                  <>
+                    <button type="button" disabled={presentIdx <= 0} onClick={() => setPresentIdx((v) => (v === null ? v : v - 1))} className="rounded border border-white/15 px-2 py-0.5 text-[11px] text-zinc-200 hover:bg-white/[0.06] disabled:opacity-40">Prev</button>
+                    <span className="tabular-nums">Frame {presentIdx + 1} of {sectionFrames.length}</span>
+                    <button type="button" disabled={presentIdx >= sectionFrames.length - 1} onClick={() => setPresentIdx((v) => (v === null ? v : v + 1))} className="rounded border border-white/15 px-2 py-0.5 text-[11px] text-zinc-200 hover:bg-white/[0.06] disabled:opacity-40">Next</button>
+                    <button type="button" onClick={() => setPresentIdx(null)} className="rounded border border-white/15 px-2 py-0.5 text-[11px] text-zinc-200 hover:bg-white/[0.06]">Exit</button>
+                  </>
+                )}
+              </span>
+            )}
+          </div>
+        )}
         {selectedWbId ? (
           <>
             {boardMode === 'canvas' && (
-              <div ref={containerRef} className="flex-1 relative overflow-hidden">
+              <div ref={containerRef} className={'flex-1 relative overflow-hidden transition-[box-shadow] duration-200 ' + (saveFlash ? 'ring-2 ring-inset ring-teal-400/70' : '')}>
                 <canvas ref={canvasRef} className={`h-full w-full ${tool === 'select' ? 'cursor-default' : 'cursor-crosshair'}`}
                   style={{ width: dimensions.width, height: dimensions.height }}
                   onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
-                  onMouseLeave={handleMouseUp} onWheel={handleWheel} onDoubleClick={handleDoubleClick} />
+                  onMouseLeave={handleMouseUp} onWheel={handleWheel} onDoubleClick={handleDoubleClick}
+                  onDragOver={e => e.preventDefault()} onDrop={handleCanvasDrop} />
+
+                {selectedIds.length > 1 && (
+                  <div className="absolute bottom-4 left-4 z-10 rounded-full border border-white/10 bg-[#121212]/90 px-2.5 py-1 text-[11px] tabular-nums text-zinc-200">{selectedIds.length} selected</div>
+                )}
+                {eggLine && (
+                  <div className="pointer-events-none absolute z-20 font-serif text-[15px] italic text-zinc-100 transition-opacity duration-700 motion-reduce:transition-none" style={{ left: eggLine.x + 10, top: eggLine.y - 28 }}>{eggLine.text}</div>
+                )}
 
                 {/* Floating tool rail */}
                 <div className="absolute left-6 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-1 rounded-2xl border border-white/[0.08] bg-[#121212]/90 p-1.5 backdrop-blur">
@@ -961,8 +1599,23 @@ export function WhiteboardStudio({
                   </button>
                   <button type="button" onClick={undo} disabled={undoStack.length === 0} title="Undo (Ctrl+Z)" aria-label="Undo" className="flex h-9 w-9 items-center justify-center rounded-xl text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-100 disabled:opacity-30"><Undo2 className="h-4 w-4" /></button>
                   <button type="button" onClick={redo} disabled={redoStack.length === 0} title="Redo (Ctrl+Y)" aria-label="Redo" className="flex h-9 w-9 items-center justify-center rounded-xl text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-100 disabled:opacity-30"><Redo2 className="h-4 w-4" /></button>
-                  {selectedIds.size > 0 && (
-                    <button type="button" onClick={deleteSelected} title={selectedIds.size > 1 ? `Delete ${selectedIds.size} selected` : 'Delete selected'} aria-label="Delete selected" className="flex h-9 w-9 items-center justify-center rounded-xl text-rose-300 hover:bg-white/[0.06]"><Trash2 className="h-4 w-4" /></button>
+                  {selectedElement && (
+                    <button type="button" onClick={deleteSelected} title="Delete selected" aria-label="Delete selected" className="flex h-9 w-9 items-center justify-center rounded-xl text-rose-300 hover:bg-white/[0.06]"><Trash2 className="h-4 w-4" /></button>
+                  )}
+                  {selectedElement && (
+                    <button type="button" onClick={() => reorderSelected(1)} title="Bring forward" aria-label="Bring forward" className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-white/[0.06] text-zinc-300">
+                      <ChevronUp className="w-4 h-4" />
+                    </button>
+                  )}
+                  {selectedElement && (
+                    <button type="button" onClick={() => reorderSelected(-1)} title="Send backward" aria-label="Send backward" className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-white/[0.06] text-zinc-300">
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                  )}
+                  {selectedElement && (
+                    <button type="button" onClick={rotateSelected} title="Rotate 15 degrees" aria-label="Rotate 15 degrees" className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-white/[0.06] text-zinc-300">
+                      <RotateCw className="w-4 h-4" />
+                    </button>
                   )}
                 </div>
 
@@ -1035,6 +1688,31 @@ export function WhiteboardStudio({
                   )}
                 </AnimatePresence>
 
+                {editingElement && (() => {
+                  const el = elements.find((e) => e.id === editingElement.id);
+                  if (!el) return null;
+                  return (
+                    <textarea
+                      autoFocus
+                      aria-label="Edit element text"
+                      value={editingElement.draft}
+                      onChange={(e) => setEditingElement({ id: el.id, draft: e.target.value })}
+                      onBlur={commitInlineEdit}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') setEditingElement(null);
+                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) commitInlineEdit();
+                      }}
+                      className="absolute z-30 resize-none rounded-lg border border-cyan-400/60 bg-zinc-900/95 p-2 text-[13px] leading-snug text-zinc-100 shadow-2xl outline-none"
+                      style={{
+                        left: el.x * zoom + offset.x,
+                        top: el.y * zoom + offset.y,
+                        width: Math.max(150, (el.width || 180) * zoom),
+                        minHeight: Math.max(44, (el.height || 60) * zoom),
+                      }}
+                    />
+                  );
+                })()}
+
                 <AnimatePresence>
                   {showAudioDialog && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -1049,10 +1727,11 @@ export function WhiteboardStudio({
                           onChange={e => setAudioClipName(e.target.value)} autoFocus
                           className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded text-sm mb-3" />
                         <label className="text-xs text-gray-400">Duration (seconds)</label>
-                        <input type="number" value={audioClipDur} onChange={e => setAudioClipDur(clamp(+e.target.value, 1, 3600))}
+                        <input type="number" value={audioClipDur} onChange={e => setAudioClipDur(+e.target.value)} min={1} max={3600}
                           className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded text-sm mb-4" />
+                        {dialogError && <p className="text-[11px] text-rose-300 mb-3" role="status">{dialogError}</p>}
                         <div className="flex gap-2">
-                          <button type="button" onClick={addAudioPin} disabled={!audioClipName.trim()} className="flex-1 py-2 bg-neon-cyan text-black rounded-lg text-sm font-medium disabled:opacity-40">Place Pin</button>
+                          <button type="button" onClick={addAudioPin} className="flex-1 py-2 bg-neon-cyan text-black rounded-lg text-sm font-medium disabled:opacity-40">Place Pin</button>
                           <button type="button" onClick={() => { setShowAudioDialog(false); setTextPosition(null); }} className="flex-1 py-2 bg-lattice-bg rounded-lg text-sm">Cancel</button>
                         </div>
                       </motion.div>
@@ -1067,14 +1746,27 @@ export function WhiteboardStudio({
                       <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
                         className="bg-lattice-surface border border-lattice-border rounded-lg p-5 w-80">
                         <div className="flex items-center justify-between mb-4">
-                          <h3 className="font-semibold flex items-center gap-2"><ImageIcon className="w-4 h-4 text-amber-400" />Pin Image Reference</h3>
+                          <h3 className="font-semibold flex items-center gap-2"><ImageIcon className="w-4 h-4 text-amber-400" />Pin Reference</h3>
                           <button type="button" onClick={() => { setShowImageDialog(false); setTextPosition(null); }} aria-label="Close"><X className="w-5 h-5" /></button>
                         </div>
                         <input type="text" placeholder="Label (e.g. Album Cover Ref)" value={imageLabel}
                           onChange={e => setImageLabel(e.target.value)} autoFocus
-                          className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded text-sm mb-4" />
+                          className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded text-sm mb-3" />
+                        <label className="flex items-center justify-center gap-2 w-full px-3 py-2 mb-3 rounded border border-dashed border-amber-500/40 text-amber-300 text-sm cursor-pointer hover:bg-amber-500/10">
+                          <ImageIcon className="w-4 h-4" />{imageName ? `Image: ${imageName}` : 'Upload an image'}
+                          <input type="file" accept="image/*" className="hidden" onChange={e => { void handleImageFile(e.target.files?.[0]); e.target.value = ''; }} />
+                        </label>
+                        <input type="text" placeholder="…or paste an image link (https://…)" value={imageUrlInput}
+                          onChange={e => setImageUrlInput(e.target.value)}
+                          className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded text-sm mb-3" />
+                        {(imageData || imageUrlInput.trim()) && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={imageData || imageUrlInput.trim()} alt="Reference preview" className="w-full h-28 object-cover rounded border border-lattice-border mb-3" />
+                        )}
+                        {dialogError && <p className="text-[11px] text-rose-300 mb-3" role="status">{dialogError}</p>}
+                        <p className="text-[11px] text-gray-500 mb-4">Uploaded images are embedded in the board (max 1024px) so they travel with it. You can also drop an image file straight onto the canvas.</p>
                         <div className="flex gap-2">
-                          <button type="button" onClick={addImagePin} disabled={!imageLabel.trim()} className="flex-1 py-2 bg-amber-500 text-black rounded-lg text-sm font-medium disabled:opacity-40">Place Pin</button>
+                          <button type="button" onClick={addImagePin} className="flex-1 py-2 bg-amber-500 text-black rounded-lg text-sm font-medium">Place Pin</button>
                           <button type="button" onClick={() => { setShowImageDialog(false); setTextPosition(null); }} className="flex-1 py-2 bg-lattice-bg rounded-lg text-sm">Cancel</button>
                         </div>
                       </motion.div>
@@ -1103,8 +1795,9 @@ export function WhiteboardStudio({
                               style={{ backgroundColor: c }} />
                           ))}
                         </div>
+                        {dialogError && <p className="text-[11px] text-rose-300 mb-3" role="status">{dialogError}</p>}
                         <div className="flex gap-2">
-                          <button type="button" onClick={addNoteCard} disabled={!noteText.trim()} className="flex-1 py-2 bg-yellow-500 text-black rounded-lg text-sm font-medium disabled:opacity-40">Place Card</button>
+                          <button type="button" onClick={addNoteCard} className="flex-1 py-2 bg-yellow-500 text-black rounded-lg text-sm font-medium disabled:opacity-40">Place Card</button>
                           <button type="button" onClick={() => { setShowNoteDialog(false); setTextPosition(null); }} className="flex-1 py-2 bg-lattice-bg rounded-lg text-sm">Cancel</button>
                         </div>
                       </motion.div>
@@ -1177,7 +1870,14 @@ export function WhiteboardStudio({
         )}
       </div>
 
-      {showInspector && <WhiteboardInspector boardId={boardArtifacts[0]?.id ?? selectedWbId ?? undefined} />}
+      {showInspector && <WhiteboardInspector boardId={selectedWbId ?? undefined} />}
+
+      {pendingBoardDelete && (
+        <div className="pointer-events-auto absolute bottom-8 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-white/10 bg-[#1c1c1c] px-3 py-2 shadow-2xl" role="status">
+          <span className="text-[12px] text-zinc-300">Board “{pendingBoardDelete.title}” deleted.</span>
+          <button type="button" onClick={() => { void undoBoardDelete(); }} className="text-[12px] font-medium text-teal-300 hover:text-teal-200">Undo</button>
+        </div>
+      )}
 
       {selectedWbId && boardMode === 'canvas' && (
         <div className="pointer-events-auto absolute bottom-8 left-1/2 z-20 -translate-x-1/2">

@@ -36,6 +36,10 @@ export interface WhiteboardBoard {
   createdAt?: string;
   updatedAt?: string;
   elementCount?: number;
+  keptDtuId?: string | null;
+  keptVersion?: number;
+  keptAt?: string | null;
+  keptSceneHash?: string | null;
 }
 
 export interface WhiteboardReportFacts {
@@ -71,6 +75,24 @@ export function whiteboardSentence(facts: WhiteboardReportFacts): string | null 
   if (!b || !b.id || !b.title) return null;
   const count = elementCountOf(b);
   return `${str(b.title, 60)}: ${count} element${count === 1 ? '' : 's'}.`;
+}
+
+/**
+ * A cheap deterministic fingerprint of the board's elements (djb2 over
+ * a normalized projection), so the keep flow can tell "the board
+ * changed since it was kept" from "same board, another save click"
+ * without storing a second copy of the scene.
+ */
+export function whiteboardSceneHash(board: WhiteboardBoard | null): string {
+  if (!board) return '';
+  const proj = elementsOf(board).map((el) => [
+    el.type || el.kind || '', num(el.x), num(el.y), num(el.width), num(el.height),
+    str(el.text || el.label || '', 80),
+  ]);
+  const s = JSON.stringify(proj);
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(16);
 }
 
 /** The full body saved as the DTU. Empty when there is nothing honest to save. */

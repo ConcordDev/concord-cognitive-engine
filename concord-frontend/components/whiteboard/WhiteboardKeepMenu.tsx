@@ -14,6 +14,7 @@ import { Send, ShieldCheck } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import {
   whiteboardDtuCall,
+  whiteboardSceneHash,
   whiteboardSentence,
   whiteboardThreadDraftCall,
   whiteboardThreadDraftOutcome,
@@ -38,6 +39,30 @@ export function WhiteboardKeepMenu({ board, platform = 'x' }: Props) {
   const [busy, setBusy] = useState<'save' | 'draft' | null>(null);
   const [note, setNote] = useState('');
   const [sentDrafts, setSentDrafts] = useState<Record<string, string>>({});
+  // S3: the kept linkage lives on the board record (board-save), not in
+  // this component — hydrated on mount so the gates and the saved state
+  // survive view switches and reloads.
+  const [kept, setKept] = useState<{ dtuId: string; version: number; at: string; sceneHash: string } | null>(null);
+  const boardId = board?.id || '';
+  const sceneHash = useMemo(() => whiteboardSceneHash(board), [board]);
+  const keptChanged = kept !== null && kept.sceneHash !== sceneHash;
+
+  useEffect(() => {
+    if (!boardId) { setKept(null); return; }
+    let live = true;
+    void (async () => {
+      const r = await lensRun({ domain: 'whiteboard', action: 'board-load', input: { id: boardId } });
+      if (!live) return;
+      const rec = r.data?.result?.board as WhiteboardBoard | undefined;
+      if (rec?.keptDtuId) {
+        setKept({ dtuId: rec.keptDtuId, version: rec.keptVersion || 1, at: rec.keptAt || '', sceneHash: rec.keptSceneHash || '' });
+        setDtuId(rec.keptDtuId);
+      } else {
+        setKept(null);
+      }
+    })();
+    return () => { live = false; };
+  }, [boardId]);
 
   useEffect(() => {
     let live = true;
@@ -55,6 +80,14 @@ export function WhiteboardKeepMenu({ board, platform = 'x' }: Props) {
   }, [dtuId]);
 
   const save = useCallback(async () => {
+    // S3: an unchanged board is already kept — a second mint would be a
+    // duplicate record, not a save. Changed content mints the next
+    // version in the chain (DTUs are provenance-locked; versions are
+    // how a board's kept record honestly evolves).
+    if (kept && !keptChanged) {
+      setNote(`Already kept as private DTU ${kept.dtuId} · v${kept.version} — no changes since.`);
+      return;
+    }
     const call = whiteboardDtuCall(facts);
     if (!call) { setNote('Nothing to save — the board returned no real figures.'); return; }
     setBusy('save');
@@ -73,10 +106,18 @@ export function WhiteboardKeepMenu({ board, platform = 'x' }: Props) {
       setNote(`Saved as ${id} but the read-back did not return it. Not treating this as saved.`);
       return;
     }
+    const version = (kept?.version || 0) + 1;
+    const at = new Date().toISOString();
+    if (boardId) {
+      await lensRun({ domain: 'whiteboard', action: 'board-save', input: {
+        id: boardId, keptDtuId: id, keptVersion: version, keptAt: at, keptSceneHash: sceneHash,
+      } }).catch(() => { /* the DTU exists and read back; the linkage write is retried next mount */ });
+    }
+    setKept({ dtuId: id, version, at, sceneHash });
     setDtuId(id);
     setBusy(null);
-    setNote(`Saved as private DTU ${id}. Nothing was published.`);
-  }, [facts]);
+    setNote(`Kept as private DTU ${id} · v${version}. Nothing was published.`);
+  }, [facts, kept, keptChanged, boardId, sceneHash]);
 
   const draft = useCallback(async () => {
     const call = whiteboardThreadDraftCall(facts, dtuId, platform);
@@ -110,10 +151,10 @@ export function WhiteboardKeepMenu({ board, platform = 'x' }: Props) {
         <button
           type="button"
           onClick={() => void save()}
-          disabled={busy !== null}
+          disabled={busy !== null || (kept !== null && !keptChanged)}
           className="rounded-md bg-teal-500/90 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-teal-500 disabled:opacity-50"
         >
-          {busy === 'save' ? 'Saving…' : 'Save board as DTU'}
+          {busy === 'save' ? 'Saving…' : kept ? (keptChanged ? `Save board as DTU · v${kept.version + 1}` : 'Kept as DTU') : 'Save board as DTU'}
         </button>
         <button
           type="button"
@@ -126,6 +167,11 @@ export function WhiteboardKeepMenu({ board, platform = 'x' }: Props) {
           {drafted ? 'Drafted' : busy === 'draft' ? 'Drafting…' : 'Draft in Thread'}
         </button>
       </div>
+      {kept && (
+        <p className="w-full text-[11px] text-teal-300/80">
+          Kept · v{kept.version}{kept.at ? ` · ${kept.at.slice(0, 10)}` : ''} · DTU {kept.dtuId}{keptChanged ? ' · board changed since — save to keep v' + (kept.version + 1) : ''}
+        </p>
+      )}
       {note && (
         <p role="status" className="w-full text-[11px] text-zinc-400">
           {note}

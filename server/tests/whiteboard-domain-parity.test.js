@@ -71,6 +71,16 @@ describe("whiteboard — boards", () => {
 });
 
 describe("whiteboard — voting", () => {
+  // S8 (#1714): a vote must land on a real element of a real board the caller can see (a vote on a
+  // phantom board/element used to be tallied). These tests exercise tally/dedupe/ordering/scoping, so
+  // they vote on a real board "b1" that has elements e1 and e2; the phantom-id refusal itself is
+  // pinned by whiteboard-voting-integrity.test.js.
+  beforeEach(() => {
+    const saved = call("board-save", ctxA, { id: "b1", title: "Votable", scene: { elements: [{ id: "e1", kind: "sticky", x: 0, y: 0, text: "one" }, { id: "e2", kind: "sticky", x: 10, y: 0, text: "two" }] } });
+    assert.equal(saved.ok, true, "the voting fixture board is saved");
+    assert.equal(saved.result.board.id, "b1");
+  });
+
   it("vote-cast increments tally", () => {
     call("vote-cast", ctxA, { boardId: "b1", elementId: "e1" });
     const r = call("vote-tally", ctxA, { boardId: "b1" });

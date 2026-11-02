@@ -1,4 +1,4 @@
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 
 export function deleteWhiteboard(id: string) {
   return api.delete(`/api/whiteboard/${encodeURIComponent(id)}`);
@@ -19,4 +19,26 @@ export function ownerMutationNote(status: number | undefined, fallback: string):
 export function axiosStatus(err: unknown): number | undefined {
   const response = (err as { response?: { status?: number } } | null)?.response;
   return typeof response?.status === 'number' ? response.status : undefined;
+}
+
+/**
+ * S2 commit step for a board delete whose Undo window has lapsed: the
+ * DTU delete for canvas boards (a 404 counts as already gone), then the
+ * permanent removal of the board-store record. False when the DTU
+ * delete was refused — the record then stays in Trash, recoverable.
+ */
+export async function commitDeletedBoard(id: string, isCanvas: boolean): Promise<boolean> {
+  if (isCanvas) {
+    try {
+      await deleteWhiteboard(id);
+    } catch (err) {
+      if (axiosStatus(err) !== 404) return false;
+    }
+  }
+  try {
+    const r = await lensRun({ domain: 'whiteboard', action: 'board-delete-permanent', input: { id } });
+    return r.data?.ok !== false;
+  } catch {
+    return false;
+  }
 }
