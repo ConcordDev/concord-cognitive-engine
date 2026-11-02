@@ -118,7 +118,9 @@ describe("report over a directory", () => {
     assert.match(md, /INCOMPLETE:\*\* shard\(s\) 2/);
     assert.match(md, /Fixed vs main \(1\)/);
     const j = JSON.parse(fs.readFileSync(out, "utf8"));
-    assert.equal(j.failing.length, 3);
+    // `failing` keeps what stayed red on the re-run (old failure + new failure); the flake is listed separately.
+    assert.equal(j.failing.length, 2);
+    assert.equal(j.flaky.length, 1);
     assert.deepEqual(j.incomplete, [2]);
   });
 
@@ -199,5 +201,44 @@ describe("junit-file-reporter", () => {
     assert.match(r.failures[0].message, /1 !== 2/);
     const cli = spawnSync(process.execPath, [diffCli, "failing-files", "--junit", xml], { encoding: "utf8" });
     assert.ok(cli.stdout.trim().endsWith("fixture.test.js"));
+  });
+});
+
+describe("flaky handling in the baseline", () => {
+  it("a file-level timeout clears when the isolated re-run executed that file cleanly", () => {
+    const dir = tmp();
+    const fileLevel = `<testcase name="tests/slow.test.js" time="300" classname="test" file="/runner/work/repo/repo/server/tests/slow.test.js">${fail("test timed out after 300000ms")}</testcase>`;
+    fs.writeFileSync(path.join(dir, "junit-shard-1.xml"), `<?xml version="1.0"?><testsuites><testsuite name="">${fileLevel}</testsuite></testsuites>`);
+    fs.writeFileSync(path.join(dir, "junit-shard-1-rerun.xml"), doc(suite("s", [tc("slow.test.js", "a"), tc("slow.test.js", "b")])));
+    const out = path.join(dir, "failing.json");
+    const r = spawnSync(process.execPath, [diffCli, "report", "--dir", dir, "--expect-shards", "1", "--out", out], { encoding: "utf8" });
+    assert.equal(r.status, 0, r.stdout);
+    const j = JSON.parse(fs.readFileSync(out, "utf8"));
+    assert.deepEqual(j.failing, []);
+    assert.equal(j.flaky.length, 1);
+  });
+
+  it("a file-level timeout that fails again on the re-run stays failing", () => {
+    const dir = tmp();
+    const fileLevel = `<testcase name="tests/slow.test.js" time="300" classname="test" file="/runner/work/repo/repo/server/tests/slow.test.js">${fail("timed out")}</testcase>`;
+    const wrap = (c) => `<?xml version="1.0"?><testsuites><testsuite name="">${c}</testsuite></testsuites>`;
+    fs.writeFileSync(path.join(dir, "junit-shard-1.xml"), wrap(fileLevel));
+    fs.writeFileSync(path.join(dir, "junit-shard-1-rerun.xml"), wrap(fileLevel));
+    const out = path.join(dir, "failing.json");
+    spawnSync(process.execPath, [diffCli, "report", "--dir", dir, "--expect-shards", "1", "--out", out]);
+    const j = JSON.parse(fs.readFileSync(out, "utf8"));
+    assert.equal(j.failing.length, 1);
+    assert.deepEqual(j.flaky, []);
+  });
+
+  it("flaky ids are written to `flaky`, not `failing`, so a baseline never blesses them", () => {
+    const dir = tmp();
+    fs.writeFileSync(path.join(dir, "junit-shard-1.xml"), doc(suite("s", [tc("a.test.js", "flake", fail("x")), tc("a.test.js", "real", fail("y"))])));
+    fs.writeFileSync(path.join(dir, "junit-shard-1-rerun.xml"), doc(suite("s", [tc("a.test.js", "flake"), tc("a.test.js", "real", fail("y"))])));
+    const out = path.join(dir, "failing.json");
+    spawnSync(process.execPath, [diffCli, "report", "--dir", dir, "--expect-shards", "1", "--out", out]);
+    const j = JSON.parse(fs.readFileSync(out, "utf8"));
+    assert.deepEqual(j.failing, ["server/tests/a.test.js :: s :: real"]);
+    assert.deepEqual(j.flaky, ["server/tests/a.test.js :: s :: flake"]);
   });
 });
