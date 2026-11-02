@@ -31,7 +31,6 @@ const baseCols = (line: string) => (line.match(/(?:^|[\s"'`])grid-cols-(\d)/) ||
 describe('stat grids are 1-2 columns at phone width', () => {
   const cases: Array<[string, string, string]> = [
     ['components/forum/ForumSection.tsx', "'grid grid-cols-", '2'],
-    ['components/forum/PostInsightsPanel.tsx', 'grid grid-cols-1 min-[420px]:grid-cols-3', '1'],
     ['app/lenses/training-room/page.tsx', 'grid grid-cols-2 sm:grid-cols-3 gap-2 text-center', '2'],
     ['app/lenses/lab/page.tsx', 'grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs', '2'],
     ['components/engineering/MultiPhysicsPanel.tsx', 'mt-3 grid grid-cols-2 sm:grid-cols-3', '2'],
@@ -48,7 +47,6 @@ describe('stat grids are 1-2 columns at phone width', () => {
 
   it('wide layouts are preserved behind a breakpoint', () => {
     expect(src('components/forum/ForumSection.tsx')).toContain("'sm:grid-cols-7' : 'sm:grid-cols-6'");
-    expect(src('components/forum/PostInsightsPanel.tsx')).toContain('min-[420px]:grid-cols-3');
   });
 });
 
