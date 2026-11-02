@@ -11,7 +11,7 @@
  *    in lib/mcp-local-guard.js). The handler's derivation is pinned at
  *    source level; the classification of every one of the 127 tools is
  *    recomputed here from those same sets and checked against the
- *    lane's amended totals (99 real / 3 local / 25 anonymous).
+ *    lane's amended totals (100 real / 3 local / 24 anonymous).
  * §3 Schemas + validation: required-arg validation reads the published
  *    inputSchema and fires inside callMCPTool — dhtp_detect (the case of
  *    record: schema declared `prompt` required, handler executed on {})
@@ -149,12 +149,12 @@ describe("tier marking (§2)", () => {
     assert.match(SERVER_SRC, /import \{ MCP_TOOLS_LOCAL_OR_REAL_AUTH \} from "\.\/lib\/mcp-local-guard\.js";/);
   });
 
-  it("every tool classifies to the lane's amended totals: 99 real / 3 local / 25 anonymous of 127", () => {
+  it("every tool classifies to the lane's amended totals: 100 real / 3 local / 24 anonymous of 127", () => {
     const realSet = realAuthSet();
     const counts = { real: 0, local: 0, anonymous: 0 };
     for (const t of MCP_TOOLS) counts[expectedAuth(t.name, realSet)]++;
     assert.equal(MCP_TOOLS.length, 127);
-    assert.deepEqual(counts, { real: 99, local: 3, anonymous: 25 });
+    assert.deepEqual(counts, { real: 100, local: 3, anonymous: 24 });
   });
 
   it("acceptance sample classifications (P0 surfaces, writes, compute, rt_* trio, anonymous-by-design)", () => {
