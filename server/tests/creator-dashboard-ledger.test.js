@@ -19,7 +19,7 @@ function setupDb() {
   db.exec(`
     CREATE TABLE economy_ledger (
       id TEXT PRIMARY KEY, type TEXT, from_user_id TEXT, to_user_id TEXT,
-      amount REAL, fee REAL, net REAL, status TEXT, created_at TEXT
+      amount REAL, fee REAL, net REAL, status TEXT, metadata_json TEXT DEFAULT '{}', created_at TEXT
     );
   `);
   return db;
@@ -31,11 +31,14 @@ const credit = (db, id, toUser, net, ageHours, type = "TOKEN_PURCHASE") =>
               VALUES (?, ?, NULL, ?, ?, ?, 'complete', datetime('now', ?))`)
     .run(id, type, toUser, net, net, `-${ageHours} hours`);
 // An EARNED credit (marketplace sale seller credit OR royalty payout). Withdrawable.
-const earn = (db, id, toUser, net, ageHours, type = "ROYALTY_PAYOUT") => {
+// Royalty rows must carry the system's own role stamp (economy/withdrawals.js fails closed on an unstamped
+// ROYALTY_PAYOUT, so a peer transfer can't pose as royalty income); `stamped:false` builds the unstamped row.
+const earn = (db, id, toUser, net, ageHours, type = "ROYALTY_PAYOUT", stamped = true) => {
   const from = type === "ROYALTY_PAYOUT" ? "__PLATFORM__" : null;
-  db.prepare(`INSERT INTO economy_ledger (id, type, from_user_id, to_user_id, amount, net, status, created_at)
-              VALUES (?, ?, ?, ?, ?, ?, 'complete', datetime('now', ?))`)
-    .run(id, type, from, toUser, net, net, `-${ageHours} hours`);
+  const meta = type === "ROYALTY_PAYOUT" && stamped ? JSON.stringify({ role: "royalty" }) : "{}";
+  db.prepare(`INSERT INTO economy_ledger (id, type, from_user_id, to_user_id, amount, net, status, metadata_json, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, 'complete', ?, datetime('now', ?))`)
+    .run(id, type, from, toUser, net, net, meta, `-${ageHours} hours`);
 };
 const debit = (db, id, fromUser, amount) =>
   db.prepare(`INSERT INTO economy_ledger (id, type, from_user_id, amount, net, status, created_at)
@@ -81,6 +84,14 @@ describe("creator-dashboard withdrawal eligibility (earned-only, double-sided le
     const r = computeWithdrawalEligibility(db, "u1");
     assert.equal(r.balance, 1000);
     assert.equal(r.eligibleAmount, 0);
+  });
+
+  it("a ROYALTY_PAYOUT row without the system's role stamp is not withdrawable (fail closed)", () => {
+    earn(db, "fake", "u1", 100, 72, "ROYALTY_PAYOUT", false);   // settled, but not stamped as a royalty distribution
+    earn(db, "real", "u1", 40, 72, "ROYALTY_PAYOUT", true);
+    const r = computeWithdrawalEligibility(db, "u1");
+    assert.equal(r.balance, 140);
+    assert.equal(r.eligibleAmount, 40);
   });
 
   it("a user with no ledger rows has zero everywhere (never throws)", () => {
