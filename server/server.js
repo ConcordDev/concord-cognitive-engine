@@ -43760,18 +43760,14 @@ try { app.use("/api/community", createRedditListingRouter()); } catch (e) { stru
 import createBrowserRoutes from "./routes/browser.js";
 try { app.use("/api/browser", createBrowserRoutes({ requireAuth })); } catch (e) { structuredLog("warn", "browser_routes_skip", { error: e.message }); }
 
-import registerCanonicalRoutes from "./routes/canonical.js";
-// The integrity system is created later (initExtensions → app.locals.dtuIntegrity),
-// so hand the routes a lazy delegate instead of a value that is still undefined here.
-const _canonicalIntegrity = new Proxy({}, {
-  get(_t, prop) {
-    const sys = app.locals.dtuIntegrity;
-    if (!sys) throw new Error("dtu_integrity_unavailable");
-    const v = sys[prop];
-    return typeof v === "function" ? v.bind(sys) : v;
-  },
-});
-try { registerCanonicalRoutes(app, { db, requireAuth, STATE, structuredLog, integritySystem: _canonicalIntegrity }); } catch (e) { structuredLog("warn", "canonical_routes_skip", { error: e.message }); }
+import registerCanonicalRoutes, { lazyDelegate } from "./routes/canonical.js";
+// These systems are created later (initExtensions → app.locals.*), so hand the
+// routes lazy delegates; a missing one yields a structured 503 "<name>_unavailable".
+const _canonicalIntegrity = lazyDelegate("dtu_integrity", () => app.locals.dtuIntegrity);
+const _canonicalStore = lazyDelegate("canonical_store", () => app.locals.canonicalStore);
+const _canonicalCompression = lazyDelegate("dtu_compression", () => app.locals.dtuCompression);
+const _canonicalRights = lazyDelegate("dtu_rights", () => app.locals.dtuRights);
+try { registerCanonicalRoutes(app, { db, requireAuth, STATE, structuredLog, integritySystem: _canonicalIntegrity, canonicalStore: _canonicalStore, compressionPipeline: _canonicalCompression, rightsManager: _canonicalRights }); } catch (e) { structuredLog("warn", "canonical_routes_skip", { error: e.message }); }
 
 import registerChicken2Routes from "./routes/chicken2.js";
 try {
