@@ -83,6 +83,20 @@ describe("pets.medication + vet-visit", () => {
     assert.equal(call("vet-visit-list", ctxA, { petId: pet.id }).result.totalCost, 120);
     assert.equal(call("expense-summary", ctxA, { petId: pet.id }).result.byCategory.vet, 120);
   });
+
+  it("deletes a vet visit and the expense that visit wrote", () => {
+    const pet = newPet();
+    const visit = call("vet-visit-log", ctxA, { petId: pet.id, reason: "Annual checkup", cost: 120 }).result.visit;
+    call("expense-log", ctxA, { petId: pet.id, category: "vet", amount: 15, note: "treats" });
+    assert.equal(call("expense-summary", ctxA, { petId: pet.id }).result.byCategory.vet, 135);
+    const gone = call("vet-visit-delete", ctxA, { petId: pet.id, id: visit.id });
+    assert.equal(gone.ok, true);
+    assert.equal(gone.result.deleted, visit.id);
+    assert.equal(call("vet-visit-list", ctxA, { petId: pet.id }).result.visits.length, 0);
+    assert.equal(call("expense-summary", ctxA, { petId: pet.id }).result.byCategory.vet, 15);
+    assert.equal(call("vet-visit-delete", ctxA, { petId: pet.id, id: visit.id }).ok, false);
+    assert.equal(call("vet-visit-delete", ctxB, { petId: pet.id, id: visit.id }).ok, false);
+  });
 });
 
 describe("pets.weight-history", () => {
