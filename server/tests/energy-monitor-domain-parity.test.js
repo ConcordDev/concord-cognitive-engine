@@ -42,6 +42,16 @@ describe("energy.device-*", () => {
     assert.equal(meter.category, "meter");
   });
 
+  it("update renames a meter and a blank name does not clear it", () => {
+    const meter = newDevice(ctxA, { name: "Main panel", category: "meter", wattage: 0 });
+    const renamed = call("device-update", ctxA, { id: meter.id, name: "Garage" }).result.device;
+    assert.equal(renamed.id, meter.id);
+    assert.equal(renamed.name, "Garage");
+    assert.equal(renamed.category, "meter");
+    const blank = call("device-update", ctxA, { id: meter.id, name: "   " }).result.device;
+    assert.equal(blank.name, "Garage");
+  });
+
   it("update and delete (delete clears readings)", () => {
     const d = newDevice();
     assert.equal(call("device-update", ctxA, { id: d.id, wattage: 4000 }).result.device.wattage, 4000);
