@@ -11,7 +11,7 @@ vi.mock('@/lib/api/client', () => ({
   apiHelpers: { lens: { list: (...a: unknown[]) => listMock(...a), exportList: (...a: unknown[]) => listMock(...a) } },
   lensRun: vi.fn(),
 }));
-vi.mock('@/lib/utils', async (orig) => ({ ...(await orig<object>()), downloadFile: (...a: unknown[]) => downloadMock(...a) }));
+vi.mock('@/lib/utils', async (orig) => ({ ...(await orig<object>()), downloadFile: (...a: unknown[]) => downloadMock(...a), downloadFromUrl: (...a: unknown[]) => downloadMock(...a) }));
 
 import { ExportMenu, EMPTY_EXPORT_NOTICE } from '@/components/common/ExportMenu';
 

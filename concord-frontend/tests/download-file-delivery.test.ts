@@ -4,7 +4,7 @@
 // starts fetching the blob (silent non-delivery: no error, no file).
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import { downloadFile } from '@/lib/utils';
+import { downloadFile, downloadFromUrl } from '@/lib/utils';
 
 describe('downloadFile', () => {
   let createSpy: ReturnType<typeof vi.fn>;
@@ -48,5 +48,26 @@ describe('downloadFile', () => {
     vi.advanceTimersByTime(1);
     expect(revokeSpy).toHaveBeenCalledTimes(1);
     expect(revokeSpy).toHaveBeenCalledWith('blob:mock-url');
+  });
+});
+
+describe('downloadFromUrl (server attachment navigation)', () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it('clicks an attached anchor pointing at the URL with no download attribute (server names the file), then removes it', () => {
+    const seen: Array<{ href: string; hasDownload: boolean; attached: boolean }> = [];
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      seen.push({ href: this.getAttribute('href') ?? '', hasDownload: this.hasAttribute('download'), attached: document.body.contains(this) });
+    });
+    downloadFromUrl('/api/lens/crafting/export/download?format=json&limit=1000');
+    expect(seen).toEqual([{ href: '/api/lens/crafting/export/download?format=json&limit=1000', hasDownload: false, attached: true }]);
+    expect(document.querySelectorAll('a[href*="export/download"]').length).toBe(0);
+  });
+
+  it('builds no blob URL (nothing for a blob-hostile seat to drop)', () => {
+    const create = vi.fn(); (URL as unknown as { createObjectURL: unknown }).createObjectURL = create;
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    downloadFromUrl('/x');
+    expect(create).not.toHaveBeenCalled();
   });
 });
