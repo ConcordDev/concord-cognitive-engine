@@ -28,7 +28,7 @@ import { useRouter } from 'next/navigation';
 
 /** Display order for categories in the explorer */
 const CATEGORY_ORDER: LensCategory[] = [
-  'core', 'knowledge', 'creative', 'ai', 'science', 'governance', 'system', 'specialized', 'superlens',
+  'core', 'knowledge', 'creative', 'ai', 'science', 'governance', 'economy', 'system', 'specialized', 'superlens', 'progression', 'social', 'world',
 ];
 
 /** Friendly descriptions for each category */
@@ -39,6 +39,10 @@ const CATEGORY_DESCRIPTIONS: Partial<Record<LensCategory, string>> = {
   ai: 'Machine learning, reasoning, and cognitive engines',
   science: 'Biology, chemistry, physics, and mathematics',
   governance: 'Voting, markets, ethics, and community',
+  economy: 'Bounties, staking, sponsorship, and markets',
+  progression: 'Levels, quests, and long-term growth',
+  social: 'People, alliances, and community surfaces',
+  world: 'The living world and its places',
   system: 'Administration, queues, audit, and debugging',
   specialized: 'Domain-specific tools and utilities',
   superlens: 'Full industry solutions — healthcare to aviation',

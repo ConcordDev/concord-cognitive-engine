@@ -71,6 +71,15 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Workspace',
     caption: 'Your workspace store: connections and datasets live in Concord’s workspace, not on a remote database server.',
   },
+  /**
+   * Bounties board data is live user data — bounties posted, worked and paid
+   * by Concord users — so the generic REAL_LIVE line ("polled live from an
+   * external source") is false for this lens in the same way as database's.
+   */
+  bounties: {
+    label: 'Live',
+    caption: 'Real bounties posted, worked and paid by Concord users — live user data, not a simulation or an external feed.',
+  },
 };
 
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {
