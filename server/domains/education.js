@@ -23,7 +23,7 @@ export default function registerEducationActions(registerLensAction) {
    * artifact.data.weightScheme: [{ category, weight }] — weights should sum to 100
    * params.studentId — optional single student filter
    */
-  registerLensAction("education", "gradeCalculation", (_ctx, artifact, params) => {
+  registerLensAction("education", "gradeCalculation", (ctx, artifact, params) => {
   try {
     const students = requireList(artifact.data.students, "students");
     if (!Array.isArray(students)) return students;
@@ -129,6 +129,7 @@ export default function registerEducationActions(registerLensAction) {
     };
 
     artifact.data.gradeReport = report;
+    rememberBench(ctx, { grade: report });
 
     return { ok: true, result: report };
     } catch (e) { return handlerFailure(e); }
@@ -226,7 +227,7 @@ export default function registerEducationActions(registerLensAction) {
    * artifact.data.requirements: [{ requirementId, name, type, requiredUnits }]
    * artifact.data.completions: [{ requirementId, completedUnits, completedDate }]
    */
-  registerLensAction("education", "progressTrack", (_ctx, artifact, params) => {
+  registerLensAction("education", "progressTrack", (ctx, artifact, params) => {
   try {
     const requirements = requireList(artifact.data.requirements, "requirements");
     if (!Array.isArray(requirements)) return requirements;
@@ -287,6 +288,7 @@ export default function registerEducationActions(registerLensAction) {
     };
 
     artifact.data.progressReport = result;
+    rememberBench(ctx, { prog: result });
 
     return { ok: true, result };
     } catch (e) { return handlerFailure(e); }
@@ -480,7 +482,19 @@ export default function registerEducationActions(registerLensAction) {
     if (!(s.courses instanceof Map)) s.courses = new Map();
     if (!(s.discussions instanceof Map)) s.discussions = new Map();
     if (!(s.cohorts instanceof Map)) s.cohorts = new Map();
+    if (!(s.bench instanceof Map)) s.bench = new Map();
     return s;
+  }
+
+  // Last grade report, progress report, and class-DTU id for this account.
+  // The bench panel reads this on mount so a leave-and-return keeps the output.
+  function rememberBench(ctx, patch) {
+    const s = getEduState();
+    if (!s) return;
+    const userId = eduActor(ctx);
+    const prev = s.bench.get(userId) || {};
+    s.bench.set(userId, { ...prev, ...patch });
+    saveStateIfAvailable();
   }
 
   // ─── Shared multi-tenant catalog store (migration 363) ────────────
@@ -2436,6 +2450,31 @@ Constraints:
     } catch (e) {
       return { ok: false, error: `opentdb unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  });
+
+  registerLensAction("education", "bench-last", (ctx) => {
+    try {
+      const s = getEduState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const row = s.bench.get(eduActor(ctx)) || null;
+      return {
+        ok: true,
+        result: {
+          grade: row?.grade || null,
+          prog: row?.prog || null,
+          mintedDtuId: row?.mintedDtuId || null,
+        },
+      };
+    } catch (e) { return handlerFailure(e); }
+  });
+
+  registerLensAction("education", "bench-note-mint", (ctx, _a, params = {}) => {
+    try {
+      const dtuId = String(params.dtuId || "").trim();
+      if (!dtuId) return { ok: false, error: "dtuId required" };
+      rememberBench(ctx, { mintedDtuId: dtuId });
+      return { ok: true, result: { mintedDtuId: dtuId } };
+    } catch (e) { return handlerFailure(e); }
   });
 };
 
