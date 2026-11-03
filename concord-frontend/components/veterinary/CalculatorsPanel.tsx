@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { Activity, Scale, Syringe, Calculator, Loader2 } from 'lucide-react';
 import { SPECIES_OPTIONS } from './vet-types';
@@ -42,12 +42,80 @@ const PROCEDURES = [
   'microchip',
 ];
 
+type ChartPatient = { id: string; name?: string; species?: string };
+
+function useChartPatients() {
+  const [patients, setPatients] = useState<ChartPatient[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const r = await lensRun('veterinary', 'patient-list', {});
+      if (cancelled) return;
+      if (r.data.ok) {
+        const raw = (r.data.result as { patients?: ChartPatient[] } | null)?.patients;
+        const list = Array.isArray(raw) ? raw.filter((p) => p && typeof p.id === 'string' && p.id) : [];
+        setPatients(list);
+        setLoadError(null);
+      } else {
+        setPatients([]);
+        setLoadError(typeof r.data.error === 'string' && r.data.error ? r.data.error : 'Patient list unavailable');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { patients, loadError };
+}
+
+function PatientScopeSelect({
+  patients,
+  loadError,
+  patientId,
+  onChange,
+  genericLine,
+}: {
+  patients: ChartPatient[];
+  loadError: string | null;
+  patientId: string;
+  onChange: (id: string) => void;
+  genericLine: string;
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="block text-[10px] uppercase tracking-wide text-zinc-500">
+        Patient
+        <select
+          aria-label="Patient"
+          value={patientId}
+          onChange={(e) => onChange(e.target.value)}
+          className="mt-0.5 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs normal-case tracking-normal text-white"
+        >
+          <option value="">No patient — generic</option>
+          {patients.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name || 'Unnamed'}
+              {p.species ? ` · ${p.species}` : ''}
+            </option>
+          ))}
+        </select>
+      </label>
+      {loadError ? <p className="text-[10px] text-zinc-500">{loadError}</p> : null}
+      <p className="text-[10px] text-zinc-400">{patientId ? 'Reads this patient chart.' : genericLine}</p>
+    </div>
+  );
+}
+
 export function CalculatorsPanel() {
+  const chart = useChartPatients();
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <TriageCalc />
-      <WeightCalc />
-      <VaccineCalc />
+      <WeightCalc chart={chart} />
+      <VaccineCalc chart={chart} />
       <CostCalc />
     </div>
   );
@@ -161,7 +229,8 @@ function TriageCalc() {
   );
 }
 
-function WeightCalc() {
+function WeightCalc({ chart }: { chart: { patients: ChartPatient[]; loadError: string | null } }) {
+  const [patientId, setPatientId] = useState('');
   const [species, setSpecies] = useState('dog');
   const [breed, setBreed] = useState('');
   const [weight, setWeight] = useState('');
@@ -169,20 +238,43 @@ function WeightCalc() {
   const [busy, setBusy] = useState(false);
 
   const run = async () => {
+    if (patientId) {
+      setBusy(true);
+      const r = await lensRun('veterinary', 'weightCheck', { patientId });
+      setBusy(false);
+      if (r.data.ok) setResult(r.data.result as CalcResult);
+      else setResult({ status: 'NOT_COMPUTED', message: r.data.error || 'Patient chart unavailable' });
+      return;
+    }
+    const raw = weight.trim();
+    const n = raw === '' ? null : Number(raw);
+    if (n == null || !Number.isFinite(n) || n <= 0) {
+      setResult({ status: 'NOT_COMPUTED', message: 'Weight not recorded', scope: 'generic' });
+      return;
+    }
     setBusy(true);
-    const r = await lensRun('veterinary', 'weightCheck', { species, breed, weight: Number(weight) });
+    const r = await lensRun('veterinary', 'weightCheck', { species, breed, weight: n });
     setBusy(false);
     if (r.data.ok) setResult(r.data.result as CalcResult);
+    else setResult({ status: 'NOT_COMPUTED', message: r.data.error || 'Weight check unavailable' });
   };
 
   return (
     <CalcCard icon={<Scale className="h-4 w-4 text-emerald-400" />} title="Weight check">
       <div className="space-y-2">
+        <PatientScopeSelect
+          patients={chart.patients}
+          loadError={chart.loadError}
+          patientId={patientId}
+          onChange={setPatientId}
+          genericLine="Generic band. It does not read a patient chart."
+        />
         <div className="flex gap-2">
           <select
             value={species}
             onChange={(e) => setSpecies(e.target.value)}
-            className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
+            disabled={patientId !== ''}
+            className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white disabled:opacity-40"
           >
             {SPECIES_OPTIONS.map((s) => (
               <option key={s} value={s}>
@@ -194,14 +286,16 @@ function WeightCalc() {
             value={breed}
             onChange={(e) => setBreed(e.target.value)}
             placeholder="Breed"
-            className="flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
+            disabled={patientId !== ''}
+            className="flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white disabled:opacity-40"
           />
           <input
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
             type="number"
             placeholder="lbs"
-            className="w-20 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
+            disabled={patientId !== ''}
+            className="w-20 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white disabled:opacity-40"
           />
         </div>
         <button
@@ -212,44 +306,69 @@ function WeightCalc() {
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Scale className="h-3 w-3" />}
           Check
         </button>
-        {result && (
+        {result?.status === 'NOT_COMPUTED' ? (
+          <p className="rounded bg-zinc-950 p-2 text-xs text-zinc-400">
+            {result.message || (Array.isArray(result.missingInputs) ? `Not recorded: ${result.missingInputs.join(', ')}` : 'Not recorded')}
+          </p>
+        ) : result ? (
           <div className="rounded bg-zinc-950 p-2 text-xs text-zinc-300">
+            <p className="text-zinc-500">
+              {result.scope === 'patient' ? 'From this patient chart.' : 'Generic band. It does not read a patient chart.'}
+            </p>
             <p className="font-semibold text-emerald-400">{result.status}</p>
             <p>Ideal range: {result.idealRange}</p>
             <p className="text-zinc-400">{result.recommendation}</p>
           </div>
-        )}
+        ) : null}
       </div>
     </CalcCard>
   );
 }
 
-function VaccineCalc() {
+function VaccineCalc({ chart }: { chart: { patients: ChartPatient[]; loadError: string | null } }) {
+  const [patientId, setPatientId] = useState('');
   const [species, setSpecies] = useState('dog');
   const [age, setAge] = useState('1');
   const [result, setResult] = useState<CalcResult | null>(null);
   const [busy, setBusy] = useState(false);
 
   const run = async () => {
+    if (patientId) {
+      setBusy(true);
+      const r = await lensRun('veterinary', 'vaccineSchedule', { patientId });
+      setBusy(false);
+      if (r.data.ok) setResult(r.data.result as CalcResult);
+      else setResult({ status: 'NOT_COMPUTED', message: r.data.error || 'Patient chart unavailable' });
+      return;
+    }
     const years = yearsOrNull(age);
     if (years == null) {
-      setResult({ status: 'NOT_COMPUTED', message: 'Age not recorded' });
+      setResult({ status: 'NOT_COMPUTED', message: 'Age not recorded', scope: 'generic' });
       return;
     }
     setBusy(true);
     const r = await lensRun('veterinary', 'vaccineSchedule', { species, age: years });
     setBusy(false);
     if (r.data.ok) setResult(r.data.result as CalcResult);
+    else setResult({ status: 'NOT_COMPUTED', message: r.data.error || 'Vaccine schedule unavailable' });
   };
 
   return (
     <CalcCard icon={<Syringe className="h-4 w-4 text-blue-400" />} title="Vaccine schedule">
       <div className="space-y-2">
+        <PatientScopeSelect
+          patients={chart.patients}
+          loadError={chart.loadError}
+          patientId={patientId}
+          onChange={setPatientId}
+          genericLine="Generic table. It does not read a patient chart."
+        />
         <div className="flex gap-2">
           <select
             value={species}
             onChange={(e) => setSpecies(e.target.value)}
-            className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
+            disabled={patientId !== ''}
+            className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white disabled:opacity-40"
           >
             <option value="dog">dog</option>
             <option value="cat">cat</option>
@@ -259,7 +378,8 @@ function VaccineCalc() {
             onChange={(e) => setAge(e.target.value)}
             type="number"
             placeholder="Age (yr)"
-            className="w-24 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
+            disabled={patientId !== ''}
+            className="w-24 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white disabled:opacity-40"
           />
         </div>
         <button
@@ -276,10 +396,16 @@ function VaccineCalc() {
           </p>
         ) : result ? (
           <div className="space-y-1 rounded bg-zinc-950 p-2 text-xs text-zinc-300">
+            <p className="text-zinc-500">
+              {result.scope === 'patient' ? 'Reads this patient chart.' : 'Generic table. It does not read a patient chart.'}
+            </p>
             {result.vaccines?.map((v: CalcResult, i: number) => (
-              <div key={i} className="flex justify-between">
+              <div key={i} className="flex justify-between gap-2">
                 <span className="text-blue-400">{v.vaccine}</span>
-                <span className="text-zinc-400">{v.due} · booster {v.booster}</span>
+                <span className="text-right text-zinc-400">
+                  {v.fromChart ? 'chart · ' : ''}
+                  {v.due} · booster {v.booster}
+                </span>
               </div>
             ))}
           </div>

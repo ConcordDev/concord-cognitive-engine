@@ -50,6 +50,44 @@ describe("veterinary — clinical calculators", () => {
     assert.equal(r.result.vaccines.some((v) => v.vaccine === "DHPP"), true);
   });
 
+  it("vaccineSchedule and weightCheck read a patient chart, and stay generic without one", () => {
+    const generic = call("vaccineSchedule", ctxA, { data: { species: "dog", age: 2 } }, {});
+    assert.equal(generic.result.scope, "generic");
+    assert.equal(generic.result.vaccines.find((v) => v.vaccine === "Rabies").due, "due-or-overdue");
+
+    const pat = call("patient-add", ctxA, {}, { name: "Rex", species: "dog", ageYears: 4 }).result.patient;
+    call("vaccine-record", ctxA, {}, { patientId: pat.id, vaccine: "Rabies", date: "2026-11-03", nextDue: "2027-11-03" });
+    call("vaccine-record", ctxA, {}, { patientId: pat.id, vaccine: "DHPP", date: "2026-11-03" });
+    const chart = call("vaccineSchedule", ctxA, { data: { patientId: pat.id, species: "cat", age: 1 } }, {});
+    assert.equal(chart.result.scope, "patient");
+    assert.equal(chart.result.species, "dog");
+    assert.equal(chart.result.ageMonths, 48);
+    const rabies = chart.result.vaccines.find((v) => v.vaccine === "Rabies");
+    assert.equal(rabies.due, "recorded, due 2027-11-03");
+    assert.equal(rabies.fromChart, true);
+    const dhpp = chart.result.vaccines.find((v) => v.vaccine === "DHPP");
+    assert.match(dhpp.due, /^recorded /);
+    assert.equal(dhpp.due.includes("due-or-overdue"), false);
+    const bordetella = chart.result.vaccines.find((v) => v.vaccine === "Bordetella");
+    assert.equal(bordetella.due, "due-or-overdue");
+    assert.equal(bordetella.fromChart, false);
+
+    const typed = call("weightCheck", ctxA, { data: { species: "cat", weight: 22 } }, {});
+    assert.equal(typed.result.scope, "generic");
+    assert.equal(typed.result.weightSource, "typed");
+    assert.equal(typed.result.status, "overweight");
+    const heavy = call("patient-add", ctxA, {}, { name: "Otis", species: "cat", weightLbs: 22 }).result.patient;
+    const fromChart = call("weightCheck", ctxA, { data: { patientId: heavy.id, species: "dog", weight: 10 } }, {});
+    assert.equal(fromChart.result.scope, "patient");
+    assert.equal(fromChart.result.weightSource, "record");
+    assert.equal(fromChart.result.species, "cat");
+    assert.equal(fromChart.result.currentWeight, 22);
+    assert.equal(fromChart.result.status, "overweight");
+    const missing = call("weightCheck", ctxA, { data: { patientId: pat.id } }, {});
+    assert.equal(missing.result.status, "NOT_COMPUTED");
+    assert.equal(missing.result.scope, "patient");
+  });
+
   it("vaccineSchedule does not invent a dog, an age, or a dog table for another species", () => {
     const blank = call("vaccineSchedule", ctxA, { data: {} }, {});
     assert.equal(blank.ok, true);
