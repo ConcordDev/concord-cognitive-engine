@@ -458,6 +458,12 @@ export function EventsWorkbench({
   const [eventsLoading, setEventsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<{ message: string } | null>(null);
+  const [opsFigures, setOpsFigures] = useState<{
+    rsvpRate: number;
+    avgAttendance: number;
+    totalSpent: number;
+    netPosition: number;
+  } | null>(null);
 
   const fetchEventsReal = useCallback(async (): Promise<LensItem[]> => {
     const listRes = await lensRun({ domain: 'events', action: 'event-list', input: {} });
@@ -481,6 +487,20 @@ export function EventsWorkbench({
     setError(null);
     try {
       setEvents(await fetchEventsReal());
+      const dash = await lensRun({ domain: 'events', action: 'events-dashboard', input: {} });
+      if (dash.data.ok === false) throw new Error(dash.data.error || 'Failed to load dashboard');
+      const result = (dash.data.result || {}) as {
+        rsvpRate?: number;
+        avgAttendance?: number;
+        totalSpent?: number;
+        netPosition?: number;
+      };
+      setOpsFigures({
+        rsvpRate: Number(result.rsvpRate) || 0,
+        avgAttendance: Number(result.avgAttendance) || 0,
+        totalSpent: Number(result.totalSpent) || 0,
+        netPosition: Number(result.netPosition) || 0,
+      });
     } catch (e) {
       setIsError(true);
       setError({ message: e instanceof Error ? e.message : 'Failed to load events' });
@@ -825,22 +845,6 @@ export function EventsWorkbench({
     );
     const vendorsPending = vendors.filter((v) => v.meta?.status === 'pending').length;
     const vendorsConfirmed = vendors.filter((v) => v.meta?.status === 'confirmed').length;
-    const totalRegistered = events.reduce(
-      (s, e) => s + Number((e.data as Record<string, unknown>).registered || 0),
-      0
-    );
-    const totalCapacity = events.reduce(
-      (s, e) => s + Number((e.data as Record<string, unknown>).capacity || 0),
-      0
-    );
-    const avgAttendance = pct(totalRegistered, totalCapacity);
-    const budgetTotal = budgets.reduce((s, b) => {
-      const cats = parseJsonSafe<Array<{ budgeted: number; actual: number }>>(
-        (b.data as Record<string, unknown>).categories,
-        []
-      );
-      return s + cats.reduce((c, cat) => c + (cat.actual || 0), 0);
-    }, 0);
     const sponsorTotal = budgets.reduce((s, b) => {
       const sps = parseJsonSafe<Array<{ amount: number }>>(
         (b.data as Record<string, unknown>).sponsorships,
@@ -856,8 +860,6 @@ export function EventsWorkbench({
       revenueMonth,
       vendorsPending,
       vendorsConfirmed,
-      avgAttendance,
-      budgetTotal,
       sponsorTotal,
     };
   }, [events, vendors, budgets]);
@@ -1037,9 +1039,9 @@ export function EventsWorkbench({
         <MetricCard
           icon={Users}
           label="Avg Attendance"
-          value={`${dashMetrics.avgAttendance}%`}
-          sub="across all events"
-          trend={dashMetrics.avgAttendance > 70 ? 'up' : 'down'}
+          value={opsFigures ? `${opsFigures.avgAttendance}%` : '—'}
+          sub="Checked in ÷ registered"
+          trend={opsFigures && opsFigures.avgAttendance > 70 ? 'up' : 'down'}
         />
       </div>
 
@@ -1109,7 +1111,7 @@ export function EventsWorkbench({
             <div className="flex items-center justify-between">
               <span className={ds.textMuted}>Total Spent</span>
               <span className="text-amber-400 font-semibold">
-                {fmtCurrency(dashMetrics.budgetTotal)}
+                {fmtCurrency(opsFigures?.totalSpent ?? 0)}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -1121,13 +1123,12 @@ export function EventsWorkbench({
             <div className="flex items-center justify-between">
               <span className={ds.textMuted}>Net Position</span>
               {(() => {
-                const net =
-                  dashMetrics.revenueMonth + dashMetrics.sponsorTotal - dashMetrics.budgetTotal;
+                const net = opsFigures?.netPosition ?? 0;
                 return (
                   <span
                     className={cn('font-semibold', net >= 0 ? 'text-green-400' : 'text-red-400')}
                   >
-                    {fmtCurrency(net)}
+                    {opsFigures ? fmtCurrency(net) : '—'}
                   </span>
                 );
               })()}
@@ -2678,19 +2679,11 @@ export function EventsWorkbench({
             (e) => e.meta?.status === 'planning' || e.meta?.status === 'confirmed'
           ).length;
           const past = allEvts.filter((e) => e.meta?.status === 'completed').length;
-          const totalCap = allEvts.reduce(
-            (s, e) => s + Number((e.data as Record<string, unknown>).capacity || 0),
-            0
-          );
-          const totalReg = allEvts.reduce(
-            (s, e) => s + Number((e.data as Record<string, unknown>).registered || 0),
-            0
-          );
-          const rsvpRate = totalCap > 0 ? Math.round((totalReg / totalCap) * 100) : 0;
+          const rsvpRate = opsFigures ? opsFigures.rsvpRate : null;
           return [
             { label: 'Upcoming', value: upcoming, icon: CalendarDays },
             { label: 'Past Events', value: past, icon: CheckCircle2 },
-            { label: 'RSVP Rate', value: `${rsvpRate}%`, icon: Users },
+            { label: 'RSVP Rate', value: rsvpRate === null ? '—' : `${rsvpRate}%`, icon: Users },
             { label: 'Total Events', value: allEvts.length, icon: Sparkles },
           ].map((stat) => (
             <div key={stat.label} className={ds.panel + ' flex items-center gap-3 p-3'}>

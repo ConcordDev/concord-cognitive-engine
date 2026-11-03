@@ -86,6 +86,24 @@ describe("events.dashboard", () => {
     assert.equal(d.result.totalEvents, 2);
     assert.equal(d.result.totalBudget, 15000);
     assert.equal(d.result.openTasks, 1);
+    assert.equal(d.result.totalSpent, 0);
+    assert.equal(d.result.avgAttendance, 0);
+    assert.equal(d.result.rsvpRate, 0);
+    assert.equal(d.result.netPosition, 0);
+  });
+
+  it("reads attendance and spend from the operations records", () => {
+    const e = newEvent(ctxA, { guestCount: 0, budget: 1000 });
+    const tier = call("tier-create", ctxA, { eventId: e.id, name: "General", price: 25, quantity: 10 }).result.tier;
+    const reg = call("register-attendee", ctxA, { eventId: e.id, tierId: tier.id, name: "PR5EV Guest One", email: "one@test.local" }).result.registration;
+    call("check-in", ctxA, { eventId: e.id, registrationId: reg.id });
+    call("budget-line-add", ctxA, { eventId: e.id, label: "Venue", category: "venue", kind: "expense", budgeted: 1000, actual: 250 });
+    const d = call("events-dashboard", ctxA, {}).result;
+    assert.equal(d.avgAttendance, 100);
+    assert.equal(d.totalSpent, 250);
+    assert.equal(d.rsvpRate, 10);
+    // A tier price is not money received. Net is revenue-line actuals minus expense actuals.
+    assert.equal(d.netPosition, -250);
   });
 });
 
