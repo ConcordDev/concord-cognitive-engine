@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { Loader2, LineChart as LineChartIcon } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { percentileLabel } from './percentile-label';
 
 type Metric = 'weight' | 'height' | 'head';
 
@@ -18,7 +19,7 @@ interface CurvePoint {
   ageMonths: number;
   p3: number; p15: number; p50: number; p85: number; p97: number;
 }
-interface Measurement { ageMonths: number; value: number; date: string; percentile: number }
+interface Measurement { ageMonths: number; value: number; date: string; percentile: number; percentileLabel?: string }
 interface ChartData {
   metric: Metric;
   sex: string;
@@ -115,7 +116,7 @@ export function PgGrowthChartPanel({ childId }: { childId: string }) {
           {data.measurements.slice(-5).reverse().map((m) => (
             <li key={m.date} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
               <span className="text-[11px] text-zinc-400">{m.date} · {m.ageMonths}mo</span>
-              <span className="text-xs text-zinc-200">{m.value} {data.unit} · <span className="text-rose-300">{m.percentile}th pct</span></span>
+              <span className="text-xs text-zinc-200">{m.value} {data.unit} · <span className="text-rose-300">{m.percentileLabel || percentileLabel(m.percentile)} pct</span></span>
             </li>
           ))}
         </ul>

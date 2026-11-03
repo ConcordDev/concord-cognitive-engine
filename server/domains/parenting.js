@@ -7,6 +7,20 @@ import { lookupUserIdentity } from "../lib/user-identity.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
 
+// 3 is "3rd", not "3th". 11–13 stay "th".
+export function pgPercentileLabel(n) {
+  const v = Math.round(Number(n));
+  if (!Number.isFinite(v)) return "N/A";
+  const mod100 = Math.abs(v) % 100;
+  const mod10 = mod100 % 10;
+  const suffix = mod100 >= 11 && mod100 <= 13 ? "th"
+    : mod10 === 1 ? "st"
+    : mod10 === 2 ? "nd"
+    : mod10 === 3 ? "rd"
+    : "th";
+  return `${v}${suffix}`;
+}
+
 export default function registerParentingActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -138,9 +152,9 @@ export default function registerParentingActions(registerLensAction) {
           bmi,
         },
         percentiles: {
-          height: heightPct !== null ? `${heightPct}th` : "N/A",
-          weight: weightPct !== null ? `${weightPct}th` : "N/A",
-          headCircumference: headPct !== null ? `${headPct}th` : "N/A",
+          height: heightPct !== null ? pgPercentileLabel(heightPct) : "N/A",
+          weight: weightPct !== null ? pgPercentileLabel(weightPct) : "N/A",
+          headCircumference: headPct !== null ? pgPercentileLabel(headPct) : "N/A",
         },
         flags,
         note: "Percentiles are approximations. Consult your pediatrician for precise growth chart plotting.",
@@ -997,15 +1011,18 @@ export default function registerParentingActions(registerLensAction) {
     const result = { ageMonths: Math.round(ageMonths * 10) / 10, sex: child.sex, measuredOn: latest.date };
     if (latest.weightKg) {
       const m = pgWhoMedian(who.weight, ageMonths);
-      result.weight = { value: latest.weightKg, whoMedian: Math.round(m * 100) / 100, percentile: pgPercentile(latest.weightKg, m, PG_CV.weight) };
+      const percentile = pgPercentile(latest.weightKg, m, PG_CV.weight);
+      result.weight = { value: latest.weightKg, whoMedian: Math.round(m * 100) / 100, percentile, percentileLabel: pgPercentileLabel(percentile) };
     }
     if (latest.heightCm) {
       const m = pgWhoMedian(who.height, ageMonths);
-      result.height = { value: latest.heightCm, whoMedian: Math.round(m * 10) / 10, percentile: pgPercentile(latest.heightCm, m, PG_CV.height) };
+      const percentile = pgPercentile(latest.heightCm, m, PG_CV.height);
+      result.height = { value: latest.heightCm, whoMedian: Math.round(m * 10) / 10, percentile, percentileLabel: pgPercentileLabel(percentile) };
     }
     if (latest.headCm) {
       const m = pgWhoMedian(who.head, ageMonths);
-      result.head = { value: latest.headCm, whoMedian: Math.round(m * 10) / 10, percentile: pgPercentile(latest.headCm, m, PG_CV.head) };
+      const percentile = pgPercentile(latest.headCm, m, PG_CV.head);
+      result.head = { value: latest.headCm, whoMedian: Math.round(m * 10) / 10, percentile, percentileLabel: pgPercentileLabel(percentile) };
     }
     result.note = "Percentiles are estimates from WHO median references. Confirm growth on your pediatrician's official chart.";
     return { ok: true, result };
@@ -1334,11 +1351,13 @@ export default function registerParentingActions(registerLensAction) {
         if (!(v > 0)) return null;
         const childAgeAt = Math.max(0, (Date.parse(`${e.date}T00:00:00Z`) - Date.parse(`${child.birthDate}T00:00:00Z`)) / (PG_DAY * 30.4375));
         const median = pgWhoMedian(table, childAgeAt);
+        const percentile = pgPercentile(v, median, cv);
         return {
           ageMonths: Math.round(childAgeAt * 10) / 10,
           value: v,
           date: e.date,
-          percentile: pgPercentile(v, median, cv),
+          percentile,
+          percentileLabel: pgPercentileLabel(percentile),
         };
       })
       .filter(Boolean)

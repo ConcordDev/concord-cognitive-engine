@@ -10,9 +10,10 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianG
 import { Loader2, Plus, TrendingUp } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/ui';
+import { percentileLabel } from './percentile-label';
 
 interface GrowthEntry { id: string; weightKg: number | null; heightCm: number | null; headCm: number | null; date: string }
-interface Measure { value: number; whoMedian: number; percentile: number }
+interface Measure { value: number; whoMedian: number; percentile: number; percentileLabel?: string }
 interface Percentiles {
   ageMonths: number; sex: string; measuredOn: string;
   weight?: Measure; height?: Measure; head?: Measure; note: string;
@@ -129,7 +130,7 @@ function PctCard({ label, m, unit }: { label: string; m?: Measure; unit: string 
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
       {m ? (
         <>
-          <p className="text-lg font-bold text-rose-300">{m.percentile}th</p>
+          <p className="text-lg font-bold text-rose-300">{m.percentileLabel || percentileLabel(m.percentile)}</p>
           <p className="text-[11px] text-zinc-300">{m.value} {unit}</p>
           <p className="text-[10px] text-zinc-400">WHO median {m.whoMedian}</p>
         </>
