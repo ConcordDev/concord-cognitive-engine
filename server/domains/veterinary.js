@@ -38,23 +38,85 @@ export default function registerVeterinaryActions(registerLensAction) {
     const urgent = symptoms.some(s => ["vomiting","diarrhea","limping","not-eating","lethargy","swelling"].includes(String((s && s.name) || s || "").toLowerCase()));
     return { ok: true, result: { species, age, symptoms: symptoms.map(s => (s && s.name) || s), triageLevel: emergency ? "EMERGENCY" : urgent ? "urgent" : "routine", responseTime: emergency ? "Immediate — go to emergency vet NOW" : urgent ? "See vet within 24 hours" : "Schedule routine appointment", firstAid: emergency ? ["Keep animal calm", "Do not move if spinal injury suspected", "Apply pressure to bleeding", "Call emergency vet en route"] : [] } };
   }));
-  registerLensAction("veterinary", "weightCheck", (ctx, artifact, _params) => { const data = artifact.data || {}; const _req = needNums(data, ["weight>0"]); const _miss = [...(data.species ? [] : ["species"]), ..._req.missing]; if (_miss.length) return notComputed(_miss, "Weight check needs species and current weight (lbs)."); const species = String(data.species).toLowerCase(); const breed = (data.breed || "").toLowerCase(); const weight = _req.values.weight; const idealRanges = { dog: { small: [5,20], medium: [20,55], large: [55,100] }, cat: { all: [6,14] } }; const range = species === "cat" ? idealRanges.cat.all : weight < 25 ? idealRanges.dog.small : weight < 60 ? idealRanges.dog.medium : idealRanges.dog.large; const inRange = weight >= range[0] && weight <= range[1]; return { ok: true, result: { species, breed: breed || "mixed", currentWeight: weight, idealRange: `${range[0]}-${range[1]} lbs`, status: inRange ? "healthy-weight" : weight < range[0] ? "underweight" : "overweight", recommendation: !inRange ? "Discuss weight management with your vet" : "Weight is in healthy range" } }; });
+  function weightVerdict(species, breed, weight) {
+    const idealRanges = { dog: { small: [5, 20], medium: [20, 55], large: [55, 100] }, cat: { all: [6, 14] } };
+    const range = species === "cat" ? idealRanges.cat.all : weight < 25 ? idealRanges.dog.small : weight < 60 ? idealRanges.dog.medium : idealRanges.dog.large;
+    const inRange = weight >= range[0] && weight <= range[1];
+    return {
+      species,
+      breed: breed || "mixed",
+      currentWeight: weight,
+      idealRange: `${range[0]}-${range[1]} lbs`,
+      status: inRange ? "healthy-weight" : weight < range[0] ? "underweight" : "overweight",
+      recommendation: !inRange ? "Discuss weight management with your vet" : "Weight is in healthy range",
+    };
+  }
+  registerLensAction("veterinary", "weightCheck", (ctx, artifact, params) => {
+    const data = vetData(artifact, params);
+    const patientId = typeof data.patientId === "string" ? data.patientId.trim() : "";
+    if (patientId) {
+      const s = getVetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const patient = vtPatients(s, vtActor(ctx)).find((p) => p.id === patientId);
+      if (!patient) return { ok: false, error: "patient not found" };
+      const w = patient.weightLbs;
+      if (typeof w !== "number" || !(w > 0)) {
+        return notComputed(["weight"], "Weight is not recorded on this patient.", { scope: "patient" });
+      }
+      const species = String(patient.species || "").toLowerCase();
+      if (!species) return notComputed(["species"], "Species is not recorded on this patient.", { scope: "patient" });
+      return { ok: true, result: { ...weightVerdict(species, String(patient.breed || "").toLowerCase(), w), scope: "patient", weightSource: "record" } };
+    }
+    const _req = needNums(data, ["weight>0"]);
+    const _miss = [...(data.species ? [] : ["species"]), ..._req.missing];
+    if (_miss.length) return notComputed(_miss, "Weight check needs species and current weight (lbs).", { scope: "generic" });
+    return { ok: true, result: { ...weightVerdict(String(data.species).toLowerCase(), String(data.breed || "").toLowerCase(), _req.values.weight), scope: "generic", weightSource: "typed" } };
+  });
   registerLensAction("veterinary", "vaccineSchedule", advisory("generic core-vaccine table; not AAHA/AVMA or WSAVA guidance for this animal — confirm with a veterinarian", (ctx, artifact, params) => {
     const data = vetData(artifact, params);
-    const species = speciesText(data);
-    const age = optNum(data.age);
+    const patientId = typeof data.patientId === "string" ? data.patientId.trim() : "";
+    let species = speciesText(data);
+    let age = optNum(data.age);
+    let vaccinations = [];
+    let scope = "generic";
+    if (patientId) {
+      const s = getVetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const patient = vtPatients(s, vtActor(ctx)).find((p) => p.id === patientId);
+      if (!patient) return { ok: false, error: "patient not found" };
+      scope = "patient";
+      species = speciesText({ species: patient.species });
+      age = typeof patient.ageYears === "number" && Number.isFinite(patient.ageYears) ? patient.ageYears : null;
+      vaccinations = Array.isArray(patient.vaccinations) ? patient.vaccinations : [];
+    }
     // The core table is dog and cat only. Anything else used to fall
     // through to the dog rows, and a missing age used to become 1 year.
     const missing = [];
     if (species !== "dog" && species !== "cat") missing.push("species");
     if (age == null || age < 0) missing.push("age");
     if (missing.length) {
-      return notComputed(missing, "Vaccine schedule needs species (dog or cat) and age in years. Other species are not on this core table.");
+      const message = scope === "patient"
+        ? "This patient's chart has no dog or cat species, or no age, for the core table."
+        : "Vaccine schedule needs species (dog or cat) and age in years. Other species are not on this core table.";
+      return notComputed(missing, message, { scope });
     }
     const schedules = { dog: [{ vaccine: "Rabies", ageMonths: 3, booster: "1-3 years" }, { vaccine: "DHPP", ageMonths: 2, booster: "annually" }, { vaccine: "Bordetella", ageMonths: 2, booster: "6-12 months" }], cat: [{ vaccine: "Rabies", ageMonths: 3, booster: "1-3 years" }, { vaccine: "FVRCP", ageMonths: 2, booster: "annually" }, { vaccine: "FeLV", ageMonths: 2, booster: "annually" }] };
     const schedule = schedules[species];
     const ageMonths = age * 12;
-    return { ok: true, result: { species, ageMonths: Math.round(ageMonths), vaccines: schedule.map(v => ({ ...v, due: ageMonths >= v.ageMonths ? "due-or-overdue" : `at ${v.ageMonths} months` })), overdueCount: schedule.filter(v => ageMonths >= v.ageMonths).length } };
+    const today = new Date().toISOString().slice(0, 10);
+    const chartDue = (name) => {
+      const hit = vaccinations.find((row) => String(row.vaccine || "").trim().toLowerCase() === name.toLowerCase());
+      if (!hit) return null;
+      const due = typeof hit.nextDue === "string" ? hit.nextDue.trim() : "";
+      if (/^\d{4}-\d{2}-\d{2}$/.test(due)) return due < today ? `recorded, overdue ${due}` : `recorded, due ${due}`;
+      const given = typeof hit.date === "string" ? hit.date.trim() : "";
+      return given ? `recorded ${given}, no due date` : "recorded, no due date";
+    };
+    const vaccines = schedule.map((v) => {
+      const fromChart = chartDue(v.vaccine);
+      const due = fromChart || (ageMonths >= v.ageMonths ? "due-or-overdue" : `at ${v.ageMonths} months`);
+      return { ...v, due, fromChart: fromChart != null };
+    });
+    const overdueCount = vaccines.filter((v) => v.due === "due-or-overdue" || v.due.startsWith("recorded, overdue")).length;
+    return { ok: true, result: { species, ageMonths: Math.round(ageMonths), vaccines, overdueCount, scope } };
   }));
   registerLensAction("veterinary", "costEstimate", (ctx, artifact, _params) => {
     const procedures = artifact.data?.procedures;
