@@ -17,14 +17,19 @@ export interface VetVaccination {
   nextDue: string;
 }
 
+export function recordedMeasure(n: number | null | undefined, unit: string): string {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return 'not recorded';
+  return `${n} ${unit}`;
+}
+
 export interface VetPatient {
   id: string;
   name: string;
   species: string;
   breed: string;
   owner: string;
-  ageYears: number;
-  weightLbs: number;
+  ageYears: number | null;
+  weightLbs: number | null;
   notes: string;
   visits: VetVisit[];
   vaccinations: VetVaccination[];

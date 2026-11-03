@@ -116,13 +116,27 @@ export default function registerVeterinaryActions(registerLensAction) {
     if (!SPECIES.includes(species)) {
       return { ok: false, error: "invalid_input", field: "species", reason: "species required" };
     }
+    // A blank age or weight is unrecorded. Explicit 0 stays 0. A bad
+    // number is refused before the patient is stored.
+    const recorded = (key) => {
+      if (!Object.prototype.hasOwnProperty.call(params, key) || params[key] === "" || params[key] == null) {
+        return { ok: true, n: null };
+      }
+      const n = Number(params[key]);
+      if (!Number.isFinite(n) || n < 0) return { ok: false };
+      return { ok: true, n };
+    };
+    const age = recorded("ageYears");
+    if (!age.ok) return { ok: false, error: "invalid_input", field: "ageYears" };
+    const weight = recorded("weightLbs");
+    if (!weight.ok) return { ok: false, error: "invalid_input", field: "weightLbs" };
     const patient = {
       id: vtId("pat"), name,
       species,
       breed: vtClean(params.breed, 80) || "mixed",
       owner: vtClean(params.owner, 120) || "",
-      ageYears: Math.max(0, vtNum(params.ageYears)),
-      weightLbs: Math.max(0, vtNum(params.weightLbs)),
+      ageYears: age.n,
+      weightLbs: weight.n,
       notes: vtClean(params.notes, 1000) || "",
       visits: [], vaccinations: [],
       createdAt: new Date().toISOString(),

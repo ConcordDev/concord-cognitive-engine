@@ -138,6 +138,27 @@ describe("veterinary — patient records substrate", () => {
     assert.equal(titled.result.patient.species, "dog");
   });
 
+  it("patient-add keeps a recorded age and weight and leaves a blank one unrecorded", () => {
+    const rec = call("patient-add", ctxA, {}, { name: "Rex", species: "dog", ageYears: 4, weightLbs: 12 });
+    assert.equal(rec.ok, true);
+    assert.equal(rec.result.patient.ageYears, 4);
+    assert.equal(rec.result.patient.weightLbs, 12);
+    const listed = call("patient-list", ctxA, {}, {}).result.patients[0];
+    assert.equal(listed.ageYears, 4);
+    assert.equal(listed.weightLbs, 12);
+    const blank = call("patient-add", ctxA, {}, { name: "Miso", species: "cat" });
+    assert.equal(blank.result.patient.ageYears, null);
+    assert.equal(blank.result.patient.weightLbs, null);
+    const zero = call("patient-add", ctxA, {}, { name: "Zero", species: "dog", ageYears: 0, weightLbs: 0 });
+    assert.equal(zero.result.patient.ageYears, 0);
+    assert.equal(zero.result.patient.weightLbs, 0);
+    const bad = call("patient-add", ctxA, {}, { name: "Bad", species: "dog", weightLbs: -3 });
+    assert.equal(bad.ok, false);
+    assert.equal(bad.error, "invalid_input");
+    assert.equal(bad.field, "weightLbs");
+    assert.equal(call("patient-list", ctxA, {}, {}).result.count, 3);
+  });
+
   it("patient-add / patient-list / patient-delete round-trip", () => {
     const add = call("patient-add", ctxA, {}, { name: "Rex", species: "dog", owner: "Jane Doe" });
     assert.equal(add.ok, true);
