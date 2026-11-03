@@ -327,12 +327,21 @@ export default function registerSportsActions(registerLensAction) {
 
   registerLensAction("sports", "game-delete", (ctx, _a, params = {}) => {
     const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const arr = s.games.get(spAid(ctx)) || [];
+    const userId = spAid(ctx);
+    const arr = s.games.get(userId) || [];
     const i = arr.findIndex((g) => g.id === params.id);
     if (i < 0) return { ok: false, error: "game not found" };
     arr.splice(i, 1);
+    const gameId = String(params.id);
+    const preds = s.predictions.get(userId) || [];
+    const keptPreds = preds.filter((p) => p.gameId !== gameId);
+    const predictionsRemoved = preds.length - keptPreds.length;
+    if (predictionsRemoved) s.predictions.set(userId, keptPreds);
+    const wl = s.watchlist.get(userId) || [];
+    const wi = wl.indexOf(gameId);
+    if (wi >= 0) wl.splice(wi, 1);
     saveSportsState();
-    return { ok: true, result: { deleted: params.id } };
+    return { ok: true, result: { deleted: params.id, predictionsRemoved } };
   });
 
   // ── Predictions (Pick'em) ───────────────────────────────────────────
@@ -477,6 +486,47 @@ export default function registerSportsActions(registerLensAction) {
   registerLensAction("sports", "athlete-list", (ctx, _a, _params = {}) => {
     const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     return { ok: true, result: { athletes: s.athletes.get(spAid(ctx)) || [] } };
+  });
+
+  registerLensAction("sports", "athlete-remove", (ctx, _a, params = {}) => {
+    const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = spAid(ctx);
+    const id = String(params.id || "");
+    const arr = s.athletes.get(userId) || [];
+    const i = arr.findIndex((a) => a.id === id);
+    if (i < 0) return { ok: false, error: "athlete not found" };
+    arr.splice(i, 1);
+    const lines = s.athleteStats.get(userId) || [];
+    const kept = lines.filter((x) => x.athleteId !== id);
+    const statLinesRemoved = lines.length - kept.length;
+    if (statLinesRemoved) s.athleteStats.set(userId, kept);
+    saveSportsState();
+    return { ok: true, result: { deleted: id, statLinesRemoved } };
+  });
+
+  // Training sessions live as sports/TrainingLog artifacts, not in sportsLens.
+  registerLensAction("sports", "training-delete", (ctx, _a, params = {}) => {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE?.lensArtifacts) return { ok: false, error: "STATE unavailable" };
+    const id = spClean(params.id, 80);
+    if (!id) return { ok: false, error: "id required" };
+    const artifact = STATE.lensArtifacts.get(id);
+    if (!artifact || artifact.domain !== "sports" || artifact.type !== "TrainingLog") {
+      return { ok: false, error: "session not found" };
+    }
+    const userId = spAid(ctx);
+    const owner = artifact.ownerId || artifact.createdBy || artifact.createdByUser || null;
+    if (!owner || owner !== userId) {
+      return { ok: false, error: "unauthorized: you can only delete your own artifacts" };
+    }
+    STATE.lensArtifacts.delete(id);
+    const indexed = STATE.lensDomainIndex?.get?.("sports");
+    if (indexed) {
+      indexed.delete(id);
+      if (indexed.size === 0) STATE.lensDomainIndex.delete("sports");
+    }
+    saveSportsState();
+    return { ok: true, result: { deleted: id } };
   });
 
   registerLensAction("sports", "athlete-stat-log", (ctx, _a, params = {}) => {
