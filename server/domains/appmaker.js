@@ -525,6 +525,26 @@ export default function registerAppmakerActions(registerLensAction) {
   });
 
   /**
+   * project.rename — rename an existing project. F10: no rename control existed
+   * anywhere in Studio; this is the backend half of adding one.
+   */
+  registerLensAction("app-maker", "projectRename", (ctx, artifact, params) => {
+    try {
+      const s = getAppState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const userId = amActor(ctx);
+      const proj = findProject(s, userId, amRecordId(params, "projectId"));
+      if (!proj) return { ok: false, error: "project_not_found" };
+      const name = amClean(params?.name, 80);
+      if (!name) return { ok: false, error: "name_required" };
+      proj.name = name;
+      proj.updatedAt = amNow();
+      saveAppState();
+      return { ok: true, result: { project: proj } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
    * project.delete
    */
   registerLensAction("app-maker", "projectDelete", (ctx, artifact, params) => {
