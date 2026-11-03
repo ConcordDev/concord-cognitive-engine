@@ -2,11 +2,14 @@ name: Full Suite (sharded)
 
 # GB-0582 phase 2: replaces the retired A40/VM test gates. The whole server `node --test` suite runs split
 # across SHARDS parallel jobs on free GitHub-hosted runners (the repo is public, so standard-runner minutes are free),
-# plus the frontend vitest + tsc, plus the lens behavior harness. A final job compares the failing test names with
+# plus the frontend vitest + tsc, plus the lens behavior harness, plus a frontend production build whose Pyodide
+# runtime is verified as a hard step. A final job compares the failing test names with
 # the latest main run and reports NEW vs PRE-EXISTING failures.
 #
 # This is a TRIAGE SIGNAL, not a merge gate (Ramaj, 10-10): shard jobs never fail the workflow on test failures;
-# only the final `triage` job goes red, and only for failures that are NEW relative to main.
+# only the final `triage` job goes red, and only for failures that are NEW relative to main. One deliberate
+# exception (GB-0857): the `frontend-build` job's Pyodide check is a deterministic artifact verification, not a
+# test — if a build leaves public/pyodide missing or hash-mismatched, that job fails, by design.
 #
 # Changing the shard count: edit BOTH the matrix list in `server-shard` and SHARDS below (a `shard-count` step
 # checks they agree).
@@ -168,6 +171,34 @@ jobs:
             ci-out/fe-tsc-outcome.txt
           if-no-files-found: warn
           retention-days: 14
+
+  frontend-build:
+    name: Frontend build + Pyodide verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: concord-frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: ./concord-frontend
+        run: npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)
+      # The plain CI build recipe (build:ci = next build, without the npm `build` chain's extras): whatever
+      # the build path does — webpack or Turbopack, pre-hooks or not — the step below verifies the OUTCOME.
+      - name: Production build (CI recipe)
+        working-directory: ./concord-frontend
+        run: npm run build:ci
+      # GB-0857 (the CB-0077 belt-and-suspenders step, B6): HARD — no continue-on-error. The vendoring gate in
+      # next.config.js (generateBuildId + webpack hooks) is the primary protection; this step verifies that
+      # public/pyodide exists after a real build and that every runtime file matches its pinned SHA-256, so a
+      # future build-path change that routes around the gate fails this job loudly instead of shipping the
+      # Code lens's Python runtime unverified.
+      - name: Verify Pyodide runtime (hard gate)
+        working-directory: ./concord-frontend
+        run: npm run check:pyodide
 
   behavior:
     name: Lens behavior harness
