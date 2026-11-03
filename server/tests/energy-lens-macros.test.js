@@ -159,6 +159,34 @@ describe("energy — pure-compute calculators (exact values)", () => {
     assert.equal(r.result.renewableShare, "35%");
     assert.equal(r.result.frequencyStable, true); // |60.01-60| < 0.05
     assert.equal(r.result.reserves, "200 MW available");
+    assert.equal(r.result.reason, null);
+    assert.deepEqual(r.result.unavailable, []);
+  });
+
+  it("gridStatus: omitted readings are not 0 MW at a stable 60 Hz", () => {
+    const r = call("gridStatus", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.currentDemand, null);
+    assert.equal(r.result.totalCapacity, null);
+    assert.equal(r.result.utilization, null);
+    assert.equal(r.result.status, null);
+    assert.equal(r.result.renewableShare, null);
+    assert.equal(r.result.gridFrequency, null);
+    assert.equal(r.result.frequencyStable, null);
+    assert.equal(r.result.reserves, null);
+    assert.equal(r.result.reason, "not_recorded");
+    assert.deepEqual(r.result.unavailable, ["currentDemandMW", "totalCapacityMW", "renewablePercent", "gridFrequencyHz"]);
+  });
+
+  it("gridStatus: an explicit 0 stays 0, and a missing frequency is not called stable", () => {
+    const r = call("gridStatus", ctxA, { currentDemandMW: 0, totalCapacityMW: 1000, renewablePercent: 0 });
+    assert.equal(r.result.currentDemand, "0 MW");
+    assert.equal(r.result.renewableShare, "0%");
+    assert.equal(r.result.utilization, 0);
+    assert.equal(r.result.status, "low-load");
+    assert.equal(r.result.gridFrequency, null);
+    assert.equal(r.result.frequencyStable, null);
+    assert.deepEqual(r.result.unavailable, ["gridFrequencyHz"]);
   });
 });
 
@@ -220,12 +248,14 @@ describe("energy — fail-closed poison (no Infinity/NaN leak, no throw)", () =>
     }
   });
 
-  it("gridStatus: poisoned inputs → finite, output strings never 'Infinity MW'", () => {
+  it("gridStatus: poisoned inputs are not a measured grid, and never render Infinity", () => {
     for (const p of POISON) {
       const r = call("gridStatus", ctxA, { currentDemandMW: p, totalCapacityMW: p, renewablePercent: p, gridFrequencyHz: p });
       assert.equal(r.ok, true);
       assert.doesNotMatch(JSON.stringify(r.result), /Infinity|NaN/);
-      assert.ok(Number.isFinite(r.result.utilization));
+      assert.equal(r.result.utilization, null);
+      assert.equal(r.result.frequencyStable, null);
+      assert.equal(r.result.reason, "not_recorded");
     }
   });
 

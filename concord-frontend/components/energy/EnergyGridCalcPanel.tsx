@@ -18,10 +18,33 @@ interface ConsumptionResult {
   totalKWh?: number; avgKWh?: number; peakKWh?: number; readingCount?: number;
   estimatedCost?: number; costPerKWh?: number; peakToAvgRatio?: number; savingsOpportunity?: string;
 }
-interface GridInput { currentDemandMW: number; totalCapacityMW: number; renewablePercent: number; gridFrequencyHz: number }
+interface GridInput { currentDemandMW: number | ''; totalCapacityMW: number | ''; renewablePercent: number | ''; gridFrequencyHz: number | '' }
 interface GridResult {
-  currentDemand?: string; totalCapacity?: string; utilization?: number; renewableShare?: string;
-  gridFrequency?: string; frequencyStable?: boolean; status?: string; reserves?: string;
+  currentDemand?: string | null; totalCapacity?: string | null; utilization?: number | null; renewableShare?: string | null;
+  gridFrequency?: string | null; frequencyStable?: boolean | null; status?: string | null; reserves?: string | null;
+  reason?: string | null; unavailable?: string[]; message?: string;
+}
+
+const GRID_INPUT_LABELS: Record<string, string> = {
+  currentDemandMW: 'demand',
+  totalCapacityMW: 'capacity',
+  renewablePercent: 'renewable share',
+  gridFrequencyHz: 'frequency',
+};
+
+function gridAbsence(g: GridResult): string | null {
+  const missing = (g.unavailable ?? []).map((k) => GRID_INPUT_LABELS[k] ?? k);
+  if (missing.length) return `Not recorded: ${missing.join(', ')}`;
+  return g.message || null;
+}
+
+function gridMeasured(g: GridResult): boolean {
+  return g.utilization != null || g.currentDemand != null || g.totalCapacity != null || g.renewableShare != null || g.gridFrequency != null || g.reserves != null;
+}
+
+function frequencyWord(g: GridResult): string {
+  if (typeof g.frequencyStable !== 'boolean') return 'not recorded';
+  return g.frequencyStable ? 'stable' : 'deviating';
 }
 
 const statusColour = (status?: string) => {
@@ -34,7 +57,7 @@ const statusColour = (status?: string) => {
 export function EnergyGridCalcPanel() {
   const [readingsText, setReadingsText] = useState('28, 31, 26, 45, 29, 33, 27');
   const [costPerKWh, setCostPerKWh] = useState(0.17);
-  const [grid, setGrid] = useState<GridInput>({ currentDemandMW: 42000, totalCapacityMW: 55000, renewablePercent: 28, gridFrequencyHz: 60 });
+  const [grid, setGrid] = useState<GridInput>({ currentDemandMW: '', totalCapacityMW: '', renewablePercent: '', gridFrequencyHz: '' });
 
   const readings: Reading[] = readingsText
     .split(',')
@@ -68,19 +91,26 @@ export function EnergyGridCalcPanel() {
       }}
       right={{
         macro: 'gridStatus',
-        buildArtifact: () => ({ data: grid }),
+        buildArtifact: () => {
+          const data: Record<string, number> = {};
+          (['currentDemandMW', 'totalCapacityMW', 'renewablePercent', 'gridFrequencyHz'] as const).forEach((key) => {
+            const value = grid[key];
+            if (typeof value === 'number' && Number.isFinite(value)) data[key] = value;
+          });
+          return { data };
+        },
         render: (
           <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
             <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Waves className="h-3 w-3" />Regional grid snapshot</div>
             <div className="grid grid-cols-2 gap-2">
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Demand (MW)</span>
-                <input type="number" min={0} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={grid.currentDemandMW} onChange={(e) => setGrid({ ...grid, currentDemandMW: Math.max(0, Number(e.target.value) || 0) })} /></label>
+                <input type="number" min={0} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={grid.currentDemandMW} onChange={(e) => setGrid({ ...grid, currentDemandMW: e.target.value === '' ? '' : Number(e.target.value) })} /></label>
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Capacity (MW)</span>
-                <input type="number" min={0} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={grid.totalCapacityMW} onChange={(e) => setGrid({ ...grid, totalCapacityMW: Math.max(0, Number(e.target.value) || 0) })} /></label>
+                <input type="number" min={0} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={grid.totalCapacityMW} onChange={(e) => setGrid({ ...grid, totalCapacityMW: e.target.value === '' ? '' : Number(e.target.value) })} /></label>
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Renewable (%)</span>
-                <input type="number" min={0} max={100} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={grid.renewablePercent} onChange={(e) => setGrid({ ...grid, renewablePercent: Math.max(0, Math.min(100, Number(e.target.value) || 0)) })} /></label>
+                <input type="number" min={0} max={100} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={grid.renewablePercent} onChange={(e) => setGrid({ ...grid, renewablePercent: e.target.value === '' ? '' : Number(e.target.value) })} /></label>
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Frequency (Hz)</span>
-                <input type="number" min={0} step={0.01} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={grid.gridFrequencyHz} onChange={(e) => setGrid({ ...grid, gridFrequencyHz: Number(e.target.value) || 0 })} /></label>
+                <input type="number" min={0} step={0.01} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={grid.gridFrequencyHz} onChange={(e) => setGrid({ ...grid, gridFrequencyHz: e.target.value === '' ? '' : Number(e.target.value) })} /></label>
             </div>
           </div>
         ),
@@ -104,14 +134,18 @@ export function EnergyGridCalcPanel() {
           <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3">
             <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Waves className="h-3 w-3" />Grid status</div>
             {!g && <div className="text-[11px] text-zinc-400">Analyze to compute.</div>}
-            {g && (
+            {g && !gridMeasured(g) && (
+              <p className="text-[11px] text-zinc-400">{gridAbsence(g) || 'Not recorded'}</p>
+            )}
+            {g && gridMeasured(g) && (
               <div className="space-y-1.5 text-[11px]">
                 <div className="flex items-baseline gap-2">
-                  <span className={`font-mono text-2xl ${statusColour(g.status)}`}>{g.utilization}%</span>
-                  <span className="text-zinc-400 uppercase tracking-wide">{g.status}</span>
+                  <span className={`font-mono text-2xl ${statusColour(g.status ?? undefined)}`}>{g.utilization == null ? '—' : `${g.utilization}%`}</span>
+                  {g.status && <span className="text-zinc-400 uppercase tracking-wide">{g.status}</span>}
                 </div>
-                <div className="text-zinc-400">{g.currentDemand} of {g.totalCapacity} &middot; {g.renewableShare} renewable</div>
-                <div className="text-zinc-400">{g.gridFrequency} ({g.frequencyStable ? 'stable' : 'deviating'}) &middot; {g.reserves} reserve</div>
+                <div className="text-zinc-400">{g.currentDemand ?? '—'} of {g.totalCapacity ?? '—'} &middot; {g.renewableShare ?? '—'} renewable</div>
+                <div className="text-zinc-400">{g.gridFrequency ?? '—'} ({frequencyWord(g)}) &middot; {g.reserves ?? '—'} reserve</div>
+                {gridAbsence(g) && <p className="text-zinc-400">{gridAbsence(g)}</p>}
               </div>
             )}
           </div>
@@ -119,8 +153,13 @@ export function EnergyGridCalcPanel() {
       )}
       dtu={{
         apiSource: 'concord-energy-grid-calc',
-        title: (c, g) => `Consumption ${c.totalKWh ?? '—'} kWh &middot; Grid ${g.utilization ?? '—'}%`,
-        content: (c, g) => `Consumption:\n  Total: ${c.totalKWh} kWh ($${c.estimatedCost} @ $${c.costPerKWh}/kWh)\n  Avg: ${c.avgKWh} kWh · Peak: ${c.peakKWh} kWh · Peak/avg: ${c.peakToAvgRatio}x\n  ${c.savingsOpportunity}\n\nGrid:\n  ${g.currentDemand} of ${g.totalCapacity} (${g.utilization}% utilization) — ${g.status}\n  Renewable share: ${g.renewableShare} · Frequency: ${g.gridFrequency} (${g.frequencyStable ? 'stable' : 'deviating'})\n  Reserves: ${g.reserves}`,
+        title: (c, g) => `Consumption ${c.totalKWh ?? '—'} kWh · Grid ${g.utilization ?? '—'}%`,
+        content: (c, g) => {
+          const gridLines = gridMeasured(g)
+            ? `  ${g.currentDemand ?? 'not recorded'} of ${g.totalCapacity ?? 'not recorded'} (${g.utilization == null ? 'not recorded' : `${g.utilization}%`} utilization)${g.status ? ` — ${g.status}` : ''}\n  Renewable share: ${g.renewableShare ?? 'not recorded'} · Frequency: ${g.gridFrequency ?? 'not recorded'} (${frequencyWord(g)})\n  Reserves: ${g.reserves ?? 'not recorded'}${gridAbsence(g) ? `\n  ${gridAbsence(g)}` : ''}`
+            : `  ${gridAbsence(g) || 'Not recorded'}`;
+          return `Consumption:\n  Total: ${c.totalKWh} kWh ($${c.estimatedCost} @ $${c.costPerKWh}/kWh)\n  Avg: ${c.avgKWh} kWh · Peak: ${c.peakKWh} kWh · Peak/avg: ${c.peakToAvgRatio}x\n  ${c.savingsOpportunity}\n\nGrid:\n${gridLines}`;
+        },
         tags: () => ['energy', 'consumption', 'grid-status'],
         rawData: (c, g) => ({ readings, costPerKWh, grid, consumptionResult: c, gridResult: g }),
       }}
