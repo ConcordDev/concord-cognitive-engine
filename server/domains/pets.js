@@ -757,7 +757,7 @@ export default function registerPetsActions(registerLensAction) {
     plistB(s.vetVisits, visit.petId).push(visit);
     if (visit.cost > 0) {
       plistB(s.expenses, visit.petId).push({
-        id: pid("exp"), petId: visit.petId, category: "vet",
+        id: pid("exp"), petId: visit.petId, category: "vet", visitId: visit.id,
         amount: visit.cost, date: visit.date, note: `Vet visit: ${reason}`, createdAt: pnow(),
       });
     }
@@ -774,6 +774,23 @@ export default function registerPetsActions(registerLensAction) {
       ok: true,
       result: { visits, totalCost: visits.reduce((x, v) => x + pnum(v.cost), 0) },
     };
+  });
+
+  registerLensAction("pets", "vet-visit-delete", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    const arr = s.vetVisits.get(String(params.petId)) || [];
+    const i = arr.findIndex((v) => v.id === params.id);
+    if (i < 0) return { ok: false, error: "vet visit not found" };
+    const [visit] = arr.splice(i, 1);
+    const expenses = s.expenses.get(String(params.petId));
+    if (expenses) {
+      for (let j = expenses.length - 1; j >= 0; j--) {
+        if (expenses[j].visitId === visit.id) expenses.splice(j, 1);
+      }
+    }
+    savePetState();
+    return { ok: true, result: { deleted: params.id } };
   });
 
   // ── Weight tracking ─────────────────────────────────────────────────
