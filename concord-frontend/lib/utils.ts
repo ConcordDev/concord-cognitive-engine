@@ -282,6 +282,25 @@ export function downloadFile(content: string, filename: string, type: string = '
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/**
+ * Start a download by navigating to a same-origin URL that answers with
+ * `Content-Disposition: attachment` (a real HTTP download). Unlike
+ * downloadFile's client-built blob URL, the browser's download manager owns
+ * the whole transfer, which is the path that lands files where blob-anchor
+ * downloads do not (CB-0076/CB-0078). No `download` attribute on purpose: the
+ * server's Content-Disposition names the file, and a navigation to an
+ * attachment does not unload the page.
+ */
+export function downloadFromUrl(url: string) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.rel = 'noopener';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 // Format bytes
 export function formatBytes(bytes: number, decimals: number = 2): string {
   if (bytes === 0) return '0 Bytes';

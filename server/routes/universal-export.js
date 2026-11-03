@@ -105,6 +105,53 @@ export default function createUniversalExportRouter(STATE, runMacro, makeCtx) {
     res.json(out);
   }));
 
+  // GET /api/lens/:domain/export/download?format=json|csv — the SAME rows as the
+  // read above, delivered as a real HTTP attachment (Content-Disposition). The
+  // shared Export menu navigates to this instead of only building a client-side
+  // blob URL: in Review 4's Chrome seat (CB-0076/CB-0078) both the silent
+  // blob-anchor click and a user-gesture blob link produced zero files, while
+  // server-streamed attachments land (artifact/bundle downloads). Auth is the
+  // same session cookie as every other GET here (navigations carry it).
+  router.get("/api/lens/:domain/export/download", asyncHandler(async (req, res) => {
+    const domain = String(req.params.domain || "");
+    if (!/^[a-z0-9][a-z0-9_-]{0,63}$/i.test(domain)) {
+      return res.status(400).json({ ok: false, error: "invalid_domain" });
+    }
+    const format = String(req.query.format || "json").toLowerCase();
+    if (format !== "json" && format !== "csv") {
+      return res.status(400).json({ ok: false, error: "invalid_format" });
+    }
+    const ctx = makeCtx(req);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 1000, 1), 5000);
+    const out = await collectLensExport({ runMacro, domain, ctx, limit });
+    if (!out.ok) return res.status(500).json(out);
+    const rows = Array.isArray(out.artifacts) ? out.artifacts : [];
+    if (rows.length === 0) {
+      // Never hand back an empty "[]" file and call it an export (same rule as the menu).
+      return res.status(404).json({ ok: false, error: "nothing_to_export" });
+    }
+    const stamp = new Date().toISOString().slice(0, 10);
+    const filename = `${domain}-export-${stamp}.${format}`;
+    let body;
+    let type;
+    if (format === "json") {
+      body = JSON.stringify(rows, null, 2);
+      type = "application/json; charset=utf-8";
+    } else {
+      const headers = ["id", "title", "type", "createdAt", "updatedAt"];
+      const lines = rows.map((r) => headers.map((h) => JSON.stringify(r?.[h] ?? "")).join(","));
+      body = [headers.join(","), ...lines].join("\n");
+      type = "text/csv; charset=utf-8";
+    }
+    res.set({
+      "Content-Type": type,
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "X-Content-Type-Options": "nosniff",
+      "Cache-Control": "no-store",
+    });
+    res.send(body);
+  }));
+
   // POST /api/lens/:domain/export-dtu — Export lens artifact as .dtu file
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/api/lens/:domain/export-dtu", asyncHandler(async (req, res) => {

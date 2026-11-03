@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Download, FileJson, FileSpreadsheet, ChevronDown, X } from 'lucide-react';
 import { apiHelpers, lensRun } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { downloadFile } from '@/lib/utils';
+import { downloadFile, downloadFromUrl } from '@/lib/utils';
 import { buildConkayExport, conkayExportCsv, getConkayCurrentModel, type ConkayExportModel } from '@/lib/conkay/model-export';
 
 export const EMPTY_EXPORT_NOTICE =
@@ -63,7 +63,21 @@ export function ExportMenu({ domain }: ExportMenuProps) {
     }
   }, []);
 
-  // Hand the file to the browser, then say so visibly with a manual fallback link.
+  // Server path: navigate to the attachment endpoint (real HTTP download), and
+  // offer that same URL as the user-gesture fallback. Nothing client-built, so
+  // nothing to revoke. We can only say the download was STARTED — the page
+  // cannot observe the browser's downloads.
+  const deliverFromServer = (url: string, filename: string, count: number) => {
+    downloadFromUrl(url);
+    if (deliveredUrlRef.current) {
+      try { URL.revokeObjectURL(deliveredUrlRef.current); } catch { /* best-effort */ }
+      deliveredUrlRef.current = null;
+    }
+    setDelivered({ filename, count, url });
+  };
+
+  // Client-built path (ConKay's composite document has no server route): hand
+  // the blob to the browser, then say so visibly with a manual fallback link.
   const deliver = (content: string, filename: string, mimeType: string, count: number) => {
     downloadFile(content, filename, mimeType);
     let url: string | null = null;
@@ -152,26 +166,14 @@ export function ExportMenu({ domain }: ExportMenuProps) {
         return;
       }
 
-      let content: string;
-      let mimeType: string;
-      let extension: string;
-
-      if (format === 'json') {
-        content = JSON.stringify(items, null, 2);
-        mimeType = 'application/json';
-        extension = 'json';
-      } else {
-        // CSV export
-        const headers = ['id', 'title', 'type', 'createdAt', 'updatedAt'];
-        const rows = items.map((item) =>
-          headers.map(h => JSON.stringify(item[h] ?? '')).join(',')
-        );
-        content = [headers.join(','), ...rows].join('\n');
-        mimeType = 'text/csv';
-        extension = 'csv';
-      }
-
-      deliver(content, `${domain}-export-${new Date().toISOString().slice(0, 10)}.${extension}`, mimeType, items.length);
+      const extension = format;
+      const filename = `${domain}-export-${new Date().toISOString().slice(0, 10)}.${extension}`;
+      // The server streams the same rows as an attachment (Content-Disposition).
+      deliverFromServer(
+        `/api/lens/${encodeURIComponent(domain)}/export/download?format=${format}&limit=1000`,
+        filename,
+        items.length,
+      );
     } catch (err) {
       console.error('Export failed:', err);
       keepOpen = true;
@@ -247,10 +249,10 @@ export function ExportMenu({ domain }: ExportMenuProps) {
           className="absolute right-0 top-full z-40 mt-1 flex w-72 items-start gap-2 rounded-lg border border-emerald-500/30 bg-lattice-bg px-3 py-2 text-xs text-emerald-300 shadow-2xl"
         >
           <p className="flex-1">
-            Exported {delivered.count} item{delivered.count === 1 ? '' : 's'} as <span className="font-mono">{delivered.filename}</span>.
-            {' '}If your browser didn’t save it,{' '}
+            Download started: {delivered.count} item{delivered.count === 1 ? '' : 's'} as <span className="font-mono">{delivered.filename}</span>.
+            {' '}If it doesn’t appear in your downloads,{' '}
             {delivered.url ? (
-              <a href={delivered.url} download={delivered.filename} data-testid="export-menu-save-again" className="underline">save it again</a>
+              <a href={delivered.url} download={delivered.filename} data-testid="export-menu-save-again" className="underline">download it again</a>
             ) : (
               'try again'
             )}.
