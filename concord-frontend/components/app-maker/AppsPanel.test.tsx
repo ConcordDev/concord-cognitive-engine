@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import React from 'react';
 
 const appsList = vi.fn();
@@ -44,6 +44,7 @@ const APP_A = { id: 'app_a', name: 'Alpha CRM', status: 'draft', author: 'u1', v
 const APP_B = { id: 'app_b', name: 'Beta Store', status: 'published', author: 'u1', version: '1.2.0', createdAt: '2026-06-28' };
 
 beforeEach(() => {
+  window.localStorage.clear();
   appsList.mockReset();
   appsCreate.mockReset();
   appsPromote.mockReset();
@@ -92,24 +93,26 @@ describe('AppsPanel', () => {
     expect(screen.getByRole('button', { name: /^Create$/i })).toBeDisabled();
   });
 
-  it('validate reports a valid app via a real alert with the invariant-pass message', async () => {
+  it('validate reports a valid app via a toast with the invariant-pass message (F11)', async () => {
     appsValidate.mockResolvedValue({ data: { valid: true } });
     render(<AppsPanel />);
     await waitFor(() => expect(screen.getByText('Alpha CRM')).toBeInTheDocument());
 
     fireEvent.click(screen.getAllByTitle('Validate')[0]);
     await waitFor(() => expect(appsValidate).toHaveBeenCalledWith('app_a'));
-    await waitFor(() => expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('all invariants pass')));
+    await waitFor(() =>
+      expect(addToastMock).toHaveBeenCalledWith({ type: 'success', message: expect.stringContaining('all invariants pass') }),
+    );
   });
 
-  it('validate reports real violations when the app is invalid', async () => {
+  it('validate reports real violations via a toast when the app is invalid (F11)', async () => {
     appsValidate.mockResolvedValue({ data: { valid: false, violations: ['missing schema', 'no execution macros'] } });
     render(<AppsPanel />);
     await waitFor(() => expect(screen.getByText('Alpha CRM')).toBeInTheDocument());
 
     fireEvent.click(screen.getAllByTitle('Validate')[0]);
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('missing schema')),
+      expect(addToastMock).toHaveBeenCalledWith({ type: 'warning', message: expect.stringContaining('missing schema') }),
     );
   });
 
@@ -185,5 +188,29 @@ describe('AppsPanel', () => {
     render(<AppsPanel />);
     await waitFor(() => expect(screen.getByText('Alpha CRM')).toBeInTheDocument());
     expect(screen.getByRole('button', { name: /Deploy App/i })).toBeDisabled();
+  });
+
+  it('F8: an unsent build-app name survives a full unmount/remount (view switch), not just local state', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { unmount } = render(<AppsPanel />);
+      await vi.waitFor(() => expect(screen.getByText('Alpha CRM')).toBeInTheDocument());
+
+      fireEvent.change(screen.getByPlaceholderText('Enter your app name...'), { target: { value: 'Draft Name' } });
+      // Let the draft hook's debounced local-mirror write land (default 1500ms).
+      await vi.advanceTimersByTimeAsync(1600);
+
+      // Simulate switching to another app-maker view: the panel fully unmounts.
+      unmount();
+      cleanup();
+
+      render(<AppsPanel />);
+      await vi.waitFor(() => expect(screen.getByText('Alpha CRM')).toBeInTheDocument());
+      await vi.waitFor(() =>
+        expect(screen.getByPlaceholderText('Enter your app name...')).toHaveValue('Draft Name'),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
