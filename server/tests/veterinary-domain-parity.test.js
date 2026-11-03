@@ -160,6 +160,54 @@ describe("veterinary — patient records substrate", () => {
     assert.equal(call("patient-list", ctxA, {}, {}).result.count, 0);
   });
 
+  it("patient-update corrects the chart and leaves omitted fields stored", () => {
+    const pat = call("patient-add", ctxA, {}, {
+      name: "Rex", species: "dog", owner: "Jane", breed: "lab", ageYears: 4, weightLbs: 40,
+    }).result.patient;
+    const updated = call("patient-update", ctxA, {}, { id: pat.id, owner: "Joan", breed: "collie" });
+    assert.equal(updated.ok, true);
+    assert.equal(updated.result.patient.owner, "Joan");
+    assert.equal(updated.result.patient.breed, "collie");
+    assert.equal(updated.result.patient.name, "Rex");
+    assert.equal(updated.result.patient.species, "dog");
+    assert.equal(updated.result.patient.ageYears, 4);
+    assert.equal(updated.result.patient.weightLbs, 40);
+    const zero = call("patient-update", ctxA, {}, { id: pat.id, ageYears: 0, weightLbs: 0 });
+    assert.equal(zero.result.patient.ageYears, 0);
+    assert.equal(zero.result.patient.weightLbs, 0);
+    const bad = call("patient-update", ctxA, {}, { id: pat.id, species: "salt" });
+    assert.equal(bad.ok, false);
+    assert.equal(bad.error, "invalid_input");
+    assert.equal(bad.field, "species");
+    const still = call("patient-list", ctxA, {}, {}).result.patients[0];
+    assert.equal(still.species, "dog");
+    assert.equal(still.owner, "Joan");
+    const other = call("patient-update", { actor: { userId: "vet_user_b" }, userId: "vet_user_b" }, {}, { id: pat.id, owner: "Thief" });
+    assert.equal(other.ok, false);
+    assert.equal(call("patient-list", ctxA, {}, {}).result.patients[0].owner, "Joan");
+    assert.equal(call("patient-update", ctxA, {}, { id: pat.id, name: "   " }).ok, false);
+    assert.equal(call("patient-list", ctxA, {}, {}).result.patients[0].name, "Rex");
+  });
+
+  it("visit-delete and vaccine-delete remove one sub-record and leave the patient", () => {
+    const pat = call("patient-add", ctxA, {}, { name: "Bella", species: "cat" }).result.patient;
+    const v1 = call("visit-log", ctxA, {}, { patientId: pat.id, kind: "dental", cost: 400 }).result.visit;
+    const v2 = call("visit-log", ctxA, {}, { patientId: pat.id, kind: "checkup", cost: 50 }).result.visit;
+    const vac = call("vaccine-record", ctxA, {}, { patientId: pat.id, vaccine: "Rabies", nextDue: "2027-01-01" }).result.record;
+    assert.equal(call("visit-delete", ctxA, {}, { patientId: pat.id, id: v1.id }).ok, true);
+    const listed = call("patient-list", ctxA, {}, {}).result.patients[0];
+    assert.equal(listed.visits.length, 1);
+    assert.equal(listed.visits[0].id, v2.id);
+    assert.equal(listed.vaccinations.length, 1);
+    assert.equal(call("vaccine-delete", ctxA, {}, { patientId: pat.id, id: vac.id }).ok, true);
+    const after = call("patient-list", ctxA, {}, {}).result;
+    assert.equal(after.count, 1);
+    assert.equal(after.patients[0].vaccinations.length, 0);
+    assert.equal(call("visit-delete", ctxA, {}, { patientId: pat.id, id: v1.id }).ok, false);
+    assert.equal(call("visit-delete", { actor: { userId: "vet_user_b" } }, {}, { patientId: pat.id, id: v2.id }).ok, false);
+    assert.equal(call("patient-list", ctxA, {}, {}).result.patients[0].visits.length, 1);
+  });
+
   it("visit-log appends to a patient", () => {
     const pat = call("patient-add", ctxA, {}, { name: "Bella", species: "cat" }).result.patient;
     const visit = call("visit-log", ctxA, {}, { patientId: pat.id, kind: "dental", cost: 400 });
@@ -294,6 +342,18 @@ describe("veterinary — SOAP charting", () => {
     assert.equal(l.ok, true);
     assert.equal(l.result.count, 1);
     assert.equal(l.result.notes[0].assessment, "infection");
+  });
+
+  it("soap-delete removes one note and does not cross accounts", () => {
+    const drop = call("soap-chart", ctxA, {}, { patientName: "Rex", subjective: "cough" }).result.note;
+    const keep = call("soap-chart", ctxA, {}, { patientName: "Rex", subjective: "fine" }).result.note;
+    assert.equal(call("soap-delete", ctxA, {}, { id: drop.id }).ok, true);
+    const listed = call("soap-list", ctxA, {}, {});
+    assert.equal(listed.result.count, 1);
+    assert.equal(listed.result.notes[0].id, keep.id);
+    assert.equal(call("soap-delete", ctxA, {}, { id: drop.id }).ok, false);
+    assert.equal(call("soap-delete", { actor: { userId: "vet_user_b" } }, {}, { id: keep.id }).ok, false);
+    assert.equal(call("soap-list", ctxA, {}, {}).result.count, 1);
   });
 });
 
