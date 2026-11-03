@@ -4,8 +4,13 @@
 // team analysis) plus real free APIs (TheSportsDB for team / league /
 // fixture lookups, ESPN scoreboard for live scores).
 //
-// TheSportsDB free dev key "3"; production may set SPORTSDB_API_KEY.
+// TheSportsDB retired the public key "3" (it now answers 403). "123" is the
+// published test key. SPORTSDB_API_KEY still overrides it.
 // ESPN's public scoreboard endpoint is unkeyed (rate-limited).
+const SPORTSDB_TEST_KEY = "123";
+function sportsDbKey() {
+  return process.env.SPORTSDB_API_KEY || SPORTSDB_TEST_KEY;
+}
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
@@ -13,6 +18,9 @@ import { cachedFetchJson } from "../lib/external-fetch.js";
 const SPORTSDB_BASE = "https://www.thesportsdb.com/api/v1/json";
 const ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports";
 const ESPN_SITE = "https://site.api.espn.com/apis/site/v2/sports";
+// The site/v2 standings path answers 404. The v2 sports API still returns
+// conference groups with standings.entries.
+const ESPN_V2 = "https://site.api.espn.com/apis/v2/sports";
 
 // ESPN sport-slug → API path. Shared by scoreboard, schedule, news,
 // game-summary, standings, roster macros.
@@ -43,14 +51,13 @@ export default function registerSportsActions(registerLensAction) {
   // ── Real-data macros (TheSportsDB + ESPN scoreboard) ──
 
   /**
-   * team-lookup — TheSportsDB team search. Free dev tier (key "3"),
-   * SPORTSDB_API_KEY env for production.
+   * team-lookup — TheSportsDB team search. Test key, or SPORTSDB_API_KEY.
    * params: { name: string }
    */
   registerLensAction("sports", "team-lookup", async (_ctx, _artifact, params = {}) => {
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "name required" };
-    const apiKey = process.env.SPORTSDB_API_KEY || "3";
+    const apiKey = sportsDbKey();
     try {
       const r = await fetch(`${SPORTSDB_BASE}/${encodeURIComponent(apiKey)}/searchteams.php?t=${encodeURIComponent(name)}`);
       if (!r.ok) throw new Error(`thesportsdb ${r.status}`);
@@ -77,7 +84,7 @@ export default function registerSportsActions(registerLensAction) {
         result: { teams, count: teams.length, query: name, source: "thesportsdb" },
       };
     } catch (e) {
-      return { ok: false, error: `thesportsdb unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return { ok: false, error: "thesportsdb is unavailable right now." };
     }
   });
 
@@ -88,7 +95,7 @@ export default function registerSportsActions(registerLensAction) {
   registerLensAction("sports", "league-table", async (_ctx, _artifact, params = {}) => {
     const leagueId = String(params.leagueId || "").trim();
     if (!leagueId) return { ok: false, error: "leagueId required (TheSportsDB league ID, e.g. '4328' for EPL)" };
-    const apiKey = process.env.SPORTSDB_API_KEY || "3";
+    const apiKey = sportsDbKey();
     const season = params.season ? `&s=${encodeURIComponent(String(params.season))}` : "";
     try {
       const r = await fetch(`${SPORTSDB_BASE}/${encodeURIComponent(apiKey)}/lookuptable.php?l=${encodeURIComponent(leagueId)}${season}`);
@@ -113,7 +120,7 @@ export default function registerSportsActions(registerLensAction) {
         result: { table, leagueId, season: params.season || "current", source: "thesportsdb" },
       };
     } catch (e) {
-      return { ok: false, error: `thesportsdb unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return { ok: false, error: "thesportsdb is unavailable right now." };
     }
   });
 
@@ -560,7 +567,7 @@ export default function registerSportsActions(registerLensAction) {
 });
 
   // feed — ingest real recent sports fixtures from TheSportsDB as
-  // visible DTUs. Free public API (public test key "3").
+  // visible DTUs. Uses the same published test key as the other lookups.
   registerLensAction("sports", "feed", async (ctx, _a, params = {}) => {
     const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
@@ -569,8 +576,8 @@ export default function registerSportsActions(registerLensAction) {
     const leagues = ["4328", "4387", "4391", "4424", "4380"];
     const league = leagues[new Date().getDate() % leagues.length];
     try {
-      const r = await fetch(`https://www.thesportsdb.com/api/v1/json/3/eventspastleague.php?id=${league}`);
-      if (!r.ok) return { ok: false, error: `thesportsdb ${r.status}` };
+      const r = await fetch(`https://www.thesportsdb.com/api/v1/json/${encodeURIComponent(sportsDbKey())}/eventspastleague.php?id=${league}`);
+      if (!r.ok) return { ok: false, error: "thesportsdb is unavailable right now." };
       const data = await r.json();
       const events = (Array.isArray(data?.events) ? data.events : []).slice(0, limit);
       let ingested = 0, skipped = 0; const dtuIds = [];
@@ -593,7 +600,7 @@ export default function registerSportsActions(registerLensAction) {
       saveSportsState();
       return { ok: true, result: { ingested, skipped, source: "thesportsdb-fixtures", dtuIds } };
     } catch (e) {
-      return { ok: false, error: `thesportsdb unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return { ok: false, error: "thesportsdb is unavailable right now." };
     }
   });
 
@@ -721,7 +728,7 @@ export default function registerSportsActions(registerLensAction) {
     if (!path) return { ok: false, error: `unsupported sport (try: ${Object.keys(ESPN_SPORT_PATH).join(", ")}, soccer)` };
     try {
       const data = await cachedFetchJson(
-        `${ESPN_SITE}/${path}/standings?level=3`, { ttlMs: 600_000 },
+        `${ESPN_V2}/${path}/standings`, { ttlMs: 600_000 },
       );
       const groups = [];
       const walk = (node) => {
@@ -757,7 +764,7 @@ export default function registerSportsActions(registerLensAction) {
         result: { groups, groupCount: groups.length, sport: String(params.sport).toLowerCase(), source: "espn-standings" },
       };
     } catch (e) {
-      return { ok: false, error: `espn unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return { ok: false, error: "espn standings are unavailable right now." };
     }
   });
 
@@ -793,7 +800,7 @@ export default function registerSportsActions(registerLensAction) {
   registerLensAction("sports", "team-roster", async (_ctx, _a, params = {}) => {
     const teamId = String(params.teamId || "").trim();
     if (!teamId) return { ok: false, error: "teamId required (from team-lookup)" };
-    const apiKey = process.env.SPORTSDB_API_KEY || "3";
+    const apiKey = sportsDbKey();
     try {
       const data = await cachedFetchJson(
         `${SPORTSDB_BASE}/${encodeURIComponent(apiKey)}/lookup_all_players.php?id=${encodeURIComponent(teamId)}`,
@@ -816,7 +823,7 @@ export default function registerSportsActions(registerLensAction) {
         result: { players, count: players.length, teamId, source: "thesportsdb" },
       };
     } catch (e) {
-      return { ok: false, error: `thesportsdb unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return { ok: false, error: "thesportsdb is unavailable right now." };
     }
   });
 
@@ -825,7 +832,7 @@ export default function registerSportsActions(registerLensAction) {
   registerLensAction("sports", "player-lookup", async (_ctx, _a, params = {}) => {
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "player name required" };
-    const apiKey = process.env.SPORTSDB_API_KEY || "3";
+    const apiKey = sportsDbKey();
     try {
       const data = await cachedFetchJson(
         `${SPORTSDB_BASE}/${encodeURIComponent(apiKey)}/searchplayers.php?p=${encodeURIComponent(name)}`,
@@ -848,7 +855,7 @@ export default function registerSportsActions(registerLensAction) {
         result: { players, count: players.length, query: name, source: "thesportsdb" },
       };
     } catch (e) {
-      return { ok: false, error: `thesportsdb unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return { ok: false, error: "thesportsdb is unavailable right now." };
     }
   });
 
