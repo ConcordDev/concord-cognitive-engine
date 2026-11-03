@@ -389,6 +389,7 @@ export async function handleWebhook(db, { rawBody, signature, requestId, ip }) {
         chargebackAmountCents: amountCents,
         stripeDisputeId: dispute.id,
         paymentIntentId: dispute.payment_intent,
+        disputeReason: dispute.reason,
         requestId,
         ip,
       });
