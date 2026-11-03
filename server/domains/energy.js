@@ -75,9 +75,13 @@ export default function registerEnergyActions(registerLensAction) {
     if (roofSqFt == null) unavailable.push("roofAreaSqFt");
     if (sunHours == null) unavailable.push("peakSunHours");
     if (usageKWh == null) unavailable.push("monthlyUsageKWh");
+    // Annual savings use this assumed retail rate. It is returned on the
+    // result so the surface can name it. It is not the account rate.
+    const assumedSavingsUsdPerKwh = 0.12;
     const blank = {
       roofArea: null, maxPanels: null, systemSizeKW: null, monthlyProductionKWh: null,
       coveragePercent: null, estimatedCost: null, afterTaxCredit: null, annualSavings: null,
+      savingsRateUsdPerKwh: null,
       paybackYears: null, recommendation: null,
     };
     if (unavailable.length) {
@@ -90,9 +94,9 @@ export default function registerEnergyActions(registerLensAction) {
     const monthlyProduction = systemKW * sunHours * 30 * 0.8;
     const coveragePercent = Math.round((monthlyProduction / usageKWh) * 100);
     const costEstimate = Math.round(systemKW * 2800);
-    const annualSavings = Math.round(Math.min(monthlyProduction, usageKWh) * 12 * 0.12);
+    const annualSavings = Math.round(Math.min(monthlyProduction, usageKWh) * 12 * assumedSavingsUsdPerKwh);
     const paybackYears = annualSavings > 0 ? Math.round((costEstimate * 0.7) / annualSavings * 10) / 10 : 0; // 30% tax credit
-    return { ok: true, result: { roofArea: roofSqFt, maxPanels, systemSizeKW: Math.round(systemKW * 10) / 10, monthlyProductionKWh: Math.round(monthlyProduction), coveragePercent, estimatedCost: costEstimate, afterTaxCredit: Math.round(costEstimate * 0.7), annualSavings, paybackYears, recommendation: coveragePercent >= 100 ? "Solar can cover 100% of usage" : `Solar can cover ${coveragePercent}% of usage`, reason: null, unavailable: [] } };
+    return { ok: true, result: { roofArea: roofSqFt, maxPanels, systemSizeKW: Math.round(systemKW * 10) / 10, monthlyProductionKWh: Math.round(monthlyProduction), coveragePercent, estimatedCost: costEstimate, afterTaxCredit: Math.round(costEstimate * 0.7), annualSavings, savingsRateUsdPerKwh: assumedSavingsUsdPerKwh, paybackYears, recommendation: coveragePercent >= 100 ? "Solar can cover 100% of usage" : `Solar can cover ${coveragePercent}% of usage`, reason: null, unavailable: [] } };
   });
   registerLensAction("energy", "carbonFootprint", (ctx, artifact, _params) => {
     const data = artifact.data || {};
