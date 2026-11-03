@@ -8,6 +8,7 @@
 
 import { useCallback, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { recordStudioRun } from '@/lib/sim/studio-activity';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { Play, RefreshCw, Boxes, AlertCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
@@ -49,6 +50,7 @@ export function DiscreteEventRunner() {
     const r = await lensRun<DESResult>('sim', 'discreteEvent', params);
     if (r.data.ok && r.data.result) {
       setResult(r.data.result);
+      recordStudioRun();
     } else {
       setResult(null);
       setError(r.data.error || 'Discrete-event simulation failed.');
