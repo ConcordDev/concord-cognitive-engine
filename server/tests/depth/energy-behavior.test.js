@@ -84,15 +84,40 @@ describe("energy — pure-compute calc contracts (exact computed values)", () =>
     assert.equal(r.result.recommendation, "Solar can cover 100% of usage"); // coverage >= 100
   });
 
-  it("carbonFootprint: EPA emission factors, annualized + top source", async () => {
+  it("carbonFootprint: a single recorded source is not a full household average", async () => {
     const r = await lensRun("energy", "carbonFootprint", { data: { electricityKWh: 1000 } });
     assert.equal(r.ok, true);
     assert.equal(r.result.breakdown.electricity, 0.417); // 1000 * 0.000417
+    assert.equal(r.result.breakdown.naturalGas, null);
     assert.equal(r.result.totalMetricTons, 0.417);
     assert.equal(r.result.annualEstimate, 5);            // round(0.417*12*100)/100
-    assert.equal(r.result.vsUSAverage, "31% of US average"); // round((0.417*12/16)*100)
+    assert.equal(r.result.vsUSAverage, null);            // 16 t US average needs every source
+    assert.equal(r.result.partial, true);
+    assert.deepEqual(r.result.missingInputs, ["naturalGasTherms", "gasolineGallons", "flightMiles"]);
     assert.equal(r.result.topSource, "electricity");
     assert.ok(r.result.reductionTips.includes("Switch to renewable energy provider"));
+  });
+
+  it("carbonFootprint: omitted inputs are not a measured 0 t household", async () => {
+    const r = await lensRun("energy", "carbonFootprint", { data: {} });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.status, "NOT_COMPUTED");
+    assert.equal(r.result.totalMetricTons, undefined);
+    assert.equal(r.result.vsUSAverage, undefined);
+    assert.deepEqual(r.result.missingInputs, ["electricityKWh", "naturalGasTherms", "gasolineGallons", "flightMiles"]);
+  });
+
+  it("carbonFootprint: an explicit zero stays zero and still compares to the US average", async () => {
+    const r = await lensRun("energy", "carbonFootprint", {
+      data: { electricityKWh: 0, naturalGasTherms: 0, gasolineGallons: 0, flightMiles: 0 },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.status, undefined);
+    assert.equal(r.result.totalMetricTons, 0);
+    assert.equal(r.result.annualEstimate, 0);
+    assert.equal(r.result.vsUSAverage, "0% of US average");
+    assert.equal(r.result.partial, false);
+    assert.deepEqual(r.result.missingInputs, []);
   });
 
   it("gridStatus: utilization, frequency stability, reserves", async () => {

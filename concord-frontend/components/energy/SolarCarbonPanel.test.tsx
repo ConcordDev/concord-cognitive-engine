@@ -10,11 +10,14 @@ vi.mock('lucide-react', () => ({ Sun: () => null, Leaf: () => null, Zap: () => n
 vi.mock('@/components/lens-primitives/CalcPanel', () => ({
   CalcPanel: (props: {
     left: { render: ReactNode; buildArtifact: () => { data: Record<string, unknown> } };
-    renderResults: (solar: Record<string, unknown>, carbon: null) => ReactNode;
+    right: { render: ReactNode; buildArtifact: () => { data: Record<string, unknown> } };
+    renderResults: (solar: Record<string, unknown>, carbon: Record<string, unknown> | null) => ReactNode;
   }) => (
     <div>
       {props.left.render}
+      {props.right.render}
       <button type="button" onClick={() => { (globalThis as { __solar?: unknown }).__solar = props.left.buildArtifact(); }}>build</button>
+      <button type="button" onClick={() => { (globalThis as { __carbon?: unknown }).__carbon = props.right.buildArtifact(); }}>build carbon</button>
       {props.renderResults({
         maxPanels: null,
         systemSizeKW: null,
@@ -26,7 +29,7 @@ vi.mock('@/components/lens-primitives/CalcPanel', () => ({
         paybackYears: null,
         reason: 'not_recorded',
         unavailable: ['roofAreaSqFt', 'peakSunHours', 'monthlyUsageKWh'],
-      }, null)}
+      }, (globalThis as { __carbonResult?: Record<string, unknown> | null }).__carbonResult ?? null)}
     </div>
   ),
 }));
@@ -49,5 +52,31 @@ describe('SolarCarbonPanel', () => {
     expect(screen.getByText(/Site not recorded: roofAreaSqFt, peakSunHours, monthlyUsageKWh/)).toBeInTheDocument();
     expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     expect(screen.queryByText('null%')).not.toBeInTheDocument();
+  });
+
+  it('does not send a blank carbon field as zero use', () => {
+    render(<SolarCarbonPanel />);
+    const kwh = screen.getByLabelText('Electricity (kWh)') as HTMLInputElement;
+    expect(kwh.value).toBe('');
+    fireEvent.change(kwh, { target: { value: '0' } });
+    fireEvent.click(screen.getByRole('button', { name: 'build carbon' }));
+    const built = (globalThis as { __carbon?: { data: Record<string, unknown> } }).__carbon;
+    expect(built?.data.electricityKWh).toBe(0);
+    expect(built?.data.naturalGasTherms).toBeUndefined();
+    expect(built?.data.gasolineGallons).toBeUndefined();
+    expect(built?.data.flightMiles).toBeUndefined();
+  });
+
+  it('renders a not-computed footprint as absence', () => {
+    (globalThis as { __carbonResult?: Record<string, unknown> }).__carbonResult = {
+      status: 'NOT_COMPUTED',
+      message: 'Not computed: no recorded electricity, gas, gasoline, or flight miles.',
+      missingInputs: ['electricityKWh', 'naturalGasTherms', 'gasolineGallons', 'flightMiles'],
+    };
+    render(<SolarCarbonPanel />);
+    expect(screen.getByText(/Not computed: no recorded electricity/)).toBeInTheDocument();
+    expect(screen.queryByText('undefined')).not.toBeInTheDocument();
+    expect(screen.queryByText(/0% of US average/)).not.toBeInTheDocument();
+    delete (globalThis as { __carbonResult?: unknown }).__carbonResult;
   });
 });

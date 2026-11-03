@@ -146,7 +146,30 @@ describe("energy — pure-compute calculators (exact values)", () => {
     assert.equal(r.result.totalMetricTons, Math.round(total * 1000) / 1000);
     assert.equal(r.result.annualEstimate, Math.round(total * 12 * 100) / 100);
     assert.equal(r.result.topSource, "flights"); // highest single
+    assert.equal(r.result.vsUSAverage, `${Math.round((total * 12 / 16) * 100)}% of US average`);
+    assert.equal(r.result.partial, false);
+    assert.deepEqual(r.result.missingInputs, []);
     assert.ok(Array.isArray(r.result.reductionTips) && r.result.reductionTips.length > 0);
+  });
+
+  it("carbonFootprint: omitted fuels are not scored as zero tons", () => {
+    const r = callCalcPanel("carbonFootprint", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.status, "NOT_COMPUTED");
+    assert.equal(r.result.totalMetricTons, undefined);
+    assert.equal(r.result.vsUSAverage, undefined);
+    assert.deepEqual(r.result.missingInputs, ["electricityKWh", "naturalGasTherms", "gasolineGallons", "flightMiles"]);
+  });
+
+  it("carbonFootprint: a supplied zero is recorded and a blank sibling is not", () => {
+    const r = callCalcPanel("carbonFootprint", ctxA, { electricityKWh: 0, naturalGasTherms: "", gasolineGallons: null });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.breakdown.electricity, 0);
+    assert.equal(r.result.breakdown.naturalGas, null);
+    assert.equal(r.result.totalMetricTons, 0);
+    assert.equal(r.result.vsUSAverage, null);
+    assert.equal(r.result.partial, true);
+    assert.deepEqual(r.result.missingInputs, ["naturalGasTherms", "gasolineGallons", "flightMiles"]);
   });
 
   it("gridStatus: exact utilization/status/reserves + stable string echo", () => {
@@ -211,12 +234,14 @@ describe("energy — fail-closed poison (no Infinity/NaN leak, no throw)", () =>
     assert.deepEqual(r.result.unavailable, ["monthlyUsageKWh"]);
   });
 
-  it("carbonFootprint: poisoned inputs → finite zeros, never null", () => {
+  it("carbonFootprint: poisoned inputs are not a measured zero household", () => {
     for (const p of POISON) {
       const r = callCalcPanel("carbonFootprint", ctxA, { electricityKWh: p, naturalGasTherms: p, gasolineGallons: p, flightMiles: p });
       assert.equal(r.ok, true);
       assertFinite(r.result, `carbonFootprint(${String(p)})`);
-      assert.equal(r.result.totalMetricTons, 0);
+      assert.equal(r.result.status, "NOT_COMPUTED");
+      assert.equal(r.result.totalMetricTons, undefined);
+      assert.doesNotMatch(JSON.stringify(r.result), /Infinity|NaN/);
     }
   });
 
