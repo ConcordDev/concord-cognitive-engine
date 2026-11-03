@@ -10,12 +10,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { CalendarHeart, Plus, Trash2, Check, Loader2, Users } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { countsAsPast, utcToday } from './event-when';
 
 interface Task { id: string; title: string; dueDate: string | null; done: boolean }
 interface Vendor { id: string; name: string; role: string; cost: number; booked: boolean }
 interface EventMeta { id: string; name: string; type: string; date: string | null; venue: string | null; budget: number; status: string; taskCount: number; doneTaskCount: number; vendorCost: number }
 interface EventFull { id: string; name: string; type: string; date: string | null; venue: string | null; budget: number; guestCount: number; status: string; tasks: Task[]; vendors: Vendor[] }
-interface Dash { totalEvents: number; upcoming: number; totalBudget: number; openTasks: number }
+interface Dash { totalEvents: number; upcoming: number; past: number; totalBudget: number; openTasks: number }
 
 const TYPES = ['conference', 'wedding', 'concert', 'festival', 'corporate', 'social'];
 const STATUSES = ['planning', 'confirmed', 'complete', 'cancelled'];
@@ -105,8 +106,8 @@ export function EventPlanner() {
       </div>
 
       {dash && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
-          {([['Events', dash.totalEvents], ['Upcoming', dash.upcoming], ['Budget', `$${dash.totalBudget.toLocaleString()}`], ['Open tasks', dash.openTasks]] as const).map(([l, v]) => (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3">
+          {([['Events', dash.totalEvents], ['Upcoming', dash.upcoming], ['Past', dash.past ?? 0], ['Budget', `$${dash.totalBudget.toLocaleString()}`], ['Open tasks', dash.openTasks]] as const).map(([l, v]) => (
             <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-center">
               <p className="text-sm font-bold text-zinc-100">{v}</p>
               <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{l}</p>
@@ -137,7 +138,7 @@ export function EventPlanner() {
               <button onClick={() => open(e.id)}
                 className={cn('flex-1 text-left rounded-lg px-2.5 py-2 border', active?.id === e.id ? 'bg-pink-600/15 border-pink-700/50' : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700')}>
                 <p className="text-xs font-semibold text-zinc-100 truncate">{e.name}</p>
-                <p className="text-[10px] text-zinc-400 capitalize">{e.type}{e.date ? ` · ${e.date}` : ''} · {e.doneTaskCount}/{e.taskCount} tasks</p>
+                <p className="text-[10px] text-zinc-400 capitalize">{e.type}{e.date ? ` · ${e.date}` : ''}{countsAsPast(e.date, utcToday()) ? ' · Past' : ''} · {e.doneTaskCount}/{e.taskCount} tasks</p>
               </button>
               <button aria-label="Delete" onClick={() => del(e.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </li>

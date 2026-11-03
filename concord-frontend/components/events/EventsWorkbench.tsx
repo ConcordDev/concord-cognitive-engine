@@ -52,6 +52,7 @@ import {
   Armchair,
 } from 'lucide-react';
 import { Icon as SvgIcon } from '@/components/icons/Icon';
+import { countsAsPast, countsAsUpcoming, utcToday } from './event-when';
 
 /** Adapts the bespoke SvgIcon (name-prop API) to the lucide-icon-component
  *  shape (`className`-prop, no `name`) this file's tab/type tables expect. */
@@ -804,8 +805,9 @@ export function EventsWorkbench({
 
   // Computed dashboard metrics
   const dashMetrics = useMemo(() => {
+    const today = utcToday();
     const upcoming = events.filter((e) =>
-      ['planning', 'confirmed'].includes(e.meta?.status as string)
+      countsAsUpcoming((e.data as Record<string, unknown>).date, e.meta?.status, today)
     ).length;
     const liveNow = events.filter((e) => e.meta?.status === 'live').length;
     // Real ticketing rollups (sum of each event's own tiers[]), not the
@@ -1144,14 +1146,19 @@ export function EventsWorkbench({
         <div className="divide-y divide-lattice-border">
           {events
             .filter((e) => ['planning', 'confirmed', 'live'].includes(e.meta?.status as string))
-            .sort((a, b) =>
-              String((a.data as Record<string, unknown>).date || '').localeCompare(
+            .sort((a, b) => {
+              const today = utcToday();
+              const ap = countsAsPast((a.data as Record<string, unknown>).date, today) ? 1 : 0;
+              const bp = countsAsPast((b.data as Record<string, unknown>).date, today) ? 1 : 0;
+              if (ap !== bp) return ap - bp;
+              return String((a.data as Record<string, unknown>).date || '').localeCompare(
                 String((b.data as Record<string, unknown>).date || '')
-              )
-            )
+              );
+            })
             .map((evt) => {
               const d = evt.data as Record<string, unknown>;
               const st = evt.meta?.status as string;
+              const past = countsAsPast(d.date, utcToday());
               const evtType = EVENT_TYPES.find((t) => t.id === d.eventType);
               const EvtIcon = evtType?.icon || CalendarDays;
               return (
@@ -1177,6 +1184,7 @@ export function EventsWorkbench({
                     max={Number(d.capacity || 1)}
                     color="neon-pink"
                   />
+                  {past && <span className={ds.badge('gray-400')}>Past</span>}
                   <span className={ds.badge(STATUS_COLORS[st] || 'gray-400')}>{st}</span>
                 </div>
               );
@@ -1258,6 +1266,7 @@ export function EventsWorkbench({
           {filtered.map((item, index) => {
             const d = item.data as Record<string, unknown>;
             const st = item.meta?.status as string;
+            const past = countsAsPast(d.date, utcToday());
             const evtType = EVENT_TYPES.find((t) => t.id === d.eventType);
             const EvtIcon = evtType?.icon || CalendarDays;
             return (
@@ -1274,7 +1283,10 @@ export function EventsWorkbench({
                     <EvtIcon className="w-5 h-5 text-neon-pink shrink-0" />
                     <h3 className={cn(ds.heading3, 'truncate')}>{item.title}</h3>
                   </div>
-                  <span className={ds.badge(STATUS_COLORS[st] || 'gray-400')}>{st}</span>
+                  <span className="flex items-center gap-1">
+                    {past && <span className={ds.badge('gray-400')}>Past</span>}
+                    <span className={ds.badge(STATUS_COLORS[st] || 'gray-400')}>{st}</span>
+                  </span>
                 </div>
                 <div className="space-y-1 mb-3">
                   <p className={ds.textMuted}>
@@ -1381,6 +1393,7 @@ export function EventsWorkbench({
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {countsAsPast(d.date, utcToday()) && <span className={ds.badge('gray-400')}>Past</span>}
               <span className={ds.badge(STATUS_COLORS[st] || 'gray-400')}>{st}</span>
               <button onClick={() => openEdit(item.id)} className={ds.btnSecondary}>
                 <Edit2 className="w-4 h-4" /> Edit
@@ -2674,10 +2687,13 @@ export function EventsWorkbench({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {(() => {
           const allEvts = events;
-          const upcoming = allEvts.filter(
-            (e) => e.meta?.status === 'planning' || e.meta?.status === 'confirmed'
+          const today = utcToday();
+          const upcoming = allEvts.filter((e) =>
+            countsAsUpcoming((e.data as Record<string, unknown>).date, e.meta?.status, today)
           ).length;
-          const past = allEvts.filter((e) => e.meta?.status === 'completed').length;
+          const past = allEvts.filter((e) =>
+            countsAsPast((e.data as Record<string, unknown>).date, today)
+          ).length;
           const totalCap = allEvts.reduce(
             (s, e) => s + Number((e.data as Record<string, unknown>).capacity || 0),
             0
