@@ -276,15 +276,49 @@ export default function registerEnergyActions(registerLensAction) {
 
   registerLensAction("energy", "gridStatus", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    // Fail-closed finite parse with sane bounds; these values are also echoed
-    // into output strings, so an unguarded Infinity would render "Infinity MW".
-    const demandMW = finiteNum(data.currentDemandMW, 0, 0, 100_000_000);
-    const capacityMW = finiteNum(data.totalCapacityMW, 0, 0, 100_000_000);
-    const renewablePercent = finiteNum(data.renewablePercent, 0, 0, 100);
-    const frequency = finiteNum(data.gridFrequencyHz, 60, 0, 1000);
-    const utilization = capacityMW > 0 ? Math.round((demandMW / capacityMW) * 100) : 0;
-    const frequencyDeviation = Math.abs(frequency - 60);
-    return { ok: true, result: { currentDemand: `${demandMW} MW`, totalCapacity: `${capacityMW} MW`, utilization, renewableShare: `${renewablePercent}%`, gridFrequency: `${frequency} Hz`, frequencyStable: frequencyDeviation < 0.05, status: utilization > 90 ? "critical-load" : utilization > 75 ? "high-load" : utilization > 50 ? "normal" : "low-load", reserves: `${Math.round(capacityMW - demandMW)} MW available` } };
+    // A blank or non-finite reading is not zero, and a missing frequency is
+    // not 60 Hz. Out-of-range values are refused rather than clamped into the
+    // snapshot. Explicit 0 stays 0. The 60 Hz nominal is used only to judge a
+    // frequency the caller actually sent.
+    const recorded = (v, min, max) => {
+      if (v == null || v === "") return null;
+      const n = typeof v === "number" ? v : parseFloat(v);
+      if (!Number.isFinite(n) || n < min || n > max) return null;
+      return n;
+    };
+    const demandMW = recorded(data.currentDemandMW, 0, 100_000_000);
+    const capacityMW = recorded(data.totalCapacityMW, 0, 100_000_000);
+    const renewablePercent = recorded(data.renewablePercent, 0, 100);
+    const frequency = recorded(data.gridFrequencyHz, 0, 1000);
+    const unavailable = [];
+    if (demandMW == null) unavailable.push("currentDemandMW");
+    if (capacityMW == null) unavailable.push("totalCapacityMW");
+    if (renewablePercent == null) unavailable.push("renewablePercent");
+    if (frequency == null) unavailable.push("gridFrequencyHz");
+    const utilization = demandMW != null && capacityMW != null && capacityMW > 0
+      ? Math.round((demandMW / capacityMW) * 100)
+      : null;
+    const status = utilization == null ? null
+      : utilization > 90 ? "critical-load"
+      : utilization > 75 ? "high-load"
+      : utilization > 50 ? "normal"
+      : "low-load";
+    return {
+      ok: true,
+      result: {
+        currentDemand: demandMW == null ? null : `${demandMW} MW`,
+        totalCapacity: capacityMW == null ? null : `${capacityMW} MW`,
+        utilization,
+        renewableShare: renewablePercent == null ? null : `${renewablePercent}%`,
+        gridFrequency: frequency == null ? null : `${frequency} Hz`,
+        frequencyStable: frequency == null ? null : Math.abs(frequency - 60) < 0.05,
+        status,
+        reserves: demandMW != null && capacityMW != null ? `${Math.round(capacityMW - demandMW)} MW available` : null,
+        reason: unavailable.length ? "not_recorded" : null,
+        unavailable,
+        ...(unavailable.length ? { message: `Not recorded: ${unavailable.join(", ")}.` } : {}),
+      },
+    };
   });
 
   // ─── Sense 2026 parity — home energy monitor ────────────────────────
