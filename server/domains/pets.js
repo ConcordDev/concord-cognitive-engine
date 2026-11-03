@@ -637,6 +637,9 @@ export default function registerPetsActions(registerLensAction) {
     if (!pet) return { ok: false, error: "pet not found" };
     const reminders = s.reminders.get(pet.id) || [];
     const vaccines = s.vaccines.get(pet.id) || [];
+    const weights = (s.weights.get(pet.id) || []).slice()
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    const lastWeight = weights.length ? weights[weights.length - 1] : null;
     return {
       ok: true,
       result: {
@@ -645,10 +648,11 @@ export default function registerPetsActions(registerLensAction) {
           vaccines: vaccines.length,
           medications: (s.medications.get(pet.id) || []).filter((m) => m.active).length,
           vetVisits: (s.vetVisits.get(pet.id) || []).length,
-          weightLogs: (s.weights.get(pet.id) || []).length,
+          weightLogs: weights.length,
         },
         overdueVaccines: vaccines.filter((v) => dueState(v.nextDueDate) === "overdue").length,
         openReminders: reminders.filter((r) => !r.done).length,
+        latestWeighIn: lastWeight ? { weightKg: lastWeight.weightKg, date: lastWeight.date } : null,
       },
     };
     } catch (e) { return handlerFailure(e); }
@@ -789,7 +793,6 @@ export default function registerPetsActions(registerLensAction) {
       date: pday(params.date) || pday(pnow()), createdAt: pnow(),
     };
     plistB(s.weights, pet.id).push(entry);
-    pet.weightKg = entry.weightKg;
     savePetState();
     return { ok: true, result: { entry } };
   });
