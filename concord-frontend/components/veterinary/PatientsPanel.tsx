@@ -5,6 +5,7 @@ import { lensRun } from '@/lib/api/client';
 import { Heart, Plus, Trash2, Loader2, Stethoscope, Syringe, ChevronRight } from 'lucide-react';
 import {
   VetPatient,
+  VetPrescription,
   SPECIES_OPTIONS,
   SPECIES_EMOJI,
   VISIT_KINDS,
@@ -238,6 +239,28 @@ function PatientDetail({ patient, onChanged }: { patient: VetPatient; onChanged:
     setAge(patient.ageYears == null ? '' : String(patient.ageYears));
     setWeight(patient.weightLbs == null ? '' : String(patient.weightLbs));
   }, [patient]);
+
+  const [meds, setMeds] = useState<VetPrescription[] | null>(null);
+  const [medError, setMedError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const r = await lensRun('veterinary', 'prescription-list', { patientId: patient.id });
+      if (cancelled) return;
+      if (r.data.ok && r.data.result) {
+        const list = (r.data.result as { prescriptions?: VetPrescription[] }).prescriptions;
+        setMeds(Array.isArray(list) ? list : []);
+        setMedError(null);
+      } else {
+        setMeds(null);
+        setMedError(r.data.error || 'Medications unavailable');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [patient.id]);
 
   const logVisit = async () => {
     setBusy(true);
@@ -527,6 +550,17 @@ function PatientDetail({ patient, onChanged }: { patient: VetPatient; onChanged:
           </button>
           {vacError && <p className="w-full text-xs text-red-300">{vacError}</p>}
         </div>
+      </div>
+      <div className="space-y-1 md:col-span-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Medications</p>
+        {medError ? <p className="text-xs text-zinc-400">{medError}</p> : null}
+        {meds && meds.length === 0 ? <p className="text-xs text-zinc-400">No medications on this chart.</p> : null}
+        {meds?.map((rx) => (
+          <div key={rx.id} className="rounded bg-zinc-950 px-2 py-1 text-xs text-zinc-300">
+            <span className="text-violet-300">{rx.drug}</span>
+            {rx.dosage ? ` · ${rx.dosage}` : ''} · {rx.status}
+          </div>
+        ))}
       </div>
     </div>
     </div>
