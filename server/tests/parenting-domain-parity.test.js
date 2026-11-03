@@ -682,6 +682,29 @@ describe("parenting.trends-insights", () => {
   });
 });
 
+describe("parenting.event-list when label", () => {
+  it("labels a timed event and keeps the stored ISO", () => {
+    const add = call("event-add", ctxA, { title: "Soccer practice", startAt: "2026-11-08T10:00", endAt: "2026-11-08T11:30", category: "activity" });
+    assert.equal(add.ok, true);
+    assert.equal(add.result.event.startAt, "2026-11-08T10:00");
+    const list = call("event-list", ctxA, {});
+    const ev = list.result.events.find((e) => e.id === add.result.event.id);
+    assert.equal(ev.startAt, "2026-11-08T10:00");
+    assert.equal(ev.whenLabel, "Sun, Nov 8, 2026, 10:00 AM");
+    assert.equal(ev.endLabel, "Sun, Nov 8, 2026, 11:30 AM");
+    assert.equal(list.result.nextUp.whenLabel, "Sun, Nov 8, 2026, 10:00 AM");
+  });
+
+  it("labels an all-day event without a clock time", () => {
+    const add = call("event-add", ctxA, { title: "School closed", startAt: "2026-11-08", category: "school" });
+    assert.equal(add.ok, true);
+    const ev = call("event-list", ctxA, {}).result.events.find((e) => e.id === add.result.event.id);
+    assert.equal(ev.startAt, "2026-11-08");
+    assert.equal(ev.whenLabel, "Sun, Nov 8, 2026");
+    assert.equal(ev.endLabel, null);
+  });
+});
+
 describe("parenting.appointment-* (reminders + iCal)", () => {
   it("adds, lists, completes, exports iCal and deletes appointments", () => {
     const id = newChild(ctxA, 12);

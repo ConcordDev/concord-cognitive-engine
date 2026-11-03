@@ -1985,6 +1985,36 @@ export default function registerParentingActions(registerLensAction) {
   // startAt and endAt must both be all-day dates or both be timed
   // datetimes — mixing the two shapes makes iCal export ambiguous.
   function pgSameDateTimeShape(a, b) { return (a.length === 10) === (b.length === 10); }
+  const PG_WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const PG_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  // A stored start stays ISO. This is only the line a person reads.
+  function pgWhenLabel(value) {
+    const raw = String(value || "").trim();
+    const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+    const timed = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(raw);
+    const parts = dateOnly || timed;
+    if (!parts) return raw;
+    const year = Number(parts[1]);
+    const month = Number(parts[2]);
+    const day = Number(parts[3]);
+    const stamp = new Date(Date.UTC(year, month - 1, day));
+    if (stamp.getUTCFullYear() !== year || stamp.getUTCMonth() !== month - 1 || stamp.getUTCDate() !== day) return raw;
+    const dateLabel = `${PG_WEEKDAYS[stamp.getUTCDay()]}, ${PG_MONTHS[month - 1]} ${day}, ${year}`;
+    if (!timed) return dateLabel;
+    let hour = Number(parts[4]);
+    const minute = parts[5];
+    if (hour > 23 || Number(minute) > 59) return raw;
+    const ap = hour >= 12 ? "PM" : "AM";
+    hour = hour % 12 || 12;
+    return `${dateLabel}, ${hour}:${minute} ${ap}`;
+  }
+  function pgPresentEvent(e) {
+    return {
+      ...e,
+      whenLabel: pgWhenLabel(e.startAt),
+      endLabel: e.endAt ? pgWhenLabel(e.endAt) : null,
+    };
+  }
   // "Is this event still relevant/upcoming?" basis: explicit endAt if set,
   // otherwise end-of-day for all-day events, otherwise the start instant.
   function pgEventEndMs(e) {
@@ -2057,9 +2087,11 @@ export default function registerParentingActions(registerLensAction) {
     if (params.scope === "upcoming") all = all.filter((e) => pgEventEndMs(e) >= nowMs);
     all.sort((a, b) => a.startAt.localeCompare(b.startAt));
     const upcoming = all.filter((e) => pgEventEndMs(e) >= nowMs);
+    const events = all.map(pgPresentEvent);
+    const next = upcoming[0] ? events.find((e) => e.id === upcoming[0].id) || null : null;
     return {
       ok: true,
-      result: { events: all, count: all.length, nextUp: upcoming[0] || null },
+      result: { events, count: events.length, nextUp: next },
     };
     } catch (e) { return handlerFailure(e); }
 });
