@@ -18,7 +18,7 @@ interface Percentiles {
   weight?: Measure; height?: Measure; head?: Measure; note: string;
 }
 
-export function PgGrowthPanel({ childId }: { childId: string }) {
+export function PgGrowthPanel({ childId, onRecorded }: { childId: string; onRecorded?: () => void }) {
   const [history, setHistory] = useState<GrowthEntry[]>([]);
   const [pct, setPct] = useState<Percentiles | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,6 +57,7 @@ export function PgGrowthPanel({ childId }: { childId: string }) {
     setForm({ weightKg: '', heightCm: '', headCm: '' });
     setError(null);
     await refresh();
+    onRecorded?.();
   };
 
   if (loading) {

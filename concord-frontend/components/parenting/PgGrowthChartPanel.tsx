@@ -5,7 +5,7 @@
  * percentile bands (3rd / 15th / 50th / 85th / 97th).
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ResponsiveContainer, ComposedChart, Line, Scatter, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
 } from 'recharts';
@@ -34,21 +34,39 @@ const METRICS: { id: Metric; label: string }[] = [
   { id: 'head', label: 'Head' },
 ];
 
-export function PgGrowthChartPanel({ childId }: { childId: string }) {
+export function PgGrowthChartPanel({ childId, refreshTick = 0 }: { childId: string; refreshTick?: number }) {
   const [metric, setMetric] = useState<Metric>('weight');
   const [data, setData] = useState<ChartData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const seenTick = useRef(0);
+  const requestId = useRef(0);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const refresh = useCallback(async (opts?: { quiet?: boolean }) => {
+    const id = ++requestId.current;
+    if (!opts?.quiet) setLoading(true);
     const r = await lensRun('parenting', 'growth-chart', { childId, metric });
-    if (r.data?.ok === false) { setError(r.data?.error || 'Failed to load chart'); setData(null); }
-    else { setData(r.data?.result as ChartData); setError(null); }
+    if (id !== requestId.current) return;
+    if (r.data?.ok === false) {
+      setError(r.data?.error || 'Failed to load chart');
+      if (!opts?.quiet) setData(null);
+    } else {
+      setData(r.data?.result as ChartData);
+      setError(null);
+    }
     setLoading(false);
   }, [childId, metric]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  // A measurement logged in the sibling form bumps this tick. Refetch
+  // without blanking the plot that is already on screen.
+  useEffect(() => {
+    if (refreshTick === seenTick.current) return;
+    seenTick.current = refreshTick;
+    if (refreshTick < 1) return;
+    void refresh({ quiet: true });
+  }, [refreshTick, refresh]);
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;

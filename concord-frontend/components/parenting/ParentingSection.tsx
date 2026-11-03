@@ -47,6 +47,7 @@ export function ParentingSection() {
   const [children, setChildren] = useState<Child[]>([]);
   const [activeChild, setActiveChild] = useState<string>('');
   const [tab, setTab] = useState<TabId>('today');
+  const [growthTick, setGrowthTick] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -155,8 +156,8 @@ export function ParentingSection() {
                 {tab === 'schedule' && <PgSchedulePanel childId={activeChild} />}
                 {tab === 'growth' && (
                   <div className="space-y-5">
-                    <PgGrowthPanel childId={activeChild} />
-                    <PgGrowthChartPanel childId={activeChild} />
+                    <PgGrowthPanel childId={activeChild} onRecorded={() => setGrowthTick((n) => n + 1)} />
+                    <PgGrowthChartPanel childId={activeChild} refreshTick={growthTick} />
                   </div>
                 )}
                 {tab === 'milestones' && <PgMilestonesPanel childId={activeChild} />}
