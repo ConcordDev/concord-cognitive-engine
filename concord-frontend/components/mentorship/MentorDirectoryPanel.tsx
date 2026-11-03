@@ -70,6 +70,7 @@ export function MentorDirectoryPanel() {
   });
   const [busy, setBusy] = useState(false);
   const [editingExisting, setEditingExisting] = useState(false);
+  const [confirmWithdraw, setConfirmWithdraw] = useState(false);
 
   const [selected, setSelected] = useState<Mentor | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -126,6 +127,7 @@ export function MentorDirectoryPanel() {
       return;
     }
     setShowRegister(true);
+    setConfirmWithdraw(false);
     const myId = user?.id;
     if (!myId) {
       setEditingExisting(false);
@@ -176,12 +178,34 @@ export function MentorDirectoryPanel() {
     if (regForm.experienceYears !== '' || !editingExisting) {
       payload.experienceYears = Number(regForm.experienceYears) || 0;
     }
+    // Publish lists the profile again after a withdraw.
+    payload.listed = true;
     const r = await lensRun('mentorship', 'mentor-register', payload);
     setBusy(false);
     if (r.data?.ok === false) { setError(r.data.error || 'Registration failed.'); return; }
     setShowRegister(false);
     setEditingExisting(false);
+    setConfirmWithdraw(false);
     setRegForm({ name: '', headline: '', bio: '', skills: '', experienceYears: '3', availability: 'weekly', capacity: '3', hourlyFocus: 'career' });
+    notifyMentorshipProgramChanged();
+    void refresh();
+  };
+
+  const withdrawProfile = async () => {
+    if (!confirmWithdraw) {
+      setConfirmWithdraw(true);
+      setError(null);
+      return;
+    }
+    setBusy(true);
+    const r = await lensRun('mentorship', 'mentor-withdraw', {});
+    setBusy(false);
+    if (r.data?.ok === false) { setError(r.data.error || 'Withdraw failed.'); return; }
+    setConfirmWithdraw(false);
+    setShowRegister(false);
+    setEditingExisting(false);
+    setSelected(null);
+    setError(null);
     notifyMentorshipProgramChanged();
     void refresh();
   };
@@ -259,6 +283,11 @@ export function MentorDirectoryPanel() {
             <span>Availability: <b className="text-white">{selected.availability}</b></span>
             <span>Open slots: <b className={cn(openSlots > 0 ? 'text-neon-green' : 'text-red-400')}>{openSlots}/{selected.capacity}</b></span>
           </div>
+          {user?.id && selected.id === user.id && (
+            <button type="button" onClick={() => { void withdrawProfile(); }} disabled={busy} className="text-xs text-zinc-400 hover:text-white">
+              {confirmWithdraw ? 'Withdraw this profile from the directory' : 'Withdraw profile'}
+            </button>
+          )}
         </div>
 
         {/* Send a request */}
@@ -350,6 +379,11 @@ export function MentorDirectoryPanel() {
           <button onClick={register} disabled={busy} className="btn-neon green w-full">
             {busy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : 'Publish profile'}
           </button>
+          {editingExisting && (
+            <button type="button" onClick={() => { void withdrawProfile(); }} disabled={busy} className="text-xs text-zinc-400 hover:text-white w-full text-left">
+              {confirmWithdraw ? 'Withdraw this profile from the directory' : 'Withdraw profile'}
+            </button>
+          )}
         </div>
       )}
 

@@ -93,7 +93,12 @@ export function MentorshipGoalsPanel() {
   const setStatus = async (status: 'active' | 'paused' | 'done') => {
     if (!selected) return;
     setBusy(true);
-    const r = await lensRun('mentorship', 'goal-checkin', { goalId: selected.id, status });
+    // Done is completion: the check-in carries progress 100 with the status.
+    const r = await lensRun('mentorship', 'goal-checkin', {
+      goalId: selected.id,
+      status,
+      ...(status === 'done' ? { progress: 100 } : {}),
+    });
     setBusy(false);
     if (r.data?.ok === false) { setError(r.data.error || 'Update failed.'); return; }
     if (r.data?.result?.goal) setSelected(r.data.result.goal as MentorshipGoal);
@@ -130,6 +135,7 @@ export function MentorshipGoalsPanel() {
               </button>
             ))}
           </div>
+          <p className="text-[11px] text-zinc-500">Done sets progress to 100%. The achieved count uses that same progress.</p>
         </div>
 
         {/* Progress chart from check-ins */}

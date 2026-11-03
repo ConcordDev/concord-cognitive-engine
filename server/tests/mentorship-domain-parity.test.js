@@ -138,6 +138,33 @@ describe("mentorship directory / discovery", () => {
     assert.equal(reload.result.mentor.experienceYears, 4);
     assert.equal(reload.result.mentor.headline, "Edited headline");
   });
+
+  it("mentor-withdraw unlists only the caller's profile", () => {
+    call("mentor-register", ctxM, { name: "Ada", skills: ["rust"] });
+    call("mentor-register", ctxE, { name: "Eve", skills: ["design"] });
+    const missing = call("mentor-withdraw", { actor: { userId: "stranger" }, userId: "stranger" }, {});
+    assert.equal(missing.ok, false);
+    const still = call("mentor-directory", ctxE, {});
+    assert.equal(still.result.count, 2);
+    const withdrawn = call("mentor-withdraw", ctxM, { mentorId: "user_mentee" });
+    assert.equal(withdrawn.ok, true);
+    assert.equal(withdrawn.result.withdrawn, true);
+    assert.equal(withdrawn.result.mentor.listed, false);
+    const dir = call("mentor-directory", ctxE, {});
+    assert.equal(dir.result.count, 1);
+    assert.equal(dir.result.mentors[0].name, "Eve");
+    const hidden = call("mentor-profile", ctxE, { mentorId: "user_mentor" });
+    assert.equal(hidden.ok, false);
+    const own = call("mentor-profile", ctxM, { mentorId: "user_mentor" });
+    assert.equal(own.ok, true);
+    assert.equal(own.result.mentor.listed, false);
+    const again = call("mentor-withdraw", ctxM, {});
+    assert.equal(again.ok, true);
+    const relist = call("mentor-register", ctxM, { name: "Ada", skills: ["rust"], listed: true });
+    assert.equal(relist.result.mentor.listed, true);
+    const back = call("mentor-directory", ctxE, {});
+    assert.equal(back.result.mentors.some((m) => m.name === "Ada"), true);
+  });
 });
 
 describe("mentorship request → accept flow", () => {
@@ -320,7 +347,37 @@ describe("mentorship goal workspace", () => {
     const r = call("goal-checkin", ctxE, { goalId: g.result.goal.id, progress: 100, note: "done!" });
     assert.equal(r.ok, true);
     assert.equal(r.result.goal.status, "done");
+    assert.equal(r.result.goal.progress, 100);
     assert.equal(r.result.goal.checkIns.length, 1);
+    assert.equal(r.result.goal.checkIns[0].progress, 100);
+  });
+
+  it("marking a goal done sets progress to 100 and the achieved count uses that", () => {
+    const g = call("goal-create", ctxE, { title: "Ship the brief" });
+    const marked = call("goal-checkin", ctxE, { goalId: g.result.goal.id, status: "done" });
+    assert.equal(marked.ok, true);
+    assert.equal(marked.result.goal.status, "done");
+    assert.equal(marked.result.goal.progress, 100);
+    call("goal-create", ctxE, { title: "Still open" });
+    const list = call("goal-list", ctxE, {});
+    assert.equal(list.result.count, 2);
+    assert.equal(list.result.done, 1);
+    assert.equal(list.result.active, 1);
+    const report = call("program-report", ctxE, {});
+    assert.equal(report.result.goals.total, 2);
+    assert.equal(report.result.goals.done, 1);
+    assert.equal(report.result.goalCompletionRate, 50);
+  });
+
+  it("a check-in below 100 reopens a done goal", () => {
+    const g = call("goal-create", ctxE, { title: "Reopen me" });
+    call("goal-checkin", ctxE, { goalId: g.result.goal.id, status: "done" });
+    const back = call("goal-checkin", ctxE, { goalId: g.result.goal.id, progress: 40, note: "not finished" });
+    assert.equal(back.result.goal.status, "active");
+    assert.equal(back.result.goal.progress, 40);
+    const report = call("program-report", ctxE, {});
+    assert.equal(report.result.goals.done, 0);
+    assert.equal(report.result.goalCompletionRate, 0);
   });
 });
 

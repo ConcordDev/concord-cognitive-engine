@@ -349,6 +349,22 @@ export default function registerMentorshipActions(registerLensAction) {
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
+  // The caller unlists their own profile. There is no mentor id argument:
+  // another account's row is not reachable from this verb.
+  registerLensAction("mentorship", "mentor-withdraw", (ctx, _a, _params = {}) => {
+    try {
+      const s = getMentorshipState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = mAid(ctx);
+      const mentor = s.mentors.get(userId);
+      if (!mentor) return { ok: false, error: "mentor profile not found" };
+      mentor.listed = false;
+      mentor.withdrawnAt = mNow();
+      mentor.updatedAt = mentor.withdrawnAt;
+      saveState();
+      return { ok: true, result: { mentor, withdrawn: true } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
   // Browse / search the mentor directory.
   registerLensAction("mentorship", "mentor-directory", (ctx, _a, params = {}) => {
     try {
@@ -380,6 +396,8 @@ export default function registerMentorshipActions(registerLensAction) {
       const id = mClean(params.mentorId, 64);
       const mentor = s.mentors.get(id);
       if (!mentor) return { ok: false, error: "mentor not found" };
+      // A withdrawn profile stays readable by its owner and leaves the directory.
+      if (mentor.listed === false && mAid(ctx) !== id) return { ok: false, error: "mentor not found" };
       const reviews = mList(s.reviews, id);
       return {
         ok: true,
@@ -791,13 +809,25 @@ export default function registerMentorshipActions(registerLensAction) {
       const goalId = mClean(params.goalId, 64);
       const goal = mList(s.goals, userId).find((g) => g.id === goalId);
       if (!goal) return { ok: false, error: "goal not found" };
-      if (params.progress != null) goal.progress = Math.min(100, Math.max(0, Math.round(mNum(params.progress))));
-      if (params.status && GOAL_STATUS.includes(params.status)) goal.status = params.status;
+      const progressProvided = params.progress != null && params.progress !== "";
+      if (progressProvided) goal.progress = Math.min(100, Math.max(0, Math.round(mNum(params.progress))));
+      const statusRequested = params.status && GOAL_STATUS.includes(params.status) ? params.status : null;
+      if (statusRequested) goal.status = statusRequested;
+      // Achieved is progress at 100. Marking done sets that progress so a
+      // status of done cannot sit beside 0%. An explicit active or paused
+      // status is kept. A check-in under 100 reopens a done goal.
+      if (statusRequested === "done") {
+        goal.progress = 100;
+        goal.status = "done";
+      } else if (!statusRequested && progressProvided && goal.progress >= 100 && goal.status === "active") {
+        goal.status = "done";
+      } else if (!statusRequested && progressProvided && goal.progress < 100 && goal.status === "done") {
+        goal.status = "active";
+      }
       const note = mClean(params.note, 600);
       if (note) {
         goal.checkIns.push({ id: mId("ci"), note, progress: goal.progress, at: mNow() });
       }
-      if (goal.progress >= 100 && goal.status === "active") goal.status = "done";
       goal.updatedAt = mNow();
       saveState();
       return { ok: true, result: { goal } };
@@ -819,7 +849,7 @@ export default function registerMentorshipActions(registerLensAction) {
           goals,
           count: goals.length,
           active: active.length,
-          done: goals.filter((g) => g.status === "done").length,
+          done: goals.filter((g) => g.status === "done" && g.progress >= 100).length,
           avgProgress,
         },
       };
@@ -906,9 +936,11 @@ export default function registerMentorshipActions(registerLensAction) {
       }
       const myGoals = mList(s.goals, userId);
       const totalGoals = myGoals.length;
-      const doneGoals = myGoals.filter((g) => g.status === "done").length;
-      const ratedMentors = mentors.filter((m) => m.reviewCount > 0);
-      const cohort = mentors.map((m) => ({
+      // Same rule as the goal row: achieved means status done and progress 100.
+      const doneGoals = myGoals.filter((g) => g.status === "done" && g.progress >= 100).length;
+      const listedMentors = mentors.filter((m) => m.listed);
+      const ratedMentors = listedMentors.filter((m) => m.reviewCount > 0);
+      const cohort = listedMentors.map((m) => ({
         mentorId: m.id, name: m.name, skills: m.skills.slice(0, 4),
         menteeCount: m.menteeCount, capacity: m.capacity,
         rating: m.rating, reviewCount: m.reviewCount,
@@ -917,7 +949,7 @@ export default function registerMentorshipActions(registerLensAction) {
       return {
         ok: true,
         result: {
-          mentors: mentors.filter((m) => m.listed).length,
+          mentors: listedMentors.length,
           activeMatches: accepted,
           requests: { total: allRequests.length, accepted, declined, pending },
           matchAcceptanceRate: resolved > 0 ? Math.round((accepted / resolved) * 100) : 0,
