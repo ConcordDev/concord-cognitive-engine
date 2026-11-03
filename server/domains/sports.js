@@ -31,6 +31,38 @@ function espnPathFor(sport, league) {
   return ESPN_SPORT_PATH[k] || null;
 }
 
+// YYYYMMDD is a calendar day in local time. `new Date("YYYY-MM-DD")` is UTC
+// midnight, which is the previous evening in the Americas and would query
+// the wrong ESPN board.
+function calendarDay(yyyymmdd) {
+  const s = String(yyyymmdd);
+  return new Date(Number(s.slice(0, 4)), Number(s.slice(4, 6)) - 1, Number(s.slice(6, 8)));
+}
+function formatDay(d) {
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+}
+function shiftCalendarDays(base, delta) {
+  const d = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+  d.setDate(d.getDate() + delta);
+  return d;
+}
+// A completed copy of the same event beats a scheduled copy from an adjacent date board.
+function scheduleFixtureRank(f) {
+  if (f.completed || f.state === "post") return 3;
+  if (f.state === "in") return 2;
+  return 1;
+}
+function dedupeScheduleFixtures(rows) {
+  const byId = new Map();
+  const noId = [];
+  for (const f of rows) {
+    if (f.id == null || f.id === "") { noId.push(f); continue; }
+    const prev = byId.get(String(f.id));
+    if (!prev || scheduleFixtureRank(f) >= scheduleFixtureRank(prev)) byId.set(String(f.id), f);
+  }
+  return [...byId.values(), ...noId];
+}
+
 import { advisory } from "../lib/lens-inputs.js";
 
 export default function registerSportsActions(registerLensAction) {
@@ -155,10 +187,11 @@ export default function registerSportsActions(registerLensAction) {
           name: ev.name,
           shortName: ev.shortName,
           date: ev.date,
-          status: ev.status?.type?.description,
-          completed: ev.status?.type?.completed,
-          period: ev.status?.period,
-          clock: ev.status?.displayClock,
+          status: ev.status?.type?.description || null,
+          state: ev.status?.type?.state || null,
+          completed: !!ev.status?.type?.completed,
+          period: ev.status?.period ?? null,
+          clock: ev.status?.displayClock || null,
           teams,
           venue: competition.venue?.fullName,
           venueCity: competition.venue?.address?.city,
@@ -659,27 +692,29 @@ export default function registerSportsActions(registerLensAction) {
     }
   });
 
-  // ── Schedules / calendar of upcoming fixtures ───────────────────────
-  // Pulls ESPN scoreboard for a date range and returns upcoming +
-  // completed fixtures. params: { sport, league?, days? (1-14), date? }
+  // ── Schedules / calendar ────────────────────────────────────────────
+  // Pulls ESPN scoreboard across a calendar window and returns upcoming
+  // and completed fixtures. The window runs (days-1) calendar days before
+  // the start through (days-1) after, so a finished game stays reachable.
+  // The same event can sit on two adjacent date boards; one id is one row,
+  // and a completed copy wins. params: { sport, league?, days? (1-14), date? }
   registerLensAction("sports", "espn-schedule", async (_ctx, _a, params = {}) => {
     const path = espnPathFor(params.sport, params.league);
     if (!path) return { ok: false, error: `unsupported sport (try: ${Object.keys(ESPN_SPORT_PATH).join(", ")}, soccer)` };
     const days = Math.max(1, Math.min(14, Math.round(spNum(params.days, 7))));
-    const start = (() => {
-      const d = params.date && /^\d{8}$/.test(String(params.date))
-        ? new Date(`${String(params.date).slice(0,4)}-${String(params.date).slice(4,6)}-${String(params.date).slice(6,8)}`)
-        : new Date();
-      return d;
-    })();
-    const fmt = (d) => `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
+    const start = params.date && /^\d{8}$/.test(String(params.date))
+      ? calendarDay(params.date)
+      : new Date();
+    const fromDay = formatDay(shiftCalendarDays(start, -(days - 1)));
+    const toDay = formatDay(shiftCalendarDays(start, days - 1));
     try {
       const fixtures = [];
-      for (let i = 0; i < days; i++) {
-        const d = new Date(start.getTime() + i * 86400000);
+      for (let i = -(days - 1); i <= (days - 1); i++) {
+        const d = shiftCalendarDays(start, i);
+        const day = formatDay(d);
         let data;
         try {
-          data = await cachedFetchJson(`${ESPN_SCOREBOARD}/${path}/scoreboard?dates=${fmt(d)}`, { ttlMs: 300_000 });
+          data = await cachedFetchJson(`${ESPN_SCOREBOARD}/${path}/scoreboard?dates=${day}`, { ttlMs: 300_000 });
         } catch { continue; }
         for (const ev of data?.events || []) {
           const comp = ev.competitions?.[0] || {};
@@ -688,7 +723,7 @@ export default function registerSportsActions(registerLensAction) {
           const away = cs.find((c) => c.homeAway === "away") || cs[1] || {};
           fixtures.push({
             id: ev.id, name: ev.shortName || ev.name, date: ev.date,
-            day: fmt(d),
+            day,
             home: home.team?.abbreviation || home.team?.displayName || "?",
             away: away.team?.abbreviation || away.team?.displayName || "?",
             homeScore: home.score != null ? Number(home.score) : null,
@@ -700,13 +735,14 @@ export default function registerSportsActions(registerLensAction) {
           });
         }
       }
-      fixtures.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+      const unique = dedupeScheduleFixtures(fixtures);
+      unique.sort((a, b) => String(a.date).localeCompare(String(b.date)));
       return {
         ok: true,
         result: {
-          fixtures, count: fixtures.length,
-          upcoming: fixtures.filter((f) => !f.completed && f.state !== "post").length,
-          sport: String(params.sport).toLowerCase(), days, source: "espn-scoreboard",
+          fixtures: unique, count: unique.length,
+          upcoming: unique.filter((f) => !f.completed && f.state !== "post").length,
+          sport: String(params.sport).toLowerCase(), days, fromDay, toDay, source: "espn-scoreboard",
         },
       };
     } catch (e) {

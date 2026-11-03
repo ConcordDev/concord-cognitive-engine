@@ -207,7 +207,7 @@ function SchedulePanel({ onPickGame }: { onPickGame: (sport: string, eventId: st
                 )}
               </p>
               <p className="font-mono text-[10px] text-zinc-400">
-                {new Date(f.date).toLocaleString()} · {f.status || '?'}
+                {new Date(f.date).toLocaleString()} · {f.completed ? (f.status || 'Final') : (f.status || 'Scheduled')}
                 {f.venue ? ` · ${f.venue}` : ''}
               </p>
             </div>
