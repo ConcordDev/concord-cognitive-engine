@@ -155,6 +155,28 @@ describe("parenting.milestone-*", () => {
     const id = newChild(ctxA);
     assert.equal(call("milestone-record", ctxA, { childId: id, milestoneId: "zzz" }).ok, false);
   });
+
+  it("milestoneCheck reads the stored record and ignores a blank form", () => {
+    const id = newChild(ctxA, 30);
+    call("milestone-record", ctxA, { childId: id, milestoneId: "cdc_0", achieved: true });
+    call("milestone-record", ctxA, { childId: id, milestoneId: "cdc_1", achieved: true });
+    const r = call("milestoneCheck", ctxA, { childId: id, milestones: [], childAge: "2y 6m" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.basis, "record");
+    assert.equal(r.result.eligibleCount, 36);
+    assert.equal(r.result.achievedCount, 2);
+    assert.equal(r.result.overallCompletionRate, undefined);
+    assert.equal(call("milestoneCheck", ctxB, { childId: id }).ok, false);
+  });
+
+  it("milestoneCheck without a child is an age table, not a record", () => {
+    const r = call("milestoneCheck", ctxA, { childAge: "2y 3m", milestones: [] });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.basis, "age-table");
+    assert.equal(r.result.ageMonths, 27);
+    assert.equal(r.result.overallCompletionRate, 0);
+    assert.match(r.result.note, /not a child's milestone record/i);
+  });
 });
 
 describe("parenting.medicine / activity / timeline / dashboard", () => {
