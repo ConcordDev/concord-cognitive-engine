@@ -1169,7 +1169,12 @@ export function EventsWorkbench({
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-200 truncate">{evt.title}</p>
                     <p className={cn(ds.textMuted, 'truncate')}>
-                      {String(d.venue || '')} -- Cap: {Number(d.capacity || 0).toLocaleString()}
+                      {String(d.venue || '')} -- {(() => {
+                        const tickets = Number(d.ticketCapacity || 0);
+                        const guests = Number(d.capacity || 0);
+                        const cap = tickets > 0 ? tickets : guests;
+                        return cap > 0 ? `Cap: ${cap.toLocaleString()}` : 'Cap not set';
+                      })()}
                     </p>
                   </div>
                   <ProgressBar
@@ -2817,7 +2822,7 @@ export function EventsWorkbench({
                       </option>
                     ))}
                     {mode === 'guests' &&
-                      ['confirmed', 'pending', 'declined'].map((s) => (
+                      ['pending', 'declined'].map((s) => (
                         <option key={`g-${s}`} value={s}>
                           {s}
                         </option>

@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { CalendarHeart, Plus, Trash2, Check, Loader2, Users } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { EVENT_STATUS_WORDS, statusFromEngine, statusToEngine } from './event-status';
 
 interface Task { id: string; title: string; dueDate: string | null; done: boolean }
 interface Vendor { id: string; name: string; role: string; cost: number; booked: boolean }
@@ -18,7 +19,6 @@ interface EventFull { id: string; name: string; type: string; date: string | nul
 interface Dash { totalEvents: number; upcoming: number; totalBudget: number; openTasks: number }
 
 const TYPES = ['conference', 'wedding', 'concert', 'festival', 'corporate', 'social'];
-const STATUSES = ['planning', 'confirmed', 'complete', 'cancelled'];
 
 export function EventPlanner() {
   const [events, setEvents] = useState<EventMeta[]>([]);
@@ -64,7 +64,7 @@ export function EventPlanner() {
   }
   async function setStatus(status: string) {
     if (!active) return;
-    await lensRun('events', 'event-update', { id: active.id, status });
+    await lensRun('events', 'event-update', { id: active.id, status: statusToEngine(status) });
     await reload(); await refresh();
   }
   async function addTask() {
@@ -153,9 +153,9 @@ export function EventPlanner() {
                   {active.venue || 'No venue'} · ${active.budget.toLocaleString()} budget · ${budgetRemaining.toLocaleString()} left
                 </p>
               </div>
-              <select value={active.status} onChange={e => setStatus(e.target.value)}
+              <select value={statusFromEngine(active.status, active.date, new Date().toISOString().slice(0, 10))} onChange={e => setStatus(e.target.value)}
                 className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-[11px] text-zinc-200">
-                {STATUSES.map(st => <option key={st} value={st}>{st}</option>)}
+                {EVENT_STATUS_WORDS.map(st => <option key={st} value={st}>{st}</option>)}
               </select>
             </div>
 
