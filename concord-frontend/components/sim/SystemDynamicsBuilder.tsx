@@ -10,9 +10,11 @@
  * are charted with the shared ChartKit, and detected feedback loops are listed.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { recordStudioRun, recordStudioModelSave } from '@/lib/sim/studio-activity';
+import { useLensDraft } from '@/hooks/useLensDraft';
+import { useUIStore } from '@/store/ui';
 import { ChartKit } from '@/components/viz';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -81,6 +83,14 @@ export function SystemDynamicsBuilder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // sim.md (PARTIAL, "saved-model working copy"): the library entry persists
+  // server-side, but a plain reload previously reset the builder to its
+  // hardcoded pre-fill — the saved model never re-opened as the working
+  // copy. Remember the last-opened model id via the existing per-lens draft
+  // mechanism (useLensDraft) and auto-load it once, on first hydration.
+  const currentModelDraft = useLensDraft<string | null>('sim', 'sd-current-model-id', { initial: null });
+  const autoLoadedRef = useRef(false);
+
   const syncParams = useCallback((rows: Array<{ k: string; v: number }>) => {
     const params: Record<string, number> = {};
     for (const row of rows) if (row.k.trim()) params[row.k.trim()] = row.v;
@@ -107,12 +117,15 @@ export function SystemDynamicsBuilder() {
     });
     if (r.data.ok && r.data.result) {
       setModelId(r.data.result.id);
+      currentModelDraft.setValue(r.data.result.id);
       void refreshSaved();
       recordStudioModelSave();
+      useUIStore.getState().addToast({ type: 'success', message: `Saved "${modelName}".` });
     } else {
       setError(r.data.error || 'Save failed');
+      useUIStore.getState().addToast({ type: 'error', message: r.data.error || 'Save failed' });
     }
-  }, [modelId, modelName, model, refreshSaved]);
+  }, [modelId, modelName, model, refreshSaved, currentModelDraft]);
 
   const load = useCallback(async (id: string) => {
     const r = await lensRun<{ id: string; name: string; model: SDModel }>('sim', 'loadModel', { id });
@@ -128,14 +141,28 @@ export function SystemDynamicsBuilder() {
       setModelName(r.data.result.name);
       setModelId(r.data.result.id);
       setResult(null);
+      currentModelDraft.setValue(r.data.result.id);
     }
-  }, []);
+  }, [currentModelDraft]);
+
+  // Auto-reopen the last-saved-to/loaded-from model once the draft pointer
+  // has hydrated from the server (or confirmed there is none).
+  useEffect(() => {
+    if (autoLoadedRef.current) return;
+    if (currentModelDraft.status === 'loading') return;
+    autoLoadedRef.current = true;
+    if (currentModelDraft.value) void load(currentModelDraft.value);
+    // load/currentModelDraft intentionally omitted — this must run exactly
+    // once, guarded by autoLoadedRef, not on every load()/draft identity change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentModelDraft.status]);
 
   const remove = useCallback(async (id: string) => {
     await lensRun('sim', 'deleteModel', { id });
     if (id === modelId) setModelId(null);
+    if (id === currentModelDraft.value) currentModelDraft.setValue(null);
     void refreshSaved();
-  }, [modelId, refreshSaved]);
+  }, [modelId, refreshSaved, currentModelDraft]);
 
   const stockNames = model.stocks.map((s) => s.name).filter(Boolean);
 
