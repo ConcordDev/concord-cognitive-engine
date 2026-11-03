@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Download, FileJson, FileSpreadsheet, ChevronDown } from 'lucide-react';
+import { Download, FileJson, FileSpreadsheet, ChevronDown, X } from 'lucide-react';
 import { apiHelpers, lensRun } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { downloadFile } from '@/lib/utils';
@@ -41,7 +41,39 @@ export function ExportMenu({ domain }: ExportMenuProps) {
   // Set when there is nothing real to export. We never download an empty
   // "[]" / "No data" file and call it an export.
   const [notice, setNotice] = useState<string | null>(null);
+  // Set after a file was handed to the browser. The menu closes on success, so
+  // without this a delivered export had NO visible response at all (and a
+  // browser that silently drops the programmatic download looked identical to
+  // a dead button). Lives outside the dropdown so it survives the menu closing;
+  // `url` backs a real "Save again" link a user gesture can follow.
+  const [delivered, setDelivered] = useState<{ filename: string; count: number; url: string | null } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const deliveredUrlRef = useRef<string | null>(null);
+
+  const clearDelivered = () => {
+    if (deliveredUrlRef.current) {
+      try { URL.revokeObjectURL(deliveredUrlRef.current); } catch { /* best-effort */ }
+      deliveredUrlRef.current = null;
+    }
+    setDelivered(null);
+  };
+  useEffect(() => () => {
+    if (deliveredUrlRef.current) {
+      try { URL.revokeObjectURL(deliveredUrlRef.current); } catch { /* best-effort */ }
+    }
+  }, []);
+
+  // Hand the file to the browser, then say so visibly with a manual fallback link.
+  const deliver = (content: string, filename: string, mimeType: string, count: number) => {
+    downloadFile(content, filename, mimeType);
+    let url: string | null = null;
+    try { url = URL.createObjectURL(new Blob([content], { type: mimeType })); } catch { url = null; }
+    if (deliveredUrlRef.current) {
+      try { URL.revokeObjectURL(deliveredUrlRef.current); } catch { /* best-effort */ }
+    }
+    deliveredUrlRef.current = url;
+    setDelivered({ filename, count, url });
+  };
 
   // Close on click outside
   useEffect(() => {
@@ -88,10 +120,11 @@ export function ExportMenu({ domain }: ExportMenuProps) {
     }
     const doc = buildConkayExport({ parts, current, lensItems, lensItemsError });
     const stamp = new Date().toISOString().slice(0, 10);
+    const count = parts.length + (current ? 1 : 0) + lensItems.length;
     if (format === 'json') {
-      downloadFile(JSON.stringify(doc, null, 2), `conkay-models-${stamp}.json`, 'application/json');
+      deliver(JSON.stringify(doc, null, 2), `conkay-models-${stamp}.json`, 'application/json', count);
     } else {
-      downloadFile(conkayExportCsv(doc), `conkay-models-${stamp}.csv`, 'text/csv');
+      deliver(conkayExportCsv(doc), `conkay-models-${stamp}.csv`, 'text/csv', count);
     }
     return true;
   };
@@ -99,6 +132,7 @@ export function ExportMenu({ domain }: ExportMenuProps) {
   const exportAs = async (format: 'json' | 'csv') => {
     setExporting(format);
     setNotice(null);
+    clearDelivered();
     let keepOpen = false;
     try {
       if (domain === 'conkay') {
@@ -137,7 +171,7 @@ export function ExportMenu({ domain }: ExportMenuProps) {
         extension = 'csv';
       }
 
-      downloadFile(content, `${domain}-export-${new Date().toISOString().slice(0, 10)}.${extension}`, mimeType);
+      deliver(content, `${domain}-export-${new Date().toISOString().slice(0, 10)}.${extension}`, mimeType, items.length);
     } catch (err) {
       console.error('Export failed:', err);
       keepOpen = true;
@@ -205,6 +239,27 @@ export function ExportMenu({ domain }: ExportMenuProps) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {delivered && (
+        <div
+          role="status"
+          data-testid="export-menu-delivered"
+          className="absolute right-0 top-full z-40 mt-1 flex w-72 items-start gap-2 rounded-lg border border-emerald-500/30 bg-lattice-bg px-3 py-2 text-xs text-emerald-300 shadow-2xl"
+        >
+          <p className="flex-1">
+            Exported {delivered.count} item{delivered.count === 1 ? '' : 's'} as <span className="font-mono">{delivered.filename}</span>.
+            {' '}If your browser didn’t save it,{' '}
+            {delivered.url ? (
+              <a href={delivered.url} download={delivered.filename} data-testid="export-menu-save-again" className="underline">save it again</a>
+            ) : (
+              'try again'
+            )}.
+          </p>
+          <button type="button" onClick={clearDelivered} aria-label="Dismiss export message" className="text-emerald-300/70 hover:text-emerald-200">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
