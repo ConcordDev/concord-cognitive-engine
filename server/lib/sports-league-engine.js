@@ -63,6 +63,19 @@ export function listTeamsInLeague(db, leagueId) {
   `).all(leagueId);
 }
 
+/** Every league in a world, oldest first, each with its team count. Pure read. */
+export function listLeagues(db, worldId) {
+  if (!db || !worldId) return [];
+  try {
+    return db.prepare(`
+      SELECT l.*, (SELECT COUNT(*) FROM sports_teams t WHERE t.league_id = l.id) AS team_count
+      FROM sports_leagues l WHERE l.world_id = ? ORDER BY l.started_at ASC, l.id ASC LIMIT 100
+    `).all(worldId);
+  } catch {
+    return [];
+  }
+}
+
 /* ───────── Tryouts + careers ───────────────────────────────────────── */
 
 export function ensureCareer(db, playerUserId, sportKind) {
