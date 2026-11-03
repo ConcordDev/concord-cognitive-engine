@@ -23,7 +23,7 @@ If an argument (task id) was given, start there if its deps are done; otherwise 
    - Run all git commands with `git -C ~/concord/aura-wt …`. `git -C ~/concord/aura-wt branch --show-current` must print `aura/gameplay`. If it does not, **stop** and log a blocker; do not switch or create branches.
    - Disk (`df -h /System/Volumes/Data`) must have ≥10 GB free. If not, log a blocker and stop heavy work (imports, bakes, captures).
 3. **Implement** the task using only the files in its `Touch` line plus new files under `Assets/Concordia/Scripts/Aura/`, `Assets/Concordia/Editor/Aura/` or `.Aura/`. Reuse what its `Reuse` line names. Read the real code first, because the roadmap can be out of date. Code wins; note any discrepancy in the log.
-4. **Compile.** Wait for the domain reload. If there are compile errors, fix them, up to **3 attempts**. If it still fails, revert your edits for this task (`git checkout -- <your files>`, only files you changed), mark the task `BLOCKED(compile)`, log it, and move on.
+4. **Compile.** Wait for the domain reload (if the bridge drops, follow *Domain reloads and dropped connections* below). If there are compile errors, fix them, up to **3 attempts**. If it still fails, revert your edits for this task (`git checkout -- <your files>`, only files you changed), mark the task `BLOCKED(compile)`, log it, and move on.
 5. **Verify in Play.** Enter Play mode and wait for the LeanPlay boot to settle (hero dressed, Court visible). Perform the task's `Verify` steps. Collect evidence: an `[AuraVerify] <ID> PASS …` console line and/or a screenshot saved to `~/.zuko/aura-shots/<ID>.png`. Exit Play.
    - **Server checks:** the server is `ws://127.0.0.1:5050/unity-ws`. If it is down, verify the honest offline behaviour instead and record `PASS(offline)`. Never start, stop or edit the server.
 6. **Fix until it passes**, or mark `BLOCKED(<reason>)`. A blocker is a missing asset, a needed server/pipeline change, or a missing clip. For those, write a REQ in `.Aura/REQUESTS_FOR_CLAUDE.md`.
@@ -74,6 +74,14 @@ If anything regressed, fix it before new work. Log it as `REG-<n>`.
 - **Lore secrets.** Do not resolve the Eighth Refusal's secret. Sere is satire with no ninth gate.
 - **Reduced motion.** Every UI animation, shake, flash, pulse or tween must check `ConcordiaSettings.ReducedMotion` (roadmap B-05).
 - **Trademarks.** Do not use other games' trademarked feature names or franchise terms in code, UI or commits.
+
+## Domain reloads and dropped connections (added 2026-10-24 for Dutch)
+Every script compile and every Play-mode entry triggers a Unity domain reload. During a reload the MCP bridge drops and its port changes, and on this Mac (heavy swap) a reload can take **20 s to 2 min**. A tool call that fails with "Failed to connect to Unity TCP server", "prolonged domain reload", or any connection/socket error is **not** a failed task and **not** a reason to stop:
+1. Wait 60–120 s (do nothing to the editor meanwhile).
+2. Call `get_unity_editor_state` to confirm the editor is back and idle (not compiling or importing).
+3. Retry the same call. Repeat up to 5 times (about 10 min total) before treating the editor as unusable.
+4. Then continue the loop exactly where you were. Never end your turn or ask Dutch because of a reload drop.
+To cause fewer reloads: batch all script edits for a task, then compile **once** per task (not after each file), and finish edits before entering Play.
 
 ## Editor etiquette
 - Only one agent drives the editor. You own the Unity editor and the MCP bridge while this skill runs. If another client (Hermes, another Aura thread) is connected, stop and log it. Use a single thread; do not run parallel Aura threads against the editor.

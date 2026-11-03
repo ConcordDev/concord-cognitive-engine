@@ -89,6 +89,7 @@ namespace Concordia
                 g.personId = r.id;
                 g.gameObject.name = r.name;
                 PersonLabel.Attach(g.transform, r.name, g.def.title);
+                Recast(g.GetComponent<ModularPerson>(), r);
                 bound++;
             }
 
@@ -98,7 +99,12 @@ namespace Concordia
                 var r = ResidentFor(rec.Id, Prefer(rec.Id), used);
                 if (r == null) continue;
                 rec.Name = r.name;
-                if (rec.Body) rec.Body.name = r.name;
+                if (rec.Body)
+                {
+                    rec.Body.name = r.name;
+                    PersonLabel.Attach(rec.Body.transform, r.name, Pretty(r.job));
+                    Recast(rec.Body.GetComponent<ModularPerson>(), r);
+                }
                 bound++;
             }
 
@@ -129,6 +135,49 @@ namespace Concordia
             if (slot.StartsWith("hub-wdn", StringComparison.Ordinal)) return GuardJobs;
             if (slot.StartsWith("hub-arc", StringComparison.Ordinal) || slot.StartsWith("hub-cnc", StringComparison.Ordinal)) return HallJobs;
             return null;
+        }
+
+        /// <summary>
+        /// The server stores no appearance for its people, so the look is seeded from
+        /// the resident's id: the same person looks the same in every session and on
+        /// every client. FNV-1a, because string.GetHashCode differs between runtimes.
+        /// </summary>
+        public static int LookSeed(string serverId)
+        {
+            unchecked
+            {
+                uint h = 2166136261;
+                foreach (var ch in serverId ?? "") { h ^= ch; h *= 16777619; }
+                return (int)(h & 0x7fffffff);
+            }
+        }
+
+        public static Appearance LookFor(Resident r)
+        {
+            var look = Appearance.Random(LookSeed(r.id));
+            look.displayName = r.name;
+            return look;
+        }
+
+        /// <summary>Bound Lean row id → its resident, for bodies that materialize later.</summary>
+        public static Resident ForSlot(string slot) =>
+            slot != null && SlotToServer.TryGetValue(slot, out var id) && ByServerId.TryGetValue(id, out var r) ? r : null;
+
+        static void Recast(ModularPerson person, Resident r)
+        {
+            if (!person || r == null) return;
+            var marker = person.GetComponent<ResidentLook>() ?? person.gameObject.AddComponent<ResidentLook>();
+            if (marker.serverId == r.id) return;
+            marker.serverId = r.id;
+            person.RecastAs(LookFor(r), LookSeed(r.id));
+        }
+
+        public static void RecastIfBound(string slot, GameObject body)
+        {
+            var r = ForSlot(slot);
+            if (r == null || !body) return;
+            PersonLabel.Attach(body.transform, r.name, Pretty(r.job));
+            Recast(body.GetComponent<ModularPerson>(), r);
         }
 
         /// <summary>The body standing in for a server resident, if one is in the scene.</summary>
@@ -186,7 +235,7 @@ namespace Concordia
         internal static float SpeechSeconds(string text) =>
             Mathf.Clamp(1.6f + (text?.Length ?? 0) * 0.055f, 2f, 7f);
 
-        static string Pretty(string job)
+        internal static string Pretty(string job)
         {
             if (string.IsNullOrEmpty(job) || job == "generic") return "resident";
             return job.Replace('_', ' ');
@@ -199,6 +248,9 @@ namespace Concordia
             return cut > 0 ? text.Substring(0, cut + 1) : text;
         }
     }
+
+    /// <summary>Which resident this body was last dressed as, so a rebind does not rebuild it.</summary>
+    public class ResidentLook : MonoBehaviour { public string serverId; }
 
     /// <summary>Speaks a conversation's lines over the two speakers, one at a time.</summary>
     public class NpcSpeech : MonoBehaviour
@@ -229,7 +281,7 @@ namespace Concordia
     /// <summary>One spoken line above a head. Same quiet TextMesh as PersonLabel, set higher.</summary>
     public class SpeechLine : MonoBehaviour
     {
-        const float Height = 2.32f;
+        const float Height = 2.45f;
         const float MaxDist = 18f;
         const int Wrap = 34;
 
@@ -265,9 +317,9 @@ namespace Concordia
             var tm = child.AddComponent<TextMesh>();
             tm.anchor = TextAnchor.LowerCenter;
             tm.alignment = TextAlignment.Center;
-            tm.characterSize = 0.014f;
-            tm.fontSize = 36;
-            tm.fontStyle = FontStyle.Italic;
+            tm.characterSize = 0.024f;
+            tm.fontSize = 48;
+            tm.fontStyle = FontStyle.Bold;
             tm.color = color;
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             var rend = tm.GetComponent<Renderer>();

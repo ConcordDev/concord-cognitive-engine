@@ -630,6 +630,14 @@ namespace Concordia
             _carry = null;
         }
 
+        void OnBodyRebuilt()
+        {
+            _rend = null;
+            if (!_hidden) return;
+            _hidden = false;
+            Show(false);
+        }
+
         void Show(bool on)
         {
             if (_hidden == !on) return;

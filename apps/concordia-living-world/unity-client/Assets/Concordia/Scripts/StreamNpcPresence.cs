@@ -88,6 +88,12 @@ namespace Concordia
             if (_life) _life.enabled = fullAi;
         }
 
+        void OnBodyRebuilt()
+        {
+            _rend = null;
+            if (Band != StreamLodBand.Full) DematerializeVisual();
+        }
+
         void DematerializeVisual()
         {
             if (_rend == null) _rend = GetComponentsInChildren<Renderer>(true);

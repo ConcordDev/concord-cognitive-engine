@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9b6e2c47a1d84f0e8c5a3f71d2e9b4c6, type: 3}
   m_Name: HubVolumeFog
   m_EditorClassIdentifier: Concordia.Runtime::Concordia.HubVolumeFogFeature
-  m_Active: 1
+  m_Active: 0
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0

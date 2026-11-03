@@ -254,3 +254,18 @@ path	Assets/Concordia/FreePacks/Kenney/td/tile-crystal.glb
 path	Assets/Concordia/PolyHaven/Textures/wood_cabinet_worn_long/wood_cabinet_worn_long_diffuse_2k.jpg
 path	Assets/Concordia/PolyHaven/Textures/wood_cabinet_worn_long/wood_cabinet_worn_long_nor_gl_2k.jpg
 path	Assets/Concordia/PolyHaven/Textures/wood_cabinet_worn_long/wood_cabinet_worn_long_arm_2k.jpg
+key	freepacks:flower_yellowa	Assets/Concordia/FreePacks/Kenney/nature/flower_yellowA.glb
+path	Assets/Concordia/FreePacks/Kenney/nature/flower_yellowA.glb
+key	freepacks:flower_purplea	Assets/Concordia/FreePacks/Kenney/nature/flower_purpleA.glb
+path	Assets/Concordia/FreePacks/Kenney/nature/flower_purpleA.glb
+key	freepacks:banner-red	Assets/Concordia/FreePacks/Kenney/fantasy-town/banner-red.glb
+path	Assets/Concordia/FreePacks/Kenney/fantasy-town/banner-red.glb
+key	freepacks:wall	Assets/Concordia/FreePacks/Kenney/mini-market/wall.glb
+path	Assets/Concordia/FreePacks/Kenney/mini-market/wall.glb
+key	freepacks:column	Assets/Concordia/FreePacks/Kenney/mini-market/column.glb
+path	Assets/Concordia/FreePacks/Kenney/mini-market/column.glb
+key	freepacks:flag-banner-long	Assets/Concordia/FreePacks/Kenney/castle/flag-banner-long.glb
+path	Assets/Concordia/FreePacks/Kenney/castle/flag-banner-long.glb
+key	freepacks:bag	Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/OBJ/Bag.obj
+path	Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/OBJ/Bag.obj
+path	Assets/Concordia/Generated/Prefabs/P0/Spoils/CX_Prop_Spoils_pouch.prefab

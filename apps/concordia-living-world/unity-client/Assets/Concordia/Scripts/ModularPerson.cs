@@ -211,7 +211,7 @@ namespace Concordia // FORCE_REFRESH_0024
 
         bool TryBindAuthored(bool hero, string preferredPrefabPath)
         {
-            var prefab = LoadPersonPrefab(hero, preferredPrefabPath);
+            var prefab = LoadPersonPrefab(hero, preferredPrefabPath, _bodyPick);
             if (!prefab) return false;
             var body = Object.Instantiate(prefab, transform);
             body.name = "AuthoredPerson";
@@ -391,7 +391,7 @@ namespace Concordia // FORCE_REFRESH_0024
             body.position += Vector3.up * dy;
         }
 
-static GameObject LoadPersonPrefab(bool hero, string preferredPrefabPath)
+static GameObject LoadPersonPrefab(bool hero, string preferredPrefabPath, int pick)
         {
             GameObject go = null;
             if (!string.IsNullOrEmpty(preferredPrefabPath))
@@ -408,7 +408,8 @@ static GameObject LoadPersonPrefab(bool hero, string preferredPrefabPath)
             // Keep the existing Rocketbox pool only as an honest import fallback.
             var cxPaths = hero
                 ? new[] { "Assets/Concordia/Generated/Prefabs/CX_Humanoid_Male.prefab" }
-                : ((Mathf.Abs(_bodySeq++) & 1) == 0
+                // The person's own pick, so a rebuild (travel, a recast) keeps the same body.
+                : ((Mathf.Abs(pick) & 1) == 0
                     ? new[]
                     {
                         "Assets/Concordia/Generated/Prefabs/CX_Humanoid_Female.prefab",
@@ -435,7 +436,7 @@ static GameObject LoadPersonPrefab(bool hero, string preferredPrefabPath)
                 "Assets/Concordia/Models/humans/rocketbox/Female_Adult_01/Female_Adult_01.fbx",
                 "Assets/Concordia/Models/humans/rocketbox/Female_Adult_04/Female_Adult_04.fbx"
             };
-            int start = hero ? 0 : Mathf.Abs(_bodySeq++) % adult.Length;
+            int start = hero ? 0 : Mathf.Abs(pick) % adult.Length;
             for (int i = 0; i < adult.Length; i++)
             {
                 var p = adult[(start + i) % adult.Length];
@@ -471,6 +472,21 @@ static GameObject LoadPersonPrefab(bool hero, string preferredPrefabPath)
         /// Rebuild the authored body after Travel so Hub polo does not follow
         /// the player into a steel world (and Knight does not return to Hub).
         /// </summary>
+        /// <summary>
+        /// Rebuild this person with a given look and body pick. HubResidents uses it
+        /// so a server resident looks the same every session and on every client
+        /// (both seeded from their server id), instead of inheriting whatever the
+        /// crowd slot happened to spawn with.
+        /// </summary>
+        public void RecastAs(Appearance a, int pick)
+        {
+            look = a ?? look;
+            _bodyPick = Mathf.Abs(pick);
+            RebuildForWorld();
+            var cc = GetComponent<CharacterController>();
+            if (cc && cc.enabled) Grounding.Snap(cc);
+        }
+
         public static void RecastBody(ModularPerson person)
         {
             if (!person) return;
@@ -509,6 +525,9 @@ static GameObject LoadPersonPrefab(bool hero, string preferredPrefabPath)
             sword = MakeSword();
             GripSwordOrEmptyHands();
             if (GetComponentInParent<ConcordiaPlayer>()) CxDress.HeroKit(this);
+            // NpcLife / StreamNpcPresence cache this person's renderers to show and
+            // hide them; the old ones were just destroyed.
+            SendMessage("OnBodyRebuilt", SendMessageOptions.DontRequireReceiver);
         }
 
         /// <summary>
@@ -1477,7 +1496,13 @@ void StripGiantAndFallback(bool allowFallback = true)
             var delta = (ground + 0.08f) - footY;
             if (Mathf.Abs(delta) < 0.006f) return;
             if (Mathf.Abs(delta) > 1.8f) return;
-            transform.position += Vector3.up * Mathf.Clamp(delta, -0.16f, 0.16f);
+            // A crowd person IS the controller's object. Moving our own transform
+            // then moves the ground reference with the feet, the error never
+            // shrinks, and the root slid through the floor 0.16 m a frame. Move
+            // the body child against the fixed root instead (as PlantAuthoredFeet does).
+            var target = cc && cc.transform == transform ? transform.Find("AuthoredPerson") : transform;
+            if (!target) return;
+            target.position += Vector3.up * Mathf.Clamp(delta, -0.16f, 0.16f);
         }
 
         static void Capture(Transform t, ref Quaternion rest)

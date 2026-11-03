@@ -256,6 +256,7 @@ namespace Concordia
             var p = go.GetComponent<StreamNpcPresence>() ?? go.AddComponent<StreamNpcPresence>();
             p.BindSimId(r.Id);
             p.Apply(StreamLodBand.Full);
+            HubResidents.RecastIfBound(r.Id, go);
             if (ConcordiaHost.LeanPlay)
                 Debug.Log("[Concordia] LeanPlay: rematerialize NEW id=" + r.Id
                           + " live=" + CountLiveFullBodies() + "/" + FullBodyCap
