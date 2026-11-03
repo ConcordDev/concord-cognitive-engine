@@ -7,6 +7,7 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerVeterinaryActions from "../domains/veterinary.js";
+import { collectLensExport } from "../lib/lens-export.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -479,6 +480,43 @@ describe("veterinary — lab/imaging results", () => {
     const d = call("lab-delete", ctxA, {}, { id: a.result.labResult.id });
     assert.equal(d.ok, true);
     assert.equal(call("lab-list", ctxA, {}, {}).result.count, 0);
+  });
+});
+
+describe("veterinary — chart export", () => {
+  it("includes the caller's patient and visit, and not another account's chart", async () => {
+    const pat = call("patient-add", ctxA, {}, { name: "Rex", species: "dog" }).result.patient;
+    call("visit-log", ctxA, {}, { patientId: pat.id, kind: "checkup", cost: 55 });
+    call("patient-add", { actor: { userId: "vet_user_b" }, userId: "vet_user_b" }, {}, { name: "Other", species: "cat" });
+    call("lab-attach", ctxA, {}, { patientName: "Rex", patientId: pat.id, kind: "bloodwork" });
+    const runMacro = async () => ({ ok: true, artifacts: [] });
+    const out = await collectLensExport({ runMacro, domain: "veterinary", ctx: ctxA });
+    assert.equal(out.ok, true);
+    assert.equal(out.stateBacked, true);
+    const rex = out.artifacts.find((a) => a.type === "patient" && a.title === "Rex");
+    assert.ok(rex);
+    assert.equal(rex.data.visits.length, 1);
+    assert.equal(rex.data.visits[0].kind, "checkup");
+    assert.equal(out.artifacts.some((a) => a.title === "Other"), false);
+    const lab = out.artifacts.find((a) => a.type === "lab" && a.title === "Rex");
+    assert.ok(lab);
+    assert.equal(lab.data.kind, "bloodwork");
+    const other = await collectLensExport({
+      runMacro,
+      domain: "veterinary",
+      ctx: { actor: { userId: "vet_user_b" }, userId: "vet_user_b" },
+    });
+    assert.equal(other.artifacts.some((a) => a.title === "Rex"), false);
+    assert.equal(other.artifacts.some((a) => a.title === "Other"), true);
+    assert.equal(other.artifacts.some((a) => a.type === "lab"), false);
+    const empty = await collectLensExport({
+      runMacro,
+      domain: "veterinary",
+      ctx: { actor: { userId: "vet_user_c" }, userId: "vet_user_c" },
+    });
+    assert.equal(empty.ok, true);
+    assert.equal(empty.stateBacked, true);
+    assert.equal(empty.artifacts.length, 0);
   });
 });
 

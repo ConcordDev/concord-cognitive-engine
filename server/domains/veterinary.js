@@ -6,6 +6,7 @@
 // veterinary adverse-event feed. Free public source, no API key.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 import { needNums, optNum, notComputed, advisory, requireList } from "../lib/lens-inputs.js";
 import { assertPayable } from "../lib/money-guards.js";
 import { bindWave1 } from "../lib/lens-input-schemas-wave1.js";
@@ -411,6 +412,40 @@ export default function registerVeterinaryActions(registerLensAction) {
     return s[key];
   }
   const vtList = (col, userId) => { if (!col.has(userId)) col.set(userId, []); return col.get(userId); };
+
+  // The practice chart lives in STATE.veterinaryLens, not the generic
+  // artifact store. The shared Export reads a registered provider.
+  registerLensExportProvider("veterinary", (ctx) => {
+    const s = getVetState();
+    if (!s) return [];
+    const userId = vtActor(ctx);
+    const rows = [];
+    for (const p of vtPatients(s, userId)) {
+      rows.push({ id: p.id, type: "patient", title: p.name || "Patient", createdAt: p.createdAt || null, data: p });
+    }
+    const collections = [
+      ["appointments", "appointment", (r) => r.patientName || "Appointment"],
+      ["invoices", "invoice", (r) => r.patientName || "Invoice"],
+      ["soapNotes", "soap", (r) => r.patientName || "SOAP note"],
+      ["prescriptions", "prescription", (r) => r.drug || "Prescription"],
+      ["labResults", "lab", (r) => r.patientName || r.kind || "Lab result"],
+      ["inventory", "inventory", (r) => r.name || "Inventory item"],
+    ];
+    for (const [key, type, titleOf] of collections) {
+      const col = s[key];
+      if (!(col instanceof Map) || !col.has(userId)) continue;
+      for (const row of col.get(userId)) {
+        rows.push({
+          id: row.id,
+          type,
+          title: titleOf(row),
+          createdAt: row.createdAt || row.prescribedAt || row.date || null,
+          data: row,
+        });
+      }
+    }
+    return rows;
+  });
   const APPT_TYPES = ["wellness", "sick", "surgery", "dental", "emergency", "vaccination", "followup"];
   const APPT_STATUS = ["scheduled", "checked_in", "in_progress", "completed", "no_show", "cancelled"];
 
