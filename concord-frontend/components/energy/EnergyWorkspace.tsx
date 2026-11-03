@@ -10,7 +10,7 @@ import { lensRun } from '@/lib/api/client';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensStatePersistence } from '@/lib/lens-state-persistence';
-import { cn } from '@/lib/utils';
+import { cn, formatFigure } from '@/lib/utils';
 import { EiaPanel } from './EiaPanel';
 import { EnergyActionStack } from './EnergyActionStack';
 import { EnergyBillingPanel } from './EnergyBillingPanel';
@@ -388,11 +388,11 @@ function MeterPicker({
 
 function DashboardStrip({ dashboard }: { dashboard: Dashboard }) {
   const stats = [
-    ['Month', `${dashboard.monthKwh} kWh`],
-    ['Cost', `$${dashboard.monthCost}`],
-    ['Solar', `${dashboard.solarKwh} kWh`],
-    ['Offset', `${dashboard.solarOffsetPct}%`],
-    ['Rate', `$${dashboard.ratePerKwh}/kWh`],
+    ['Month', formatFigure(dashboard.monthKwh, { suffix: ' kWh' })],
+    ['Cost', formatFigure(dashboard.monthCost, { prefix: '$' })],
+    ['Solar', formatFigure(dashboard.solarKwh, { suffix: ' kWh' })],
+    ['Offset', formatFigure(dashboard.solarOffsetPct, { suffix: '%' })],
+    ['Rate', formatFigure(dashboard.ratePerKwh, { prefix: '$', suffix: '/kWh' })],
   ];
   return (
     <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10 sm:grid-cols-5">
