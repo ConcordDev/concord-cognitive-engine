@@ -32,6 +32,11 @@ function newChild(ctx, months = 6, sex = "boy") {
   return r.result.child.id;
 }
 
+// A sleep that has already ended. `endedAgoMin` keeps the end off "now".
+function completedStart(durationMin, endedAgoMin = 2) {
+  return new Date(Date.now() - (durationMin + endedAgoMin) * 60000).toISOString();
+}
+
 describe("parenting.child-*", () => {
   it("adds, lists with age, deletes; isolates per user", () => {
     const id = newChild(ctxA, 12);
@@ -113,12 +118,59 @@ describe("parenting.feed-*", () => {
 describe("parenting.sleep-* and sweet-spot", () => {
   it("logs sleep and computes today's totals", () => {
     const id = newChild(ctxA);
-    call("sleep-log", ctxA, { childId: id, type: "nap", durationMin: 60 });
-    call("sleep-log", ctxA, { childId: id, type: "nap", durationMin: 45 });
+    const naps = [
+      { durationMin: 60, startAt: completedStart(60) },
+      { durationMin: 45, startAt: completedStart(45) },
+    ];
+    for (const nap of naps) {
+      const logged = call("sleep-log", ctxA, { childId: id, type: "nap", ...nap });
+      assert.equal(logged.ok, true);
+      assert.equal(logged.result.entry.startAt, nap.startAt);
+      assert.equal(
+        logged.result.entry.endAt,
+        new Date(Date.parse(nap.startAt) + nap.durationMin * 60000).toISOString(),
+      );
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const todayNaps = naps.filter((n) => n.startAt.slice(0, 10) === today);
     const stats = call("sleep-stats", ctxA, { childId: id });
-    assert.equal(stats.result.sleepMinToday, 105);
-    assert.equal(stats.result.napsToday, 2);
+    assert.equal(stats.result.sleepMinToday, todayNaps.reduce((a, n) => a + n.durationMin, 0));
+    assert.equal(stats.result.napsToday, todayNaps.length);
     assert.equal(stats.result.longestStretchMin, 60);
+  });
+
+  it("does not invent a start or store a nap that has not ended", () => {
+    const id = newChild(ctxA);
+    const missing = call("sleep-log", ctxA, { childId: id, type: "nap", durationMin: 90 });
+    assert.equal(missing.ok, false);
+    assert.equal(missing.error, "invalid_input");
+    assert.equal(missing.field, "startAt");
+    const ahead = call("sleep-log", ctxA, {
+      childId: id, type: "nap", durationMin: 90, startAt: new Date().toISOString(),
+    });
+    assert.equal(ahead.ok, false);
+    assert.equal(ahead.error, "invalid_input");
+    assert.equal(ahead.field, "endAt");
+    assert.equal(ahead.reason, "end_in_future");
+    const futureStart = call("sleep-log", ctxA, {
+      childId: id, durationMin: 10, startAt: new Date(Date.now() + 60 * 60000).toISOString(),
+    });
+    assert.equal(futureStart.ok, false);
+    assert.equal(futureStart.field, "startAt");
+    assert.equal(futureStart.reason, "start_in_future");
+    const garbage = call("sleep-log", ctxA, {
+      childId: id, durationMin: "nope", startAt: completedStart(10),
+    });
+    assert.equal(garbage.ok, false);
+    assert.equal(garbage.field, "durationMin");
+    const startAt = completedStart(30);
+    const mismatch = call("sleep-log", ctxA, {
+      childId: id, durationMin: 30, startAt,
+      endAt: new Date(Date.parse(startAt) + 10 * 60000).toISOString(),
+    });
+    assert.equal(mismatch.ok, false);
+    assert.equal(mismatch.field, "endAt");
+    assert.equal(call("sleep-history", ctxA, { childId: id }).result.count, 0);
   });
 
   it("sweet-spot predicts a nap window from last wake + age wake window", () => {
@@ -235,10 +287,12 @@ describe("parenting.medicine / activity / timeline / dashboard", () => {
 
   it("day-timeline merges all event types for a date", () => {
     const id = newChild(ctxA);
-    call("feed-log", ctxA, { childId: id, kind: "bottle", amountMl: 100 });
-    call("diaper-log", ctxA, { childId: id, kind: "wet" });
-    call("sleep-log", ctxA, { childId: id, type: "nap", durationMin: 30 });
-    const r = call("day-timeline", ctxA, { childId: id });
+    const startAt = new Date(Date.now() - 90 * 1000).toISOString();
+    const date = startAt.slice(0, 10);
+    call("feed-log", ctxA, { childId: id, kind: "bottle", amountMl: 100, at: startAt });
+    call("diaper-log", ctxA, { childId: id, kind: "wet", at: startAt });
+    call("sleep-log", ctxA, { childId: id, type: "nap", durationMin: 1, startAt });
+    const r = call("day-timeline", ctxA, { childId: id, date });
     assert.equal(r.result.count, 3);
   });
 
@@ -392,7 +446,7 @@ describe("parenting.caregiver-* (multi-caregiver sync)", () => {
     assert.equal(call("feed-log", ctxStranger, { childId: id, kind: "bottle" }).ok, false);
     assert.equal(call("feed-history", ctxStranger, { childId: id }).result.count, 0);
 
-    assert.equal(call("sleep-log", ctxHelper, { childId: id, type: "nap", durationMin: 30 }).ok, true);
+    assert.equal(call("sleep-log", ctxHelper, { childId: id, type: "nap", durationMin: 30, startAt: completedStart(30) }).ok, true);
     assert.equal(call("sleep-history", ctxA, { childId: id }).result.count, 1);
     const timer = call("timer-start", ctxHelper, { childId: id, kind: "nursing", side: "left" });
     assert.equal(timer.ok, true);
@@ -535,7 +589,7 @@ describe("parenting.trends-insights", () => {
   it("summarizes weekly feeds/sleep/diapers", () => {
     const id = newChild(ctxA, 6);
     call("feed-log", ctxA, { childId: id, kind: "bottle", amountMl: 120 });
-    call("sleep-log", ctxA, { childId: id, type: "nap", durationMin: 90 });
+    call("sleep-log", ctxA, { childId: id, type: "nap", durationMin: 90, startAt: completedStart(90) });
     call("diaper-log", ctxA, { childId: id, kind: "wet" });
     const r = call("trends-insights", ctxA, { childId: id, days: 7 });
     assert.equal(r.ok, true);
