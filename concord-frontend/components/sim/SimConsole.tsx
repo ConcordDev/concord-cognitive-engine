@@ -690,13 +690,24 @@ export function SimConsole() {
       data: { ...editingScenario, updatedAt: new Date().toISOString() },
       meta: { tags: [editingScenario.modelType], status: 'draft' },
     };
-    if (editingScenario.id && scenarios.find(s => s.id === editingScenario.id)) {
-      await updateScenarioArtifact(editingScenario.id, payload);
-    } else {
-      await createScenarioArtifact(payload);
+    try {
+      if (editingScenario.id && scenarios.find(s => s.id === editingScenario.id)) {
+        await updateScenarioArtifact(editingScenario.id, payload);
+      } else {
+        await createScenarioArtifact(payload);
+      }
+      // sim.md M7: Save Scenario was silent — no confirmation it actually
+      // persisted. Give it the same receipt every other save path in this
+      // lens uses.
+      useUIStore.getState().addToast({ type: 'success', message: `Saved scenario "${editingScenario.name}".` });
+      setEditingScenario(null);
+      setShowScenarioBuilder(false);
+    } catch (err) {
+      useUIStore.getState().addToast({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Save scenario failed',
+      });
     }
-    setEditingScenario(null);
-    setShowScenarioBuilder(false);
   }, [editingScenario, scenarios, createScenarioArtifact, updateScenarioArtifact]);
 
   const handleDeleteScenario = useCallback(async (id: string) => {
