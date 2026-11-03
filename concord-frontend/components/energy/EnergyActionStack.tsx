@@ -1,31 +1,29 @@
 'use client';
 
 /**
- * EnergyActionStack — Sense / PG&E / Tesla-shape action surface for
- * the energy lens. Pulls live EIA electricity rates for a state, then
- * exposes 5 real-backend actions on top of the rate snapshot.
+ * Energy Share — EIA rate, bill from that rate, a private snapshot DTU,
+ * and a CSV copy of the loaded series.
  *
- *   1. Mint usage snapshot  → dtu.create with rate + bill estimate
- *                             (private; tags=[energy,bill,state:XX])
- *   2. DM household member  → /api/social/dm with this month's
- *                             estimated bill + YoY change
- *   3. Publish efficiency tips → dtu.create public + cite + flag
- *                             published (federation pickup)
- *   4. Agent — optimize     → chat_agent.do "given my appliances:
- *                             {list}, what schedule cuts the bill?"
- *   5. Copy CSV             → clipboard write of monthlySeries rows
+ * DM, public publish, and optimize are not energy actions. The panel
+ * lists them as unavailable. It does not send a message, publish a DTU,
+ * or call an agent.
  */
 
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import {
-  Zap, Send, Globe, Wand2, FileDown, Sparkles,
+  Zap, FileDown, Sparkles,
   Loader2, Check, AlertTriangle, TrendingUp, TrendingDown,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers, lensRun } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
+import {
+  ABSENT_ENERGY_SHARE_ACTIONS,
+  estimatedBillUsd,
+  recordedMonthlyKwh,
+} from './share-actions.mjs';
 
 interface RateResult {
   state: string; sector: string;
@@ -48,7 +46,7 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 const STATES = ['CA', 'NY', 'TX', 'FL', 'WA', 'MA', 'IL', 'CO', 'OR', 'GA'];
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
-type ActionId = 'mint' | 'dm' | 'publish' | 'agent' | 'csv';
+type ActionId = 'mint' | 'csv';
 
 function pickMessage(e: unknown): string {
   const ax = e as { response?: { data?: { error?: string } }; message?: string };
@@ -63,19 +61,14 @@ export function EnergyActionStack() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState<ActionId | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
-
   const [snapshotDtuId, setSnapshotDtuId] = useState<string | null>(null);
-  const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
-  const [dmRecipient, setDmRecipient] = useState('');
-  const [appliances, setAppliances] = useState('');
-  const [agentReply, setAgentReply] = useState<string | null>(null);
 
   const load = useMutation({
     mutationFn: async () => callMacro<RateResult>('eia-electricity-rates', { state, sector }),
     onSuccess: (env) => {
       if (env.ok && env.result) {
         setRate(env.result); setLoadError(null);
-        setSnapshotDtuId(null); setPublishedDtuId(null); setAgentReply(null);
+        setSnapshotDtuId(null);
       } else { setRate(null); setLoadError(env.error || 'no rate data'); }
     },
     onError: (e) => { setRate(null); setLoadError(pickMessage(e)); },
@@ -84,14 +77,15 @@ export function EnergyActionStack() {
   const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
   const err = (text: string) => setFeedback({ kind: 'err', text });
 
-  const kwh = parseFloat(monthlyKwh) || 0;
-  const billUsd = rate?.latest ? (rate.latest.priceCentsPerKwh / 100) * kwh : 0;
-  const billText = billUsd > 0 ? `$${billUsd.toFixed(2)}` : '—';
+  const kwh = recordedMonthlyKwh(monthlyKwh);
+  const billUsd = rate?.latest ? estimatedBillUsd(rate.latest.priceCentsPerKwh, kwh) : null;
+  const billText = billUsd == null ? '—' : `$${billUsd.toFixed(2)}`;
   const yoy = rate?.yearOverYearChangePct;
   const yoyText = yoy != null ? `${yoy >= 0 ? '+' : ''}${yoy.toFixed(1)}%` : '—';
 
   async function actMint() {
     if (!rate?.latest) { err('Load a rate first.'); return; }
+    if (kwh == null || billUsd == null) { err('Enter monthly kWh.'); return; }
     setBusy('mint'); setFeedback(null);
     try {
       const r = await lensRun({
@@ -108,7 +102,7 @@ export function EnergyActionStack() {
               period: rate.latest.period,
               priceCentsPerKwh: rate.latest.priceCentsPerKwh,
               monthlyKwh: kwh,
-              estimatedBillUsd: Math.round(billUsd * 100) / 100,
+              estimatedBillUsd: billUsd,
               yearOverYearChangePct: yoy,
               monthlySeries: rate.monthlySeries,
             },
@@ -117,82 +111,8 @@ export function EnergyActionStack() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setSnapshotDtuId(id); ok(`Snapshot saved as DTU ${id.slice(0, 8)}…`); }
+      if (id) { setSnapshotDtuId(id); ok(`Snapshot saved as a private DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
-    } catch (e) { err(pickMessage(e)); }
-    finally { setBusy(null); }
-  }
-
-  async function actDm() {
-    if (!rate?.latest) { err('Load a rate first.'); return; }
-    if (!dmRecipient.trim()) { err('Enter a recipient.'); return; }
-    setBusy('dm'); setFeedback(null);
-    const trend = yoy == null ? '' : yoy >= 5 ? ` (rates are up ${yoyText} YoY — worth optimizing)` : yoy <= -3 ? ` (rates dropped ${yoyText} YoY)` : '';
-    const body = `⚡ ${state} ${sector === 'RES' ? 'residential' : sector === 'COM' ? 'commercial' : 'industrial'} energy snapshot\n\nLatest EIA rate: ${rate.latest.priceCentsPerKwh.toFixed(2)} ¢/kWh (${rate.latest.period})\nAt ${kwh} kWh/month → est. bill ${billText}${trend}`;
-    try {
-      const r = await api.post('/api/social/dm', { toUserId: dmRecipient.trim(), content: body });
-      if (r.data?.ok !== false) { ok(`Snapshot DMed to ${dmRecipient.trim()}.`); setDmRecipient(''); }
-      else err(r.data?.error ?? 'send failed');
-    } catch (e) { err(pickMessage(e)); }
-    finally { setBusy(null); }
-  }
-
-  async function actPublish() {
-    if (!rate?.latest) { err('Load a rate first.'); return; }
-    setBusy('publish'); setFeedback(null);
-    try {
-      const r = await lensRun({
-        domain: 'dtu', name: 'create',
-        input: withContentLicense({
-          title: `${state} efficiency tips — ${new Date().toISOString().slice(0, 10)}`,
-          tags: ['energy', 'eia', 'efficiency-tips', 'public', `state:${state}`],
-          source: 'energy:tips:public',
-          meta: {
-            visibility: 'public',
-            consent: { allowCitations: true },
-            energy: {
-              state, sector,
-              priceCentsPerKwh: rate.latest.priceCentsPerKwh,
-              period: rate.latest.period,
-              yearOverYearChangePct: yoy,
-            },
-            tipsStructure: ['HVAC schedule', 'water heater', 'lighting', 'standby loads', 'peak shifting'],
-          },
-        }, 'dataset', ['private', 'public_view', 'social_post']),
-      });
-      const dtu = r.data?.result?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Tips published ${id.slice(0, 8)}…`); }
-      else err(pub.data?.error ?? 'publish flag failed');
-    } catch (e) { err(pickMessage(e)); }
-    finally { setBusy(null); }
-  }
-
-  async function actAgent() {
-    if (!rate?.latest) { err('Load a rate first.'); return; }
-    if (!appliances.trim()) { err('List your major appliances.'); return; }
-    setBusy('agent'); setFeedback(null); setAgentReply(null);
-    try {
-      const task = [
-        `${state} ${sector} electricity rate is ${rate.latest.priceCentsPerKwh.toFixed(2)} ¢/kWh (${rate.latest.period}).`,
-        yoy != null ? `Year-over-year change: ${yoyText}.` : '',
-        `My monthly usage: ~${kwh} kWh.`,
-        `Major appliances: ${appliances.trim()}.`,
-        ``,
-        'Return a short plaintext schedule + the 3 biggest wins (peak/off-peak shifts,',
-        'standby load kills, swap candidates). Concrete and actionable.',
-      ].filter(Boolean).join(' ');
-      const r = await lensRun({
-        domain: 'chat_agent', name: 'do',
-        input: { task, maxTurns: 4 },
-      });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) {
-        setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
-        ok('Optimization brief ready.');
-      } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -210,11 +130,8 @@ export function EnergyActionStack() {
   }
 
   const actions: Array<{ id: ActionId; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; accent: string; handler: () => void; disabled?: boolean }> = [
-    { id: 'mint',    label: snapshotDtuId  ? 'Snapshot saved' : 'Mint snapshot',    desc: snapshotDtuId  ? `DTU ${snapshotDtuId.slice(0, 8)}…`  : 'Private DTU with rate + bill estimate',           icon: Sparkles, accent: '#06b6d4', handler: actMint,    disabled: !rate?.latest || !!snapshotDtuId },
-    { id: 'dm',      label: 'DM household',                                          desc: rate?.latest ? `${billText} bill + YoY trend`     : 'Load rate first',                                  icon: Send,     accent: '#ec4899', handler: actDm,      disabled: !rate?.latest },
-    { id: 'publish', label: publishedDtuId ? 'Tips published' : 'Publish tips',     desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public efficiency tips DTU + federation',         icon: Globe,    accent: '#22c55e', handler: actPublish, disabled: !rate?.latest || !!publishedDtuId },
-    { id: 'agent',   label: 'Optimize (agent)',                                      desc: 'Agent schedules appliances against the rate',                                                          icon: Wand2,    accent: '#eab308', handler: actAgent,   disabled: !rate?.latest },
-    { id: 'csv',     label: 'Copy CSV',                                              desc: rate?.monthlySeries.length ? `${rate.monthlySeries.length} months → clipboard` : '—',                  icon: FileDown, accent: '#3b82f6', handler: actCsv,     disabled: !rate?.monthlySeries.length },
+    { id: 'mint', label: snapshotDtuId ? 'Snapshot saved' : 'Mint snapshot', desc: snapshotDtuId ? `Private DTU ${snapshotDtuId.slice(0, 8)}…` : 'Private DTU with this rate and bill', icon: Sparkles, accent: '#06b6d4', handler: actMint, disabled: !rate?.latest || kwh == null || !!snapshotDtuId },
+    { id: 'csv', label: 'Copy CSV', desc: rate?.monthlySeries.length ? `${rate.monthlySeries.length} months → clipboard` : '—', icon: FileDown, accent: '#3b82f6', handler: actCsv, disabled: !rate?.monthlySeries.length },
   ];
 
   return (
@@ -223,7 +140,7 @@ export function EnergyActionStack() {
         <Zap className="h-4 w-4 text-amber-400" />
         <h3 className="text-sm font-semibold text-white">Energy actions</h3>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-          eia · live
+          {rate?.latest ? 'eia · live' : 'eia'}
         </span>
       </header>
 
@@ -239,7 +156,7 @@ export function EnergyActionStack() {
           <option value="IND">Industrial</option>
         </select>
         <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">kWh/mo</label>
-        <input type="text" value={monthlyKwh} onChange={(e) => setMonthlyKwh(e.target.value.replace(/\D/g, ''))} className="w-20 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 font-mono text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40" />
+        <input type="text" inputMode="numeric" value={monthlyKwh} onChange={(e) => setMonthlyKwh(e.target.value.replace(/\D/g, ''))} aria-label="Monthly kWh" className="w-20 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 font-mono text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40" />
         <button type="button" onClick={() => load.mutate()} disabled={load.isPending} className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-200 hover:bg-amber-500/20 disabled:opacity-50">
           {load.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Load rate'}
         </button>
@@ -259,7 +176,7 @@ export function EnergyActionStack() {
           <div className="rounded-lg border border-emerald-500/30 bg-zinc-900/60 p-3">
             <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Est. monthly bill</div>
             <div className="text-2xl font-bold text-emerald-300">{billText}</div>
-            <div className="text-[11px] text-zinc-400">at {kwh} kWh</div>
+            <div className="text-[11px] text-zinc-400">{kwh == null ? 'kWh not recorded' : `at ${kwh} kWh`}</div>
           </div>
           <div className={cn('rounded-lg border bg-zinc-900/60 p-3', yoy == null ? 'border-zinc-700' : yoy >= 0 ? 'border-rose-500/30' : 'border-emerald-500/30')}>
             <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">YoY change</div>
@@ -272,20 +189,7 @@ export function EnergyActionStack() {
         </div>
       )}
 
-      {rate?.latest && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <div>
-            <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">DM recipient (for snapshot)</label>
-            <input type="text" value={dmRecipient} onChange={(e) => setDmRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:ring-2 focus:ring-pink-400/40" placeholder="household member user id" />
-          </div>
-          <div>
-            <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Appliances (for agent)</label>
-            <input type="text" value={appliances} onChange={(e) => setAppliances(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40" placeholder="HVAC, dryer, EV, water heater, dishwasher…" />
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {actions.map(a => {
           const Icon = a.icon;
           const isBusy = busy === a.id;
@@ -312,15 +216,17 @@ export function EnergyActionStack() {
         })}
       </div>
 
-      {agentReply && (
-        <div className="px-3 py-2 rounded-lg bg-yellow-500/5 border border-yellow-500/30 text-[11px] text-zinc-200 max-h-56 overflow-y-auto">
-          <div className="flex items-center gap-1.5 text-yellow-400 font-semibold mb-1.5 uppercase tracking-wider text-[10px]">
-            <Wand2 className="h-3 w-3" />
-            Optimization brief
-          </div>
-          <pre className="whitespace-pre-wrap font-sans leading-relaxed">{agentReply}</pre>
-        </div>
-      )}
+      <section aria-label="Not energy actions" className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-2">
+        <h4 className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Not on this lens</h4>
+        <ul className="mt-1 space-y-1">
+          {ABSENT_ENERGY_SHARE_ACTIONS.map((a) => (
+            <li key={a.id} className="flex items-baseline justify-between gap-3 rounded px-1 py-1">
+              <span className="text-[12px] text-zinc-300">{a.label}</span>
+              <span className="text-[10px] text-zinc-500 text-right">{a.reason}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <AnimatePresence>
         {feedback && (
