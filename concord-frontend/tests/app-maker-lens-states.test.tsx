@@ -31,6 +31,7 @@ const lensCreate = vi.fn();
 // ── compute-action channel: useRunArtifact mutate ───────────────────────────
 const runMutate = vi.fn();
 const useRunArtifactSpy = vi.fn();
+const lensRunMock = vi.fn();
 
 vi.mock('@/lib/api/client', () => ({
   apiHelpers: {
@@ -40,8 +41,16 @@ vi.mock('@/lib/api/client', () => ({
       promote: (...a: unknown[]) => appsPromote(...a),
       validate: (...a: unknown[]) => appsValidate(...a),
     },
-    lens: { create: (...a: unknown[]) => lensCreate(...a) },
+    lens: { create: (...a: unknown[]) => lensCreate(...a), update: vi.fn().mockResolvedValue({ data: { ok: true } }) },
   },
+  lensRun: (...a: unknown[]) => lensRunMock(...a),
+}));
+// A Studio project is already "open" (set via AppMakerProjectContext in real
+// use when a user opens a project in the Studio tab) — ActionsPanel resolves
+// it through this context rather than the apps list above.
+vi.mock('@/components/app-maker/AppMakerProjectContext', () => ({
+  AppMakerProjectProvider: ({ children }: { children: React.ReactNode }) => children,
+  useAppMakerProject: () => ({ activeProjectId: 'proj_1', setActiveProjectId: () => {} }),
 }));
 
 vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
@@ -107,6 +116,7 @@ beforeEach(() => {
   lensCreate.mockReset();
   runMutate.mockReset();
   useRunArtifactSpy.mockReset();
+  lensRunMock.mockReset();
 });
 
 describe('app-maker lens — wiring', () => {
@@ -167,7 +177,10 @@ describe('app-maker lens — apps list four UX states', () => {
 describe('app-maker lens — compute-action panel error state + working Retry', () => {
   it('ERROR: a failed action shows role=alert + Retry; Retry re-invokes the backend and recovers', async () => {
     appsList.mockImplementation(() => Promise.resolve({ data: { apps: [] } }));
-    // auto-create returns an artifact id so the action proceeds to runMutate.
+    // The open project (proj_1, per the AppMakerProjectContext mock above)
+    // resolves to a real project with one page, so the action proceeds to
+    // sync-then-run instead of stopping at "no project open".
+    lensRunMock.mockImplementation(() => Promise.resolve({ data: { ok: true, result: { project: { id: 'proj_1', name: 'My CRM', pages: [{ id: 'pg_1', name: 'Home', route: '/', elements: [] }] } } } }));
     lensCreate.mockImplementation(() => Promise.resolve({ data: { artifact: { id: 'art_1' } } }));
 
     let fail = true;
