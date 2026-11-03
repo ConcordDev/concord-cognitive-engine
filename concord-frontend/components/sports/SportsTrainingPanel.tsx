@@ -2,7 +2,8 @@
 
 import { useCallback, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Clock, Plus, Target } from 'lucide-react';
+import { Clock, Plus, Target, Trash2 } from 'lucide-react';
+import { lensRun } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { EmptyState, ErrorState } from '@/components/ui';
 import { ds } from '@/lib/design-system';
@@ -37,8 +38,27 @@ export function SportsTrainingPanel() {
   const reduceMotion = useReducedMotion();
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState(EMPTY);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
   const { items, isLoading, isError, error, refetch, create, createMut } =
     useLensData<TrainingLog>('sports', 'TrainingLog', { seed: [] });
+
+  const removeSession = useCallback(async (id: string) => {
+    setPendingId(id);
+    setFormError(null);
+    try {
+      const r = await lensRun('sports', 'training-delete', { id });
+      if (r.data?.ok === false) {
+        setFormError(r.data?.error || 'Session was not deleted.');
+        return;
+      }
+      await refetch();
+    } catch {
+      setFormError('Session was not deleted.');
+    } finally {
+      setPendingId(null);
+    }
+  }, [refetch]);
 
   const handleAdd = useCallback(async () => {
     if (!form.name.trim()) return;
@@ -134,6 +154,8 @@ export function SportsTrainingPanel() {
         )}
       </AnimatePresence>
 
+      {formError && <p role="alert" className="text-xs text-red-300">{formError}</p>}
+
       {isLoading ? (
         <div className={cn(ds.panel, 'text-center text-gray-400')} role="status">
           Loading sessions…
@@ -175,7 +197,18 @@ export function SportsTrainingPanel() {
                     </div>
                   </div>
                 </div>
-                <span className="text-xs text-gray-400 font-mono">{log.date}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs text-gray-400 font-mono">{log.date}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeSession(item.id)}
+                    disabled={pendingId === item.id}
+                    className="text-gray-500 hover:text-red-400 p-1"
+                    aria-label={`Delete ${item.title || log.name || 'session'}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             );
           })}

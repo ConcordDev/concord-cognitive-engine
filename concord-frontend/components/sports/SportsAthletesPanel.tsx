@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, UserRound, ChevronLeft } from 'lucide-react';
+import { Loader2, Plus, UserRound, ChevronLeft, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/ui';
 
@@ -62,6 +62,16 @@ export function SportsAthletesPanel({ onChange }: { onChange: () => void }) {
     setForm({ name: '', team: '', position: '' }); setError(null);
     await refresh();
   };
+  const removeAthlete = async (id: string) => {
+    const r = await lensRun('sports', 'athlete-remove', { id });
+    if (r.data?.ok === false) {
+      setError(r.data?.error || 'Athlete was not removed.');
+      return;
+    }
+    if (selected?.id === id) setSelected(null);
+    setError(null);
+    await refresh();
+  };
   const logStats = async () => {
     if (!selected) return;
     const stats: Record<string, number> = {};
@@ -90,9 +100,19 @@ export function SportsAthletesPanel({ onChange }: { onChange: () => void }) {
           className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-200">
           <ChevronLeft className="w-3.5 h-3.5" /> All athletes
         </button>
-        <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-          <h3 className="text-sm font-bold text-zinc-100">{selected.name}</h3>
-          <p className="text-[11px] text-zinc-400">{[selected.team, selected.position].filter(Boolean).join(' · ') || 'No details'}</p>
+        <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 flex items-start justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-bold text-zinc-100">{selected.name}</h3>
+            <p className="text-[11px] text-zinc-400">{[selected.team, selected.position].filter(Boolean).join(' · ') || 'No details'}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => removeAthlete(selected.id)}
+            className="text-zinc-500 hover:text-rose-400"
+            aria-label={`Remove ${selected.name}`}
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
 
         {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
@@ -163,14 +183,22 @@ export function SportsAthletesPanel({ onChange }: { onChange: () => void }) {
       ) : (
         <ul className="space-y-2">
           {athletes.map((a) => (
-            <li key={a.id}>
+            <li key={a.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
               <button type="button" onClick={() => openAthlete(a)}
-                className="w-full text-left flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 hover:border-zinc-700">
+                className="flex-1 text-left flex items-center gap-2 hover:text-zinc-50">
                 <UserRound className="w-4 h-4 text-red-400 shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-zinc-100">{a.name}</p>
                   <p className="text-[11px] text-zinc-400">{[a.team, a.position].filter(Boolean).join(' · ') || 'No details'}</p>
                 </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => removeAthlete(a.id)}
+                className="text-zinc-500 hover:text-rose-400"
+                aria-label={`Remove ${a.name}`}
+              >
+                <Trash2 className="w-4 h-4" />
               </button>
             </li>
           ))}
