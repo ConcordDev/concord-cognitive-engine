@@ -8,6 +8,8 @@ import { SPECIES_OPTIONS } from './vet-types';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type CalcResult = Record<string, any>;
 
+const TRIAGE_LIMIT = 'Not a veterinary assessment and not a substitute for one. Call a veterinarian or an emergency clinic.';
+
 const TRIAGE_SYMPTOMS = [
   'seizure',
   'bleeding',
@@ -94,6 +96,7 @@ function TriageCalc() {
   return (
     <CalcCard icon={<Activity className="h-4 w-4 text-red-400" />} title="Triage assessment">
       <div className="space-y-2">
+        <p className="rounded border border-red-900/60 bg-red-950/40 px-2 py-1.5 text-xs text-red-100">{TRIAGE_LIMIT}</p>
         <div className="flex gap-2">
           <select
             value={species}
@@ -146,6 +149,7 @@ function TriageCalc() {
         ) : result ? (
           <div className="rounded bg-zinc-950 p-2 text-xs text-zinc-300">
             <p className="font-semibold text-red-400">{result.triageLevel}</p>
+            <p className="mt-1 text-zinc-400">{result.advisoryBasis || TRIAGE_LIMIT}</p>
             <p>{result.responseTime}</p>
             {result.firstAid?.length > 0 && (
               <ul className="mt-1 list-disc pl-4 text-zinc-400">

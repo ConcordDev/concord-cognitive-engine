@@ -25,7 +25,7 @@ export default function registerVeterinaryActions(registerLensAction) {
     return typeof data.species === "string" ? data.species.trim().toLowerCase() : "";
   }
 
-  registerLensAction("veterinary", "triageAssess", advisory("keyword triage heuristic; not a veterinary assessment — call a vet or emergency clinic if in doubt", (ctx, artifact, params) => {
+  registerLensAction("veterinary", "triageAssess", advisory("Not a veterinary assessment and not a substitute for one. Call a veterinarian or an emergency clinic.", (ctx, artifact, params) => {
     const data = vetData(artifact, params);
     const symptomsRaw = requireList(data.symptoms, "symptoms");
     if (symptomsRaw && symptomsRaw.ok === false) return symptomsRaw;
