@@ -448,11 +448,15 @@ export default function registerVeterinaryActions(registerLensAction) {
       const col = vtCollection(s, "prescriptions");
       const drug = vtClean(params.drug, 120);
       if (!drug) return { ok: false, error: "drug required" };
+      const patientId = vtClean(params.patientId, 60);
+      if (!patientId) return { ok: false, error: "invalid_input", field: "patientId" };
+      const patient = vtPatients(s, vtActor(ctx)).find((p) => p.id === patientId);
+      if (!patient) return { ok: false, error: "patient not found" };
       const refillsTotal = Math.max(0, Math.min(24, vtNum(params.refills)));
       const rx = {
         id: vtId("rx"),
-        patientId: vtClean(params.patientId, 60) || "",
-        patientName: vtClean(params.patientName, 120) || "",
+        patientId: patient.id,
+        patientName: patient.name,
         drug,
         dosage: vtClean(params.dosage, 200) || "",
         frequency: vtClean(params.frequency, 120) || "",

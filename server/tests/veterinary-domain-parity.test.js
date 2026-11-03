@@ -257,19 +257,31 @@ describe("veterinary — SOAP charting", () => {
 
 describe("veterinary — prescriptions & refills", () => {
   it("prescription-add / list / refill", () => {
+    const pat = call("patient-add", ctxA, {}, { name: "Rex", species: "dog" }).result.patient;
+    const namedOnly = call("prescription-add", ctxA, {}, { drug: "Amoxicillin", patientName: "Rex" });
+    assert.equal(namedOnly.ok, false);
+    assert.equal(namedOnly.error, "invalid_input");
+    assert.equal(namedOnly.field, "patientId");
+    assert.equal(call("prescription-list", ctxA, {}, {}).result.count, 0);
+    const other = call("prescription-add", { actor: { userId: "vet_user_b" }, userId: "vet_user_b" }, {}, { drug: "Amoxicillin", patientId: pat.id });
+    assert.equal(other.ok, false);
+    assert.equal(other.error, "patient not found");
     const rx = call("prescription-add", ctxA, {}, {
-      drug: "Amoxicillin", patientName: "Rex", dosage: "250mg", refills: 2,
+      drug: "Amoxicillin", patientId: pat.id, patientName: "Not Rex", dosage: "250mg", refills: 2,
     });
     assert.equal(rx.ok, true);
+    assert.equal(rx.result.prescription.patientId, pat.id);
+    assert.equal(rx.result.prescription.patientName, "Rex");
     assert.equal(rx.result.prescription.refillsRemaining, 2);
     const r1 = call("prescription-refill", ctxA, {}, { id: rx.result.prescription.id });
     assert.equal(r1.result.prescription.refillsRemaining, 1);
     call("prescription-refill", ctxA, {}, { id: rx.result.prescription.id });
     const exhausted = call("prescription-refill", ctxA, {}, { id: rx.result.prescription.id });
     assert.equal(exhausted.ok, false);
-    const l = call("prescription-list", ctxA, {}, {});
+    const l = call("prescription-list", ctxA, {}, { patientId: pat.id });
     assert.equal(l.ok, true);
     assert.equal(l.result.count, 1);
+    assert.equal(l.result.prescriptions[0].drug, "Amoxicillin");
   });
 });
 
