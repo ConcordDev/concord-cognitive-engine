@@ -128,6 +128,46 @@ describe("travel.country-info (REST Countries)", () => {
     assert.match(capturedUrl, /restcountries\.com\/v3\.1\/name\/Brazil/);
   });
 
+  it("rejects the v3.1 deprecation envelope instead of a blank destination", async () => {
+    let capturedUrl = "";
+    globalThis.fetch = async (url) => {
+      capturedUrl = url;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: false,
+          data: null,
+          errors: [{ message: "This API version has been deprecated. Please migrate to our new version (v5)." }],
+        }),
+      };
+    };
+    const r = await call("country-info", ctxA, { country: "FR" });
+    assert.equal(r.ok, false);
+    assert.match(capturedUrl, /restcountries\.com\/v3\.1\/alpha\/FR/);
+    assert.match(r.error, /deprecated/);
+    assert.doesNotMatch(r.error, /destination required/);
+  });
+
+  it("rejects a 200 body that has no country code", async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ name: { common: "Nowhere" } }),
+    });
+    const r = await call("country-info", ctxA, { country: "France" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /no country code/);
+    assert.doesNotMatch(r.error, /destination required/);
+  });
+
+  it("names an empty country, not a missing destination", async () => {
+    const r = await call("country-info", ctxA, { country: "  " });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /country required/);
+    assert.doesNotMatch(r.error, /destination required/);
+  });
+
   it("returns explicit not-found on 404", async () => {
     globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => ({}) });
     const r = await call("country-info", ctxA, { country: "ZZ" });

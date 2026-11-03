@@ -203,6 +203,16 @@ export default function registerTravelActions(registerLensAction) {
       const arr = await r.json();
       const c = Array.isArray(arr) ? arr[0] : arr;
       if (!c) return { ok: false, error: "country lookup returned no data" };
+      // v3.1 answers HTTP 200 with { success:false, errors:[...] } after
+      // deprecation. That object is not a country. A demo v5 key is not
+      // used here: it returns one fixed country for every query.
+      if (c.success === false) {
+        const msg = Array.isArray(c.errors) && c.errors[0] && c.errors[0].message
+          ? String(c.errors[0].message)
+          : "country lookup unavailable";
+        return { ok: false, error: msg };
+      }
+      if (!c.cca2) return { ok: false, error: "country lookup returned no country code" };
       return {
         ok: true,
         result: {
