@@ -117,32 +117,36 @@ describe("parenting — artifact calc contracts (exact computed values)", () => 
     assert.equal(r.result.newSuggestions, 11); // one template time collides
   });
 
-  it("immunizationTracker: applicable schedule at 24mo, matched complete, unmatched overdue, compliance exact", async () => {
-    // At 24mo the applicable set (byMonths-6 <= 24) is: Hepatitis B(6), RV(8),
-    // Hib(15), PCV13(15), Hepatitis A(24), Influenza(6). DTaP/IPV/MMR/Varicella
-    // (byMonths 72) are NOT yet applicable.
+  it("immunizationTracker: full checklist at 24mo, matched complete, unmatched overdue, compliance exact", async () => {
+    // Dose 1 is due well before the series ends, so DTaP, IPV, MMR, and
+    // Varicella are on the list at 24 months. Influenza is annual, not overdue.
     const r = await lensRun("parenting", "immunizationTracker", {
       data: { childAge: "2y", vaccinations: "Hepatitis B, Hib, Hepatitis A" },
     });
     assert.equal(r.ok, true);
     assert.equal(r.result.ageMonths, 24);
     const names = r.result.immunizations.map((v) => v.vaccine);
-    assert.ok(names.includes("Hepatitis B") && names.includes("Hib") && names.includes("Hepatitis A"));
-    assert.ok(!names.includes("MMR")); // byMonths 72 → not applicable yet at 24mo
+    assert.equal(names.length, 10);
+    assert.ok(names.includes("DTaP") && names.includes("IPV (Polio)") && names.includes("MMR") && names.includes("Varicella"));
     const hepB = r.result.immunizations.find((v) => v.vaccine === "Hepatitis B");
     assert.equal(hepB.received, true);
     assert.equal(hepB.status, "completed");
-    // PCV13 was applicable (byMonths 15 < 24) but not in the supplied list → overdue.
+    const mmr = r.result.immunizations.find((v) => v.vaccine === "MMR");
+    assert.equal(mmr.received, false);
+    assert.equal(mmr.status, "overdue");
     const pcv = r.result.immunizations.find((v) => v.vaccine === "PCV13 (Pneumococcal)");
     assert.equal(pcv.received, false);
-    assert.equal(pcv.status, "overdue"); // ageMonths 24 > byMonths 15
-    assert.equal(r.result.summary.completed, 3); // HepB + Hib + HepA matched
+    assert.equal(pcv.status, "overdue");
+    const flu = r.result.immunizations.find((v) => v.vaccine === "Influenza");
+    assert.equal(flu.status, "annual");
+    assert.equal(r.result.summary.completed, 3);
+    assert.equal(r.result.summary.total, 10);
+    assert.equal(r.result.summary.overdue, r.result.immunizations.filter((v) => v.status === "overdue").length);
     assert.equal(
       r.result.summary.complianceRate,
       Math.round((r.result.summary.completed / r.result.summary.total) * 100),
     );
-    assert.ok(r.result.summary.overdue >= 1);
-    assert.ok(r.result.action.includes("overdue"));
+    assert.ok(r.result.action.startsWith(`${r.result.summary.overdue} critical`));
   });
 });
 

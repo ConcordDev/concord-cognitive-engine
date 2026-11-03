@@ -48,6 +48,51 @@ describe("parenting.child-*", () => {
   });
 });
 
+describe("parenting immunizations", () => {
+  it("keeps a received vaccine on the child and checks the full list", () => {
+    const id = newChild(ctxA, 32);
+    const recorded = call("immunization-record", ctxA, { childId: id, vaccine: "MMR", received: true });
+    assert.equal(recorded.ok, true);
+    assert.deepEqual(recorded.result.vaccinesReceived, ["MMR"]);
+    const listed = call("child-list", ctxA, {});
+    assert.deepEqual(listed.result.children[0].vaccinesReceived, ["MMR"]);
+    assert.equal(call("child-list", ctxB, {}).result.children.length, 0);
+    assert.equal(call("immunization-record", ctxB, { childId: id, vaccine: "DTaP", received: true }).error, "child not found");
+
+    const check = call("immunizationTracker", ctxA, { childId: id, vaccinations: "DTaP" });
+    assert.equal(check.ok, true);
+    assert.ok(check.result.ageMonths >= 31 && check.result.ageMonths <= 33);
+    const rows = check.result.immunizations;
+    assert.equal(rows.length, 10);
+    for (const name of ["DTaP", "IPV (Polio)", "MMR", "Varicella"]) {
+      assert.ok(rows.some((r) => r.vaccine === name), name);
+    }
+    const mmr = rows.find((r) => r.vaccine === "MMR");
+    assert.equal(mmr.received, true);
+    assert.equal(mmr.status, "completed");
+    const dtap = rows.find((r) => r.vaccine === "DTaP");
+    assert.equal(dtap.received, false);
+    assert.equal(dtap.status, "overdue");
+    const flu = rows.find((r) => r.vaccine === "Influenza");
+    assert.equal(flu.status, "annual");
+    assert.equal(check.result.summary.overdue, rows.filter((r) => r.status === "overdue").length);
+    assert.ok(check.result.action.startsWith(`${check.result.summary.overdue} critical`));
+
+    const cleared = call("immunization-record", ctxA, { childId: id, vaccine: "MMR", received: false });
+    assert.deepEqual(cleared.result.vaccinesReceived, []);
+    assert.equal(call("immunization-record", ctxA, { childId: id, vaccine: "Not a vaccine", received: true }).error, "invalid_input");
+    assert.deepEqual(call("child-list", ctxA, {}).result.children[0].vaccinesReceived, []);
+  });
+
+  it("reads years and months on a generic check", () => {
+    const r = call("immunizationTracker", ctxA, { childAge: "2y 8m", vaccinations: "" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.ageMonths, 32);
+    assert.equal(r.result.immunizations.length, 10);
+    assert.equal(r.result.immunizations.find((row) => row.vaccine === "MMR").status, "overdue");
+  });
+});
+
 describe("parenting.feed-*", () => {
   it("logs feeds and aggregates today's stats", () => {
     const id = newChild(ctxA);
