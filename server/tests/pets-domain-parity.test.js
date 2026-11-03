@@ -374,3 +374,60 @@ describe("pets.lost-card-* — lost-pet microchip ID card", () => {
     assert.equal(call("lost-card-list", ctxA, {}).result.active, 0);
   });
 });
+
+describe("pets planner reads the record", () => {
+  it("a future next due is current, and a missing row is not overdue", () => {
+    const pet = newPet();
+    call("vaccine-record", ctxA, { petId: pet.id, name: "Rabies", date: dayOffset(-10), nextDueDate: dayOffset(300) });
+    const stored = call("vaccine-list", ctxA, { petId: pet.id }).result.vaccines;
+    const schedule = call("vaccinationSchedule", ctxA, {
+      species: "dog",
+      age: 4,
+      vaccinations: stored.map((v) => ({ type: v.name, date: v.date, expiry: v.nextDueDate })),
+    });
+    assert.equal(schedule.ok, true);
+    const rabies = schedule.result.vaccinations.find((v) => v.vaccine === "Rabies");
+    assert.equal(rabies.status, "current");
+    assert.equal(schedule.result.summary.overdue, 0);
+    assert.equal(schedule.result.summary.notOnRecord, 5);
+    assert.ok(schedule.result.vaccinations.filter((v) => v.vaccine !== "Rabies").every((v) => v.status === "not-on-record"));
+  });
+
+  it("an expired stored vaccine stays overdue", () => {
+    const schedule = call("vaccinationSchedule", ctxA, {
+      species: "dog",
+      age: 4,
+      vaccinations: [{ type: "Rabies", date: dayOffset(-400), expiry: dayOffset(-5) }],
+    });
+    const rabies = schedule.result.vaccinations.find((v) => v.vaccine === "Rabies");
+    assert.equal(rabies.status, "overdue");
+    assert.equal(schedule.result.summary.overdue, 1);
+  });
+
+  it("one weigh-in is not a trend, and a dog has no 5–100 lb ideal", () => {
+    const one = call("weightTracker", ctxA, { species: "dog", weight: 30, weightHistory: [{ date: today(), weight: 30 }] });
+    assert.equal(one.result.trend, null);
+    assert.equal(one.result.weeklyChange, null);
+    assert.match(one.result.trendNote, /not a trend/);
+    assert.equal(one.result.idealRange.min, null);
+    assert.equal(one.result.idealRange.max, null);
+  });
+
+  it("a feeding amount names its formula and does not invent a weight", () => {
+    assert.equal(call("feedingPlan", ctxA, { species: "dog", age: 3 }).ok, false);
+    const plan = call("feedingPlan", ctxA, { species: "dog", weight: 22.05, age: 3, activityLevel: "moderate" });
+    assert.equal(plan.result.dailyCalories, 551);
+    assert.match(plan.result.basis, /70 ×/);
+    assert.match(plan.result.basis, /Not a feeding prescription/);
+  });
+
+  it("a date-only medication does not invent a next dose", () => {
+    const r = call("medicationReminder", ctxA, {
+      medications: "Apoquel",
+      schedules: [{ med: "Apoquel", frequency: "daily", lastDose: today() }],
+    });
+    assert.equal(r.result.medications[0].status, "no-time");
+    assert.equal(r.result.medications[0].hoursUntilDue, null);
+    assert.match(r.result.medications[0].action, /No time of day/);
+  });
+});

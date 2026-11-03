@@ -4,7 +4,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
-import { requireList } from "../lib/lens-inputs.js";
+import { optNum, requireList } from "../lib/lens-inputs.js";
 export default function registerPetsActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -14,7 +14,7 @@ export default function registerPetsActions(registerLensAction) {
    */
   registerLensAction("pets", "vaccinationSchedule", (ctx, artifact, _params) => {
   try {
-    const data = artifact.data || {};
+    const data = { ...(artifact && artifact.data), ...(_params || {}) };
     const species = (data.species || "dog").toLowerCase();
     const ageYears = parseFloat(data.age) || 1;
     const vaccinations = requireList(data.vaccinations, "vaccinations");
@@ -46,7 +46,7 @@ export default function registerPetsActions(registerLensAction) {
 
     const results = speciesSchedule.map(vaccine => {
       const lastVax = vaccinations
-        .filter(v => v.type === vaccine.type || v.vaccineType === vaccine.type)
+        .filter(v => v.type === vaccine.type || v.vaccineType === vaccine.type || v.name === vaccine.type)
         .sort((a, b) => new Date(b.date || b.vaccineDate || 0).getTime() - new Date(a.date || a.vaccineDate || 0).getTime())[0];
 
       let status;
@@ -55,8 +55,9 @@ export default function registerPetsActions(registerLensAction) {
 
       if (lastVax) {
         const lastDate = new Date(lastVax.date || lastVax.vaccineDate);
-        const expiryDate = lastVax.expiry || lastVax.vaccineExpiry
-          ? new Date(lastVax.expiry || lastVax.vaccineExpiry)
+        const expiryRaw = lastVax.expiry || lastVax.vaccineExpiry || lastVax.nextDueDate;
+        const expiryDate = expiryRaw
+          ? new Date(expiryRaw)
           : new Date(lastDate.getTime() + vaccine.intervalMonths * 30.44 * 86400000);
 
         if (expiryDate > now) {
@@ -69,9 +70,9 @@ export default function registerPetsActions(registerLensAction) {
           daysUntilDue = -Math.ceil((now.getTime() - expiryDate.getTime()) / 86400000);
         }
       } else if (ageYears >= vaccine.startAge) {
-        status = "overdue";
-        nextDue = "ASAP";
-        daysUntilDue = 0;
+        status = "not-on-record";
+        nextDue = null;
+        daysUntilDue = null;
       } else {
         status = "not-yet-eligible";
         const eligibleDate = new Date(now.getTime() + (vaccine.startAge - ageYears) * 365.25 * 86400000);
@@ -92,6 +93,7 @@ export default function registerPetsActions(registerLensAction) {
 
     const overdueCount = results.filter(r => r.status === "overdue").length;
     const currentCount = results.filter(r => r.status === "current").length;
+    const notOnRecord = results.filter(r => r.status === "not-on-record").length;
 
     return {
       ok: true,
@@ -103,13 +105,17 @@ export default function registerPetsActions(registerLensAction) {
           total: results.length,
           current: currentCount,
           overdue: overdueCount,
-          complianceRate: results.length > 0
-            ? Math.round((currentCount / results.filter(r => r.status !== "not-yet-eligible").length) * 100) || 0
-            : 100,
+          notOnRecord,
+          complianceRate: (() => {
+            const scored = results.filter(r => r.status !== "not-yet-eligible" && r.status !== "not-on-record");
+            return scored.length > 0 ? Math.round((currentCount / scored.length) * 100) : null;
+          })(),
         },
         urgentAction: overdueCount > 0
           ? `${overdueCount} vaccination(s) overdue — schedule vet visit immediately`
-          : "All vaccinations current",
+          : notOnRecord > 0
+            ? `${notOnRecord} vaccination(s) are not on this record`
+            : "All vaccinations current",
       },
     };
     } catch (e) { return handlerFailure(e); }
@@ -122,7 +128,7 @@ export default function registerPetsActions(registerLensAction) {
    */
   registerLensAction("pets", "weightTracker", (ctx, artifact, _params) => {
   try {
-    const data = artifact.data || {};
+    const data = { ...(artifact && artifact.data), ...(_params || {}) };
     const species = (data.species || "dog").toLowerCase();
     const currentWeight = parseFloat(data.weight) || 0;
     const historyList = requireList(data.weightHistory, "weightHistory");
@@ -131,7 +137,6 @@ export default function registerPetsActions(registerLensAction) {
 
     // Ideal weight ranges by species (lbs)
     const idealRanges = {
-      dog: { min: 5, max: 100, note: "Varies greatly by breed" },
       cat: { min: 6, max: 14, note: "Most adult cats 8-11 lbs" },
       rabbit: { min: 2, max: 11, note: "Varies by breed" },
       bird: { min: 0.01, max: 3, note: "Varies by species" },
@@ -139,12 +144,14 @@ export default function registerPetsActions(registerLensAction) {
       hamster: { min: 0.06, max: 0.15, note: "Syrian hamsters 5-7 oz" },
     };
 
-    const range = idealRanges[species] || idealRanges.dog;
+    const range = idealRanges[species] || { min: null, max: null, note: "No breed-specific range is on file." };
 
-    // Weight trend analysis
-    let trend = "stable";
-    let weeklyChange = 0;
+    // Weight trend analysis. One weigh-in is not a trend.
+    let trend = null;
+    let weeklyChange = null;
+    let trendNote = "One weigh-in is not a trend.";
     if (history.length >= 2) {
+      trendNote = null;
       const recent = history.slice(-5);
       const oldest = recent[0];
       const newest = recent[recent.length - 1];
@@ -154,14 +161,16 @@ export default function registerPetsActions(registerLensAction) {
         weeklyChange = Math.round((totalChange / daysDiff) * 7 * 100) / 100;
         if (weeklyChange > 0.5) trend = "gaining";
         else if (weeklyChange < -0.5) trend = "losing";
+        else trend = "steady";
       }
+      if (weeklyChange == null) trendNote = "One weigh-in is not a trend.";
     }
 
     // Body condition assessment
     let condition = "normal";
     if (species === "cat" && currentWeight > 14) condition = "overweight";
     else if (species === "cat" && currentWeight < 6) condition = "underweight";
-    else if (species === "dog" && currentWeight > range.max * 1.2) condition = "overweight";
+    else if (species === "dog" && range.max != null && currentWeight > range.max * 1.2) condition = "overweight";
 
     const alerts = [];
     if (condition === "overweight") alerts.push("Weight above ideal range — consult vet about diet plan");
@@ -176,6 +185,7 @@ export default function registerPetsActions(registerLensAction) {
         idealRange: range,
         trend,
         weeklyChange,
+        trendNote,
         condition,
         historyCount: history.length,
         alerts,
@@ -194,9 +204,10 @@ export default function registerPetsActions(registerLensAction) {
    */
   registerLensAction("pets", "feedingPlan", (ctx, artifact, _params) => {
   try {
-    const data = artifact.data || {};
+    const data = { ...(artifact && artifact.data), ...(_params || {}) };
     const species = (data.species || "dog").toLowerCase();
-    const weight = parseFloat(data.weight) || 10;
+    const weight = optNum(data.weight);
+    if (!(weight > 0)) return { ok: false, error: "invalid_input", field: "weight" };
     const age = parseFloat(data.age) || 1;
     const activity = (data.activityLevel || data.intensity || "moderate").toLowerCase();
 
@@ -235,6 +246,7 @@ export default function registerPetsActions(registerLensAction) {
         lifeStage,
         activityLevel: activity,
         dailyCalories,
+        basis: `RER 70 × (weight lb / 2.205)^0.75 × ${multiplier} (${lifeStage}). Cups assume 350 kcal per cup. Not a feeding prescription.`,
         portions: {
           cupsPerDay,
           mealsPerDay,
@@ -328,7 +340,7 @@ export default function registerPetsActions(registerLensAction) {
    */
   registerLensAction("pets", "medicationReminder", (ctx, artifact, _params) => {
   try {
-    const data = artifact.data || {};
+    const data = { ...(artifact && artifact.data), ...(_params || {}) };
     const medList = (data.medications || "").split(",").map(m => m.trim()).filter(Boolean);
     const schedules = requireList(data.schedules, "schedules");
     if (!Array.isArray(schedules)) return schedules;
@@ -346,7 +358,14 @@ export default function registerPetsActions(registerLensAction) {
       const freq = (schedule.frequency || "daily").toLowerCase();
       const intervalHours = freq === "daily" ? 24 : freq === "twice-daily" ? 12 : freq === "weekly" ? 168 : 24;
 
-      if (!lastDose) return { medication: med, status: "no-record", action: "Record first dose" };
+      if (!lastDose || Number.isNaN(lastDose.getTime())) return { medication: med, status: "no-record", action: "Record first dose" };
+      if (!/T\d{2}:\d{2}/.test(String(schedule.lastDose))) {
+        return {
+          medication: med, frequency: freq, lastDose: String(schedule.lastDose),
+          status: "no-time", hoursUntilDue: null,
+          action: "No time of day is on this medication. A next dose is not computed.",
+        };
+      }
 
       const nextDue = new Date(lastDose.getTime() + intervalHours * 3600000);
       const hoursUntil = (nextDue.getTime() - now.getTime()) / 3600000;
