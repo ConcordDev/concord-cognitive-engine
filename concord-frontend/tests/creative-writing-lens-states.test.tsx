@@ -56,6 +56,14 @@ describe('creative writing page', () => {
     expect(view.getByRole('button', { name: 'Save page' })).toBeEnabled();
   });
 
+  it('TRAIL: corrects the workspace tab adjacency instead of implying a feed relationship', async () => {
+    lensRun.mockResolvedValue(listed([]));
+    const view = render(<CreativeWritingPage />);
+    expect(await view.findByTestId('creative-writing-trail-note')).toHaveTextContent(
+      /Narrative trail.*separate.*do not appear there/,
+    );
+  });
+
   it('ERROR: a failed list shows role=alert and Retry reloads', async () => {
     lensRun.mockResolvedValueOnce({ data: { ok: false, result: null, error: 'STATE unavailable' } });
     const view = render(<CreativeWritingPage />);
