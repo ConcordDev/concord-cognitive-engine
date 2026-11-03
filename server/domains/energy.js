@@ -96,24 +96,70 @@ export default function registerEnergyActions(registerLensAction) {
   });
   registerLensAction("energy", "carbonFootprint", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    // Fail-closed, non-negative finite inputs CLAMPED to a sane upper bound so a
-    // poisoned magnitude (e.g. 1e308) can never overflow an emission-factor
-    // multiply into Infinity (which would render as null in the UI). 1e12 is far
-    // above any real annual consumption yet leaves headroom before float overflow.
+    // A missing, blank, or non-finite reading is not zero use. Values outside
+    // [0, 1e12] are refused rather than clamped into a tonnage. 1e12 is far
+    // above any real consumption and stays under the point where an emission
+    // factor would overflow to Infinity. An explicit 0 is a recorded zero.
     const MAX_CONSUMPTION = 1e12;
-    const electricityKWh = finiteNum(data.electricityKWh, 0, 0, MAX_CONSUMPTION);
-    const naturalGasTherms = finiteNum(data.naturalGasTherms, 0, 0, MAX_CONSUMPTION);
-    const gasolineGallons = finiteNum(data.gasolineGallons, 0, 0, MAX_CONSUMPTION);
-    const flightMiles = finiteNum(data.flightMiles, 0, 0, MAX_CONSUMPTION);
-    // EPA emission factors. Re-coerce each derived figure to finite as a
-    // belt-and-suspenders guard against any residual non-finite arithmetic.
-    const co2Electricity = finiteNum(electricityKWh * 0.000417, 0); // metric tons per kWh
-    const co2Gas = finiteNum(naturalGasTherms * 0.0053, 0);
-    const co2Gasoline = finiteNum(gasolineGallons * 0.00887, 0);
-    const co2Flights = finiteNum(flightMiles * 0.000255, 0);
-    const total = finiteNum(co2Electricity + co2Gas + co2Gasoline + co2Flights, 0);
-    const usAvg = 16; // tons per capita
-    return { ok: true, result: { breakdown: { electricity: Math.round(co2Electricity * 1000) / 1000, naturalGas: Math.round(co2Gas * 1000) / 1000, transportation: Math.round(co2Gasoline * 1000) / 1000, flights: Math.round(co2Flights * 1000) / 1000 }, totalMetricTons: Math.round(total * 1000) / 1000, annualEstimate: Math.round(total * 12 * 100) / 100, vsUSAverage: `${Math.round((total * 12 / usAvg) * 100)}% of US average`, topSource: [["electricity", co2Electricity], ["naturalGas", co2Gas], ["transportation", co2Gasoline], ["flights", co2Flights]].sort((a, b) => b[1] - a[1])[0][0], reductionTips: co2Electricity > co2Gas ? ["Switch to renewable energy provider", "Improve insulation", "LED lighting"] : ["Improve heating efficiency", "Seal air leaks", "Smart thermostat"] } };
+    const recordedUse = (v) => {
+      if (v == null || v === "") return null;
+      const n = typeof v === "number" ? v : parseFloat(v);
+      if (!Number.isFinite(n) || n < 0 || n > MAX_CONSUMPTION) return null;
+      return n;
+    };
+    const sources = [
+      { key: "electricityKWh", name: "electricity", factor: 0.000417 },
+      { key: "naturalGasTherms", name: "naturalGas", factor: 0.0053 },
+      { key: "gasolineGallons", name: "transportation", factor: 0.00887 },
+      { key: "flightMiles", name: "flights", factor: 0.000255 },
+    ];
+    const tons = {};
+    const missing = [];
+    for (const source of sources) {
+      const amount = recordedUse(data[source.key]);
+      if (amount == null) {
+        missing.push(source.key);
+        tons[source.name] = null;
+      } else {
+        tons[source.name] = amount * source.factor;
+      }
+    }
+    if (missing.length === sources.length) {
+      return notComputed(missing, "Not computed: no recorded electricity, gas, gasoline, or flight miles.");
+    }
+    const round3 = (n) => Math.round(n * 1000) / 1000;
+    const breakdown = {
+      electricity: tons.electricity == null ? null : round3(tons.electricity),
+      naturalGas: tons.naturalGas == null ? null : round3(tons.naturalGas),
+      transportation: tons.transportation == null ? null : round3(tons.transportation),
+      flights: tons.flights == null ? null : round3(tons.flights),
+    };
+    const total = Object.values(tons).reduce((sum, n) => sum + (n == null ? 0 : n), 0);
+    const complete = missing.length === 0;
+    const usAvg = 16; // tons per capita, only comparable when every source was recorded
+    const ranked = sources
+      .filter((source) => tons[source.name] != null)
+      .sort((a, b) => tons[b.name] - tons[a.name]);
+    let reductionTips = [];
+    if (tons.electricity != null && (tons.naturalGas == null || tons.electricity > tons.naturalGas)) {
+      reductionTips = ["Switch to renewable energy provider", "Improve insulation", "LED lighting"];
+    } else if (tons.naturalGas != null) {
+      reductionTips = ["Improve heating efficiency", "Seal air leaks", "Smart thermostat"];
+    }
+    return {
+      ok: true,
+      result: {
+        breakdown,
+        totalMetricTons: round3(total),
+        annualEstimate: Math.round(total * 12 * 100) / 100,
+        vsUSAverage: complete ? `${Math.round((total * 12 / usAvg) * 100)}% of US average` : null,
+        topSource: ranked.length ? ranked[0].name : null,
+        reductionTips,
+        missingInputs: missing,
+        partial: !complete,
+        ...(complete ? {} : { message: `Recorded sources only. Not recorded: ${missing.join(", ")}. US average comparison needs every source.` }),
+      },
+    };
   });
   /**
    * eia-electricity-rates — Real average retail electricity price by

@@ -47,6 +47,15 @@ describe("energy.carbonFootprint (EPA emission factors)", () => {
     assert.equal(r.ok, true);
     // 0.417 + 0.265 + 0.2661 + 0.1275 ≈ 1.076 metric tons
     assert.ok(r.result.totalMetricTons > 1 && r.result.totalMetricTons < 1.2);
+    assert.equal(r.result.partial, false);
+    assert.match(r.result.vsUSAverage, /% of US average$/);
+  });
+
+  it("does not report 0 t when every source was omitted", () => {
+    const r = call("carbonFootprint", ctxA, { data: {} }, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.status, "NOT_COMPUTED");
+    assert.equal(r.result.totalMetricTons, undefined);
   });
 });
 
