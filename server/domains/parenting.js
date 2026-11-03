@@ -14,9 +14,30 @@ export default function registerParentingActions(registerLensAction) {
    * Evaluate developmental milestones against age-appropriate expectations.
    * artifact.data: { childName, childAge, milestones: [{ category, name, date }] }
    */
-  registerLensAction("parenting", "milestoneCheck", (ctx, artifact, _params) => {
+  registerLensAction("parenting", "milestoneCheck", (ctx, artifact, params) => {
   try {
-    const data = artifact.data || {};
+    const fromArtifact = artifact && artifact.data && typeof artifact.data === "object" && !Array.isArray(artifact.data) ? artifact.data : {};
+    const fromParams = params && typeof params === "object" && !Array.isArray(params) ? params : {};
+    const data = { ...fromArtifact, ...fromParams };
+    const childId = typeof data.childId === "string" ? data.childId.trim() : "";
+    // A child id reads the stored CDC record. An empty observation list
+    // must not score that record as 0%.
+    if (childId) {
+      const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = pgBucket(s, ctx, childId);
+      const child = pgChild(s, userId, childId);
+      if (!child) return { ok: false, error: "child not found" };
+      return {
+        ok: true,
+        result: {
+          basis: "record",
+          childId: child.id,
+          childName: child.name,
+          ...pgMilestoneRecord(s, userId, child),
+          note: "From this child's milestone record. Not a developmental assessment.",
+        },
+      };
+    }
     const childAge = data.childAge || "";
     const milestones = requireList(data.milestones, "milestones");
     if (!Array.isArray(milestones)) return milestones;
@@ -67,6 +88,7 @@ export default function registerParentingActions(registerLensAction) {
     return {
       ok: true,
       result: {
+        basis: "age-table",
         childName: data.childName,
         ageMonths,
         ageDisplay: childAge,
@@ -77,6 +99,7 @@ export default function registerParentingActions(registerLensAction) {
           : overallRate >= 50 ? "Mostly on track — a few areas to monitor"
           : overallRate >= 20 ? "Some delays noted — consider pediatrician consultation"
           : ageMonths > 0 ? "Limited milestone data — record more observations" : "Enter child age to assess milestones",
+        note: "Age table only. This is not a child's milestone record.",
       },
     };
     } catch (e) { return handlerFailure(e); }
@@ -1124,12 +1147,7 @@ export default function registerParentingActions(registerLensAction) {
     return { ok: true, result: { record: rec } };
   });
 
-  registerLensAction("parenting", "milestone-progress", (ctx, _a, params = {}) => {
-  try {
-    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgBucket(s, ctx, params.childId);
-    const child = pgChild(s, userId, params.childId);
-    if (!child) return { ok: false, error: "child not found" };
+  function pgMilestoneRecord(s, userId, child) {
     const ageMonths = pgAgeMonths(child.birthDate);
     const eligible = PG_MILESTONES.filter((m) => m.ageMonths <= ageMonths + 0.5);
     const recorded = (s.milestones.get(userId) || []).filter((r) => r.childId === child.id && r.achieved);
@@ -1141,14 +1159,20 @@ export default function registerParentingActions(registerLensAction) {
       byCategory[cat] = { total, achieved: done };
     }
     return {
-      ok: true,
-      result: {
-        ageMonths: Math.round(ageMonths),
-        eligibleCount: eligible.length,
-        achievedCount: eligible.filter((m) => recorded.some((r) => r.milestoneId === m.id)).length,
-        byCategory,
-      },
+      ageMonths: Math.round(ageMonths),
+      eligibleCount: eligible.length,
+      achievedCount: eligible.filter((m) => recorded.some((r) => r.milestoneId === m.id)).length,
+      byCategory,
     };
+  }
+
+  registerLensAction("parenting", "milestone-progress", (ctx, _a, params = {}) => {
+  try {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pgBucket(s, ctx, params.childId);
+    const child = pgChild(s, userId, params.childId);
+    if (!child) return { ok: false, error: "child not found" };
+    return { ok: true, result: pgMilestoneRecord(s, userId, child) };
     } catch (e) { return handlerFailure(e); }
 });
 
