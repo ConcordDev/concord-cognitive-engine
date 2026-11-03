@@ -149,8 +149,33 @@ export default function registerGameDesignActions(registerLensAction) {
   const GD_LOOP_KINDS = ["core", "progression", "positive", "negative", "economy"];
   const GD_NARRATIVE_KINDS = ["start", "scene", "choice", "ending"];
 
-  function gdGame(s, userId, gameId) {
-    return (s.games.get(userId) || []).find((g) => g.id === gameId) || null;
+  function readDesignRow(ctx, id) {
+    const db = gdDb(ctx);
+    if (!designsReady(db) || !id) return null;
+    return db.prepare(
+      "SELECT id, title, created_at, updated_at FROM game_designs WHERE id = ? AND user_id = ?",
+    ).get(String(id), gdAid(ctx)) || null;
+  }
+  // game-list's DB-merge path (below) can surface a design this process
+  // never created in memory — another process, or a restart. Every
+  // workbench macro (gdd/mechanics/entities/levels/narrative/assets/
+  // animation/behavior/playtest/collab/...) gates on this lookup, so
+  // without hydration the entire surface 404s with "game not found" on
+  // any design that isn't fresh in this process's lifetime, even though
+  // game-list just showed it as real and openable.
+  function gdGame(ctx, s, userId, gameId) {
+    if (!gameId) return null;
+    const arr = gdListB(s.games, userId);
+    const found = arr.find((g) => g.id === gameId);
+    if (found) return found;
+    const row = readDesignRow(ctx, gameId);
+    if (!row) return null;
+    const hydrated = {
+      id: row.id, title: row.title, genre: null, platform: null, pitch: null,
+      createdAt: row.created_at || "", updatedAt: row.updated_at || "",
+    };
+    arr.push(hydrated);
+    return hydrated;
   }
   function gdLayerTiles(cols, rows) {
     return new Array(cols * rows).fill(null);
@@ -236,7 +261,7 @@ export default function registerGameDesignActions(registerLensAction) {
   registerLensAction("game-design", "game-get", (ctx, _a, params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
-    const game = gdGame(s, userId, params.id);
+    const game = gdGame(ctx, s, userId, params.id);
     if (!game) return { ok: false, error: "game not found" };
     return {
       ok: true,
@@ -254,13 +279,22 @@ export default function registerGameDesignActions(registerLensAction) {
 
   registerLensAction("game-design", "game-update", (ctx, _a, params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const game = gdGame(s, gdAid(ctx), params.id);
+    const game = gdGame(ctx, s, gdAid(ctx), params.id);
     if (!game) return { ok: false, error: "game not found" };
     if (params.title != null) game.title = gdClean(params.title, 160) || game.title;
     if (params.genre != null) game.genre = gdClean(params.genre, 40) || game.genre;
     if (params.platform != null) game.platform = gdClean(params.platform, 40) || game.platform;
     if (params.pitch != null) game.pitch = gdClean(params.pitch, 600) || null;
     game.updatedAt = gdNow();
+    // writeDesignRow only persists id/title/timestamps (genre/platform/
+    // pitch stay in-memory-only, same as game-create) — without this
+    // call a rename survived only until the next restart, then reverted
+    // to whatever title game-create last wrote.
+    try {
+      writeDesignRow(ctx, game);
+    } catch (e) {
+      return { ok: false, error: "design_not_saved", detail: String(e?.message || e) };
+    }
     saveGdState();
     return { ok: true, result: { game } };
   });
@@ -268,6 +302,9 @@ export default function registerGameDesignActions(registerLensAction) {
   registerLensAction("game-design", "game-delete", (ctx, _a, params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
+    // Hydrate first — a design that's only on disk (DB-merge path, not
+    // yet touched in this process) must still be deletable, not 404.
+    if (!gdGame(ctx, s, userId, params.id)) return { ok: false, error: "game not found" };
     const arr = s.games.get(userId) || [];
     const i = arr.findIndex((g) => g.id === params.id);
     if (i < 0) return { ok: false, error: "game not found" };
@@ -289,7 +326,7 @@ export default function registerGameDesignActions(registerLensAction) {
   registerLensAction("game-design", "gdd-add", (ctx, _a, params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
-    if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
+    if (!gdGame(ctx, s, userId, params.gameId)) return { ok: false, error: "game not found" };
     const title = gdClean(params.title, 120);
     if (!title) return { ok: false, error: "section title required" };
     const existing = (s.gdd.get(userId) || []).filter((x) => x.gameId === params.gameId);
@@ -328,7 +365,7 @@ export default function registerGameDesignActions(registerLensAction) {
   registerLensAction("game-design", "mechanic-add", (ctx, _a, params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
-    if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
+    if (!gdGame(ctx, s, userId, params.gameId)) return { ok: false, error: "game not found" };
     const name = gdClean(params.name, 120);
     if (!name) return { ok: false, error: "mechanic name required" };
     const mechanic = {
@@ -367,7 +404,7 @@ export default function registerGameDesignActions(registerLensAction) {
   registerLensAction("game-design", "entity-add", (ctx, _a, params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
-    if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
+    if (!gdGame(ctx, s, userId, params.gameId)) return { ok: false, error: "game not found" };
     const name = gdClean(params.name, 120);
     if (!name) return { ok: false, error: "entity name required" };
     const entity = {
@@ -418,7 +455,7 @@ export default function registerGameDesignActions(registerLensAction) {
   try {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
-    if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
+    if (!gdGame(ctx, s, userId, params.gameId)) return { ok: false, error: "game not found" };
     const cols = Math.round(gdClamp(params.cols, 4, 64, 20));
     const rows = Math.round(gdClamp(params.rows, 4, 64, 14));
     const level = {
@@ -759,7 +796,7 @@ export default function registerGameDesignActions(registerLensAction) {
   registerLensAction("game-design", "autotile-rule-add", (ctx, _a, params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
-    if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
+    if (!gdGame(ctx, s, userId, params.gameId)) return { ok: false, error: "game not found" };
     const intValue = Math.round(gdClamp(params.intValue, 1, 99, 1));
     const validIds = gdValidTileIds(s, userId, params.gameId);
     const tile = gdResolveTile(validIds, params.tile);
@@ -815,7 +852,7 @@ export default function registerGameDesignActions(registerLensAction) {
   registerLensAction("game-design", "tile-create", (ctx, _a, params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
-    if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
+    if (!gdGame(ctx, s, userId, params.gameId)) return { ok: false, error: "game not found" };
     const name = gdClean(params.name, 60);
     if (!name) return { ok: false, error: "tile name required" };
     const tile = {
@@ -903,7 +940,7 @@ export default function registerGameDesignActions(registerLensAction) {
   registerLensAction("game-design", "enum-create", (ctx, _a, params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
-    if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
+    if (!gdGame(ctx, s, userId, params.gameId)) return { ok: false, error: "game not found" };
     const name = gdClean(params.name, 60);
     if (!name) return { ok: false, error: "enum name required" };
     const values = Array.isArray(params.values)
@@ -935,7 +972,7 @@ export default function registerGameDesignActions(registerLensAction) {
   registerLensAction("game-design", "loop-create", (ctx, _a, params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
-    if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
+    if (!gdGame(ctx, s, userId, params.gameId)) return { ok: false, error: "game not found" };
     const name = gdClean(params.name, 120);
     if (!name) return { ok: false, error: "loop name required" };
     const loop = {
@@ -1015,7 +1052,7 @@ export default function registerGameDesignActions(registerLensAction) {
   registerLensAction("game-design", "narrative-node-create", (ctx, _a, params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
-    if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
+    if (!gdGame(ctx, s, userId, params.gameId)) return { ok: false, error: "game not found" };
     const title = gdClean(params.title, 160);
     if (!title) return { ok: false, error: "node title required" };
     const node = {
@@ -1146,7 +1183,7 @@ export default function registerGameDesignActions(registerLensAction) {
   try {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
-    if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
+    if (!gdGame(ctx, s, userId, params.gameId)) return { ok: false, error: "game not found" };
     const entities = (s.entities.get(userId) || []).filter((e) => e.gameId === String(params.gameId));
     if (entities.length === 0) return { ok: true, result: { message: "Add entities to generate a balance report.", entities: 0 } };
     const stat = (arr, key) => {
@@ -1186,7 +1223,7 @@ export default function registerGameDesignActions(registerLensAction) {
   registerLensAction("game-design", "game-export", (ctx, _a, params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
-    const game = gdGame(s, userId, params.gameId);
+    const game = gdGame(ctx, s, userId, params.gameId);
     if (!game) return { ok: false, error: "game not found" };
     const f = (k) => (s[k].get(userId) || []).filter((x) => x.gameId === game.id);
     const project = {
@@ -1209,7 +1246,7 @@ export default function registerGameDesignActions(registerLensAction) {
   registerLensAction("game-design", "game-dashboard", (ctx, _a, params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
-    const game = gdGame(s, userId, params.gameId);
+    const game = gdGame(ctx, s, userId, params.gameId);
     if (!game) return { ok: false, error: "game not found" };
     const mechanics = (s.mechanics.get(userId) || []).filter((x) => x.gameId === game.id);
     const byCategory = {};
@@ -1246,11 +1283,11 @@ export default function registerGameDesignActions(registerLensAction) {
   // playtest-enter macro below can reuse the EXACT same compilation --
   // playtest is a rendering-mode toggle over this one real engine, never
   // a second, parallel "play mode" data model.
-  function gdCompileRuntimeScene(s, userId, levelId) {
+  function gdCompileRuntimeScene(ctx, s, userId, levelId) {
   try {
     const level = gdFindLevel(s, userId, levelId);
     if (!level) return { ok: false, error: "level not found" };
-    const game = gdGame(s, userId, level.gameId);
+    const game = gdGame(ctx, s, userId, level.gameId);
     if (!game) return { ok: false, error: "game not found" };
     const cellCount = level.cols * level.rows;
     // Collision: a cell is solid if any collision-flagged source marks it.
@@ -1333,7 +1370,7 @@ export default function registerGameDesignActions(registerLensAction) {
   registerLensAction("game-design", "runtime-compile", (ctx, _a, params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
-    return gdCompileRuntimeScene(s, userId, params.levelId);
+    return gdCompileRuntimeScene(ctx, s, userId, params.levelId);
   });
 
   // ── D21 — Playtest loop: design mode ⇄ play mode for the SAME scene ──
@@ -1357,7 +1394,7 @@ export default function registerGameDesignActions(registerLensAction) {
   registerLensAction("game-design", "playtest-enter", (ctx, _a, params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
-    const compiled = gdCompileRuntimeScene(s, userId, params.levelId);
+    const compiled = gdCompileRuntimeScene(ctx, s, userId, params.levelId);
     if (!compiled.ok) return compiled;
     gdPlaytestSessions(s).set(userId, {
       levelId: compiled.result.levelId,
@@ -1446,7 +1483,7 @@ export default function registerGameDesignActions(registerLensAction) {
   try {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
-    if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
+    if (!gdGame(ctx, s, userId, params.gameId)) return { ok: false, error: "game not found" };
     const name = gdClean(params.name, 120);
     if (!name) return { ok: false, error: "asset name required" };
     const src = String(params.src == null ? "" : params.src).trim();
@@ -1520,7 +1557,7 @@ export default function registerGameDesignActions(registerLensAction) {
   registerLensAction("game-design", "animation-create", (ctx, _a, params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
-    if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
+    if (!gdGame(ctx, s, userId, params.gameId)) return { ok: false, error: "game not found" };
     const name = gdClean(params.name, 120);
     if (!name) return { ok: false, error: "animation name required" };
     let entityId = params.entityId ? String(params.entityId) : null;
@@ -1634,7 +1671,7 @@ export default function registerGameDesignActions(registerLensAction) {
   registerLensAction("game-design", "behavior-create", (ctx, _a, params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
-    if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
+    if (!gdGame(ctx, s, userId, params.gameId)) return { ok: false, error: "game not found" };
     const name = gdClean(params.name, 120);
     if (!name) return { ok: false, error: "behavior name required" };
     let entityId = params.entityId ? String(params.entityId) : null;
@@ -1735,7 +1772,7 @@ export default function registerGameDesignActions(registerLensAction) {
   try {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
-    const game = gdGame(s, userId, params.gameId);
+    const game = gdGame(ctx, s, userId, params.gameId);
     if (!game) return { ok: false, error: "game not found" };
     if (params.levelId && !gdFindLevel(s, userId, params.levelId)) return { ok: false, error: "level not found" };
     const outcome = gdPick(params.outcome, ["completed", "died", "quit", "timeout"], "quit");
@@ -1783,7 +1820,7 @@ export default function registerGameDesignActions(registerLensAction) {
   try {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
-    if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
+    if (!gdGame(ctx, s, userId, params.gameId)) return { ok: false, error: "game not found" };
     let runs = (s.playtests.get(userId) || []).filter((r) => r.gameId === String(params.gameId));
     if (params.levelId) runs = runs.filter((r) => r.levelId === String(params.levelId));
     if (runs.length === 0) {
@@ -2425,7 +2462,7 @@ export default function registerGameDesignActions(registerLensAction) {
     const userId = gdAid(ctx);
     const level = gdFindLevel(s, userId, params.levelId);
     if (!level) return { ok: false, error: "level not found" };
-    const game = gdGame(s, userId, level.gameId);
+    const game = gdGame(ctx, s, userId, level.gameId);
     if (!game) return { ok: false, error: "game not found" };
 
     const referencedIds = gdReferencedEntityIds(level);
@@ -2535,7 +2572,7 @@ export default function registerGameDesignActions(registerLensAction) {
     // one recreated from the snapshot's own game metadata. An explicit
     // gameId that doesn't resolve is an honest rejection, never a silent
     // fall-through to "create a new game anyway".
-    let game = params.gameId ? gdGame(s, userId, params.gameId) : null;
+    let game = params.gameId ? gdGame(ctx, s, userId, params.gameId) : null;
     if (params.gameId && !game) return { ok: false, error: "game not found" };
     if (!game) {
       game = {
