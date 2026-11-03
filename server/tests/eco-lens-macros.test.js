@@ -248,12 +248,15 @@ describe("eco.sustainabilityScore — ESG pillar weighting the panel renders", (
 describe("eco.energy-estimate — deterministic PV model + bounds", () => {
   it("returns 12 monthly values, an annual total, and a 0..1 capacity factor", () => {
     const r = call("energy-estimate", ctxA, { });
-    // default systemKw=5, lat/lng 0
-    const r2 = call("energy-estimate", ctxA, {});
-    void r2;
+    assert.equal(r.result.systemKwp, null);
+    assert.equal(r.result.annualKwh, null);
+    assert.equal(r.result.reason, "not_recorded");
+    assert.deepEqual(r.result.unavailable, ["lat", "lng", "systemKw"]);
     const out = call("energy-estimate", ctxA, { lat: 37.77, lng: -122.42, systemKw: 8, tilt: 30, azimuth: 180 });
     assert.equal(out.ok, true);
     assert.equal(out.result.systemKwp, 8);
+    assert.equal(out.result.tiltAssumed, false);
+    assert.equal(out.result.azimuthAssumed, false);
     assert.equal(out.result.monthlyKwh.length, 12);
     assert.equal(out.result.annualKwh, out.result.monthlyKwh.reduce((s, v) => s + v, 0) > 0
       ? out.result.annualKwh : out.result.annualKwh); // annual is finite & positive
@@ -264,21 +267,34 @@ describe("eco.energy-estimate — deterministic PV model + bounds", () => {
     assertNoNonFinite(r.result);
   });
 
-  it("fail-CLOSED: poisoned Infinity/NaN lat/lng/kW/tilt never leak Infinity/NaN", () => {
+  it("fail-CLOSED: poisoned Infinity/NaN lat/lng/kW are not a site", () => {
     const r = call("energy-estimate", ctxA, { lat: Infinity, lng: "NaN", systemKw: "1e999", tilt: Infinity, azimuth: NaN });
     assert.equal(r.ok, true);
-    assert.ok(Number.isFinite(r.result.systemKwp));
-    assert.ok(Number.isFinite(r.result.annualKwh));
-    assert.ok(Number.isFinite(r.result.capacityFactor));
-    assert.ok(r.result.location.lat >= -90 && r.result.location.lat <= 90);
+    assert.equal(r.result.systemKwp, null);
+    assert.equal(r.result.annualKwh, null);
+    assert.equal(r.result.location, null);
+    assert.equal(r.result.reason, "not_recorded");
     assertNoNonFinite(r.result);
   });
 
-  it("negative system size clamps to the 0.1 kW floor (never negative production)", () => {
+  it("a negative system size is not rewritten as 0.1 kW", () => {
     const r = call("energy-estimate", ctxA, { lat: 37, lng: -122, systemKw: -5 });
-    assert.equal(r.result.systemKwp, 0.1);
-    assert.ok(r.result.annualKwh >= 0);
+    assert.equal(r.result.systemKwp, null);
+    assert.equal(r.result.annualKwh, null);
+    assert.deepEqual(r.result.unavailable, ["systemKw"]);
     assertNoNonFinite(r.result);
+  });
+
+  it("keeps an explicit equator and labels an omitted tilt", () => {
+    const r = call("energy-estimate", ctxA, { lat: 0, lng: 0, systemKw: 5 });
+    assert.equal(r.result.location.lat, 0);
+    assert.equal(r.result.location.lng, 0);
+    assert.equal(r.result.systemKwp, 5);
+    assert.equal(r.result.tilt, 30);
+    assert.equal(r.result.azimuth, 180);
+    assert.equal(r.result.tiltAssumed, true);
+    assert.equal(r.result.azimuthAssumed, true);
+    assert.ok(r.result.annualKwh > 0);
   });
 });
 
