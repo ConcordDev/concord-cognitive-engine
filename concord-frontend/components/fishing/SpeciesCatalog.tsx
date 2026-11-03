@@ -35,6 +35,10 @@ interface SpeciesCatalogProps {
   onSelectBiome: (biome: string | null) => void;
   onSelectFish: (fish: FishSpecies) => void;
   density: 'compact' | 'comfortable';
+  /** F4: the raw three-level density preference (table `density` above only
+   *  controls row padding and collapses medium+high to the same value — this
+   *  drives which COLUMNS render, so "Low vs High" is a real difference. */
+  densityLevel?: 'low' | 'medium' | 'high';
 }
 
 export function SpeciesCatalog({
@@ -47,6 +51,7 @@ export function SpeciesCatalog({
   onSelectBiome,
   onSelectFish,
   density,
+  densityLevel = 'medium',
 }: SpeciesCatalogProps) {
   const columns: DataTableColumn<FishSpecies>[] = [
     {
@@ -93,20 +98,44 @@ export function SpeciesCatalog({
       sortValue: (f) => f.rarity,
       sortable: true,
     },
-    {
-      id: 'abilities',
-      header: 'Behavior',
-      accessor: (f) => (
-        <div className="flex flex-wrap gap-1">
-          {(f.abilities || []).slice(0, 3).map((a) => (
-            <span key={a} className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-gray-400">
-              {a}
-            </span>
-          ))}
-          {(!f.abilities || f.abilities.length === 0) && <span className="text-gray-600">—</span>}
-        </div>
-      ),
-    },
+    // F4: at "low" density the Behavior column is dropped entirely (fewer
+    // fields = genuinely lower density, not just tighter padding). At
+    // "medium" it shows up to 3 behaviors (the prior fixed behavior). At
+    // "high" it shows every authored behavior verb, uncapped.
+    ...(densityLevel === 'low'
+      ? []
+      : [
+          {
+            id: 'abilities',
+            header: 'Behavior',
+            accessor: (f: FishSpecies) => (
+              <div className="flex flex-wrap gap-1">
+                {(f.abilities || []).slice(0, densityLevel === 'high' ? undefined : 3).map((a) => (
+                  <span key={a} className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-gray-400">
+                    {a}
+                  </span>
+                ))}
+                {(!f.abilities || f.abilities.length === 0) && <span className="text-gray-600">—</span>}
+              </div>
+            ),
+          } satisfies DataTableColumn<FishSpecies>,
+        ]),
+    // F4: "high" density adds a Habitat detail column (biome + subBiome
+    // together) that lower densities omit — a real, reload-stable field
+    // difference the re-pass test can check for.
+    ...(densityLevel === 'high'
+      ? [
+          {
+            id: 'habitat',
+            header: 'Habitat',
+            accessor: (f: FishSpecies) => (
+              <span className="text-gray-500 text-[11px]">
+                {[f.biome, f.subBiome].filter(Boolean).join(' / ') || '—'}
+              </span>
+            ),
+          } satisfies DataTableColumn<FishSpecies>,
+        ]
+      : []),
   ];
 
   return (

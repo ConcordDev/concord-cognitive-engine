@@ -27,9 +27,14 @@ export interface CatchRow {
   world_id: string;
   item_id: string;
   item_name?: string;
+  /** Total times this exact species has been reeled in (player_inventory.quantity).
+   *  F2 fix: repeat catches of an already-held species STACK onto this row
+   *  (the table's real PK is (user_id, item_id)) rather than failing — so a
+   *  row's true catch count is `quantity`, not "1 row = 1 catch". */
+  quantity?: number;
   /** Unix epoch seconds (player_inventory.acquired_at). */
   acquired_at: number;
-  /** JSON string: { qualityScore, sessionId, buffOnCook }. */
+  /** JSON string: { qualityScore, sessionId, buffOnCook, history }. */
   meta_json?: string;
 }
 
@@ -37,6 +42,8 @@ export interface ParsedCatchMeta {
   qualityScore?: number;
   sessionId?: string;
   buffOnCook?: Record<string, number | string> | null;
+  /** Capped (last 10) per-catch quality history for a stacked row. */
+  history?: Array<{ qualityScore?: number; sessionId?: string; at?: number }>;
 }
 
 export const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'] as const;
