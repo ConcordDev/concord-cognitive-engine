@@ -162,6 +162,38 @@ describe("veterinary — patient records substrate", () => {
     const rec = call("vaccine-record", ctxA, {}, { patientId: pat.id, vaccine: "Rabies", nextDue: "2027-01-01" });
     assert.equal(rec.ok, true);
     assert.equal(rec.result.record.vaccine, "Rabies");
+    assert.equal(rec.result.record.date, "");
+    assert.equal(rec.result.record.nextDue, "2027-01-01");
+  });
+
+  it("vaccine-record derives the due date from the given date and the interval", () => {
+    const pat = call("patient-add", ctxA, {}, { name: "Max", species: "dog" }).result.patient;
+    const rec = call("vaccine-record", ctxA, {}, {
+      patientId: pat.id, vaccine: "Rabies", date: "2026-11-03",
+      intervalCount: 1, intervalUnit: "year", nextDue: "2026-11-03",
+    });
+    assert.equal(rec.ok, true);
+    assert.equal(rec.result.record.date, "2026-11-03");
+    assert.equal(rec.result.record.nextDue, "2027-11-03");
+    assert.equal(rec.result.record.intervalCount, 1);
+    assert.equal(rec.result.record.intervalUnit, "year");
+    const reminders = call("vaccine-reminders", ctxA, {}, { horizonDays: 30 });
+    assert.equal(reminders.result.overdueCount, 0);
+    assert.equal(reminders.result.dueSoonCount, 0);
+    const months = call("vaccine-record", ctxA, {}, {
+      patientId: pat.id, vaccine: "Bordetella", date: "2026-11-01", intervalCount: 6, intervalUnit: "month",
+    });
+    assert.equal(months.result.record.nextDue, "2027-05-01");
+    const givenOnly = call("vaccine-record", ctxA, {}, { patientId: pat.id, vaccine: "DHPP", date: "2026-11-03" });
+    assert.equal(givenOnly.ok, true);
+    assert.equal(givenOnly.result.record.nextDue, "");
+    const missing = call("vaccine-record", ctxA, {}, {
+      patientId: pat.id, vaccine: "Rabies", intervalCount: 1, intervalUnit: "year",
+    });
+    assert.equal(missing.ok, false);
+    assert.equal(missing.error, "invalid_input");
+    assert.equal(missing.field, "date");
+    assert.equal(call("patient-list", ctxA, {}, {}).result.patients[0].vaccinations.length, 3);
   });
 
   it("vet-dashboard aggregates revenue and species", () => {

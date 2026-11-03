@@ -201,7 +201,10 @@ function PatientDetail({ patient, onChanged }: { patient: VetPatient; onChanged:
   const [vDiagnosis, setVDiagnosis] = useState('');
   const [vCost, setVCost] = useState('');
   const [vacName, setVacName] = useState('');
-  const [vacDue, setVacDue] = useState('');
+  const [vacGiven, setVacGiven] = useState('');
+  const [vacEvery, setVacEvery] = useState('');
+  const [vacUnit, setVacUnit] = useState<'day' | 'month' | 'year'>('year');
+  const [vacError, setVacError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const logVisit = async () => {
@@ -220,16 +223,33 @@ function PatientDetail({ patient, onChanged }: { patient: VetPatient; onChanged:
 
   const addVaccine = async () => {
     if (!vacName.trim()) return;
+    if (!vacGiven) {
+      setVacError('Given date is required.');
+      return;
+    }
+    const every = Number(vacEvery);
+    if (!Number.isInteger(every) || every < 1) {
+      setVacError('Interval must be a whole number, 1 or more.');
+      return;
+    }
     setBusy(true);
-    await lensRun('veterinary', 'vaccine-record', {
+    const r = await lensRun('veterinary', 'vaccine-record', {
       patientId: patient.id,
       vaccine: vacName,
-      nextDue: vacDue,
+      date: vacGiven,
+      intervalCount: every,
+      intervalUnit: vacUnit,
     });
     setBusy(false);
-    setVacName('');
-    setVacDue('');
-    onChanged();
+    if (r.data?.ok) {
+      setVacName('');
+      setVacGiven('');
+      setVacEvery('');
+      setVacError(null);
+      onChanged();
+    } else {
+      setVacError(r.data?.error || 'failed to record vaccination');
+    }
   };
 
   return (
@@ -285,7 +305,13 @@ function PatientDetail({ patient, onChanged }: { patient: VetPatient; onChanged:
           {patient.vaccinations.length === 0 && <p className="text-xs text-zinc-400">No vaccinations.</p>}
           {patient.vaccinations.map((v) => (
             <div key={v.id} className="rounded bg-zinc-950 px-2 py-1 text-xs text-zinc-300">
-              <span className="text-emerald-400">{v.vaccine}</span> · {v.date}
+              <span className="text-emerald-400">{v.vaccine}</span>
+              {v.date && <span> · given {v.date}</span>}
+              {v.intervalCount != null && v.intervalUnit && (
+                <span className="text-zinc-400">
+                  {' '}· every {v.intervalCount} {v.intervalCount === 1 ? v.intervalUnit : `${v.intervalUnit}s`}
+                </span>
+              )}
               {v.nextDue && <span className="text-zinc-400"> → due {v.nextDue}</span>}
             </div>
           ))}
@@ -298,12 +324,30 @@ function PatientDetail({ patient, onChanged }: { patient: VetPatient; onChanged:
             className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-1.5 py-1 text-xs text-white"
           />
           <input
-            value={vacDue}
-            onChange={(e) => setVacDue(e.target.value)}
-            placeholder="Next due"
+            value={vacGiven}
+            onChange={(e) => setVacGiven(e.target.value)}
+            aria-label="Given date"
             type="date"
             className="rounded border border-zinc-800 bg-zinc-900 px-1.5 py-1 text-xs text-white"
           />
+          <input
+            value={vacEvery}
+            onChange={(e) => setVacEvery(e.target.value)}
+            aria-label="Interval"
+            placeholder="Every"
+            inputMode="numeric"
+            className="w-16 rounded border border-zinc-800 bg-zinc-900 px-1.5 py-1 text-xs text-white"
+          />
+          <select
+            value={vacUnit}
+            onChange={(e) => setVacUnit(e.target.value as 'day' | 'month' | 'year')}
+            aria-label="Interval unit"
+            className="rounded border border-zinc-800 bg-zinc-900 px-1.5 py-1 text-xs text-white"
+          >
+            <option value="year">years</option>
+            <option value="month">months</option>
+            <option value="day">days</option>
+          </select>
           <button
             onClick={addVaccine}
             disabled={busy || !vacName.trim()}
@@ -311,6 +355,7 @@ function PatientDetail({ patient, onChanged }: { patient: VetPatient; onChanged:
           >
             Add
           </button>
+          {vacError && <p className="w-full text-xs text-red-300">{vacError}</p>}
         </div>
       </div>
     </div>

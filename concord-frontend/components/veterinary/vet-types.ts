@@ -15,6 +15,8 @@ export interface VetVaccination {
   vaccine: string;
   date: string;
   nextDue: string;
+  intervalCount?: number;
+  intervalUnit?: 'day' | 'month' | 'year';
 }
 
 export interface VetPatient {
