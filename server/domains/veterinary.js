@@ -6,7 +6,7 @@
 // veterinary adverse-event feed. Free public source, no API key.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
-import { needNums, optNum, notComputed, advisory } from "../lib/lens-inputs.js";
+import { needNums, optNum, notComputed, advisory, requireList } from "../lib/lens-inputs.js";
 import { assertPayable } from "../lib/money-guards.js";
 import { bindWave1 } from "../lib/lens-input-schemas-wave1.js";
 
@@ -14,9 +14,48 @@ export default function registerVeterinaryActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction = bindWave1(registerLensAction);
   // ─── Clinical calculators ───────────────────────────────────────────
-  registerLensAction("veterinary", "triageAssess", advisory("keyword triage heuristic; not a veterinary assessment — call a vet or emergency clinic if in doubt", (ctx, artifact, _params) => { const data = artifact.data || {}; const symptoms = data.symptoms || []; const species = (data.species || "dog").toLowerCase(); const age = parseFloat(data.age) || 3; const emergency = symptoms.some(s => ["not-breathing","seizure","bleeding","unconscious","poisoning","bloat","hit-by-car"].includes((s.name || s).toLowerCase())); const urgent = symptoms.some(s => ["vomiting","diarrhea","limping","not-eating","lethargy","swelling"].includes((s.name || s).toLowerCase())); return { ok: true, result: { species, age, symptoms: symptoms.map(s => s.name || s), triageLevel: emergency ? "EMERGENCY" : urgent ? "urgent" : "routine", responseTime: emergency ? "Immediate — go to emergency vet NOW" : urgent ? "See vet within 24 hours" : "Schedule routine appointment", firstAid: emergency ? ["Keep animal calm", "Do not move if spinal injury suspected", "Apply pressure to bleeding", "Call emergency vet en route"] : [] } }; }));
+  // Lens-run puts the caller's object on artifact.data. A few harnesses
+  // pass that same object as the third argument with an empty artifact.
+  function vetData(artifact, params) {
+    const fromArtifact = artifact && artifact.data && typeof artifact.data === "object" && !Array.isArray(artifact.data) ? artifact.data : {};
+    const fromParams = params && typeof params === "object" && !Array.isArray(params) ? params : {};
+    return { ...fromArtifact, ...fromParams };
+  }
+  function speciesText(data) {
+    return typeof data.species === "string" ? data.species.trim().toLowerCase() : "";
+  }
+
+  registerLensAction("veterinary", "triageAssess", advisory("keyword triage heuristic; not a veterinary assessment — call a vet or emergency clinic if in doubt", (ctx, artifact, params) => {
+    const data = vetData(artifact, params);
+    const symptomsRaw = requireList(data.symptoms, "symptoms");
+    if (symptomsRaw && symptomsRaw.ok === false) return symptomsRaw;
+    const symptoms = symptomsRaw;
+    // Species and age are echoed, not inputs to the keyword level. An
+    // omitted field stays null. It is not a dog and it is not 3 years old.
+    const species = speciesText(data) || null;
+    const age = optNum(data.age);
+    const emergency = symptoms.some(s => ["not-breathing","seizure","bleeding","unconscious","poisoning","bloat","hit-by-car"].includes(String((s && s.name) || s || "").toLowerCase()));
+    const urgent = symptoms.some(s => ["vomiting","diarrhea","limping","not-eating","lethargy","swelling"].includes(String((s && s.name) || s || "").toLowerCase()));
+    return { ok: true, result: { species, age, symptoms: symptoms.map(s => (s && s.name) || s), triageLevel: emergency ? "EMERGENCY" : urgent ? "urgent" : "routine", responseTime: emergency ? "Immediate — go to emergency vet NOW" : urgent ? "See vet within 24 hours" : "Schedule routine appointment", firstAid: emergency ? ["Keep animal calm", "Do not move if spinal injury suspected", "Apply pressure to bleeding", "Call emergency vet en route"] : [] } };
+  }));
   registerLensAction("veterinary", "weightCheck", (ctx, artifact, _params) => { const data = artifact.data || {}; const _req = needNums(data, ["weight>0"]); const _miss = [...(data.species ? [] : ["species"]), ..._req.missing]; if (_miss.length) return notComputed(_miss, "Weight check needs species and current weight (lbs)."); const species = String(data.species).toLowerCase(); const breed = (data.breed || "").toLowerCase(); const weight = _req.values.weight; const idealRanges = { dog: { small: [5,20], medium: [20,55], large: [55,100] }, cat: { all: [6,14] } }; const range = species === "cat" ? idealRanges.cat.all : weight < 25 ? idealRanges.dog.small : weight < 60 ? idealRanges.dog.medium : idealRanges.dog.large; const inRange = weight >= range[0] && weight <= range[1]; return { ok: true, result: { species, breed: breed || "mixed", currentWeight: weight, idealRange: `${range[0]}-${range[1]} lbs`, status: inRange ? "healthy-weight" : weight < range[0] ? "underweight" : "overweight", recommendation: !inRange ? "Discuss weight management with your vet" : "Weight is in healthy range" } }; });
-  registerLensAction("veterinary", "vaccineSchedule", advisory("generic core-vaccine table; not AAHA/AVMA or WSAVA guidance for this animal — confirm with a veterinarian", (ctx, artifact, _params) => { const data = artifact.data || {}; const species = (data.species || "dog").toLowerCase(); const age = parseFloat(data.age) || 1; const schedules = { dog: [{ vaccine: "Rabies", ageMonths: 3, booster: "1-3 years" }, { vaccine: "DHPP", ageMonths: 2, booster: "annually" }, { vaccine: "Bordetella", ageMonths: 2, booster: "6-12 months" }], cat: [{ vaccine: "Rabies", ageMonths: 3, booster: "1-3 years" }, { vaccine: "FVRCP", ageMonths: 2, booster: "annually" }, { vaccine: "FeLV", ageMonths: 2, booster: "annually" }] }; const schedule = schedules[species] || schedules.dog; const ageMonths = age * 12; return { ok: true, result: { species, ageMonths: Math.round(ageMonths), vaccines: schedule.map(v => ({ ...v, due: ageMonths >= v.ageMonths ? "due-or-overdue" : `at ${v.ageMonths} months` })), overdueCount: schedule.filter(v => ageMonths >= v.ageMonths).length } }; }));
+  registerLensAction("veterinary", "vaccineSchedule", advisory("generic core-vaccine table; not AAHA/AVMA or WSAVA guidance for this animal — confirm with a veterinarian", (ctx, artifact, params) => {
+    const data = vetData(artifact, params);
+    const species = speciesText(data);
+    const age = optNum(data.age);
+    // The core table is dog and cat only. Anything else used to fall
+    // through to the dog rows, and a missing age used to become 1 year.
+    const missing = [];
+    if (species !== "dog" && species !== "cat") missing.push("species");
+    if (age == null || age < 0) missing.push("age");
+    if (missing.length) {
+      return notComputed(missing, "Vaccine schedule needs species (dog or cat) and age in years. Other species are not on this core table.");
+    }
+    const schedules = { dog: [{ vaccine: "Rabies", ageMonths: 3, booster: "1-3 years" }, { vaccine: "DHPP", ageMonths: 2, booster: "annually" }, { vaccine: "Bordetella", ageMonths: 2, booster: "6-12 months" }], cat: [{ vaccine: "Rabies", ageMonths: 3, booster: "1-3 years" }, { vaccine: "FVRCP", ageMonths: 2, booster: "annually" }, { vaccine: "FeLV", ageMonths: 2, booster: "annually" }] };
+    const schedule = schedules[species];
+    const ageMonths = age * 12;
+    return { ok: true, result: { species, ageMonths: Math.round(ageMonths), vaccines: schedule.map(v => ({ ...v, due: ageMonths >= v.ageMonths ? "due-or-overdue" : `at ${v.ageMonths} months` })), overdueCount: schedule.filter(v => ageMonths >= v.ageMonths).length } };
+  }));
   registerLensAction("veterinary", "costEstimate", (ctx, artifact, _params) => {
     const procedures = artifact.data?.procedures;
     if (!Array.isArray(procedures) || procedures.length === 0) {

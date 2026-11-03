@@ -23,6 +23,12 @@ const TRIAGE_SYMPTOMS = [
   'swelling',
 ];
 
+function yearsOrNull(raw: string): number | null {
+  if (raw.trim() === '') return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
 const PROCEDURES = [
   'exam',
   'vaccination',
@@ -74,8 +80,13 @@ function TriageCalc() {
   const [busy, setBusy] = useState(false);
 
   const run = async () => {
+    const years = yearsOrNull(age);
+    if (years == null) {
+      setResult({ status: 'NOT_COMPUTED', message: 'Age not recorded' });
+      return;
+    }
     setBusy(true);
-    const r = await lensRun('veterinary', 'triageAssess', { species, age: Number(age), symptoms });
+    const r = await lensRun('veterinary', 'triageAssess', { species, age: years, symptoms });
     setBusy(false);
     if (r.data.ok) setResult(r.data.result as CalcResult);
   };
@@ -130,7 +141,9 @@ function TriageCalc() {
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Activity className="h-3 w-3" />}
           Assess
         </button>
-        {result && (
+        {result?.status === 'NOT_COMPUTED' ? (
+          <p className="rounded bg-zinc-950 p-2 text-xs text-zinc-400">{result.message || 'Not recorded'}</p>
+        ) : result ? (
           <div className="rounded bg-zinc-950 p-2 text-xs text-zinc-300">
             <p className="font-semibold text-red-400">{result.triageLevel}</p>
             <p>{result.responseTime}</p>
@@ -142,7 +155,7 @@ function TriageCalc() {
               </ul>
             )}
           </div>
-        )}
+        ) : null}
       </div>
     </CalcCard>
   );
@@ -218,8 +231,13 @@ function VaccineCalc() {
   const [busy, setBusy] = useState(false);
 
   const run = async () => {
+    const years = yearsOrNull(age);
+    if (years == null) {
+      setResult({ status: 'NOT_COMPUTED', message: 'Age not recorded' });
+      return;
+    }
     setBusy(true);
-    const r = await lensRun('veterinary', 'vaccineSchedule', { species, age: Number(age) });
+    const r = await lensRun('veterinary', 'vaccineSchedule', { species, age: years });
     setBusy(false);
     if (r.data.ok) setResult(r.data.result as CalcResult);
   };
@@ -252,7 +270,11 @@ function VaccineCalc() {
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Syringe className="h-3 w-3" />}
           Build schedule
         </button>
-        {result && (
+        {result?.status === 'NOT_COMPUTED' ? (
+          <p className="rounded bg-zinc-950 p-2 text-xs text-zinc-400">
+            {result.message || (Array.isArray(result.missingInputs) ? `Not recorded: ${result.missingInputs.join(', ')}` : 'Not recorded')}
+          </p>
+        ) : result ? (
           <div className="space-y-1 rounded bg-zinc-950 p-2 text-xs text-zinc-300">
             {result.vaccines?.map((v: CalcResult, i: number) => (
               <div key={i} className="flex justify-between">
@@ -261,7 +283,7 @@ function VaccineCalc() {
               </div>
             ))}
           </div>
-        )}
+        ) : null}
       </div>
     </CalcCard>
   );
