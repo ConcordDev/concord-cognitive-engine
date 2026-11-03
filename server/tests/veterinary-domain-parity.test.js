@@ -36,6 +36,16 @@ describe("veterinary — clinical calculators", () => {
     assert.ok(r.result.firstAid.length > 0);
   });
 
+  it("triageAssess names the limit beside the grade", () => {
+    const r = call("triageAssess", ctxA, { data: { species: "dog", age: 4, symptoms: ["seizure"] } }, {});
+    assert.equal(r.result.status, "ADVISORY");
+    assert.equal(r.result.verdict, null);
+    assert.equal(
+      r.result.advisoryBasis,
+      "Not a veterinary assessment and not a substitute for one. Call a veterinarian or an emergency clinic.",
+    );
+  });
+
   it("weightCheck reports overweight", () => {
     const r = call("weightCheck", ctxA, { data: { species: "cat", weight: 22 } }, {});
     assert.equal(r.ok, true);
