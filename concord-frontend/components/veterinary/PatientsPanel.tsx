@@ -8,6 +8,7 @@ import {
   SPECIES_OPTIONS,
   SPECIES_EMOJI,
   VISIT_KINDS,
+  recordedMeasure,
 } from './vet-types';
 
 export function PatientsPanel({ onChanged }: { onChanged?: () => void }) {
@@ -43,15 +44,30 @@ export function PatientsPanel({ onChanged }: { onChanged?: () => void }) {
 
   const addPatient = async () => {
     if (!pName.trim()) return;
-    setBusy(true);
-    const r = await lensRun('veterinary', 'patient-add', {
+    const input: Record<string, unknown> = {
       name: pName,
       species: pSpecies,
       breed: pBreed,
       owner: pOwner,
-      ageYears: Number(pAge) || 0,
-      weightLbs: Number(pWeight) || 0,
-    });
+    };
+    if (pAge.trim() !== '') {
+      const n = Number(pAge);
+      if (!Number.isFinite(n) || n < 0) {
+        setError('Age must be a number, 0 or more.');
+        return;
+      }
+      input.ageYears = n;
+    }
+    if (pWeight.trim() !== '') {
+      const n = Number(pWeight);
+      if (!Number.isFinite(n) || n < 0) {
+        setError('Weight must be a number, 0 or more.');
+        return;
+      }
+      input.weightLbs = n;
+    }
+    setBusy(true);
+    const r = await lensRun('veterinary', 'patient-add', input);
     setBusy(false);
     if (r.data.ok) {
       setPName('');
@@ -165,7 +181,7 @@ export function PatientsPanel({ onChanged }: { onChanged?: () => void }) {
                   <div>
                     <p className="text-sm font-semibold text-white">{p.name}</p>
                     <p className="text-xs text-zinc-400">
-                      {p.breed} · {p.species} · {p.owner || 'no owner'}
+                      {p.breed} · {p.species} · {p.owner || 'no owner'} · age {recordedMeasure(p.ageYears, 'yr')} · weight {recordedMeasure(p.weightLbs, 'lb')}
                     </p>
                   </div>
                 </button>
@@ -385,6 +401,9 @@ function PatientDetail({ patient, onChanged }: { patient: VetPatient; onChanged:
         {editError && <p className="col-span-2 md:col-span-4 text-xs text-red-300">{editError}</p>}
       </form>
     <div className="grid gap-3 md:grid-cols-2">
+      <p className="text-xs text-zinc-300 md:col-span-2">
+        Age {recordedMeasure(patient.ageYears, 'yr')} · Weight {recordedMeasure(patient.weightLbs, 'lb')}
+      </p>
       <div className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Visit history</p>
         <div className="max-h-32 space-y-1 overflow-y-auto">
