@@ -304,65 +304,123 @@ export default function registerParentingActions(registerLensAction) {
     } catch (e) { return handlerFailure(e); }
 });
 
-  /**
-   * immunizationTracker
-   * Track and recommend childhood immunizations per CDC schedule.
-   * artifact.data: { childAge, vaccinations: [{ name, date }] }
-   */
-  registerLensAction("parenting", "immunizationTracker", (ctx, artifact, _params) => {
-  try {
-    const data = artifact.data || {};
-    const childAge = data.childAge || "1y";
-    const vaccinations = data.vaccinations ? data.vaccinations.split(",").map(v => v.trim()) : [];
+  // Dose 1 on the CDC childhood schedule, not the age the series finishes.
+  // A 72-month series end hid DTaP, IPV, MMR, and Varicella from a toddler.
+  const PG_CDC = [
+    { vaccine: "Hepatitis B", firstDueMonths: 0, critical: true },
+    { vaccine: "DTaP", firstDueMonths: 2, critical: true },
+    { vaccine: "IPV (Polio)", firstDueMonths: 2, critical: true },
+    { vaccine: "Hib", firstDueMonths: 2, critical: true },
+    { vaccine: "PCV13 (Pneumococcal)", firstDueMonths: 2, critical: true },
+    { vaccine: "RV (Rotavirus)", firstDueMonths: 2, critical: true },
+    { vaccine: "MMR", firstDueMonths: 12, critical: true },
+    { vaccine: "Varicella", firstDueMonths: 12, critical: true },
+    { vaccine: "Hepatitis A", firstDueMonths: 12, critical: true },
+    { vaccine: "Influenza", firstDueMonths: 6, critical: false, note: "Annual" },
+  ];
+  const PG_CDC_NAMES = new Set(PG_CDC.map((v) => v.vaccine));
 
-    const ageMatch = childAge.match(/(\d+)\s*y/i);
-    const ageYears = ageMatch ? parseInt(ageMatch[1]) : 1;
-    const ageMonths = ageYears * 12;
-
-    const cdcSchedule = [
-      { vaccine: "Hepatitis B", doses: 3, byMonths: 6, critical: true },
-      { vaccine: "DTaP", doses: 5, byMonths: 72, critical: true },
-      { vaccine: "IPV (Polio)", doses: 4, byMonths: 72, critical: true },
-      { vaccine: "Hib", doses: 4, byMonths: 15, critical: true },
-      { vaccine: "PCV13 (Pneumococcal)", doses: 4, byMonths: 15, critical: true },
-      { vaccine: "RV (Rotavirus)", doses: 3, byMonths: 8, critical: true },
-      { vaccine: "MMR", doses: 2, byMonths: 72, critical: true },
-      { vaccine: "Varicella", doses: 2, byMonths: 72, critical: true },
-      { vaccine: "Hepatitis A", doses: 2, byMonths: 24, critical: true },
-      { vaccine: "Influenza", doses: 1, byMonths: 6, critical: false, note: "Annual" },
-    ];
-
-    const applicable = cdcSchedule.filter(v => ageMonths >= v.byMonths - 6);
-    const received = applicable.map(v => {
-      const got = vaccinations.some(vax => vax.toLowerCase().includes(v.vaccine.toLowerCase().slice(0, 5)));
+  function pgMacroData(artifact, params) {
+    const fromArtifact = artifact && artifact.data && typeof artifact.data === "object" && !Array.isArray(artifact.data) ? artifact.data : {};
+    const fromParams = params && typeof params === "object" && !Array.isArray(params) ? params : {};
+    return { ...fromArtifact, ...fromParams };
+  }
+  function pgAgeFromLabel(childAge) {
+    const text = String(childAge || "").trim();
+    const ageMatch = text.match(/(\d+)\s*y(?:ear)?s?\s*(?:(\d+)\s*m(?:onth)?s?)?/i);
+    if (ageMatch) return (parseInt(ageMatch[1], 10) || 0) * 12 + (parseInt(ageMatch[2], 10) || 0);
+    const monthsOnly = text.match(/(\d+)\s*m(?:onth)?s?/i);
+    if (monthsOnly) return parseInt(monthsOnly[1], 10) || 0;
+    return 12;
+  }
+  function pgCanonVaccine(name) {
+    const text = String(name || "").trim().toLowerCase();
+    if (!text) return "";
+    return PG_CDC.find((v) => v.vaccine.toLowerCase() === text)?.vaccine || "";
+  }
+  function pgVaccineRows(ageMonths, receivedNames) {
+    const got = new Set(receivedNames);
+    const immunizations = PG_CDC.map((v) => {
+      const received = got.has(v.vaccine);
+      let status = "upcoming";
+      if (received) status = "completed";
+      else if (ageMonths >= v.firstDueMonths) status = v.critical ? "overdue" : "annual";
       return {
         vaccine: v.vaccine,
         required: v.critical,
-        received: got,
-        status: got ? "completed" : ageMonths > v.byMonths ? "overdue" : "upcoming",
+        received,
+        status,
         note: v.note || null,
       };
     });
+    const overdue = immunizations.filter((r) => r.status === "overdue").length;
+    const completed = immunizations.filter((r) => r.received).length;
+    return { immunizations, overdue, completed };
+  }
 
-    const overdue = received.filter(r => r.status === "overdue" && r.required).length;
-
+  /**
+   * immunizationTracker
+   * The ten CDC categories, from each vaccine's first recommended dose.
+   * A childId reads that child's stored received-state and birth date.
+   * Without one, childAge and vaccinations are a generic check.
+   */
+  registerLensAction("parenting", "immunizationTracker", (ctx, artifact, params) => {
+  try {
+    const data = pgMacroData(artifact, params);
+    let ageMonths;
+    let receivedNames = [];
+    let childAge = data.childAge || "";
+    if (data.childId) {
+      const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const access = pgAccess(s, ctx, data.childId);
+      if (!access.child) return { ok: false, error: "child not found" };
+      ageMonths = Math.round(pgAgeMonths(access.child.birthDate));
+      childAge = pgAgeDisplay(access.child.birthDate);
+      receivedNames = Array.isArray(access.child.vaccinesReceived) ? access.child.vaccinesReceived.filter((n) => PG_CDC_NAMES.has(n)) : [];
+    } else {
+      ageMonths = pgAgeFromLabel(childAge || "1y");
+      const raw = data.vaccinations;
+      const list = Array.isArray(raw) ? raw : String(raw || "").split(",");
+      receivedNames = list.map(pgCanonVaccine).filter(Boolean);
+    }
+    const rows = pgVaccineRows(ageMonths, receivedNames);
     return {
       ok: true,
       result: {
-        childAge,
+        childAge: childAge || `${Math.floor(ageMonths / 12)}y ${ageMonths % 12}m`,
         ageMonths,
-        immunizations: received,
+        immunizations: rows.immunizations,
         summary: {
-          total: received.length,
-          completed: received.filter(r => r.received).length,
-          overdue,
-          complianceRate: received.length > 0 ? Math.round((received.filter(r => r.received).length / received.length) * 100) : 0,
+          total: rows.immunizations.length,
+          completed: rows.completed,
+          overdue: rows.overdue,
+          complianceRate: rows.immunizations.length > 0 ? Math.round((rows.completed / rows.immunizations.length) * 100) : 0,
         },
-        action: overdue > 0 ? `${overdue} critical immunization(s) overdue — schedule pediatrician visit` : "Immunizations on track",
+        action: rows.overdue > 0 ? `${rows.overdue} critical immunization(s) overdue — schedule pediatrician visit` : "Immunizations on track",
       },
     };
     } catch (e) { return handlerFailure(e); }
 });
+
+  registerLensAction("parenting", "immunization-record", (ctx, artifact, params) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const data = pgMacroData(artifact, params);
+    const access = pgAccess(s, ctx, data.childId);
+    if (!access.child) return { ok: false, error: "child not found" };
+    const vaccine = pgCanonVaccine(data.vaccine);
+    if (!vaccine) return { ok: false, error: "invalid_input", field: "vaccine" };
+    const received = data.received;
+    const on = received === true || received === "true" || received === 1;
+    const off = received === false || received === "false" || received === 0;
+    if (!on && !off) return { ok: false, error: "invalid_input", field: "received" };
+    if (!Array.isArray(access.child.vaccinesReceived)) access.child.vaccinesReceived = [];
+    const list = access.child.vaccinesReceived;
+    const i = list.indexOf(vaccine);
+    if (on && i < 0) list.push(vaccine);
+    if (off && i >= 0) list.splice(i, 1);
+    savePgState();
+    return { ok: true, result: { childId: access.child.id, vaccinesReceived: list.slice() } };
+  });
 
   // ─── Huckleberry 2026 parity — smart baby-care tracker ──────────────
   // Child profiles, one-touch logging (feeds, sleep, diapers, pumping,
@@ -718,6 +776,7 @@ export default function registerParentingActions(registerLensAction) {
       createdAt: c.createdAt,
       ageMonths: Math.round(pgAgeMonths(c.birthDate) * 10) / 10,
       ageDisplay: pgAgeDisplay(c.birthDate),
+      vaccinesReceived: Array.isArray(c.vaccinesReceived) ? c.vaccinesReceived.filter((n) => PG_CDC_NAMES.has(n)) : [],
       shared: !!c.shared,
     }));
     return { ok: true, result: { children, count: children.length } };

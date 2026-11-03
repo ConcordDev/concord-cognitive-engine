@@ -27,7 +27,7 @@ import { PgCaregiversPanel } from './PgCaregiversPanel';
 import { PgCarePanel } from './PgCarePanel';
 import { PgImmunizationsPanel } from './PgImmunizationsPanel';
 
-interface Child { id: string; name: string; birthDate: string; sex: string; ageDisplay: string; ageMonths: number; shared?: boolean }
+interface Child { id: string; name: string; birthDate: string; sex: string; ageDisplay: string; ageMonths: number; vaccinesReceived?: string[]; shared?: boolean }
 type TabId = 'today' | 'timers' | 'sleep' | 'schedule' | 'growth' | 'milestones' | 'care' | 'immunizations' | 'insights' | 'appointments' | 'caregivers';
 const TABS: { id: TabId; label: string; icon: typeof Baby }[] = [
   { id: 'today', label: 'Today', icon: ListChecks },
@@ -164,7 +164,9 @@ export function ParentingSection() {
                 {tab === 'immunizations' && (() => {
                   const child = children.find((c) => c.id === activeChild);
                   return child
-                    ? <PgImmunizationsPanel child={child} />
+                    ? <PgImmunizationsPanel child={child} onRecorded={(names) => {
+                        setChildren((prev) => prev.map((c) => c.id === child.id ? { ...c, vaccinesReceived: names } : c));
+                      }} />
                     : <p className="text-[11px] text-zinc-400 italic py-8 text-center">Select a child first.</p>;
                 })()}
                 {tab === 'insights' && <PgInsightsPanel childId={activeChild} />}
