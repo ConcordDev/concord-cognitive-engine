@@ -4,7 +4,7 @@
 
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import registerParentingActions from "../domains/parenting.js";
+import registerParentingActions, { pgPercentileLabel } from "../domains/parenting.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -238,6 +238,26 @@ describe("parenting.growth-*", () => {
     // 12-month boy at the WHO median should land near the 50th percentile.
     assert.ok(r.result.weight.percentile >= 40 && r.result.weight.percentile <= 60);
     assert.ok(r.result.height.percentile >= 40 && r.result.height.percentile <= 60);
+    assert.equal(r.result.weight.percentileLabel, pgPercentileLabel(r.result.weight.percentile));
+    assert.equal(r.result.height.percentileLabel, pgPercentileLabel(r.result.height.percentile));
+  });
+
+  it("writes 3rd, not 3th, and keeps 11th", () => {
+    for (const [n, label] of [
+      [1, "1st"], [2, "2nd"], [3, "3rd"], [4, "4th"],
+      [11, "11th"], [12, "12th"], [13, "13th"],
+      [21, "21st"], [22, "22nd"], [23, "23rd"], [50, "50th"],
+    ]) {
+      assert.equal(pgPercentileLabel(n), label);
+    }
+    const id = newChild(ctxA, 12, "boy");
+    call("growth-log", ctxA, { childId: id, heightCm: 70, date: "2026-01-15" });
+    const chart = call("growth-chart", ctxA, { childId: id, metric: "height" });
+    assert.equal(chart.ok, true);
+    assert.equal(chart.result.measurements.length, 1);
+    const row = chart.result.measurements[0];
+    assert.equal(row.percentileLabel, pgPercentileLabel(row.percentile));
+    assert.equal(row.percentileLabel.endsWith("th") && row.percentile % 10 === 3 && row.percentile % 100 !== 13, false);
   });
 
   it("rejects an empty growth measurement", () => {
