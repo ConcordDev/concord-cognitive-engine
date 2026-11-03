@@ -116,6 +116,19 @@ describe("sports.espn-standings", () => {
     assert.equal(r.result.groups[0].teams[0].wins, 55);
     assert.equal(r.result.groups[0].teams[0].streak, "W3");
   });
+
+  it("reads the v2 standings path and hides a raw status code", async () => {
+    let url = "";
+    globalThis.fetch = async (u) => {
+      url = String(u);
+      return { ok: false, status: 404, json: async () => ({ message: "not found" }) };
+    };
+    const r = await call("espn-standings", ctxA, { sport: "nba" });
+    assert.match(url, /site\.api\.espn\.com\/apis\/v2\/sports\/basketball\/nba\/standings$/);
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "espn standings are unavailable right now.");
+    assert.equal(/\bHTTP\b|404/.test(r.error), false);
+  });
 });
 
 describe("sports.espn-news", () => {
@@ -154,6 +167,19 @@ describe("sports.team-roster (TheSportsDB)", () => {
     assert.equal(r.result.players[0].name, "Star Forward");
     assert.equal(r.result.players[0].number, "23");
   });
+
+  it("calls the published test key and hides a raw refusal", async () => {
+    let url = "";
+    globalThis.fetch = async (u) => {
+      url = String(u);
+      return { ok: false, status: 403, json: async () => ({}) };
+    };
+    const r = await call("team-roster", ctxA, { teamId: "134867" });
+    assert.match(url, /\/json\/123\/lookup_all_players\.php\?id=134867/);
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "thesportsdb is unavailable right now.");
+    assert.equal(/403|HTTP/.test(r.error), false);
+  });
 });
 
 describe("sports.player-lookup (TheSportsDB)", () => {
@@ -171,6 +197,14 @@ describe("sports.player-lookup (TheSportsDB)", () => {
     assert.equal(r.ok, true);
     assert.equal(r.result.players[0].name, "LeBron James");
     assert.equal(r.result.players[0].team, "Lakers");
+  });
+
+  it("hides a raw refusal", async () => {
+    globalThis.fetch = async () => ({ ok: false, status: 403, json: async () => ({}) });
+    const r = await call("player-lookup", ctxA, { name: "LeBron" });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "thesportsdb is unavailable right now.");
+    assert.equal(/403|HTTP/.test(r.error), false);
   });
 });
 
