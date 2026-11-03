@@ -241,11 +241,45 @@ export default function registerEventsActions(registerLensAction) {
     return { ok: true, result: { deleted: params.vendorId } };
   });
 
+  // Discover's four host figures. Ticket price is bookkeeping until a payment
+  // exists, so it is not revenue. Attendance is checked-in registrations
+  // over registrations, the same ratio as check-in-status. RSVP is registered
+  // quantity over tier capacity, not the expected-guest field.
+  function operationsDiscover(events) {
+    let registered = 0;
+    let capacity = 0;
+    let checkedIn = 0;
+    let registrationCount = 0;
+    let totalSpent = 0;
+    let revenue = 0;
+    for (const event of events) {
+      const tiers = Array.isArray(event.tiers) ? event.tiers : [];
+      const regs = Array.isArray(event.registrations) ? event.registrations : [];
+      const lines = Array.isArray(event.budgetLines) ? event.budgetLines : [];
+      capacity += tiers.reduce((n, t) => n + Math.max(0, Number(t.quantity) || 0), 0);
+      registered += regs.reduce((n, r) => n + Math.max(0, Number(r.quantity) || 0), 0);
+      registrationCount += regs.length;
+      checkedIn += regs.filter((r) => r.checkedIn).length;
+      for (const line of lines) {
+        const actual = Math.max(0, Number(line.actual) || 0);
+        if (line.kind === "revenue") revenue += actual;
+        else totalSpent += actual;
+      }
+    }
+    return {
+      rsvpRate: capacity > 0 ? Math.round((registered / capacity) * 100) : 0,
+      avgAttendance: registrationCount > 0 ? Math.round((checkedIn / registrationCount) * 100) : 0,
+      totalSpent,
+      netPosition: revenue - totalSpent,
+    };
+  }
+
   registerLensAction("events", "events-dashboard", (ctx, _a, _params = {}) => {
   try {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const events = evList(s, evActor(ctx));
     const now = new Date().toISOString().slice(0, 10);
+    const figures = operationsDiscover(events);
     return {
       ok: true,
       result: {
@@ -254,6 +288,10 @@ export default function registerEventsActions(registerLensAction) {
         planning: events.filter((e) => e.status === "planning").length,
         totalBudget: events.reduce((n, e) => n + e.budget, 0),
         openTasks: events.reduce((n, e) => n + e.tasks.filter((t) => !t.done).length, 0),
+        rsvpRate: figures.rsvpRate,
+        avgAttendance: figures.avgAttendance,
+        totalSpent: figures.totalSpent,
+        netPosition: figures.netPosition,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
