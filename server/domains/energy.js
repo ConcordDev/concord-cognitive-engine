@@ -219,6 +219,9 @@ export default function registerEnergyActions(registerLensAction) {
    * natural gas, nuclear, hydro, solar, wind, etc.). Latest monthly
    * data from EIA seriesId ELEC.GEN.*.M.
    * params: { region?: "US"|"CAL"|"TEX"|"NY"|... (regionId from EIA) }
+   * result.mix[]: { fuel, mwh, sharePct }. sharePct is that fuel's
+   * percent of latest-period generation, one decimal. The Rates panel
+   * formats sharePct. There is no field named pct.
    */
   registerLensAction("energy", "eia-generation-mix", async (_ctx, _artifact, params = {}) => {
     const region = String(params.region || "US").toUpperCase().trim();
