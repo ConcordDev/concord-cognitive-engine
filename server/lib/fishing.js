@@ -105,6 +105,45 @@ export function getSession(sessionId) {
 }
 
 /**
+ * F5 fix (fishing lens review, 2026-11-01): the review found the catalog's
+ * rarity/behaviour columns were "decorative at the point of play" — no
+ * species identity or behaviour verb (dart/leap/pull/thrash/evade/vanish)
+ * ever appeared during the fight, because the species was previously only
+ * chosen at REEL time (resolveFishCatch), after the fight was already over.
+ * This picks the candidate species at BITE time instead — using only the
+ * skill bias (tensionAccuracy isn't known yet) — and stores it on the
+ * session so the bite event can tell the client what it's fighting, and so
+ * the fight itself can honestly reflect that species' real abilities.
+ * Idempotent: a session only ever gets one bite-time pick.
+ *
+ * @returns {{ ok, fish }}
+ */
+export function pickBiteFish(sessionId, { fishingSkill = 0 } = {}) {
+  const s = _sessions.get(sessionId);
+  if (!s) return { ok: false, error: "session_not_found" };
+  if (s.fish) return { ok: true, fish: s.fish };
+  const skillBias = Math.max(0, Math.min(1.5, Number(fishingSkill) / 100));
+  const weights = s.candidatePool.map((f) => {
+    const base = RARITY_WEIGHTS[f.rarity] ?? 0.4;
+    const rarityFactor = f.rarity === "legendary" ? (1 + skillBias) :
+                          f.rarity === "rare"      ? (1 + skillBias * 0.8) :
+                          f.rarity === "uncommon"  ? (1 + skillBias * 0.4) :
+                          1.0;
+    return base * rarityFactor;
+  });
+  const totalWeight = weights.reduce((s2, w) => s2 + w, 0);
+  if (totalWeight <= 0) return { ok: false, error: "weights_zero" };
+  let pick = Math.random() * totalWeight;
+  let chosen = s.candidatePool[s.candidatePool.length - 1];
+  for (let i = 0; i < s.candidatePool.length; i++) {
+    pick -= weights[i];
+    if (pick <= 0) { chosen = s.candidatePool[i]; break; }
+  }
+  s.fish = chosen;
+  return { ok: true, fish: chosen };
+}
+
+/**
  * Fishing skill is a server record, never a client field. Missing table or
  * missing row clamps to 0 so a caller cannot force a perfect catch.
  */
@@ -167,28 +206,38 @@ export function resolveFishCatch({ sessionId, reactionMs = 1000, tensionAccuracy
   // Skill-weighted pick from candidate pool. Player skill biases toward
   // rarer fish at higher levels; tensionAccuracy adjusts both pick
   // weight and final quality score.
+  //
+  // F5 fix: if `pickBiteFish` already chose a species for this session (the
+  // normal path — the bite event picks it so the client can show the real
+  // species mid-fight), honor that pick instead of re-rolling here. Direct
+  // callers that skip the bite-time pick (older tests, any future caller
+  // that resolves without going through the route) still get a same-tick
+  // roll as a fallback, unaffected.
   const skillBias = Math.max(0, Math.min(1.5, Number(fishingSkill) / 100));
   const accuracyBias = Math.max(0, Math.min(1, Number(tensionAccuracy) || 0));
   const reactionBias = reactionMs < 600 ? 0.2 : reactionMs < 1200 ? 0.0 : -0.2;
 
-  // Build weighted cumulative
-  const weights = s.candidatePool.map((f) => {
-    const base = RARITY_WEIGHTS[f.rarity] ?? 0.4;
-    // Higher skill + accuracy nudges weight toward rare. Common fish
-    // weight is reduced; rare fish weight is amplified.
-    const rarityFactor = f.rarity === "legendary" ? (1 + skillBias + accuracyBias) :
-                          f.rarity === "rare"      ? (1 + skillBias * 0.8) :
-                          f.rarity === "uncommon"  ? (1 + skillBias * 0.4) :
-                          1.0;
-    return base * rarityFactor;
-  });
-  const totalWeight = weights.reduce((s2, w) => s2 + w, 0);
-  if (totalWeight <= 0) return { ok: false, error: "weights_zero" };
-  let pick = Math.random() * totalWeight;
-  let chosen = s.candidatePool[s.candidatePool.length - 1];
-  for (let i = 0; i < s.candidatePool.length; i++) {
-    pick -= weights[i];
-    if (pick <= 0) { chosen = s.candidatePool[i]; break; }
+  let chosen = s.fish;
+  if (!chosen) {
+    // Build weighted cumulative
+    const weights = s.candidatePool.map((f) => {
+      const base = RARITY_WEIGHTS[f.rarity] ?? 0.4;
+      // Higher skill + accuracy nudges weight toward rare. Common fish
+      // weight is reduced; rare fish weight is amplified.
+      const rarityFactor = f.rarity === "legendary" ? (1 + skillBias + accuracyBias) :
+                            f.rarity === "rare"      ? (1 + skillBias * 0.8) :
+                            f.rarity === "uncommon"  ? (1 + skillBias * 0.4) :
+                            1.0;
+      return base * rarityFactor;
+    });
+    const totalWeight = weights.reduce((s2, w) => s2 + w, 0);
+    if (totalWeight <= 0) return { ok: false, error: "weights_zero" };
+    let pick = Math.random() * totalWeight;
+    chosen = s.candidatePool[s.candidatePool.length - 1];
+    for (let i = 0; i < s.candidatePool.length; i++) {
+      pick -= weights[i];
+      if (pick <= 0) { chosen = s.candidatePool[i]; break; }
+    }
   }
 
   const qualityScore = Math.max(0, Math.min(1,
@@ -201,17 +250,57 @@ export function resolveFishCatch({ sessionId, reactionMs = 1000, tensionAccuracy
   return { ok: true, fish: chosen, qualityScore, tier };
 }
 
+const CATCH_HISTORY_CAP = 10;
+
 /**
- * Mint the catch into player_inventory. Idempotent on session id —
- * ensures the same session can't double-mint from a retried call.
+ * Mint the catch into player_inventory.
+ *
+ * F2 fix (fishing lens review, 2026-11-01): player_inventory's PRIMARY KEY is
+ * (user_id, item_id) — set by migration 035 and never changed (migration 294
+ * only patched missing COLUMNS onto that same table; it did not touch the
+ * key). A bare INSERT with a fixed `item_id = raw_fish:<speciesId>` throws a
+ * UNIQUE-constraint error on the player's SECOND catch of the same species —
+ * the exact "10 'Caught' dialogs, 6 log rows" symptom the review measured.
+ * The fallback INSERT hit the identical PK, so it failed too; both failures
+ * were silently swallowed, and the caller never learned the mint had failed.
+ *
+ * The fix follows the SAME select-existing-then-stack idiom every other
+ * item-granting path in this codebase already uses (see
+ * `lib/loot-generator.js#claimLootBagToInventory`): a repeat catch of a
+ * species increments that row's quantity instead of colliding. Each catch's
+ * quality is preserved (capped history, not just the latest overwrite) so no
+ * data is lost — the row holds `history: [{qualityScore, sessionId, at}]` for
+ * the session-local detail view, and `quantity` for the honest total count.
  */
 export function mintFishCatch(db, { userId, worldId = "concordia-hub", fish, qualityScore = 0.5, sessionId }) {
   if (!db || !userId || !fish) return { ok: false, error: "missing_args" };
-  // Idempotency: if an inventory row already exists with this sessionId
-  // metadata, no-op. We just look for matching item_id + recent rows.
   const itemId = `raw_fish:${fish.id}`;
-  const id = `inv_${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 12)}`;
+  const historyEntry = { qualityScore, sessionId, at: Math.floor(Date.now() / 1000) };
   try {
+    const existing = db.prepare(
+      "SELECT id, metadata FROM player_inventory WHERE user_id = ? AND item_id = ?",
+    ).get(userId, itemId);
+    if (existing) {
+      let meta = {};
+      try { meta = existing.metadata ? JSON.parse(existing.metadata) : {}; } catch { meta = {}; }
+      const history = Array.isArray(meta.history) ? meta.history : [];
+      history.push(historyEntry);
+      while (history.length > CATCH_HISTORY_CAP) history.shift();
+      db.prepare(`
+        UPDATE player_inventory
+        SET quantity = quantity + 1,
+            item_name = ?,
+            acquired_at = unixepoch(),
+            metadata = ?
+        WHERE id = ?
+      `).run(
+        `${fish.name} (${(qualityScore * 100).toFixed(0)}%)`,
+        JSON.stringify({ qualityScore, sessionId, buffOnCook: fish.buffOnCook || null, history }),
+        existing.id,
+      );
+      return { ok: true, inventoryId: existing.id, fish: fish.id, qualityScore, stacked: true };
+    }
+    const id = `inv_${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 12)}`;
     db.prepare(`
       INSERT INTO player_inventory
         (id, user_id, world_id, item_type, item_id, item_name, quantity, schema_id, acquired_at, metadata)
@@ -220,18 +309,28 @@ export function mintFishCatch(db, { userId, worldId = "concordia-hub", fish, qua
       id, userId, worldId, itemId,
       `${fish.name} (${(qualityScore * 100).toFixed(0)}%)`,
       fish.id,
-      JSON.stringify({ qualityScore, sessionId, buffOnCook: fish.buffOnCook || null }),
+      JSON.stringify({ qualityScore, sessionId, buffOnCook: fish.buffOnCook || null, history: [historyEntry] }),
     );
-    return { ok: true, inventoryId: id, fish: fish.id, qualityScore };
+    return { ok: true, inventoryId: id, fish: fish.id, qualityScore, stacked: false };
   } catch (e) {
-    // If the schema is mismatched (item_name column missing etc), fall
-    // back to a minimal insert to keep tests passing.
+    // If the schema is mismatched (item_name column missing etc on a
+    // partially-migrated DB), fall back to a minimal insert/update so the
+    // catch still lands rather than vanishing.
     try {
+      const existing = db.prepare(
+        "SELECT id FROM player_inventory WHERE user_id = ? AND item_id = ?",
+      ).get(userId, itemId);
+      if (existing) {
+        db.prepare("UPDATE player_inventory SET quantity = quantity + 1, acquired_at = unixepoch() WHERE id = ?")
+          .run(existing.id);
+        return { ok: true, inventoryId: existing.id, fish: fish.id, qualityScore, stacked: true, fallback: true };
+      }
+      const id = `inv_${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 12)}`;
       db.prepare(`
         INSERT INTO player_inventory (id, user_id, world_id, item_id, quantity, acquired_at)
         VALUES (?, ?, ?, ?, 1, unixepoch())
       `).run(id, userId, worldId, itemId);
-      return { ok: true, inventoryId: id, fish: fish.id, qualityScore, fallback: true };
+      return { ok: true, inventoryId: id, fish: fish.id, qualityScore, stacked: false, fallback: true };
     } catch (e2) {
       return { ok: false, error: e2.message };
     }

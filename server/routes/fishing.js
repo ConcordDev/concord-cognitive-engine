@@ -12,6 +12,7 @@ import {
   readFishingSkill,
   clampTensionHint,
   measureReactionMs,
+  pickBiteFish,
 } from "../lib/fishing.js";
 
 export default function createFishingRouter({ requireAuth, db, realtimeEmit }) {
@@ -51,7 +52,19 @@ export default function createFishingRouter({ requireAuth, db, realtimeEmit }) {
           try {
             const s = getSession(result.sessionId);
             if (s && !s.resolved) {
-              realtimeEmit("fishing:bite", { userId: req.user.id, sessionId: result.sessionId }, { userId: req.user.id });
+              // F5 fix: pick the species NOW (bite time), not at reel-resolve
+              // time — so the bite event can honestly tell the client what
+              // it's fighting (name/rarity/abilities), instead of the fight
+              // being species-blind and the catch a surprise after the fact.
+              const skill = readFishingSkill(db, req.user.id);
+              const picked = pickBiteFish(result.sessionId, { fishingSkill: skill });
+              const fishInfo = picked.ok ? {
+                fishId: picked.fish.id,
+                fishName: picked.fish.name,
+                rarity: picked.fish.rarity,
+                abilities: Array.isArray(picked.fish.abilities) ? picked.fish.abilities : [],
+              } : {};
+              realtimeEmit("fishing:bite", { userId: req.user.id, sessionId: result.sessionId, ...fishInfo }, { userId: req.user.id });
             }
           } catch { /* ok */ }
         }, wait);
@@ -94,7 +107,9 @@ export default function createFishingRouter({ requireAuth, db, realtimeEmit }) {
           });
         } catch { /* ok */ }
       }
-      res.json({ ...result, mint });
+      // F2 fix: same honesty fold as the fishing.reel macro — don't report
+      // ok:true from resolveFishCatch alone when the mint itself failed.
+      res.json({ ...result, ok: result.ok && mint.ok, mint });
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
   });
 
