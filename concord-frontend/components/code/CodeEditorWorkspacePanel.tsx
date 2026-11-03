@@ -46,7 +46,7 @@ import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import { CodeRunMenu } from '@/components/code/CodeRunMenu';
 import type { CodeExecResult } from '@/components/code/codeRunReport';
 import { readExecStatus, subscribeExecStatus, type CodeExecStatus } from '@/components/code/codeExecGate';
-import { isLocallyRunnable, runLocalScript } from '@/components/code/localExec';
+import { isLocallyRunnable, runLocalScript, resolveTabLanguage, RUNNABLE_LANGUAGE_OPTIONS } from '@/components/code/localExec';
 import { codeAiSessionId, fetchCodeAiHistory } from '@/components/code/codeAiHistory';
 import { LIVE_PROJECT_ID, LIVE_SNIPPET_PATH, snippetFromFilesRead, tabAfterSnippetRead } from '@/components/code/liveSnippet';
 
@@ -76,6 +76,9 @@ interface Tab {
   id: string;
   name: string;
   language: string;
+  /** True once the member picked the language in the toolbar selector —
+   *  the resolver never overrides an explicit choice with inference. */
+  languageChosen?: boolean;
   content: string;
   isDirty: boolean;
   scriptType: ScriptType;
@@ -425,11 +428,13 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
       // Open the saved script as a new tab
       const script = savedScripts.find((s) => s.id === hit.sourceId);
       if (!script) return;
-      const data = (script as { data?: { content?: string; language?: string; scriptType?: ScriptType }; title?: string }).data;
+      const data = (script as { data?: { content?: string; language?: string; languageChosen?: boolean; scriptType?: ScriptType }; title?: string }).data;
+      const scriptName = (script as { title?: string }).title || 'untitled';
       const newTab: Tab = {
         id: script.id,
-        name: (script as { title?: string }).title || 'untitled',
-        language: data?.language || 'javascript',
+        name: scriptName,
+        language: resolveTabLanguage(scriptName, data?.language, data?.languageChosen),
+        languageChosen: data?.languageChosen === true,
         content: String(data?.content || ''),
         isDirty: false,
         scriptType: (data?.scriptType as ScriptType) || 'snippet',
@@ -652,7 +657,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
     try {
       await saveScript({
         title: tab.name,
-        data: { content: tab.content, language: tab.language, scriptType: tab.scriptType },
+        data: { content: tab.content, language: tab.language, languageChosen: tab.languageChosen === true, scriptType: tab.scriptType },
         meta: { tags: ['script', tab.scriptType], status: 'active' },
       });
       setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, isDirty: false } : t));
@@ -697,6 +702,16 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
     setActiveTabId(id);
   }, [activeScriptType, savedScripts.length, tabs.length]);
 
+  // F1-Python: the member's explicit language choice for the active tab.
+  // Everything downstream (run routing, the terminal, Monaco, the run
+  // report) already reads tab.language — this setter is the surface the
+  // language hangs from. The choice is marked languageChosen so the
+  // resolver never overrides it with filename inference, and it persists
+  // through the save path alongside the language itself.
+  const setActiveTabLanguage = useCallback((language: string) => {
+    setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, language, languageChosen: true, isDirty: true } : t));
+  }, [activeTabId]);
+
   const closeTab = (tabId: string) => {
     if (tabs.length === 1) return;
     const newTabs = tabs.filter((t) => t.id !== tabId);
@@ -718,7 +733,8 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
     const newTab: Tab = {
       id: file.id,
       name: file.name,
-      language: file.language || 'javascript',
+      language: resolveTabLanguage(file.name, file.language, (file as { languageChosen?: boolean }).languageChosen),
+      languageChosen: (file as { languageChosen?: boolean }).languageChosen === true,
       content: file.content || '',
       isDirty: false,
       scriptType: file.scriptType || 'snippet',
@@ -1045,7 +1061,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
         files.push({
           id: s.id,
           name: (s as { title?: string }).title || 'untitled',
-          language: data.language || 'javascript',
+          language: resolveTabLanguage((s as { title?: string }).title, data.language, (data as { languageChosen?: boolean }).languageChosen),
           content: data.content,
         });
         if (files.length >= 12) break;
@@ -1759,6 +1775,34 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
                   <span>{activeTab.content.split('\n').length} lines</span>
                 </div>
                 <div className="flex items-center gap-1">
+                  {/* F1-Python: the language this tab runs as, member-visible and
+                      member-changeable — the surface the vendored Python runtime
+                      hangs from. Options are exactly the locally runnable set;
+                      a stored non-runnable language stays selectable so the tab
+                      is never silently relabelled. */}
+                  <select
+                    aria-label="Language"
+                    title="Language — what Run executes this file as"
+                    value={activeTab.language}
+                    onChange={(e) => setActiveTabLanguage(e.target.value)}
+                    className="h-7 max-w-[7.5rem] rounded bg-lattice-elevated px-1 text-[11px] text-gray-300 outline-none cursor-pointer"
+                  >
+                    {RUNNABLE_LANGUAGE_OPTIONS.map((o) => (
+                      <option key={o.id} value={o.id}>{o.label}</option>
+                    ))}
+                    {!RUNNABLE_LANGUAGE_OPTIONS.some((o) => o.id === activeTab.language) && (
+                      <option value={activeTab.language}>{activeTab.language} (not runnable in the browser)</option>
+                    )}
+                  </select>
+                  <button
+                    onClick={() => { if (localRun || (!execOff && !execUnknown)) runScriptMutation.mutate(); }}
+                    disabled={runScriptMutation.isPending || (!localRun && (execOff || execUnknown))}
+                    className="p-1 rounded hover:bg-lattice-elevated text-gray-400 hover:text-white transition-colors disabled:opacity-40"
+                    title={localRun ? 'Run (⌘↵) — runs locally in your browser' : execOff ? execReason : execUnknown ? 'Checking whether live execution is enabled.' : 'Run (⌘↵)'}
+                    aria-label="Run"
+                  >
+                    {runScriptMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                  </button>
                   <button onClick={handleSave} className={cn('p-1 rounded hover:bg-lattice-elevated transition-colors', activeTab.isDirty ? 'text-neon-blue' : 'text-gray-400')} title="Save script (persists to your library as a DTU)">
 
                     <Save className="w-4 h-4" />
