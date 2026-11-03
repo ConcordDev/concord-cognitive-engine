@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { Cat, RefreshCw, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { discoverItems } from './discover-payload';
 
 interface Fact {
   fact: string;
@@ -30,6 +31,13 @@ export interface CatFactsPanelProps {
   className?: string;
 }
 
+function readFacts(envelope: Parameters<typeof discoverItems>[0]) {
+  const got = discoverItems(envelope, 'facts');
+  const facts = (got.items as Fact[]).filter((f) => typeof f?.fact === 'string' && f.fact.trim() !== '');
+  if (!got.error && facts.length === 0) return { facts: [] as Fact[], error: 'no_content' };
+  return { facts: got.error ? [] as Fact[] : facts, error: got.error };
+}
+
 export function CatFactsPanel({ className }: CatFactsPanelProps) {
   const [facts, setFacts] = useState<Fact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,23 +46,25 @@ export function CatFactsPanel({ className }: CatFactsPanelProps) {
   const fetchData = async () => {
     setLoading(true);
     setError(null);
-    const r = await runMacro<{ ok: boolean; facts?: Fact[]; reason?: string }>(
+    const r = await runMacro<{ ok: boolean; result?: { facts?: Fact[] }; error?: string | null; reason?: string }>(
       'pets', 'live_catfact', { count: 6 },
     );
-    if (r?.ok) setFacts(r.facts || []);
-    else setError(r?.reason || 'fetch_failed');
+    const got = readFacts(r);
+    setFacts(got.facts);
+    setError(got.error);
     setLoading(false);
   };
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const r = await runMacro<{ ok: boolean; facts?: Fact[]; reason?: string }>(
+      const r = await runMacro<{ ok: boolean; result?: { facts?: Fact[] }; error?: string | null; reason?: string }>(
         'pets', 'live_catfact', { count: 6 },
       );
       if (cancelled) return;
-      if (r?.ok) setFacts(r.facts || []);
-      else setError(r?.reason || 'fetch_failed');
+      const got = readFacts(r);
+      setFacts(got.facts);
+      setError(got.error);
       setLoading(false);
     })();
     return () => { cancelled = true; };
@@ -77,9 +87,14 @@ export function CatFactsPanel({ className }: CatFactsPanelProps) {
         </button>
       </header>
 
+      {loading && facts.length === 0 && !error && (
+        <p className="px-3 py-3 text-xs text-zinc-400">Loading Cat Facts…</p>
+      )}
+
       {error && (
         <div className="px-3 py-3 text-xs text-rose-300/80">
-          <AlertTriangle className="inline w-3.5 h-3.5 mr-1" /> Cat Facts unreachable ({error})
+          <AlertTriangle className="inline w-3.5 h-3.5 mr-1" />
+          {error === 'no_content' ? 'Cat Facts returned no facts.' : `Cat Facts unreachable (${error})`}
         </div>
       )}
 
