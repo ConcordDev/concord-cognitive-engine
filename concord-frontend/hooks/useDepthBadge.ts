@@ -71,6 +71,15 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Workspace',
     caption: 'Your workspace store: connections and datasets live in Concord’s workspace, not on a remote database server.',
   },
+  /**
+   * The world vehicle fleet (spawn/mine/inspector) is a real persistent DB
+   * store, not a feed polled from an external source (F1) — so the generic
+   * REAL_LIVE caption is false here.
+   */
+  garage: {
+    label: 'Live',
+    caption: 'Real account + world state: vehicles you spawn are persisted and shared with the 3D world, not demo data.',
+  },
 };
 
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {
