@@ -33017,6 +33017,8 @@ registerAnnouncementMacros(register);
 // literary was already registered (registerLiteraryMacros) so it needs no line.
 import registerGarageMacros from "./domains/garage.js";
 registerGarageMacros(register);
+import registerMakerMacros from "./domains/maker.js";
+registerMakerMacros(register);
 import registerMoveBuilderMacros from "./domains/move-builder.js";
 registerMoveBuilderMacros(register);
 import { registerReasoningTraceMacros } from "./domains/reasoning.js";
