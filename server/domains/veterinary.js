@@ -170,16 +170,67 @@ export default function registerVeterinaryActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  const INTERVAL_UNITS = ["day", "month", "year"];
+  function vtIsoDate(raw) {
+    const s = vtClean(raw, 30);
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    if (!m) return null;
+    const y = Number(m[1]);
+    const mo = Number(m[2]);
+    const d = Number(m[3]);
+    const dt = new Date(Date.UTC(y, mo - 1, d));
+    if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return null;
+    return s;
+  }
+  function vtAddInterval(iso, count, unit) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    const dt = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+    if (unit === "year") dt.setUTCFullYear(dt.getUTCFullYear() + count);
+    else if (unit === "month") dt.setUTCMonth(dt.getUTCMonth() + count);
+    else dt.setUTCDate(dt.getUTCDate() + count);
+    const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(dt.getUTCDate()).padStart(2, "0");
+    return `${dt.getUTCFullYear()}-${mm}-${dd}`;
+  }
+
   registerLensAction("veterinary", "vaccine-record", (ctx, _a, params = {}) => {
     const s = getVetState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const patient = vtPatients(s, vtActor(ctx)).find((p) => p.id === params.patientId);
     if (!patient) return { ok: false, error: "patient not found" };
+    const intervalSent = (params.intervalCount != null && params.intervalCount !== "")
+      || (params.intervalUnit != null && params.intervalUnit !== "");
+    let date = "";
+    let nextDue = "";
+    let intervalCount = null;
+    let intervalUnit = null;
+    if (intervalSent) {
+      date = vtIsoDate(params.date);
+      if (!date) return { ok: false, error: "invalid_input", field: "date" };
+      const unit = typeof params.intervalUnit === "string" ? params.intervalUnit.trim().toLowerCase() : "";
+      const n = Number(params.intervalCount);
+      if (!INTERVAL_UNITS.includes(unit) || !Number.isInteger(n) || n < 1 || n > 1200) {
+        return { ok: false, error: "invalid_input", field: "intervalCount" };
+      }
+      intervalCount = n;
+      intervalUnit = unit;
+      nextDue = vtAddInterval(date, n, unit);
+    } else {
+      if (params.date != null && params.date !== "") {
+        date = vtIsoDate(params.date);
+        if (!date) return { ok: false, error: "invalid_input", field: "date" };
+      }
+      nextDue = vtClean(params.nextDue, 30) || "";
+    }
     const record = {
       id: vtId("vac"),
       vaccine: vtClean(params.vaccine, 80) || "vaccine",
-      date: vtClean(params.date, 30) || new Date().toISOString().slice(0, 10),
-      nextDue: vtClean(params.nextDue, 30) || "",
+      date,
+      nextDue,
     };
+    if (intervalCount != null) {
+      record.intervalCount = intervalCount;
+      record.intervalUnit = intervalUnit;
+    }
     patient.vaccinations.push(record);
     saveVet();
     return { ok: true, result: { record } };
