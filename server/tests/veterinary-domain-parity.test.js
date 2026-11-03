@@ -45,7 +45,53 @@ describe("veterinary — clinical calculators", () => {
   it("vaccineSchedule lists species vaccines", () => {
     const r = call("vaccineSchedule", ctxA, { data: { species: "dog", age: 2 } }, {});
     assert.equal(r.ok, true);
+    assert.equal(r.result.status, "ADVISORY");
     assert.ok(r.result.vaccines.length >= 3);
+    assert.equal(r.result.vaccines.some((v) => v.vaccine === "DHPP"), true);
+  });
+
+  it("vaccineSchedule does not invent a dog, an age, or a dog table for another species", () => {
+    const blank = call("vaccineSchedule", ctxA, { data: {} }, {});
+    assert.equal(blank.ok, true);
+    assert.equal(blank.result.status, "NOT_COMPUTED");
+    assert.deepEqual(blank.result.missingInputs, ["species", "age"]);
+    assert.equal(blank.result.vaccines, undefined);
+    assert.notEqual(blank.result.species, "dog");
+
+    const noAge = call("vaccineSchedule", ctxA, { data: { species: "cat" } }, {});
+    assert.equal(noAge.result.status, "NOT_COMPUTED");
+    assert.deepEqual(noAge.result.missingInputs, ["age"]);
+
+    const bird = call("vaccineSchedule", ctxA, { data: { species: "bird", age: 2 } }, {});
+    assert.equal(bird.result.status, "NOT_COMPUTED");
+    assert.deepEqual(bird.result.missingInputs, ["species"]);
+    assert.equal(bird.result.vaccines, undefined);
+
+    const newborn = call("vaccineSchedule", ctxA, { data: { species: "dog", age: 0 } }, {});
+    assert.equal(newborn.result.status, "ADVISORY");
+    assert.equal(newborn.result.ageMonths, 0);
+    assert.equal(newborn.result.overdueCount, 0);
+    assert.equal(newborn.result.vaccines[0].due, "at 3 months");
+  });
+
+  it("triageAssess does not invent species or age", () => {
+    const symptomsOnly = call("triageAssess", ctxA, { data: { symptoms: ["seizure"] } }, {});
+    assert.equal(symptomsOnly.ok, true);
+    assert.equal(symptomsOnly.result.status, "ADVISORY");
+    assert.equal(symptomsOnly.result.triageLevel, "EMERGENCY");
+    assert.equal(symptomsOnly.result.species, null);
+    assert.equal(symptomsOnly.result.age, null);
+
+    const named = call("triageAssess", ctxA, { data: { species: "Cat", age: 0, symptoms: ["vomiting"] } }, {});
+    assert.equal(named.result.species, "cat");
+    assert.equal(named.result.age, 0);
+    assert.equal(named.result.triageLevel, "urgent");
+
+    const blank = call("triageAssess", ctxA, { data: {} }, {});
+    assert.equal(blank.result.species, null);
+    assert.equal(blank.result.age, null);
+    assert.notEqual(blank.result.species, "dog");
+    assert.notEqual(blank.result.age, 3);
   });
 
   it("costEstimate totals procedures", () => {
