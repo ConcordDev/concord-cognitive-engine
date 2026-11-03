@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Loader2, Plus, Search, Star, Users, Send, ChevronLeft, BadgeCheck, X,
+  Loader2, Plus, Search, Star, Users, Send, ChevronLeft, X,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { notifyMentorshipProgramChanged } from '@/lib/mentorship/program-stats';
@@ -31,6 +31,7 @@ interface Mentor {
   reviewCount: number;
   menteeCount: number;
   listed: boolean;
+  hasAccount?: boolean;
 }
 interface Review {
   id: string; authorName: string; rating: number; comment: string;
@@ -239,8 +240,11 @@ export function MentorDirectoryPanel() {
           <div className="flex items-start justify-between">
             <div>
               <h3 className="text-lg font-semibold flex items-center gap-2">
-                <BadgeCheck className="w-5 h-5 text-neon-cyan" /> {selected.name}
+                {selected.name}
               </h3>
+              {selected.hasAccount === false && (
+                <p className="text-xs text-zinc-500">Dataset profile. Not a member account.</p>
+              )}
               <p className="text-sm text-zinc-400">{selected.headline || 'Mentor'}</p>
             </div>
             <div className="text-right">
@@ -370,14 +374,16 @@ export function MentorDirectoryPanel() {
       {loading ? (
         <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>
       ) : mentors.length === 0 ? (
-        <p className="text-sm text-zinc-400 text-center py-8">No mentors found. List yourself as a mentor to seed the directory.</p>
+        <p className="text-sm text-zinc-400 text-center py-8">No mentors found. List yourself as a mentor to appear here.</p>
       ) : (
+        <p className="text-xs text-zinc-500">A star is the mean of that profile&apos;s reviews. A dataset profile is not a member account.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {mentors.map((m) => (
             <button key={m.id} onClick={() => openProfile(m)} className="lens-card text-left hover:border-neon-cyan transition-colors">
               <div className="flex items-center justify-between">
                 <span className="font-semibold flex items-center gap-1.5">
-                  <BadgeCheck className="w-4 h-4 text-neon-cyan" /> {m.name}
+                  {m.name}
+                  {m.hasAccount === false && <span className="text-[10px] font-normal text-zinc-500">Dataset profile</span>}
                 </span>
                 <Stars rating={m.rating} />
               </div>

@@ -30,6 +30,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { MentorDirectoryPanel } from '@/components/mentorship/MentorDirectoryPanel';
+import { mentorRatingCaption } from '@/components/mentorship/rating-caption';
 import { MentorshipRequestsPanel } from '@/components/mentorship/MentorshipRequestsPanel';
 import { MentorshipSessionsPanel } from '@/components/mentorship/MentorshipSessionsPanel';
 import { MentorshipGoalsPanel } from '@/components/mentorship/MentorshipGoalsPanel';
@@ -58,6 +59,7 @@ interface ProgramReport {
   goalCompletionRate: number;
   avgSessionRating: number;
   avgMentorRating: number;
+  ratedMentorCount?: number;
 }
 
 type TabId = 'directory' | 'requests' | 'sessions' | 'goals' | 'messages' | 'tools' | 'program' | 'community';
@@ -103,6 +105,9 @@ export default function MentorshipLensPage() {
   );
 
   const report = stats.status === 'done' ? stats.result : null;
+  const mentorRating = report
+    ? mentorRatingCaption(report.avgMentorRating, report.ratedMentorCount ?? 0)
+    : null;
   const statsLoading = stats.status === 'dispatched' || stats.status === 'running';
 
 
@@ -157,9 +162,9 @@ export default function MentorshipLensPage() {
             <StatTile label="Goals achieved" value={report.goals.done} caption={`of ${report.goals.total} · ${report.goalCompletionRate}%`} />
             <StatTile
               label="Avg mentor rating"
-              value={report.avgMentorRating > 0 ? report.avgMentorRating : '--'}
-              unit={report.avgMentorRating > 0 ? '★' : undefined}
-              caption={report.avgMentorRating > 0 ? `${report.avgMentorRating}/5 mentor avg` : 'no ratings yet'}
+              value={mentorRating?.value ?? '--'}
+              unit={mentorRating && mentorRating.value !== '--' ? '★' : undefined}
+              caption={mentorRating?.caption}
             />
           </StatTileGrid>
         ) : null}
