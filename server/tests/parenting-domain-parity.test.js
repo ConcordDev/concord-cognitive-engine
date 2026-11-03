@@ -199,8 +199,19 @@ describe("parenting.sleep-schedule (predictor)", () => {
     assert.equal(r.ok, true);
     assert.ok(Array.isArray(r.result.schedule));
     assert.ok(r.result.schedule.some((sl) => sl.kind === "bedtime"));
-    assert.ok(r.result.learnedNapMin > 0);
+    assert.equal(r.result.learnedNapMin, 30);
+    assert.equal(r.result.napSampleCount, 1);
+    assert.equal(r.result.napBasis, "logged");
     assert.ok(r.result.wakeWindow.typical > 0);
+  });
+
+  it("names an age estimate when no nap is logged", () => {
+    const id = newChild(ctxA, 8);
+    const r = call("sleep-schedule", ctxA, { childId: id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.napSampleCount, 0);
+    assert.equal(r.result.napBasis, "age");
+    assert.equal(r.result.learnedNapMin, 90);
   });
 
   it("rejects an unknown child", () => {
@@ -462,9 +473,45 @@ describe("parenting.trends-insights", () => {
     const r = call("trends-insights", ctxA, { childId: id, days: 7 });
     assert.equal(r.ok, true);
     assert.equal(r.result.days, 7);
-    assert.equal(r.result.daily.length, 7);
-    assert.ok(r.result.daysWithData >= 1);
+    assert.equal(r.result.daysWithData, 1);
+    assert.equal(r.result.sleepTrend, null);
+    assert.equal(r.result.averages.feedsPerDay, 1);
+    assert.equal(r.result.averages.sleepMinPerDay, 90);
+    assert.equal(r.result.averages.diapersPerDay, 1);
+    const createdDay = call("child-list", ctxA, {}).result.children.find((c) => c.id === id).createdAt.slice(0, 10);
+    assert.ok(r.result.daily.every((d) => d.date >= createdDay));
+    assert.equal(r.result.daily.length, 1);
     assert.ok(Array.isArray(r.result.anomalies));
+  });
+
+  it("keeps a backfilled log and omits empty days before the profile", () => {
+    const id = newChild(ctxA, 6);
+    const past = new Date(Date.now() - 3 * 86400000).toISOString();
+    const pastDay = past.slice(0, 10);
+    const older = new Date(Date.now() - 5 * 86400000).toISOString().slice(0, 10);
+    call("feed-log", ctxA, { childId: id, kind: "bottle", amountMl: 80, at: past });
+    const r = call("trends-insights", ctxA, { childId: id, days: 7 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.daysWithData, 1);
+    assert.equal(r.result.sleepTrend, null);
+    const dates = r.result.daily.map((d) => d.date);
+    assert.ok(dates.includes(pastDay));
+    assert.equal(dates.includes(older), false);
+    const createdDay = call("child-list", ctxA, {}).result.children.find((c) => c.id === id).createdAt.slice(0, 10);
+    assert.ok(dates.includes(createdDay));
+  });
+
+  it("names a sleep trend only after four logged days", () => {
+    const id = newChild(ctxA, 6);
+    for (let i = 0; i < 4; i++) {
+      const day = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      call("sleep-log", ctxA, { childId: id, type: "nap", durationMin: 60, startAt: `${day}T12:00:00.000Z` });
+    }
+    const r = call("trends-insights", ctxA, { childId: id, days: 7 });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.daysWithData >= 4);
+    assert.equal(r.result.sleepTrend, "steady");
+    assert.equal(r.result.averages.sleepMinPerDay, 60);
   });
 
   it("rejects an unknown child", () => {

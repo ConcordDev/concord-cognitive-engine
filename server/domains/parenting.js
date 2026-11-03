@@ -1284,6 +1284,8 @@ export default function registerParentingActions(registerLensAction) {
         ageMonths: Math.round(ageMonths),
         wakeWindow: ww,
         learnedNapMin,
+        napSampleCount: napDurations.length,
+        napBasis: napDurations.length ? "logged" : "age",
         napsPerDay,
         napsLogged: napsDone,
         schedule,
@@ -1606,22 +1608,30 @@ export default function registerParentingActions(registerLensAction) {
     const sleeps = (s.sleeps.get(userId) || []).filter((e) => e.childId === cid);
     const diapers = (s.diapers.get(userId) || []).filter((e) => e.childId === cid);
 
-    const daily = dayKeys.map((d) => ({
+    const dailyAll = dayKeys.map((d) => ({
       date: d,
       feeds: feeds.filter((e) => e.at.slice(0, 10) === d).length,
       sleepMin: sleeps.filter((e) => e.startAt.slice(0, 10) === d).reduce((a, e) => a + e.durationMin, 0),
       diapers: diapers.filter((e) => e.at.slice(0, 10) === d).length,
     }));
-    const withData = daily.filter((d) => d.feeds + d.sleepMin + d.diapers > 0);
+    // Empty days before the profile are not "no logs" — the child was not
+    // here yet. A day with a real backfilled log stays, even if it predates
+    // createdAt. Empty days on or after the profile stay.
+    const createdDay = String(child.createdAt || "").slice(0, 10);
+    const hasLogs = (d) => d.feeds + d.sleepMin + d.diapers > 0;
+    const daily = dailyAll.filter((d) => hasLogs(d) || (createdDay && d.date >= createdDay));
+    const withData = daily.filter(hasLogs);
     const avg = (arr, k) => withData.length ? Math.round((withData.reduce((a, d) => a + d[k], 0) / withData.length) * 10) / 10 : 0;
     const avgFeeds = avg(withData, "feeds");
     const avgSleep = avg(withData, "sleepMin");
     const avgDiapers = avg(withData, "diapers");
 
-    // Anomaly detection: today vs trailing average.
-    const today = daily[daily.length - 1];
+    // Anomaly detection: today vs trailing average. Today is the last
+    // requested day, not whichever plotted row happens to sort last.
+    const todayKey = dayKeys[dayKeys.length - 1];
+    const today = daily.find((d) => d.date === todayKey) || null;
     const anomalies = [];
-    if (withData.length >= 3) {
+    if (withData.length >= 3 && today) {
       if (avgFeeds > 0 && today.feeds > 0 && today.feeds < avgFeeds * 0.6) {
         anomalies.push({ severity: "watch", metric: "feeds", text: `Feeds today (${today.feeds}) are well below the ${days}-day average (${avgFeeds}).` });
       }
@@ -1636,9 +1646,10 @@ export default function registerParentingActions(registerLensAction) {
         anomalies.push({ severity: "info", metric: "logging", text: `${dryDays} day(s) in the window have no diaper entries.` });
       }
     }
-    // Simple linear trend on sleep.
-    let sleepTrend = "steady";
+    // A direction needs four logged days. Fewer than that is not "steady".
+    let sleepTrend = null;
     if (withData.length >= 4) {
+      sleepTrend = "steady";
       const half = Math.floor(withData.length / 2);
       const early = withData.slice(0, half).reduce((a, d) => a + d.sleepMin, 0) / half;
       const late = withData.slice(half).reduce((a, d) => a + d.sleepMin, 0) / (withData.length - half);
