@@ -38,7 +38,7 @@ const STATUS_STYLE: Record<Immunization['status'], string> = {
 
 function ageMonthsToChildAgeStr(ageMonths: number) {
   const years = Math.floor(ageMonths / 12);
-  const months = Math.round(ageMonths % 12);
+  const months = Math.floor(ageMonths % 12);
   return months > 0 ? `${years}y ${months}m` : `${years}y`;
 }
 

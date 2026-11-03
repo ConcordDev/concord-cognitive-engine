@@ -419,8 +419,13 @@ export default function registerParentingActions(registerLensAction) {
   function pgAgeDisplay(birthDate) {
     const m = pgAgeMonths(birthDate);
     if (m < 1) return `${Math.round(m * 30.4375)} days`;
-    if (m < 24) return `${Math.round(m)} months`;
-    return `${Math.floor(m / 12)}y ${Math.round(m % 12)}m`;
+    // The growth chart plots this same tenth. Flooring the calendar
+    // months keeps a partial month from reading as a finished one
+    // (31.6 months was "2y 8m").
+    const precise = Math.round(m * 10) / 10;
+    const whole = Math.floor(m);
+    if (whole < 24) return `${precise} months`;
+    return `${Math.floor(whole / 12)}y ${whole % 12}m · ${precise} months`;
   }
   function pgChild(s, userId, childId) {
     return (s.children.get(userId) || []).find((c) => c.id === childId) || null;

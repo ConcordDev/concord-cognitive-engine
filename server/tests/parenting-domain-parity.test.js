@@ -46,6 +46,28 @@ describe("parenting.child-*", () => {
   it("rejects a bad birth date", () => {
     assert.equal(call("child-add", ctxA, { name: "X", birthDate: "not-a-date" }).ok, false);
   });
+
+  it("shows completed months, not the partial month counted in full", () => {
+    let child = null;
+    for (let days = Math.floor(31.4 * 30.4375); days < Math.ceil(32.2 * 30.4375); days++) {
+      const birthDate = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+      const id = call("child-add", ctxA, { name: "Ada", birthDate, sex: "girl" }).result.child.id;
+      const listed = call("child-list", ctxA, {}).result.children.find((c) => c.id === id);
+      const frac = listed.ageMonths - Math.floor(listed.ageMonths);
+      if (frac >= 0.5) {
+        child = listed;
+        break;
+      }
+      call("child-delete", ctxA, { id });
+    }
+    assert.ok(child, "expected a birth date whose age has a half-month fraction");
+    const whole = Math.floor(child.ageMonths);
+    const years = Math.floor(whole / 12);
+    const months = whole % 12;
+    assert.ok(Math.round(child.ageMonths % 12) !== months);
+    assert.equal(child.ageDisplay, `${years}y ${months}m · ${child.ageMonths} months`);
+    assert.ok(child.ageMonths > whole && child.ageMonths < whole + 1);
+  });
 });
 
 describe("parenting.feed-*", () => {
