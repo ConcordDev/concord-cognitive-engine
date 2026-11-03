@@ -41,10 +41,119 @@ function espnPathFor(sport, league) {
 
 import { advisory } from "../lib/lens-inputs.js";
 
+// performanceStats and trainingPlan read artifact.data when a caller
+// passes { data }, and the third argument when a lens action passes the
+// body there. Production sets both. Keys on the artifact win.
+function sportsCalcInput(artifact, params) {
+  const fromArtifact = artifact && artifact.data && typeof artifact.data === "object" ? artifact.data : {};
+  const fromParams = params && typeof params === "object" ? params : {};
+  return { ...fromParams, ...fromArtifact };
+}
+
+// "Recovery" stays capital-sensitive: "Active recovery" is moderate.
+// "Easy" is low. A name that says easy is not labelled moderate.
+function sessionIntensity(workout) {
+  if (workout.includes("Rest") || workout.includes("Recovery")) return "low";
+  if (workout.includes("Easy")) return "low";
+  if (workout.includes("HIIT") || workout.includes("Interval")) return "high";
+  return "moderate";
+}
+
+// Rest takes none of the requested hours. The other sessions split the
+// hours in whole cents so the durations add back up to the request.
+function assignDurations(schedule, weeklyHours) {
+  const hours = Number(weeklyHours);
+  if (!Number.isFinite(hours) || hours <= 0) {
+    return schedule.map((s) => ({ ...s, durationHours: null }));
+  }
+  const trainable = [];
+  schedule.forEach((s, i) => {
+    if (!s.workout.includes("Rest")) trainable.push(i);
+  });
+  if (trainable.length === 0) {
+    return schedule.map((s) => ({ ...s, durationHours: null }));
+  }
+  const out = schedule.map((s) => ({
+    ...s,
+    durationHours: s.workout.includes("Rest") ? 0 : null,
+  }));
+  const totalCents = Math.round(hours * 100);
+  const base = Math.floor(totalCents / trainable.length);
+  let leftover = totalCents - base * trainable.length;
+  for (const i of trainable) {
+    const cents = base + (leftover > 0 ? 1 : 0);
+    if (leftover > 0) leftover -= 1;
+    out[i] = { ...out[i], durationHours: cents / 100 };
+  }
+  return out;
+}
+
 export default function registerSportsActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
-  registerLensAction("sports", "performanceStats", (ctx, artifact, _params) => { const stats = artifact.data?.stats || []; if (stats.length === 0) return { ok: true, result: { message: "Add performance statistics to analyze." } }; const values = stats.map(s => parseFloat(s.value) || 0); const avg = values.reduce((s,v)=>s+v,0)/values.length; const best = Math.max(...values); const worst = Math.min(...values); const recent5 = values.slice(-5); const trend = recent5.length >= 2 ? (recent5[recent5.length-1] > recent5[0] ? "improving" : "declining") : "insufficient"; return { ok: true, result: { metric: stats[0]?.metric || "performance", average: Math.round(avg*100)/100, best, worst, trend, recentAvg: Math.round(recent5.reduce((s,v)=>s+v,0)/recent5.length*100)/100, consistency: Math.round(Math.sqrt(values.reduce((s,v)=>s+Math.pow(v-avg,2),0)/values.length)*100)/100, dataPoints: values.length } }; });
-  registerLensAction("sports", "trainingPlan", advisory("template plan; not individualised coaching", (ctx, artifact, _params) => { const data = artifact.data || {}; const sport = (data.sport || "general").toLowerCase(); const level = (data.level || "intermediate").toLowerCase(); const daysPerWeek = parseInt(data.daysPerWeek) || 4; const plans = { running: ["Easy run", "Tempo run", "Intervals", "Long run", "Rest", "Cross-train", "Easy run"], swimming: ["Technique drills", "Speed sets", "Endurance", "Recovery", "Rest", "Open water", "Drills"], cycling: ["Base ride", "Hill repeats", "Tempo", "Long ride", "Rest", "Recovery spin", "Group ride"], general: ["Strength", "Cardio", "HIIT", "Active recovery", "Rest", "Flexibility", "Sport-specific"] }; const template = plans[sport] || plans.general; const schedule = template.slice(0, daysPerWeek).map((workout, i) => ({ day: i+1, workout, intensity: workout.includes("Rest") || workout.includes("Recovery") ? "low" : workout.includes("HIIT") || workout.includes("Interval") ? "high" : "moderate" })); return { ok: true, result: { sport, level, daysPerWeek, schedule, weeklyStructure: { hard: schedule.filter(s => s.intensity === "high").length, moderate: schedule.filter(s => s.intensity === "moderate").length, easy: schedule.filter(s => s.intensity === "low").length }, principle: "Follow 80/20 rule: 80% easy, 20% hard" } }; }));
+  registerLensAction("sports", "performanceStats", (ctx, artifact, params) => {
+    const data = sportsCalcInput(artifact, params);
+    const stats = Array.isArray(data.stats) ? data.stats : [];
+    if (stats.length === 0) return { ok: true, result: { message: "Add performance statistics to analyze." } };
+    const values = stats.map(s => parseFloat(s.value) || 0);
+    const avg = values.reduce((s, v) => s + v, 0) / values.length;
+    // Higher is better unless the caller says a smaller number is the
+    // better one (a 5K time). Guessing from the metric name would
+    // mislabel a score that happens to fall.
+    const lowerIsBetter = data.lowerIsBetter === true;
+    const best = lowerIsBetter ? Math.min(...values) : Math.max(...values);
+    const worst = lowerIsBetter ? Math.max(...values) : Math.min(...values);
+    const recent5 = values.slice(-5);
+    let trend = "insufficient";
+    if (recent5.length >= 2) {
+      const last = recent5[recent5.length - 1];
+      const first = recent5[0];
+      const improved = lowerIsBetter ? last < first : last > first;
+      trend = improved ? "improving" : "declining";
+    }
+    return { ok: true, result: {
+      metric: stats[0]?.metric || "performance",
+      direction: lowerIsBetter ? "lower" : "higher",
+      average: Math.round(avg * 100) / 100,
+      best, worst, trend,
+      recentAvg: Math.round(recent5.reduce((s, v) => s + v, 0) / recent5.length * 100) / 100,
+      consistency: Math.round(Math.sqrt(values.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / values.length) * 100) / 100,
+      dataPoints: values.length,
+    } };
+  });
+  registerLensAction("sports", "trainingPlan", advisory("template plan; not individualised coaching", (ctx, artifact, params) => {
+    const data = sportsCalcInput(artifact, params);
+    const sport = (data.sport || "general").toLowerCase();
+    const level = (data.level || "intermediate").toLowerCase();
+    const daysPerWeek = parseInt(data.daysPerWeek) || 4;
+    const plans = {
+      running: ["Easy run", "Tempo run", "Intervals", "Long run", "Rest", "Cross-train", "Easy run"],
+      swimming: ["Technique drills", "Speed sets", "Endurance", "Recovery", "Rest", "Open water", "Drills"],
+      cycling: ["Base ride", "Hill repeats", "Tempo", "Long ride", "Rest", "Recovery spin", "Group ride"],
+      general: ["Strength", "Cardio", "HIIT", "Active recovery", "Rest", "Flexibility", "Sport-specific"],
+    };
+    const template = plans[sport] || plans.general;
+    const drafted = template.slice(0, daysPerWeek).map((workout, i) => ({
+      day: i + 1, workout, intensity: sessionIntensity(workout),
+    }));
+    const schedule = assignDurations(drafted, data.weeklyHours);
+    const weeklyStructure = {
+      hard: schedule.filter(s => s.intensity === "high").length,
+      moderate: schedule.filter(s => s.intensity === "moderate").length,
+      easy: schedule.filter(s => s.intensity === "low").length,
+    };
+    const hoursApplied = schedule.some((row) => typeof row.durationHours === "number" && row.durationHours > 0);
+    const durationSum = Math.round(schedule.reduce((s, row) => s + (typeof row.durationHours === "number" ? row.durationHours : 0), 0) * 100) / 100;
+    const mix = `${weeklyStructure.easy} low, ${weeklyStructure.moderate} moderate, ${weeklyStructure.hard} hard`;
+    // The mix sentence is the sessions on this plan. It does not claim
+    // an 80/20 split the sessions do not have.
+    const principle = hoursApplied
+      ? `${mix}. Durations total ${durationSum} h.`
+      : `${mix}. No weekly hours were requested.`;
+    return { ok: true, result: {
+      sport, level, daysPerWeek, schedule, weeklyStructure, principle,
+      weeklyHours: hoursApplied ? durationSum : null,
+    } };
+  }));
   registerLensAction("sports", "injuryRisk", advisory("rule-of-thumb load heuristic; not a validated injury-risk model", (ctx, artifact, _params) => { const data = artifact.data || {}; const trainingLoad = parseFloat(data.weeklyHours) || 0; const _rd = parseInt(data.restDaysPerWeek); const restDays = Number.isFinite(_rd) ? _rd : 2; const previousInjuries = parseInt(data.previousInjuries) || 0; const age = parseInt(data.age) || 25; const sleep = parseFloat(data.sleepHours) || 7; let risk = 20; if (trainingLoad > 15) risk += 20; if (restDays < 1) risk += 25; if (previousInjuries > 2) risk += 15; if (age > 40) risk += 10; if (sleep < 6) risk += 15; risk = Math.min(100, risk); return { ok: true, result: { riskScore: risk, riskLevel: risk >= 60 ? "high" : risk >= 35 ? "moderate" : "low", factors: { trainingLoad, restDays, previousInjuries, age, sleepHours: sleep }, recommendations: risk >= 40 ? [restDays < 2 ? "Add rest days" : null, sleep < 7 ? "Prioritize 7-9 hours sleep" : null, trainingLoad > 12 ? "Reduce training volume 10-20%" : null, "Include proper warm-up and cool-down"].filter(Boolean) : ["Continue current training — risk is manageable"] } }; }));
   registerLensAction("sports", "teamAnalysis", (ctx, artifact, _params) => { const players = artifact.data?.players || []; if (players.length === 0) return { ok: true, result: { message: "Add players with stats to analyze team." } }; const avgAge = Math.round(players.reduce((s,p) => s + (parseInt(p.age) || 25), 0) / players.length * 10) / 10; const positions = {}; for (const p of players) { const pos = p.position || "utility"; positions[pos] = (positions[pos] || 0) + 1; } const avgRating = Math.round(players.reduce((s,p) => s + (parseFloat(p.rating) || 50), 0) / players.length * 10) / 10; return { ok: true, result: { rosterSize: players.length, avgAge, avgRating, positions, topPerformer: players.sort((a,b) => (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0))[0]?.name, teamStrength: avgRating >= 70 ? "elite" : avgRating >= 50 ? "competitive" : "developing" } }; });
 
@@ -1070,12 +1179,17 @@ export default function registerSportsActions(registerLensAction) {
     }
     const elapsed = Math.min(1, ((period - 1) + clockFrac) / periodsTotal);
     const remaining = Math.max(0.0001, 1 - elapsed);
-    // Margin, adjusted by home-field, scaled by remaining time. The
-    // closer to the end, the more a lead "locks in" the result.
+    // Margin plus home-field. 0.12 is the opening scale: a tied game
+    // with the default 2.5 home edge is 57.4%. Dividing by sqrt(time
+    // left) makes the same lead more certain later, without the old
+    // extra steepness that turned a 5-point lead with about 35% left
+    // into 99.7%. A lead past 8 adjusted points picks up a late lock
+    // so a 20-point lead with a quarter left still reads as certain.
     const adjMargin = (homeScore - awayScore) + homeField;
-    // Logistic curve: scale steepens as the game progresses.
-    const steepness = 0.12 + 0.55 * (1 - remaining);
-    const z = adjMargin * steepness / Math.sqrt(remaining);
+    const base = adjMargin * 0.12 / Math.sqrt(remaining);
+    const excess = Math.max(0, Math.abs(adjMargin) - 8);
+    const lock = Math.sign(adjMargin) * 0.02 * excess * excess * (1 - remaining);
+    const z = base + lock;
     const homeWinPct = Math.round((1 / (1 + Math.exp(-z))) * 1000) / 10;
     const leader = homeScore > awayScore ? "home" : awayScore > homeScore ? "away" : "tied";
     return {
@@ -1089,7 +1203,7 @@ export default function registerSportsActions(registerLensAction) {
         favored: homeWinPct >= 50 ? "home" : "away",
         confidence: Math.abs(homeWinPct - 50) >= 35 ? "high"
           : Math.abs(homeWinPct - 50) >= 15 ? "moderate" : "tossup",
-        model: "logistic-margin-time (pure-compute, illustrative)",
+        model: "logistic margin over sqrt(time left); leads past 8 points lock in late (pure-compute, illustrative)",
       },
     };
   });
