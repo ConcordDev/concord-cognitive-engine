@@ -10,6 +10,15 @@ name: Full Suite (sharded)
 #
 # Changing the shard count: edit BOTH the matrix list in `server-shard` and SHARDS below (a `shard-count` step
 # checks they agree).
+#
+# Deliberate exception to the triage-only philosophy: `frontend-build` ("Frontend build +
+# Pyodide verify") runs a real production `npm run build:ci` and a HARD `npm run check:pyodide`
+# with no continue-on-error and no junit artifact. Groundwork finding of record: the Full Suite
+# previously had NO production build at all (its frontend job is install -> tsc -> vitest), so
+# the "post-build" Pyodide gate needed the build added with it — hence a dedicated job rather
+# than an appended step. It is outside triage's needs on purpose and is not part of the
+# NEW-vs-PRE-EXISTING signal; it only answers whether the vendored Pyodide runtime a production
+# build would ship is present and intact (GB-0857 pick (ii) / CB-0081).
 
 on:
   push:
@@ -168,6 +177,32 @@ jobs:
             ci-out/fe-tsc-outcome.txt
           if-no-files-found: warn
           retention-days: 14
+
+
+  frontend-build:
+    name: Frontend build + Pyodide verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: concord-frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ./concord-frontend
+        run: npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)
+
+      - name: Production build
+        working-directory: ./concord-frontend
+        run: npm run build:ci
+
+      - name: Verify vendored Pyodide
+        working-directory: ./concord-frontend
+        run: npm run check:pyodide
 
   behavior:
     name: Lens behavior harness
