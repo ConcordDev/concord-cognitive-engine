@@ -14,6 +14,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { isAdmin, requireActor } from "../lib/lens-authz.js";
+import { lookupUserIdentity } from "../lib/user-identity.js";
 
 export default function registerBountiesActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -89,12 +90,38 @@ export default function registerBountiesActions(registerLensAction) {
     }
     return b.status === "paid" || b.status === "resolved" ? num(b.rewardCc, 0) : 0;
   }
-  function publicView(b) {
+  // Identity join (S3): resolve a user id to its display name at READ time via
+  // the canonical helper (lib/user-identity.js — the alliance/kingdom pattern:
+  // never a stored label, never the raw id dressed as a name). Null when the
+  // identity is unknown or no db is reachable; the surface falls back to the
+  // id rather than a fabricated name. Resolutions are cached per request.
+  function dbOf(ctx) {
+    try { return ctx?.db || globalThis._concordSTATE?.db || null; } catch (_e) { return null; }
+  }
+  function makeNameResolver(db) {
+    const cache = new Map();
+    return (userId) => {
+      if (!userId) return null;
+      if (cache.has(userId)) return cache.get(userId);
+      let name = null;
+      if (db) {
+        try {
+          const ident = lookupUserIdentity(db, userId);
+          name = ident.displayName || ident.username || null;
+          if (name === userId) name = null;
+        } catch (_e) { name = null; }
+      }
+      cache.set(userId, name);
+      return name;
+    };
+  }
+  function publicView(b, nameOf = () => null) {
     return {
       id: b.id,
       title: b.title,
       description: b.description,
       ownerId: b.ownerId,
+      ownerName: nameOf(b.ownerId),
       category: b.category,
       tags: b.tags,
       difficulty: b.difficulty,
@@ -106,10 +133,14 @@ export default function registerBountiesActions(registerLensAction) {
       updatedAt: b.updatedAt,
       deadline: b.deadline,
       milestones: (b.milestones || []).map((m) => ({ ...m })),
-      submissions: (b.submissions || []).map((sub) => ({ ...sub })),
+      submissions: (b.submissions || []).map((sub) => ({ ...sub, claimantName: nameOf(sub.claimantId) })),
       submissionCount: (b.submissions || []).length,
       acceptedSubmissionId: b.acceptedSubmissionId || null,
-      dispute: b.dispute ? { ...b.dispute } : null,
+      dispute: b.dispute ? {
+        ...b.dispute,
+        openedByName: nameOf(b.dispute.openedBy),
+        arbiterName: b.dispute.arbiterId ? nameOf(b.dispute.arbiterId) : null,
+      } : null,
     };
   }
 
@@ -136,13 +167,19 @@ export default function registerBountiesActions(registerLensAction) {
           id: id("ms"),
           index: i,
           title: clean(m && m.title, 120) || `Milestone ${i + 1}`,
-          rewardCc: Math.max(1, Math.floor(num(m && m.rewardCc, 0))),
+          rewardCc: Math.floor(num(m && m.rewardCc, 0)),
           status: "open", // open -> submitted -> paid
         }))
         .slice(0, 12);
+      // Amount fields REJECT, never rewrite (the family amount-field rule):
+      // a supplied reward of 0 is refused loudly, not silently floored to 1.
+      const zeroMilestone = milestones.findIndex((m) => m.rewardCc < 1);
+      if (zeroMilestone !== -1) {
+        return { ok: false, error: `milestone ${zeroMilestone + 1} reward must be at least 1 CC` };
+      }
       const rewardCc = milestones.length
         ? milestones.reduce((sum, m) => sum + m.rewardCc, 0)
-        : Math.max(1, Math.floor(num(params.rewardCc, 0)));
+        : Math.floor(num(params.rewardCc, 0));
       if (rewardCc < 1) return { ok: false, error: "rewardCc must be at least 1 (or supply milestones)" };
       const bounty = {
         id: id("bty"),
@@ -165,14 +202,120 @@ export default function registerBountiesActions(registerLensAction) {
       s.bounties.set(bounty.id, bounty);
       ownerSet(s, userId).add(bounty.id);
       save();
-      return { ok: true, result: { bounty: publicView(bounty) } };
+      return { ok: true, result: { bounty: publicView(bounty, makeNameResolver(dbOf(ctx))) } };
+    } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
+  });
+
+  // ── Edit a bounty (owner lifecycle, S4) ────────────────────────────
+  // Text fields may change while the bounty is live (open / claimed). The
+  // reward and milestones are the poster's promise to claimants: they may
+  // change only before any work has been submitted. Paid, disputed and
+  // cancelled bounties are records, not drafts — no edits.
+  registerLensAction("bounties", "update", (ctx, _a, params = {}) => {
+    try {
+      const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = actor(ctx);
+      const b = s.bounties.get(clean(params.bountyId, 64));
+      if (!b) return { ok: false, error: "bounty not found" };
+      if (b.ownerId !== userId) return { ok: false, error: "only the bounty owner can edit this bounty" };
+      if (b.status === "paid" || b.status === "disputed" || b.status === "cancelled") {
+        return { ok: false, error: `a ${b.status} bounty can no longer be edited` };
+      }
+      if (params.title !== undefined) {
+        const title = clean(params.title, 160);
+        if (title.length < 6) return { ok: false, error: "title must be at least 6 characters" };
+        b.title = title;
+      }
+      if (params.description !== undefined) {
+        const description = clean(params.description, 6000);
+        if (description.length < 12) return { ok: false, error: "description must be at least 12 characters" };
+        b.description = description;
+      }
+      if (params.category !== undefined && CATEGORIES.includes(params.category)) b.category = params.category;
+      if (params.difficulty !== undefined && DIFFICULTIES.includes(params.difficulty)) b.difficulty = params.difficulty;
+      if (params.tags !== undefined) b.tags = parseTags(params.tags);
+      if (params.deadline !== undefined) b.deadline = params.deadline ? clean(params.deadline, 40) : null;
+      if (params.rewardCc !== undefined || params.milestones !== undefined) {
+        if ((b.submissions || []).length > 0) {
+          return { ok: false, error: "the reward can no longer be changed — work has been submitted on this bounty" };
+        }
+        const badTop = badNumericField(params, ["rewardCc"]);
+        if (badTop) return { ok: false, error: `invalid numeric field: ${badTop}` };
+        const rawMilestones = Array.isArray(params.milestones) ? params.milestones : [];
+        const badMilestone = rawMilestones.findIndex((m) => badNumericField(m, ["rewardCc"]));
+        if (badMilestone !== -1) return { ok: false, error: `invalid numeric field: milestones[${badMilestone}].rewardCc` };
+        const milestones = rawMilestones
+          .map((m, i) => ({
+            id: id("ms"),
+            index: i,
+            title: clean(m && m.title, 120) || `Milestone ${i + 1}`,
+            rewardCc: Math.floor(num(m && m.rewardCc, 0)),
+            status: "open",
+          }))
+          .slice(0, 12);
+        const zeroMilestone = milestones.findIndex((m) => m.rewardCc < 1);
+        if (zeroMilestone !== -1) {
+          return { ok: false, error: `milestone ${zeroMilestone + 1} reward must be at least 1 CC` };
+        }
+        const rewardCc = milestones.length
+          ? milestones.reduce((sum, m) => sum + m.rewardCc, 0)
+          : Math.floor(num(params.rewardCc, 0));
+        if (rewardCc < 1) return { ok: false, error: "rewardCc must be at least 1 (or supply milestones)" };
+        b.milestones = milestones;
+        b.rewardCc = rewardCc;
+      }
+      b.updatedAt = now();
+      save();
+      return { ok: true, result: { bounty: publicView(b, makeNameResolver(dbOf(ctx))) } };
+    } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
+  });
+
+  // ── Cancel / withdraw a bounty (owner lifecycle, S4) ───────────────
+  // Withdrawal is for a bounty nobody is owed on: it is refused while a
+  // submission is pending or accepted (those settle by review or dispute)
+  // and while a dispute is open (the arbiter rules first). Nothing was
+  // escrowed at create, so cancelling moves no funds — the record stays.
+  registerLensAction("bounties", "cancel", (ctx, _a, params = {}) => {
+    try {
+      const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = actor(ctx);
+      const b = s.bounties.get(clean(params.bountyId, 64));
+      if (!b) return { ok: false, error: "bounty not found" };
+      if (b.ownerId !== userId) return { ok: false, error: "only the bounty owner can cancel this bounty" };
+      if (b.status === "paid") return { ok: false, error: "a paid bounty cannot be cancelled" };
+      if (b.status === "cancelled") return { ok: false, error: "bounty is already cancelled" };
+      if (b.dispute && b.dispute.status === "open") {
+        return { ok: false, error: "this bounty has an open dispute — the dispute must be ruled on before the bounty can be cancelled" };
+      }
+      const live = (b.submissions || []).some((x) => x.status === "pending" || x.status === "accepted");
+      if (live) {
+        return { ok: false, error: "this bounty has submissions awaiting an outcome — review them, or a dispute can settle the bounty" };
+      }
+      b.status = "cancelled";
+      b.updatedAt = now();
+      save();
+      return { ok: true, result: { bounty: publicView(b, makeNameResolver(dbOf(ctx))) } };
     } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
   });
 
   // ── Browse / search / filter the open board ────────────────────────
-  registerLensAction("bounties", "list", (_ctx, _a, params = {}) => {
+  registerLensAction("bounties", "list", (ctx, _a, params = {}) => {
     try {
       const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      // Board-wide totals (F7): computed over EVERY bounty, never the filtered
+      // page, so the header figures keep one meaning under any filter. The
+      // disputed pool stays inside openPoolCc (a disputed bounty is unpaid and
+      // its CC is held, per the pass's filing figures); §8 Q2's milestone
+      // semantics are preserved — poolFor counts a milestone bounty's full
+      // total until it completes.
+      const allRows = [...s.bounties.values()];
+      const totals = {
+        openPoolCc: allRows
+          .filter((x) => x.status !== "paid" && x.status !== "cancelled")
+          .reduce((sum, x) => sum + poolFor(x), 0),
+        paidOutCc: allRows.reduce((sum, x) => sum + paidFor(x), 0),
+        bountyCount: allRows.filter((x) => x.status !== "cancelled").length,
+      };
       const q = clean(params.query, 80).toLowerCase();
       const category = CATEGORIES.includes(params.category) ? params.category : null;
       const difficulty = DIFFICULTIES.includes(params.difficulty) ? params.difficulty : null;
@@ -194,11 +337,13 @@ export default function registerBountiesActions(registerLensAction) {
       else if (sortBy === "submissions") rows.sort((a, b) => (b.submissions || []).length - (a.submissions || []).length);
       else rows.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
       const limit = Math.min(100, Math.max(1, num(params.limit, 50)));
+      const nameOf = makeNameResolver(dbOf(ctx));
       return {
         ok: true,
         result: {
-          bounties: rows.slice(0, limit).map(publicView),
+          bounties: rows.slice(0, limit).map((b) => publicView(b, nameOf)),
           total: rows.length,
+          totals,
           categories: CATEGORIES,
           difficulties: DIFFICULTIES,
         },
@@ -207,12 +352,12 @@ export default function registerBountiesActions(registerLensAction) {
   });
 
   // ── Read a single bounty ───────────────────────────────────────────
-  registerLensAction("bounties", "get", (_ctx, _a, params = {}) => {
+  registerLensAction("bounties", "get", (ctx, _a, params = {}) => {
     try {
       const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const b = s.bounties.get(clean(params.bountyId, 64));
       if (!b) return { ok: false, error: "bounty not found" };
-      return { ok: true, result: { bounty: publicView(b) } };
+      return { ok: true, result: { bounty: publicView(b, makeNameResolver(dbOf(ctx))) } };
     } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
   });
 
@@ -224,6 +369,7 @@ export default function registerBountiesActions(registerLensAction) {
       const b = s.bounties.get(clean(params.bountyId, 64));
       if (!b) return { ok: false, error: "bounty not found" };
       if (b.status === "paid") return { ok: false, error: "bounty already paid out" };
+      if (b.status === "cancelled") return { ok: false, error: "bounty was cancelled by its poster" };
       if (b.ownerId === userId) return { ok: false, error: "owner cannot submit to own bounty" };
       const summary = clean(params.summary, 240);
       if (summary.length < 8) return { ok: false, error: "summary must be at least 8 characters" };
@@ -248,7 +394,7 @@ export default function registerBountiesActions(registerLensAction) {
       if (b.status === "open") b.status = "claimed";
       b.updatedAt = now();
       save();
-      return { ok: true, result: { submission, bounty: publicView(b) } };
+      return { ok: true, result: { submission, bounty: publicView(b, makeNameResolver(dbOf(ctx))) } };
     } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
   });
 
@@ -269,9 +415,14 @@ export default function registerBountiesActions(registerLensAction) {
 
       if (decision === "reject") {
         sub.status = "rejected";
+        // A bounty whose last live submission is rejected is open again —
+        // "claimed" describes a bounty with work in hand, and none remains.
+        if (b.status === "claimed" && !(b.submissions || []).some((x) => x.status === "pending" || x.status === "accepted")) {
+          b.status = "open";
+        }
         b.updatedAt = now();
         save();
-        return { ok: true, result: { submission: sub, bounty: publicView(b) } };
+        return { ok: true, result: { submission: sub, bounty: publicView(b, makeNameResolver(dbOf(ctx))) } };
       }
 
       // Accept → payout (milestone-scoped or whole bounty).
@@ -301,7 +452,7 @@ export default function registerBountiesActions(registerLensAction) {
       }
       b.updatedAt = now();
       save();
-      return { ok: true, result: { submission: sub, bounty: publicView(b), paidCc: paid, currency: "CC" } };
+      return { ok: true, result: { submission: sub, bounty: publicView(b, makeNameResolver(dbOf(ctx))), paidCc: paid, currency: "CC" } };
     } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
   });
 
@@ -327,7 +478,7 @@ export default function registerBountiesActions(registerLensAction) {
       if (allPaid) bumpResolved(s, userId);
       b.updatedAt = now();
       save();
-      return { ok: true, result: { milestone: { ...ms }, bounty: publicView(b), paidCc: num(ms.rewardCc, 0), currency: "CC" } };
+      return { ok: true, result: { milestone: { ...ms }, bounty: publicView(b, makeNameResolver(dbOf(ctx))), paidCc: num(ms.rewardCc, 0), currency: "CC" } };
     } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
   });
 
@@ -338,6 +489,7 @@ export default function registerBountiesActions(registerLensAction) {
       const userId = actor(ctx);
       const b = s.bounties.get(clean(params.bountyId, 64));
       if (!b) return { ok: false, error: "bounty not found" };
+      if (b.status === "cancelled") return { ok: false, error: "a cancelled bounty cannot be disputed" };
       const involved = b.ownerId === userId || (b.submissions || []).some((x) => x.claimantId === userId);
       if (!involved) return { ok: false, error: "only the owner or a claimant can open a dispute" };
       if (b.dispute && b.dispute.status === "open") return { ok: false, error: "a dispute is already open" };
@@ -356,7 +508,7 @@ export default function registerBountiesActions(registerLensAction) {
       b.status = "disputed";
       b.updatedAt = now();
       save();
-      return { ok: true, result: { dispute: { ...b.dispute }, bounty: publicView(b) } };
+      return { ok: true, result: { dispute: { ...b.dispute }, bounty: publicView(b, makeNameResolver(dbOf(ctx))) } };
     } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
   });
 
@@ -374,7 +526,11 @@ export default function registerBountiesActions(registerLensAction) {
       if (!auth.ok) return { ok: false, error: auth.reason };
       const role = String(ctx?.actor?.role || "").toLowerCase();
       const canArbitrate = isAdmin(ctx) || role === "moderator";
-      if (!canArbitrate) return { ok: false, error: "forbidden" };
+      if (!canArbitrate) {
+        // Refusals carry their reason in words (S1): the authorisation is
+        // unchanged — the surface must be able to say WHY, not guess.
+        return { ok: false, error: "only a platform admin or moderator who is not a party to this dispute can rule on it" };
+      }
       const userId = auth.actorId;
       const isParty = b.ownerId === userId || (b.submissions || []).some((x) => x.claimantId === userId);
       if (isParty) return { ok: false, error: "parties to a dispute cannot arbitrate" };
@@ -389,7 +545,11 @@ export default function registerBountiesActions(registerLensAction) {
       b.dispute.arbiterId = userId;
       b.dispute.resolvedAt = now();
       if (ruling === "overturn") {
-        b.status = (b.submissions || []).length ? "claimed" : "open";
+        // The bounty reopens for work: "claimed" only while a live
+        // (pending/accepted) submission stands — a rejected submission on
+        // record does not hold the bounty claimed (same rule as review).
+        const hasLive = (b.submissions || []).some((x) => x.status === "pending" || x.status === "accepted");
+        b.status = hasLive ? "claimed" : "open";
         b.acceptedSubmissionId = null;
       } else {
         const allPaid = (b.milestones || []).length
@@ -399,23 +559,24 @@ export default function registerBountiesActions(registerLensAction) {
       }
       b.updatedAt = now();
       save();
-      return { ok: true, result: { dispute: { ...b.dispute }, bounty: publicView(b) } };
+      return { ok: true, result: { dispute: { ...b.dispute }, bounty: publicView(b, makeNameResolver(dbOf(ctx))) } };
     } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
   });
 
   // ── Leaderboard of top earners / resolvers ─────────────────────────
-  registerLensAction("bounties", "leaderboard", (_ctx, _a, params = {}) => {
+  registerLensAction("bounties", "leaderboard", (ctx, _a, params = {}) => {
     try {
       const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const nameOf = makeNameResolver(dbOf(ctx));
       const limit = Math.min(50, Math.max(1, num(params.limit, 10)));
       const earners = [...s.earnings.entries()]
-        .map(([userId, earnedCc]) => ({ userId, earnedCc, resolved: s.resolved.get(userId) || 0 }))
+        .map(([userId, earnedCc]) => ({ userId, name: nameOf(userId), earnedCc, resolved: s.resolved.get(userId) || 0 }))
         .filter((r) => r.earnedCc > 0)
         .sort((a, b) => b.earnedCc - a.earnedCc)
         .slice(0, limit)
         .map((r, i) => ({ rank: i + 1, ...r }));
       const resolvers = [...s.resolved.entries()]
-        .map(([userId, resolved]) => ({ userId, resolved, earnedCc: s.earnings.get(userId) || 0 }))
+        .map(([userId, resolved]) => ({ userId, name: nameOf(userId), resolved, earnedCc: s.earnings.get(userId) || 0 }))
         .filter((r) => r.resolved > 0)
         .sort((a, b) => b.resolved - a.resolved)
         .slice(0, limit)
@@ -429,10 +590,11 @@ export default function registerBountiesActions(registerLensAction) {
     try {
       const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = actor(ctx);
+      const nameOf = makeNameResolver(dbOf(ctx));
       const posted = [...ownerSet(s, userId)]
         .map((bid) => s.bounties.get(bid))
         .filter(Boolean)
-        .map(publicView)
+        .map((b) => publicView(b, nameOf))
         .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
       const submitted = [];
       for (const b of s.bounties.values()) {

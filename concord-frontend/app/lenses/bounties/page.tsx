@@ -25,7 +25,7 @@ import { BountyCard } from '@/components/bounties/BountyCard';
 import { BountyFilters, type FilterState } from '@/components/bounties/BountyFilters';
 import { BountyLeaderboard } from '@/components/bounties/BountyLeaderboard';
 import { MyBountyActivity } from '@/components/bounties/MyBountyActivity';
-import type { PlatformBounty } from '@/components/bounties/types';
+import type { PlatformBounty, BoardTotals } from '@/components/bounties/types';
 
 interface AutofixBounty {
   autofix_id: number;
@@ -93,6 +93,7 @@ export default function BountiesPage() {
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [bounties, setBounties] = useState<PlatformBounty[]>([]);
   const [total, setTotal] = useState(0);
+  const [boardTotals, setBoardTotals] = useState<BoardTotals | null>(null);
   const [boardLoading, setBoardLoading] = useState(true);
   const [boardError, setBoardError] = useState<string | null>(null);
   const [activityKey, setActivityKey] = useState(0);
@@ -106,10 +107,11 @@ export default function BountiesPage() {
     if (filters.difficulty) params.difficulty = filters.difficulty;
     if (filters.status) params.status = filters.status;
     if (filters.tag) params.tag = filters.tag;
-    const r = await lensRun<{ bounties: PlatformBounty[]; total: number }>('bounties', 'list', params);
+    const r = await lensRun<{ bounties: PlatformBounty[]; total: number; totals?: BoardTotals }>('bounties', 'list', params);
     if (r.data?.ok && r.data.result) {
       setBounties(r.data.result.bounties || []);
       setTotal(r.data.result.total || 0);
+      if (r.data.result.totals) setBoardTotals(r.data.result.totals);
     } else {
       setBoardError(r.data?.error || 'Failed to load bounties');
     }
@@ -170,11 +172,17 @@ export default function BountiesPage() {
     window.setTimeout(() => setAutofixStatus(null), 4000);
   };
 
-  const boardStats = useMemo(() => {
-    const openPool = bounties.filter((b) => b.status !== 'paid').reduce((s, b) => s + b.poolCc, 0);
+  // In-view figures (the filtered page only) — shown LABELLED as scoped when a
+  // filter is active. The header cards themselves always carry the board-wide
+  // totals from the server (F7), so their meaning never changes mid-filter.
+  const viewStats = useMemo(() => {
+    const openPool = bounties.filter((b) => b.status !== 'paid' && b.status !== 'cancelled').reduce((s, b) => s + b.poolCc, 0);
     const paidOut = bounties.reduce((s, b) => s + b.paidCc, 0);
     return { openPool, paidOut };
   }, [bounties]);
+  const filtersActive = Boolean(
+    filters.query || filters.category || filters.difficulty || filters.status || filters.tag,
+  );
 
 
   return (
@@ -205,16 +213,22 @@ export default function BountiesPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-2xl border border-white/10 bg-[#111] px-4 py-3">
-                  <div className="text-[10px] text-zinc-400 uppercase tracking-wide">Open pool</div>
+                  <div className="text-[10px] text-zinc-400 uppercase tracking-wide">Open pool · whole board</div>
                   <div className="text-lg font-bold text-amber-300 flex items-center gap-1">
-                    <Coins className="w-4 h-4" /> {boardStats.openPool} CC
+                    <Coins className="w-4 h-4" /> {boardTotals ? boardTotals.openPoolCc : viewStats.openPool} CC
                   </div>
+                  {filtersActive && (
+                    <div className="text-[10px] text-zinc-500 mt-0.5">{viewStats.openPool} CC in current view</div>
+                  )}
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-[#111] px-4 py-3">
-                  <div className="text-[10px] text-zinc-400 uppercase tracking-wide">Paid out</div>
+                  <div className="text-[10px] text-zinc-400 uppercase tracking-wide">Paid out · whole board</div>
                   <div className="text-lg font-bold text-emerald-300 flex items-center gap-1">
-                    <Coins className="w-4 h-4" /> {boardStats.paidOut} CC
+                    <Coins className="w-4 h-4" /> {boardTotals ? boardTotals.paidOutCc : viewStats.paidOut} CC
                   </div>
+                  {filtersActive && (
+                    <div className="text-[10px] text-zinc-500 mt-0.5">{viewStats.paidOut} CC in current view</div>
+                  )}
                 </div>
               </div>
 
@@ -258,6 +272,7 @@ export default function BountiesPage() {
                       key={b.id}
                       bounty={b}
                       currentUserId={currentUserId}
+                      currentUserRole={user?.role}
                       onChanged={onBountyChanged}
                     />
                   ))}
