@@ -111,6 +111,9 @@ import cors from "cors";
 import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
+import { validateIrAgainstSolvers } from "./lib/cross-model-validator.js";
+import { validateArtifactSchemas, validateArtifactSchemaTargets } from "./lib/cross-model-dtu.js";
+import { getVocabulary } from "./lib/quality-gate.js";
 import { buildAnalyticsGroundingBlock, groundingUserId } from "./lib/lens-grounding.js";
 import { createSqliteBridgeService } from "./lib/dtu-bridge/service.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
@@ -2099,7 +2102,7 @@ import { exportableDtus, exportBulkDenial } from "./lib/export-filter.js";
 import { dtuImportDecision, importAuthDenial, stampImportedDtu } from "./lib/dtu-import-guard.js";
 import { renderAndAttach, hasRenderer as _hasRenderer } from "./lib/render-engine.js";
 import { registerAllRenderers } from "./lib/render-registry.js";
-import { getArtifactSchema } from "./lib/artifact-schemas.js";
+import { getArtifactSchema, listArtifactSchemas, schemasReady } from "./lib/artifact-schemas.js";
 import { getExemplarArtifact } from "./lib/exemplar-artifacts.js";
 import "./lib/vocabularies.js";
 import { BoundedMap } from "./lib/bounded-map.js";
@@ -22667,6 +22670,55 @@ if (process.env.CONCORD_DISABLE_GHOST_FLEET !== "true") {
         } catch (e) {
           logger.error("macro-contract", "registry validation failed", { error: e?.message });
         }
+        // Cohesive R-3 — cross-model boot report (report-only). Runs the
+        // cross-model validators where their registries are live: the
+        // artifact-schema registry, the quality gate's vocabularies, the
+        // solver registry, and LENS_ACTIONS (monolith-scoped until boot,
+        // which is why schema-target-resolves exists only here). Counts
+        // always log; findings log loudly; nothing here can fail boot.
+        schemasReady
+          .then(async () => {
+            try {
+              const schemas = listArtifactSchemas();
+              const lensReg = globalThis.__concordLensActions;
+              const targets = validateArtifactSchemaTargets({
+                schemas,
+                lensActions: lensReg instanceof Map ? lensReg : new Map(),
+              });
+              const artifacts = validateArtifactSchemas({ schemas, getVocabulary });
+              let irReport = null;
+              try {
+                await import("./lib/conkay/index.js");
+                const { listSolvers } = await import("./lib/conkay/physics/registry.js");
+                const { buildSentinelM1IR } = await import("./lib/conkay/demos/sentinel-m1.js");
+                irReport = validateIrAgainstSolvers({
+                  solvers: listSolvers(),
+                  documents: [{ location: "demos/sentinel-m1 buildSentinelM1IR()", ir: buildSentinelM1IR() }],
+                });
+              } catch (e) {
+                logger.error("cross-model", "IR report leg failed", { error: e?.message });
+              }
+              structuredLog("info", "cross_model_boot_report", {
+                schemaTargets: { schemas: targets.checked.schemas, lensActions: targets.checked.lensActions, errors: targets.errors.length },
+                artifactSchemas: { schemas: artifacts.checked.schemas, errors: artifacts.errors.length, warnings: artifacts.warnings.length },
+                irSolvers: irReport ? { requirements: irReport.checked.requirements, solvers: irReport.checked.solversConsulted, errors: irReport.errors.length, warnings: irReport.warnings.length } : null,
+              });
+              const findings = [
+                ...targets.errors.map((f) => ({ desk: "cross-model-targets", ...f })),
+                ...artifacts.errors.map((f) => ({ desk: "cross-model-artifacts", ...f })),
+                ...artifacts.warnings.map((f) => ({ desk: "cross-model-artifacts", ...f })),
+                ...(irReport ? [...irReport.errors, ...irReport.warnings].map((f) => ({ desk: "cross-model-ir", ...f })) : []),
+              ];
+              if (findings.length) {
+                logger.error("cross-model", "cross-model findings at boot", { count: findings.length, findings: findings.slice(0, 20) });
+              }
+            } catch (e) {
+              logger.error("cross-model", "boot report failed", { error: e?.message });
+            }
+          })
+          .catch((e) => {
+            logger.error("cross-model", "boot report failed", { error: e?.message });
+          });
       })
       .catch(err => {
         structuredLog("error", "ghost_fleet_init_error", { error: err.message });
