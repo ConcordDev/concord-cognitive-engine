@@ -73,9 +73,13 @@ export default function registerVeterinaryActions(registerLensAction) {
     const s = getVetState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = vtClean(params.name, 120);
     if (!name) return { ok: false, error: "patient name required" };
+    const species = typeof params.species === "string" ? params.species.trim().toLowerCase() : "";
+    if (!SPECIES.includes(species)) {
+      return { ok: false, error: "invalid_input", field: "species", reason: "species required" };
+    }
     const patient = {
       id: vtId("pat"), name,
-      species: SPECIES.includes(params.species) ? params.species : "dog",
+      species,
       breed: vtClean(params.breed, 80) || "mixed",
       owner: vtClean(params.owner, 120) || "",
       ageYears: Math.max(0, vtNum(params.ageYears)),

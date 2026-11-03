@@ -78,6 +78,20 @@ describe("veterinary — clinical calculators", () => {
 });
 
 describe("veterinary — patient records substrate", () => {
+  it("patient-add refuses a missing or unknown species and does not store a dog", () => {
+    const missing = call("patient-add", ctxA, {}, { name: "Rex" });
+    assert.equal(missing.ok, false);
+    assert.equal(missing.error, "invalid_input");
+    assert.equal(missing.field, "species");
+    const unknown = call("patient-add", ctxA, {}, { name: "Rex", species: "iguana" });
+    assert.equal(unknown.ok, false);
+    assert.equal(unknown.field, "species");
+    assert.equal(call("patient-list", ctxA, {}, {}).result.count, 0);
+    const titled = call("patient-add", ctxA, {}, { name: "Rex", species: "Dog" });
+    assert.equal(titled.ok, true);
+    assert.equal(titled.result.patient.species, "dog");
+  });
+
   it("patient-add / patient-list / patient-delete round-trip", () => {
     const add = call("patient-add", ctxA, {}, { name: "Rex", species: "dog", owner: "Jane Doe" });
     assert.equal(add.ok, true);
@@ -169,7 +183,7 @@ describe("veterinary — invoicing & payment", () => {
 
 describe("veterinary — vaccine reminders", () => {
   it("classifies overdue vs due-soon", () => {
-    const pat = call("patient-add", ctxA, {}, { name: "Rex", owner: "Jane" }).result.patient;
+    const pat = call("patient-add", ctxA, {}, { name: "Rex", species: "dog", owner: "Jane" }).result.patient;
     const past = new Date(Date.now() - 5 * 86400000).toISOString().slice(0, 10);
     const soon = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10);
     call("vaccine-record", ctxA, {}, { patientId: pat.id, vaccine: "Rabies", nextDue: past });
@@ -215,7 +229,7 @@ describe("veterinary — prescriptions & refills", () => {
 
 describe("veterinary — owner portal", () => {
   it("aggregates pets, appointments, invoices, prescriptions", () => {
-    const pat = call("patient-add", ctxA, {}, { name: "Rex", owner: "Jane Doe" }).result.patient;
+    const pat = call("patient-add", ctxA, {}, { name: "Rex", species: "dog", owner: "Jane Doe" }).result.patient;
     call("appointment-book", ctxA, {}, { patientName: "Rex", patientId: pat.id, owner: "Jane Doe", date: "2026-07-01" });
     call("invoice-create", ctxA, {}, { patientName: "Rex", patientId: pat.id, owner: "Jane Doe", lineItems: [{ description: "Exam", qty: 1, unitPrice: 80 }] });
     call("prescription-add", ctxA, {}, { drug: "Carprofen", patientId: pat.id });
