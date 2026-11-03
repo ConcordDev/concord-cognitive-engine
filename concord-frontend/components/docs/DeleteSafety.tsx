@@ -12,6 +12,14 @@
  * modal. Confirming registers the delete with the registry; the item
  * leaves the view immediately, the toast announces the pending
  * deletion with Undo, and the macro runs only when the window lapses.
+ *
+ * S1 follow-up (geometry): in the narrow list columns (page tree,
+ * database list) the original non-wrapping inline cluster overflowed
+ * the column and the editor panel covered Cancel — a one-way door
+ * wearing a two-way door's shape. The confirm cluster now WRAPS
+ * within its container (the label may break; both buttons stay
+ * whole and inside the column), and the list rows let their title
+ * shrink (min-w-0) so the cluster gets the room it needs.
  */
 
 import { useState, useSyncExternalStore } from 'react';
@@ -25,7 +33,7 @@ export function useDeleteSafety(): DeleteSafetySnapshot {
   return useSyncExternalStore(subscribeDeleteSafety, getDeleteSafetySnapshot, getDeleteSafetySnapshot);
 }
 
-export function ConfirmDeleteButton({ itemLabel, deleteTitle, onConfirm, className, iconClassName }: {
+export function ConfirmDeleteButton({ itemLabel, deleteTitle, onConfirm, className, iconClassName, onConfirmingChange }: {
   /** The item's name — the confirm step names it: Delete “<itemLabel>”? */
   itemLabel: string;
   /** Accessible name of the resting control, e.g. "Delete page". */
@@ -33,15 +41,19 @@ export function ConfirmDeleteButton({ itemLabel, deleteTitle, onConfirm, classNa
   onConfirm: () => void;
   className?: string;
   iconClassName?: string;
+  /** Notified when the confirm step opens/closes, so a hover-revealed
+   *  host row can keep the open confirm step visible. */
+  onConfirmingChange?: (confirming: boolean) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const setStep = (next: boolean) => { setConfirming(next); onConfirmingChange?.(next); };
   if (!confirming) {
     return (
       <button
         type="button"
         title={deleteTitle}
         aria-label={deleteTitle}
-        onClick={(e) => { e.stopPropagation(); setConfirming(true); }}
+        onClick={(e) => { e.stopPropagation(); setStep(true); }}
         className={className}
       >
         <Trash2 className={iconClassName ?? 'w-3.5 h-3.5'} />
@@ -49,21 +61,21 @@ export function ConfirmDeleteButton({ itemLabel, deleteTitle, onConfirm, classNa
     );
   }
   return (
-    <span className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-      <span className="text-[10px] text-rose-300 whitespace-nowrap">Delete &ldquo;{itemLabel}&rdquo;?</span>
+    <span className="inline-flex flex-wrap items-center gap-1 max-w-full min-w-0" onClick={(e) => e.stopPropagation()}>
+      <span className="text-[10px] text-rose-300 break-words min-w-0">Delete &ldquo;{itemLabel}&rdquo;?</span>
       <button
         type="button"
         aria-label={`Confirm delete ${itemLabel}`}
-        onClick={() => { setConfirming(false); onConfirm(); }}
-        className="px-1.5 py-0.5 text-[10px] rounded bg-rose-500/20 text-rose-200 hover:bg-rose-500/30"
+        onClick={() => { setStep(false); onConfirm(); }}
+        className="px-1.5 py-0.5 text-[10px] rounded bg-rose-500/20 text-rose-200 hover:bg-rose-500/30 shrink-0 whitespace-nowrap"
       >
         Delete
       </button>
       <button
         type="button"
         aria-label="Cancel delete"
-        onClick={() => setConfirming(false)}
-        className="px-1.5 py-0.5 text-[10px] rounded bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+        onClick={() => setStep(false)}
+        className="px-1.5 py-0.5 text-[10px] rounded bg-zinc-800 text-zinc-300 hover:bg-zinc-700 shrink-0 whitespace-nowrap"
       >
         Cancel
       </button>
