@@ -151,6 +151,77 @@ export default function registerVeterinaryActions(registerLensAction) {
     return { ok: true, result: { deleted: params.id } };
   });
 
+  // Correct a standing chart. Omitted fields stay as stored. A blank name
+  // is refused. A species off the registration list is refused and does not
+  // rewrite the stored species. Explicit age or weight 0 stays 0.
+  registerLensAction("veterinary", "patient-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getVetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const patient = vtPatients(s, vtActor(ctx)).find((p) => p.id === params.id);
+      if (!patient) return { ok: false, error: "patient not found" };
+      const has = (k) => Object.prototype.hasOwnProperty.call(params, k);
+      const fields = ["name", "species", "breed", "owner", "ageYears", "weightLbs", "notes"];
+      if (!fields.some(has)) return { ok: false, error: "no fields to update" };
+      const next = {};
+      if (has("name")) {
+        const name = vtClean(params.name, 120);
+        if (!name) return { ok: false, error: "patient name required" };
+        next.name = name;
+      }
+      if (has("species")) {
+        const species = String(params.species == null ? "" : params.species).trim().toLowerCase();
+        if (!SPECIES.includes(species)) return { ok: false, error: "invalid_input", field: "species" };
+        next.species = species;
+      }
+      if (has("breed")) next.breed = vtClean(params.breed, 80);
+      if (has("owner")) next.owner = vtClean(params.owner, 120);
+      if (has("notes")) next.notes = vtClean(params.notes, 1000);
+      const recordedNum = (key) => {
+        const raw = params[key];
+        if (raw === "" || raw == null) return { ok: false };
+        const n = Number(raw);
+        if (!Number.isFinite(n) || n < 0) return { ok: false };
+        return { ok: true, n };
+      };
+      if (has("ageYears")) {
+        const age = recordedNum("ageYears");
+        if (!age.ok) return { ok: false, error: "invalid_input", field: "ageYears" };
+        next.ageYears = age.n;
+      }
+      if (has("weightLbs")) {
+        const weight = recordedNum("weightLbs");
+        if (!weight.ok) return { ok: false, error: "invalid_input", field: "weightLbs" };
+        next.weightLbs = weight.n;
+      }
+      Object.assign(patient, next);
+      patient.updatedAt = new Date().toISOString();
+      saveVet();
+      return { ok: true, result: { patient } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  function vtDeleteChild(ctx, key, patientId, id, missing) {
+    const s = getVetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const patient = vtPatients(s, vtActor(ctx)).find((p) => p.id === patientId);
+    if (!patient) return { ok: false, error: "patient not found" };
+    const arr = Array.isArray(patient[key]) ? patient[key] : [];
+    const i = arr.findIndex((row) => row.id === id);
+    if (i < 0) return { ok: false, error: missing };
+    arr.splice(i, 1);
+    saveVet();
+    return { ok: true, result: { deleted: id, patientId: patient.id } };
+  }
+
+  registerLensAction("veterinary", "visit-delete", (ctx, _a, params = {}) => {
+    try { return vtDeleteChild(ctx, "visits", params.patientId, params.id, "visit not found"); }
+    catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("veterinary", "vaccine-delete", (ctx, _a, params = {}) => {
+    try { return vtDeleteChild(ctx, "vaccinations", params.patientId, params.id, "vaccination not found"); }
+    catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
   registerLensAction("veterinary", "visit-log", (ctx, _a, params = {}) => {
   try {
     const s = getVetState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -438,6 +509,18 @@ export default function registerVeterinaryActions(registerLensAction) {
       if (pid) notes = notes.filter((n) => n.patientId === pid);
       notes.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
       return { ok: true, result: { notes, count: notes.length } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("veterinary", "soap-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getVetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const arr = vtList(vtCollection(s, "soapNotes"), vtActor(ctx));
+      const i = arr.findIndex((n) => n.id === params.id);
+      if (i < 0) return { ok: false, error: "note not found" };
+      arr.splice(i, 1);
+      saveVet();
+      return { ok: true, result: { deleted: params.id } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
