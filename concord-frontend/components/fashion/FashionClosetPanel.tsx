@@ -12,6 +12,7 @@ import { Loader2, Plus, Trash2, Repeat, Scissors, Eye, Shirt } from 'lucide-reac
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
+import { closetEmptyCopy } from './closet-empty-copy';
 
 interface Item {
   id: string; name: string; category: string; brand: string | null; color: string | null;
@@ -187,7 +188,10 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
 
       {items.length === 0 ? (
         <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
-          No items. Add pieces to build your digital closet.
+          {closetEmptyCopy({
+            category: filter,
+            laundryLabel: laundryFilter ? LAUNDRY_LABEL[laundryFilter] : null,
+          })}
         </div>
       ) : (
         <ul className="grid grid-cols-2 gap-2">
