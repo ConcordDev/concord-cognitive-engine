@@ -410,6 +410,54 @@ export default function registerParentingActions(registerLensAction) {
   const pgNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const pgClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
   const PG_DAY = 86400000;
+  // A logged nap may end a couple of minutes ahead of this clock. Further
+  // than that, the window has not happened and must not be stored or used
+  // as a wake to predict from.
+  const PG_SLEEP_SKEW_MS = 2 * 60000;
+
+  function pgSleepWindow(input) {
+    const rawStart = pgClean(input.startAt, 80);
+    if (!rawStart) return { error: { ok: false, error: "invalid_input", field: "startAt" } };
+    const startMs = Date.parse(rawStart);
+    if (!Number.isFinite(startMs)) {
+      return { error: { ok: false, error: "invalid_input", field: "startAt" } };
+    }
+    const dur = Number(input.durationMin);
+    if (!Number.isFinite(dur) || dur <= 0) {
+      return { error: { ok: false, error: "invalid_input", field: "durationMin" } };
+    }
+    const durationMin = Math.round(dur);
+    if (durationMin < 1) {
+      return { error: { ok: false, error: "invalid_input", field: "durationMin" } };
+    }
+    const endMs = startMs + durationMin * 60000;
+    const rawEnd = pgClean(input.endAt, 80);
+    if (rawEnd) {
+      const sentEnd = Date.parse(rawEnd);
+      if (!Number.isFinite(sentEnd) || Math.abs(sentEnd - endMs) > 60000) {
+        return { error: { ok: false, error: "invalid_input", field: "endAt" } };
+      }
+    }
+    const now = Date.now();
+    if (startMs > now + PG_SLEEP_SKEW_MS) {
+      return { error: { ok: false, error: "invalid_input", field: "startAt", reason: "start_in_future" } };
+    }
+    if (endMs > now + PG_SLEEP_SKEW_MS) {
+      return { error: { ok: false, error: "invalid_input", field: "endAt", reason: "end_in_future" } };
+    }
+    return {
+      durationMin,
+      startAt: new Date(startMs).toISOString(),
+      endAt: new Date(endMs).toISOString(),
+    };
+  }
+
+  function pgCompletedWakeMs(sleeps, now = Date.now()) {
+    const ends = sleeps
+      .map((e) => Date.parse(e.endAt))
+      .filter((t) => Number.isFinite(t) && t <= now + PG_SLEEP_SKEW_MS);
+    return ends.length ? Math.max(...ends) : null;
+  }
 
   function pgAgeMonths(birthDate) {
     const b = Date.parse(`${birthDate}T00:00:00Z`);
@@ -798,17 +846,19 @@ export default function registerParentingActions(registerLensAction) {
   });
 
   // ── Sleep ───────────────────────────────────────────────────────────
-  registerLensAction("parenting", "sleep-log", (ctx, _a, params = {}) => {
+  registerLensAction("parenting", "sleep-log", (ctx, artifact, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgBucket(s, ctx, params.childId);
-    if (!pgChild(s, userId, params.childId)) return { ok: false, error: "child not found" };
-    const durationMin = Math.max(1, Math.round(pgNum(params.durationMin)));
-    const startAt = pgClean(params.startAt, 30) || pgNow();
+    const input = { ...(artifact && artifact.data), ...params };
+    const userId = pgBucket(s, ctx, input.childId);
+    if (!pgChild(s, userId, input.childId)) return { ok: false, error: "child not found" };
+    const window = pgSleepWindow(input);
+    if (window.error) return window.error;
     const entry = {
-      id: pgId("slp"), childId: String(params.childId),
-      type: ["nap", "night"].includes(String(params.type)) ? String(params.type) : "nap",
-      durationMin, startAt,
-      endAt: new Date(Date.parse(startAt) + durationMin * 60000).toISOString(),
+      id: pgId("slp"), childId: String(input.childId),
+      type: ["nap", "night"].includes(String(input.type)) ? String(input.type) : "nap",
+      durationMin: window.durationMin,
+      startAt: window.startAt,
+      endAt: window.endAt,
     };
     pgListB(s.sleeps, userId).push(entry);
     savePgState();
@@ -854,9 +904,7 @@ export default function registerParentingActions(registerLensAction) {
     const ageMonths = pgAgeMonths(child.birthDate);
     const ww = pgWakeWindow(ageMonths);
     const sleeps = (s.sleeps.get(userId) || []).filter((e) => e.childId === child.id);
-    const lastWake = sleeps.length
-      ? sleeps.reduce((m, e) => Math.max(m, Date.parse(e.endAt)), 0)
-      : null;
+    const lastWake = pgCompletedWakeMs(sleeps);
     if (ageMonths >= 36) {
       return {
         ok: true,
@@ -868,7 +916,9 @@ export default function registerParentingActions(registerLensAction) {
       return {
         ok: true,
         result: { ageMonths: Math.round(ageMonths), wakeWindow: ww, predictedNap: null,
-          note: "Log a sleep to predict the next SweetSpot nap window." },
+          note: sleeps.length
+            ? "No completed wake to predict from. A nap that has not ended is not a SweetSpot anchor."
+            : "Log a sleep to predict the next SweetSpot nap window." },
       };
     }
     return {
@@ -1236,11 +1286,11 @@ export default function registerParentingActions(registerLensAction) {
     // Age-driven nap count for the remainder of the day.
     const napsPerDay = ageMonths < 4 ? 4 : ageMonths < 7 ? 3 : ageMonths < 15 ? 2 : ageMonths < 36 ? 1 : 0;
 
-    // Anchor: last logged wake; otherwise "now".
-    const lastEnd = sleeps.length
-      ? sleeps.reduce((m, e) => Math.max(m, Date.parse(e.endAt)), 0)
-      : Date.now();
-    const anchor = Math.max(lastEnd, Date.now());
+    // Anchor on the latest wake that has already happened. A stored end
+    // still in the future is not a record to chain from.
+    const now = Date.now();
+    const lastEnd = pgCompletedWakeMs(sleeps, now);
+    const anchor = lastEnd != null ? Math.max(lastEnd, now) : now;
 
     // Target night sleep duration → derive a bedtime by working back from
     // a 07:00 target wake.
@@ -1248,7 +1298,9 @@ export default function registerParentingActions(registerLensAction) {
 
     const schedule = [];
     let cursor = anchor;
-    let napsDone = sleeps.filter((e) => e.type === "nap" && e.startAt.slice(0, 10) === pgNow().slice(0, 10)).length;
+    let napsDone = sleeps.filter((e) => e.type === "nap"
+      && e.startAt.slice(0, 10) === pgNow().slice(0, 10)
+      && Date.parse(e.endAt) <= now + PG_SLEEP_SKEW_MS).length;
     let napsLeft = Math.max(0, napsPerDay - napsDone);
     for (let i = 0; i < napsLeft; i++) {
       const napStart = cursor + ww.typical * 60000;
@@ -1287,10 +1339,12 @@ export default function registerParentingActions(registerLensAction) {
         napsPerDay,
         napsLogged: napsDone,
         schedule,
-        anchoredOn: sleeps.length ? new Date(lastEnd).toISOString() : null,
-        note: sleeps.length
+        anchoredOn: lastEnd != null ? new Date(lastEnd).toISOString() : null,
+        note: lastEnd != null
           ? "Predicted from this child's own logged sleep patterns and age-based wake windows."
-          : "No sleep logged yet — schedule anchored to now using age-based wake windows.",
+          : sleeps.length
+            ? "No completed wake to predict from. Schedule stays anchored to now."
+            : "No sleep logged yet — schedule anchored to now using age-based wake windows.",
       },
     };
     } catch (e) { return handlerFailure(e); }

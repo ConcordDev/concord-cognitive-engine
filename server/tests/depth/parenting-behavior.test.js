@@ -236,12 +236,17 @@ describe("parenting — logging round-trips (feeds, sleep, diapers, pumping)", (
   });
 
   it("sleep-log → sleep-stats: minutes today + longest stretch are exact", async () => {
-    const start = new Date().toISOString();
-    await lensRun("parenting", "sleep-log", { params: { childId, type: "nap", durationMin: 90, startAt: start } }, ctx);
-    await lensRun("parenting", "sleep-log", { params: { childId, type: "nap", durationMin: 45, startAt: start } }, ctx);
+    const end = Date.now() - 2 * 60000;
+    const start90 = new Date(end - 90 * 60000).toISOString();
+    const start45 = new Date(end - 45 * 60000).toISOString();
+    await lensRun("parenting", "sleep-log", { params: { childId, type: "nap", durationMin: 90, startAt: start90 } }, ctx);
+    await lensRun("parenting", "sleep-log", { params: { childId, type: "nap", durationMin: 45, startAt: start45 } }, ctx);
     const stats = await lensRun("parenting", "sleep-stats", { params: { childId } }, ctx);
-    assert.equal(stats.result.sleepMinToday, 135); // 90 + 45
-    assert.equal(stats.result.napsToday, 2);
+    const today = new Date().toISOString().slice(0, 10);
+    const logged = [{ startAt: start90, durationMin: 90 }, { startAt: start45, durationMin: 45 }];
+    const todayNaps = logged.filter((n) => n.startAt.slice(0, 10) === today);
+    assert.equal(stats.result.sleepMinToday, todayNaps.reduce((a, n) => a + n.durationMin, 0));
+    assert.equal(stats.result.napsToday, todayNaps.length);
     assert.equal(stats.result.longestStretchMin, 90);
   });
 
@@ -682,9 +687,9 @@ describe("parenting — sleep-schedule predictor + expert content + trends", () 
     const add = await lensRun("parenting", "child-add", { params: { name: "Trend", birthDate: birthDateMonthsAgo(6) } }, ctx);
     const childId = add.result.child.id;
     // Seed a few days of feeds/diapers/sleep within the window.
-    for (let i = 0; i < 4; i++) {
+    for (let i = 1; i <= 4; i++) {
       const day = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
-      const at = `${day}T09:00:00.000Z`;
+      const at = `${day}T12:00:00.000Z`;
       await lensRun("parenting", "feed-log", { params: { childId, kind: "bottle", amountMl: 100, at } }, ctx);
       await lensRun("parenting", "diaper-log", { params: { childId, kind: "wet", at } }, ctx);
       await lensRun("parenting", "sleep-log", { params: { childId, type: "nap", durationMin: 120, startAt: at } }, ctx);
