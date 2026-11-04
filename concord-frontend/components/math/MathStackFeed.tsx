@@ -20,6 +20,7 @@ const TAGS = [
 
 export function MathStackFeed() {
   const [tag, setTag] = useState(TAGS[0].id);
+  const [savedDtuId, setSavedDtuId] = useState<string | null>(null);
 
   const questions = useQuery({
     queryKey: ['math-stack', tag],
@@ -41,7 +42,8 @@ export function MathStackFeed() {
         <div className="flex items-center gap-2"><Sigma className="h-5 w-5 text-violet-400" /><h2 className="text-sm font-semibold text-white">Real-world math Q&amp;A</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">math.stackexchange.com · {tag}</span></div>
         <div className="flex items-center gap-2">
           <select value={tag} onChange={(e) => setTag(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{TAGS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select>
-          {list.length > 0 && <SaveAsDtuButton compact apiSource="math-stackexchange" apiUrl={`https://math.stackexchange.com/questions/tagged/${tag}`} title={`math.SE — ${tag} (${list.length})`} content={list.slice(0, 20).map((q, i) => `${i + 1}. [${q.score}↑ · ${q.answer_count}A${q.is_answered ? ' ✓' : ''}] ${q.title}\n   ${q.link}`).join('\n\n')} extraTags={['math', 'stackexchange', tag]} rawData={{ tag, questions: list }} />}
+          {list.length > 0 && <SaveAsDtuButton compact apiSource="math-stackexchange" apiUrl={`https://math.stackexchange.com/questions/tagged/${tag}`} title={`math.SE — ${tag} (${list.length})`} content={list.slice(0, 20).map((q, i) => `${i + 1}. [${q.score}↑ · ${q.answer_count}A${q.is_answered ? ' ✓' : ''}] ${q.title}\n   ${q.link}`).join('\n\n')} extraTags={['math', 'stackexchange', tag]} rawData={{ tag, questions: list }} onSaved={(id) => setSavedDtuId(id)} />}
+          {savedDtuId && <span className="font-mono text-[10px] text-emerald-300" role="status">Saved as DTU {savedDtuId}</span>}
         </div>
       </header>
       {questions.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Stack Exchange unavailable right now — nothing is being shown in its place.</div>}
