@@ -61,10 +61,17 @@ function fmtPct(n: number | null | undefined): string {
  * distinct from `failed` (a check DID complete and did not pass).
  */
 export function getFeaVerification(result?: FeaComputationResult | null): FeaVerification {
+  // The result this classifier receives in the lens is the solver's
+  // RESULT object (displacements/stresses/utilization/summary) — the
+  // envelope's `ok` was consumed by the caller and never reaches here.
+  // A well-formed summary (allPass a real boolean) IS the evidence a
+  // solve completed; requiring the envelope's ok on top of it
+  // classified every completed run as "Not run" beside its own solved
+  // model. An explicit solve failure (ok === false with an error)
+  // still names itself below.
   if (
     !result ||
     typeof result !== 'object' ||
-    result.ok !== true ||
     !result.summary ||
     typeof result.summary.allPass !== 'boolean'
   ) {
