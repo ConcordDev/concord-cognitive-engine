@@ -26,7 +26,15 @@ interface PubMedArticle {
 async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
   try {
     const r = await lensRun({ domain, name, input });
-    return r?.data as T;
+    // lensRun's contract: data = { ok, result, error } with the handler's
+    // payload at data.result. This helper previously returned data itself,
+    // so callers read .articles/.ok off the envelope — undefined — and
+    // every successful search rendered as an empty result ("No PubMed
+    // articles for that query" for CRISPR). Return the payload.
+    const d = r?.data as { ok?: boolean; result?: unknown; error?: string } | undefined;
+    if (!d) return null;
+    if (d.ok === false) return { ok: false, reason: d.error || 'fetch_failed' } as T;
+    return (d.result ?? d) as T;
   } catch {
     return null;
   }

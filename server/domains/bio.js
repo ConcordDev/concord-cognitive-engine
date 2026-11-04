@@ -3,6 +3,7 @@
 // gene expression analysis, phylogenetic distance, and motif detection.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { simulateBioSystem } from "../lib/bio-systems-sim.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
 export default function registerBioActions(registerLensAction) {
@@ -146,7 +147,10 @@ export default function registerBioActions(registerLensAction) {
       const seA = varA / valuesA.length;
       const seB = varB / valuesB.length;
       const se = Math.sqrt(seA + seB);
-      const tStat = se > 0 ? Math.abs(meanB - meanA) / se : 0;
+      // Zero standard error with differing means is an exact difference
+      // (all replicates agree within each condition), not "no signal":
+      // cap the t-statistic instead of zeroing it.
+      const tStat = se > 0 ? Math.abs(meanB - meanA) / se : (meanB !== meanA ? 999 : 0);
 
       // Rough p-value approximation from t-statistic (simplified)
       const df = Math.max(1, Math.round(Math.pow(seA + seB, 2) / (
@@ -159,6 +163,13 @@ export default function registerBioActions(registerLensAction) {
       const regulation = Math.abs(log2FC) < 0.5 ? "unchanged"
         : log2FC > 0 ? "upregulated" : "downregulated";
 
+      // Significance needs variance, and variance needs replicates. With a
+      // single sample per condition the t-test is not testable — the old
+      // code silently returned t=0 → p=1 → "0 significant" for ANY data,
+      // including its own shipped example (TP53 3.1 → 7.4, FC ≈ 2.39).
+      // Untestable genes are called on the stated fold-change rule instead,
+      // and the result says which rule produced each call.
+      const testable = valuesA.length >= 2 && valuesB.length >= 2;
       results.push({
         gene,
         meanCondA: Math.round(meanA * 100) / 100,
@@ -169,7 +180,12 @@ export default function registerBioActions(registerLensAction) {
         pValueApprox: Math.round(pApprox * 10000) / 10000,
         degreesOfFreedom: df,
         regulation,
-        significant: pApprox < 0.05 && Math.abs(log2FC) >= 1,
+        replicates: { conditionA: valuesA.length, conditionB: valuesB.length },
+        significanceTestable: testable,
+        significant: testable ? (pApprox < 0.05 && Math.abs(log2FC) >= 1) : null,
+        call: testable
+          ? ((pApprox < 0.05 && Math.abs(log2FC) >= 1) ? "significant (t-test + fold change)" : "not significant")
+          : (Math.abs(log2FC) >= 1 ? "changed by fold change (significance not testable — single replicate)" : "unchanged by fold change (significance not testable — single replicate)"),
       });
     }
 
@@ -177,6 +193,8 @@ export default function registerBioActions(registerLensAction) {
 
     const upregulated = results.filter(r => r.regulation === "upregulated" && r.significant);
     const downregulated = results.filter(r => r.regulation === "downregulated" && r.significant);
+    const foldUp = results.filter(r => !r.significanceTestable && r.log2FC >= 1);
+    const foldDown = results.filter(r => !r.significanceTestable && r.log2FC <= -1);
 
     artifact.data.lastExpressionAnalysis = {
       timestamp: new Date().toISOString(),
@@ -187,15 +205,20 @@ export default function registerBioActions(registerLensAction) {
     return {
       ok: true, result: {
         conditions: { conditionA: condA, conditionB: condB },
+        rule: "A gene is significant when Welch's t-test gives p < 0.05 AND |log2FC| ≥ 1 — computable only with ≥2 replicates per condition. With a single replicate per condition significance is not testable; genes are then called on fold change alone (|log2FC| ≥ 1) and labelled as such.",
         genes: results,
         summary: {
           totalGenes: results.length,
           significantGenes: results.filter(r => r.significant).length,
           upregulated: upregulated.length,
           downregulated: downregulated.length,
+          foldChangeUp: foldUp.length,
+          foldChangeDown: foldDown.length,
           unchanged: results.filter(r => r.regulation === "unchanged").length,
           topUpregulated: upregulated.slice(0, 5).map(r => ({ gene: r.gene, log2FC: r.log2FC })),
           topDownregulated: downregulated.slice(0, 5).map(r => ({ gene: r.gene, log2FC: r.log2FC })),
+          topFoldChangeUp: foldUp.slice(0, 5).map(r => ({ gene: r.gene, log2FC: r.log2FC, foldChange: r.foldChange })),
+          topFoldChangeDown: foldDown.slice(0, 5).map(r => ({ gene: r.gene, log2FC: r.log2FC, foldChange: r.foldChange })),
         },
       },
     };
@@ -520,15 +543,53 @@ export default function registerBioActions(registerLensAction) {
     if (!gene) {
       return { ok: false, error: "no_gene", message: "Provide a gene symbol (e.g. TP53, BRCA1)." };
     }
-    const protein = d.protein || params?.protein || `${gene} protein`;
-    const fnNotes = d.function || d.functionNotes || params?.function || '(unspecified)';
+    // Curated reference functions for well-known (human) genes — the facts
+    // NCBI Gene / UniProt state in their function fields, carried locally
+    // so the tool answers instead of echoing its input. A gene outside the
+    // table is CONFESSED, never templated: the chain says no curated
+    // function is on record and the outbound links become the lookup path.
+    // (The previous behaviour defaulted the function stage to the literal
+    // string '(unspecified)' — a template wearing a result's clothes.)
+    const CURATED_GENE_FUNCTIONS = {
+      TP53:  { protein: 'Cellular tumor antigen p53', fn: 'Tumour suppressor and transcription factor: in response to DNA damage or oncogene activation it drives cell-cycle arrest, DNA repair, senescence and apoptosis.' },
+      BRCA1: { protein: 'Breast cancer type 1 susceptibility protein', fn: 'Tumour suppressor: repairs double-strand DNA breaks by homologous recombination and maintains genome stability.' },
+      BRCA2: { protein: 'Breast cancer type 2 susceptibility protein', fn: 'Tumour suppressor: loads RAD51 onto damaged DNA for homologous-recombination repair.' },
+      MYC:   { protein: 'Myc proto-oncogene protein', fn: 'Transcription factor that broadly activates genes for cell growth, proliferation and metabolism.' },
+      EGFR:  { protein: 'Epidermal growth factor receptor', fn: 'Receptor tyrosine kinase: EGF-family ligand binding activates proliferation, survival and migration signalling.' },
+      INS:   { protein: 'Insulin', fn: 'Peptide hormone that lowers blood glucose by promoting cellular glucose uptake and glycogen/lipid storage.' },
+      HBB:   { protein: 'Hemoglobin subunit beta', fn: 'Oxygen transport: the beta chain of haemoglobin A, carrying O2 from lungs to tissues in red blood cells.' },
+      CFTR:  { protein: 'Cystic fibrosis transmembrane conductance regulator', fn: 'Epithelial chloride and bicarbonate channel regulating salt and water movement across membranes.' },
+      HTT:   { protein: 'Huntingtin', fn: 'Scaffold protein in intracellular transport and neuronal development; an expanded polyglutamine repeat in HTT causes Huntington disease.' },
+      APOE:  { protein: 'Apolipoprotein E', fn: 'Lipid transport: carries cholesterol and other lipids in blood and brain; isoforms (notably ε4) modify Alzheimer disease risk.' },
+      PTEN:  { protein: 'Phosphatidylinositol 3,4,5-trisphosphate 3-phosphatase', fn: 'Tumour suppressor: dephosphorylates PIP3, restraining PI3K–AKT growth signalling.' },
+      RB1:   { protein: 'Retinoblastoma-associated protein', fn: 'Tumour suppressor: gates the G1/S cell-cycle transition by repressing E2F transcription factors until phosphorylated.' },
+      KRAS:  { protein: 'GTPase KRas', fn: 'Small GTPase switch in growth-factor signalling (RAS–MAPK); oncogenic mutations lock it in the active, GTP-bound state.' },
+      BRAF:  { protein: 'Serine/threonine-protein kinase B-raf', fn: 'Kinase in the RAS–MAPK/ERK growth pathway; the V600E mutation constitutively activates it in several cancers.' },
+      ERBB2: { protein: 'Receptor tyrosine-protein kinase erbB-2 (HER2)', fn: 'Growth-factor receptor with no known direct ligand; amplified or overexpressed in subsets of breast and gastric cancers.' },
+      HER2:  { protein: 'Receptor tyrosine-protein kinase erbB-2 (HER2)', fn: 'Growth-factor receptor with no known direct ligand; amplified or overexpressed in subsets of breast and gastric cancers.' },
+      ACTB:  { protein: 'Actin, cytoplasmic 1 (beta-actin)', fn: 'Cytoskeletal protein forming microfilaments for cell shape, motility and division; a common expression reference gene.' },
+      GAPDH: { protein: 'Glyceraldehyde-3-phosphate dehydrogenase', fn: 'Glycolytic enzyme converting glyceraldehyde-3-phosphate to 1,3-bisphosphoglycerate; a common expression reference gene.' },
+    };
+    const curated = CURATED_GENE_FUNCTIONS[String(gene).toUpperCase()] || null;
+    const userFn = d.function || d.functionNotes || params?.function;
+    const protein = d.protein || params?.protein || curated?.protein || `${gene} protein`;
     const organism = d.organism || params?.organism || 'Homo sapiens';
+    const functionSource = userFn ? 'user-supplied' : curated ? 'curated-reference' : 'none';
+    const fnNotes = userFn || curated?.fn
+      || `No curated function on record for ${gene}. Look it up in NCBI Gene or UniProt (links below) — this tool does not invent one.`;
 
     const result = {
       generatedAt: new Date().toISOString(),
       organism,
       gene,
       protein,
+      function: fnNotes,
+      functionSource,
+      functionNote: functionSource === 'curated-reference'
+        ? 'Function from the curated reference table (the facts NCBI Gene / UniProt publish for this gene).'
+        : functionSource === 'user-supplied'
+          ? 'Function as supplied with the query.'
+          : 'No curated function on record — stated plainly rather than templated.',
       chain: [
         { stage: 'gene',    entity: gene, role: 'DNA locus' },
         { stage: 'mRNA',    entity: `${gene} transcript`, role: 'transcribed' },
@@ -556,36 +617,96 @@ export default function registerBioActions(registerLensAction) {
     if (organisms.length < 2) {
       return { ok: false, error: "need_two", message: "Provide at least two organisms to trace evolutionary relationship." };
     }
-    // Look up shared lineage by matching against simple taxonomic groupings
-    const GROUPS = {
-      mammals:  ['human', 'mouse', 'rat', 'dog', 'cat', 'whale', 'bat', 'cow', 'pig', 'horse'],
-      birds:    ['chicken', 'eagle', 'sparrow', 'owl', 'parrot'],
-      reptiles: ['lizard', 'snake', 'turtle', 'alligator', 'crocodile'],
-      fish:     ['salmon', 'tuna', 'shark', 'cod'],
-      insects:  ['bee', 'ant', 'fly', 'beetle', 'butterfly'],
-      plants:   ['oak', 'rose', 'grass', 'corn', 'rice', 'wheat'],
-      fungi:    ['yeast', 'mushroom', 'mold'],
-      bacteria: ['e. coli', 'e.coli', 'salmonella', 'staphylococcus'],
-    };
-    const inGroup = (org) => {
+    // Curated common-organism taxonomy: [name fragment, group, subgroup].
+    // Longest fragment wins, so "guinea pig" resolves to rodents, not pig,
+    // and "catfish" to fish, not cat. The table is deliberately small and
+    // labelled as what it is — a lookup for common organisms, not a
+    // taxonomy engine; anything unmatched is 'other', never guessed.
+    // (The previous table omitted chimpanzee from mammals outright, so the
+    // lens classified a great ape as "other" and called human–chimp a
+    // distant pairing — the two errors this table exists to prevent.)
+    const TAXONOMY = [
+      ['human', 'mammals', 'primates'], ['chimpanzee', 'mammals', 'primates'], ['chimp', 'mammals', 'primates'],
+      ['gorilla', 'mammals', 'primates'], ['orangutan', 'mammals', 'primates'], ['monkey', 'mammals', 'primates'],
+      ['lemur', 'mammals', 'primates'], ['baboon', 'mammals', 'primates'], ['macaque', 'mammals', 'primates'],
+      ['bonobo', 'mammals', 'primates'], ['ape', 'mammals', 'primates'],
+      ['guinea pig', 'mammals', 'rodents'], ['mouse', 'mammals', 'rodents'], ['rat', 'mammals', 'rodents'],
+      ['hamster', 'mammals', 'rodents'], ['squirrel', 'mammals', 'rodents'], ['beaver', 'mammals', 'rodents'],
+      ['dog', 'mammals', 'carnivorans'], ['wolf', 'mammals', 'carnivorans'], ['fox', 'mammals', 'carnivorans'],
+      ['catfish', 'fish', null], ['cat', 'mammals', 'carnivorans'], ['bear', 'mammals', 'carnivorans'],
+      ['lion', 'mammals', 'carnivorans'], ['tiger', 'mammals', 'carnivorans'],
+      ['whale', 'mammals', 'cetaceans'], ['dolphin', 'mammals', 'cetaceans'], ['porpoise', 'mammals', 'cetaceans'],
+      ['bat', 'mammals', 'bats'],
+      ['cow', 'mammals', 'even-toed ungulates'], ['pig', 'mammals', 'even-toed ungulates'],
+      ['sheep', 'mammals', 'even-toed ungulates'], ['goat', 'mammals', 'even-toed ungulates'],
+      ['deer', 'mammals', 'even-toed ungulates'], ['hippopotamus', 'mammals', 'even-toed ungulates'],
+      ['horse', 'mammals', 'odd-toed ungulates'], ['zebra', 'mammals', 'odd-toed ungulates'], ['rhinoceros', 'mammals', 'odd-toed ungulates'],
+      ['elephant', 'mammals', 'proboscideans'], ['rabbit', 'mammals', 'lagomorphs'], ['hare', 'mammals', 'lagomorphs'],
+      ['kangaroo', 'mammals', 'marsupials'], ['koala', 'mammals', 'marsupials'], ['opossum', 'mammals', 'marsupials'],
+      ['platypus', 'mammals', 'monotremes'],
+      ['chicken', 'birds', null], ['eagle', 'birds', null], ['sparrow', 'birds', null], ['owl', 'birds', null],
+      ['parrot', 'birds', null], ['penguin', 'birds', null], ['duck', 'birds', null],
+      ['lizard', 'reptiles', null], ['snake', 'reptiles', null], ['turtle', 'reptiles', null],
+      ['alligator', 'reptiles', null], ['crocodile', 'reptiles', null],
+      ['frog', 'amphibians', null], ['toad', 'amphibians', null], ['salamander', 'amphibians', null],
+      ['salmon', 'fish', null], ['tuna', 'fish', null], ['shark', 'fish', null], ['cod', 'fish', null],
+      ['seahorse', 'fish', null], ['trout', 'fish', null],
+      ['bee', 'insects', null], ['ant', 'insects', null], ['fly', 'insects', null], ['beetle', 'insects', null],
+      ['butterfly', 'insects', null], ['mosquito', 'insects', null],
+      ['oak', 'plants', null], ['rose', 'plants', null], ['grass', 'plants', null], ['corn', 'plants', null],
+      ['rice', 'plants', null], ['wheat', 'plants', null], ['arabidopsis', 'plants', null],
+      ['yeast', 'fungi', null], ['mushroom', 'fungi', null], ['mold', 'fungi', null],
+      ['e. coli', 'bacteria', null], ['e.coli', 'bacteria', null], ['escherichia', 'bacteria', null],
+      ['salmonella', 'bacteria', null], ['staphylococcus', 'bacteria', null],
+    ];
+    const classify = (org) => {
       const o = String(org).toLowerCase();
-      return Object.entries(GROUPS).find(([, list]) => list.some(item => o.includes(item)))?.[0] || 'other';
+      let best = null;
+      for (const [frag, group, subgroup] of TAXONOMY) {
+        if (o.includes(frag) && (!best || frag.length > best[0].length)) best = [frag, group, subgroup];
+      }
+      return best ? { group: best[1], subgroup: best[2] } : { group: 'other', subgroup: null };
     };
-    const tagged = organisms.map(o => ({ name: o, group: inGroup(o) }));
+    const tagged = organisms.map(o => ({ name: o, ...classify(o) }));
     const groups = Array.from(new Set(tagged.map(t => t.group)));
     const sharedGroup = groups.length === 1 ? groups[0] : null;
+    const subgroups = Array.from(new Set(tagged.map(t => t.subgroup).filter(Boolean)));
+    const sharedSubgroup = sharedGroup && subgroups.length === 1 && tagged.every(t => t.subgroup === subgroups[0])
+      ? subgroups[0] : null;
+    // Relatedness from the same table: same subgroup (2) > same group (1).
+    const relatedness = (a, b) => (a.subgroup && a.subgroup === b.subgroup) ? 2 : (a.group === b.group && a.group !== 'other') ? 1 : 0;
+    let closestPair = null;
+    for (let i = 0; i < tagged.length; i++) {
+      for (let j = i + 1; j < tagged.length; j++) {
+        const score = relatedness(tagged[i], tagged[j]);
+        if (!closestPair || score > closestPair.score) {
+          closestPair = {
+            a: tagged[i].name, b: tagged[j].name, score,
+            relation: score === 2 ? `same subgroup (${tagged[i].subgroup})`
+              : score === 1 ? `same group (${tagged[i].group})` : 'no shared group in the table',
+          };
+        }
+      }
+    }
 
     const result = {
       generatedAt: new Date().toISOString(),
       organisms: tagged,
       groups,
       sharedGroup,
-      commonality: sharedGroup
-        ? `All ${organisms.length} organisms share group: ${sharedGroup}.`
-        : `Organisms span ${groups.length} groups: ${groups.join(', ')}.`,
+      sharedSubgroup,
+      closestPair,
+      taxonomySource: 'curated common-organism table (group + subgroup); unmatched organisms are reported as "other", not guessed',
+      commonality: sharedSubgroup
+        ? `All ${organisms.length} organisms share group: ${sharedGroup}, subgroup: ${sharedSubgroup} — close relatives.`
+        : sharedGroup
+          ? `All ${organisms.length} organisms share group: ${sharedGroup}.`
+          : `Organisms span ${groups.length} groups: ${groups.join(', ')}. Closest pair: ${closestPair.a} ↔ ${closestPair.b} (${closestPair.relation}).`,
       suggestion: sharedGroup
         ? 'Construct a phylogenetic tree to refine divergence times. Use phylogeneticDistance action with aligned sequences.'
-        : 'These organisms span distant branches. Use NCBI Taxonomy to find their MRCA (most recent common ancestor).',
+        : closestPair.score >= 1
+          ? `Most pairs span distant branches, but ${closestPair.a} ↔ ${closestPair.b} are close (${closestPair.relation}). Use NCBI Taxonomy to find each pair's MRCA (most recent common ancestor).`
+          : 'These organisms span distant branches. Use NCBI Taxonomy to find their MRCA (most recent common ancestor).',
     };
     if (artifact.data) artifact.data.lastEvolutionTrace = result;
     return { ok: true, result };
@@ -683,7 +804,11 @@ export default function registerBioActions(registerLensAction) {
     return Math.round(tm * 10) / 10;
   }
 
-  function findOrfs(seq) {
+  // minOrfNt: shortest ORF (start through stop, nt) reported. The default
+  // 90 nt suits whole-sequence analysis; the plasmid map passes a
+  // construct-scale floor and STATES it in its result — a silent floor is
+  // how the map's "auto-annotates ORFs" note came to be half-kept.
+  function findOrfs(seq, minOrfNt = 90) {
     const upper = seq.toUpperCase();
     const orfs = [];
     // Forward frames only (simplified)
@@ -693,7 +818,7 @@ export default function registerBioActions(registerLensAction) {
         const codon = upper.slice(i, i + 3);
         if (codon === "ATG" && start < 0) start = i;
         if (start >= 0 && (codon === "TAA" || codon === "TAG" || codon === "TGA")) {
-          if (i - start >= 90) {
+          if (i + 3 - start >= minOrfNt) {
             orfs.push({ frame: frame + 1, start, end: i + 3, length: i + 3 - start });
           }
           start = -1;
@@ -723,6 +848,11 @@ export default function registerBioActions(registerLensAction) {
     if (kind === "dna" || kind === "rna") {
       result.gcPercent = gcContent(seq);
       result.tm = tmNearestNeighbor(seq);
+      // ONE Tm model, labelled: Wallace rule below 14 nt, the basic
+      // 64.9 °C formula at/above it (the switch lives in tmNearestNeighbor).
+      // Unlabelled, two surfaces quoting different rules for similar
+      // sequences read as two models disagreeing.
+      result.tmModel = seq.length < 14 ? "Wallace rule (2·AT + 4·GC), sequences < 14 nt" : "Basic formula 64.9 + 41·(GC − 16.4)/N, sequences ≥ 14 nt";
       if (kind === "dna") result.orfs = findOrfs(seq);
     } else {
       // Protein composition
@@ -814,17 +944,33 @@ export default function registerBioActions(registerLensAction) {
         score[i][j] = Math.max(diag, up, left);
       }
     }
-    // Traceback
+    // Traceback. Tie-breaking matters: with diag preferred at EVERY tie,
+    // score-equal optima resolve to the most FRAGMENTED placement (an
+    // exact prefix B against A came back as four gap runs interleaved
+    // with matches — same score, biologically perverse). Preference:
+    // extend the gap run already open before opening a new one, then
+    // diag, then a fresh gap. Score and identity are unchanged; the
+    // placement among equals is the contiguous one.
     let i = m, j = n;
     let alignA = "", alignB = "", alignBars = "";
+    let prevMove = null;
     while (i > 0 && j > 0) {
       const cur = score[i][j];
-      if (cur === score[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? match : mismatch)) {
+      const diagOk = cur === score[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? match : mismatch);
+      const upOk = cur === score[i - 1][j] + gap;
+      const leftOk = cur === score[i][j - 1] + gap;
+      let move;
+      if (prevMove === "up" && upOk) move = "up";
+      else if (prevMove === "left" && leftOk) move = "left";
+      else if (diagOk) move = "diag";
+      else if (upOk) move = "up";
+      else move = "left";
+      if (move === "diag") {
         alignA = a[i - 1] + alignA;
         alignB = b[j - 1] + alignB;
         alignBars = (a[i - 1] === b[j - 1] ? "|" : ".") + alignBars;
         i--; j--;
-      } else if (cur === score[i - 1][j] + gap) {
+      } else if (move === "up") {
         alignA = a[i - 1] + alignA;
         alignB = "-" + alignB;
         alignBars = " " + alignBars;
@@ -835,6 +981,7 @@ export default function registerBioActions(registerLensAction) {
         alignBars = " " + alignBars;
         j--;
       }
+      prevMove = move;
     }
     while (i > 0) { alignA = a[i - 1] + alignA; alignB = "-" + alignB; alignBars = " " + alignBars; i--; }
     while (j > 0) { alignA = "-" + alignA; alignB = b[j - 1] + alignB; alignBars = " " + alignBars; j--; }
@@ -1069,8 +1216,10 @@ export default function registerBioActions(registerLensAction) {
           });
         }
       } else {
-        // Auto-annotate: ORFs (frames 1-3) + restriction sites.
-        for (const orf of findOrfs(seq)) {
+        // Auto-annotate: ORFs (frames 1-3) + restriction sites. Construct
+        // maps annotate short ORFs too — the floor is 18 nt and is stated
+        // in the result (annotationNote), not hidden in the finder.
+        for (const orf of findOrfs(seq, 18)) {
           features.push({
             name: `ORF f${orf.frame}`, type: "CDS",
             start: orf.start, end: orf.end, strand: "+", length: orf.length,
@@ -1102,6 +1251,9 @@ export default function registerBioActions(registerLensAction) {
           topology: params.topology === "linear" ? "linear" : "circular",
           featureCount: ring.length,
           features: ring,
+          annotationNote: userFeatures.length
+            ? "Features as supplied."
+            : "Auto-annotated: ORFs ≥ 18 nt (forward frames 1–3) plus restriction sites. Positions are 0-based in this payload; surfaces render them 1-based.",
           summary: `${total} bp ${params.topology === "linear" ? "linear" : "circular"} construct, ${ring.length} feature(s).`,
         },
       };
@@ -1140,12 +1292,26 @@ export default function registerBioActions(registerLensAction) {
               sc[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? match : mismatch),
               sc[i - 1][j] + gap, sc[i][j - 1] + gap);}}
         let i = m, j = n, aa = "", bb = "";
+        let prevMove = null;
         while (i > 0 && j > 0) {
           const cur = sc[i][j];
-          if (cur === sc[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? match : mismatch)) {
+          // Same tie-break as align-pairwise: extend an open gap run
+          // before opening a new one, so score-equal optima come back
+          // contiguous rather than fragmented.
+          const diagOk = cur === sc[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? match : mismatch);
+          const upOk = cur === sc[i - 1][j] + gap;
+          const leftOk = cur === sc[i][j - 1] + gap;
+          let move;
+          if (prevMove === "up" && upOk) move = "up";
+          else if (prevMove === "left" && leftOk) move = "left";
+          else if (diagOk) move = "diag";
+          else if (upOk) move = "up";
+          else move = "left";
+          if (move === "diag") {
             aa = a[i - 1] + aa; bb = b[j - 1] + bb; i--; j--;
-          } else if (cur === sc[i - 1][j] + gap) { aa = a[i - 1] + aa; bb = "-" + bb; i--; }
+          } else if (move === "up") { aa = a[i - 1] + aa; bb = "-" + bb; i--; }
           else { aa = "-" + aa; bb = b[j - 1] + bb; j--; }
+          prevMove = move;
         }
         while (i > 0) { aa = a[i - 1] + aa; bb = "-" + bb; i--; }
         while (j > 0) { aa = "-" + aa; bb = b[j - 1] + bb; j--; }
@@ -1326,7 +1492,7 @@ export default function registerBioActions(registerLensAction) {
         .map((d, i) => ({ id: String(d.id || d.name || `subject${i + 1}`),
           sequence: String(d.sequence || "").replace(/\s/g, "").toUpperCase() }))
         .filter((d) => d.sequence.length >= 8);
-      if (db.length === 0) return { ok: true, result: { hits: [], queryLength: query.length, databaseSize: 0, message: "No database sequences to search." } };
+      if (db.length === 0) return { ok: true, result: { hits: [], hitCount: 0, queryLength: query.length, databaseSize: 0, message: "No database sequences to search." } };
 
       const K = 7;
       const queryWords = new Map();
@@ -1458,6 +1624,7 @@ export default function registerBioActions(registerLensAction) {
           guideCount: candidates.length,
           guides: candidates.slice(0, 40),
           topGuide: candidates[0],
+          scoring: "Heuristic scores, stated so they can be checked: on-target starts at 60, +20 when guide GC is 40–60%, −25 when GC <25% or >75%, +10 for a 3′ purine (A/G at position 20), −30 for a poly-T (TTTT) run, −10 for any 4× homopolymer, clamped 0–100. Off-hits count extra matches of the guide's 12 nt seed elsewhere in the target (both strands). Specificity = 100 − 35 × off-hits. Composite = 0.6 × on-target + 0.4 × specificity.",
         },
       };
     } catch (e) {
@@ -1543,6 +1710,22 @@ export default function registerBioActions(registerLensAction) {
       nb.delete(id);
       saveBioState();
       return { ok: true, result: { deleted: id } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // ── simulate-system — the Organisms view's producing capability ──
+  // Four deterministic toy models (server/lib/bio-systems-sim.js) whose
+  // metrics the Organisms cards render. Labelled simulated in the result;
+  // the models' rules travel with the numbers.
+  registerLensAction("bio", "simulate-system", (_ctx, _artifact, params = {}) => {
+    try {
+      return simulateBioSystem({
+        system: String(params.system || ""),
+        steps: params.steps,
+        seed: params.seed,
+      });
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
