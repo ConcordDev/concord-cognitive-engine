@@ -1916,7 +1916,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'kml'],
     actions: ['currencyCheck', 'maintenanceDue', 'hobbsLog', 'dutyTimeCheck', 'flightSummary', 'calculate-wb', 'plan-create'],
     category: 'operations',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Your flying, on the record.",
       caption: "Aircraft, logbook, flight plans, currency and weight & balance \u2014 saved to your account, with live METAR/TAF, NOTAMs and FAA plates. Sending plans to ATC and maritime (vessels, slips) aren't supported yet.",
