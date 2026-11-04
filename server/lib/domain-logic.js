@@ -662,9 +662,33 @@ DOMAIN_RULES.set("math", {
 });
 
 // === Science ===
+// === Science ===
+// This rule was authored with a vocabulary the real lens never sends
+// (lowercase experiment/observation/hypothesis types; draft/hypothesis/
+// experimenting statuses), while `app/lenses/science`'s ArtifactsPanel
+// creates Experiment/Sample/Equipment/Analysis/Protocol/Publication
+// artifacts through the generic lens layer with the panel's own status
+// vocabularies (planned/active/…, excellent/good/…, operational/…) — so
+// every create from the UI failed `validateArtifact` with
+// `validation_failed`, and Quick Capture (type "capture", posted to the
+// lens's domain) failed at the same gate. The fix is the services/trades
+// reconciliation applied to this rule: the frontend's types are added,
+// `validStatuses` is the union of the legacy list and every status the
+// panel can send, and the frontend statuses transition freely among
+// themselves (a lab record's lifecycle is the researcher's call; the
+// panel's edit form offers the full per-type list). The legacy types,
+// statuses and transitions are kept for the records that already use
+// them. Pinned by tests/science-artifact-validation.test.js.
+const SCIENCE_FRONTEND_STATUSES = [
+  "planned", "active", "paused", "analyzing", "peer_review", "published", "archived",
+  "excellent", "good", "degraded", "compromised", "disposed",
+  "operational", "needs_calibration", "maintenance", "out_of_service", "decommissioned",
+  "draft", "under_review", "approved", "superseded", "retired",
+  "submitted", "in_review", "revision", "accepted", "rejected",
+];
 DOMAIN_RULES.set("science", {
-  types: ["experiment", "observation", "hypothesis", "lab-report", "field-study", "meta-analysis"],
-  validStatuses: ["draft", "hypothesis", "experimenting", "analyzing", "concluded", "published", "archived"],
+  types: ["experiment", "observation", "hypothesis", "lab-report", "field-study", "meta-analysis", "Experiment", "Sample", "Equipment", "Analysis", "Protocol", "Publication", "capture"],
+  validStatuses: ["draft", "hypothesis", "experimenting", "analyzing", "concluded", "published", "archived", ...SCIENCE_FRONTEND_STATUSES.filter((s) => !["analyzing", "published", "archived", "draft"].includes(s))],
   transitions: {
     draft: ["hypothesis", "archived"],
     hypothesis: ["experimenting", "draft", "archived"],
@@ -673,8 +697,9 @@ DOMAIN_RULES.set("science", {
     concluded: ["published", "analyzing", "archived"],
     published: ["archived"],
     archived: [],
+    ...Object.fromEntries(SCIENCE_FRONTEND_STATUSES.map((s) => [s, SCIENCE_FRONTEND_STATUSES])),
   },
-  requiredFields: { experiment: ["title", "hypothesis"], "lab-report": ["title", "methodology"] },
+  requiredFields: { experiment: ["title", "hypothesis"], "lab-report": ["title", "methodology"], Experiment: ["title"], Sample: ["title"], Equipment: ["title"], Analysis: ["title"], Protocol: ["title"], Publication: ["title"], capture: ["title"] },
   computedFields: (type, data) => {
     const dataPoints = data.dataPoints || [];
     data.dataPointCount = dataPoints.length;

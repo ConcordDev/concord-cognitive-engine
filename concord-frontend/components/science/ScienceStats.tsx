@@ -64,12 +64,12 @@ export function ScienceStats() {
 const inputCls =
   'w-full px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono resize-none';
 
-function ResultBlock({ result }: { result: Record<string, unknown> }) {
+function ResultBlock({ result, labels }: { result: Record<string, unknown>; labels?: Record<string, string> }) {
   return (
     <div className="rounded border border-teal-500/20 bg-teal-500/5 p-3 grid grid-cols-2 gap-2 text-xs">
       {Object.entries(result).map(([k, v]) => (
         <div key={k}>
-          <span className="text-gray-400 uppercase text-[10px]">{k}</span>
+          <span className="text-gray-400 uppercase text-[10px]">{labels?.[k] ?? k}</span>
           <p className="font-mono text-gray-100 break-all">
             {Array.isArray(v) ? `[${v.join(', ')}]` : typeof v === 'object' && v !== null
               ? JSON.stringify(v) : String(v)}
@@ -118,7 +118,7 @@ function SingleSampleTest({ macro, withConfidence }: { macro: string; withConfid
       )}
       <RunButton onClick={run} busy={busy}>Compute</RunButton>
       {error && <p className="text-xs text-red-400">{error}</p>}
-      {result && <ResultBlock result={result} />}
+      {result && <ResultBlock result={result} labels={{ sd: 'SD (sample)' }} />}
     </div>
   );
 }
