@@ -52,25 +52,51 @@ export default function registerObserveActions(registerLensAction) {
   // ORIGINAL ARTIFACT-STORE MACROS (unchanged)
   // ====================================================================
 
-  /** serviceLog — summarise a service's recent log entries. */
+  /** serviceLog — summarise the log entries handed to it (the bench box).
+   *
+   * F1 (Observe build): this handler used to filter the handed entries
+   * through a recency window (the bench hardcodes windowMinutes: 60) and
+   * summarise only the survivors — so any batch whose timestamps were
+   * older than an hour (the demo lines are dated 2026-05-16) read back as
+   * "0 lines · top: unknown · error rate: 0%" over lines it had been
+   * given, silently. A summariser's scope is the batch it was handed
+   * (its sibling alertSummary has always worked that way). The summary
+   * now covers the full handed batch and DISCLOSES the window instead:
+   * `outsideWindow` counts how many handed lines fall outside the stated
+   * window, and `sourceNote` names the source — these handed lines, not
+   * the Telemetry log store (logSearch's store), which this verb has
+   * never read.
+   */
   registerLensAction("observe", "serviceLog", (_ctx, artifact, params = {}) => {
-    const entries = artifact.data?.entries || [];
-    if (entries.length === 0) return { ok: true, result: { message: "No log entries.", count: 0 } };
+    const entries = artifact.data?.entries || params.entries || [];
+    if (entries.length === 0) return { ok: true, result: { message: "No log entries.", count: 0, received: 0 } };
     const win = parseInt(params.windowMinutes, 10) || 60;
     const cutoff = Date.now() - win * 60 * 1000;
-    const recent = entries.filter((e) => new Date(e.ts || 0).getTime() >= cutoff);
+    const outsideWindow = entries.filter((e) => !(new Date(e.ts || 0).getTime() >= cutoff)).length;
     const byLevel = {};
-    for (const e of recent) {
+    for (const e of entries) {
       const lvl = (e.level || "info").toUpperCase();
       byLevel[lvl] = (byLevel[lvl] || 0) + 1;
     }
-    const errorRate = recent.length > 0 ? Math.round(((byLevel.ERROR || 0) / recent.length) * 10000) / 100 : 0;
+    const errorRate = Math.round(((byLevel.ERROR || 0) / entries.length) * 10000) / 100;
     const topService = (() => {
       const c = {};
-      for (const e of recent) { const s = e.service || "unknown"; c[s] = (c[s] || 0) + 1; }
+      for (const e of entries) { const s = e.service || "unknown"; c[s] = (c[s] || 0) + 1; }
       return Object.entries(c).sort((a, b) => b[1] - a[1])[0]?.[0] || "unknown";
     })();
-    return { ok: true, result: { windowMinutes: win, count: recent.length, byLevel, errorRate, topService } };
+    return {
+      ok: true,
+      result: {
+        windowMinutes: win,
+        count: entries.length,
+        received: entries.length,
+        outsideWindow,
+        byLevel,
+        errorRate,
+        topService,
+        sourceNote: "Summary covers every line handed to it (the bench box); it does not read the Telemetry log store.",
+      },
+    };
   });
 
   /** incidentTrack — open an incident artifact entry. */
