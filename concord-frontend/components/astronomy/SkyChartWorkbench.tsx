@@ -110,8 +110,13 @@ function fmtTime(iso: string | null): string {
 export function SkyChartWorkbench() {
   const [panel, setPanel] = useState<PanelId>('chart');
   const [observer, setObserver] = useState<Observer | null>(null);
-  const [latInput, setLatInput] = useState('');
-  const [lonInput, setLonInput] = useState('');
+  // The shipped coordinates are HELD values, not placeholder text over
+  // empty fields (F2/F4-family): the lens's default observer (New York)
+  // sits in the inputs as state, so "Set location" succeeds from the
+  // shipped state and the numbers on screen are numbers the form holds.
+  // A stored observer (below) replaces them on mount.
+  const [latInput, setLatInput] = useState('40.7128');
+  const [lonInput, setLonInput] = useState('-74.0060');
   const [geoBusy, setGeoBusy] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
 
