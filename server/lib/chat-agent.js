@@ -311,7 +311,7 @@ Available tools (with one working example each):
 - list_recipes: List tested multi-step recipes (beam sizing, column buckling, unit conversion, material comparison, wall conduction, pipe flow) and their inputs. Check this FIRST for an engineering calculation. Params: {"query": "what you want to do"}
   Example: [TOOL_CALL: {"tool": "list_recipes", "params": {"query": "size a beam"}}]
 - run_recipe: Run a recipe in SI; returns the result, pass/fail checks and a receipt. Quote only numbers from its result. Params: {"recipe": "beam_sizing", "inputs": {"spanM": 4, "loadN": 10000, "widthM": "60 mm", "material": "steel-a36", "safetyFactor": 2}}
-- conkay_design: Size or check a structural part (beam, cantilever, I-beam, bracket, shaft, column) from a plain-language spec. For a robot (base, torso, arms, head...) or an everyday CAD object (phone stand, truss, gearbox, shelf, table, chair, enclosure) it returns a concept 3D assembly with its parts list instead. This is the tool for "make a 3D/CAD model of X", STL and printable-part asks. Runs the deterministic hand calc and FEA and checks the stated safety factor (pass/fail with margin). If the user asked for one sub-assembly (torso, arm, head, leg, hand, or a single part), set "scope" to that part so only that sub-assembly is built. Params: {"text": "the design in words, with span, load, material, supports and safety factor", "scope": "torso"}
+- conkay_design: Size or check a structural part (beam, cantilever, I-beam, bracket, shaft, column) from a plain-language spec. For a car or other road vehicle it returns ConKay's vehicle concept assembly (body and tyres in 3D). For a robot (base, torso, arms, head...) or an everyday CAD object (phone stand, truss, gearbox, shelf, table, chair, enclosure) it returns a concept 3D assembly with its parts list instead. This is the tool for "make a 3D/CAD model of X", STL and printable-part asks. Runs the deterministic hand calc and FEA and checks the stated safety factor (pass/fail with margin). If the user asked for one sub-assembly (torso, arm, head, leg, hand, or a single part), set "scope" to that part so only that sub-assembly is built. Params: {"text": "the design in words, with span, load, material, supports and safety factor", "scope": "torso"}
   Example: [TOOL_CALL: {"tool": "conkay_design", "params": {"text": "steel cantilever beam 2 m long, 10 kN at the tip, safety factor of 2"}}]
 - conkay_ir_schema: Worked Design IR example + contract hints before conkay_solve. Params: {}
   Example: [TOOL_CALL: {"tool": "conkay_ir_schema", "params": {}}]
@@ -1266,6 +1266,39 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
               partList: asm.parts.map((x) => ({ name: x.name, size_mm: x.size_mm })), bbox_mm: asm.bbox_mm,
               ...layoutMeshFields(mesh, asm.parts) },
           };
+        }
+        // A car: ConKay's vehicle library, not the single-part solver. The
+        // solver has no car, and its "unsupported part" retry hint used to
+        // send the model back with a beam, so "make me a car" came back as a
+        // 3D I-beam (live 2026-11-04). The user's own words decide: a car ask
+        // stays a car even when the model rewrote the text as a beam.
+        {
+          const { detectDomain } = await import("./conkay/chat/brief-parser.js");
+          const carBrief = detectDomain(userAsk || "") === "car" ? userAsk : (detectDomain(text) === "car" ? text : null);
+          if (carBrief) {
+            let car = null;
+            try {
+              const { buildCarChatAssembly } = await import("./conkay/car-chat-assembly.js");
+              car = buildCarChatAssembly(carBrief);
+            } catch (err) {
+              return { tool: call.tool, ok: false, terminal: true, key: "conkay_design.car-assembly", input: { text: carBrief },
+                error: `ConKay could not build that car: ${String(err?.message || err).slice(0, 200)}` };
+            }
+            if (car) {
+              const { mesh, ...rest } = car;
+              const bb = car.bbox_mm;
+              return {
+                tool: call.tool, ok: true, key: "conkay_design.car-assembly", input: { text: carBrief },
+                result: { ...rest, partCount: car.parts.length,
+                  instruction: `Say the 3D car concept model is shown below. Overall size is exactly ${bb.length} mm long, ${bb.height} mm tall, ${bb.width} mm wide; quote those figures. Say the full assembly has ${car.componentCount} parts (by group: ${Object.entries(car.groups).map(([g, n]) => `${g} ${n}`).join(", ")}) and the model shows the body and tyres. Say plainly it is a layout concept from ConKay's vehicle library and that opening it in the ConKay workspace runs the structural and packaging checks. Never call it a beam.` },
+                artifact: { kind: "mesh", source: "conkay_design", title: "car concept assembly", meshKind: mesh.kind,
+                  positions: mesh.positions, indices: mesh.indices, vertexCount: mesh.vertexCount, triangleCount: mesh.triangleCount,
+                  color: "#94a3b8", pass: null, feaOk: null, parts: car.parts.map((x) => x.name),
+                  partList: car.parts, bbox_mm: car.bbox_mm,
+                  ...layoutMeshFields(mesh, car.parts) },
+              };
+            }
+          }
         }
         // A simply supported beam with a width and no depth is a sizing ask: the
         // chat solver picks the R10 depth against strength AND the span/n
