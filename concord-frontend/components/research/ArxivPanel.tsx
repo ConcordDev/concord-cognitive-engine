@@ -30,8 +30,15 @@ interface ArxivPaper {
 
 async function runMacro<T>(domain: string, name: string, input: Record<string, unknown> = {}): Promise<T | null> {
   try {
+    // lensRun returns { data: { ok, result } } — the papers live in
+    // data.result. This helper used to hand callers the wrapper itself, so
+    // `papers` was read off an object that never carries it and every
+    // mounting lens's arXiv footer stood empty under its REAL tag while
+    // Refresh visibly fetched. Unwrap to the macro's own payload.
     const r = await lensRun({ domain, name, input });
-    return r?.data as T;
+    const d = r?.data;
+    if (!d) return null;
+    return { ok: d.ok && (d.result as { ok?: boolean } | null)?.ok !== false, ...(d.result || {}), reason: d.ok ? undefined : (d.error || 'fetch_failed') } as T;
   } catch {
     return null;
   }
