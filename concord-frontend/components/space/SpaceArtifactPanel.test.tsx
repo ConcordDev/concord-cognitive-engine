@@ -18,9 +18,10 @@ const lensDataState: {
   error: Error | null;
 } = { items: [], isLoading: false, isError: false, error: null };
 const refetch = vi.fn();
-const create = vi.fn(() => Promise.resolve({}));
-const update = vi.fn(() => Promise.resolve({}));
-const remove = vi.fn(() => Promise.resolve({}));
+type ArtifactInput = { title?: string; data?: Record<string, unknown>; meta?: Record<string, unknown> };
+const create = vi.fn((_input: ArtifactInput) => Promise.resolve({}));
+const update = vi.fn((_id: string, _input: ArtifactInput) => Promise.resolve({}));
+const remove = vi.fn((_id: string) => Promise.resolve({}));
 const runMutateAsync = vi.fn(() => Promise.resolve({ ok: true, result: {} }));
 const addToast = vi.fn();
 
@@ -75,8 +76,8 @@ describe('SpaceArtifactPanel (space build)', () => {
     fireEvent.change(nameInput, { target: { value: 'Europa Clipper II' } });
     fireEvent.click(screen.getByRole('button', { name: /Create mission/ }));
     await waitFor(() => expect(create).toHaveBeenCalled());
-    expect(create.mock.calls[0][0].title).toBe('Europa Clipper II');
-    expect(create.mock.calls[0][0].data.status).toBe('planning');
+    expect(create.mock.calls[0]?.[0].title).toBe('Europa Clipper II');
+    expect(create.mock.calls[0]?.[0].data?.status).toBe('planning');
   });
 
   it('S1: a nameless save is refused with a toast, nothing is created', async () => {
@@ -95,9 +96,9 @@ describe('SpaceArtifactPanel (space build)', () => {
     fireEvent.change(nameInput, { target: { value: 'Artemis III (revised)' } });
     fireEvent.click(screen.getByRole('button', { name: /Save changes/ }));
     await waitFor(() => expect(update).toHaveBeenCalled());
-    expect(update.mock.calls[0][0]).toBe('art_1');
-    expect(update.mock.calls[0][1].title).toBe('Artemis III (revised)');
-    expect(update.mock.calls[0][1].data.launchVehicle).toBe('SLS');
+    expect(update.mock.calls[0]?.[0]).toBe('art_1');
+    expect(update.mock.calls[0]?.[1].title).toBe('Artemis III (revised)');
+    expect(update.mock.calls[0]?.[1].data?.launchVehicle).toBe('SLS');
   });
 
   it('S3: delete asks for confirmation before removing anything', async () => {

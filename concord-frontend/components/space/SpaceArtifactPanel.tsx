@@ -436,7 +436,7 @@ export function SpaceArtifactPanel({ view }: { view: SpaceArtifactView }) {
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
                     {armDeleteId === item.id ? (
-                      <button type="button" onClick={() => confirmRemove(item.id)} className="px-2 py-1 bg-red-600 hover:bg-red-500 text-white rounded text-xs" aria-label="Confirm delete">
+                      <button type="button" onClick={() => confirmRemove(item.id)} className="px-2 py-1 bg-red-600 hover:bg-red-500 text-white rounded text-xs">
                         Confirm delete?
                       </button>
                     ) : (
