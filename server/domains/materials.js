@@ -244,9 +244,16 @@ export default function registerMaterialsActions(registerLensAction) {
     const baseResistance = {
       metal: 40, polymer: 85, ceramic: 90, composite: 70, semiconductor: 80, biomaterial: 30,
     };
+    // Same environment card as the corrosion panel. Indoor, industrial, and
+    // underground are recognized and carry no extra penalty. A name that is
+    // not on the card is not scored as that neutral baseline. "Marine" matches
+    // after trim and lower-case. A nearby word such as "salt" does not.
+    const environmentAdjust = {
+      indoor: 0, outdoor: -10, marine: -25, chemical: -30, industrial: 0, underground: 0,
+    };
     const unavailable = [];
     if (!Object.prototype.hasOwnProperty.call(baseResistance, category)) unavailable.push("category");
-    if (!environment) unavailable.push("environment");
+    if (!Object.prototype.hasOwnProperty.call(environmentAdjust, environment)) unavailable.push("environment");
     if (unavailable.length) {
       return {
         ok: true,
@@ -264,7 +271,7 @@ export default function registerMaterialsActions(registerLensAction) {
         },
       };
     }
-    let resistance = baseResistance[category];
+    let resistance = baseResistance[category] + environmentAdjust[environment];
 
     // Material-specific adjustments
     if (material.includes("stainless") || material.includes("316") || material.includes("304")) resistance += 30;
@@ -274,10 +281,6 @@ export default function registerMaterialsActions(registerLensAction) {
     if (material.includes("carbon steel") || material.includes("mild steel")) resistance -= 20;
     if (material.includes("cast iron")) resistance -= 15;
 
-    // Environmental factors
-    if (environment.includes("marine") || environment.includes("salt")) resistance -= 25;
-    if (environment.includes("chemical") || environment.includes("acid")) resistance -= 30;
-    if (environment.includes("outdoor")) resistance -= 10;
     if (humidity > 80) resistance -= 15;
     if (temperature > 60) resistance -= 10;
     if (temperature > 200) resistance -= 20;
@@ -289,7 +292,7 @@ export default function registerMaterialsActions(registerLensAction) {
     const protections = [];
     if (riskLevel === "high" || riskLevel === "critical") {
       if (category === "metal") protections.push("Apply protective coating (powder coat, paint, galvanize)");
-      if (environment.includes("marine")) protections.push("Use cathodic protection (sacrificial anode)");
+      if (environment === "marine") protections.push("Use cathodic protection (sacrificial anode)");
       if (humidity > 70) protections.push("Control humidity — use dehumidifier or desiccant");
       protections.push("Schedule regular inspections every 6 months");
     }

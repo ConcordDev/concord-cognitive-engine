@@ -27,7 +27,7 @@ type Destination = 'care' | 'calendar' | 'brief' | 'community';
 const DESTINATIONS: { id: Destination; label: string; icon: typeof ListChecks; hotkey: string; description: string }[] = [
   { id: 'care', label: 'Baby Care', icon: ListChecks, hotkey: '1', description: 'Children, one-touch logging, growth, milestones, appointments, caregiver sharing' },
   { id: 'calendar', label: 'Family Calendar', icon: CalendarRange, hotkey: '2', description: 'Shared family events: activities, school, travel, family-wide or tagged to a child' },
-  { id: 'brief', label: 'Quick Actions & Brief', icon: Wand2, hotkey: '3', description: 'Milestone/routine calculator, snapshot DTU, caregiver DM, agent developmental brief' },
+  { id: 'brief', label: 'Quick Actions & Brief', icon: Wand2, hotkey: '3', description: 'Stored milestone record, routine, snapshot, caregiver DM, and age-targeted notes. Not a developmental assessment.' },
   { id: 'community', label: 'Community & Safety', icon: Users2, hotkey: '4', description: 'Real-world parenting chatter and child-product safety recalls' },
 ];
 

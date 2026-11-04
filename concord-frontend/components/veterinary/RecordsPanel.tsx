@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { ClipboardList, Plus, Loader2, FileText } from 'lucide-react';
+import { ClipboardList, Plus, Loader2, FileText, Trash2 } from 'lucide-react';
 import { VetSoapNote } from './vet-types';
 
 export function RecordsPanel() {
@@ -61,6 +61,12 @@ export function RecordsPanel() {
     } else {
       setError(r.data.error || 'failed to chart');
     }
+  };
+
+  const removeNote = async (id: string) => {
+    const r = await lensRun('veterinary', 'soap-delete', { id });
+    if (r.data?.ok) await load();
+    else setError(r.data?.error || 'failed to delete note');
   };
 
   return (
@@ -146,11 +152,21 @@ export function RecordsPanel() {
         <div className="space-y-2">
           {notes.map((n) => (
             <div key={n.id} className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-white">{n.patientName}</p>
-                <p className="text-xs text-zinc-400">
-                  {n.date} {n.vet && `· ${n.vet}`}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-zinc-400">
+                    {n.date} {n.vet && `· ${n.vet}`}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => removeNote(n.id)}
+                    aria-label={`Delete note for ${n.patientName}`}
+                    className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
               <dl className="mt-2 space-y-1 text-xs">
                 {[
