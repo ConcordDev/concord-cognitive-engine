@@ -210,6 +210,7 @@ export function KinematicsStudio() {
                     <span className={ik.converged ? 'text-green-400' : 'text-yellow-400'}>{ik.converged ? 'yes' : 'partial'}</span></div>
                   <div className="flex justify-between"><span className="text-gray-400">Residual error</span><span className="font-mono">{ik.error}mm</span></div>
                   <div className="flex justify-between"><span className="text-gray-400">CCD iterations</span><span className="font-mono">{ik.iterations}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">Joint angles</span><span className="font-mono">{ik.angles.map((a, i) => `J${i + 1} ${a.toFixed(2)}°`).join(' · ')}</span></div>
                 </>
               )}
             </div>
