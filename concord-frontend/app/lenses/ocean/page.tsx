@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
@@ -52,6 +52,17 @@ export default function OceanLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('ocean');
 
   const [activeTab, setActiveTab] = useState<OceanTab>('tides');
+  // Fetched-state lifetime (Ocean S3 / F3): a view stays mounted once it
+  // has been visited (hidden while inactive), so loaded predictions,
+  // action enablement, and directory results survive view switches —
+  // conditional rendering unmounted the Tides view and evaporated all
+  // of it. The Map view is the exception: it owns no fetched panel
+  // state (its spots come from the page-level query) and its Leaflet
+  // surface does not tolerate hidden mounting, so it stays conditional.
+  const [visited, setVisited] = useState<OceanTab[]>(['tides']);
+  useEffect(() => {
+    setVisited((v) => (v.includes(activeTab) ? v : [...v, activeTab]));
+  }, [activeTab]);
 
   useLensCommand(
     [
@@ -96,8 +107,8 @@ export default function OceanLensPage() {
         cta={{ label: 'Log a spot', icon: Plus, onClick: () => setActiveTab('logbook'), title: 'Open the logbook (B)' }}
       >
       <div className="space-y-4">
-        {activeTab === 'tides' && (
-          <div className="space-y-4">
+        {visited.includes('tides') && (
+          <div className="space-y-4" hidden={activeTab !== 'tides'}>
             <NoaaTidesPanel />
             <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <TidePredictions />
@@ -111,8 +122,8 @@ export default function OceanLensPage() {
           </div>
         )}
 
-        {activeTab === 'waves' && (
-          <div className="space-y-4">
+        {visited.includes('waves') && (
+          <div className="space-y-4" hidden={activeTab !== 'waves'}>
             <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <WaveEcosystemPanel />
             </section>
@@ -122,14 +133,14 @@ export default function OceanLensPage() {
           </div>
         )}
 
-        {activeTab === 'live' && (
-          <section>
+        {visited.includes('live') && (
+          <section hidden={activeTab !== 'live'}>
             <LiveMarinePanel />
           </section>
         )}
 
-        {activeTab === 'logbook' && (
-          <section>
+        {visited.includes('logbook') && (
+          <section hidden={activeTab !== 'logbook'}>
             <LensFeedButton domain="ocean" />
             <SpotLog />
           </section>
