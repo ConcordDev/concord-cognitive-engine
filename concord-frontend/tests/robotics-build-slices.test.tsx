@@ -89,13 +89,18 @@ describe('R-S3 — IK outcome completeness', () => {
     });
     const { container } = render(<KinematicsStudio />);
     fireEvent.click(await screen.findByRole('button', { name: 'Inverse Kinematics' }));
-    // The canvas query rides a waitFor: a synchronous querySelector read null
-    // once under the batcher's full-tree load (GB-1077 excluded #2159 on it)
-    // while every awaited leg survived; the awaited form is load-proof and
-    // asserts the same canvas.
+    // The canvas is selected structurally, never by its viewBox attribute:
+    // the lockfile's jsdom 30.0.1 selector engine never matches a camelCase
+    // SVG attribute selector ('svg[viewBox="0 0 460 460"]' reads null while
+    // the canvas stands in the DOM — the deterministic GB-1077/GB-1078
+    // exclusion; jsdom 30.1.x matches it, which is why hand-assembled envs
+    // passed). Identity is pinned by reading the attribute directly, which
+    // no selector engine mediates. The waitFor covers genuinely slow first
+    // renders in loaded full-tree runs.
     const svg = await waitFor(() => {
-      const el = container.querySelector('svg[viewBox="0 0 460 460"]');
+      const el = container.querySelector('.panel svg');
       expect(el).toBeTruthy();
+      expect(el?.getAttribute('viewBox')).toBe('0 0 460 460');
       return el as Element;
     }, { timeout: 10000 });
     fireEvent.click(svg);
