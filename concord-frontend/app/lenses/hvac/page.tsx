@@ -19,7 +19,6 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { HvacDeskPanel } from '@/components/hvac/HvacDeskPanel';
@@ -101,9 +100,6 @@ export default function HVACLensPage() {
         lensId="hvac"
         crumb="HVAC"
         subtitle="Jobs, estimates, codes, materials, CRM, invoicing, inspections, certs and load estimates"
-        actions={
-          <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        }
         tabs={navViews}
         activeTab={active}
         onTab={(id) => setActive(id as HvacView)}

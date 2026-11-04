@@ -261,4 +261,37 @@ describe('careers lens — five UX states', () => {
     await waitFor(() => expect(getByText('Hauler')).toBeInTheDocument());
     expect(lensRun.mock.calls.some((c) => c[1] === 'ladder' && c[2]?.trackId === 'smith')).toBe(true);
   });
+
+  it('COOLDOWN (S1): the shift rule is stated on the surface — duration, balance, and the next opening', async () => {
+    lensRun.mockImplementation((_d: string, name: string) => {
+      if (name === 'tracks') return reply({ ok: true, tracks: TRACKS });
+      if (name === 'contracts') return reply({ ok: true, contracts: [] });
+      if (name === 'progress') return reply({ ok: true, progress: { tier: 1, xp: 0, highestTier: 1, shifts: 1 }, sparksBalance: 42, cooldownSeconds: 1800, nextShiftAt: null });
+      return reply({ ok: true });
+    });
+    const { getByText } = render(<CareersLens />);
+    await waitFor(() => expect(getByText(/Balance:/)).toBeInTheDocument());
+    expect(getByText(/42 sparks/)).toBeInTheDocument();
+    expect(getByText(/One paid shift per 30 minutes across all tracks/)).toBeInTheDocument();
+  });
+
+  it('COOLDOWN (S1): a refused second shift is worded as a wait with its numbers, never as a failure', async () => {
+    lensRun.mockImplementation((_d: string, name: string) => {
+      if (name === 'tracks') return reply({ ok: true, tracks: TRACKS });
+      if (name === 'contracts') return reply({ ok: true, contracts: [] });
+      if (name === 'work') {
+        return reply({ ok: false, reason: 'shift_cooldown', retryAt: Date.now() + 25 * 60 * 1000, cooldownSeconds: 1800, retryAfterSeconds: 1500 });
+      }
+      return reply({ ok: true });
+    });
+    const { getByText, getByLabelText, queryByText } = render(<CareersLens />);
+    await waitFor(() => expect(getByText('Work a shift')).toBeInTheDocument());
+    await act(async () => { fireEvent.click(getByLabelText('Play a work shift')); });
+    await act(async () => { fireEvent.click(getByLabelText('Stop the marker')); });
+    await waitFor(() => expect(getByText(/Next one opens at/)).toBeInTheDocument());
+    expect(getByText(/about 25 minutes from now/)).toBeInTheDocument();
+    expect(queryByText(/could not be worked: failed/i)).toBeNull();
+    expect(addToast.mock.calls.some((c) => c[0]?.type === 'info')).toBe(true);
+    expect(addToast.mock.calls.some((c) => c[0]?.type === 'error')).toBe(false);
+  });
 });

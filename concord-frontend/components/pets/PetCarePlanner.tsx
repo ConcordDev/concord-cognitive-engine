@@ -41,10 +41,11 @@ export interface PetCarePlannerProps {
 
 interface FeedingResult {
   dailyCalories?: number;
+  basis?: string;
   portions?: { cupsPerDay?: number; mealsPerDay?: number; cupsPerMeal?: number; note?: string };
   tips?: string[];
 }
-interface VaccineScheduleEntry { vaccine: string; status: string; nextDue: string; daysUntilDue: number }
+interface VaccineScheduleEntry { vaccine: string; status: string; nextDue: string | null; daysUntilDue: number | null }
 interface VaccineScheduleResult { vaccinations?: VaccineScheduleEntry[]; summary?: { total: number; current: number; overdue: number } }
 interface MedReminderEntry { medication: string; status: string; action: string; hoursUntilDue?: number }
 interface MedReminderResult { medications?: MedReminderEntry[]; overdue?: number; dueNow?: number; onTrack?: number }
@@ -70,6 +71,8 @@ const STATUS_TONE: Record<string, string> = {
   'on-track': 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10',
   unscheduled: 'text-zinc-400 border-zinc-700 bg-zinc-900/60',
   'no-record': 'text-zinc-400 border-zinc-700 bg-zinc-900/60',
+  'not-on-record': 'text-zinc-400 border-zinc-700 bg-zinc-900/60',
+  'no-time': 'text-zinc-400 border-zinc-700 bg-zinc-900/60',
 };
 
 const EXPENSE_CATEGORIES = ['Vet', 'Food', 'Medication', 'Grooming', 'Insurance', 'Boarding', 'Other'];
@@ -83,6 +86,7 @@ export function PetCarePlanner({ petId, petName, species, weightKg, ageYears }: 
   const [costRows, setCostRows] = useState<Array<{ date: string; category: string; amount: string }>>([
     { date: calendarDateKey(), category: 'Vet', amount: '' },
   ]);
+  const [planError, setPlanError] = useState<string | null>(null);
 
   const speciesKey = (species || 'dog').toLowerCase();
   // pets.feedingPlan's RER formula (`weight / 2.205`) and pets.weightTracker's
@@ -91,12 +95,26 @@ export function PetCarePlanner({ petId, petName, species, weightKg, ageYears }: 
 
   const compute = useMutation({
     mutationFn: async () => {
-      const artifact = { data: { species: speciesKey, weight: weightLbs, age: ageYears ?? 1, activityLevel: 'moderate' } };
+      const listed = await lensRun('pets', 'vaccine-list', { petId });
+      if (listed.data?.ok === false) {
+        setPlanError(listed.data?.error || `Could not load ${petName}'s vaccines.`);
+        setVaccines(null);
+        setFeeding(null);
+        return;
+      }
+      setPlanError(null);
+      const vaccinations = (listed.data?.result?.vaccines || []).map((v: { name: string; date: string; nextDueDate: string | null }) => ({
+        type: v.name, date: v.date, expiry: v.nextDueDate,
+      }));
+      const artifact = { data: { species: speciesKey, weight: weightLbs, age: ageYears ?? 1, activityLevel: 'moderate', vaccinations } };
       const [f, v] = await Promise.all([
         callPets<FeedingResult>('feedingPlan', { artifact }),
         callPets<VaccineScheduleResult>('vaccinationSchedule', { artifact }),
       ]);
-      setFeeding(f);
+      setFeeding(f && f.dailyCalories != null ? f : null);
+      if (!f || f.dailyCalories == null) {
+        setPlanError(weightLbs > 0 ? 'Feeding plan was not computed.' : 'A weight is required before a feeding amount is computed.');
+      }
       setVaccines(v);
     },
   });
@@ -169,6 +187,7 @@ export function PetCarePlanner({ petId, petName, species, weightKg, ageYears }: 
         {compute.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
         Plan feeding &amp; vaccinations
       </button>
+      {planError && <p className="text-[11px] text-rose-300">{planError}</p>}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-3">
@@ -181,6 +200,7 @@ export function PetCarePlanner({ petId, petName, species, weightKg, ageYears }: 
                 <div className="rounded border border-rose-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Meals</div><div className="font-mono text-rose-200">{feeding.portions?.mealsPerDay ?? '—'}/d</div></div>
                 <div className="rounded border border-rose-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Cups/meal</div><div className="font-mono text-rose-200">{feeding.portions?.cupsPerMeal ?? '—'}</div></div>
               </div>
+              {feeding.basis && <p className="text-[10px] text-zinc-400">{feeding.basis}</p>}
               {feeding.tips && feeding.tips.length > 0 && (
                 <ul className="list-disc space-y-0.5 pl-4 text-zinc-300">
                   {feeding.tips.slice(0, 4).map((t, i) => <li key={i}>{t}</li>)}
@@ -197,7 +217,7 @@ export function PetCarePlanner({ petId, petName, species, weightKg, ageYears }: 
               {(vaccines.vaccinations || []).map((v, i) => (
                 <div key={`${v.vaccine}-${i}`} className={`flex items-center justify-between rounded border px-2 py-1 text-[10px] ${STATUS_TONE[v.status] || 'border-zinc-700 bg-zinc-900/60 text-zinc-300'}`}>
                   <span className="text-zinc-100">{v.vaccine}</span>
-                  <span className="font-mono">{v.status === 'overdue' ? 'overdue' : v.nextDue}</span>
+                  <span className="font-mono">{v.status === 'not-on-record' ? 'not on record' : v.status === 'overdue' ? 'overdue' : v.nextDue}</span>
                 </div>
               ))}
             </div>

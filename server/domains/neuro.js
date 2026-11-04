@@ -609,10 +609,18 @@ export default function registerNeuroActions(registerLensAction) {
         .filter(e => e.sampleIndex >= startIdx && e.sampleIndex < endIdx)
         .map(e => ({ ...e, t: Math.round((e.sampleIndex / sr) * 10000) / 10000 }));
 
+      // S2/F3 — report the RENDERED window, not the requested one:
+      // endIdx clamps to the recording, so on a short recording the
+      // requested windowSec overstates what the traces actually show
+      // (the header printed "0s –4.0s" over a 0.5 s recording). The
+      // request stays available under its own names.
+      const renderedStartSec = Math.round((startIdx / sr) * 10000) / 10000;
+      const renderedWindowSec = Math.round((span / sr) * 10000) / 10000;
       return {
         ok: true,
         result: {
-          recordingId: rec.id, startSec, windowSec,
+          recordingId: rec.id, startSec: renderedStartSec, windowSec: renderedWindowSec,
+          requestedStartSec: startSec, requestedWindowSec: windowSec,
           stride, sampleRate: sr, durationSec: rec.durationSec,
           channelCount: traces.length, traces,
           events: eventsInWindow,
