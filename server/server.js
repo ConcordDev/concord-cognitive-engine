@@ -114,6 +114,7 @@ import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
 import { buildAnalyticsGroundingBlock, groundingUserId } from "./lib/lens-grounding.js";
 import { createSqliteBridgeService } from "./lib/dtu-bridge/service.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
+import { selectGlobalFeed } from "./lib/global-feed.js";
 import { chatContextPool, makeChatMayUse } from "./lib/chat/context-pool.js";
 import { chatProgress as _chatProgress, withToolProgress as _chatWithToolProgress, readOllamaChatStream as _readOllamaChatStream } from "./lib/chat/progress.js";
 import { filterVisibleSearchHits, materializeIndexedHits, searchCandidateLimit } from "./lib/dtu-search-hits.js";
@@ -69135,16 +69136,15 @@ app.post("/api/credits/spend", requireAuth(), (req, res) => {
 app.get("/api/global/feed", (req, res) => {
   const { limit = 50, offset = 0, tier } = req.query;
 
-  // Get global DTUs (isGlobal flag, scope=global, or tier >= mega)
-  let globalDtus = Array.from(STATE.dtus?.values() || [])
-    .filter(d => d.isGlobal || d.scope === "global" || d.tier === "mega" || d.tier === "hyper")
-    .filter(d => !isShadowDTU(d))
-    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-
-  // Filter by tier if specified
-  if (tier) {
-    globalDtus = globalDtus.filter(d => d.tier === tier);
-  }
+  // Published (isGlobal flag or scope=global) DTUs the requesting viewer may
+  // read: same read filters as every other DTU read (lib/global-feed.js).
+  const globalDtus = selectGlobalFeed(STATE.dtus?.values() || [], {
+    viewerId: req.user?.id || null,
+    isHidden: _isHiddenSystemDtu,
+    isPrivateFrom: privateDtuHiddenFrom,
+    isShadow: isShadowDTU,
+    tier,
+  });
 
   const total = globalDtus.length;
   const feed = globalDtus.slice(Number(offset), Number(offset) + Number(limit));
@@ -69163,16 +69163,13 @@ app.get("/api/global/feed/:lensId", (req, res) => {
   const lensId = String(req.params.lensId || "").toLowerCase();
   const { limit = 50, offset = 0 } = req.query;
 
-  const feed = Array.from(STATE.dtus?.values() || [])
-    .filter(d => d.scope === "global" && !isShadowDTU(d))
-    .filter(d => {
-      // Match by published lens, tags, or domain
-      if (d.meta?.publishedFromLens === lensId) return true;
-      if ((d.tags || []).some(t => t.toLowerCase() === lensId)) return true;
-      if (d.meta?.domain === lensId) return true;
-      return false;
-    })
-    .sort((a, b) => new Date(b.meta?.publishedAt || b.createdAt || 0) - new Date(a.meta?.publishedAt || a.createdAt || 0));
+  const feed = selectGlobalFeed(STATE.dtus?.values() || [], {
+    viewerId: req.user?.id || null,
+    isHidden: _isHiddenSystemDtu,
+    isPrivateFrom: privateDtuHiddenFrom,
+    isShadow: isShadowDTU,
+    lensId,
+  });
 
   const total = feed.length;
   const items = feed.slice(Number(offset), Number(offset) + Number(limit));
