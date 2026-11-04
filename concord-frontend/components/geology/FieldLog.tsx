@@ -31,7 +31,7 @@ export function FieldLog() {
   const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', kind: 'rock', locationName: '', formation: '', notes: '' });
+  const [form, setForm] = useState({ name: '', kind: 'rock', locationName: '', formation: '', notes: '', lat: '', lon: '' });
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -60,16 +60,23 @@ export function FieldLog() {
 
   async function log() {
     if (!form.name.trim()) return;
+    // Coordinates are the geotag path: observation-log has always
+    // accepted lat/lon and the dashboard counts them, but this form
+    // never sent them, so GEOTAGGED could not move for a text user.
+    const lat = form.lat.trim() === '' ? null : Number(form.lat);
+    const lon = form.lon.trim() === '' ? null : Number(form.lon);
     const r = await lensRun('geology', 'observation-log', {
       name: form.name.trim(), kind: form.kind,
       locationName: form.locationName.trim(), formation: form.formation.trim(), notes: form.notes.trim(),
+      ...(lat != null && Number.isFinite(lat) ? { lat } : {}),
+      ...(lon != null && Number.isFinite(lon) ? { lon } : {}),
     });
     const inner = r.data?.result as { ok?: boolean; error?: string } | undefined;
     if (!r.data?.ok || inner?.ok === false) {
       setError(inner?.error || r.data?.error || 'Could not log observation');
       return;
     }
-    setForm({ name: '', kind: 'rock', locationName: '', formation: '', notes: '' });
+    setForm({ name: '', kind: 'rock', locationName: '', formation: '', notes: '', lat: '', lon: '' });
     await refresh();
   }
   async function del(id: string) {
@@ -131,6 +138,12 @@ export function FieldLog() {
             className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         </div>
         <div className="flex gap-1.5">
+          <input value={form.lat} onChange={e => setForm({ ...form, lat: e.target.value })} placeholder="Latitude (optional)" inputMode="decimal"
+            className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+          <input value={form.lon} onChange={e => setForm({ ...form, lon: e.target.value })} placeholder="Longitude (optional)" inputMode="decimal"
+            className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+        </div>
+        <div className="flex gap-1.5">
           <input value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Field notes"
             className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
           <button onClick={log} disabled={!form.name.trim()}
@@ -138,6 +151,7 @@ export function FieldLog() {
             <Plus className="w-3 h-3" />Log
           </button>
         </div>
+        <p className="text-[10px] text-zinc-500">Add coordinates to geotag the observation — geotagged sites appear on the Field Sites Map.</p>
       </div>
 
       <div className="flex gap-1 mb-2">
@@ -159,9 +173,10 @@ export function FieldLog() {
                 <span className="text-[10px] text-zinc-400">{o.collectedAt}</span>
                 <button aria-label="Delete" onClick={() => del(o.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </div>
-              {(o.locationName || o.formation || o.notes) && (
+              {(o.locationName || o.formation || o.notes || o.lat != null) && (
                 <p className="text-[11px] text-zinc-400 mt-0.5">
                   {o.locationName && <span className="inline-flex items-center gap-0.5"><MapPin className="w-2.5 h-2.5" />{o.locationName} · </span>}
+                  {o.lat != null && o.lon != null && <span className="font-mono text-[10px]">{o.lat.toFixed(4)}, {o.lon.toFixed(4)} · </span>}
                   {o.formation && <span>{o.formation} · </span>}
                   {o.notes}
                 </p>
