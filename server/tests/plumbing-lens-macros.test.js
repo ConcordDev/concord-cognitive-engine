@@ -325,7 +325,13 @@ describe("plumbing lens — fail-closed on poisoned numeric inputs", () => {
     // (The prior pin read 6.5 via the pre-F4 toilet value of 2.5 — the fifth
     //  assertion in this file encoding the walked finding; it sat in the
     //  fail-closed describe, past the fixtureCount describe PR #2148
-    //  corrected, and the batch #2151 fold caught it. The table governs.)
+    //  corrected, and the batch #2151 fold caught it. The table governs.
+    //  Was 6.5 ever right for this poisoned set? Only against the pre-F4
+    //  table. The poisoning is unchanged by the fix — "abc", NaN and
+    //  Infinity still sanitise to a count of 1 apiece, exactly as before —
+    //  so the set always meant toilet x1 + shower x1 + bathtub x1. What the
+    //  pin encoded was the toilet's old 2.5 value, the F4 defect itself;
+    //  under Table 709.1 that same sanitised set reads 3 + 2 + 2 = 7.)
     assert.ok(Number.isFinite(r.result.totalWSFU), `totalWSFU = ${r.result.totalWSFU} must be finite`);
     assert.equal(r.result.totalWSFU, 7);
   });
