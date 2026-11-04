@@ -33,7 +33,9 @@ import {
   DIM_LABELS,
   applyWorkspaceCommand,
   describeStudy,
+  detectOutOfScopeRequest,
   formatWorkspaceLead,
+  outOfScopeDecline,
   parseWorkspaceCommand,
   studyContext,
   type BeamDims,
@@ -196,12 +198,17 @@ export function ConKayWorkspace() {
     });
   }, [logLoaded, messages, workspaceId]);
 
+  const [clearArmed, setClearArmed] = useState(false);
   const clearConversation = useCallback(async () => {
+    const had = messagesRef.current.length;
     const r = await lensRun('engineering', 'workspaceLog-clear', workspaceId ? { workspaceId } : {});
     if (r.data?.ok === false) return;
     persisted.current = new Set();
     setMessages([]);
-  }, [workspaceId]);
+    setClearArmed(false);
+    // The receipt (F9): what was cleared, and what was NOT touched.
+    push({ role: 'assistant', text: `Conversation cleared — ${had} message${had === 1 ? '' : 's'} removed. The study, its results and your saved models were not touched.` });
+  }, [push, workspaceId]);
   useEffect(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' }); }, [messages]);
 
   const loadWorkspaces = useCallback(async () => {
@@ -247,17 +254,20 @@ export function ConKayWorkspace() {
     const id = push({ role: 'assistant', text: `${lead}Running FEA…`, pending: true });
     const out = await ws.solve(next);
     if ('error' in out) { reply(id, `${lead}The solve did not run: ${out.error}`, { error: true }); return null; }
-    reply(id, `${lead}${describeStudy(out.result, before)}`, { chips: STUDY_CHIPS });
+    // A completed-action report carries its action (F11): the reply badge
+    // grounds on it instead of the blanket "Reasoned — verify".
+    reply(id, `${lead}${describeStudy(out.result, before)}`, { chips: STUDY_CHIPS, tools: [{ name: 'engineering.beamStudy', ok: true }] });
     setRefreshKey((k) => k + 1);
     return out.result;
   }, [push, reply, result, ws]);
 
-  const persistModel = useCallback(async (name?: string) => {
+  const persistModel = useCallback(async (name?: string, asCopy = false) => {
+    const wasLinked = Boolean(ws.partId) && !asCopy;
     const id = push({ role: 'assistant', text: 'Saving model…', pending: true });
-    const out = await ws.saveModel(name);
+    const out = await ws.saveModel(name, { asCopy });
     if ('error' in out) reply(id, `Not saved. ${out.error}`, { error: true });
     else {
-      reply(id, `Saved “${out.name}” to Models (${out.id}).`);
+      reply(id, wasLinked ? `Saved “${out.name}” to Models (${out.id}) — updated in place.` : `Saved “${out.name}” to Models (${out.id}).`, { tools: [{ name: 'engineering.savePart', ok: true }] });
       setInputs((s) => (s.name === out.name ? s : { ...s, name: out.name }));
       setRefreshKey((k) => k + 1);
     }
@@ -268,8 +278,12 @@ export function ConKayWorkspace() {
     saveTouched.current = false;
     setSaveOpen(true);
     setSaveName(inputs.name);
-    const suggestion = await ws.suggestName();
-    if (!saveTouched.current) setSaveName(suggestion);
+    // The incrementing suggestion is an offer for an UNSAVED study only; a
+    // linked study's save strip opens on its own name (F3).
+    if (!ws.partId) {
+      const suggestion = await ws.suggestName();
+      if (!saveTouched.current) setSaveName(suggestion);
+    }
   }, [inputs.name, ws]);
 
   const keep = useCallback(async (msgId?: string) => {
@@ -278,7 +292,7 @@ export function ConKayWorkspace() {
     const out = await ws.keepAsDtu();
     setKeeping(false);
     if ('error' in out) reply(id, `Not kept. ${out.error}`, { error: true });
-    else { reply(id, `Kept as private DTU ${out.dtuId} and read back. It records this solve's inputs, results and hand check. Nothing was published.`); setRefreshKey((k) => k + 1); }
+    else { reply(id, `Kept as private DTU ${out.dtuId} and read back. It records this solve's inputs, results and hand check. Nothing was published.`, { tools: [{ name: 'engineering.beamStudy-keep', ok: true }] }); setRefreshKey((k) => k + 1); }
   }, [push, reply, ws]);
 
   const askAgent = useCallback(async (text: string) => {
@@ -433,6 +447,14 @@ export function ConKayWorkspace() {
         return;
       }
       const cmd = parseWorkspaceCommand(text, inputs.dims, materials, inputs.materialId);
+      // Out-of-scope analyses decline BY NAME (F6): the solver's stated
+      // scope is the refusal — never a substituted bending solve. Study
+      // edits in the same message still run below.
+      const oos = detectOutOfScopeRequest(text);
+      if (oos) {
+        reply(push({ role: 'assistant', text: '', pending: true }), outOfScopeDecline(oos, result?.analysisReceipt?.outOfScope));
+        if (!cmd) return;
+      }
       if (!cmd) { await askAgent(text); return; }
       setDesign(null);
       if (cmd.changes.length === 0 && !cmd.run && !cmd.save && !cmd.keep) {
@@ -537,7 +559,7 @@ export function ConKayWorkspace() {
         const chips: Chip[] = out.lightestPassing !== null && out.lightestPassing !== tw
           ? [{ kind: 'apply', label: `Use t_w = ${out.lightestPassing} mm`, dims: { webThickness: out.lightestPassing } }]
           : [];
-        reply(id, text + caveat, { sweep: out, chips });
+        reply(id, text + caveat, { sweep: out, chips, tools: [{ name: 'engineering.beamSweep', ok: true }] });
         setRefreshKey((k) => k + 1);
       } finally { setBusy(false); }
     }
@@ -581,7 +603,8 @@ export function ConKayWorkspace() {
       materials={materials}
       materialId={inputs.materialId}
       onMaterial={(id) => { setInputs({ ...inputs, materialId: id }); setDesign(null); ws.startBeam(); setMobileTab('model'); }}
-      onOpenModel={(name, dims, materialId) => { setInputs({ ...inputs, name, dims, materialId: materialId || inputs.materialId }); setDesign(null); ws.startBeam(); setMobileTab('model'); }}
+      onOpenModel={(name, dims, materialId, partId) => { ws.openModel(name, dims, materialId, partId); setDesign(null); setViewMesh(null); setMobileTab('model'); }}
+      onNewStudy={() => { ws.resetStudy(); setDesign(null); setViewMesh(null); setMobileTab('model'); }}
       onOpenShowcase={(id, label) => { setDesign({ kind: 'showcase', id, label }); setMobileTab('model'); }}
       onAskAboutDtu={(d) => void openDtu(d.id, d.title)}
       refreshKey={refreshKey}
@@ -596,9 +619,20 @@ export function ConKayWorkspace() {
           <p className="text-[11px] text-slate-400">Structural · FEA · Materials · DTU</p>
         </div>
         {messages.length > 0 && (
-          <button type="button" onClick={() => void clearConversation()} disabled={busy} className="rounded-md px-2 py-1 text-[11px] text-slate-400 hover:bg-white/5 hover:text-slate-200 disabled:opacity-50">
-            Clear
-          </button>
+          clearArmed ? (
+            <span className="flex items-center gap-1">
+              <button type="button" onClick={() => void clearConversation()} disabled={busy} className="rounded-md bg-rose-400/15 px-2 py-1 text-[11px] text-rose-200 hover:bg-rose-400/25 disabled:opacity-50">
+                Confirm clear?
+              </button>
+              <button type="button" onClick={() => setClearArmed(false)} className="rounded-md px-2 py-1 text-[11px] text-slate-400 hover:bg-white/5 hover:text-slate-200">
+                Keep
+              </button>
+            </span>
+          ) : (
+            <button type="button" onClick={() => setClearArmed(true)} disabled={busy} className="rounded-md px-2 py-1 text-[11px] text-slate-400 hover:bg-white/5 hover:text-slate-200 disabled:opacity-50">
+              Clear
+            </button>
+          )
         )}
       </header>
       <div ref={listRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3" aria-live="polite">
@@ -629,7 +663,7 @@ export function ConKayWorkspace() {
               </ul>
             )}
             {m.role === 'assistant' && !m.error && m.text ? (
-              <div className="leading-relaxed text-slate-200"><ConKayMessage fields={{ content: m.text }} renderProse={(t) => <MessageRenderer content={t} streaming={m.pending} />} /></div>
+              <div className="leading-relaxed text-slate-200"><ConKayMessage fields={{ content: m.text, ...(m.tools && m.tools.length > 0 ? { toolCalls: m.tools } : {}) }} renderProse={(t) => <MessageRenderer content={t} streaming={m.pending} />} /></div>
             ) : (
               <p className={`whitespace-pre-wrap leading-relaxed ${m.error ? 'text-rose-200' : 'text-slate-200'}`}>
                 {m.text || (m.pending ? 'Thinking…' : '')}
@@ -716,8 +750,23 @@ export function ConKayWorkspace() {
               />
             </label>
             <button type="submit" disabled={busy || !saveName.trim()} className="rounded-md bg-sky-500/90 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50">
-              {busy ? 'Saving…' : 'Save'}
+              {busy ? 'Saving…' : ws.partId ? 'Save (update in place)' : 'Save'}
             </button>
+            {ws.partId && (
+              <button
+                type="button"
+                disabled={busy || !saveName.trim()}
+                onClick={() => {
+                  setBusy(true);
+                  void persistModel(saveName, true).then((out) => {
+                    if (!('error' in out)) setSaveOpen(false);
+                  }).finally(() => setBusy(false));
+                }}
+                className="rounded-md border border-white/15 px-2.5 py-1 text-xs text-slate-200 hover:bg-white/5 disabled:opacity-50"
+              >
+                Save as copy
+              </button>
+            )}
             <button type="button" onClick={() => setSaveOpen(false)} className="px-1 text-xs text-slate-400 hover:text-slate-200">Cancel</button>
           </form>
         )}
@@ -767,7 +816,7 @@ export function ConKayWorkspace() {
             </div>
           </>
         ) : (
-          <BeamViewport dims={inputs.dims} support={inputs.support} utilization={utilization} view={view} display={display} showDims={showDims} leftInset={paramsOpen ? 0.22 : 0} />
+          <BeamViewport dims={inputs.dims} support={inputs.support} utilization={utilization} view={view} display={display} showDims={showDims} leftInset={paramsOpen ? 0.22 : 0} onDimFocus={(key) => { setParamsOpen(true); setMobileTab('model'); setTimeout(() => paramRef.current?.focus(key), 50); }} />
         )}
 
         {!viewMesh && <div className="absolute left-3 top-11 z-10 w-48 max-w-[calc(100%-1.5rem)] rounded-xl border border-white/10 bg-[#06101c]/85 backdrop-blur">
