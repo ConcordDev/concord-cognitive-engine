@@ -5,7 +5,7 @@
  * snake_case code never reaches the screen.
  */
 const REASON_SENTENCE: Record<string, string> = {
-  no_sensor_log: 'no sensor samples logged yet (log some in the Sensors tab)',
+  no_sensor_log: 'no sensor samples logged yet (log some in the Sensor Logs tab)',
   not_recorded: 'not recorded',
 };
 
