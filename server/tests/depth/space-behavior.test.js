@@ -110,13 +110,13 @@ describe("space — reentryAnalysis (exact KE / heating / corridor)", () => {
 });
 
 describe("space — launchWindow + orbit-3d (geometry)", () => {
-  it("launchWindow: GEO target has 2 windows/day and direct ascent at matched inclination", async () => {
+  it("launchWindow: GEO target has 1 window/day and direct ascent at matched inclination", async () => {
     const r = await lensRun("space", "launchWindow", {
       data: { targetOrbit: "GEO", launchLatitude: 28.5 },
     });
     assert.equal(r.ok, true);
     assert.equal(r.result.targetOrbit, "GEO");
-    assert.equal(r.result.windowsPerDay, 2);
+    assert.equal(r.result.windowsPerDay, 1); // space build: GEO has one opportunity per day (was 2)
     assert.equal(r.result.windowDuration, "~1 hour");
     // inclination defaults to latitude → |28.5 - 28.5| = 0 ≤ 5 → direct
     assert.match(r.result.inclinationPenalty, /Direct ascent/);

@@ -14,6 +14,15 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 
+// Prediction times are generated relative to "now": the panel only shows a
+// "Next high/low" for a prediction still in the future, so a fixed calendar
+// time would silently rot the day it passed.
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const hoursFromNow = (h: number) => {
+  const d = new Date(Date.now() + h * 3_600_000);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+};
+
 const stub = vi.hoisted(() => ({
   tidesMode: 'ok' as 'ok' | 'refuse',
   runDomain: null as null | ((domain: string, action: string, payload: unknown) => Promise<unknown>),
@@ -21,11 +30,11 @@ const stub = vi.hoisted(() => ({
 
 vi.mock('@/lib/api/client', () => ({
   lensRun: async () => (stub.tidesMode === 'ok'
-    ? { data: { ok: true, result: { ok: true, source: 'NOAA CO-OPS Tides & Currents', fetchedAt: 1762000000, station: '8443970', predictions: [{ time: '2026-11-04 06:12', heightMeters: 1.78, type: 'high' }, { time: '2026-11-04 00:05', heightMeters: -0.22, type: 'low' }] }, error: null } }
+    ? { data: { ok: true, result: { ok: true, source: 'NOAA CO-OPS Tides & Currents', fetchedAt: 1762000000, station: '8443970', predictions: [{ time: hoursFromNow(6), heightMeters: 1.78, type: 'high' }, { time: hoursFromNow(12), heightMeters: -0.22, type: 'low' }] }, error: null } }
     : { data: { ok: true, result: { ok: false, reason: 'noaa_unreachable' }, error: null } }),
   // The pristine panel's raw post: hand it the real server envelope.
   api: {
-    post: async () => ({ data: { ok: true, result: { ok: true, predictions: [{ time: '2026-11-04 06:12', heightMeters: 1.78, type: 'high' }], fetchedAt: 1762000000 }, error: null } }),
+    post: async () => ({ data: { ok: true, result: { ok: true, predictions: [{ time: hoursFromNow(6), heightMeters: 1.78, type: 'high' }], fetchedAt: 1762000000 }, error: null } }),
   },
   apiHelpers: { lens: { runDomain: (d: string, a: string, p: unknown) => stub.runDomain!(d, a, p) } },
 }));
