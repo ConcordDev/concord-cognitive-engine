@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mentorRatingCaption } from "./rating-caption.ts";
+import { mentorRatingCaption } from "./rating-caption";
 
 test("a mean names how many listed mentors it covers", () => {
   assert.deepEqual(mentorRatingCaption(3.7, 2), {
