@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { latestWeighInLabel, profileWeightLabel } from './pet-card-labels.ts';
+import { latestWeighInLabel, profileWeightLabel } from './pet-card-labels';
 
 describe('pet card weight labels', () => {
   it('names the profile weight and does not treat a blank as zero', () => {
