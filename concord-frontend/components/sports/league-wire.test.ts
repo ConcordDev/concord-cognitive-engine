@@ -7,7 +7,7 @@ import {
   hasMatchScores,
   leagueCreateBody,
   winnerTeamId,
-} from './league-wire.ts';
+} from './league-wire';
 
 test('create body names the hub world and trims the league name', () => {
   const body = leagueCreateBody('  Sunday League  ', 'soccer');
