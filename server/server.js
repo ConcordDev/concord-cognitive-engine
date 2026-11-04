@@ -93021,13 +93021,30 @@ register("observer", "compose_report", async (ctx, input = {}) => {
       worldId,
       sinceTs: Math.floor(Date.now() / 1000) - 3600,
     }, ctx);
-    const summary = focus ? `Observation focus: ${focus}.` : "General observation.";
+    // Shape the raw ripple for the report (Observe F2): the Focus input
+    // must shape the report it names (term-matched rows surface first,
+    // tagged and counted), and the report must state what its window
+    // covered — the four sources and their counts — so an empty window
+    // reads as "nothing recorded", never as a ripple-free world.
+    const { shapeRippleReport } = await import("./lib/ripple-report.js");
+    const shaped = shapeRippleReport(ripple?.ripples || {}, {
+      focus,
+      worldId,
+      sinceTs: ripple?.sinceTs,
+      untilTs: ripple?.sinceTs != null ? ripple.sinceTs + 3600 : undefined,
+    });
+    const reportRipple = { ...ripple, ripples: shaped.ripples, focusOutcome: shaped.focus, coverage: shaped.coverage };
+    const summary = [
+      focus ? `Observation focus: ${focus}.` : "General observation.",
+      shaped.focus ? shaped.focus.statement : null,
+      shaped.coverage.statement,
+    ].filter(Boolean).join(" ");
     const dtuId = `empirical_report:${userId}:${Date.now().toString(36)}`;
     const meta = {
       skill_kind: "empirical_report",
       world_id: worldId,
       focus,
-      ripple,
+      ripple: reportRipple,
       summary,
       observed_at: Date.now(),
     };
@@ -93035,7 +93052,7 @@ register("observer", "compose_report", async (ctx, input = {}) => {
       INSERT INTO dtus (id, type, title, creator_id, data, skill_level, total_experience, created_at)
       VALUES (?, 'empirical_report', ?, ?, ?, 1, 0, unixepoch())
     `).run(dtuId, `Empirical Report — ${worldId}`, userId, JSON.stringify(meta));
-    return { ok: true, dtuId, ripple };
+    return { ok: true, dtuId, ripple: reportRipple };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Observer composes empirical-report DTU from world ripple state. Cite-able, royalty-bearing." });
 
