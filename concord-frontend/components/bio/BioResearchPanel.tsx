@@ -36,14 +36,15 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
 
 interface AlignResult { alignment: { sequenceA: string; midline: string; sequenceB: string }; score: number; statistics: { length: number; matches: number; mismatches: number; gaps: number; identity: number; similarity: number; sequenceType: string } }
-interface ExpressionResult { message?: string; conditions?: { conditionA: string; conditionB: string }; summary?: { totalGenes: number; significantGenes: number; upregulated: number; downregulated: number; topUpregulated: { gene: string; log2FC: number }[]; topDownregulated: { gene: string; log2FC: number }[] } }
+interface ExpressionGene { gene: string; meanCondA: number; meanCondB: number; foldChange: number; log2FC: number; regulation: string; significanceTestable: boolean; significant: boolean | null; call: string }
+interface ExpressionResult { message?: string; conditions?: { conditionA: string; conditionB: string }; rule?: string; genes?: ExpressionGene[]; summary?: { totalGenes: number; significantGenes: number; upregulated: number; downregulated: number; foldChangeUp?: number; foldChangeDown?: number; topUpregulated: { gene: string; log2FC: number }[]; topDownregulated: { gene: string; log2FC: number }[] } }
 interface PhyloResult { model: string; sequenceCount: number; labels: string[]; distanceMatrix: number[][]; closest: { a: string; b: string; distance: number } | null; farthest: { a: string; b: string; distance: number } | null }
 interface MotifResult { message?: string; totalMotifs?: number; topMotifs?: { motif: string; occurrences: number; conservation: number; gcContent: number; isPalindromic: boolean }[]; consensusMotifs?: { motif: string; conservation: number }[] }
 interface OrganismResult { name: string; kingdom: string; taxonomyRanks: string[]; habitat: string; traits: string[]; evolutionaryNotes: string; summary: string }
 interface PathwayResult { pathway: string; stepCount: number; chainBreaks: { at: number; expected: string; actual: string }[]; totalDeltaG: number | null; thermodynamicallyFavorable: boolean; summary: string }
 interface ProtocolResult { stepCount: number; totalEstimatedMinutes: number | null; gaps: { kind: string; severity: string; suggestion: string }[]; severity: string; summary: string }
-interface GeneFunctionResult { gene: string; protein: string; organism: string; chain: { stage: string; entity: string; role: string }[]; externalLinks: { source: string; url: string }[]; summary: string }
-interface EvolutionResult { organisms: { name: string; group: string }[]; groups: string[]; sharedGroup: string | null; commonality: string; suggestion: string }
+interface GeneFunctionResult { gene: string; protein: string; organism: string; function?: string; functionSource?: string; functionNote?: string; chain: { stage: string; entity: string; role: string }[]; externalLinks: { source: string; url: string }[]; summary: string }
+interface EvolutionResult { organisms: { name: string; group: string; subgroup?: string | null }[]; groups: string[]; sharedGroup: string | null; closestPair?: { a: string; b: string; relation: string } | null; commonality: string; suggestion: string }
 interface FastaResult { records: { id: string; description: string; sequence: string; length: number }[]; count: number }
 
 type Tool = 'align' | 'expression' | 'phylo' | 'motif' | 'organism' | 'pathway' | 'protocol' | 'gene' | 'evolution' | 'fasta';
@@ -188,9 +189,31 @@ export function BioResearchPanel() {
               <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="rounded-md border border-emerald-500/25 bg-emerald-500/5 p-3 space-y-1.5">
                 {exprResult.message ? <p className="text-zinc-400">{exprResult.message}</p> : exprResult.summary && (
                   <>
-                    <p className="text-zinc-300">{exprResult.conditions?.conditionA} vs {exprResult.conditions?.conditionB} · {exprResult.summary.totalGenes} genes, {exprResult.summary.significantGenes} significant ({exprResult.summary.upregulated} up / {exprResult.summary.downregulated} down)</p>
+                    <p className="text-zinc-300">{exprResult.conditions?.conditionA} vs {exprResult.conditions?.conditionB} · {exprResult.summary.totalGenes} genes, {exprResult.summary.significantGenes} significant ({exprResult.summary.upregulated} up / {exprResult.summary.downregulated} down){(exprResult.summary.foldChangeUp || exprResult.summary.foldChangeDown) ? ` · ${exprResult.summary.foldChangeUp ?? 0} up / ${exprResult.summary.foldChangeDown ?? 0} down by fold change (significance not testable)` : ''}</p>
                     {exprResult.summary.topUpregulated.map(g => <div key={g.gene} className="font-mono text-emerald-300">↑ {g.gene} log2FC {g.log2FC}</div>)}
                     {exprResult.summary.topDownregulated.map(g => <div key={g.gene} className="font-mono text-rose-300">↓ {g.gene} log2FC {g.log2FC}</div>)}
+                    {exprResult.genes && exprResult.genes.length > 0 && (
+                      <div className="overflow-x-auto pt-1">
+                        <table className="w-full text-[11px] font-mono">
+                          <thead><tr className="text-left text-zinc-500">
+                            <th className="py-0.5 pr-2">Gene</th><th className="py-0.5 pr-2">{exprResult.conditions?.conditionA}</th><th className="py-0.5 pr-2">{exprResult.conditions?.conditionB}</th><th className="py-0.5 pr-2">FC</th><th className="py-0.5 pr-2">log2FC</th><th className="py-0.5">Call</th>
+                          </tr></thead>
+                          <tbody>
+                            {exprResult.genes.map(g => (
+                              <tr key={g.gene} className="border-t border-white/5">
+                                <td className="py-0.5 pr-2 text-emerald-200">{g.gene}</td>
+                                <td className="py-0.5 pr-2 text-zinc-300">{g.meanCondA}</td>
+                                <td className="py-0.5 pr-2 text-zinc-300">{g.meanCondB}</td>
+                                <td className="py-0.5 pr-2 text-zinc-300">{g.foldChange}</td>
+                                <td className="py-0.5 pr-2 text-zinc-300">{g.log2FC}</td>
+                                <td className="py-0.5 font-sans text-zinc-400">{g.call}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    {exprResult.rule && <p className="text-[10px] text-zinc-500 pt-1">{exprResult.rule}</p>}
                   </>
                 )}
               </motion.div>
@@ -376,6 +399,7 @@ export function BioResearchPanel() {
                     </span>
                   ))}
                 </div>
+                {geneResult.functionNote && <p className="text-[10px] text-zinc-500">{geneResult.functionNote}</p>}
                 <div className="flex items-center gap-3">
                   {geneResult.externalLinks.map(l => <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300">{l.source}</a>)}
                 </div>
@@ -397,8 +421,9 @@ export function BioResearchPanel() {
               <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="rounded-md border border-emerald-500/25 bg-emerald-500/5 p-3 space-y-1">
                 <p className="text-zinc-300">{evoResult.commonality}</p>
                 <p className="text-zinc-500">{evoResult.suggestion}</p>
+                {evoResult.closestPair && <p className="text-zinc-400">Closest pair: {evoResult.closestPair.a} ↔ {evoResult.closestPair.b} ({evoResult.closestPair.relation})</p>}
                 <div className="flex flex-wrap gap-1.5 pt-1">
-                  {evoResult.organisms.map(o => <span key={o.name} className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">{o.name} · {o.group}</span>)}
+                  {evoResult.organisms.map(o => <span key={o.name} className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">{o.name} · {o.group}{o.subgroup ? ` · ${o.subgroup}` : ''}</span>)}
                 </div>
               </motion.div>
             )}
