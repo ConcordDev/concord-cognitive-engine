@@ -50,7 +50,7 @@ export function CruisePanel() {
   useEffect(() => { void load(); }, [load]);
 
   const addPlot = useCallback(async () => {
-    if (!standId.trim()) { setErr('Stand id required.'); return; }
+    if (!standId.trim()) { setErr('Stand name or id required.'); return; }
     const trees: { species: string; dbhInches: number; heightFeet: number }[] = [];
     for (const line of treeText.split('\n')) {
       const t = line.trim();
@@ -85,7 +85,7 @@ export function CruisePanel() {
       </div>
 
       <div className="flex flex-wrap gap-1.5 mb-2">
-        <input value={standId} onChange={(e) => setStandId(e.target.value)} placeholder="Stand id"
+        <input value={standId} onChange={(e) => setStandId(e.target.value)} placeholder="Stand name or id"
           className="w-32 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
         <select value={method} onChange={(e) => setMethod(e.target.value as 'prism_baf' | 'fixed_radius')}
           className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1.5 text-xs text-zinc-200">
@@ -142,7 +142,7 @@ export function CruisePanel() {
           </div>
         ))}
         {plots.length === 0 && standId.trim() && <p className="text-xs text-zinc-400 italic">No cruise plots for this stand yet.</p>}
-        {!standId.trim() && <p className="text-xs text-zinc-400 italic">Enter a stand id to view its cruise plots.</p>}
+        {!standId.trim() && <p className="text-xs text-zinc-400 italic">Enter a stand name or id to view its cruise plots.</p>}
       </div>
     </div>
   );

@@ -3204,15 +3204,15 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'agriculture',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Manage your forest.",
-      caption: "Plots, species, harvests, inventories, growth \u2014 REAL_FREE data from open forestry sources.",
+      caption: "Your stands, cruises, pest reports, replanting projects and carbon credits \u2014 live on your own registry, with InciWeb and NIFC wildfire data.",
       firstActionLabel: "Add a plot",
     },
     firstRunGuide: {
       steps: [
-        { caption: "Growth + yield surface against real species + climate data." },
+        { caption: "Growth + yield projections from published USFS yield tables, over your own stands." },
         { caption: "Inventory + harvest plans ride the substrate." },
         { caption: "Export field cards for crew." },
       ],

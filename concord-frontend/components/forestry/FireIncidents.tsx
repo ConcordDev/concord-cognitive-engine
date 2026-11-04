@@ -45,15 +45,29 @@ export function FireIncidents() {
   const [fires, setFires] = useState<Fire[]>([]);
   const [perimeters, setPerimeters] = useState<FirePerimeter[]>([]);
   const [showPerimeters, setShowPerimeters] = useState(false);
+  const [firesError, setFiresError] = useState<string | null>(null);
+  const [firesLoaded, setFiresLoaded] = useState(false);
+  const [firesPulledAt, setFiresPulledAt] = useState<Date | null>(null);
+  const [perimError, setPerimError] = useState<string | null>(null);
+  const [perimPulledAt, setPerimPulledAt] = useState<Date | null>(null);
 
   const load = useMutation({
     mutationFn: async () => callMacro<{ fires: Fire[] }>('inciweb-active-fires', state ? { state, limit: 60 } : { limit: 60 }),
-    onSuccess: (env) => { if (env.ok && env.result) setFires(env.result.fires); else setFires([]); },
+    onSuccess: (env) => {
+      setFiresLoaded(true);
+      if (env.ok && env.result) { setFires(env.result.fires); setFiresError(null); setFiresPulledAt(new Date()); }
+      else { setFires([]); setFiresError("Couldn't reach InciWeb \u2014 the federal wildfire incident feed didn't respond, so no incidents were loaded. This is a feed outage, not an all-clear. Try again in a bit."); }
+    },
+    onError: () => { setFiresLoaded(true); setFires([]); setFiresError("Couldn't reach InciWeb \u2014 the federal wildfire incident feed didn't respond, so no incidents were loaded. Try again in a bit."); },
   });
 
   const loadPerimeters = useMutation({
     mutationFn: async () => callMacro<{ features: FirePerimeter[]; count: number; totalArea: number }>('nifc-fire-perimeters', { maxFeatures: 200 }),
-    onSuccess: (env) => { if (env.ok && env.result) setPerimeters(env.result.features); else setPerimeters([]); },
+    onSuccess: (env) => {
+      if (env.ok && env.result) { setPerimeters(env.result.features); setPerimError(null); setPerimPulledAt(new Date()); }
+      else { setPerimeters([]); setPerimError("Couldn't load fire perimeters \u2014 the NIFC perimeter service didn't respond. The incident list above comes from a separate feed and is unaffected."); }
+    },
+    onError: () => { setPerimeters([]); setPerimError("Couldn't load fire perimeters \u2014 the NIFC perimeter service didn't respond."); },
   });
 
   return (
@@ -112,6 +126,16 @@ export function FireIncidents() {
         })}
       </div>
 
+      {firesError && (
+        <p role="alert" className="rounded border border-rose-500/30 bg-rose-500/5 px-3 py-2 text-[11px] text-rose-300">{firesError}</p>
+      )}
+      {!firesError && firesLoaded && fires.length === 0 && (
+        <p className="text-[11px] text-zinc-400">InciWeb reports no active incidents{state ? ` in ${state}` : ''} right now.{firesPulledAt ? ` Pulled ${firesPulledAt.toLocaleTimeString()}.` : ''}</p>
+      )}
+      {!firesError && fires.length > 0 && firesPulledAt && (
+        <p className="text-[10px] text-zinc-500">Source: InciWeb · pulled {firesPulledAt.toLocaleTimeString()}</p>
+      )}
+
       <div className="border-t border-zinc-800 pt-3">
         <button
           type="button"
@@ -125,8 +149,11 @@ export function FireIncidents() {
 
         {showPerimeters && (
           <div className="mt-2 space-y-1">
-            {perimeters.length === 0 && !loadPerimeters.isPending && (
-              <p className="text-[11px] text-zinc-400">No mapped perimeters currently in the NIFC feed.</p>
+            {perimError && (
+              <p role="alert" className="rounded border border-rose-500/30 bg-rose-500/5 px-2.5 py-1.5 text-[11px] text-rose-300">{perimError}</p>
+            )}
+            {!perimError && perimeters.length === 0 && !loadPerimeters.isPending && perimPulledAt && (
+              <p className="text-[11px] text-zinc-400">NIFC maps no perimeters for active incidents right now. Pulled {perimPulledAt.toLocaleTimeString()}.</p>
             )}
             {perimeters.slice(0, 50).map((p) => (
               <div key={p.objectId ?? p.incidentName} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-950/40 px-2.5 py-1.5">
