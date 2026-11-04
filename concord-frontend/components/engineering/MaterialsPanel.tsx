@@ -1,7 +1,6 @@
 'use client';
 
 import { FlaskConical, Loader2, XCircle } from 'lucide-react';
-import { formatModulus } from '@/lib/format-modulus';
 import { useEngineeringFea } from './EngineeringFeaProvider';
 
 /** Backend material library — extracted from engineering page Materials tab. */
@@ -76,7 +75,7 @@ export function MaterialsPanel() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                   <div className="bg-black/20 rounded p-2 text-center">
                     <p className="text-gray-400">E</p>
-                    <p className="font-mono text-neon-cyan">{formatModulus(mat.E)}</p>
+                    <p className="font-mono text-neon-cyan">{(mat.E / 1000).toFixed(0)} GPa</p>
                   </div>
                   <div className="bg-black/20 rounded p-2 text-center">
                     <p className="text-gray-400">σ_yield</p>
