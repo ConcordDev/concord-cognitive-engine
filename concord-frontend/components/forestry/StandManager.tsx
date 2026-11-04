@@ -27,6 +27,7 @@ export function StandManager() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', species: 'mixed', acres: '', treesPerAcre: '' });
   const [actForm, setActForm] = useState({ kind: 'survey', notes: '' });
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -64,6 +65,7 @@ export function StandManager() {
   async function delStand(id: string) {
     await lensRun('forestry', 'stand-delete', { id });
     if (active === id) setActive(null);
+    setConfirmDelete(null);
     await refresh();
   }
   async function logActivity(standId: string) {
@@ -107,7 +109,7 @@ export function StandManager() {
         </div>
       )}
 
-      <div className="mb-3"><LensFeedButton domain="forestry" label="Live wildfire feed (InciWeb)" /></div>
+      <div className="mb-3"><LensFeedButton domain="forestry" label="Wildfire feed (InciWeb)" errorText="The wildfire feed is unavailable — InciWeb didn’t respond, so nothing was ingested. Try again later." /></div>
 
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 mb-3 flex flex-wrap gap-1.5">
         <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Stand name"
@@ -132,9 +134,17 @@ export function StandManager() {
               <button onClick={() => setActive(active === st.id ? null : st.id)} className="text-left min-w-0 flex-1">
                 <p className="text-xs font-semibold text-zinc-100 truncate">{st.name}</p>
                 <p className="text-[10px] text-zinc-400">{st.species.replace(/_/g, ' ')} · {st.acres} ac · ~{st.estimatedTrees.toLocaleString()} trees · {st.activityCount} activities</p>
+                <p className="text-[10px] text-zinc-500 font-mono">stand id {st.id}</p>
               </button>
-              <button aria-label="Delete" onClick={() => delStand(st.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => setConfirmDelete(confirmDelete === st.id ? null : st.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </div>
+            {confirmDelete === st.id && (
+              <div className="mt-2 flex flex-wrap items-center gap-2 rounded border border-rose-500/30 bg-rose-500/5 px-2 py-1.5">
+                <p className="text-[11px] text-rose-300">Delete {st.name}? Its logged activities go with it. This can’t be undone.</p>
+                <button onClick={() => delStand(st.id)} className="px-2 py-1 text-[11px] rounded bg-rose-600 hover:bg-rose-500 text-white font-semibold">Delete stand</button>
+                <button onClick={() => setConfirmDelete(null)} className="px-2 py-1 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300">Cancel</button>
+              </div>
+            )}
             {active === st.id && (
               <div className="mt-2 pt-2 border-t border-zinc-800">
                 {st.activities.map(a => (

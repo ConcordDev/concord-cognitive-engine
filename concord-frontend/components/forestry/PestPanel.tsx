@@ -122,7 +122,7 @@ export function PestPanel() {
           </select>
           <input value={affectedAcres} onChange={(e) => setAffectedAcres(e.target.value.replace(/[^\d.]/g, ''))}
             placeholder="acres" className="w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
-          <input value={standId} onChange={(e) => setStandId(e.target.value)} placeholder="stand id"
+          <input value={standId} onChange={(e) => setStandId(e.target.value)} placeholder="stand name or id"
             className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
         </div>
       </div>

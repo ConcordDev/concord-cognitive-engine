@@ -59,6 +59,7 @@ export function GbifPanel({ domain, className }: GbifPanelProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const [lastQuery, setLastQuery] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchData = useCallback(async (q: string) => {
@@ -66,6 +67,7 @@ export function GbifPanel({ domain, className }: GbifPanelProps) {
       setTaxon(null);
       setOccurrences([]);
       setTotal(0);
+      setLastQuery('');
       return;
     }
     setLoading(true);
@@ -79,6 +81,7 @@ export function GbifPanel({ domain, className }: GbifPanelProps) {
       setTotal(r.total || 0);
       setUpdatedAt(r.fetchedAt || Math.floor(Date.now() / 1000));
     } else setError(r?.reason || 'fetch_failed');
+    setLastQuery(q);
     setLoading(false);
   }, [domain]);
 
@@ -119,7 +122,7 @@ export function GbifPanel({ domain, className }: GbifPanelProps) {
       {error && (
         <div className="px-3 py-3 text-xs text-rose-300/80">
           <AlertTriangle className="inline w-3.5 h-3.5 mr-1" aria-hidden="true" />
-          GBIF unreachable ({error})
+          Couldn't reach GBIF — the species lookup didn't respond. Try again in a bit.
         </div>
       )}
 
@@ -170,6 +173,14 @@ export function GbifPanel({ domain, className }: GbifPanelProps) {
             ))}
           </ul>
         </>
+      )}
+
+      {!error && !loading && lastQuery && query.trim() === lastQuery && occurrences.length === 0 && (
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">
+          {taxon?.scientificName
+            ? <>GBIF matched <span className="italic">{taxon.scientificName}</span> but holds no occurrence records for it.</>
+            : <>No GBIF match for &ldquo;{lastQuery}&rdquo;. GBIF indexes scientific names — try the Latin name (e.g. Quercus robur for pedunculate oak).</>}
+        </div>
       )}
 
       <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">

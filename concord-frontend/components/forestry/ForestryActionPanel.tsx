@@ -6,7 +6,7 @@
  * mint/DM/publish/agent.
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Trees, Ruler, Flame, Axe, Leaf, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -34,7 +34,7 @@ interface CarbonResult { tonsPerYear?: number; lifetimeTons?: number; equivalent
 
 export function ForestryActionPanel() {
   const [standName, setStandName] = useState('');
-  const [species, setSpecies] = useState('');
+  const [species, setSpecies] = useState('douglas-fir');
   const [acres, setAcres] = useState('');
   const [age, setAge] = useState('');
   const [trees, setTrees] = useState('');
@@ -42,6 +42,17 @@ export function ForestryActionPanel() {
   const [humidity, setHumidity] = useState('');
   const [windMph, setWindMph] = useState('');
   const [recipient, setRecipient] = useState('');
+
+  // F6: validation reads state first and falls back to the live DOM value,
+  // so a paste (or autofill) that fills an input without a React change
+  // event still counts as filled.
+  const speciesRef = useRef<HTMLSelectElement>(null);
+  const acresRef = useRef<HTMLInputElement>(null);
+  const ageRef = useRef<HTMLInputElement>(null);
+  const treesRef = useRef<HTMLInputElement>(null);
+  const tempFRef = useRef<HTMLInputElement>(null);
+  const humidityRef = useRef<HTMLInputElement>(null);
+  const windMphRef = useRef<HTMLInputElement>(null);
 
   const [busy, setBusy] = useState<ActionId | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -61,16 +72,17 @@ export function ForestryActionPanel() {
   const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
 
   async function actVolume() {
-    const a = parseFloat(acres), ag = parseFloat(age), t = parseInt(trees, 10);
-    if (!species.trim() || ![a, ag, t].every(Number.isFinite)) { err('Species + acres + age + tree count required.'); return; }
+    const speciesV = species || speciesRef.current?.value || '';
+    const a = parseFloat(acres || acresRef.current?.value || ''), ag = parseFloat(age || ageRef.current?.value || ''), t = parseInt(trees || treesRef.current?.value || '', 10);
+    if (!speciesV.trim() || ![a, ag, t].every(Number.isFinite)) { err('Species + acres + age + tree count required.'); return; }
     setBusy('volume'); setFeedback(null);
     try {
-      const r = await callMacro<VolumeResult>('timberVolume', { species, acres: a, avgAgeYears: ag, treeCount: t });
+      const r = await callMacro<VolumeResult>('timberVolume', { species: speciesV, acres: a, avgAgeYears: ag, treeCount: t });
       if (r.ok && r.result) { setVolumeResult(r.result); pipe.publish('forestry.volume', r.result, { label: `${r.result.boardFeet?.toLocaleString()} bf` }); ok(`${r.result.boardFeet?.toLocaleString()} board ft.`); } else err(r.error ?? 'volume failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actRisk() {
-    const t = parseFloat(tempF), h = parseFloat(humidity), w = parseFloat(windMph);
+    const t = parseFloat(tempF || tempFRef.current?.value || ''), h = parseFloat(humidity || humidityRef.current?.value || ''), w = parseFloat(windMph || windMphRef.current?.value || '');
     if (![t, h, w].every(Number.isFinite)) { err('Temp °F + humidity % + wind mph required.'); return; }
     setBusy('risk'); setFeedback(null);
     try {
@@ -79,20 +91,22 @@ export function ForestryActionPanel() {
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actHarvest() {
-    const a = parseFloat(acres), ag = parseFloat(age);
-    if (!species.trim() || ![a, ag].every(Number.isFinite)) { err('Species + acres + age required.'); return; }
+    const speciesV = species || speciesRef.current?.value || '';
+    const a = parseFloat(acres || acresRef.current?.value || ''), ag = parseFloat(age || ageRef.current?.value || '');
+    if (!speciesV.trim() || ![a, ag].every(Number.isFinite)) { err('Species + acres + age required.'); return; }
     setBusy('harvest'); setFeedback(null);
     try {
-      const r = await callMacro<HarvestResult>('harvestPlan', { species, acres: a, currentAge: ag });
+      const r = await callMacro<HarvestResult>('harvestPlan', { species: speciesV, acres: a, currentAge: ag });
       if (r.ok && r.result) { setHarvestResult(r.result); pipe.publish('forestry.harvest', r.result, { label: `Harvest ${r.result.schedule?.length ?? 0}yr` }); ok(`${r.result.schedule?.length ?? 0}-year plan.`); } else err(r.error ?? 'harvest failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actCarbon() {
-    const a = parseFloat(acres), ag = parseFloat(age);
-    if (!species.trim() || ![a, ag].every(Number.isFinite)) { err('Species + acres + age required.'); return; }
+    const speciesV = species || speciesRef.current?.value || '';
+    const a = parseFloat(acres || acresRef.current?.value || ''), ag = parseFloat(age || ageRef.current?.value || '');
+    if (!speciesV.trim() || ![a, ag].every(Number.isFinite)) { err('Species + acres + age required.'); return; }
     setBusy('carbon'); setFeedback(null);
     try {
-      const r = await callMacro<CarbonResult>('carbonSequestration', { species, acres: a, ageYears: ag });
+      const r = await callMacro<CarbonResult>('carbonSequestration', { species: speciesV, acres: a, ageYears: ag });
       if (r.ok && r.result) { setCarbonResult(r.result); pipe.publish('forestry.carbon', r.result, { label: `Carbon ${r.result.tonsPerYear}t/yr` }); ok(`${r.result.tonsPerYear} t/yr CO₂.`); } else err(r.error ?? 'carbon failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -163,20 +177,20 @@ export function ForestryActionPanel() {
       <header className="flex items-center gap-2 border-b border-green-500/10 pb-2">
         <Trees className="h-4 w-4 text-green-400" />
         <h3 className="text-sm font-semibold text-white">Forestry workbench</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">USDA · inciweb</span>
+        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">deterministic compute</span>
       </header>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <input type="text" value={standName} onChange={(e) => setStandName(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Stand name" />
-        <select value={species} onChange={(e) => setSpecies(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
+        <select ref={speciesRef} value={species} onChange={(e) => setSpecies(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
           {['douglas-fir', 'ponderosa-pine', 'redwood', 'oak', 'maple', 'hemlock', 'cedar', 'aspen'].map(s => <option key={s} value={s}>{s}</option>)}
         </select>
-        <input type="text" value={acres} onChange={(e) => setAcres(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Acres" />
-        <input type="text" value={age} onChange={(e) => setAge(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Avg age yrs" />
-        <input type="text" value={trees} onChange={(e) => setTrees(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Tree count" />
-        <input type="text" value={tempF} onChange={(e) => setTempF(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Temp °F" />
-        <input type="text" value={humidity} onChange={(e) => setHumidity(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Humidity %" />
-        <input type="text" value={windMph} onChange={(e) => setWindMph(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Wind mph" />
+        <input ref={acresRef} type="text" value={acres} onChange={(e) => setAcres(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Acres" />
+        <input ref={ageRef} type="text" value={age} onChange={(e) => setAge(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Avg age yrs" />
+        <input ref={treesRef} type="text" value={trees} onChange={(e) => setTrees(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Tree count" />
+        <input ref={tempFRef} type="text" value={tempF} onChange={(e) => setTempF(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Temp °F" />
+        <input ref={humidityRef} type="text" value={humidity} onChange={(e) => setHumidity(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Humidity %" />
+        <input ref={windMphRef} type="text" value={windMph} onChange={(e) => setWindMph(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Wind mph" />
         <div className="md:col-span-2 flex items-center gap-2 flex-wrap">
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
           <RecallSlot ctl={dmRecall} />
