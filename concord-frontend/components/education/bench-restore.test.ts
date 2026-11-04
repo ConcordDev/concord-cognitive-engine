@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { restoreBench } from "./bench-restore.ts";
+import { restoreBench } from "./bench-restore";
 
 describe("bench restore", () => {
   it("keeps a real grade, progress, and mint id", () => {
