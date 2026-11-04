@@ -58,6 +58,16 @@ const TIER_INFO: Record<DataTier, DepthBadgeInfo> = {
  * chip names the two surfaces that actually are simulations.
  */
 const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'caption'>> = {
+  /**
+   * Plumbing's field-service records are the account's own shop data,
+   * persisted server-side — the Simulated declaration was false on its own
+   * terms (Review 4's determination: real execution). REAL_LIVE's generic
+   * "polled from an external source" caption would be its own falsehood.
+   */
+  plumbing: {
+    label: 'Live',
+    caption: 'Your own live shop records: technicians, jobs, invoices, parts and inspections are your account\'s real data, saved as you work.',
+  },
   game: {
     label: 'Lab & arcade sim',
     caption: 'Simulated: Design Lab forecasts and mini-game practice XP. Profile XP, quests, and achievements are your real activity.',
