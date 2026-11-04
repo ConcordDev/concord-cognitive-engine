@@ -7,8 +7,9 @@ import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import {
   FolderPlus, Eye, Heart, MessageSquare, Trash2, X, Plus, Loader2, ImageIcon, ListOrdered, Upload,
-  Pencil,
+  Pencil, PenTool,
 } from 'lucide-react';
+import { StudyCanvas } from './StudyCanvas';
 
 interface ProjImage { url: string; caption: string; order: number }
 interface ProcStep { title: string; detail: string }
@@ -86,6 +87,7 @@ export function ProjectStudio() {
   const fFileRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [showCanvas, setShowCanvas] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -185,6 +187,14 @@ export function ProjectStudio() {
     } finally {
       setUploadingImage(false);
     }
+  }, []);
+
+  // Appends a freshly drawn-and-uploaded artistry-img: reference to the
+  // SAME url|caption textarea the file-upload and paste-an-external-URL
+  // flows share, exactly like onImageFileSelected does for a picked file.
+  const onDrawingSaved = useCallback((ref: string, fileName: string) => {
+    setFImages((prev) => `${prev}${prev.trim() ? '\n' : ''}${ref}|${fileName}`);
+    setShowCanvas(false);
   }, []);
 
   const remove = useCallback(async (id: string) => {
@@ -298,6 +308,9 @@ export function ProjectStudio() {
                   <button type="button" onClick={() => fFileRef.current?.click()} disabled={uploadingImage} className="px-2.5 py-1 text-[11px] bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 disabled:opacity-50 flex items-center gap-1">
                     {uploadingImage ? <><Loader2 className="w-3 h-3 animate-spin" />Uploading…</> : <><Upload className="w-3 h-3" />Upload image</>}
                   </button>
+                  <button type="button" data-artistry-draw onClick={() => setShowCanvas(true)} className="px-2.5 py-1 text-[11px] bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 flex items-center gap-1">
+                    <PenTool className="w-3 h-3" />Draw
+                  </button>
                   <span className="text-[10px] text-gray-500">Adds an artistry-img: reference line above — external URLs still work too.</span>
                 </div>
                 {uploadError && <p className="text-[11px] text-red-400">{uploadError}</p>}
@@ -404,6 +417,8 @@ export function ProjectStudio() {
           </div>
         </div>
       )}
+
+      {showCanvas && <StudyCanvas onSaved={onDrawingSaved} onClose={() => setShowCanvas(false)} />}
     </div>
   );
 }
