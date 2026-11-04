@@ -114,7 +114,7 @@ export function FoodActionPanel() {
       const itemName = recipeName.trim() || 'Menu item';
       const r = await callMacro<CostResult>('costPlate', { menuItems: [{ name: itemName, ingredients: ing, menuPrice: price }], itemName });
       const item = r.result?.items?.[0];
-      if (r.ok && item) { setCostResult(r.result); pipe.publish('food.cost', r.result, { label: `${item.foodCostPct}% food cost` }); ok(`${item.name}: ${item.foodCostPct}% food cost ($${item.ingredientCost.toFixed(2)} of $${item.menuPrice.toFixed(2)}).`); }
+      if (r.ok && item && r.result) { setCostResult(r.result); pipe.publish('food.cost', r.result, { label: `${item.foodCostPct}% food cost` }); ok(`${item.name}: ${item.foodCostPct}% food cost ($${item.ingredientCost.toFixed(2)} of $${item.menuPrice.toFixed(2)}).`); }
       else err(r.error ?? 'cost failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
