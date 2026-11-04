@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { classroomRecordRefusal, classroomSaveMessage } from "./classroom-record.ts";
+import { classroomRecordRefusal, classroomSaveMessage } from "./classroom-record";
 
 describe("classroom record save", () => {
   it("names Title when the title is blank", () => {
