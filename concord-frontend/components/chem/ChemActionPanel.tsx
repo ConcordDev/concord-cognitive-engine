@@ -48,6 +48,7 @@ export function ChemActionPanel() {
   const [dilM2, setDilM2] = useState('');
   const [dilV2, setDilV2] = useState('');
   const [recipient, setRecipient] = useState('');
+  const [dmMessage, setDmMessage] = useState('');
   const [analyzeFormula, setAnalyzeFormula] = useState('');
   const [balanceEquation, setBalanceEquation] = useState('H2 + O2 -> H2O');
   const [solConcentration, setSolConcentration] = useState('');
@@ -148,13 +149,17 @@ export function ChemActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Chem — ${formula || 'lab'}`, tags: ['chem', 'lab', phResult?.classification].filter((t): t is string => !!t), source: 'chem:lab:mint', meta: { visibility: 'private', consent: { allowCitations: false }, chem: { formula, mw: mwResult, molarity: molarityResult, ph: phResult, dilution: dilutionResult, analysis: analyzeResult, reaction: balanceResult, solution: solutionResult } } }, 'formula', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); pipe.publish('chem.mintedDtuId', id, { label: `Lab DTU ${id.slice(0, 8)}…` }); ok(`Lab DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('chem.mintedDtuId', id, { label: `Lab DTU ${id.slice(0, 8)}…` }); ok(`Lab DTU ${id}`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`🧪 Chem bench`, '',
+      // The sender's own words ride first when they wrote any — the bench
+      // had no message field at all, so a DM could carry results but never
+      // the note (or the marker string) the sender meant to send.
+      dmMessage.trim() ? dmMessage.trim() : '',
       mwResult ? `${mwResult.formula}: ${mwResult.molecularWeight} g/mol` : '',
       molarityResult ? `M = ${molarityResult.molarity} mol/L` : '',
       phResult ? `pH = ${phResult.pH} (${phResult.classification})` : '',
@@ -168,23 +173,35 @@ export function ChemActionPanel() {
         if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
         return r.data?.message?.id as string;
       });
-      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); setDmMessage(''); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!mwResult) { err('Run MW first.'); return; }
     setBusy('publish'); setFeedback(null);
+    let createdId: string | null = null;
     try {
       const id = await publishRecall.run(async () => {
         const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Compound profile — ${formula}`, tags: ['chem', 'compound', 'public'], source: 'chem:compound:publish', meta: { visibility: 'public', consent: { allowCitations: true }, formula, mw: mwResult } }, 'formula', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
+        createdId = newId as string;
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
         return newId as string;
       });
-      if (id) { setPublishedDtuId(id); pipe.publish('chem.publishedDtuId', id, { label: `Public compound ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
-    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+      if (id) { setPublishedDtuId(id); pipe.publish('chem.publishedDtuId', id, { label: `Public compound ${id.slice(0, 8)}…` }); ok(`Published ${id} · 30s to recall.`); }
+    } catch (e) {
+      const m = pickMessage(e);
+      // A council refusal used to land as the bare words "Council rejected
+      // DTU" — a wall with no reason and no state. The lens cannot publish
+      // the council's criteria (they are not disclosed to it), but it CAN
+      // say what did and did not happen: the DTU was created and stays in
+      // the user's private library; only the public listing was refused.
+      err(createdId && /council/i.test(m)
+        ? `${m} — your compound DTU ${createdId} was created and stays private; only the public listing was refused.`
+        : m);
+    } finally { setBusy(null); }
   }
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
@@ -201,9 +218,9 @@ export function ChemActionPanel() {
     { id: 'molarity' as ActionId, label: 'Molarity', desc: 'calc-molarity M=mol/L', icon: Beaker, accent: '#3b82f6', handler: actMolarity },
     { id: 'ph' as ActionId, label: 'pH', desc: 'calc-ph from conc.', icon: FlaskConical, accent: '#f59e0b', handler: actPh },
     { id: 'dilution' as ActionId, label: 'Dilution', desc: 'M1V1=M2V2', icon: Droplets, accent: '#06b6d4', handler: actDilution },
-    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private lab DTU', icon: Sparkles, accent: '#8b5cf6', handler: actMint },
+    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId || 'Private lab DTU', icon: Sparkles, accent: '#8b5cf6', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send bench results', icon: Send, accent: '#ec4899', handler: actDm },
-    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public compound', icon: Globe, accent: '#15803d', handler: actPublish },
+    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId || 'Public compound', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Brief', desc: 'Agent: use + safety', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];
 
@@ -270,6 +287,7 @@ export function ChemActionPanel() {
             <option value="oh_minus">[OH-]</option>
           </select>
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+          <input type="text" value={dmMessage} onChange={(e) => setDmMessage(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="Message (optional — sent with the bench results)" aria-label="DM message" />
           <div className="flex items-center gap-2 flex-wrap">
             <RecallSlot ctl={dmRecall} />
             <RecallSlot ctl={publishRecall} />
@@ -289,8 +307,13 @@ export function ChemActionPanel() {
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
         {actions.map(a => {
           const Icon = a.icon; const isBusy = busy === a.id;
+          // The Brief Agent's run takes ~a minute; it used to disable all
+          // eight bench actions behind its spinner (the F10 lockout). Its
+          // wait no longer locks the calculators — only the agent's own
+          // button stays disabled, and other actions still lock each other.
+          const locked = busy === a.id || (!!busy && busy !== 'agent');
           return (
-            <button key={a.id} type="button" disabled={!!busy} onClick={a.handler}
+            <button key={a.id} type="button" disabled={locked} onClick={a.handler}
               className={cn('flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-zinc-900/40 border-zinc-800 hover:bg-zinc-800/60 hover:border-zinc-700', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
               <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: a.accent + '20', color: a.accent }}>
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
