@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { catalogMatchesQuery } from "./catalog-search.ts";
+import { catalogMatchesQuery } from "./catalog-search";
 
 const course = {
   title: "Linear Algebra",

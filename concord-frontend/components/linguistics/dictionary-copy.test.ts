@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { dictionaryFailureCopy } from "./dictionary-copy.ts";
+import { dictionaryFailureCopy } from "./dictionary-copy";
 
 describe("dictionary failure copy", () => {
   it("does not show the debug token", () => {
