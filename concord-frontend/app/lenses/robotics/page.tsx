@@ -123,6 +123,7 @@ export default function RoboticsLensPage() {
           <FleetManager
             selectedId={selected?.id || null}
             onSelect={(r) => { setSelected(r); loadRobots(); }}
+            onFleetChange={() => { void loadRobots(); }}
           />
         )}
 

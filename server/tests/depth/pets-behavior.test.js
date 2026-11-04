@@ -24,20 +24,20 @@ const DAY = 86400000;
 const dayStr = (msAgo = 0) => new Date(Date.now() - msAgo).toISOString().slice(0, 10);
 
 describe("pets — calc contracts (exact computed values)", () => {
-  it("vaccinationSchedule: an adult dog with no history is fully overdue", async () => {
+  it("vaccinationSchedule: an adult dog with no history is not marked overdue", async () => {
     const r = await lensRun("pets", "vaccinationSchedule", {
       data: { species: "dog", age: 5, vaccinations: [] },
     });
     assert.equal(r.ok, true);
     assert.equal(r.result.species, "dog");
     assert.equal(r.result.ageYears, 5);
-    assert.equal(r.result.summary.total, 6);          // 6 dog vaccines in the schedule
-    assert.equal(r.result.summary.overdue, 6);        // age 5 >= every startAge
+    assert.equal(r.result.summary.total, 6);
+    assert.equal(r.result.summary.overdue, 0);
+    assert.equal(r.result.summary.notOnRecord, 6);
     assert.equal(r.result.summary.current, 0);
-    assert.equal(r.result.summary.complianceRate, 0); // 0 current / 6 eligible
-    assert.ok(r.result.urgentAction.includes("overdue"));
-    // every entry is overdue with daysUntilDue 0 (no last-given)
-    assert.ok(r.result.vaccinations.every((v) => v.status === "overdue" && v.daysUntilDue === 0));
+    assert.equal(r.result.summary.complianceRate, null);
+    assert.ok(!r.result.urgentAction.includes("overdue"));
+    assert.ok(r.result.vaccinations.every((v) => v.status === "not-on-record" && v.nextDue == null));
   });
 
   it("vaccinationSchedule: a recent rabies shot reads as current with a future nextDue", async () => {
@@ -53,8 +53,9 @@ describe("pets — calc contracts (exact computed values)", () => {
     assert.equal(rabies.status, "current");
     assert.ok(rabies.daysUntilDue > 300, "rabies still has ~a year of validity");
     assert.equal(r.result.summary.current, 1);
-    // the other 5 (no history, age 3 >= startAge) are overdue
-    assert.equal(r.result.summary.overdue, 5);
+    // the other 5 are not on the record, so they are not called overdue
+    assert.equal(r.result.summary.overdue, 0);
+    assert.equal(r.result.summary.notOnRecord, 5);
   });
 
   it("vaccinationSchedule: unknown species falls back to the dog schedule", async () => {

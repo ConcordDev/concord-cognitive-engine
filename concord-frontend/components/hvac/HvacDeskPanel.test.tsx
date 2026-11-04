@@ -38,6 +38,9 @@ vi.mock('@/lib/hooks/use-lens-data', () => ({
 vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
   useRunArtifact: () => ({ mutateAsync: runMutateAsync, isPending: false }),
 }));
+vi.mock('@/lib/api/client', () => ({
+  lensRun: vi.fn(() => Promise.resolve({ data: { ok: true, result: { entries: [], count: 0, total: 0, items: [], priceNote: '' } } })),
+}));
 vi.mock('framer-motion', () => ({
   motion: new Proxy({}, { get: () => (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode) }),
 }));
@@ -116,11 +119,42 @@ describe('HvacDeskPanel', () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it('delete calls remove() for the target row', () => {
+  it('delete is a two-step confirm (F4): the first click arms, the second removes', () => {
     lensDataState.items = [JOB];
     render(<HvacDeskPanel mode="jobs" />);
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(remove).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete' }));
     expect(remove).toHaveBeenCalledWith('art_1');
+  });
+
+  it('S1: typing spaces inside the editor never closes it or loses the draft', () => {
+    // The filed defect: the editor's backdrop/panel carried keydown-to-click
+    // activation, so a Space typed in any field bubbled up, synthetically
+    // clicked the backdrop, and closed the dialog mid-fill (five live
+    // reproductions; multi-word fills died, single-token fills survived).
+    const { container } = render(<HvacDeskPanel mode="jobs" />);
+    fireEvent.click(screen.getByRole('button', { name: /^New$/i }));
+    const name = fieldByLabel(container, 'Name');
+    const desc = fieldByLabel(container, 'Description');
+    fireEvent.change(name, { target: { value: 'Furnace tune up' } });
+    fireEvent.keyDown(name, { key: ' ' });
+    fireEvent.change(desc, { target: { value: 'Replace the blower motor and test' } });
+    fireEvent.keyDown(desc, { key: ' ' });
+    fireEvent.keyDown(desc, { key: 'Enter' });
+    // The editor is still open and both drafts are intact.
+    expect(screen.getByRole('button', { name: /^Save$/i })).toBeInTheDocument();
+    expect(name).toHaveValue('Furnace tune up');
+    expect(desc).toHaveValue('Replace the blower motor and test');
+  });
+
+  it('S2: a client record offers client statuses — a client is not "Scheduled"', () => {
+    const { container } = render(<HvacDeskPanel mode="clients" />);
+    fireEvent.click(screen.getByRole('button', { name: /^New$/i }));
+    const status = fieldByLabel(container, 'Status') as HTMLSelectElement;
+    const labels = Array.from(status.options).map((o) => o.textContent);
+    expect(labels).toEqual(expect.arrayContaining(['Lead', 'Active', 'Inactive']));
+    expect(labels).not.toContain('Scheduled');
   });
 
   it('has no dead "Activate" button and labels the stats as record counts', () => {
