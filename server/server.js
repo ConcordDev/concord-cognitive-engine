@@ -93122,7 +93122,7 @@ register("forecast", "accuracy", async (_ctx, input = {}) => {
     const lib = await import("./lib/world-forecast.js");
     return await lib.forecastAccuracy(db, worldId, limit);
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
-}, { note: "Forecast accuracy — kind hit-rate + mean temp error vs. realized." });
+}, { note: "Forecast consistency — kind agreement + mean temp drift vs. the forecast composed nearest each target window (model-vs-model; derives on read from the archive)." });
 
 // Historical archive — persisted forecasts with extracted trend points.
 register("forecast", "archive", async (_ctx, input = {}) => {
