@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { lessonCompleteNotice, playerEmptyCopy } from "./lesson-complete.ts";
+import { lessonCompleteNotice, playerEmptyCopy } from "./lesson-complete";
 
 describe("lesson complete copy", () => {
   it("names the points the server awarded", () => {
