@@ -29,6 +29,8 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { lensRun } from '@/lib/api/client';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -56,7 +58,51 @@ const VIEWS: { id: EngView; label: string; keys: string; icon: typeof Box }[] = 
 ];
 
 function EngineeringDesk() {
-  const { active, setActive, runFEA, running, status, summary } = useEngineeringFea();
+  const { active, setActive, runFEA, running, status, summary, model, feaResult } = useEngineeringFea();
+
+  // The lens's working export: the header Export menu is chrome whose
+  // exporter is an empty stub, so the desk carries its own ↓.dtu whose
+  // file is built from the member's actual records at click time.
+  const prepareExport = async () => {
+    const run = async <T,>(name: string, input: Record<string, unknown> = {}) => {
+      const r = await lensRun<T>('engineering', name, input);
+      return r.data?.ok && r.data.result && typeof r.data.result === 'object' ? r.data.result : null;
+    };
+    const [history, parts, cases] = await Promise.all([
+      run<{ jobs?: unknown[] }>('listSimJobs'),
+      run<{ parts?: unknown[] }>('listParts'),
+      run<{ loadCases?: unknown[] }>('listLoadCases'),
+    ]);
+    const lines = [
+      '# Engineering export',
+      '',
+      '## Working model',
+      `Nodes: ${model.nodes.length} · Members: ${model.members.length} · Loads: ${model.loads.length} · Supports: ${model.supports.length}`,
+      '',
+      '```json',
+      JSON.stringify(model, null, 2),
+      '```',
+      '',
+      '## Latest FEA result (this session / restored)',
+      feaResult ? ['```json', JSON.stringify(feaResult, null, 2), '```'].join('\n') : 'No FEA result yet.',
+      '',
+      `## Simulation history (${history?.jobs?.length ?? 0})`,
+      history?.jobs?.length ? ['```json', JSON.stringify(history.jobs, null, 2), '```'].join('\n') : 'No runs recorded.',
+      '',
+      `## Saved parts (${parts?.parts?.length ?? 0})`,
+      parts?.parts?.length ? ['```json', JSON.stringify(parts.parts, null, 2), '```'].join('\n') : 'No saved parts.',
+      '',
+      `## Load cases (${cases?.loadCases?.length ?? 0})`,
+      cases?.loadCases?.length
+        ? ['```json', JSON.stringify(cases.loadCases, null, 2), '```'].join('\n')
+        : 'No saved load cases.',
+    ];
+    return {
+      title: 'Engineering — model, results and records',
+      content: lines.join('\n'),
+      tags: ['engineering', 'export', 'fea'],
+    };
+  };
 
   useLensCommand(
     VIEWS.map((v) => ({
@@ -129,6 +175,10 @@ function EngineeringDesk() {
             </div>
           </div>
         )}
+
+        <div className="flex justify-end">
+          <DTUExportButton domain="engineering" data={{}} prepare={prepareExport} />
+        </div>
 
         <EngineeringPane active={active} />
       </div>
