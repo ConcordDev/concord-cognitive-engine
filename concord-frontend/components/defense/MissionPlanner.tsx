@@ -9,7 +9,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
 import { lensRun } from '@/lib/api/client';
-import { Plus, Trash2, Loader2, ListChecks, AlertTriangle, Activity } from 'lucide-react';
+import { Plus, Loader2, ListChecks, AlertTriangle, Activity } from 'lucide-react';
+import { ConfirmDeleteButton } from './ConfirmDeleteButton';
 
 interface MissionTask {
   id: string;
@@ -54,6 +55,7 @@ export function MissionPlanner() {
   const [plan, setPlan] = useState<MissionPlanResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [name, setName] = useState('');
@@ -111,11 +113,17 @@ export function MissionPlanner() {
     setBusy(false);
   }, [refresh]);
 
-  const removeTask = useCallback(async (id: string) => {
+  const removeTask = useCallback(async (task: MissionTask) => {
     setBusy(true);
-    const r = await lensRun('defense', 'mission-task-delete', { id });
-    if (r.data?.ok) await refresh();
-    else setError(r.data?.error || 'Failed to delete task');
+    setNotice(null);
+    setError(null);
+    const r = await lensRun('defense', 'mission-task-delete', { id: task.id });
+    if (r.data?.ok) {
+      setNotice(`Deleted task — ${task.name}`);
+      await refresh();
+    } else {
+      setError(r.data?.error || 'Failed to delete task');
+    }
     setBusy(false);
   }, [refresh]);
 
@@ -163,6 +171,12 @@ export function MissionPlanner() {
       {error && (
         <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-400">
           {error}
+        </div>
+      )}
+
+      {notice && (
+        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-400">
+          {notice}
         </div>
       )}
 
@@ -227,14 +241,12 @@ export function MissionPlanner() {
                     <span className="text-[10px] text-amber-400 shrink-0">★ critical</span>
                   )}
                 </div>
-                <button
-                  onClick={() => removeTask(t.id)}
+                <ConfirmDeleteButton
+                  ariaLabel="Delete task"
+                  itemLabel={`task "${t.name}"`}
                   disabled={busy}
-                  aria-label="Delete task"
-                  className="p-1 text-zinc-400 hover:text-red-400 disabled:opacity-50"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                  onConfirm={() => removeTask(t)}
+                />
               </div>
             ))}
             {tasks.length === 0 && (
