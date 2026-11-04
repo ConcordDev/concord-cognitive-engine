@@ -71,6 +71,19 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Workspace',
     caption: 'Your workspace store: connections and datasets live in Concord’s workspace, not on a remote database server.',
   },
+  /**
+   * Construction's substrate is the user's own project record — jobs,
+   * RFIs, submittals, logs and budgets persist server-side per account
+   * (PROBE-LIVE in Review 5's full first pass) and the bench tools
+   * compute over the user's own inputs. The generic REAL_LIVE line
+   * ("polled live from an external source") is false for this lens;
+   * its one external surface (federal datasets) links out and claims
+   * no feed (F1/F4).
+   */
+  construction: {
+    label: 'Live',
+    caption: 'Your project records: jobs, RFIs, submittals, logs and budgets are your real workspace data, and the bench tools compute over your inputs. Federal datasets open on catalog.data.gov — no external feed is polled.',
+  },
 };
 
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {
