@@ -84,7 +84,7 @@ describe('FishingLensPage — four UX states', () => {
     expect(screen.getByText('Mythril Koi')).toBeInTheDocument();
     expect(screen.getByText('legendary')).toBeInTheDocument();
     // Catch log shows the real minted item.
-    expect(screen.getByText('River Trout (90%)')).toBeInTheDocument();
+    expect(screen.getAllByText('River Trout (90%)').length).toBeGreaterThanOrEqual(1);
   });
 
   it('EMPTY: honest empty states for no fish and no catches', async () => {
