@@ -71,6 +71,17 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Workspace',
     caption: 'Your workspace store: connections and datasets live in Concord’s workspace, not on a remote database server.',
   },
+  /**
+   * Masonry's calculators execute for real against published spec tables
+   * and the contractor suite's records persist server-side — the generic
+   * REAL_LIVE line ("polled live from an external source") would claim a
+   * feed this lens does not poll (F1 flip, Review 4 determination
+   * 2026-11-01: real execution under a Simulated banner).
+   */
+  masonry: {
+    label: 'Live',
+    caption: 'Real execution: the calculators run against published masonry spec tables and your suite records are saved in your own workspace. No external feed is polled.',
+  },
 };
 
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {
