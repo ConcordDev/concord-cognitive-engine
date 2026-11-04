@@ -28,19 +28,17 @@ interface ArxivPaper {
   pdfUrl: string;
 }
 
-async function runMacro<T>(domain: string, name: string, input: Record<string, unknown> = {}): Promise<T | null> {
+async function runMacro<T>(domain: string, name: string, input: Record<string, unknown> = {}): Promise<{ data: T | null; error: string | null }> {
   try {
-    // lensRun returns { data: { ok, result } } — the papers live in
-    // data.result. This helper used to hand callers the wrapper itself, so
-    // `papers` was read off an object that never carries it and every
-    // mounting lens's arXiv footer stood empty under its REAL tag while
-    // Refresh visibly fetched. Unwrap to the macro's own payload.
     const r = await lensRun({ domain, name, input });
-    const d = r?.data;
-    if (!d) return null;
-    return { ok: d.ok && (d.result as { ok?: boolean } | null)?.ok !== false, ...(d.result || {}), reason: d.ok ? undefined : (d.error || 'fetch_failed') } as T;
+    // lensRun unwraps the { ok, result } envelope: the handler's own
+    // return value rides at data.result, and a handler refusal's
+    // reason at data.error. Reading the handler's fields (papers,
+    // category) off data itself renders every successful fetch as
+    // empty — the dead-panel shape this fixes.
+    return { data: (r?.data?.result ?? null) as T | null, error: r?.data?.error ?? null };
   } catch {
-    return null;
+    return { data: null, error: null };
   }
 }
 
@@ -66,14 +64,14 @@ export function ArxivPanel({ domain, title, limit = 15, className }: ArxivPanelP
   const fetchData = useCallback(async (q?: string) => {
     setLoading(true);
     setError(null);
-    const r = await runMacro<{ ok: boolean; papers?: ArxivPaper[]; category?: string; fetchedAt?: number; reason?: string }>(
+    const { data: r, error: runError } = await runMacro<{ ok: boolean; papers?: ArxivPaper[]; category?: string; fetchedAt?: number; reason?: string }>(
       domain, 'live_arxiv', { limit, ...(q ? { query: q } : {}) },
     );
     if (r?.ok) {
       setPapers(r.papers || []);
       setCategory(r.category || '');
       setUpdatedAt(r.fetchedAt || Math.floor(Date.now() / 1000));
-    } else setError(r?.reason || 'fetch_failed');
+    } else setError(r?.reason || runError || 'fetch_failed');
     setLoading(false);
   }, [domain, limit]);
 

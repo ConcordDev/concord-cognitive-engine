@@ -155,7 +155,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // UTILITY / ADMIN LENSES — minimal contracts so they mount <LensShell>
   // with a known lensId (no firstRunGuide/emptyState by design).
   // ═══════════════════════════════════════════════════════════════
-  { domain: 'careers', label: 'Careers', artifacts: ['contract', 'shift'], macros: { list: 'careers.tracks', get: 'careers.contracts', create: 'careers.work', run: 'careers.offer' }, exports: ['json'], actions: ['browse', 'work', 'offer', 'accept'], category: 'lifestyle' },
+  { domain: 'careers', label: 'Careers', artifacts: ['contract', 'shift'], macros: { list: 'careers.tracks', get: 'careers.contracts', create: 'careers.work', run: 'careers.offer' }, exports: ['json'], actions: ['browse', 'work', 'offer', 'accept'], category: 'lifestyle', dataTier: 'SIM_GRADE_A' },
   { domain: 'ledger', label: 'Concordia world ledger (game world)', artifacts: ['anomaly', 'lien'], macros: { list: 'ledger.anomalies', get: 'ledger.faction_economy', run: 'ledger.flow_summary' }, exports: ['json', 'csv'], actions: ['view', 'audit', 'export'], category: 'government' },
   // The Codex is a READER over the real `lore` domain (server/domains/lore.js —
   // register("lore", "list"|"get"|"facets"|"spine")). There is NO `codex` domain;

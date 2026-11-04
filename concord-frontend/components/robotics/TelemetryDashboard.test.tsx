@@ -82,7 +82,7 @@ describe('TelemetryDashboard — no sensor log (all null)', () => {
     render(<TelemetryDashboard robot={robot} />);
 
     expect(
-      await screen.findByText('Not available — no sensor samples logged yet (log some in the Sensors tab).'),
+      await screen.findByText('Not available — no sensor samples logged yet (log some in the Sensor Logs tab).'),
     ).toBeInTheDocument();
     // Battery, core temp, CPU load, proximity.
     expect(screen.getAllByText('Not available')).toHaveLength(4);
