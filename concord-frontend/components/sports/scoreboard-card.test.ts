@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { isFinalScore, isLiveScore, scoreboardDateLabel, scoreboardStatusLabel } from './scoreboard-card.ts';
+import { isFinalScore, isLiveScore, scoreboardDateLabel, scoreboardStatusLabel } from './scoreboard-card';
 
 describe('scoreboard card labels', () => {
   it('reads a finished game as Final when the description is missing', () => {
