@@ -888,6 +888,35 @@ DOMAIN_RULES.set("admin", {
   },
 });
 
+// === Agriculture ===
+// Registered 2026-11-04 (build(agriculture), B3): until this entry existed,
+// validateArtifact failed OPEN for agriculture — the lens's artifact contract
+// was never declared, so the record kinds the surface creates (Field · Crop ·
+// Animal · FarmEquipment · WaterSystem · Harvest · Certification, per
+// concord-frontend/components/agriculture/ag-types.ts) validated against
+// nothing, and Livestock/Certifications had no machinery at any layer
+// (cross-check #65: "livestock" returned 0 registry-wide). Types and statuses
+// mirror the frontend's ArtifactType and Status unions; "draft" / "active" /
+// "archived" are included because the generic lens-create path defaults an
+// absent status to "draft" and other writers use the generic lifecycle words.
+// requiredFields follow this framework's semantics (validateArtifact warns,
+// never errors, on a missing one) — they declare each type's expected shape:
+// a Field carries acreage + soilType; a Certification is a record with an
+// issuer (certBody) and dates (per the competitor inventory, item 14).
+DOMAIN_RULES.set("agriculture", {
+  types: ["Field", "Crop", "Animal", "FarmEquipment", "WaterSystem", "Harvest", "Certification"],
+  validStatuses: ["planned", "planted", "growing", "ready", "harvested", "stored", "sold", "draft", "active", "archived"],
+  requiredFields: {
+    Field: ["acreage", "soilType"],
+    Crop: ["variety"],
+    Animal: ["species"],
+    FarmEquipment: ["equipmentType"],
+    WaterSystem: ["systemType"],
+    Harvest: ["crop"],
+    Certification: ["certBody", "certType", "expiryDate"],
+  },
+});
+
 // ── Exported helpers ─────────────────────────────────────────────────────────
 
 function validateArtifact(domain, type, data, meta) {
