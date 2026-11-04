@@ -5,7 +5,7 @@ import {
   resultFromDate,
   resultFromScores,
   scorePair,
-} from './fixture-result.ts';
+} from './fixture-result';
 
 const TODAY = '2026-11-03';
 
