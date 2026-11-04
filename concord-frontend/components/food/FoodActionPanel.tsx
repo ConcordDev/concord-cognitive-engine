@@ -37,8 +37,18 @@ function pickMessage(e: unknown): string {
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
 
-interface ScaleResult { servings?: number; ingredients?: Array<{ name: string; quantity: number; unit: string }> }
-interface CostResult { totalCost?: number; perPlate?: number; ingredientCosts?: Array<{ ingredient: string; cost: number }> }
+// The registered contracts (server/domains/food.js): scaleRecipe reads
+// artifact.data.recipe { name, baseYield, ingredients } + params.targetYield
+// and returns { recipeName, baseYield, targetYield, scaleFactor,
+// ingredients: [{ name, originalQuantity, scaledQuantity, unit }] } —
+// including an ok-wrapped { error } when targetYield is missing, which
+// the panel must NOT toast as success (food.md F4). costPlate reads
+// artifact.data.menuItems [{ name, ingredients: [{ name, quantity, unit,
+// costPerUnit }], menuPrice }] + params.itemName and returns
+// { items: [CostItem], avgFoodCostPct } (food.md F5).
+interface ScaleResult { recipeName?: string; baseYield?: number; targetYield?: number; scaleFactor?: number; error?: string; ingredients?: Array<{ name: string; originalQuantity: number; scaledQuantity: number; unit: string }> }
+interface CostItem { name: string; menuPrice: number; ingredientCost: number; foodCostPct: number; suggestedPriceAtTarget: number; margin: number; status: string; ingredients: Array<{ name: string; quantity: number; unit: string; costPerUnit: number; totalCost: number }> }
+interface CostResult { items?: CostItem[]; avgFoodCostPct?: number }
 interface SuggestResult { meals?: Array<{ name: string; cuisine?: string; matchScore?: number }>; matched?: number }
 interface WasteResult { weeklyWasteKg?: number; topWasted?: string[]; suggestion?: string }
 
@@ -47,6 +57,7 @@ export function FoodActionPanel() {
   const [recipeIngredients, setRecipeIngredients] = useState('');
   const [recipeServings, setRecipeServings] = useState('');
   const [scaleTo, setScaleTo] = useState('');
+  const [menuPrice, setMenuPrice] = useState('');
   const [pantry, setPantry] = useState('');
   const [recipient, setRecipient] = useState('');
 
@@ -68,28 +79,43 @@ export function FoodActionPanel() {
   const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
 
   function parseIngredients() {
+    // Line format: "name qty unit [costPerUnit]" — the cost is the
+    // costPlate contract's per-ingredient input (food.md F5: the bench
+    // previously offered no route to supply it, so Cost could only
+    // refuse with invalid_input).
     return recipeIngredients.split('\n').map(l => {
-      const m = l.trim().match(/^(.+?)\s+([\d.]+)\s+(\S+)$/);
-      return m ? { name: m[1], quantity: parseFloat(m[2]), unit: m[3] } : null;
-    }).filter(Boolean) as Array<{ name: string; quantity: number; unit: string }>;
+      const m = l.trim().match(/^(.+?)\s+([\d.]+)\s+(\S+)(?:\s+([\d.]+))?$/);
+      return m ? { name: m[1], quantity: parseFloat(m[2]), unit: m[3], costPerUnit: m[4] ? parseFloat(m[4]) : 0 } : null;
+    }).filter(Boolean) as Array<{ name: string; quantity: number; unit: string; costPerUnit: number }>;
   }
 
   async function actScale() {
     const ing = parseIngredients();
     if (!ing.length) { err('Add ingredients.'); return; }
+    const target = parseInt(scaleTo, 10);
+    if (!target || target <= 0) { err('Set a target servings count to scale to.'); return; }
     setBusy('scale'); setFeedback(null);
     try {
-      const r = await callMacro<ScaleResult>('scaleRecipe', { ingredients: ing, originalServings: parseInt(recipeServings, 10), targetServings: parseInt(scaleTo, 10) });
-      if (r.ok && r.result) { setScaleResult(r.result); pipe.publish('food.scale', r.result, { label: `Scaled to ${scaleTo}` }); ok(`Scaled to ${scaleTo} servings.`); } else err(r.error ?? 'scale failed');
+      const r = await callMacro<ScaleResult>('scaleRecipe', { recipe: { name: recipeName, baseYield: parseInt(recipeServings, 10) || 1, ingredients: ing }, targetYield: target });
+      // scaleRecipe wraps a missing-input complaint as ok + result.error;
+      // a success claim requires the scaled quantities themselves (F4).
+      if (r.ok && r.result && !r.result.error && r.result.ingredients?.length) { setScaleResult(r.result); pipe.publish('food.scale', r.result, { label: `Scaled to ${r.result.targetYield}` }); ok(`Scaled to ${r.result.targetYield} servings (×${r.result.scaleFactor}).`); }
+      else err(r.result?.error ?? r.error ?? 'scale failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actCost() {
     const ing = parseIngredients();
     if (!ing.length) { err('Add ingredients.'); return; }
+    const price = parseFloat(menuPrice);
+    if (!price || price <= 0) { err('Set the menu price — costPlate costs a priced menu item.'); return; }
+    if (ing.some(i => !(i.costPerUnit > 0))) { err('Add a cost per unit to each ingredient line (name qty unit cost).'); return; }
     setBusy('cost'); setFeedback(null);
     try {
-      const r = await callMacro<CostResult>('costPlate', { ingredients: ing, servings: parseInt(recipeServings, 10) });
-      if (r.ok && r.result) { setCostResult(r.result); pipe.publish('food.cost', r.result, { label: `$${r.result.perPlate?.toFixed(2)}/plate` }); ok(`Per plate: $${r.result.perPlate?.toFixed(2)}.`); } else err(r.error ?? 'cost failed');
+      const itemName = recipeName.trim() || 'Menu item';
+      const r = await callMacro<CostResult>('costPlate', { menuItems: [{ name: itemName, ingredients: ing, menuPrice: price }], itemName });
+      const item = r.result?.items?.[0];
+      if (r.ok && item) { setCostResult(r.result); pipe.publish('food.cost', r.result, { label: `${item.foodCostPct}% food cost` }); ok(`${item.name}: ${item.foodCostPct}% food cost ($${item.ingredientCost.toFixed(2)} of $${item.menuPrice.toFixed(2)}).`); }
+      else err(r.error ?? 'cost failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSuggest() {
@@ -119,7 +145,7 @@ export function FoodActionPanel() {
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🍳 Recipe: ${recipeName || 'untitled'}`, `Servings: ${recipeServings}`, '', ...parseIngredients().map(i => `  ${i.name} ${i.quantity} ${i.unit}`), '', costResult ? `Per plate: $${costResult.perPlate?.toFixed(2)}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
+    const body = [`🍳 Recipe: ${recipeName || 'untitled'}`, `Servings: ${recipeServings}`, '', ...parseIngredients().map(i => `  ${i.name} ${i.quantity} ${i.unit}`), '', costResult?.items?.[0] ? `Food cost: ${costResult.items[0].foodCostPct}% ($${costResult.items[0].ingredientCost.toFixed(2)} of $${costResult.items[0].menuPrice.toFixed(2)})` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
     try {
       const messageId = await dmRecall.run(async () => {
         const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
@@ -146,7 +172,7 @@ export function FoodActionPanel() {
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
-      const task = `Recipe: "${recipeName || 'untitled'}", ${recipeServings} servings. Ingredients: ${parseIngredients().map(i => `${i.name} ${i.quantity}${i.unit}`).join(', ')}. ${costResult ? `Per plate $${costResult.perPlate?.toFixed(2)}.` : ''} Suggest 3 substitutions that lower cost without sacrificing flavour. Plain text, one per line.`;
+      const task = `Recipe: "${recipeName || 'untitled'}", ${recipeServings} servings. Ingredients: ${parseIngredients().map(i => `${i.name} ${i.quantity}${i.unit}`).join(', ')}. ${costResult?.items?.[0] ? `Food cost ${costResult.items[0].foodCostPct}%.` : ''} Suggest 3 substitutions that lower cost without sacrificing flavour. Plain text, one per line.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Substitutions ready.'); } else err('Agent returned empty.');
@@ -171,10 +197,11 @@ export function FoodActionPanel() {
         <h3 className="text-sm font-semibold text-white">Kitchen workbench</h3>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-2">
         <input type="text" value={recipeName} onChange={(e) => setRecipeName(e.target.value)} className="md:col-span-2 bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[12px] text-white" placeholder="Recipe name" />
         <input type="text" value={recipeServings} onChange={(e) => setRecipeServings(e.target.value.replace(/\D/g, ''))} className="bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[12px] text-white font-mono tabular-nums" placeholder="Servings" />
         <input type="text" value={scaleTo} onChange={(e) => setScaleTo(e.target.value.replace(/\D/g, ''))} className="bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[12px] text-white font-mono tabular-nums" placeholder="Scale to" />
+        <input type="text" value={menuPrice} onChange={(e) => setMenuPrice(e.target.value.replace(/[^\d.]/g, ''))} className="bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[12px] text-white font-mono tabular-nums" placeholder="Menu price $" />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
       </div>
       <div className="flex items-center gap-2 flex-wrap">
@@ -183,7 +210,7 @@ export function FoodActionPanel() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <div><label className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1 block">Ingredients (name qty unit per line)</label><textarea value={recipeIngredients} onChange={(e) => setRecipeIngredients(e.target.value)} rows={5} className="w-full bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-orange-200 font-mono focus:outline-none focus:ring-2 focus:ring-orange-400/40 resize-none" /></div>
+        <div><label className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1 block">Ingredients (name qty unit cost-per-unit per line)</label><textarea value={recipeIngredients} onChange={(e) => setRecipeIngredients(e.target.value)} rows={5} className="w-full bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-orange-200 font-mono focus:outline-none focus:ring-2 focus:ring-orange-400/40 resize-none" /></div>
         <div><label className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1 block">Pantry (one per line)</label><textarea value={pantry} onChange={(e) => setPantry(e.target.value)} rows={5} className="w-full bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-orange-200 font-mono focus:outline-none focus:ring-2 focus:ring-orange-400/40 resize-none" /></div>
       </div>
 
@@ -206,15 +233,16 @@ export function FoodActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {scaleResult?.ingredients && (
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold mb-1">Scaled to {scaleResult.servings}</div>
-            {scaleResult.ingredients.slice(0, 8).map((i, idx) => <div key={idx} className="text-[11px] text-gray-300 font-mono tabular-nums">{i.name}: {i.quantity} {i.unit}</div>)}
+            <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold mb-1">Scaled to {scaleResult.targetYield} servings</div>
+            {scaleResult.ingredients.slice(0, 8).map((i, idx) => <div key={idx} className="text-[11px] text-gray-300 font-mono tabular-nums">{i.name}: {i.originalQuantity} → {i.scaledQuantity} {i.unit}</div>)}
           </div>
         )}
-        {costResult && (
+        {costResult?.items?.[0] && (
           <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">Cost</div>
-            <div className="text-2xl font-bold text-emerald-300 tabular-nums">${costResult.perPlate?.toFixed(2)}<span className="text-xs text-gray-400 ml-1">/plate</span></div>
-            <div className="text-[10px] text-gray-400">total ${costResult.totalCost?.toFixed(2)}</div>
+            <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">Cost — {costResult.items[0].name}</div>
+            <div className="text-2xl font-bold text-emerald-300 tabular-nums">{costResult.items[0].foodCostPct}%<span className="text-xs text-gray-400 ml-1">food cost</span></div>
+            <div className="text-[10px] text-gray-400">ingredients ${costResult.items[0].ingredientCost.toFixed(2)} · price ${costResult.items[0].menuPrice.toFixed(2)} · margin ${costResult.items[0].margin.toFixed(2)} · {costResult.items[0].status}</div>
+            {costResult.items[0].ingredients.slice(0, 6).map((i, idx) => <div key={idx} className="text-[11px] text-gray-300 font-mono tabular-nums">{i.name}: {i.quantity} {i.unit} × ${i.costPerUnit.toFixed(2)} = ${i.totalCost.toFixed(2)}</div>)}
           </div>
         )}
         {suggestResult?.meals && (
