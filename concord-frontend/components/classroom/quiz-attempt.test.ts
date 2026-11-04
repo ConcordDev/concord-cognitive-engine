@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { cohortStillListed, parseClassroomCohort, quizAttemptFromSubmit } from "./quiz-attempt.ts";
+import { cohortStillListed, parseClassroomCohort, quizAttemptFromSubmit } from "./quiz-attempt";
 
 describe("quiz submit result", () => {
   it("reads the score off the attempt wrapper", () => {
