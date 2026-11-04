@@ -63,6 +63,23 @@ export function listTeamsInLeague(db, leagueId) {
   `).all(leagueId);
 }
 
+/** Every league in a world, oldest first, each with its team count. Pure read. */
+export function listLeagues(db, worldId) {
+  if (!db || !worldId) return [];
+  try {
+    // Founding order must be deterministic: started_at is second-resolution
+    // (unixepoch default) and league ids are random, so an id tie-break made
+    // same-second leagues list in coin-flip order. rowid is insertion order —
+    // the true founding order — on this rowid table (migration 211).
+    return db.prepare(`
+      SELECT l.*, (SELECT COUNT(*) FROM sports_teams t WHERE t.league_id = l.id) AS team_count
+      FROM sports_leagues l WHERE l.world_id = ? ORDER BY l.started_at ASC, l.rowid ASC LIMIT 100
+    `).all(worldId);
+  } catch {
+    return [];
+  }
+}
+
 /* ───────── Tryouts + careers ───────────────────────────────────────── */
 
 export function ensureCareer(db, playerUserId, sportKind) {

@@ -26,6 +26,7 @@ import { TimelinePanel } from '@/components/crisis-ops/TimelinePanel';
 import { AlertsPanel } from '@/components/crisis-ops/AlertsPanel';
 import { ResourcePanel } from '@/components/crisis-ops/ResourcePanel';
 import { IncidentReportPanel } from '@/components/crisis-ops/IncidentReportPanel';
+import { PlaybooksPanel } from '@/components/crisis-ops/PlaybooksPanel';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 
 interface Crisis {
@@ -46,6 +47,9 @@ export default function CrisisOpsPage() {
   const [worldId, setWorldId] = useState('concordia-hub');
   const [crises, setCrises] = useState<Crisis[]>([]);
   const [suggestions, setSuggestions] = useState<SkillSuggestion[]>([]);
+  const [crisisTypes, setCrisisTypes] = useState<string[]>([]);
+  const [declareType, setDeclareType] = useState('');
+  const [declaring, setDeclaring] = useState(false);
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
   const [selected, setSelected] = useState<Crisis | null>(null);
@@ -61,15 +65,19 @@ export default function CrisisOpsPage() {
     setLoading(true);
     const wid = (typeof window !== 'undefined' && localStorage.getItem(ACTIVE_WORLD_KEY)) || 'concordia-hub';
     setWorldId(wid);
-    const r = await lensRun<{ crises?: Crisis[]; suggestions?: SkillSuggestion[] }>(
+    const r = await lensRun<{ crises?: Crisis[]; suggestions?: SkillSuggestion[]; crisisTypes?: string[] }>(
       'crisis', 'active_for_player', { worldId: wid },
     );
     if (isForbidden(r.data)) { setForbidden(true); setLoading(false); return; }
     // active_for_player returns crises/suggestions at top level (not nested in result)
-    const payload = (r.data?.result ?? r.data) as { crises?: Crisis[]; suggestions?: SkillSuggestion[] };
+    const payload = (r.data?.result ?? r.data) as { crises?: Crisis[]; suggestions?: SkillSuggestion[]; crisisTypes?: string[] };
     const list = payload?.crises ?? [];
     setCrises(list);
     setSuggestions(payload?.suggestions ?? []);
+    if (payload?.crisisTypes?.length) {
+      setCrisisTypes(payload.crisisTypes);
+      setDeclareType((prev) => prev || payload.crisisTypes![0]);
+    }
     setSelected((prev) => prev && list.find((c) => c.id === prev.id) ? prev : (list[0] || null));
     setLoading(false);
   }, []);
@@ -80,6 +88,14 @@ export default function CrisisOpsPage() {
     await lensRun('crisis', 'resolve', { crisisId });
     refresh();
   }, [refresh]);
+
+  const declare = useCallback(async () => {
+    if (!declareType || declaring) return;
+    setDeclaring(true);
+    const r = await lensRun('crisis', 'declare', { type: declareType, worldId });
+    if (r.data?.ok) await refresh();
+    setDeclaring(false);
+  }, [declareType, declaring, worldId, refresh]);
 
   if (forbidden) return (
     <LensShell lensId="crisis-ops" asMain={false}>
@@ -166,6 +182,36 @@ export default function CrisisOpsPage() {
                   </div>
                 </div>
               )}
+              {crisisTypes.length > 0 && (
+                <div className="mt-4 border-t border-rose-700/20 pt-3">
+                  <h3 className="mb-1.5 text-[10px] uppercase tracking-wider text-gray-400">
+                    Declare a crisis
+                  </h3>
+                  <div className="flex gap-2">
+                    <select
+                      value={declareType}
+                      onChange={(e) => setDeclareType(e.target.value)}
+                      aria-label="Crisis type"
+                      className="min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-white"
+                    >
+                      {crisisTypes.map((t) => (
+                        <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      disabled={declaring || !declareType}
+                      onClick={() => void declare()}
+                      className="shrink-0 rounded bg-rose-600/40 px-2 py-1 text-xs text-rose-100 hover:bg-rose-600/60 disabled:opacity-40"
+                    >
+                      {declaring ? 'Declaring…' : 'Declare'}
+                    </button>
+                  </div>
+                  <p className="mt-1.5 text-[11px] text-zinc-500">
+                    Declaring opens the command deck — playbook, roster, and timeline — on the new crisis.
+                  </p>
+                </div>
+              )}
             </section>
 
             <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
@@ -220,7 +266,7 @@ export default function CrisisOpsPage() {
           </section>
         )}
 
-        {/* Resource inventory + incident log when no crisis is selected */}
+        {/* Inventory, reports, playbooks + command when no crisis is selected */}
         {!selected && (
           <div className="mt-5 grid gap-5 lg:grid-cols-2">
             <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
@@ -228,6 +274,12 @@ export default function CrisisOpsPage() {
             </section>
             <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <IncidentReportPanel />
+            </section>
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <PlaybooksPanel />
+            </section>
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <TeamPanel />
             </section>
           </div>
         )}

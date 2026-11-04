@@ -21,7 +21,7 @@ interface TeamMember {
   canUnassign: boolean;
 }
 interface TeamResult {
-  crisisId: string;
+  crisisId: string | null;
   team: TeamMember[];
   byRole: Record<string, TeamMember[]>;
   roles: string[];
@@ -37,7 +37,7 @@ const ROLE_LABEL: Record<string, string> = {
   responder: 'Responder',
 };
 
-export function TeamPanel({ crisisId }: { crisisId: string }) {
+export function TeamPanel({ crisisId }: { crisisId?: string }) {
   const [team, setTeam] = useState<TeamResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
@@ -85,6 +85,7 @@ export function TeamPanel({ crisisId }: { crisisId: string }) {
         )}
       </header>
 
+      {crisisId && (
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-white/5 p-2">
         <input
           value={name}
@@ -111,6 +112,23 @@ export function TeamPanel({ crisisId }: { crisisId: string }) {
           <UserPlus className="h-3 w-3" /> Assign
         </button>
       </div>
+      )}
+
+      {!crisisId && !loading && team && (
+        <div className="space-y-2">
+          <p className="text-xs text-zinc-400">
+            Assignments attach to an active crisis — declare one above or select one from the triage
+            board, and its roster opens here. The command structure:
+          </p>
+          <ul className="flex flex-wrap gap-1.5">
+            {roles.map((r) => (
+              <li key={r} className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-zinc-300">
+                {ROLE_LABEL[r] || r}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {error && (
         <p role="alert" className="rounded border border-rose-500/40 bg-rose-950/40 px-2 py-1 text-xs text-rose-200">
@@ -124,7 +142,7 @@ export function TeamPanel({ crisisId }: { crisisId: string }) {
         </div>
       )}
 
-      {!loading && team && team.count === 0 && (
+      {!loading && team && team.count === 0 && crisisId && (
         <p className="rounded border border-white/10 bg-white/5 p-3 text-center text-xs text-zinc-400">
           No responders assigned. Assign an Incident Commander to begin.
         </p>
