@@ -73,12 +73,16 @@ describe("bounties — create contracts (validation + exact rollups)", () => {
     assert.ok(bad.result.error.includes("description must be at least 12 characters"));
   });
 
-  it("create: a zero/negative rewardCc with no milestones is floored to 1 (not rejected)", async () => {
-    const r = await lensRun("bounties", "create", { params: { title: "Valid title here", description: "Valid description here", rewardCc: 0 } }, ctx);
-    assert.notEqual(r.result.ok, false);
-    assert.equal(r.result.bounty.rewardCc, 1); // Math.max(1, floor(0))
-    assert.equal(r.result.bounty.poolCc, 1);
+  it("create: a zero/negative rewardCc with no milestones is rejected, never silently raised to 1", async () => {
+    // Bounties build (#2136): the old Math.max(1, floor(0)) turned a posted
+    // reward of 0 into a 1 CC bounty without telling the poster.
+    for (const rewardCc of [0, -5]) {
+      const r = await lensRun("bounties", "create", { params: { title: "Valid title here", description: "Valid description here", rewardCc } }, ctx);
+      assert.equal(r.result.ok, false);
+      assert.match(r.result.error, /rewardCc must be at least 1/);
+    }
   });
+
 });
 
 describe("bounties — list/get search + filter", () => {
