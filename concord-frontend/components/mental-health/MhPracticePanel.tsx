@@ -16,6 +16,7 @@ interface Course { id: string; name: string; category: string; totalSessions: nu
 interface Pattern { id: string; name: string; inhale: number; hold1: number; exhale: number; hold2: number; use: string }
 
 const SESSION_TYPES = ['meditation', 'sleep', 'breathing', 'focus', 'body_scan', 'movement'];
+const BREATHE_ROUNDS = 6;
 
 export function MhPracticePanel({ onChange }: { onChange: () => void }) {
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -26,6 +27,8 @@ export function MhPracticePanel({ onChange }: { onChange: () => void }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [sForm, setSForm] = useState({ type: 'meditation', durationMin: '10' });
   const [cForm, setCForm] = useState({ name: '', totalSessions: '10' });
+  const [player, setPlayer] = useState<{ p: Pattern; phase: number; left: number; round: number } | null>(null);
+  const [breatheNote, setBreatheNote] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -65,9 +68,45 @@ export function MhPracticePanel({ onChange }: { onChange: () => void }) {
     setError(null);
     await refresh();
   };
-  const breathe = async (patternId: string) => {
-    await lensRun('mental-health', 'breathing-log', { patternId, rounds: 6 });
+  // Guided breathing player (S-MH-2): steps through the pattern's real
+  // phases on a timer and logs only the rounds actually completed.
+  const phasesOf = (p: Pattern): [string, number][] =>
+    ([['Breathe in', p.inhale], ['Hold', p.hold1], ['Breathe out', p.exhale], ['Hold', p.hold2]] as [string, number][])
+      .filter(([, sec]) => sec > 0);
+
+  const finishBreathing = useCallback(async (p: Pattern, rounds: number, note: string) => {
+    setPlayer(null);
+    if (rounds >= 1) await lensRun('mental-health', 'breathing-log', { patternId: p.id, rounds });
+    setBreatheNote(note);
     await refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    if (!player) return;
+    const t = setTimeout(() => {
+      const phases = phasesOf(player.p);
+      if (player.left > 1) { setPlayer({ ...player, left: player.left - 1 }); return; }
+      if (player.phase + 1 < phases.length) {
+        setPlayer({ ...player, phase: player.phase + 1, left: Math.max(1, Math.ceil(phases[player.phase + 1][1])) });
+      } else if (player.round < BREATHE_ROUNDS) {
+        setPlayer({ p: player.p, phase: 0, left: Math.max(1, Math.ceil(phases[0][1])), round: player.round + 1 });
+      } else {
+        void finishBreathing(player.p, BREATHE_ROUNDS, `${player.p.name} complete — ${BREATHE_ROUNDS} rounds logged.`);
+      }
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [player, finishBreathing]);
+
+  const startBreathing = (p: Pattern) => {
+    setBreatheNote(null);
+    setPlayer({ p, phase: 0, left: Math.max(1, Math.ceil(phasesOf(p)[0][1])), round: 1 });
+  };
+  const stopBreathing = () => {
+    if (!player) return;
+    const done = player.round - 1;
+    void finishBreathing(player.p, done, done >= 1
+      ? `Stopped — ${done} completed round${done === 1 ? '' : 's'} logged.`
+      : 'Stopped — no completed rounds to log.');
   };
 
   if (loading) {
@@ -108,6 +147,19 @@ export function MhPracticePanel({ onChange }: { onChange: () => void }) {
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <Wind className="w-3.5 h-3.5 text-sky-400" /> Breathing exercises
         </h3>
+        {player && (
+          <div className="mb-2 bg-zinc-900/70 border border-sky-800/50 rounded-xl p-4 flex flex-col items-center gap-2">
+            <div className="rounded-full bg-sky-500/15 border border-sky-400/40 flex items-center justify-center"
+              style={{ width: 92, height: 92, transform: `scale(${phasesOf(player.p)[player.phase][0] === 'Breathe in' ? 1.18 : phasesOf(player.p)[player.phase][0] === 'Breathe out' ? 0.92 : 1.05})`, transition: 'transform 1000ms ease-in-out' }}>
+              <span className="text-xl font-bold text-sky-200">{player.left}</span>
+            </div>
+            <p className="text-sm font-semibold text-zinc-100">{phasesOf(player.p)[player.phase][0]}</p>
+            <p className="text-[11px] text-zinc-400">{player.p.name} · Round {player.round} of {BREATHE_ROUNDS}</p>
+            <button type="button" onClick={stopBreathing}
+              className="text-[11px] px-3 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200">Stop</button>
+          </div>
+        )}
+        {breatheNote && <p className="mb-2 text-[11px] text-emerald-300">{breatheNote}</p>}
         <ul className="grid grid-cols-2 gap-2">
           {patterns.map((p) => (
             <li key={p.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
@@ -115,9 +167,9 @@ export function MhPracticePanel({ onChange }: { onChange: () => void }) {
               <p className="text-[10px] text-zinc-400">
                 {p.inhale}-{p.hold1}-{p.exhale}{p.hold2 ? `-${p.hold2}` : ''} · {p.use}
               </p>
-              <button type="button" onClick={() => breathe(p.id)}
-                className="mt-1.5 text-[11px] px-2 py-0.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white">
-                Breathe 6 rounds
+              <button type="button" onClick={() => startBreathing(p)} disabled={!!player}
+                className="mt-1.5 text-[11px] px-2 py-0.5 rounded-lg bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white">
+                Breathe {BREATHE_ROUNDS} rounds
               </button>
             </li>
           ))}

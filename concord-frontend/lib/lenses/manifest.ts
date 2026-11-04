@@ -3715,7 +3715,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'healthcare',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: 'No sessions logged.',
       caption: 'Log a session, run an assessment, draft a plan. NIH MedlinePlus powers the resource browser (free, real federal health info).',
