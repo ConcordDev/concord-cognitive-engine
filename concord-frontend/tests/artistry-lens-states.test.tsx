@@ -1,12 +1,18 @@
 /**
- * /lenses/artistry — one study.
+ * /lenses/artistry — the page-level shell contract.
  *
- * + New study calls artistry.projectCreate and shows the title only after
- * artistry.projectList contains that id and the same title.
+ * <ProjectStudio> (the real gallery/create/edit/draw panel) and its
+ * create-form "+ New project" affordance are covered by their own test
+ * files (artistry-project-edit.test.tsx,
+ * tests/components/ProjectStudio-image-upload.test.tsx, and a
+ * study-canvas.test.tsx for the new drawing medium) — it is mocked here
+ * as a black box so this file only exercises the page's own admission-
+ * gate warm-up retry, phase gating, and the 'n' shortcut's forwarding to
+ * ProjectStudio's own "+ New project" button.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { render, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 
 const { lensRun, authUser } = vi.hoisted(() => ({
@@ -18,7 +24,14 @@ vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) =>
     React.createElement('div', null, children),
 }));
-vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+
+let lastCommandAction: (() => void) | null = null;
+vi.mock('@/hooks/useLensCommand', () => ({
+  useLensCommand: (commands: { action: () => void }[]) => {
+    lastCommandAction = commands[0]?.action || null;
+  },
+}));
+vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: authUser.current, isLoading: false, isAuthenticated: !!authUser.current }),
 }));
@@ -26,135 +39,87 @@ vi.mock('@/lib/api/client', () => ({
   lensRun: (...args: unknown[]) => lensRun(...args),
 }));
 
+const projectStudioNewClicked = vi.fn();
+vi.mock('@/components/artistry', () => ({
+  ProjectStudio: () =>
+    React.createElement(
+      'div',
+      { 'data-testid': 'project-studio-mock' },
+      React.createElement(
+        'button',
+        { 'data-artistry-new-project': true, onClick: projectStudioNewClicked },
+        '+ New Project',
+      ),
+    ),
+}));
+
 import ArtistryLens from '@/app/lenses/artistry/page';
 
-function listed(projects: { id: string; title: string }[]) {
-  return { data: { ok: true, result: { projects, count: projects.length }, error: null } };
+function listedOk() {
+  return { data: { ok: true, result: { projects: [], count: 0 }, error: null } };
 }
 
 beforeEach(() => {
   lensRun.mockReset();
+  projectStudioNewClicked.mockClear();
   authUser.current = null;
+  lastCommandAction = null;
+  vi.useRealTimers();
 });
 
-describe('artistry study', () => {
-  it('EMPTY: says the study is empty and offers + New study', async () => {
-    lensRun.mockResolvedValue(listed([]));
+describe('artistry page shell', () => {
+  it('WARMING: shows the opening state while projectList is pending', async () => {
+    let resolveList: (v: unknown) => void = () => {};
+    lensRun.mockReturnValue(new Promise((resolve) => { resolveList = resolve; }));
     const view = render(<ArtistryLens />);
-    expect(await view.findByText('The study is empty.')).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'Artistry' })).toBeInTheDocument();
-    expect(view.getByRole('button', { name: '+ New study' })).toBeEnabled();
-    expect(view.queryByText('Feed')).toBeNull();
-    expect(view.queryByText('Sketchpad')).toBeNull();
-    expect(view.queryByText('Untitled Project')).toBeNull();
+    expect(view.getByTestId('artistry-warming')).toBeInTheDocument();
+    expect(view.getByRole('status')).toHaveTextContent('Opening the study.');
+    resolveList(listedOk());
+    expect(await view.findByTestId('artistry-ready')).toBeInTheDocument();
   });
 
-  it('ERROR: a failed list shows role=alert and Retry reloads', async () => {
+  it('READY: mounts the real ProjectStudio once projectList succeeds', async () => {
+    lensRun.mockResolvedValue(listedOk());
+    const view = render(<ArtistryLens />);
+    expect(await view.findByTestId('project-studio-mock')).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'Artistry' })).toBeInTheDocument();
+    expect(lensRun).toHaveBeenCalledWith('artistry', 'projectList', {});
+  });
+
+  it('ERROR: a hard failure (not a warm-up 503) shows role=alert with Retry', async () => {
     lensRun.mockResolvedValueOnce({ data: { ok: false, result: null, error: 'state_unavailable' } });
     const view = render(<ArtistryLens />);
     expect(await view.findByRole('alert')).toHaveTextContent(/state_unavailable/);
-    lensRun.mockResolvedValue(listed([]));
+    lensRun.mockResolvedValue(listedOk());
     fireEvent.click(view.getByRole('button', { name: 'Retry' }));
-    expect(await view.findByText('The study is empty.')).toBeInTheDocument();
+    expect(await view.findByTestId('project-studio-mock')).toBeInTheDocument();
   });
 
-  it('STUDY: a blank title does not call projectCreate', async () => {
-    lensRun.mockResolvedValue(listed([]));
-    const view = render(<ArtistryLens />);
-    fireEvent.click(await view.findByRole('button', { name: '+ New study' }));
-    fireEvent.click(view.getByRole('button', { name: '+ New study' }));
-    expect(await view.findByRole('alert')).toHaveTextContent(/A title is required/);
-    expect(lensRun.mock.calls.map((call) => call[1])).not.toContain('projectCreate');
-  });
-
-  it('STUDY: shows the title only after projectList contains the id and title', async () => {
-    const projects: { id: string; title: string }[] = [];
-    lensRun.mockImplementation(async (_d: string, action: string, input?: { title?: string }) => {
-      if (action === 'projectList') return listed(projects);
-      if (action === 'projectCreate') {
-        projects.unshift({ id: 'proj_1', title: input?.title || '' });
-        return { data: { ok: true, result: { project: { id: 'proj_1', title: input?.title } }, error: null } };
-      }
-      throw new Error(action);
+  it('WARM-UP: a transient 503 retries and then clears into ready', async () => {
+    let calls = 0;
+    lensRun.mockImplementation(async () => {
+      calls += 1;
+      if (calls === 1) return { data: { ok: false, result: null, error: '503 not ready yet' } };
+      return listedOk();
     });
     const view = render(<ArtistryLens />);
-    fireEvent.click(await view.findByRole('button', { name: '+ New study' }));
-    fireEvent.change(view.getByTestId('artistry-title'), { target: { value: '  Door study  ' } });
-    fireEvent.click(view.getByRole('button', { name: '+ New study' }));
-    expect(await view.findByRole('heading', { name: 'Door study' })).toBeInTheDocument();
-    expect(view.queryByText('The study is empty.')).toBeNull();
-    expect(view.queryByText('Untitled Project')).toBeNull();
-    const save = lensRun.mock.calls.find((call) => call[1] === 'projectCreate');
-    expect(save?.[0]).toBe('artistry');
-    expect(save?.[2]).toEqual({ title: 'Door study' });
+    expect(await view.findByTestId('project-studio-mock')).toBeInTheDocument();
+    expect(calls).toBeGreaterThanOrEqual(2);
   });
 
-  it('STUDY: a list miss does not show the title', async () => {
-    lensRun.mockImplementation(async (_d: string, action: string) => {
-      if (action === 'projectList') return listed([]);
-      if (action === 'projectCreate') {
-        return { data: { ok: true, result: { project: { id: 'proj_missing', title: 'Lost study' } }, error: null } };
-      }
-      throw new Error(action);
-    });
-    const view = render(<ArtistryLens />);
-    fireEvent.click(await view.findByRole('button', { name: '+ New study' }));
-    fireEvent.change(view.getByTestId('artistry-title'), { target: { value: 'Lost study' } });
-    fireEvent.click(view.getByRole('button', { name: '+ New study' }));
-    expect(await view.findByRole('alert')).toHaveTextContent(/did not read it back/);
-    expect(view.queryByRole('heading', { name: 'Lost study' })).toBeNull();
+  it('SHORTCUT: the "n" command forwards to ProjectStudio\'s own + New project button', async () => {
+    lensRun.mockResolvedValue(listedOk());
+    render(<ArtistryLens />);
+    await waitFor(() => expect(lastCommandAction).not.toBeNull());
+    lastCommandAction?.();
+    await waitFor(() => expect(projectStudioNewClicked).toHaveBeenCalledTimes(1));
   });
 
   it('HEADER: shows the lens name signed-in', async () => {
     authUser.current = { username: 'ramaj' };
-    lensRun.mockResolvedValue(listed([]));
+    lensRun.mockResolvedValue(listedOk());
     const view = render(<ArtistryLens />);
-    expect(await view.findByRole('heading', { name: 'Artistry' })).toBeInTheDocument();
-    expect(await view.findByText('The study is empty.')).toBeInTheDocument();
-  });
-
-  it('LOAD: shows a title already on the list and skips a blank title', async () => {
-    lensRun.mockResolvedValue(listed([
-      { id: 'proj_a', title: 'First study' },
-      { id: 'proj_b', title: '   ' },
-    ]));
-    const view = render(<ArtistryLens />);
-    expect(await view.findByRole('heading', { name: 'First study' })).toBeInTheDocument();
-    expect(view.queryByText('The study is empty.')).toBeNull();
-  });
-
-  it('STUDY: a refused create does not show the title', async () => {
-    lensRun.mockResolvedValue(listed([]));
-    const view = render(<ArtistryLens />);
-    fireEvent.click(await view.findByRole('button', { name: '+ New study' }));
-    lensRun.mockImplementation(async (_d: string, action: string) => {
-      if (action === 'projectList') return listed([]);
-      if (action === 'projectCreate') return { data: { ok: false, result: null, error: 'study_not_saved' } };
-      throw new Error(action);
-    });
-    fireEvent.change(view.getByTestId('artistry-title'), { target: { value: 'Bad study' } });
-    fireEvent.click(view.getByRole('button', { name: '+ New study' }));
-    expect(await view.findByRole('alert')).toHaveTextContent(/study_not_saved/);
-    expect(view.queryByRole('heading', { name: 'Bad study' })).toBeNull();
-    expect(view.getByTestId('artistry-title')).toBeInTheDocument();
-  });
-
-  it('STUDY: a second study stays beside the first', async () => {
-    const projects: { id: string; title: string }[] = [{ id: 'proj_1', title: 'First study' }];
-    lensRun.mockImplementation(async (_d: string, action: string, input?: { title?: string }) => {
-      if (action === 'projectList') return listed(projects);
-      if (action === 'projectCreate') {
-        projects.unshift({ id: 'proj_2', title: input?.title || '' });
-        return { data: { ok: true, result: { project: { id: 'proj_2', title: input?.title } }, error: null } };
-      }
-      throw new Error(action);
-    });
-    const view = render(<ArtistryLens />);
-    expect(await view.findByRole('heading', { name: 'First study' })).toBeInTheDocument();
-    fireEvent.click(view.getByRole('button', { name: '+ New study' }));
-    fireEvent.change(view.getByTestId('artistry-title'), { target: { value: 'Second study' } });
-    fireEvent.click(view.getByRole('button', { name: '+ New study' }));
-    expect(await view.findByRole('heading', { name: 'Second study' })).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'First study' })).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'Artistry' })).toBeInTheDocument();
+    expect(await view.findByTestId('project-studio-mock')).toBeInTheDocument();
   });
 });
