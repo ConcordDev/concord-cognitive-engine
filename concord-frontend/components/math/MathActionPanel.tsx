@@ -37,7 +37,7 @@ function pickMessage(e: unknown): string {
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
 
-interface StatsResult { count?: number; mean?: number; median?: number; stdDev?: number; min?: number; max?: number; q1?: number; q3?: number }
+interface StatsResult { count?: number; mean?: number; median?: number; stdDev?: number; sampleStdDev?: number; modes?: number[]; conventions?: string; min?: number; max?: number; q1?: number; q3?: number }
 interface MatrixEigenvalue { real?: number; imag?: number }
 // server/domains/math.js#matrixOperations returns the computed matrix under `matrix`
 // (transpose/multiply/inverse) — not `result`. rank/eigenvalues have their own fields.
@@ -107,7 +107,7 @@ export function MathActionPanel() {
     setBusy('stats'); setFeedback(null);
     // server/domains/math.js#statisticalAnalysis reads artifact.data.values (not .data) —
     // sending { data } here silently always returned "No numeric values to analyze."
-    try { const r = await callMacro<StatsResult>('statisticalAnalysis', { values: data }); if (r.ok && r.result) { setStatsResult(r.result); pipe.publish('math.stats', r.result, { label: `n=${r.result.count} μ=${r.result.mean?.toFixed(2)}` }); ok(`μ=${r.result.mean?.toFixed(2)}, σ=${r.result.stdDev?.toFixed(2)}.`); } else err(r.error ?? 'stats failed'); }
+    try { const r = await callMacro<StatsResult>('statisticalAnalysis', { values: data }); if (r.ok && r.result) { setStatsResult(r.result); pipe.publish('math.stats', r.result, { label: `n=${r.result.count} μ=${r.result.mean?.toFixed(2)}` }); ok(`μ=${r.result.mean?.toFixed(2)}, σ (population)=${r.result.stdDev?.toFixed(2)}.`); } else err(r.error ?? 'stats failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMatrix() {
@@ -163,13 +163,13 @@ export function MathActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Math — ${problem.trim() || 'analysis'}`, tags: ['math', 'analysis'], source: 'math:analysis:mint', meta: { visibility: 'private', consent: { allowCitations: false }, math: { problem, stats: statsResult, matrix: matrixResult, poly: polyResult, regress: regressResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); pipe.publish('math.mintedDtuId', id, { label: `analysis ${id.slice(0, 8)}` }); ok(`Math DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('math.mintedDtuId', id, { label: `analysis ${id.slice(0, 8)}` }); ok(`Math DTU ${id}`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`Σ Math brief: ${problem || 'analysis'}`, '', statsResult ? `Stats: μ=${statsResult.mean?.toFixed(2)} σ=${statsResult.stdDev?.toFixed(2)} (n=${statsResult.count})` : '', regressResult ? `Regression: ${regressResult.equation} (R²=${regressResult.rSquared?.toFixed(4)})` : '', polyResult ? `Polynomial: deg ${polyResult.degree}, roots ${polyResult.roots?.map(r => r.toFixed(3)).join(', ')}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
+    const body = [`Σ Math brief: ${problem || 'analysis'}`, '', statsResult ? `Stats: μ=${statsResult.mean?.toFixed(2)} σ (population)=${statsResult.stdDev?.toFixed(2)} (n=${statsResult.count})` : '', regressResult ? `Regression: ${regressResult.equation} (R²=${regressResult.rSquared?.toFixed(4)})` : '', polyResult ? `Polynomial: deg ${polyResult.degree}, roots ${polyResult.roots?.map(r => r.toFixed(3)).join(', ')}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
     try {
       const messageId = await dmRecall.run(async () => {
         const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
@@ -190,18 +190,51 @@ export function MathActionPanel() {
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
         return newId as string;
       });
-      if (id) { setPublishedDtuId(id); pipe.publish('math.publishedDtuId', id, { label: `derivation ${id.slice(0, 8)}` }); ok(`Derivation published ${id.slice(0, 8)}… · 30s to recall.`); }
+      if (id) { setPublishedDtuId(id); pipe.publish('math.publishedDtuId', id, { label: `derivation ${id.slice(0, 8)}` }); ok(`Derivation published ${id} · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
     if (!problem.trim()) { err('Problem statement required.'); return; }
     setBusy('agent'); setFeedback(null); setAgentReply(null);
+    // Deterministic first (F6): an equation or bare expression goes to the
+    // CAS Step Solver, which returns real steps immediately. The general
+    // agent is only a fallback for prose problems, and it is bounded — the
+    // old path let one slow agent call lock every bench button behind the
+    // shared busy state for minutes with no receipt at all.
     try {
-      const task = `Math problem: "${problem}". ${statsResult ? `Stats: mean ${statsResult.mean}, σ ${statsResult.stdDev}.` : ''} ${regressResult ? `Regression: ${regressResult.equation} R²=${regressResult.rSquared}.` : ''} Provide a step-by-step solution path. Plain text, numbered steps.`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
+      const parts = problem.split('=');
+      if (parts.length <= 2) {
+        const left = (parts[0] ?? '').trim();
+        const right = (parts[1] ?? '0').trim();
+        if (left) {
+          const r = await callMacro<{ kind?: string; roots?: unknown; steps?: string[] }>('stepSolve', { left, right, variable: 'x' });
+          if (r.ok && r.result && Array.isArray(r.result.steps) && r.result.steps.length > 0) {
+            const roots = r.result.roots === 'infinite'
+              ? 'infinitely many solutions'
+              : Array.isArray(r.result.roots)
+                ? r.result.roots.map((x) => (typeof x === 'object' && x !== null
+                    ? `${(x as { real?: number }).real} ${(x as { imag?: number }).imag !== undefined && ((x as { imag?: number }).imag as number) >= 0 ? '+' : '−'} ${Math.abs((x as { imag?: number }).imag ?? 0)}i`
+                    : String(x))).join(', ')
+                : '—';
+            setAgentReply([`Step Solver (${r.result.kind ?? 'equation'}) — x = ${roots}`, '', ...r.result.steps.map((s, i) => `${i + 1}. ${s}`)].join('\n'));
+            ok('Steps ready (Step Solver).');
+            return;
+          }
+        }
+      }
+    } catch { /* not solver-shaped — fall through to the agent */ }
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const task = `Math problem: "${problem}". ${statsResult ? `Stats: mean ${statsResult.mean}, σ (population) ${statsResult.stdDev}.` : ''} ${regressResult ? `Regression: ${regressResult.equation} R²=${regressResult.rSquared}.` : ''} Provide a step-by-step solution path. Plain text, numbered steps.`;
+      const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('steps-agent-timeout')), 30_000); });
+      const r = await Promise.race([api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } }), timeout]);
       const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Steps ready.'); } else err('Agent returned empty.');
-    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Steps ready (agent).'); } else err('Agent returned empty.');
+    } catch (e) {
+      if (e instanceof Error && e.message === 'steps-agent-timeout') {
+        err('The Steps Agent did not return within 30s, so the request was stopped instead of leaving the bench locked. Equations and expressions are answered directly by the Step Solver.');
+      } else err(pickMessage(e));
+    } finally { if (timer) clearTimeout(timer); setBusy(null); }
   }
 
   const actions = [
@@ -210,9 +243,9 @@ export function MathActionPanel() {
     { id: 'poly' as ActionId, label: 'Poly', desc: 'polynomialAnalysis roots + derivative', icon: FunctionSquare, accent: '#22c55e', handler: actPoly },
     { id: 'polyGeneral' as ActionId, label: 'Poly⁺', desc: 'polynomialRootsGeneral — any degree, complex roots (Durand-Kerner)', icon: Orbit, accent: '#14b8a6', handler: actPolyGeneral },
     { id: 'regress' as ActionId, label: 'Regress', desc: 'regressionFit R² + equation', icon: TrendingUp, accent: '#f97316', handler: actRegress },
-    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private analysis DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
+    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? mintedDtuId : 'Private analysis DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send analysis brief', icon: Send, accent: '#ec4899', handler: actDm },
-    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public derivation + federation', icon: Globe, accent: '#15803d', handler: actPublish },
+    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? publishedDtuId : 'Public derivation + federation', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Steps', desc: 'Agent: step-by-step solution path', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];
 
@@ -275,11 +308,16 @@ export function MathActionPanel() {
             <div className="grid grid-cols-3 gap-2 mt-1 text-[11px] text-zinc-300">
               <div>μ <span className="font-mono text-cyan-300">{statsResult.mean?.toFixed(2)}</span></div>
               <div>med <span className="font-mono text-cyan-300">{statsResult.median}</span></div>
-              <div>σ <span className="font-mono text-cyan-300">{statsResult.stdDev?.toFixed(2)}</span></div>
+              <div>mode <span className="font-mono text-cyan-300">{statsResult.modes && statsResult.modes.length > 0 ? statsResult.modes.join(', ') : '—'}</span></div>
+              <div>σ (population) <span className="font-mono text-cyan-300">{statsResult.stdDev?.toFixed(2)}</span></div>
+              <div>s (sample) <span className="font-mono text-cyan-300">{statsResult.sampleStdDev?.toFixed(2)}</span></div>
               <div>min <span className="font-mono">{statsResult.min}</span></div>
               <div>max <span className="font-mono">{statsResult.max}</span></div>
               <div>IQR <span className="font-mono">{statsResult.q1}–{statsResult.q3}</span></div>
             </div>
+            {statsResult.conventions && (
+              <p className="mt-1.5 text-[10px] leading-snug text-zinc-400">{statsResult.conventions}</p>
+            )}
           </div>
         )}
         {matrixResult && (
