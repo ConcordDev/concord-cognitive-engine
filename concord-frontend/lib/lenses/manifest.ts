@@ -3085,15 +3085,15 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'government',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Emergency dispatch.",
-      caption: "Incidents, dispatches, resources, protocols, responses \u2014 REAL_FREE data from open feeds.",
+      caption: "Incidents, dispatches, resources, protocols, responses \u2014 your own live board: units, incidents and agency records persist on Concord's backend; seismic data is a live USGS feed.",
       firstActionLabel: "Open the dispatch board",
     },
     firstRunGuide: {
       steps: [
-        { caption: "Incidents stream in real-time from connected feeds." },
+        { caption: "Incidents you log persist on the board, per account or per agency." },
         { caption: "Resource allocation runs against the live availability map." },
         { caption: "Protocols compose response checklists from the playbook substrate." },
       ],
