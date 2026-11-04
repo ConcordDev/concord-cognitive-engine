@@ -104,7 +104,7 @@ describe('SportsCareerPanel', () => {
   it('a tryout reports its real result against the stage bar', async () => {
     mockSurface();
     const { getByLabelText, getByText } = render(<SportsCareerPanel />);
-    await waitFor(() => expect(getByText(/Hoops League/)).toBeInTheDocument());
+    await waitFor(() => expect(getByText(/Hoops League · basketball · season 2 · 2 teams/)).toBeInTheDocument());
     fireEvent.click(getByLabelText('Request a tryout for the selected league'));
     await waitFor(() => expect(getByText(/Tryout passed — composite 62 against the 30 bar/)).toBeInTheDocument());
     expect(lensRun.mock.calls.some((c) => c[0] === 'sports_careers' && c[1] === 'request_tryout' && c[2]?.leagueId === 'lg_1')).toBe(true);
@@ -113,7 +113,7 @@ describe('SportsCareerPanel', () => {
   it('a failed tryout is reported as a result, not an error', async () => {
     mockSurface({ tryout: { ok: true, passed: false, composite: 12, required: 30 } });
     const { getByLabelText, getByText } = render(<SportsCareerPanel />);
-    await waitFor(() => expect(getByText(/Hoops League/)).toBeInTheDocument());
+    await waitFor(() => expect(getByText(/Hoops League · basketball · season 2 · 2 teams/)).toBeInTheDocument());
     fireEvent.click(getByLabelText('Request a tryout for the selected league'));
     await waitFor(() => expect(getByText(/Not this time — composite 12 against the 30 bar/)).toBeInTheDocument());
   });
