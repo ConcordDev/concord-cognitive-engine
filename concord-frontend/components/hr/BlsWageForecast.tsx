@@ -50,6 +50,7 @@ interface LaborForecast {
   parameters: { alpha: number; beta: number; gamma: number | null };
   horizon: number;
   forecast: ForecastPrediction[];
+  intervalsBoundedAtZero?: boolean;
   trend: { direction: 'increasing' | 'decreasing' | 'flat'; perPeriod: number; lastLevel: number };
   accuracy: { mse: number; rmse: number; mape: string };
   accuracyLabel: 'excellent' | 'good' | 'moderate' | 'poor';
@@ -207,7 +208,7 @@ export function BlsWageForecast() {
           {result.latest && (
             <div className="text-[11px] text-zinc-400">
               Latest actual: <span className="font-mono text-cyan-300">{result.latest.value.toLocaleString()}</span>
-              {result.unit ? ` ${result.unit}` : ''} ({result.latest.period} {result.latest.year}) · {result.observations} {result.granularity} observations
+              {result.unit ? ` ${result.unit}` : ''} ({result.latest.period} {result.latest.year}) · {result.observations} {result.granularity} observations, {result.window.startYear}–{result.window.endYear}
             </div>
           )}
 
@@ -245,6 +246,7 @@ export function BlsWageForecast() {
           <p className="text-[10px] text-zinc-500">
             Intervals are the real residual-std bands from temporal.forecast (α {result.parameters.alpha}, β {result.parameters.beta}
             {result.parameters.gamma != null ? `, γ ${result.parameters.gamma}` : ''}); they widen with horizon by construction.
+            {result.intervalsBoundedAtZero ? ' Lower bounds are clamped at zero — this series cannot go negative.' : ''}
           </p>
         </div>
       )}
