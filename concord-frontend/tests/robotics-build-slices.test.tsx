@@ -88,10 +88,17 @@ describe('R-S3 — IK outcome completeness', () => {
       return Promise.resolve({ data: { ok: true, result: {} } });
     });
     const { container } = render(<KinematicsStudio />);
-    fireEvent.click(screen.getByRole('button', { name: 'Inverse Kinematics' }));
-    const svg = container.querySelector('svg[viewBox="0 0 460 460"]');
-    expect(svg).toBeTruthy();
-    fireEvent.click(svg as Element);
+    fireEvent.click(await screen.findByRole('button', { name: 'Inverse Kinematics' }));
+    // The canvas query rides a waitFor: a synchronous querySelector read null
+    // once under the batcher's full-tree load (GB-1077 excluded #2159 on it)
+    // while every awaited leg survived; the awaited form is load-proof and
+    // asserts the same canvas.
+    const svg = await waitFor(() => {
+      const el = container.querySelector('svg[viewBox="0 0 460 460"]');
+      expect(el).toBeTruthy();
+      return el as Element;
+    }, { timeout: 10000 });
+    fireEvent.click(svg);
     expect(await screen.findByText('Joint angles')).toBeTruthy();
     expect(screen.getByText(/J1 10\.50° · J2 -20\.25° · J3 30\.00°/)).toBeTruthy();
     expect(screen.getByText('Residual error')).toBeTruthy();
