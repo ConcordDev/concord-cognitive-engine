@@ -64,7 +64,7 @@ describe("app-maker — registration (every lens-driven macro present)", () => {
       // page.tsx compute-action panel (useRunArtifact)
       "scaffoldApp", "uiComplexity", "wireframeValidate",
       // AppBuilderStudio — project lifecycle
-      "projectCreate", "projectList", "projectGet", "projectDuplicate", "projectDelete",
+      "projectCreate", "projectList", "projectGet", "projectDuplicate", "projectDelete", "projectRename",
       // visual editor
       "editorPalette", "editorAddPage", "editorSavePage", "editorDeletePage",
       // data model
@@ -235,11 +235,27 @@ describe("app-maker — project lifecycle round-trip", () => {
   });
 
   it("acting on an unknown projectId is a structured not_found, never a throw", async () => {
-    for (const m of ["projectGet", "projectDelete", "editorAddPage", "dataAddTable", "deployStatus", "versionList"]) {
+    for (const m of ["projectGet", "projectDelete", "projectRename", "editorAddPage", "dataAddTable", "deployStatus", "versionList"]) {
       const r = await call(m, ctxA, { projectId: "ghost" });
       assert.equal(r.ok, false);
       assert.equal(r.error, "project_not_found");
     }
+  });
+
+  it("rename (F10) updates the name, bumps updatedAt, and rejects an empty name", async () => {
+    const proj = await freshProject();
+    const before = proj.updatedAt;
+    const ren = await call("projectRename", ctxA, { projectId: proj.id, name: "  Renamed App  " });
+    assert.equal(ren.ok, true);
+    assert.equal(ren.result.project.name, "Renamed App");
+    assert.ok(ren.result.project.updatedAt >= before);
+
+    const got = await call("projectGet", ctxA, { projectId: proj.id });
+    assert.equal(got.result.project.name, "Renamed App");
+
+    const empty = await call("projectRename", ctxA, { projectId: proj.id, name: "   " });
+    assert.equal(empty.ok, false);
+    assert.equal(empty.error, "name_required");
   });
 });
 
