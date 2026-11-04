@@ -154,4 +154,18 @@ describe('EmployerBrowser', () => {
     await waitFor(() => expect(queryByText(/Vell the Trader/)).toBeNull());
     expect(lensRun.mock.calls.some((c) => c[1] === 'employers' && c[2]?.trackId === 'smith')).toBe(true);
   });
+
+  it('marks each entry against the viewer\'s contract reach when gateTier is known', async () => {
+    lensRun.mockImplementation((_d: string, name: string) =>
+      name === 'employers' ? reply({ ok: true, employers: EMPLOYERS }) : reply({ ok: true }));
+    // EMPLOYERS[0] offers tier 3: inside a tier-3 reach, outside a tier-2 reach.
+    const within = render(<EmployerBrowser trackId="trader" gateTier={3} />);
+    await waitFor(() => expect(within.getByText(/Within your reach/)).toBeInTheDocument());
+    within.unmount();
+
+    const above = render(<EmployerBrowser trackId="trader" gateTier={2} />);
+    await waitFor(() => expect(above.getByText(/Above your current reach \(tier 2\)/)).toBeInTheDocument());
+    // marked, not hidden — the honest refusal stays one click away
+    expect(above.getByLabelText('Propose a contract to Vell the Trader')).toBeInTheDocument();
+  });
 });

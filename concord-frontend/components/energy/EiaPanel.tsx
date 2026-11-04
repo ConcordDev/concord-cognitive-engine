@@ -10,7 +10,7 @@
  * donut + Save-as-DTU.
  */
 
-import { useState } from 'react';
+import { Component, useState, type ReactNode } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Zap, Loader2, TrendingUp, TrendingDown } from 'lucide-react';
@@ -23,10 +23,31 @@ interface RateResult {
   yearOverYearChangePct: number | null;
   monthlySeries: Array<{ period: string; priceCentsPerKwh: number }>;
 }
+interface MixRow { fuel?: string; mwh?: number; sharePct?: number; pct?: number }
 interface MixResult {
   region: string;
-  mix: Array<{ fuel: string; mwh: number; pct: number }>;
-  totalMWh: number;
+  mix: MixRow[];
+  totalMWh?: number;
+}
+
+/** The handler's named share field. `pct` is not part of the contract. */
+export function mixSharePct(row: MixRow): number | null {
+  const raw = row?.sharePct;
+  const n = typeof raw === 'number' ? raw : typeof raw === 'string' && String(raw).trim() !== '' ? Number(raw) : NaN;
+  return Number.isFinite(n) ? n : null;
+}
+
+class MixColumnBoundary extends Component<{ children: ReactNode }, { message: string | null }> {
+  state = { message: null as string | null };
+  static getDerivedStateFromError() {
+    return { message: 'Generation mix could not render. Rates already loaded on this page are unchanged.' };
+  }
+  render() {
+    if (this.state.message) {
+      return <div className="rounded border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-200">{this.state.message}</div>;
+    }
+    return this.props.children;
+  }
 }
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
@@ -54,12 +75,55 @@ const FUEL_COLOR: Record<string, string> = {
 
 const STATES = ['US', 'CA', 'TX', 'NY', 'FL', 'IL', 'PA', 'OH', 'MA', 'WA'];
 
+function MixBars({ mix }: { mix: MixResult }) {
+  const rows = mix.mix.map((m) => {
+    const share = mixSharePct(m);
+    return { fuel: m.fuel || 'Unknown', mwh: m.mwh, share };
+  });
+  const recorded = rows.flatMap((r) => (r.share == null ? [] : [{ fuel: r.fuel, share: r.share }]));
+  const totalMWh = mix.totalMWh;
+  const total = typeof totalMWh === 'number' && Number.isFinite(totalMWh) ? totalMWh.toLocaleString() : 'not recorded';
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
+      {recorded.length > 0 && (
+        <div className="flex h-3 w-full overflow-hidden rounded-full bg-zinc-800">
+          {recorded.map((r) => {
+            const cls = FUEL_COLOR[r.fuel.toLowerCase()] || FUEL_COLOR.other;
+            return <div key={r.fuel} className={cls} style={{ width: `${r.share}%` }} title={`${r.fuel}: ${r.share.toFixed(1)}%`} />;
+          })}
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-1 text-[11px]">
+        {rows.slice(0, 8).map((r) => (
+          <div key={r.fuel} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-950 px-2 py-1">
+            <span className="capitalize text-zinc-300">{r.fuel}</span>
+            <span className="font-mono text-cyan-300">{r.share == null ? 'Not recorded' : `${r.share.toFixed(1)}%`}</span>
+          </div>
+        ))}
+      </div>
+      <SaveAsDtuButton
+        compact
+        apiSource="eia"
+        title={`${mix.region} generation mix · ${total} MWh`}
+        content={`Region: ${mix.region}\nTotal: ${total} MWh\nMix:\n${rows.map((r) => {
+          const mwh = typeof r.mwh === 'number' && Number.isFinite(r.mwh) ? r.mwh.toLocaleString() : 'not recorded';
+          return `  ${r.fuel}: ${mwh} MWh (${r.share == null ? 'share not recorded' : `${r.share.toFixed(1)}%`})`;
+        }).join('\n')}`}
+        extraTags={['energy', 'generation', (mix.region || '').toLowerCase()]}
+        rawData={mix}
+      />
+    </motion.div>
+  );
+}
+
 export function EiaPanel() {
   const [state, setState] = useState('CA');
   const [region, setRegion] = useState('US');
   const [rate, setRate] = useState<RateResult | null>(null);
   const [mix, setMix] = useState<MixResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mixError, setMixError] = useState<string | null>(null);
+  const [mixAttempt, setMixAttempt] = useState(0);
 
   const rateMutation = useMutation({
     mutationFn: async () => callMacro<RateResult>('eia-electricity-rates', { state }),
@@ -67,7 +131,10 @@ export function EiaPanel() {
   });
   const mixMutation = useMutation({
     mutationFn: async () => callMacro<MixResult>('eia-generation-mix', { region }),
-    onSuccess: (env) => { if (env.ok && env.result) setMix(env.result); else setMix(null); },
+    onSuccess: (env) => {
+      if (env.ok && env.result) { setMix(env.result); setMixError(null); }
+      else { setMix(null); setMixError(env.error || 'Generation mix is unavailable.'); }
+    },
   });
 
   return (
@@ -131,37 +198,16 @@ export function EiaPanel() {
             <select value={region} onChange={(e) => setRegion(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
               {['US', 'CAL', 'TEX', 'NY', 'FLA', 'NW', 'SE'].map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            <button type="button" onClick={() => mixMutation.mutate()} disabled={mixMutation.isPending} className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
+            <button type="button" onClick={() => { setMixAttempt((n) => n + 1); mixMutation.mutate(); }} disabled={mixMutation.isPending} className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
               {mixMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Load mix'}
             </button>
           </div>
-          {mix && mix.mix.length > 0 && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
-              {/* Stacked bar by fuel */}
-              <div className="flex h-3 w-full overflow-hidden rounded-full bg-zinc-800">
-                {mix.mix.map((m) => {
-                  const cls = FUEL_COLOR[m.fuel.toLowerCase()] || FUEL_COLOR.other;
-                  return <div key={m.fuel} className={cls} style={{ width: `${m.pct}%` }} title={`${m.fuel}: ${m.pct.toFixed(1)}%`} />;
-                })}
-              </div>
-              <div className="grid grid-cols-2 gap-1 text-[11px]">
-                {mix.mix.slice(0, 8).map((m) => (
-                  <div key={m.fuel} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-950 px-2 py-1">
-                    <span className="capitalize text-zinc-300">{m.fuel}</span>
-                    <span className="font-mono text-cyan-300">{m.pct.toFixed(1)}%</span>
-                  </div>
-                ))}
-              </div>
-              <SaveAsDtuButton
-                compact
-                apiSource="eia"
-                title={`${region} generation mix · ${mix.totalMWh.toLocaleString()} MWh`}
-                content={`Region: ${region}\nTotal: ${mix.totalMWh.toLocaleString()} MWh\nMix:\n${mix.mix.map((m) => `  ${m.fuel}: ${m.mwh.toLocaleString()} MWh (${m.pct.toFixed(1)}%)`).join('\n')}`}
-                extraTags={['energy', 'generation', region.toLowerCase()]}
-                rawData={mix}
-              />
-            </motion.div>
+          <MixColumnBoundary key={mixAttempt}>
+          {mixError && <div className="rounded border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-200">{mixError}</div>}
+          {mix && Array.isArray(mix.mix) && mix.mix.length > 0 && (
+            <MixBars mix={{ ...mix, region: mix.region || region }} />
           )}
+          </MixColumnBoundary>
         </div>
       </div>
 
