@@ -71,6 +71,18 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Workspace',
     caption: 'Your workspace store: connections and datasets live in Concord’s workspace, not on a remote database server.',
   },
+  /**
+   * Electrical's substrate is the user's own trade record — panels,
+   * estimates, invoices, checklists and diagrams persist server-side
+   * per account (PROBE-LIVE in Review 5's full first pass) and the NEC
+   * bench computes over the user's own inputs. The generic REAL_LIVE
+   * line ("polled live from an external source") is false for this
+   * lens; no external source is polled (F1).
+   */
+  electrical: {
+    label: 'Live',
+    caption: 'Your trade records: panels, estimates, invoices, checklists and diagrams are your real workspace data, and the NEC bench tools compute over your inputs. No external feed is polled.',
+  },
 };
 
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {

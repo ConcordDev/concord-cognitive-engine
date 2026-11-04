@@ -702,6 +702,22 @@ export default function registerElectricalActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  // F6: invoices were the family's only record with no exit — an invoice
+  // stood permanently once created (INV-1001). Same shape as estimateDelete.
+  registerLensAction('electrical', 'invoiceDelete', (ctx, artifact, params) => {
+    try {
+      const st = getState(); if (!st) return { ok: false, error: 'state unavailable' };
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const arr = list(st.invoices, uid(ctx));
+      const id = String(data.invoiceId || data.id || "");
+      const next = arr.filter((i) => i.id !== id);
+      if (!id || next.length === arr.length) return { ok: false, error: "not_found" };
+      st.invoices.set(uid(ctx), next);
+      save();
+      return { ok: true, result: { deleted: 1 } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   // ════════════════════════════════════════════════════════════════════
   //  ONE-LINE DIAGRAM  (persistent — nodes + connections)
   // ════════════════════════════════════════════════════════════════════
