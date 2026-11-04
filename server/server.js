@@ -18828,7 +18828,7 @@ function makeCtx(req=null) {
               opts: { temperature, maxTokens, timeoutMs },
             });
             if (pg.ok) {
-              structuredLog("info", "llm_platform_routed", { slot, provider: pg.provider, model: pg.model });
+              structuredLog("info", "llm_platform_routed", { slot, provider: pg.provider, model: pg.model, userId: _byoUserId || null });
               _meterLlmChat(db, {
                 spanType: "chat", brainUsed: slot, modelUsed: pg.model,
                 callerId: _byoUserId, latencyMs: Date.now() - _pgStartMs,
@@ -18844,7 +18844,7 @@ function makeCtx(req=null) {
                 model: pg.model,
               };
             }
-            structuredLog("warn", "llm_platform_failed", { slot, provider: pg.provider, error: pg.error || "platform_provider_error" });
+            structuredLog("warn", "llm_platform_failed", { slot, provider: pg.provider, error: pg.error || "platform_provider_error", userId: _byoUserId || null });
             _meterLlmChat(db, {
               spanType: "chat", brainUsed: slot, modelUsed: pg.model,
               callerId: _byoUserId, latencyMs: Date.now() - _pgStartMs,
