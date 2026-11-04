@@ -33,9 +33,25 @@ const CAT_COLOURS: Record<string, string> = {
   registration: '#06b6d4', tax: '#84cc16', parking: '#ec4899', toll: '#f97316', cleaning: '#14b8a6', other: '#6b7280',
 };
 
-export function GarageSection() {
+interface VehicleFormState { name: string; make: string; model: string; year: string; odometer: string }
+const EMPTY_VEHICLE_FORM: VehicleFormState = { name: '', make: '', model: '', year: '', odometer: '' };
+
+export function GarageSection({ addSignal = 0 }: { addSignal?: number }) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  // In-page vehicle form (create/edit) — the create controls open THIS,
+  // never native prompt()/confirm() dialogs (the native-dialog dead-
+  // controls class: prompt-driven controls are dead in any surface
+  // that suppresses native dialogs).
+  const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
+  const [formVehicle, setFormVehicle] = useState<Vehicle | null>(null);
+  const [form, setForm] = useState<VehicleFormState>(EMPTY_VEHICLE_FORM);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formSaving, setFormSaving] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [serviceFormOpen, setServiceFormOpen] = useState(false);
+  const [serviceForm, setServiceForm] = useState({ serviceType: '', cost: '', odometer: '', shop: '' });
+  const [serviceError, setServiceError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('overview');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -95,38 +111,55 @@ export function GarageSection() {
     if (activeId) await refreshVehicleData(activeId);
   }
 
-  async function addVehicle() {
-    const name = prompt('Vehicle name (e.g. "Daily driver")?'); if (!name?.trim()) return;
-    const make = prompt('Make?') || '';
-    const model = prompt('Model?') || '';
-    const year = prompt('Year?') || '';
-    const odometer = prompt('Current odometer?') || '0';
+  const openCreateForm = useCallback(() => {
+    setFormVehicle(null);
+    setForm(EMPTY_VEHICLE_FORM);
+    setFormError(null);
+    setFormMode('create');
+  }, []);
+  const openEditForm = useCallback((v: Vehicle) => {
+    setFormVehicle(v);
+    setForm({ name: v.name, make: v.make, model: v.model, year: v.year != null ? String(v.year) : '', odometer: String(v.odometer) });
+    setFormError(null);
+    setFormMode('edit');
+  }, []);
+
+  // The page-level "Add a vehicle" CTA bumps addSignal — open the form
+  // whenever it fires. (State adjusted during render on prop change,
+  // the React-recommended pattern, instead of an effect.)
+  const [lastAddSignal, setLastAddSignal] = useState(0);
+  if (addSignal !== lastAddSignal) {
+    setLastAddSignal(addSignal);
+    if (addSignal > 0) openCreateForm();
+  }
+
+  async function submitVehicleForm() {
+    if (!form.name.trim()) { setFormError('Give the vehicle a name.'); return; }
+    setFormSaving(true);
+    setFormError(null);
+    const input = {
+      name: form.name.trim(), make: form.make.trim(), model: form.model.trim(),
+      year: form.year ? Number(form.year) || undefined : undefined,
+      odometer: Number(form.odometer) || 0,
+    };
     try {
-      const r = await lensRun({ domain: 'automotive', action: 'vehicles-create', input: { name: name.trim(), make, model, year: Number(year) || undefined, odometer: Number(odometer) || 0 } });
+      const r = formMode === 'edit' && formVehicle
+        ? await lensRun({ domain: 'automotive', action: 'vehicles-update', input: { id: formVehicle.id, ...input } })
+        : await lensRun({ domain: 'automotive', action: 'vehicles-create', input });
+      if (!r.data?.ok) { setFormError(r.data?.error || 'Could not save the vehicle'); return; }
+      setFormMode(null);
       await refreshVehicles();
-      if (r.data?.result?.vehicle) setActiveId(r.data.result.vehicle.id);
-    } catch (e) { console.error('[Garage] addVehicle', e); }
+      const saved = r.data?.result?.vehicle as Vehicle | undefined;
+      if (saved?.id) setActiveId(saved.id);
+      if (formMode === 'edit') await reloadAll();
+    } catch (e) { setFormError(e instanceof Error ? e.message : 'Could not save the vehicle'); }
+    finally { setFormSaving(false); }
   }
   async function delVehicle(id: string) {
-    if (!confirm('Delete this vehicle and all its records?')) return;
-    try { await lensRun({ domain: 'automotive', action: 'vehicles-delete', input: { id } }); setActiveId(null); await refreshVehicles(); }
+    try { await lensRun({ domain: 'automotive', action: 'vehicles-delete', input: { id } }); setConfirmDeleteId(null); setActiveId(null); await refreshVehicles(); }
     catch (e) { console.error('[Garage] delVehicle', e); }
   }
-  async function editVehicle(v: Vehicle) {
-    const name = prompt('Vehicle name?', v.name); if (name === null) return;
-    const make = prompt('Make?', v.make) ?? v.make;
-    const model = prompt('Model?', v.model) ?? v.model;
-    const year = prompt('Year?', v.year != null ? String(v.year) : '') ?? '';
-    const odometer = prompt('Current odometer?', String(v.odometer)) ?? String(v.odometer);
-    try {
-      const r = await lensRun({ domain: 'automotive', action: 'vehicles-update', input: {
-        id: v.id, name: name.trim() || v.name, make, model,
-        year: Number(year) || undefined, odometer: Number(odometer),
-      } });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
-      await reloadAll();
-    } catch (e) { console.error('[Garage] editVehicle', e); }
-  }
+  function editVehicle(v: Vehicle) { openEditForm(v); }
   async function delSchedule(scheduleId: string) {
     if (!confirm('Remove this scheduled service? You will stop getting reminders for it.')) return;
     try { await lensRun({ domain: 'automotive', action: 'schedule-delete', input: { id: scheduleId } }); await reloadAll(); }
@@ -149,15 +182,25 @@ export function GarageSection() {
     catch (e) { console.error('[Garage] delFuel', e); }
   }
 
-  async function logService() {
+  function openServiceForm() {
+    setServiceForm({ serviceType: '', cost: '', odometer: String(activeVehicle?.odometer || ''), shop: '' });
+    setServiceError(null);
+    setServiceFormOpen(true);
+  }
+  async function submitServiceForm() {
     if (!activeId) return;
-    const serviceType = prompt('Service type (e.g. Oil change)?'); if (!serviceType?.trim()) return;
-    const cost = prompt('Cost ($)?') || '0';
-    const odometer = prompt('Odometer?', String(activeVehicle?.odometer || '')) || '';
+    if (!serviceForm.serviceType.trim()) { setServiceError('Name the service (e.g. Oil change).'); return; }
     try {
-      await lensRun({ domain: 'automotive', action: 'service-log', input: { vehicleId: activeId, serviceType: serviceType.trim(), cost: Number(cost), odometer: Number(odometer) || undefined } });
+      const r = await lensRun({ domain: 'automotive', action: 'service-log', input: {
+        vehicleId: activeId, serviceType: serviceForm.serviceType.trim(),
+        cost: Number(serviceForm.cost) || 0,
+        odometer: serviceForm.odometer ? Number(serviceForm.odometer) : undefined,
+        shop: serviceForm.shop.trim() || undefined,
+      } });
+      if (r.data?.ok === false) { setServiceError(r.data?.error || 'Could not log the service'); return; }
+      setServiceFormOpen(false);
       await reloadAll();
-    } catch (e) { console.error('[Garage] logService', e); }
+    } catch (e) { setServiceError(e instanceof Error ? e.message : 'Could not log the service'); }
   }
   async function delService(id: string) {
     try { await lensRun({ domain: 'automotive', action: 'service-delete', input: { id } }); await reloadAll(); }
@@ -237,7 +280,7 @@ export function GarageSection() {
         <header className="px-3 py-2.5 border-b border-white/5 flex items-center gap-2">
           <Car className="w-4 h-4 text-sky-400" />
           <span className="text-xs font-semibold text-gray-200 flex-1">Garage</span>
-          <button aria-label="Add" onClick={addVehicle} className="p-0.5 text-sky-300 hover:text-sky-200"><Plus className="w-3.5 h-3.5" /></button>
+          <button aria-label="Add" onClick={openCreateForm} className="p-0.5 text-sky-300 hover:text-sky-200"><Plus className="w-3.5 h-3.5" /></button>
         </header>
         <ul className="flex-1 overflow-y-auto" aria-label="Garage vehicles">
           {loading ? (
@@ -251,16 +294,27 @@ export function GarageSection() {
           ) : vehicles.length === 0 ? (
             <li className="px-3 py-6 text-xs text-gray-400 text-center italic">
               <SvgIcon name="car-silhouette" size={40} className="mx-auto mb-2 not-italic text-gray-600" />
-              No vehicles yet. <button onClick={addVehicle} className="text-sky-300 underline">Add your first vehicle</button>
+              No vehicles yet. <button onClick={openCreateForm} className="text-sky-300 underline">Add your first vehicle</button>
             </li>
           ) : vehicles.map(v => (
-            <li key={v.id} onClick={() => setActiveId(v.id)} className={cn('group px-3 py-2 cursor-pointer flex items-center gap-2 hover:bg-white/[0.04]', activeId === v.id && 'bg-sky-500/10 border-l-2 border-sky-400')}>
-              <Car className={cn('w-4 h-4', activeId === v.id ? 'text-sky-300' : 'text-gray-400')} />
-              <div className="flex-1 min-w-0">
-                <div className="text-xs text-white truncate">{v.name}</div>
-                <div className="text-[10px] text-gray-400 truncate">{[v.year, v.make, v.model].filter(Boolean).join(' ') || 'no details'} · {v.odometer.toLocaleString()} {v.odometerUnit}</div>
+            <li key={v.id} onClick={() => setActiveId(v.id)} className={cn('group px-3 py-2 cursor-pointer hover:bg-white/[0.04]', activeId === v.id && 'bg-sky-500/10 border-l-2 border-sky-400')}>
+              <div className="flex items-center gap-2">
+                <Car className={cn('w-4 h-4', activeId === v.id ? 'text-sky-300' : 'text-gray-400')} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-white truncate">{v.name}</div>
+                  <div className="text-[10px] text-gray-400 truncate">{[v.year, v.make, v.model].filter(Boolean).join(' ') || 'no details'} · {v.odometer.toLocaleString()} {v.odometerUnit}</div>
+                </div>
+                <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(v.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"><Trash2 className="w-3 h-3" /></button>
               </div>
-              <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); delVehicle(v.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"><Trash2 className="w-3 h-3" /></button>
+              {confirmDeleteId === v.id && (
+                <div className="mt-2 rounded border border-rose-500/30 bg-rose-500/5 p-2" onClick={(e) => e.stopPropagation()}>
+                  <div className="text-[11px] text-rose-200 mb-2">Delete {v.name} and all its records?</div>
+                  <div className="flex gap-2">
+                    <button onClick={() => delVehicle(v.id)} className="px-2 py-1 text-[11px] rounded bg-rose-500 text-white font-semibold hover:bg-rose-400">Delete</button>
+                    <button onClick={() => setConfirmDeleteId(null)} className="px-2 py-1 text-[11px] rounded border border-white/15 text-gray-300 hover:text-white">Cancel</button>
+                  </div>
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -268,9 +322,47 @@ export function GarageSection() {
 
       {/* Main */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        {!activeVehicle ? (
-          <div className="flex-1 flex items-center justify-center text-xs text-gray-400">Add a vehicle to start tracking.</div>
-        ) : (
+        {formMode && (
+          <form
+            className="m-4 mb-0 rounded border border-sky-500/25 bg-black/30 p-4 space-y-3"
+            onSubmit={(e) => { e.preventDefault(); submitVehicleForm(); }}
+          >
+            <div className="text-xs font-semibold text-gray-100">{formMode === 'edit' ? `Edit vehicle — ${formVehicle?.name}` : 'Add a vehicle'}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="block">
+                <span className="block text-[11px] uppercase tracking-wider text-gray-400 mb-1">Name *</span>
+                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Daily driver" className="w-full rounded border border-white/10 bg-zinc-950 px-2 py-2 text-sm text-white focus:outline-none focus:border-sky-500/50" />
+              </label>
+              <label className="block">
+                <span className="block text-[11px] uppercase tracking-wider text-gray-400 mb-1">Make</span>
+                <input value={form.make} onChange={(e) => setForm({ ...form, make: e.target.value })} placeholder="Honda" className="w-full rounded border border-white/10 bg-zinc-950 px-2 py-2 text-sm text-white focus:outline-none focus:border-sky-500/50" />
+              </label>
+              <label className="block">
+                <span className="block text-[11px] uppercase tracking-wider text-gray-400 mb-1">Model</span>
+                <input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder="Civic" className="w-full rounded border border-white/10 bg-zinc-950 px-2 py-2 text-sm text-white focus:outline-none focus:border-sky-500/50" />
+              </label>
+              <label className="block">
+                <span className="block text-[11px] uppercase tracking-wider text-gray-400 mb-1">Year</span>
+                <input type="number" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} placeholder="2021" className="w-full rounded border border-white/10 bg-zinc-950 px-2 py-2 text-sm text-white focus:outline-none focus:border-sky-500/50" />
+              </label>
+              <label className="block">
+                <span className="block text-[11px] uppercase tracking-wider text-gray-400 mb-1">Current odometer</span>
+                <input type="number" min={0} value={form.odometer} onChange={(e) => setForm({ ...form, odometer: e.target.value })} placeholder="0" className="w-full rounded border border-white/10 bg-zinc-950 px-2 py-2 text-sm text-white focus:outline-none focus:border-sky-500/50" />
+              </label>
+            </div>
+            {formError && <div role="alert" className="text-xs text-rose-300">{formError}</div>}
+            <div className="flex gap-2">
+              <button type="submit" disabled={formSaving} className="px-3 py-2 text-sm rounded bg-sky-500 text-white font-semibold hover:bg-sky-400 disabled:opacity-50">{formSaving ? 'Saving…' : formMode === 'edit' ? 'Save changes' : 'Add vehicle'}</button>
+              <button type="button" onClick={() => setFormMode(null)} className="px-3 py-2 text-sm rounded border border-white/15 text-gray-300 hover:text-white">Cancel</button>
+            </div>
+          </form>
+        )}
+        {!activeVehicle && !formMode ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-2 text-xs text-gray-400">
+            <span>Add a vehicle to start tracking.</span>
+            <button onClick={openCreateForm} className="px-3 py-2 text-sm rounded bg-sky-500 text-white font-semibold hover:bg-sky-400">Add a vehicle</button>
+          </div>
+        ) : !activeVehicle ? null : (
           <>
             <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
               <span className="text-sm font-semibold text-gray-200">{activeVehicle.name}</span>
@@ -391,8 +483,35 @@ export function GarageSection() {
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">{service.length} service record(s)</span>
                     <button onClick={addSchedule} className="ml-auto px-2.5 py-1 text-xs rounded border border-sky-500/30 text-sky-300 hover:bg-sky-500/10 inline-flex items-center gap-1"><Bell className="w-3 h-3" />Add schedule</button>
-                    <button onClick={logService} className="px-2.5 py-1 text-xs rounded bg-sky-500 text-white font-semibold hover:bg-sky-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Log service</button>
+                    <button onClick={openServiceForm} className="px-2.5 py-1 text-xs rounded bg-sky-500 text-white font-semibold hover:bg-sky-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Log service</button>
                   </div>
+                  {serviceFormOpen && (
+                    <form className="rounded border border-sky-500/25 bg-black/30 p-3 space-y-3" onSubmit={(e) => { e.preventDefault(); submitServiceForm(); }}>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label className="block">
+                          <span className="block text-[11px] uppercase tracking-wider text-gray-400 mb-1">Service type *</span>
+                          <input value={serviceForm.serviceType} onChange={(e) => setServiceForm({ ...serviceForm, serviceType: e.target.value })} placeholder="Oil change" className="w-full rounded border border-white/10 bg-zinc-950 px-2 py-2 text-sm text-white focus:outline-none focus:border-sky-500/50" />
+                        </label>
+                        <label className="block">
+                          <span className="block text-[11px] uppercase tracking-wider text-gray-400 mb-1">Cost ($)</span>
+                          <input type="number" min={0} step="0.01" value={serviceForm.cost} onChange={(e) => setServiceForm({ ...serviceForm, cost: e.target.value })} placeholder="0" className="w-full rounded border border-white/10 bg-zinc-950 px-2 py-2 text-sm text-white focus:outline-none focus:border-sky-500/50" />
+                        </label>
+                        <label className="block">
+                          <span className="block text-[11px] uppercase tracking-wider text-gray-400 mb-1">Odometer</span>
+                          <input type="number" min={0} value={serviceForm.odometer} onChange={(e) => setServiceForm({ ...serviceForm, odometer: e.target.value })} className="w-full rounded border border-white/10 bg-zinc-950 px-2 py-2 text-sm text-white focus:outline-none focus:border-sky-500/50" />
+                        </label>
+                        <label className="block">
+                          <span className="block text-[11px] uppercase tracking-wider text-gray-400 mb-1">Shop</span>
+                          <input value={serviceForm.shop} onChange={(e) => setServiceForm({ ...serviceForm, shop: e.target.value })} className="w-full rounded border border-white/10 bg-zinc-950 px-2 py-2 text-sm text-white focus:outline-none focus:border-sky-500/50" />
+                        </label>
+                      </div>
+                      {serviceError && <div role="alert" className="text-xs text-rose-300">{serviceError}</div>}
+                      <div className="flex gap-2">
+                        <button type="submit" className="px-3 py-2 text-sm rounded bg-sky-500 text-white font-semibold hover:bg-sky-400">Log service</button>
+                        <button type="button" onClick={() => setServiceFormOpen(false)} className="px-3 py-2 text-sm rounded border border-white/15 text-gray-300 hover:text-white">Cancel</button>
+                      </div>
+                    </form>
+                  )}
                   {service.length === 0 ? <Empty icon={Wrench} label="No service records." /> : (
                     <ul className="divide-y divide-white/5">
                       {service.map(sv => (
