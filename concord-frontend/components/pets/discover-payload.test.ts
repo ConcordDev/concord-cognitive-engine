@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { discoverItems } from './discover-payload.ts';
+import { discoverItems } from './discover-payload';
 
 describe('discoverItems', () => {
   it('reads facts from the unwrapped lensRun result', () => {
