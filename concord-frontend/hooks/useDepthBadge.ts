@@ -71,6 +71,18 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Workspace',
     caption: 'Your workspace store: connections and datasets live in Concord’s workspace, not on a remote database server.',
   },
+  /**
+   * Real Estate declared REAL_FREE ("Real but static / open-access")
+   * over a live, writable, persistent listing store — Review 5's
+   * first pass reclassed it as a mis-scoped declaration (F1). The
+   * listings are the member's own live records; the one external
+   * feed is the US Census Bureau's ACS, named here and at the feed
+   * surface itself.
+   */
+  realestate: {
+    label: 'Live',
+    caption: 'Live workspace: your listings, tours and notes are your real persistent records in Concord, and the tools work on them. The home-value feed is real too — US Census Bureau American Community Survey data, named at the feed.',
+  },
 };
 
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {
