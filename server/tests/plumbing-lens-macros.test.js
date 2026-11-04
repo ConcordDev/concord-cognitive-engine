@@ -321,9 +321,13 @@ describe("plumbing lens — fail-closed on poisoned numeric inputs", () => {
     });
     assert.equal(r.ok, true);
     // parseInt("abc")→NaN→`||1`→1 ; NaN→1 ; Infinity → parseInt(Infinity) is NaN → 1
-    // toilet 2.5·1 + shower 2·1 + bathtub 2·1 = 6.5
+    // IPC Table 709.1: toilet 3·1 + shower 2·1 + bathtub 2·1 = 7.
+    // (The prior pin read 6.5 via the pre-F4 toilet value of 2.5 — the fifth
+    //  assertion in this file encoding the walked finding; it sat in the
+    //  fail-closed describe, past the fixtureCount describe PR #2148
+    //  corrected, and the batch #2151 fold caught it. The table governs.)
     assert.ok(Number.isFinite(r.result.totalWSFU), `totalWSFU = ${r.result.totalWSFU} must be finite`);
-    assert.equal(r.result.totalWSFU, 6.5);
+    assert.equal(r.result.totalWSFU, 7);
   });
 
   it("fixtureCount: a non-array fixtures payload is tolerated (treated empty), never crashes", () => {
