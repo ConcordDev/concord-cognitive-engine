@@ -582,14 +582,21 @@ DOMAIN_RULES.set("research", {
 // === Education ===
 DOMAIN_RULES.set("education", {
   types: ["course", "lesson", "quiz", "assignment", "curriculum", "certificate"],
-  validStatuses: ["draft", "active", "in-progress", "completed", "graded", "archived"],
+  // The classroom record dialog saves meta.status from its own list
+  // (enrolled, active, completed, withdrawn, graduated). enrolled,
+  // withdrawn, and graduated were rejected, and the client showed only
+  // "validation failed".
+  validStatuses: ["draft", "active", "in-progress", "completed", "graded", "archived", "enrolled", "withdrawn", "graduated"],
   transitions: {
-    draft: ["active", "archived"],
-    active: ["in-progress", "draft", "archived"],
-    "in-progress": ["completed", "active"],
-    completed: ["graded", "archived"],
-    graded: ["archived"],
+    draft: ["active", "archived", "enrolled", "withdrawn", "graduated"],
+    active: ["in-progress", "draft", "archived", "enrolled", "completed", "withdrawn", "graduated"],
+    "in-progress": ["completed", "active", "enrolled", "withdrawn", "graduated"],
+    completed: ["graded", "archived", "active", "enrolled", "withdrawn", "graduated"],
+    graded: ["archived", "completed"],
     archived: [],
+    enrolled: ["active", "completed", "withdrawn", "graduated", "archived"],
+    withdrawn: ["enrolled", "active", "archived"],
+    graduated: ["archived", "enrolled"],
   },
   requiredFields: { course: ["title"], lesson: ["title"], quiz: ["title", "questions"] },
   computedFields: (type, data) => {

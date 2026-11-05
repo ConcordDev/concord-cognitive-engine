@@ -20,6 +20,7 @@ import { PipingProvider } from '@/components/panel-polish';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
+import { classroomRecordRefusal, classroomSaveMessage } from '@/components/education/classroom-record';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { calendarDateKey } from '@/lib/calendar-date';
@@ -503,6 +504,7 @@ export function EducationSection() {
 
   /* ---------- editor form state ---------- */
   const [formTitle, setFormTitle] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [formType, setFormType] = useState<ArtifactType>('Student');
   const [formStatus, setFormStatus] = useState<Status>('enrolled');
   const [formDescription, setFormDescription] = useState('');
@@ -636,6 +638,7 @@ export function EducationSection() {
   /* ---------- editor helpers ---------- */
   const openNewEditor = () => {
     setEditingItem(null);
+    setSaveError(null);
     setFormTitle('');
     setFormType(currentTabType);
     setFormStatus('enrolled');
@@ -668,6 +671,7 @@ export function EducationSection() {
   const openEditEditor = (item: LensItem<EducationArtifact>) => {
     const d = item.data as unknown as EducationArtifact;
     setEditingItem(item);
+    setSaveError(null);
     setFormTitle(item.title);
     setFormType(d.artifactType);
     setFormStatus(d.status);
@@ -698,6 +702,12 @@ export function EducationSection() {
   };
 
   const handleSave = async () => {
+    const refusal = classroomRecordRefusal(formTitle);
+    if (refusal) {
+      setSaveError(refusal);
+      return;
+    }
+    setSaveError(null);
     const payload = {
       title: formTitle,
       data: {
@@ -722,9 +732,13 @@ export function EducationSection() {
       } as unknown as Partial<EducationArtifact>,
       meta: { status: formStatus, tags: [formType] },
     };
-    if (editingItem) await update(editingItem.id, payload);
-    else await create(payload);
-    setShowEditor(false);
+    try {
+      if (editingItem) await update(editingItem.id, payload);
+      else await create(payload);
+      setShowEditor(false);
+    } catch (err) {
+      setSaveError(classroomSaveMessage(err));
+    }
   };
 
   const handleAction = async (action: string, artifactId?: string) => {
@@ -3104,6 +3118,9 @@ export function EducationSection() {
                   <DraftedTextarea lensId="education" draftKey="form-notes" className={ds.textarea} rows={2} initial={formNotes} onValueChange={setFormNotes} placeholder="Additional notes..." />
                 </div>
               </div>
+              {saveError && (
+                <p role="alert" className="px-4 pt-3 text-sm text-red-400">{saveError}</p>
+              )}
               <div className="flex items-center justify-between p-4 border-t border-lattice-border">
                 <div>
                   {editingItem && (

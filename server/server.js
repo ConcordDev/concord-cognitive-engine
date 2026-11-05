@@ -49801,6 +49801,10 @@ register("lens", "create", async (ctx, input={}) => {
   if ((domain === "lab" || domain === "agents") && !trimmedTitle) {
     return { ok: false, error: "title required" };
   }
+  // Education's classroom dialog must not store a blank record as "New artifact".
+  if (domain === "education" && !trimmedTitle) {
+    return { ok: false, error: "Title is required." };
+  }
 
   // v5.5: Scope enforcement via capability bridge
   //
@@ -49827,6 +49831,11 @@ register("lens", "create", async (ctx, input={}) => {
   // Domain-specific validation
   const validation = validateArtifact(domain, type, data, meta);
   if (!validation.ok) {
+    // Education's dialog used to toast the bare token. The rule error
+    // already names the field (type or status). Other domains keep the token.
+    if (domain === "education" && validation.errors?.length) {
+      return { ok: false, error: String(validation.errors[0]), errors: validation.errors, warnings: validation.warnings };
+    }
     return { ok: false, error: "validation_failed", errors: validation.errors, warnings: validation.warnings };
   }
 
