@@ -72,16 +72,6 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Your workspace store: connections and datasets live in Concord’s workspace, not on a remote database server.',
   },
   /**
-   * Nonprofit's own records (campaigns, donors, volunteers, pages, events)
-   * are live per-user workspace data; the 990 research data is ProPublica's
-   * open-access IRS dataset — real, but static reference data. The generic
-   * REAL_LIVE line would blur that split, so the caption names both halves.
-   */
-  nonprofit: {
-    label: 'Workspace',
-    caption: 'Your workspace data: campaigns, donors, volunteers and pages are your live records; 990 research data is ProPublica’s open-access IRS dataset.',
-  },
-  /**
    * Housing's substrate is the member's own persistent world state —
    * land claims and houses live in the platform database, owner-gated
    * in the lib (PROBE-BLOCKED at the then-missing claim surface in
@@ -92,6 +82,16 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
   housing: {
     label: 'Live',
     caption: 'Your world records: land claims and houses are your real persistent state in Concord’s worlds, and the tools work on your own plots and buildings. No external feed is polled.',
+  },
+  /**
+   * Nonprofit's own records (campaigns, donors, volunteers, pages, events)
+   * are live per-user workspace data; the 990 research data is ProPublica's
+   * open-access IRS dataset — real, but static reference data. The generic
+   * REAL_LIVE line would blur that split, so the caption names both halves.
+   */
+  nonprofit: {
+    label: 'Workspace',
+    caption: 'Your workspace data: campaigns, donors, volunteers and pages are your live records; 990 research data is ProPublica’s open-access IRS dataset.',
   },
 };
 
