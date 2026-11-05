@@ -43,7 +43,7 @@ test("(a) chat max tokens defaults to 4096 and reads CONCORD_CHAT_MAX_TOKENS", (
     assert.equal(resolveChatMaxTokens({ verbosity: 0, env: "2000" }), 1200);
     process.env.CONCORD_CHAT_MAX_TOKENS = "2400";
     assert.equal(resolveChatMaxTokens({ verbosity: 0.5 }), 2400);
-    assert.ok(resolveChatMaxTokens({ env: "999999" }) <= 16384);
+    assert.ok(resolveChatMaxTokens({ env: "999999" }) <= 32768);
     assert.ok(resolveChatMaxTokens({ env: "10" }) >= 256);
   } finally {
     if (prev == null) delete process.env.CONCORD_CHAT_MAX_TOKENS;

@@ -33,7 +33,10 @@ test.describe('Elevated user walks through admin + sovereign controls', () => {
 
   test('admin lens renders without the access gate for an elevated user', async ({ page }) => {
     await blockUnmockedApi(page);
-    await mockSovereignAuth(page);
+    // The admin lens mirrors the server's requireAdminRole: owner, admin or
+    // founder only (components/admin/admin-access.ts). Sovereign is not in
+    // that list, so sign in as an admin for this lens.
+    await mockSovereignAuth(page, { role: 'admin' });
     const res = await gotoStable(page, '/lenses/admin');
     expect(res?.status() ?? 200).toBeLessThan(500);
     await expect(page.getByText(/Admin access required/i)).toHaveCount(0);
