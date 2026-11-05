@@ -453,3 +453,64 @@ describe("geology.fieldtrip-* (outcrop sequencing)", () => {
     assert.equal(call("fieldtrip-list", ctxA, {}).result.count, 0);
   });
 });
+
+describe("geology.mineralId (species identification)", () => {
+  it("names quartz for the quartz-exact probe, at a sub-100 match", () => {
+    // The filed probe: hardness 7, SG 2.65, white streak, no cleavage,
+    // conchoidal fracture. The old implementation scored form
+    // completeness and returned the family "silicate-likely" at 100.
+    const r = call("mineralId", ctxA, { data: { hardness: 7, specificGravity: 2.65, streak: "white", cleavage: "none", fracture: "conchoidal" } }, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.identification?.species, "quartz");
+    assert.ok(r.result.identificationConfidence < 100, `confidence ${r.result.identificationConfidence} must stay sub-100`);
+    assert.equal(r.result.identificationConfidence, 90); // colour untested caps the battery
+    assert.ok(r.result.candidates.length >= 2);
+    assert.equal(r.result.candidates[0].species, "quartz");
+  });
+
+  it("an empty battery identifies nothing and claims no confidence", () => {
+    const r = call("mineralId", ctxA, { data: {} }, {});
+    assert.equal(r.result.identification, null);
+    assert.equal(r.result.identificationConfidence, 0);
+    assert.ok(r.result.testsRecommended.length > 0);
+  });
+});
+
+describe("geology.column-* (stratigraphic column persistence)", () => {
+  const layers = [
+    { name: "PR2GEO Upper", lithology: "sandstone", thickness: 10, age: "Devonian", fossils: [] },
+    { name: "PR2GEO Lower", lithology: "shale", thickness: 5, age: "Silurian", fossils: ["brachiopod"] },
+  ];
+
+  it("saves, lists, gets, updates and deletes a built column, per user", () => {
+    const saved = call("column-save", ctxA, { name: "Hudson section", layers });
+    assert.equal(saved.ok, true);
+    const id = saved.result.column.id;
+    assert.equal(call("column-list", ctxA, {}).result.count, 1);
+    assert.equal(call("column-list", ctxB, {}).result.count, 0); // per-user isolation
+    const got = call("column-get", ctxA, { id });
+    assert.deepEqual(got.result.column.layers.map((l) => l.name), ["PR2GEO Upper", "PR2GEO Lower"]);
+    // Update in place under the same id.
+    const upd = call("column-save", ctxA, { id, name: "Hudson section v2", layers: [layers[0]] });
+    assert.equal(upd.result.column.id, id);
+    assert.equal(call("column-list", ctxA, {}).result.count, 1);
+    assert.equal(call("column-delete", ctxA, { id }).ok, true);
+    assert.equal(call("column-list", ctxA, {}).result.count, 0);
+    assert.equal(call("column-get", ctxA, { id }).ok, false);
+  });
+
+  it("rejects a column with no named layers", () => {
+    assert.equal(call("column-save", ctxA, { name: "empty", layers: [{ name: "  " }] }).ok, false);
+    assert.equal(call("column-save", ctxA, { name: "empty", layers: [] }).ok, false);
+  });
+
+  it("an observation can be geotagged after the fact via observation-update", () => {
+    const obs = call("observation-log", ctxA, { name: "Roadcut", locationName: "Poughkeepsie, NY" });
+    const id = obs.result.observation.id;
+    assert.equal(obs.result.observation.lat, null);
+    const upd = call("observation-update", ctxA, { id, lat: 41.7006, lon: -73.9301 });
+    assert.equal(upd.result.observation.lat, 41.7006);
+    const dash = call("field-dashboard", ctxA, {});
+    assert.equal(dash.result.geotagged, 1);
+  });
+});

@@ -21,6 +21,8 @@ interface MineralResult {
   specimen?: string;
   properties?: { hardness: number; streak: string; cleavage: string; fracture: string; specific_gravity: number };
   identificationConfidence?: number;
+  identification?: { species: string; family: string; match: number } | null;
+  candidates?: Array<{ species: string; family: string; match: number }>;
   testsPerformed?: number;
   testsRecommended?: string[];
   classification?: string;
@@ -120,15 +122,29 @@ export function RockMineralIdPanel() {
             )}
           </div>
           <div className="rounded-lg border border-purple-500/20 bg-purple-500/5 p-3">
-            <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Gem className="h-3 w-3" />Mineral ID confidence</div>
-            {!mineralResult && <div className="text-[11px] text-zinc-400">Run tests to score.</div>}
+            <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Gem className="h-3 w-3" />Mineral identification</div>
+            {!mineralResult && <div className="text-[11px] text-zinc-400">Run tests to identify.</div>}
             {mineralResult && (
               <div className="space-y-2 text-[11px]">
-                <div className="flex items-baseline gap-2">
-                  <span className="font-mono text-2xl text-purple-200">{mineralResult.identificationConfidence}%</span>
-                  <span className="text-zinc-400">· {mineralResult.testsPerformed} tests performed</span>
-                </div>
+                {mineralResult.identification ? (
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-mono text-2xl capitalize text-purple-200">{mineralResult.identification.species}</span>
+                    <span className="text-zinc-400">{mineralResult.identification.match}% property match · {mineralResult.testsPerformed} tests performed</span>
+                  </div>
+                ) : (
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-mono text-2xl text-purple-200">{mineralResult.identificationConfidence}%</span>
+                    <span className="text-zinc-400">best property match — no species identified yet · {mineralResult.testsPerformed} tests performed</span>
+                  </div>
+                )}
                 <div className="rounded border border-purple-500/15 bg-zinc-950/40 px-2 py-1 capitalize text-purple-200">{mineralResult.classification?.replace(/-/g, ' ')}</div>
+                {!!mineralResult.candidates?.length && (
+                  <div className="flex flex-wrap gap-1">
+                    {mineralResult.candidates.map((c) => (
+                      <span key={c.species} className="rounded border border-zinc-800 bg-zinc-950/40 px-1.5 py-0.5 text-[10px] capitalize text-zinc-300">{c.species} · {c.match}%</span>
+                    ))}
+                  </div>
+                )}
                 {!!mineralResult.testsRecommended?.length && (
                   <div className="space-y-0.5">
                     <div className="text-[9px] uppercase text-zinc-400">Recommended next tests</div>
@@ -144,9 +160,9 @@ export function RockMineralIdPanel() {
       )}
       dtu={{
         apiSource: 'concord-geology-identification',
-        title: (r, m) => `Specimen ID — ${r.rockType ?? '—'} rock · ${m.classification?.replace(/-/g, ' ') ?? '—'} mineral`,
+        title: (r, m) => `Specimen ID — ${r.rockType ?? '—'} rock · ${m.identification?.species ?? m.classification?.replace(/-/g, ' ') ?? '—'} mineral`,
         content: (r, m) =>
-          `Rock classification:\n  Type: ${r.rockType}\n  Hardness: ${r.mohsHardness}\n  Durability: ${r.durability}\n  Uses: ${(r.commonUses || []).join(', ')}\n\nMineral ID:\n  Classification: ${m.classification}\n  Confidence: ${m.identificationConfidence}%\n  Tests performed: ${m.testsPerformed}\n  Recommended: ${(m.testsRecommended || []).join(', ')}`,
+          `Rock classification:\n  Type: ${r.rockType}\n  Hardness: ${r.mohsHardness}\n  Durability: ${r.durability}\n  Uses: ${(r.commonUses || []).join(', ')}\n\nMineral ID:\n  Identification: ${m.identification ? `${m.identification.species} (${m.identification.match}% property match)` : 'no species identified'}\n  Classification: ${m.classification}\n  Confidence: ${m.identificationConfidence}%\n  Tests performed: ${m.testsPerformed}\n  Recommended: ${(m.testsRecommended || []).join(', ')}`,
         tags: () => ['geology', 'identification', 'rock', 'mineral'],
         rawData: (r, m) => ({ rock, mineral, rockResult: r, mineralResult: m }),
       }}
