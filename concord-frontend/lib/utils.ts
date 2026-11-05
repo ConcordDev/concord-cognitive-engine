@@ -11,6 +11,9 @@ export function formatRelativeTime(date: Date | string | number): string {
   const now = new Date();
   const then = new Date(date);
   const diff = now.getTime() - then.getTime();
+  // An absent or unparseable date is not a figure: render the absence,
+  // never the fall-through "NaNy ago" (null-figure genus; §8 Q2 ruling).
+  if (!Number.isFinite(diff)) return '—';
 
   const seconds = Math.floor(diff / 1000);
   const minutes = Math.floor(seconds / 60);
@@ -30,11 +33,44 @@ export function formatRelativeTime(date: Date | string | number): string {
 }
 
 // Format number with abbreviation
-export function formatNumber(num: number): string {
+export function formatNumber(num: number | null | undefined): string {
+  // An absent or non-finite value is never formatted as a number
+  // (null-figure genus, §8 Q2 ruling: profile "NaNB CC Earned").
+  // The comparisons below all fall through for such values, which is
+  // how an absent figure used to reach the render as "NaNB".
+  if (num == null || !Number.isFinite(num)) return '—';
   if (num < 1000) return num.toString();
   if (num < 1000000) return `${(num / 1000).toFixed(1)}K`;
   if (num < 1000000000) return `${(num / 1000000).toFixed(1)}M`;
   return `${(num / 1000000000).toFixed(1)}B`;
+}
+
+// Format a possibly-absent figure with its currency/unit dress.
+// The absent rendering is the fallback ALONE (default: an em dash) —
+// prefix and suffix never wrap an absence, so "$null" and "null%"
+// have no way to form. Present values render exactly as the raw
+// interpolation did (String(value), or toFixed when digits is set).
+export function formatFigure(
+  value: number | null | undefined,
+  opts?: { prefix?: string; suffix?: string; digits?: number; fallback?: string },
+): string {
+  if (value == null || !Number.isFinite(value)) return opts?.fallback ?? '—';
+  const body = opts?.digits != null ? value.toFixed(opts.digits) : String(value);
+  return `${opts?.prefix ?? ''}${body}${opts?.suffix ?? ''}`;
+}
+
+// Join display parts, dropping the absent ones — for composed names
+// and labels ("1991 HONDA null" is what an absent part used to print).
+// Only genuine absence (null / undefined / blank) is dropped; a part
+// that is present renders exactly as given.
+export function joinParts(
+  parts: readonly (string | number | null | undefined)[],
+  separator = ' ',
+): string {
+  return parts
+    .filter((part) => part != null && String(part).trim() !== '')
+    .map((part) => String(part))
+    .join(separator);
 }
 
 // Truncate text with ellipsis
