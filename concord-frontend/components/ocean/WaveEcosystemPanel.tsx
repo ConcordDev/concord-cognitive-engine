@@ -14,8 +14,8 @@ import { CalcPanel } from '@/components/lens-primitives/CalcPanel';
 
 interface WaveInput { waveHeightMeters: number; wavePeriodSeconds: number; windSpeedKnots: number }
 interface Species { name: string; trophicLevel: 'primary' | 'secondary' | 'tertiary' | 'apex'; threatened: boolean; invasive: boolean }
-interface WaveResult { significantWaveHeight?: string; period?: string; wavelength?: string; speed?: string; energyDensity?: string; beaufortScale?: number; seaState?: string; navigationAdvisory?: string }
-interface EcoResult { speciesCount?: number; trophicLevels?: Record<string, number>; shannonDiversityIndex?: number; ecosystemHealth?: string; threatened?: number; invasive?: number }
+interface WaveResult { significantWaveHeight?: string; period?: string; wavelength?: string; speed?: string; energyDensity?: string; beaufortScale?: number; seaState?: string; navigationAdvisory?: string; status?: string; message?: string }
+interface EcoResult { speciesCount?: number; trophicLevels?: Record<string, number>; shannonDiversityIndex?: number; ecosystemHealth?: string; threatened?: number; invasive?: number; status?: string; message?: string }
 
 const TROPHIC_LEVELS = ['primary', 'secondary', 'tertiary', 'apex'] as const;
 
@@ -89,7 +89,10 @@ export function WaveEcosystemPanel() {
           <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3">
             <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Waves className="h-3 w-3" />Sea conditions</div>
             {!waveResult && <div className="text-[11px] text-zinc-400">Analyze to compute.</div>}
-            {waveResult && (
+            {waveResult?.status === 'NOT_COMPUTED' && (
+              <div className="text-[11px] text-amber-200/90">{waveResult.message}</div>
+            )}
+            {waveResult && waveResult.status !== 'NOT_COMPUTED' && (
               <div className="space-y-2 text-[11px]">
                 <div className="flex items-center gap-2">
                   <span className={`inline-block rounded px-2 py-0.5 text-[10px] font-mono ${waveResult.seaState === 'rough' || waveResult.seaState === 'very-rough' ? 'bg-rose-500/20 text-rose-200' : waveResult.seaState === 'moderate' ? 'bg-amber-500/20 text-amber-200' : 'bg-emerald-500/20 text-emerald-200'}`}>{waveResult.seaState}</span>
@@ -107,7 +110,10 @@ export function WaveEcosystemPanel() {
           <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
             <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Fish className="h-3 w-3" />Ecosystem health</div>
             {!ecoResult && <div className="text-[11px] text-zinc-400">Analyze to score.</div>}
-            {ecoResult && (
+            {ecoResult?.status === 'NOT_COMPUTED' && (
+              <div className="text-[11px] text-amber-200/90">{ecoResult.message}</div>
+            )}
+            {ecoResult && ecoResult.status !== 'NOT_COMPUTED' && (
               <div className="space-y-2 text-[11px]">
                 <div className="flex items-baseline gap-2">
                   <span className={`font-mono text-2xl ${healthColour(ecoResult.ecosystemHealth)}`}>{ecoResult.ecosystemHealth}</span>
