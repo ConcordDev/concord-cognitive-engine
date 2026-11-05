@@ -55,7 +55,7 @@ export const FRONTEND_ARTIFACT_TYPES = {
   "realestate": ["artifact"],
   "reflection": ["entry"],
   "resonance": ["signal"],
-  "science": ["Analysis", "Equipment", "Experiment", "Publication", "Sample"],
+  "science": ["Analysis", "Equipment", "Experiment", "Protocol", "Publication", "Sample"],
   "security": ["Asset", "Incident", "Patrol", "Surveillance", "ThreatIntel"],
   "sim": ["run"],
   "voice": ["take"],
