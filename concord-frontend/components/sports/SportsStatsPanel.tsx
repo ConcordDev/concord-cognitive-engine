@@ -89,12 +89,12 @@ export function SportsStatsPanel() {
         </div>
       )}
 
-      {games.filter((g) => g.result !== 'upcoming').length > 0 && (
+      {games.filter((g) => g.result === 'win' || g.result === 'loss' || g.result === 'draw').length > 0 && (
         <div className={ds.panel}>
           <h3 className={cn(ds.heading3, 'mb-3')}>Form</h3>
           <div className="flex gap-1">
             {[...games]
-              .filter((g) => g.result !== 'upcoming')
+              .filter((g) => g.result === 'win' || g.result === 'loss' || g.result === 'draw')
               .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
               .slice(0, 10)
               .map((g) => (
