@@ -431,9 +431,70 @@ function casDiff(node, x) {
 }
 
 /* ───────────────────────── CAS: symbolic integration ─────────────
- * Handles power rule, common functions, linear u-substitution, sums.
+ * Handles power rule, common functions, linear u-substitution, sums,
+ * and integration by parts for polynomial × sin/cos/exp products.
  * Returns null when no closed form is found (caller falls back to numeric).
  */
+// Ascending coefficients [c0..cn] of a polynomial in x, or null when the
+// tree is not a polynomial in x (degree capped at 6 by the ^ rule).
+function casPolyCoeffs(node, x) {
+  if (node.k === "num") return [node.v];
+  if (isSym(node, x)) return [0, 1];
+  if (node.k === "sym" || node.k === "fn") return null;
+  if (node.k === "op" && (node.op === "+" || node.op === "-")) {
+    const A = casPolyCoeffs(node.a, x);
+    const B = casPolyCoeffs(node.b, x);
+    if (!A || !B) return null;
+    const len = Math.max(A.length, B.length);
+    const out = new Array(len).fill(0);
+    for (let i = 0; i < len; i++) out[i] = (A[i] || 0) + (node.op === "+" ? 1 : -1) * (B[i] || 0);
+    return out;
+  }
+  if (node.k === "op" && node.op === "*") {
+    const A = casPolyCoeffs(node.a, x);
+    const B = casPolyCoeffs(node.b, x);
+    if (!A || !B) return null;
+    const out = new Array(A.length + B.length - 1).fill(0);
+    for (let i = 0; i < A.length; i++) for (let j = 0; j < B.length; j++) out[i + j] += A[i] * B[j];
+    return out;
+  }
+  if (node.k === "op" && node.op === "^" && node.b.k === "num" && Number.isInteger(node.b.v) && node.b.v >= 0 && node.b.v <= 6) {
+    const A = casPolyCoeffs(node.a, x);
+    if (!A) return null;
+    let out = [1];
+    for (let e = 0; e < node.b.v; e++) {
+      const next = new Array(out.length + A.length - 1).fill(0);
+      for (let i = 0; i < out.length; i++) for (let j = 0; j < A.length; j++) next[i + j] += out[i] * A[j];
+      out = next;
+    }
+    return out;
+  }
+  return null;
+}
+
+// Split a tree of the form (constant factor) × (fn node) into its parts —
+// the linear-argument integration rule returns antiderivatives wrapped in
+// constant factors (division by the linear coefficient, negation), and the
+// by-parts recursion needs the bare function node back.
+function casUnwrapConstFactor(node, x) {
+  if (node.k === "fn") return { factor: N.num(1), fnNode: node };
+  if (node.k === "op" && node.op === "/" && !casDependsOn(node.b, x)) {
+    const inner = casUnwrapConstFactor(node.a, x);
+    return inner ? { factor: N.div(inner.factor, node.b), fnNode: inner.fnNode } : null;
+  }
+  if (node.k === "op" && node.op === "*") {
+    if (!casDependsOn(node.a, x)) {
+      const inner = casUnwrapConstFactor(node.b, x);
+      return inner ? { factor: N.mul(node.a, inner.factor), fnNode: inner.fnNode } : null;
+    }
+    if (!casDependsOn(node.b, x)) {
+      const inner = casUnwrapConstFactor(node.a, x);
+      return inner ? { factor: N.mul(node.b, inner.factor), fnNode: inner.fnNode } : null;
+    }
+  }
+  return null;
+}
+
 function casIntegrate(node, x) {
   // sum rule
   if (node.k === "op" && (node.op === "+" || node.op === "-")) {
@@ -489,6 +550,34 @@ function casIntegrate(node, x) {
     const lin = casLinearCoeffs(node.a, x);
     if (lin && node.b.v !== -1) {
       return N.div(N.pow(node.a, N.num(node.b.v + 1)), N.num(lin[0] * (node.b.v + 1)));
+    }
+  }
+  // integration by parts: P(x) * f(linear in x), f ∈ {sin, cos, exp}.
+  // ∫P·f = P·F − ∫P′·F, F the first antiderivative of f. P's degree strictly
+  // drops each round, so the recursion bottoms out at the constant-pull and
+  // linear-argument rules above. Without this rule the engine falsely
+  // reported "no closed-form antiderivative" for elementary products such
+  // as sin(x)*x^2 (F2 in the math lens first-pass review).
+  if (node.k === "op" && node.op === "*") {
+    for (const [P, F] of [[node.a, node.b], [node.b, node.a]]) {
+      if (F.k !== "fn" || !["sin", "cos", "exp"].includes(F.fn)) continue;
+      if (!casLinearCoeffs(F.arg, x)) continue;
+      const coeffs = casPolyCoeffs(P, x);
+      if (!coeffs) continue;
+      const degree = coeffs.length - 1;
+      if (degree < 1 || degree > 6) continue;
+      const firstAnti = casIntegrate(F, x);
+      if (!firstAnti) continue;
+      const dP = casSimplify(casDiff(P, x));
+      if (dP.k === "num" && dP.v === 0) return N.mul(P, firstAnti);
+      // ∫P′·F has the same shape one degree down; F may carry a constant
+      // factor (the linear rule divides by the coefficient), so unwrap it
+      // and carry the factor outside the recursive call.
+      const unwrapped = casUnwrapConstFactor(firstAnti, x);
+      if (!unwrapped) continue;
+      const restInner = casIntegrate(N.mul(dP, unwrapped.fnNode), x);
+      if (!restInner) return null;
+      return N.sub(N.mul(P, firstAnti), N.mul(unwrapped.factor, restInner));
     }
   }
   return null;
@@ -829,6 +918,8 @@ export default function registerMathActions(registerLensAction) {
         // Flat fields the math-lens UI reads directly (StatsResult: count/mean/median/
         // stdDev/min/max/q1/q3). Without these the lens rendered "μ=undefined".
         count: n, mean: r(mean), median: r(median), stdDev: r(stdDev),
+        sampleStdDev: r(sampleStdDev), modes,
+        conventions: "σ (stdDev) is the POPULATION standard deviation (÷n); s (sampleStdDev) uses ÷(n−1). Quartiles are index-position values of the sorted data — Q1 = sorted[⌊n/4⌋], Q3 = sorted[⌊3n/4⌋], no interpolation. Modes lists every value tied at the highest frequency (empty when all values are distinct).",
         min: sorted[0], max: sorted[n - 1], q1: r(q1), q3: r(q3),
         centralTendency: { mean: r(mean), median: r(median), modes },
         spread: { stdDev: r(stdDev), sampleStdDev: r(sampleStdDev), variance: r(variance), range: r(range), iqr: r(iqr), coefficientOfVariation: r(coefficientOfVariation) },
@@ -1418,7 +1509,7 @@ export default function registerMathActions(registerLensAction) {
             },
           };
         }
-        return { ok: false, error: "No closed-form antiderivative found; supply lower/upper for a numeric definite integral." };
+        return { ok: false, error: "No closed-form antiderivative found by this engine's methods (power rule, standard functions with linear arguments, substitution, integration by parts); supply lower/upper for a numeric definite integral." };
       }
 
       return { ok: false, error: `Unknown operation "${op}". Use simplify, derivative, or integral.` };
@@ -1756,6 +1847,8 @@ export default function registerMathActions(registerLensAction) {
    * params: { tool, n?, m?, k?, count? }
    *   tool ∈ factorize | isprime | primes | gcd | lcm | factorial |
    *          combinations | permutations | fibonacci | divisors | totient
+   *   fibonacci: `count` returns the first count terms F(0)..F(count-1);
+   *   `n` returns the single term F(n) as `value` (both may be supplied).
    */
   registerLensAction("math", "numberTheory", (ctx, artifact, params) => {
     try {
@@ -1821,10 +1914,28 @@ export default function registerMathActions(registerLensAction) {
           return { ok: true, result: { tool, n, k, permutations: perm } };
         }
         case "fibonacci": {
-          const count = Math.max(1, Math.min(90, Math.trunc(Number(p.count) || 15)));
-          const seq = [0, 1];
-          while (seq.length < count) seq.push(seq[seq.length - 1] + seq[seq.length - 2]);
-          return { ok: true, result: { tool, count, sequence: seq.slice(0, count) } };
+          // Two explicit contracts, both stated in the result itself (F3 —
+          // the semantics were previously stated nowhere, and an input
+          // labelled n silently produced a sequence): with `count`, the
+          // first count terms F(0)..F(count-1); with `n`, the single Nth
+          // term F(n) returned as `value`. Both may be supplied together.
+          const semantics = "count returns the first count terms F(0)..F(count-1); n returns the single term F(n) as value";
+          const out = { tool, semantics };
+          if (n !== undefined) {
+            if (n < 0 || n > 90) return { ok: false, error: "fibonacci: n must be 0..90." };
+            let fa = 0, fb = 1;
+            for (let i = 0; i < n; i++) { const t = fa + fb; fa = fb; fb = t; }
+            out.n = n;
+            out.value = fa;
+          }
+          if (p.count !== undefined || n === undefined) {
+            const count = Math.max(1, Math.min(90, Math.trunc(Number(p.count) || 15)));
+            const seq = [0, 1];
+            while (seq.length < count) seq.push(seq[seq.length - 1] + seq[seq.length - 2]);
+            out.count = count;
+            out.sequence = seq.slice(0, count);
+          }
+          return { ok: true, result: out };
         }
         case "divisors": {
           if (n === undefined) return { ok: false, error: "'n' required." };
