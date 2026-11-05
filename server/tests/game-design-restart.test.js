@@ -54,6 +54,50 @@ describe("game design restart", () => {
     assert.equal(db.prepare("SELECT COUNT(*) AS n FROM game_designs").get().n, 0);
   });
 
+  it("a design that only exists via the DB-merge path can still be renamed, extended, and deleted", () => {
+    // Every workbench macro (gdd/mechanics/entities/levels/...) gates on
+    // the same gdGame() lookup as game-update/game-delete. Before the
+    // hydration fix, gdGame() only checked the in-memory map, so ANY
+    // design surfaced solely through game-list's DB-merge path (another
+    // process, or — as simulated here — a restart) 404'd on every single
+    // macro in the lens, even though game-list had just shown it as a
+    // real, openable design.
+    const created = call("game-create", ctx, { title: "Original Title" });
+    const id = created.result.game.id;
+
+    globalThis._concordSTATE = { db, gameDesignLens: {} };
+    const listed = call("game-list", ctx, {});
+    assert.equal(listed.result.games[0].id, id, "the design is only known via the DB row now");
+
+    const updated = call("game-update", ctx, { id, title: "Renamed After Restart" });
+    assert.equal(updated.ok, true);
+    assert.equal(updated.result.game.title, "Renamed After Restart");
+    const row = db.prepare("SELECT title FROM game_designs WHERE id = ?").get(id);
+    assert.equal(row.title, "Renamed After Restart", "the rename itself persists back to the row");
+
+    const gdd = call("gdd-add", ctx, { gameId: id, title: "Overview", body: "A game about doors." });
+    assert.equal(gdd.ok, true, "a sub-feature macro works on a design hydrated only from the DB row");
+
+    const deleted = call("game-delete", ctx, { id });
+    assert.equal(deleted.ok, true);
+    assert.equal(
+      db.prepare("SELECT 1 FROM game_designs WHERE id = ?").get(id),
+      undefined,
+      "the row is actually gone, not just the in-memory entry",
+    );
+  });
+
+  it("a rename survives a SECOND restart (game-update actually persists the row, not just the in-memory copy)", () => {
+    const created = call("game-create", ctx, { title: "Before Rename" });
+    const id = created.result.game.id;
+    const renamed = call("game-update", ctx, { id, title: "After Rename" });
+    assert.equal(renamed.ok, true);
+
+    globalThis._concordSTATE = { db, gameDesignLens: {} };
+    const list = call("game-list", ctx, {});
+    assert.equal(list.result.games[0].title, "After Rename", "game-update's write reached the row, not just memory");
+  });
+
   it("down drops the table", () => {
     down(db);
     assert.equal(

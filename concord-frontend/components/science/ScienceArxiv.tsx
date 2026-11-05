@@ -5,12 +5,16 @@ import { useArxivFeed } from '@/hooks/useArxivFeed';
 import { Microscope, Loader2, ExternalLink } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
+// arXiv papers carry subcategories, not archive names: cat:physics,
+// cat:q-fin, cat:stat and cat:math each return 0 results at the source
+// (verified against export.arxiv.org), so the panel's options point at
+// real subcategories. The header tag prints the exact category fetched.
 const CATEGORIES = [
-  { id: 'physics', label: 'physics' },
+  { id: 'physics.gen-ph', label: 'physics' },
   { id: 'q-bio', label: 'q-bio (biology)' },
-  { id: 'q-fin', label: 'q-fin' },
-  { id: 'stat', label: 'stat' },
-  { id: 'math', label: 'math' },
+  { id: 'q-fin.GN', label: 'q-fin' },
+  { id: 'stat.AP', label: 'stat' },
+  { id: 'math-ph', label: 'math' },
 ];
 
 export function ScienceArxiv() {

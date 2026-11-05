@@ -26,6 +26,8 @@ interface Props {
   showDims: boolean;
   /** Fraction of the panel's width covered on the left (the parameters card). */
   leftInset?: number;
+  /** Clicking a dimension label focuses that parameter field (ConKay F13). */
+  onDimFocus?: (key: keyof BeamDims) => void;
 }
 
 const BASE = '#38bdf8';
@@ -64,17 +66,29 @@ function CameraRig({ view, radius, shiftX }: { view: ViewPreset; radius: number;
   return null;
 }
 
-function Label({ position, children }: { position: [number, number, number]; children: React.ReactNode }) {
+function Label({ position, children, onClick, title }: { position: [number, number, number]; children: React.ReactNode; onClick?: () => void; title?: string }) {
   return (
     <Html position={position} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
-      <span className="whitespace-nowrap rounded bg-[#06101c]/80 px-1.5 py-0.5 font-mono text-[11px] text-sky-200 shadow-[0_0_8px_rgba(56,189,248,0.35)]">
-        {children}
-      </span>
+      {onClick ? (
+        <button
+          type="button"
+          onClick={onClick}
+          title={title}
+          style={{ pointerEvents: 'auto' }}
+          className="whitespace-nowrap rounded bg-[#06101c]/80 px-1.5 py-0.5 font-mono text-[11px] text-sky-200 shadow-[0_0_8px_rgba(56,189,248,0.35)] cursor-pointer hover:bg-sky-400/25"
+        >
+          {children}
+        </button>
+      ) : (
+        <span className="whitespace-nowrap rounded bg-[#06101c]/80 px-1.5 py-0.5 font-mono text-[11px] text-sky-200 shadow-[0_0_8px_rgba(56,189,248,0.35)]">
+          {children}
+        </span>
+      )}
     </Html>
   );
 }
 
-function BeamScene({ dims, support, utilization, display, showDims }: Omit<Props, 'view'>) {
+function BeamScene({ dims, support, utilization, display, showDims, onDimFocus }: Omit<Props, 'view' | 'leftInset'>) {
   // Scene units: the beam's length always spans 4 units.
   const s = 4 / dims.length;
   const L = dims.length * s;
@@ -160,20 +174,20 @@ function BeamScene({ dims, support, utilization, display, showDims }: Omit<Props
       {showDims && (
         <>
           <Line points={[[-L / 2, H / 2 + 0.25, -W / 2], [L / 2, H / 2 + 0.25, -W / 2]]} color="#7dd3fc" lineWidth={1} dashed dashSize={0.05} gapSize={0.04} />
-          <Label position={[-L / 4, H / 2 + 0.38, -W / 2]}>L = {dims.length} mm</Label>
+          <Label position={[-L / 4, H / 2 + 0.38, -W / 2]} onClick={onDimFocus ? () => onDimFocus('length') : undefined} title="Edit length">L = {dims.length} mm</Label>
           <Line points={[[L / 2 + 0.2, -H / 2, W / 2], [L / 2 + 0.2, H / 2, W / 2]]} color="#7dd3fc" lineWidth={1} />
-          <Label position={[L / 2 + 0.55, 0, W / 2]}>D = {dims.height} mm</Label>
+          <Label position={[L / 2 + 0.55, 0, W / 2]} onClick={onDimFocus ? () => onDimFocus('height') : undefined} title="Edit depth">D = {dims.height} mm</Label>
           <Line points={[[-L / 2, -H / 2 - 0.12, -W / 2], [-L / 2, -H / 2 - 0.12, W / 2]]} color="#7dd3fc" lineWidth={1} />
-          <Label position={[-L / 2, -H / 2 - 0.3, W / 2]}>W = {dims.flangeWidth} mm</Label>
-          <Label position={[L / 2 + 0.1, H / 2 + 0.12, W / 2 + 0.15]}>t_f = {dims.flangeThickness} mm</Label>
-          <Label position={[L / 2 + 0.1, -H / 4, tw / 2 + 0.25]}>t_w = {dims.webThickness} mm</Label>
+          <Label position={[-L / 2, -H / 2 - 0.3, W / 2]} onClick={onDimFocus ? () => onDimFocus('flangeWidth') : undefined} title="Edit flange width">W = {dims.flangeWidth} mm</Label>
+          <Label position={[L / 2 + 0.1, H / 2 + 0.12, W / 2 + 0.15]} onClick={onDimFocus ? () => onDimFocus('flangeThickness') : undefined} title="Edit flange thickness">t_f = {dims.flangeThickness} mm</Label>
+          <Label position={[L / 2 + 0.1, -H / 4, tw / 2 + 0.25]} onClick={onDimFocus ? () => onDimFocus('webThickness') : undefined} title="Edit web thickness">t_w = {dims.webThickness} mm</Label>
         </>
       )}
     </group>
   );
 }
 
-export default function BeamViewport({ dims, support, utilization, view, display, showDims, leftInset = 0 }: Props) {
+export default function BeamViewport({ dims, support, utilization, view, display, showDims, leftInset = 0, onDimFocus }: Props) {
   // Beam spans 4 units; labels reach ~0.6 beyond it.
   const radius = 2.7;
   const shiftX = -leftInset * 4;
@@ -188,7 +202,7 @@ export default function BeamViewport({ dims, support, utilization, view, display
       <directionalLight position={[4, 6, 5]} intensity={1.1} />
       <directionalLight position={[-5, -2, -4]} intensity={0.35} />
       <gridHelper args={[12, 24, '#1e3a5f', '#0f1f33']} position={[0, -Math.max(0.6, (dims.height / dims.length) * 4 * 0.9), 0]} />
-      <BeamScene dims={dims} support={support} utilization={utilization} display={display} showDims={showDims} />
+      <BeamScene dims={dims} support={support} utilization={utilization} display={display} showDims={showDims} onDimFocus={onDimFocus} />
       <OrbitControls makeDefault enableDamping dampingFactor={0.12} minDistance={1.2} maxDistance={30} />
       <CameraRig view={view} radius={radius} shiftX={shiftX} />
       <GizmoHelper alignment="bottom-left" margin={[56, 56]}>

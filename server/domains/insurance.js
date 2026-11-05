@@ -421,6 +421,33 @@ export default function registerInsuranceActions(register) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 
+  // client-delete — the governed exit F6 found absent. Deleting a client
+  // detaches its linked policies/claims rather than deleting or orphaning
+  // them: the records keep their stamped names (insuredName on the policy,
+  // claimantName on the claim) and lose only the live link, and the receipt
+  // names how many records were detached.
+  registerLensAction("insurance", "client-delete", (ctx, _artifact, params = {}) => {
+    try {
+      const state = getInsState(); if (!state) return { ok: false, error: "STATE unavailable" };
+      const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+      const id = String(params.id || params.clientId || "").trim();
+      const arr = state.clients.get(userId) || [];
+      const i = arr.findIndex((c) => c.id === id);
+      if (i < 0) return { ok: false, error: "client_not_found" };
+      const [removed] = arr.splice(i, 1);
+      let detachedPolicies = 0;
+      let detachedClaims = 0;
+      for (const p of state.policies.get(userId) || []) {
+        if (p.clientId === removed.id) { p.clientId = null; detachedPolicies++; }
+      }
+      for (const cl of state.claims.get(userId) || []) {
+        if (cl.clientId === removed.id) { cl.clientId = null; detachedClaims++; }
+      }
+      saveInsState();
+      return { ok: true, result: { deleted: removed.id, detachedPolicies, detachedClaims } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
   registerLensAction("insurance", "policy-list", (ctx, _artifact, _params = {}) => {
     const state = getInsState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
@@ -469,8 +496,14 @@ export default function registerInsuranceActions(register) {
     const state = getInsState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const all = state.claims.get(userId) || [];
+    const policies = state.policies.get(userId) || [];
+    const clients = state.clients.get(userId) || [];
     const enriched = all.map(c => ({
       ...c,
+      // The link made visible (F4): claims filed before the link was stamped
+      // still surface their policy number + claimant by joining the stores.
+      policyNumber: c.policyNumber || (c.policyId ? (policies.find(p => p.id === c.policyId)?.policyNumber ?? null) : null),
+      claimantName: c.claimantName || (c.clientId ? (clients.find(x => x.id === c.clientId)?.name ?? null) : null),
       daysSinceSubmit: c.submittedDate ? Math.floor((Date.now() - new Date(c.submittedDate).getTime()) / 86400000) : undefined,
     }));
     return { ok: true, result: { claims: [...enriched].reverse() } };
@@ -493,18 +526,36 @@ export default function registerInsuranceActions(register) {
     if (ref.error) return { ok: false, error: ref.error };
     const kind = pickEnum(params.kind, CLAIM_KINDS, "other");
     if (kind === undefined) return { ok: false, error: "invalid kind" };
+    // Optional policy link (F4): a claim filed against a policy inherits the
+    // policy's number + carrier, and — when no claimant was named separately
+    // — the policy's insured as its claimant. An unknown policy id is
+    // refused: a claim may not float free on a fabricated link.
+    let policy = null;
+    const rawPolicyId = String(params.policyId || "").trim();
+    if (rawPolicyId) {
+      policy = (state.policies.get(userId) || []).find((p) => p.id === rawPolicyId) || null;
+      if (!policy) return { ok: false, error: "policy_not_found" };
+    }
+    let clientId = ref.clientId;
+    let claimantName = ref.client ? ref.client.name : null;
+    if (!clientId && policy && policy.clientId) {
+      const pc = (state.clients.get(userId) || []).find((c) => c.id === policy.clientId);
+      if (pc) { clientId = pc.id; claimantName = claimantName || pc.name; }
+    }
     if (!state.claims.has(userId)) state.claims.set(userId, []);
     const claim = {
       id: `clm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      policyId: String(params.policyId || ""),
-      carrier, description,
+      policyId: policy ? policy.id : "",
+      policyNumber: policy ? policy.policyNumber : null,
+      carrier: policy ? policy.carrier : carrier, description,
       kind,
       incidentDate: params.incidentDate || new Date().toISOString().slice(0, 10),
       submittedDate: new Date().toISOString().slice(0, 10),
       status: "submitted",
       claimAmount: Math.max(0, Number(params.claimAmount) || 0),
       documents: 0,
-      clientId: ref.clientId,
+      clientId,
+      claimantName,
     };
     state.claims.get(userId).push(claim);
     saveInsState();
@@ -608,8 +659,20 @@ export default function registerInsuranceActions(register) {
     arr.splice(i, 1);
     s.documents.delete(params.id);
     s.payments.delete(params.id);
+    // Certificate-follows-policy (F6): a certificate is a rendering of its
+    // policy, so the policy's certificates are removed with it — an orphaned
+    // certificate of insurance for a policy that no longer exists is a
+    // data-integrity incident in this class, not residue.
+    let certificatesRemoved = 0;
+    const ams = getAmsState();
+    if (ams) {
+      const certs = ams.certificates.get(insAid(ctx)) || [];
+      const kept = certs.filter((c) => c.policyId !== params.id);
+      certificatesRemoved = certs.length - kept.length;
+      if (certificatesRemoved) ams.certificates.set(insAid(ctx), kept);
+    }
     saveInsState();
-    return { ok: true, result: { deleted: params.id } };
+    return { ok: true, result: { deleted: params.id, certificatesRemoved } };
   });
 
   registerLensAction("insurance", "policy-detail", (ctx, _a, params = {}) => {
@@ -2092,6 +2155,16 @@ export default function registerInsuranceActions(register) {
     cert.revokedAt = insNow();
     saveInsState();
     return { ok: true, result: { certificateId: cert.id, revoked: true } };
+  });
+
+  registerLensAction("insurance", "certificate-delete", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.certificates.get(insAid(ctx)) || [];
+    const i = arr.findIndex((c) => c.id === params.id);
+    if (i < 0) return { ok: false, error: "certificate not found" };
+    arr.splice(i, 1);
+    saveInsState();
+    return { ok: true, result: { deleted: params.id } };
   });
 
   // ── #6 Producer / book-of-business performance leaderboard ──────────

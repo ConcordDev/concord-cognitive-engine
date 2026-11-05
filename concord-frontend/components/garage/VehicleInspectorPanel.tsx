@@ -12,12 +12,13 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Copy, Check, ExternalLink, X } from 'lucide-react';
+import { Copy, Check, ExternalLink, X, Trash2, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { useMacroDispatchFeedback } from '@/hooks/useMacroDispatchFeedback';
 import { cn } from '@/lib/utils';
 
 export interface InspectedVehicle {
@@ -26,6 +27,8 @@ export interface InspectedVehicle {
   kind: string;
   owner_kind: string;
   owner_id?: string;
+  ownerDisplay?: string;
+  isMine?: boolean;
   capacity: number;
   fare_cc: number;
   route_id?: string | null;
@@ -41,17 +44,27 @@ interface GarageGetResult {
   occupants: number;
 }
 
+interface GarageDespawnResult {
+  action: string;
+  vehicleId: string;
+}
+
 export function VehicleInspectorPanel({
   vehicleId,
   onClose,
+  onDespawned,
 }: {
   vehicleId: string;
   onClose: () => void;
+  /** Called with the vehicleId once a despawn actually commits server-side,
+   * so the caller can drop it from any fleet lists it's holding (F2). */
+  onDespawned?: (vehicleId: string) => void;
 }) {
   const [data, setData] = useState<GarageGetResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const despawnFeedback = useMacroDispatchFeedback<GarageDespawnResult>();
 
   useEffect(() => {
     let cancelled = false;
@@ -77,6 +90,18 @@ export function VehicleInspectorPanel({
       setTimeout(() => setCopied(false), 1500);
     } catch {
       /* clipboard permission denied — non-fatal, just skip the confirmation */
+    }
+  };
+
+  const despawn = async () => {
+    if (!window.confirm('Despawn this vehicle? This permanently removes it from the fleet.')) return;
+    const result = await despawnFeedback.dispatch('garage', 'despawn', { vehicleId });
+    // (F2) despawnVehicle is transactional and owner-gated server-side; a
+    // successful result really did delete the row — only then tell the
+    // caller to drop it and close, never optimistically before the response.
+    if (result) {
+      onDespawned?.(vehicleId);
+      onClose();
     }
   };
 
@@ -122,8 +147,9 @@ export function VehicleInspectorPanel({
           <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5">
             <dt className={ds.caption}>Owner</dt>
             <dd className={cn(ds.monoXs, 'text-right truncate')}>
-              {data.vehicle.owner_kind}
-              {data.vehicle.owner_id ? `:${data.vehicle.owner_id.slice(0, 10)}` : ''}
+              {data.vehicle.ownerDisplay
+                ? data.vehicle.ownerDisplay
+                : `${data.vehicle.owner_kind}${data.vehicle.owner_id ? `:${data.vehicle.owner_id.slice(0, 10)}` : ''}`}
             </dd>
 
             <dt className={ds.caption}>Capacity</dt>
@@ -185,6 +211,24 @@ export function VehicleInspectorPanel({
               Open world
             </Link>
           </div>
+          {data.vehicle.isMine && (
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={despawn}
+                disabled={despawnFeedback.status === 'dispatched' || despawnFeedback.status === 'running'}
+                className={cn(ds.btnSecondary, 'w-full text-xs py-1.5 gap-1.5 text-red-300 border-red-500/30 hover:bg-red-500/10')}
+              >
+                {despawnFeedback.status === 'dispatched' || despawnFeedback.status === 'running'
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                  : <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />}
+                {despawnFeedback.status === 'running' ? 'Despawning…' : 'Despawn vehicle'}
+              </button>
+              {despawnFeedback.status === 'error' && (
+                <p className="mt-1 text-xs text-red-300">{despawnFeedback.error || 'despawn failed'}</p>
+              )}
+            </div>
+          )}
           <p className={cn(ds.caption, 'text-center')}>
             Boarding, driving, and parking happen live in the 3D world — walk up and press E.
           </p>

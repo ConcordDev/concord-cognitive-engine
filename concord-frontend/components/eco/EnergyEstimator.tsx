@@ -5,20 +5,25 @@ import { Sun, Zap, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api/client';
 
 interface EstimateResult {
-  systemKwp: number;
-  annualKwh: number;
-  monthlyKwh: number[];
-  co2AvoidedKgPerYear: number;
-  capacityFactor: number;
-  source: string;
+  systemKwp: number | null;
+  annualKwh: number | null;
+  monthlyKwh: number[] | null;
+  co2AvoidedKgPerYear: number | null;
+  capacityFactor: number | null;
+  source: string | null;
+  reason?: string | null;
+  unavailable?: string[];
+  message?: string;
+  tiltAssumed?: boolean;
+  azimuthAssumed?: boolean;
 }
 
 export function EnergyEstimator() {
-  const [lat, setLat] = useState<number>(37.77);
-  const [lng, setLng] = useState<number>(-122.42);
-  const [systemKw, setSystemKw] = useState<number>(8);
-  const [tilt, setTilt] = useState<number>(30);
-  const [azimuth, setAzimuth] = useState<number>(180);
+  const [lat, setLat] = useState<number | ''>('');
+  const [lng, setLng] = useState<number | ''>('');
+  const [systemKw, setSystemKw] = useState<number | ''>('');
+  const [tilt, setTilt] = useState<number | ''>('');
+  const [azimuth, setAzimuth] = useState<number | ''>('');
   const [result, setResult] = useState<EstimateResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,8 +31,11 @@ export function EnergyEstimator() {
   useEffect(() => {
     if (typeof navigator !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        pos => { setLat(pos.coords.latitude); setLng(pos.coords.longitude); },
-        () => { /* keep default */ },
+        pos => {
+          setLat((prev) => (prev === '' ? pos.coords.latitude : prev));
+          setLng((prev) => (prev === '' ? pos.coords.longitude : prev));
+        },
+        () => { /* a denied fix stays blank */ },
         { maximumAge: 5 * 60 * 1000, timeout: 5000 }
       );
     }
@@ -37,9 +45,15 @@ export function EnergyEstimator() {
     setLoading(true);
     setError(null);
     try {
+      const input: Record<string, number> = {};
+      if (typeof lat === 'number' && Number.isFinite(lat)) input.lat = lat;
+      if (typeof lng === 'number' && Number.isFinite(lng)) input.lng = lng;
+      if (typeof systemKw === 'number' && Number.isFinite(systemKw)) input.systemKw = systemKw;
+      if (typeof tilt === 'number' && Number.isFinite(tilt)) input.tilt = tilt;
+      if (typeof azimuth === 'number' && Number.isFinite(azimuth)) input.azimuth = azimuth;
       const res = await api.post('/api/lens/run', {
         domain: 'eco', action: 'energy-estimate',
-        input: { lat, lng, systemKw, tilt, azimuth },
+        input,
       });
       // /api/lens/run single-unwraps: a handler rejection arrives as
       // res.data.result = { ok:false, error }. Surface it rather than crashing
@@ -58,7 +72,9 @@ export function EnergyEstimator() {
   }
 
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const maxMonthly = result ? Math.max(...result.monthlyKwh) : 1;
+  const monthly = result?.monthlyKwh ?? [];
+  const maxMonthly = monthly.length ? Math.max(...monthly) : 1;
+  const quoted = result != null && result.annualKwh != null && result.capacityFactor != null;
 
   return (
     <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
@@ -69,19 +85,19 @@ export function EnergyEstimator() {
       <div className="p-4 space-y-3">
         <div className="grid grid-cols-2 gap-3 text-xs">
           <Field label="Latitude">
-            <input type="number" step={0.01} value={lat} onChange={e => setLat(Number(e.target.value))} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input type="number" step={0.01} value={lat} onChange={e => setLat(e.target.value === '' ? '' : Number(e.target.value))} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
           </Field>
           <Field label="Longitude">
-            <input type="number" step={0.01} value={lng} onChange={e => setLng(Number(e.target.value))} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input type="number" step={0.01} value={lng} onChange={e => setLng(e.target.value === '' ? '' : Number(e.target.value))} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
           </Field>
           <Field label="System size (kW)">
-            <input type="number" step={0.5} value={systemKw} onChange={e => setSystemKw(Number(e.target.value))} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input type="number" step={0.5} value={systemKw} onChange={e => setSystemKw(e.target.value === '' ? '' : Number(e.target.value))} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
           </Field>
           <Field label="Tilt (°)">
-            <input type="number" step={1} value={tilt} onChange={e => setTilt(Number(e.target.value))} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input type="number" step={1} value={tilt} onChange={e => setTilt(e.target.value === '' ? '' : Number(e.target.value))} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
           </Field>
           <Field label="Azimuth (° from N)">
-            <input type="number" step={1} value={azimuth} onChange={e => setAzimuth(Number(e.target.value))} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input type="number" step={1} value={azimuth} onChange={e => setAzimuth(e.target.value === '' ? '' : Number(e.target.value))} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
           </Field>
         </div>
         <button
@@ -93,17 +109,20 @@ export function EnergyEstimator() {
           Estimate production
         </button>
         {error && <div role="alert" className="text-xs text-red-400">{error}</div>}
-        {result && (
+        {result && !quoted && (
+          <p className="text-xs text-gray-400">{result.message || 'Not recorded'}</p>
+        )}
+        {result && quoted && (
           <div className="space-y-2 pt-2 border-t border-white/10">
             <div className="grid grid-cols-3 gap-2 text-center">
-              <Stat label="Annual" value={`${result.annualKwh.toLocaleString(undefined, { maximumFractionDigits: 0 })} kWh`} accent="text-yellow-300" />
-              <Stat label="CO₂ avoided/yr" value={`${result.co2AvoidedKgPerYear.toLocaleString(undefined, { maximumFractionDigits: 0 })} kg`} accent="text-green-300" />
-              <Stat label="Capacity factor" value={`${(result.capacityFactor * 100).toFixed(0)}%`} accent="text-cyan-300" />
+              <Stat label="Annual" value={`${result.annualKwh!.toLocaleString(undefined, { maximumFractionDigits: 0 })} kWh`} accent="text-yellow-300" />
+              <Stat label="CO₂ avoided/yr" value={result.co2AvoidedKgPerYear == null ? '—' : `${result.co2AvoidedKgPerYear.toLocaleString(undefined, { maximumFractionDigits: 0 })} kg`} accent="text-green-300" />
+              <Stat label="Capacity factor" value={`${(result.capacityFactor! * 100).toFixed(0)}%`} accent="text-cyan-300" />
             </div>
             <div>
               <p className="text-[10px] uppercase text-gray-400 tracking-wider mb-1">Monthly production (kWh)</p>
               <div className="flex items-end gap-1 h-20">
-                {result.monthlyKwh.map((v, i) => (
+                {monthly.map((v, i) => (
                   <div key={i} className="flex-1 flex flex-col items-center">
                     <div className="bg-gradient-to-t from-yellow-500/60 to-yellow-300/40 w-full rounded-t" style={{ height: `${Math.max(4, (v / maxMonthly) * 100)}%` }} />
                     <span className="text-[9px] text-gray-400 mt-0.5">{months[i]}</span>
@@ -111,6 +130,9 @@ export function EnergyEstimator() {
                 ))}
               </div>
             </div>
+            {(result.tiltAssumed || result.azimuthAssumed) && (
+              <p className="text-[10px] text-gray-400">Tilt and azimuth were not sent, so this quote uses 30° and 180°.</p>
+            )}
             <p className="text-[10px] text-gray-400">Source: {result.source} · grid emission factor 0.4 kgCO₂/kWh (US avg).</p>
           </div>
         )}

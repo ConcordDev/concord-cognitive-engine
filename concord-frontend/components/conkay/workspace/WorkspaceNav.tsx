@@ -15,6 +15,7 @@ import {
   Activity, Boxes, ChevronDown, ChevronLeft, ChevronRight, Database, FolderKanban, Library, Loader2, MessageSquare, Pencil, Plus, Search, Sparkles, Trash2,
 } from 'lucide-react';
 import { SHOWCASE_LINKS, type ShowcaseId } from '@/lib/conkay/new-design-intent';
+import { formatModulus } from '@/lib/material-format';
 import { api, lensRun } from '@/lib/api/client';
 import type { BeamDims } from '@/lib/conkay/workspace-commands';
 import type { Material } from './useConKayWorkspace';
@@ -37,7 +38,9 @@ interface Props {
   materials: Material[];
   materialId: string;
   onMaterial: (id: string) => void;
-  onOpenModel: (name: string, dims: BeamDims, materialId: string | null) => void;
+  onOpenModel: (name: string, dims: BeamDims, materialId: string | null, partId: string) => void;
+  /** Start a fresh study in this workspace (F4: the in-lens new-study path). */
+  onNewStudy?: () => void;
   onAskAboutDtu: (dtu: { id: string; title: string }) => void;
   /** Open a showcase design in the workspace (New design / Gallery picker). Without it the items link to /conkay/designs/<id>. */
   onOpenShowcase?: (id: ShowcaseId, label: string) => void;
@@ -96,19 +99,52 @@ interface SimJob { id: string; name?: string; type?: string; status?: string; el
 interface VaultDtu { id: string; title?: string; tags?: string[]; createdAt?: string }
 
 function ProjectsPanel({ refreshKey }: { refreshKey: number }) {
+  const [revision, setRevision] = useState(0);
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState('');
   const { items, error } = useList<ChatProject>(async () => {
     const r = await lensRun<{ projects: ChatProject[] }>('chat', 'projects-list', {});
     return { items: r.data?.result?.projects ?? [], error: r.data?.ok === false ? r.data.error || 'Could not load projects.' : '' };
-  }, [refreshKey]);
+  }, [refreshKey, revision]);
+  // The create flow exists where this panel points (F4): chat.project-create
+  // is a registered action — the panel creates in place instead of sending
+  // the member to a Chat root with no Projects surface.
+  const create = async () => {
+    const n = name.trim();
+    if (!n || busy) return;
+    setBusy(true);
+    setNote('');
+    const r = await lensRun<{ project: { name: string } }>('chat', 'project-create', { name: n });
+    setBusy(false);
+    if (r.data?.ok === false || !r.data?.result?.project) { setNote(r.data?.error || 'The project store refused that name.'); return; }
+    setName('');
+    setNote(`Created project “${r.data.result.project.name}”.`);
+    setRevision((v) => v + 1);
+  };
   return (
     <div className="space-y-1">
-      <ListState items={items} error={error} empty={<>No Chat projects yet. <Link className="text-sky-300 underline" href="/lenses/chat">Create one in Chat</Link>.</>} />
+      <ListState items={items} error={error} empty="No Chat projects yet. Create one below — it will live in Chat's project store." />
       {items?.map((p) => (
         <Link key={p.id} href={`/lenses/chat?project=${encodeURIComponent(p.id)}`} className={`${itemCls} block text-slate-200 hover:bg-white/5`}>
           <span className="block truncate">{p.name}</span>
           <span className="text-[11px] text-slate-400">{(p.threadIds?.length ?? 0)} conversation{p.threadIds?.length === 1 ? '' : 's'} · {when(p.updatedAt)}</span>
         </Link>
       ))}
+      <form className="flex items-center gap-1 px-1 pt-2" onSubmit={(e) => { e.preventDefault(); void create(); }}>
+        <input
+          aria-label="New project name"
+          value={name}
+          maxLength={80}
+          onChange={(e) => setName(e.target.value.slice(0, 80))}
+          placeholder="New project name"
+          className="min-w-0 flex-1 rounded-md border border-white/10 bg-black/40 px-2 py-1 text-sm text-slate-100 focus:border-sky-400/50 focus:outline-none"
+        />
+        <button type="submit" disabled={busy || !name.trim()} className="shrink-0 rounded-md bg-sky-500/80 px-2 py-1 text-[11px] text-white disabled:opacity-50">
+          {busy ? 'Creating…' : 'Create'}
+        </button>
+      </form>
+      {note && <p className="px-1 text-[11px] text-slate-300">{note}</p>}
     </div>
   );
 }
@@ -123,7 +159,9 @@ function ModelsPanel({ refreshKey, onOpenModel }: { refreshKey: number; onOpenMo
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [rowError, setRowError] = useState('');
+  const [receipt, setReceipt] = useState('');
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const { items, error } = useList<Part>(async () => {
     const r = await lensRun<{ parts: Part[] }>('engineering', 'listParts', {});
     return { items: r.data?.result?.parts ?? [], error: r.data?.ok === false ? r.data.error || 'Could not load models.' : '' };
@@ -146,16 +184,19 @@ function ModelsPanel({ refreshKey, onOpenModel }: { refreshKey: number; onOpenMo
     reload();
   };
 
-  const remove = async (id: string) => {
-    setPendingId(id);
+  const remove = async (p: Part) => {
+    setPendingId(p.id);
     setRowError('');
-    const r = await lensRun<{ deleted: number }>('engineering', 'deletePart', { id });
+    setReceipt('');
+    const r = await lensRun<{ deleted: number }>('engineering', 'deletePart', { id: p.id });
     setPendingId(null);
+    setConfirmId(null);
     if (r.data?.ok === false || !r.data?.result || r.data.result.deleted !== 1) {
       setRowError(refused(r.data?.error || 'The part store did not delete this model.'));
       return;
     }
-    if (editingId === id) setEditingId(null);
+    if (editingId === p.id) setEditingId(null);
+    setReceipt(`Deleted “${p.name}”.`);
     reload();
   };
 
@@ -163,6 +204,7 @@ function ModelsPanel({ refreshKey, onOpenModel }: { refreshKey: number; onOpenMo
     <div className="space-y-1">
       <ListState items={items} error={error} empty="No saved models. Say “save model” or use Save model to keep the current beam." />
       {rowError && <p className="px-1 text-[11px] text-rose-300">{rowError}</p>}
+      {receipt && <p className="px-1 text-[11px] text-slate-300">{receipt}</p>}
       {items?.map((p) => {
         const isBeam = p.kind === 'i-beam' && p.params;
         const mm = (v?: number) => Math.round((v ?? 0) * 1000 * 1000) / 1000;
@@ -202,16 +244,39 @@ function ModelsPanel({ refreshKey, onOpenModel }: { refreshKey: number; onOpenMo
                   >
                     <Pencil className="h-3.5 w-3.5" aria-hidden />
                   </button>
-                  <button
-                    type="button"
-                    aria-label={`Delete ${p.name}`}
-                    title="Delete"
-                    disabled={busy}
-                    className="rounded-md p-1 text-slate-300 hover:bg-rose-400/15 hover:text-rose-200 disabled:opacity-50"
-                    onClick={() => void remove(p.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                  </button>
+                  {confirmId === p.id ? (
+                    <>
+                      <button
+                        type="button"
+                        aria-label={`Confirm delete ${p.name}`}
+                        disabled={busy}
+                        className="rounded-md bg-rose-400/15 px-2 py-1 text-[11px] text-rose-200 hover:bg-rose-400/25 disabled:opacity-50"
+                        onClick={() => void remove(p)}
+                      >
+                        Confirm delete?
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Cancel delete"
+                        disabled={busy}
+                        className="rounded-md px-1.5 py-1 text-[11px] text-slate-400 hover:text-slate-200 disabled:opacity-50"
+                        onClick={() => setConfirmId(null)}
+                      >
+                        Keep
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label={`Delete ${p.name}`}
+                      title="Delete"
+                      disabled={busy}
+                      className="rounded-md p-1 text-slate-300 hover:bg-rose-400/15 hover:text-rose-200 disabled:opacity-50"
+                      onClick={() => { setRowError(''); setReceipt(''); setConfirmId(p.id); }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                  )}
                   {isBeam ? (
                     <button
                       type="button"
@@ -219,7 +284,7 @@ function ModelsPanel({ refreshKey, onOpenModel }: { refreshKey: number; onOpenMo
                       onClick={() => onOpenModel(p.name, {
                         length: mm(p.params!.length), height: mm(p.params!.height), flangeWidth: mm(p.params!.flangeWidth),
                         flangeThickness: mm(p.params!.flangeThickness), webThickness: mm(p.params!.webThickness),
-                      }, p.material ?? null)}
+                      }, p.material ?? null, p.id)}
                     >
                       Open
                     </button>
@@ -323,7 +388,7 @@ function LibraryPanel({ materials, materialId, onMaterial }: { materials: Materi
           className={`${itemCls} ${m.id === materialId ? 'bg-sky-400/10 text-sky-100 ring-1 ring-sky-400/30' : 'text-slate-200 hover:bg-white/5'}`}
         >
           <span className="block truncate">{m.label}</span>
-          <span className="text-[11px] text-slate-400">E {m.E.toLocaleString()} MPa · yield {m.yield} MPa · {m.density} kg/m³</span>
+          <span className="text-[11px] text-slate-400">E {formatModulus(m.E)} · yield {m.yield} MPa · {m.density} kg/m³</span>
         </button>
       ))}
     </div>
@@ -403,6 +468,11 @@ export function WorkspaceNav(props: Props) {
           <Icon className="h-4 w-4 text-slate-400" aria-hidden /> {label}
         </button>
       ))}
+      {props.onNewStudy && (
+        <button type="button" onClick={props.onNewStudy} className={`${itemCls} flex items-center gap-3 text-slate-200 hover:bg-white/5`}>
+          <Plus className="h-4 w-4 text-slate-400" aria-hidden /> New study
+        </button>
+      )}
       <NewDesignPicker onOpenShowcase={props.onOpenShowcase} />
 
       <div className="mt-5 flex items-center justify-between px-3">

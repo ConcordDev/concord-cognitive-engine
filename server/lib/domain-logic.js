@@ -662,9 +662,33 @@ DOMAIN_RULES.set("math", {
 });
 
 // === Science ===
+// === Science ===
+// This rule was authored with a vocabulary the real lens never sends
+// (lowercase experiment/observation/hypothesis types; draft/hypothesis/
+// experimenting statuses), while `app/lenses/science`'s ArtifactsPanel
+// creates Experiment/Sample/Equipment/Analysis/Protocol/Publication
+// artifacts through the generic lens layer with the panel's own status
+// vocabularies (planned/active/…, excellent/good/…, operational/…) — so
+// every create from the UI failed `validateArtifact` with
+// `validation_failed`, and Quick Capture (type "capture", posted to the
+// lens's domain) failed at the same gate. The fix is the services/trades
+// reconciliation applied to this rule: the frontend's types are added,
+// `validStatuses` is the union of the legacy list and every status the
+// panel can send, and the frontend statuses transition freely among
+// themselves (a lab record's lifecycle is the researcher's call; the
+// panel's edit form offers the full per-type list). The legacy types,
+// statuses and transitions are kept for the records that already use
+// them. Pinned by tests/science-artifact-validation.test.js.
+const SCIENCE_FRONTEND_STATUSES = [
+  "planned", "active", "paused", "analyzing", "peer_review", "published", "archived",
+  "excellent", "good", "degraded", "compromised", "disposed",
+  "operational", "needs_calibration", "maintenance", "out_of_service", "decommissioned",
+  "draft", "under_review", "approved", "superseded", "retired",
+  "submitted", "in_review", "revision", "accepted", "rejected",
+];
 DOMAIN_RULES.set("science", {
-  types: ["experiment", "observation", "hypothesis", "lab-report", "field-study", "meta-analysis"],
-  validStatuses: ["draft", "hypothesis", "experimenting", "analyzing", "concluded", "published", "archived"],
+  types: ["experiment", "observation", "hypothesis", "lab-report", "field-study", "meta-analysis", "Experiment", "Sample", "Equipment", "Analysis", "Protocol", "Publication", "capture"],
+  validStatuses: ["draft", "hypothesis", "experimenting", "analyzing", "concluded", "published", "archived", ...SCIENCE_FRONTEND_STATUSES.filter((s) => !["analyzing", "published", "archived", "draft"].includes(s))],
   transitions: {
     draft: ["hypothesis", "archived"],
     hypothesis: ["experimenting", "draft", "archived"],
@@ -673,8 +697,9 @@ DOMAIN_RULES.set("science", {
     concluded: ["published", "analyzing", "archived"],
     published: ["archived"],
     archived: [],
+    ...Object.fromEntries(SCIENCE_FRONTEND_STATUSES.map((s) => [s, SCIENCE_FRONTEND_STATUSES])),
   },
-  requiredFields: { experiment: ["title", "hypothesis"], "lab-report": ["title", "methodology"] },
+  requiredFields: { experiment: ["title", "hypothesis"], "lab-report": ["title", "methodology"], Experiment: ["title"], Sample: ["title"], Equipment: ["title"], Analysis: ["title"], Protocol: ["title"], Publication: ["title"], capture: ["title"] },
   computedFields: (type, data) => {
     const dataPoints = data.dataPoints || [];
     data.dataPointCount = dataPoints.length;
@@ -885,6 +910,35 @@ DOMAIN_RULES.set("admin", {
     const integrations = Math.min((data.activeIntegrations || 0) / 5, 1);
     const audit = Math.min((data.auditEntries || 0) / 50, 1);
     return Math.round((users * 0.3 + integrations * 0.3 + audit * 0.3 + 0.1) * 100) / 100;
+  },
+});
+
+// === Agriculture ===
+// Registered 2026-11-04 (build(agriculture), B3): until this entry existed,
+// validateArtifact failed OPEN for agriculture — the lens's artifact contract
+// was never declared, so the record kinds the surface creates (Field · Crop ·
+// Animal · FarmEquipment · WaterSystem · Harvest · Certification, per
+// concord-frontend/components/agriculture/ag-types.ts) validated against
+// nothing, and Livestock/Certifications had no machinery at any layer
+// (cross-check #65: "livestock" returned 0 registry-wide). Types and statuses
+// mirror the frontend's ArtifactType and Status unions; "draft" / "active" /
+// "archived" are included because the generic lens-create path defaults an
+// absent status to "draft" and other writers use the generic lifecycle words.
+// requiredFields follow this framework's semantics (validateArtifact warns,
+// never errors, on a missing one) — they declare each type's expected shape:
+// a Field carries acreage + soilType; a Certification is a record with an
+// issuer (certBody) and dates (per the competitor inventory, item 14).
+DOMAIN_RULES.set("agriculture", {
+  types: ["Field", "Crop", "Animal", "FarmEquipment", "WaterSystem", "Harvest", "Certification"],
+  validStatuses: ["planned", "planted", "growing", "ready", "harvested", "stored", "sold", "draft", "active", "archived"],
+  requiredFields: {
+    Field: ["acreage", "soilType"],
+    Crop: ["variety"],
+    Animal: ["species"],
+    FarmEquipment: ["equipmentType"],
+    WaterSystem: ["systemType"],
+    Harvest: ["crop"],
+    Certification: ["certBody", "certType", "expiryDate"],
   },
 });
 

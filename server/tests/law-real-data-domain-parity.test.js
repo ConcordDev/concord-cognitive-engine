@@ -308,7 +308,9 @@ describe("law.courtlistener-search (CourtListener)", () => {
     globalThis.fetch = async () => ({ ok: false, status: 429, json: async () => ({}) });
     const r = await call("courtlistener-search", ctxA, { query: "x" });
     assert.equal(r.ok, false);
-    assert.match(r.error, /rate limit.*COURTLISTENER_API_TOKEN/);
+    assert.match(r.error, /rate limit/);
+    assert.doesNotMatch(r.error, /COURTLISTENER_API_TOKEN/);
+    assert.equal(r.unavailable, true);
   });
 
   // Semantic / natural-language search (closes docs/lens-specs/law-capability-map.md's
@@ -520,14 +522,17 @@ describe("law.recap-docket-search (CourtListener RECAP Archive)", () => {
     globalThis.fetch = async () => ({ ok: false, status: 429, json: async () => ({}) });
     const r = await call("recap-docket-search", ctxA, { query: "x" });
     assert.equal(r.ok, false);
-    assert.match(r.error, /rate limit.*COURTLISTENER_API_TOKEN/);
+    assert.match(r.error, /rate limit/);
+    assert.doesNotMatch(r.error, /COURTLISTENER_API_TOKEN/);
+    assert.equal(r.unavailable, true);
   });
 
   it("honest failure on network error (unreachable)", async () => {
     globalThis.fetch = async () => { throw new Error("getaddrinfo ENOTFOUND"); };
     const r = await call("recap-docket-search", ctxA, { query: "x" });
     assert.equal(r.ok, false);
-    assert.match(r.error, /courtlistener unreachable/);
+    assert.match(r.error, /unavailable/);
+    assert.doesNotMatch(r.error, /unreachable|courtlistener \d/);
   });
 });
 
@@ -574,6 +579,7 @@ describe("law.recap-docket-documents (CourtListener RECAP Archive)", () => {
     globalThis.fetch = async () => { throw new Error("network down"); };
     const r = await call("recap-docket-documents", ctxA, { docketId: 42 });
     assert.equal(r.ok, false);
-    assert.match(r.error, /courtlistener unreachable/);
+    assert.match(r.error, /unavailable/);
+    assert.doesNotMatch(r.error, /unreachable|courtlistener \d/);
   });
 });

@@ -89,7 +89,7 @@ export function findEmployers(db, { worldId = "concordia-hub", trackId = null, l
       SELECT id, archetype, faction, level, x, z, state
       FROM world_npcs
       WHERE world_id = ? AND COALESCE(is_dead, 0) = 0
-      LIMIT 500
+      LIMIT 10000
     `).all(worldId);
   } catch {
     return [];
@@ -118,8 +118,17 @@ export function findEmployers(db, { worldId = "concordia-hub", trackId = null, l
         x: row.x ?? null,
         z: row.z ?? null,
       });
-      if (out.length >= cap) return out;
     }
   }
-  return out;
+  // The pool is the world's generated population; which slice of it a
+  // player SEES is a generation constraint, and it is set here: entries
+  // order by the tier they offer (lowest first), so the entry band a new
+  // account can actually be hired at (the reputation gate opens at
+  // tier 3) leads the directory whenever the world holds such NPCs —
+  // the previous first-come window + cap could stock a track's whole
+  // visible pool above the gate purely from row order. The cap applies
+  // AFTER ordering. Ties break by level, then name, so the directory is
+  // deterministic for a given population.
+  out.sort((a, b) => a.tier - b.tier || a.level - b.level || String(a.name).localeCompare(String(b.name)));
+  return out.slice(0, cap);
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, Loader2, Calendar, Dumbbell } from 'lucide-react';
+import { Sparkles, Loader2, Calendar, Dumbbell, Save } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 export interface PlannedDay {
@@ -20,7 +20,17 @@ export interface WorkoutPlan {
   nutrition: string;
 }
 
-export function WorkoutPlanner() {
+interface WorkoutPlannerProps {
+  /**
+   * F9 keep path: the planner's output used to evaporate with the view —
+   * no Save/Apply control existed and no record was created. The host
+   * (FitnessApp) passes a saver that persists the plan as a Program
+   * record; without one, the button explains where programs live.
+   */
+  onSavePlan?: (plan: WorkoutPlan) => Promise<string | null>;
+}
+
+export function WorkoutPlanner({ onSavePlan }: WorkoutPlannerProps) {
   const [goal, setGoal] = useState<'strength' | 'hypertrophy' | 'endurance' | 'fat_loss' | 'general'>('general');
   const [daysPerWeek, setDaysPerWeek] = useState(4);
   const [weeks, setWeeks] = useState(8);
@@ -29,9 +39,11 @@ export function WorkoutPlanner() {
   const [plan, setPlan] = useState<WorkoutPlan | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedNote, setSavedNote] = useState<string | null>(null);
 
   async function generate() {
-    setLoading(true); setError(null);
+    setLoading(true); setError(null); setSavedNote(null);
     try {
       const res = await lensRun({
         domain: 'fitness', action: 'workout-plan-generate',
@@ -42,6 +54,18 @@ export function WorkoutPlanner() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'generate failed');
     } finally { setLoading(false); }
+  }
+
+  async function savePlan() {
+    if (!plan || !onSavePlan) return;
+    setSaving(true); setError(null);
+    try {
+      const title = await onSavePlan(plan);
+      setSavedNote(title ? `Saved as the program “${title}” — find it under Programs.` : 'Save failed.');
+      if (!title) setError('Save failed.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'save failed');
+    } finally { setSaving(false); }
   }
 
   return (
@@ -95,7 +119,14 @@ export function WorkoutPlanner() {
             <span className="text-cyan-300 font-bold">{plan.goal}</span>
             <span className="text-gray-400">·</span>
             <span className="text-gray-300">{plan.weeks} weeks × {plan.daysPerWeek} days</span>
+            {onSavePlan && (
+              <button onClick={savePlan} disabled={saving || !!savedNote} className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-cyan-500/20 text-cyan-200 border border-cyan-500/40 hover:bg-cyan-500/30 disabled:opacity-50 text-xs font-semibold">
+                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                {savedNote ? 'Saved' : 'Save as program'}
+              </button>
+            )}
           </div>
+          {savedNote && <p role="status" className="text-xs text-emerald-300">{savedNote}</p>}
           <div className="space-y-3">
             {plan.template.map(d => (
               <div key={d.day} className="bg-white/[0.02] border border-white/10 rounded p-3">

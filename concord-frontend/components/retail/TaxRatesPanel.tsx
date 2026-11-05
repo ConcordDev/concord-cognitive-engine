@@ -11,7 +11,7 @@ import { Percent, Plus, Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
-interface TaxRate { id: string; region: string; ratePct: number }
+interface TaxRate { id: string; region: string; ratePct: number; isDefault?: boolean }
 
 export function TaxRatesPanel({ className }: { className?: string }) {
   const [rates, setRates] = useState<TaxRate[]>([]);
@@ -51,6 +51,17 @@ export function TaxRatesPanel({ className }: { className?: string }) {
     } finally { setSaving(false); }
   }, [region, ratePct, apply]);
 
+  const makeDefault = useCallback(async (r: TaxRate) => {
+    setSaving(true); setError(null);
+    try {
+      const res = await lensRun('retail', 'tax-rates-set', { region: r.region, ratePct: r.ratePct, isDefault: true });
+      if (res?.data?.error) setError(String(res.data.error));
+      else apply(res?.data?.result?.rates);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to set the default rate');
+    } finally { setSaving(false); }
+  }, [apply]);
+
   const remove = useCallback(async (id: string) => {
     setRates((prev) => prev.filter((r) => r.id !== id));
     try { const r = await lensRun('retail', 'tax-rates-delete', { id }); apply(r?.data?.result?.rates); } catch { void load(); }
@@ -63,6 +74,7 @@ export function TaxRatesPanel({ className }: { className?: string }) {
         <h3 className="text-sm font-semibold text-gray-100">Sales-tax rates</h3>
         {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-500" />}
       </div>
+      <p className="text-[11px] text-gray-500 mb-3">Your register charges your store-default rate at checkout — the rate you set here is the rate the terminal uses. With one rate configured, it is the default.</p>
 
       {error && (
         <div className="mb-3 flex items-center gap-2 text-xs text-rose-300">
@@ -75,6 +87,12 @@ export function TaxRatesPanel({ className }: { className?: string }) {
         {rates.map((r) => (
           <div key={r.id} className="flex items-center gap-2 text-xs group">
             <span className="text-gray-100 font-medium flex-1">{r.region}</span>
+            {(r.isDefault || rates.length === 1) ? (
+              <span className="text-[10px] uppercase tracking-wider text-emerald-300 border border-emerald-500/40 rounded px-1 py-0.5">Store default</span>
+            ) : (
+              <button type="button" onClick={() => void makeDefault(r)} disabled={saving}
+                className="text-[10px] uppercase tracking-wider text-gray-500 hover:text-emerald-300 border border-lattice-border rounded px-1 py-0.5 disabled:opacity-50">Make default</button>
+            )}
             <span className="text-emerald-300 font-mono tabular-nums">{r.ratePct}%</span>
             <button type="button" onClick={() => void remove(r.id)} aria-label="Delete rate"
               className="opacity-0 group-hover:opacity-100 p-1 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>

@@ -96,6 +96,30 @@ describe('GarageLensPage — four UX states', () => {
     expect(screen.getAllByRole('row')).toHaveLength(3);
   });
 
+  it('F1: declares a real data tier — the manifest now carries dataTier for garage', async () => {
+    wireLensRun();
+    render(React.createElement(GarageLensPage));
+    await screen.findByText('player:driver1');
+    // DepthBadge renders the honest garage-specific override caption, not
+    // the generic "polled live from an external source" line (which would
+    // be false — this is a persisted DB store, not an external feed).
+    expect(await screen.findByText('Live')).toBeInTheDocument();
+  });
+
+  it('F3: "My fleet" rows render the resolved display identity when the macro stamps one', async () => {
+    wireLensRun({
+      list: () => ok({ worldId: 'concordia-hub', vehicles: [] }),
+      mine: () => ok({
+        worldId: 'concordia-hub',
+        vehicles: [{ id: 'veh_a', world_id: 'concordia-hub', kind: 'cart', owner_kind: 'player', owner_id: 'driver1', ownerDisplay: 'Driver One', capacity: 4, fare_cc: 0 }],
+      }),
+    });
+    render(React.createElement(GarageLensPage));
+    fireEvent.click(await screen.findByRole('tab', { name: /my fleet/i }));
+    expect(await screen.findByText('Driver One')).toBeInTheDocument();
+    expect(screen.queryByText(/player:driver1/)).not.toBeInTheDocument();
+  });
+
   it('EMPTY: honest empty state when the world has no vehicles', async () => {
     wireLensRun({ list: () => ok({ worldId: 'concordia-hub', vehicles: [] }) });
     render(React.createElement(GarageLensPage));

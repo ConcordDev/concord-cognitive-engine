@@ -37,7 +37,7 @@ export interface ActivityWeightDashboardProps {
 interface ActivityEntry { kind: string; durationMin: number; date: string }
 interface WeightEntry { date: string; weightKg: number }
 interface ActivityResult { dailyTarget?: number; dailyAverage?: number; weeklyTotal?: number; score?: number; rating?: string; activitiesThisWeek?: number; typeBreakdown?: Record<string, number>; recommendations?: string[] }
-interface WeightResult { currentWeight?: number; idealRange?: { min: number; max: number; note: string }; condition?: string; trend?: string; weeklyChange?: number; alerts?: string[]; recommendation?: string }
+interface WeightResult { currentWeight?: number; idealRange?: { min: number | null; max: number | null; note: string }; condition?: string; trend?: string | null; weeklyChange?: number | null; trendNote?: string | null; alerts?: string[]; recommendation?: string }
 
 async function callPets<T>(action: string, artifact: Record<string, unknown>): Promise<T | null> {
   try {
@@ -234,11 +234,14 @@ export function ActivityWeightDashboard({ petId, petName, species, ageYears, wei
                 <div className="font-mono text-3xl text-white">{weight.currentWeight ?? '—'} <span className="text-sm text-zinc-400">lb</span></div>
                 {weight.trend && <div className="flex items-center gap-1 rounded-full border border-zinc-800 bg-zinc-950 px-2 py-0.5 text-[11px] text-zinc-300">{trendIcon}{weight.trend}</div>}
               </div>
-              {weight.idealRange && (
+              {weight.idealRange && weight.idealRange.min != null && weight.idealRange.max != null ? (
                 <div className="text-[10px] text-zinc-400">Ideal range: <span className="text-emerald-300">{weight.idealRange.min}–{weight.idealRange.max} lb</span> · {weight.idealRange.note}</div>
-              )}
+              ) : weight.idealRange?.note ? (
+                <div className="text-[10px] text-zinc-400">{weight.idealRange.note}</div>
+              ) : null}
+              {weight.trendNote && <div className="text-[11px] text-zinc-400">{weight.trendNote}</div>}
               <div className="overflow-x-auto">
-                <WeightChart history={weights} ideal={weight.idealRange ? { min: weight.idealRange.min, max: weight.idealRange.max } : undefined} />
+                <WeightChart history={weights} ideal={weight.idealRange && weight.idealRange.min != null && weight.idealRange.max != null ? { min: weight.idealRange.min, max: weight.idealRange.max } : undefined} />
               </div>
               {weight.weeklyChange != null && (
                 <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1 text-[11px]">
