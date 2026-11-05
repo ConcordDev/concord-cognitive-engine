@@ -86,6 +86,18 @@ describe("events.dashboard", () => {
     assert.equal(d.result.totalEvents, 2);
     assert.equal(d.result.totalBudget, 15000);
     assert.equal(d.result.openTasks, 1);
+    assert.equal(d.result.upcoming, 2);
+    assert.equal(d.result.past, 0);
+  });
+
+  it("counts a past date as past, not upcoming", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    assert.ok(today > "2026-10-01", "the 2026-10-01 fixture is past only after that day");
+    newEvent(ctxA, { name: "Already held", date: "2026-10-01" });
+    newEvent(ctxA, { name: "Still ahead", date: "2099-01-01" });
+    const d = call("events-dashboard", ctxA, {}).result;
+    assert.equal(d.past, 1);
+    assert.equal(d.upcoming, 1);
   });
 });
 

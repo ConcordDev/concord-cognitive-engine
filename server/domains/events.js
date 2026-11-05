@@ -246,11 +246,13 @@ export default function registerEventsActions(registerLensAction) {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const events = evList(s, evActor(ctx));
     const now = new Date().toISOString().slice(0, 10);
+    const dayOf = (date) => (typeof date === "string" && /^\d{4}-\d{2}-\d{2}/.test(date) ? date.slice(0, 10) : "");
     return {
       ok: true,
       result: {
         totalEvents: events.length,
-        upcoming: events.filter((e) => e.date && e.date >= now && e.status !== "cancelled").length,
+        upcoming: events.filter((e) => { const day = dayOf(e.date); return day && day >= now && e.status !== "cancelled"; }).length,
+        past: events.filter((e) => { const day = dayOf(e.date); return day && day < now; }).length,
         planning: events.filter((e) => e.status === "planning").length,
         totalBudget: events.reduce((n, e) => n + e.budget, 0),
         openTasks: events.reduce((n, e) => n + e.tasks.filter((t) => !t.done).length, 0),
