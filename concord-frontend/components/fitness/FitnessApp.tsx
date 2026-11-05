@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef} from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
+import { WgerFeedPanel } from '@/components/fitness/WgerFeedPanel';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FitnessFeed } from '@/components/fitness/FitnessFeed';
@@ -96,6 +99,9 @@ interface TrainingBlock {
   weeklyVolume: number;
   overloadPercent: number;
   notes: string;
+  /** Set when the block was attached from an existing Workout record
+   *  (F14: the Program form could not attach an existing workout). */
+  workoutId?: string;
 }
 
 interface ClassSlot {
@@ -277,6 +283,15 @@ function calcTDEE(weightKg: number, heightCm: number, age: number, isMale: boole
   return Math.round(bmr * activityLevel);
 }
 
+/** Mifflin-St Jeor BMR — the first step of calcTDEE, exposed so the
+ *  TDEE panel can show it (F13: the panel named no formula and hid the
+ *  BMR the chain is built on). */
+function calcBMR(weightKg: number, heightCm: number, age: number, isMale: boolean): number {
+  return Math.round(isMale
+    ? 10 * weightKg + 6.25 * heightCm - 5 * age + 5
+    : 10 * weightKg + 6.25 * heightCm - 5 * age - 161);
+}
+
 function calcMacros(tdee: number, goal: 'cut' | 'maintain' | 'bulk', weightKg: number) {
   const cals = goal === 'cut' ? tdee - 500 : goal === 'bulk' ? tdee + 300 : tdee;
   const protein = Math.round(weightKg * 2.2);
@@ -353,6 +368,10 @@ export default function FitnessApp() {
   const [selectedClient, setSelectedClient] = useState<LensItem<FitnessArtifact> | null>(null);
   const [showBodyComp, setShowBodyComp] = useState(false);
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
+  const [planSaveNote, setPlanSaveNote] = useState<string | null>(null);
+  // F14: card deletes were instant and unconfirmed — a first click arms
+  // the confirm, a second click deletes (the fleet's two-step pattern).
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   /* ---------- editor form state ---------- */
   const [formTitle, setFormTitle] = useState('');
@@ -375,6 +394,7 @@ export default function FitnessApp() {
 
   /* ---------- program periodization state ---------- */
   const [trainingBlocks, setTrainingBlocks] = useState<TrainingBlock[]>([]);
+  const [attachWorkoutId, setAttachWorkoutId] = useState('');
   const [formMacroCycle, setFormMacroCycle] = useState('');
   const [formMesoCycle, setFormMesoCycle] = useState('');
   const [formMicroCycle, setFormMicroCycle] = useState('');
@@ -393,17 +413,36 @@ export default function FitnessApp() {
   const [formLocation, setFormLocation] = useState('');
 
   /* ---------- body comp calculator state ---------- */
-  const [bcWeight, setBcWeight] = useState('');
-  const [bcHeight, setBcHeight] = useState('');
-  const [bcAge, setBcAge] = useState('');
-  const [bcIsMale, setBcIsMale] = useState(true);
-  const [bcActivity, setBcActivity] = useState('1.55');
-  const [bcGoal, setBcGoal] = useState<'cut' | 'maintain' | 'bulk'>('maintain');
-  const [bcWaist, setBcWaist] = useState('');
-  const [bcNeck, setBcNeck] = useState('');
-  const [bcHip, setBcHip] = useState('');
-  const [bc1rmWeight, setBc1rmWeight] = useState('');
-  const [bc1rmReps, setBc1rmReps] = useState('');
+  // F8: the modal unmounts on close, so every entered measurement used
+  // to die with it — the "displayed-but-unregistered inputs" family.
+  // The draft persists through the lens UI-state store and restores
+  // when the modal reopens. (The panels' arithmetic itself was always
+  // live off this state; the values that never registered at all in
+  // the field trace to the shared shell's keystroke-eating class,
+  // priced once at the platform layer — not forked here.)
+  const { restore: bcRestore, persist: bcPersist } = useLensStatePersistence('fitness-bodycomp');
+  const [bcSaved] = useState<Record<string, unknown>>(() => bcRestore() ?? {});
+  const bcStr = (v: unknown, fallback: string) => (typeof v === 'string' ? v : fallback);
+  const [bcWeight, setBcWeight] = useState(bcStr(bcSaved.bcWeight, ''));
+  const [bcHeight, setBcHeight] = useState(bcStr(bcSaved.bcHeight, ''));
+  const [bcAge, setBcAge] = useState(bcStr(bcSaved.bcAge, ''));
+  const [bcIsMale, setBcIsMale] = useState(bcSaved.bcIsMale !== false);
+  const [bcActivity, setBcActivity] = useState(bcStr(bcSaved.bcActivity, '1.55'));
+  const [bcGoal, setBcGoal] = useState<'cut' | 'maintain' | 'bulk'>(
+    bcSaved.bcGoal === 'cut' || bcSaved.bcGoal === 'bulk' ? bcSaved.bcGoal : 'maintain',
+  );
+  const [bcWaist, setBcWaist] = useState(bcStr(bcSaved.bcWaist, ''));
+  const [bcNeck, setBcNeck] = useState(bcStr(bcSaved.bcNeck, ''));
+  const [bcHip, setBcHip] = useState(bcStr(bcSaved.bcHip, ''));
+  const [bc1rmWeight, setBc1rmWeight] = useState(bcStr(bcSaved.bc1rmWeight, ''));
+  const [bc1rmReps, setBc1rmReps] = useState(bcStr(bcSaved.bc1rmReps, ''));
+
+  useEffect(() => {
+    bcPersist({
+      bcWeight, bcHeight, bcAge, bcIsMale, bcActivity, bcGoal,
+      bcWaist, bcNeck, bcHip, bc1rmWeight, bc1rmReps,
+    });
+  }, [bcWeight, bcHeight, bcAge, bcIsMale, bcActivity, bcGoal, bcWaist, bcNeck, bcHip, bc1rmWeight, bc1rmReps, bcPersist]);
 
   /* ---------- client progress state ---------- */
   const [clientMetrics, setClientMetrics] = useState<BodyMetric[]>([]);
@@ -552,9 +591,48 @@ export default function FitnessApp() {
     setShowEditor(false);
   };
 
+  /* F9 keep path — a generated plan (AI planner tab or the Generate
+     Program quick action) used to evaporate with the view: no
+     Save/Apply control, no record. Persist it as a Program record:
+     one training block per template day, the day's exercises written
+     into the block notes so the record carries the whole plan, and it
+     lands in the Programs library where it can be edited like any
+     other program. */
+  const savePlanAsProgram = useCallback(async (plan: {
+    goal: string; weeks: number; daysPerWeek: number;
+    template: { day: string; focus: string; duration: number; exercises: { name: string; sets: number; reps: string; restSec: number }[] }[];
+    progression: string; nutrition: string;
+  }): Promise<string | null> => {
+    const goalLabel = plan.goal.replace(/_/g, ' ');
+    const title = `${goalLabel} program — ${plan.weeks}wk × ${plan.daysPerWeek}d`;
+    const trainingBlocks: TrainingBlock[] = plan.template.map(d => ({
+      id: generateId(),
+      name: `${d.day} — ${d.focus}`,
+      phase: plan.goal === 'strength' ? 'Strength' : 'Hypertrophy',
+      weeks: plan.weeks,
+      weeklyVolume: d.exercises.reduce((s, ex) => s + ex.sets, 0),
+      overloadPercent: 0,
+      notes: d.exercises.map(ex => `${ex.name} ${ex.sets}×${ex.reps} (rest ${ex.restSec}s)`).join('; '),
+    }));
+    await create({
+      title,
+      data: {
+        artifactType: 'Program', status: 'active',
+        description: `Generated plan — ${goalLabel}, ${plan.weeks} weeks × ${plan.daysPerWeek} days/week. Saved from the AI planner.`,
+        goal: goalLabel,
+        trainingBlocks,
+        autoProgressionRules: plan.progression,
+        notes: `Nutrition: ${plan.nutrition}`,
+      } as unknown as Partial<FitnessArtifact>,
+      meta: { status: 'active', tags: ['Program'] },
+    });
+    return title;
+  }, [create]);
+
   const handleAction = async (action: string, artifactId?: string) => {
     const targetId = artifactId || editingItem?.id || filtered[0]?.id;
     if (!targetId) return;
+    setPlanSaveNote(null);
     try {
       const result = await runAction.mutateAsync({ id: targetId, action });
       if (result.ok === false) { setActionResult({ message: `Action failed: ${(result as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(result.result as Record<string, unknown>); }
@@ -701,6 +779,9 @@ export default function FitnessApp() {
   const tdee = bcWeight && bcHeight && bcAge
     ? calcTDEE(parseFloat(bcWeight), parseFloat(bcHeight), parseInt(bcAge), bcIsMale, parseFloat(bcActivity))
     : null;
+  const bmr = bcWeight && bcHeight && bcAge
+    ? calcBMR(parseFloat(bcWeight), parseFloat(bcHeight), parseInt(bcAge), bcIsMale)
+    : null;
   const macros = tdee && bcWeight ? calcMacros(tdee, bcGoal, parseFloat(bcWeight)) : null;
   const oneRMEpley = bc1rmWeight && bc1rmReps ? calc1RMEpley(parseFloat(bc1rmWeight), parseInt(bc1rmReps)) : null;
   const oneRMBrzycki = bc1rmWeight && bc1rmReps ? calc1RMBrzycki(parseFloat(bc1rmWeight), parseInt(bc1rmReps)) : null;
@@ -769,8 +850,14 @@ export default function FitnessApp() {
       <>
       {/* ========== Enhanced Dashboard ========== */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <StatCard icon={Users} label="Active Clients" value={stats.activeClients} sub={`${stats.retentionRate}% retention`} color="red-400" />
-        <StatCard icon={Activity} label="Sessions / Week" value={stats.sessionsThisWeek} color="red-500" />
+        {/* F13: "100% retention" at exactly one client was a longitudinal
+            label on a count of one — under 10 clients the sub-line gives
+            the count form; the percentage returns when it means something. */}
+        <StatCard icon={Users} label="Active Clients" value={stats.activeClients} sub={stats.totalClients >= 10 ? `${stats.retentionRate}% retention` : `${stats.activeClients} of ${stats.totalClients} clients active`} color="red-400" />
+        {/* Was "Sessions / Week": the figure counts active Workout
+            records — it is not a weekly session count (real sessions
+            live in the Log view). Labelled for what it counts. */}
+        <StatCard icon={Activity} label="Active Workouts" value={stats.sessionsThisWeek} color="red-500" />
         <StatCard icon={DollarSign} label="Class Revenue" value={`$${stats.monthlyRevenue}`} color="neon-cyan" />
         <StatCard icon={ListChecks} label="Programs" value={stats.programs} color="red-300" />
         <StatCard icon={CalendarDays} label="Active Classes" value={stats.weeklyClasses} color="amber-400" />
@@ -801,12 +888,12 @@ export default function FitnessApp() {
       {activeTab === 'HRZones' && <div className="p-4"><HeartRateZones /></div>}
       {activeTab === 'Recovery' && <div className="p-4"><SleepRecovery /></div>}
       {activeTab === 'Activity' && <div className="p-4"><ActivityRings /></div>}
-      {activeTab === 'AIPlan' && <div className="p-4"><WorkoutPlanner /></div>}
+      {activeTab === 'AIPlan' && <div className="p-4"><WorkoutPlanner onSavePlan={savePlanAsProgram} /></div>}
       {activeTab === 'Finish' && <div className="p-4"><WorkoutFinishPanel /></div>}
       {activeTab === 'Routes' && <RoutesPanel className="mt-2" />}
       {activeTab === 'Feed' && (
         <CommunityRedditSlot>
-          <div className="p-4"><FitnessFeed /></div>
+          <div className="p-4 space-y-4"><FitnessFeed /><WgerFeedPanel /></div>
         </CommunityRedditSlot>
       )}
 
@@ -1058,6 +1145,21 @@ export default function FitnessApp() {
               <option value="all">All statuses</option>
               {ALL_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
+            {/* F14: Export JSON from the shell was silent. The lens
+                mounts its own export over the records it actually
+                holds — a real .dtu download, or an honest refusal
+                when there is nothing to export. */}
+            <DTUExportButton
+              domain="fitness"
+              data={null}
+              title="Fitness records export"
+              tags={['fitness', 'export']}
+              prepare={async () => (items.length === 0 ? {} : {
+                source: 'fitness-records',
+                exportedAt: new Date().toISOString(),
+                items: items.map(i => ({ id: i.id, title: i.title, createdAt: i.createdAt, data: i.data })),
+              })}
+            />
           </div>
         </div>
 
@@ -1133,6 +1235,9 @@ export default function FitnessApp() {
                       </span>
                     )}
                     {d.schedule && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {d.schedule}</span>}
+                    {/* F14: records carried no date anywhere — the artifact
+                        row has carried createdAt all along; render it. */}
+                    {item.createdAt && <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" /> {new Date(item.createdAt).toLocaleDateString()}</span>}
                   </div>
                   {d.goal && (
                     <div className="mt-2">
@@ -1145,8 +1250,13 @@ export default function FitnessApp() {
                     <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={e => { e.stopPropagation(); openEditEditor(item); }}>
                       <Eye className="w-3.5 h-3.5" /> Edit
                     </button>
-                    <button className={cn(ds.btnDanger, ds.btnSmall)} onClick={e => { e.stopPropagation(); remove(item.id); }}>
-                      <Trash2 className="w-3.5 h-3.5" /> Delete
+                    <button className={cn(ds.btnDanger, ds.btnSmall)} onClick={e => {
+                      e.stopPropagation();
+                      // F14 two-step confirm: first click arms, second deletes.
+                      if (confirmDeleteId === item.id) { setConfirmDeleteId(null); void remove(item.id); }
+                      else setConfirmDeleteId(item.id);
+                    }}>
+                      <Trash2 className="w-3.5 h-3.5" /> {confirmDeleteId === item.id ? 'Confirm delete?' : 'Delete'}
                     </button>
                   </div>
                 </div>
@@ -1331,6 +1441,22 @@ export default function FitnessApp() {
                     <p><span className="text-gray-300 font-medium">Progression:</span> {p.progression}</p>
                     <p><span className="text-gray-300 font-medium">Nutrition:</span> {p.nutrition}</p>
                   </div>
+                  {/* F9 keep path — this generated program evaporated
+                      with the panel, exactly like the AI planner's.
+                      Save it as a Program record. */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      onClick={async () => {
+                        const t = await savePlanAsProgram(p);
+                        setPlanSaveNote(t ? `Saved as the program “${t}” — find it under Programs.` : 'Save failed.');
+                      }}
+                      disabled={!!planSaveNote}
+                      className={cn(ds.btnSmall, 'bg-cyan-500/20 text-cyan-200 border border-cyan-500/30 disabled:opacity-50')}
+                    >
+                      {planSaveNote ? 'Saved' : 'Save as program'}
+                    </button>
+                    {planSaveNote && <span role="status" className="text-[11px] text-emerald-300">{planSaveNote}</span>}
+                  </div>
                 </div>
               );
             })()}
@@ -1453,6 +1579,7 @@ export default function FitnessApp() {
                 {/* TDEE + Macros */}
                 <div className={ds.panel}>
                   <h3 className={cn(ds.heading3, 'mb-2')}>TDEE & Macro Calculator</h3>
+                  <p className={cn(ds.textMuted, 'mb-3')}>Mifflin-St Jeor — TDEE = BMR × activity factor. The 1RM panel below names its formulas (Epley / Brzycki); this one now names its own and shows the BMR it is built on.</p>
                   <div className="mb-3">
                     <label className={ds.label}>Goal</label>
                     <select value={bcGoal} onChange={e => setBcGoal(e.target.value as 'cut' | 'maintain' | 'bulk')} className={cn(ds.select, 'w-40')}>
@@ -1462,11 +1589,16 @@ export default function FitnessApp() {
                     </select>
                   </div>
                   {tdee !== null && macros !== null ? (
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                       <div className={ds.panel}>
                         <p className={ds.textMuted}>TDEE</p>
                         <p className="text-xl font-bold text-red-500">{tdee}</p>
                         <p className="text-xs text-gray-400">cal/day</p>
+                      </div>
+                      <div className={ds.panel}>
+                        <p className={ds.textMuted}>BMR (Mifflin-St Jeor)</p>
+                        <p className="text-xl font-bold text-red-500">{bmr}</p>
+                        <p className="text-xs text-gray-400">cal/day at rest</p>
                       </div>
                       <div className={ds.panel}>
                         <p className={ds.textMuted}>Target</p>
@@ -1742,6 +1874,49 @@ export default function FitnessApp() {
                       </button>
                     </div>
 
+                    {/* F14: attach an existing Workout record as a block —
+                        the form previously offered no way to reference
+                        a workout the member already built. */}
+                    {(() => {
+                      const workoutRecords = items.filter(i => (i.data as unknown as FitnessArtifact).artifactType === 'Workout');
+                      if (workoutRecords.length === 0) return null;
+                      return (
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={attachWorkoutId}
+                            onChange={e => setAttachWorkoutId(e.target.value)}
+                            className={cn(ds.select, 'text-xs flex-1')}
+                            aria-label="Existing workout to attach"
+                          >
+                            <option value="">Attach an existing workout…</option>
+                            {workoutRecords.map(w => <option key={w.id} value={w.id}>{w.title}</option>)}
+                          </select>
+                          <button
+                            onClick={() => {
+                              const w = workoutRecords.find(x => x.id === attachWorkoutId);
+                              if (!w) return;
+                              const wd = w.data as unknown as FitnessArtifact;
+                              setTrainingBlocks(prev => [...prev, {
+                                id: generateId(),
+                                name: w.title,
+                                phase: 'Hypertrophy',
+                                weeks: 1,
+                                weeklyVolume: (wd.exercises || []).length,
+                                overloadPercent: 0,
+                                notes: `Attached workout record — ${(wd.exercises || []).length} exercises`,
+                                workoutId: w.id,
+                              }]);
+                              setAttachWorkoutId('');
+                            }}
+                            disabled={!attachWorkoutId}
+                            className={cn(ds.btnSecondary, 'disabled:opacity-40')}
+                          >
+                            <Plus className="w-4 h-4" /> Attach
+                          </button>
+                        </div>
+                      );
+                    })()}
+
                     {/* Cycle planning */}
                     <div className={ds.grid3}>
                       <div>
@@ -1773,6 +1948,7 @@ export default function FitnessApp() {
                               <Layers className="w-4 h-4 text-red-300" />
                               <span className="text-xs text-gray-400">Block {idx + 1}</span>
                               <span className={ds.badge(phaseColor)}>{block.phase}</span>
+                              {block.workoutId && <span className={ds.badge('neon-cyan')}>workout attached</span>}
                             </div>
                             <button onClick={() => removeBlock(block.id)} className={ds.btnGhost} aria-label="Delete"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
                           </div>
@@ -1832,6 +2008,14 @@ export default function FitnessApp() {
                         <Plus className="w-4 h-4" /> Add Slot
                       </button>
                     </div>
+
+                    {/* F10: the price path exists (slot $/Head × enrolled
+                        drives Class Revenue) but a fresh class has no
+                        slots, so the KPI reads $0 with no pointer here.
+                        This hint is that pointer. */}
+                    {classSlots.length === 0 && (
+                      <p className={ds.textMuted}>No slots yet. Add a slot to schedule this class — each slot carries a $/Head price, and enrolled × price is what drives the Class Revenue KPI.</p>
+                    )}
 
                     {/* Day selector */}
                     <div className="flex gap-1 flex-wrap">
@@ -2064,8 +2248,12 @@ export default function FitnessApp() {
               <div className="flex items-center justify-between p-4 border-t border-lattice-border">
                 <div className="flex items-center gap-2">
                   {editingItem && (
-                    <button onClick={() => { remove(editingItem.id); setShowEditor(false); }} className={ds.btnDanger}>
-                      <Trash2 className="w-4 h-4" /> Delete
+                    <button onClick={() => {
+                      // F14 two-step confirm, same pattern as the cards.
+                      if (confirmDeleteId === editingItem.id) { setConfirmDeleteId(null); void remove(editingItem.id); setShowEditor(false); }
+                      else setConfirmDeleteId(editingItem.id);
+                    }} className={ds.btnDanger}>
+                      <Trash2 className="w-4 h-4" /> {confirmDeleteId === editingItem.id ? 'Confirm delete?' : 'Delete'}
                     </button>
                   )}
                   {editingItem && (

@@ -18,6 +18,7 @@ const TOOL_LABELS = {
   run_lens_action: "Running a lens action",
   list_lens_actions: "Looking up lens actions",
   generate_image: "Generating the image",
+  art_draw: "Drawing on the Art lens",
   generate_3d: "Generating the 3D model",
 };
 
