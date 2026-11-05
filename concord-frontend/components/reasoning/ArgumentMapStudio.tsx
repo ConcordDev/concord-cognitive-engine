@@ -85,8 +85,10 @@ interface Scheme {
 
 interface ScoreNodeStat { id: string; text: string; stance: Stance; score: number; evidenceCount: number }
 interface ScoreResult {
-  confidence: number;
+  confidence: number | null;
   verdict: string;
+  message?: string;
+  formula?: string;
   perNode: ScoreNodeStat[];
   stats: { proCount: number; conCount: number; evidenceTotal: number; nodeCount: number };
 }
@@ -140,6 +142,7 @@ export function ArgumentMapStudio() {
   const [schemes, setSchemes] = useState<Scheme[]>([]);
   const [score, setScore] = useState<ScoreResult | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
@@ -393,7 +396,11 @@ export function ArgumentMapStudio() {
     setBusy('score');
     const r = await lensRun<ScoreResult>('reasoning', 'map-score', { mapId: activeMap.id });
     setBusy(null);
-    if (r.data.ok && r.data.result) { setScore(r.data.result); ok(`Confidence: ${r.data.result.confidence}%`); }
+    if (r.data.ok && r.data.result) {
+      setScore(r.data.result);
+      if (r.data.result.confidence === null) ok('No evidence yet — nothing to score.');
+      else ok(`Confidence: ${r.data.result.confidence}%`);
+    }
     else err(pickError(r.data));
   }
 
@@ -656,12 +663,21 @@ export function ArgumentMapStudio() {
               </button>
               <button
                 type="button"
-                onClick={() => deleteMap(m.id)}
+                onClick={() => {
+                  // Two-step delete (Review 3, F20): the first click arms
+                  // the control naming the map; only the second fires.
+                  if (confirmDeleteId === m.id) {
+                    setConfirmDeleteId(null);
+                    void deleteMap(m.id);
+                  } else {
+                    setConfirmDeleteId(m.id);
+                  }
+                }}
                 disabled={busy === `del-map-${m.id}`}
                 className="mt-1 flex items-center gap-1 text-[10px] text-rose-400/70 hover:text-rose-300 disabled:opacity-50"
               >
                 {busy === `del-map-${m.id}` ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Trash2 className="w-2.5 h-2.5" />}
-                Delete
+                {confirmDeleteId === m.id ? `Confirm delete “${m.title}”?` : 'Delete'}
               </button>
             </div>
           ))}
@@ -716,19 +732,30 @@ export function ArgumentMapStudio() {
                       {score.stats.proCount} pro · {score.stats.conCount} con · {score.stats.evidenceTotal} evidence
                     </span>
                   </div>
-                  <div className="mt-1.5 flex items-center gap-2">
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-zinc-800">
-                      <div
-                        className={cn(
-                          'h-full rounded-full',
-                          score.confidence >= 55 ? 'bg-emerald-400' : score.confidence >= 45 ? 'bg-amber-400' : 'bg-rose-400',
-                        )}
-                        style={{ width: `${score.confidence}%` }}
-                      />
-                    </div>
-                    <span className="w-10 text-right text-[13px] font-bold text-white">{score.confidence}%</span>
-                  </div>
-                  <p className="mt-1 text-[11px] capitalize text-zinc-300">Verdict: {score.verdict.replace(/-/g, ' ')}</p>
+                  {score.confidence === null ? (
+                    <p className="mt-1.5 text-[11px] text-zinc-300">
+                      {score.message || 'No evidence yet — there is nothing to score.'}
+                    </p>
+                  ) : (
+                    <>
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-zinc-800">
+                          <div
+                            className={cn(
+                              'h-full rounded-full',
+                              score.confidence >= 55 ? 'bg-emerald-400' : score.confidence >= 45 ? 'bg-amber-400' : 'bg-rose-400',
+                            )}
+                            style={{ width: `${score.confidence}%` }}
+                          />
+                        </div>
+                        <span className="w-10 text-right text-[13px] font-bold text-white">{score.confidence}%</span>
+                      </div>
+                      <p className="mt-1 text-[11px] capitalize text-zinc-300">Verdict: {score.verdict.replace(/-/g, ' ')}</p>
+                      {score.formula && (
+                        <p className="mt-1 text-[10px] leading-snug text-zinc-500">How this figure is derived: {score.formula}.</p>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
 
