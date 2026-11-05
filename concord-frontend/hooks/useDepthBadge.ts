@@ -59,6 +59,16 @@ const TIER_INFO: Record<DataTier, DepthBadgeInfo> = {
  */
 const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'caption'>> = {
   /**
+   * Cognition (branch (b)): a personal question log — the member's own
+   * entries in the platform store. REAL_LIVE's generic "polled from an
+   * external source" caption would be false for this lens.
+   */
+  cognition: {
+    label: 'Live',
+    caption:
+      'Your question log lives here — your own entries, kept in the platform store until you mark them answered. Nothing is polled from an external source; the platform\'s emergent entities are system content, labelled separately on this page.',
+  },
+  /**
    * Plumbing's field-service records are the account's own shop data,
    * persisted server-side — the Simulated declaration was false on its own
    * terms (Review 4's determination: real execution). REAL_LIVE's generic

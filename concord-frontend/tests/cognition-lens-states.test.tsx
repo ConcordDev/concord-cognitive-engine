@@ -1,7 +1,7 @@
 /**
  * /lenses/cognition — one trace.
  *
- * Open a trace calls cognition.exportTrace and shows the title only
+ * Log a question calls cognition.exportTrace and shows the title only
  * after listExports contains that id and the same title, and the
  * question only after getExport returns it on the stored trace. Mode
  * stays off the card. The rules are empty chrome, not inputs.
@@ -21,6 +21,10 @@ vi.mock('@/components/lens/LensShell', () => ({
     React.createElement('div', null, children),
 }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+vi.mock('@/components/dtu/SaveAsDtuButton', () => ({
+  SaveAsDtuButton: ({ title }: { title: string }) =>
+    React.createElement('button', { type: 'button' }, `Save as DTU: ${title}`),
+}));
 vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: authUser.current, isLoading: false, isAuthenticated: !!authUser.current }),
@@ -51,12 +55,12 @@ beforeEach(() => {
 });
 
 describe('cognition card', () => {
-  it('EMPTY: says no trace yet, draws three rules, and offers Open a trace', async () => {
+  it('EMPTY: teaches the question log, draws three rules, and offers Log a question', async () => {
     lensRun.mockResolvedValue(listed([]));
     const view = render(<CognitionLens />);
-    expect(await view.findByText('No trace yet.')).toBeInTheDocument();
+    expect(await view.findByText('No questions logged yet.')).toBeInTheDocument();
     expect(view.getByRole('heading', { name: 'Cognition' })).toBeInTheDocument();
-    expect(view.getByRole('button', { name: 'Open a trace' })).toBeEnabled();
+    expect(view.getByRole('button', { name: 'Log a question' })).toBeEnabled();
     expect(view.getAllByTestId('cg-rule')).toHaveLength(3);
     expect(view.container.querySelector('input')).toBeNull();
     expect(view.queryByText('Reasoning')).toBeNull();
@@ -68,9 +72,10 @@ describe('cognition card', () => {
       .mockResolvedValueOnce({ data: { ok: false, result: null, error: 'service_overloaded' } })
       .mockResolvedValue(listed([]));
     const view = render(<CognitionLens />);
-    expect(await view.findByText('No trace yet.', {}, { timeout: 8000 })).toBeInTheDocument();
+    expect(await view.findByText('No questions logged yet.', {}, { timeout: 8000 })).toBeInTheDocument();
     expect(view.queryByRole('alert')).toBeNull();
-    expect(lensRun).toHaveBeenCalledTimes(2);
+    // 2 load calls (shed + retry) + 1 entityStoreSummary read for the D3 window.
+    expect(lensRun).toHaveBeenCalledTimes(3);
   });
 
   it('ERROR: a failed list shows role=alert and Retry reloads', async () => {
@@ -79,17 +84,17 @@ describe('cognition card', () => {
     expect(await view.findByRole('alert')).toHaveTextContent(/state_unavailable/);
     lensRun.mockResolvedValue(listed([]));
     fireEvent.click(view.getByRole('button', { name: 'Retry' }));
-    expect(await view.findByText('No trace yet.')).toBeInTheDocument();
+    expect(await view.findByText('No questions logged yet.')).toBeInTheDocument();
   });
 
   it('TRACE: a blank title does not call exportTrace', async () => {
     lensRun.mockResolvedValue(listed([]));
     const view = render(<CognitionLens />);
-    fireEvent.click(await view.findByRole('button', { name: 'Open a trace' }));
-    expect(view.queryByText('No trace yet.')).toBeNull();
+    fireEvent.click(await view.findByRole('button', { name: 'Log a question' }));
+    expect(view.queryByText('No questions logged yet.')).toBeNull();
     expect(view.queryByTestId('cg-rule')).toBeNull();
     fireEvent.change(view.getByTestId('cg-question-input'), { target: { value: 'What held?' } });
-    fireEvent.click(view.getByRole('button', { name: 'Open a trace' }));
+    fireEvent.click(view.getByRole('button', { name: 'Log a question' }));
     expect(await view.findByRole('alert')).toHaveTextContent(/A title is required/);
     expect(lensRun.mock.calls.map((call) => call[1])).not.toContain('exportTrace');
   });
@@ -97,9 +102,9 @@ describe('cognition card', () => {
   it('TRACE: a blank question does not call exportTrace', async () => {
     lensRun.mockResolvedValue(listed([]));
     const view = render(<CognitionLens />);
-    fireEvent.click(await view.findByRole('button', { name: 'Open a trace' }));
+    fireEvent.click(await view.findByRole('button', { name: 'Log a question' }));
     fireEvent.change(view.getByTestId('cg-title'), { target: { value: 'Door trace' } });
-    fireEvent.click(view.getByRole('button', { name: 'Open a trace' }));
+    fireEvent.click(view.getByRole('button', { name: 'Log a question' }));
     expect(await view.findByRole('alert')).toHaveTextContent(/A question is required/);
     expect(lensRun.mock.calls.map((call) => call[1])).not.toContain('exportTrace');
   });
@@ -119,13 +124,13 @@ describe('cognition card', () => {
       throw new Error(action);
     });
     const view = render(<CognitionLens />);
-    fireEvent.click(await view.findByRole('button', { name: 'Open a trace' }));
+    fireEvent.click(await view.findByRole('button', { name: 'Log a question' }));
     fireEvent.change(view.getByTestId('cg-title'), { target: { value: '  Door trace  ' } });
     fireEvent.change(view.getByTestId('cg-question-input'), { target: { value: '  What did the door hinge on?  ' } });
-    fireEvent.click(view.getByRole('button', { name: 'Open a trace' }));
+    fireEvent.click(view.getByRole('button', { name: 'Log a question' }));
     expect(await view.findByRole('heading', { name: 'Door trace' })).toBeInTheDocument();
     expect(view.getByText('What did the door hinge on?')).toBeInTheDocument();
-    expect(view.queryByText('No trace yet.')).toBeNull();
+    expect(view.queryByText('No questions logged yet.')).toBeNull();
     expect(view.queryByText('abductive')).toBeNull();
     const save = lensRun.mock.calls.find((call) => call[1] === 'exportTrace');
     expect(save?.[0]).toBe('cognition');
@@ -144,10 +149,10 @@ describe('cognition card', () => {
       throw new Error(action);
     });
     const view = render(<CognitionLens />);
-    fireEvent.click(await view.findByRole('button', { name: 'Open a trace' }));
+    fireEvent.click(await view.findByRole('button', { name: 'Log a question' }));
     fireEvent.change(view.getByTestId('cg-title'), { target: { value: 'Lost trace' } });
     fireEvent.change(view.getByTestId('cg-question-input'), { target: { value: 'Gone?' } });
-    fireEvent.click(view.getByRole('button', { name: 'Open a trace' }));
+    fireEvent.click(view.getByRole('button', { name: 'Log a question' }));
     expect(await view.findByRole('alert')).toHaveTextContent(/did not read it back/);
     expect(view.queryByRole('heading', { name: 'Lost trace' })).toBeNull();
   });
@@ -157,7 +162,7 @@ describe('cognition card', () => {
     lensRun.mockResolvedValue(listed([]));
     const view = render(<CognitionLens />);
     expect(await view.findByRole('heading', { name: 'Cognition' })).toBeInTheDocument();
-    expect(await view.findByText('No trace yet.')).toBeInTheDocument();
+    expect(await view.findByText('No questions logged yet.')).toBeInTheDocument();
   });
 
   it('LOAD: shows a stored title and question and hides mode', async () => {
@@ -176,14 +181,14 @@ describe('cognition card', () => {
     const view = render(<CognitionLens />);
     expect(await view.findByRole('heading', { name: 'First trace' })).toBeInTheDocument();
     expect(view.getByText('A stored question.')).toBeInTheDocument();
-    expect(view.queryByText('No trace yet.')).toBeNull();
+    expect(view.queryByText('No questions logged yet.')).toBeNull();
     expect(view.queryByText('abductive')).toBeNull();
   });
 
   it('TRACE: a refused create does not show the title', async () => {
     lensRun.mockResolvedValue(listed([]));
     const view = render(<CognitionLens />);
-    fireEvent.click(await view.findByRole('button', { name: 'Open a trace' }));
+    fireEvent.click(await view.findByRole('button', { name: 'Log a question' }));
     lensRun.mockImplementation(async (_d: string, action: string) => {
       if (action === 'listExports') return listed([]);
       if (action === 'exportTrace') return { data: { ok: false, result: null, error: 'trace_not_saved' } };
@@ -191,7 +196,7 @@ describe('cognition card', () => {
     });
     fireEvent.change(view.getByTestId('cg-title'), { target: { value: 'Bad trace' } });
     fireEvent.change(view.getByTestId('cg-question-input'), { target: { value: 'No?' } });
-    fireEvent.click(view.getByRole('button', { name: 'Open a trace' }));
+    fireEvent.click(view.getByRole('button', { name: 'Log a question' }));
     expect(await view.findByRole('alert')).toHaveTextContent(/trace_not_saved/);
     expect(view.queryByRole('heading', { name: 'Bad trace' })).toBeNull();
     expect(view.getByTestId('cg-title')).toBeInTheDocument();
